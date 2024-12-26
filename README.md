@@ -10,22 +10,14 @@ Rustを標準言語として実装されています。
 ### 通常問題への対応
 online-judge-toolsを利用した以下の機能を提供:
 ```
-cph <contest_id> <command> <problem_id> [options]
+cph <contest_id> <language> <command> <problem_id> [options]
 ```
 
-- `o`: 問題ファイルの作成とテストケースの取得
-- `t`: テストケース実行（並列実行、タイムアウト5秒）
+- `open`: 問題ファイルの作成とテストケースの取得
+- `test`: テストケース実行（並列実行、タイムアウト5秒）
   - サンプルケースの実行
-  - カスタムケースの実行（`x_gen.rs`が存在する場合）
-- `s`: AtCoderへの提出
-
-### AHC特有の機能 (TODO)
-```
-cph <contest_id> ahctest <number_of_cases>
-```
-- ツール類の自動セットアップ（本体、webvisualizer）
-- テストケース生成と実行（seed値、in/out/other）
-- Git/Cargoによるコード・ビジュアライザー管理
+  - カスタムケースの実行（`x_gen.rs`/`x_gen.py`が存在する場合）
+- `submit`: AtCoderへの提出
 
 ## プロジェクト構成
 ```
@@ -127,11 +119,6 @@ cph abc300 r t a  # または cph abc300 rust test a
 4. 解答の提出:
 ```bash
 cph abc300 r s a  # または cph abc300 rust submit a
-```
-
-5. AHCのテスト実行:
-```bash
-cph ahc001 r ahctest 100
 ```
 
 ### contest.yaml
