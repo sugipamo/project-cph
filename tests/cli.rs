@@ -1,36 +1,17 @@
 use assert_cmd::Command;
-use predicates::prelude::*;
+use predicates::str::contains;
 use std::fs;
 use tempfile::TempDir;
-use cph::docker::DockerConfig;
-use std::path::PathBuf;
-use cph::{Error, Language};
+use cph::Language;
 
 struct TestContext {
     temp_dir: TempDir,
-    abc_dir: std::path::PathBuf,
 }
 
 impl TestContext {
     fn new() -> Self {
         let temp_dir = TempDir::new().unwrap();
-        let abc_dir = temp_dir.path().join("workspace/abc/abc300");
-        
-        // 必要なディレクトリを作成
-        fs::create_dir_all(&abc_dir).unwrap();
-        fs::create_dir_all(abc_dir.join("test")).unwrap();
-        fs::create_dir_all(abc_dir.join("template")).unwrap();
-        
-        Self {
-            temp_dir,
-            abc_dir,
-        }
-    }
-
-    fn create_template(&self, content: &str) {
-        let template_dir = self.abc_dir.join("template");
-        fs::create_dir_all(&template_dir).unwrap();
-        fs::write(template_dir.join("main.rs"), content).unwrap();
+        Self { temp_dir }
     }
 
     fn run_in_docker(&self, args: &[&str], language: &str) -> assert_cmd::assert::Assert {
@@ -38,7 +19,6 @@ impl TestContext {
             Ok(lang) => lang,
             Err(e) => panic!("Invalid language: {}", e),
         };
-        let image = DockerConfig::get_image(&language);
 
         // バイナリをビルド
         Command::new("cargo")
@@ -61,53 +41,33 @@ impl TestContext {
         // バイナリが存在することを確認
         assert!(target_binary.exists(), "Binary not found at {:?}", target_binary);
         
-        // ディレクトリ構造を確認
-        println!("Workspace structure:");
-        if let Ok(output) = Command::new("ls")
-            .args(["-la", self.temp_dir.path().to_str().unwrap()])
-            .output() {
-            println!("{}", String::from_utf8_lossy(&output.stdout));
-        }
+        let output = cph::docker::run_in_docker(
+            self.temp_dir.path(),
+            &language,
+            &["/workspace/cph"].iter().chain(args).map(|s| *s).collect::<Vec<_>>(),
+        ).unwrap();
 
-        Command::new("docker")
-            .args([
-                "run",
-                "--rm",
-                "--memory",
-                &DockerConfig::get().memory_limit,
-                "--memory-swap",
-                &DockerConfig::get().memory_limit,
-                "-v",
-                &format!("{}:/workspace", self.temp_dir.path().display()),
-                "-w",
-                "/workspace",
-                &image,
-                "/workspace/cph",
-            ])
-            .args(args)
-            .assert()
+        assert_cmd::assert::Assert::new(output)
     }
 }
 
-// 基本的なコマンドライン引数のテストはDocker外で実行
-#[test]
-fn test_invalid_language() {
+fn run_command(args: &[&str]) -> assert_cmd::assert::Assert {
     Command::cargo_bin("cph")
         .unwrap()
-        .args(["abc300", "invalid", "open", "a"])
+        .args(args)
         .assert()
+}
+
+#[test]
+fn test_invalid_language() {
+    run_command(&["abc300", "invalid", "open", "a"])
         .failure()
-        .stderr(predicate::str::contains("Invalid language"));
+        .stderr(contains("Invalid language"));
 }
 
 #[test]
 fn test_invalid_command() {
-    Command::cargo_bin("cph")
-        .unwrap()
-        .args(["abc300", "rust", "invalid", "a"])
-        .assert()
+    run_command(&["abc300", "rust", "invalid", "a"])
         .failure()
-        .stderr(predicate::str::contains("Invalid command"));
-}
-
-// 以下のテストは段階的に追加していきます 
+        .stderr(contains("Invalid command"));
+} 
