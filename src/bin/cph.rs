@@ -10,7 +10,7 @@ struct Args {
     /// Programming language (rust/r or pypy/py)
     language: String,
 
-    /// Command to execute (open/o, test/t, or submit/s)
+    /// Command to execute (open/o, test/t, submit/s, or generate/g)
     command: String,
 
     /// Problem ID (e.g., a, b, c)

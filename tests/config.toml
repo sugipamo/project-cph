@@ -1,0 +1,6 @@
+[docker]
+rust_image = "rust:1.70"
+pypy_image = "pypy:3.10"
+
+[test]
+timeout_seconds = 5 

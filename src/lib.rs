@@ -1,9 +1,8 @@
 use std::path::PathBuf;
-use std::process::{Command as ProcessCommand, Stdio};
 use std::time::Duration;
 use thiserror::Error;
-use tokio::process::Command as TokioCommand;
-use tokio::time::timeout;
+
+pub mod docker;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -15,6 +14,12 @@ pub enum Error {
     TestExecution(String),
     #[error("Test timeout")]
     TestTimeout,
+}
+
+impl Error {
+    pub fn test_execution(msg: impl Into<String>) -> Self {
+        Error::TestExecution(msg.into())
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -72,6 +77,70 @@ impl Language {
             Language::PyPy => "def main():\n    pass\n\nif __name__ == '__main__':\n    main()\n",
         }
     }
+
+    pub fn generator_template(&self) -> &str {
+        match self {
+            Language::Rust => r#"fn generate_case() -> (String, String) {
+    // TODO: カスタムケースの生成ロジックを実装
+    let input = String::new();
+    let output = String::new();
+    (input, output)
+}
+
+fn main() {
+    // 生成するテストケースの数を指定
+    let n_cases = 1;
+    
+    let mut inputs = Vec::new();
+    let mut outputs = Vec::new();
+    
+    for _ in 0..n_cases {
+        let (input, output) = generate_case();
+        inputs.push(input);
+        outputs.push(output);
+    }
+    
+    // 入力ケースの出力
+    for input in inputs {
+        println!("{}", input);
+    }
+    
+    // 期待される出力の出力（標準エラー出力）
+    for output in outputs {
+        eprintln!("{}", output);
+    }
+}"#,
+            Language::PyPy => r#"def generate_case():
+    # TODO: カスタムケースの生成ロジックを実装
+    input_data = ""
+    output_data = ""
+    return input_data, output_data
+
+def main():
+    # 生成するテストケースの数を指定
+    n_cases = 1
+    
+    inputs = []
+    outputs = []
+    
+    for _ in range(n_cases):
+        input_data, output_data = generate_case()
+        inputs.append(input_data)
+        outputs.append(output_data)
+    
+    # 入力ケースの出力
+    for input_data in inputs:
+        print(input_data)
+    
+    # 期待される出力の出力（標準エラー出力）
+    import sys
+    for output_data in outputs:
+        print(output_data, file=sys.stderr)
+
+if __name__ == "__main__":
+    main()"#,
+        }
+    }
 }
 
 impl TryFrom<&str> for Language {
@@ -94,6 +163,7 @@ pub enum Command {
     Open,
     Test,
     Submit,
+    Generate,
 }
 
 impl TryFrom<&str> for Command {
@@ -104,6 +174,7 @@ impl TryFrom<&str> for Command {
             "open" | "o" => Ok(Command::Open),
             "test" | "t" => Ok(Command::Test),
             "submit" | "s" => Ok(Command::Submit),
+            "generate" | "g" => Ok(Command::Generate),
             _ => Err(Error::Invalid {
                 kind: "command",
                 value: s.to_string(),
@@ -138,6 +209,10 @@ impl Config {
         }
     }
 
+    fn join_contest_dir(&self, path: impl AsRef<std::path::Path>) -> PathBuf {
+        self.contest_dir().join(path)
+    }
+
     pub fn contest_type(&self) -> ContestType {
         ContestType::from_id(&self.contest_id)
     }
@@ -149,23 +224,19 @@ impl Config {
     }
 
     pub fn problem_file(&self) -> PathBuf {
-        self.contest_dir()
-            .join(format!("{}.{}", self.problem_id, self.language.extension()))
+        self.join_contest_dir(format!("{}.{}", self.problem_id, self.language.extension()))
     }
 
     pub fn template_path(&self) -> PathBuf {
-        self.contest_dir()
-            .join("template")
-            .join(self.language.template_name())
+        self.join_contest_dir("template").join(self.language.template_name())
     }
 
     pub fn test_dir(&self) -> PathBuf {
-        self.contest_dir().join("test")
+        self.join_contest_dir("test")
     }
 
     pub fn generator_file(&self) -> PathBuf {
-        let ext = self.language.extension();
-        self.contest_dir().join(format!("{}_gen.{}", self.problem_id, ext))
+        self.join_contest_dir(format!("{}_gen.{}", self.problem_id, self.language.extension()))
     }
 }
 
@@ -174,6 +245,7 @@ pub fn run(config: Config) -> Result<(), Error> {
         Command::Open => open(config),
         Command::Test => test(config),
         Command::Submit => submit(config),
+        Command::Generate => generate(config),
     }
 }
 
@@ -200,11 +272,14 @@ struct TestCase {
 }
 
 impl TestCase {
+    fn read_file(path: &PathBuf, file_type: &str) -> Result<String, Error> {
+        std::fs::read_to_string(path)
+            .map_err(|e| Error::test_execution(format!("Failed to read {} file: {}", file_type, e)))
+    }
+
     fn from_files(input_path: &PathBuf, output_path: &PathBuf) -> Result<Self, Error> {
-        let input = std::fs::read_to_string(input_path)
-            .map_err(|e| Error::TestExecution(format!("Failed to read input file: {}", e)))?;
-        let expected = std::fs::read_to_string(output_path)
-            .map_err(|e| Error::TestExecution(format!("Failed to read output file: {}", e)))?;
+        let input = Self::read_file(input_path, "input")?;
+        let expected = Self::read_file(output_path, "output")?;
         let name = input_path
             .file_stem()
             .and_then(|s| s.to_str())
@@ -226,6 +301,51 @@ struct TestResult {
     execution_time: Duration,
 }
 
+impl TestResult {
+    fn new(name: String, status: TestStatus, execution_time: Duration) -> Self {
+        Self {
+            name,
+            status,
+            execution_time,
+        }
+    }
+
+    fn error(name: String, error: impl Into<String>, start: std::time::Instant) -> Self {
+        Self::new(
+            name,
+            TestStatus::Error(error.into()),
+            start.elapsed(),
+        )
+    }
+
+    fn display(&self) -> bool {
+        match &self.status {
+            TestStatus::Pass => {
+                println!(
+                    "Test {} passed ({:?})",
+                    self.name,
+                    self.execution_time
+                );
+                true
+            }
+            TestStatus::Fail { got, expected } => {
+                println!("Test {} failed", self.name);
+                println!("Expected:\n{}", expected);
+                println!("Got:\n{}", got);
+                false
+            }
+            TestStatus::Error(e) => {
+                println!("Test {} error: {}", self.name, e);
+                false
+            }
+            TestStatus::Timeout => {
+                println!("Test {} timed out (> 5s)", self.name);
+                false
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 enum TestStatus {
     Pass,
@@ -234,93 +354,75 @@ enum TestStatus {
     Timeout,
 }
 
-async fn execute_test(config: &Config, test_case: TestCase) -> TestResult {
-    let start = std::time::Instant::now();
+fn generate(config: Config) -> Result<(), Error> {
+    let generator_path = config.generator_file();
+    let test_dir = config.test_dir();
+
+    // テストディレクトリの作成
+    if !test_dir.exists() {
+        std::fs::create_dir_all(&test_dir)?;
+    }
+
+    if !generator_path.exists() {
+        // ジェネレータファイルが存在しない場合は作成
+        std::fs::write(&generator_path, config.language.generator_template())?;
+        println!("Created generator file: {:?}", generator_path);
+        println!("次回同じコマンドを実行するとテストケースが生成されます");
+        return Ok(());
+    }
+
+    // 既存のカスタムケースを削除
+    for entry in std::fs::read_dir(&test_dir)? {
+        let entry = entry?;
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name.starts_with("custom-") && (name.ends_with(".in") || name.ends_with(".out")) {
+            std::fs::remove_file(entry.path())?;
+        }
+    }
+
+    let input_path = test_dir.join("custom-1.in");
+    let output_path = test_dir.join("custom-1.out");
+
+    // ジェネレータの準備と実行
+    let runtime = tokio::runtime::Runtime::new()
+        .map_err(|e| Error::test_execution(format!("Failed to create runtime: {}", e)))?;
+
+    runtime.block_on(async {
+        match config.language {
+            Language::Rust => {
+                // コンパイル
+                let (stdout, stderr) = docker::execute_program("rustc", &[
+                    generator_path.to_str().unwrap(),
+                    "-o",
+                    "generator"
+                ], None).await?;
+
+                if !stderr.is_empty() {
+                    return Err(Error::TestExecution(format!("Compilation failed: {}", stderr)));
+                }
+
+                // 実行
+                let (stdout, stderr) = docker::execute_program("./generator", &[], None).await?;
+                std::fs::write(&input_path, stdout)?;
+                std::fs::write(&output_path, stderr)?;
+            }
+            Language::PyPy => {
+                let (stdout, stderr) = docker::execute_program("pypy3", &[
+                    generator_path.to_str().unwrap()
+                ], None).await?;
+                std::fs::write(&input_path, stdout)?;
+                std::fs::write(&output_path, stderr)?;
+            }
+        }
+        Ok(())
+    })?;
+
+    println!("Generated test case in:");
+    println!("  Input:  {:?}", input_path);
+    println!("  Output: {:?}", output_path);
     
-    let program = match config.language {
-        Language::Rust => {
-            let status = ProcessCommand::new("rustc")
-                .arg(config.problem_file())
-                .arg("-o")
-                .arg("problem")
-                .status();
-
-            match status {
-                Ok(exit) if exit.success() => "./problem",
-                _ => {
-                    return TestResult {
-                        name: test_case.name,
-                        status: TestStatus::Error("Compilation failed".to_string()),
-                        execution_time: start.elapsed(),
-                    };
-                }
-            }
-        }
-        Language::PyPy => "pypy3",
-    };
-
-    let problem_path = config.problem_file();
-    let mut command = TokioCommand::new(program);
-    if matches!(config.language, Language::PyPy) {
-        command.arg(problem_path);
-    }
-
-    let mut child = match command
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-    {
-        Ok(child) => child,
-        Err(e) => {
-            return TestResult {
-                name: test_case.name,
-                status: TestStatus::Error(format!("Failed to spawn process: {}", e)),
-                execution_time: start.elapsed(),
-            };
-        }
-    };
-
-    if let Some(mut stdin) = child.stdin.take() {
-        use tokio::io::AsyncWriteExt;
-        if let Err(e) = stdin.write_all(test_case.input.as_bytes()).await {
-            return TestResult {
-                name: test_case.name,
-                status: TestStatus::Error(format!("Failed to write to stdin: {}", e)),
-                execution_time: start.elapsed(),
-            };
-        }
-    }
-
-    match timeout(Duration::from_secs(5), child.wait_with_output()).await {
-        Ok(Ok(output)) => {
-            let got = String::from_utf8_lossy(&output.stdout).into_owned();
-            let status = if got.trim() == test_case.expected.trim() {
-                TestStatus::Pass
-            } else {
-                TestStatus::Fail {
-                    got,
-                    expected: test_case.expected,
-                }
-            };
-
-            TestResult {
-                name: test_case.name,
-                status,
-                execution_time: start.elapsed(),
-            }
-        }
-        Ok(Err(e)) => TestResult {
-            name: test_case.name,
-            status: TestStatus::Error(format!("Execution failed: {}", e)),
-            execution_time: start.elapsed(),
-        },
-        Err(_) => TestResult {
-            name: test_case.name,
-            status: TestStatus::Timeout,
-            execution_time: Duration::from_secs(5),
-        }
-    }
+    Ok(())
 }
 
 fn test(config: Config) -> Result<(), Error> {
@@ -356,7 +458,7 @@ fn test(config: Config) -> Result<(), Error> {
         // Execute tests in parallel
         let mut handles = Vec::new();
         for test_case in test_cases {
-            let config = config.clone();  // Clone config for each task
+            let config = config.clone();
             handles.push(tokio::spawn(async move {
                 execute_test(&config, test_case).await
             }));
@@ -366,28 +468,8 @@ fn test(config: Config) -> Result<(), Error> {
         let mut all_passed = true;
         for handle in handles {
             let result = handle.await.map_err(|e| Error::TestExecution(e.to_string()))?;
-            match result.status {
-                TestStatus::Pass => {
-                    println!(
-                        "Test {} passed ({:?})",
-                        result.name,
-                        result.execution_time
-                    );
-                }
-                TestStatus::Fail { got, expected } => {
-                    all_passed = false;
-                    println!("Test {} failed", result.name);
-                    println!("Expected:\n{}", expected);
-                    println!("Got:\n{}", got);
-                }
-                TestStatus::Error(e) => {
-                    all_passed = false;
-                    println!("Test {} error: {}", result.name, e);
-                }
-                TestStatus::Timeout => {
-                    all_passed = false;
-                    println!("Test {} timed out (> 5s)", result.name);
-                }
+            if !result.display() {
+                all_passed = false;
             }
         }
 
@@ -402,4 +484,54 @@ fn test(config: Config) -> Result<(), Error> {
 fn submit(_config: Config) -> Result<(), Error> {
     println!("Submit command not implemented yet");
     Ok(())
+}
+
+async fn execute_test(config: &Config, test_case: TestCase) -> TestResult {
+    let start = std::time::Instant::now();
+    
+    // コンパイルと実行
+    let result = match config.language {
+        Language::Rust => {
+            // コンパイル
+            match docker::execute_program("rustc", &[
+                config.problem_file().to_str().unwrap(),
+                "-o",
+                "problem"
+            ], None).await {
+                Ok((_, stderr)) if !stderr.is_empty() => {
+                    return TestResult::error(test_case.name, format!("Compilation failed: {}", stderr), start);
+                }
+                Err(e) => {
+                    return TestResult::error(test_case.name, format!("Compilation failed: {}", e), start);
+                }
+                Ok(_) => {
+                    // 実行
+                    docker::execute_program("./problem", &[], Some(test_case.input)).await
+                }
+            }
+        }
+        Language::PyPy => {
+            docker::execute_program("pypy3", &[
+                config.problem_file().to_str().unwrap()
+            ], Some(test_case.input)).await
+        }
+    };
+
+    match result {
+        Ok((got, _)) => {
+            let status = if got.trim() == test_case.expected.trim() {
+                TestStatus::Pass
+            } else {
+                TestStatus::Fail {
+                    got,
+                    expected: test_case.expected,
+                }
+            };
+            TestResult::new(test_case.name, status, start.elapsed())
+        }
+        Err(Error::TestTimeout) => {
+            TestResult::new(test_case.name, TestStatus::Timeout, Duration::from_secs(5))
+        }
+        Err(e) => TestResult::error(test_case.name, e.to_string(), start),
+    }
 }
