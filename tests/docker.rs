@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::fs;
 use cph::{Language, docker};
+use std::process::Output;
 
 fn get_test_workspace() -> PathBuf {
     std::env::current_dir()
@@ -19,21 +20,51 @@ fn setup() -> PathBuf {
     workspace
 }
 
+fn run_in_docker_and_check(workspace_dir: &PathBuf, lang: &Language, cmd: &[&str], error_msg: &str) -> Output {
+    let result = docker::run_in_docker(workspace_dir, lang, cmd);
+    assert!(result.is_ok(), "{}: {:?}", error_msg, result);
+    let output = result.unwrap();
+    assert!(output.status.success(), "{}", error_msg);
+    output
+}
+
+fn test_hello_world(workspace_dir: &PathBuf, lang: Language, setup_cmd: &[&str], run_cmd: &[&str], expected_output: &str) {
+    // ソースファイルの作成
+    run_in_docker_and_check(
+        workspace_dir,
+        &lang,
+        setup_cmd,
+        &format!("Failed to create {:?} test file", lang),
+    );
+
+    // 実行
+    let output = run_in_docker_and_check(
+        workspace_dir,
+        &lang,
+        run_cmd,
+        &format!("{:?} execution failed", lang),
+    );
+    
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout).trim(),
+        expected_output,
+        "Unexpected output from {:?} program",
+        lang,
+    );
+}
+
 #[test]
 fn test_docker_mount_paths() {
     let workspace_dir = setup();
     // 各言語のマウントパスをテスト
     let languages = [Language::Rust, Language::PyPy];
     for lang in languages {
-        let result = docker::run_in_docker(
+        let output = run_in_docker_and_check(
             &workspace_dir,
             &lang,
             &["ls", "/compile"],
+            &format!("Docker command failed for {:?}", lang),
         );
-        
-        assert!(result.is_ok(), "Docker command failed for {:?}: {:?}", lang, result);
-        let output = result.unwrap();
-        assert!(output.status.success(), "Docker command returned non-zero status for {:?}", lang);
         
         // コンパイル環境のファイルが存在することを確認
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -52,68 +83,26 @@ fn test_docker_mount_paths() {
 #[test]
 fn test_docker_compile_rust() {
     let workspace_dir = setup();
-    
-    // テスト用のRustファイルを作成
-    fs::write(
-        workspace_dir.join("test.rs"),
-        r#"
+    test_hello_world(
+        &workspace_dir,
+        Language::Rust,
+        &["sh", "-c", r#"echo '
 fn main() {
     println!("Hello from Rust!");
-}
-"#,
-    ).expect("Failed to write test file");
-
-    // コンパイル（出力先を/compileに指定）
-    let result = docker::run_in_docker(
-        &workspace_dir,
-        &Language::Rust,
-        &["rustc", "test.rs", "-o", "/compile/test"],
-    );
-    assert!(result.is_ok(), "Rust compilation failed: {:?}", result);
-    assert!(result.unwrap().status.success(), "Rust compilation returned non-zero status");
-
-    // 実行（/compileディレクトリから実行）
-    let result = docker::run_in_docker(
-        &workspace_dir,
-        &Language::Rust,
-        &["sh", "-c", "cd /compile && ./test"],
-    );
-    assert!(result.is_ok(), "Rust execution failed: {:?}", result);
-    let output = result.unwrap();
-    assert!(output.status.success(), "Rust execution returned non-zero status");
-    assert_eq!(
-        String::from_utf8_lossy(&output.stdout).trim(),
+}' > test.rs"#],
+        &["sh", "-c", "rustc test.rs -o /compile/test && cd /compile && ./test"],
         "Hello from Rust!",
-        "Unexpected output from Rust program"
     );
 }
 
 #[test]
 fn test_docker_compile_pypy() {
     let workspace_dir = setup();
-    
-    // テスト用のPythonファイルを作成（/compileディレクトリに直接作成）
-    let result = docker::run_in_docker(
+    test_hello_world(
         &workspace_dir,
-        &Language::PyPy,
+        Language::PyPy,
         &["sh", "-c", r#"echo 'print("Hello from PyPy!")' > /compile/test.py"#],
-    );
-    assert!(result.is_ok(), "Failed to create PyPy test file: {:?}", result);
-    assert!(result.unwrap().status.success(), "Failed to create PyPy test file");
-
-    // 実行（/compileディレクトリから実行）
-    let result = docker::run_in_docker(
-        &workspace_dir,
-        &Language::PyPy,
         &["sh", "-c", "cd /compile && pypy3 test.py"],
-    );
-    
-    assert!(result.is_ok(), "PyPy execution failed: {:?}", result);
-    let output = result.unwrap();
-    assert!(output.status.success(), "PyPy execution returned non-zero status");
-    assert_eq!(
-        String::from_utf8_lossy(&output.stdout).trim(),
         "Hello from PyPy!",
-        "Unexpected output from PyPy program"
     );
 } 
