@@ -1,5 +1,5 @@
 contests:
-  abc300:
+  abc001:
     problems:
       a:
         solution: a.rs

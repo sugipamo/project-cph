@@ -1,5 +1,4 @@
 use std::path::StripPrefixError;
-use glob::PatternError;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -16,9 +15,6 @@ pub enum Error {
 
     #[error("YAML error: {0}")]
     Yaml(#[from] serde_yaml::Error),
-
-    #[error("Pattern error: {0}")]
-    Pattern(#[from] PatternError),
 
     #[error("Path error: {0}")]
     Path(#[from] StripPrefixError),

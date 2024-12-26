@@ -4,12 +4,14 @@ pub mod error;
 pub mod workspace;
 
 use std::fmt;
+use std::path::Path;
 use crate::error::Result;
 
 const DEFAULT_TIMEOUT_SECS: u64 = 30;
 const DEFAULT_MEMORY_LIMIT: &str = "256m";
 
-#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, clap::ValueEnum, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Language {
     Rust,
     PyPy,
@@ -31,10 +33,20 @@ impl Language {
     }
 
     pub fn default_content(&self) -> Result<String> {
-        Ok(match self {
-            Language::Rust => include_str!("templates/template/main.rs").to_string(),
-            Language::PyPy => include_str!("templates/template/main.py").to_string(),
-        })
+        let template_path = Path::new("src/templates/template").join(match self {
+            Language::Rust => "main.rs",
+            Language::PyPy => "main.py",
+        });
+
+        if template_path.exists() {
+            Ok(std::fs::read_to_string(template_path)?)
+        } else {
+            // テンプレートファイルが見つからない場合のデフォルト内容
+            Ok(match self {
+                Language::Rust => "fn main() {\n    println!(\"Hello, World!\");\n}\n".to_string(),
+                Language::PyPy => "print('Hello, World!')\n".to_string(),
+            })
+        }
     }
 }
 
