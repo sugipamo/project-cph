@@ -37,20 +37,34 @@ cph/
 ├── examples/      # サンプルコード
 ├── benches/       # ベンチマークテスト
 ├── tests/         # 統合テスト
-├── resources/     # 問題テンプレート等のリソース
-│   └── template/
-│       ├── main.rs    # Rustテンプレート
-│       └── gen.rs     # テストケース生成テンプレート
-├── workspace/     # コンテスト作業ディレクトリ
-│   └── abc300/   # コンテストディレクトリ例
-│       ├── src/
-│       │   └── bin/
-│       │       └── a.rs
-│       └── test/
-│           ├── sample-1.in   # サンプルケース
-│           ├── sample-1.out
-│           ├── custom-1.in   # 生成したテストケース
-│           └── custom-1.out
+├── workspace/     # 現在取り組んでいる問題
+│   └── abc/      # コンテスト作業ディレクトリ
+│       ├── rust/ # Rust用ソリューション
+│       │   ├── template/
+│       │   │   ├── main.rs    # Rustテンプレート
+│       │   │   └── gen.rs     # テストケース生成テンプレート
+│       │   ├── src/
+│       │   │   └── bin/
+│       │   │       └── a.rs
+│       │   └── test/
+│       │       ├── sample-1.in   # サンプルケース
+│       │       ├── sample-1.out
+│       │       ├── custom-1.in   # 生成したテストケース
+│       │       └── custom-1.out
+│       └── python/  # Python用ソリューション
+│           └── template/
+│               └── main.py    # Pythonテンプレート
+│               └── gen.py     # テストケース生成テンプレート
+├── archive/      # 過去のコンテスト
+│   └── abc300/   # アーカイブされたコンテスト
+│       ├── rust/
+│       │   ├── src/
+│       │   │   └── bin/
+│       │   │       └── a.rs
+│       │   └── test/
+│       │       ├── sample-1.in
+│       │       └── sample-1.out
+│       └── python/  # 他の言語のソリューション
 ├── target/        # ビルド成果物
 ├── Cargo.toml     # パッケージ設定
 └── Cargo.lock     # 依存関係のロック
