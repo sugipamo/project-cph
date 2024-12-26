@@ -1,65 +1,66 @@
-#[cfg(test)]
-mod docker_tests {
-    use std::process::Command;
-    use cph::Language;
+use std::path::PathBuf;
+use cph::{Language, docker};
 
-    struct DockerTest {
-        language: Language,
-        version_cmd: &'static [&'static str],
-        version_output_contains: &'static str,
-    }
-
-    impl DockerTest {
-        fn new(language: Language, version_cmd: &'static [&'static str], version_output_contains: &'static str) -> Self {
-            Self {
-                language,
-                version_cmd,
-                version_output_contains,
-            }
-        }
-
-        fn image(&self) -> String {
-            self.language.docker_image().to_string()
-        }
-
-        fn run_command(&self, cmd: &[&str]) -> std::io::Result<std::process::Output> {
-            Command::new("docker")
-                .args(["run", "--rm"])
-                .arg(self.image())
-                .args(cmd)
-                .output()
-        }
-
-        fn test_version_command(&self) {
-            let output = self.run_command(self.version_cmd)
-                .unwrap_or_else(|_| panic!("Failed to execute command in {} container", self.image()));
-            
-            assert!(output.status.success(), "Command failed in {} container", self.image());
-            let output_str = String::from_utf8_lossy(&output.stdout);
-            assert!(
-                output_str.contains(self.version_output_contains), 
-                "Unexpected version output for {}", self.image()
-            );
+#[test]
+fn test_docker_mount_paths() {
+    // 各言語のマウントパスをテスト
+    let languages = [Language::Rust, Language::PyPy];
+    for lang in languages {
+        let workspace_dir = PathBuf::from("test_workspace");
+        let result = docker::run_in_docker(
+            &workspace_dir,
+            &lang,
+            &["ls", "/compile"],
+        );
+        
+        assert!(result.is_ok(), "Docker command failed for {:?}: {:?}", lang, result);
+        let output = result.unwrap();
+        assert!(output.status.success(), "Docker command returned non-zero status for {:?}", lang);
+        
+        // コンパイル環境のファイルが存在することを確認
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        match lang {
+            Language::Rust => {
+                assert!(stdout.contains("Cargo.toml"), "Rust compile environment should contain Cargo.toml");
+                assert!(stdout.contains("src"), "Rust compile environment should contain src directory");
+            },
+            Language::PyPy => {
+                assert!(stdout.contains("main.py"), "PyPy compile environment should contain main.py");
+            },
         }
     }
+}
 
-    #[test]
-    fn test_docker_commands() {
-        let tests = [
-            DockerTest::new(
-                Language::Rust,
-                &["rustc", "--version"],
-                "rustc"
-            ),
-            DockerTest::new(
-                Language::PyPy,
-                &["python", "--version"],
-                "Python"
-            ),
-        ];
+#[test]
+fn test_docker_compile_rust() {
+    let workspace_dir = PathBuf::from("test_workspace");
+    let result = docker::run_in_docker(
+        &workspace_dir,
+        &Language::Rust,
+        &["rustc", "--version"],
+    );
+    
+    assert!(result.is_ok(), "Rust compiler check failed: {:?}", result);
+    let output = result.unwrap();
+    assert!(output.status.success(), "Rust compiler check returned non-zero status");
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("rustc"), "Rust compiler version should be displayed");
+}
 
-        for test in &tests {
-            test.test_version_command();
-        }
-    }
+#[test]
+fn test_docker_compile_pypy() {
+    let workspace_dir = PathBuf::from("test_workspace");
+    let result = docker::run_in_docker(
+        &workspace_dir,
+        &Language::PyPy,
+        &["python3", "--version"],
+    );
+    
+    assert!(result.is_ok(), "PyPy interpreter check failed: {:?}", result);
+    let output = result.unwrap();
+    assert!(output.status.success(), "PyPy interpreter check returned non-zero status");
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Python"), "Python version should be displayed");
 } 

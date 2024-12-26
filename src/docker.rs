@@ -6,6 +6,7 @@ use tokio::io::AsyncWriteExt;
 use std::process::Stdio;
 use tokio::time::timeout;
 use once_cell::sync::Lazy;
+use std::path::PathBuf;
 
 use crate::error::{Error, Result, DockerError};
 use crate::{Language, DEFAULT_TIMEOUT_SECS, DEFAULT_MEMORY_LIMIT};
@@ -27,6 +28,17 @@ impl DockerConfig {
 
     pub fn get_image(language: &Language) -> String {
         language.docker_image().to_string()
+    }
+
+    fn get_compile_mount(language: &Language) -> String {
+        let compile_dir = match language {
+            Language::Rust => "compile/rust",
+            Language::PyPy => "compile/pypy",
+        };
+        let absolute_path = std::env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join(compile_dir);
+        format!("{}:/compile", absolute_path.display())
     }
 }
 
@@ -79,6 +91,8 @@ pub fn run_in_docker(
             &config.memory_limit,
             "-v",
             &format!("{}:/workspace", workspace_dir.display()),
+            "-v",
+            &DockerConfig::get_compile_mount(language),
             "-w",
             "/workspace",
             &DockerConfig::get_image(language),
