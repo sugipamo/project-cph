@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use proconio::input;
 
 
@@ -7,4 +9,5 @@ fn main() {
         n: usize,
     }
     println!("{}", n);
+
 } 

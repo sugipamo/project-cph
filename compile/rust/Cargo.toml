@@ -10,8 +10,63 @@ path = "src/lib.rs"
 name = "main"
 path = "src/main.rs"
 
+[[bin]]
+name = "a"
+path = "../../workspace/abc/a.rs"
+
+[[bin]]
+name = "a_gen"
+path = "../../workspace/abc/a_gen.rs"
+
+[[bin]]
+name = "b"
+path = "../../workspace/abc/b.rs"
+
+[[bin]]
+name = "b_gen"
+path = "../../workspace/abc/b_gen.rs"
+
+[[bin]]
+name = "c"
+path = "../../workspace/abc/c.rs"
+
+[[bin]]
+name = "c_gen"
+path = "../../workspace/abc/c_gen.rs"
+
+[[bin]]
+name = "d"
+path = "../../workspace/abc/d.rs"
+
+[[bin]]
+name = "d_gen"
+path = "../../workspace/abc/d_gen.rs"
+
+[[bin]]
+name = "e"
+path = "../../workspace/abc/e.rs"
+
+[[bin]]
+name = "e_gen"
+path = "../../workspace/abc/e_gen.rs"
+
+[[bin]]
+name = "f"
+path = "../../workspace/abc/f.rs"
+
+[[bin]]
+name = "f_gen"
+path = "../../workspace/abc/f_gen.rs"
+
+[[bin]]
+name = "g"
+path = "../../workspace/abc/g.rs"
+
+[[bin]]
+name = "g_gen"
+path = "../../workspace/abc/g_gen.rs"
+
 [dependencies]
 proconio = "0.4"  # 競プロでよく使用される入力ライブラリ
 num = "0.4"       # 数値計算用ライブラリ
-itertools = "0.12" # イテレータ拡張ライブラリ
-solution = { path = "." }  # 自身への参照（lib.rsの機能を使用可能に） 
+itertools = "0.12" # イテレータ拡張ライブラリ 
