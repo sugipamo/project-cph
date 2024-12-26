@@ -10,7 +10,7 @@ Rustを標準言語として実装されています。
 ### 通常問題への対応
 online-judge-toolsを利用した以下の機能を提供:
 ```
-ojt <contest_id> <command> <problem_id> [options]
+cph <contest_id> <command> <problem_id> [options]
 ```
 
 - `o`: 問題ファイルの作成とテストケースの取得
@@ -21,7 +21,7 @@ ojt <contest_id> <command> <problem_id> [options]
 
 ### AHC特有の機能
 ```
-ojt <contest_id> ahctest <number_of_cases>
+cph <contest_id> ahctest <number_of_cases>
 ```
 - ツール類の自動セットアップ（本体、webvisualizer）
 - テストケース生成と実行（seed値、in/out/other）
@@ -29,24 +29,31 @@ ojt <contest_id> ahctest <number_of_cases>
 
 ## プロジェクト構成
 ```
-ojt/
-├── src/      # ツール本体
-├── tests/    # テストコード
-├── contest/  # 問題ファイル
-│   ├── template/
-│   │   ├── main.rs    # Rustテンプレート
-│   │   └── gen.rs     # テストケース生成テンプレート
-│   └── abc300/  # コンテストディレクトリ例
-│       ├── a.rs
+cph/
+├── src/           # ソースコード
+│   ├── bin/       # 実行可能ファイル
+│   │   └── cph.rs # メインバイナリ
+│   └── lib.rs     # ライブラリコード
+├── examples/      # サンプルコード
+├── benches/       # ベンチマークテスト
+├── tests/         # 統合テスト
+├── resources/     # 問題テンプレート等のリソース
+│   └── template/
+│       ├── main.rs    # Rustテンプレート
+│       └── gen.rs     # テストケース生成テンプレート
+├── workspace/     # コンテスト作業ディレクトリ
+│   └── abc300/   # コンテストディレクトリ例
+│       ├── src/
+│       │   └── bin/
+│       │       └── a.rs
 │       └── test/
 │           ├── sample-1.in   # サンプルケース
 │           ├── sample-1.out
 │           ├── custom-1.in   # 生成したテストケース
 │           └── custom-1.out
-├── .temp/    # 一時ファイル
-├── Cargo.toml    # Rust依存関係
-├── compose.yml   # Docker設定
-└── ojt          # バイナリ
+├── target/        # ビルド成果物
+├── Cargo.toml     # パッケージ設定
+└── Cargo.lock     # 依存関係のロック
 ```
 
 ## 実行環境
@@ -83,20 +90,20 @@ docker compose up -d
 
 1. コンテストへの参加:
 ```bash
-ojt abc300 o a
+cph abc300 o a
 ```
 
 2. テストの実行:
 ```bash
-ojt abc300 t a
+cph abc300 t a
 ```
 
 3. 解答の提出:
 ```bash
-ojt abc300 s a
+cph abc300 s a
 ```
 
 4. AHCのテスト実行:
 ```bash
-ojt ahc001 ahctest 100
+cph ahc001 ahctest 100
 ``` 
