@@ -1,0 +1,32 @@
+[package]
+name = "solution"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "main"
+path = "src/main.rs"
+
+# 問題のソースコードをバイナリターゲットとして追加
+[[bin]]
+name = "workspace"
+path = "../../workspace/abc/a.rs"
+required-features = ["workspace"]
+
+# ジェネレータのソースコードをバイナリターゲットとして追加
+[[bin]]
+name = "generator"
+path = "../../workspace/abc/a_gen.rs"
+required-features = ["workspace"]
+
+[features]
+# workspaceフィーチャーを定義（コンパイル時には無効化）
+workspace = []
+
+[dependencies]
+proconio = "0.4"  # 競プロでよく使用される入力ライブラリ
+num = "0.4"       # 数値計算用ライブラリ
+itertools = "0.12" # イテレータ拡張ライブラリ 

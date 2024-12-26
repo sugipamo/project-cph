@@ -1,129 +1,59 @@
-# AtCoder CLI Tool (Rust)
+# cph (Competitive Programming Helper)
 
-## 概要
+競技プログラミングのためのCLIツール
 
-AtCoderのコンテスト問題の管理、テスト実行、提出を効率化するCLIツールです。
-Rustを標準言語として実装されています。
+## ディレクトリ構成
 
-## 基本機能
-
-### 通常問題への対応
-online-judge-toolsを利用した以下の機能を提供:
 ```
-cph <contest_id> <language> <command> <problem_id> [options]
-```
+.
+├── workspace/                # ユーザーのワークスペース
+│   └── {contest_type}/      # コンテストタイプ (abc, arc, etc.)
+│       ├── template/        # 言語ごとのテンプレート
+│       ├── test/           # テストケース
+│       └── {problem}.{ext}  # 問題ごとのソースコード
+│
+└── compile/                 # コンパイル用ワークスペース
+    ├── rust/               # Rust用コンパイル環境
+    │   ├── Cargo.toml     # Rustプロジェクト設定
+    │   └── src/           # Rustソースコード
+    │       └── main.rs    # コンパイル対象のコード
+    │
+    └── pypy/              # PyPy用実行環境
+        └── main.py        # 実行対象のコード
 
-- `open`: 問題ファイルの作成とテストケースの取得
-- `test`: テストケース実行（並列実行、タイムアウト5秒）
-  - サンプルケースの実行
-  - カスタムケースの実行（`x_gen.rs`/`x_gen.py`が存在する場合）
-- `submit`: AtCoderへの提出
-
-## プロジェクト構成
-```
-cph/
-├── src/           # ソースコード
-│   ├── bin/       # 実行可能ファイル
-│   │   └── cph.rs # メインバイナリ
-│   └── lib.rs     # ライブラリコード
-├── examples/      # サンプルコード
-├── benches/       # ベンチマークテスト
-├── tests/         # 統合テスト
-├── workspace/     # 現在取り組んでいる問題
-│   ├── abc/      # AtCoder Beginner Contest
-│   │   ├── contest.yaml  # 現在のコンテスト情報
-│   │   ├── template/    # 言語別テンプレート
-│   │   │   ├── main.rs  # Rust用
-│   │   │   ├── gen.rs
-│   │   │   ├── main.py  # PyPy用
-│   │   │   └── gen.py
-│   │   ├── a.rs         # ソースコード
-│   │   ├── a_gen.rs     # カスタムケース生成コード
-│   │   └── test/        # テストケース
-│   │       ├── sample-1.in   # サンプルケース
-│   │       ├── sample-1.out
-│   │       ├── custom-1.in   # 生成したテストケース
-│   │       └── custom-1.out
-│   ├── arc/      # AtCoder Regular Contest
-│   │   ├── contest.yaml
-│   │   ├── template/
-│   │   └── test/
-│   └── ahc/      # AtCoder Heuristic Contest
-│       ├── contest.yaml
-│       ├── template/
-│       └── test/
-├── archive/      # 過去のコンテスト
-│   ├── abc300/   # アーカイブされたABC
-│   ├── arc164/   # アーカイブされたARC
-│   └── ahc027/   # アーカイブされたAHC
-├── target/        # ビルド成果物
-├── Cargo.toml     # パッケージ設定
-└── Cargo.lock     # 依存関係のロック
 ```
 
-## 実行環境
+## コンパイル環境
 
-### Docker環境
-- CPU: 2コア
-- メモリ: 1024MB
-- Rust (5054): rust:1.70
-- PyPy (5078): pypy:3.10
-- 外部ツール: online-judge-tools, Cargo, Git
+各言語ごとに独立したコンパイル環境を用意しています：
 
-## インストール方法
+### Rust
+- `compile/rust/`にCargoプロジェクトとして配置
+- コンパイル対象のコードは`src/main.rs`として配置
+- 必要なクレートは`Cargo.toml`で管理
 
-1. Dockerのインストール
-2. リポジトリのクローン
-3. 以下のコマンドで環境構築:
-```bash
-docker compose up -d
-```
+### PyPy
+- `compile/pypy/`に直接ソースコードを配置
+- 実行対象のコードは`main.py`として配置
 
 ## 使用方法
 
-### コマンド体系
+1. 問題の作成
 ```bash
-cph <contest_id> <language> <command> <problem_id> [options]
+cph open abc001 a rust  # abc001のA問題をRustで解く
 ```
 
-#### パラメータ
-- contest_id: コンテストID（例：abc300）
-- language: 使用言語
-  - `rust`: Rust (.rs)
-  - `pypy`: PyPy (.py)
-  - 省略形: 一意に特定できる先頭文字列（例：`r`、`py`）
-- command: 実行コマンド
-  - `open`: 問題ファイルの作成とテストケース取得
-  - `test`: テストケース実行
-  - `submit`: AtCoderへの提出
-  - 省略形: 一意に特定できる先頭文字列（例：`o`、`t`、`s`）
-- problem_id: 問題ID（a, b, c, ...）
-
-#### 使用例
-
-1. コンテストへの参加（完全形）:
+2. テストの実行
 ```bash
-cph abc300 rust open a
+cph test abc001 a  # A問題のテストを実行
 ```
 
-2. コンテストへの参加（省略形）:
+3. テストケースの生成
 ```bash
-cph abc300 r o a
+cph generate abc001 a  # A問題のテストケースを生成
 ```
 
-3. テストの実行:
+4. 提出（未実装）
 ```bash
-cph abc300 r t a  # または cph abc300 rust test a
-```
-
-4. 解答の提出:
-```bash
-cph abc300 r s a  # または cph abc300 rust submit a
-```
-
-### contest.yaml
-```yaml
-contest:
-  id: "abc300"
-  url: "https://atcoder.jp/contests/abc300"
+cph submit abc001 a  # A問題の解答を提出
 ``` 

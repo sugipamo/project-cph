@@ -84,6 +84,7 @@ struct LanguageConfig {
     default_content: &'static str,
     generator_template: &'static str,
     docker_image: &'static str,
+    command: &'static str,
 }
 
 impl Language {
@@ -95,6 +96,7 @@ impl Language {
                 default_content: include_str!("templates/main.rs"),
                 generator_template: include_str!("templates/generator.rs"),
                 docker_image: "rust:1.70",
+                command: "rustc",
             },
             Language::PyPy => LanguageConfig {
                 extension: "py",
@@ -102,6 +104,7 @@ impl Language {
                 default_content: include_str!("templates/main.py"),
                 generator_template: include_str!("templates/generator.py"),
                 docker_image: "pypy:3.10",
+                command: "python",
             },
         }
     }
@@ -124,6 +127,10 @@ impl Language {
 
     pub fn docker_image(&self) -> &str {
         self.config().docker_image
+    }
+
+    pub fn command(&self) -> &str {
+        self.config().command
     }
 }
 

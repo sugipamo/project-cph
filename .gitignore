@@ -1,3 +1,12 @@
 /target
 **/*.rs.bk
 Cargo.lock
+
+# コンパイル環境
+/compile/rust/target/
+/compile/rust/Cargo.lock
+/compile/rust/src/main.rs
+/compile/pypy/main.py
+
+# ワークスペース
+/workspace/
