@@ -42,23 +42,30 @@
 
 1. 問題の作成
 ```bash
-cph abc001 rust open a  # abc001のA問題をRustで解く
+cph atcoder abc001 rust open a  # AtCoderのabc001のA問題をRustで解く
+cph codeforces 1234 rust open a  # Codeforcesの1234回コンテストのA問題をRustで解く
 ```
 
 2. テストの実行（未実装）
 ```bash
-cph abc001 rust test a  # A問題のテストを実行
+cph atcoder abc001 rust test a  # A問題のテストを実行
 ```
 
 3. テストケースの生成（未実装）
 ```bash
-cph abc001 rust generate a  # A問題のテストケースを生成
+cph atcoder abc001 rust generate a  # A問題のテストケースを生成
 ```
 
 4. 提出（未実装）
 ```bash
-cph abc001 rust submit a  # A問題の解答を提出
+cph atcoder abc001 rust submit a  # A問題の解答を提出
 ```
+
+## 対応サイト
+
+- [x] AtCoder
+- [x] Codeforces
+- [ ] yukicoder（計画中）
 
 ## 機能
 

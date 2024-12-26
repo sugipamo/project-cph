@@ -2,9 +2,19 @@ use clap::Parser;
 use std::path::PathBuf;
 use crate::{Language, error::Result, workspace::Workspace};
 
+const ATCODER_URL: &str = "https://atcoder.jp";
+const CODEFORCES_URL: &str = "https://codeforces.com";
+
+const ATCODER_PROBLEM_PATH: &str = "contests/{contest_id}/tasks/{contest_id}_{problem_id}";
+const CODEFORCES_PROBLEM_PATH: &str = "contest/{contest_id}/problem/{problem_id}";
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
+    /// Site name (e.g., atcoder, codeforces)
+    #[arg(value_enum)]
+    site: Site,
+
     /// Contest ID (e.g., abc300)
     contest_id: String,
 
@@ -17,6 +27,33 @@ pub struct Cli {
 
     /// Problem ID (e.g., a, b, c)
     problem_id: String,
+}
+
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+pub enum Site {
+    #[clap(name = "atcoder", alias = "at-coder", alias = "at_coder")]
+    AtCoder,
+    #[clap(name = "codeforces", alias = "cf")]
+    Codeforces,
+}
+
+impl Site {
+    fn get_problem_url(&self, contest_id: &str, problem_id: &str) -> String {
+        match self {
+            Site::AtCoder => {
+                let path = ATCODER_PROBLEM_PATH
+                    .replace("{contest_id}", contest_id)
+                    .replace("{problem_id}", problem_id);
+                format!("{}/{}", ATCODER_URL, path)
+            }
+            Site::Codeforces => {
+                let path = CODEFORCES_PROBLEM_PATH
+                    .replace("{contest_id}", contest_id)
+                    .replace("{problem_id}", &problem_id.to_uppercase());
+                format!("{}/{}", CODEFORCES_URL, path)
+            }
+        }
+    }
 }
 
 impl Cli {
@@ -33,7 +70,7 @@ impl Cli {
 
                 // エディタとブラウザで開く
                 open_in_editor(&source_path)?;
-                open_in_browser(&cli.contest_id, &cli.problem_id)?;
+                open_in_browser(&cli.site.get_problem_url(&cli.contest_id, &cli.problem_id))?;
             }
             _ => {
                 return Err(crate::error::Error::InvalidInput(format!(
@@ -58,13 +95,7 @@ fn open_in_editor(path: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn open_in_browser(contest_id: &str, problem_id: &str) -> Result<()> {
-    let url = format!(
-        "https://atcoder.jp/contests/{}/tasks/{}_{}", 
-        contest_id, 
-        contest_id, 
-        problem_id
-    );
+fn open_in_browser(url: &str) -> Result<()> {
     open::that(url)?;
     Ok(())
 } 
