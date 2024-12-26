@@ -1,9 +1,8 @@
 use clap::Parser;
 use std::path::PathBuf;
-use crate::{Language, error::Result, workspace::Workspace};
-
-const ATCODER_URL: &str = "https://atcoder.jp";
-const CODEFORCES_URL: &str = "https://codeforces.com";
+use crate::{Language, error::{Result, Error}, workspace::Workspace};
+use std::process::Command as StdCommand;
+use std::process::Output;
 
 const ATCODER_PROBLEM_PATH: &str = "contests/{contest_id}/tasks/{contest_id}_{problem_id}";
 const CODEFORCES_PROBLEM_PATH: &str = "contest/{contest_id}/problem/{problem_id}";
@@ -46,10 +45,13 @@ pub enum Site {
 }
 
 impl Site {
+    const ATCODER_URL: &'static str = "https://atcoder.jp";
+    const CODEFORCES_URL: &'static str = "https://codeforces.com";
+
     fn get_base_url(&self) -> &'static str {
         match self {
-            Site::AtCoder => ATCODER_URL,
-            Site::Codeforces => CODEFORCES_URL,
+            Site::AtCoder => Self::ATCODER_URL,
+            Site::Codeforces => Self::CODEFORCES_URL,
         }
     }
 
@@ -75,6 +77,20 @@ impl Site {
     }
 }
 
+fn run_command(program: &str, args: &[&str], envs: Option<&[(&str, &str)]>) -> Result<Output> {
+    let mut cmd = StdCommand::new(program);
+    cmd.args(args);
+    
+    if let Some(env_vars) = envs {
+        for (key, value) in env_vars {
+            cmd.env(key, value);
+        }
+    }
+    
+    cmd.output()
+        .map_err(|e| Error::command_failed(program, e.to_string()))
+}
+
 impl Cli {
     pub async fn run() -> Result<()> {
         let cli = Self::parse();
@@ -97,23 +113,21 @@ impl Cli {
                         };
                         
                         // oj-apiを使用してログイン
-                        let output = std::process::Command::new("oj")
-                            .args(["login", "https://atcoder.jp"])
-                            .env("USERNAME", &username)
-                            .env("PASSWORD", &password)
-                            .output()?;
+                        let output = run_command(
+                            "oj",
+                            &["login", cli.site.get_base_url()],
+                            Some(&[("USERNAME", &username), ("PASSWORD", &password)])
+                        )?;
 
                         if !output.status.success() {
-                            let error = String::from_utf8_lossy(&output.stderr);
-                            return Err(crate::error::Error::InvalidInput(error.to_string()));
+                            let error = String::from_utf8_lossy(&output.stderr).to_string();
+                            return Err(Error::command_failed("oj login", error));
                         }
 
                         println!("Successfully logged in to AtCoder!");
                     }
                     Site::Codeforces => {
-                        return Err(crate::error::Error::InvalidInput(
-                            "Codeforces login is not supported yet".to_string()
-                        ));
+                        return Error::unsupported_feature("Codeforces login");
                     }
                 }
             }
@@ -136,10 +150,7 @@ impl Cli {
                 ))?;
             }
             _ => {
-                return Err(crate::error::Error::InvalidInput(format!(
-                    "invalid command: {}",
-                    cli.command
-                )));
+                return Error::invalid_input(format!("invalid command: {}", cli.command));
             }
         }
 
@@ -149,10 +160,7 @@ impl Cli {
 
 fn open_in_editor(path: &PathBuf) -> Result<()> {
     for editor in EDITORS {
-        if std::process::Command::new(editor)
-            .arg(path)
-            .status()
-            .is_ok() {
+        if run_command(editor, &[path.to_str().unwrap()], None).is_ok() {
             return Ok(());
         }
     }

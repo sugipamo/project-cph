@@ -24,6 +24,20 @@ pub enum Error {
     Path(#[from] StripPrefixError),
 }
 
+impl Error {
+    pub fn invalid_input<T, S: Into<String>>(message: S) -> Result<T> {
+        Err(Error::InvalidInput(message.into()))
+    }
+
+    pub fn command_failed(command: &str, error: String) -> Self {
+        Error::InvalidInput(format!("Command '{}' failed: {}", command, error))
+    }
+
+    pub fn unsupported_feature<T>(feature: &str) -> Result<T> {
+        Error::invalid_input(format!("{} is not supported yet", feature))
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum DockerError {
     #[error("Docker operation failed: {kind} - {source}")]
