@@ -12,6 +12,10 @@ pub const CUSTOM_TEST_PREFIX: &str = "custom-";
 pub const DEFAULT_TIMEOUT_SECS: u64 = 5;
 pub const DEFAULT_MEMORY_LIMIT: &str = "512m";
 
+// エラーメッセージの定数
+pub const INVALID_LANGUAGE_ERROR: &str = "Invalid language";
+pub const INVALID_COMMAND_ERROR: &str = "Invalid command";
+
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("Invalid input: {0}")]
