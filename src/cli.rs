@@ -8,6 +8,8 @@ const CODEFORCES_URL: &str = "https://codeforces.com";
 const ATCODER_PROBLEM_PATH: &str = "contests/{contest_id}/tasks/{contest_id}_{problem_id}";
 const CODEFORCES_PROBLEM_PATH: &str = "contest/{contest_id}/problem/{problem_id}";
 
+const EDITORS: &[&str] = &["code", "cursor"];
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
@@ -96,12 +98,13 @@ impl Cli {
 }
 
 fn open_in_editor(path: &PathBuf) -> Result<()> {
-    if let Err(_) = std::process::Command::new("code")
-        .arg(path)
-        .status() {
-        std::process::Command::new("cursor")
+    for editor in EDITORS {
+        if std::process::Command::new(editor)
             .arg(path)
-            .status()?;
+            .status()
+            .is_ok() {
+            return Ok(());
+        }
     }
     Ok(())
 }
