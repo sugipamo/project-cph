@@ -6,27 +6,9 @@ use tokio::io::AsyncWriteExt;
 use std::process::Stdio;
 use tokio::time::timeout;
 use once_cell::sync::Lazy;
-use thiserror::Error;
 
-use crate::{Error as CrateError, Language, DEFAULT_TIMEOUT_SECS, DEFAULT_MEMORY_LIMIT};
-
-#[derive(Debug, Error)]
-pub enum DockerError {
-    #[error("Docker command failed: {0}")]
-    CommandFailed(String),
-    
-    #[error("Docker execution error: {0}")]
-    Execution(String),
-    
-    #[error("Docker timeout after {0} seconds")]
-    Timeout(u64),
-}
-
-impl DockerError {
-    fn failed(operation: &str, error: impl std::fmt::Display) -> Self {
-        DockerError::Execution(format!("Failed to {}: {}", operation, error))
-    }
-}
+use crate::error::{Error, Result, DockerError};
+use crate::{Language, DEFAULT_TIMEOUT_SECS, DEFAULT_MEMORY_LIMIT};
 
 static DOCKER_CONFIG: Lazy<DockerConfig> = Lazy::new(|| DockerConfig {
     timeout_seconds: DEFAULT_TIMEOUT_SECS,
@@ -52,7 +34,7 @@ pub async fn execute_program(
     program: &str,
     args: &[&str],
     stdin: Option<String>,
-) -> Result<(String, String), CrateError> {
+) -> Result<(String, String)> {
     let mut command = TokioCommand::new(program);
     command.args(args)
         .stdin(Stdio::piped())
@@ -60,12 +42,12 @@ pub async fn execute_program(
         .stderr(Stdio::piped());
 
     let mut child = command.spawn()
-        .map_err(|e| CrateError::Docker(DockerError::failed("spawn process", e)))?;
+        .map_err(|e| Error::Docker(DockerError::failed("spawn process", e)))?;
 
     if let Some(input) = stdin {
         if let Some(mut stdin) = child.stdin.take() {
             if let Err(e) = stdin.write_all(input.as_bytes()).await {
-                return Err(CrateError::Docker(DockerError::failed("write to stdin", e)));
+                return Err(Error::Docker(DockerError::failed("write to stdin", e)));
             }
         }
     }
@@ -76,8 +58,8 @@ pub async fn execute_program(
             String::from_utf8_lossy(&output.stdout).into_owned(),
             String::from_utf8_lossy(&output.stderr).into_owned(),
         )),
-        Ok(Err(e)) => Err(CrateError::Docker(DockerError::failed("execute program", e))),
-        Err(_) => Err(CrateError::Docker(DockerError::Timeout(config.timeout_seconds))),
+        Ok(Err(e)) => Err(Error::Docker(DockerError::failed("execute program", e))),
+        Err(_) => Err(Error::Docker(DockerError::Timeout(config.timeout_seconds))),
     }
 }
 
@@ -85,7 +67,7 @@ pub fn run_in_docker(
     workspace_dir: &Path,
     language: &Language,
     cmd: &[&str],
-) -> Result<std::process::Output, CrateError> {
+) -> Result<std::process::Output> {
     let config = DockerConfig::get();
     Command::new("docker")
         .args([
@@ -103,5 +85,5 @@ pub fn run_in_docker(
         ])
         .args(cmd)
         .output()
-        .map_err(|e| CrateError::Docker(DockerError::failed("run docker", e)))
+        .map_err(|e| Error::Docker(DockerError::failed("run docker", e)))
 } 

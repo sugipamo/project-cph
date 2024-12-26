@@ -1,10 +1,12 @@
 use std::path::{PathBuf, Path};
-use thiserror::Error;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
 pub mod docker;
 pub mod test;
+pub mod error;
+
+pub use error::{Error, Result, InputError, DockerError};
 
 // 共通の定数
 pub const TEST_FILE_EXTENSIONS: [&str; 2] = [".in", ".out"];
@@ -15,33 +17,6 @@ pub const DEFAULT_MEMORY_LIMIT: &str = "512m";
 // エラーメッセージの定数
 pub const INVALID_LANGUAGE_ERROR: &str = "Invalid language";
 pub const INVALID_COMMAND_ERROR: &str = "Invalid command";
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("Invalid input: {0}")]
-    Input(#[from] InputError),
-    
-    #[error("Test error: {0}")]
-    Test(#[from] test::TestError),
-    
-    #[error("Docker error: {0}")]
-    Docker(#[from] docker::DockerError),
-    
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-}
-
-#[derive(Debug, Error)]
-pub enum InputError {
-    #[error("Invalid {kind}: {value}")]
-    InvalidValue { kind: &'static str, value: String },
-    
-    #[error("Missing {0}")]
-    Missing(&'static str),
-    
-    #[error("Invalid format: {0}")]
-    Format(String),
-}
 
 #[derive(Debug, Clone, Copy)]
 pub enum ContestType {
@@ -135,13 +110,13 @@ impl Language {
 }
 
 impl TryFrom<&str> for Language {
-    type Error = Error;
+    type Error = error::Error;
 
-    fn try_from(s: &str) -> Result<Self, Self::Error> {
+    fn try_from(s: &str) -> error::Result<Self> {
         match s.to_lowercase().as_str() {
             "rust" | "r" => Ok(Language::Rust),
             "pypy" | "py" => Ok(Language::PyPy),
-            _ => Err(Error::Input(InputError::InvalidValue {
+            _ => Err(error::Error::Input(error::InputError::InvalidValue {
                 kind: "language",
                 value: s.to_string(),
             })),
@@ -158,15 +133,15 @@ pub enum Command {
 }
 
 impl TryFrom<&str> for Command {
-    type Error = Error;
+    type Error = error::Error;
 
-    fn try_from(s: &str) -> Result<Self, Self::Error> {
+    fn try_from(s: &str) -> error::Result<Self> {
         match s.to_lowercase().as_str() {
             "open" | "o" => Ok(Command::Open),
             "test" | "t" => Ok(Command::Test),
             "submit" | "s" => Ok(Command::Submit),
             "generate" | "g" => Ok(Command::Generate),
-            _ => Err(Error::Input(InputError::InvalidValue {
+            _ => Err(error::Error::Input(error::InputError::InvalidValue {
                 kind: "command",
                 value: s.to_string(),
             })),
@@ -253,14 +228,14 @@ impl Config {
         name.starts_with(CUSTOM_TEST_PREFIX) && Self::is_test_file(name)
     }
 
-    fn ensure_directory(&self, path: &Path) -> Result<(), Error> {
+    fn ensure_directory(&self, path: &Path) -> Result<()> {
         if !path.exists() {
             std::fs::create_dir_all(path)?;
         }
         Ok(())
     }
 
-    fn create_file(&self, path: &Path, content: &str) -> Result<(), Error> {
+    fn create_file(&self, path: &Path, content: &str) -> Result<()> {
         if let Some(parent) = path.parent() {
             self.ensure_directory(parent)?;
         }
@@ -269,7 +244,7 @@ impl Config {
         Ok(())
     }
 
-    fn copy_file(&self, from: &Path, to: &Path) -> Result<(), Error> {
+    fn copy_file(&self, from: &Path, to: &Path) -> Result<()> {
         if let Some(parent) = to.parent() {
             self.ensure_directory(parent)?;
         }
@@ -278,7 +253,7 @@ impl Config {
         Ok(())
     }
 
-    fn read_contest_info(&self) -> Result<ContestInfo, Error> {
+    fn read_contest_info(&self) -> Result<ContestInfo> {
         let info_path = self.contest_info_path();
         if info_path.exists() {
             let contents = std::fs::read_to_string(&info_path)?;
@@ -289,7 +264,7 @@ impl Config {
         }
     }
 
-    fn write_contest_info(&self, info: &ContestInfo) -> Result<(), Error> {
+    fn write_contest_info(&self, info: &ContestInfo) -> Result<()> {
         let info_path = self.contest_info_path();
         self.ensure_directory(info_path.parent().unwrap())?;
         let yaml = serde_yaml::to_string(info)
@@ -298,14 +273,14 @@ impl Config {
         Ok(())
     }
 
-    fn ensure_contest_exists(&self) -> Result<(), Error> {
+    fn ensure_contest_exists(&self) -> Result<()> {
         let mut info = self.read_contest_info()?;
         info.contests.entry(self.contest_id.clone())
             .or_default();
         self.write_contest_info(&info)
     }
 
-    fn update_problem_info(&self, has_generator: bool) -> Result<(), Error> {
+    fn update_problem_info(&self, has_generator: bool) -> Result<()> {
         let mut info = self.read_contest_info()?;
         let contest = info.contests.entry(self.contest_id.clone()).or_default();
         let problem = contest.problems.entry(self.problem_id.clone()).or_default();
@@ -318,30 +293,27 @@ impl Config {
         self.write_contest_info(&info)
     }
 
-    async fn execute_program(&self, cmd: &str, args: &[&str]) -> Result<(String, String), Error> {
+    async fn execute_program(&self, cmd: &str, args: &[&str]) -> Result<(String, String)> {
         let (stdout, stderr) = docker::execute_program(cmd, args, None).await?;
         
-        // rustcの場合、エラーメッセージに "error" が含まれているかチェック
-        if cmd == "rustc" && stderr.contains("error") {
-            return Err(Error::Test(test::TestError::new(format!("Compilation failed:\n{}", stderr))));
+        match cmd {
+            // rustcの場合、エラーメッセージに "error" が含まれているかチェック
+            "rustc" if stderr.contains("error") => {
+                Err(Error::Runtime(format!("Compilation failed:\n{}", stderr)))
+            }
+            // PyPyの場合、エラーメッセージに特定のパターンが含まれているかチェック
+            "pypy3" if stderr.contains("Error") || stderr.contains("Exception") => {
+                Err(Error::Runtime(format!("Execution failed:\n{}", stderr)))
+            }
+            // 実行ファイルの場合は終了コードで判断（stderrは警告やデバッグ情報の可能性あり）
+            cmd if cmd.starts_with("./") => Ok((stdout, stderr)),
+            // その他の場合は正常として扱う
+            _ => Ok((stdout, stderr))
         }
-
-        // 実行ファイルの場合は終了コードで判断（stderrは警告やデバッグ情報の可能性あり）
-        if cmd.starts_with("./") {
-            // stderrは期待される出力として扱う
-            return Ok((stdout, stderr));
-        }
-
-        // PyPyの場合、エラーメッセージに特定のパターンが含まれているかチェック
-        if cmd == "pypy3" && (stderr.contains("Error") || stderr.contains("Exception")) {
-            return Err(Error::Test(test::TestError::new(format!("Execution failed:\n{}", stderr))));
-        }
-
-        Ok((stdout, stderr))
     }
 }
 
-pub fn run(config: Config) -> Result<(), Error> {
+pub fn run(config: Config) -> Result<()> {
     match config.command {
         Command::Open => open(config),
         Command::Test => test::run(config),
@@ -350,7 +322,7 @@ pub fn run(config: Config) -> Result<(), Error> {
     }
 }
 
-fn open(config: Config) -> Result<(), Error> {
+fn open(config: Config) -> Result<()> {
     let problem_file = config.problem_file();
     if problem_file.exists() {
         println!("Problem file already exists: {:?}", problem_file);
@@ -371,7 +343,7 @@ fn open(config: Config) -> Result<(), Error> {
     Ok(())
 }
 
-fn generate(config: Config) -> Result<(), Error> {
+fn generate(config: Config) -> Result<()> {
     let generator_path = config.generator_file();
     let test_dir = config.test_dir();
 
@@ -405,10 +377,10 @@ fn generate(config: Config) -> Result<(), Error> {
 
     // ジェネレータの準備と実行
     let runtime = tokio::runtime::Runtime::new()
-        .map_err(|e| Error::Test(test::TestError::new(format!("Failed to create runtime: {}", e))))?;
+        .map_err(|e| Error::Runtime(format!("Failed to create runtime: {}", e)))?;
 
     runtime.block_on(async {
-        let result: Result<(), Error> = async {
+        let result: Result<()> = async {
             match config.language {
                 Language::Rust => {
                     // コンパイル
@@ -443,7 +415,7 @@ fn generate(config: Config) -> Result<(), Error> {
     Ok(())
 }
 
-fn submit(_config: Config) -> Result<(), Error> {
+fn submit(_config: Config) -> Result<()> {
     println!("Submit command not implemented yet");
     Ok(())
 }
