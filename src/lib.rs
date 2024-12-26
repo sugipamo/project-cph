@@ -56,6 +56,11 @@ pub enum Language {
 trait FileOps {
     fn ensure_directory(&self, path: &Path) -> Result<()>;
     fn write_file(&self, path: &Path, content: &str, message: &str) -> Result<()>;
+    fn write_test_files(&self, input_path: &Path, output_path: &Path, input: String, output: String) -> Result<()> {
+        self.write_file(input_path, &input, "Generated input file")?;
+        self.write_file(output_path, &output, "Generated output file")?;
+        Ok(())
+    }
 }
 
 impl FileOps for Config {
@@ -96,8 +101,6 @@ struct LanguageConfig {
     default_content: &'static str,
     generator_template: &'static str,
     docker_image: &'static str,
-    command: &'static str,
-    compile_command: Option<&'static str>,
 }
 
 impl Language {
@@ -107,8 +110,6 @@ impl Language {
         default_content: include_str!("templates/template/main.rs"),
         generator_template: include_str!("templates/template/generator.rs"),
         docker_image: "rust:1.70",
-        command: "rustc",
-        compile_command: Some("rustc"),
     };
 
     const PYPY_CONFIG: LanguageConfig = LanguageConfig {
@@ -117,14 +118,31 @@ impl Language {
         default_content: include_str!("templates/template/main.py"),
         generator_template: include_str!("templates/template/generator.py"),
         docker_image: "pypy:3.10",
-        command: "python",
-        compile_command: None,
     };
 
     fn config(&self) -> &'static LanguageConfig {
         match self {
             Language::Rust => &Self::RUST_CONFIG,
             Language::PyPy => &Self::PYPY_CONFIG,
+        }
+    }
+
+    // 言語固有の実行コマンドを生成
+    fn get_execution_commands(&self, path: &Path) -> Vec<(String, Vec<String>)> {
+        let path_str = path.to_str().unwrap().to_string();
+        
+        match self {
+            Language::Rust => {
+                vec![
+                    ("rustc".to_string(), vec![path_str.clone(), "-o".to_string(), "program".to_string()]),
+                    ("./program".to_string(), vec![]),
+                ]
+            },
+            Language::PyPy => {
+                vec![
+                    ("pypy3".to_string(), vec![path_str]),
+                ]
+            },
         }
     }
 
@@ -146,30 +164,6 @@ impl Language {
 
     pub fn docker_image(&self) -> &str {
         self.config().docker_image
-    }
-
-    pub fn command(&self) -> &str {
-        self.config().command
-    }
-
-    // 言語固有の実行コマンドを生成
-    fn get_execution_commands(&self, path: &Path) -> Vec<(String, Vec<String>)> {
-        let config = self.config();
-        let path_str = path.to_str().unwrap().to_string();
-        
-        match self {
-            Language::Rust => {
-                vec![
-                    ("rustc".to_string(), vec![path_str.clone(), "-o".to_string(), "program".to_string()]),
-                    ("./program".to_string(), vec![]),
-                ]
-            },
-            Language::PyPy => {
-                vec![
-                    ("pypy3".to_string(), vec![path_str]),
-                ]
-            },
-        }
     }
 }
 
@@ -351,15 +345,6 @@ impl Config {
         }
     }
 
-    async fn write_test_case(&self, input_path: &Path, output_path: &Path, stdout: String, stderr: String) -> Result<()> {
-        std::fs::write(input_path, stdout)?;
-        std::fs::write(output_path, stderr)?;
-        println!("Generated test case in:");
-        println!("  Input:  {:?}", input_path);
-        println!("  Output: {:?}", output_path);
-        Ok(())
-    }
-
     async fn generate_test_case(&self, generator_path: &Path, input_path: &Path, output_path: &Path) -> Result<()> {
         let commands = self.language.get_execution_commands(generator_path);
         
@@ -367,7 +352,7 @@ impl Config {
             let (stdout, stderr) = self.execute_program(&cmd, &args.iter().map(|s| s.as_str()).collect::<Vec<_>>()).await?;
             
             if cmd.starts_with("./") || cmd == "pypy3" {
-                self.write_test_case(input_path, output_path, stdout, stderr).await?;
+                self.write_test_files(input_path, output_path, stdout, stderr)?;
             }
         }
         
