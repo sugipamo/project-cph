@@ -8,8 +8,7 @@ use tokio::time::timeout;
 use once_cell::sync::Lazy;
 use thiserror::Error;
 
-use crate::Error as CrateError;
-use crate::{DEFAULT_RUST_IMAGE, DEFAULT_PYPY_IMAGE, DEFAULT_TIMEOUT_SECS, DEFAULT_MEMORY_LIMIT};
+use crate::{Error as CrateError, Language, DEFAULT_TIMEOUT_SECS, DEFAULT_MEMORY_LIMIT};
 
 #[derive(Debug, Error)]
 pub enum DockerError {
@@ -30,15 +29,11 @@ impl DockerError {
 }
 
 static DOCKER_CONFIG: Lazy<DockerConfig> = Lazy::new(|| DockerConfig {
-    rust_image: DEFAULT_RUST_IMAGE.to_string(),
-    pypy_image: DEFAULT_PYPY_IMAGE.to_string(),
     timeout_seconds: DEFAULT_TIMEOUT_SECS,
     memory_limit: DEFAULT_MEMORY_LIMIT.to_string(),
 });
 
 pub struct DockerConfig {
-    pub rust_image: String,
-    pub pypy_image: String,
     pub timeout_seconds: u64,
     pub memory_limit: String,
 }
@@ -48,12 +43,8 @@ impl DockerConfig {
         &DOCKER_CONFIG
     }
 
-    pub fn get_image(&self, language: &str) -> String {
-        match language.to_lowercase().as_str() {
-            "rust" | "r" => self.rust_image.clone(),
-            "pypy" | "py" => self.pypy_image.clone(),
-            _ => self.rust_image.clone(),
-        }
+    pub fn get_image(language: &Language) -> String {
+        language.docker_image().to_string()
     }
 }
 
@@ -92,7 +83,7 @@ pub async fn execute_program(
 
 pub fn run_in_docker(
     workspace_dir: &Path,
-    image: &str,
+    language: &Language,
     cmd: &[&str],
 ) -> Result<std::process::Output, CrateError> {
     let config = DockerConfig::get();
@@ -108,7 +99,7 @@ pub fn run_in_docker(
             &format!("{}:/workspace", workspace_dir.display()),
             "-w",
             "/workspace",
-            image,
+            &DockerConfig::get_image(language),
         ])
         .args(cmd)
         .output()

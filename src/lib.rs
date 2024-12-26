@@ -12,10 +12,6 @@ pub const CUSTOM_TEST_PREFIX: &str = "custom-";
 pub const DEFAULT_TIMEOUT_SECS: u64 = 5;
 pub const DEFAULT_MEMORY_LIMIT: &str = "512m";
 
-// Docker関連の定数
-pub const DEFAULT_RUST_IMAGE: &str = "rust:1.70";
-pub const DEFAULT_PYPY_IMAGE: &str = "pypy:3.10";
-
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("Invalid input: {0}")]
@@ -83,6 +79,7 @@ struct LanguageConfig {
     template_name: &'static str,
     default_content: &'static str,
     generator_template: &'static str,
+    docker_image: &'static str,
 }
 
 impl Language {
@@ -91,71 +88,16 @@ impl Language {
             Language::Rust => LanguageConfig {
                 extension: "rs",
                 template_name: "main.rs",
-                default_content: "fn main() {\n    \n}\n",
-                generator_template: r#"fn generate_case() -> (String, String) {
-    // TODO: カスタムケースの生成ロジックを実装
-    let input = String::new();
-    let output = String::new();
-    (input, output)
-}
-
-fn main() {
-    // 生成するテストケースの数を指定
-    let n_cases = 1;
-    
-    let mut inputs = Vec::new();
-    let mut outputs = Vec::new();
-    
-    for _ in 0..n_cases {
-        let (input, output) = generate_case();
-        inputs.push(input);
-        outputs.push(output);
-    }
-    
-    // 入力ケースの出力
-    for input in inputs {
-        println!("{}", input);
-    }
-    
-    // 期待される出力の出力（標準エラー出力）
-    for output in outputs {
-        eprintln!("{}", output);
-    }
-}"#,
+                default_content: include_str!("templates/main.rs"),
+                generator_template: include_str!("templates/generator.rs"),
+                docker_image: "rust:1.70",
             },
             Language::PyPy => LanguageConfig {
                 extension: "py",
                 template_name: "main.py",
-                default_content: "def main():\n    pass\n\nif __name__ == '__main__':\n    main()\n",
-                generator_template: r#"def generate_case():
-    # TODO: カスタムケースの生成ロジックを実装
-    input_data = ""
-    output_data = ""
-    return input_data, output_data
-
-def main():
-    # 生成するテストケースの数を指定
-    n_cases = 1
-    
-    inputs = []
-    outputs = []
-    
-    for _ in range(n_cases):
-        input_data, output_data = generate_case()
-        inputs.append(input_data)
-        outputs.append(output_data)
-    
-    # 入力ケースの出力
-    for input_data in inputs:
-        print(input_data)
-    
-    # 期待される出力の出力（標準エラー出力）
-    import sys
-    for output_data in outputs:
-        print(output_data, file=sys.stderr)
-
-if __name__ == "__main__":
-    main()"#,
+                default_content: include_str!("templates/main.py"),
+                generator_template: include_str!("templates/generator.py"),
+                docker_image: "pypy:3.10",
             },
         }
     }
@@ -174,6 +116,10 @@ if __name__ == "__main__":
 
     pub fn generator_template(&self) -> &str {
         self.config().generator_template
+    }
+
+    pub fn docker_image(&self) -> &str {
+        self.config().docker_image
     }
 }
 
