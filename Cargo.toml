@@ -1,7 +1,7 @@
 [workspace]
 members = [
     ".",
-    "compile/rust"
+    "workspace/compile/rust"
 ]
 
 [package]
