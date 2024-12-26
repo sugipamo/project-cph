@@ -10,23 +10,8 @@ path = "src/lib.rs"
 name = "main"
 path = "src/main.rs"
 
-# 問題のソースコードをバイナリターゲットとして追加
-[[bin]]
-name = "workspace"
-path = "../../workspace/abc/a.rs"
-required-features = ["workspace"]
-
-# ジェネレータのソースコードをバイナリターゲットとして追加
-[[bin]]
-name = "generator"
-path = "../../workspace/abc/a_gen.rs"
-required-features = ["workspace"]
-
-[features]
-# workspaceフィーチャーを定義（コンパイル時には無効化）
-workspace = []
-
 [dependencies]
 proconio = "0.4"  # 競プロでよく使用される入力ライブラリ
 num = "0.4"       # 数値計算用ライブラリ
-itertools = "0.12" # イテレータ拡張ライブラリ 
+itertools = "0.12" # イテレータ拡張ライブラリ
+solution = { path = "." }  # 自身への参照（lib.rsの機能を使用可能に） 
