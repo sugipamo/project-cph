@@ -5,5 +5,4 @@ fn main() {
         n: usize,
     }
     println!("{}", n);
-
 } 

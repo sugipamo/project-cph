@@ -4,3 +4,7 @@ contests:
       a:
         solution: a.rs
         generator: a_gen.rs
+abc123:
+  problems:
+    a:
+      solution: a.rs

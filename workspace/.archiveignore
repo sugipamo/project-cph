@@ -1,3 +1,5 @@
+.archiveignore
+
 # テンプレートファイル - コンテスト間で共有
 template/
 template/**

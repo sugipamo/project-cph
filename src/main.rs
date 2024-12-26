@@ -1,5 +1,6 @@
+use cph::cli::Cli;
 
-
-fn main() {
-    println!("Hello, world!");
+#[tokio::main]
+async fn main() -> cph::error::Result<()> {
+    Cli::run().await
 }
