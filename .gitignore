@@ -9,6 +9,8 @@ Cargo.lock
 /compile/rust/Cargo.lock
 /compile/rust/src/main.rs
 /compile/pypy/main.py
+/compile/rust/test
+/compile/pypy/test.py
 
 archive/
 
@@ -20,3 +22,7 @@ archive/
 
 # 競プロ関連
 **/test/
+
+# テストワークスペース
+/tests/test_workspace/
+.DS_Store
