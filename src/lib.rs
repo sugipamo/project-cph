@@ -268,13 +268,19 @@ fn open(config: Config) -> Result<(), Error> {
     // Create contest directory if it doesn't exist
     std::fs::create_dir_all(config.contest_dir())?;
     
+    let problem_file = config.problem_file();
+    if problem_file.exists() {
+        println!("Problem file already exists: {:?}", problem_file);
+        return Ok(());
+    }
+    
     // Create problem file
     if config.template_path().exists() {
-        std::fs::copy(config.template_path(), config.problem_file())?;
-        println!("Created problem file from template: {:?}", config.problem_file());
+        std::fs::copy(config.template_path(), &problem_file)?;
+        println!("Created problem file from template: {:?}", problem_file);
     } else {
-        std::fs::write(config.problem_file(), config.language.default_content())?;
-        println!("Created empty problem file: {:?}", config.problem_file());
+        std::fs::write(&problem_file, config.language.default_content())?;
+        println!("Created empty problem file: {:?}", problem_file);
     }
     Ok(())
 }
