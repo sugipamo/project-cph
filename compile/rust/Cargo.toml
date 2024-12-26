@@ -64,6 +64,6 @@ name = "g_gen"
 path = "../../workspace/g_gen.rs"
 
 [dependencies]
-proconio = "0.4"  # 競プロでよく使用される入力ライブラリ
-num = "0.4"       # 数値計算用ライブラリ
-itertools = "0.12" # イテレータ拡張ライブラリ 
+proconio = "0.4"
+num = "0.4"
+itertools = "0.12"
