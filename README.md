@@ -19,7 +19,7 @@ cph <contest_id> <command> <problem_id> [options]
   - カスタムケースの実行（`x_gen.rs`が存在する場合）
 - `s`: AtCoderへの提出
 
-### AHC特有の機能
+### AHC特有の機能 (TODO)
 ```
 cph <contest_id> ahctest <number_of_cases>
 ```
@@ -38,33 +38,32 @@ cph/
 ├── benches/       # ベンチマークテスト
 ├── tests/         # 統合テスト
 ├── workspace/     # 現在取り組んでいる問題
-│   └── abc/      # コンテスト作業ディレクトリ
-│       ├── rust/ # Rust用ソリューション
-│       │   ├── template/
-│       │   │   ├── main.rs    # Rustテンプレート
-│       │   │   └── gen.rs     # テストケース生成テンプレート
-│       │   ├── src/
-│       │   │   └── bin/
-│       │   │       └── a.rs
-│       │   └── test/
-│       │       ├── sample-1.in   # サンプルケース
-│       │       ├── sample-1.out
-│       │       ├── custom-1.in   # 生成したテストケース
-│       │       └── custom-1.out
-│       └── python/  # Python用ソリューション
-│           └── template/
-│               └── main.py    # Pythonテンプレート
-│               └── gen.py     # テストケース生成テンプレート
+│   ├── abc/      # AtCoder Beginner Contest
+│   │   ├── contest.yaml  # 現在のコンテスト情報
+│   │   ├── template/    # 言語別テンプレート
+│   │   │   ├── main.rs  # Rust用
+│   │   │   ├── gen.rs
+│   │   │   ├── main.py  # PyPy用
+│   │   │   └── gen.py
+│   │   ├── a.rs         # ソースコード
+│   │   ├── a_gen.rs     # カスタムケース生成コード
+│   │   └── test/        # テストケース
+│   │       ├── sample-1.in   # サンプルケース
+│   │       ├── sample-1.out
+│   │       ├── custom-1.in   # 生成したテストケース
+│   │       └── custom-1.out
+│   ├── arc/      # AtCoder Regular Contest
+│   │   ├── contest.yaml
+│   │   ├── template/
+│   │   └── test/
+│   └── ahc/      # AtCoder Heuristic Contest
+│       ├── contest.yaml
+│       ├── template/
+│       └── test/
 ├── archive/      # 過去のコンテスト
-│   └── abc300/   # アーカイブされたコンテスト
-│       ├── rust/
-│       │   ├── src/
-│       │   │   └── bin/
-│       │   │       └── a.rs
-│       │   └── test/
-│       │       ├── sample-1.in
-│       │       └── sample-1.out
-│       └── python/  # 他の言語のソリューション
+│   ├── abc300/   # アーカイブされたABC
+│   ├── arc164/   # アーカイブされたARC
+│   └── ahc027/   # アーカイブされたAHC
 ├── target/        # ビルド成果物
 ├── Cargo.toml     # パッケージ設定
 └── Cargo.lock     # 依存関係のロック
@@ -76,20 +75,8 @@ cph/
 - CPU: 2コア
 - メモリ: 1024MB
 - Rust (5054): rust:1.70
+- PyPy (5078): pypy:3.10
 - 外部ツール: online-judge-tools, Cargo, Git
-
-## 開発環境
-- Rust 1.70以上
-  - cargo-watch: 開発用ホットリロード
-  - clippy: リンター
-  - rustfmt: コードフォーマッタ
-- Docker
-  - マルチステージビルド
-  - 軽量イメージの使用
-- Git
-  - バージョン管理
-  - ブランチ戦略
-  - CI/CD連携
 
 ## インストール方法
 
@@ -102,22 +89,54 @@ docker compose up -d
 
 ## 使用方法
 
-1. コンテストへの参加:
+### コマンド体系
 ```bash
-cph abc300 o a
+cph <contest_id> <language> <command> <problem_id> [options]
 ```
 
-2. テストの実行:
+#### パラメータ
+- contest_id: コンテストID（例：abc300）
+- language: 使用言語
+  - `rust`: Rust (.rs)
+  - `pypy`: PyPy (.py)
+  - 省略形: 一意に特定できる先頭文字列（例：`r`、`py`）
+- command: 実行コマンド
+  - `open`: 問題ファイルの作成とテストケース取得
+  - `test`: テストケース実行
+  - `submit`: AtCoderへの提出
+  - 省略形: 一意に特定できる先頭文字列（例：`o`、`t`、`s`）
+- problem_id: 問題ID（a, b, c, ...）
+
+#### 使用例
+
+1. コンテストへの参加（完全形）:
 ```bash
-cph abc300 t a
+cph abc300 rust open a
 ```
 
-3. 解答の提出:
+2. コンテストへの参加（省略形）:
 ```bash
-cph abc300 s a
+cph abc300 r o a
 ```
 
-4. AHCのテスト実行:
+3. テストの実行:
 ```bash
-cph ahc001 ahctest 100
+cph abc300 r t a  # または cph abc300 rust test a
+```
+
+4. 解答の提出:
+```bash
+cph abc300 r s a  # または cph abc300 rust submit a
+```
+
+5. AHCのテスト実行:
+```bash
+cph ahc001 r ahctest 100
+```
+
+### contest.yaml
+```yaml
+contest:
+  id: "abc300"
+  url: "https://atcoder.jp/contests/abc300"
 ``` 
