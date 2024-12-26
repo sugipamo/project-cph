@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::process::Command;
 use std::time::Duration;
 use tokio::process::Command as TokioCommand;
 use tokio::io::AsyncWriteExt;
@@ -75,64 +74,76 @@ pub async fn execute_program(
     }
 }
 
-pub fn run_in_docker(
+// Dockerコンテナの実行オプション
+struct DockerRunOptions<'a> {
+    workspace_dir: &'a Path,
+    image: &'a str,
+    cmd: &'a [&'a str],
+    compile_mount: Option<String>,
+}
+
+// Dockerコマンドの共通実行ロジック
+fn get_docker_run_args(opts: &DockerRunOptions) -> Vec<String> {
+    let config = DockerConfig::get();
+    let workspace_path = opts.workspace_dir.canonicalize()
+        .unwrap_or_else(|_| opts.workspace_dir.to_path_buf());
+    let workspace_mount = format!("{}:/workspace", workspace_path.display());
+
+    let mut args = vec![
+        "run".into(),
+        "--rm".into(),
+        "--memory".into(),
+        config.memory_limit.clone(),
+        "--memory-swap".into(),
+        config.memory_limit.clone(),
+        "-v".into(),
+        workspace_mount,
+        "-w".into(),
+        "/workspace".into(),
+    ];
+
+    if let Some(mount) = &opts.compile_mount {
+        args.push("-v".into());
+        args.push(mount.clone());
+    }
+
+    args.push(opts.image.into());
+    args.extend(opts.cmd.iter().map(|s| (*s).into()));
+    args
+}
+
+pub async fn run_in_docker(
     workspace_dir: &Path,
     language: &Language,
     cmd: &[&str],
-) -> Result<std::process::Output> {
-    let config = DockerConfig::get();
-    let workspace_path = workspace_dir.canonicalize()
-        .unwrap_or_else(|_| workspace_dir.to_path_buf());
+) -> Result<(String, String)> {
+    let opts = DockerRunOptions {
+        workspace_dir,
+        image: &DockerConfig::get_image(language),
+        cmd,
+        compile_mount: Some(DockerConfig::get_compile_mount(language)),
+    };
 
-    Command::new("docker")
-        .args([
-            "run",
-            "--rm",
-            "--memory",
-            &config.memory_limit,
-            "--memory-swap",
-            &config.memory_limit,
-            "-v",
-            &format!("{}:/workspace", workspace_path.display()),
-            "-v",
-            &DockerConfig::get_compile_mount(language),
-            "-w",
-            "/workspace",
-            &DockerConfig::get_image(language),
-        ])
-        .args(cmd)
-        .output()
-        .map_err(|e| Error::Docker(DockerError::failed("run docker", e)))
+    let args = get_docker_run_args(&opts);
+    let args: Vec<&str> = args.iter().map(AsRef::as_ref).collect();
+    execute_program("docker", &args, None).await
 }
 
 // online judge tool用のDockerイメージ名
 pub const OJT_DOCKER_IMAGE: &str = "cph-oj";
 
-// online judge toolのコマンドを実行する関数
 pub async fn run_oj_tool(
     workspace_dir: &Path,
     args: &[&str],
 ) -> Result<(String, String)> {
-    let config = DockerConfig::get();
-    let workspace_path = workspace_dir.canonicalize()
-        .unwrap_or_else(|_| workspace_dir.to_path_buf());
-    let workspace_mount = format!("{}:/workspace", workspace_path.display());
+    let opts = DockerRunOptions {
+        workspace_dir,
+        image: OJT_DOCKER_IMAGE,
+        cmd: args,
+        compile_mount: None,
+    };
 
-    let mut docker_args = vec![
-        "run",
-        "--rm",
-        "--memory",
-        &config.memory_limit,
-        "--memory-swap",
-        &config.memory_limit,
-        "-v",
-        &workspace_mount,
-        "-w",
-        "/workspace",
-        OJT_DOCKER_IMAGE,
-    ];
-    docker_args.extend(args);
-
-    let (stdout, stderr) = execute_program("docker", &docker_args.iter().map(|s| *s).collect::<Vec<&str>>().as_slice(), None).await?;
-    Ok((stdout, stderr))
+    let args = get_docker_run_args(&opts);
+    let args: Vec<&str> = args.iter().map(AsRef::as_ref).collect();
+    execute_program("docker", &args, None).await
 } 
