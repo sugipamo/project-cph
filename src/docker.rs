@@ -7,13 +7,29 @@ use std::process::Stdio;
 use tokio::time::timeout;
 use toml::Value;
 use once_cell::sync::Lazy;
+use thiserror::Error;
 
-use crate::Error;
+use crate::Error as CrateError;
 
 const DEFAULT_RUST_IMAGE: &str = "rust:1.70";
 const DEFAULT_PYPY_IMAGE: &str = "pypy:3.10";
 const DEFAULT_TIMEOUT_SECS: u64 = 5;
 const DEFAULT_MEMORY_LIMIT: &str = "512m";
+
+#[derive(Debug, Error)]
+pub enum DockerError {
+    #[error("Docker command failed: {0}")]
+    CommandFailed(String),
+    
+    #[error("Docker configuration error: {0}")]
+    Config(String),
+    
+    #[error("Docker execution error: {0}")]
+    Execution(String),
+    
+    #[error("Docker timeout after {0} seconds")]
+    Timeout(u64),
+}
 
 static DOCKER_CONFIG: Lazy<DockerConfig> = Lazy::new(|| {
     DockerConfig::load().expect("Failed to load Docker config")
@@ -27,12 +43,12 @@ pub struct DockerConfig {
 }
 
 impl DockerConfig {
-    fn load() -> Result<Self, Error> {
+    fn load() -> Result<Self, CrateError> {
         let config = std::fs::read_to_string("config/docker.toml")
-            .map_err(|e| Error::test_execution(format!("Failed to read docker config: {}", e)))?;
+            .map_err(|e| CrateError::Docker(DockerError::Config(format!("Failed to read docker config: {}", e))))?;
         
         let config: Value = toml::from_str(&config)
-            .map_err(|e| Error::test_execution(format!("Failed to parse docker config: {}", e)))?;
+            .map_err(|e| CrateError::Docker(DockerError::Config(format!("Failed to parse docker config: {}", e))))?;
         
         let images = &config["images"];
         let runtime = &config["runtime"];
@@ -62,7 +78,7 @@ pub async fn execute_program(
     program: &str,
     args: &[&str],
     stdin: Option<String>,
-) -> Result<(String, String), Error> {
+) -> Result<(String, String), CrateError> {
     let mut command = TokioCommand::new(program);
     command.args(args)
         .stdin(Stdio::piped())
@@ -70,12 +86,12 @@ pub async fn execute_program(
         .stderr(Stdio::piped());
 
     let mut child = command.spawn()
-        .map_err(|e| Error::test_execution(format!("Failed to spawn process: {}", e)))?;
+        .map_err(|e| CrateError::Docker(DockerError::Execution(format!("Failed to spawn process: {}", e))))?;
 
     if let Some(input) = stdin {
         if let Some(mut stdin) = child.stdin.take() {
             if let Err(e) = stdin.write_all(input.as_bytes()).await {
-                return Err(Error::test_execution(format!("Failed to write to stdin: {}", e)));
+                return Err(CrateError::Docker(DockerError::Execution(format!("Failed to write to stdin: {}", e))));
             }
         }
     }
@@ -86,8 +102,8 @@ pub async fn execute_program(
             String::from_utf8_lossy(&output.stdout).into_owned(),
             String::from_utf8_lossy(&output.stderr).into_owned(),
         )),
-        Ok(Err(e)) => Err(Error::test_execution(format!("Execution failed: {}", e))),
-        Err(_) => Err(Error::TestTimeout),
+        Ok(Err(e)) => Err(CrateError::Docker(DockerError::Execution(format!("Execution failed: {}", e)))),
+        Err(_) => Err(CrateError::Docker(DockerError::Timeout(config.timeout_seconds))),
     }
 }
 
@@ -95,7 +111,7 @@ pub fn run_in_docker(
     workspace_dir: &Path,
     image: &str,
     cmd: &[&str],
-) -> Result<std::process::Output, Error> {
+) -> Result<std::process::Output, CrateError> {
     let config = DockerConfig::get();
     Command::new("docker")
         .args([
@@ -113,5 +129,5 @@ pub fn run_in_docker(
         ])
         .args(cmd)
         .output()
-        .map_err(|e| Error::test_execution(format!("Failed to run docker: {}", e)))
+        .map_err(|e| CrateError::Docker(DockerError::CommandFailed(format!("Failed to run docker: {}", e))))
 } 
