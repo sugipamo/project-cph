@@ -1,4 +1,6 @@
-/target
+# Rust関連
+/target/
+**/target/
 **/*.rs.bk
 Cargo.lock
 
@@ -10,3 +12,14 @@ Cargo.lock
 
 # ワークスペース
 /workspace/
+
+# エディタ/OS関連
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# 競プロ関連
+**/input.txt
+**/output.txt
+**/test/
