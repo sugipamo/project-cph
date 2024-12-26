@@ -52,6 +52,43 @@ pub enum Language {
     PyPy,
 }
 
+// ファイル操作のトレイトを定義
+trait FileOps {
+    fn ensure_directory(&self, path: &Path) -> Result<()>;
+    fn write_file(&self, path: &Path, content: &str, message: &str) -> Result<()>;
+}
+
+impl FileOps for Config {
+    fn ensure_directory(&self, path: &Path) -> Result<()> {
+        if !path.exists() {
+            std::fs::create_dir_all(path)?;
+        }
+        Ok(())
+    }
+
+    fn write_file(&self, path: &Path, content: &str, message: &str) -> Result<()> {
+        if let Some(parent) = path.parent() {
+            self.ensure_directory(parent)?;
+        }
+        std::fs::write(path, content)?;
+        println!("{}: {:?}", message, path);
+        Ok(())
+    }
+}
+
+impl Config {
+    // create_fileとcopy_fileを新しいwrite_fileメソッドを使用するように変更
+    fn create_file(&self, path: &Path, content: &str) -> Result<()> {
+        self.write_file(path, content, "Created file")
+    }
+
+    fn copy_file(&self, from: &Path, to: &Path) -> Result<()> {
+        let content = std::fs::read_to_string(from)?;
+        self.write_file(to, &content, "Created file from template")
+    }
+}
+
+// 言語設定を構造体として定義
 #[derive(Debug, Clone)]
 struct LanguageConfig {
     extension: &'static str,
@@ -60,27 +97,34 @@ struct LanguageConfig {
     generator_template: &'static str,
     docker_image: &'static str,
     command: &'static str,
+    compile_command: Option<&'static str>,
 }
 
 impl Language {
-    fn config(&self) -> LanguageConfig {
+    const RUST_CONFIG: LanguageConfig = LanguageConfig {
+        extension: "rs",
+        template_name: "main.rs",
+        default_content: include_str!("templates/template/main.rs"),
+        generator_template: include_str!("templates/template/generator.rs"),
+        docker_image: "rust:1.70",
+        command: "rustc",
+        compile_command: Some("rustc"),
+    };
+
+    const PYPY_CONFIG: LanguageConfig = LanguageConfig {
+        extension: "py",
+        template_name: "main.py",
+        default_content: include_str!("templates/template/main.py"),
+        generator_template: include_str!("templates/template/generator.py"),
+        docker_image: "pypy:3.10",
+        command: "python",
+        compile_command: None,
+    };
+
+    fn config(&self) -> &'static LanguageConfig {
         match self {
-            Language::Rust => LanguageConfig {
-                extension: "rs",
-                template_name: "main.rs",
-                default_content: include_str!("templates/template/main.rs"),
-                generator_template: include_str!("templates/template/generator.rs"),
-                docker_image: "rust:1.70",
-                command: "rustc",
-            },
-            Language::PyPy => LanguageConfig {
-                extension: "py",
-                template_name: "main.py",
-                default_content: include_str!("templates/template/main.py"),
-                generator_template: include_str!("templates/template/generator.py"),
-                docker_image: "pypy:3.10",
-                command: "python",
-            },
+            Language::Rust => &Self::RUST_CONFIG,
+            Language::PyPy => &Self::PYPY_CONFIG,
         }
     }
 
@@ -106,6 +150,26 @@ impl Language {
 
     pub fn command(&self) -> &str {
         self.config().command
+    }
+
+    // 言語固有の実行コマンドを生成
+    fn get_execution_commands(&self, path: &Path) -> Vec<(String, Vec<String>)> {
+        let config = self.config();
+        let path_str = path.to_str().unwrap().to_string();
+        
+        match self {
+            Language::Rust => {
+                vec![
+                    ("rustc".to_string(), vec![path_str.clone(), "-o".to_string(), "program".to_string()]),
+                    ("./program".to_string(), vec![]),
+                ]
+            },
+            Language::PyPy => {
+                vec![
+                    ("pypy3".to_string(), vec![path_str]),
+                ]
+            },
+        }
     }
 }
 
@@ -228,31 +292,6 @@ impl Config {
         name.starts_with(CUSTOM_TEST_PREFIX) && Self::is_test_file(name)
     }
 
-    fn ensure_directory(&self, path: &Path) -> Result<()> {
-        if !path.exists() {
-            std::fs::create_dir_all(path)?;
-        }
-        Ok(())
-    }
-
-    fn create_file(&self, path: &Path, content: &str) -> Result<()> {
-        if let Some(parent) = path.parent() {
-            self.ensure_directory(parent)?;
-        }
-        std::fs::write(path, content)?;
-        println!("Created file: {:?}", path);
-        Ok(())
-    }
-
-    fn copy_file(&self, from: &Path, to: &Path) -> Result<()> {
-        if let Some(parent) = to.parent() {
-            self.ensure_directory(parent)?;
-        }
-        std::fs::copy(from, to)?;
-        println!("Created file from template: {:?}", to);
-        Ok(())
-    }
-
     fn read_contest_info(&self) -> Result<ContestInfo> {
         let info_path = self.contest_info_path();
         if info_path.exists() {
@@ -311,6 +350,42 @@ impl Config {
             _ => Ok((stdout, stderr))
         }
     }
+
+    async fn write_test_case(&self, input_path: &Path, output_path: &Path, stdout: String, stderr: String) -> Result<()> {
+        std::fs::write(input_path, stdout)?;
+        std::fs::write(output_path, stderr)?;
+        println!("Generated test case in:");
+        println!("  Input:  {:?}", input_path);
+        println!("  Output: {:?}", output_path);
+        Ok(())
+    }
+
+    async fn generate_test_case(&self, generator_path: &Path, input_path: &Path, output_path: &Path) -> Result<()> {
+        let commands = self.language.get_execution_commands(generator_path);
+        
+        for (cmd, args) in commands {
+            let (stdout, stderr) = self.execute_program(&cmd, &args.iter().map(|s| s.as_str()).collect::<Vec<_>>()).await?;
+            
+            if cmd.starts_with("./") || cmd == "pypy3" {
+                self.write_test_case(input_path, output_path, stdout, stderr).await?;
+            }
+        }
+        
+        Ok(())
+    }
+}
+
+fn create_runtime() -> Result<tokio::runtime::Runtime> {
+    tokio::runtime::Runtime::new()
+        .map_err(|e| Error::Runtime(format!("Failed to create runtime: {}", e)))
+}
+
+fn run_async<F, T>(future: F) -> Result<T>
+where
+    F: std::future::Future<Output = Result<T>>,
+{
+    let runtime = create_runtime()?;
+    runtime.block_on(future)
 }
 
 pub fn run(config: Config) -> Result<()> {
@@ -375,44 +450,9 @@ fn generate(config: Config) -> Result<()> {
     let input_path = test_dir.join(format!("{}{}.in", CUSTOM_TEST_PREFIX, 1));
     let output_path = test_dir.join(format!("{}{}.out", CUSTOM_TEST_PREFIX, 1));
 
-    // ジェネレータの準備と実行
-    let runtime = tokio::runtime::Runtime::new()
-        .map_err(|e| Error::Runtime(format!("Failed to create runtime: {}", e)))?;
-
-    runtime.block_on(async {
-        let result: Result<()> = async {
-            match config.language {
-                Language::Rust => {
-                    // コンパイル
-                    config.execute_program("rustc", &[
-                        generator_path.to_str().unwrap(),
-                        "-o",
-                        "generator"
-                    ]).await?;
-
-                    // 実行
-                    let (stdout, stderr) = config.execute_program("./generator", &[]).await?;
-                    std::fs::write(&input_path, stdout)?;
-                    std::fs::write(&output_path, stderr)?;
-                }
-                Language::PyPy => {
-                    let (stdout, stderr) = config.execute_program("pypy3", &[
-                        generator_path.to_str().unwrap()
-                    ]).await?;
-                    std::fs::write(&input_path, stdout)?;
-                    std::fs::write(&output_path, stderr)?;
-                }
-            }
-            Ok(())
-        }.await;
-        result
-    })?;
-
-    println!("Generated test case in:");
-    println!("  Input:  {:?}", input_path);
-    println!("  Output: {:?}", output_path);
-    
-    Ok(())
+    run_async(async {
+        config.generate_test_case(&generator_path, &input_path, &output_path).await
+    })
 }
 
 fn submit(_config: Config) -> Result<()> {

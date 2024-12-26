@@ -4,6 +4,7 @@ use tokio::fs as tokio_fs;
 use crate::error::{Error, Result};
 use crate::docker;
 use crate::Config;
+use crate::run_async;
 
 pub async fn run_test(
     test_file: &Path,
@@ -59,11 +60,9 @@ pub async fn run_all_tests(
 }
 
 pub fn run(config: Config) -> Result<()> {
-    let runtime = tokio::runtime::Runtime::new()
-        .map_err(|e| Error::Runtime(format!("Failed to create runtime: {}", e)))?;
-
-    runtime.block_on(async {
-        run_all_tests(&config.test_dir(), &config.problem_file()).await?;
+    run_async(async {
+        let (passed, total) = run_all_tests(&config.test_dir(), &config.problem_file()).await?;
+        println!("Test results: {}/{} passed", passed, total);
         Ok(())
     })
 } 
