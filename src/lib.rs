@@ -4,10 +4,9 @@ pub mod error;
 pub mod workspace;
 
 use std::fmt;
-use std::path::Path;
 use crate::error::Result;
 
-const DEFAULT_TIMEOUT_SECS: u64 = 2;
+const DEFAULT_TIMEOUT_SECS: u64 = 30;
 const DEFAULT_MEMORY_LIMIT: &str = "256m";
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]

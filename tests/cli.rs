@@ -1,6 +1,5 @@
 use assert_cmd::Command;
 use predicates::str::contains;
-use cph::{INVALID_LANGUAGE_ERROR, INVALID_COMMAND_ERROR};
 
 const TEST_CONTEST: &str = "abc300";
 const TEST_PROBLEM: &str = "a";
@@ -22,7 +21,7 @@ fn assert_error(args: &[&str], expected_error: &str) {
 fn test_invalid_language() {
     assert_error(
         &[TEST_CONTEST, "invalid", "open", TEST_PROBLEM],
-        INVALID_LANGUAGE_ERROR
+        "invalid value 'invalid' for '<LANGUAGE>'"
     );
 }
 
@@ -30,6 +29,6 @@ fn test_invalid_language() {
 fn test_invalid_command() {
     assert_error(
         &[TEST_CONTEST, "rust", "invalid", TEST_PROBLEM],
-        INVALID_COMMAND_ERROR
+        "unexpected argument 'invalid' found"
     );
 } 

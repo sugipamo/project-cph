@@ -1,156 +1,150 @@
-use std::path::{Path, PathBuf};
 use std::fs;
-use glob::Pattern;
+use std::path::{Path, PathBuf};
+use glob::glob;
+use serde::{Deserialize, Serialize};
 use crate::error::Result;
 use crate::Language;
 
+#[derive(Debug, Serialize, Deserialize)]
+struct Problem {
+    solution: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Contest {
+    problems: std::collections::HashMap<String, Problem>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Config {
+    contests: std::collections::HashMap<String, Contest>,
+}
+
 pub struct Workspace {
-    root: PathBuf,
+    root_dir: PathBuf,
 }
 
 impl Workspace {
-    pub fn new() -> Result<Self> {
-        let root = std::env::current_dir()?;
-        Ok(Self { root })
+    pub fn new(root_dir: PathBuf) -> Self {
+        Self { root_dir }
     }
 
     pub fn get_workspace_dir(&self) -> PathBuf {
-        self.root.join("workspace")
+        self.root_dir.join("workspace")
     }
 
-    pub fn get_template_dir(&self, language: Language) -> PathBuf {
-        self.get_workspace_dir().join("template").join(language.to_string())
+    pub fn get_archive_dir(&self) -> PathBuf {
+        self.root_dir.join("archive")
     }
 
-    pub fn get_archive_dir(&self, contest_id: &str) -> PathBuf {
-        self.root.join("archive").join(contest_id)
+    pub fn archive_current_workspace(&self) -> Result<()> {
+        let workspace_dir = self.get_workspace_dir();
+
+        // contests.yamlを読み込む
+        let config_path = workspace_dir.join("contests.yaml");
+        if !config_path.exists() {
+            return Ok(());  // contests.yamlが存在しない場合は何もしない
+        }
+
+        let config_str = fs::read_to_string(&config_path)?;
+        let config: Config = serde_yaml::from_str(&config_str)?;
+
+        // アーカイブ対象のコンテストを特定
+        let contest_id = config.contests.keys().next().ok_or_else(|| {
+            crate::error::Error::InvalidInput("No contest found in contests.yaml".to_string())
+        })?;
+
+        // アーカイブディレクトリを作成
+        let archive_dir = self.get_archive_dir().join(contest_id);
+        fs::create_dir_all(&archive_dir)?;
+
+        // .archiveignoreの内容を読み込む
+        let ignore_patterns = self.read_ignore_patterns()?;
+
+        // ワークスペース内のファイルをアーカイブ
+        for entry in fs::read_dir(&workspace_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            // .archiveignoreに含まれるファイルはスキップ
+            if self.should_ignore(&path, &ignore_patterns)? {
+                continue;
+            }
+
+            // ファイルをアーカイブディレクトリにコピー
+            if path.is_file() {
+                let file_name = path.file_name().unwrap();
+                fs::copy(&path, archive_dir.join(file_name))?;
+                fs::remove_file(&path)?;
+            }
+        }
+
+        Ok(())
     }
 
-    fn read_ignore_patterns(&self) -> Result<Vec<Pattern>> {
+    fn read_ignore_patterns(&self) -> Result<Vec<String>> {
         let ignore_file = self.get_workspace_dir().join(".archiveignore");
         if !ignore_file.exists() {
             return Ok(Vec::new());
         }
 
         let content = fs::read_to_string(ignore_file)?;
-        let patterns = content
-            .lines()
+        Ok(content.lines()
             .filter(|line| !line.trim().is_empty() && !line.starts_with('#'))
-            .map(|line| Pattern::new(line.trim()))
-            .collect::<std::result::Result<Vec<_>, _>>()?;
-        Ok(patterns)
+            .map(|line| line.trim().to_string())
+            .collect())
     }
 
-    pub fn archive_current_workspace(&self, new_contest_id: &str) -> Result<()> {
+    fn should_ignore(&self, path: &Path, patterns: &[String]) -> Result<bool> {
         let workspace_dir = self.get_workspace_dir();
-        let archive_dir = self.get_archive_dir(new_contest_id);
-        let ignore_patterns = self.read_ignore_patterns()?;
+        let relative_path = path.strip_prefix(&workspace_dir)?;
+        let path_str = relative_path.to_str().unwrap();
 
-        // アーカイブディレクトリを作成
-        fs::create_dir_all(&archive_dir)?;
-
-        // ワークスペース内のファイルをスキャン
-        for entry in fs::read_dir(&workspace_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            let relative_path = path.strip_prefix(&workspace_dir)?;
-            let relative_path_str = relative_path.to_string_lossy();
-
-            // 無視パターンに一致するかチェック
-            if ignore_patterns.iter().any(|pattern| pattern.matches(&relative_path_str)) {
-                continue;
-            }
-
-            // ファイルを移動
-            if path.is_file() {
-                let target = archive_dir.join(relative_path);
-                if let Some(parent) = target.parent() {
-                    fs::create_dir_all(parent)?;
+        for pattern in patterns {
+            for matched in glob(&format!("{}/{}", workspace_dir.to_str().unwrap(), pattern))? {
+                if let Ok(matched) = matched {
+                    if matched == path {
+                        return Ok(true);
+                    }
                 }
-                fs::rename(&path, &target)?;
             }
         }
 
-        Ok(())
+        Ok(false)
     }
 
     pub fn setup_problem(&self, contest_id: &str, problem_id: &str, language: Language) -> Result<PathBuf> {
         // 現在のワークスペースをアーカイブ
-        self.archive_current_workspace(contest_id)?;
+        self.archive_current_workspace()?;
 
         let workspace_dir = self.get_workspace_dir();
-        fs::create_dir_all(&workspace_dir)?;
 
-        // ソースファイルのパス
-        let source_file = workspace_dir.join(format!("{}.{}", problem_id, language.extension()));
+        // ソースファイルを作成
+        let source_path = workspace_dir.join(format!("{}.{}", problem_id, language.extension()));
+        fs::write(&source_path, language.default_content()?)?;
 
-        // テンプレートの選択とコピー
-        let template_dir = self.get_template_dir(language);
-        if template_dir.exists() {
-            let template_file = template_dir.join(format!("main.{}", language.extension()));
-            if template_file.exists() {
-                fs::copy(template_file, &source_file)?;
-            } else {
-                fs::write(&source_file, language.default_content()?)?;
+        // contests.yamlを更新
+        let config_path = workspace_dir.join("contests.yaml");
+        let mut config = if config_path.exists() {
+            let config_str = fs::read_to_string(&config_path)?;
+            serde_yaml::from_str(&config_str)?
+        } else {
+            Config {
+                contests: std::collections::HashMap::new(),
             }
-        } else {
-            fs::write(&source_file, language.default_content()?)?;
-        }
-
-        // contests.yamlの更新
-        self.update_contest_info(contest_id, problem_id, &source_file)?;
-
-        Ok(source_file)
-    }
-
-    fn update_contest_info(&self, contest_id: &str, problem_id: &str, source_file: &Path) -> Result<()> {
-        use serde_yaml::{Mapping, Value};
-        
-        let workspace_dir = self.get_workspace_dir();
-        let contests_file = workspace_dir.join("contests.yaml");
-        
-        // 既存のcontests.yamlを読み込むか、新規作成
-        let mut contests: Mapping = if contests_file.exists() {
-            serde_yaml::from_str(&fs::read_to_string(&contests_file)?)?
-        } else {
-            Mapping::new()
         };
 
-        // コンテスト情報を更新
-        let contest = contests
-            .entry(Value::String(contest_id.to_string()))
-            .or_insert(Value::Mapping(Mapping::new()));
+        let contest = config.contests.entry(contest_id.to_string()).or_insert_with(|| Contest {
+            problems: std::collections::HashMap::new(),
+        });
 
-        if let Value::Mapping(contest_map) = contest {
-            let problems = contest_map
-                .entry(Value::String("problems".to_string()))
-                .or_insert(Value::Mapping(Mapping::new()));
+        contest.problems.insert(problem_id.to_string(), Problem {
+            solution: format!("{}.{}", problem_id, language.extension()),
+        });
 
-            if let Value::Mapping(problems_map) = problems {
-                let problem = problems_map
-                    .entry(Value::String(problem_id.to_string()))
-                    .or_insert(Value::Mapping(Mapping::new()));
+        let yaml = serde_yaml::to_string(&config)?;
+        fs::write(config_path, yaml)?;
 
-                if let Value::Mapping(problem_map) = problem {
-                    problem_map.insert(
-                        Value::String("solution".to_string()),
-                        Value::String(source_file.file_name().unwrap().to_string_lossy().to_string()),
-                    );
-                }
-            }
-        }
-
-        // ファイルに書き戻す
-        fs::write(&contests_file, serde_yaml::to_string(&contests)?)?;
-        Ok(())
-    }
-
-    pub fn get_problem_url(&self, contest_id: &str, problem_id: &str) -> String {
-        format!(
-            "https://atcoder.jp/contests/{}/tasks/{}_{}", 
-            contest_id, 
-            contest_id, 
-            problem_id
-        )
+        Ok(source_path)
     }
 } 

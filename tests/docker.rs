@@ -27,7 +27,7 @@ async fn run_in_docker_and_check(workspace_dir: &PathBuf, lang: &Language, cmd: 
 
 async fn test_hello_world(workspace_dir: &PathBuf, lang: Language, setup_cmd: &[&str], run_cmd: &[&str], expected_output: &str) {
     // ソースファイルの作成
-    let (stdout, _) = run_in_docker_and_check(
+    let (_, _) = run_in_docker_and_check(
         workspace_dir,
         &lang,
         setup_cmd,

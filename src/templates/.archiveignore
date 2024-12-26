@@ -1,17 +1,5 @@
+.archiveignore
+
 # テンプレートファイル - コンテスト間で共有
 template/
 template/**
-
-# 設定ファイル
-contests.yaml
-
-# その他の固定ファイル
-README.md
-config.toml
-
-# 共通のテンプレート
-*_template.rs
-
-# ユーティリティスクリプト
-*.sh
-*.py 
