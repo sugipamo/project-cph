@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::path::PathBuf;
 use crate::{Language, error::Result, workspace::Workspace};
 
 #[derive(Parser)]
@@ -30,23 +31,9 @@ impl Cli {
                 // 問題を開く
                 let source_path = workspace.setup_problem(&cli.contest_id, &cli.problem_id, cli.language)?;
 
-                // エディタで開く
-                if let Err(_) = std::process::Command::new("code")
-                    .arg(&source_path)
-                    .status() {
-                    std::process::Command::new("cursor")
-                        .arg(&source_path)
-                        .status()?;
-                }
-
-                // ブラウザで問題ページを開く
-                let url = format!(
-                    "https://atcoder.jp/contests/{}/tasks/{}_{}", 
-                    cli.contest_id, 
-                    cli.contest_id, 
-                    cli.problem_id
-                );
-                open::that(url)?;
+                // エディタとブラウザで開く
+                open_in_editor(&source_path)?;
+                open_in_browser(&cli.contest_id, &cli.problem_id)?;
             }
             _ => {
                 return Err(crate::error::Error::InvalidInput(format!(
@@ -58,4 +45,26 @@ impl Cli {
 
         Ok(())
     }
+}
+
+fn open_in_editor(path: &PathBuf) -> Result<()> {
+    if let Err(_) = std::process::Command::new("code")
+        .arg(path)
+        .status() {
+        std::process::Command::new("cursor")
+            .arg(path)
+            .status()?;
+    }
+    Ok(())
+}
+
+fn open_in_browser(contest_id: &str, problem_id: &str) -> Result<()> {
+    let url = format!(
+        "https://atcoder.jp/contests/{}/tasks/{}_{}", 
+        contest_id, 
+        contest_id, 
+        problem_id
+    );
+    open::that(url)?;
+    Ok(())
 } 

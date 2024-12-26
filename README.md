@@ -7,10 +7,12 @@
 ```
 .
 ├── workspace/                # ユーザーのワークスペース
-│   └── {contest_type}/      # コンテストタイプ (abc, arc, etc.)
-│       ├── template/        # 言語ごとのテンプレート
-│       ├── test/           # テストケース
-│       └── {problem}.{ext}  # 問題ごとのソースコード
+│   ├── template/            # 言語ごとのテンプレート
+│   ├── {problem}.{ext}      # 問題ごとのソースコード
+│   └── contests.yaml        # コンテスト設定ファイル
+│
+├── archive/                 # アーカイブされたコード
+│   └── {contest_id}/       # コンテストごとのディレクトリ
 │
 └── compile/                 # コンパイル用ワークスペース
     ├── rust/               # Rust用コンパイル環境
@@ -40,20 +42,30 @@
 
 1. 問題の作成
 ```bash
-cph open abc001 a rust  # abc001のA問題をRustで解く
+cph abc001 rust open a  # abc001のA問題をRustで解く
 ```
 
-2. テストの実行
+2. テストの実行（未実装）
 ```bash
-cph test abc001 a  # A問題のテストを実行
+cph abc001 rust test a  # A問題のテストを実行
 ```
 
-3. テストケースの生成
+3. テストケースの生成（未実装）
 ```bash
-cph generate abc001 a  # A問題のテストケースを生成
+cph abc001 rust generate a  # A問題のテストケースを生成
 ```
 
 4. 提出（未実装）
 ```bash
-cph submit abc001 a  # A問題の解答を提出
-``` 
+cph abc001 rust submit a  # A問題の解答を提出
+```
+
+## 機能
+
+- [x] 問題の作成と開始
+- [x] テンプレートの使用
+- [x] ファイルのアーカイブ
+- [ ] テストケースの実行
+- [ ] テストケースの生成
+- [ ] 解答の提出
+- [ ] AHC機能（計画中） 
