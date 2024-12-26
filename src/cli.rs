@@ -1,5 +1,4 @@
-use std::path::PathBuf;
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use crate::{Language, error::Result, workspace::Workspace};
 
 #[derive(Parser)]

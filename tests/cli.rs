@@ -29,6 +29,6 @@ fn test_invalid_language() {
 fn test_invalid_command() {
     assert_error(
         &[TEST_CONTEST, "rust", "invalid", TEST_PROBLEM],
-        "unexpected argument 'invalid' found"
+        "invalid command: invalid"
     );
 } 

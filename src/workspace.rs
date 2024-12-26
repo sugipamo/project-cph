@@ -97,8 +97,7 @@ impl Workspace {
 
     fn should_ignore(&self, path: &Path, patterns: &[String]) -> Result<bool> {
         let workspace_dir = self.get_workspace_dir();
-        let relative_path = path.strip_prefix(&workspace_dir)?;
-        let path_str = relative_path.to_str().unwrap();
+        path.strip_prefix(&workspace_dir)?;
 
         for pattern in patterns {
             for matched in glob(&format!("{}/{}", workspace_dir.to_str().unwrap(), pattern))? {
