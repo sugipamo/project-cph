@@ -81,6 +81,9 @@ pub fn run_in_docker(
     cmd: &[&str],
 ) -> Result<std::process::Output> {
     let config = DockerConfig::get();
+    let workspace_path = workspace_dir.canonicalize()
+        .unwrap_or_else(|_| workspace_dir.to_path_buf());
+
     Command::new("docker")
         .args([
             "run",
@@ -90,7 +93,7 @@ pub fn run_in_docker(
             "--memory-swap",
             &config.memory_limit,
             "-v",
-            &format!("{}:/workspace", workspace_dir.display()),
+            &format!("{}:/workspace", workspace_path.display()),
             "-v",
             &DockerConfig::get_compile_mount(language),
             "-w",
