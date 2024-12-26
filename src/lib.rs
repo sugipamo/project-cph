@@ -83,31 +83,22 @@ pub enum Language {
     PyPy,
 }
 
+#[derive(Debug, Clone)]
+struct LanguageConfig {
+    extension: &'static str,
+    template_name: &'static str,
+    default_content: &'static str,
+    generator_template: &'static str,
+}
+
 impl Language {
-    pub fn extension(&self) -> &str {
+    fn config(&self) -> LanguageConfig {
         match self {
-            Language::Rust => "rs",
-            Language::PyPy => "py",
-        }
-    }
-
-    pub fn template_name(&self) -> &str {
-        match self {
-            Language::Rust => "main.rs",
-            Language::PyPy => "main.py",
-        }
-    }
-
-    pub fn default_content(&self) -> &str {
-        match self {
-            Language::Rust => "fn main() {\n    \n}\n",
-            Language::PyPy => "def main():\n    pass\n\nif __name__ == '__main__':\n    main()\n",
-        }
-    }
-
-    pub fn generator_template(&self) -> &str {
-        match self {
-            Language::Rust => r#"fn generate_case() -> (String, String) {
+            Language::Rust => LanguageConfig {
+                extension: "rs",
+                template_name: "main.rs",
+                default_content: "fn main() {\n    \n}\n",
+                generator_template: r#"fn generate_case() -> (String, String) {
     // TODO: カスタムケースの生成ロジックを実装
     let input = String::new();
     let output = String::new();
@@ -137,7 +128,12 @@ fn main() {
         eprintln!("{}", output);
     }
 }"#,
-            Language::PyPy => r#"def generate_case():
+            },
+            Language::PyPy => LanguageConfig {
+                extension: "py",
+                template_name: "main.py",
+                default_content: "def main():\n    pass\n\nif __name__ == '__main__':\n    main()\n",
+                generator_template: r#"def generate_case():
     # TODO: カスタムケースの生成ロジックを実装
     input_data = ""
     output_data = ""
@@ -166,7 +162,24 @@ def main():
 
 if __name__ == "__main__":
     main()"#,
+            },
         }
+    }
+
+    pub fn extension(&self) -> &str {
+        self.config().extension
+    }
+
+    pub fn template_name(&self) -> &str {
+        self.config().template_name
+    }
+
+    pub fn default_content(&self) -> &str {
+        self.config().default_content
+    }
+
+    pub fn generator_template(&self) -> &str {
+        self.config().generator_template
     }
 }
 
@@ -280,42 +293,42 @@ impl Config {
         name.starts_with(CUSTOM_TEST_PREFIX) && Self::is_test_file(name)
     }
 
-    fn ensure_contest_exists(&self) -> Result<(), Error> {
-        let info_path = self.contest_info_path();
-        let mut info = if info_path.exists() {
-            let contents = std::fs::read_to_string(&info_path)?;
-            serde_yaml::from_str(&contents)
-                .map_err(|e| Error::Input(InputError::Format(format!("Failed to parse contest info: {}", e))))?
-        } else {
-            if let Some(parent) = info_path.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
-            ContestInfo::default()
-        };
-
-        // コンテストが存在しない場合は追加
-        info.contests.entry(self.contest_id.clone())
-            .or_default();
-
-        // YAMLに書き出し
-        let yaml = serde_yaml::to_string(&info)
-            .map_err(|e| Error::Input(InputError::Format(format!("Failed to serialize contest info: {}", e))))?;
-        std::fs::write(&info_path, yaml)?;
-
+    fn ensure_parent_dir(path: &PathBuf) -> Result<(), Error> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
         Ok(())
     }
 
-    fn update_problem_info(&self, has_generator: bool) -> Result<(), Error> {
+    fn read_contest_info(&self) -> Result<ContestInfo, Error> {
         let info_path = self.contest_info_path();
-        let mut info: ContestInfo = if info_path.exists() {
+        if info_path.exists() {
             let contents = std::fs::read_to_string(&info_path)?;
             serde_yaml::from_str(&contents)
-                .map_err(|e| Error::Input(InputError::Format(format!("Failed to parse contest info: {}", e))))?
+                .map_err(|e| Error::Input(InputError::Format(format!("Failed to parse contest info: {}", e))))
         } else {
-            ContestInfo::default()
-        };
+            Ok(ContestInfo::default())
+        }
+    }
 
-        // 問題情報を更新
+    fn write_contest_info(&self, info: &ContestInfo) -> Result<(), Error> {
+        let info_path = self.contest_info_path();
+        Self::ensure_parent_dir(&info_path)?;
+        let yaml = serde_yaml::to_string(info)
+            .map_err(|e| Error::Input(InputError::Format(format!("Failed to serialize contest info: {}", e))))?;
+        std::fs::write(&info_path, yaml)?;
+        Ok(())
+    }
+
+    fn ensure_contest_exists(&self) -> Result<(), Error> {
+        let mut info = self.read_contest_info()?;
+        info.contests.entry(self.contest_id.clone())
+            .or_default();
+        self.write_contest_info(&info)
+    }
+
+    fn update_problem_info(&self, has_generator: bool) -> Result<(), Error> {
+        let mut info = self.read_contest_info()?;
         let contest = info.contests.entry(self.contest_id.clone()).or_default();
         let problem = contest.problems.entry(self.problem_id.clone()).or_default();
         
@@ -324,12 +337,7 @@ impl Config {
             problem.generator = Some(format!("{}_gen.{}", self.problem_id, self.language.extension()));
         }
 
-        // YAMLに書き出し
-        let yaml = serde_yaml::to_string(&info)
-            .map_err(|e| Error::Input(InputError::Format(format!("Failed to serialize contest info: {}", e))))?;
-        std::fs::write(&info_path, yaml)?;
-
-        Ok(())
+        self.write_contest_info(&info)
     }
 }
 
