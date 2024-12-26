@@ -10,8 +10,7 @@ Cargo.lock
 /compile/rust/src/main.rs
 /compile/pypy/main.py
 
-# ワークスペース
-/workspace/
+archive/
 
 # エディタ/OS関連
 .vscode/
@@ -20,6 +19,4 @@ Cargo.lock
 .DS_Store
 
 # 競プロ関連
-**/input.txt
-**/output.txt
 **/test/
