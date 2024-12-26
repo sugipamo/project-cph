@@ -38,21 +38,32 @@ pub enum Site {
 }
 
 impl Site {
-    fn get_problem_url(&self, contest_id: &str, problem_id: &str) -> String {
+    fn get_base_url(&self) -> &'static str {
         match self {
-            Site::AtCoder => {
-                let path = ATCODER_PROBLEM_PATH
-                    .replace("{contest_id}", contest_id)
-                    .replace("{problem_id}", problem_id);
-                format!("{}/{}", ATCODER_URL, path)
-            }
-            Site::Codeforces => {
-                let path = CODEFORCES_PROBLEM_PATH
-                    .replace("{contest_id}", contest_id)
-                    .replace("{problem_id}", &problem_id.to_uppercase());
-                format!("{}/{}", CODEFORCES_URL, path)
-            }
+            Site::AtCoder => ATCODER_URL,
+            Site::Codeforces => CODEFORCES_URL,
         }
+    }
+
+    fn get_path_template(&self) -> &'static str {
+        match self {
+            Site::AtCoder => ATCODER_PROBLEM_PATH,
+            Site::Codeforces => CODEFORCES_PROBLEM_PATH,
+        }
+    }
+
+    fn format_problem_id(&self, problem_id: &str) -> String {
+        match self {
+            Site::AtCoder => problem_id.to_string(),
+            Site::Codeforces => problem_id.to_uppercase(),
+        }
+    }
+
+    fn get_problem_url(&self, contest_id: &str, problem_id: &str) -> String {
+        let path = self.get_path_template()
+            .replace("{contest_id}", contest_id)
+            .replace("{problem_id}", &self.format_problem_id(problem_id));
+        format!("{}/{}", self.get_base_url(), path)
     }
 }
 

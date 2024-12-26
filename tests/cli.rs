@@ -4,6 +4,9 @@ use predicates::str::contains;
 const TEST_CONTEST: &str = "abc300";
 const TEST_PROBLEM: &str = "a";
 
+const ATCODER_ALIASES: &[&str] = &["atcoder", "at-coder", "at_coder"];
+const CODEFORCES_ALIASES: &[&str] = &["codeforces", "cf"];
+
 fn run_command(args: &[&str]) -> assert_cmd::assert::Assert {
     Command::cargo_bin("cph")
         .unwrap()
@@ -17,6 +20,12 @@ fn assert_error(args: &[&str], expected_error: &str) {
         .stderr(contains(expected_error));
 }
 
+fn assert_site_alias(site: &str) {
+    run_command(&[site, TEST_CONTEST, "rust", "open", TEST_PROBLEM])
+        .failure() // Note: This will fail due to workspace setup, but that's expected
+        .stderr(contains(""));
+}
+
 #[test]
 fn test_invalid_site() {
     assert_error(
@@ -27,18 +36,9 @@ fn test_invalid_site() {
 
 #[test]
 fn test_site_aliases() {
-    // AtCoder aliases
-    for site in ["atcoder", "at-coder", "at_coder"] {
-        run_command(&[site, TEST_CONTEST, "rust", "open", TEST_PROBLEM])
-            .failure() // Note: This will fail due to workspace setup, but that's expected
-            .stderr(contains(""));
-    }
-
-    // Codeforces aliases
-    for site in ["codeforces", "cf"] {
-        run_command(&[site, TEST_CONTEST, "rust", "open", TEST_PROBLEM])
-            .failure() // Note: This will fail due to workspace setup, but that's expected
-            .stderr(contains(""));
+    // Test all site aliases
+    for &site in ATCODER_ALIASES.iter().chain(CODEFORCES_ALIASES) {
+        assert_site_alias(site);
     }
 }
 
