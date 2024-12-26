@@ -103,4 +103,36 @@ pub fn run_in_docker(
         .args(cmd)
         .output()
         .map_err(|e| Error::Docker(DockerError::failed("run docker", e)))
+}
+
+// online judge tool用のDockerイメージ名
+pub const OJT_DOCKER_IMAGE: &str = "cph-oj";
+
+// online judge toolのコマンドを実行する関数
+pub async fn run_oj_tool(
+    workspace_dir: &Path,
+    args: &[&str],
+) -> Result<(String, String)> {
+    let config = DockerConfig::get();
+    let workspace_path = workspace_dir.canonicalize()
+        .unwrap_or_else(|_| workspace_dir.to_path_buf());
+    let workspace_mount = format!("{}:/workspace", workspace_path.display());
+
+    let mut docker_args = vec![
+        "run",
+        "--rm",
+        "--memory",
+        &config.memory_limit,
+        "--memory-swap",
+        &config.memory_limit,
+        "-v",
+        &workspace_mount,
+        "-w",
+        "/workspace",
+        OJT_DOCKER_IMAGE,
+    ];
+    docker_args.extend(args);
+
+    let (stdout, stderr) = execute_program("docker", &docker_args.iter().map(|s| *s).collect::<Vec<&str>>().as_slice(), None).await?;
+    Ok((stdout, stderr))
 } 

@@ -105,4 +105,33 @@ fn test_docker_compile_pypy() {
         &["sh", "-c", "cd /compile && pypy3 test.py"],
         "Hello from PyPy!",
     );
+}
+
+#[tokio::test]
+async fn test_oj_tool() {
+    let workspace_dir = setup();
+    
+    // バージョン確認
+    let result = docker::run_oj_tool(&workspace_dir, &["--version"]).await;
+    assert!(result.is_ok(), "Failed to run oj tool: {:?}", result);
+    let (stdout, _) = result.unwrap();
+    assert!(stdout.contains("online-judge-tools"), "Unexpected version output: {}", stdout);
+    assert!(stdout.contains("online-judge-api-client"), "Missing API client version: {}", stdout);
+
+    // テストケースのダウンロードテスト（AOJのサンプル問題を使用）
+    let result = docker::run_oj_tool(
+        &workspace_dir,
+        &["download", "https://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=ITP1_1_A"]
+    ).await;
+    assert!(result.is_ok(), "Failed to download test cases: {:?}", result);
+
+    // ダウンロードされたファイルの確認
+    let output = run_in_docker_and_check(
+        &workspace_dir,
+        &Language::PyPy,  // どの言語でも良いので、PyPyを使用
+        &["ls"],
+        "Failed to list downloaded files",
+    );
+    let files = String::from_utf8_lossy(&output.stdout);
+    assert!(files.contains("test"), "Test directory not found");
 } 
