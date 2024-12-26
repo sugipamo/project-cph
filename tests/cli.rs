@@ -6,7 +6,6 @@ use cph::docker::DockerConfig;
 
 struct TestContext {
     temp_dir: TempDir,
-    test_dir: std::path::PathBuf,
     abc_dir: std::path::PathBuf,
 }
 
@@ -14,14 +13,11 @@ impl TestContext {
     fn new() -> Self {
         let temp_dir = TempDir::new().unwrap();
         let abc_dir = temp_dir.path().join("workspace/abc/abc300");
-        let test_dir = abc_dir.join("test");
         
         fs::create_dir_all(&abc_dir).unwrap();
-        fs::create_dir_all(&test_dir).unwrap();
         
         Self {
             temp_dir,
-            test_dir,
             abc_dir,
         }
     }

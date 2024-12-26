@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use thiserror::Error;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
@@ -41,12 +41,6 @@ pub enum InputError {
     
     #[error("Invalid format: {0}")]
     Format(String),
-}
-
-impl Error {
-    pub fn test_execution(msg: impl Into<String>) -> Self {
-        Error::Test(test::TestError::new(msg.into()))
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -253,6 +247,15 @@ impl Config {
         ContestType::from_id(&self.contest_id)
     }
 
+    fn get_file_name(&self, prefix: &str, suffix: Option<&str>) -> String {
+        let base = if let Some(suffix) = suffix {
+            format!("{}_{}", prefix, suffix)
+        } else {
+            prefix.to_string()
+        };
+        format!("{}.{}", base, self.language.extension())
+    }
+
     pub fn contest_dir(&self) -> PathBuf {
         self.workspace_dir
             .join(self.contest_type().as_str())
@@ -260,7 +263,12 @@ impl Config {
 
     pub fn problem_file(&self) -> PathBuf {
         self.contest_dir()
-            .join(format!("{}.{}", self.problem_id, self.language.extension()))
+            .join(self.get_file_name(&self.problem_id, None))
+    }
+
+    pub fn generator_file(&self) -> PathBuf {
+        self.contest_dir()
+            .join(self.get_file_name(&self.problem_id, Some("gen")))
     }
 
     pub fn template_path(&self) -> PathBuf {
@@ -273,11 +281,6 @@ impl Config {
         self.contest_dir()
             .join("test")
             .join(&self.problem_id)
-    }
-
-    pub fn generator_file(&self) -> PathBuf {
-        self.contest_dir()
-            .join(format!("{}_gen.{}", self.problem_id, self.language.extension()))
     }
 
     pub fn contest_info_path(&self) -> PathBuf {
@@ -293,10 +296,28 @@ impl Config {
         name.starts_with(CUSTOM_TEST_PREFIX) && Self::is_test_file(name)
     }
 
-    fn ensure_parent_dir(path: &PathBuf) -> Result<(), Error> {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
+    fn ensure_directory(&self, path: &Path) -> Result<(), Error> {
+        if !path.exists() {
+            std::fs::create_dir_all(path)?;
         }
+        Ok(())
+    }
+
+    fn create_file(&self, path: &Path, content: &str) -> Result<(), Error> {
+        if let Some(parent) = path.parent() {
+            self.ensure_directory(parent)?;
+        }
+        std::fs::write(path, content)?;
+        println!("Created file: {:?}", path);
+        Ok(())
+    }
+
+    fn copy_file(&self, from: &Path, to: &Path) -> Result<(), Error> {
+        if let Some(parent) = to.parent() {
+            self.ensure_directory(parent)?;
+        }
+        std::fs::copy(from, to)?;
+        println!("Created file from template: {:?}", to);
         Ok(())
     }
 
@@ -313,7 +334,7 @@ impl Config {
 
     fn write_contest_info(&self, info: &ContestInfo) -> Result<(), Error> {
         let info_path = self.contest_info_path();
-        Self::ensure_parent_dir(&info_path)?;
+        self.ensure_directory(info_path.parent().unwrap())?;
         let yaml = serde_yaml::to_string(info)
             .map_err(|e| Error::Input(InputError::Format(format!("Failed to serialize contest info: {}", e))))?;
         std::fs::write(&info_path, yaml)?;
@@ -332,12 +353,34 @@ impl Config {
         let contest = info.contests.entry(self.contest_id.clone()).or_default();
         let problem = contest.problems.entry(self.problem_id.clone()).or_default();
         
-        problem.solution = Some(format!("{}.{}", self.problem_id, self.language.extension()));
+        problem.solution = Some(self.get_file_name(&self.problem_id, None));
         if has_generator {
-            problem.generator = Some(format!("{}_gen.{}", self.problem_id, self.language.extension()));
+            problem.generator = Some(self.get_file_name(&self.problem_id, Some("gen")));
         }
 
         self.write_contest_info(&info)
+    }
+
+    async fn execute_program(&self, cmd: &str, args: &[&str]) -> Result<(String, String), Error> {
+        let (stdout, stderr) = docker::execute_program(cmd, args, None).await?;
+        
+        // rustcの場合、エラーメッセージに "error" が含まれているかチェック
+        if cmd == "rustc" && stderr.contains("error") {
+            return Err(Error::Test(test::TestError::new(format!("Compilation failed:\n{}", stderr))));
+        }
+
+        // 実行ファイルの場合は終了コードで判断（stderrは警告やデバッグ情報の可能性あり）
+        if cmd.starts_with("./") {
+            // stderrは期待される出力として扱う
+            return Ok((stdout, stderr));
+        }
+
+        // PyPyの場合、エラーメッセージに特定のパターンが含まれているかチェック
+        if cmd == "pypy3" && (stderr.contains("Error") || stderr.contains("Exception")) {
+            return Err(Error::Test(test::TestError::new(format!("Execution failed:\n{}", stderr))));
+        }
+
+        Ok((stdout, stderr))
     }
 }
 
@@ -351,11 +394,6 @@ pub fn run(config: Config) -> Result<(), Error> {
 }
 
 fn open(config: Config) -> Result<(), Error> {
-    // Create problem directory if it doesn't exist
-    if let Some(problem_dir) = config.problem_file().parent() {
-        std::fs::create_dir_all(problem_dir)?;
-    }
-    
     let problem_file = config.problem_file();
     if problem_file.exists() {
         println!("Problem file already exists: {:?}", problem_file);
@@ -364,11 +402,9 @@ fn open(config: Config) -> Result<(), Error> {
     
     // Create problem file
     if config.template_path().exists() {
-        std::fs::copy(config.template_path(), &problem_file)?;
-        println!("Created problem file from template: {:?}", problem_file);
+        config.copy_file(&config.template_path(), &problem_file)?;
     } else {
-        std::fs::write(&problem_file, config.language.default_content())?;
-        println!("Created empty problem file: {:?}", problem_file);
+        config.create_file(&problem_file, config.language.default_content())?;
     }
 
     // Update contest info
@@ -383,14 +419,11 @@ fn generate(config: Config) -> Result<(), Error> {
     let test_dir = config.test_dir();
 
     // テストディレクトリの作成
-    if !test_dir.exists() {
-        std::fs::create_dir_all(&test_dir)?;
-    }
+    config.ensure_directory(&test_dir)?;
 
     if !generator_path.exists() {
         // ジェネレータファイルが存在しない場合は作成
-        std::fs::write(&generator_path, config.language.generator_template())?;
-        println!("Created generator file: {:?}", generator_path);
+        config.create_file(&generator_path, config.language.generator_template())?;
         println!("次回同じコマンドを実行するとテストケースが生成されます");
         
         // Update contest info with generator
@@ -415,36 +448,35 @@ fn generate(config: Config) -> Result<(), Error> {
 
     // ジェネレータの準備と実行
     let runtime = tokio::runtime::Runtime::new()
-        .map_err(|e| Error::test_execution(format!("Failed to create runtime: {}", e)))?;
+        .map_err(|e| Error::Test(test::TestError::new(format!("Failed to create runtime: {}", e))))?;
 
     runtime.block_on(async {
-        match config.language {
-            Language::Rust => {
-                // コンパイル
-                let (stdout, stderr) = docker::execute_program("rustc", &[
-                    generator_path.to_str().unwrap(),
-                    "-o",
-                    "generator"
-                ], None).await?;
+        let result: Result<(), Error> = async {
+            match config.language {
+                Language::Rust => {
+                    // コンパイル
+                    config.execute_program("rustc", &[
+                        generator_path.to_str().unwrap(),
+                        "-o",
+                        "generator"
+                    ]).await?;
 
-                if !stderr.is_empty() {
-                    return Err(Error::test_execution(format!("Compilation failed: {}", stderr)));
+                    // 実行
+                    let (stdout, stderr) = config.execute_program("./generator", &[]).await?;
+                    std::fs::write(&input_path, stdout)?;
+                    std::fs::write(&output_path, stderr)?;
                 }
-
-                // 実行
-                let (stdout, stderr) = docker::execute_program("./generator", &[], None).await?;
-                std::fs::write(&input_path, stdout)?;
-                std::fs::write(&output_path, stderr)?;
+                Language::PyPy => {
+                    let (stdout, stderr) = config.execute_program("pypy3", &[
+                        generator_path.to_str().unwrap()
+                    ]).await?;
+                    std::fs::write(&input_path, stdout)?;
+                    std::fs::write(&output_path, stderr)?;
+                }
             }
-            Language::PyPy => {
-                let (stdout, stderr) = docker::execute_program("pypy3", &[
-                    generator_path.to_str().unwrap()
-                ], None).await?;
-                std::fs::write(&input_path, stdout)?;
-                std::fs::write(&output_path, stderr)?;
-            }
-        }
-        Ok(())
+            Ok(())
+        }.await;
+        result
     })?;
 
     println!("Generated test case in:");
