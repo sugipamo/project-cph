@@ -5,24 +5,16 @@ use tokio::process::Command as TokioCommand;
 use tokio::io::AsyncWriteExt;
 use std::process::Stdio;
 use tokio::time::timeout;
-use toml::Value;
 use once_cell::sync::Lazy;
 use thiserror::Error;
 
 use crate::Error as CrateError;
-
-const DEFAULT_RUST_IMAGE: &str = "rust:1.70";
-const DEFAULT_PYPY_IMAGE: &str = "pypy:3.10";
-const DEFAULT_TIMEOUT_SECS: u64 = 5;
-const DEFAULT_MEMORY_LIMIT: &str = "512m";
+use crate::{DEFAULT_RUST_IMAGE, DEFAULT_PYPY_IMAGE, DEFAULT_TIMEOUT_SECS, DEFAULT_MEMORY_LIMIT};
 
 #[derive(Debug, Error)]
 pub enum DockerError {
     #[error("Docker command failed: {0}")]
     CommandFailed(String),
-    
-    #[error("Docker configuration error: {0}")]
-    Config(String),
     
     #[error("Docker execution error: {0}")]
     Execution(String),
@@ -31,8 +23,17 @@ pub enum DockerError {
     Timeout(u64),
 }
 
-static DOCKER_CONFIG: Lazy<DockerConfig> = Lazy::new(|| {
-    DockerConfig::load().expect("Failed to load Docker config")
+impl DockerError {
+    fn failed(operation: &str, error: impl std::fmt::Display) -> Self {
+        DockerError::Execution(format!("Failed to {}: {}", operation, error))
+    }
+}
+
+static DOCKER_CONFIG: Lazy<DockerConfig> = Lazy::new(|| DockerConfig {
+    rust_image: DEFAULT_RUST_IMAGE.to_string(),
+    pypy_image: DEFAULT_PYPY_IMAGE.to_string(),
+    timeout_seconds: DEFAULT_TIMEOUT_SECS,
+    memory_limit: DEFAULT_MEMORY_LIMIT.to_string(),
 });
 
 pub struct DockerConfig {
@@ -43,24 +44,6 @@ pub struct DockerConfig {
 }
 
 impl DockerConfig {
-    fn load() -> Result<Self, CrateError> {
-        let config = std::fs::read_to_string("config/docker.toml")
-            .map_err(|e| CrateError::Docker(DockerError::Config(format!("Failed to read docker config: {}", e))))?;
-        
-        let config: Value = toml::from_str(&config)
-            .map_err(|e| CrateError::Docker(DockerError::Config(format!("Failed to parse docker config: {}", e))))?;
-        
-        let images = &config["images"];
-        let runtime = &config["runtime"];
-        
-        Ok(Self {
-            rust_image: images["rust"].as_str().unwrap_or(DEFAULT_RUST_IMAGE).to_string(),
-            pypy_image: images["pypy"].as_str().unwrap_or(DEFAULT_PYPY_IMAGE).to_string(),
-            timeout_seconds: runtime["timeout_seconds"].as_integer().unwrap_or(DEFAULT_TIMEOUT_SECS as i64) as u64,
-            memory_limit: runtime["memory_limit"].as_str().unwrap_or(DEFAULT_MEMORY_LIMIT).to_string(),
-        })
-    }
-
     pub fn get() -> &'static Self {
         &DOCKER_CONFIG
     }
@@ -86,12 +69,12 @@ pub async fn execute_program(
         .stderr(Stdio::piped());
 
     let mut child = command.spawn()
-        .map_err(|e| CrateError::Docker(DockerError::Execution(format!("Failed to spawn process: {}", e))))?;
+        .map_err(|e| CrateError::Docker(DockerError::failed("spawn process", e)))?;
 
     if let Some(input) = stdin {
         if let Some(mut stdin) = child.stdin.take() {
             if let Err(e) = stdin.write_all(input.as_bytes()).await {
-                return Err(CrateError::Docker(DockerError::Execution(format!("Failed to write to stdin: {}", e))));
+                return Err(CrateError::Docker(DockerError::failed("write to stdin", e)));
             }
         }
     }
@@ -102,7 +85,7 @@ pub async fn execute_program(
             String::from_utf8_lossy(&output.stdout).into_owned(),
             String::from_utf8_lossy(&output.stderr).into_owned(),
         )),
-        Ok(Err(e)) => Err(CrateError::Docker(DockerError::Execution(format!("Execution failed: {}", e)))),
+        Ok(Err(e)) => Err(CrateError::Docker(DockerError::failed("execute program", e))),
         Err(_) => Err(CrateError::Docker(DockerError::Timeout(config.timeout_seconds))),
     }
 }
@@ -129,5 +112,5 @@ pub fn run_in_docker(
         ])
         .args(cmd)
         .output()
-        .map_err(|e| CrateError::Docker(DockerError::CommandFailed(format!("Failed to run docker: {}", e))))
+        .map_err(|e| CrateError::Docker(DockerError::failed("run docker", e)))
 } 

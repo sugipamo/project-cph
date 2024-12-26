@@ -1,8 +1,20 @@
 use std::path::PathBuf;
 use thiserror::Error;
+use serde::{Serialize, Deserialize};
+use std::collections::HashMap;
 
 pub mod docker;
 pub mod test;
+
+// 共通の定数
+pub const TEST_FILE_EXTENSIONS: [&str; 2] = [".in", ".out"];
+pub const CUSTOM_TEST_PREFIX: &str = "custom-";
+pub const DEFAULT_TIMEOUT_SECS: u64 = 5;
+pub const DEFAULT_MEMORY_LIMIT: &str = "512m";
+
+// Docker関連の定数
+pub const DEFAULT_RUST_IMAGE: &str = "rust:1.70";
+pub const DEFAULT_PYPY_IMAGE: &str = "pypy:3.10";
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -224,10 +236,6 @@ impl Config {
         }
     }
 
-    fn join_contest_dir(&self, path: impl AsRef<std::path::Path>) -> PathBuf {
-        self.contest_dir().join(path)
-    }
-
     pub fn contest_type(&self) -> ContestType {
         ContestType::from_id(&self.contest_id)
     }
@@ -235,23 +243,93 @@ impl Config {
     pub fn contest_dir(&self) -> PathBuf {
         self.workspace_dir
             .join(self.contest_type().as_str())
-            .join(&self.contest_id)
     }
 
     pub fn problem_file(&self) -> PathBuf {
-        self.join_contest_dir(format!("{}.{}", self.problem_id, self.language.extension()))
+        self.contest_dir()
+            .join(format!("{}.{}", self.problem_id, self.language.extension()))
     }
 
     pub fn template_path(&self) -> PathBuf {
-        self.join_contest_dir("template").join(self.language.template_name())
+        self.contest_dir()
+            .join("template")
+            .join(self.language.template_name())
     }
 
     pub fn test_dir(&self) -> PathBuf {
-        self.join_contest_dir("test")
+        self.contest_dir()
+            .join("test")
+            .join(&self.problem_id)
     }
 
     pub fn generator_file(&self) -> PathBuf {
-        self.join_contest_dir(format!("{}_gen.{}", self.problem_id, self.language.extension()))
+        self.contest_dir()
+            .join(format!("{}_gen.{}", self.problem_id, self.language.extension()))
+    }
+
+    pub fn contest_info_path(&self) -> PathBuf {
+        self.contest_dir()
+            .join("contests.yaml")
+    }
+
+    fn is_test_file(name: &str) -> bool {
+        TEST_FILE_EXTENSIONS.iter().any(|ext| name.ends_with(ext))
+    }
+
+    fn is_custom_test_file(name: &str) -> bool {
+        name.starts_with(CUSTOM_TEST_PREFIX) && Self::is_test_file(name)
+    }
+
+    fn ensure_contest_exists(&self) -> Result<(), Error> {
+        let info_path = self.contest_info_path();
+        let mut info = if info_path.exists() {
+            let contents = std::fs::read_to_string(&info_path)?;
+            serde_yaml::from_str(&contents)
+                .map_err(|e| Error::Input(InputError::Format(format!("Failed to parse contest info: {}", e))))?
+        } else {
+            if let Some(parent) = info_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            ContestInfo::default()
+        };
+
+        // コンテストが存在しない場合は追加
+        info.contests.entry(self.contest_id.clone())
+            .or_default();
+
+        // YAMLに書き出し
+        let yaml = serde_yaml::to_string(&info)
+            .map_err(|e| Error::Input(InputError::Format(format!("Failed to serialize contest info: {}", e))))?;
+        std::fs::write(&info_path, yaml)?;
+
+        Ok(())
+    }
+
+    fn update_problem_info(&self, has_generator: bool) -> Result<(), Error> {
+        let info_path = self.contest_info_path();
+        let mut info: ContestInfo = if info_path.exists() {
+            let contents = std::fs::read_to_string(&info_path)?;
+            serde_yaml::from_str(&contents)
+                .map_err(|e| Error::Input(InputError::Format(format!("Failed to parse contest info: {}", e))))?
+        } else {
+            ContestInfo::default()
+        };
+
+        // 問題情報を更新
+        let contest = info.contests.entry(self.contest_id.clone()).or_default();
+        let problem = contest.problems.entry(self.problem_id.clone()).or_default();
+        
+        problem.solution = Some(format!("{}.{}", self.problem_id, self.language.extension()));
+        if has_generator {
+            problem.generator = Some(format!("{}_gen.{}", self.problem_id, self.language.extension()));
+        }
+
+        // YAMLに書き出し
+        let yaml = serde_yaml::to_string(&info)
+            .map_err(|e| Error::Input(InputError::Format(format!("Failed to serialize contest info: {}", e))))?;
+        std::fs::write(&info_path, yaml)?;
+
+        Ok(())
     }
 }
 
@@ -265,8 +343,10 @@ pub fn run(config: Config) -> Result<(), Error> {
 }
 
 fn open(config: Config) -> Result<(), Error> {
-    // Create contest directory if it doesn't exist
-    std::fs::create_dir_all(config.contest_dir())?;
+    // Create problem directory if it doesn't exist
+    if let Some(problem_dir) = config.problem_file().parent() {
+        std::fs::create_dir_all(problem_dir)?;
+    }
     
     let problem_file = config.problem_file();
     if problem_file.exists() {
@@ -282,6 +362,11 @@ fn open(config: Config) -> Result<(), Error> {
         std::fs::write(&problem_file, config.language.default_content())?;
         println!("Created empty problem file: {:?}", problem_file);
     }
+
+    // Update contest info
+    config.ensure_contest_exists()?;
+    config.update_problem_info(false)?;
+
     Ok(())
 }
 
@@ -299,6 +384,11 @@ fn generate(config: Config) -> Result<(), Error> {
         std::fs::write(&generator_path, config.language.generator_template())?;
         println!("Created generator file: {:?}", generator_path);
         println!("次回同じコマンドを実行するとテストケースが生成されます");
+        
+        // Update contest info with generator
+        config.ensure_contest_exists()?;
+        config.update_problem_info(true)?;
+        
         return Ok(());
     }
 
@@ -307,13 +397,13 @@ fn generate(config: Config) -> Result<(), Error> {
         let entry = entry?;
         let name = entry.file_name();
         let name = name.to_string_lossy();
-        if name.starts_with("custom-") && (name.ends_with(".in") || name.ends_with(".out")) {
+        if Config::is_custom_test_file(&name) {
             std::fs::remove_file(entry.path())?;
         }
     }
 
-    let input_path = test_dir.join("custom-1.in");
-    let output_path = test_dir.join("custom-1.out");
+    let input_path = test_dir.join(format!("{}{}.in", CUSTOM_TEST_PREFIX, 1));
+    let output_path = test_dir.join(format!("{}{}.out", CUSTOM_TEST_PREFIX, 1));
 
     // ジェネレータの準備と実行
     let runtime = tokio::runtime::Runtime::new()
@@ -359,4 +449,20 @@ fn generate(config: Config) -> Result<(), Error> {
 fn submit(_config: Config) -> Result<(), Error> {
     println!("Submit command not implemented yet");
     Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+struct ContestInfo {
+    contests: HashMap<String, Contest>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+struct Contest {
+    problems: HashMap<String, Problem>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+struct Problem {
+    solution: Option<String>,
+    generator: Option<String>,
 }
