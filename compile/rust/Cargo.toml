@@ -7,62 +7,6 @@ edition = "2021"
 name = "main"
 path = "src/main.rs"
 
-[[bin]]
-name = "a"
-path = "../../workspace/a.rs"
-
-[[bin]]
-name = "a_gen"
-path = "../../workspace/a_gen.rs"
-
-[[bin]]
-name = "b"
-path = "../../workspace/b.rs"
-
-[[bin]]
-name = "b_gen"
-path = "../../workspace/b_gen.rs"
-
-[[bin]]
-name = "c"
-path = "../../workspace/c.rs"
-
-[[bin]]
-name = "c_gen"
-path = "../../workspace/c_gen.rs"
-
-[[bin]]
-name = "d"
-path = "../../workspace/d.rs"
-
-[[bin]]
-name = "d_gen"
-path = "../../workspace/d_gen.rs"
-
-[[bin]]
-name = "e"
-path = "../../workspace/e.rs"
-
-[[bin]]
-name = "e_gen"
-path = "../../workspace/e_gen.rs"
-
-[[bin]]
-name = "f"
-path = "../../workspace/f.rs"
-
-[[bin]]
-name = "f_gen"
-path = "../../workspace/f_gen.rs"
-
-[[bin]]
-name = "g"
-path = "../../workspace/g.rs"
-
-[[bin]]
-name = "g_gen"
-path = "../../workspace/g_gen.rs"
-
 [dependencies]
 proconio = "0.4.5"
 itertools = "0.11.0"
