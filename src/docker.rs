@@ -102,15 +102,21 @@ fn get_docker_run_args(opts: &DockerRunOptions) -> Vec<String> {
         config.memory_limit.clone(),
         "-e".into(),
         "RUST_BACKTRACE=1".into(),
-        "-v".into(),
-        workspace_mount,
-        "-w".into(),
-        "/workspace".into(),
     ];
 
     if let Some(mount) = &opts.compile_mount {
         args.push("-v".into());
         args.push(mount.clone());
+    }
+
+    args.push("-v".into());
+    args.push(workspace_mount);
+
+    args.push("-w".into());
+    if opts.compile_mount.is_some() {
+        args.push("/compile".into());
+    } else {
+        args.push("/workspace".into());
     }
 
     args.push(opts.image.into());
