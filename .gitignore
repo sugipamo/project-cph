@@ -13,9 +13,8 @@ Cargo.lock
 /compile/pypy/test.py
 
 # コンテスト
-contests/
-workspace/
-!workspace/.moveignore
+contests
+workspace
 
 # エディタ/OS関連
 .vscode/
