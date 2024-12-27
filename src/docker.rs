@@ -179,6 +179,10 @@ pub struct DockerOutput {
     pub execution_time: std::time::Duration,
 }
 
+fn create_run_command(work_dir: &str, command: &str, stdin: &str) -> String {
+    format!("cd {} && echo '{}' | {}", work_dir, stdin, command)
+}
+
 pub async fn run_in_docker(
     workspace_dir: &Path,
     language: &Language,
@@ -194,7 +198,11 @@ pub async fn run_in_docker(
                 .unwrap_or(source_file);
             
             // まずコンパイル
-            let compile_cmd = format!("cd /compile && cargo build --bin {}", binary_name);
+            let compile_cmd = create_run_command(
+                "/compile",
+                &format!("cargo build --bin {}", binary_name),
+                ""
+            );
             let compile_cmd_slice = ["sh", "-c", &compile_cmd];
             let compile_opts = DockerRunOptions::new_with_language(
                 workspace_dir,
@@ -209,7 +217,11 @@ pub async fn run_in_docker(
             }
 
             // 次に実行
-            let run_cmd = format!("cd /compile && echo '{}' | /compile/target/debug/{}", stdin.unwrap_or_default(), binary_name);
+            let run_cmd = create_run_command(
+                "/compile",
+                &format!("/compile/target/debug/{}", binary_name),
+                &stdin.unwrap_or_default()
+            );
             let run_cmd_slice = ["sh", "-c", &run_cmd];
             let run_opts = DockerRunOptions::new_with_language(
                 workspace_dir,
@@ -221,14 +233,21 @@ pub async fn run_in_docker(
             run_docker_command(&run_opts, None).await
         },
         Language::PyPy => {
+            let source_file = args[0];
+            let run_cmd = create_run_command(
+                "/compile",
+                &format!("pypy3 {}", source_file),
+                &stdin.unwrap_or_default()
+            );
+            let run_cmd_slice = ["sh", "-c", &run_cmd];
             let opts = DockerRunOptions::new_with_language(
                 workspace_dir,
                 language,
-                args,
+                &run_cmd_slice,
                 true
             );
 
-            run_docker_command(&opts, stdin).await
+            run_docker_command(&opts, None).await
         }
     }
 }
