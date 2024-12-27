@@ -175,12 +175,12 @@ fn handle_open(problem_id: String, site: Site) -> Result<()> {
     Ok(())
 }
 
-fn handle_test(problem_id: String) -> Result<()> {
+fn handle_test(_problem_id: String) -> Result<()> {
     let (_workspace, _config) = get_workspace_with_config()?;
     Error::unsupported_feature("test command")
 }
 
-fn handle_submit(problem_id: String) -> Result<()> {
+fn handle_submit(_problem_id: String) -> Result<()> {
     let (_workspace, _config) = get_workspace_with_config()?;
     Error::unsupported_feature("submit command")
 }
