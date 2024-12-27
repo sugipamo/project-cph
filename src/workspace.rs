@@ -147,7 +147,28 @@ impl Workspace {
         // ソースファイルを作成
         let source_path = self.get_workspace_dir().join(format!("{}.{}", problem_id, config.language.extension()));
         if !source_path.exists() {
-            fs::write(&source_path, config.language.default_content()?)?;
+            // まずワークスペース内のテンプレートを確認
+            let workspace_template = self.get_workspace_dir()
+                .join("template")
+                .join(format!("main.{}", config.language.extension()));
+
+            // ワークスペース内にテンプレートがあればそれを使用、なければソースのテンプレートを使用
+            if workspace_template.exists() {
+                fs::copy(&workspace_template, &source_path)?;
+            } else {
+                // ソースのテンプレートを使用
+                let source_template = self.root
+                    .join("src")
+                    .join("templates")
+                    .join("template")
+                    .join(format!("main.{}", config.language.extension()));
+
+                if source_template.exists() {
+                    fs::copy(&source_template, &source_path)?;
+                } else {
+                    fs::write(&source_path, config.language.default_content()?)?;
+                }
+            }
         }
 
         Ok(source_path)
