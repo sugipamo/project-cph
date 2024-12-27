@@ -60,6 +60,22 @@ impl Workspace {
         fs::create_dir_all(&workspace_dir)?;
         self.save_config()?;
 
+        // contests内に対象コンテストがあるか確認
+        let contests_dir = self.get_contests_dir().join(contest_id);
+        if contests_dir.exists() {
+            // コンテストディレクトリ内のファイルを移動
+            for entry in fs::read_dir(&contests_dir)? {
+                let entry = entry?;
+                let path = entry.path();
+                if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                    let target_path = workspace_dir.join(file_name);
+                    fs::rename(&path, &target_path)?;
+                }
+            }
+            // 空になったコンテストディレクトリを削除
+            fs::remove_dir_all(&contests_dir)?;
+        }
+
         // テンプレートファイルをコピー
         self.copy_template_files()?;
 
@@ -92,19 +108,9 @@ impl Workspace {
     }
 
     pub fn setup_problem(&mut self, problem_id: &str) -> Result<PathBuf> {
-        let config = self.config.as_ref()
-            .ok_or_else(|| Error::InvalidInput("No active contest. Use 'workspace' command to set one.".to_string()))?;
-
-        // contests内に対象コンテストがあるか確認
-        let contests_dir = self.get_contests_dir().join(&config.contest);
-        if contests_dir.exists() {
-            let workspace_dir = self.get_workspace_dir();
-            fs::create_dir_all(&workspace_dir)?;
-
-            // コンテストディレクトリを移動
-            let target_dir = workspace_dir.join(&config.contest);
-            fs::rename(&contests_dir, &target_dir)?;
-        }
+        let config = self.get_current_config()
+            .ok_or_else(|| Error::InvalidInput(crate::error::NO_ACTIVE_CONTEST.to_string()))?
+            .clone();
         
         // ソースファイルを作成
         let source_path = self.get_workspace_dir().join(format!("{}.{}", problem_id, config.language.extension()));
