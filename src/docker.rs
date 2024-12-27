@@ -118,58 +118,16 @@ pub async fn run_in_docker(
     language: &Language,
     args: &[&str],
 ) -> Result<(String, String)> {
-    match language {
-        Language::Rust => {
-            // コンパイル
-            let source_file = args[0];
-            let output = run_command(
-                "docker",
-                &[
-                    "run", "--rm",
-                    "-v", &format!("{}:/workspace", workspace_dir.display()),
-                    "-w", "/workspace",
-                    "rust:1.70",
-                    "rustc", source_file
-                ],
-                None
-            )?;
+    let opts = DockerRunOptions {
+        workspace_dir,
+        image: &DockerConfig::get_image(language),
+        cmd: args,
+        compile_mount: Some(DockerConfig::get_compile_mount(language)),
+    };
 
-            if !output.status.success() {
-                return Ok(("".to_string(), String::from_utf8_lossy(&output.stderr).into_owned()));
-            }
-
-            // 実行
-            let executable = source_file.replace(".rs", "");
-            let output = run_command(
-                "docker",
-                &[
-                    "run", "--rm",
-                    "-v", &format!("{}:/workspace", workspace_dir.display()),
-                    "-w", "/workspace",
-                    "rust:1.70",
-                    &format!("./{}", executable)
-                ],
-                None
-            )?;
-
-            Ok((
-                String::from_utf8_lossy(&output.stdout).into_owned(),
-                String::from_utf8_lossy(&output.stderr).into_owned()
-            ))
-        },
-        Language::PyPy => {
-            let opts = DockerRunOptions {
-                workspace_dir,
-                image: &DockerConfig::get_image(language),
-                cmd: args,
-                compile_mount: Some(DockerConfig::get_compile_mount(language)),
-            };
-
-            let args = get_docker_run_args(&opts);
-            let args: Vec<&str> = args.iter().map(AsRef::as_ref).collect();
-            execute_program("docker", &args, None).await
-        }
-    }
+    let args = get_docker_run_args(&opts);
+    let args: Vec<&str> = args.iter().map(AsRef::as_ref).collect();
+    execute_program("docker", &args, None).await
 }
 
 // online judge tool用のDockerイメージ名
