@@ -22,7 +22,8 @@ fn setup() -> PathBuf {
 async fn run_in_docker_and_check(workspace_dir: &PathBuf, lang: &Language, cmd: &[&str], error_msg: &str) -> (String, String) {
     let result = docker::run_in_docker(workspace_dir, lang, cmd, None).await;
     assert!(result.is_ok(), "{}: {:?}", error_msg, result);
-    result.unwrap()
+    let output = result.unwrap();
+    (output.stdout, output.stderr)
 }
 
 async fn test_hello_world(workspace_dir: &PathBuf, lang: Language, setup_cmd: &[&str], run_cmd: &[&str], expected_output: &str) {

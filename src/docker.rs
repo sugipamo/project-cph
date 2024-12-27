@@ -172,6 +172,7 @@ async fn run_docker_command(opts: &DockerRunOptions<'_>, stdin: Option<String>) 
     })
 }
 
+#[derive(Debug)]
 pub struct DockerOutput {
     pub stdout: String,
     pub stderr: String,
