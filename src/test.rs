@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::fs;
+use std::time::Instant;
 use tokio::fs as tokio_fs;
 use crate::error::{Error, Result};
 use crate::docker;
@@ -12,6 +13,7 @@ pub struct TestResult {
     pub expected: String,
     pub actual: String,
     pub error: Option<String>,
+    pub execution_time: std::time::Duration,
 }
 
 pub async fn run_test(
@@ -23,12 +25,14 @@ pub async fn run_test(
     let input = fs::read_to_string(test_file)
         .map_err(|e| Error::Io(e))?;
 
+    let start_time = Instant::now();
     let (actual_output, stderr) = docker::run_in_docker(
         program_path.parent().unwrap_or(Path::new(".")),
         &language,
         &[program_path.file_name().unwrap().to_str().unwrap()],
         Some(input.clone()),
     ).await?;
+    let execution_time = start_time.elapsed();
 
     let error = if !stderr.trim().is_empty() && !stderr.contains("Finished dev") {
         Some(stderr)
@@ -42,6 +46,7 @@ pub async fn run_test(
         expected: expected_output.to_string(),
         actual: actual_output,
         error,
+        execution_time,
     })
 }
 
@@ -122,9 +127,17 @@ fn format_runtime_error(error: &str) -> String {
 
 fn print_diff(test_case: &str, result: &TestResult) {
     if result.passed {
-        println!("Test case {} ... {}", test_case, "passed".green().bold());
+        println!("Test case {} ... {} ({:.3}s)", 
+            test_case, 
+            "passed".green().bold(),
+            result.execution_time.as_secs_f64()
+        );
     } else {
-        println!("\nTest case {} ... {}", test_case, "failed".red().bold());
+        println!("\nTest case {} ... {} ({:.3}s)", 
+            test_case, 
+            "failed".red().bold(),
+            result.execution_time.as_secs_f64()
+        );
         
         // Input と Error を横に並べて表示
         let input_lines: Vec<&str> = result.input.trim().lines().collect();
@@ -209,17 +222,19 @@ pub async fn run_all_tests(
     test_dir: &Path,
     program_path: &Path,
     language: crate::Language,
-) -> Result<(usize, usize)> {
+) -> Result<(usize, usize, std::time::Duration)> {
+    let start_time = Instant::now();
     if !test_dir.exists() {
-        return Ok((0, 0));
+        return Ok((0, 0, start_time.elapsed()));
     }
 
     let mut total = 0;
-    let mut passed = 0;
+    let mut test_futures = Vec::new();
 
     let mut entries = tokio_fs::read_dir(test_dir).await
         .map_err(|e| Error::Io(e))?;
 
+    // テストケースを収集
     while let Some(entry) = entries.next_entry().await
         .map_err(|e| Error::Io(e))? {
         let path = entry.path();
@@ -233,45 +248,64 @@ pub async fn run_all_tests(
             let expected = fs::read_to_string(&out_path)
                 .map_err(|e| Error::Io(e))?;
 
-            let test_case = path.file_stem().unwrap().to_string_lossy();
-            let result = run_test(&path, &expected, program_path, language).await?;
+            let test_case = path.file_stem().unwrap().to_string_lossy().into_owned();
+            let path = path.to_path_buf();
+            let program_path = program_path.to_path_buf();
             
-            if result.passed {
-                passed += 1;
-            }
-            print_diff(&test_case, &result);
+            // 各テストケースを非同期タスクとして準備
+            test_futures.push(tokio::spawn(async move {
+                let result = run_test(&path, &expected, &program_path, language).await?;
+                Ok::<(String, TestResult), Error>((test_case, result))
+            }));
         }
     }
 
-    Ok((passed, total))
+    // 全テストを並列実行
+    let mut passed = 0;
+    for test_future in test_futures {
+        match test_future.await {
+            Ok(Ok((test_case, result))) => {
+                if result.passed {
+                    passed += 1;
+                }
+                print_diff(&test_case, &result);
+            },
+            Ok(Err(e)) => println!("Test error: {}", e),
+            Err(e) => println!("Task error: {}", e),
+        }
+    }
+
+    Ok((passed, total, start_time.elapsed()))
 }
 
 pub fn run(config: Config) -> Result<bool> {
     if let Ok(handle) = tokio::runtime::Handle::try_current() {
         handle.block_on(async {
-            let (passed, total) = run_all_tests(
+            let (passed, total, total_time) = run_all_tests(
                 &config.test_dir,
                 &config.problem_file,
                 config.language,
             ).await?;
-            println!("\nTest results: {}/{} {}", 
+            println!("\nTest results: {}/{} {} (total time: {:.3}s)", 
                 passed.to_string().bold(), 
                 total.to_string().bold(),
-                if passed == total { "passed".green().bold() } else { "failed".red().bold() }
+                if passed == total { "passed".green().bold() } else { "failed".red().bold() },
+                total_time.as_secs_f64()
             );
             Ok(passed == total)
         })
     } else {
         tokio::runtime::Runtime::new()?.block_on(async {
-            let (passed, total) = run_all_tests(
+            let (passed, total, total_time) = run_all_tests(
                 &config.test_dir,
                 &config.problem_file,
                 config.language,
             ).await?;
-            println!("\nTest results: {}/{} {}", 
+            println!("\nTest results: {}/{} {} (total time: {:.3}s)", 
                 passed.to_string().bold(), 
                 total.to_string().bold(),
-                if passed == total { "passed".green().bold() } else { "failed".red().bold() }
+                if passed == total { "passed".green().bold() } else { "failed".red().bold() },
+                total_time.as_secs_f64()
             );
             Ok(passed == total)
         })
