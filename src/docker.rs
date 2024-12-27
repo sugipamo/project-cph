@@ -80,9 +80,24 @@ pub async fn execute_program(
 // Dockerコンテナの実行オプション
 struct DockerRunOptions<'a> {
     workspace_dir: &'a Path,
-    image: &'a str,
+    image: String,
     cmd: &'a [&'a str],
     compile_mount: Option<String>,
+}
+
+impl<'a> DockerRunOptions<'a> {
+    fn new_with_language(workspace_dir: &'a Path, language: &Language, cmd: &'a [&'a str], use_compile_dir: bool) -> Self {
+        Self {
+            workspace_dir,
+            image: DockerConfig::get_image(language),
+            cmd,
+            compile_mount: if use_compile_dir {
+                Some(DockerConfig::get_compile_mount(language))
+            } else {
+                None
+            },
+        }
+    }
 }
 
 // Dockerコマンドの共通実行ロジック
@@ -118,9 +133,15 @@ fn get_docker_run_args(opts: &DockerRunOptions) -> Vec<String> {
         args.push("/workspace".into());
     }
 
-    args.push(opts.image.into());
+    args.push(opts.image.clone());
     args.extend(opts.cmd.iter().map(|s| (*s).into()));
     args
+}
+
+async fn run_docker_command(opts: &DockerRunOptions<'_>, stdin: Option<String>) -> Result<(String, String)> {
+    let args = get_docker_run_args(opts);
+    let args: Vec<&str> = args.iter().map(AsRef::as_ref).collect();
+    execute_program("docker", &args, stdin).await
 }
 
 pub async fn run_in_docker(
@@ -138,44 +159,42 @@ pub async fn run_in_docker(
                 .unwrap_or(source_file);
             
             // まずコンパイル
-            let compile_opts = DockerRunOptions {
+            let compile_cmd = format!("cd /compile && cargo build --bin {}", binary_name);
+            let compile_cmd_slice = ["sh", "-c", &compile_cmd];
+            let compile_opts = DockerRunOptions::new_with_language(
                 workspace_dir,
-                image: &DockerConfig::get_image(language),
-                cmd: &["sh", "-c", &format!("cd /compile && cargo build --bin {}", binary_name)],
-                compile_mount: Some(DockerConfig::get_compile_mount(language)),
-            };
+                language,
+                &compile_cmd_slice,
+                true
+            );
 
-            let compile_args = get_docker_run_args(&compile_opts);
-            let compile_args: Vec<&str> = compile_args.iter().map(AsRef::as_ref).collect();
-            let (_, compile_stderr) = execute_program("docker", &compile_args, None).await?;
+            let (_, compile_stderr) = run_docker_command(&compile_opts, None).await?;
             
             if compile_stderr.contains("error") {
                 return Ok(("".to_string(), compile_stderr));
             }
 
             // 次に実行
-            let run_opts = DockerRunOptions {
+            let run_cmd = format!("cd /compile && echo '{}' | /compile/target/debug/{}", stdin.unwrap_or_default(), binary_name);
+            let run_cmd_slice = ["sh", "-c", &run_cmd];
+            let run_opts = DockerRunOptions::new_with_language(
                 workspace_dir,
-                image: &DockerConfig::get_image(language),
-                cmd: &["sh", "-c", &format!("cd /compile && echo '{}' | /compile/target/debug/{}", stdin.unwrap_or_default(), binary_name)],
-                compile_mount: Some(DockerConfig::get_compile_mount(language)),
-            };
+                language,
+                &run_cmd_slice,
+                true
+            );
 
-            let run_args = get_docker_run_args(&run_opts);
-            let run_args: Vec<&str> = run_args.iter().map(AsRef::as_ref).collect();
-            execute_program("docker", &run_args, None).await
+            run_docker_command(&run_opts, None).await
         },
         Language::PyPy => {
-            let opts = DockerRunOptions {
+            let opts = DockerRunOptions::new_with_language(
                 workspace_dir,
-                image: &DockerConfig::get_image(language),
-                cmd: args,
-                compile_mount: Some(DockerConfig::get_compile_mount(language)),
-            };
+                language,
+                args,
+                true
+            );
 
-            let args = get_docker_run_args(&opts);
-            let args: Vec<&str> = args.iter().map(AsRef::as_ref).collect();
-            execute_program("docker", &args, stdin).await
+            run_docker_command(&opts, stdin).await
         }
     }
 }
@@ -187,12 +206,11 @@ pub async fn run_oj_tool(
     workspace_dir: &Path,
     args: &[&str],
 ) -> Result<(String, String)> {
-    let docker_args = get_docker_run_args(&DockerRunOptions {
+    let opts = DockerRunOptions {
         workspace_dir,
-        image: OJT_DOCKER_IMAGE,
+        image: OJT_DOCKER_IMAGE.to_string(),
         cmd: args,
         compile_mount: None,
-    });
-    let docker_args: Vec<&str> = docker_args.iter().map(AsRef::as_ref).collect();
-    execute_program("docker", &docker_args, None).await
+    };
+    run_docker_command(&opts, None).await
 } 
