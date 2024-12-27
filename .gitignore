@@ -12,7 +12,8 @@ Cargo.lock
 /compile/rust/test
 /compile/pypy/test.py
 
-archive/
+# コンテスト
+contests/
 
 # エディタ/OS関連
 .vscode/
