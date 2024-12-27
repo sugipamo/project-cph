@@ -255,8 +255,9 @@ fn handle_open(problem_id: String, site: Site) -> Result<()> {
 
     // テストケースのダウンロード
     let test_dir = workspace.get_workspace_dir().join("test").join(&problem_id);
+    let url = site.problem_url(&contest_id, &problem_id);
+    
     if !test_dir.exists() || !has_valid_test_cases(&test_dir)? {
-        let url = site.problem_url(&contest_id, &problem_id);
         if let Err(_e) = download_test_cases(&test_dir, &url, &problem_id) {
             println!("  Note: You can still download test cases later with 'test' command");
             // エラーを表示するだけで処理は続行
@@ -270,9 +271,16 @@ fn handle_open(problem_id: String, site: Site) -> Result<()> {
         println!("  Note: You can manually open {}", source_path.display());
     }
 
-    if let Err(e) = open_in_browser(&site.problem_url(&contest_id, &problem_id)) {
+    // Pythonのwebbrowserモジュールを使用してブラウザで開く
+    let output = run_command(
+        "python3",
+        &["-c", &format!("import webbrowser; webbrowser.open('{}')", url)],
+        None
+    );
+
+    if let Err(e) = output {
         println!("⚠ Failed to open browser: {}", e);
-        println!("  URL: {}", site.problem_url(&contest_id, &problem_id));
+        println!("  URL: {}", url);
     }
 
     Ok(())
@@ -291,7 +299,7 @@ fn handle_test(problem_id: String) -> Result<bool> {
     // テストケースのディレクトリを設定
     let test_dir = workspace.get_workspace_dir().join("test").join(&problem_id);
 
-    // テス��ケースが存在しない場合のみダウンロード
+    // テストケースが存在しない場合のみダウンロード
     if !test_dir.exists() || !has_valid_test_cases(&test_dir)? {
         let url = config.site.problem_url(&config.contest, &problem_id);
         download_test_cases(&test_dir, &url, &problem_id)?;
@@ -482,13 +490,4 @@ fn open_in_editor(path: &PathBuf) -> Result<()> {
         }
     }
     Ok(())
-}
-
-fn open_in_browser(url: &str) -> Result<()> {
-    // テスト時はブラウザを開かない
-    if std::env::var("TEST_MODE").is_ok() {
-        return Ok(());
-    }
-
-    open::that(url).map_err(|e| Error::command_failed("open browser", e.to_string()))
 } 
