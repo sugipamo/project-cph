@@ -316,14 +316,14 @@ pub async fn run_in_docker(
                 &stdin.unwrap_or_default()
             );
             let run_cmd_slice = ["sh", "-c", &run_cmd];
-            let run_opts = DockerRunOptions::new_with_language(
+            let opts = DockerRunOptions::new_with_language(
                 workspace_dir,
                 language,
                 &run_cmd_slice,
                 true
             );
 
-            run_docker_command(&run_opts, None).await
+            run_docker_command(&opts, None).await
         },
         Language::PyPy => {
             let run_cmd = if args[0] == "sh" && args[1] == "-c" {
@@ -346,13 +346,7 @@ pub async fn run_in_docker(
                 true
             );
 
-            eprintln!("Running PyPy command: {}", run_cmd);
-            let result = run_docker_command(&opts, None).await;  // stdinはNoneに変更
-            if let Ok(ref output) = result {
-                eprintln!("PyPy stdout: {:?}", output.stdout);
-                eprintln!("PyPy stderr: {:?}", output.stderr);
-            }
-            result
+            run_docker_command(&opts, None).await
         }
     }
 }

@@ -206,7 +206,7 @@ fn print_diff(test_case: &str, result: &TestResult) {
                     }
                     print!("| ");
                     if i < actual_lines.len() {
-                        print!("{}", actual.red());
+                        print!("{}", actual);
                     }
                     println!();
                 }
