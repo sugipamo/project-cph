@@ -14,6 +14,7 @@ const DEFAULT_MEMORY_LIMIT: &str = "256m";
 #[serde(rename_all = "lowercase")]
 pub enum Language {
     Rust,
+    #[clap(name = "pypy", alias = "py-py")]
     PyPy,
 }
 
