@@ -23,7 +23,7 @@ impl Workspace {
     }
 
     fn load_config(root: &Path) -> Result<Config> {
-        let config_path = root.join("contests.yaml");
+        let config_path = root.join("workspace").join("contests.yaml");
         if config_path.exists() {
             let contents = std::fs::read_to_string(&config_path)?;
             Ok(serde_yaml::from_str(&contents)?)
@@ -33,7 +33,9 @@ impl Workspace {
     }
 
     fn save_config(&self) -> Result<()> {
-        let config_path = self.root.join("contests.yaml");
+        let workspace_dir = self.get_workspace_dir();
+        fs::create_dir_all(&workspace_dir)?;
+        let config_path = workspace_dir.join("contests.yaml");
         if let Some(config) = &self.config {
             let contents = serde_yaml::to_string(&config)?;
             std::fs::write(config_path, contents)?;

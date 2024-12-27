@@ -84,10 +84,10 @@ fn test_workspace_command() {
     // ディレクトリ構造を確認
     assert!(workspace.path().join("workspace").exists());
     assert!(workspace.path().join("workspace/abc001").exists());
-    assert!(workspace.path().join("contests.yaml").exists());
+    assert!(workspace.path().join("workspace/contests.yaml").exists());
 
     // contests.yamlの内容を確認
-    let config = fs::read_to_string(workspace.path().join("contests.yaml")).unwrap();
+    let config = fs::read_to_string(workspace.path().join("workspace/contests.yaml")).unwrap();
     assert!(config.contains("contest: abc001"));
     assert!(config.contains("language: rust")); // デフォルト言語
     assert!(config.contains("site: atcoder"));
