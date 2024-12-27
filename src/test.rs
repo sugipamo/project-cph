@@ -25,28 +25,26 @@ pub async fn run_test(
     let input = fs::read_to_string(test_file)
         .map_err(|e| Error::Io(e))?;
 
-    let start_time = Instant::now();
-    let (actual_output, stderr) = docker::run_in_docker(
+    let output = docker::run_in_docker(
         program_path.parent().unwrap_or(Path::new(".")),
         &language,
         &[program_path.file_name().unwrap().to_str().unwrap()],
         Some(input.clone()),
     ).await?;
-    let execution_time = start_time.elapsed();
 
-    let error = if !stderr.trim().is_empty() && !stderr.contains("Finished dev") {
-        Some(stderr)
+    let error = if !output.stderr.trim().is_empty() && !output.stderr.contains("Finished dev") {
+        Some(output.stderr)
     } else {
         None
     };
 
     Ok(TestResult {
-        passed: actual_output.trim() == expected_output.trim(),
+        passed: output.stdout.trim() == expected_output.trim(),
         input,
         expected: expected_output.to_string(),
-        actual: actual_output,
+        actual: output.stdout,
         error,
-        execution_time,
+        execution_time: output.execution_time,
     })
 }
 

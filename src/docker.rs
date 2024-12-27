@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::process::Stdio;
+use std::time::Instant;
 
 use tokio::time::timeout;
 use tokio::process::Command as TokioCommand;
@@ -138,10 +139,43 @@ fn get_docker_run_args(opts: &DockerRunOptions) -> Vec<String> {
     args
 }
 
-async fn run_docker_command(opts: &DockerRunOptions<'_>, stdin: Option<String>) -> Result<(String, String)> {
+async fn run_docker_command(opts: &DockerRunOptions<'_>, stdin: Option<String>) -> Result<DockerOutput> {
     let args = get_docker_run_args(opts);
     let args: Vec<&str> = args.iter().map(AsRef::as_ref).collect();
-    execute_program("docker", &args, stdin).await
+    let mut child = TokioCommand::new("docker")
+        .args(&args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| Error::Docker(DockerError::failed("spawn docker process", e)))?;
+
+    if let Some(input) = stdin {
+        if let Some(mut stdin) = child.stdin.take() {
+            stdin.write_all(input.as_bytes()).await
+                .map_err(|e| Error::Docker(DockerError::failed("write to stdin", e)))?;
+        }
+    }
+
+    let start_time = Instant::now();
+    let output = child.wait_with_output().await
+        .map_err(|e| Error::Docker(DockerError::failed("wait for docker process", e)))?;
+    let execution_time = start_time.elapsed();
+
+    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+
+    Ok(DockerOutput {
+        stdout,
+        stderr,
+        execution_time,
+    })
+}
+
+pub struct DockerOutput {
+    pub stdout: String,
+    pub stderr: String,
+    pub execution_time: std::time::Duration,
 }
 
 pub async fn run_in_docker(
@@ -149,7 +183,7 @@ pub async fn run_in_docker(
     language: &Language,
     args: &[&str],
     stdin: Option<String>,
-) -> Result<(String, String)> {
+) -> Result<DockerOutput> {
     match language {
         Language::Rust => {
             let source_file = args[0];
@@ -168,10 +202,9 @@ pub async fn run_in_docker(
                 true
             );
 
-            let (_, compile_stderr) = run_docker_command(&compile_opts, None).await?;
-            
-            if compile_stderr.contains("error") {
-                return Ok(("".to_string(), compile_stderr));
+            let compile_result = run_docker_command(&compile_opts, None).await?;
+            if compile_result.stderr.contains("error") {
+                return Ok(compile_result);
             }
 
             // 次に実行
@@ -205,7 +238,7 @@ pub const OJT_DOCKER_IMAGE: &str = "cph-oj";
 pub async fn run_oj_tool(
     workspace_dir: &Path,
     args: &[&str],
-) -> Result<(String, String)> {
+) -> Result<DockerOutput> {
     let opts = DockerRunOptions {
         workspace_dir,
         image: OJT_DOCKER_IMAGE.to_string(),
