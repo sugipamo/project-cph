@@ -252,7 +252,7 @@ fn handle_open(problem_id: String, site: Site) -> Result<()> {
     let test_dir = workspace.get_workspace_dir().join("test").join(&problem_id);
     if !test_dir.exists() || !has_valid_test_cases(&test_dir)? {
         let url = site.problem_url(&contest_id, &problem_id);
-        if let Err(e) = download_test_cases(&test_dir, &url, &problem_id) {
+        if let Err(_e) = download_test_cases(&test_dir, &url, &problem_id) {
             println!("  Note: You can still download test cases later with 'test' command");
             // エラーを表示するだけで処理は続行
         }

@@ -6,12 +6,12 @@ use crate::docker;
 use crate::Config;
 use colored::*;
 
-struct TestResult {
-    passed: bool,
-    input: String,
-    expected: String,
-    actual: String,
-    error: Option<String>,
+pub struct TestResult {
+    pub passed: bool,
+    pub input: String,
+    pub expected: String,
+    pub actual: String,
+    pub error: Option<String>,
 }
 
 pub async fn run_test(

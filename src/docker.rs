@@ -1,12 +1,11 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
+use std::process::Stdio;
+
+use tokio::time::timeout;
 use tokio::process::Command as TokioCommand;
 use tokio::io::AsyncWriteExt;
-use std::process::Stdio;
-use tokio::time::timeout;
 use once_cell::sync::Lazy;
-use std::path::PathBuf;
-use std::process::Command;
 
 use crate::error::{Error, Result, DockerError};
 use crate::{Language, DEFAULT_TIMEOUT_SECS, DEFAULT_MEMORY_LIMIT};
@@ -188,28 +187,12 @@ pub async fn run_oj_tool(
     workspace_dir: &Path,
     args: &[&str],
 ) -> Result<(String, String)> {
-    let opts = DockerRunOptions {
+    let docker_args = get_docker_run_args(&DockerRunOptions {
         workspace_dir,
         image: OJT_DOCKER_IMAGE,
         cmd: args,
         compile_mount: None,
-    };
-
-    let args = get_docker_run_args(&opts);
-    let args: Vec<&str> = args.iter().map(AsRef::as_ref).collect();
-    execute_program("docker", &args, None).await
-}
-
-fn run_command(program: &str, args: &[&str], envs: Option<&[(&str, &str)]>) -> Result<std::process::Output> {
-    let mut cmd = Command::new(program);
-    cmd.args(args);
-    
-    if let Some(env_vars) = envs {
-        for (key, value) in env_vars {
-            cmd.env(key, value);
-        }
-    }
-    
-    cmd.output()
-        .map_err(|e| Error::Docker(DockerError::failed("execute command", e)))
+    });
+    let docker_args: Vec<&str> = docker_args.iter().map(AsRef::as_ref).collect();
+    execute_program("docker", &docker_args, None).await
 } 
