@@ -1,6 +1,5 @@
 use std::path::Path;
 use std::fs;
-use std::time::Instant;
 use tokio::fs as tokio_fs;
 use crate::error::{Error, Result};
 use crate::docker;
@@ -153,21 +152,27 @@ fn print_diff(test_case: &str, result: &TestResult) {
             println!("{}", "=".repeat(40));
             
             let max_lines = expected_lines.len().max(actual_lines.len());
-            println!("Expected:    | Actual:");
+            println!("Expected:        | Actual:");
             println!("{}", "=".repeat(55));
+            
+            // 出力幅を固定
+            let width = 16;  // Expected: の後のスペースを含む幅
             
             for i in 0..max_lines {
                 let expected = expected_lines.get(i).unwrap_or(&"");
                 let actual = actual_lines.get(i).unwrap_or(&"");
                 
                 if i < expected_lines.len() && i < actual_lines.len() && expected == actual {
-                    println!("{:<12} | {}", expected, actual);
+                    println!("{:width$}| {}", expected, actual, width=width);
                 } else {
                     if i < expected_lines.len() {
                         print!("{}", expected.green());
+                        let padding = width.saturating_sub(expected.chars().count());
+                        print!("{}", " ".repeat(padding));
+                    } else {
+                        print!("{}", " ".repeat(width));
                     }
-                    print!("{:<12}", "");
-                    print!(" | ");
+                    print!("| ");
                     if i < actual_lines.len() {
                         print!("{}", actual.red());
                     }
