@@ -27,9 +27,10 @@ pub async fn run_test(
         program_path.parent().unwrap_or(Path::new(".")),
         &language,
         &[program_path.file_name().unwrap().to_str().unwrap()],
+        Some(input.clone()),
     ).await?;
 
-    let error = if !stderr.trim().is_empty() {
+    let error = if !stderr.trim().is_empty() && !stderr.contains("Finished dev") {
         Some(stderr)
     } else {
         None

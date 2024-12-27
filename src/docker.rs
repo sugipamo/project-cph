@@ -58,8 +58,11 @@ pub async fn execute_program(
 
     if let Some(input) = stdin {
         if let Some(mut stdin) = child.stdin.take() {
-            if let Err(e) = stdin.write_all(input.as_bytes()).await {
-                return Err(Error::Docker(DockerError::failed("write to stdin", e)));
+            for line in input.lines() {
+                stdin.write_all(line.as_bytes()).await
+                    .map_err(|e| Error::Docker(DockerError::failed("write to stdin", e)))?;
+                stdin.write_all(b"\n").await
+                    .map_err(|e| Error::Docker(DockerError::failed("write to stdin", e)))?;
             }
         }
     }
@@ -97,6 +100,8 @@ fn get_docker_run_args(opts: &DockerRunOptions) -> Vec<String> {
         config.memory_limit.clone(),
         "--memory-swap".into(),
         config.memory_limit.clone(),
+        "-e".into(),
+        "RUST_BACKTRACE=1".into(),
         "-v".into(),
         workspace_mount,
         "-w".into(),
@@ -117,17 +122,57 @@ pub async fn run_in_docker(
     workspace_dir: &Path,
     language: &Language,
     args: &[&str],
+    stdin: Option<String>,
 ) -> Result<(String, String)> {
-    let opts = DockerRunOptions {
-        workspace_dir,
-        image: &DockerConfig::get_image(language),
-        cmd: args,
-        compile_mount: Some(DockerConfig::get_compile_mount(language)),
-    };
+    match language {
+        Language::Rust => {
+            let source_file = args[0];
+            let binary_name = Path::new(source_file)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or(source_file);
+            
+            // まずコンパイル
+            let compile_opts = DockerRunOptions {
+                workspace_dir,
+                image: &DockerConfig::get_image(language),
+                cmd: &["sh", "-c", &format!("cd /compile && cargo build --bin {}", binary_name)],
+                compile_mount: Some(DockerConfig::get_compile_mount(language)),
+            };
 
-    let args = get_docker_run_args(&opts);
-    let args: Vec<&str> = args.iter().map(AsRef::as_ref).collect();
-    execute_program("docker", &args, None).await
+            let compile_args = get_docker_run_args(&compile_opts);
+            let compile_args: Vec<&str> = compile_args.iter().map(AsRef::as_ref).collect();
+            let (_, compile_stderr) = execute_program("docker", &compile_args, None).await?;
+            
+            if compile_stderr.contains("error") {
+                return Ok(("".to_string(), compile_stderr));
+            }
+
+            // 次に実行
+            let run_opts = DockerRunOptions {
+                workspace_dir,
+                image: &DockerConfig::get_image(language),
+                cmd: &["sh", "-c", &format!("cd /compile && echo '{}' | /compile/target/debug/{}", stdin.unwrap_or_default(), binary_name)],
+                compile_mount: Some(DockerConfig::get_compile_mount(language)),
+            };
+
+            let run_args = get_docker_run_args(&run_opts);
+            let run_args: Vec<&str> = run_args.iter().map(AsRef::as_ref).collect();
+            execute_program("docker", &run_args, None).await
+        },
+        Language::PyPy => {
+            let opts = DockerRunOptions {
+                workspace_dir,
+                image: &DockerConfig::get_image(language),
+                cmd: args,
+                compile_mount: Some(DockerConfig::get_compile_mount(language)),
+            };
+
+            let args = get_docker_run_args(&opts);
+            let args: Vec<&str> = args.iter().map(AsRef::as_ref).collect();
+            execute_program("docker", &args, stdin).await
+        }
+    }
 }
 
 // online judge tool用のDockerイメージ名
