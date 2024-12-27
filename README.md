@@ -32,13 +32,9 @@
      ```bash
      curl -fsSL https://get.docker.com | sh
      ```
+   - インストール後、Dockerデーモンが起動していることを確認してください
 
-3. online-judge-tools
-   ```bash
-   pip3 install online-judge-tools
-   ```
-
-4. VSCode または Cursor
+3. VSCode または Cursor
    - [Visual Studio Code](https://code.visualstudio.com/)
    - [Cursor](https://cursor.sh/)
 
