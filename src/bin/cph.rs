@@ -1,6 +1,6 @@
-use cph::cli::Command;
+use cph::cli::Cli;
 
 #[tokio::main]
 async fn main() -> cph::error::Result<()> {
-    Command::run().await
+    Cli::run().await
 }

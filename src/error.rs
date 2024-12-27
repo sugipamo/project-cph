@@ -2,6 +2,8 @@ use std::path::StripPrefixError;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+pub const NO_ACTIVE_CONTEST: &str = "No active contest. Use 'workspace' command to set one.";
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("IO error: {0}")]

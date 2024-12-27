@@ -1,14 +1,20 @@
 use assert_cmd::Command;
-use predicates::prelude::*;
 use predicates::str::contains;
 use std::fs;
-use std::path::Path;
+use std::process::Output;
 use tempfile::TempDir;
 
+#[derive(Debug)]
 struct CommandOutput {
-    stdout: String,
     stderr: String,
-    code: i32,
+}
+
+impl From<Output> for CommandOutput {
+    fn from(output: Output) -> Self {
+        Self {
+            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+        }
+    }
 }
 
 fn run_command_with_args(args: &[&str]) -> CommandOutput {
@@ -18,9 +24,7 @@ fn run_command_with_args(args: &[&str]) -> CommandOutput {
 
     let output = command.output().unwrap();
     CommandOutput {
-        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
         stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
-        code: output.status.code().unwrap_or(-1),
     }
 }
 
