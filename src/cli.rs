@@ -157,18 +157,6 @@ impl Command {
                         .ok_or_else(|| Error::InvalidInput("No active contest. Use 'workspace' command to set one.".to_string()))?;
                     let contest_id = config.contest.clone();
 
-                    // contests内に対象コンテストがあるか確認
-                    let contests_dir = workspace.get_contests_dir().join(&contest_id);
-                    if contests_dir.exists() {
-                        // workspaceディレクトリを作成
-                        let workspace_dir = workspace.get_workspace_dir();
-                        fs::create_dir_all(&workspace_dir)?;
-
-                        // コンテストディレクトリを移動
-                        let target_dir = workspace_dir.join(&contest_id);
-                        fs::rename(&contests_dir, &target_dir)?;
-                    }
-
                     let source_path = workspace.setup_problem(&problem_id)?;
 
                     // エディタとブラウザで開く

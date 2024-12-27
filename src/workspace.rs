@@ -95,6 +95,18 @@ impl Workspace {
         let config = self.config.as_ref()
             .ok_or_else(|| Error::InvalidInput("No active contest. Use 'workspace' command to set one.".to_string()))?;
 
+        // contests内に対象コンテストがあるか確認
+        let contests_dir = self.get_contests_dir().join(&config.contest);
+        if contests_dir.exists() {
+            // workspaceディレクトリを作成
+            let workspace_dir = self.get_workspace_dir();
+            fs::create_dir_all(&workspace_dir)?;
+
+            // コンテストディレクトリを移動
+            let target_dir = workspace_dir.join(&config.contest);
+            fs::rename(&contests_dir, &target_dir)?;
+        }
+
         let workspace_dir = self.get_workspace_dir();
         fs::create_dir_all(&workspace_dir)?;
         
