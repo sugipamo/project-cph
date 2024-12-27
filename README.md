@@ -17,55 +17,22 @@ cargo install --path .
 
 ## 使い方
 
-### ログイン
-
-AtCoderにログインします：
-
-```bash
-cph atcoder login
-```
-
-または短縮形：
-
-```bash
-cph atcoder l
-```
-
-ログイン時に以下の情報を入力：
-- ユーザー名
-- パスワード
-
-注意：
-- ログイン情報は`online-judge-tools`によって安全に管理されます
-- ログイン状態は`~/.local/share/online-judge-tools/cookie.jar`に保存されます
-
-### 問題のセットアップ
-
-新しい問題の環境をセットアップします：
-
-```bash
-cph atcoder abc001 rust open a
-```
-
-これにより：
-1. 既存のファイルがアーカイブされます
-2. 新しい問題用のファイルが作成されます
-3. エディタで問題ファイルが開かれます
-4. ブラウザで問題ページが開かれます
-
 ### コマンドの構造
 
 ```bash
-cph <SITE> [CONTEST_ID] [LANGUAGE] <COMMAND> [PROBLEM_ID]
+cph <SITE> <COMMAND> [ARGS...]
 
 # 例：
-cph atcoder login                      # ログイン
-cph atcoder abc001 rust open a         # 問題を開く
+cph atcoder login           # ログイン
+cph atcoder work abc001    # コンテストの設定
+cph atcoder open a         # 問題を開く
 ```
 
-利用可能なサマンド：
+利用可能なコマンド：
 - `login` (`l`): サイトにログイン
+- `work` (`w`): コンテストの設定
 - `open` (`o`): 問題を開く
+- `language` (`lang`): 言語の設定
 - `test` (`t`): テストを実行（予定）
 - `submit` (`s`): 解答を提出（予定）
 - `generate` (`g`): テストケースを生成（予定）
@@ -78,31 +45,67 @@ cph atcoder abc001 rust open a         # 問題を開く
 - `rust`
 - `pypy`
 
-## TODO
+### ログイン
 
-- [ ] テストケースの実行機能
-  - `cph atcoder abc001 rust test a`でテストを実行
-  - サンプルケースの自動取得と実行
-  - 実行時間と使用メモリの表示
+AtCoderにログインします：
 
-- [ ] テストケースの生成機能
-  - `cph atcoder abc001 rust generate a`でテストケースを生成
-  - ランダムケースの生成
-  - エッジケースの自動生成
+```bash
+cph atcoder login
+```
 
-- [ ] 解答の提出機能
-  - `cph atcoder abc001 rust submit a`で解答を提出
-  - 提出前の最終確認
-  - 提出結果の表示
+ログイン時に以下の情報を入力：
+- ユーザー名
+- パスワード
 
-- [ ] 追加サイト対応
-  - yukicoder対応
-  - その他のコンテストサイト対応
+注意：
+- ログイン情報は`online-judge-tools`によって安全に管理されます
+- ログイン状態は`~/.local/share/online-judge-tools/cookie.jar`に保存されます
 
-- [ ] AHC機能
-  - ビジュアライザの統合
-  - ローカルテスト機能
-  - スコア計算機能
+### コンテストの設定
+
+コンテストを設定します：
+
+```bash
+cph atcoder work abc001
+```
+
+これにより：
+1. 既存のファイルがアーカイブされます
+2. 新しいコンテスト用の環境が設定されます
+
+### 問題を開く
+
+問題を開きます：
+
+```bash
+cph atcoder open a
+```
+
+これにより：
+1. 問題用のファイルが作成されます
+2. エディタで問題ファイルが開かれます
+3. ブラウザで問題ページが開かれます
+
+### 言語の設定
+
+使用する言語を設定します：
+
+```bash
+cph atcoder language pypy
+```
+
+## ファイル構造
+
+```
+.
+├── contests/          # アーカイブされたコンテスト
+│   └── abc001/
+│       └── a.rs
+└── workspace/         # 現在のワークスペース
+    ├── a.rs          # 現在の問題ファイル
+    ├── contests.yaml # コンテスト設定
+    └── .moveignore   # 移動対象外ファイルの設定
+```
 
 ## 開発者向け情報
 

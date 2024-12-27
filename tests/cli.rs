@@ -41,7 +41,13 @@ fn setup_workspace() -> TempDir {
         temp.path().join("src/templates/template/main.py"),
         "print('Hello, World!')\n"
     ).unwrap();
-    
+
+    // .moveignoreを作成
+    fs::write(
+        temp.path().join("src/templates/.moveignore"),
+        ".archiveignore\n\n# テンプレートファイル - コンテスト間で共有\ntemplate/\ntemplate/**\n"
+    ).unwrap();
+
     temp
 }
 
@@ -83,8 +89,8 @@ fn test_workspace_command() {
 
     // ディレクトリ構造を確認
     assert!(workspace.path().join("workspace").exists());
-    assert!(workspace.path().join("workspace/abc001").exists());
     assert!(workspace.path().join("workspace/contests.yaml").exists());
+    assert!(workspace.path().join("workspace/.moveignore").exists());
 
     // contests.yamlの内容を確認
     let config = fs::read_to_string(workspace.path().join("workspace/contests.yaml")).unwrap();
@@ -127,7 +133,7 @@ fn test_open_command() {
         .success();
 
     // ファイルが作成されていることを確認
-    assert!(workspace.path().join("workspace/abc001/a.rs").exists());
+    assert!(workspace.path().join("workspace/a.rs").exists());
 }
 
 #[test]
@@ -161,5 +167,7 @@ fn test_workspace_switch() {
     assert!(workspace.path().join("contests/abc001/a.rs").exists());
 
     // 新しいワークスペースが作成されていることを確認
-    assert!(workspace.path().join("workspace/abc002").exists());
+    assert!(workspace.path().join("workspace").exists());
+    assert!(workspace.path().join("workspace/contests.yaml").exists());
+    assert!(workspace.path().join("workspace/.moveignore").exists());
 } 

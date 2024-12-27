@@ -162,9 +162,6 @@ impl Command {
                     if contests_dir.exists() {
                         // workspaceディレクトリを作成
                         let workspace_dir = workspace.get_workspace_dir();
-                        if workspace_dir.exists() {
-                            fs::remove_dir_all(&workspace_dir)?;
-                        }
                         fs::create_dir_all(&workspace_dir)?;
 
                         // コンテストディレクトリを移動
