@@ -76,6 +76,7 @@ pub enum CommonSubCommand {
     },
 
     /// Submit a problem
+    #[command(alias = "s")]
     Submit {
         problem_id: String,
     },
@@ -334,9 +335,77 @@ fn has_valid_test_cases(test_dir: &PathBuf) -> Result<bool> {
     Ok(has_input && has_output)
 }
 
-fn handle_submit(_problem_id: String) -> Result<()> {
-    let (_workspace, _config) = get_workspace_with_config()?;
-    Error::unsupported_feature("submit command")
+fn handle_submit(problem_id: String) -> Result<()> {
+    let (workspace, config) = get_workspace_with_config()?;
+    let workspace_dir = workspace.get_workspace_dir();
+    let source_path = workspace_dir.join(format!("{}.{}", problem_id, config.language.extension()));
+    
+    if !source_path.exists() {
+        return Error::invalid_input(format!("Problem file {} does not exist", source_path.display()));
+    }
+
+    println!("Running tests before submit...");
+    // 提出前にテストを実行
+    if let Err(_e) = handle_test(problem_id.clone()) {
+        println!("⚠ Tests failed. Do you want to submit anyway? [y/N]");
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+        if !input.trim().eq_ignore_ascii_case("y") {
+            return Ok(());
+        }
+    }
+
+    println!("\nSubmitting {} ...", problem_id);
+
+    // ログイン状態を確認
+    if !check_login_status(config.site)? {
+        println!("⚠ Login required to submit");
+        handle_login(config.site)?;
+    }
+
+    // 提出
+    let url = config.site.problem_url(&config.contest, &problem_id);
+    println!("Submitting to: {}", url);
+    
+    // カレントディレクトリを移動
+    let current_dir = std::env::current_dir()?;
+    std::env::set_current_dir(&workspace_dir)?;
+    
+    let source_file = format!("{}.{}", problem_id, config.language.extension());
+    let language_id = match config.language {
+        Language::Rust => "5054", // Rust (rustc 1.70.0)
+        Language::PyPy => "5078", // Python (PyPy 3.10-v7.3.12)
+    };
+
+    let output = run_command(
+        "oj",
+        &["submit", "--no-guess", "--wait=0", "--yes", "--language", language_id, &url, &source_file],
+        None
+    );
+
+    // カレントディレクトリを元に戻す
+    std::env::set_current_dir(current_dir)?;
+    
+    let output = output?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    if !output.status.success() {
+        println!("⚠ Failed to submit");
+        if !stdout.is_empty() {
+            println!("Output: {}", stdout);
+        }
+        if !stderr.is_empty() {
+            println!("Error: {}", stderr);
+        }
+        return Err(Error::command_failed("oj submit", format!("{}\n{}", stdout, stderr)));
+    }
+
+    if !stdout.is_empty() {
+        println!("{}", stdout);
+    }
+    println!("✓ Successfully submitted!");
+    Ok(())
 }
 
 impl Site {
