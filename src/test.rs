@@ -24,12 +24,44 @@ pub async fn run_test(
     let input = fs::read_to_string(test_file)
         .map_err(|e| Error::Io(e))?;
 
-    let output = docker::run_in_docker(
-        program_path.parent().unwrap_or(Path::new(".")),
-        &language,
-        &[program_path.file_name().unwrap().to_str().unwrap()],
-        Some(input.clone()),
-    ).await?;
+    let output = match language {
+        crate::Language::Rust => {
+            // まずコンパイル
+            let compile_result = docker::run_in_docker(
+                program_path.parent().unwrap_or(Path::new(".")),
+                &language,
+                &["cargo", "build", "--bin", program_path.file_stem().unwrap().to_str().unwrap()],
+                None,
+            ).await?;
+
+            if compile_result.stderr.contains("error") {
+                return Ok(TestResult {
+                    passed: false,
+                    input,
+                    expected: expected_output.to_string(),
+                    actual: String::new(),
+                    error: Some(compile_result.stderr),
+                    execution_time: compile_result.execution_time,
+                });
+            }
+
+            // 次に実行
+            docker::run_in_docker(
+                program_path.parent().unwrap_or(Path::new(".")),
+                &language,
+                &[program_path.file_name().unwrap().to_str().unwrap()],
+                Some(input.clone()),
+            ).await?
+        },
+        crate::Language::PyPy => {
+            docker::run_in_docker(
+                program_path.parent().unwrap_or(Path::new(".")),
+                &language,
+                &["pypy3", "main.py"],
+                Some(input.clone()),
+            ).await?
+        }
+    };
 
     let error = if !output.stderr.trim().is_empty() && !output.stderr.contains("Finished dev") {
         Some(output.stderr)

@@ -33,7 +33,7 @@ impl DockerConfig {
     fn get_compile_mount(language: &Language) -> String {
         let compile_dir = match language {
             Language::Rust => "compile/rust",
-            Language::PyPy => "compile/pypy",
+            Language::PyPy => unreachable!(), // PyPyは別処理
         };
         let absolute_path = std::env::current_dir()
             .unwrap_or_else(|_| PathBuf::from("."))
@@ -93,7 +93,23 @@ impl<'a> DockerRunOptions<'a> {
             image: DockerConfig::get_image(language),
             cmd,
             compile_mount: if use_compile_dir {
-                Some(DockerConfig::get_compile_mount(language))
+                Some(match language {
+                    Language::Rust => DockerConfig::get_compile_mount(language),
+                    Language::PyPy => {
+                        // PyPyの場合は、ソースファイルをmain.pyとしてマウント
+                        let source_path = workspace_dir.join("a.py");  // 現在のソースファイル
+                        let compile_dir = std::env::current_dir()
+                            .unwrap_or_else(|_| PathBuf::from("."))
+                            .join("compile/pypy");
+                        
+                        // main.pyを作成またはコピー
+                        if source_path.exists() {
+                            let _ = std::fs::copy(&source_path, compile_dir.join("main.py"));
+                        }
+                        
+                        format!("{}:/compile", compile_dir.display())
+                    }
+                })
             } else {
                 None
             },
@@ -152,8 +168,16 @@ async fn run_docker_command(opts: &DockerRunOptions<'_>, stdin: Option<String>) 
 
     if let Some(input) = stdin {
         if let Some(mut stdin) = child.stdin.take() {
-            stdin.write_all(input.as_bytes()).await
-                .map_err(|e| Error::Docker(DockerError::failed("write to stdin", e)))?;
+            // 入力の各行を処理
+            for line in input.lines() {
+                stdin.write_all(line.as_bytes()).await
+                    .map_err(|e| Error::Docker(DockerError::failed("write to stdin", e)))?;
+                stdin.write_all(b"\n").await
+                    .map_err(|e| Error::Docker(DockerError::failed("write to stdin", e)))?;
+            }
+            // 最後に明示的にflushして入力を確実に送信
+            stdin.flush().await
+                .map_err(|e| Error::Docker(DockerError::failed("flush stdin", e)))?;
         }
     }
 
@@ -233,12 +257,18 @@ pub async fn run_in_docker(
             run_docker_command(&run_opts, None).await
         },
         Language::PyPy => {
-            let source_file = args[0];
-            let run_cmd = create_run_command(
-                "/compile",
-                &format!("pypy3 {}", source_file),
-                &stdin.unwrap_or_default()
-            );
+            let run_cmd = if args[0] == "sh" && args[1] == "-c" {
+                // セットアップコマンドの場合
+                args[2].to_string()
+            } else {
+                // 実行コマンドの場合
+                if let Some(ref input) = stdin {
+                    // 標準入力をファイルに書き出す
+                    format!("cd /compile && echo '{}' > input.txt && pypy3 main.py < input.txt", input.replace("'", "'\"'\"'"))
+                } else {
+                    format!("cd /compile && pypy3 main.py")
+                }
+            };
             let run_cmd_slice = ["sh", "-c", &run_cmd];
             let opts = DockerRunOptions::new_with_language(
                 workspace_dir,
@@ -247,7 +277,13 @@ pub async fn run_in_docker(
                 true
             );
 
-            run_docker_command(&opts, None).await
+            eprintln!("Running PyPy command: {}", run_cmd);
+            let result = run_docker_command(&opts, None).await;  // stdinはNoneに変更
+            if let Ok(ref output) = result {
+                eprintln!("PyPy stdout: {:?}", output.stdout);
+                eprintln!("PyPy stderr: {:?}", output.stderr);
+            }
+            result
         }
     }
 }
