@@ -2,10 +2,12 @@ pub mod cli;
 pub mod docker;
 pub mod error;
 pub mod workspace;
+pub mod test;
 
 use std::fmt;
 use std::path::Path;
 use crate::error::Result;
+use std::path::PathBuf;
 
 const DEFAULT_TIMEOUT_SECS: u64 = 30;
 const DEFAULT_MEMORY_LIMIT: &str = "256m";
@@ -58,4 +60,10 @@ impl fmt::Display for Language {
             Language::PyPy => write!(f, "pypy"),
         }
     }
+}
+
+pub struct Config {
+    pub test_dir: PathBuf,
+    pub problem_file: PathBuf,
+    pub language: Language,
 }
