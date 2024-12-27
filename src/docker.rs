@@ -6,6 +6,7 @@ use std::process::Stdio;
 use tokio::time::timeout;
 use once_cell::sync::Lazy;
 use std::path::PathBuf;
+use std::process::Command;
 
 use crate::error::{Error, Result, DockerError};
 use crate::{Language, DEFAULT_TIMEOUT_SECS, DEFAULT_MEMORY_LIMIT};
@@ -115,18 +116,60 @@ fn get_docker_run_args(opts: &DockerRunOptions) -> Vec<String> {
 pub async fn run_in_docker(
     workspace_dir: &Path,
     language: &Language,
-    cmd: &[&str],
+    args: &[&str],
 ) -> Result<(String, String)> {
-    let opts = DockerRunOptions {
-        workspace_dir,
-        image: &DockerConfig::get_image(language),
-        cmd,
-        compile_mount: Some(DockerConfig::get_compile_mount(language)),
-    };
+    match language {
+        Language::Rust => {
+            // コンパイル
+            let source_file = args[0];
+            let output = run_command(
+                "docker",
+                &[
+                    "run", "--rm",
+                    "-v", &format!("{}:/workspace", workspace_dir.display()),
+                    "-w", "/workspace",
+                    "rust:1.70",
+                    "rustc", source_file
+                ],
+                None
+            )?;
 
-    let args = get_docker_run_args(&opts);
-    let args: Vec<&str> = args.iter().map(AsRef::as_ref).collect();
-    execute_program("docker", &args, None).await
+            if !output.status.success() {
+                return Ok(("".to_string(), String::from_utf8_lossy(&output.stderr).into_owned()));
+            }
+
+            // 実行
+            let executable = source_file.replace(".rs", "");
+            let output = run_command(
+                "docker",
+                &[
+                    "run", "--rm",
+                    "-v", &format!("{}:/workspace", workspace_dir.display()),
+                    "-w", "/workspace",
+                    "rust:1.70",
+                    &format!("./{}", executable)
+                ],
+                None
+            )?;
+
+            Ok((
+                String::from_utf8_lossy(&output.stdout).into_owned(),
+                String::from_utf8_lossy(&output.stderr).into_owned()
+            ))
+        },
+        Language::PyPy => {
+            let opts = DockerRunOptions {
+                workspace_dir,
+                image: &DockerConfig::get_image(language),
+                cmd: args,
+                compile_mount: Some(DockerConfig::get_compile_mount(language)),
+            };
+
+            let args = get_docker_run_args(&opts);
+            let args: Vec<&str> = args.iter().map(AsRef::as_ref).collect();
+            execute_program("docker", &args, None).await
+        }
+    }
 }
 
 // online judge tool用のDockerイメージ名
@@ -146,4 +189,18 @@ pub async fn run_oj_tool(
     let args = get_docker_run_args(&opts);
     let args: Vec<&str> = args.iter().map(AsRef::as_ref).collect();
     execute_program("docker", &args, None).await
+}
+
+fn run_command(program: &str, args: &[&str], envs: Option<&[(&str, &str)]>) -> Result<std::process::Output> {
+    let mut cmd = Command::new(program);
+    cmd.args(args);
+    
+    if let Some(env_vars) = envs {
+        for (key, value) in env_vars {
+            cmd.env(key, value);
+        }
+    }
+    
+    cmd.output()
+        .map_err(|e| Error::Docker(DockerError::failed("execute command", e)))
 } 

@@ -11,6 +11,7 @@ struct TestResult {
     input: String,
     expected: String,
     actual: String,
+    error: Option<String>,
 }
 
 pub async fn run_test(
@@ -22,18 +23,100 @@ pub async fn run_test(
     let input = fs::read_to_string(test_file)
         .map_err(|e| Error::Io(e))?;
 
-    let (actual_output, _) = docker::run_in_docker(
+    let (actual_output, stderr) = docker::run_in_docker(
         program_path.parent().unwrap_or(Path::new(".")),
         &language,
         &[program_path.file_name().unwrap().to_str().unwrap()],
     ).await?;
+
+    let error = if !stderr.trim().is_empty() {
+        Some(stderr)
+    } else {
+        None
+    };
 
     Ok(TestResult {
         passed: actual_output.trim() == expected_output.trim(),
         input,
         expected: expected_output.to_string(),
         actual: actual_output,
+        error,
     })
+}
+
+fn classify_error(error: &str) -> (String, String) {
+    if error.contains("error[E") {
+        ("Compile Error:".red().bold().to_string(), format_compile_error(error))
+    } else if error.contains("thread 'main' panicked") {
+        ("Runtime Error:".red().bold().to_string(), format_runtime_error(error))
+    } else if error.contains("killed") && error.contains("memory") {
+        ("Memory Limit Exceeded:".yellow().bold().to_string(), error.to_string())
+    } else if error.contains("timeout") {
+        ("Time Limit Exceeded:".yellow().bold().to_string(), error.to_string())
+    } else {
+        ("Error:".red().bold().to_string(), error.to_string())
+    }
+}
+
+fn format_compile_error(error: &str) -> String {
+    let mut formatted = String::new();
+    for line in error.lines() {
+        if line.contains("error[") {
+            // エラーコードを強調
+            let parts: Vec<&str> = line.splitn(2, ": ").collect();
+            if parts.len() == 2 {
+                let code = parts[0].trim();
+                formatted.push_str(&format!("{}: {}\n",
+                    code.red().bold(),
+                    parts[1]
+                ));
+                // エラーコードへのリンクを追加
+                if let Some(error_code) = code.strip_prefix("error[") {
+                    if let Some(code) = error_code.strip_suffix("]") {
+                        formatted.push_str(&format!("  {} {}\n",
+                            "Help:".green(),
+                            format!("https://doc.rust-lang.org/error-index.html#{}", code).underline()
+                        ));
+                    }
+                }
+            }
+        } else if line.contains("-->") {
+            // ファイル位置を強調
+            formatted.push_str(&format!("{}\n", line.blue()));
+        } else if line.trim().starts_with("|") {
+            // コードスニペットを強調
+            formatted.push_str(&format!("{}\n", line.yellow()));
+        } else if line.contains("help:") {
+            // ヘルプメッセージを強調
+            formatted.push_str(&format!("  {} {}\n",
+                "Help:".green(),
+                line.strip_prefix("help:").unwrap_or(line)
+            ));
+        } else {
+            formatted.push_str(&format!("{}\n", line));
+        }
+    }
+    formatted
+}
+
+fn format_runtime_error(error: &str) -> String {
+    let mut formatted = String::new();
+    for line in error.lines() {
+        if line.contains("panicked at") {
+            let parts: Vec<&str> = line.splitn(2, "panicked at").collect();
+            formatted.push_str(&format!("thread panicked at {}\n",
+                parts.get(1).unwrap_or(&line).red().bold()
+            ));
+        } else if line.contains("stack backtrace:") {
+            formatted.push_str(&format!("{}\n", "Stack backtrace:".yellow().bold()));
+        } else if line.starts_with("   ") {
+            // スタックトレースのフレームを強調
+            formatted.push_str(&format!("{}\n", line.blue()));
+        } else {
+            formatted.push_str(&format!("{}\n", line));
+        }
+    }
+    formatted
 }
 
 fn print_diff(test_case: &str, result: &TestResult) {
@@ -41,44 +124,80 @@ fn print_diff(test_case: &str, result: &TestResult) {
         println!("Test case {} ... {}", test_case, "passed".green().bold());
     } else {
         println!("\nTest case {} ... {}", test_case, "failed".red().bold());
-        println!("{}", "Input:".yellow());
-        println!("```");
-        println!("{}", result.input.trim());
-        println!("```");
-
-        // 期待値と実際の出力を並べて表示
-        let expected_lines: Vec<&str> = result.expected.trim().lines().collect();
-        let actual_lines: Vec<&str> = result.actual.trim().lines().collect();
         
-        // 期待値の最大長を計算
-        let max_expected_length = expected_lines.iter()
+        // Input と Error を横に並べて表示
+        let input_lines: Vec<&str> = result.input.trim().lines().collect();
+        let (error_type, formatted_error) = if let Some(error) = &result.error {
+            classify_error(error)
+        } else {
+            ("Wrong Answer:".red().bold().to_string(), String::new())
+        };
+        
+        let error_lines: Vec<&str> = formatted_error.lines().collect();
+        let max_lines = input_lines.len().max(error_lines.len());
+        
+        // Inputの最大長を計算
+        let max_input_length = input_lines.iter()
             .map(|line| line.chars().count())
             .max()
             .unwrap_or(0)
-            .max(10); // 最小幅を10文字に設定
-
-        let padding = max_expected_length + 2; // 2文字分の余白を追加
-        println!("\n{:<padding$} | {}", "Expected:".yellow(), "Actual:".yellow(), padding=padding);
-        println!("{}", "=".repeat(padding + 3 + 40)); // 区切り線の長さを調整
-
-        let max_lines = expected_lines.len().max(actual_lines.len());
-
+            .max(10);
+        
+        let padding = max_input_length + 2;
+        
+        // ヘッダーを表示
+        println!("{:<padding$} | {}", "Input:".yellow(), 
+            if result.error.is_some() { error_type } else { "".normal().to_string() },
+            padding=padding);
+        println!("{}", "=".repeat(if result.error.is_some() { padding + 3 + 80 } else { padding }));
+        
+        // Input と Error を横に並べて表示
         for i in 0..max_lines {
-            let expected = expected_lines.get(i).unwrap_or(&"");
-            let actual = actual_lines.get(i).unwrap_or(&"");
+            let input_line = input_lines.get(i).unwrap_or(&"");
+            print!("{:<padding$}", input_line, padding=padding);
             
-            if i < expected_lines.len() && i < actual_lines.len() && expected == actual {
-                println!("{:<padding$} | {}", expected, actual, padding=padding);
-            } else {
-                if i < expected_lines.len() {
-                    print!("{}", expected.green());
-                }
-                print!("{:<padding$}", "", padding=padding - expected.chars().count());
+            if result.error.is_some() {
                 print!(" | ");
-                if i < actual_lines.len() {
-                    print!("{}", actual.red());
+                if let Some(error_line) = error_lines.get(i) {
+                    print!("{}", error_line);
                 }
-                println!();
+            }
+            println!();
+        }
+
+        // Wrong Answerの場合のみ期待値と実際の出力を表示
+        if result.error.is_none() {
+            let expected_lines: Vec<&str> = result.expected.trim().lines().collect();
+            let actual_lines: Vec<&str> = result.actual.trim().lines().collect();
+            
+            let max_expected_length = expected_lines.iter()
+                .map(|line| line.chars().count())
+                .max()
+                .unwrap_or(0)
+                .max(10);
+
+            let padding = max_expected_length + 2;
+            println!("\n{:<padding$} | {}", "Expected:".yellow(), "Actual:".yellow(), padding=padding);
+            println!("{}", "=".repeat(padding + 3 + 40));
+
+            let max_lines = expected_lines.len().max(actual_lines.len());
+            for i in 0..max_lines {
+                let expected = expected_lines.get(i).unwrap_or(&"");
+                let actual = actual_lines.get(i).unwrap_or(&"");
+                
+                if i < expected_lines.len() && i < actual_lines.len() && expected == actual {
+                    println!("{:<padding$} | {}", expected, actual, padding=padding);
+                } else {
+                    if i < expected_lines.len() {
+                        print!("{}", expected.green());
+                    }
+                    print!("{:<padding$}", "", padding=padding - expected.chars().count());
+                    print!(" | ");
+                    if i < actual_lines.len() {
+                        print!("{}", actual.red());
+                    }
+                    println!();
+                }
             }
         }
         println!();

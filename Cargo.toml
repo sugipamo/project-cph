@@ -26,8 +26,13 @@ rpassword = "7.3"
 chrono = "0.4"
 dirs = "5.0"
 colored = "2.0"
+proconio = "0.4"
 
 [dev-dependencies]
 assert_cmd = "2.0"
 predicates = "3.0"
 tempfile = "3.8"
+
+[lib]
+name = "cph"
+path = "src/lib.rs"
