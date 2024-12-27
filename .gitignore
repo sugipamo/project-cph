@@ -15,6 +15,7 @@ Cargo.lock
 # コンテスト
 contests/
 workspace/
+!workspace/.moveignore
 
 # エディタ/OS関連
 .vscode/
