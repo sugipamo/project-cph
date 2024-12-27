@@ -203,13 +203,7 @@ fn download_test_cases(test_dir: &PathBuf, url: &str, problem_id: &str) -> Resul
     println!("Downloading test cases for problem {} ...", problem_id);
     
     // ログイン状態を確認（サイトはURLから判断）
-    let site = if url.contains("atcoder.jp") {
-        Site::AtCoder
-    } else if url.contains("codeforces.com") {
-        Site::Codeforces
-    } else {
-        return Err(Error::InvalidInput("Unknown site".to_string()));
-    };
+    let site = Site::from_url(url)?;
 
     if !check_login_status(site)? {
         println!("⚠ Login required to download test cases");
@@ -222,56 +216,47 @@ fn download_test_cases(test_dir: &PathBuf, url: &str, problem_id: &str) -> Resul
         "oj",
         &["download", url, "-d", test_dir.to_str().unwrap()],
         None
-    );
+    )?;
 
-    match output {
-        Ok(output) => {
-            if output.status.success() {
-                println!("✓ Test cases downloaded successfully");
-                Ok(())
-            } else {
-                let error = String::from_utf8_lossy(&output.stderr);
-                println!("⚠ Failed to download test cases");
-                println!("  Error: {}", error);
-                Err(Error::command_failed("oj download", error.into_owned()))
-            }
+    if output.status.success() {
+        println!("✓ Test cases downloaded successfully");
+        Ok(())
+    } else {
+        let error = String::from_utf8_lossy(&output.stderr);
+        println!("⚠ Failed to download test cases");
+        println!("  Error: {}", error);
+        Err(Error::command_failed("oj download", error.into_owned()))
+    }
+}
+
+// テストケースのダウンロードを確認し、必要に応じてダウンロードする
+fn ensure_test_cases(test_dir: &PathBuf, url: &str, problem_id: &str) -> Result<()> {
+    if !test_dir.exists() || !has_valid_test_cases(&test_dir)? {
+        if let Err(_e) = download_test_cases(test_dir, url, problem_id) {
+            println!("  Note: You can still download test cases later with 'test' command");
+            // エラーを表示するだけで処理は続行
+            Ok(())
+        } else {
+            Ok(())
         }
-        Err(e) => {
-            println!("⚠ Failed to download test cases");
-            println!("  Error: {}", e);
-            Err(e)
-        }
+    } else {
+        println!("✓ Using cached test cases");
+        Ok(())
     }
 }
 
 fn handle_open(problem_id: String, site: Site) -> Result<()> {
     let (mut workspace, config) = get_workspace_with_config()?;
     let contest_id = config.contest.clone();
+    let url = site.problem_url(&contest_id, &problem_id);
 
     // ソースファイルの作成
     println!("Setting up problem {} ...", problem_id);
     let source_path = workspace.setup_problem(&problem_id)?;
     println!("✓ Problem file created at {}", source_path.display());
 
-    // テストケースのダウンロード
-    let test_dir = workspace.get_workspace_dir().join("test").join(&problem_id);
-    let url = site.problem_url(&contest_id, &problem_id);
-    
-    if !test_dir.exists() || !has_valid_test_cases(&test_dir)? {
-        if let Err(_e) = download_test_cases(&test_dir, &url, &problem_id) {
-            println!("  Note: You can still download test cases later with 'test' command");
-            // エラーを表示するだけで処理は続行
-        }
-    }
-
-    // エディタとブラウザで開く
-    println!("Opening editor and browser ...");
-    if let Err(e) = open_in_editor(&source_path) {
-        println!("⚠ Failed to open editor: {}", e);
-        println!("  Note: You can manually open {}", source_path.display());
-    }
-
-    // Pythonのwebbrowserモジュールを使用してブラウザで開く
+    // テラウザで問題ページを開く
+    println!("Opening browser and editor ...");
     let output = run_command(
         "python3",
         &["-c", &format!("import webbrowser; webbrowser.open('{}')", url)],
@@ -282,6 +267,16 @@ fn handle_open(problem_id: String, site: Site) -> Result<()> {
         println!("⚠ Failed to open browser: {}", e);
         println!("  URL: {}", url);
     }
+
+    // エディタでソースファイルを開く
+    if let Err(e) = open_in_editor(&source_path) {
+        println!("⚠ Failed to open editor: {}", e);
+        println!("  Note: You can manually open {}", source_path.display());
+    }
+
+    // テストケースのダウンロード
+    let test_dir = workspace.get_workspace_dir().join("test").join(&problem_id);
+    ensure_test_cases(&test_dir, &url, &problem_id)?;
 
     Ok(())
 }
@@ -298,14 +293,8 @@ fn handle_test(problem_id: String) -> Result<bool> {
 
     // テストケースのディレクトリを設定
     let test_dir = workspace.get_workspace_dir().join("test").join(&problem_id);
-
-    // テストケースが存在しない場合のみダウンロード
-    if !test_dir.exists() || !has_valid_test_cases(&test_dir)? {
-        let url = config.site.problem_url(&config.contest, &problem_id);
-        download_test_cases(&test_dir, &url, &problem_id)?;
-    } else {
-        println!("✓ Using cached test cases");
-    }
+    let url = config.site.problem_url(&config.contest, &problem_id);
+    ensure_test_cases(&test_dir, &url, &problem_id)?;
 
     // テストの実行
     let test_config = crate::Config {
@@ -430,7 +419,7 @@ fn handle_submit(problem_id: String) -> Result<()> {
         if !stderr.is_empty() {
             println!("Error: {}", stderr);
         }
-        return Err(Error::command_failed("oj submit", format!("{}\n{}", stdout, stderr)));
+        return Err(Error::command_failed("oj submit", format!("\n{}", stderr)));
     }
 
     if !stdout.is_empty() {
@@ -448,6 +437,16 @@ impl Site {
         match self {
             Site::AtCoder => Self::ATCODER_URL,
             Site::Codeforces => Self::CODEFORCES_URL,
+        }
+    }
+
+    pub fn from_url(url: &str) -> Result<Self> {
+        if url.contains(Self::ATCODER_URL) {
+            Ok(Site::AtCoder)
+        } else if url.contains(Self::CODEFORCES_URL) {
+            Ok(Site::Codeforces)
+        } else {
+            Err(Error::InvalidInput("Unknown site".to_string()))
         }
     }
 

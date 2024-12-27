@@ -94,6 +94,38 @@ impl Workspace {
             )?;
         }
 
+        // テンプレートフォルダの内容を再帰的にコピー
+        let template_files_dir = template_dir.join("template");
+        if template_files_dir.exists() {
+            let template_dst = workspace_dir.join("template");
+            self.copy_dir_contents(&template_files_dir, &template_dst)?;
+        }
+
+        Ok(())
+    }
+
+    fn copy_dir_contents(&self, src: &Path, dst: &Path) -> Result<()> {
+        if !dst.exists() {
+            fs::create_dir_all(dst)?;
+        }
+
+        for entry in fs::read_dir(src)? {
+            let entry = entry?;
+            let path = entry.path();
+            let file_name = path.file_name().unwrap();
+            let dst_path = dst.join(file_name);
+
+            if path.is_file() {
+                // ファイルが存在しない場合のみコピー
+                if !dst_path.exists() {
+                    fs::copy(&path, &dst_path)?;
+                }
+            } else if path.is_dir() {
+                // ディレクトリの場合は再帰的にコピー
+                self.copy_dir_contents(&path, &dst_path)?;
+            }
+        }
+
         Ok(())
     }
 
