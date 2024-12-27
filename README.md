@@ -20,6 +20,31 @@
 
 ## インストール
 
+### 必要な依存関係
+
+1. Rust toolchain
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
+
+2. Docker
+   - [Docker Desktop](https://www.docker.com/products/docker-desktop/)をインストール
+   - または以下のコマンドでインストール:
+     ```bash
+     curl -fsSL https://get.docker.com | sh
+     ```
+
+3. online-judge-tools
+   ```bash
+   pip3 install online-judge-tools
+   ```
+
+4. VSCode または Cursor
+   - [Visual Studio Code](https://code.visualstudio.com/)
+   - [Cursor](https://cursor.sh/)
+
+### cphのインストール
+
 ```bash
 cargo install --path .
 ```
@@ -180,3 +205,74 @@ cargo test
 - コンパイルエラーの色付き表示
 - エラー位置の強調表示
 - Rustエラーコードへのドキュメントリンク 
+
+## ライセンス
+
+このプロジェクトはMITライセンスの下で公開されています。詳細は[LICENSE](LICENSE)ファイルを参照してください。
+
+## 謝辞
+
+このプロジェクトは以下のオープンソースソフトウェアを使用しています：
+
+- [online-judge-tools](https://github.com/online-judge-tools/oj): MITライセンス
+- [proconio](https://github.com/statiolake/proconio-rs): MITライセンス 
+
+## コントリビューション
+
+プロジェクトへの貢献を歓迎します！以下の方法で貢献できます：
+
+1. イシューの報告
+   - バグの報告
+   - 新機能の提案
+   - ドキュメントの改善提案
+
+2. プルリクエストの作成
+   - バグ修正
+   - 新機能の追加
+   - ドキュメントの改善
+   - テストの追加
+
+### 開発環境のセットアップ
+
+1. リポジトリのクローン
+   ```bash
+   git clone https://github.com/sugipamo/project-cph.git
+   cd project-cph
+   ```
+
+2. 依存関係のインストール
+   - 上記の「必要な依存関係」セクションを参照
+
+3. ビルドとテスト
+   ```bash
+   cargo build
+   cargo test
+   ```
+
+### プルリクエストの手順
+
+1. 新しいブランチを作成
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. 変更を加える
+   - コードスタイルを既存のコードに合わせる
+   - 必要に応じてテストを追加
+   - ドキュメントを更新
+
+3. テストの実行
+   ```bash
+   cargo test
+   cargo fmt -- --check
+   cargo clippy
+   ```
+
+4. 変更をコミット
+   ```bash
+   git commit -m "feat: 変更内容の説明"
+   ```
+
+5. プルリクエストを作成
+   - 変更内容を詳しく説明
+   - 関連するイシューがあれば参照 

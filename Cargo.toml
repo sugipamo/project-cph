@@ -8,6 +8,13 @@ members = [
 name = "cph"
 version = "0.1.0"
 edition = "2021"
+authors = ["sugipamo"]
+license = "MIT"
+description = "競技プログラミングの問題を解くためのCLIツール"
+repository = "https://github.com/sugipamo/project-cph"
+readme = "README.md"
+keywords = ["competitive-programming", "cli", "atcoder", "contest", "helper"]
+categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
 name = "cph"
