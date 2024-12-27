@@ -137,73 +137,36 @@ fn print_diff(test_case: &str, result: &TestResult) {
             result.execution_time.as_secs_f64()
         );
         
-        // Input と Error を横に並べて表示
-        let input_lines: Vec<&str> = result.input.trim().lines().collect();
-        let (error_type, formatted_error) = if let Some(error) = &result.error {
-            classify_error(error)
-        } else {
-            ("Wrong Answer:".red().bold().to_string(), String::new())
-        };
-        
-        let error_lines: Vec<&str> = formatted_error.lines().collect();
-        let max_lines = input_lines.len().max(error_lines.len());
-        
-        // Inputの最大長を計算
-        let max_input_length = input_lines.iter()
-            .map(|line| line.chars().count())
-            .max()
-            .unwrap_or(0)
-            .max(10);
-        
-        let padding = max_input_length + 2;
-        
-        // ヘッダーを表示
-        println!("{:<padding$} | {}", "Input:".yellow(), 
-            if result.error.is_some() { error_type } else { "".normal().to_string() },
-            padding=padding);
-        println!("{}", "=".repeat(if result.error.is_some() { padding + 3 + 80 } else { padding }));
-        
-        // Input と Error を横に並べて表示
-        for i in 0..max_lines {
-            let input_line = input_lines.get(i).unwrap_or(&"");
-            print!("{:<padding$}", input_line, padding=padding);
-            
-            if result.error.is_some() {
-                print!(" | ");
-                if let Some(error_line) = error_lines.get(i) {
-                    print!("{}", error_line);
-                }
-            }
-            println!();
+        // まずInputを表示
+        println!("Input:");
+        println!("{}", "=".repeat(40));
+        for line in result.input.trim().lines() {
+            println!("{}", line);
         }
 
-        // Wrong Answerの場合のみ期待値と実際の出力を表示
-        if result.error.is_none() {
-            let expected_lines: Vec<&str> = result.expected.trim().lines().collect();
-            let actual_lines: Vec<&str> = result.actual.trim().lines().collect();
+        // 標準出力を表示（エラーの有無に関わらず）
+        let expected_lines: Vec<&str> = result.expected.trim().lines().collect();
+        let actual_lines: Vec<&str> = result.actual.trim().lines().collect();
+        
+        if !actual_lines.is_empty() || !expected_lines.is_empty() {
+            println!("\nOutput:");
+            println!("{}", "=".repeat(40));
             
-            let max_expected_length = expected_lines.iter()
-                .map(|line| line.chars().count())
-                .max()
-                .unwrap_or(0)
-                .max(10);
-
-            let padding = max_expected_length + 2;
-            println!("\n{:<padding$} | {}", "Expected:".yellow(), "Actual:".yellow(), padding=padding);
-            println!("{}", "=".repeat(padding + 3 + 40));
-
             let max_lines = expected_lines.len().max(actual_lines.len());
+            println!("Expected:    | Actual:");
+            println!("{}", "=".repeat(55));
+            
             for i in 0..max_lines {
                 let expected = expected_lines.get(i).unwrap_or(&"");
                 let actual = actual_lines.get(i).unwrap_or(&"");
                 
                 if i < expected_lines.len() && i < actual_lines.len() && expected == actual {
-                    println!("{:<padding$} | {}", expected, actual, padding=padding);
+                    println!("{:<12} | {}", expected, actual);
                 } else {
                     if i < expected_lines.len() {
                         print!("{}", expected.green());
                     }
-                    print!("{:<padding$}", "", padding=padding - expected.chars().count());
+                    print!("{:<12}", "");
                     print!(" | ");
                     if i < actual_lines.len() {
                         print!("{}", actual.red());
@@ -212,6 +175,15 @@ fn print_diff(test_case: &str, result: &TestResult) {
                 }
             }
         }
+
+        // エラーがある場合はその後に表示
+        if let Some(error) = &result.error {
+            let (error_type, formatted_error) = classify_error(error);
+            println!("\n{}", error_type);
+            println!("{}", "=".repeat(40));
+            println!("{}", formatted_error);
+        }
+        
         println!();
     }
 }
@@ -221,13 +193,13 @@ pub async fn run_all_tests(
     program_path: &Path,
     language: crate::Language,
 ) -> Result<(usize, usize, std::time::Duration)> {
-    let start_time = Instant::now();
     if !test_dir.exists() {
-        return Ok((0, 0, start_time.elapsed()));
+        return Ok((0, 0, std::time::Duration::from_secs(0)));
     }
 
     let mut total = 0;
     let mut test_futures = Vec::new();
+    let mut max_execution_time = std::time::Duration::from_secs(0);
 
     let mut entries = tokio_fs::read_dir(test_dir).await
         .map_err(|e| Error::Io(e))?;
@@ -266,6 +238,7 @@ pub async fn run_all_tests(
                 if result.passed {
                     passed += 1;
                 }
+                max_execution_time = max_execution_time.max(result.execution_time);
                 print_diff(&test_case, &result);
             },
             Ok(Err(e)) => println!("Test error: {}", e),
@@ -273,37 +246,37 @@ pub async fn run_all_tests(
         }
     }
 
-    Ok((passed, total, start_time.elapsed()))
+    Ok((passed, total, max_execution_time))
 }
 
 pub fn run(config: Config) -> Result<bool> {
     if let Ok(handle) = tokio::runtime::Handle::try_current() {
         handle.block_on(async {
-            let (passed, total, total_time) = run_all_tests(
+            let (passed, total, max_time) = run_all_tests(
                 &config.test_dir,
                 &config.problem_file,
                 config.language,
             ).await?;
-            println!("\nTest results: {}/{} {} (total time: {:.3}s)", 
+            println!("\nTest results: {}/{} {} (max time: {:.3}s)", 
                 passed.to_string().bold(), 
                 total.to_string().bold(),
                 if passed == total { "passed".green().bold() } else { "failed".red().bold() },
-                total_time.as_secs_f64()
+                max_time.as_secs_f64()
             );
             Ok(passed == total)
         })
     } else {
         tokio::runtime::Runtime::new()?.block_on(async {
-            let (passed, total, total_time) = run_all_tests(
+            let (passed, total, max_time) = run_all_tests(
                 &config.test_dir,
                 &config.problem_file,
                 config.language,
             ).await?;
-            println!("\nTest results: {}/{} {} (total time: {:.3}s)", 
+            println!("\nTest results: {}/{} {} (max time: {:.3}s)", 
                 passed.to_string().bold(), 
                 total.to_string().bold(),
                 if passed == total { "passed".green().bold() } else { "failed".red().bold() },
-                total_time.as_secs_f64()
+                max_time.as_secs_f64()
             );
             Ok(passed == total)
         })
