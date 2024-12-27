@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::{Result, Error};
 use crate::{Language, cli::Site};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub contest: String,
     pub language: Language,
@@ -98,7 +98,6 @@ impl Workspace {
         // contests内に対象コンテストがあるか確認
         let contests_dir = self.get_contests_dir().join(&config.contest);
         if contests_dir.exists() {
-            // workspaceディレクトリを作成
             let workspace_dir = self.get_workspace_dir();
             fs::create_dir_all(&workspace_dir)?;
 
@@ -106,12 +105,9 @@ impl Workspace {
             let target_dir = workspace_dir.join(&config.contest);
             fs::rename(&contests_dir, &target_dir)?;
         }
-
-        let workspace_dir = self.get_workspace_dir();
-        fs::create_dir_all(&workspace_dir)?;
         
         // ソースファイルを作成
-        let source_path = workspace_dir.join(format!("{}.{}", problem_id, config.language.extension()));
+        let source_path = self.get_workspace_dir().join(format!("{}.{}", problem_id, config.language.extension()));
         if !source_path.exists() {
             fs::write(&source_path, config.language.default_content()?)?;
         }
@@ -131,7 +127,7 @@ impl Workspace {
         self.root.join("contests")
     }
 
-    pub fn archive_current_workspace(&self) -> Result<bool> {
+    pub fn archive_current_workspace(&self) -> Result<()> {
         if let Some(config) = &self.config {
             let workspace_dir = self.get_workspace_dir();
             if workspace_dir.exists() {
@@ -176,6 +172,6 @@ impl Workspace {
             }
         }
 
-        Ok(true)
+        Ok(())
     }
 } 

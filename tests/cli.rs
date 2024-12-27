@@ -1,31 +1,16 @@
 use assert_cmd::Command;
 use predicates::str::contains;
 use std::fs;
-use std::process::Output;
 use tempfile::TempDir;
 
-#[derive(Debug)]
-struct CommandOutput {
-    stderr: String,
-}
-
-impl From<Output> for CommandOutput {
-    fn from(output: Output) -> Self {
-        Self {
-            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
-        }
-    }
-}
-
-fn run_command_with_args(args: &[&str]) -> CommandOutput {
-    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_cph"));
+fn run_command(args: &[&str], workspace: Option<&TempDir>) -> assert_cmd::assert::Assert {
+    let mut command = Command::cargo_bin("cph").unwrap();
     command.env("TEST_MODE", "1");
     command.args(args);
-
-    let output = command.output().unwrap();
-    CommandOutput {
-        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+    if let Some(dir) = workspace {
+        command.current_dir(dir.path());
     }
+    command.assert()
 }
 
 fn setup_workspace() -> TempDir {
@@ -55,26 +40,25 @@ fn setup_workspace() -> TempDir {
     temp
 }
 
-fn run_command(args: &[&str], workspace: Option<&TempDir>) -> assert_cmd::assert::Assert {
-    let mut command = Command::cargo_bin("cph").unwrap();
-    command.env("TEST_MODE", "1");
-    command.args(args);
-    if let Some(dir) = workspace {
-        command.current_dir(dir.path());
-    }
-    command.assert()
+fn setup_workspace_with_contest(contest_id: &str) -> TempDir {
+    let workspace = setup_workspace();
+    run_command(&["atcoder", "workspace", contest_id], Some(&workspace))
+        .success();
+    workspace
 }
 
 #[test]
 fn test_invalid_site() {
-    let output = run_command_with_args(&["invalid", "login"]);
-    assert!(output.stderr.contains("unrecognized subcommand 'invalid'"));
+    run_command(&["invalid", "login"], None)
+        .failure()
+        .stderr(contains("unrecognized subcommand 'invalid'"));
 }
 
 #[test]
 fn test_invalid_command() {
-    let output = run_command_with_args(&["atcoder", "invalid"]);
-    assert!(output.stderr.contains("unrecognized subcommand 'invalid'"));
+    run_command(&["atcoder", "invalid"], None)
+        .failure()
+        .stderr(contains("unrecognized subcommand 'invalid'"));
 }
 
 #[test]
@@ -105,12 +89,8 @@ fn test_workspace_command() {
 
 #[test]
 fn test_language_command() {
-    let temp_dir = setup_workspace();
-
-    run_command(&["atcoder", "workspace", "abc001"], Some(&temp_dir))
-        .success();
-
-    run_command(&["atcoder", "language", "py-py"], Some(&temp_dir))
+    let workspace = setup_workspace_with_contest("abc001");
+    run_command(&["atcoder", "language", "py-py"], Some(&workspace))
         .success();
 }
 
@@ -126,17 +106,9 @@ fn test_language_command_requires_workspace() {
 
 #[test]
 fn test_open_command() {
-    let workspace = setup_workspace();
-    
-    // 先にワークスペースを設定
-    run_command(&["atcoder", "workspace", "abc001"], Some(&workspace))
-        .success();
-
-    // 問題を開く
+    let workspace = setup_workspace_with_contest("abc001");
     run_command(&["atcoder", "open", "a"], Some(&workspace))
         .success();
-
-    // ファイルが作成されていることを確認
     assert!(workspace.path().join("workspace/a.rs").exists());
 }
 

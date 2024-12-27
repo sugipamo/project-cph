@@ -4,8 +4,6 @@ use crate::{Language, error::{Result, Error}, workspace::Workspace};
 use std::process::Command as StdCommand;
 use std::process::Output;
 
-const EDITORS: &[&str] = &["code", "cursor"];
-
 #[derive(Debug, Clone, Copy, clap::ValueEnum, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Site {
@@ -13,6 +11,15 @@ pub enum Site {
     AtCoder,
     #[clap(name = "codeforces", alias = "cf")]
     Codeforces,
+}
+
+impl std::fmt::Display for Site {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Site::AtCoder => write!(f, "AtCoder"),
+            Site::Codeforces => write!(f, "Codeforces"),
+        }
+    }
 }
 
 #[derive(Parser)]
@@ -79,154 +86,103 @@ impl Cli {
         let cli = Self::parse();
 
         match cli.command {
-            Command::AtCoder { command } => match command {
-                CommonSubCommand::Login => {
-                    // テスト時はログインをスキップ
-                    if std::env::var("TEST_MODE").is_ok() {
-                        return Ok(());
-                    }
-
-                    // テスト時は環境変数からユーザー名とパスワードを取得
-                    let (username, password) = if let (Ok(u), Ok(p)) = (std::env::var("USERNAME"), std::env::var("PASSWORD")) {
-                        (u, p)
-                    } else {
-                        println!("AtCoder username:");
-                        let mut username = String::new();
-                        std::io::stdin().read_line(&mut username)?;
-                        let username = username.trim().to_string();
-
-                        let password = rpassword::prompt_password("AtCoder password: ")?;
-                        (username, password)
-                    };
-                    
-                    // oj-apiを使用してログイン
-                    let output = run_command(
-                        "oj",
-                        &["login", "https://atcoder.jp"],
-                        Some(&[("USERNAME", &username), ("PASSWORD", &password)])
-                    )?;
-
-                    if !output.status.success() {
-                        return Err(Error::command_failed("oj login", String::from_utf8_lossy(&output.stderr).into_owned()));
-                    }
-
-                    println!("Successfully logged in to AtCoder!");
-                }
-                CommonSubCommand::Workspace { contest_id } => {
-                    let mut workspace = Workspace::new(std::env::current_dir()?);
-                    workspace.set_workspace(&contest_id, Site::AtCoder)?;
-                    println!("Workspace set to {}", contest_id);
-                }
-                CommonSubCommand::Language { language } => {
-                    let mut workspace = Workspace::new(std::env::current_dir()?);
-                    workspace.set_language(language)?;
-                    println!("Language set to {}", language);
-                }
-                CommonSubCommand::Open { problem_id } => {
-                    let mut workspace = Workspace::new(std::env::current_dir()?);
-                    let config = workspace.get_current_config()
-                        .ok_or_else(|| Error::InvalidInput("No active contest. Use 'workspace' command to set one.".to_string()))?;
-                    let contest_id = config.contest.clone();
-
-                    let source_path = workspace.setup_problem(&problem_id)?;
-
-                    // エディタとブラウザで開く
-                    open_in_editor(&source_path)?;
-                    open_in_browser(&Site::AtCoder.problem_url(&contest_id, &problem_id))?;
-                }
-                CommonSubCommand::Test { problem_id: _ } => {
-                    let workspace = Workspace::new(std::env::current_dir()?);
-                    let _config = workspace.get_current_config()
-                        .ok_or_else(|| Error::InvalidInput("No active contest. Use 'workspace' command to set one.".to_string()))?;
-
-                    // テストの実行
-                    Error::unsupported_feature("test command")?;
-                }
-                CommonSubCommand::Submit { problem_id: _ } => {
-                    let workspace = Workspace::new(std::env::current_dir()?);
-                    let _config = workspace.get_current_config()
-                        .ok_or_else(|| Error::InvalidInput("No active contest. Use 'workspace' command to set one.".to_string()))?;
-
-                    // 提出の実行
-                    Error::unsupported_feature("submit command")?;
-                }
-            },
-            Command::Codeforces { command } => match command {
-                CommonSubCommand::Login => {
-                    // テスト時はログインをスキップ
-                    if std::env::var("TEST_MODE").is_ok() {
-                        return Ok(());
-                    }
-
-                    // テスト時は環境変数からユーザー名とパスワードを取得
-                    let (username, password) = if let (Ok(u), Ok(p)) = (std::env::var("USERNAME"), std::env::var("PASSWORD")) {
-                        (u, p)
-                    } else {
-                        println!("Codeforces username:");
-                        let mut username = String::new();
-                        std::io::stdin().read_line(&mut username)?;
-                        let username = username.trim().to_string();
-
-                        let password = rpassword::prompt_password("Codeforces password: ")?;
-                        (username, password)
-                    };
-                    
-                    // oj-apiを使用してログイン
-                    let output = run_command(
-                        "oj",
-                        &["login", "https://codeforces.com"],
-                        Some(&[("USERNAME", &username), ("PASSWORD", &password)])
-                    )?;
-
-                    if !output.status.success() {
-                        return Err(Error::command_failed("oj login", String::from_utf8_lossy(&output.stderr).into_owned()));
-                    }
-
-                    println!("Successfully logged in to Codeforces!");
-                }
-                CommonSubCommand::Workspace { contest_id } => {
-                    let mut workspace = Workspace::new(std::env::current_dir()?);
-                    workspace.set_workspace(&contest_id, Site::Codeforces)?;
-                    println!("Workspace set to {}", contest_id);
-                }
-                CommonSubCommand::Language { language } => {
-                    let mut workspace = Workspace::new(std::env::current_dir()?);
-                    workspace.set_language(language)?;
-                    println!("Language set to {}", language);
-                }
-                CommonSubCommand::Open { problem_id } => {
-                    let mut workspace = Workspace::new(std::env::current_dir()?);
-                    let config = workspace.get_current_config()
-                        .ok_or_else(|| Error::InvalidInput("No active contest. Use 'workspace' command to set one.".to_string()))?;
-                    let contest_id = config.contest.clone();
-
-                    let source_path = workspace.setup_problem(&problem_id)?;
-
-                    // エディタとブラウザで開く
-                    open_in_editor(&source_path)?;
-                    open_in_browser(&Site::Codeforces.problem_url(&contest_id, &problem_id))?;
-                }
-                CommonSubCommand::Test { problem_id: _ } => {
-                    let workspace = Workspace::new(std::env::current_dir()?);
-                    let _config = workspace.get_current_config()
-                        .ok_or_else(|| Error::InvalidInput("No active contest. Use 'workspace' command to set one.".to_string()))?;
-
-                    // テストの実行
-                    Error::unsupported_feature("test command")?;
-                }
-                CommonSubCommand::Submit { problem_id: _ } => {
-                    let workspace = Workspace::new(std::env::current_dir()?);
-                    let _config = workspace.get_current_config()
-                        .ok_or_else(|| Error::InvalidInput("No active contest. Use 'workspace' command to set one.".to_string()))?;
-
-                    // 提出の実行
-                    Error::unsupported_feature("submit command")?;
-                }
-            },
+            Command::AtCoder { command } => handle_command(command, Site::AtCoder),
+            Command::Codeforces { command } => handle_command(command, Site::Codeforces),
         }
-
-        Ok(())
     }
+}
+
+fn handle_command(command: CommonSubCommand, site: Site) -> Result<()> {
+    match command {
+        CommonSubCommand::Login => handle_login(site),
+        CommonSubCommand::Workspace { contest_id } => handle_workspace(contest_id, site),
+        CommonSubCommand::Language { language } => handle_language(language),
+        CommonSubCommand::Open { problem_id } => handle_open(problem_id, site),
+        CommonSubCommand::Test { problem_id } => handle_test(problem_id),
+        CommonSubCommand::Submit { problem_id } => handle_submit(problem_id),
+    }
+}
+
+fn handle_login(site: Site) -> Result<()> {
+    // テスト時はログインをスキップ
+    if std::env::var("TEST_MODE").is_ok() {
+        return Ok(());
+    }
+
+    // テスト時は環境変数からユーザー名とパスワードを取得
+    let (username, password) = if let (Ok(u), Ok(p)) = (std::env::var("USERNAME"), std::env::var("PASSWORD")) {
+        (u, p)
+    } else {
+        println!("{} username:", site);
+        let mut username = String::new();
+        std::io::stdin().read_line(&mut username)?;
+        let username = username.trim().to_string();
+
+        let password = rpassword::prompt_password(&format!("{} password: ", site))?;
+        (username, password)
+    };
+    
+    // oj-apiを使用してログイン
+    let output = run_command(
+        "oj",
+        &["login", site.base_url()],
+        Some(&[("USERNAME", &username), ("PASSWORD", &password)])
+    )?;
+
+    if !output.status.success() {
+        return Err(Error::command_failed("oj login", String::from_utf8_lossy(&output.stderr).into_owned()));
+    }
+
+    println!("Successfully logged in to {}!", site);
+    Ok(())
+}
+
+fn get_workspace() -> Result<Workspace> {
+    Ok(Workspace::new(std::env::current_dir()?))
+}
+
+fn get_workspace_with_config() -> Result<(Workspace, crate::workspace::Config)> {
+    let workspace = get_workspace()?;
+    let config = workspace.get_current_config()
+        .ok_or_else(|| Error::InvalidInput(crate::error::NO_ACTIVE_CONTEST.to_string()))?
+        .clone();
+    Ok((workspace, config))
+}
+
+fn handle_workspace(contest_id: String, site: Site) -> Result<()> {
+    let mut workspace = get_workspace()?;
+    workspace.set_workspace(&contest_id, site)?;
+    println!("Workspace set to {}", contest_id);
+    Ok(())
+}
+
+fn handle_language(language: Language) -> Result<()> {
+    let mut workspace = get_workspace()?;
+    workspace.set_language(language)?;
+    println!("Language set to {}", language);
+    Ok(())
+}
+
+fn handle_open(problem_id: String, site: Site) -> Result<()> {
+    let (mut workspace, config) = get_workspace_with_config()?;
+    let contest_id = config.contest.clone();
+
+    let source_path = workspace.setup_problem(&problem_id)?;
+
+    // エディタとブラウザで開く
+    open_in_editor(&source_path)?;
+    open_in_browser(&site.problem_url(&contest_id, &problem_id))?;
+    Ok(())
+}
+
+fn handle_test(problem_id: String) -> Result<()> {
+    let (_workspace, _config) = get_workspace_with_config()?;
+    Error::unsupported_feature("test command")
+}
+
+fn handle_submit(problem_id: String) -> Result<()> {
+    let (_workspace, _config) = get_workspace_with_config()?;
+    Error::unsupported_feature("submit command")
 }
 
 impl Site {
@@ -273,7 +229,7 @@ fn open_in_editor(path: &PathBuf) -> Result<()> {
         return Ok(());
     }
 
-    for editor in EDITORS {
+    for editor in &["code", "cursor"] {
         if run_command(editor, &[path_str], None).is_ok() {
             return Ok(());
         }
