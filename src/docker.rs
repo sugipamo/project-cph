@@ -32,7 +32,46 @@ impl DockerConfig {
 
     fn get_compile_mount(language: &Language) -> String {
         let compile_dir = match language {
-            Language::Rust => "compile/rust",
+            Language::Rust => {
+                let dir = "compile/rust";
+                // compile/rustディレクトリを作成
+                let absolute_path = std::env::current_dir()
+                    .unwrap_or_else(|_| PathBuf::from("."))
+                    .join(dir);
+                let _ = std::fs::create_dir_all(&absolute_path.join("src"));
+                
+                // Cargo.tomlを作成
+                let cargo_toml = r#"[package]
+name = "compile"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "a"
+path = "src/a.rs"
+"#;
+                let _ = std::fs::write(absolute_path.join("Cargo.toml"), cargo_toml);
+                
+                // パーミッションを設定
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let _ = std::fs::set_permissions(
+                        absolute_path.join("Cargo.toml"),
+                        std::fs::Permissions::from_mode(0o777)
+                    );
+                    let _ = std::fs::set_permissions(
+                        &absolute_path,
+                        std::fs::Permissions::from_mode(0o777)
+                    );
+                    let _ = std::fs::set_permissions(
+                        absolute_path.join("src"),
+                        std::fs::Permissions::from_mode(0o777)
+                    );
+                }
+                
+                dir
+            },
             Language::PyPy => unreachable!(), // PyPyは別処理
         };
         let absolute_path = std::env::current_dir()
@@ -102,9 +141,21 @@ impl<'a> DockerRunOptions<'a> {
                             .unwrap_or_else(|_| PathBuf::from("."))
                             .join("compile/pypy");
                         
+                        // compile/pypyディレクトリを作成
+                        let _ = std::fs::create_dir_all(&compile_dir);
+                        
                         // main.pyを作成またはコピー
                         if source_path.exists() {
                             let _ = std::fs::copy(&source_path, compile_dir.join("main.py"));
+                            // パーミッションを設定
+                            #[cfg(unix)]
+                            {
+                                use std::os::unix::fs::PermissionsExt;
+                                let _ = std::fs::set_permissions(
+                                    compile_dir.join("main.py"),
+                                    std::fs::Permissions::from_mode(0o777)
+                                );
+                            }
                         }
                         
                         format!("{}:/compile", compile_dir.display())
@@ -220,6 +271,24 @@ pub async fn run_in_docker(
                 .file_stem()
                 .and_then(|s| s.to_str())
                 .unwrap_or(source_file);
+            
+            // ソースファイルをコピー
+            let source_path = workspace_dir.join(source_file);
+            let compile_dir = std::env::current_dir()
+                .unwrap_or_else(|_| PathBuf::from("."))
+                .join("compile/rust");
+            if source_path.exists() {
+                let _ = std::fs::copy(&source_path, compile_dir.join("src").join("a.rs"));
+                // パーミッションを設定
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let _ = std::fs::set_permissions(
+                        compile_dir.join("src").join("a.rs"),
+                        std::fs::Permissions::from_mode(0o777)
+                    );
+                }
+            }
             
             // まずコンパイル
             let compile_cmd = create_run_command(

@@ -269,6 +269,8 @@ pub async fn run_all_tests(
 
     // 全テストを並列実行
     let mut passed = 0;
+    let mut results = Vec::new();
+
     for test_future in test_futures {
         match test_future.await {
             Ok(Ok((test_case, result))) => {
@@ -276,11 +278,17 @@ pub async fn run_all_tests(
                     passed += 1;
                 }
                 max_execution_time = max_execution_time.max(result.execution_time);
-                print_diff(&test_case, &result);
+                results.push((test_case, result));
             },
             Ok(Err(e)) => println!("Test error: {}", e),
             Err(e) => println!("Task error: {}", e),
         }
+    }
+
+    // テストケースをソートして表示
+    results.sort_by(|(a, _), (b, _)| a.cmp(b));
+    for (test_case, result) in results {
+        print_diff(&test_case, &result);
     }
 
     Ok((passed, total, max_execution_time))

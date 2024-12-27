@@ -42,6 +42,49 @@ fn setup_workspace() -> TempDir {
 
 fn setup_workspace_with_contest(contest_id: &str) -> TempDir {
     let workspace = setup_workspace();
+    
+    // compile/pypyディレクトリを作成
+    fs::create_dir_all(workspace.path().join("compile/pypy")).unwrap();
+    // パーミッションを設定
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(
+            workspace.path().join("compile/pypy"),
+            fs::Permissions::from_mode(0o777),
+        ).unwrap();
+    }
+    
+    // compile/rustディレクトリを作成
+    fs::create_dir_all(workspace.path().join("compile/rust/src")).unwrap();
+    // パーミッションを設定
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(
+            workspace.path().join("compile/rust"),
+            fs::Permissions::from_mode(0o777),
+        ).unwrap();
+        fs::set_permissions(
+            workspace.path().join("compile/rust/src"),
+            fs::Permissions::from_mode(0o777),
+        ).unwrap();
+    }
+    
+    // Cargo.tomlを作成
+    fs::write(
+        workspace.path().join("compile/rust/Cargo.toml"),
+        r#"[package]
+name = "compile"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "a"
+path = "src/a.rs"
+"#
+    ).unwrap();
+    
     run_command(&["atcoder", "workspace", contest_id], Some(&workspace))
         .success();
     workspace
@@ -146,4 +189,121 @@ fn test_workspace_switch() {
     assert!(workspace.path().join("workspace").exists());
     assert!(workspace.path().join("workspace/contests.yaml").exists());
     assert!(workspace.path().join("workspace/.moveignore").exists());
+}
+
+#[test]
+fn test_test_command_requires_workspace() {
+    let workspace = setup_workspace();
+    
+    // ワークスペースを設定せずにテストを実行しようとする
+    run_command(&["atcoder", "test", "a"], Some(&workspace))
+        .failure()
+        .stderr(contains("No active contest"));
+}
+
+#[test]
+fn test_test_command_file_not_exists() {
+    let workspace = setup_workspace_with_contest("abc001");
+    
+    // 存在しないファイルのテストを実行
+    run_command(&["atcoder", "test", "a"], Some(&workspace))
+        .failure()
+        .stderr(contains("Problem file"));
+}
+
+#[test]
+fn test_test_command_pypy() {
+    let workspace = setup_workspace_with_contest("abc001");
+    
+    // PyPyを選択
+    run_command(&["atcoder", "language", "py-py"], Some(&workspace))
+        .success();
+    
+    // テストファイルを作成
+    fs::create_dir_all(workspace.path().join("workspace/test/a")).unwrap();
+    fs::write(
+        workspace.path().join("workspace/test/a/sample-1.in"),
+        "1\n"
+    ).unwrap();
+    fs::write(
+        workspace.path().join("workspace/test/a/sample-1.out"),
+        "1\n"
+    ).unwrap();
+    
+    // PyPyのソースファイルを作成
+    fs::write(
+        workspace.path().join("workspace/a.py"),
+        "n = int(input())\nprint(n)\n"
+    ).unwrap();
+    
+    // main.pyを作成
+    let main_py_path = workspace.path().join("compile/pypy/main.py");
+    fs::write(&main_py_path, "n = int(input())\nprint(n)\n").unwrap();
+    
+    // パーミッションを設定
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&main_py_path, fs::Permissions::from_mode(0o777)).unwrap();
+    }
+    
+    // テストを実行
+    run_command(&["atcoder", "test", "a"], Some(&workspace))
+        .success()
+        .stdout(contains("Test case sample-1 ... passed"));
+}
+
+#[test]
+fn test_test_command_rust() {
+    let workspace = setup_workspace_with_contest("abc001");
+    
+    // テストファイルを作成
+    fs::create_dir_all(workspace.path().join("workspace/test/a")).unwrap();
+    fs::write(
+        workspace.path().join("workspace/test/a/sample-1.in"),
+        "1\n"
+    ).unwrap();
+    fs::write(
+        workspace.path().join("workspace/test/a/sample-1.out"),
+        "1\n"
+    ).unwrap();
+    
+    // Rustのソースファイルを作成
+    fs::write(
+        workspace.path().join("workspace/a.rs"),
+        r#"fn main() {
+    let mut line = String::new();
+    std::io::stdin().read_line(&mut line).unwrap();
+    let n: i32 = line.trim().parse().unwrap();
+    println!("{}", n);
+}"#
+    ).unwrap();
+    
+    // ソースファイルをコンパイルディレクトリにコピー
+    let rust_src_path = workspace.path().join("compile/rust/src/a.rs");
+    fs::write(
+        &rust_src_path,
+        r#"fn main() {
+    let mut line = String::new();
+    std::io::stdin().read_line(&mut line).unwrap();
+    let n: i32 = line.trim().parse().unwrap();
+    println!("{}", n);
+}"#
+    ).unwrap();
+    
+    // テーミッションを設定
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&rust_src_path, fs::Permissions::from_mode(0o777)).unwrap();
+        fs::set_permissions(
+            workspace.path().join("compile/rust/Cargo.toml"),
+            fs::Permissions::from_mode(0o777)
+        ).unwrap();
+    }
+    
+    // テストを実行
+    run_command(&["atcoder", "test", "a"], Some(&workspace))
+        .success()
+        .stdout(contains("Test case sample-1 ... passed"));
 } 
