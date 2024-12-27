@@ -246,7 +246,7 @@ pub async fn run_all_tests(
     Ok((passed, total))
 }
 
-pub fn run(config: Config) -> Result<()> {
+pub fn run(config: Config) -> Result<bool> {
     if let Ok(handle) = tokio::runtime::Handle::try_current() {
         handle.block_on(async {
             let (passed, total) = run_all_tests(
@@ -259,7 +259,7 @@ pub fn run(config: Config) -> Result<()> {
                 total.to_string().bold(),
                 if passed == total { "passed".green().bold() } else { "failed".red().bold() }
             );
-            Ok(())
+            Ok(passed == total)
         })
     } else {
         tokio::runtime::Runtime::new()?.block_on(async {
@@ -273,7 +273,7 @@ pub fn run(config: Config) -> Result<()> {
                 total.to_string().bold(),
                 if passed == total { "passed".green().bold() } else { "failed".red().bold() }
             );
-            Ok(())
+            Ok(passed == total)
         })
     }
 } 

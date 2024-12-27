@@ -99,7 +99,10 @@ fn handle_command(command: CommonSubCommand, site: Site) -> Result<()> {
         CommonSubCommand::Workspace { contest_id } => handle_workspace(contest_id, site),
         CommonSubCommand::Language { language } => handle_language(language),
         CommonSubCommand::Open { problem_id } => handle_open(problem_id, site),
-        CommonSubCommand::Test { problem_id } => handle_test(problem_id),
+        CommonSubCommand::Test { problem_id } => {
+            let _test_passed = handle_test(problem_id)?;
+            Ok(())
+        },
         CommonSubCommand::Submit { problem_id } => handle_submit(problem_id),
     }
 }
@@ -274,7 +277,7 @@ fn handle_open(problem_id: String, site: Site) -> Result<()> {
     Ok(())
 }
 
-fn handle_test(problem_id: String) -> Result<()> {
+fn handle_test(problem_id: String) -> Result<bool> {
     let (workspace, config) = get_workspace_with_config()?;
     let source_path = workspace.get_workspace_dir().join(format!("{}.{}", problem_id, config.language.extension()));
     
@@ -302,8 +305,8 @@ fn handle_test(problem_id: String) -> Result<()> {
         language: config.language,
     };
 
-    crate::test::run(test_config)?;
-    Ok(())
+    let result = crate::test::run(test_config)?;
+    Ok(result)
 }
 
 // テストケースが有効かどうかを確認
@@ -346,12 +349,32 @@ fn handle_submit(problem_id: String) -> Result<()> {
 
     println!("Running tests before submit...");
     // 提出前にテストを実行
-    if let Err(_e) = handle_test(problem_id.clone()) {
-        println!("⚠ Tests failed. Do you want to submit anyway? [y/N]");
+    let test_passed = handle_test(problem_id.clone())?;
+    if !test_passed {
+        println!("⚠ Tests failed. Do you want to [R]etry, [S]ubmit anyway, or [C]ancel? [R/S/C]");
         let mut input = String::new();
         std::io::stdin().read_line(&mut input)?;
-        if !input.trim().eq_ignore_ascii_case("y") {
-            return Ok(());
+        
+        match input.trim().to_lowercase().as_str() {
+            "r" => {
+                println!("\nRetrying tests...");
+                let retry_passed = handle_test(problem_id.clone())?;
+                if !retry_passed {
+                    println!("⚠ Tests still failing. Submission cancelled.");
+                    return Ok(());
+                }
+            },
+            "s" => {
+                println!("\nProceeding with submission...");
+            },
+            "c" => {
+                println!("\nSubmission cancelled.");
+                return Ok(());
+            },
+            _ => {
+                println!("Invalid input. Submission cancelled.");
+                return Ok(());
+            }
         }
     }
 
