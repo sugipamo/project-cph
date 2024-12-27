@@ -71,6 +71,7 @@ pub enum CommonSubCommand {
     },
 
     /// Test a problem
+    #[command(alias = "t")]
     Test {
         problem_id: String,
     },
@@ -290,7 +291,7 @@ fn handle_test(problem_id: String) -> Result<bool> {
     // テストケースのディレクトリを設定
     let test_dir = workspace.get_workspace_dir().join("test").join(&problem_id);
 
-    // テストケースが存在しない場合のみダウンロード
+    // テス��ケースが存在しない場合のみダウンロード
     if !test_dir.exists() || !has_valid_test_cases(&test_dir)? {
         let url = config.site.problem_url(&config.contest, &problem_id);
         download_test_cases(&test_dir, &url, &problem_id)?;
