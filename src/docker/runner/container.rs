@@ -5,7 +5,6 @@ use futures::StreamExt;
 
 use crate::docker::error::{DockerError, Result};
 use crate::docker::state::RunnerState;
-use crate::docker::config::LanguageConfig;
 use super::DockerRunner;
 
 impl DockerRunner {
