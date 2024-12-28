@@ -47,12 +47,9 @@ impl DockerRunner {
         // コンテナの初期化と実行
         self.initialize(source_code).await?;
 
-        // 標準出力と標準エラー出力を取得
+        // 初期の標準出力と標準エラー出力を取得
         let stdout = self.read_all().await?;
         let stderr = self.read_error_all().await?;
-
-        // コンテナを停止
-        self.stop().await?;
 
         Ok(DockerOutput {
             stdout: stdout.join("\n"),

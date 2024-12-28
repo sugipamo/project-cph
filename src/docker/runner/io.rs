@@ -1,6 +1,7 @@
 use bollard::exec::CreateExecOptions;
 use futures::StreamExt;
 use tokio::time::timeout;
+use bollard::container::{LogsOptions, LogOutput};
 
 use crate::docker::error::{DockerError, Result};
 use crate::docker::state::RunnerState;
@@ -60,6 +61,7 @@ impl DockerRunner {
         let state = self.state.clone();
         let timeout_duration = tokio::time::Duration::from_secs(self.config.timeout_seconds);
 
+        // 入力処理のタスク
         tokio::spawn(async move {
             while let Some(input) = rx.recv().await {
                 if *state.lock().await != RunnerState::Running {
@@ -73,7 +75,7 @@ impl DockerRunner {
                             attach_stdin: Some(true),
                             attach_stdout: Some(true),
                             attach_stderr: Some(true),
-                            cmd: Some(vec!["sh", "-c", &format!("echo '{}' | tee /dev/stdin", input)]),
+                            cmd: Some(vec!["sh".to_string(), "-c".to_string(), format!("printf '%s' '{}' > /proc/1/fd/0", input.replace("'", "'\"'\"'"))]),
                             ..Default::default()
                         },
                     )
@@ -86,26 +88,42 @@ impl DockerRunner {
                     }
                 };
 
-                match timeout(timeout_duration, docker.start_exec(&exec.id, None)).await {
-                    Ok(Ok(bollard::exec::StartExecResults::Attached { mut output, .. })) => {
-                        while let Some(Ok(output)) = output.next().await {
-                            match output {
-                                bollard::container::LogOutput::StdOut { message } => {
-                                    let mut stdout = stdout_buffer.lock().await;
-                                    stdout.push(String::from_utf8_lossy(&message).to_string());
-                                }
-                                bollard::container::LogOutput::StdErr { message } => {
-                                    let mut stderr = stderr_buffer.lock().await;
-                                    stderr.push(String::from_utf8_lossy(&message).to_string());
-                                }
-                                _ => {}
-                            }
-                        }
+                if let Err(_) = timeout(timeout_duration, docker.start_exec(&exec.id, None)).await {
+                    *state.lock().await = RunnerState::Error;
+                    break;
+                }
+            }
+        });
+
+        // 出力監視のタスク
+        let container_id = self.container_id.clone();
+        let docker = self.docker.clone();
+        let stdout_buffer = self.stdout_buffer.clone();
+        let stderr_buffer = self.stderr_buffer.clone();
+        let state = self.state.clone();
+
+        tokio::spawn(async move {
+            let options: LogsOptions<String> = LogsOptions {
+                follow: true,
+                stdout: true,
+                stderr: true,
+                timestamps: false,
+                ..Default::default()
+            };
+
+            let mut logs = docker.logs(&container_id, Some(options));
+
+            while let Some(Ok(output)) = logs.next().await {
+                match output {
+                    LogOutput::StdOut { message } => {
+                        let mut stdout = stdout_buffer.lock().await;
+                        stdout.push(String::from_utf8_lossy(&message).trim().to_string());
                     }
-                    _ => {
-                        *state.lock().await = RunnerState::Error;
-                        break;
+                    LogOutput::StdErr { message } => {
+                        let mut stderr = stderr_buffer.lock().await;
+                        stderr.push(String::from_utf8_lossy(&message).trim().to_string());
                     }
+                    _ => {}
                 }
             }
         });

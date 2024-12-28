@@ -49,21 +49,24 @@ impl DockerRunner {
                     image: Some(lang_config.image_name.clone()),
                     cmd: Some(cmd),
                     working_dir: Some(lang_config.workspace_dir.clone()),
-                    tty: Some(true),
+                    tty: Some(false),
                     attach_stdin: Some(true),
                     attach_stdout: Some(true),
                     attach_stderr: Some(true),
                     open_stdin: Some(true),
                     host_config: Some(HostConfig {
-                        auto_remove: Some(true),  // --rm フラグ相当
-                        memory: Some(self.config.memory_limit_mb * 1024 * 1024),  // -m オプション相当
+                        auto_remove: Some(true),
+                        memory: Some(self.config.memory_limit_mb * 1024 * 1024),
                         memory_swap: Some(self.config.memory_limit_mb * 1024 * 1024),
-                        nano_cpus: Some(1_000_000_000),  // --cpus=1 相当
+                        nano_cpus: Some(1_000_000_000),
                         security_opt: Some(vec![
-                            String::from("seccomp=unconfined"),  // --security-opt seccomp=unconfined 相当
+                            String::from("seccomp=unconfined"),
                         ]),
                         ..Default::default()
                     }),
+                    env: Some(vec![
+                        "PYTHONUNBUFFERED=1".to_string(),
+                    ]),
                     ..Default::default()
                 },
             )

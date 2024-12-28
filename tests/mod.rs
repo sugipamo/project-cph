@@ -1,11 +1,14 @@
+#[cfg(test)]
 mod docker;
 
 #[cfg(test)]
-mod tests {
+mod cli_test {
     use super::*;
-    
-    #[test]
-    fn it_works() {
-        assert!(true);
-    }
+    use std::process::Command;
+    use std::path::PathBuf;
+    use std::fs;
+    use std::env;
+    use assert_cmd::prelude::*;
+    use predicates::prelude::*;
+    use tempfile::tempdir;
 } 
