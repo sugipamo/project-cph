@@ -10,7 +10,8 @@ pub struct Cli {
     pub site: Site,
 }
 
-#[derive(Debug, Subcommand, Clone)]
+#[derive(Debug, Subcommand, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Site {
     #[command(name = "atcoder", alias = "at-coder", alias = "at_coder")]
     AtCoder {
@@ -19,7 +20,7 @@ pub enum Site {
     },
 }
 
-#[derive(Debug, Subcommand, Clone)]
+#[derive(Debug, Subcommand, Clone, Serialize, Deserialize)]
 pub enum CommonSubCommand {
     #[command(name = "work", alias = "w")]
     Work {
