@@ -162,7 +162,10 @@ impl CommonSubCommand {
             }
             CommonSubCommand::Login => {
                 println!("Logging in...");
-                Ok(())
+                let workspace = Workspace::new()?;
+                let oj = OJContainer::new(workspace.get_workspace_dir())?;
+                oj.ensure_image().await?;
+                oj.login().await
             }
         }
     }

@@ -41,6 +41,35 @@ impl OJContainer {
         Ok(())
     }
 
+    pub async fn login(&self) -> Result<()> {
+        println!("{}", "Logging in to AtCoder...".cyan());
+
+        let cookie_path = dirs::home_dir()
+            .ok_or("Failed to get home directory")?
+            .join(".local/share/online-judge-tools/cookie.jar");
+
+        let status = Command::new("docker")
+            .args([
+                "run",
+                "--rm",
+                "-it",
+                "-v", &format!("{}:/root/.local/share/online-judge-tools/cookie.jar", cookie_path.display()),
+                "oj-container",
+                "oj",
+                "login",
+                "https://atcoder.jp",
+            ])
+            .status()?;
+
+        if !status.success() {
+            println!("{}", "Error: Login failed".red());
+            return Err("Failed to login".into());
+        }
+
+        println!("{}", "Successfully logged in to AtCoder".green());
+        Ok(())
+    }
+
     pub async fn open(&self, problem: ProblemInfo) -> Result<()> {
         println!("{}", format!("Opening problem URL: {}", problem.url).cyan());
         println!("{}", format!("Please open this URL in your browser: {}", problem.url).yellow());
