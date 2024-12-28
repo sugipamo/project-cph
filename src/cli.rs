@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use clap::{Parser, Subcommand};
 use serde::{Serialize, Deserialize};
-use crate::{Language, error::Result, workspace::{Workspace, Config}};
+use crate::{Language, error::Result, workspace::{Workspace, Config}, oj::OJContainer, oj::ProblemInfo};
 
 #[derive(Debug, Parser)]
 #[command(name = "cph")]
@@ -122,8 +122,32 @@ impl CommonSubCommand {
             }
             CommonSubCommand::Open { problem_id } => {
                 let mut workspace = Workspace::new()?;
+                let config = workspace.load_config()?;
+                
+                // 問題URLの生成
+                let url = format!(
+                    "https://atcoder.jp/contests/{}/tasks/{}_{}",
+                    config.contest,
+                    config.contest,
+                    problem_id
+                );
+
+                // ソースファイルの準備
                 let path = workspace.setup_problem(problem_id)?;
-                println!("Opening {}", path.display());
+                
+                // テストケースのダウンロード
+                let oj = OJContainer::new(workspace.get_workspace_dir())?;
+                oj.ensure_image().await?;
+                
+                let problem = ProblemInfo {
+                    url: url.clone(),
+                    source_path: path.clone(),
+                    problem_id: problem_id.to_string(),
+                };
+                
+                oj.open(problem).await?;
+                
+                println!("Problem setup completed for {}", path.display());
                 Ok(())
             }
             CommonSubCommand::Submit { problem_id } => {
@@ -144,12 +168,12 @@ impl CommonSubCommand {
     }
 }
 
-async fn run_test(workspace_dir: &Path, problem_id: &str, config: &Config) -> Result<bool> {
-    let workspace = Workspace::new()?;
-    let test_dir = workspace.get_test_dir(problem_id);
+async fn run_test(_workspace_dir: &Path, problem_id: &str, config: &Config) -> Result<bool> {
+    let mut workspace = Workspace::new()?;
+    let problem_path = workspace.setup_problem(problem_id)?;
 
     // テストケースの存在確認
-    if !has_valid_test_cases(&test_dir)? {
+    if !has_valid_test_cases(&problem_path)? {
         println!("No test cases found.");
         return Ok(true);
     }
@@ -165,13 +189,13 @@ async fn run_test(workspace_dir: &Path, problem_id: &str, config: &Config) -> Re
 }
 
 // テストケースが有効かどうかを確認
-fn has_valid_test_cases(test_dir: &PathBuf) -> Result<bool> {
-    if !test_dir.exists() {
+fn has_valid_test_cases(problem_dir: &PathBuf) -> Result<bool> {
+    if !problem_dir.exists() {
         return Ok(false);
     }
 
     // 少なくとも1つの.inファイルと対応する.outファイルが存在するか確認
-    let entries = std::fs::read_dir(test_dir)?;
+    let entries = std::fs::read_dir(problem_dir)?;
     let mut has_input = false;
     let mut has_output = false;
 

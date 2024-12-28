@@ -10,7 +10,7 @@ pub enum Error {
     Io(#[from] io::Error),
 
     #[error("Docker error: {0}")]
-    Docker(String),
+    Docker(#[from] bollard::errors::Error),
 
     #[error("Config error: {0}")]
     Config(String),
@@ -23,6 +23,9 @@ pub enum Error {
 
     #[error("Path error: {0}")]
     Path(#[from] StripPrefixError),
+
+    #[error("{0}")]
+    Message(String),
 }
 
 impl Error {
@@ -36,6 +39,18 @@ impl Error {
 
     pub fn unsupported_feature<T>(feature: &str) -> Result<T> {
         Error::invalid_input(format!("{} is not supported yet", feature))
+    }
+}
+
+impl From<&str> for Error {
+    fn from(s: &str) -> Self {
+        Error::Message(s.to_string())
+    }
+}
+
+impl From<String> for Error {
+    fn from(s: String) -> Self {
+        Error::Message(s)
     }
 }
 

@@ -3,13 +3,15 @@ pub mod docker;
 pub mod error;
 pub mod test;
 pub mod workspace;
+pub mod oj;
 
-use serde::{Deserialize, Serialize};
-use clap::ValueEnum;
+pub use cli::Cli;
+
 use std::fmt;
 use std::str::FromStr;
+use clap::ValueEnum;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, ValueEnum)]
 pub enum Language {
     #[clap(name = "rust", alias = "Rust", alias = "RUST")]
     Rust,
@@ -46,7 +48,7 @@ impl Language {
         }
     }
 
-    pub fn default_content(&self) -> crate::error::Result<String> {
+    pub fn default_content(&self) -> error::Result<String> {
         match self {
             Language::Rust => Ok(include_str!("templates/template/main.rs").to_string()),
             Language::PyPy => Ok(include_str!("templates/template/main.py").to_string()),
