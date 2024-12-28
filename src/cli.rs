@@ -10,14 +10,47 @@ pub struct Cli {
     pub site: Site,
 }
 
-#[derive(Debug, Subcommand, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Debug, Subcommand, Clone)]
 pub enum Site {
     #[command(name = "atcoder", alias = "at-coder", alias = "at_coder")]
     AtCoder {
         #[command(subcommand)]
         command: CommonSubCommand,
     },
+}
+
+impl From<&str> for Site {
+    fn from(s: &str) -> Self {
+        match s {
+            "atcoder" => Site::AtCoder { command: default_command() },
+            _ => panic!("Unknown site: {}", s),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Site {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(Site::from(s.as_str()))
+    }
+}
+
+impl Serialize for Site {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Site::AtCoder { .. } => serializer.serialize_str("atcoder"),
+        }
+    }
+}
+
+fn default_command() -> CommonSubCommand {
+    CommonSubCommand::Work { contest: String::new() }
 }
 
 #[derive(Debug, Subcommand, Clone, Serialize, Deserialize)]
