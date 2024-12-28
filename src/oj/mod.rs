@@ -12,11 +12,13 @@ pub struct ProblemInfo {
 
 pub struct OJContainer {
     workspace_path: PathBuf,
+    test_dir: PathBuf,
 }
 
 impl OJContainer {
     pub fn new(workspace_path: PathBuf) -> Result<Self> {
-        Ok(Self { workspace_path })
+        let test_dir = workspace_path.join("test");
+        Ok(Self { workspace_path, test_dir })
     }
 
     pub async fn ensure_image(&self) -> Result<()> {
@@ -47,16 +49,18 @@ impl OJContainer {
             .ok_or("Failed to get home directory")?
             .join(".local/share/online-judge-tools/cookie.jar");
 
-        let test_dir = self.workspace_path.join("test").join(&problem.problem_id);
-        if !test_dir.exists() {
-            std::fs::create_dir_all(&test_dir)?;
+        let problem_test_dir = self.test_dir.join(&problem.problem_id);
+
+        if problem_test_dir.exists() && has_test_cases(&problem_test_dir)? {
+            println!("{}", "Test cases already exist, skipping download.".yellow());
+            return Ok(());
         }
 
         println!("Workspace path: {}", self.workspace_path.display());
         println!("Source path: {}", problem.source_path.display());
-        println!("Test directory: {}", test_dir.display());
+        println!("Test directory: {}", problem_test_dir.display());
 
-        let test_dir_relative = test_dir.strip_prefix(&self.workspace_path)
+        let test_dir_relative = problem_test_dir.strip_prefix(&self.workspace_path)
             .map_err(|_| "Failed to get relative test directory")?;
 
         let status = Command::new("docker")
@@ -82,4 +86,28 @@ impl OJContainer {
         println!("{}", "Problem setup completed".green());
         Ok(())
     }
+}
+
+fn has_test_cases(dir: &PathBuf) -> Result<bool> {
+    if !dir.exists() {
+        return Ok(false);
+    }
+
+    let entries = std::fs::read_dir(dir)?;
+    let mut has_input = false;
+    let mut has_output = false;
+
+    for entry in entries {
+        let entry = entry?;
+        let path = entry.path();
+        if let Some(extension) = path.extension() {
+            if extension == "in" {
+                has_input = true;
+            } else if extension == "out" {
+                has_output = true;
+            }
+        }
+    }
+
+    Ok(has_input && has_output)
 } 
