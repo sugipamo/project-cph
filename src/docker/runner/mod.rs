@@ -12,6 +12,7 @@ use crate::docker::error::Result;
 use crate::docker::state::RunnerState;
 use crate::docker::runner::io::DockerOutput;
 
+#[derive(Clone)]
 pub struct DockerRunner {
     docker: Docker,
     container_id: String,
