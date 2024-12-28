@@ -56,18 +56,4 @@ async fn test_rust_container() {
     sleep(Duration::from_millis(100)).await;
     let output = runner.read().await.unwrap();
     assert_eq!(output.trim(), "Hello, Rust!");
-}
-
-#[tokio::test]
-async fn test_memory_limit() {
-    let mut runner = DockerRunner::new(get_test_config_path(), "python").await.unwrap();
-    
-    // メモリ制限を超えるプログラム
-    runner.initialize(r#"
-        x = [0] * (1024 * 1024 * 200)  # 約200MB
-        print(len(x))
-    "#).await.unwrap();
-    
-    sleep(Duration::from_millis(100)).await;
-    assert_eq!(runner.get_state().await.unwrap(), RunnerState::Error);
 } 

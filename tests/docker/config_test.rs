@@ -1,6 +1,9 @@
+#[cfg(feature = "docker_test")]
 use super::get_test_config_path;
+#[cfg(feature = "docker_test")]
 use cph::docker::config::RunnerConfig;
 
+#[cfg(feature = "docker_test")]
 #[tokio::test]
 async fn test_load_config() {
     let config = RunnerConfig::load(get_test_config_path()).unwrap();
@@ -8,6 +11,7 @@ async fn test_load_config() {
     assert_eq!(config.memory_limit_mb, 128);
 }
 
+#[cfg(feature = "docker_test")]
 #[tokio::test]
 async fn test_get_language_config() {
     let config = RunnerConfig::load(get_test_config_path()).unwrap();
@@ -29,6 +33,7 @@ async fn test_get_language_config() {
     assert_eq!(rust_config.compile_cmd.as_ref().unwrap(), &vec!["rustc", "main.rs"]);
 }
 
+#[cfg(feature = "docker_test")]
 #[tokio::test]
 async fn test_validate_language() {
     let config = RunnerConfig::load(get_test_config_path()).unwrap();

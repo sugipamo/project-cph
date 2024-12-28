@@ -2,6 +2,7 @@ pub mod cli;
 pub mod error;
 pub mod workspace;
 pub mod test;
+pub mod docker;
 
 use std::fmt;
 use std::path::Path;
