@@ -1,99 +1,60 @@
-use clap::Parser;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
+use clap::{Parser, Subcommand};
+use serde::{Serialize, Deserialize};
 use crate::{Language, error::Result, workspace::{Workspace, Config}};
 
-#[derive(Debug, Clone, Copy, clap::ValueEnum, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Site {
-    #[clap(name = "atcoder", alias = "at-coder", alias = "at_coder")]
-    AtCoder,
-    #[clap(name = "codeforces", alias = "cf")]
-    Codeforces,
-}
-
-impl std::fmt::Display for Site {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Site::AtCoder => write!(f, "AtCoder"),
-            Site::Codeforces => write!(f, "Codeforces"),
-        }
-    }
-}
-
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+#[derive(Debug, Parser)]
+#[command(name = "cph")]
 pub struct Cli {
     #[command(subcommand)]
-    command: Command,
+    pub site: Site,
 }
 
-impl Cli {
-    pub async fn execute(self) -> Result<()> {
-        self.command.execute().await
-    }
-}
-
-#[derive(Parser)]
-pub enum Command {
-    /// AtCoder commands
+#[derive(Debug, Subcommand, Clone)]
+pub enum Site {
     #[command(name = "atcoder", alias = "at-coder", alias = "at_coder")]
     AtCoder {
         #[command(subcommand)]
         command: CommonSubCommand,
     },
-    /// Codeforces commands
-    #[command(name = "codeforces", alias = "cf")]
-    Codeforces {
-        #[command(subcommand)]
-        command: CommonSubCommand,
-    },
 }
 
-impl Command {
-    pub async fn execute(&self) -> Result<()> {
-        match self {
-            Command::AtCoder { command } => command.execute().await,
-            Command::Codeforces { command } => command.execute().await,
-        }
-    }
-}
-
-#[derive(Parser)]
+#[derive(Debug, Subcommand, Clone)]
 pub enum CommonSubCommand {
-    /// Work on a contest
-    #[command(name = "work")]
+    #[command(name = "work", alias = "w")]
     Work {
-        /// Contest ID (e.g., abc301)
         contest: String,
     },
-    /// Test a problem
-    #[command(name = "test")]
+    #[command(name = "test", alias = "t")]
     Test {
-        /// Problem ID (e.g., a, b, c)
         problem_id: String,
     },
-    /// Set programming language
-    #[command(name = "language")]
+    #[command(name = "language", alias = "l")]
     Language {
-        /// Programming language
-        #[arg(value_enum)]
         language: Language,
     },
-    /// Open a problem
-    #[command(name = "open")]
+    #[command(name = "open", alias = "o")]
     Open {
-        /// Problem ID (e.g., a, b, c)
         problem_id: String,
     },
-    /// Submit a problem
-    #[command(name = "submit")]
+    #[command(name = "submit", alias = "s")]
     Submit {
-        /// Problem ID (e.g., a, b, c)
         problem_id: String,
     },
-    /// Login to the platform
+    #[command(name = "generate", alias = "g")]
+    Generate {
+        problem_id: String,
+    },
     #[command(name = "login")]
     Login,
+}
+
+impl Cli {
+    pub async fn execute(self) -> Result<()> {
+        match self.site {
+            Site::AtCoder { command } => command.execute().await,
+        }
+    }
 }
 
 impl CommonSubCommand {
@@ -106,7 +67,7 @@ impl CommonSubCommand {
                     println!("Already in contest {}", contest);
                     return Ok(());
                 }
-                workspace.set_workspace(contest, Site::AtCoder)?;
+                workspace.set_workspace(contest, Site::AtCoder { command: CommonSubCommand::Work { contest: contest.clone() } })?;
                 println!("Successfully set up workspace for contest {}", contest);
                 Ok(())
             }
@@ -137,6 +98,10 @@ impl CommonSubCommand {
                 println!("Submitting problem {}", problem_id);
                 Ok(())
             }
+            CommonSubCommand::Generate { problem_id: _ } => {
+                println!("Generate command is not implemented yet");
+                Ok(())
+            }
             CommonSubCommand::Login => {
                 println!("Logging in...");
                 Ok(())
@@ -158,7 +123,7 @@ async fn run_test(workspace_dir: &Path, problem_id: &str, config: &Config) -> Re
     // テストの実行
     let test_config = Config {
         language: config.language,
-        site: config.site,
+        site: config.site.clone(),
         contest: config.contest.clone(),
     };
 
@@ -179,14 +144,11 @@ fn has_valid_test_cases(test_dir: &PathBuf) -> Result<bool> {
     for entry in entries {
         let entry = entry?;
         let path = entry.path();
-        if let Some(ext) = path.extension() {
-            if ext == "in" {
+        if let Some(extension) = path.extension() {
+            if extension == "in" {
                 has_input = true;
-                let out_path = path.with_extension("out");
-                if out_path.exists() {
-                    has_output = true;
-                    break;
-                }
+            } else if extension == "out" {
+                has_output = true;
             }
         }
     }

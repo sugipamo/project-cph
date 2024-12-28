@@ -61,10 +61,10 @@ cph atcoder submit a       # 解答を提出
 ```
 
 利用可能なコマンド：
-- `login` (`l`): サイトにログイン
+- `login` : サイトにログイン
 - `work` (`w`): コンテストの設定
 - `open` (`o`): 問題を開く
-- `language` (`lang`): 言語の設定
+- `language` (`l`): 言語の設定
 - `test` (`t`): テストを実行
 - `submit` (`s`): 解答を提出
 - `generate` (`g`): テストケースを生成（開発中）
