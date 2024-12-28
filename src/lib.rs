@@ -13,7 +13,7 @@ use std::str::FromStr;
 pub enum Language {
     #[clap(name = "rust")]
     Rust,
-    #[clap(name = "py-py", alias = "pypy")]
+    #[clap(name = "pypy", alias = "py-py")]
     PyPy,
 }
 
@@ -21,7 +21,7 @@ impl fmt::Display for Language {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Language::Rust => write!(f, "rust"),
-            Language::PyPy => write!(f, "py-py"),
+            Language::PyPy => write!(f, "pypy"),
         }
     }
 }
@@ -32,7 +32,7 @@ impl FromStr for Language {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "rust" => Ok(Language::Rust),
-            "py-py" | "pypy" => Ok(Language::PyPy),
+            "pypy" | "py-py" => Ok(Language::PyPy),
             _ => Err(format!("Unknown language: {}", s)),
         }
     }

@@ -60,9 +60,9 @@ impl Command {
 
 #[derive(Parser)]
 pub enum CommonSubCommand {
-    /// Create a new workspace for a contest
-    #[command(name = "new")]
-    New {
+    /// Work on a contest
+    #[command(name = "work")]
+    Work {
         /// Contest ID (e.g., abc301)
         contest: String,
     },
@@ -99,7 +99,7 @@ pub enum CommonSubCommand {
 impl CommonSubCommand {
     pub async fn execute(&self) -> Result<()> {
         match self {
-            CommonSubCommand::New { contest } => {
+            CommonSubCommand::Work { contest } => {
                 let mut workspace = Workspace::new()?;
                 workspace.set_workspace(contest, Site::AtCoder)?;
                 Ok(())
