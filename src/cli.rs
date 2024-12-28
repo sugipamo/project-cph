@@ -140,8 +140,8 @@ impl CommonSubCommand {
 }
 
 async fn run_test(workspace_dir: &Path, problem_id: &str, config: &Config) -> Result<bool> {
-    let test_dir = workspace_dir.join("test").join(problem_id);
-    let source_path = workspace_dir.join(format!("{}.{}", problem_id, config.language.extension()));
+    let workspace = Workspace::new()?;
+    let test_dir = workspace.get_test_dir(problem_id);
 
     // テストケースの存在確認
     if !has_valid_test_cases(&test_dir)? {
@@ -151,14 +151,12 @@ async fn run_test(workspace_dir: &Path, problem_id: &str, config: &Config) -> Re
 
     // テストの実行
     let test_config = Config {
-        test_dir,
-        problem_file: source_path,
         language: config.language,
         site: config.site,
         contest: config.contest.clone(),
     };
 
-    crate::test::run(test_config).await
+    crate::test::run(test_config, problem_id).await
 }
 
 // テストケースが有効かどうかを確認
