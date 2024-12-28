@@ -1,14 +1,16 @@
 mod container;
 mod io;
+mod compiler;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use std::path::Path;
 use bollard::Docker;
+use std::time::Instant;
 
 use crate::docker::config::RunnerConfig;
+use crate::docker::error::Result;
 use crate::docker::state::RunnerState;
-use crate::docker::error::{DockerError, Result};
+use crate::docker::runner::io::DockerOutput;
 
 pub struct DockerRunner {
     docker: Docker,
@@ -22,14 +24,8 @@ pub struct DockerRunner {
 }
 
 impl DockerRunner {
-    pub async fn new<P: AsRef<Path>>(config_path: P, language: &str) -> Result<Self> {
-        let config = RunnerConfig::load(config_path)?;
-        config.validate_language(language)?;
-
-        let docker = Docker::connect_with_local_defaults()
-            .map_err(DockerError::ConnectionError)?;
-
-        Ok(Self {
+    pub fn new(docker: Docker, config: RunnerConfig, language: String) -> Self {
+        Self {
             docker,
             container_id: String::new(),
             state: Arc::new(Mutex::new(RunnerState::Ready)),
@@ -37,29 +33,31 @@ impl DockerRunner {
             stderr_buffer: Arc::new(Mutex::new(Vec::new())),
             stdin_tx: None,
             config,
-            language: language.to_string(),
-        })
-    }
-
-    pub async fn get_state(&self) -> Result<RunnerState> {
-        Ok(self.state.lock().await.clone())
-    }
-}
-
-impl Drop for DockerRunner {
-    fn drop(&mut self) {
-        if !self.container_id.is_empty() {
-            let docker = self.docker.clone();
-            let container_id = self.container_id.clone();
-            tokio::spawn(async move {
-                let _ = docker.remove_container(
-                    &container_id,
-                    Some(bollard::container::RemoveContainerOptions {
-                        force: true,
-                        ..Default::default()
-                    }),
-                ).await;
-            });
+            language,
         }
+    }
+
+    pub async fn get_state(&self) -> RunnerState {
+        self.state.lock().await.clone()
+    }
+
+    pub async fn run_in_docker(&mut self, source_code: &str) -> Result<DockerOutput> {
+        let start = Instant::now();
+
+        // コンテナの初期化と実行
+        self.initialize(source_code).await?;
+
+        // 標準出力と標準エラー出力を取得
+        let stdout = self.read_all().await?;
+        let stderr = self.read_error_all().await?;
+
+        // コンテナを停止
+        self.stop().await?;
+
+        Ok(DockerOutput {
+            stdout: stdout.join("\n"),
+            stderr: stderr.join("\n"),
+            execution_time: start.elapsed(),
+        })
     }
 } 

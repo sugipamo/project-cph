@@ -6,6 +6,13 @@ use crate::docker::error::{DockerError, Result};
 use crate::docker::state::RunnerState;
 use super::DockerRunner;
 
+#[derive(Debug)]
+pub struct DockerOutput {
+    pub stdout: String,
+    pub stderr: String,
+    pub execution_time: std::time::Duration,
+}
+
 impl DockerRunner {
     pub async fn write(&self, input: &str) -> Result<()> {
         let tx = self.stdin_tx.as_ref()

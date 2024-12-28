@@ -1,6 +1,5 @@
 use bollard::container::{Config, CreateContainerOptions, StartContainerOptions};
-use bollard::models::{HostConfig, ResourcesUlimits};
-use bollard::exec::{CreateExecOptions, StartExecResults};
+use bollard::models::HostConfig;
 use bollard::image::CreateImageOptions;
 use futures::StreamExt;
 
@@ -55,24 +54,12 @@ impl DockerRunner {
                     attach_stderr: Some(true),
                     open_stdin: Some(true),
                     host_config: Some(HostConfig {
-                        memory: Some(self.config.memory_limit_mb * 1024 * 1024),  // メモリ制限（バイト単位）
-                        memory_swap: Some(self.config.memory_limit_mb * 1024 * 1024),  // スワップ含めた制限
-                        cpu_period: Some(100_000),  // デフォルトのCPU期間（マイクロ秒）
-                        cpu_quota: Some(100_000),   // CPU使用量を100%に制限
+                        auto_remove: Some(true),  // --rm フラグ相当
+                        memory: Some(self.config.memory_limit_mb * 1024 * 1024),  // -m オプション相当
+                        memory_swap: Some(self.config.memory_limit_mb * 1024 * 1024),
+                        nano_cpus: Some(1_000_000_000),  // --cpus=1 相当
                         security_opt: Some(vec![
-                            String::from("seccomp=unconfined"),  // seccompフィルターを無効化
-                        ]),
-                        ulimits: Some(vec![
-                            ResourcesUlimits {
-                                name: Some(String::from("cpu")),
-                                soft: Some(self.config.timeout_seconds as i64),
-                                hard: Some(self.config.timeout_seconds as i64),
-                            },
-                            ResourcesUlimits {
-                                name: Some(String::from("as")),  // アドレス空間の制限
-                                soft: Some((self.config.memory_limit_mb * 1024 * 1024) as i64),
-                                hard: Some((self.config.memory_limit_mb * 1024 * 1024) as i64),
-                            },
+                            String::from("seccomp=unconfined"),  // --security-opt seccomp=unconfined 相当
                         ]),
                         ..Default::default()
                     }),
@@ -84,39 +71,8 @@ impl DockerRunner {
 
         self.container_id = container.id.clone();
 
-        // コンパイルが必要な場合は実行
-        if let Some(compile_cmd) = &lang_config.compile_cmd {
-            let exec = self.docker
-                .create_exec(
-                    &self.container_id,
-                    CreateExecOptions {
-                        cmd: Some(compile_cmd.clone()),
-                        working_dir: Some(lang_config.workspace_dir.clone()),
-                        ..Default::default()
-                    },
-                )
-                .await
-                .map_err(DockerError::ConnectionError)?;
-
-            match self.docker.start_exec(&exec.id, None).await.map_err(DockerError::ConnectionError)? {
-                StartExecResults::Attached { mut output, .. } => {
-                    while let Some(Ok(output)) = output.next().await {
-                        if let bollard::container::LogOutput::StdErr { message } = output {
-                            let mut stderr = self.stderr_buffer.lock().await;
-                            stderr.push(String::from_utf8_lossy(&message).to_string());
-                        }
-                    }
-                }
-                _ => return Err(DockerError::CompilationError("Compilation failed".to_string())),
-            }
-
-            // コンパイルエラーをチェック
-            let stderr = self.read_error_all().await?;
-            if !stderr.is_empty() {
-                *self.state.lock().await = RunnerState::Error;
-                return Err(DockerError::CompilationError(stderr.join("\n")));
-            }
-        }
+        // コンパイル処理の実行
+        self.compile(&lang_config).await?;
 
         // コンテナの起動
         self.docker
@@ -138,18 +94,6 @@ impl DockerRunner {
         if !self.container_id.is_empty() {
             self.docker
                 .stop_container(&self.container_id, None)
-                .await
-                .map_err(DockerError::ConnectionError)?;
-
-            // コンテナの削除を追加
-            self.docker
-                .remove_container(
-                    &self.container_id,
-                    Some(bollard::container::RemoveContainerOptions {
-                        force: true,
-                        ..Default::default()
-                    }),
-                )
                 .await
                 .map_err(DockerError::ConnectionError)?;
         }
