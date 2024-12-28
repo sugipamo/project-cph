@@ -5,7 +5,7 @@ languages:
   python:
     image_name: "python:3.9-slim"
     compile_cmd: null
-    run_cmd: ["python", "-c"]
+    run_cmd: ["python", "-u", "-c"]
     file_extension: ".py"
     workspace_dir: "/compile/python"
 

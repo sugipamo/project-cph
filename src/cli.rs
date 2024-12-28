@@ -194,7 +194,7 @@ impl CommonSubCommand {
                 let language_id = config.language.get_id(&config.site);
                 let oj = OJContainer::new(workspace.get_workspace_dir())?;
                 oj.ensure_image().await?;
-                oj.submit(&problem, language_id).await
+                oj.submit(&problem, &config.site, language_id).await
             }
             CommonSubCommand::Generate { problem_id: _ } => {
                 println!("Generate command is not implemented yet");

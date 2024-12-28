@@ -11,7 +11,7 @@ async fn test_python_io() {
     println!("Docker client initialized");
     
     // 設定の読み込み
-    let config_path = PathBuf::from("config/runner.yaml");
+    let config_path = PathBuf::from("src/config/runner.yaml");
     let config = RunnerConfig::load(&config_path).unwrap();
     println!("Config loaded");
 
@@ -19,7 +19,7 @@ async fn test_python_io() {
     let mut runner = DockerRunner::new(docker, config, "python".to_string());
     println!("DockerRunner created");
 
-    // Pythonのソースコード（より単純な実装）
+    // Pythonのソースコード（よンプルな実装）
     let source_code = "while True: print(int(input()) + 1)";
     println!("Source code: {}", source_code);
 
@@ -40,13 +40,21 @@ async fn test_python_io() {
 
         // バッファの現在の状態を確認
         let all_output = runner.read_all().await.unwrap();
-        println!("Current buffer contents: {:?}", all_output);
+        println!("Current buffer contents before wait: {:?}", all_output);
 
-        // 出力を待つ
-        sleep(Duration::from_millis(50)).await;
+        // 出力を待つ時間を延長し、複数回チェック
+        for _ in 0..5 {
+            sleep(Duration::from_millis(100)).await;
+            let current_output = runner.read_all().await.unwrap();
+            println!("Buffer contents during wait: {:?}", current_output);
+            if !current_output.is_empty() {
+                break;
+            }
+        }
+
         let output = runner.read().await.unwrap();
-        println!("Received output: {}", output);
-        
+        println!("Final received output: {}", output);
+
         // エラー出力も確認
         let error = runner.read_error().await.unwrap();
         if !error.is_empty() {
