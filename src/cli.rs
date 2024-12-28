@@ -127,7 +127,7 @@ impl CommonSubCommand {
             }
             CommonSubCommand::Submit { problem_id } => {
                 let workspace = Workspace::new()?;
-                let config = workspace.load_config()?;
+                let _config = workspace.load_config()?;
                 println!("Submitting problem {}", problem_id);
                 Ok(())
             }
