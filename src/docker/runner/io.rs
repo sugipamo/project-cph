@@ -61,48 +61,9 @@ impl DockerRunner {
         let state = self.state.clone();
         let timeout_duration = tokio::time::Duration::from_secs(self.config.timeout_seconds);
 
-        // 入力処理のタスク
+        // 入力と出力の処理を1つのタスクにまとめる
         tokio::spawn(async move {
-            while let Some(input) = rx.recv().await {
-                if *state.lock().await != RunnerState::Running {
-                    break;
-                }
-
-                let exec = match docker
-                    .create_exec(
-                        &container_id,
-                        CreateExecOptions {
-                            attach_stdin: Some(true),
-                            attach_stdout: Some(true),
-                            attach_stderr: Some(true),
-                            cmd: Some(vec!["sh".to_string(), "-c".to_string(), format!("printf '%s' '{}' > /proc/1/fd/0", input.replace("'", "'\"'\"'"))]),
-                            ..Default::default()
-                        },
-                    )
-                    .await
-                {
-                    Ok(exec) => exec,
-                    Err(_) => {
-                        *state.lock().await = RunnerState::Error;
-                        break;
-                    }
-                };
-
-                if let Err(_) = timeout(timeout_duration, docker.start_exec(&exec.id, None)).await {
-                    *state.lock().await = RunnerState::Error;
-                    break;
-                }
-            }
-        });
-
-        // 出力監視のタスク
-        let container_id = self.container_id.clone();
-        let docker = self.docker.clone();
-        let stdout_buffer = self.stdout_buffer.clone();
-        let stderr_buffer = self.stderr_buffer.clone();
-        let state = self.state.clone();
-
-        tokio::spawn(async move {
+            // 出力監視の設定
             let options: LogsOptions<String> = LogsOptions {
                 follow: true,
                 stdout: true,
@@ -113,18 +74,61 @@ impl DockerRunner {
 
             let mut logs = docker.logs(&container_id, Some(options));
 
-            while let Some(Ok(output)) = logs.next().await {
-                match output {
-                    LogOutput::StdOut { message } => {
-                        let mut stdout = stdout_buffer.lock().await;
-                        stdout.push(String::from_utf8_lossy(&message).trim().to_string());
+            // 出力監視のタスク
+            let logs_task = tokio::spawn(async move {
+                while let Some(Ok(output)) = logs.next().await {
+                    match output {
+                        LogOutput::StdOut { message } => {
+                            let mut stdout = stdout_buffer.lock().await;
+                            stdout.push(String::from_utf8_lossy(&message).trim().to_string());
+                        }
+                        LogOutput::StdErr { message } => {
+                            let mut stderr = stderr_buffer.lock().await;
+                            stderr.push(String::from_utf8_lossy(&message).trim().to_string());
+                        }
+                        _ => {}
                     }
-                    LogOutput::StdErr { message } => {
-                        let mut stderr = stderr_buffer.lock().await;
-                        stderr.push(String::from_utf8_lossy(&message).trim().to_string());
-                    }
-                    _ => {}
                 }
+            });
+
+            // 入力処理のタスク
+            let input_task = tokio::spawn(async move {
+                while let Some(input) = rx.recv().await {
+                    if *state.lock().await != RunnerState::Running {
+                        break;
+                    }
+
+                    let exec = match docker
+                        .create_exec(
+                            &container_id,
+                            CreateExecOptions {
+                                attach_stdin: Some(true),
+                                attach_stdout: Some(true),
+                                attach_stderr: Some(true),
+                                cmd: Some(vec!["sh".to_string(), "-c".to_string(), format!("printf '%s' '{}' > /proc/1/fd/0", input.replace("'", "'\"'\"'"))]),
+                                ..Default::default()
+                            },
+                        )
+                        .await
+                    {
+                        Ok(exec) => exec,
+                        Err(_) => {
+                            *state.lock().await = RunnerState::Error;
+                            break;
+                        }
+                    };
+
+                    if let Err(_) = timeout(timeout_duration, docker.start_exec(&exec.id, None)).await {
+                        *state.lock().await = RunnerState::Error;
+                        break;
+                    }
+                }
+            });
+
+            // 両方のタスクが終了するまで待機
+            tokio::select! {
+                _ = logs_task => {},
+                _ = input_task => {},
             }
         });
 
