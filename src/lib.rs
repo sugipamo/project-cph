@@ -1,5 +1,4 @@
 pub mod cli;
-pub mod docker;
 pub mod error;
 pub mod workspace;
 pub mod test;
@@ -8,9 +7,6 @@ use std::fmt;
 use std::path::Path;
 use crate::error::Result;
 use std::path::PathBuf;
-
-const DEFAULT_TIMEOUT_SECS: u64 = 30;
-const DEFAULT_MEMORY_LIMIT: &str = "256m";
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
