@@ -11,9 +11,9 @@ use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
 pub enum Language {
-    #[clap(name = "rust")]
+    #[clap(name = "rust", alias = "Rust", alias = "RUST")]
     Rust,
-    #[clap(name = "pypy", alias = "py-py")]
+    #[clap(name = "pypy", alias = "py-py", alias = "PyPy", alias = "PYPY", alias = "Pypy")]
     PyPy,
 }
 
@@ -30,9 +30,9 @@ impl FromStr for Language {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        match s.to_lowercase().as_str() {
             "rust" => Ok(Language::Rust),
-            "pypy" | "py-py" => Ok(Language::PyPy),
+            "pypy" | "py-py" | "pypy3" => Ok(Language::PyPy),
             _ => Err(format!("Unknown language: {}", s)),
         }
     }
