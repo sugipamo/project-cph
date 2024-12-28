@@ -101,7 +101,13 @@ impl CommonSubCommand {
         match self {
             CommonSubCommand::Work { contest } => {
                 let mut workspace = Workspace::new()?;
+                let current_contest = workspace.get_current_config().map(|c| c.contest.clone()).unwrap_or_default();
+                if !current_contest.is_empty() && current_contest == *contest {
+                    println!("Already in contest {}", contest);
+                    return Ok(());
+                }
                 workspace.set_workspace(contest, Site::AtCoder)?;
+                println!("Successfully set up workspace for contest {}", contest);
                 Ok(())
             }
             CommonSubCommand::Test { problem_id } => {
