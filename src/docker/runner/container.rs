@@ -5,6 +5,7 @@ use futures::StreamExt;
 
 use crate::docker::error::{DockerError, Result};
 use crate::docker::state::RunnerState;
+use crate::docker::config::LanguageConfig;
 use super::DockerRunner;
 
 impl DockerRunner {
@@ -18,7 +19,8 @@ impl DockerRunner {
         }
 
         let lang_config = self.config.get_language_config(&self.language)
-            .ok_or_else(|| DockerError::UnsupportedLanguage(self.language.clone()))?;
+            .ok_or_else(|| DockerError::UnsupportedLanguage(self.language.clone()))?
+            .clone();
 
         // イメージのプル
         let mut image_stream = self.docker.create_image(
@@ -71,8 +73,8 @@ impl DockerRunner {
 
         self.container_id = container.id.clone();
 
-        // コンパイル処理の実行
-        self.compile(&lang_config).await?;
+        // コンパイル処理の実行（所有権を持つ設定を渡す）
+        self.compile(lang_config).await?;
 
         // コンテナの起動
         self.docker

@@ -1,16 +1,19 @@
+use std::io;
 use std::path::StripPrefixError;
-
-pub type Result<T> = std::result::Result<T, Error>;
+use thiserror::Error;
 
 pub const NO_ACTIVE_CONTEST: &str = "No active contest. Use 'workspace' command to set one.";
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Error)]
 pub enum Error {
     #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
+    Io(#[from] io::Error),
 
     #[error("Docker error: {0}")]
-    Docker(#[from] DockerError),
+    Docker(String),
+
+    #[error("Config error: {0}")]
+    Config(String),
 
     #[error("Invalid input: {0}")]
     InvalidInput(String),
@@ -36,20 +39,4 @@ impl Error {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum DockerError {
-    #[error("Docker operation failed: {kind} - {source}")]
-    Failed {
-        kind: &'static str,
-        source: std::io::Error,
-    },
-
-    #[error("Operation timed out after {0} seconds")]
-    Timeout(u64),
-}
-
-impl DockerError {
-    pub fn failed(kind: &'static str, source: std::io::Error) -> Self {
-        Self::Failed { kind, source }
-    }
-} 
+pub type Result<T> = std::result::Result<T, Error>; 

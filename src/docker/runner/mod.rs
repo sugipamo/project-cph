@@ -1,5 +1,5 @@
 mod container;
-mod io;
+pub mod io;
 mod compiler;
 
 use std::sync::Arc;

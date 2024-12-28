@@ -3,10 +3,11 @@ use futures::StreamExt;
 
 use crate::docker::error::{DockerError, Result};
 use crate::docker::state::RunnerState;
+use crate::docker::config::LanguageConfig;
 use super::DockerRunner;
 
 impl DockerRunner {
-    pub(super) async fn compile(&mut self, lang_config: &crate::docker::config::LanguageConfig) -> Result<()> {
+    pub(super) async fn compile(&mut self, lang_config: LanguageConfig) -> Result<()> {
         if let Some(compile_cmd) = &lang_config.compile_cmd {
             let exec = self.docker
                 .create_exec(
