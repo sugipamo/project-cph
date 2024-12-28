@@ -133,7 +133,7 @@ impl OJContainer {
         Ok(())
     }
 
-    pub async fn submit(&self, problem: &ProblemInfo, _site: &Site, language_id: &str) -> Result<()> {
+    pub async fn submit(&self, problem: &ProblemInfo, language_id: &str) -> Result<()> {
         println!("{}", format!("Submitting solution for problem {}...", problem.problem_id).cyan());
 
         let cookie_path = dirs::home_dir()
@@ -160,30 +160,26 @@ impl OJContainer {
             ])
             .output()?;
 
+        // 出力を表示
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        print!("{}", output_str);
         if !output.status.success() {
             println!("{}", "Error: Submission failed".red());
             return Err("Failed to submit solution".into());
         }
 
-        let output_str = String::from_utf8_lossy(&output.stdout);
+        // 提出URLを抽出して開く
         if let Some(url) = output_str
             .lines()
             .find(|line| line.contains("[SUCCESS] result:"))
             .and_then(|line| line.split(": ").nth(1))
         {
-            println!("\n{}", "Submission successful!".green());
-            println!("{}", "Your submission can be found at:".cyan());
-            println!("{}", format!("  → {}", url).yellow());
-
             // URLを開く
             if let Err(e) = open_in_cursor(url) {
                 println!("{}", format!("Note: Failed to open URL: {}.", e).yellow());
             }
-
-            println!("");
         }
 
-        println!("{}", "Solution submitted successfully".green());
         Ok(())
     }
 }
