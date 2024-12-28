@@ -2,9 +2,16 @@ use std::path::Path;
 use std::fs;
 use tokio::fs as tokio_fs;
 use crate::error::{Error, Result};
-use crate::docker;
 use crate::Config;
 use colored::*;
+
+// TODO: 後でdocker.rsに移動する予定
+#[derive(Debug)]
+struct DockerOutput {
+    stdout: String,
+    stderr: String,
+    execution_time: std::time::Duration,
+}
 
 pub struct TestResult {
     pub passed: bool,
@@ -24,15 +31,11 @@ pub async fn run_test(
     let input = fs::read_to_string(test_file)
         .map_err(|e| Error::Io(e))?;
 
-    let output = match language {
+    let output: DockerOutput = match language {
         crate::Language::Rust => {
             // まずコンパイル
-            let compile_result = docker::run_in_docker(
-                program_path.parent().unwrap_or(Path::new(".")),
-                &language,
-                &["cargo", "build", "--bin", program_path.file_stem().unwrap().to_str().unwrap()],
-                None,
-            ).await?;
+            // TODO: run_in_docker関数の実装
+            let compile_result: DockerOutput = todo!("run_in_docker関数の実装が必要です");
 
             if compile_result.stderr.contains("error") {
                 return Ok(TestResult {
@@ -46,20 +49,12 @@ pub async fn run_test(
             }
 
             // 次に実行
-            docker::run_in_docker(
-                program_path.parent().unwrap_or(Path::new(".")),
-                &language,
-                &[program_path.file_name().unwrap().to_str().unwrap()],
-                Some(input.clone()),
-            ).await?
+            // TODO: run_in_docker関数の実装
+            let output: DockerOutput = todo!("run_in_docker関数の実装が必要です");
         },
         crate::Language::PyPy => {
-            docker::run_in_docker(
-                program_path.parent().unwrap_or(Path::new(".")),
-                &language,
-                &["pypy3", "main.py"],
-                Some(input.clone()),
-            ).await?
+            // TODO: run_in_docker関数の実装
+            let output: DockerOutput = todo!("run_in_docker関数の実装が必要です");
         }
     };
 
