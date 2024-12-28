@@ -19,6 +19,31 @@ pub enum Site {
     },
 }
 
+impl Site {
+    pub fn get_url(&self) -> &'static str {
+        match self {
+            Site::AtCoder { .. } => "https://atcoder.jp",
+        }
+    }
+
+    pub fn get_name(&self) -> &'static str {
+        match self {
+            Site::AtCoder { .. } => "AtCoder",
+        }
+    }
+
+    pub fn get_problem_url(&self, contest: &str, problem_id: &str) -> String {
+        match self {
+            Site::AtCoder { .. } => format!(
+                "https://atcoder.jp/contests/{}/tasks/{}_{}",
+                contest,
+                contest,
+                problem_id
+            ),
+        }
+    }
+}
+
 impl From<&str> for Site {
     fn from(s: &str) -> Self {
         match s {
@@ -151,10 +176,25 @@ impl CommonSubCommand {
                 Ok(())
             }
             CommonSubCommand::Submit { problem_id } => {
-                let workspace = Workspace::new()?;
-                let _config = workspace.load_config()?;
-                println!("Submitting problem {}", problem_id);
-                Ok(())
+                let mut workspace = Workspace::new()?;
+                let config = workspace.load_config()?;
+                
+                // 問題URLの生成
+                let url = config.site.get_problem_url(&config.contest, &problem_id);
+                
+                // ソースファイルの準備
+                let path = workspace.setup_problem(&problem_id)?;
+                
+                let problem = ProblemInfo {
+                    url,
+                    source_path: path.clone(),
+                    problem_id: problem_id.to_string(),
+                };
+
+                let language_id = config.language.get_id(&config.site);
+                let oj = OJContainer::new(workspace.get_workspace_dir())?;
+                oj.ensure_image().await?;
+                oj.submit(&problem, &config.site, language_id).await
             }
             CommonSubCommand::Generate { problem_id: _ } => {
                 println!("Generate command is not implemented yet");
@@ -163,9 +203,10 @@ impl CommonSubCommand {
             CommonSubCommand::Login => {
                 println!("Logging in...");
                 let workspace = Workspace::new()?;
+                let config = workspace.load_config()?;
                 let oj = OJContainer::new(workspace.get_workspace_dir())?;
                 oj.ensure_image().await?;
-                oj.login().await
+                oj.login(&config.site).await
             }
         }
     }

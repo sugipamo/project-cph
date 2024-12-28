@@ -2,6 +2,22 @@ use crate::error::Result;
 use std::path::PathBuf;
 use colored::*;
 use std::process::Command;
+use crate::cli::Site;
+use std::env;
+
+fn open_in_cursor(url: &str) -> Result<()> {
+    // BROWSER環境変数を確認
+    if let Ok(browser) = env::var("BROWSER") {
+        Command::new(&browser)
+            .arg(url)
+            .output()?;
+        return Ok(());
+    }
+
+    // 環境変数が設定されていない場合は、URLを表示するだけ
+    println!("{}", format!("Note: To automatically open URLs, please set the $BROWSER environment variable.").yellow());
+    Ok(())
+}
 
 #[derive(Debug)]
 pub struct ProblemInfo {
@@ -41,8 +57,9 @@ impl OJContainer {
         Ok(())
     }
 
-    pub async fn login(&self) -> Result<()> {
-        println!("{}", "Logging in to AtCoder...".cyan());
+    pub async fn login(&self, site: &Site) -> Result<()> {
+        let site_url = site.get_url();
+        println!("{}", format!("Logging in to {}...", site.get_name()).cyan());
 
         let cookie_path = dirs::home_dir()
             .ok_or("Failed to get home directory")?
@@ -57,16 +74,16 @@ impl OJContainer {
                 "oj-container",
                 "oj",
                 "login",
-                "https://atcoder.jp",
+                site_url,
             ])
             .status()?;
 
         if !status.success() {
-            println!("{}", "Error: Login failed".red());
+            println!("{}", format!("Error: Login to {} failed", site.get_name()).red());
             return Err("Failed to login".into());
         }
 
-        println!("{}", "Successfully logged in to AtCoder".green());
+        println!("{}", format!("Successfully logged in to {}", site.get_name()).green());
         Ok(())
     }
 
@@ -113,6 +130,60 @@ impl OJContainer {
         }
 
         println!("{}", "Problem setup completed".green());
+        Ok(())
+    }
+
+    pub async fn submit(&self, problem: &ProblemInfo, _site: &Site, language_id: &str) -> Result<()> {
+        println!("{}", format!("Submitting solution for problem {}...", problem.problem_id).cyan());
+
+        let cookie_path = dirs::home_dir()
+            .ok_or("Failed to get home directory")?
+            .join(".local/share/online-judge-tools/cookie.jar");
+
+        let source_path_relative = problem.source_path.strip_prefix(&self.workspace_path)
+            .map_err(|_| "Failed to get relative source path")?;
+
+        let output = Command::new("docker")
+            .args([
+                "run",
+                "--rm",
+                "-v", &format!("{}:/workspace", self.workspace_path.display()),
+                "-v", &format!("{}:/root/.local/share/online-judge-tools/cookie.jar", cookie_path.display()),
+                "-w", "/workspace",
+                "oj-container",
+                "oj",
+                "submit",
+                "--language", language_id,
+                "--yes",
+                &problem.url,
+                source_path_relative.to_str().unwrap(),
+            ])
+            .output()?;
+
+        if !output.status.success() {
+            println!("{}", "Error: Submission failed".red());
+            return Err("Failed to submit solution".into());
+        }
+
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        if let Some(url) = output_str
+            .lines()
+            .find(|line| line.contains("[SUCCESS] result:"))
+            .and_then(|line| line.split(": ").nth(1))
+        {
+            println!("\n{}", "Submission successful!".green());
+            println!("{}", "Your submission can be found at:".cyan());
+            println!("{}", format!("  → {}", url).yellow());
+
+            // URLを開く
+            if let Err(e) = open_in_cursor(url) {
+                println!("{}", format!("Note: Failed to open URL: {}.", e).yellow());
+            }
+
+            println!("");
+        }
+
+        println!("{}", "Solution submitted successfully".green());
         Ok(())
     }
 }

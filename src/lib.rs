@@ -48,6 +48,13 @@ impl Language {
         }
     }
 
+    pub fn get_id(&self, site: &cli::Site) -> &'static str {
+        match (self, site) {
+            (Language::Rust, cli::Site::AtCoder { .. }) => "5054",   // Rust (rustc 1.70.0)
+            (Language::PyPy, cli::Site::AtCoder { .. }) => "5078",   // Python (PyPy 3.10-v7.3.12)
+        }
+    }
+
     pub fn default_content(&self) -> error::Result<String> {
         match self {
             Language::Rust => Ok(include_str!("templates/template/main.rs").to_string()),
