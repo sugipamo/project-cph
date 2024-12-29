@@ -9,9 +9,9 @@ languages:
     extension: "rs"
     template:
       pattern:
-        solution: "{source}.rs"
-        generator: "{source}_gen.rs"
-        tester: "{source}_test.rs"
+        solution: "solution.rs"
+        generator: "generator.rs"
+        tester: "tester.rs"
       directory: "rust"
     site_ids:
       atcoder: "5054"  # Rust (rustc 1.70.0)
@@ -31,9 +31,9 @@ languages:
     extension: "py"
     template:
       pattern:
-        solution: "{source}.py"
-        generator: "{source}_gen.py"
-        tester: "{source}_test.py"
+        solution: "solution.py"
+        generator: "generator.py"
+        tester: "tester.py"
       directory: "python"
     site_ids:
       atcoder: "5078"  # Python (PyPy 3.10-v7.3.12)
@@ -51,9 +51,9 @@ languages:
     extension: "py"
     template:
       pattern:
-        solution: "{source}.py"
-        generator: "{source}_gen.py"
-        tester: "{source}_test.py"
+        solution: "solution.py"
+        generator: "generator.py"
+        tester: "tester.py"
       directory: "python"
     site_ids:
       atcoder: "5055"  # Python (CPython 3.11.4)
@@ -71,9 +71,9 @@ languages:
     extension: "cpp"
     template:
       pattern:
-        solution: "{source}.cpp"
-        generator: "{source}_gen.cpp"
-        tester: "{source}_test.cpp"
+        solution: "solution.cpp"
+        generator: "generator.cpp"
+        tester: "tester.cpp"
       directory: "cpp"
     site_ids:
       atcoder: "5050"  # C++ (GCC 12.2.0)

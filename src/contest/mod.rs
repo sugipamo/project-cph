@@ -25,9 +25,9 @@ impl Default for Contest {
 }
 
 impl Contest {
-    pub fn new(current_dir: PathBuf) -> Result<Self> {
+    pub fn new(_current_dir: PathBuf) -> Result<Self> {
         // active_contestディレクトリを作成
-        let active_dir = current_dir.join("active_contest");
+        let active_dir = PathBuf::from("active_contest");
         if !active_dir.exists() {
             println!("active_contestディレクトリを作成します");
             fs::create_dir_all(&active_dir)
@@ -54,10 +54,8 @@ impl Contest {
         let mut contest: Contest = serde_yaml::from_str(&content)
             .map_err(|e| format!("contests.yamlの解析に失敗しました: {}", e))?;
         
-        // rootが設定されていない場合はactive_contestディレクトリを使用
-        if contest.root == PathBuf::new() {
-            contest.root = active_dir;
-        }
+        // rootを相対パスに設定
+        contest.root = active_dir;
 
         Ok(contest)
     }
@@ -111,9 +109,9 @@ impl Contest {
             
             // テンプレートパスを取得
             if let Some(template_path) = lang_config.get_template(language, "solution") {
-                let source = PathBuf::from(&template_path.solution);
+                let source = PathBuf::from("templates/template").join(&template_path.solution);
                 if !source.exists() {
-                    return Err(format!("テンプレートフィレクトリが見つかりません: {}", template_path.solution).into());
+                    return Err(format!("テンプレートファイルが見つかりません: {}", source.display()).into());
                 }
 
                 // テンプレートディレクトリをコピー
@@ -127,7 +125,8 @@ impl Contest {
                 println!("From: {}", source.display());
                 println!("To: {}", target.display());
 
-                self.copy_dir_contents(&source, &target)?;
+                // ファイルをコピー
+                fs::copy(&source, target.join(&template_path.solution))?;
                 println!("テンプレートのコピーが完了しました");
             }
         }
@@ -135,6 +134,7 @@ impl Contest {
     }
 
     // ディレクトリ内容のコピー（再帰的）
+    #[allow(dead_code)]
     fn copy_dir_contents(&self, source: &Path, target: &Path) -> Result<()> {
         for entry in fs::read_dir(source)? {
             let entry = entry?;

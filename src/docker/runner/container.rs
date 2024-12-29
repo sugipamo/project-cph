@@ -48,7 +48,7 @@ impl DockerRunner {
                 Config {
                     image: Some(lang_config.image.clone()),
                     cmd: Some(cmd),
-                    working_dir: Some(lang_config.compile_dir.to_string()),
+                    working_dir: Some(lang_config.compile_dir.clone()),
                     tty: Some(false),
                     attach_stdin: Some(true),
                     attach_stdout: Some(true),
@@ -61,6 +61,9 @@ impl DockerRunner {
                         nano_cpus: Some(1_000_000_000),
                         security_opt: Some(vec![
                             String::from("seccomp=unconfined"),
+                        ]),
+                        binds: Some(vec![
+                            format!("{}:{}", self.config.mount_point, lang_config.compile_dir),
                         ]),
                         ..Default::default()
                     }),
@@ -75,14 +78,14 @@ impl DockerRunner {
 
         self.container_id = container.id.clone();
 
-        // コンパイル処理の実行（所有権を持つ設定を渡す）
-        self.compile(lang_config).await?;
-
-        // コンテナの起動
+        // コンパナの起動
         self.docker
             .start_container(&self.container_id, None::<StartContainerOptions<String>>)
             .await
             .map_err(DockerError::ConnectionError)?;
+
+        // コンパイル処理の実行（所有権を持つ設定を渡す）
+        self.compile(lang_config).await?;
 
         // I/O設定
         self.setup_io().await?;
@@ -96,10 +99,16 @@ impl DockerRunner {
         current_state.can_transition_to(&RunnerState::Stop)?;
 
         if !self.container_id.is_empty() {
-            self.docker
-                .stop_container(&self.container_id, None)
-                .await
-                .map_err(DockerError::ConnectionError)?;
+            match self.docker.stop_container(&self.container_id, None).await {
+                Ok(_) => (),
+                Err(e) => {
+                    println!("Warning: Failed to stop runner {}: {:?}", self.container_id, e);
+                    // コンテナが既に存在しない場合は無視
+                    if !e.to_string().contains("No such container") {
+                        return Err(DockerError::ConnectionError(e));
+                    }
+                }
+            }
         }
 
         *self.state.lock().await = RunnerState::Stop;

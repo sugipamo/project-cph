@@ -19,7 +19,7 @@ async fn test_python_io() {
     let mut state = TestState::default();
     
     // 言語設定の読み込み
-    let lang_config = load_test_languages();
+    let _lang_config = load_test_languages();
     let test_lang = "python".to_string();  // このテストはPythonの機能をテストするため、明示的に指定
 
     // Dockerクライアントの初期化
@@ -29,7 +29,7 @@ async fn test_python_io() {
     });
 
     // 設定の読み込み
-    let config_path = PathBuf::from("src/config/runner.yaml");
+    let config_path = PathBuf::from("src/config/docker.yaml");
     let config = RunnerConfig::load(&config_path).unwrap_or_else(|e| {
         println!("Config loading failed: {:?}", e);
         panic!("Failed to load config");

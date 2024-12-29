@@ -1,17 +1,17 @@
 use bollard::Docker;
 use std::time::Duration;
 use cph::docker::{DockerRunners, RunnerConfig, RunnerState};
-use crate::docker::get_test_config_path;
+use std::path::PathBuf;
 use crate::helpers::{load_test_languages, setup_test_templates, cleanup_test_files};
 
 #[tokio::test]
 async fn test_basic_pipeline() {
     setup_test_templates();
-    let lang_config = load_test_languages();
-    let test_lang = lang_config.get_default_language().unwrap();
+    let _lang_config = load_test_languages();
+    let test_lang = "python".to_string();
 
     // 設定の読み込み
-    let config_path = get_test_config_path();
+    let config_path = PathBuf::from("src/config/docker.yaml");
     let config = RunnerConfig::load(&config_path).unwrap();
     let docker = Docker::connect_with_local_defaults().unwrap();
     let runners = DockerRunners::new(docker, config);
@@ -52,10 +52,10 @@ while True:
 #[tokio::test]
 async fn test_error_handling() {
     setup_test_templates();
-    let lang_config = load_test_languages();
-    let test_lang = lang_config.get_default_language().unwrap();
+    let _lang_config = load_test_languages();
+    let test_lang = "python".to_string();
 
-    let config_path = get_test_config_path();
+    let config_path = PathBuf::from("src/config/docker.yaml");
     let config = RunnerConfig::load(&config_path).unwrap();
     let docker = Docker::connect_with_local_defaults().unwrap();
     let runners = DockerRunners::new(docker, config);
@@ -76,10 +76,10 @@ async fn test_error_handling() {
 #[tokio::test]
 async fn test_multi_stage_pipeline() {
     setup_test_templates();
-    let lang_config = load_test_languages();
-    let test_lang = lang_config.get_default_language().unwrap();
+    let _lang_config = load_test_languages();
+    let test_lang = "python".to_string();
 
-    let config_path = get_test_config_path();
+    let config_path = PathBuf::from("src/config/docker.yaml");
     let config = RunnerConfig::load(&config_path).unwrap();
     let docker = Docker::connect_with_local_defaults().unwrap();
     let runners = DockerRunners::new(docker, config);
@@ -129,10 +129,10 @@ while True:
 #[tokio::test]
 async fn test_timeout() {
     setup_test_templates();
-    let lang_config = load_test_languages();
-    let test_lang = lang_config.get_default_language().unwrap();
+    let _lang_config = load_test_languages();
+    let test_lang = "python".to_string();
 
-    let config_path = get_test_config_path();
+    let config_path = PathBuf::from("src/config/docker.yaml");
     let config = RunnerConfig::load(&config_path).unwrap();
     let docker = Docker::connect_with_local_defaults().unwrap();
     let runners = DockerRunners::new(docker, config);
@@ -151,10 +151,10 @@ async fn test_timeout() {
 #[tokio::test]
 async fn test_large_output() {
     setup_test_templates();
-    let lang_config = load_test_languages();
-    let test_lang = lang_config.get_default_language().unwrap();
+    let _lang_config = load_test_languages();
+    let test_lang = "python".to_string();
 
-    let config_path = get_test_config_path();
+    let config_path = PathBuf::from("src/config/docker.yaml");
     let config = RunnerConfig::load(&config_path).unwrap();
     let docker = Docker::connect_with_local_defaults().unwrap();
     let runners = DockerRunners::new(docker, config);
