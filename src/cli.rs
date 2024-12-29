@@ -1,7 +1,145 @@
 use std::path::{Path, PathBuf};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, Command, ArgMatches, error::ErrorKind};
 use serde::{Serialize, Deserialize};
-use crate::{Language, error::Result, workspace::{Workspace, Config}, oj::OJContainer, oj::ProblemInfo};
+use thiserror::Error;
+use crate::{
+    Language, 
+    error::Result, 
+    workspace::{Workspace, Config}, 
+    oj::OJContainer, 
+    oj::ProblemInfo,
+    config::aliases::AliasConfig,
+};
+
+#[derive(Debug, Error)]
+pub enum CliError {
+    #[error("サイト '{0}' は存在しません。利用可能なサイト: atcoder")]
+    UnknownSite(String),
+
+    #[error("コマンド '{0}' は存在しません。利用可能なコマンド: work, test, language, open, submit, generate, login")]
+    UnknownCommand(String),
+
+    #[error("引数 '{0}' が必要です")]
+    MissingArgument(&'static str),
+
+    #[error("言語 '{0}' は無効です")]
+    InvalidLanguage(String),
+
+    #[error("エイリアスの解決に失敗しました: {0}")]
+    AliasResolutionError(String),
+
+    #[error("コマンドが指定されていません")]
+    MissingCommand,
+
+    #[error("サブコマンドが指定されていません")]
+    MissingSubcommand,
+}
+
+impl From<CliError> for clap::Error {
+    fn from(err: CliError) -> Self {
+        let msg = err.to_string();
+        match err {
+            CliError::UnknownSite(_) => 
+                clap::Error::raw(ErrorKind::UnknownArgument, msg),
+            CliError::UnknownCommand(_) => 
+                clap::Error::raw(ErrorKind::UnknownArgument, msg),
+            CliError::MissingArgument(_) => 
+                clap::Error::raw(ErrorKind::MissingRequiredArgument, msg),
+            CliError::InvalidLanguage(_) => 
+                clap::Error::raw(ErrorKind::InvalidValue, msg),
+            CliError::AliasResolutionError(_) => 
+                clap::Error::raw(ErrorKind::InvalidValue, msg),
+            CliError::MissingCommand => 
+                clap::Error::raw(ErrorKind::MissingSubcommand, msg),
+            CliError::MissingSubcommand => 
+                clap::Error::raw(ErrorKind::MissingSubcommand, msg),
+        }
+    }
+}
+
+/// コマンドライン引数の解析を行う構造体
+#[derive(Debug)]
+pub struct CliParser {
+    alias_config: AliasConfig,
+}
+
+impl CliParser {
+    pub fn new(alias_config: AliasConfig) -> Self {
+        Self { alias_config }
+    }
+
+    /// コマンドライン引数を解析します
+    pub fn parse_from_args(&self, args: Vec<String>) -> clap::error::Result<ArgMatches> {
+        let resolved_args = self.alias_config.resolve_args(args)
+            .ok_or_else(|| CliError::AliasResolutionError(
+                "コマンドまたはエイリアスの解決に失敗しました".to_string()
+            ))?;
+
+        self.build_cli().try_get_matches_from(resolved_args)
+            .map_err(|e| {
+                // clapのエラーメッセージを日本語化
+                let msg = match e.kind() {
+                    ErrorKind::MissingRequiredArgument => "必要な引数が指定されていません",
+                    ErrorKind::UnknownArgument => "不明な引数が指定されています",
+                    ErrorKind::InvalidValue => "無効な値が指定されています",
+                    ErrorKind::MissingSubcommand => "サブコマンドが指定されていません",
+                    _ => return e,
+                };
+                clap::Error::raw(e.kind(), msg.to_string())
+            })
+    }
+
+    /// CLIの構造を構築します
+    fn build_cli(&self) -> Command {
+        Command::new("cph")
+            .about("競技プログラミングヘルパー")
+            .subcommand_required(true)
+            .subcommand(
+                Command::new("atcoder")
+                    .about("AtCoder関連のコマンド")
+                    .subcommand_required(true)
+                    .subcommands(self.common_subcommands())
+            )
+    }
+
+    /// 共通のサブコマンドを構築します
+    fn common_subcommands(&self) -> Vec<Command> {
+        vec![
+            Command::new("work")
+                .about("コンテストのワークスペースを設定")
+                .arg(clap::Arg::new("contest")
+                    .help("コンテストID")
+                    .required(true)),
+            Command::new("test")
+                .about("問題のテストを実行")
+                .arg(clap::Arg::new("problem_id")
+                    .help("問題ID")
+                    .required(true)),
+            Command::new("language")
+                .about("使用する言語を設定")
+                .arg(clap::Arg::new("language")
+                    .help("プログラミング言語")
+                    .required(true)),
+            Command::new("open")
+                .about("問題ページを開く")
+                .arg(clap::Arg::new("problem_id")
+                    .help("問題ID")
+                    .required(true)),
+            Command::new("submit")
+                .about("解答を提出")
+                .arg(clap::Arg::new("problem_id")
+                    .help("問題ID")
+                    .required(true)),
+            Command::new("generate")
+                .about("テンプレートを生成")
+                .arg(clap::Arg::new("problem_id")
+                    .help("問題ID")
+                    .required(true)),
+            Command::new("login")
+                .about("サイトにログイン"),
+        ]
+    }
+}
 
 #[derive(Debug, Parser)]
 #[command(name = "cph")]
@@ -80,27 +218,27 @@ fn default_command() -> CommonSubCommand {
 
 #[derive(Debug, Subcommand, Clone, Serialize, Deserialize)]
 pub enum CommonSubCommand {
-    #[command(name = "work", alias = "w")]
+    #[command(name = "work")]
     Work {
         contest: String,
     },
-    #[command(name = "test", alias = "t")]
+    #[command(name = "test")]
     Test {
         problem_id: String,
     },
-    #[command(name = "language", alias = "l")]
+    #[command(name = "language")]
     Language {
         language: Language,
     },
-    #[command(name = "open", alias = "o")]
+    #[command(name = "open")]
     Open {
         problem_id: String,
     },
-    #[command(name = "submit", alias = "s")]
+    #[command(name = "submit")]
     Submit {
         problem_id: String,
     },
-    #[command(name = "generate", alias = "g")]
+    #[command(name = "generate")]
     Generate {
         problem_id: String,
     },
@@ -109,6 +247,71 @@ pub enum CommonSubCommand {
 }
 
 impl Cli {
+    /// エイリアス設定を使用してコマンドライン引数を解析します
+    pub fn parse_from(args: Vec<String>, alias_config: AliasConfig) -> clap::error::Result<Self> {
+        let parser = CliParser::new(alias_config);
+        let matches = parser.parse_from_args(args)?;
+        Self::from_matches(&matches)
+    }
+
+    /// ArgMatchesからCliインスタンスを構築します
+    fn from_matches(matches: &ArgMatches) -> clap::error::Result<Self> {
+        // サイトの解決
+        let (site_name, site_matches) = matches.subcommand()
+            .ok_or_else(|| CliError::MissingSubcommand)?;
+
+        // サブコマンドの解決
+        let (cmd_name, cmd_matches) = site_matches.subcommand()
+            .ok_or_else(|| CliError::MissingCommand)?;
+
+        // コマンドの構築
+        let command = match cmd_name {
+            "work" => CommonSubCommand::Work {
+                contest: cmd_matches.get_one::<String>("contest")
+                    .ok_or_else(|| CliError::MissingArgument("contest"))?
+                    .clone(),
+            },
+            "test" => CommonSubCommand::Test {
+                problem_id: cmd_matches.get_one::<String>("problem_id")
+                    .ok_or_else(|| CliError::MissingArgument("problem_id"))?
+                    .clone(),
+            },
+            "language" => {
+                let lang_str = cmd_matches.get_one::<String>("language")
+                    .ok_or_else(|| CliError::MissingArgument("language"))?;
+                CommonSubCommand::Language {
+                    language: lang_str.parse()
+                        .map_err(|_| CliError::InvalidLanguage(lang_str.clone()))?
+                }
+            },
+            "open" => CommonSubCommand::Open {
+                problem_id: cmd_matches.get_one::<String>("problem_id")
+                    .ok_or_else(|| CliError::MissingArgument("problem_id"))?
+                    .clone(),
+            },
+            "submit" => CommonSubCommand::Submit {
+                problem_id: cmd_matches.get_one::<String>("problem_id")
+                    .ok_or_else(|| CliError::MissingArgument("problem_id"))?
+                    .clone(),
+            },
+            "generate" => CommonSubCommand::Generate {
+                problem_id: cmd_matches.get_one::<String>("problem_id")
+                    .ok_or_else(|| CliError::MissingArgument("problem_id"))?
+                    .clone(),
+            },
+            "login" => CommonSubCommand::Login,
+            _ => return Err(CliError::UnknownCommand(cmd_name.to_string()).into()),
+        };
+
+        // サイトの構築
+        let site = match site_name {
+            "atcoder" => Site::AtCoder { command },
+            _ => return Err(CliError::UnknownSite(site_name.to_string()).into()),
+        };
+
+        Ok(Self { site })
+    }
+
     pub async fn execute(self) -> Result<()> {
         match self.site {
             Site::AtCoder { command } => command.execute().await,

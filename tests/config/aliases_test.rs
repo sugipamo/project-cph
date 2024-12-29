@@ -1,5 +1,8 @@
 #[cfg(test)]
-use cph::config::aliases::AliasConfig;
+use cph::{
+    config::aliases::AliasConfig,
+    cli::{CliParser, Cli, Site, CommonSubCommand},
+};
 
 #[test]
 fn test_resolve_language() {
@@ -117,4 +120,89 @@ fn test_resolve_args() {
             "py".to_string()
         ])
     );
+}
+
+#[test]
+fn test_cli_parser() {
+    let config = AliasConfig::load("src/config/aliases.yaml").unwrap();
+    let parser = CliParser::new(config);
+
+    // 基本的なコマンド
+    let args = vec![
+        "cph".to_string(),
+        "atcoder".to_string(),
+        "test".to_string(),
+        "a".to_string(),
+    ];
+    let matches = parser.parse_from_args(args).unwrap();
+    assert!(matches.subcommand_matches("atcoder").is_some());
+
+    // エイリアスを使用したコマンド
+    let args = vec![
+        "cph".to_string(),
+        "at-coder".to_string(),
+        "t".to_string(),
+        "b".to_string(),
+    ];
+    let matches = parser.parse_from_args(args).unwrap();
+    assert!(matches.subcommand_matches("atcoder").is_some());
+
+    // 無効なコマンド
+    let args = vec![
+        "cph".to_string(),
+        "invalid".to_string(),
+        "test".to_string(),
+    ];
+    assert!(parser.parse_from_args(args).is_err());
+}
+
+#[test]
+fn test_cli_parse_from() {
+    let config = AliasConfig::load("src/config/aliases.yaml").unwrap();
+
+    // 基本的なコマンド
+    let args = vec![
+        "cph".to_string(),
+        "atcoder".to_string(),
+        "test".to_string(),
+        "a".to_string(),
+    ];
+    let cli = Cli::parse_from(args, config.clone()).unwrap();
+    match cli.site {
+        Site::AtCoder { command } => match command {
+            CommonSubCommand::Test { problem_id } => assert_eq!(problem_id, "a"),
+            _ => panic!("Expected Test command"),
+        },
+    }
+
+    // エイリアスを使用したコマンド
+    let args = vec![
+        "cph".to_string(),
+        "at-coder".to_string(),
+        "t".to_string(),
+        "b".to_string(),
+    ];
+    let cli = Cli::parse_from(args, config.clone()).unwrap();
+    match cli.site {
+        Site::AtCoder { command } => match command {
+            CommonSubCommand::Test { problem_id } => assert_eq!(problem_id, "b"),
+            _ => panic!("Expected Test command"),
+        },
+    }
+
+    // 無効なコマンド
+    let args = vec![
+        "cph".to_string(),
+        "invalid".to_string(),
+        "test".to_string(),
+    ];
+    assert!(Cli::parse_from(args, config.clone()).is_err());
+
+    // 必須引数の欠落
+    let args = vec![
+        "cph".to_string(),
+        "atcoder".to_string(),
+        "test".to_string(),
+    ];
+    assert!(Cli::parse_from(args, config).is_err());
 } 
