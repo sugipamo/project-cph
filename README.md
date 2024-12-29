@@ -132,30 +132,60 @@ cph atcoder language pypy
 ├── contests/          # アーカイブされたコンテスト
 │   └── abc001/
 │       └── a.rs
-├── template/         # テンプレートファイル
-│   ├── main.rs      # Rust用テンプレート
-│   ├── main.py      # Python用テンプレート
-│   ├── template_gen.rs  # 生成スクリプトのテンプレート
-│   └── {problem_id}_gen.rs  # 問題固有の生成スクリプト
-└── workspace/         # 現在のワークスペース
-    ├── a.rs          # 現在の問題ファイル
+├── workspace_template/  # ワークスペース用のテンプレート
+│   └── template/      # 言語別テンプレート
+│       ├── main.rs    # Rust用テンプレート
+│       ├── main.py    # Python用テンプレート
+│       ├── template_gen.rs  # 生成スクリプトのテンプレート
+│       └── {problem_id}_gen.rs  # 問題固有の生成スクリプト
+└── src/              # 現在の問題ファイル
+    ├── a.rs
     ├── contests.yaml # コンテスト設定
+    ├── template/     # コピーされたテンプレート
     └── .moveignore   # 移動対象外ファイルの設定
+```
+
+### 設定ファイル
+
+#### .moveignore
+`src/.moveignore`ファイルには、`work`コマンド実行時にcontestsディレクトリへ移動させたくないファイルのパターンを記述します：
+
+```
+# 例：
+template/      # テンプレートディレクトリは移動しない
+contests.yaml  # 設定ファイルは移動しない
+.moveignore    # 移動対象外設定ファイルは移動しない
 ```
 
 ### テンプレートファイル
 
-- `main.{ext}`: 各言語用の基本テンプレート
-  - 問題を開いたときに自動的にコピーされます
-  - 言語に応じた拡張子が使用されます（.rs, .py）
+#### ワークスペーステンプレート（workspace_template）
 
-- `template_gen.rs`: 生成スクリプトのテンプレート
-  - 問題固有の生成スクリプトを作成する際のベース
-  - 初回の問題生成時にコピーされます
+`workspace_template`ディレクトリには、新しいワークスペースを作成する際に使用されるテンプレートファイルが含まれています：
 
-- `{problem_id}_gen.rs`: 問題固有の生成スクリプト
-  - 例：`a_gen.rs`, `b_gen.rs`
-  - テストケースの自動生成に使用（開発中）
+- `template/`: 言語別のテンプレートディレクトリ
+  - `main.{ext}`: 各言語用の基本テンプレート
+    - 問題を開いたときに自動的にコピーされます
+    - 言語に応じた拡張子が使用されます（.rs, .py）
+  - `template_gen.rs`: 生成スクリプトのテンプレート
+    - 問題固有の生成スクリプトを作成する際のベース
+    - 初回の問題生成時にコピーされます
+  - `{problem_id}_gen.rs`: 問題固有の生成スクリプト
+    - 例：`a_gen.rs`, `b_gen.rs`
+    - テストケースの自動生成に使用（開発中）
+
+#### カスタマイズ方法
+
+テンプレートは以下の方法でカスタマイズできます：
+
+1. 言語別テンプレートの編集
+   - `workspace_template/template/main.rs`（Rust用）
+   - `workspace_template/template/main.py`（Python用）
+   を編集することで、新規問題作成時のテンプレートを変更できます
+
+2. 生成スクリプトのテンプレート編集
+   - `workspace_template/template/template_gen.rs`を編集することで、
+     テストケース生成スクリプトのテンプレートを変更できます
 
 ## 開発者向け情報
 
