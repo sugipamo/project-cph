@@ -5,7 +5,7 @@ use std::process::Command;
 use crate::cli::Site;
 use std::env;
 
-fn open_in_cursor(url: &str) -> Result<()> {
+pub fn open_in_cursor(url: &str) -> Result<()> {
     // BROWSER環境変数を確認
     if let Ok(browser) = env::var("BROWSER") {
         Command::new(&browser)

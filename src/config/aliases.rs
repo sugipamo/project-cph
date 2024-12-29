@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use std::path::Path;
 use thiserror::Error;
@@ -15,7 +15,7 @@ pub enum AliasError {
 
 pub type Result<T> = std::result::Result<T, AliasError>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AliasType {
     Site(String),
     Command(String),
@@ -29,13 +29,12 @@ pub struct ResolvedAlias {
     pub alias_type: AliasType,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AliasConfig {
     pub languages: HashMap<String, Vec<String>>,
-    pub commands: HashMap<String, Vec<String>>,
     pub sites: HashMap<String, Vec<String>>,
-    #[serde(skip)]
-    aliases: HashMap<String, AliasType>,
+    pub commands: HashMap<String, Vec<String>>,
+    pub aliases: HashMap<String, AliasType>,
 }
 
 impl AliasConfig {
@@ -47,6 +46,8 @@ impl AliasConfig {
     }
 
     fn initialize_aliases(&mut self) {
+        self.aliases = HashMap::new();
+        
         // サイトのエイリアスを初期化
         for (site, aliases) in &self.sites {
             self.aliases.insert(site.to_lowercase(), AliasType::Site(site.clone()));
@@ -110,5 +111,41 @@ impl AliasConfig {
         }
 
         Ok(result)
+    }
+
+    /// 言語エイリアスを解決する
+    pub fn resolve_language(&self, input: &str) -> Option<String> {
+        let input = input.to_lowercase();
+        
+        // 正規の値として存在する場合はそのまま返す
+        if self.languages.contains_key(&input) {
+            return Some(input);
+        }
+
+        // エイリアスを探索
+        for (key, aliases) in &self.languages {
+            if aliases.iter().any(|alias| alias.to_lowercase() == input) {
+                return Some(key.clone());
+            }
+        }
+        None
+    }
+
+    /// サイトエイリアスを解決する
+    pub fn resolve_site(&self, input: &str) -> Option<String> {
+        let input = input.to_lowercase();
+        
+        // 正規の値として存在する場合はそのまま返す
+        if self.sites.contains_key(&input) {
+            return Some(input);
+        }
+
+        // エイリアスを探索
+        for (key, aliases) in &self.sites {
+            if aliases.iter().any(|alias| alias.to_lowercase() == input) {
+                return Some(key.clone());
+            }
+        }
+        None
     }
 } 

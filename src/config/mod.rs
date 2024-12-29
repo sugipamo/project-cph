@@ -1,36 +1,35 @@
+use std::path::{Path, PathBuf};
+use serde::{Serialize, Deserialize};
+use crate::cli::Site;
+use crate::Language;
+
 pub mod aliases;
 
-use std::path::{Path, PathBuf};
-
-#[derive(Debug, Clone)]
-pub struct ConfigPaths {
-    pub aliases: PathBuf,
-    pub runner: PathBuf,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Config {
+    pub contest_id: String,
+    pub language: Language,
+    pub site: Site,
 }
 
-impl Default for ConfigPaths {
-    fn default() -> Self {
-        Self {
-            aliases: PathBuf::from("src/config/aliases.yaml"),
-            runner: PathBuf::from("src/config/runner.yaml"),
-        }
-    }
-}
-
-impl ConfigPaths {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn with_base_path<P: AsRef<Path>>(base: P) -> Self {
-        let base = base.as_ref();
-        Self {
-            aliases: base.join("config/aliases.yaml"),
-            runner: base.join("config/runner.yaml"),
-        }
+impl Config {
+    pub fn load<P: AsRef<Path>>(workspace_path: P) -> std::io::Result<Self> {
+        let config_path = workspace_path.as_ref().join("contests.yaml");
+        let content = std::fs::read_to_string(config_path)?;
+        Ok(serde_yaml::from_str(&content)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?)
     }
 }
 
 pub fn get_config_paths() -> ConfigPaths {
-    ConfigPaths::default()
+    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+    let config_dir = home.join(".config").join("cph");
+    
+    ConfigPaths {
+        aliases: config_dir.join("aliases.yaml"),
+    }
+}
+
+pub struct ConfigPaths {
+    pub aliases: PathBuf,
 } 

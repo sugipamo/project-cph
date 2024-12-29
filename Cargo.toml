@@ -25,14 +25,14 @@ default = []
 docker_test = []
 
 [dependencies]
-clap = { version = "4.5.1", features = ["derive"] }
-tokio = { version = "1.0", features = ["full"] }
+clap = { version = "4.4.6", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
+tokio = { version = "1.32.0", features = ["full"] }
+open = "5.0.0"
 thiserror = "1.0"
 once_cell = "1.0"
 tempfile = "3.8"
-open = "5.0"
 rpassword = "7.3"
 chrono = "0.4"
 dirs = "5.0"
