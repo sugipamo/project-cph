@@ -13,8 +13,8 @@ pub struct DockerRunners {
     config: RunnerConfig,
     /// Runner IDとDockerRunnerのマッピング
     runners: Arc<Mutex<Vec<Arc<Mutex<DockerRunner>>>>>,
-    /// Runner間の接続情報（from_id -> to_ids）
-    connections: Arc<Mutex<Vec<(usize, Vec<usize>)>>>,
+    /// Runner間の接続情報（インデックスがfrom_id、値がto_ids）
+    connections: Arc<Mutex<Vec<Vec<usize>>>>,
 }
 
 impl DockerRunners {
@@ -31,9 +31,11 @@ impl DockerRunners {
     /// 新しいRunnerを追加（スタックの先頭に追加）
     pub async fn add_runner(&self, language: String) -> Result<usize> {
         let mut runners = self.runners.lock().await;
+        let mut connections = self.connections.lock().await;
         let id = runners.len();
         let runner = DockerRunner::new(self.docker.clone(), self.config.clone(), language);
         runners.push(Arc::new(Mutex::new(runner)));
+        connections.push(Vec::new());  // 新しいRunnerの接続情報を初期化
         Ok(id)
     }
 
@@ -48,14 +50,10 @@ impl DockerRunners {
     /// Runner間の接続を設定
     pub async fn connect(&self, from: usize, to: usize) -> Result<()> {
         let mut connections = self.connections.lock().await;
-        match connections.iter_mut().find(|(f, _)| *f == from) {
-            Some((_, tos)) => {
-                tos.push(to);
-            }
-            None => {
-                connections.push((from, vec![to]));
-            }
+        if from >= connections.len() || to >= connections.len() {
+            return Err(DockerError::RuntimeError(format!("Invalid runner id")));
         }
+        connections[from].push(to);
         Ok(())
     }
 
@@ -64,11 +62,15 @@ impl DockerRunners {
         // 接続情報を取得
         let to_runners = {
             let connections = self.connections.lock().await;
-            connections.iter()
-                .find(|(f, _)| *f == from)
-                .map(|(_, tos)| tos.clone())
-                .ok_or_else(|| DockerError::RuntimeError(format!("No connections found for runner {}", from)))?
+            if from >= connections.len() {
+                return Err(DockerError::RuntimeError(format!("Invalid runner id: {}", from)));
+            }
+            connections[from].clone()
         };
+
+        if to_runners.is_empty() {
+            return Ok(());  // 接続先がない場合は早期リターン
+        }
 
         // 出力を取得
         let from_runner = self.get_runner(from).await?;
