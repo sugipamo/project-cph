@@ -9,6 +9,13 @@ languages:
     file_extension: ".py"
     workspace_dir: "/compile/python"
 
+  pypy:
+    image_name: "pypy:3.9-slim"
+    compile_cmd: null
+    run_cmd: ["pypy3", "-u", "-c"]
+    file_extension: ".py"
+    workspace_dir: "/compile/pypy"
+
   cpp:
     image_name: "gcc:latest"
     compile_cmd: ["g++", "-std=c++17", "-O2", "main.cpp"]
