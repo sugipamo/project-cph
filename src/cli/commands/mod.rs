@@ -4,9 +4,14 @@ use crate::cli::Commands;
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 /// コマンドの基本トレイト
+#[async_trait::async_trait]
 pub trait Command {
     /// コマンドを実行する
-    fn execute(&self, command: &Commands) -> Result<()>;
+    /// 
+    /// # エラーハンドリング
+    /// - 重大なエラーのみ`Err`を返す
+    /// - 軽微なエラーは`println!`で報告し、`Ok(())`を返す
+    async fn execute(&self, command: &Commands) -> Result<()>;
 }
 
 /// コマンドのコンテキスト

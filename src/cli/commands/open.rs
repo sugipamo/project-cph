@@ -22,8 +22,9 @@ impl OpenCommand {
     }
 }
 
+#[async_trait::async_trait]
 impl Command for OpenCommand {
-    fn execute(&self, command: &Commands) -> Result<()> {
+    async fn execute(&self, command: &Commands) -> Result<()> {
         let contest = Contest::new(self.workspace_path.clone())?;
         let problem_id = match command {
             Commands::Open { problem_id } => problem_id,
@@ -36,22 +37,24 @@ impl Command for OpenCommand {
         // OJコンテナを初期化
         let oj = OJContainer::new(self.workspace_path.clone())?;
 
-        // 問題を開く
-        tokio::runtime::Runtime::new()?.block_on(async {
-            let problem = ProblemInfo {
-                url: url.clone(),
-                source_path: contest.get_source_path(problem_id),
-                problem_id: problem_id.clone(),
-            };
+        let problem = ProblemInfo {
+            url: url.clone(),
+            source_path: contest.get_source_path(problem_id),
+            problem_id: problem_id.clone(),
+        };
 
-            oj.open(problem).await?;
-            
-            // エディタで開く
-            if let Err(e) = open_in_cursor(&url) {
-                println!("Note: エディタでの表示に失敗しました: {}", e);
-            }
+        // 非同期で問題を開く
+        if let Err(e) = oj.open(problem).await {
+            println!("問題を開く際にエラーが発生しました: {}", e);
+            // 重大なエラーではないため、処理を継続
+        }
+        
+        // エディタで開く
+        if let Err(e) = open_in_cursor(&url) {
+            println!("Note: エディタでの表示に失敗しました: {}", e);
+            // エディタでの表示失敗は重大なエラーではない
+        }
 
-            Ok(())
-        })
+        Ok(())
     }
 } 

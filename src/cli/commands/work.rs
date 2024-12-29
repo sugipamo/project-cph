@@ -16,8 +16,9 @@ impl WorkCommand {
     }
 }
 
+#[async_trait::async_trait]
 impl Command for WorkCommand {
-    fn execute(&self, command: &Commands) -> Result<()> {
+    async fn execute(&self, command: &Commands) -> Result<()> {
         let contest_id = match command {
             Commands::Work { contest_id } => contest_id,
             _ => return Err("不正なコマンドです".into()),
@@ -27,18 +28,30 @@ impl Command for WorkCommand {
         let active_dir = self.workspace_path.join("active_contest");
         if !active_dir.exists() {
             println!("active_contestディレクトリを作成します");
-            fs::create_dir_all(&active_dir)?;
+            if let Err(e) = fs::create_dir_all(&active_dir) {
+                println!("ディレクトリの作成に失敗しました: {}", e);
+                return Err(e.into());
+            }
         }
 
         // コンテストを読み込む
-        let mut contest = Contest::new(self.workspace_path.clone())?;
+        let mut contest = match Contest::new(self.workspace_path.clone()) {
+            Ok(contest) => contest,
+            Err(e) => {
+                println!("コンテストの読み込みに失敗しました: {}", e);
+                return Err(e.into());
+            }
+        };
         
         // コンテストIDを設定
         contest.set_contest(contest_id.clone());
         contest.set_site(self.site.clone());
         
         // 設定を保存（テンプレートのコピーと既存ファイルの移動も行われる）
-        contest.save()?;
+        if let Err(e) = contest.save() {
+            println!("設定の保存に失敗しました: {}", e);
+            return Err(e.into());
+        }
 
         println!("コンテストの設定を保存しました: {}", contest_id);
         println!("テンプレートファイルは {} にコピーされました", active_dir.display());

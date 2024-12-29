@@ -12,8 +12,9 @@ impl LoginCommand {
     }
 }
 
+#[async_trait::async_trait]
 impl Command for LoginCommand {
-    fn execute(&self, command: &Commands) -> Result<()> {
+    async fn execute(&self, command: &Commands) -> Result<()> {
         match command {
             Commands::Login => (),
             _ => return Err("不正なコマンドです".into()),
@@ -22,13 +23,23 @@ impl Command for LoginCommand {
         // OJコンテナを初期化
         let oj = OJContainer::new(self.context.active_contest_dir.clone())?;
 
-        // ログインを実行
-        tokio::runtime::Runtime::new()?.block_on(async {
-            // コンテナイメージの確認
-            oj.ensure_image().await?;
-            
-            // ログイン処理
-            oj.login(&self.context.site).await.map_err(|e| e.into())
-        })
+        // コンテナイメージの確認
+        if let Err(e) = oj.ensure_image().await {
+            println!("コンテナイメージの確認に失敗しました: {}", e);
+            return Err(e.into());
+        }
+        
+        // ログイン処理
+        match oj.login(&self.context.site).await {
+            Ok(_) => {
+                println!("ログインが完了しました");
+                Ok(())
+            },
+            Err(e) => {
+                println!("ログインに失敗しました: {}", e);
+                // ログインの失敗は重大なエラーとして扱う
+                Err(e.into())
+            }
+        }
     }
 } 

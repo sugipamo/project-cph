@@ -22,8 +22,9 @@ impl SubmitCommand {
     }
 }
 
+#[async_trait::async_trait]
 impl Command for SubmitCommand {
-    fn execute(&self, command: &Commands) -> Result<()> {
+    async fn execute(&self, command: &Commands) -> Result<()> {
         let problem_id = match command {
             Commands::Submit { problem_id } => problem_id,
             _ => return Err("不正なコマンドです".into()),
@@ -44,18 +45,23 @@ impl Command for SubmitCommand {
         // OJコンテナを初期化
         let oj = OJContainer::new(self.workspace_path.clone())?;
 
-        // 提出を実行
-        tokio::runtime::Runtime::new()?.block_on(async {
-            let problem = ProblemInfo {
-                url: url.clone(),
-                source_path,
-                problem_id: problem_id.clone(),
-            };
+        let problem = ProblemInfo {
+            url: url.clone(),
+            source_path,
+            problem_id: problem_id.clone(),
+        };
 
-            let language_id = contest.language.get_id(&self.site);
-            oj.submit(&problem, &self.site, language_id).await?;
-            println!("提出が完了しました");
-            Ok(())
-        })
+        // 提出を実行
+        match oj.submit(&problem, &self.site, contest.language.get_id(&self.site)).await {
+            Ok(_) => {
+                println!("提出が完了しました");
+                Ok(())
+            },
+            Err(e) => {
+                println!("提出に失敗しました: {}", e);
+                // 提出の失敗は重大なエラーとして扱う
+                Err(e.into())
+            }
+        }
     }
 } 
