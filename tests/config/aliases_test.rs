@@ -55,4 +55,66 @@ fn test_resolve_site() {
     
     // 存在しないサイト
     assert_eq!(config.resolve_site("invalid"), None);
+}
+
+#[test]
+fn test_resolve_command_with_args() {
+    let config = AliasConfig::load("src/config/aliases.yaml").unwrap();
+    
+    // 基本的なコマンド解決
+    assert_eq!(
+        config.resolve_command_with_args("t", vec!["abc001".to_string()]),
+        Some(("test".to_string(), vec!["abc001".to_string()]))
+    );
+
+    // 引数なしのコマンド
+    assert_eq!(
+        config.resolve_command_with_args("l", vec![]),
+        Some(("language".to_string(), vec![]))
+    );
+
+    // 存在しないコマンド
+    assert_eq!(
+        config.resolve_command_with_args("invalid", vec![]),
+        None
+    );
+}
+
+#[test]
+fn test_resolve_args() {
+    let config = AliasConfig::load("src/config/aliases.yaml").unwrap();
+    
+    // プログラム名のみ
+    assert_eq!(
+        config.resolve_args(vec!["cph".to_string()]),
+        Some(vec!["cph".to_string()])
+    );
+
+    // コマンドとサブコマンドの解決
+    assert_eq!(
+        config.resolve_args(vec![
+            "cph".to_string(),
+            "t".to_string(),
+            "abc001".to_string()
+        ]),
+        Some(vec![
+            "cph".to_string(),
+            "test".to_string(),
+            "abc001".to_string()
+        ])
+    );
+
+    // 複数のエイリアスを含むコマンド
+    assert_eq!(
+        config.resolve_args(vec![
+            "cph".to_string(),
+            "l".to_string(),
+            "py".to_string()
+        ]),
+        Some(vec![
+            "cph".to_string(),
+            "language".to_string(),
+            "py".to_string()
+        ])
+    );
 } 

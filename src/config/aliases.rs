@@ -53,6 +53,48 @@ impl AliasConfig {
         None
     }
 
+    /// コマンドとその引数を解決します
+    /// 
+    /// # Arguments
+    /// * `cmd` - 解決するコマンドまたはエイリアス
+    /// * `args` - コマンドの引数
+    /// 
+    /// # Returns
+    /// * `Some((String, Vec<String>))` - 解決されたコマンドと引数のタプル
+    /// * `None` - コマンドが見つからない場合
+    pub fn resolve_command_with_args(&self, cmd: &str, args: Vec<String>) -> Option<(String, Vec<String>)> {
+        self.resolve_command(cmd)
+            .map(|resolved_cmd| (resolved_cmd, args))
+    }
+
+    /// サブコマンドの引数を含めて解決します
+    /// 
+    /// # Arguments
+    /// * `args` - コマンドライン引数（最初の引数はプログラム名を想定）
+    /// 
+    /// # Returns
+    /// * `Some(Vec<String>)` - 解決された引数のベクター
+    /// * `None` - コマンドが見つからない場合
+    pub fn resolve_args(&self, args: Vec<String>) -> Option<Vec<String>> {
+        if args.len() < 2 {
+            return Some(args);
+        }
+
+        let mut result = vec![args[0].clone()];
+        let mut i = 1;
+        
+        while i < args.len() {
+            if let Some(resolved) = self.resolve_command(&args[i]) {
+                result.push(resolved);
+            } else {
+                result.push(args[i].clone());
+            }
+            i += 1;
+        }
+
+        Some(result)
+    }
+
     pub fn resolve_site(&self, input: &str) -> Option<String> {
         let input_lower = input.to_lowercase();
         for (canonical, aliases) in &self.sites {
