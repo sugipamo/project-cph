@@ -137,7 +137,7 @@ impl DockerRunners {
 
             match timeout(OPERATION_TIMEOUT, async {
                 if let Ok(from_runner) = self.get_runner(from).await {
-                    let mut runner = from_runner.lock().await;
+                    let runner = from_runner.lock().await;
                     if let Ok(output) = runner.read().await {
                         if output.len() > MAX_BUFFER_SIZE {
                             return Err(DockerError::RuntimeError("Output too large".into()));
@@ -145,7 +145,7 @@ impl DockerRunners {
                         let output = output.trim().to_string();
                         for to in to_runners {
                             if let Ok(to_runner) = self.get_runner(to).await {
-                                let mut runner = to_runner.lock().await;
+                                let runner = to_runner.lock().await;
                                 if let Err(e) = runner.write(&format!("{}\n", output)).await {
                                     println!("Warning: Failed to write to runner {}: {:?}", to, e);
                                 }
