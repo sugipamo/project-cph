@@ -1,6 +1,6 @@
 use super::{Command, Result, CommandContext};
 use crate::cli::Commands;
-use crate::workspace::Workspace;
+use crate::contest::Contest;
 use std::path::PathBuf;
 use std::fs;
 
@@ -68,6 +68,7 @@ impl GenerateCommand {
 
 impl Command for GenerateCommand {
     fn execute(&self, command: &Commands) -> Result<()> {
+        let contest = Contest::new(self.context.workspace_path.clone())?;
         let problem_id = match command {
             Commands::Generate { problem_id } => problem_id,
             _ => return Err("不正なコマンドです".into()),
@@ -79,15 +80,12 @@ impl Command for GenerateCommand {
             return self.run_generator(&generator_path);
         }
 
-        // ワークスペースを読み込む
-        let workspace = Workspace::new(self.context.workspace_path.clone())?;
-
-        // テンプレートを探す
-        let template_path = self.find_template(&workspace.language.extension())
-            .ok_or_else(|| format!("テンプレートが見つかりません: template/main.{}", workspace.language.extension()))?;
+        // ワンプレートを探す
+        let template_path = self.find_template(&contest.language.to_string())
+            .ok_or_else(|| format!("テンプレートが見つかりません: template/main.{}", contest.language.to_string()))?;
 
         // ソースファイルのパスを取得
-        let source_path = workspace.get_source_path(problem_id);
+        let source_path = contest.get_source_path(problem_id);
 
         // テンプレートからファイルを生成
         self.generate_from_template(&template_path, &source_path)?;

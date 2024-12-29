@@ -1,7 +1,7 @@
 use crate::cli::Site;
 use crate::cli::commands::{Command, Result};
 use crate::cli::Commands;
-use crate::workspace::Workspace;
+use crate::contest::Contest;
 use crate::oj::{open_in_cursor, OJContainer, ProblemInfo};
 use std::path::PathBuf;
 
@@ -24,16 +24,14 @@ impl OpenCommand {
 
 impl Command for OpenCommand {
     fn execute(&self, command: &Commands) -> Result<()> {
+        let contest = Contest::new(self.workspace_path.clone())?;
         let problem_id = match command {
             Commands::Open { problem_id } => problem_id,
             _ => return Err("不正なコマンドです".into()),
         };
 
-        // ワークスペースを読み込む
-        let workspace = Workspace::new(self.workspace_path.clone())?;
-
         // 問題URLを生成
-        let url = self.get_problem_url(&workspace.contest_id, problem_id);
+        let url = self.get_problem_url(&contest.contest_id, problem_id);
 
         // OJコンテナを初期化
         let oj = OJContainer::new(self.workspace_path.clone())?;
@@ -42,7 +40,7 @@ impl Command for OpenCommand {
         tokio::runtime::Runtime::new()?.block_on(async {
             let problem = ProblemInfo {
                 url: url.clone(),
-                source_path: workspace.get_source_path(problem_id),
+                source_path: contest.get_source_path(problem_id),
                 problem_id: problem_id.clone(),
             };
 
