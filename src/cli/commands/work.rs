@@ -2,7 +2,8 @@ use std::path::{PathBuf};
 use crate::cli::Site;
 use crate::cli::commands::{Command, Result};
 use crate::cli::Commands;
-use crate::workspace::Workspace;
+use crate::contest::Contest;
+use std::fs;
 
 pub struct WorkCommand {
     pub site: Site,
@@ -22,17 +23,25 @@ impl Command for WorkCommand {
             _ => return Err("不正なコマンドです".into()),
         };
 
-        // ワークスペースを読み込む
-        let mut workspace = Workspace::new(self.workspace_path.clone())?;
+        // active_contestディレクトリを作成
+        let active_dir = self.workspace_path.join("active_contest");
+        if !active_dir.exists() {
+            println!("active_contestディレクトリを作成します");
+            fs::create_dir_all(&active_dir)?;
+        }
+
+        // コンテストを読み込む
+        let mut contest = Contest::new(self.workspace_path.clone())?;
         
         // コンテストIDを設定
-        workspace.set_contest(contest_id.clone());
-        workspace.set_site(self.site.clone());
+        contest.set_contest(contest_id.clone());
+        contest.set_site(self.site.clone());
         
-        // 設定を保存
-        workspace.save()?;
+        // 設定を保存（テンプレートのコピーと既存ファイルの移動も行われる）
+        contest.save()?;
 
         println!("コンテストの設定を保存しました: {}", contest_id);
+        println!("テンプレートファイルは {} にコピーされました", active_dir.display());
         Ok(())
     }
 } 

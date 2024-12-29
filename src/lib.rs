@@ -2,7 +2,7 @@ pub mod cli;
 pub mod docker;
 pub mod error;
 pub mod test;
-pub mod workspace;
+pub mod contest;
 pub mod oj;
 pub mod alias;
 
@@ -65,8 +65,8 @@ impl Language {
 
     pub fn default_content(&self) -> error::Result<String> {
         match self {
-            Language::Rust => Ok(include_str!("../workspace_template/template/main.rs").to_string()),
-            Language::PyPy => Ok(include_str!("../workspace_template/template/main.py").to_string()),
+            Language::Rust => Ok(include_str!("../contest_template/template/main.rs").to_string()),
+            Language::PyPy => Ok(include_str!("../contest_template/template/main.py").to_string()),
         }
     }
 }
