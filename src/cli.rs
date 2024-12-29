@@ -70,6 +70,13 @@ impl CliParser {
 
     /// コマンドライン引数を解析します
     pub fn parse_from_args(&self, args: Vec<String>) -> clap::error::Result<ArgMatches> {
+        // 最初の引数（プログラム名）以外を小文字に変換
+        let args: Vec<String> = args.into_iter()
+            .enumerate()
+            .map(|(i, s)| if i == 0 { s } else { s.to_lowercase() })
+            .collect();
+
+        // エイリアス解決
         let resolved_args = self.alias_config.resolve_args(args)
             .ok_or_else(|| CliError::AliasResolutionError(
                 "コマンドまたはエイリアスの解決に失敗しました".to_string()
@@ -105,18 +112,26 @@ impl CliParser {
 
     /// 問題IDが有効かどうかを確認します
     fn is_valid_problem_id(s: &str) -> bool {
+        if s.is_empty() {
+            return false;
+        }
+        let s = s.to_lowercase();
         let valid_ids = ["a", "b", "c", "d", "e", "f", "g", "ex"];
-        valid_ids.contains(&s.to_lowercase().as_str())
+        valid_ids.contains(&s.as_str())
     }
 
     /// コンテストIDが有効かどうかを確認します
     fn is_valid_contest_id(s: &str) -> bool {
+        if s.is_empty() {
+            return false;
+        }
+        let s = s.to_lowercase();
         if s.len() < 4 {
             return false;
         }
-        let prefix = &s[..3].to_lowercase();
+        let prefix = &s[..3];
         let valid_prefixes = ["abc", "arc", "agc"];
-        if !valid_prefixes.contains(&prefix.as_str()) {
+        if !valid_prefixes.contains(&prefix) {
             return false;
         }
         s[3..].chars().all(|c| c.is_ascii_digit())
@@ -131,10 +146,8 @@ impl CliParser {
                 .arg(clap::Arg::new("contest")
                     .help("コンテストID")
                     .required(true)
+                    .allow_hyphen_values(true)
                     .value_parser(|s: &str| {
-                        if s.is_empty() {
-                            return Err(String::from("コンテストIDが空です"));
-                        }
                         if !Self::is_valid_contest_id(s) {
                             return Err(String::from("無効なコンテストID形式です"));
                         }
@@ -146,11 +159,11 @@ impl CliParser {
                 .arg(clap::Arg::new("problem_id")
                     .help("問題ID")
                     .required(true)
+                    .allow_hyphen_values(true)
                     .value_parser(|s: &str| {
-                        if s.is_empty() {
-                            return Err(String::from("問題IDが空です"));
-                        }
-                        if !Self::is_valid_problem_id(s) {
+                        // 空白を含む場合は最初の部分だけを検証
+                        let id = s.split_whitespace().next().unwrap_or(s);
+                        if !Self::is_valid_problem_id(id) {
                             return Err(String::from("無効な問題IDです"));
                         }
                         Ok(s.to_string())
@@ -161,25 +174,41 @@ impl CliParser {
                 .arg(clap::Arg::new("language")
                     .help("プログラミング言語")
                     .required(true)
-                    .ignore_case(true)),
+                    .allow_hyphen_values(true)
+                    .value_parser(|s: &str| {
+                        // 言語名を小文字に変換して検証
+                        let lang = s.to_lowercase();
+                        let valid_langs = [
+                            "python", "python3", "py",
+                            "cpp", "c++",
+                            "rust", "rs",
+                        ];
+                        if !valid_langs.contains(&lang.as_str()) {
+                            return Err(format!("無効な言語指定です: {}", s));
+                        }
+                        Ok(s.to_string())
+                    })),
             Command::new("open")
                 .aliases(&["o"])
                 .about("問題ページを開く")
                 .arg(clap::Arg::new("problem_id")
                     .help("問題ID")
-                    .required(true)),
+                    .required(true)
+                    .allow_hyphen_values(true)),
             Command::new("submit")
                 .aliases(&["s", "sub"])
                 .about("解答を提出")
                 .arg(clap::Arg::new("problem_id")
                     .help("問題ID")
-                    .required(true)),
+                    .required(true)
+                    .allow_hyphen_values(true)),
             Command::new("generate")
                 .aliases(&["g"])
                 .about("テンプレートを生成")
                 .arg(clap::Arg::new("problem_id")
                     .help("問題ID")
-                    .required(true)),
+                    .required(true)
+                    .allow_hyphen_values(true)),
             Command::new("login")
                 .aliases(&["auth"])
                 .about("サイトにログイン"),

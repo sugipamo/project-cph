@@ -67,14 +67,7 @@ impl AliasConfig {
             .map(|resolved_cmd| (resolved_cmd, args))
     }
 
-    /// サブコマンドの引数を含めて解決します
-    /// 
-    /// # Arguments
-    /// * `args` - コマンドライン引数（最初の引数はプログラム名を想定）
-    /// 
-    /// # Returns
-    /// * `Some(Vec<String>)` - 解決された引数のベクター
-    /// * `None` - コマンドが見つからない場合
+    /// 複数の引数を文脈を考慮して解決します
     pub fn resolve_args(&self, args: Vec<String>) -> Option<Vec<String>> {
         if args.len() < 2 {
             return Some(args);
@@ -83,16 +76,49 @@ impl AliasConfig {
         let mut result = vec![args[0].clone()];
         let mut i = 1;
         
+        // コマンドの文脈を追跡
+        let mut context = CommandContext::new();
+        
         while i < args.len() {
-            if let Some(resolved) = self.resolve_command(&args[i]) {
+            let current_arg = &args[i];
+            
+            // 文脈に基づいて解決を試みる
+            if let Some(resolved) = self.resolve_with_context(current_arg, &context) {
                 result.push(resolved);
+                context.update(&result);
             } else {
-                result.push(args[i].clone());
+                result.push(current_arg.clone());
+                context.update(&result);
             }
             i += 1;
         }
 
         Some(result)
+    }
+
+    /// 文脈を考慮してエイリアスを解決します
+    fn resolve_with_context(&self, input: &str, context: &CommandContext) -> Option<String> {
+        match context.current_position() {
+            // 最初の引数（サイトまたはグローバルコマンド）
+            CommandPosition::First => {
+                self.resolve_site(input)
+                    .or_else(|| self.resolve_command(input))
+            },
+            // サイト指定後のコマンド
+            CommandPosition::AfterSite => {
+                self.resolve_command(input)
+            },
+            // コマンド後の言語指定
+            CommandPosition::AfterCommand => {
+                if context.expects_language() {
+                    self.resolve_language(input)
+                } else {
+                    None
+                }
+            },
+            // その他の位置（問題ID等）
+            CommandPosition::Other => None,
+        }
     }
 
     pub fn resolve_site(&self, input: &str) -> Option<String> {
@@ -106,5 +132,48 @@ impl AliasConfig {
             }
         }
         None
+    }
+}
+
+/// コマンドの文脈を追跡するための補助構造体
+#[derive(Debug)]
+struct CommandContext {
+    position: CommandPosition,
+    command_type: Option<String>,
+}
+
+#[derive(Debug)]
+enum CommandPosition {
+    First,
+    AfterSite,
+    AfterCommand,
+    Other,
+}
+
+impl CommandContext {
+    fn new() -> Self {
+        Self {
+            position: CommandPosition::First,
+            command_type: None,
+        }
+    }
+
+    fn current_position(&self) -> &CommandPosition {
+        &self.position
+    }
+
+    fn expects_language(&self) -> bool {
+        matches!(self.command_type.as_deref(), Some("language"))
+    }
+
+    fn update(&mut self, args: &[String]) {
+        match args.len() {
+            2 => self.position = CommandPosition::AfterSite,
+            3 => {
+                self.position = CommandPosition::AfterCommand;
+                self.command_type = Some(args[2].clone());
+            },
+            _ => self.position = CommandPosition::Other,
+        }
     }
 } 
