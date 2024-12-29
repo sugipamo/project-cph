@@ -13,167 +13,98 @@ pub enum AliasError {
 
 pub type Result<T> = std::result::Result<T, AliasError>;
 
+#[derive(Debug, Clone)]
+pub enum AliasType {
+    Site(String),
+    Command(String),
+    Language(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedAlias {
+    pub original: String,
+    pub resolved: String,
+    pub alias_type: AliasType,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct AliasConfig {
     pub languages: HashMap<String, Vec<String>>,
     pub commands: HashMap<String, Vec<String>>,
     pub sites: HashMap<String, Vec<String>>,
+    #[serde(skip)]
+    aliases: HashMap<String, AliasType>,
 }
 
 impl AliasConfig {
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
         let config_str = std::fs::read_to_string(path)?;
-        let config: AliasConfig = serde_yaml::from_str(&config_str)?;
+        let mut config: AliasConfig = serde_yaml::from_str(&config_str)?;
+        config.initialize_aliases();
         Ok(config)
     }
 
-    pub fn resolve_language(&self, input: &str) -> Option<String> {
-        let input_lower = input.to_lowercase();
-        for (canonical, aliases) in &self.languages {
-            if canonical.to_lowercase() == input_lower {
-                return Some(canonical.clone());
-            }
-            if aliases.iter().any(|alias| alias.to_lowercase() == input_lower) {
-                return Some(canonical.clone());
+    fn initialize_aliases(&mut self) {
+        // サイトのエイリアスを初期化
+        for (site, aliases) in &self.sites {
+            self.aliases.insert(site.to_lowercase(), AliasType::Site(site.clone()));
+            for alias in aliases {
+                self.aliases.insert(alias.to_lowercase(), AliasType::Site(site.clone()));
             }
         }
-        None
-    }
 
-    pub fn resolve_command(&self, input: &str) -> Option<String> {
-        let input_lower = input.to_lowercase();
-        for (canonical, aliases) in &self.commands {
-            if canonical.to_lowercase() == input_lower {
-                return Some(canonical.clone());
-            }
-            if aliases.iter().any(|alias| alias.to_lowercase() == input_lower) {
-                return Some(canonical.clone());
+        // コマンドのエイリアスを初期化
+        for (cmd, aliases) in &self.commands {
+            self.aliases.insert(cmd.to_lowercase(), AliasType::Command(cmd.clone()));
+            for alias in aliases {
+                self.aliases.insert(alias.to_lowercase(), AliasType::Command(cmd.clone()));
             }
         }
-        None
+
+        // 言語のエイリアスを初期化
+        for (lang, aliases) in &self.languages {
+            self.aliases.insert(lang.to_lowercase(), AliasType::Language(lang.clone()));
+            for alias in aliases {
+                self.aliases.insert(alias.to_lowercase(), AliasType::Language(lang.clone()));
+            }
+        }
     }
 
-    /// コマンドとその引数を解決します
-    /// 
-    /// # Arguments
-    /// * `cmd` - 解決するコマンドまたはエイリアス
-    /// * `args` - コマンドの引数
-    /// 
-    /// # Returns
-    /// * `Some((String, Vec<String>))` - 解決されたコマンドと引数のタプル
-    /// * `None` - コマンドが見つからない場合
-    pub fn resolve_command_with_args(&self, cmd: &str, args: Vec<String>) -> Option<(String, Vec<String>)> {
-        self.resolve_command(cmd)
-            .map(|resolved_cmd| (resolved_cmd, args))
+    pub fn resolve(&self, input: &str) -> Option<ResolvedAlias> {
+        let input_lower = input.to_lowercase();
+        self.aliases.get(&input_lower).map(|alias_type| {
+            let resolved = match alias_type {
+                AliasType::Site(s) => s.clone(),
+                AliasType::Command(c) => c.clone(),
+                AliasType::Language(l) => l.clone(),
+            };
+            ResolvedAlias {
+                original: input.to_string(),
+                resolved,
+                alias_type: alias_type.clone(),
+            }
+        })
     }
 
-    /// 複数の引数を文脈を考慮して解決します
     pub fn resolve_args(&self, args: Vec<String>) -> Option<Vec<String>> {
-        if args.len() < 2 {
+        if args.is_empty() {
             return Some(args);
         }
 
-        let mut result = vec![args[0].clone()];
-        let mut i = 1;
+        let mut result = Vec::with_capacity(args.len());
         
-        // コマンドの文脈を追跡
-        let mut context = CommandContext::new();
-        
-        while i < args.len() {
-            let current_arg = &args[i];
-            
-            // 文脈に基づいて解決を試みる
-            if let Some(resolved) = self.resolve_with_context(current_arg, &context) {
-                result.push(resolved);
-                context.update(&result);
+        // プログラム名（最初の引数）はそのまま
+        result.push(args[0].clone());
+
+        // 残りの引数を解決
+        for arg in args.iter().skip(1) {
+            if let Some(resolved) = self.resolve(arg) {
+                result.push(resolved.resolved);
             } else {
-                result.push(current_arg.clone());
-                context.update(&result);
+                result.push(arg.clone());
             }
-            i += 1;
         }
 
         Some(result)
-    }
-
-    /// 文脈を考慮してエイリアスを解決します
-    fn resolve_with_context(&self, input: &str, context: &CommandContext) -> Option<String> {
-        match context.current_position() {
-            // 最初の引数（サイトまたはグローバルコマンド）
-            CommandPosition::First => {
-                self.resolve_site(input)
-                    .or_else(|| self.resolve_command(input))
-            },
-            // サイト指定後のコマンド
-            CommandPosition::AfterSite => {
-                self.resolve_command(input)
-            },
-            // コマンド後の言語指定
-            CommandPosition::AfterCommand => {
-                if context.expects_language() {
-                    self.resolve_language(input)
-                } else {
-                    None
-                }
-            },
-            // その他の位置（問題ID等）
-            CommandPosition::Other => None,
-        }
-    }
-
-    pub fn resolve_site(&self, input: &str) -> Option<String> {
-        let input_lower = input.to_lowercase();
-        for (canonical, aliases) in &self.sites {
-            if canonical.to_lowercase() == input_lower {
-                return Some(canonical.clone());
-            }
-            if aliases.iter().any(|alias| alias.to_lowercase() == input_lower) {
-                return Some(canonical.clone());
-            }
-        }
-        None
-    }
-}
-
-/// コマンドの文脈を追跡するための補助構造体
-#[derive(Debug)]
-struct CommandContext {
-    position: CommandPosition,
-    command_type: Option<String>,
-}
-
-#[derive(Debug)]
-enum CommandPosition {
-    First,
-    AfterSite,
-    AfterCommand,
-    Other,
-}
-
-impl CommandContext {
-    fn new() -> Self {
-        Self {
-            position: CommandPosition::First,
-            command_type: None,
-        }
-    }
-
-    fn current_position(&self) -> &CommandPosition {
-        &self.position
-    }
-
-    fn expects_language(&self) -> bool {
-        matches!(self.command_type.as_deref(), Some("language"))
-    }
-
-    fn update(&mut self, args: &[String]) {
-        match args.len() {
-            2 => self.position = CommandPosition::AfterSite,
-            3 => {
-                self.position = CommandPosition::AfterCommand;
-                self.command_type = Some(args[2].clone());
-            },
-            _ => self.position = CommandPosition::Other,
-        }
     }
 } 

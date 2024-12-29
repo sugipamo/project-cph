@@ -22,9 +22,6 @@ pub enum CliError {
     #[error("引数 '{0}' が必要です")]
     MissingArgument(&'static str),
 
-    #[error("言語 '{0}' は無効です")]
-    InvalidLanguage(String),
-
     #[error("エイリアスの解決に失敗しました: {0}")]
     AliasResolutionError(String),
 
@@ -45,8 +42,6 @@ impl From<CliError> for clap::Error {
                 clap::Error::raw(ErrorKind::UnknownArgument, msg),
             CliError::MissingArgument(_) => 
                 clap::Error::raw(ErrorKind::MissingRequiredArgument, msg),
-            CliError::InvalidLanguage(_) => 
-                clap::Error::raw(ErrorKind::InvalidValue, msg),
             CliError::AliasResolutionError(_) => 
                 clap::Error::raw(ErrorKind::InvalidValue, msg),
             CliError::MissingCommand => 
@@ -161,7 +156,6 @@ impl CliParser {
                     .required(true)
                     .allow_hyphen_values(true)
                     .value_parser(|s: &str| {
-                        // 空白を含む場合は最初の部分だけを検証
                         let id = s.split_whitespace().next().unwrap_or(s);
                         if !Self::is_valid_problem_id(id) {
                             return Err(String::from("無効な問題IDです"));
@@ -174,20 +168,7 @@ impl CliParser {
                 .arg(clap::Arg::new("language")
                     .help("プログラミング言語")
                     .required(true)
-                    .allow_hyphen_values(true)
-                    .value_parser(|s: &str| {
-                        // 言語名を小文字に変換して検証
-                        let lang = s.to_lowercase();
-                        let valid_langs = [
-                            "python", "python3", "py",
-                            "cpp", "c++",
-                            "rust", "rs",
-                        ];
-                        if !valid_langs.contains(&lang.as_str()) {
-                            return Err(format!("無効な言語指定です: {}", s));
-                        }
-                        Ok(s.to_string())
-                    })),
+                    .allow_hyphen_values(true)),
             Command::new("open")
                 .aliases(&["o"])
                 .about("問題ページを開く")
@@ -356,7 +337,7 @@ impl Cli {
                     .ok_or_else(|| CliError::MissingArgument("language"))?;
                 CommonSubCommand::Language {
                     language: lang_str.parse()
-                        .map_err(|_| CliError::InvalidLanguage(lang_str.clone()))?
+                        .map_err(|_| CliError::AliasResolutionError(lang_str.clone()))?
                 }
             },
             "open" => CommonSubCommand::Open {
