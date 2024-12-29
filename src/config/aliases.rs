@@ -5,10 +5,12 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum AliasError {
-    #[error("Failed to read aliases file: {0}")]
+    #[error("エイリアス設定ファイルの読み込みに失敗しました: {0}")]
     IoError(#[from] std::io::Error),
-    #[error("Failed to parse aliases file: {0}")]
+    #[error("エイリアス設定ファイルの解析に失敗しました: {0}")]
     YamlError(#[from] serde_yaml::Error),
+    #[error("エイリアスの解決に失敗しました: {0}")]
+    ResolutionError(String),
 }
 
 pub type Result<T> = std::result::Result<T, AliasError>;
@@ -70,25 +72,27 @@ impl AliasConfig {
         }
     }
 
-    pub fn resolve(&self, input: &str) -> Option<ResolvedAlias> {
+    pub fn resolve(&self, input: &str) -> Result<ResolvedAlias> {
         let input_lower = input.to_lowercase();
-        self.aliases.get(&input_lower).map(|alias_type| {
-            let resolved = match alias_type {
-                AliasType::Site(s) => s.clone(),
-                AliasType::Command(c) => c.clone(),
-                AliasType::Language(l) => l.clone(),
-            };
-            ResolvedAlias {
-                original: input.to_string(),
-                resolved,
-                alias_type: alias_type.clone(),
-            }
-        })
+        self.aliases.get(&input_lower)
+            .map(|alias_type| {
+                let resolved = match alias_type {
+                    AliasType::Site(s) => s.clone(),
+                    AliasType::Command(c) => c.clone(),
+                    AliasType::Language(l) => l.clone(),
+                };
+                ResolvedAlias {
+                    original: input.to_string(),
+                    resolved,
+                    alias_type: alias_type.clone(),
+                }
+            })
+            .ok_or_else(|| AliasError::ResolutionError(input.to_string()))
     }
 
-    pub fn resolve_args(&self, args: Vec<String>) -> Option<Vec<String>> {
+    pub fn resolve_args(&self, args: Vec<String>) -> Result<Vec<String>> {
         if args.is_empty() {
-            return Some(args);
+            return Ok(args);
         }
 
         let mut result = Vec::with_capacity(args.len());
@@ -98,13 +102,13 @@ impl AliasConfig {
 
         // 残りの引数を解決
         for arg in args.iter().skip(1) {
-            if let Some(resolved) = self.resolve(arg) {
-                result.push(resolved.resolved);
-            } else {
-                result.push(arg.clone());
+            match self.resolve(arg) {
+                Ok(resolved) => result.push(resolved.resolved),
+                Err(AliasError::ResolutionError(_)) => result.push(arg.clone()),
+                Err(e) => return Err(e),
             }
         }
 
-        Some(result)
+        Ok(result)
     }
 } 

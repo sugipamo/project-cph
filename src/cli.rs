@@ -8,7 +8,7 @@ use crate::{
     workspace::{Workspace, Config}, 
     oj::OJContainer, 
     oj::ProblemInfo,
-    config::aliases::AliasConfig,
+    config::aliases::{AliasConfig, AliasError},
 };
 
 #[derive(Debug, Error)]
@@ -22,8 +22,8 @@ pub enum CliError {
     #[error("引数 '{0}' が必要です")]
     MissingArgument(&'static str),
 
-    #[error("エイリアスの解決に失敗しました: {0}")]
-    AliasResolutionError(String),
+    #[error("{0}")]
+    AliasError(#[from] AliasError),
 
     #[error("コマンドが指定されていません")]
     MissingCommand,
@@ -35,20 +35,17 @@ pub enum CliError {
 impl From<CliError> for clap::Error {
     fn from(err: CliError) -> Self {
         let msg = err.to_string();
-        match err {
-            CliError::UnknownSite(_) => 
-                clap::Error::raw(ErrorKind::UnknownArgument, msg),
-            CliError::UnknownCommand(_) => 
-                clap::Error::raw(ErrorKind::UnknownArgument, msg),
+        let kind = match &err {
+            CliError::UnknownSite(_) | CliError::UnknownCommand(_) => 
+                ErrorKind::UnknownArgument,
             CliError::MissingArgument(_) => 
-                clap::Error::raw(ErrorKind::MissingRequiredArgument, msg),
-            CliError::AliasResolutionError(_) => 
-                clap::Error::raw(ErrorKind::InvalidValue, msg),
-            CliError::MissingCommand => 
-                clap::Error::raw(ErrorKind::MissingSubcommand, msg),
-            CliError::MissingSubcommand => 
-                clap::Error::raw(ErrorKind::MissingSubcommand, msg),
-        }
+                ErrorKind::MissingRequiredArgument,
+            CliError::AliasError(_) => 
+                ErrorKind::InvalidValue,
+            CliError::MissingCommand | CliError::MissingSubcommand => 
+                ErrorKind::MissingSubcommand,
+        };
+        clap::Error::raw(kind, msg)
     }
 }
 
@@ -73,9 +70,7 @@ impl CliParser {
 
         // エイリアス解決
         let resolved_args = self.alias_config.resolve_args(args)
-            .ok_or_else(|| CliError::AliasResolutionError(
-                "コマンドまたはエイリアスの解決に失敗しました".to_string()
-            ))?;
+            .map_err(|e| CliError::AliasError(e))?;
 
         self.build_cli().try_get_matches_from(resolved_args)
             .map_err(|e| {
@@ -337,7 +332,7 @@ impl Cli {
                     .ok_or_else(|| CliError::MissingArgument("language"))?;
                 CommonSubCommand::Language {
                     language: lang_str.parse()
-                        .map_err(|_| CliError::AliasResolutionError(lang_str.clone()))?
+                        .map_err(|_| CliError::AliasError(AliasError::ResolutionError(lang_str.clone())))?
                 }
             },
             "open" => CommonSubCommand::Open {
