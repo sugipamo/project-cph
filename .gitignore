@@ -22,9 +22,6 @@ active_contest
 *.swp
 .DS_Store
 
-# 競プロ関連
-**/test/
-
 # テストワークスペース
 /tests/test_workspace/
 .DS_Store
