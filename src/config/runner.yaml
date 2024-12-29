@@ -1,3 +1,5 @@
+# 実装方針が明確になってからlanguage.yamlへ移行する
+
 timeout_seconds: 5
 memory_limit_mb: 128
 
