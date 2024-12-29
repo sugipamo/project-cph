@@ -1,10 +1,12 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use serde::{Serialize, Deserialize};
 use crate::alias::{self, AliasConfig};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunnerConfig {
     pub languages: Languages,
+    pub timeout_seconds: u64,
+    pub memory_limit_mb: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -16,8 +18,14 @@ pub struct Languages {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LanguageConfig {
     pub image: String,
-    pub compile: Option<String>,
-    pub run: String,
+    pub compile: Option<Vec<String>>,
+    pub run: Vec<String>,
+}
+
+impl LanguageConfig {
+    pub fn get_workspace_dir(language: &str) -> String {
+        format!("/compile/{}", language)
+    }
 }
 
 impl RunnerConfig {

@@ -24,7 +24,7 @@ impl DockerRunner {
         // イメージのプル
         let mut image_stream = self.docker.create_image(
             Some(CreateImageOptions {
-                from_image: lang_config.image_name.clone(),
+                from_image: lang_config.image.clone(),
                 ..Default::default()
             }),
             None,
@@ -36,7 +36,7 @@ impl DockerRunner {
         }
 
         // コンテナの作成
-        let mut cmd = lang_config.run_cmd.clone();
+        let mut cmd = lang_config.run.clone();
         cmd.push(source_code.to_string());
 
         let container = self.docker
@@ -46,9 +46,9 @@ impl DockerRunner {
                     platform: None,
                 }),
                 Config {
-                    image: Some(lang_config.image_name.clone()),
+                    image: Some(lang_config.image.clone()),
                     cmd: Some(cmd),
-                    working_dir: Some(lang_config.workspace_dir.clone()),
+                    working_dir: Some(crate::docker::config::LanguageConfig::get_workspace_dir(&self.language)),
                     tty: Some(false),
                     attach_stdin: Some(true),
                     attach_stdout: Some(true),

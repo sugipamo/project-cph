@@ -8,13 +8,13 @@ use super::DockerRunner;
 
 impl DockerRunner {
     pub(super) async fn compile(&mut self, lang_config: LanguageConfig) -> Result<()> {
-        if let Some(compile_cmd) = &lang_config.compile_cmd {
+        if let Some(compile_cmd) = &lang_config.compile {
             let exec = self.docker
                 .create_exec(
                     &self.container_id,
                     CreateExecOptions {
                         cmd: Some(compile_cmd.clone()),
-                        working_dir: Some(lang_config.workspace_dir.clone()),
+                        working_dir: Some(LanguageConfig::get_workspace_dir(&self.language)),
                         ..Default::default()
                     },
                 )
