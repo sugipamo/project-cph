@@ -33,10 +33,12 @@ impl RunnerConfig {
     }
 
     pub fn get_language_config(&self, lang: &str) -> Option<&LanguageConfig> {
-        match lang {
-            "python" => Some(&self.languages.python),
-            "cpp" => Some(&self.languages.cpp),
-            "rust" => Some(&self.languages.rust),
+        let config_paths = crate::config::get_config_paths();
+        let aliases = crate::config::aliases::AliasConfig::load(config_paths.aliases).ok()?;
+        match aliases.resolve_language(lang).as_deref() {
+            Some("python") => Some(&self.languages.python),
+            Some("cpp") => Some(&self.languages.cpp),
+            Some("rust") => Some(&self.languages.rust),
             _ => None,
         }
     }

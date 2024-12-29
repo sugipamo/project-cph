@@ -30,13 +30,20 @@ impl fmt::Display for Language {
 }
 
 impl FromStr for Language {
-    type Err = String;
+    type Err = crate::config::aliases::AliasError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "rust" => Ok(Language::Rust),
-            "pypy" | "py-py" | "pypy3" => Ok(Language::PyPy),
-            _ => Err(format!("Unknown language: {}", s)),
+        let config_paths = crate::config::get_config_paths();
+        let aliases = crate::config::aliases::AliasConfig::load(config_paths.aliases)?;
+        match aliases.resolve_language(s).as_deref() {
+            Some("rust") => Ok(Language::Rust),
+            Some("pypy") => Ok(Language::PyPy),
+            _ => Err(crate::config::aliases::AliasError::IoError(
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!("Unknown language: {}", s)
+                )
+            ))
         }
     }
 }
