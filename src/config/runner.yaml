@@ -8,18 +8,22 @@ languages:
     image: "python:3.9-slim"
     compile: null
     run: ["python", "-u", "-c"]
+    workspace_dir: "/compile/python"
 
   pypy:
     image: "pypy:3.9-slim"
     compile: null
     run: ["pypy3", "-u", "-c"]
+    workspace_dir: "/compile/pypy"
 
   cpp:
     image: "gcc:latest"
     compile: ["g++", "-std=c++17", "-O2", "main.cpp"]
     run: ["./a.out"]
+    workspace_dir: "/compile/cpp"
 
   rust:
     image: "rust:latest"
     compile: ["rustc", "main.rs"]
-    run: ["./main"] 
+    run: ["./main"]
+    workspace_dir: "/compile/rust" 

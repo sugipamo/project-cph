@@ -1,4 +1,4 @@
-use crate::{cli::Site, error::Result};
+use crate::{cli::Site, error::Result, config::languages::LanguageConfig};
 use serde::{Serialize, Deserialize};
 use std::path::{PathBuf, Path};
 use std::fs;
@@ -18,7 +18,7 @@ impl Default for Contest {
         Self {
             root: PathBuf::from("active_contest"),
             contest_id: String::new(),
-            language: Some("rust".to_string()),
+            language: None,
             site: Site::AtCoder,
         }
     }
@@ -66,16 +66,18 @@ impl Contest {
         Ok(())
     }
 
-    pub fn get_source_path(&self, problem_id: &str) -> PathBuf {
-        let extension = self.language.as_ref()
-            .map(|lang| match lang.as_str() {
-                "rust" => "rs",
-                "pypy" => "py",
-                _ => "txt"
-            })
-            .unwrap_or("txt");
+    pub fn get_source_path(&self, problem_id: &str) -> Result<PathBuf> {
+        let language = self.language.as_ref()
+            .ok_or_else(|| "言語が設定されていません".to_string())?;
 
-        self.root.join(format!("{}.{}", problem_id, extension))
+        // 言語設定を読み込む
+        let lang_config = LanguageConfig::load(PathBuf::from("src/config/languages.yaml"))?;
+        
+        // 拡張子を取得
+        let extension = lang_config.get_extension(language)
+            .ok_or_else(|| format!("未知の言語です: {}", language))?;
+
+        Ok(self.root.join(format!("{}.{}", problem_id, extension)))
     }
 
     pub fn set_contest(&mut self, contest_id: String) {

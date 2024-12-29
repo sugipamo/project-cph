@@ -1,6 +1,7 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
+use crate::config::languages::LanguageConfig as GlobalLanguageConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunnerConfig {
@@ -19,11 +20,12 @@ pub struct LanguageConfig {
     pub image: String,
     pub compile: Option<Vec<String>>,
     pub run: Vec<String>,
+    pub workspace_dir: String,
 }
 
 impl LanguageConfig {
-    pub fn get_workspace_dir(language: &str) -> String {
-        format!("/compile/{}", language)
+    pub fn get_workspace_dir(&self) -> &str {
+        &self.workspace_dir
     }
 }
 
@@ -41,13 +43,13 @@ impl RunnerConfig {
             return Some(config);
         }
 
-        // エイリアスを試す
-        let language = language.to_lowercase();
-        match language.as_str() {
-            "py" => self.languages.languages.get("python"),
-            "rs" => self.languages.languages.get("rust"),
-            _ => None,
-        }
+        // 言語設定から拡張子を解決
+        let lang_config = GlobalLanguageConfig::load(PathBuf::from("src/config/languages.yaml"))
+            .ok()?;
+
+        // 拡張子から言語を解決
+        let resolved_language = lang_config.resolve_language(language)?;
+        self.languages.languages.get(&resolved_language)
     }
 
     pub fn list_languages(&self) -> Vec<String> {

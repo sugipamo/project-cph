@@ -1,0 +1,8 @@
+sites:
+  atcoder:
+    aliases:
+      - at-coder
+      - at_coder
+      - AtCoder
+      - ac
+    url_pattern: "https://atcoder.jp/contests/{contest_id}/tasks/{problem_id}" 
