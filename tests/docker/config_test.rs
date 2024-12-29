@@ -1,59 +1,39 @@
-#[cfg(feature = "docker_test")]
-use super::get_test_config_path;
-#[cfg(feature = "docker_test")]
+use crate::helpers::load_test_languages;
 use cph::docker::config::RunnerConfig;
+use std::path::PathBuf;
 
-#[cfg(feature = "docker_test")]
-#[tokio::test]
-async fn test_load_config() {
-    let config = RunnerConfig::load(get_test_config_path()).unwrap();
+#[test]
+fn test_load_runner_config() {
+    super::setup();
+
+    let config = RunnerConfig::load(PathBuf::from("src/config/docker.yaml")).unwrap();
+    
+    // 基本設定の検証
     assert_eq!(config.timeout_seconds, 5);
-    assert_eq!(config.memory_limit_mb, 128);
+    assert_eq!(config.memory_limit_mb, 512);
+    assert_eq!(config.mount_point, "/workspace");
+
+    super::teardown();
 }
 
-#[cfg(feature = "docker_test")]
-#[tokio::test]
-async fn test_get_language_config() {
-    let config = RunnerConfig::load(get_test_config_path()).unwrap();
-    
-    // Python設定のテスト
-    let python_config = config.get_language_config("python").unwrap();
-    assert_eq!(python_config.image_name, "python:3.9-slim");
-    assert!(python_config.compile_cmd.is_none());
-    assert_eq!(python_config.run_cmd, vec!["python", "-u", "-c"]);
-    assert_eq!(python_config.workspace_dir, "/compile/python");
-    
-    // PyPy設定のテスト
-    let pypy_config = config.get_language_config("pypy").unwrap();
-    assert_eq!(pypy_config.image_name, "pypy:3.9-slim");
-    assert!(pypy_config.compile_cmd.is_none());
-    assert_eq!(pypy_config.run_cmd, vec!["pypy3", "-u", "-c"]);
-    assert_eq!(pypy_config.workspace_dir, "/compile/pypy");
-    
-    // C++設定のテスト
-    let cpp_config = config.get_language_config("cpp").unwrap();
-    assert_eq!(cpp_config.image_name, "gcc:latest");
-    assert_eq!(cpp_config.compile_cmd.as_ref().unwrap(), &vec!["g++", "-std=c++17", "-O2", "main.cpp"]);
-    assert_eq!(cpp_config.workspace_dir, "/compile/cpp");
-    
-    // Rust設定のテスト
-    let rust_config = config.get_language_config("rust").unwrap();
-    assert_eq!(rust_config.image_name, "rust:latest");
-    assert_eq!(rust_config.compile_cmd.as_ref().unwrap(), &vec!["rustc", "main.rs"]);
-    assert_eq!(rust_config.workspace_dir, "/compile/rust");
-}
+#[test]
+fn test_language_config() {
+    super::setup();
 
-#[cfg(feature = "docker_test")]
-#[tokio::test]
-async fn test_validate_language() {
-    let config = RunnerConfig::load(get_test_config_path()).unwrap();
-    
-    // 有効な言語
-    assert!(config.validate_language("python").is_ok());
-    assert!(config.validate_language("pypy").is_ok());
-    assert!(config.validate_language("cpp").is_ok());
-    assert!(config.validate_language("rust").is_ok());
-    
-    // 無効な言語
-    assert!(config.validate_language("invalid").is_err());
+    let config = RunnerConfig::load(PathBuf::from("src/config/docker.yaml")).unwrap();
+    let lang_config = load_test_languages();
+
+    // 各言語の設定をテスト
+    for (lang_name, lang_info) in &lang_config.languages {
+        let runner_config = config.get_language_config(lang_name).unwrap();
+        assert_eq!(runner_config.image, lang_info.runner.image);
+        assert_eq!(runner_config.compile, lang_info.runner.compile);
+        assert_eq!(runner_config.run, lang_info.runner.run);
+        assert_eq!(runner_config.compile_dir, lang_info.runner.compile_dir);
+    }
+
+    // 無効な言語の検証
+    assert!(config.get_language_config("invalid").is_none());
+
+    super::teardown();
 } 

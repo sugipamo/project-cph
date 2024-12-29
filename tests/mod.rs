@@ -1,5 +1,7 @@
-#[cfg(test)]
-mod docker;
+pub mod helpers;
+pub mod docker;
 
 #[cfg(test)]
-mod cli_test {} 
+mod tests {
+    // テストコードがある場合はここに記述
+} 

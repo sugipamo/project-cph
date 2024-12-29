@@ -36,7 +36,18 @@ impl Contest {
 
         let config_path = active_dir.join("contests.yaml");
         if !config_path.exists() {
-            return Ok(Self::default());
+            // デフォルトのコンテスト設定を作成し、デフォルト言語を設定
+            let mut contest = Self::default();
+            contest.root = active_dir;
+
+            // 言語設定からデフォルト言語を取得
+            if let Ok(lang_config) = LanguageConfig::load(PathBuf::from("src/config/languages.yaml")) {
+                if let Some(default_lang) = lang_config.get_default_language() {
+                    contest.language = Some(default_lang);
+                }
+            }
+
+            return Ok(contest);
         }
 
         let content = fs::read_to_string(&config_path)?;
@@ -58,7 +69,7 @@ impl Contest {
         fs::write(config_path, content)?;
 
         // テンプレートファイルのコピー
-        self.copy_templates()?;
+        self.copy_template()?;
 
         // 既存のファイルを移動
         self.move_files_to_contests()?;
@@ -93,31 +104,33 @@ impl Contest {
     }
 
     // テンプレートファイルのコピー
-    fn copy_templates(&self) -> Result<()> {
-        let source_dir = PathBuf::from("contest_template");
-        let target_dir = self.root.join("template");
+    fn copy_template(&self) -> Result<()> {
+        if let Some(language) = &self.language {
+            // 言語設定を読み込む
+            let lang_config = LanguageConfig::load(PathBuf::from("src/config/languages.yaml"))?;
+            
+            // テンプレートパスを取得
+            if let Some(template_path) = lang_config.get_template(language, "solution") {
+                let source = PathBuf::from(&template_path.solution);
+                if !source.exists() {
+                    return Err(format!("テンプレートフィレクトリが見つかりません: {}", template_path.solution).into());
+                }
 
-        // テンプレートディレクトリの存在確認
-        if !source_dir.exists() {
-            println!("エラー: テンプレートディレクトリが見つかりません: {}", source_dir.display());
-            return Err("テンプレートのセットアップに失敗しました".into());
+                // テンプレートディレクトリをコピー
+                let target = self.root.join("template");
+                if !target.exists() {
+                    println!("テンプレートディレクトリを作成: {}", target.display());
+                    fs::create_dir_all(&target)?;
+                }
+
+                println!("テンプレートをコピーしています...");
+                println!("From: {}", source.display());
+                println!("To: {}", target.display());
+
+                self.copy_dir_contents(&source, &target)?;
+                println!("テンプレートのコピーが完了しました");
+            }
         }
-
-        // テンプレートディレクトリの作成
-        if !target_dir.exists() {
-            println!("テンプレートディレクトリを作成: {}", target_dir.display());
-            fs::create_dir_all(&target_dir)
-                .map_err(|e| format!("テンプレートディレクトリの作成に失敗しました: {}", e))?;
-        }
-
-        println!("テンプレートをコピーしています...");
-        println!("From: {}", source_dir.display());
-        println!("To: {}", target_dir.display());
-
-        // テンプレートファイルのコピー
-        self.copy_dir_contents(&source_dir, &target_dir)?;
-
-        println!("テンプレートのコピーが完了しました");
         Ok(())
     }
 

@@ -2,9 +2,14 @@ use bollard::Docker;
 use std::time::Duration;
 use cph::docker::{DockerRunners, RunnerConfig, RunnerState};
 use crate::docker::get_test_config_path;
+use crate::helpers::{load_test_languages, setup_test_templates, cleanup_test_files};
 
 #[tokio::test]
 async fn test_basic_pipeline() {
+    setup_test_templates();
+    let lang_config = load_test_languages();
+    let test_lang = lang_config.get_default_language().unwrap();
+
     // 設定の読み込み
     let config_path = get_test_config_path();
     let config = RunnerConfig::load(&config_path).unwrap();
@@ -12,8 +17,8 @@ async fn test_basic_pipeline() {
     let runners = DockerRunners::new(docker, config);
 
     // 2つのRunnerを作成（generator -> solver）
-    let gen_id = runners.add_runner("python".to_string()).await.unwrap();
-    let sol_id = runners.add_runner("python".to_string()).await.unwrap();
+    let gen_id = runners.add_runner(test_lang.clone()).await.unwrap();
+    let sol_id = runners.add_runner(test_lang.clone()).await.unwrap();
     runners.connect(gen_id, sol_id).await.unwrap();
 
     // ジェネレータ: 1から10までの数を出力
@@ -41,17 +46,22 @@ while True:
 
     // 最終状態を確認
     assert_eq!(runners.get_state().await, RunnerState::Stop);
+    cleanup_test_files();
 }
 
 #[tokio::test]
 async fn test_error_handling() {
+    setup_test_templates();
+    let lang_config = load_test_languages();
+    let test_lang = lang_config.get_default_language().unwrap();
+
     let config_path = get_test_config_path();
     let config = RunnerConfig::load(&config_path).unwrap();
     let docker = Docker::connect_with_local_defaults().unwrap();
     let runners = DockerRunners::new(docker, config);
 
     // エラーを発生させるRunnerを作成
-    let id = runners.add_runner("python".to_string()).await.unwrap();
+    let id = runners.add_runner(test_lang.clone()).await.unwrap();
 
     // 無効なPythonコード
     runners.run_code(id, "invalid python code").await.unwrap();
@@ -60,19 +70,24 @@ async fn test_error_handling() {
     let result = runners.run().await;
     assert!(result.is_err());
     assert_eq!(runners.get_state().await, RunnerState::Error);
+    cleanup_test_files();
 }
 
 #[tokio::test]
 async fn test_multi_stage_pipeline() {
+    setup_test_templates();
+    let lang_config = load_test_languages();
+    let test_lang = lang_config.get_default_language().unwrap();
+
     let config_path = get_test_config_path();
     let config = RunnerConfig::load(&config_path).unwrap();
     let docker = Docker::connect_with_local_defaults().unwrap();
     let runners = DockerRunners::new(docker, config);
 
     // 3段階のパイプライン（generator -> validator -> solver）
-    let gen_id = runners.add_runner("python".to_string()).await.unwrap();
-    let val_id = runners.add_runner("python".to_string()).await.unwrap();
-    let sol_id = runners.add_runner("python".to_string()).await.unwrap();
+    let gen_id = runners.add_runner(test_lang.clone()).await.unwrap();
+    let val_id = runners.add_runner(test_lang.clone()).await.unwrap();
+    let sol_id = runners.add_runner(test_lang.clone()).await.unwrap();
 
     // 接続を設定
     runners.connect(gen_id, val_id).await.unwrap();
@@ -108,35 +123,45 @@ while True:
     // 実行
     runners.run().await.unwrap();
     assert_eq!(runners.get_state().await, RunnerState::Stop);
+    cleanup_test_files();
 }
 
 #[tokio::test]
 async fn test_timeout() {
+    setup_test_templates();
+    let lang_config = load_test_languages();
+    let test_lang = lang_config.get_default_language().unwrap();
+
     let config_path = get_test_config_path();
     let config = RunnerConfig::load(&config_path).unwrap();
     let docker = Docker::connect_with_local_defaults().unwrap();
     let runners = DockerRunners::new(docker, config);
 
     // 無限ループを実行するRunner
-    let id = runners.add_runner("python".to_string()).await.unwrap();
+    let id = runners.add_runner(test_lang.clone()).await.unwrap();
     runners.run_code(id, "while True: pass").await.unwrap();
 
     // 実行（タイムアウトするはず）
     let result = runners.run().await;
     assert!(result.is_err());
     assert_eq!(runners.get_state().await, RunnerState::Error);
+    cleanup_test_files();
 }
 
 #[tokio::test]
 async fn test_large_output() {
+    setup_test_templates();
+    let lang_config = load_test_languages();
+    let test_lang = lang_config.get_default_language().unwrap();
+
     let config_path = get_test_config_path();
     let config = RunnerConfig::load(&config_path).unwrap();
     let docker = Docker::connect_with_local_defaults().unwrap();
     let runners = DockerRunners::new(docker, config);
 
     // 大きな出力を生成するRunner
-    let id1 = runners.add_runner("python".to_string()).await.unwrap();
-    let id2 = runners.add_runner("python".to_string()).await.unwrap();
+    let id1 = runners.add_runner(test_lang.clone()).await.unwrap();
+    let id2 = runners.add_runner(test_lang.clone()).await.unwrap();
     runners.connect(id1, id2).await.unwrap();
 
     // 2MB以上の出力を生成
@@ -146,4 +171,5 @@ async fn test_large_output() {
     // 実行（バッファサイズエラーになるはず）
     let result = runners.run().await;
     assert!(result.is_err());
+    cleanup_test_files();
 } 

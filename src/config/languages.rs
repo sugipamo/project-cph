@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+pub const DEFAULT_SOURCE_NAME: &str = "main";
+pub const SOURCE_NAME_ENV_KEY: &str = "CPH_SOURCE_NAME";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LanguageConfig {
@@ -11,10 +14,47 @@ pub struct LanguageConfig {
 pub struct LanguageInfo {
     pub aliases: Vec<String>,
     pub extension: String,
-    pub templates: HashMap<String, String>,
+    pub template: TemplateConfig,
     pub site_ids: HashMap<String, String>,
-    pub display_name: String,
-    pub clap_name: String,
+    pub runner: RunnerInfo,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TemplateConfig {
+    pub pattern: TemplatePattern,
+    pub directory: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TemplatePattern {
+    pub solution: String,
+    pub generator: String,
+    pub tester: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RunnerInfo {
+    pub image: String,
+    pub compile: Option<Vec<String>>,
+    pub run: Vec<String>,
+    pub compile_dir: String,
+}
+
+impl TemplatePattern {
+    pub fn resolve(&self, source: &str) -> ResolvedPattern {
+        ResolvedPattern {
+            solution: self.solution.replace("{source}", source),
+            generator: self.generator.replace("{source}", source),
+            tester: self.tester.replace("{source}", source),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedPattern {
+    pub solution: String,
+    pub generator: String,
+    pub tester: String,
 }
 
 impl LanguageConfig {
@@ -32,6 +72,14 @@ impl LanguageConfig {
         Ok(config)
     }
 
+    pub fn resolve_template_path(&self, language: &str, template_base: impl AsRef<Path>, source: &str) -> Option<PathBuf> {
+        let lang_info = self.languages.get(language)?;
+        let pattern = lang_info.template.pattern.resolve(source);
+        Some(template_base.as_ref()
+            .join(&lang_info.template.directory)
+            .join(pattern.solution))
+    }
+
     pub fn resolve_language(&self, input: &str) -> Option<String> {
         let input = input.to_lowercase();
         
@@ -41,22 +89,17 @@ impl LanguageConfig {
         }
 
         // エイリアスを探索
-        for (key, lang) in &self.languages {
-            if lang.aliases.iter().any(|alias| alias.to_lowercase() == input) {
-                return Some(key.clone());
+        for (lang_name, lang_info) in &self.languages {
+            if lang_info.aliases.iter().any(|alias| alias.to_lowercase() == input) {
+                return Some(lang_name.clone());
             }
         }
+
         None
     }
 
     pub fn get_extension(&self, language: &str) -> Option<String> {
         self.languages.get(language).map(|l| l.extension.clone())
-    }
-
-    pub fn get_template(&self, language: &str, template_name: &str) -> Option<String> {
-        self.languages.get(language)
-            .and_then(|l| l.templates.get(template_name))
-            .cloned()
     }
 
     pub fn get_site_id(&self, language: &str, site: &str) -> Option<String> {
@@ -66,14 +109,32 @@ impl LanguageConfig {
     }
 
     pub fn get_display_name(&self, language: &str) -> Option<String> {
-        self.languages.get(language).map(|l| l.display_name.clone())
+        self.languages.get(language).map(|_| language.to_string())
     }
 
     pub fn get_clap_name(&self, language: &str) -> Option<String> {
-        self.languages.get(language).map(|l| l.clap_name.clone())
+        self.languages.get(language).map(|_| language.to_string())
     }
 
     pub fn list_languages(&self) -> Vec<String> {
         self.languages.keys().cloned().collect()
+    }
+
+    pub fn get_default_language(&self) -> Option<String> {
+        self.languages.keys().next().cloned()
+    }
+
+    pub fn get_language_by_extension(&self, extension: &str) -> Option<String> {
+        for (language, info) in &self.languages {
+            if info.extension == extension {
+                return Some(language.clone());
+            }
+        }
+        None
+    }
+
+    pub fn get_template(&self, language: &str, source: &str) -> Option<ResolvedPattern> {
+        self.languages.get(language)
+            .map(|l| l.template.pattern.resolve(source))
     }
 } 

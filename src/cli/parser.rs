@@ -1,6 +1,8 @@
 use std::error::Error;
 use clap::{Command, ArgMatches, Arg};
 use crate::config::{self, LanguageConfig};
+use clap::{Parser, Subcommand};
+use crate::config::languages::{DEFAULT_SOURCE_NAME, SOURCE_NAME_ENV_KEY};
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -105,4 +107,14 @@ impl CliParser {
                 .about("サイトにログイン"),
         ]
     }
+}
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+pub struct Cli {
+    #[clap(long, env = SOURCE_NAME_ENV_KEY, default_value = DEFAULT_SOURCE_NAME, help = "ソースファイルのベース名")]
+    pub source: String,
+
+    #[command(subcommand)]
+    pub command: Commands,
 }

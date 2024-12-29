@@ -44,7 +44,16 @@ impl Command for LanguageCommand {
                     Some(lang) => lang,
                     None => {
                         println!("無効な言語が指定されました: {}", language);
-                        println!("利用可能な言語: {:?}", lang_config.list_languages());
+                        println!("利用可能な言語:");
+                        for lang in lang_config.list_languages() {
+                            let display_name = lang_config.get_display_name(&lang)
+                                .unwrap_or_else(|| lang.clone());
+                            if Some(lang.clone()) == lang_config.get_default_language() {
+                                println!("  * {} (デフォルト)", display_name);
+                            } else {
+                                println!("  * {}", display_name);
+                            }
+                        }
                         return Err(format!("無効な言語です: {}", language).into());
                     }
                 };
@@ -64,12 +73,26 @@ impl Command for LanguageCommand {
             _ => {
                 // 現在の設定を表示
                 if let Some(current) = &contest.language {
-                    println!("現在の言語: {}", 
-                        lang_config.get_display_name(current)
-                            .unwrap_or_else(|| current.to_string()));
+                    let display_name = lang_config.get_display_name(current)
+                        .unwrap_or_else(|| current.to_string());
+                    if Some(current.clone()) == lang_config.get_default_language() {
+                        println!("現在の言語: {} (デフォルト)", display_name);
+                    } else {
+                        println!("現在の言語: {}", display_name);
+                    }
                 } else {
                     println!("言語が設定されていません");
-                    println!("利用可能な言語: {:?}", lang_config.list_languages());
+                }
+                
+                println!("\n利用可能な言語:");
+                for lang in lang_config.list_languages() {
+                    let display_name = lang_config.get_display_name(&lang)
+                        .unwrap_or_else(|| lang.clone());
+                    if Some(lang.clone()) == lang_config.get_default_language() {
+                        println!("  * {} (デフォルト)", display_name);
+                    } else {
+                        println!("  * {}", display_name);
+                    }
                 }
             }
         }

@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use cph::docker::{DockerRunner, RunnerConfig, RunnerState};
 use tokio::time::sleep;
 use std::time::Duration;
+use crate::helpers::{load_test_languages, setup_test_templates, cleanup_test_files};
 
 #[derive(Default)]
 struct TestState {
@@ -14,8 +15,13 @@ struct TestState {
 
 #[tokio::test]
 async fn test_python_io() {
+    setup_test_templates();
     let mut state = TestState::default();
     
+    // 言語設定の読み込み
+    let lang_config = load_test_languages();
+    let test_lang = "python".to_string();  // このテストはPythonの機能をテストするため、明示的に指定
+
     // Dockerクライアントの初期化
     let docker = Docker::connect_with_local_defaults().unwrap_or_else(|e| {
         println!("Docker initialization failed: {:?}", e);
@@ -30,7 +36,7 @@ async fn test_python_io() {
     });
 
     // DockerRunnerの初期化
-    let mut runner = DockerRunner::new(docker, config, "python".to_string());
+    let mut runner = DockerRunner::new(docker, config, test_lang);
     
     // Pythonのソースコード
     let source_code = "while True: print(int(input()) + 1)";
@@ -120,6 +126,8 @@ async fn test_python_io() {
         print_debug_info(&state);
         panic!("Failed to stop container");
     }
+
+    cleanup_test_files();
 }
 
 fn print_debug_info(state: &TestState) {

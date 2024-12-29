@@ -1,3 +1,4 @@
+# 言語設定
 languages:
   rust:
     aliases:
@@ -5,13 +6,19 @@ languages:
       - rs
       - RUST
     extension: "rs"
-    templates:
-      default: "template/main.rs"
-      competitive: "template/competitive.rs"
+    template:
+      pattern:
+        solution: "{source}.rs"
+        generator: "{source}_gen.rs"
+        tester: "{source}_test.rs"
+      directory: "rust"
     site_ids:
       atcoder: "5054"  # Rust (rustc 1.70.0)
-    display_name: "rust"
-    clap_name: "rust"
+    runner:
+      image: "rust:latest"
+      compile: ["rustc", "main.rs"]
+      run: ["./main"]
+      compile_dir: "/compile/rust"
   
   pypy:
     aliases:
@@ -21,27 +28,39 @@ languages:
       - Pypy
       - py
     extension: "py"
-    templates:
-      default: "template/main.py"
-      competitive: "template/competitive.py"
+    template:
+      pattern:
+        solution: "{source}.py"
+        generator: "{source}_gen.py"
+        tester: "{source}_test.py"
+      directory: "python"
     site_ids:
       atcoder: "5078"  # Python (PyPy 3.10-v7.3.12)
-    display_name: "pypy"
-    clap_name: "pypy"
-  
+    runner:
+      image: "pypy:3.9-slim"
+      compile: null
+      run: ["pypy3", "-u", "-c"]
+      compile_dir: "/compile/pypy"
+
   python:
     aliases:
       - Python
       - py
       - PYTHON
     extension: "py"
-    templates:
-      default: "template/main.py"
-      competitive: "template/competitive.py"
+    template:
+      pattern:
+        solution: "{source}.py"
+        generator: "{source}_gen.py"
+        tester: "{source}_test.py"
+      directory: "python"
     site_ids:
       atcoder: "5055"  # Python (CPython 3.11.4)
-    display_name: "python"
-    clap_name: "python"
+    runner:
+      image: "python:3.9-slim"
+      compile: null
+      run: ["python", "-u", "-c"]
+      compile_dir: "/compile/python"
   
   cpp:
     aliases:
@@ -49,10 +68,16 @@ languages:
       - cpp
       - CPP
     extension: "cpp"
-    templates:
-      default: "template/main.cpp"
-      competitive: "template/competitive.cpp"
+    template:
+      pattern:
+        solution: "{source}.cpp"
+        generator: "{source}_gen.cpp"
+        tester: "{source}_test.cpp"
+      directory: "cpp"
     site_ids:
       atcoder: "5050"  # C++ (GCC 12.2.0)
-    display_name: "cpp"
-    clap_name: "cpp" 
+    runner:
+      image: "gcc:latest"
+      compile: ["g++", "-std=c++17", "-O2", "main.cpp"]
+      run: ["./a.out"]
+      compile_dir: "/compile/cpp"
