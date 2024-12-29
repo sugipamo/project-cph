@@ -14,42 +14,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // コマンドを作成して実行
     match &cli.command {
-        Commands::Work { contest_id } => {
-            if let Some(command) = create_command("work", context) {
-                command.execute(&cli.command)?;
-            }
-        }
-        Commands::Test { problem_id } => {
-            if let Some(command) = create_command("test", context) {
-                command.execute(&cli.command)?;
-            }
-        }
-        Commands::Language { language } => {
-            if let Some(command) = create_command("language", context) {
-                command.execute(&cli.command)?;
-            }
-        }
-        Commands::Open { problem_id } => {
-            if let Some(command) = create_command("open", context) {
-                command.execute(&cli.command)?;
-            }
-        }
-        Commands::Submit { problem_id } => {
-            if let Some(command) = create_command("submit", context) {
-                command.execute(&cli.command)?;
-            }
-        }
-        Commands::Generate { problem_id } => {
-            if let Some(command) = create_command("generate", context) {
-                command.execute(&cli.command)?;
-            }
-        }
-        Commands::Login => {
-            if let Some(command) = create_command("login", context) {
-                command.execute(&cli.command)?;
-            }
-        }
+        // 引数を使用するコマンドは、create_commandに渡すことで
+        // 実際の処理がコマンドクラスに委譲されることを示す
+        Commands::Work { .. } => execute_command("work", &cli.command, context)?,
+        Commands::Test { .. } => execute_command("test", &cli.command, context)?,
+        Commands::Language { .. } => execute_command("language", &cli.command, context)?,
+        Commands::Open { .. } => execute_command("open", &cli.command, context)?,
+        Commands::Submit { .. } => execute_command("submit", &cli.command, context)?,
+        Commands::Generate { .. } => execute_command("generate", &cli.command, context)?,
+        Commands::Login => execute_command("login", &cli.command, context)?,
     }
 
+    Ok(())
+}
+
+/// コマンドを作成して実行する
+/// 
+/// 引数の詳細な処理はコマンドクラスに委譲される
+fn execute_command(
+    command_type: &str,
+    command: &Commands,
+    context: CommandContext,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(command_handler) = create_command(command_type, context) {
+        command_handler.execute(command)?;
+    }
     Ok(())
 }

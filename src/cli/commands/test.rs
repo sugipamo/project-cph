@@ -19,7 +19,7 @@ impl Command for TestCommand {
             _ => return Err("不正なコマンドです".into()),
         };
 
-        test::run_test(problem_id)?;
+        test::run_test(problem_id, self.context.workspace_path.clone())?;
         Ok(())
     }
 } 
