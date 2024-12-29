@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use tokio::sync::Mutex;
 use std::sync::Arc;
 use bollard::Docker;
@@ -13,9 +12,9 @@ pub struct DockerRunners {
     /// 共有設定
     config: RunnerConfig,
     /// Runner IDとDockerRunnerのマッピング
-    runners: Arc<Mutex<HashMap<String, Arc<Mutex<DockerRunner>>>>>,
-    /// Runner間の接続情報
-    connections: Arc<Mutex<HashMap<String, Vec<String>>>>,
+    runners: Arc<Mutex<Vec<Arc<Mutex<DockerRunner>>>>>,
+    /// Runner間の接続情報（from_id -> to_ids）
+    connections: Arc<Mutex<Vec<(usize, Vec<usize>)>>>,
 }
 
 impl DockerRunners {
@@ -24,25 +23,22 @@ impl DockerRunners {
         Self {
             docker,
             config,
-            runners: Arc::new(Mutex::new(HashMap::new())),
-            connections: Arc::new(Mutex::new(HashMap::new())),
+            runners: Arc::new(Mutex::new(Vec::new())),
+            connections: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
-    /// 新しいRunnerを追加
-    pub async fn add_runner(&self, id: String, language: String) -> Result<()> {
+    /// 新しいRunnerを追加（スタックの先頭に追加）
+    pub async fn add_runner(&self, language: String) -> Result<usize> {
         let mut runners = self.runners.lock().await;
-        if runners.contains_key(&id) {
-            return Err(DockerError::RuntimeError(format!("Runner with id {} already exists", id)));
-        }
-
+        let id = runners.len();
         let runner = DockerRunner::new(self.docker.clone(), self.config.clone(), language);
-        runners.insert(id, Arc::new(Mutex::new(runner)));
-        Ok(())
+        runners.push(Arc::new(Mutex::new(runner)));
+        Ok(id)
     }
 
-    /// Runnerを取得
-    async fn get_runner(&self, id: &str) -> Result<Arc<Mutex<DockerRunner>>> {
+    /// Runnerを取得（後から追加された方が先に見つかる）
+    async fn get_runner(&self, id: usize) -> Result<Arc<Mutex<DockerRunner>>> {
         let runners = self.runners.lock().await;
         runners.get(id)
             .cloned()
@@ -50,23 +46,28 @@ impl DockerRunners {
     }
 
     /// Runner間の接続を設定
-    pub async fn connect(&self, from: String, to: String) -> Result<()> {
+    pub async fn connect(&self, from: usize, to: usize) -> Result<()> {
         let mut connections = self.connections.lock().await;
-        connections
-            .entry(from)
-            .or_insert_with(Vec::new)
-            .push(to);
+        match connections.iter_mut().find(|(f, _)| *f == from) {
+            Some((_, tos)) => {
+                tos.push(to);
+            }
+            None => {
+                connections.push((from, vec![to]));
+            }
+        }
         Ok(())
     }
 
     /// 指定されたRunnerの出力を接続先のRunnerの入力として転送
-    pub async fn forward_output(&self, from: &str) -> Result<()> {
+    pub async fn forward_output(&self, from: usize) -> Result<()> {
         // 接続情報を取得
         let to_runners = {
             let connections = self.connections.lock().await;
-            connections.get(from)
+            connections.iter()
+                .find(|(f, _)| *f == from)
+                .map(|(_, tos)| tos.clone())
                 .ok_or_else(|| DockerError::RuntimeError(format!("No connections found for runner {}", from)))?
-                .clone()
         };
 
         // 出力を取得
@@ -79,7 +80,7 @@ impl DockerRunners {
 
         // 各接続先に出力を転送
         for to in to_runners {
-            let to_runner = self.get_runner(&to).await?;
+            let to_runner = self.get_runner(to).await?;
             let mut runner = to_runner.lock().await;
             runner.write(&format!("{}\n", output)).await?;
         }
@@ -87,11 +88,10 @@ impl DockerRunners {
         Ok(())
     }
 
-    /// 全てのRunnerを停止
+    /// 全てのRunnerを停止（後入れ先出しで停止）
     pub async fn stop_all(&self) -> Result<()> {
         let runners = self.runners.lock().await;
-        for (id, _) in runners.iter() {
-            let runner = self.get_runner(id).await?;
+        for (id, runner) in runners.iter().enumerate().rev() {
             let mut runner = runner.lock().await;
             runner.stop().await?;
         }
@@ -99,10 +99,16 @@ impl DockerRunners {
     }
 
     /// Runnerでコードを実行
-    pub async fn run_code(&self, id: &str, source_code: &str) -> Result<()> {
+    pub async fn run_code(&self, id: usize, source_code: &str) -> Result<()> {
         let runner = self.get_runner(id).await?;
         let mut runner = runner.lock().await;
         runner.run_in_docker(source_code).await?;
         Ok(())
+    }
+
+    /// 登録されているRunner IDのリストを取得（スタックの順序）
+    pub async fn list_runners(&self) -> Vec<usize> {
+        let runners = self.runners.lock().await;
+        (0..runners.len()).rev().collect()
     }
 } 
