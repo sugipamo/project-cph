@@ -96,46 +96,92 @@ impl CliParser {
             .subcommand_required(true)
             .subcommand(
                 Command::new("atcoder")
+                    .aliases(&["at-coder", "at_coder", "ac"])
                     .about("AtCoder関連のコマンド")
                     .subcommand_required(true)
                     .subcommands(self.common_subcommands())
             )
     }
 
+    /// 問題IDが有効かどうかを確認します
+    fn is_valid_problem_id(s: &str) -> bool {
+        let valid_ids = ["a", "b", "c", "d", "e", "f", "g", "ex"];
+        valid_ids.contains(&s.to_lowercase().as_str())
+    }
+
+    /// コンテストIDが有効かどうかを確認します
+    fn is_valid_contest_id(s: &str) -> bool {
+        if s.len() < 4 {
+            return false;
+        }
+        let prefix = &s[..3].to_lowercase();
+        let valid_prefixes = ["abc", "arc", "agc"];
+        if !valid_prefixes.contains(&prefix.as_str()) {
+            return false;
+        }
+        s[3..].chars().all(|c| c.is_ascii_digit())
+    }
+
     /// 共通のサブコマンドを構築します
     fn common_subcommands(&self) -> Vec<Command> {
         vec![
             Command::new("work")
+                .aliases(&["w"])
                 .about("コンテストのワークスペースを設定")
                 .arg(clap::Arg::new("contest")
                     .help("コンテストID")
-                    .required(true)),
+                    .required(true)
+                    .value_parser(|s: &str| {
+                        if s.is_empty() {
+                            return Err(String::from("コンテストIDが空です"));
+                        }
+                        if !Self::is_valid_contest_id(s) {
+                            return Err(String::from("無効なコンテストID形式です"));
+                        }
+                        Ok(s.to_string())
+                    })),
             Command::new("test")
+                .aliases(&["t", "check"])
                 .about("問題のテストを実行")
                 .arg(clap::Arg::new("problem_id")
                     .help("問題ID")
-                    .required(true)),
+                    .required(true)
+                    .value_parser(|s: &str| {
+                        if s.is_empty() {
+                            return Err(String::from("問題IDが空です"));
+                        }
+                        if !Self::is_valid_problem_id(s) {
+                            return Err(String::from("無効な問題IDです"));
+                        }
+                        Ok(s.to_string())
+                    })),
             Command::new("language")
+                .aliases(&["l", "lang"])
                 .about("使用する言語を設定")
                 .arg(clap::Arg::new("language")
                     .help("プログラミング言語")
-                    .required(true)),
+                    .required(true)
+                    .ignore_case(true)),
             Command::new("open")
+                .aliases(&["o"])
                 .about("問題ページを開く")
                 .arg(clap::Arg::new("problem_id")
                     .help("問題ID")
                     .required(true)),
             Command::new("submit")
+                .aliases(&["s", "sub"])
                 .about("解答を提出")
                 .arg(clap::Arg::new("problem_id")
                     .help("問題ID")
                     .required(true)),
             Command::new("generate")
+                .aliases(&["g"])
                 .about("テンプレートを生成")
                 .arg(clap::Arg::new("problem_id")
                     .help("問題ID")
                     .required(true)),
             Command::new("login")
+                .aliases(&["auth"])
                 .about("サイトにログイン"),
         ]
     }
