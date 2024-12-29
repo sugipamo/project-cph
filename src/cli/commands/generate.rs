@@ -113,7 +113,7 @@ impl Command for GenerateCommand {
             })?;
 
         // ソースファイルのパスを取得
-        let source_path = contest.get_source_path(problem_id);
+        let source_path = contest.get_source_path(problem_id)?;
 
         // テンプレートからファイルを生成
         println!("ソースファイルを生成しています...");

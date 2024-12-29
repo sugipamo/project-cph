@@ -39,7 +39,7 @@ impl Command for OpenCommand {
 
         let problem = ProblemInfo {
             url: url.clone(),
-            source_path: contest.get_source_path(problem_id),
+            source_path: contest.get_source_path(problem_id)?,
             problem_id: problem_id.clone(),
         };
 

@@ -14,7 +14,7 @@ impl DockerRunner {
                     &self.container_id,
                     CreateExecOptions {
                         cmd: Some(compile_cmd.clone()),
-                        working_dir: Some(LanguageConfig::get_workspace_dir(&self.language)),
+                        working_dir: Some(lang_config.get_workspace_dir().to_string()),
                         ..Default::default()
                     },
                 )

@@ -48,7 +48,7 @@ impl DockerRunner {
                 Config {
                     image: Some(lang_config.image.clone()),
                     cmd: Some(cmd),
-                    working_dir: Some(crate::docker::config::LanguageConfig::get_workspace_dir(&self.language)),
+                    working_dir: Some(lang_config.get_workspace_dir().to_string()),
                     tty: Some(false),
                     attach_stdin: Some(true),
                     attach_stdout: Some(true),
