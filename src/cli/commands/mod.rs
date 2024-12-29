@@ -12,7 +12,7 @@ pub trait Command {
 /// コマンドのコンテキスト
 pub struct CommandContext {
     pub site: crate::cli::Site,
-    pub workspace_path: std::path::PathBuf,
+    pub active_contest_dir: std::path::PathBuf,
 }
 
 // 各コマンドのモジュール
@@ -36,11 +36,11 @@ pub use login::LoginCommand;
 /// コマンドを生成する
 pub fn create_command(name: &str, context: CommandContext) -> Option<Box<dyn Command>> {
     match name {
-        "work" => Some(Box::new(WorkCommand::new(context.site, context.workspace_path))),
+        "work" => Some(Box::new(WorkCommand::new(context.site, context.active_contest_dir))),
         "test" => Some(Box::new(TestCommand::new(context))),
         "language" => Some(Box::new(LanguageCommand::new(context))),
-        "open" => Some(Box::new(OpenCommand::new(context.site, context.workspace_path))),
-        "submit" => Some(Box::new(SubmitCommand::new(context.site, context.workspace_path))),
+        "open" => Some(Box::new(OpenCommand::new(context.site, context.active_contest_dir))),
+        "submit" => Some(Box::new(SubmitCommand::new(context.site, context.active_contest_dir))),
         "generate" => Some(Box::new(GenerateCommand::new(context))),
         "login" => Some(Box::new(LoginCommand::new(context))),
         _ => None,

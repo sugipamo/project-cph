@@ -15,7 +15,7 @@ impl GenerateCommand {
 
     /// 生成スクリプトを探す
     fn find_generator(&self, problem_id: &str) -> Option<PathBuf> {
-        let generator_path = self.context.workspace_path
+        let generator_path = self.context.active_contest_dir
             .join("template")
             .join(format!("{}_gen.rs", problem_id));
 
@@ -35,7 +35,7 @@ impl GenerateCommand {
             _ => language,
         };
 
-        let template_path = self.context.workspace_path
+        let template_path = self.context.active_contest_dir
             .join("template")
             .join(format!("main.{}", extension));
 
@@ -68,7 +68,7 @@ impl GenerateCommand {
 
 impl Command for GenerateCommand {
     fn execute(&self, command: &Commands) -> Result<()> {
-        let contest = Contest::new(self.context.workspace_path.clone())?;
+        let contest = Contest::new(self.context.active_contest_dir.clone())?;
         let problem_id = match command {
             Commands::Generate { problem_id } => problem_id,
             _ => return Err("不正なコマンドです".into()),
@@ -91,10 +91,10 @@ impl Command for GenerateCommand {
         self.generate_from_template(&template_path, &source_path)?;
 
         // 生成スクリプトのテンプレートをコピー
-        let template_generator = self.context.workspace_path
+        let template_generator = self.context.active_contest_dir
             .join("template")
             .join("gen.rs");
-        let target_generator = self.context.workspace_path
+        let target_generator = self.context.active_contest_dir
             .join("template")
             .join(format!("{}_gen.rs", problem_id));
 

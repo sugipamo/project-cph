@@ -17,7 +17,7 @@ impl LanguageCommand {
 impl Command for LanguageCommand {
     fn execute(&self, command: &Commands) -> Result<()> {
         // コンテストを読み込む
-        let mut contest = Contest::new(self.context.workspace_path.clone())?;
+        let mut contest = Contest::new(self.context.active_contest_dir.clone())?;
 
         match command {
             Commands::Language { language } => {

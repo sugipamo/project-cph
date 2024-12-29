@@ -9,7 +9,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // コマンドのコンテキストを作成
     let context = CommandContext {
         site: cli.site,
-        workspace_path: env::current_dir()?,
+        active_contest_dir: env::current_dir()?,
     };
 
     // コマンドを作成して実行

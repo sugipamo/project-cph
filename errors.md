@@ -21,12 +21,28 @@
   - `context`が未使用
   - パスの取得処理が重複
 - 対応：
-  - `test::run_test`の引数に`workspace_path`を追加
-  - `TestCommand`で`context.workspace_path`を活用
+  - `test::run_test`の引数に`active_contest_dir`を追加
+  - `TestCommand`で`context.active_contest_dir`を活用
 - 改善点：
   - 警告が解消
   - パス取得の重複を排除
   - 依存関係が明確に
+
+### 3. 変数名の改善
+- 変更内容：`workspace_path` → `active_contest_dir`
+- 対象ファイル：
+  1. `src/cli/commands/mod.rs`（CommandContext構造体）
+  2. `src/bin/cph.rs`（メイン処理）
+  3. `src/cli/commands/test.rs`（TestCommand実装）
+  4. `src/test/mod.rs`（テスト実行関数）
+  5. `src/cli/commands/language.rs`（LanguageCommand実装）
+  6. `src/cli/commands/generate.rs`（GenerateCommand実装）
+  7. `src/cli/commands/login.rs`（LoginCommand実装）
+- 改善点：
+  - 名称が実際の用途と一致
+  - コードの意図がより明確に
+  - 古い設計の名残を除去
+  - すべてのコマンドで一貫した命名を使用
 
 ## 設計上の注意点
 1. 警告への対応基準：
@@ -41,4 +57,10 @@
 3. 依存関係の管理：
    - 共通の設定や状態は適切なコンテキストを通じて伝播
    - 重複する処理は上位レイヤーに集約
-   - 各コンポーネントの責務を明確に 
+   - 各コンポーネントの責務を明確に
+
+4. 命名規則：
+   - 実際の用途を反映した名称を使用
+   - 古い設計や実装の名残を適切にリファクタリング
+   - コードの文脈に合わせた命名を選択
+   - プロジェクト全体で一貫性のある命名を維持 

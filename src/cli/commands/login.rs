@@ -20,7 +20,7 @@ impl Command for LoginCommand {
         }
 
         // OJコンテナを初期化
-        let oj = OJContainer::new(self.context.workspace_path.clone())?;
+        let oj = OJContainer::new(self.context.active_contest_dir.clone())?;
 
         // ログインを実行
         tokio::runtime::Runtime::new()?.block_on(async {
