@@ -8,9 +8,8 @@ Cargo.lock
 /compile/rust/target/
 /compile/rust/Cargo.lock
 /compile/rust/src/main.rs
-/compile/pypy/main.py
 /compile/rust/test
-/compile/pypy/test.py
+/compile/pypy/main.py
 
 # コンテスト
 contests
