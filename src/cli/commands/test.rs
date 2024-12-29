@@ -1,7 +1,7 @@
-use clap::ArgMatches;
-use super::{Command, CommandContext, Result};
+use super::{Command, Result, CommandContext};
+use crate::cli::Commands;
+use crate::test;
 
-/// テストコマンド
 pub struct TestCommand {
     context: CommandContext,
 }
@@ -13,8 +13,13 @@ impl TestCommand {
 }
 
 impl Command for TestCommand {
-    fn execute(&self, _matches: &ArgMatches) -> Result<()> {
-        println!("テストコマンドは開発中です。");
+    fn execute(&self, command: &Commands) -> Result<()> {
+        let problem_id = match command {
+            Commands::Test { problem_id } => problem_id,
+            _ => return Err("不正なコマンドです".into()),
+        };
+
+        test::run_test(problem_id)?;
         Ok(())
     }
 } 

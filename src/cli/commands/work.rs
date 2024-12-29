@@ -1,20 +1,19 @@
 use std::path::{Path, PathBuf};
 use std::fs;
-use clap::ArgMatches;
-use super::{Command, CommandContext, Result};
+use super::{Command, Result};
+use crate::cli::Commands;
+use crate::workspace::Workspace;
 
-/// ワークスペース作成コマンド
 pub struct WorkCommand {
-    context: CommandContext,
+    pub workspace_path: PathBuf,
 }
 
 impl WorkCommand {
-    pub fn new(context: CommandContext) -> Self {
-        Self { context }
+    pub fn new(workspace_path: PathBuf) -> Self {
+        Self { workspace_path }
     }
 
     /// コンテストIDが有効かどうかを確認
-    /// 基本的な文字種のチェックのみを行う
     fn validate_contest_id(&self, contest_id: &str) -> bool {
         if contest_id.is_empty() {
             return false;
@@ -23,44 +22,9 @@ impl WorkCommand {
         contest_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
     }
 
-    /// ワークスペースのディレクトリ構造を作成
-    fn create_workspace_structure(&self, contest_id: &str) -> Result<()> {
-        let workspace_root = &self.context.workspace_path;
-        let contest_dir = workspace_root.join(contest_id);
-        let test_dir = contest_dir.join("test");
-
-        // コンテストディレクトリを作成
-        fs::create_dir_all(&contest_dir)?;
-        fs::create_dir_all(&test_dir)?;
-
-        // 問題ディレクトリを作成
-        for problem in ['a', 'b', 'c', 'd', 'e', 'f'] {
-            fs::create_dir_all(test_dir.join(problem.to_string()))?;
-        }
-
-        // contests.yamlをコピー
-        if let Some(template_contests_yaml) = self.find_template_contests_yaml() {
-            fs::copy(
-                template_contests_yaml,
-                contest_dir.join("contests.yaml")
-            )?;
-        }
-
-        // .moveignoreをコピー
-        if let Some(template_moveignore) = self.find_template_moveignore() {
-            fs::copy(
-                template_moveignore,
-                contest_dir.join(".moveignore")
-            )?;
-        }
-
-        Ok(())
-    }
-
     /// テンプレートのcontests.yamlを探す
     fn find_template_contests_yaml(&self) -> Option<PathBuf> {
-        let workspace_root = &self.context.workspace_path;
-        let template_path = workspace_root.join("template").join("contests.yaml");
+        let template_path = self.workspace_path.join("template").join("contests.yaml");
         if template_path.exists() {
             Some(template_path)
         } else {
@@ -70,20 +34,53 @@ impl WorkCommand {
 
     /// テンプレートの.moveignoreを探す
     fn find_template_moveignore(&self) -> Option<PathBuf> {
-        let workspace_root = &self.context.workspace_path;
-        let template_path = workspace_root.join("template").join(".moveignore");
+        let template_path = self.workspace_path.join("template").join(".moveignore");
         if template_path.exists() {
             Some(template_path)
         } else {
             None
         }
     }
+
+    /// ワークスペースのディレクトリ構造を作成
+    fn create_workspace_structure(&self) -> Result<()> {
+        // 基本ディレクトリを作成
+        fs::create_dir_all(&self.workspace_path)?;
+        fs::create_dir_all(self.workspace_path.join("src"))?;
+        fs::create_dir_all(self.workspace_path.join("test"))?;
+
+        // テンプレートファイルをコピー
+        if let Some(template_contests_yaml) = self.find_template_contests_yaml() {
+            fs::copy(
+                template_contests_yaml,
+                self.workspace_path.join("contests.yaml")
+            )?;
+        }
+
+        // .moveignoreをコピー
+        if let Some(template_moveignore) = self.find_template_moveignore() {
+            fs::copy(
+                template_moveignore,
+                self.workspace_path.join(".moveignore")
+            )?;
+        }
+
+        // 問題ディレクトリを作成
+        let test_dir = self.workspace_path.join("test");
+        for problem in ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] {
+            fs::create_dir_all(test_dir.join(problem.to_string()))?;
+        }
+
+        Ok(())
+    }
 }
 
 impl Command for WorkCommand {
-    fn execute(&self, matches: &ArgMatches) -> Result<()> {
-        let contest_id = matches.get_one::<String>("contest")
-            .ok_or("コンテストIDが指定されていません")?;
+    fn execute(&self, command: &Commands) -> Result<()> {
+        let contest_id = match command {
+            Commands::Work { contest_id } => contest_id,
+            _ => return Err("不正なコマンドです".into()),
+        };
 
         // コンテストIDのバリデーション
         if !self.validate_contest_id(contest_id) {
@@ -91,9 +88,14 @@ impl Command for WorkCommand {
         }
 
         // ワークスペースの作成
-        self.create_workspace_structure(contest_id)?;
+        self.create_workspace_structure()?;
 
-        println!("ワークスペースを作成しました: {}", contest_id);
+        // ワークスペースを初期化
+        let mut workspace = Workspace::new(self.workspace_path.clone())?;
+        workspace.set_contest(contest_id.clone());
+        workspace.save()?;
+
+        println!("ワークスペースを作成しました: {}", self.workspace_path.display());
         Ok(())
     }
 } 

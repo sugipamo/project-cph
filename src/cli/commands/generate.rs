@@ -1,10 +1,9 @@
+use super::{Command, Result, CommandContext};
+use crate::cli::Commands;
+use crate::workspace::Workspace;
 use std::path::PathBuf;
 use std::fs;
-use clap::ArgMatches;
-use super::{Command, CommandContext, Result};
-use crate::cli::commands::language::ContestConfig;
 
-/// テンプレート生成コマンド
 pub struct GenerateCommand {
     context: CommandContext,
 }
@@ -12,30 +11,6 @@ pub struct GenerateCommand {
 impl GenerateCommand {
     pub fn new(context: CommandContext) -> Self {
         Self { context }
-    }
-
-    /// 設定ファイルを読み込む
-    fn load_config(&self, config_path: &PathBuf) -> Result<ContestConfig> {
-        if config_path.exists() {
-            let content = std::fs::read_to_string(config_path)?;
-            Ok(serde_yaml::from_str(&content)
-                .map_err(|e| format!("設定ファイルの解析に失敗しました: {}", e))?)
-        } else {
-            Err("contests.yamlが見つかりません".into())
-        }
-    }
-
-    /// 現在のディレクトリからcontests.yamlを探す
-    fn find_config_file(&self) -> Option<PathBuf> {
-        let mut current_dir = self.context.workspace_path.clone();
-        while current_dir.parent().is_some() {
-            let config_path = current_dir.join("contests.yaml");
-            if config_path.exists() {
-                return Some(config_path);
-            }
-            current_dir = current_dir.parent().unwrap().to_path_buf();
-        }
-        None
     }
 
     /// 生成スクリプトを探す
@@ -71,20 +46,6 @@ impl GenerateCommand {
         }
     }
 
-    /// ソースファイルのパスを取得
-    fn get_source_path(&self, contest_id: &str, problem_id: &str, language: &str) -> PathBuf {
-        let extension = match language {
-            "python" => "py",
-            "cpp" => "cpp",
-            "rust" => "rs",
-            _ => language,
-        };
-        
-        self.context.workspace_path
-            .join(contest_id)
-            .join(format!("{}.{}", problem_id, extension))
-    }
-
     /// テンプレートからソースファイルを生成
     fn generate_from_template(&self, template_path: &PathBuf, target_path: &PathBuf) -> Result<()> {
         if target_path.exists() {
@@ -106,9 +67,11 @@ impl GenerateCommand {
 }
 
 impl Command for GenerateCommand {
-    fn execute(&self, matches: &ArgMatches) -> Result<()> {
-        let problem_id = matches.get_one::<String>("problem_id")
-            .ok_or("問題IDが指定されていません")?;
+    fn execute(&self, command: &Commands) -> Result<()> {
+        let problem_id = match command {
+            Commands::Generate { problem_id } => problem_id,
+            _ => return Err("不正なコマンドです".into()),
+        };
 
         // 生成スクリプトを探す
         if let Some(generator_path) = self.find_generator(problem_id) {
@@ -116,21 +79,15 @@ impl Command for GenerateCommand {
             return self.run_generator(&generator_path);
         }
 
-        // 設定を読み込む
-        let config_path = self.find_config_file()
-            .ok_or("contests.yamlが見つかりません。workコマンドでワークスペースを作成してください。")?;
-        let config = self.load_config(&config_path)?;
-
-        // 言語設定を確認
-        let language = config.language
-            .ok_or("言語が設定されていません。languageコマンドで設定してください。")?;
+        // ワークスペースを読み込む
+        let workspace = Workspace::new(self.context.workspace_path.clone())?;
 
         // テンプレートを探す
-        let template_path = self.find_template(&language)
-            .ok_or(format!("テンプレートが見つかりません: template/main.{}", language))?;
+        let template_path = self.find_template(&workspace.language.extension())
+            .ok_or_else(|| format!("テンプレートが見つかりません: template/main.{}", workspace.language.extension()))?;
 
         // ソースファイルのパスを取得
-        let source_path = self.get_source_path(&config.contest_id, problem_id, &language);
+        let source_path = workspace.get_source_path(problem_id);
 
         // テンプレートからファイルを生成
         self.generate_from_template(&template_path, &source_path)?;

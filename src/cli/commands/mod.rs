@@ -1,13 +1,14 @@
 use std::error::Error;
 use std::path::PathBuf;
 use clap::ArgMatches;
+use crate::cli::Commands;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 /// コマンドの基本トレイト
 pub trait Command {
     /// コマンドを実行する
-    fn execute(&self, matches: &ArgMatches) -> Result<()>;
+    fn execute(&self, command: &Commands) -> Result<()>;
 }
 
 /// コマンドのコンテキスト
@@ -37,11 +38,11 @@ pub use login::LoginCommand;
 /// コマンドを生成する
 pub fn create_command(name: &str, context: CommandContext) -> Option<Box<dyn Command>> {
     match name {
-        "work" => Some(Box::new(WorkCommand::new(context))),
+        "work" => Some(Box::new(WorkCommand::new(context.workspace_path))),
         "test" => Some(Box::new(TestCommand::new(context))),
         "language" => Some(Box::new(LanguageCommand::new(context))),
-        "open" => Some(Box::new(OpenCommand::new(context))),
-        "submit" => Some(Box::new(SubmitCommand::new(context))),
+        "open" => Some(Box::new(OpenCommand::new(context.site, context.workspace_path))),
+        "submit" => Some(Box::new(SubmitCommand::new(context.site, context.workspace_path))),
         "generate" => Some(Box::new(GenerateCommand::new(context))),
         "login" => Some(Box::new(LoginCommand::new(context))),
         _ => None,

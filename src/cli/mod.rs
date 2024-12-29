@@ -1,6 +1,4 @@
-use std::path::PathBuf;
 use clap::{Parser, Subcommand};
-use crate::config::aliases::AliasConfig;
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Parser)]

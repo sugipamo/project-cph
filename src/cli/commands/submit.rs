@@ -1,8 +1,8 @@
 use crate::cli::Site;
 use crate::cli::commands::{Command, Result};
+use crate::cli::Commands;
 use crate::config::Config;
 use crate::oj::{OJContainer, ProblemInfo};
-use clap::ArgMatches;
 use std::path::PathBuf;
 
 pub struct SubmitCommand {
@@ -23,9 +23,11 @@ impl SubmitCommand {
 }
 
 impl Command for SubmitCommand {
-    fn execute(&self, matches: &ArgMatches) -> Result<()> {
-        let problem_id = matches.get_one::<String>("problem_id")
-            .ok_or("問題IDが指定されていません")?;
+    fn execute(&self, command: &Commands) -> Result<()> {
+        let problem_id = match command {
+            Commands::Submit { problem_id } => problem_id,
+            _ => return Err("不正なコマンドです".into()),
+        };
 
         // 設定を読み込む
         let config = Config::load(&self.workspace_path)?;

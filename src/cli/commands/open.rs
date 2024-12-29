@@ -1,98 +1,59 @@
+use crate::cli::Site;
+use crate::cli::commands::{Command, Result};
+use crate::cli::Commands;
+use crate::config::Config;
+use crate::oj::{open_in_cursor, OJContainer, ProblemInfo};
 use std::path::PathBuf;
-use clap::ArgMatches;
-use serde::Deserialize;
-use crate::oj::{OJContainer, ProblemInfo};
-use super::{Command, CommandContext, Result};
 
-#[derive(Debug, Deserialize)]
-struct ContestConfig {
-    contest_id: String,
-}
-
-/// 問題を開くコマンド
 pub struct OpenCommand {
-    context: CommandContext,
+    pub site: Site,
+    pub workspace_path: PathBuf,
 }
 
 impl OpenCommand {
-    pub fn new(context: CommandContext) -> Self {
-        Self { context }
+    pub fn new(site: Site, workspace_path: PathBuf) -> Self {
+        Self { site, workspace_path }
     }
 
-    /// 設定ファイルを読み込む
-    fn load_config(&self, config_path: &PathBuf) -> Result<ContestConfig> {
-        if config_path.exists() {
-            let content = std::fs::read_to_string(config_path)?;
-            Ok(serde_yaml::from_str(&content)
-                .map_err(|e| format!("設定ファイルの解析に失敗しました: {}", e))?)
-        } else {
-            Err("contests.yamlが見つかりません".into())
+    fn get_problem_url(&self, contest_id: &str, problem_id: &str) -> String {
+        match self.site {
+            Site::AtCoder => format!("https://atcoder.jp/contests/{}/tasks/{}_{}", contest_id, problem_id, problem_id),
         }
-    }
-
-    /// 現在のディレクトリからcontests.yamlを探す
-    fn find_config_file(&self) -> Option<PathBuf> {
-        let mut current_dir = self.context.workspace_path.clone();
-        while current_dir.parent().is_some() {
-            let config_path = current_dir.join("contests.yaml");
-            if config_path.exists() {
-                return Some(config_path);
-            }
-            current_dir = current_dir.parent().unwrap().to_path_buf();
-        }
-        None
-    }
-
-    /// コンテストIDを取得
-    fn get_contest_id(&self) -> Result<String> {
-        let config_path = self.find_config_file()
-            .ok_or("contests.yamlが見つかりません。workコマンドでワークスペースを作成してください。")?;
-        
-        let config = self.load_config(&config_path)?;
-        Ok(config.contest_id)
     }
 }
 
 impl Command for OpenCommand {
-    fn execute(&self, matches: &ArgMatches) -> Result<()> {
-        let problem_id = matches.get_one::<String>("problem_id")
-            .ok_or("問題IDが指定されていません")?;
-
-        let contest_id = self.get_contest_id()?;
-        let url = format!(
-            "https://atcoder.jp/contests/{}/tasks/{}_{}", 
-            contest_id, 
-            contest_id, 
-            problem_id
-        );
-
-        // VSCode/Cursorで開くためのURL
-        let editor_url = format!("vscode://file{}/workspace/{}/test/{}", 
-            self.context.workspace_path.display(),
-            contest_id,
-            problem_id
-        );
-
-        // OJContainerを初期化
-        let oj = OJContainer::new(self.context.workspace_path.clone())?;
-
-        // 問題情報を作成
-        let problem_info = ProblemInfo {
-            url: url.clone(),
-            source_path: PathBuf::new(), // 実際のソースパスが必要な場合は設定
-            problem_id: problem_id.to_string(),
+    fn execute(&self, command: &Commands) -> Result<()> {
+        let problem_id = match command {
+            Commands::Open { problem_id } => problem_id,
+            _ => return Err("不正なコマンドです".into()),
         };
 
-        // テストケースのダウンロードとブラウザでの表示
+        // 設定を読み込む
+        let config = Config::load(&self.workspace_path)?;
+
+        // 問題URLを生成
+        let url = self.get_problem_url(&config.contest_id, problem_id);
+
+        // OJコンテナを初期化
+        let oj = OJContainer::new(self.workspace_path.clone())?;
+
+        // 問題を開く
         tokio::runtime::Runtime::new()?.block_on(async {
-            oj.open(problem_info).await
-        })?;
+            let problem = ProblemInfo {
+                url: url.clone(),
+                source_path: self.workspace_path.join("src").join(format!("{}.{}", problem_id, config.language.extension())),
+                problem_id: problem_id.clone(),
+            };
 
-        // エディタで開く
-        if let Err(e) = open_in_cursor(&editor_url) {
-            println!("Note: エディタでの表示に失敗しました: {}", e);
-        }
+            oj.open(problem).await?;
+            
+            // エディタで開く
+            if let Err(e) = open_in_cursor(&url) {
+                println!("Note: エディタでの表示に失敗しました: {}", e);
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 } 
