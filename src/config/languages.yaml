@@ -1,0 +1,58 @@
+languages:
+  rust:
+    aliases:
+      - Rust
+      - rs
+      - RUST
+    extension: "rs"
+    templates:
+      default: "template/main.rs"
+      competitive: "template/competitive.rs"
+    site_ids:
+      atcoder: "5054"  # Rust (rustc 1.70.0)
+    display_name: "rust"
+    clap_name: "rust"
+  
+  pypy:
+    aliases:
+      - PyPy
+      - py-py
+      - PYPY
+      - Pypy
+      - py
+    extension: "py"
+    templates:
+      default: "template/main.py"
+      competitive: "template/competitive.py"
+    site_ids:
+      atcoder: "5078"  # Python (PyPy 3.10-v7.3.12)
+    display_name: "pypy"
+    clap_name: "pypy"
+  
+  python:
+    aliases:
+      - Python
+      - py
+      - PYTHON
+    extension: "py"
+    templates:
+      default: "template/main.py"
+      competitive: "template/competitive.py"
+    site_ids:
+      atcoder: "5055"  # Python (CPython 3.11.4)
+    display_name: "python"
+    clap_name: "python"
+  
+  cpp:
+    aliases:
+      - C++
+      - cpp
+      - CPP
+    extension: "cpp"
+    templates:
+      default: "template/main.cpp"
+      competitive: "template/competitive.cpp"
+    site_ids:
+      atcoder: "5050"  # C++ (GCC 12.2.0)
+    display_name: "cpp"
+    clap_name: "cpp" 

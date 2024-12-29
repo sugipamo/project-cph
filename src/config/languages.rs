@@ -4,25 +4,31 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LanguageConfig {
-    pub languages: HashMap<String, Language>,
+    pub languages: HashMap<String, LanguageInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Language {
+pub struct LanguageInfo {
     pub aliases: Vec<String>,
     pub extension: String,
     pub templates: HashMap<String, String>,
     pub site_ids: HashMap<String, String>,
+    pub display_name: String,
+    pub clap_name: String,
 }
 
 impl LanguageConfig {
-    pub fn load(config_path: PathBuf) -> crate::error::Result<Self> {
+    pub fn load(config_path: PathBuf) -> std::io::Result<Self> {
         if !config_path.exists() {
-            return Ok(Self::default());
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Language configuration file not found: {}", config_path.display())
+            ));
         }
 
         let content = std::fs::read_to_string(config_path)?;
-        let config = serde_yaml::from_str(&content)?;
+        let config = serde_yaml::from_str(&content)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
         Ok(config)
     }
 
@@ -58,34 +64,16 @@ impl LanguageConfig {
             .and_then(|l| l.site_ids.get(site))
             .cloned()
     }
-}
 
-impl Default for LanguageConfig {
-    fn default() -> Self {
-        let mut languages = HashMap::new();
-        
-        // Rust
-        let mut rust = Language {
-            aliases: vec!["Rust".to_string(), "rs".to_string()],
-            extension: "rs".to_string(),
-            templates: HashMap::new(),
-            site_ids: HashMap::new(),
-        };
-        rust.templates.insert("default".to_string(), "template/main.rs".to_string());
-        rust.site_ids.insert("atcoder".to_string(), "5054".to_string());
-        languages.insert("rust".to_string(), rust);
+    pub fn get_display_name(&self, language: &str) -> Option<String> {
+        self.languages.get(language).map(|l| l.display_name.clone())
+    }
 
-        // Python
-        let mut python = Language {
-            aliases: vec!["Python".to_string(), "python3".to_string()],
-            extension: "py".to_string(),
-            templates: HashMap::new(),
-            site_ids: HashMap::new(),
-        };
-        python.templates.insert("default".to_string(), "template/main.py".to_string());
-        python.site_ids.insert("atcoder".to_string(), "4006".to_string());
-        languages.insert("python".to_string(), python);
+    pub fn get_clap_name(&self, language: &str) -> Option<String> {
+        self.languages.get(language).map(|l| l.clap_name.clone())
+    }
 
-        Self { languages }
+    pub fn list_languages(&self) -> Vec<String> {
+        self.languages.keys().cloned().collect()
     }
 } 

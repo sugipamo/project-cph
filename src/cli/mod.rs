@@ -13,7 +13,7 @@ pub struct Cli {
     pub command: Commands,
 }
 
-#[derive(Debug, Clone, clap::ValueEnum, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum, Serialize, Deserialize)]
 #[clap(rename_all = "lowercase")]
 pub enum Site {
     /// AtCoder
@@ -30,6 +30,12 @@ impl Site {
     pub fn get_name(&self) -> &'static str {
         match self {
             Site::AtCoder => "AtCoder",
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            Site::AtCoder => "atcoder".to_string(),
         }
     }
 }

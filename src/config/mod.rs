@@ -1,9 +1,9 @@
 mod commands;
-mod languages;
+pub mod languages;
 mod sites;
 
 pub use commands::CommandConfig;
-pub use languages::{LanguageConfig, Language};
+pub use languages::{LanguageConfig, LanguageInfo};
 pub use sites::{SiteConfig, Site};
 
 use std::path::PathBuf;

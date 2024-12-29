@@ -1,6 +1,7 @@
 use super::{Command, Result, CommandContext};
 use crate::cli::Commands;
 use crate::contest::Contest;
+use crate::config::{self, LanguageConfig};
 use std::path::PathBuf;
 use std::fs;
 
@@ -28,16 +29,9 @@ impl GenerateCommand {
 
     /// テンプレートファイルを探す
     fn find_template(&self, language: &str) -> Option<PathBuf> {
-        let extension = match language {
-            "python" => "py",
-            "cpp" => "cpp",
-            "rust" => "rs",
-            _ => language,
-        };
-
         let template_path = self.context.active_contest_dir
             .join("template")
-            .join(format!("main.{}", extension));
+            .join(format!("main.{}", language));
 
         if template_path.exists() {
             Some(template_path)
@@ -72,7 +66,12 @@ impl Command for GenerateCommand {
             _ => return Err("不正なコマンドです".into()),
         };
 
+        println!("言語設定を読み込んでいます...");
+        let config_paths = config::get_config_paths();
+        let lang_config = LanguageConfig::load(config_paths.languages)?;
+
         // コンテストを読み込む
+        println!("コンテストの設定を読み込んでいます...");
         let contest = match Contest::new(self.context.active_contest_dir.clone()) {
             Ok(contest) => contest,
             Err(e) => {
@@ -87,10 +86,28 @@ impl Command for GenerateCommand {
             return self.run_generator(&generator_path);
         }
 
-        // ワンプレートを探す
-        let template_path = self.find_template(&contest.language.to_string())
+        // 言語の取得
+        let language = match &contest.language {
+            Some(lang) => {
+                match lang_config.get_extension(lang) {
+                    Some(ext) => ext,
+                    None => {
+                        println!("言語の拡張子が見つかりません: {}", lang);
+                        return Err(format!("言語の拡張子が設定されていません: {}", lang).into());
+                    }
+                }
+            },
+            None => {
+                println!("言語が設定されていません");
+                return Err("言語が設定されていません".into());
+            }
+        };
+
+        // テンプレートを探す
+        println!("テンプレートを探しています...");
+        let template_path = self.find_template(&language)
             .ok_or_else(|| {
-                let err = format!("テンプレートが見つかりません: template/main.{}", contest.language.to_string());
+                let err = format!("テンプレートが見つかりません: template/main.{}", language);
                 println!("{}", err);
                 err
             })?;
@@ -99,6 +116,7 @@ impl Command for GenerateCommand {
         let source_path = contest.get_source_path(problem_id);
 
         // テンプレートからファイルを生成
+        println!("ソースファイルを生成しています...");
         self.generate_from_template(&template_path, &source_path)?;
 
         // 生成スクリプトのテンプレートをコピー

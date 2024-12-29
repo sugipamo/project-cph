@@ -1,4 +1,4 @@
-use crate::{Language, cli::Site, error::Result};
+use crate::{cli::Site, error::Result};
 use serde::{Serialize, Deserialize};
 use std::path::{PathBuf, Path};
 use std::fs;
@@ -9,7 +9,7 @@ pub struct Contest {
     #[serde(default)]
     pub root: PathBuf,
     pub contest_id: String,
-    pub language: Language,
+    pub language: Option<String>,
     pub site: Site,
 }
 
@@ -18,7 +18,7 @@ impl Default for Contest {
         Self {
             root: PathBuf::from("active_contest"),
             contest_id: String::new(),
-            language: Language::Rust,
+            language: Some("rust".to_string()),
             site: Site::AtCoder,
         }
     }
@@ -67,16 +67,23 @@ impl Contest {
     }
 
     pub fn get_source_path(&self, problem_id: &str) -> PathBuf {
-        self.root
-            .join(format!("{}.{}", problem_id, self.language.extension()))
+        let extension = self.language.as_ref()
+            .map(|lang| match lang.as_str() {
+                "rust" => "rs",
+                "pypy" => "py",
+                _ => "txt"
+            })
+            .unwrap_or("txt");
+
+        self.root.join(format!("{}.{}", problem_id, extension))
     }
 
     pub fn set_contest(&mut self, contest_id: String) {
         self.contest_id = contest_id;
     }
 
-    pub fn set_language(&mut self, language: Language) {
-        self.language = language;
+    pub fn set_language(&mut self, language: &str) {
+        self.language = Some(language.to_string());
     }
 
     pub fn set_site(&mut self, site: Site) {

@@ -1,17 +1,20 @@
 use std::error::Error;
-use clap::{Command, ArgMatches};
-use crate::alias::AliasManager;
+use clap::{Command, ArgMatches, Arg};
+use crate::config::{self, LanguageConfig};
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 /// CLIパーサー
 pub struct CliParser {
-    alias_manager: AliasManager,
+    lang_config: LanguageConfig,
 }
 
 impl CliParser {
-    pub fn new(alias_manager: AliasManager) -> Self {
-        Self { alias_manager }
+    pub fn new() -> Result<Self> {
+        println!("設定を読み込んでいます...");
+        let config_paths = config::get_config_paths();
+        let lang_config = LanguageConfig::load(config_paths.languages)?;
+        Ok(Self { lang_config })
     }
 
     /// コマンドライン引数を解析する
@@ -22,9 +25,12 @@ impl CliParser {
             .map(|(i, s)| if i == 0 { s } else { s.to_lowercase() })
             .collect();
 
-        // サイトの解決
+        // サイトの検証
         let site = if args.len() > 1 {
-            self.alias_manager.resolve("site", &args[1])?
+            match args[1].as_str() {
+                "atcoder" => "atcoder",
+                _ => return Err("サポートされていないサイトです".into()),
+            }
         } else {
             return Err("サイトが指定されていません".into());
         };
@@ -34,7 +40,7 @@ impl CliParser {
         
         // 解決されたサイトを使用してコマンドを実行
         let mut args = args.clone();
-        args[1] = site;
+        args[1] = site.to_string();
         
         cmd.try_get_matches_from(args)
             .map_err(|e| e.into())
@@ -48,31 +54,55 @@ impl CliParser {
             .subcommand(
                 Command::new("atcoder")
                     .about("AtCoder関連のコマンド")
-                    .subcommand_required(true)
                     .subcommands(self.common_subcommands())
             )
     }
 
     /// 共通のサブコマンドを構築する
     fn common_subcommands(&self) -> Vec<Command> {
+        let languages: Vec<String> = self.lang_config.list_languages();
+        println!("利用可能な言語: {:?}", languages);
+
         vec![
             Command::new("work")
-                .about("コンテストのワークスペースを設定")
-                .arg(clap::Arg::new("contest")
+                .about("コンテストの作業ディレクトリを設定")
+                .arg(Arg::new("contest_id")
                     .help("コンテストID")
                     .required(true)),
-            
+
             Command::new("test")
-                .about("問題のテストを実行")
-                .arg(clap::Arg::new("problem_id")
+                .about("テストを実行")
+                .arg(Arg::new("problem_id")
                     .help("問題ID")
                     .required(true)),
-            
+
             Command::new("language")
                 .about("使用する言語を設定")
-                .arg(clap::Arg::new("language")
+                .arg(Arg::new("language")
                     .help("プログラミング言語")
+                    .required(true)
+                    .value_parser(languages)),
+
+            Command::new("open")
+                .about("問題ページを開く")
+                .arg(Arg::new("problem_id")
+                    .help("問題ID")
                     .required(true)),
+
+            Command::new("submit")
+                .about("解答を提出")
+                .arg(Arg::new("problem_id")
+                    .help("問題ID")
+                    .required(true)),
+
+            Command::new("generate")
+                .about("ソースファイルを生成")
+                .arg(Arg::new("problem_id")
+                    .help("問題ID")
+                    .required(true)),
+
+            Command::new("login")
+                .about("サイトにログイン"),
         ]
     }
 }

@@ -1,6 +1,6 @@
 use std::path::Path;
+use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
-use crate::alias::{self, AliasConfig};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunnerConfig {
@@ -11,8 +11,7 @@ pub struct RunnerConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Languages {
-    pub python: LanguageConfig,
-    pub rust: LanguageConfig,
+    pub languages: HashMap<String, LanguageConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,20 +29,28 @@ impl LanguageConfig {
 
 impl RunnerConfig {
     pub fn load<P: AsRef<Path>>(path: P) -> std::io::Result<Self> {
+        println!("ランナー設定を読み込んでいます: {:?}", path.as_ref());
         let content = std::fs::read_to_string(path)?;
-        Ok(serde_yaml::from_str(&content)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?)
+        serde_yaml::from_str(&content)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
     }
 
     pub fn get_language_config(&self, language: &str) -> Option<&LanguageConfig> {
-        let config_paths = alias::get_config_paths();
-        let aliases = AliasConfig::load(config_paths.aliases).ok()?;
-        let language = aliases.resolve_language(language)?;
+        // 完全一致を試す
+        if let Some(config) = self.languages.languages.get(language) {
+            return Some(config);
+        }
 
+        // エイリアスを試す
+        let language = language.to_lowercase();
         match language.as_str() {
-            "python" => Some(&self.languages.python),
-            "rust" => Some(&self.languages.rust),
+            "py" => self.languages.languages.get("python"),
+            "rs" => self.languages.languages.get("rust"),
             _ => None,
         }
+    }
+
+    pub fn list_languages(&self) -> Vec<String> {
+        self.languages.languages.keys().cloned().collect()
     }
 } 

@@ -3,6 +3,7 @@ use crate::cli::commands::{Command, Result};
 use crate::cli::Commands;
 use crate::contest::Contest;
 use crate::oj::{OJContainer, ProblemInfo};
+use crate::config::{self, LanguageConfig};
 use std::path::PathBuf;
 
 pub struct SubmitCommand {
@@ -30,8 +31,30 @@ impl Command for SubmitCommand {
             _ => return Err("不正なコマンドです".into()),
         };
 
+        println!("言語設定を読み込んでいます...");
+        let config_paths = config::get_config_paths();
+        let lang_config = LanguageConfig::load(config_paths.languages)?;
+
         // コンテストを読み込む
+        println!("コンテストの設定を読み込んでいます...");
         let contest = Contest::new(self.workspace_path.clone())?;
+
+        // 言語IDを取得
+        let language_id = match &contest.language {
+            Some(lang) => {
+                match lang_config.get_site_id(lang, &self.site.to_string()) {
+                    Some(id) => id,
+                    None => {
+                        println!("言語IDが見つかりません: {}", lang);
+                        return Err(format!("言語IDが設定されていません: {}", lang).into());
+                    }
+                }
+            },
+            None => {
+                println!("言語が設定されていません");
+                return Err("言語が設定されていません".into());
+            }
+        };
 
         // 問題URLを生成
         let url = self.get_problem_url(&contest.contest_id, problem_id);
@@ -43,6 +66,7 @@ impl Command for SubmitCommand {
         }
 
         // OJコンテナを初期化
+        println!("OJコンテナを初期化しています...");
         let oj = OJContainer::new(self.workspace_path.clone())?;
 
         let problem = ProblemInfo {
@@ -52,7 +76,8 @@ impl Command for SubmitCommand {
         };
 
         // 提出を実行
-        match oj.submit(&problem, &self.site, contest.language.get_id(&self.site)).await {
+        println!("提出を実行しています...");
+        match oj.submit(&problem, &self.site, &language_id).await {
             Ok(_) => {
                 println!("提出が完了しました");
                 Ok(())
