@@ -96,7 +96,7 @@ impl Contest {
     }
 
     pub fn set_language(&mut self, language: &str) {
-        self.language = Some(language.to_string());
+        self.language = Some(language.to_lowercase());
     }
 
     pub fn set_site(&mut self, site: Site) {

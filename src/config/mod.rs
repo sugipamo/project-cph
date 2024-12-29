@@ -15,8 +15,7 @@ pub struct ConfigPaths {
 }
 
 pub fn get_config_paths() -> ConfigPaths {
-    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-    let config_dir = home.join(".config").join("cph");
+    let config_dir = PathBuf::from("src/config");
     
     ConfigPaths {
         commands: config_dir.join("commands.yaml"),

@@ -1,8 +1,12 @@
 use proconio::input;
 
-fn main() {
+fn solve() {
     input! {
         n: usize,
     }
     println!("{}", n);
+}
+
+fn main() {
+    solve();
 } 

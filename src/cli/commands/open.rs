@@ -4,6 +4,7 @@ use crate::cli::Commands;
 use crate::contest::Contest;
 use crate::oj::{open_in_cursor, OJContainer, ProblemInfo};
 use std::path::PathBuf;
+use crate::config::{self, LanguageConfig};
 
 pub struct OpenCommand {
     pub site: Site,
@@ -30,6 +31,18 @@ impl Command for OpenCommand {
             Commands::Open { problem_id } => problem_id,
             _ => return Err("不正なコマンドです".into()),
         };
+
+        // 言語設定を確認
+        println!("言語設定を読み込んでいます...");
+        let config_paths = config::get_config_paths();
+        let lang_config = LanguageConfig::load(config_paths.languages)?;
+
+        // 言語が設定されているか確認
+        if let Some(lang) = &contest.language {
+            if lang_config.resolve_language(lang).is_none() {
+                return Err(format!("未知の言語です: {}", lang).into());
+            }
+        }
 
         // 問題URLを生成
         let url = self.get_problem_url(&contest.contest_id, problem_id);

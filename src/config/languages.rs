@@ -8,6 +8,7 @@ pub const SOURCE_NAME_ENV_KEY: &str = "CPH_SOURCE_NAME";
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LanguageConfig {
     pub languages: HashMap<String, LanguageInfo>,
+    pub default_language: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,9 +89,13 @@ impl LanguageConfig {
             return Some(input);
         }
 
-        // エイリアスを探索
+        // エイリアスを探索（大文字小文字を区別しない）
         for (lang_name, lang_info) in &self.languages {
             if lang_info.aliases.iter().any(|alias| alias.to_lowercase() == input) {
+                return Some(lang_name.clone());
+            }
+            // 言語名自体も別名として扱う
+            if lang_name.to_lowercase() == input {
                 return Some(lang_name.clone());
             }
         }
@@ -121,6 +126,13 @@ impl LanguageConfig {
     }
 
     pub fn get_default_language(&self) -> Option<String> {
+        // デフォルト言語が明示的に設定されている場合はそれを返す
+        if let Some(default) = &self.default_language {
+            if self.languages.contains_key(default) {
+                return Some(default.clone());
+            }
+        }
+        // 設定されていない場合は最初の言語を返す（後方互換性のため）
         self.languages.keys().next().cloned()
     }
 

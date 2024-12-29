@@ -1,4 +1,5 @@
 # 言語設定
+default_language: rust
 languages:
   rust:
     aliases:
