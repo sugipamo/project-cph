@@ -1,10 +1,8 @@
 # プロジェクトのリンターエラー
 
-## モジュール参照エラー
+## 1. `workspace`モジュールから`contest`モジュールへの移行（✅完了）
 
-### 1. `workspace`モジュールから`contest`モジュールへの移行
-
-#### 完了した修正
+### 完了した修正
 
 以下の3つのファイルで`Contest`構造体への移行を完了：
 
@@ -25,15 +23,36 @@
 - ✅ `Workspace`を`Contest`に変更
 - ✅ `workspace.root`を`contest.root`に変更
 
-### 次のステップ
-1. コンパイルテストの実行
-2. 機能テストの実行
-3. 以下の変更点の動作確認：
-   - `language.extension()`から`language.to_string()`への変更の影響
-   - ファイルパスの生成方法の一貫性
-   - テンプレート生成の動作
+### 確認結果
+- コンパイルテスト：✅成功
+- `workspace`関連のエラー：✅解消
 
-### 注意点
-- `Contest`構造体のメソッドが`Workspace`構造体と同じインターフェースを提供していることを確認
-- 特に`language`関連のメソッド名の変更（`extension()`→`to_string()`）が適切か確認
-- テストケースの更新が必要な可能性あり 
+## 2. 新たに発見された警告
+
+### 未使用のフィールド
+1. `src/cli/commands/test.rs`:
+   - `context: CommandContext`フィールドが未使用
+
+### 未使用の変数（`src/bin/cph.rs`）
+1. `Commands::Work`:
+   - 未使用の`contest_id`
+2. `Commands::Test`:
+   - 未使用の`problem_id`
+3. `Commands::Language`:
+   - 未使用の`language`
+4. `Commands::Open`:
+   - 未使用の`problem_id`
+5. `Commands::Submit`:
+   - 未使用の`problem_id`
+6. `Commands::Generate`:
+   - 未使用の`problem_id`
+
+### 対応方針
+1. 未使用フィールドの対応：
+   - `test.rs`の`context`フィールドの使用方法を確認
+   - 必要に応じてフィールドを削除または使用を実装
+
+2. 未使用変数の対応：
+   - 各コマンドの実装を確認
+   - 変数を使用する処理を実装
+   - または、不要な場合は`_`でパターンマッチをスキップ 
