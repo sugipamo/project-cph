@@ -1,7 +1,7 @@
 use crate::cli::Site;
 use crate::cli::commands::{Command, Result};
 use crate::cli::Commands;
-use crate::config::Config;
+use crate::workspace::Workspace;
 use crate::oj::{OJContainer, ProblemInfo};
 use std::path::PathBuf;
 
@@ -29,14 +29,14 @@ impl Command for SubmitCommand {
             _ => return Err("不正なコマンドです".into()),
         };
 
-        // 設定を読み込む
-        let config = Config::load(&self.workspace_path)?;
+        // ワークスペースを読み込む
+        let workspace = Workspace::new(self.workspace_path.clone())?;
 
-        // ソースファイルのパスを構築
-        let source_path = self.workspace_path
-            .join("src")
-            .join(format!("{}.{}", problem_id, config.language.extension()));
+        // 問題URLを生成
+        let url = self.get_problem_url(&workspace.contest_id, problem_id);
 
+        // ソースファイルのパスを取得
+        let source_path = workspace.get_source_path(problem_id);
         if !source_path.exists() {
             return Err(format!("ソースファイルが見つかりません: {}", source_path.display()).into());
         }
@@ -47,12 +47,12 @@ impl Command for SubmitCommand {
         // 提出を実行
         tokio::runtime::Runtime::new()?.block_on(async {
             let problem = ProblemInfo {
-                url: self.get_problem_url(&config.contest_id, problem_id),
-                source_path: source_path.clone(),
+                url: url.clone(),
+                source_path,
                 problem_id: problem_id.clone(),
             };
 
-            let language_id = config.language.get_id(&self.site);
+            let language_id = workspace.language.get_id(&self.site);
             oj.submit(&problem, &self.site, language_id).await?;
             println!("提出が完了しました");
             Ok(())

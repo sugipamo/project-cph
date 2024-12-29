@@ -1,6 +1,4 @@
 use std::error::Error;
-use std::path::PathBuf;
-use clap::ArgMatches;
 use crate::cli::Commands;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
@@ -14,7 +12,7 @@ pub trait Command {
 /// コマンドのコンテキスト
 pub struct CommandContext {
     pub site: crate::cli::Site,
-    pub workspace_path: PathBuf,
+    pub workspace_path: std::path::PathBuf,
 }
 
 // 各コマンドのモジュール
@@ -38,7 +36,7 @@ pub use login::LoginCommand;
 /// コマンドを生成する
 pub fn create_command(name: &str, context: CommandContext) -> Option<Box<dyn Command>> {
     match name {
-        "work" => Some(Box::new(WorkCommand::new(context.workspace_path))),
+        "work" => Some(Box::new(WorkCommand::new(context.site, context.workspace_path))),
         "test" => Some(Box::new(TestCommand::new(context))),
         "language" => Some(Box::new(LanguageCommand::new(context))),
         "open" => Some(Box::new(OpenCommand::new(context.site, context.workspace_path))),

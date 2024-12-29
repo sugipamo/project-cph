@@ -14,7 +14,7 @@ pub struct Cli {
 }
 
 #[derive(Debug, Clone, clap::ValueEnum, Serialize, Deserialize)]
-#[clap(rename_all = "kebab-case")]
+#[clap(rename_all = "lowercase")]
 pub enum Site {
     /// AtCoder
     AtCoder,

@@ -1,10 +1,10 @@
 pub mod cli;
-pub mod config;
 pub mod docker;
 pub mod error;
 pub mod test;
 pub mod workspace;
 pub mod oj;
+pub mod alias;
 
 pub use cli::Cli;
 
@@ -30,15 +30,15 @@ impl fmt::Display for Language {
 }
 
 impl FromStr for Language {
-    type Err = crate::config::aliases::AliasError;
+    type Err = crate::alias::AliasError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let config_paths = crate::config::get_config_paths();
-        let aliases = crate::config::aliases::AliasConfig::load(config_paths.aliases)?;
+        let config_paths = crate::alias::get_config_paths();
+        let aliases = crate::alias::AliasConfig::load(config_paths.aliases)?;
         match aliases.resolve_language(s).as_deref() {
             Some("rust") => Ok(Language::Rust),
             Some("pypy") => Ok(Language::PyPy),
-            _ => Err(crate::config::aliases::AliasError::IoError(
+            _ => Err(crate::alias::AliasError::IoError(
                 std::io::Error::new(
                     std::io::ErrorKind::InvalidInput,
                     format!("Unknown language: {}", s)

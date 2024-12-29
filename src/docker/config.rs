@@ -1,52 +1,41 @@
-use serde::Deserialize;
-use std::path::Path;
-use crate::docker::error::{DockerError, Result};
+use std::path::{Path, PathBuf};
+use serde::{Serialize, Deserialize};
+use crate::alias::{self, AliasConfig};
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct LanguageConfig {
-    pub image_name: String,
-    pub compile_cmd: Option<Vec<String>>,
-    pub run_cmd: Vec<String>,
-    pub file_extension: String,
-    pub workspace_dir: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct Languages {
-    pub python: LanguageConfig,
-    pub cpp: LanguageConfig,
-    pub rust: LanguageConfig,
-}
-
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunnerConfig {
-    pub timeout_seconds: u64,
-    pub memory_limit_mb: i64,
     pub languages: Languages,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Languages {
+    pub python: LanguageConfig,
+    pub rust: LanguageConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LanguageConfig {
+    pub image: String,
+    pub compile: Option<String>,
+    pub run: String,
+}
+
 impl RunnerConfig {
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let config_str = std::fs::read_to_string(path)?;
-        let config: RunnerConfig = serde_yaml::from_str(&config_str)?;
-        Ok(config)
+    pub fn load<P: AsRef<Path>>(path: P) -> std::io::Result<Self> {
+        let content = std::fs::read_to_string(path)?;
+        Ok(serde_yaml::from_str(&content)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?)
     }
 
-    pub fn get_language_config(&self, lang: &str) -> Option<&LanguageConfig> {
-        let config_paths = crate::config::get_config_paths();
-        let aliases = crate::config::aliases::AliasConfig::load(config_paths.aliases).ok()?;
-        match aliases.resolve_language(lang).as_deref() {
-            Some("python") => Some(&self.languages.python),
-            Some("cpp") => Some(&self.languages.cpp),
-            Some("rust") => Some(&self.languages.rust),
+    pub fn get_language_config(&self, language: &str) -> Option<&LanguageConfig> {
+        let config_paths = alias::get_config_paths();
+        let aliases = AliasConfig::load(config_paths.aliases).ok()?;
+        let language = aliases.resolve_language(language)?;
+
+        match language.as_str() {
+            "python" => Some(&self.languages.python),
+            "rust" => Some(&self.languages.rust),
             _ => None,
         }
-    }
-
-    pub fn validate_language(&self, lang: &str) -> Result<()> {
-        if self.get_language_config(lang).is_none() {
-            return Err(DockerError::UnsupportedLanguage(lang.to_string()));
-        }
-        Ok(())
     }
 } 
