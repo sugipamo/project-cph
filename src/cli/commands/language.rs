@@ -1,18 +1,18 @@
-use std::fs;
 use std::path::PathBuf;
 use clap::ArgMatches;
 use serde::{Deserialize, Serialize};
 use super::{Command, CommandContext, Result};
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ContestConfig {
+    pub contest_id: String,
+    #[serde(default)]
+    pub language: Option<String>,
+}
+
 /// 言語設定コマンド
 pub struct LanguageCommand {
     context: CommandContext,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct ContestConfig {
-    #[serde(default)]
-    language: Option<String>,
 }
 
 impl LanguageCommand {
@@ -23,11 +23,11 @@ impl LanguageCommand {
     /// 設定ファイルを読み込む
     fn load_config(&self, config_path: &PathBuf) -> Result<ContestConfig> {
         if config_path.exists() {
-            let content = fs::read_to_string(config_path)?;
+            let content = std::fs::read_to_string(config_path)?;
             Ok(serde_yaml::from_str(&content)
                 .map_err(|e| format!("設定ファイルの解析に失敗しました: {}", e))?)
         } else {
-            Ok(ContestConfig { language: None })
+            Err("contests.yamlが見つかりません".into())
         }
     }
 
@@ -35,7 +35,7 @@ impl LanguageCommand {
     fn save_config(&self, config_path: &PathBuf, config: &ContestConfig) -> Result<()> {
         let content = serde_yaml::to_string(config)
             .map_err(|e| format!("設定ファイルの生成に失敗しました: {}", e))?;
-        fs::write(config_path, content)?;
+        std::fs::write(config_path, content)?;
         Ok(())
     }
 
@@ -51,6 +51,12 @@ impl LanguageCommand {
         }
         None
     }
+
+    /// 言語IDが有効かどうかを確認
+    fn validate_language(&self, language: &str) -> bool {
+        // 現時点では基本的な言語のみをサポート
+        matches!(language, "python" | "cpp" | "rust")
+    }
 }
 
 impl Command for LanguageCommand {
@@ -62,6 +68,13 @@ impl Command for LanguageCommand {
         let mut config = self.load_config(&config_path)?;
 
         if let Some(language) = matches.get_one::<String>("language") {
+            let language = language.to_lowercase();
+            
+            // 言語の検証
+            if !self.validate_language(&language) {
+                return Err(format!("サポートされていない言語です: {}（対応言語: python, cpp, rust）", language).into());
+            }
+
             // 言語を設定
             config.language = Some(language.clone());
             self.save_config(&config_path, &config)?;

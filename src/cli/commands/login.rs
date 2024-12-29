@@ -1,0 +1,31 @@
+use clap::ArgMatches;
+use crate::oj::OJContainer;
+use super::{Command, CommandContext, Result};
+
+/// ログインコマンド
+pub struct LoginCommand {
+    context: CommandContext,
+}
+
+impl LoginCommand {
+    pub fn new(context: CommandContext) -> Self {
+        Self { context }
+    }
+}
+
+impl Command for LoginCommand {
+    fn execute(&self, _matches: &ArgMatches) -> Result<()> {
+        // OJContainerを初期化
+        let oj = OJContainer::new(self.context.workspace_path.clone())?;
+
+        // ログインを実行
+        tokio::runtime::Runtime::new()?.block_on(async {
+            // コンテナイメージの確認
+            oj.ensure_image().await?;
+            // ログイン処理
+            oj.login(&self.context.site).await
+        })?;
+
+        Ok(())
+    }
+} 

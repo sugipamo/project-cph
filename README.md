@@ -132,11 +132,30 @@ cph atcoder language pypy
 ├── contests/          # アーカイブされたコンテスト
 │   └── abc001/
 │       └── a.rs
+├── template/         # テンプレートファイル
+│   ├── main.rs      # Rust用テンプレート
+│   ├── main.py      # Python用テンプレート
+│   ├── template_gen.rs  # 生成スクリプトのテンプレート
+│   └── {problem_id}_gen.rs  # 問題固有の生成スクリプト
 └── workspace/         # 現在のワークスペース
     ├── a.rs          # 現在の問題ファイル
     ├── contests.yaml # コンテスト設定
     └── .moveignore   # 移動対象外ファイルの設定
 ```
+
+### テンプレートファイル
+
+- `main.{ext}`: 各言語用の基本テンプレート
+  - 問題を開いたときに自動的にコピーされます
+  - 言語に応じた拡張子が使用されます（.rs, .py）
+
+- `template_gen.rs`: 生成スクリプトのテンプレート
+  - 問題固有の生成スクリプトを作成する際のベース
+  - 初回の問題生成時にコピーされます
+
+- `{problem_id}_gen.rs`: 問題固有の生成スクリプト
+  - 例：`a_gen.rs`, `b_gen.rs`
+  - テストケースの自動生成に使用（開発中）
 
 ## 開発者向け情報
 
