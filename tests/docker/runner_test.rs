@@ -2,6 +2,18 @@ use std::process::Command;
 use tokio::runtime::Runtime;
 use cph::docker::DockerRunner;
 use cph::docker::{RunnerConfig, LanguageConfig};
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+struct DockerConfig {
+    timeout_seconds: u64,
+    memory_limit_mb: u64,
+}
+
+fn load_docker_config() -> DockerConfig {
+    let content = std::fs::read_to_string("src/config/docker.yaml").unwrap();
+    serde_yaml::from_str(&content).unwrap()
+}
 
 // Dockerデーモンが利用可能かチェックする
 fn check_docker_available() -> bool {
@@ -64,13 +76,15 @@ fn test_timeout() {
     super::setup();
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        // 短いタイムアウトで設定
-        let config = RunnerConfig::new(1, 512);  // 1秒タイムアウト
+        let docker_config = load_docker_config();
+        // 設定されたタイムアウトの半分の時間を使用
+        let timeout = docker_config.timeout_seconds / 2;
+        let config = RunnerConfig::new(timeout, docker_config.memory_limit_mb);
         let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", "python").unwrap();
         let mut runner = DockerRunner::new(config, language_config);
         
         // 無限ループのプログラム
-        let source_code = "while True: pass";  // インデントを削除
+        let source_code = "while True: pass";
         
         // 実行
         let result = runner.run_in_docker(source_code).await;
@@ -85,13 +99,14 @@ fn test_memory_limit() {
     super::setup();
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        // 小さいメモリ制限で設定
-        let config = RunnerConfig::new(5, 10);  // 10MB制限
+        let docker_config = load_docker_config();
+        // メモリ制限を10MBに設定
+        let config = RunnerConfig::new(docker_config.timeout_seconds, 10);
         let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", "python").unwrap();
         let mut runner = DockerRunner::new(config, language_config);
         
         // メモリを大量に消費するプログラム
-        let source_code = "x = [0] * 1000000000";  // インデントを削除
+        let source_code = "x = [0] * 1000000000";
         
         // 実行
         let result = runner.run_in_docker(source_code).await;
