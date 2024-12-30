@@ -50,12 +50,6 @@ impl Command for OpenCommand {
         // OJコンテナを初期化
         let oj = OJContainer::new(self.workspace_path.clone())?;
 
-        // コンテナイメージの確認
-        if let Err(e) = oj.ensure_image().await {
-            println!("コンテナイメージの確認に失敗しました: {}", e);
-            return Err(e.into());
-        }
-
         // 問題ディレクトリの作成
         contest.create_problem_directory(problem_id)?;
 

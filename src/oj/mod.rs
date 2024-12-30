@@ -124,6 +124,18 @@ impl OJContainer {
         Ok(())
     }
 
+    async fn check_image_exists(&self) -> Result<()> {
+        let output = Command::new("docker")
+            .args(["images", "-q", "oj-container"])
+            .output()?;
+
+        if output.stdout.is_empty() {
+            return Err("Dockerイメージが見つかりません。'cargo run -- atcoder login'を実行してログインしてください。".into());
+        }
+
+        Ok(())
+    }
+
     pub async fn login(&self, site: &Site) -> Result<()> {
         let site_url = site.get_url();
         println!("{}", format!("Logging in to {}...", site.get_name()).cyan());
@@ -170,6 +182,9 @@ impl OJContainer {
     pub async fn open(&self, problem: ProblemInfo) -> Result<()> {
         println!("{}", format!("Opening problem URL: {}", problem.url).cyan());
         println!("{}", format!("Please open this URL in your browser: {}", problem.url).yellow());
+
+        // Dockerイメージの存在確認
+        self.check_image_exists().await?;
 
         // 問題ディレクトリのパスを取得
         let problem_dir = problem.source_path.parent()
