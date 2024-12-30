@@ -3,8 +3,9 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunnerConfig {
-    pub timeout: u64,
-    pub memory_limit: u64,
+    pub timeout_seconds: u64,
+    pub memory_limit_mb: u64,
+    pub mount_point: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -15,19 +16,34 @@ pub struct LanguageConfig {
     pub compile_dir: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DockerConfig {
+    pub timeout_seconds: u64,
+    pub memory_limit_mb: u64,
+    pub mount_point: String,
+}
+
 impl RunnerConfig {
-    pub fn new(timeout: u64, memory_limit: u64) -> Self {
+    pub fn new(timeout_seconds: u64, memory_limit_mb: u64, mount_point: String) -> Self {
         Self {
-            timeout,
-            memory_limit,
+            timeout_seconds,
+            memory_limit_mb,
+            mount_point,
         }
     }
 
     pub fn default() -> Self {
         Self {
-            timeout: 10,  // デフォルトタイムアウト: 10秒
-            memory_limit: 512,  // デフォルトメモリ制限: 512MB
+            timeout_seconds: 10,  // デフォルトタイムアウト: 10秒
+            memory_limit_mb: 512,  // デフォルトメモリ制限: 512MB
+            mount_point: "/compile".to_string(),  // デフォルトマウントポイント
         }
+    }
+
+    pub fn from_yaml<P: AsRef<Path>>(path: P) -> std::io::Result<Self> {
+        let content = std::fs::read_to_string(path)?;
+        serde_yaml::from_str(&content)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
     }
 }
 
@@ -49,5 +65,13 @@ impl LanguageConfig {
 
     pub fn needs_compilation(&self) -> bool {
         self.compile.is_some()
+    }
+}
+
+impl DockerConfig {
+    pub fn from_yaml<P: AsRef<Path>>(path: P) -> std::io::Result<Self> {
+        let content = std::fs::read_to_string(path)?;
+        serde_yaml::from_str(&content)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
     }
 } 

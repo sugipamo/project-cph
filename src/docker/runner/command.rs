@@ -72,7 +72,13 @@ impl DockerCommand {
     }
 
     // コンテイル言語用のコンパイル実行
-    pub async fn compile(&mut self, image: &str, compile_cmd: &[String], compile_dir: &str) -> Result<(), String> {
+    pub async fn compile(
+        &mut self,
+        image: &str,
+        compile_cmd: &[String],
+        compile_dir: &str,
+        mount_point: &str,
+    ) -> Result<(), String> {
         println!("Compiling with command: {:?}", compile_cmd);
         
         let container_name = format!("compiler-{}", Uuid::new_v4());
@@ -83,7 +89,7 @@ impl DockerCommand {
             .arg("--name")
             .arg(&container_name)
             .arg("-v")
-            .arg(format!("{}:{}", compile_dir, compile_dir))
+            .arg(format!(".{}:{}", mount_point, compile_dir))
             .arg("-w")
             .arg(compile_dir)
             .arg(image)
@@ -119,6 +125,7 @@ impl DockerCommand {
         timeout: u64,
         memory_limit: u64,
         compile_dir: Option<&str>,
+        mount_point: &str,
     ) -> Result<String, String> {
         println!("Running container with image: {} and command: {:?}", image, run_cmd);
         
@@ -136,7 +143,7 @@ impl DockerCommand {
         if let Some(dir) = compile_dir {
             command
                 .arg("-v")
-                .arg(format!("{}:{}", dir, dir))
+                .arg(format!(".{}:{}", mount_point, dir))
                 .arg("-w")
                 .arg(dir);
         }

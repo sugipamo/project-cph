@@ -36,12 +36,12 @@ impl DockerRunner {
         println!("Starting Docker execution with image: {}", self.language_config.image);
         
         match timeout(
-            Duration::from_secs(self.config.timeout),
+            Duration::from_secs(self.config.timeout_seconds),
             self.execute(source_code)
         ).await {
             Ok(result) => result,
             Err(_) => {
-                println!("Execution timed out after {} seconds", self.config.timeout);
+                println!("Execution timed out after {} seconds", self.config.timeout_seconds);
                 if let Err(e) = self.cleanup().await {
                     println!("Failed to cleanup after timeout: {}", e);
                 }
@@ -62,7 +62,8 @@ impl DockerRunner {
                 if let Err(e) = self.command.compile(
                     &self.language_config.image,
                     compile_cmd.as_slice(),
-                    self.language_config.get_compile_dir()
+                    self.language_config.get_compile_dir(),
+                    &self.config.mount_point,
                 ).await {
                     println!("Compilation failed: {}", e);
                     return Err(e);
@@ -75,13 +76,14 @@ impl DockerRunner {
             &self.language_config.image,
             self.language_config.run.as_slice(),
             source_code,
-            self.config.timeout,
-            self.config.memory_limit,
+            self.config.timeout_seconds,
+            self.config.memory_limit_mb,
             if self.language_config.needs_compilation() {
                 Some(self.language_config.get_compile_dir())
             } else {
                 None
-            }
+            },
+            &self.config.mount_point,
         ).await;
 
         // クリーンアップ

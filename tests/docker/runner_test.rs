@@ -1,18 +1,11 @@
 use std::process::Command;
 use tokio::runtime::Runtime;
 use cph::docker::DockerRunner;
-use cph::docker::{RunnerConfig, LanguageConfig};
+use cph::docker::config::{RunnerConfig, LanguageConfig, DockerConfig};
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
-struct DockerConfig {
-    timeout_seconds: u64,
-    memory_limit_mb: u64,
-}
-
 fn load_docker_config() -> DockerConfig {
-    let content = std::fs::read_to_string("src/config/docker.yaml").unwrap();
-    serde_yaml::from_str(&content).unwrap()
+    DockerConfig::from_yaml("src/config/docker.yaml").unwrap()
 }
 
 // Dockerデーモンが利用可能かチェックする
@@ -34,9 +27,8 @@ fn test_python_runner() {
     super::setup();
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let docker_config = load_docker_config();
-        // Pythonランナーの作成（設定ファイルから値を読み込む）
-        let config = RunnerConfig::new(docker_config.timeout_seconds, docker_config.memory_limit_mb);
+        // docker.yamlから設定を読み込む
+        let config = RunnerConfig::from_yaml("src/config/docker.yaml").unwrap();
         let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", "python").unwrap();
         let mut runner = DockerRunner::new(config, language_config);
         
@@ -56,9 +48,8 @@ fn test_rust_runner() {
     super::setup();
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let docker_config = load_docker_config();
-        // Rustランナーの作成（設定ファイルから値を読み込む）
-        let config = RunnerConfig::new(docker_config.timeout_seconds, docker_config.memory_limit_mb);
+        // docker.yamlから設定を読み込む
+        let config = RunnerConfig::from_yaml("src/config/docker.yaml").unwrap();
         let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", "rust").unwrap();
         let mut runner = DockerRunner::new(config, language_config);
         
@@ -82,10 +73,10 @@ fn test_timeout() {
     super::setup();
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let docker_config = load_docker_config();
-        // 設定されたタイムアウトの半分の時間を使用
-        let timeout = docker_config.timeout_seconds / 2;
-        let config = RunnerConfig::new(timeout, docker_config.memory_limit_mb);
+        // docker.yamlから設定を読み込む
+        let mut config = RunnerConfig::from_yaml("src/config/docker.yaml").unwrap();
+        // タイムアウトを短く設定
+        config.timeout_seconds = config.timeout_seconds / 2;
         let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", "python").unwrap();
         let mut runner = DockerRunner::new(config, language_config);
         
@@ -105,32 +96,24 @@ fn test_memory_limit() {
     super::setup();
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let docker_config = load_docker_config();
-        // メモリ制限を6MBに設定（Dockerの最小制限）
-        let config = RunnerConfig::new(docker_config.timeout_seconds, 6);
+        // docker.yamlから設定を読み込む
+        let mut config = RunnerConfig::from_yaml("src/config/docker.yaml").unwrap();
+        // メモリ制限を6MBに設定
+        config.memory_limit_mb = 6;
         let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", "python").unwrap();
         let mut runner = DockerRunner::new(config, language_config);
         
-        // メモリを大量に消費するプログラム（より確実なメモリ確保）
+        // メモリを大量に消費するプログラム
         let source_code = r#"
-# メモリを大量に消費するプログラム
-memory = []
-try:
-    # 一度に大きなメモリを確保して確実にOOMを発生させる
-    chunk = bytearray(20 * 1024 * 1024)  # 20MB（制限の約3倍）
-    memory.append(chunk)
-    print("Memory allocation succeeded unexpectedly")
-except MemoryError:
-    print("Memory allocation failed")
-    exit(137)  # OOMエラーを示す終了コード
-"#;
+            x = []
+            while True:
+                x.extend([1] * 1000000)
+        "#;
         
         // 実行
         let result = runner.run_in_docker(source_code).await;
         assert!(result.is_err(), "メモリ制限エラーが発生すべき");
-        let err = result.unwrap_err();
-        assert!(err.contains("exit code") || err.contains("killed") || err.contains("OOM") || err.contains("137"),
-                "期待されるエラーメッセージが含まれていません: {}", err);
+        assert!(result.unwrap_err().contains("OOM"));
     });
     super::teardown();
 }
@@ -142,7 +125,11 @@ fn test_compilation_error() {
     rt.block_on(async {
         let docker_config = load_docker_config();
         // Rustランナーの作成（設定ファイルから値を読み込む）
-        let config = RunnerConfig::new(docker_config.timeout_seconds, docker_config.memory_limit_mb);
+        let config = RunnerConfig::new(
+            docker_config.timeout_seconds,
+            docker_config.memory_limit_mb,
+            docker_config.mount_point
+        );
         let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", "rust").unwrap();
         let mut runner = DockerRunner::new(config, language_config);
         
@@ -156,6 +143,54 @@ fn test_compilation_error() {
         // 実行
         let result = runner.run_in_docker(source_code).await;
         assert!(result.is_err(), "コンパイルエラーが発生すべき");
+    });
+    super::teardown();
+}
+
+#[test]
+fn test_pypy_runner() {
+    super::setup();
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+        // docker.yamlから設定を読み込む
+        let config = RunnerConfig::from_yaml("src/config/docker.yaml").unwrap();
+        let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", "pypy").unwrap();
+        let mut runner = DockerRunner::new(config, language_config);
+        
+        // Hello Worldプログラム
+        let source_code = r#"print("Hello, World!")"#;
+        
+        // 実行
+        let result = runner.run_in_docker(source_code).await;
+        assert!(result.is_ok(), "実行に失敗: {:?}", result.err());
+        assert_eq!(result.unwrap().trim(), "Hello, World!");
+    });
+    super::teardown();
+}
+
+#[test]
+fn test_cpp_runner() {
+    super::setup();
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+        // docker.yamlから設定を読み込む
+        let config = RunnerConfig::from_yaml("src/config/docker.yaml").unwrap();
+        let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", "cpp").unwrap();
+        let mut runner = DockerRunner::new(config, language_config);
+        
+        // Hello Worldプログラム
+        let source_code = r#"
+            #include <iostream>
+            int main() {
+                std::cout << "Hello, World!" << std::endl;
+                return 0;
+            }
+        "#;
+        
+        // 実行
+        let result = runner.run_in_docker(source_code).await;
+        assert!(result.is_ok(), "実行に失敗: {:?}", result.err());
+        assert_eq!(result.unwrap().trim(), "Hello, World!");
     });
     super::teardown();
 } 

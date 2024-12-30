@@ -3,15 +3,25 @@ use cph::docker::{RunnerConfig, LanguageConfig};
 #[test]
 fn test_runner_config_default() {
     let config = RunnerConfig::default();
-    assert_eq!(config.timeout, 10);
-    assert_eq!(config.memory_limit, 512);
+    assert_eq!(config.timeout_seconds, 10);
+    assert_eq!(config.memory_limit_mb, 512);
+    assert_eq!(config.mount_point, "/compile");
 }
 
 #[test]
 fn test_runner_config_custom() {
-    let config = RunnerConfig::new(20, 1024);
-    assert_eq!(config.timeout, 20);
-    assert_eq!(config.memory_limit, 1024);
+    let config = RunnerConfig::new(20, 1024, "/test".to_string());
+    assert_eq!(config.timeout_seconds, 20);
+    assert_eq!(config.memory_limit_mb, 1024);
+    assert_eq!(config.mount_point, "/test");
+}
+
+#[test]
+fn test_runner_config_from_yaml() {
+    let config = RunnerConfig::from_yaml("src/config/docker.yaml").unwrap();
+    assert_eq!(config.timeout_seconds, 30);
+    assert_eq!(config.memory_limit_mb, 512);
+    assert_eq!(config.mount_point, "/compile");
 }
 
 #[test]

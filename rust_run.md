@@ -1,83 +1,34 @@
-# Rustランナーエラー調査レポート
+# エラー調査報告
 
-## 1. エラーの概要
-現在発生しているエラーは以下の通りです：
-```
-error: couldn't read main.rs: No such file or directory (os error 2)
-```
+## 発生しているエラー
+- ファイル: `tests/docker/runner_test.rs` の135行目
+- エラー内容: `RunnerConfig::new()` 関数に必要な引数が不足している
+- エラーコード: E0061
 
-## 2. エラーの原因分析
+## 原因
+1. `RunnerConfig::new()` 関数は3つの引数を必要とします：
+   - timeout: u64
+   - memory_limit: u64
+   - mount_point: String
 
-### 2.1 実行フロー
-1. `test_rust_runner`テストが実行される
-2. DockerRunnerが初期化される
-3. Rustイメージ（rust:latest）の確認と準備
-4. コンパイル処理の実行時にエラーが発生
-
-### 2.2 問題点
-1. コンパイル時に`main.rs`ファイルが見つからない
-   - コンパイルディレクトリ（`/compile/rust`）にソースコードファイルが正しく配置されていない
-   - ファイルの作成処理が実装されていない可能性がある
-
-### 2.3 関連コード
-1. 言語設定（`src/config/languages.yaml`）
-   ```yaml
-   rust:
-     runner:
-       image: "rust:latest"
-       compile: ["rustc", "main.rs"]
-       run: ["./main"]
-       compile_dir: "/compile/rust"
-   ```
-
-2. テストコード（`tests/docker/runner_test.rs`）
+2. テストコードでは2つの引数のみを渡しています：
    ```rust
-   let source_code = r#"
-       fn main() {
-           println!("Hello, World!");
-       }
-   "#;
+   RunnerConfig::new(docker_config.timeout_seconds, docker_config.memory_limit_mb)
    ```
 
-## 3. 問題の特定
+3. 必須の第3引数 `mount_point: String` が欠落しています。
 
-1. ソースコードの配置
-   - ソースコードがコンテナ内の適切な場所に配置されていない
-   - コンパイルディレクトリの作成が確認されていない
+## 解決方法
+以下のいずれかの方法で解決可能です：
 
-2. ファイル操作
-   - ソースコードを`main.rs`として保存する処理が不足
-   - コンパイルディレクトリのマウント設定が不適切な可能性
-
-## 4. 推奨される修正方針
-
-1. ソースコードの配置処理の追加
-   - コンパイルディレクトリの作成確認
-   - ソースコードを`main.rs`として保存する処理の実装
-
-2. コンテナ設定の見直し
-   - ボリュームマウントの設定確認
-   - 作業ディレクトリの権限確認
-
-3. エラーハンドリングの改善
-   - ファイル操作に関するエラーの詳細なログ出力
-   - コンパイル前の前提条件チェックの追加
-
-## 5. 次のステップ
-
-1. ソースコードの配置処理を実装
+1. `RunnerConfig::new()` の呼び出し時に `mount_point` パラメータを追加する
    ```rust
-   // ソースコードをファイルに書き込む処理の追加
-   async fn write_source_code(&self, source_code: &str) -> Result<(), String> {
-       // コンパイルディレクトリの作成
-       // ソースコードの書き込み
-   }
+   RunnerConfig::new(docker_config.timeout_seconds, docker_config.memory_limit_mb, mount_point)
    ```
 
-2. テストケースの拡充
-   - ファイル操作の確認テストの追加
-   - エラーケースのテスト追加
+2. `DockerConfig` 構造体に `mount_point` フィールドを追加し、設定ファイルから読み込むようにする
 
-3. デバッグログの強化
-   - ファイル操作の詳細なログ出力
-   - コンパイル処理の各ステップのログ追加 
+## 次のステップ
+1. `DockerConfig` の構造を確認し、`mount_point` の追加が必要かどうかを検討
+2. テストケースの修正
+3. 他のテストケースでも同様の問題が発生していないか確認

@@ -17,8 +17,8 @@ languages:
       atcoder: "5054"  # Rust (rustc 1.70.0)
     runner:
       image: "rust:latest"
-      compile: ["rustc", "main.rs"]
-      run: ["./main"]
+      compile: ["cargo", "build", "--release"]
+      run: ["./target/release/main"]
       compile_dir: "/compile/rust"
   
   pypy:
