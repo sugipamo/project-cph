@@ -1,6 +1,6 @@
 use tokio::test;
 use std::path::PathBuf;
-use cph::docker::{DockerRunner, DockerConfig, RunnerState};
+use cph::docker::{DockerRunner, DockerConfig};
 use cph::config::languages::LanguageConfig;
 
 #[tokio::test]
@@ -34,15 +34,20 @@ sys.stderr.flush()
     assert!(result.is_ok(), "実行に失敗: {:?}", result.err());
 
     // 入力の送信
-    runner.write("Hello from test\n").await;
+    runner.write("Hello from test\n").await
+        .expect("入力の送信に失敗");
 
     // 出力の確認
-    let output = runner.read().await;
-    assert!(output.contains("Received: Hello from test"));
+    let output = runner.read().await
+        .expect("出力の読み取りに失敗");
+    assert!(output.contains("Received: Hello from test"), 
+        "期待する出力が含まれていません: {}", output);
 
     // エラー出力の確認
-    let error = runner.read_error().await;
-    assert!(error.contains("Error message test"));
+    let error = runner.read_error().await
+        .expect("エラー出力の読み取りに失敗");
+    assert!(error.contains("Error message test"), 
+        "期待するエラーメッセージが含まれていません: {}", error);
 
     super::teardown();
 } 
