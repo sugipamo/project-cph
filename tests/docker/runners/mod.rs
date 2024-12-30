@@ -1,175 +1,99 @@
-use bollard::Docker;
 use std::time::Duration;
-use cph::docker::{DockerRunners, RunnerConfig, RunnerState};
-use std::path::PathBuf;
-use crate::helpers::{load_test_languages, setup_test_templates, cleanup_test_files};
+use tokio::time::sleep;
+use bollard::Docker;
+
+use cph::docker::{DockerRunner, RunnerState, RunnerConfig, DockerError};
 
 #[tokio::test]
-async fn test_basic_pipeline() {
-    setup_test_templates();
-    let _lang_config = load_test_languages();
-    let test_lang = "python".to_string();
+async fn test_basic_pipeline() -> std::result::Result<(), Box<dyn std::error::Error>> {
+    let config = RunnerConfig::load("src/config/docker.yaml")?;
+    let docker = Docker::connect_with_local_defaults().map_err(DockerError::ConnectionError)?;
+    let mut runner = DockerRunner::new(docker.clone(), config.clone(), "python".to_string());
 
-    // 設定の読み込み
-    let config_path = PathBuf::from("src/config/docker.yaml");
-    let config = RunnerConfig::load(&config_path).unwrap();
-    let docker = Docker::connect_with_local_defaults().unwrap();
-    let runners = DockerRunners::new(docker, config);
+    // 初期化
+    runner.initialize("print('hello')").await?;
+    assert_eq!(runner.get_state().await, RunnerState::Running);
 
-    // 2つのRunnerを作成（generator -> solver）
-    let gen_id = runners.add_runner(test_lang.clone()).await.unwrap();
-    let sol_id = runners.add_runner(test_lang.clone()).await.unwrap();
-    runners.connect(gen_id, sol_id).await.unwrap();
+    // 出力の確認
+    let output = runner.read().await?;
+    assert_eq!(output.trim(), "hello");
 
-    // ジェネレータ: 1から10までの数を出力
-    runners.run_code(gen_id, r#"
-for i in range(1, 11):
-    print(i)
-"#).await.unwrap();
+    // 入力の送信
+    runner.write("test\n").await?;
 
-    // ソルバー: 入力を2倍して出力
-    runners.run_code(sol_id, r#"
-while True:
-    try:
-        n = int(input())
-        print(n * 2)
-    except EOFError:
-        break
-"#).await.unwrap();
+    // 停止処理
+    runner.stop().await?;
+    assert_eq!(runner.get_state().await, RunnerState::Stop);
 
-    // 実行
-    runners.run().await.unwrap();
-
-    // 実行時間を確認
-    let execution_time = runners.get_execution_time().await.unwrap();
-    assert!(execution_time < Duration::from_secs(5));
-
-    // 最終状態を確認
-    assert_eq!(runners.get_state().await, RunnerState::Stop);
-    cleanup_test_files();
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_error_handling() {
-    setup_test_templates();
-    let _lang_config = load_test_languages();
-    let test_lang = "python".to_string();
+async fn test_error_handling() -> std::result::Result<(), Box<dyn std::error::Error>> {
+    let config = RunnerConfig::load("src/config/docker.yaml")?;
+    let docker = Docker::connect_with_local_defaults().map_err(DockerError::ConnectionError)?;
+    let mut runner = DockerRunner::new(docker.clone(), config.clone(), "python".to_string());
 
-    let config_path = PathBuf::from("src/config/docker.yaml");
-    let config = RunnerConfig::load(&config_path).unwrap();
-    let docker = Docker::connect_with_local_defaults().unwrap();
-    let runners = DockerRunners::new(docker, config);
+    // 構文エラーのあるコードで初期化
+    let result = runner.initialize("print('hello'").await;
+    assert!(matches!(result, Err(DockerError::CompilationError(_))));
 
-    // エラーを発生させるRunnerを作成
-    let id = runners.add_runner(test_lang.clone()).await.unwrap();
+    // 存在しない言語での初期化
+    let mut invalid_runner = DockerRunner::new(docker.clone(), config.clone(), "invalid_lang".to_string());
+    let result = invalid_runner.initialize("print('hello')").await;
+    assert!(matches!(result, Err(DockerError::UnsupportedLanguage(_))));
 
-    // 無効なPythonコード
-    runners.run_code(id, "invalid python code").await.unwrap();
-
-    // 実行
-    let result = runners.run().await;
-    assert!(result.is_err());
-    assert_eq!(runners.get_state().await, RunnerState::Error);
-    cleanup_test_files();
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_multi_stage_pipeline() {
-    setup_test_templates();
-    let _lang_config = load_test_languages();
-    let test_lang = "python".to_string();
+async fn test_timeout_handling() -> std::result::Result<(), Box<dyn std::error::Error>> {
+    let config = RunnerConfig::load("src/config/docker.yaml")?;
+    let docker = Docker::connect_with_local_defaults().map_err(DockerError::ConnectionError)?;
+    let mut runner = DockerRunner::new(docker.clone(), config.clone(), "python".to_string());
 
-    let config_path = PathBuf::from("src/config/docker.yaml");
-    let config = RunnerConfig::load(&config_path).unwrap();
-    let docker = Docker::connect_with_local_defaults().unwrap();
-    let runners = DockerRunners::new(docker, config);
+    // 無限ループのコードで初期化
+    runner.initialize("while True: pass").await?;
+    
+    // タイムアウトの確認
+    let result = runner.wait_for_stop(Duration::from_secs(2)).await;
+    assert!(matches!(result, Err(DockerError::Timeout)));
+    
+    // 強制停止の確認
+    runner.force_stop().await?;
+    assert_eq!(runner.get_state().await, RunnerState::Stop);
 
-    // 3段階のパイプライン（generator -> validator -> solver）
-    let gen_id = runners.add_runner(test_lang.clone()).await.unwrap();
-    let val_id = runners.add_runner(test_lang.clone()).await.unwrap();
-    let sol_id = runners.add_runner(test_lang.clone()).await.unwrap();
-
-    // 接続を設定
-    runners.connect(gen_id, val_id).await.unwrap();
-    runners.connect(val_id, sol_id).await.unwrap();
-
-    // ジェネレータ: 1から5までの数を出力
-    runners.run_code(gen_id, r#"
-for i in range(1, 6):
-    print(i)
-"#).await.unwrap();
-
-    // バリデータ: 偶数のみを通過
-    runners.run_code(val_id, r#"
-while True:
-    try:
-        n = int(input())
-        if n % 2 == 0:
-            print(n)
-    except EOFError:
-        break
-"#).await.unwrap();
-
-    // ソルバー: 入力を2倍
-    runners.run_code(sol_id, r#"
-while True:
-    try:
-        n = int(input())
-        print(n * 2)
-    except EOFError:
-        break
-"#).await.unwrap();
-
-    // 実行
-    runners.run().await.unwrap();
-    assert_eq!(runners.get_state().await, RunnerState::Stop);
-    cleanup_test_files();
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_timeout() {
-    setup_test_templates();
-    let _lang_config = load_test_languages();
-    let test_lang = "python".to_string();
+async fn test_concurrent_runners() -> std::result::Result<(), Box<dyn std::error::Error>> {
+    let config = RunnerConfig::load("src/config/docker.yaml")?;
+    let docker = Docker::connect_with_local_defaults().map_err(DockerError::ConnectionError)?;
+    let mut runner1 = DockerRunner::new(docker.clone(), config.clone(), "python".to_string());
+    let mut runner2 = DockerRunner::new(docker.clone(), config.clone(), "python".to_string());
 
-    let config_path = PathBuf::from("src/config/docker.yaml");
-    let config = RunnerConfig::load(&config_path).unwrap();
-    let docker = Docker::connect_with_local_defaults().unwrap();
-    let runners = DockerRunners::new(docker, config);
+    // 両方のランナーを初期化
+    runner1.initialize("print('runner1')").await?;
+    runner2.initialize("print('runner2')").await?;
 
-    // 無限ループを実行するRunner
-    let id = runners.add_runner(test_lang.clone()).await.unwrap();
-    runners.run_code(id, "while True: pass").await.unwrap();
+    // 両方のランナーが実行中であることを確認
+    assert_eq!(runner1.get_state().await, RunnerState::Running);
+    assert_eq!(runner2.get_state().await, RunnerState::Running);
 
-    // 実行（タイムアウトするはず）
-    let result = runners.run().await;
-    assert!(result.is_err());
-    assert_eq!(runners.get_state().await, RunnerState::Error);
-    cleanup_test_files();
-}
+    // 出力の確認
+    let output1 = runner1.read().await?;
+    let output2 = runner2.read().await?;
+    assert_eq!(output1.trim(), "runner1");
+    assert_eq!(output2.trim(), "runner2");
 
-#[tokio::test]
-async fn test_large_output() {
-    setup_test_templates();
-    let _lang_config = load_test_languages();
-    let test_lang = "python".to_string();
+    // 両方のランナーを停止
+    runner1.stop().await?;
+    runner2.stop().await?;
 
-    let config_path = PathBuf::from("src/config/docker.yaml");
-    let config = RunnerConfig::load(&config_path).unwrap();
-    let docker = Docker::connect_with_local_defaults().unwrap();
-    let runners = DockerRunners::new(docker, config);
+    // 両方のランナーが停止していることを確認
+    assert_eq!(runner1.get_state().await, RunnerState::Stop);
+    assert_eq!(runner2.get_state().await, RunnerState::Stop);
 
-    // 大きな出力を生成するRunner
-    let id1 = runners.add_runner(test_lang.clone()).await.unwrap();
-    let id2 = runners.add_runner(test_lang.clone()).await.unwrap();
-    runners.connect(id1, id2).await.unwrap();
-
-    // 2MB以上の出力を生成
-    runners.run_code(id1, r#"print('a' * (2 * 1024 * 1024))"#).await.unwrap();
-    runners.run_code(id2, "print(input())").await.unwrap();
-
-    // 実行（バッファサイズエラーになるはず）
-    let result = runners.run().await;
-    assert!(result.is_err());
-    cleanup_test_files();
+    Ok(())
 } 

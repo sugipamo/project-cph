@@ -5,57 +5,60 @@ mod compiler;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use bollard::Docker;
-use std::time::Instant;
+use std::time::Duration;
 
-use crate::docker::config::RunnerConfig;
-use crate::docker::error::Result;
+use crate::docker::error::{DockerError, Result};
 use crate::docker::state::RunnerState;
-use crate::docker::runner::io::DockerOutput;
+use crate::docker::config::RunnerConfig;
 
-#[derive(Clone)]
 pub struct DockerRunner {
     docker: Docker,
+    config: RunnerConfig,
     container_id: String,
+    language: String,
     state: Arc<Mutex<RunnerState>>,
+    stdin_tx: Option<tokio::sync::mpsc::Sender<String>>,
     stdout_buffer: Arc<Mutex<Vec<String>>>,
     stderr_buffer: Arc<Mutex<Vec<String>>>,
-    stdin_tx: Option<tokio::sync::mpsc::Sender<String>>,
-    config: RunnerConfig,
-    language: String,
 }
 
 impl DockerRunner {
     pub fn new(docker: Docker, config: RunnerConfig, language: String) -> Self {
         Self {
             docker,
+            config,
             container_id: String::new(),
+            language,
             state: Arc::new(Mutex::new(RunnerState::Ready)),
+            stdin_tx: None,
             stdout_buffer: Arc::new(Mutex::new(Vec::new())),
             stderr_buffer: Arc::new(Mutex::new(Vec::new())),
-            stdin_tx: None,
-            config,
-            language,
         }
+    }
+
+    pub async fn run_in_docker(&mut self, source_code: &str) -> Result<()> {
+        println!("Starting Docker execution for language: {}", self.language);
+        
+        // 初期化
+        self.initialize(source_code).await?;
+        println!("Container initialized successfully");
+
+        // 実行結果の取得
+        let stdout = self.read().await?;
+        let stderr = self.read_error().await?;
+        
+        if !stderr.is_empty() {
+            println!("Execution produced errors: {}", stderr);
+            *self.state.lock().await = RunnerState::Error;
+            return Err(DockerError::RuntimeError(stderr));
+        }
+
+        println!("Execution completed successfully");
+        println!("Output: {}", stdout);
+        Ok(())
     }
 
     pub async fn get_state(&self) -> RunnerState {
         self.state.lock().await.clone()
-    }
-
-    pub async fn run_in_docker(&mut self, source_code: &str) -> Result<DockerOutput> {
-        let start = Instant::now();
-
-        // コンテナの初期化と実行
-        self.initialize(source_code).await?;
-
-        // 初期の標準出力と標準エラー出力を取得
-        let stdout = self.read_all().await?;
-        let stderr = self.read_error_all().await?;
-
-        Ok(DockerOutput {
-            stdout: stdout.join("\n"),
-            stderr: stderr.join("\n"),
-            execution_time: start.elapsed(),
-        })
     }
 } 

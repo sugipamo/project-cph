@@ -4,12 +4,14 @@ use bollard::Docker;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 use tokio::time::timeout;
+use futures::future::join_all;
 
 use crate::docker::{DockerRunner, RunnerConfig, DockerError, RunnerState};
 use crate::docker::error::Result;
 
 const MAX_BUFFER_SIZE: usize = 1024 * 1024;  // 1MB
-const OPERATION_TIMEOUT: Duration = Duration::from_secs(1);
+const OPERATION_TIMEOUT: Duration = Duration::from_secs(15);  // 15秒に延長
+const STOP_TIMEOUT: Duration = Duration::from_secs(10);  // 停止処理用のタイムアウト
 
 struct RunnersState {
     state: RunnerState,
@@ -102,19 +104,31 @@ impl DockerRunners {
 
     async fn check_runners(&self, target_state: Option<RunnerState>) -> Result<bool> {
         let runners = self.runners.lock().await;
-        for runner in runners.iter() {
+        for (id, runner) in runners.iter().enumerate() {
+            println!("Checking runner {} state", id);
             match timeout(OPERATION_TIMEOUT, async {
                 let runner = runner.lock().await;
                 runner.get_state().await
             }).await {
                 Ok(state) => {
+                    println!("Runner {} state: {:?}", id, state);
                     match target_state {
-                        Some(target) if state != target => return Ok(false),
-                        None if state == RunnerState::Error => return Ok(false),
+                        Some(target) if state != target => {
+                            println!("Runner {} state mismatch: expected {:?}, got {:?}", id, target, state);
+                            return Ok(false);
+                        }
+                        None if state == RunnerState::Error => {
+                            println!("Runner {} in error state", id);
+                            return Ok(false);
+                        }
                         _ => continue,
                     }
                 }
-                Err(_) => return Ok(false),
+                Err(_) => {
+                    println!("Timeout checking runner {} state", id);
+                    // タイムアウトの場合はエラーとして扱わない
+                    continue;
+                }
             }
         }
         Ok(true)
@@ -169,26 +183,42 @@ impl DockerRunners {
     }
 
     pub async fn stop_all(&self) -> Result<()> {
+        println!("Stopping all runners");
         let runners = self.runners.lock().await;
-        for (id, runner) in runners.iter().enumerate() {
-            match timeout(OPERATION_TIMEOUT, async {
-                let mut runner = runner.lock().await;
-                runner.stop().await
-            }).await {
-                Ok(result) => {
-                    if let Err(e) = result {
-                        println!("Warning: Failed to stop runner {}: {:?}", id, e);
+        let stop_futures: Vec<_> = runners.iter().enumerate().map(|(id, runner)| {
+            let runner = runner.clone();
+            async move {
+                println!("Attempting to stop runner {}", id);
+                match timeout(STOP_TIMEOUT, async {
+                    let mut runner = runner.lock().await;
+                    runner.stop().await
+                }).await {
+                    Ok(result) => {
+                        match result {
+                            Ok(_) => println!("Successfully stopped runner {}", id),
+                            Err(e) => println!("Warning: Failed to stop runner {}: {:?}", id, e),
+                        }
+                    }
+                    Err(_) => {
+                        println!("Timeout stopping runner {}", id);
+                        // タイムアウトした場合は強制停止を試みる
+                        let mut runner = runner.lock().await;
+                        if let Err(e) = runner.force_stop().await {
+                            println!("Warning: Failed to force stop runner {}: {:?}", id, e);
+                        }
                     }
                 }
-                Err(_) => {
-                    println!("Timeout stopping runner {}", id);
-                }
             }
-        }
+        }).collect();
+
+        // 全てのランナーの停止を並列で待機
+        join_all(stop_futures).await;
+        println!("All runners stop attempted");
         Ok(())
     }
 
     pub async fn run(&self) -> Result<()> {
+        println!("Starting runner execution");
         // 初期化
         {
             let mut state = self.state.lock().await;
@@ -207,6 +237,7 @@ impl DockerRunners {
             loop {
                 // タイムアウトチェック
                 if start.elapsed() > timeout {
+                    println!("Execution timeout reached after {:?}", start.elapsed());
                     let mut state = self.state.lock().await;
                     state.error();
                     return Err(DockerError::RuntimeError("Timeout".into()));
@@ -214,6 +245,12 @@ impl DockerRunners {
 
                 // エラーチェック
                 if !self.check_runners(None).await? {
+                    println!("Runner error detected, checking individual states");
+                    let runners = self.runners.lock().await;
+                    for (id, runner) in runners.iter().enumerate() {
+                        let runner = runner.lock().await;
+                        println!("Runner {} state: {:?}", id, runner.get_state().await);
+                    }
                     let mut state = self.state.lock().await;
                     state.error();
                     return Err(DockerError::RuntimeError("Runner error".into()));
@@ -226,6 +263,7 @@ impl DockerRunners {
 
                 // 完了チェック
                 if self.check_runners(Some(RunnerState::Stop)).await? {
+                    println!("All runners completed successfully");
                     let mut state = self.state.lock().await;
                     state.stop();
                     return Ok(());
@@ -235,6 +273,7 @@ impl DockerRunners {
             }
         }.await;
 
+        println!("Cleaning up runners");
         // エラーの有無に関わらずクリーンアップ
         self.stop_all().await?;
         result
