@@ -6,10 +6,11 @@ use crate::cli::Site;
 use std::env;
 use crate::contest::Contest;
 use users;
+use std::os::unix::fs::PermissionsExt;
+use dirs;
 
-const COOKIE_JAR_NAME: &str = "cookie.jar";
-const CONTAINER_OJ_DIR: &str = "/workspace/.oj";
-const CONTAINER_COOKIE_PATH: &str = "/home/oj-user/.local/share/online-judge-tools/cookie.jar";
+const COOKIE_DIR: &str = ".local/share/online-judge-tools";
+const COOKIE_FILE: &str = "cookie.jar";
 
 pub fn open_in_cursor(url: &str) -> Result<()> {
     // BROWSER環境変数を確認
@@ -44,15 +45,18 @@ impl OJContainer {
     }
 
     fn setup_cookie_dir(&self) -> Result<PathBuf> {
-        let oj_dir = self.workspace_path.join(".oj");
-        let cookie_path = oj_dir.join(COOKIE_JAR_NAME);
+        let home_dir = dirs::home_dir().ok_or("Failed to get home directory")?;
+        let cookie_dir = home_dir.join(COOKIE_DIR);
+        let cookie_path = cookie_dir.join(COOKIE_FILE);
 
-        // .ojディレクトリを作成
-        std::fs::create_dir_all(&oj_dir)?;
+        // ディレクトリを作成
+        std::fs::create_dir_all(&cookie_dir)?;
 
         // cookie.jarファイルを作成（存在しない場合）
         if !cookie_path.exists() {
-            std::fs::write(&cookie_path, "")?;
+            // Set-Cookie3形式の空のcookieファイルを作成
+            std::fs::write(&cookie_path, "#LWP-Cookies-2.0\n")?;
+            std::fs::set_permissions(&cookie_path, std::fs::Permissions::from_mode(0o600))?;
         }
 
         Ok(cookie_path)
@@ -63,12 +67,23 @@ impl OJContainer {
         let mut command = Command::new("docker");
 
         // 基本的なdockerコマンドを構築
-        command.args(["run", "--rm", "-it"]);
+        let is_login = args.get(0).map_or(false, |&cmd| cmd == "login");
+        if is_login {
+            command.args(["run", "--rm", "-it"]);
+        } else {
+            command.args(["run", "--rm"]);
+        }
+        
         // ユーザーIDとグループIDを設定
-        command.args(["-u", &format!("{}:{}", users::get_current_uid(), users::get_current_gid())]);
+        let uid = users::get_current_uid();
+        let gid = users::get_current_gid();
+        command.args(["-u", &format!("{}:{}", uid, gid)]);
+
+        // 環境変数を設定
+        command.args(["-e", &format!("HOME=/home/oj-user")]);
 
         // cookieファイルをコンテナ内の期待されるパスにマウント
-        command.args(["-v", &format!("{}:{}", cookie_path.display(), CONTAINER_COOKIE_PATH)]);
+        command.args(["-v", &format!("{}:/home/oj-user/.local/share/online-judge-tools/cookie.jar", cookie_path.display())]);
 
         // ワークスペースのマウントが必要な場合
         if mount_workspace {
@@ -113,6 +128,39 @@ impl OJContainer {
         let site_url = site.get_url();
         println!("{}", format!("Logging in to {}...", site.get_name()).cyan());
 
+        // cookieファイルをリセット
+        println!("{}", "Resetting cookie file...".cyan());
+        let home_dir = dirs::home_dir().ok_or("Failed to get home directory")?;
+        let cookie_dir = home_dir.join(COOKIE_DIR);
+        let cookie_path = cookie_dir.join(COOKIE_FILE);
+
+        // cookieファイルが存在する場合は削除
+        if cookie_path.exists() {
+            std::fs::remove_file(&cookie_path)?;
+        }
+
+        // ディレクトリを作成し直す
+        std::fs::create_dir_all(&cookie_dir)?;
+        std::fs::write(&cookie_path, "#LWP-Cookies-2.0\n")?;
+        std::fs::set_permissions(&cookie_path, std::fs::Permissions::from_mode(0o600))?;
+
+        // Dockerイメージを再ビルド
+        println!("{}", "Rebuilding Docker image...".cyan());
+        let dockerfile_path = PathBuf::from("src/oj/Dockerfile");
+        if !dockerfile_path.exists() {
+            println!("{}", "Error: Dockerfile not found".red());
+            return Err("Dockerfile not found".into());
+        }
+
+        let status = Command::new("docker")
+            .args(["build", "--no-cache", "-t", "oj-container", "-f", "src/oj/Dockerfile", "src/oj"])
+            .status()?;
+
+        if !status.success() {
+            return Err("Failed to build docker image".into());
+        }
+
+        // ログインを実行
         self.run_oj_command(&["login", site_url], false).await?;
 
         println!("{}", format!("Successfully logged in to {}", site.get_name()).green());
