@@ -90,17 +90,27 @@ impl DockerCommand {
             .map_err(|e| format!("Failed to get current directory: {}", e))?;
         let absolute_compile_dir = current_dir.join(compile_dir);
 
-        // Cargo.tomlが存在することを確認
-        if !absolute_compile_dir.join("Cargo.toml").exists() {
-            return Err(format!("Cargo.toml not found in {}", compile_dir));
-        }
-
         // ソースコードをファイルに書き込む
         use std::fs;
-        let src_dir = absolute_compile_dir.join("src");
-        fs::create_dir_all(&src_dir)
-            .map_err(|e| format!("Failed to create source directory: {}", e))?;
-        fs::write(src_dir.join("main.rs"), source_code)
+        fs::create_dir_all(&absolute_compile_dir)
+            .map_err(|e| format!("Failed to create compile directory: {}", e))?;
+
+        // コンパイラに応じてソースファイルを配置
+        let source_file = if image.starts_with("rust:") {
+            // Rustの場合はsrcディレクトリとCargo.tomlが必要
+            if !absolute_compile_dir.join("Cargo.toml").exists() {
+                return Err(format!("Cargo.toml not found in {}", compile_dir));
+            }
+            let src_dir = absolute_compile_dir.join("src");
+            fs::create_dir_all(&src_dir)
+                .map_err(|e| format!("Failed to create source directory: {}", e))?;
+            src_dir.join("main.rs")
+        } else {
+            // その他の言語（C++など）の場合は直接コンパイルディレクトリに配置
+            absolute_compile_dir.join("main.cpp")
+        };
+
+        fs::write(&source_file, source_code)
             .map_err(|e| format!("Failed to write source code: {}", e))?;
         
         let container_name = format!("compiler-{}", Uuid::new_v4());
