@@ -3,6 +3,8 @@ use tokio::process::Command;
 use uuid::Uuid;
 use crate::docker::state::RunnerState;
 use std::time::Duration;
+use std::env;
+use std::path::PathBuf;
 
 pub struct DockerCommand {
     container_name: String,
@@ -78,8 +80,28 @@ impl DockerCommand {
         compile_cmd: &[String],
         compile_dir: &str,
         mount_point: &str,
+        source_code: &str,
     ) -> Result<(), String> {
         println!("Compiling with command: {:?}", compile_cmd);
+        println!("Mount point: {}, Compile dir: {}", mount_point, compile_dir);
+        
+        // 現在のワーキングディレクトリを取得し、compile_dirへの絶対パスを構築
+        let current_dir = env::current_dir()
+            .map_err(|e| format!("Failed to get current directory: {}", e))?;
+        let absolute_compile_dir = current_dir.join(compile_dir);
+
+        // Cargo.tomlが存在することを確認
+        if !absolute_compile_dir.join("Cargo.toml").exists() {
+            return Err(format!("Cargo.toml not found in {}", compile_dir));
+        }
+
+        // ソースコードをファイルに書き込む
+        use std::fs;
+        let src_dir = absolute_compile_dir.join("src");
+        fs::create_dir_all(&src_dir)
+            .map_err(|e| format!("Failed to create source directory: {}", e))?;
+        fs::write(src_dir.join("main.rs"), source_code)
+            .map_err(|e| format!("Failed to write source code: {}", e))?;
         
         let container_name = format!("compiler-{}", Uuid::new_v4());
         let mut command = Command::new("docker");
@@ -89,25 +111,39 @@ impl DockerCommand {
             .arg("--name")
             .arg(&container_name)
             .arg("-v")
-            .arg(format!(".{}:{}", mount_point, compile_dir))
+            .arg(format!("{}:{}", absolute_compile_dir.display(), mount_point))
             .arg("-w")
-            .arg(compile_dir)
+            .arg(mount_point)
             .arg(image)
             .args(compile_cmd)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
+        println!("Running compile command: {:?}", command);
         let output = command.output().await;
 
         match output {
             Ok(output) => {
+                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
                 let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-                if !stderr.is_empty() {
+                
+                // コンパイルエラーの場合
+                if !output.status.success() {
                     println!("Compilation error: {}", stderr);
-                    Err(stderr)
-                } else {
-                    Ok(())
+                    return Err(stderr);
                 }
+                
+                // 標準エラー出力があるが、コンパイルは成功している場合（警告など）
+                if !stderr.is_empty() {
+                    println!("Compilation warnings: {}", stderr);
+                }
+                
+                // 標準出力がある場合は表示
+                if !stdout.is_empty() {
+                    println!("Compilation output: {}", stdout);
+                }
+                
+                Ok(())
             }
             Err(e) => {
                 println!("Failed to compile: {}", e);
@@ -128,6 +164,9 @@ impl DockerCommand {
         mount_point: &str,
     ) -> Result<String, String> {
         println!("Running container with image: {} and command: {:?}", image, run_cmd);
+        if let Some(dir) = compile_dir {
+            println!("Mount point: {}, Compile dir: {}", mount_point, dir);
+        }
         
         self.container_name = format!("runner-{}", Uuid::new_v4());
         let mut command = Command::new("docker");
@@ -141,17 +180,23 @@ impl DockerCommand {
             .arg(&self.container_name);
 
         if let Some(dir) = compile_dir {
+            // 現在のワーキングディレクトリを取得し、compile_dirへの絶対パスを構築
+            let current_dir = env::current_dir()
+                .map_err(|e| format!("Failed to get current directory: {}", e))?;
+            let absolute_compile_dir = current_dir.join(dir);
+            
             command
                 .arg("-v")
-                .arg(format!(".{}:{}", mount_point, dir))
+                .arg(format!("{}:{}", absolute_compile_dir.display(), mount_point))
                 .arg("-w")
-                .arg(dir);
+                .arg(mount_point);
         }
 
         command
             .arg(image)
             .args(run_cmd);
 
+        // コンパイルが不要な言語の場合のみソースコードを直接渡す
         if compile_dir.is_none() {
             command.arg(source_code);
         }
@@ -231,6 +276,33 @@ impl DockerCommand {
                 println!("Failed to stop container: {}", e);
                 false
             }
+        }
+    }
+
+    pub async fn inspect_directory(&mut self, image: &str, dir_path: &str) -> Result<String, String> {
+        // 一時的なコンテナ名を生成
+        self.container_name = format!("inspector-{}", Uuid::new_v4());
+
+        // コンテナを起動してディレクトリ構造を確認
+        let output = Command::new("docker")
+            .args([
+                "run",
+                "--rm",
+                "--name",
+                &self.container_name,
+                image,
+                "sh",
+                "-c",
+                &format!("ls -la {}", dir_path),
+            ])
+            .output()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if output.status.success() {
+            Ok(String::from_utf8_lossy(&output.stdout).to_string())
+        } else {
+            Err(String::from_utf8_lossy(&output.stderr).to_string())
         }
     }
 

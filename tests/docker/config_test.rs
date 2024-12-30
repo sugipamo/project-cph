@@ -30,7 +30,7 @@ fn test_language_config_python() {
     assert_eq!(config.image, "python:3.9-slim");
     assert!(config.compile.is_none());
     assert!(!config.needs_compilation());
-    assert_eq!(config.compile_dir, "/compile/python");
+    assert_eq!(config.compile_dir, "compile/python");
 }
 
 #[test]
@@ -39,7 +39,7 @@ fn test_language_config_rust() {
     assert_eq!(config.image, "rust:latest");
     assert!(config.compile.is_some());
     assert!(config.needs_compilation());
-    assert_eq!(config.compile_dir, "/compile/rust");
+    assert_eq!(config.compile_dir, "compile/rust");
 }
 
 #[test]
@@ -54,5 +54,5 @@ fn test_language_config_cpp() {
     assert_eq!(config.image, "gcc:latest");
     assert!(config.compile.is_some());
     assert!(config.needs_compilation());
-    assert_eq!(config.compile_dir, "/compile/cpp");
+    assert_eq!(config.compile_dir, "compile/cpp");
 } 

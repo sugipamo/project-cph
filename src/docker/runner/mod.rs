@@ -64,6 +64,7 @@ impl DockerRunner {
                     compile_cmd.as_slice(),
                     self.language_config.get_compile_dir(),
                     &self.config.mount_point,
+                    source_code,
                 ).await {
                     println!("Compilation failed: {}", e);
                     return Err(e);
@@ -128,5 +129,10 @@ impl DockerRunner {
 
     pub async fn get_state(&self) -> RunnerState {
         self.state.lock().await.clone()
+    }
+
+    pub async fn inspect_mount_point(&mut self) -> Result<String, String> {
+        println!("Inspecting mount point directory: {}", self.config.mount_point);
+        self.command.inspect_directory(&self.language_config.image, &self.config.mount_point).await
     }
 } 

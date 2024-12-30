@@ -19,7 +19,7 @@ languages:
       image: "rust:latest"
       compile: ["cargo", "build", "--release"]
       run: ["./target/release/main"]
-      compile_dir: "/compile/rust"
+      compile_dir: "compile/rust"
   
   pypy:
     aliases:
@@ -41,7 +41,7 @@ languages:
       image: "pypy:3.9-slim"
       compile: null
       run: ["pypy3", "-u", "-c"]
-      compile_dir: "/compile/pypy"
+      compile_dir: "compile/pypy"
 
   python:
     aliases:
@@ -61,7 +61,7 @@ languages:
       image: "python:3.9-slim"
       compile: null
       run: ["python", "-u", "-c"]
-      compile_dir: "/compile/python"
+      compile_dir: "compile/python"
   
   cpp:
     aliases:
@@ -81,4 +81,4 @@ languages:
       image: "gcc:latest"
       compile: ["g++", "-std=c++17", "-O2", "main.cpp"]
       run: ["./a.out"]
-      compile_dir: "/compile/cpp"
+      compile_dir: "compile/cpp"
