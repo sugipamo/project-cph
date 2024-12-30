@@ -123,13 +123,17 @@ impl OJContainer {
         println!("{}", format!("Opening problem URL: {}", problem.url).cyan());
         println!("{}", format!("Please open this URL in your browser: {}", problem.url).yellow());
 
-        let test_dir = self.contest.root.join("test").join(&problem.problem_id);
+        // 問題ディレクトリのパスを取得
+        let problem_dir = problem.source_path.parent()
+            .ok_or_else(|| "Invalid problem path".to_string())?;
 
-        std::fs::create_dir_all(&test_dir)?;
+        // 問題ディレクトリを基準にコマンドを実行
+        let relative_problem_dir = problem_dir.strip_prefix(&self.workspace_path)
+            .map_err(|_| "Failed to get relative problem path")?;
 
         self.run_oj_command(&[
             "download",
-            "-d", test_dir.to_str().unwrap(),
+            "-d", &format!("{}", relative_problem_dir.display()),
             &problem.url,
         ], true).await?;
 

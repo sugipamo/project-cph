@@ -56,9 +56,12 @@ impl Command for OpenCommand {
             return Err(e.into());
         }
 
+        // 問題ディレクトリの作成
+        contest.create_problem_directory(problem_id)?;
+
         let problem = ProblemInfo {
             url: url.clone(),
-            source_path: contest.get_source_path(problem_id)?,
+            source_path: contest.get_solution_path(problem_id)?,
             problem_id: problem_id.clone(),
         };
 

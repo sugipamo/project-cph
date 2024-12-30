@@ -42,7 +42,7 @@ impl Contest {
             // デフォルトのコンテスト設定を作成し、デフォルト言語を設定
             let mut contest = Self::default();
             contest.active_contest_dir = active_dir;
-            contest.workspace_dir = current_dir;
+            contest.workspace_dir = current_dir.clone();
 
             // 言語設定からデフォルト言語を取得
             if let Ok(lang_config) = LanguageConfig::load(current_dir.join("src/config/languages.yaml")) {

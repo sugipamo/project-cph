@@ -60,7 +60,7 @@ impl Command for SubmitCommand {
         let url = self.get_problem_url(&contest.contest_id, problem_id);
 
         // ソースファイルのパスを取得
-        let source_path = contest.get_source_path(problem_id)?;
+        let source_path = contest.get_solution_path(problem_id)?;
         if !source_path.exists() {
             return Err(format!("ソースファイルが見つかりません: {}", source_path.display()).into());
         }
