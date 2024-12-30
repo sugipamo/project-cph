@@ -1,61 +1,125 @@
-mod container;
-pub mod io;
-mod compiler;
+mod command;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use bollard::Docker;
-use std::time::Duration;
+use tokio::time::{timeout, Duration};
 
-use crate::docker::error::{DockerError, Result};
 use crate::docker::state::RunnerState;
-use crate::docker::config::RunnerConfig;
+use crate::docker::config::{RunnerConfig, LanguageConfig};
+use self::command::DockerCommand;
 
 pub struct DockerRunner {
-    docker: Docker,
+    command: DockerCommand,
     config: RunnerConfig,
-    container_id: String,
-    language: String,
+    language_config: LanguageConfig,
     state: Arc<Mutex<RunnerState>>,
-    stdin_tx: Option<tokio::sync::mpsc::Sender<String>>,
-    stdout_buffer: Arc<Mutex<Vec<String>>>,
-    stderr_buffer: Arc<Mutex<Vec<String>>>,
 }
 
 impl DockerRunner {
-    pub fn new(docker: Docker, config: RunnerConfig, language: String) -> Self {
+    pub fn new(config: RunnerConfig, language_config: LanguageConfig) -> Self {
         Self {
-            docker,
+            command: DockerCommand::new(),
             config,
-            container_id: String::new(),
-            language,
+            language_config,
             state: Arc::new(Mutex::new(RunnerState::Ready)),
-            stdin_tx: None,
-            stdout_buffer: Arc::new(Mutex::new(Vec::new())),
-            stderr_buffer: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
-    pub async fn run_in_docker(&mut self, source_code: &str) -> Result<()> {
-        println!("Starting Docker execution for language: {}", self.language);
+    pub fn from_language(language: &str) -> std::io::Result<Self> {
+        let config = RunnerConfig::default();
+        let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", language)?;
         
-        // 初期化
-        self.initialize(source_code).await?;
-        println!("Container initialized successfully");
+        Ok(Self::new(config, language_config))
+    }
 
-        // 実行結果の取得
-        let stdout = self.read().await?;
-        let stderr = self.read_error().await?;
+    pub async fn run_in_docker(&mut self, source_code: &str) -> Result<String, String> {
+        println!("Starting Docker execution with image: {}", self.language_config.image);
         
-        if !stderr.is_empty() {
-            println!("Execution produced errors: {}", stderr);
-            *self.state.lock().await = RunnerState::Error;
-            return Err(DockerError::RuntimeError(stderr));
+        match timeout(
+            Duration::from_secs(self.config.timeout),
+            self.execute(source_code)
+        ).await {
+            Ok(result) => result,
+            Err(_) => {
+                println!("Execution timed out after {} seconds", self.config.timeout);
+                self.cleanup().await;
+                *self.state.lock().await = RunnerState::Error;
+                Err("Execution timeout".to_string())
+            }
+        }
+    }
+
+    async fn execute(&mut self, source_code: &str) -> Result<String, String> {
+        // 初期化
+        self.initialize().await?;
+
+        // コンパイルが必要な言語の場合
+        if self.language_config.needs_compilation() {
+            println!("Compiling source code...");
+            if let Some(ref compile_cmd) = self.language_config.compile {
+                if let Err(e) = self.command.compile(
+                    &self.language_config.image,
+                    compile_cmd,
+                    self.language_config.get_compile_dir()
+                ).await {
+                    println!("Compilation failed: {}", e);
+                    return Err(e);
+                }
+            }
         }
 
-        println!("Execution completed successfully");
-        println!("Output: {}", stdout);
+        // 実行
+        let output = self.command.run_container(
+            &self.language_config.image,
+            &self.language_config.run,
+            source_code,
+            self.config.timeout,
+            self.config.memory_limit,
+            if self.language_config.needs_compilation() {
+                Some(self.language_config.get_compile_dir())
+            } else {
+                None
+            }
+        ).await;
+
+        // クリーンアップ
+        if let Err(e) = self.cleanup().await {
+            println!("Cleanup failed: {}", e);
+        }
+
+        output
+    }
+
+    async fn initialize(&mut self) -> Result<(), String> {
+        println!("Initializing Docker runner");
+        *self.state.lock().await = RunnerState::Running;
+
+        // イメージの確認と取得
+        if !self.command.check_image(&self.language_config.image).await {
+            println!("Image not found, attempting to pull: {}", self.language_config.image);
+            if !self.command.pull_image(&self.language_config.image).await {
+                println!("Failed to pull image: {}", self.language_config.image);
+                *self.state.lock().await = RunnerState::Error;
+                return Err(format!("Failed to pull image: {}", self.language_config.image));
+            }
+        }
+
+        println!("Image is ready: {}", self.language_config.image);
+        *self.state.lock().await = RunnerState::Running;
         Ok(())
+    }
+
+    pub async fn cleanup(&mut self) -> Result<(), String> {
+        println!("Cleaning up Docker runner");
+        if self.command.stop_container().await {
+            println!("Container stopped successfully");
+            *self.state.lock().await = RunnerState::Stop;
+            Ok(())
+        } else {
+            println!("Failed to stop container");
+            *self.state.lock().await = RunnerState::Error;
+            Err("Failed to stop container".to_string())
+        }
     }
 
     pub async fn get_state(&self) -> RunnerState {

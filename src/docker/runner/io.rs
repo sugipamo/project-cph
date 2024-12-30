@@ -4,61 +4,60 @@ use tokio::time::timeout;
 use bollard::container::{LogsOptions, LogOutput};
 use std::time::Duration;
 
-use crate::docker::error::{DockerError, Result};
 use crate::docker::state::RunnerState;
 use super::DockerRunner;
 
 impl DockerRunner {
-    pub async fn write(&self, input: &str) -> Result<()> {
+    pub async fn write(&self, input: &str) -> () {
         println!("Writing to container: {}", input);
-        let tx = self.stdin_tx.as_ref()
-            .ok_or_else(|| {
+        let tx = match self.stdin_tx.as_ref() {
+            Some(tx) => tx,
+            None => {
                 println!("Container not initialized for writing");
-                DockerError::ContainerNotInitialized
-            })?;
+                return;
+            }
+        };
 
         match tx.send(input.to_string()).await {
             Ok(_) => {
                 println!("Successfully wrote to container");
-                Ok(())
             }
             Err(e) => {
                 println!("Failed to write to container: {:?}", e);
-                Err(DockerError::RuntimeError("Failed to send input".to_string()))
             }
         }
     }
 
-    pub async fn read(&self) -> Result<String> {
+    pub async fn read(&self) -> String {
         println!("Attempting to read from container");
         let stdout = self.stdout_buffer.lock().await;
         match stdout.last() {
             Some(output) => {
                 println!("Read from container: '{}'", output);
-                Ok(output.clone())
+                output.clone()
             }
             None => {
                 println!("No output available from container");
-                Ok(String::new())
+                String::new()
             }
         }
     }
 
-    pub async fn read_error(&self) -> Result<String> {
+    pub async fn read_error(&self) -> String {
         let stderr = self.stderr_buffer.lock().await;
         match stderr.last() {
             Some(error) => {
                 println!("Read error from container: '{}'", error);
-                Ok(error.clone())
+                error.clone()
             }
             None => {
                 println!("No error output available from container");
-                Ok(String::new())
+                String::new()
             }
         }
     }
 
-    pub(crate) async fn setup_io(&mut self) -> Result<()> {
+    pub(crate) async fn setup_io(&mut self) -> () {
         println!("Setting up I/O for container: {}", self.container_id);
         let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(32);
         self.stdin_tx = Some(tx);
@@ -120,7 +119,7 @@ impl DockerRunner {
             while let Some(input) = rx.recv().await {
                 println!("Processing input: {}", input);
                 match timeout(timeout_duration, async {
-                    let exec = input_docker
+                    let exec = match input_docker
                         .create_exec(
                             &input_container_id,
                             CreateExecOptions {
@@ -131,18 +130,22 @@ impl DockerRunner {
                                 ..Default::default()
                             },
                         )
-                        .await?;
+                        .await {
+                            Ok(exec) => exec,
+                            Err(e) => {
+                                println!("Failed to create exec: {:?}", e);
+                                return;
+                            }
+                        };
 
-                    input_docker.start_exec(&exec.id, None).await?;
-                    Ok::<_, bollard::errors::Error>(())
+                    if let Err(e) = input_docker.start_exec(&exec.id, None).await {
+                        println!("Failed to start exec: {:?}", e);
+                        return;
+                    }
                 })
                 .await
                 {
-                    Ok(Ok(_)) => println!("Successfully processed input"),
-                    Ok(Err(e)) => {
-                        println!("Error processing input: {:?}", e);
-                        *state.lock().await = RunnerState::Error;
-                    }
+                    Ok(_) => println!("Successfully processed input"),
                     Err(_) => {
                         println!("Input processing timed out");
                         *state.lock().await = RunnerState::Error;
@@ -153,6 +156,5 @@ impl DockerRunner {
         });
 
         println!("I/O setup completed for container {}", self.container_id);
-        Ok(())
     }
 } 

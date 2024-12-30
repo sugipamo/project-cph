@@ -1,15 +1,14 @@
 use bollard::exec::{CreateExecOptions, StartExecResults};
 use futures::StreamExt;
 
-use crate::docker::error::{DockerError, Result};
 use crate::docker::state::RunnerState;
 use crate::config::languages::RunnerInfo;
 use super::DockerRunner;
 
 impl DockerRunner {
-    pub(super) async fn compile(&mut self, lang_config: RunnerInfo) -> Result<()> {
+    pub(super) async fn compile(&mut self, lang_config: RunnerInfo) -> () {
         if let Some(compile_cmd) = &lang_config.compile {
-            let exec = self.docker
+            let exec = match self.docker
                 .create_exec(
                     &self.container_id,
                     CreateExecOptions {
@@ -18,11 +17,16 @@ impl DockerRunner {
                         ..Default::default()
                     },
                 )
-                .await
-                .map_err(DockerError::ConnectionError)?;
+                .await {
+                    Ok(exec) => exec,
+                    Err(e) => {
+                        println!("Failed to create exec: {:?}", e);
+                        return;
+                    }
+                };
 
-            match self.docker.start_exec(&exec.id, None).await.map_err(DockerError::ConnectionError)? {
-                StartExecResults::Attached { mut output, .. } => {
+            match self.docker.start_exec(&exec.id, None).await {
+                Ok(StartExecResults::Attached { mut output, .. }) => {
                     while let Some(Ok(output)) = output.next().await {
                         if let bollard::container::LogOutput::StdErr { message } = output {
                             let mut stderr = self.stderr_buffer.lock().await;
@@ -30,16 +34,23 @@ impl DockerRunner {
                         }
                     }
                 }
-                _ => return Err(DockerError::CompilationError("Compilation failed".to_string())),
+                Ok(_) => {
+                    println!("Compilation failed: unexpected exec result");
+                    return;
+                }
+                Err(e) => {
+                    println!("Failed to start exec: {:?}", e);
+                    return;
+                }
             }
 
             // コンパイルエラーをチェック
-            let stderr = self.read_error_all().await?;
+            let stderr = self.read_error().await;
             if !stderr.is_empty() {
+                println!("Compilation error: {}", stderr);
                 *self.state.lock().await = RunnerState::Error;
-                return Err(DockerError::CompilationError(stderr.join("\n")));
+                return;
             }
         }
-        Ok(())
     }
 } 

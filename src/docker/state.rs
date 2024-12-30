@@ -1,5 +1,4 @@
 use std::fmt;
-use crate::docker::error::{DockerError, Result};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RunnerState {
@@ -11,25 +10,21 @@ pub enum RunnerState {
 
 impl fmt::Display for RunnerState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            RunnerState::Ready => write!(f, "Ready"),
-            RunnerState::Running => write!(f, "Running"),
-            RunnerState::Stop => write!(f, "Stop"),
-            RunnerState::Error => write!(f, "Error"),
-        }
+        write!(f, "{:?}", self)
     }
 }
 
 impl RunnerState {
-    pub fn can_transition_to(&self, next: &RunnerState) -> Result<()> {
+    pub fn can_transition_to(&self, next: &RunnerState) -> bool {
         match (self, next) {
-            (RunnerState::Ready, RunnerState::Running) => Ok(()),
-            (RunnerState::Running, RunnerState::Stop) => Ok(()),
-            (RunnerState::Running, RunnerState::Error) => Ok(()),
-            (from, to) => Err(DockerError::InvalidStateTransition {
-                from: from.to_string(),
-                to: to.to_string(),
-            }),
+            (RunnerState::Ready, RunnerState::Running) => true,
+            (RunnerState::Running, RunnerState::Stop) => true,
+            (RunnerState::Running, RunnerState::Error) => true,
+            (RunnerState::Error, RunnerState::Stop) => true,
+            _ => {
+                println!("Invalid state transition from {:?} to {:?}", self, next);
+                false
+            }
         }
     }
 } 

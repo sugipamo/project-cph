@@ -1,39 +1,48 @@
-use crate::helpers::load_test_languages;
-use cph::docker::config::RunnerConfig;
-use std::path::PathBuf;
+use crate::docker::config::{RunnerConfig, LanguageConfig};
 
 #[test]
-fn test_load_runner_config() {
-    super::setup();
-
-    let config = RunnerConfig::load(PathBuf::from("src/config/docker.yaml")).unwrap();
-    
-    // 基本設定の検証
-    assert_eq!(config.timeout_seconds, 5);
-    assert_eq!(config.memory_limit_mb, 512);
-    assert_eq!(config.mount_point, "/workspace");
-
-    super::teardown();
+fn test_runner_config_default() {
+    let config = RunnerConfig::default();
+    assert_eq!(config.timeout, 10);
+    assert_eq!(config.memory_limit, 512);
 }
 
 #[test]
-fn test_language_config() {
-    super::setup();
+fn test_runner_config_custom() {
+    let config = RunnerConfig::new(20, 1024);
+    assert_eq!(config.timeout, 20);
+    assert_eq!(config.memory_limit, 1024);
+}
 
-    let config = RunnerConfig::load(PathBuf::from("src/config/docker.yaml")).unwrap();
-    let lang_config = load_test_languages();
+#[test]
+fn test_language_config_python() {
+    let config = LanguageConfig::from_yaml("src/config/languages.yaml", "python").unwrap();
+    assert_eq!(config.image, "python:3.9-slim");
+    assert!(config.compile.is_none());
+    assert!(!config.needs_compilation());
+    assert_eq!(config.compile_dir, "/compile/python");
+}
 
-    // 各言語の設定をテスト
-    for (lang_name, lang_info) in &lang_config.languages {
-        let runner_config = config.get_language_config(lang_name).unwrap();
-        assert_eq!(runner_config.image, lang_info.runner.image);
-        assert_eq!(runner_config.compile, lang_info.runner.compile);
-        assert_eq!(runner_config.run, lang_info.runner.run);
-        assert_eq!(runner_config.compile_dir, lang_info.runner.compile_dir);
-    }
+#[test]
+fn test_language_config_rust() {
+    let config = LanguageConfig::from_yaml("src/config/languages.yaml", "rust").unwrap();
+    assert_eq!(config.image, "rust:latest");
+    assert!(config.compile.is_some());
+    assert!(config.needs_compilation());
+    assert_eq!(config.compile_dir, "/compile/rust");
+}
 
-    // 無効な言語の検証
-    assert!(config.get_language_config("invalid").is_none());
+#[test]
+fn test_language_config_invalid() {
+    let result = LanguageConfig::from_yaml("src/config/languages.yaml", "invalid_language");
+    assert!(result.is_err());
+}
 
-    super::teardown();
+#[test]
+fn test_language_config_cpp() {
+    let config = LanguageConfig::from_yaml("src/config/languages.yaml", "cpp").unwrap();
+    assert_eq!(config.image, "gcc:latest");
+    assert!(config.compile.is_some());
+    assert!(config.needs_compilation());
+    assert_eq!(config.compile_dir, "/compile/cpp");
 } 

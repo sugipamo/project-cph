@@ -6,8 +6,7 @@ use tokio::time::sleep;
 use tokio::time::timeout;
 use futures::future::join_all;
 
-use crate::docker::{DockerRunner, RunnerConfig, DockerError, RunnerState};
-use crate::docker::error::Result;
+use crate::docker::{DockerRunner, RunnerConfig, RunnerState};
 
 const MAX_BUFFER_SIZE: usize = 1024 * 1024;  // 1MB
 const OPERATION_TIMEOUT: Duration = Duration::from_secs(15);  // 15秒に延長
@@ -69,40 +68,43 @@ impl DockerRunners {
         }
     }
 
-    pub async fn add_runner(&self, language: String) -> Result<usize> {
+    pub async fn add_runner(&self, language: String) -> usize {
         let mut runners = self.runners.lock().await;
         let mut connections = self.connections.lock().await;
         let id = runners.len();
         let runner = DockerRunner::new(self.docker.clone(), self.config.clone(), language);
         runners.push(Arc::new(Mutex::new(runner)));
         connections.push(Vec::new());
-        Ok(id)
+        id
     }
 
-    pub async fn connect(&self, from: usize, to: usize) -> Result<()> {
+    pub async fn connect(&self, from: usize, to: usize) -> () {
         let mut connections = self.connections.lock().await;
         if from >= connections.len() || to >= connections.len() {
-            return Err(DockerError::RuntimeError("Invalid runner id".into()));
+            println!("Invalid runner id");
+            return;
         }
         connections[from].push(to);
-        Ok(())
     }
 
-    async fn get_runner(&self, id: usize) -> Result<Arc<Mutex<DockerRunner>>> {
+    async fn get_runner(&self, id: usize) -> Option<Arc<Mutex<DockerRunner>>> {
         let runners = self.runners.lock().await;
-        runners.get(id)
-            .cloned()
-            .ok_or_else(|| DockerError::RuntimeError(format!("Runner {} not found", id)))
+        runners.get(id).cloned()
     }
 
-    pub async fn run_code(&self, id: usize, source_code: &str) -> Result<()> {
-        let runner = self.get_runner(id).await?;
+    pub async fn run_code(&self, id: usize, source_code: &str) -> () {
+        let runner = match self.get_runner(id).await {
+            Some(runner) => runner,
+            None => {
+                println!("Runner {} not found", id);
+                return;
+            }
+        };
         let mut runner = runner.lock().await;
-        runner.run_in_docker(source_code).await?;
-        Ok(())
+        runner.run_in_docker(source_code).await;
     }
 
-    async fn check_runners(&self, target_state: Option<RunnerState>) -> Result<bool> {
+    async fn check_runners(&self, target_state: Option<RunnerState>) -> bool {
         let runners = self.runners.lock().await;
         for (id, runner) in runners.iter().enumerate() {
             println!("Checking runner {} state", id);
@@ -115,26 +117,25 @@ impl DockerRunners {
                     match target_state {
                         Some(target) if state != target => {
                             println!("Runner {} state mismatch: expected {:?}, got {:?}", id, target, state);
-                            return Ok(false);
+                            return false;
                         }
                         None if state == RunnerState::Error => {
                             println!("Runner {} in error state", id);
-                            return Ok(false);
+                            return false;
                         }
                         _ => continue,
                     }
                 }
                 Err(_) => {
                     println!("Timeout checking runner {} state", id);
-                    // タイムアウトの場合はエラーとして扱わない
                     continue;
                 }
             }
         }
-        Ok(true)
+        true
     }
 
-    async fn forward_outputs(&self) -> Result<()> {
+    async fn forward_outputs(&self) -> () {
         let runners = self.runners.lock().await;
         let runner_count = runners.len();
         drop(runners);
@@ -150,39 +151,31 @@ impl DockerRunners {
             }
 
             match timeout(OPERATION_TIMEOUT, async {
-                if let Ok(from_runner) = self.get_runner(from).await {
+                if let Some(from_runner) = self.get_runner(from).await {
                     let runner = from_runner.lock().await;
-                    if let Ok(output) = runner.read().await {
-                        if output.len() > MAX_BUFFER_SIZE {
-                            return Err(DockerError::RuntimeError("Output too large".into()));
-                        }
-                        let output = output.trim().to_string();
-                        for to in to_runners {
-                            if let Ok(to_runner) = self.get_runner(to).await {
-                                let runner = to_runner.lock().await;
-                                if let Err(e) = runner.write(&format!("{}\n", output)).await {
-                                    println!("Warning: Failed to write to runner {}: {:?}", to, e);
-                                }
-                            }
+                    let output = runner.read().await;
+                    if output.len() > MAX_BUFFER_SIZE {
+                        println!("Output too large");
+                        return;
+                    }
+                    let output = output.trim().to_string();
+                    for to in to_runners {
+                        if let Some(to_runner) = self.get_runner(to).await {
+                            let runner = to_runner.lock().await;
+                            runner.write(&format!("{}\n", output)).await;
                         }
                     }
                 }
-                Ok(())
             }).await {
-                Ok(result) => {
-                    if let Err(e) = result {
-                        println!("Error in forward_outputs: {:?}", e);
-                    }
-                }
+                Ok(_) => (),
                 Err(_) => {
                     println!("Timeout in forward_outputs for runner {}", from);
                 }
             }
         }
-        Ok(())
     }
 
-    pub async fn stop_all(&self) -> Result<()> {
+    pub async fn stop_all(&self) -> () {
         println!("Stopping all runners");
         let runners = self.runners.lock().await;
         let stop_futures: Vec<_> = runners.iter().enumerate().map(|(id, runner)| {
@@ -193,37 +186,27 @@ impl DockerRunners {
                     let mut runner = runner.lock().await;
                     runner.stop().await
                 }).await {
-                    Ok(result) => {
-                        match result {
-                            Ok(_) => println!("Successfully stopped runner {}", id),
-                            Err(e) => println!("Warning: Failed to stop runner {}: {:?}", id, e),
-                        }
-                    }
+                    Ok(_) => println!("Successfully stopped runner {}", id),
                     Err(_) => {
                         println!("Timeout stopping runner {}", id);
-                        // タイムアウトした場合は強制停止を試みる
                         let mut runner = runner.lock().await;
-                        if let Err(e) = runner.force_stop().await {
-                            println!("Warning: Failed to force stop runner {}: {:?}", id, e);
-                        }
+                        runner.force_stop().await;
                     }
                 }
             }
         }).collect();
 
-        // 全てのランナーの停止を並列で待機
         join_all(stop_futures).await;
         println!("All runners stop attempted");
-        Ok(())
     }
 
-    pub async fn run(&self) -> Result<()> {
+    pub async fn run(&self) -> () {
         println!("Starting runner execution");
-        // 初期化
         {
             let mut state = self.state.lock().await;
             if state.state != RunnerState::Ready {
-                return Err(DockerError::RuntimeError("Not in ready state".into()));
+                println!("Not in ready state");
+                return;
             }
             state.start();
         }
@@ -231,52 +214,24 @@ impl DockerRunners {
         let timeout = Duration::from_secs(self.config.timeout_seconds);
         let start = Instant::now();
 
-        // クリーンアップを保証
-        let result = async {
-            // メインループ
-            loop {
-                // タイムアウトチェック
-                if start.elapsed() > timeout {
-                    println!("Execution timeout reached after {:?}", start.elapsed());
-                    let mut state = self.state.lock().await;
-                    state.error();
-                    return Err(DockerError::RuntimeError("Timeout".into()));
-                }
-
-                // エラーチェック
-                if !self.check_runners(None).await? {
-                    println!("Runner error detected, checking individual states");
-                    let runners = self.runners.lock().await;
-                    for (id, runner) in runners.iter().enumerate() {
-                        let runner = runner.lock().await;
-                        println!("Runner {} state: {:?}", id, runner.get_state().await);
-                    }
-                    let mut state = self.state.lock().await;
-                    state.error();
-                    return Err(DockerError::RuntimeError("Runner error".into()));
-                }
-
-                // 出力転送
-                if let Err(e) = self.forward_outputs().await {
-                    println!("Warning: Error in forward_outputs: {:?}", e);
-                }
-
-                // 完了チェック
-                if self.check_runners(Some(RunnerState::Stop)).await? {
-                    println!("All runners completed successfully");
-                    let mut state = self.state.lock().await;
-                    state.stop();
-                    return Ok(());
-                }
-
-                sleep(Duration::from_millis(100)).await;
+        loop {
+            if start.elapsed() > timeout {
+                println!("Execution timeout reached after {:?}", start.elapsed());
+                let mut state = self.state.lock().await;
+                state.error();
+                return;
             }
-        }.await;
 
-        println!("Cleaning up runners");
-        // エラーの有無に関わらずクリーンアップ
-        self.stop_all().await?;
-        result
+            if !self.check_runners(None).await {
+                println!("Runner error detected");
+                let mut state = self.state.lock().await;
+                state.error();
+                return;
+            }
+
+            self.forward_outputs().await;
+            sleep(Duration::from_millis(100)).await;
+        }
     }
 
     pub async fn get_state(&self) -> RunnerState {

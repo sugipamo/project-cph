@@ -4,25 +4,25 @@ use bollard::image::CreateImageOptions;
 use futures::StreamExt;
 use std::time::Duration;
 
-use crate::docker::error::{DockerError, Result};
 use crate::docker::state::RunnerState;
 use super::DockerRunner;
 
 impl DockerRunner {
-    pub async fn initialize(&mut self, source_code: &str) -> Result<()> {
+    pub async fn initialize(&mut self, source_code: &str) -> () {
         let current_state = self.state.lock().await.clone();
         println!("Initializing container with state: {:?}", current_state);
         if current_state != RunnerState::Ready {
             println!("Invalid state transition from {:?} to Running", current_state);
-            return Err(DockerError::InvalidStateTransition {
-                from: current_state.to_string(),
-                to: RunnerState::Running.to_string(),
-            });
+            return;
         }
 
-        let lang_config = self.config.get_language_config(&self.language)
-            .ok_or_else(|| DockerError::UnsupportedLanguage(self.language.clone()))?
-            .clone();
+        let lang_config = match self.config.get_language_config(&self.language) {
+            Some(config) => config.clone(),
+            None => {
+                println!("Unsupported language: {}", self.language);
+                return;
+            }
+        };
 
         // イメージの存在確認と取得
         println!("Checking for image: {}", lang_config.image);
@@ -30,7 +30,8 @@ impl DockerRunner {
         if let Ok(images) = self.docker.list_images(None).await {
             if images.iter().any(|img| {
                 img.repo_tags.as_ref()
-                    .map_or(false, |tags| tags.contains(&lang_config.image))
+                    .map(|tags| tags.contains(&lang_config.image))
+                    .unwrap_or(false)
             }) {
                 pull_needed = false;
             }
@@ -47,7 +48,7 @@ impl DockerRunner {
             while let Some(result) = pull_stream.next().await {
                 if let Err(e) = result {
                     println!("Error pulling image: {:?}", e);
-                    return Err(DockerError::RuntimeError(format!("Failed to pull image: {}", e)));
+                    return;
                 }
             }
         }
@@ -98,7 +99,7 @@ impl DockerRunner {
                 Err(e) => {
                     println!("Failed to create container: {:?}", e);
                     *self.state.lock().await = RunnerState::Error;
-                    return Err(DockerError::ConnectionError(e));
+                    return;
                 }
             };
 
@@ -112,24 +113,16 @@ impl DockerRunner {
             .await {
             println!("Failed to start container: {:?}", e);
             *self.state.lock().await = RunnerState::Error;
-            return Err(DockerError::ConnectionError(e));
+            return;
         }
 
         // コンパイル処理の実行
         println!("Running compilation for container: {}", self.container_id);
-        if let Err(e) = self.compile(lang_config).await {
-            println!("Compilation failed: {:?}", e);
-            *self.state.lock().await = RunnerState::Error;
-            return Err(e);
-        }
+        self.compile(lang_config).await;
 
         // I/O設定
         println!("Setting up I/O for container: {}", self.container_id);
-        if let Err(e) = self.setup_io().await {
-            println!("Failed to setup I/O: {:?}", e);
-            *self.state.lock().await = RunnerState::Error;
-            return Err(e);
-        }
+        self.setup_io().await;
 
         // 初期化完了を待機
         println!("Waiting for container initialization...");
@@ -142,57 +135,51 @@ impl DockerRunner {
                     if !state.running.unwrap_or(false) {
                         println!("Container is not running after initialization");
                         *self.state.lock().await = RunnerState::Error;
-                        return Err(DockerError::RuntimeError("Container failed to start properly".to_string()));
+                        return;
                     }
                 }
             }
             Err(e) => {
                 println!("Failed to inspect container: {:?}", e);
                 *self.state.lock().await = RunnerState::Error;
-                return Err(DockerError::ConnectionError(e));
+                return;
             }
         }
 
         println!("Container {} initialized successfully", self.container_id);
         *self.state.lock().await = RunnerState::Running;
-        Ok(())
     }
 
-    pub async fn stop(&mut self) -> Result<()> {
+    pub async fn stop(&mut self) -> () {
         let current_state = self.state.lock().await.clone();
         println!("Attempting to stop container {} (Current state: {:?})", self.container_id, current_state);
 
-        // すでに停止している場合は早期リターン
         if current_state == RunnerState::Stop {
-            return Ok(());
+            return;
         }
 
-        // まず通常の停止を試みる
         let stop_options = bollard::container::StopContainerOptions { t: 10 };
         match self.docker.stop_container(&self.container_id, Some(stop_options)).await {
             Ok(_) => {
                 println!("Container {} stopped successfully", self.container_id);
                 *self.state.lock().await = RunnerState::Stop;
-                Ok(())
             }
             Err(e) => {
                 println!("Failed to stop container gracefully: {}", e);
                 if e.to_string().contains("No such container") {
                     println!("Container {} no longer exists", self.container_id);
                     *self.state.lock().await = RunnerState::Stop;
-                    Ok(())
                 } else {
-                    // 強制停止を試みる
                     println!("Attempting force stop for container {}", self.container_id);
-                    self.force_stop().await
+                    self.force_stop().await;
                 }
             }
         }
     }
 
-    pub async fn check_state(&mut self) -> Result<RunnerState> {
+    pub async fn check_state(&mut self) -> RunnerState {
         if self.container_id.is_empty() {
-            return Ok(self.state.lock().await.clone());
+            return self.state.lock().await.clone();
         }
 
         match self.docker.inspect_container(&self.container_id, None).await {
@@ -206,15 +193,10 @@ impl DockerRunner {
                     println!("Container {} state check - Status: {:?}, Running: {:?}, ExitCode: {:?}, Pid: {:?}",
                         self.container_id, status, running, exit_code, pid);
 
-                    // 終了状態の判定を改善
                     let is_stopped = match (status.as_deref(), running, exit_code, pid) {
-                        // 明示的な停止状態
                         (Some("exited" | "dead"), _, _, _) => true,
-                        // 実行中でない
                         (_, false, _, _) => true,
-                        // 終了コードが設定されている
                         (_, _, code, _) if code != 0 => true,
-                        // プロセスIDが無効
                         (_, _, _, 0) => true,
                         _ => false
                     };
@@ -222,13 +204,13 @@ impl DockerRunner {
                     if is_stopped {
                         println!("Container {} has stopped", self.container_id);
                         *self.state.lock().await = RunnerState::Stop;
-                        Ok(RunnerState::Stop)
+                        RunnerState::Stop
                     } else {
-                        Ok(RunnerState::Running)
+                        RunnerState::Running
                     }
                 } else {
                     println!("Container {} state information not available", self.container_id);
-                    Ok(RunnerState::Running)
+                    RunnerState::Running
                 }
             }
             Err(e) => {
@@ -236,24 +218,23 @@ impl DockerRunner {
                 if e.to_string().contains("No such container") {
                     println!("Container {} no longer exists", self.container_id);
                     *self.state.lock().await = RunnerState::Stop;
-                    Ok(RunnerState::Stop)
+                    RunnerState::Stop
                 } else {
-                    Err(DockerError::InspectError(e.to_string()))
+                    println!("Error inspecting container: {}", e);
+                    RunnerState::Error
                 }
             }
         }
     }
 
-    pub async fn wait_for_stop(&mut self, timeout: Duration) -> Result<()> {
+    pub async fn wait_for_stop(&mut self, timeout: Duration) -> () {
         let start = std::time::Instant::now();
         let check_interval = Duration::from_millis(50);
 
         while start.elapsed() < timeout {
-            match self.check_state().await? {
-                RunnerState::Stop => return Ok(()),
-                RunnerState::Error => return Ok(()),
+            match self.check_state().await {
+                RunnerState::Stop | RunnerState::Error => return,
                 _ => {
-                    // コンテナの状態を直接確認
                     if let Ok(info) = self.docker.inspect_container(&self.container_id, None).await {
                         if let Some(state) = info.state {
                             let is_stopped = !state.running.unwrap_or(false) || 
@@ -264,7 +245,7 @@ impl DockerRunner {
                             if is_stopped {
                                 println!("Container {} has stopped (direct check)", self.container_id);
                                 *self.state.lock().await = RunnerState::Stop;
-                                return Ok(());
+                                return;
                             }
                         }
                     }
@@ -273,15 +254,13 @@ impl DockerRunner {
             }
         }
 
-        // タイムアウト時は強制停止を試みる
         println!("Wait for stop timed out after {:?}, attempting force stop", timeout);
-        self.force_stop().await?;
-        Err(DockerError::Timeout)
+        self.force_stop().await;
     }
 
-    pub async fn force_stop(&mut self) -> Result<()> {
+    pub async fn force_stop(&mut self) -> () {
         if self.container_id.is_empty() {
-            return Ok(());
+            return;
         }
 
         println!("Force stopping container {}", self.container_id);
@@ -293,16 +272,12 @@ impl DockerRunner {
             Ok(_) => {
                 println!("Container {} killed successfully", self.container_id);
                 *self.state.lock().await = RunnerState::Stop;
-                Ok(())
             }
             Err(e) => {
                 println!("Failed to kill container {}: {:?}", self.container_id, e);
                 if e.to_string().contains("No such container") {
                     println!("Container {} no longer exists", self.container_id);
                     *self.state.lock().await = RunnerState::Stop;
-                    Ok(())
-                } else {
-                    Err(DockerError::ConnectionError(e))
                 }
             }
         }

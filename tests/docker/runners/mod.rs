@@ -1,99 +1,67 @@
-use std::time::Duration;
-use tokio::time::sleep;
 use bollard::Docker;
-
-use cph::docker::{DockerRunner, RunnerState, RunnerConfig, DockerError};
+use std::time::Duration;
+use cph::docker::{DockerRunner, RunnerState, RunnerConfig};
 
 #[tokio::test]
-async fn test_basic_pipeline() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    let config = RunnerConfig::load("src/config/docker.yaml")?;
-    let docker = Docker::connect_with_local_defaults().map_err(DockerError::ConnectionError)?;
-    let mut runner = DockerRunner::new(docker.clone(), config.clone(), "python".to_string());
+async fn test_basic_pipeline() {
+    let docker = Docker::connect_with_local_defaults().expect("Failed to connect to Docker");
+    let config = RunnerConfig::default();
+    let mut runner = DockerRunner::new(docker, config, "python".to_string());
 
-    // 初期化
-    runner.initialize("print('hello')").await?;
+    runner.run_in_docker("print('Hello, World!')").await;
     assert_eq!(runner.get_state().await, RunnerState::Running);
 
-    // 出力の確認
-    let output = runner.read().await?;
-    assert_eq!(output.trim(), "hello");
+    let output = runner.read().await;
+    assert_eq!(output.trim(), "Hello, World!");
 
-    // 入力の送信
-    runner.write("test\n").await?;
-
-    // 停止処理
-    runner.stop().await?;
+    runner.stop().await;
     assert_eq!(runner.get_state().await, RunnerState::Stop);
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn test_error_handling() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    let config = RunnerConfig::load("src/config/docker.yaml")?;
-    let docker = Docker::connect_with_local_defaults().map_err(DockerError::ConnectionError)?;
+async fn test_error_handling() {
+    let docker = Docker::connect_with_local_defaults().expect("Failed to connect to Docker");
+    let config = RunnerConfig::default();
+
+    // コンパイルエラーのテスト
     let mut runner = DockerRunner::new(docker.clone(), config.clone(), "python".to_string());
+    runner.run_in_docker("invalid python code").await;
+    assert_eq!(runner.get_state().await, RunnerState::Error);
 
-    // 構文エラーのあるコードで初期化
-    let result = runner.initialize("print('hello'").await;
-    assert!(matches!(result, Err(DockerError::CompilationError(_))));
-
-    // 存在しない言語での初期化
-    let mut invalid_runner = DockerRunner::new(docker.clone(), config.clone(), "invalid_lang".to_string());
-    let result = invalid_runner.initialize("print('hello')").await;
-    assert!(matches!(result, Err(DockerError::UnsupportedLanguage(_))));
-
-    Ok(())
+    // 未サポート言語のテスト
+    let mut runner = DockerRunner::new(docker, config, "unsupported_language".to_string());
+    runner.run_in_docker("code").await;
+    assert_eq!(runner.get_state().await, RunnerState::Error);
 }
 
 #[tokio::test]
-async fn test_timeout_handling() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    let config = RunnerConfig::load("src/config/docker.yaml")?;
-    let docker = Docker::connect_with_local_defaults().map_err(DockerError::ConnectionError)?;
-    let mut runner = DockerRunner::new(docker.clone(), config.clone(), "python".to_string());
+async fn test_timeout_handling() {
+    let docker = Docker::connect_with_local_defaults().expect("Failed to connect to Docker");
+    let mut config = RunnerConfig::default();
+    config.timeout_seconds = 1;
+    let mut runner = DockerRunner::new(docker, config, "python".to_string());
 
-    // 無限ループのコードで初期化
-    runner.initialize("while True: pass").await?;
-    
-    // タイムアウトの確認
-    let result = runner.wait_for_stop(Duration::from_secs(2)).await;
-    assert!(matches!(result, Err(DockerError::Timeout)));
-    
-    // 強制停止の確認
-    runner.force_stop().await?;
-    assert_eq!(runner.get_state().await, RunnerState::Stop);
-
-    Ok(())
+    runner.run_in_docker("while True: pass").await;
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    assert_eq!(runner.get_state().await, RunnerState::Error);
 }
 
 #[tokio::test]
-async fn test_concurrent_runners() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    let config = RunnerConfig::load("src/config/docker.yaml")?;
-    let docker = Docker::connect_with_local_defaults().map_err(DockerError::ConnectionError)?;
-    let mut runner1 = DockerRunner::new(docker.clone(), config.clone(), "python".to_string());
-    let mut runner2 = DockerRunner::new(docker.clone(), config.clone(), "python".to_string());
+async fn test_concurrent_runners() {
+    let docker = Docker::connect_with_local_defaults().expect("Failed to connect to Docker");
+    let config = RunnerConfig::default();
 
-    // 両方のランナーを初期化
-    runner1.initialize("print('runner1')").await?;
-    runner2.initialize("print('runner2')").await?;
+    let mut runners = vec![];
+    for i in 0..3 {
+        let mut runner = DockerRunner::new(docker.clone(), config.clone(), "python".to_string());
+        runner.run_in_docker(&format!("print('Runner {}')", i)).await;
+        runners.push(runner);
+    }
 
-    // 両方のランナーが実行中であることを確認
-    assert_eq!(runner1.get_state().await, RunnerState::Running);
-    assert_eq!(runner2.get_state().await, RunnerState::Running);
-
-    // 出力の確認
-    let output1 = runner1.read().await?;
-    let output2 = runner2.read().await?;
-    assert_eq!(output1.trim(), "runner1");
-    assert_eq!(output2.trim(), "runner2");
-
-    // 両方のランナーを停止
-    runner1.stop().await?;
-    runner2.stop().await?;
-
-    // 両方のランナーが停止していることを確認
-    assert_eq!(runner1.get_state().await, RunnerState::Stop);
-    assert_eq!(runner2.get_state().await, RunnerState::Stop);
-
-    Ok(())
+    for (i, mut runner) in runners.into_iter().enumerate() {
+        let output = runner.read().await;
+        assert_eq!(output.trim(), format!("Runner {}", i));
+        runner.stop().await;
+        assert_eq!(runner.get_state().await, RunnerState::Stop);
+    }
 } 
