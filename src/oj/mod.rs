@@ -11,22 +11,35 @@ use dirs;
 
 const COOKIE_DIR: &str = ".local/share/online-judge-tools";
 const COOKIE_FILE: &str = "cookie.jar";
+const DOCKERFILE_PATH: &str = "src/oj/Dockerfile";
+const DOCKER_IMAGE_NAME: &str = "oj-container";
 
-pub fn open_in_cursor(url: &str) -> Result<()> {
-    // BROWSER環境変数を確認
+// エラーメッセージ
+const ERROR_DOCKER_IMAGE_NOT_FOUND: &str = "Dockerイメージが見つかりません。'cargo run -- atcoder login'を実行してログインしてください。";
+const ERROR_DOCKERFILE_NOT_FOUND: &str = "Dockerfile not found";
+
+pub fn open_in_cursor(url: &str, source_path: Option<&PathBuf>) -> Result<()> {
+    // 問題ページを開く
     if let Ok(browser) = env::var("BROWSER") {
         Command::new(&browser)
             .arg(url)
             .output()?;
-        return Ok(());
+    } else {
+        println!("{}", format!("Note: To automatically open URLs, please set the $BROWSER environment variable.").yellow());
+    }
+    
+    if let Err(e) = Command::new("code").arg(source_path.unwrap().display().to_string()).output() {
+        println!("Note: Failed to open in VSCode: {}", e);
     }
 
-    // 環境変数が設定されていない場合は、URLを表示するだけ
-    println!("{}", format!("Note: To automatically open URLs, please set the $BROWSER environment variable.").yellow());
+    if let Err(e) = Command::new("cursor").arg(source_path.unwrap().display().to_string()).output() {
+        println!("Note: Failed to open in Cursor: {}", e);
+    }
+
     Ok(())
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ProblemInfo {
     pub url: String,
     pub source_path: PathBuf,
@@ -44,26 +57,34 @@ impl OJContainer {
         Ok(Self { workspace_path, contest })
     }
 
-    fn setup_cookie_dir(&self) -> Result<PathBuf> {
+    fn get_dockerfile_path() -> PathBuf {
+        PathBuf::from(DOCKERFILE_PATH)
+    }
+
+    fn check_dockerfile_exists() -> Result<()> {
+        if !Self::get_dockerfile_path().exists() {
+            println!("{}", "Error: Dockerfile not found".red());
+            return Err(ERROR_DOCKERFILE_NOT_FOUND.into());
+        }
+        Ok(())
+    }
+
+    fn get_cookie_paths() -> Result<(PathBuf, PathBuf)> {
         let home_dir = dirs::home_dir().ok_or("Failed to get home directory")?;
         let cookie_dir = home_dir.join(COOKIE_DIR);
         let cookie_path = cookie_dir.join(COOKIE_FILE);
+        Ok((cookie_dir, cookie_path))
+    }
 
-        // ディレクトリを作成
-        std::fs::create_dir_all(&cookie_dir)?;
-
-        // cookie.jarファイルを作成（存在しない場合）
-        if !cookie_path.exists() {
-            // Set-Cookie3形式の空のcookieファイルを作成
-            std::fs::write(&cookie_path, "#LWP-Cookies-2.0\n")?;
-            std::fs::set_permissions(&cookie_path, std::fs::Permissions::from_mode(0o600))?;
-        }
-
-        Ok(cookie_path)
+    fn setup_cookie_file(cookie_dir: &PathBuf, cookie_path: &PathBuf) -> Result<()> {
+        std::fs::create_dir_all(cookie_dir)?;
+        std::fs::write(cookie_path, "#LWP-Cookies-2.0\n")?;
+        std::fs::set_permissions(cookie_path, std::fs::Permissions::from_mode(0o600))?;
+        Ok(())
     }
 
     async fn run_oj_command(&self, args: &[&str], mount_workspace: bool) -> Result<()> {
-        let cookie_path = self.setup_cookie_dir()?;
+        let (_cookie_dir, cookie_path) = Self::get_cookie_paths()?;
         let mut command = Command::new("docker");
 
         // 基本的なdockerコマンドを構築
@@ -83,7 +104,7 @@ impl OJContainer {
         command.args(["-e", &format!("HOME=/home/oj-user")]);
 
         // cookieファイルをコンテナ内の期待されるパスにマウント
-        command.args(["-v", &format!("{}:/home/oj-user/.local/share/online-judge-tools/cookie.jar", cookie_path.display())]);
+        command.args(["-v", &format!("{}:/home/oj-user/{}/{}", cookie_path.display(), COOKIE_DIR, COOKIE_FILE)]);
 
         // ワークスペースのマウントが必要な場合
         if mount_workspace {
@@ -93,7 +114,7 @@ impl OJContainer {
 
         // OJコマンドを実行
         let status = command
-            .args(["oj-container", "oj"])
+            .args([DOCKER_IMAGE_NAME, "oj"])
             .args(args)
             .status()?;
 
@@ -104,33 +125,28 @@ impl OJContainer {
         Ok(())
     }
 
-    pub async fn ensure_image(&self) -> Result<()> {
-        let dockerfile_path = PathBuf::from("src/oj/Dockerfile");
-        if !dockerfile_path.exists() {
-            println!("{}", "Error: Dockerfile not found".red());
-            return Err("Dockerfile not found".into());
-        }
+    async fn check_image_exists(&self) -> Result<()> {
+        let output = Command::new("docker")
+            .args(["images", "-q", DOCKER_IMAGE_NAME])
+            .output()?;
 
-        println!("{}", "Building OJ container image...".cyan());
-
-        let status = Command::new("docker")
-            .args(["build", "-t", "oj-container", "-f", "src/oj/Dockerfile", "src/oj"])
-            .status()?;
-
-        if !status.success() {
-            return Err("Failed to build docker image".into());
+        if output.stdout.is_empty() {
+            return Err(ERROR_DOCKER_IMAGE_NOT_FOUND.into());
         }
 
         Ok(())
     }
 
-    async fn check_image_exists(&self) -> Result<()> {
-        let output = Command::new("docker")
-            .args(["images", "-q", "oj-container"])
-            .output()?;
+    pub async fn ensure_image(&self) -> Result<()> {
+        Self::check_dockerfile_exists()?;
+        println!("{}", "Building OJ container image...".cyan());
 
-        if output.stdout.is_empty() {
-            return Err("Dockerイメージが見つかりません。'cargo run -- atcoder login'を実行してログインしてください。".into());
+        let status = Command::new("docker")
+            .args(["build", "-t", DOCKER_IMAGE_NAME, "-f", DOCKERFILE_PATH, "src/oj"])
+            .status()?;
+
+        if !status.success() {
+            return Err("Failed to build docker image".into());
         }
 
         Ok(())
@@ -142,30 +158,22 @@ impl OJContainer {
 
         // cookieファイルをリセット
         println!("{}", "Resetting cookie file...".cyan());
-        let home_dir = dirs::home_dir().ok_or("Failed to get home directory")?;
-        let cookie_dir = home_dir.join(COOKIE_DIR);
-        let cookie_path = cookie_dir.join(COOKIE_FILE);
+        let (cookie_dir, cookie_path) = Self::get_cookie_paths()?;
 
         // cookieファイルが存在する場合は削除
         if cookie_path.exists() {
             std::fs::remove_file(&cookie_path)?;
         }
 
-        // ディレクトリを作成し直す
-        std::fs::create_dir_all(&cookie_dir)?;
-        std::fs::write(&cookie_path, "#LWP-Cookies-2.0\n")?;
-        std::fs::set_permissions(&cookie_path, std::fs::Permissions::from_mode(0o600))?;
+        // cookieファイルを作成
+        Self::setup_cookie_file(&cookie_dir, &cookie_path)?;
 
         // Dockerイメージを再ビルド
         println!("{}", "Rebuilding Docker image...".cyan());
-        let dockerfile_path = PathBuf::from("src/oj/Dockerfile");
-        if !dockerfile_path.exists() {
-            println!("{}", "Error: Dockerfile not found".red());
-            return Err("Dockerfile not found".into());
-        }
+        Self::check_dockerfile_exists()?;
 
         let status = Command::new("docker")
-            .args(["build", "--no-cache", "-t", "oj-container", "-f", "src/oj/Dockerfile", "src/oj"])
+            .args(["build", "--no-cache", "-t", DOCKER_IMAGE_NAME, "-f", DOCKERFILE_PATH, "src/oj"])
             .status()?;
 
         if !status.success() {
@@ -196,7 +204,7 @@ impl OJContainer {
 
         self.run_oj_command(&[
             "download",
-            "-d", &format!("{}", relative_problem_dir.display()),
+            "-d", &format!("{}/test", relative_problem_dir.display()),
             &problem.url,
         ], true).await?;
 
@@ -206,6 +214,9 @@ impl OJContainer {
 
     pub async fn submit(&self, problem: &ProblemInfo, _site: &Site, language_id: &str) -> Result<()> {
         println!("{}", format!("Submitting solution for problem {}...", problem.problem_id).cyan());
+
+        // Dockerイメージの存在確認
+        self.check_image_exists().await?;
 
         let source_path_relative = problem.source_path.strip_prefix(&self.workspace_path)
             .map_err(|_| "Failed to get relative source path")?;

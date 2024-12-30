@@ -59,18 +59,18 @@ impl Command for OpenCommand {
             problem_id: problem_id.clone(),
         };
 
-        // 非同期で問題を開く
-        if let Err(e) = oj.open(problem).await {
-            println!("問題を開く際にエラーが発生しました: {}", e);
-            // 重大なエラーではないため、処理を継続
-        }
-        
         // エディタで開く
-        if let Err(e) = open_in_cursor(&url) {
+        if let Err(e) = open_in_cursor(&url, Some(&problem.source_path)) {
             println!("Note: エディタでの表示に失敗しました: {}", e);
             // エディタでの表示失敗は重大なエラーではない
         }
 
+        // 非同期で問題を開く
+        if let Err(e) = oj.open(problem.clone()).await {
+            println!("問題を開く際にエラーが発生しました: {}", e);
+            // 重大なエラーではないため、処理を継続
+        }
+        
         Ok(())
     }
 } 
