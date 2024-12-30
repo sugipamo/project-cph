@@ -4,10 +4,12 @@ use colored::*;
 use std::process::Command;
 use crate::cli::Site;
 use std::env;
+use crate::contest::Contest;
+use users;
 
-const OJ_TOOLS_DIR: &str = ".local/share/online-judge-tools";
 const COOKIE_JAR_NAME: &str = "cookie.jar";
 const CONTAINER_OJ_DIR: &str = "/workspace/.oj";
+const CONTAINER_COOKIE_PATH: &str = "/home/oj-user/.local/share/online-judge-tools/cookie.jar";
 
 pub fn open_in_cursor(url: &str) -> Result<()> {
     // BROWSER環境変数を確認
@@ -32,45 +34,41 @@ pub struct ProblemInfo {
 
 pub struct OJContainer {
     workspace_path: PathBuf,
-    test_dir: PathBuf,
+    contest: Contest,
 }
 
 impl OJContainer {
     pub fn new(workspace_path: PathBuf) -> Result<Self> {
-        let test_dir = workspace_path.join("test");
-        Ok(Self { workspace_path, test_dir })
+        let contest = Contest::new(workspace_path.clone())?;
+        Ok(Self { workspace_path, contest })
     }
 
-    fn setup_cookie_dir(&self) -> Result<(PathBuf, PathBuf)> {
-        let cookie_path = dirs::home_dir()
-            .ok_or("Failed to get home directory")?
-            .join(OJ_TOOLS_DIR)
-            .join(COOKIE_JAR_NAME);
+    fn setup_cookie_dir(&self) -> Result<PathBuf> {
+        let oj_dir = self.workspace_path.join(".oj");
+        let cookie_path = oj_dir.join(COOKIE_JAR_NAME);
 
-        // cookie_pathをクローンして使用
-        let cookie_dir = cookie_path.parent()
-            .ok_or("Failed to get cookie directory")?
-            .to_path_buf();
-
-        // ディレクトリを作成
-        std::fs::create_dir_all(&cookie_dir)?;
+        // .ojディレクトリを作成
+        std::fs::create_dir_all(&oj_dir)?;
 
         // cookie.jarファイルを作成（存在しない場合）
         if !cookie_path.exists() {
             std::fs::write(&cookie_path, "")?;
         }
 
-        Ok((cookie_path, cookie_dir))
+        Ok(cookie_path)
     }
 
     async fn run_oj_command(&self, args: &[&str], mount_workspace: bool) -> Result<()> {
-        let (_, cookie_dir) = self.setup_cookie_dir()?;
-        let cookie_mount = format!("{}:{}", cookie_dir.display(), CONTAINER_OJ_DIR);
+        let cookie_path = self.setup_cookie_dir()?;
         let mut command = Command::new("docker");
 
         // 基本的なdockerコマンドを構築
         command.args(["run", "--rm", "-it"]);
-        command.args(["-v", &cookie_mount]);
+        // ユーザーIDとグループIDを設定
+        command.args(["-u", &format!("{}:{}", users::get_current_uid(), users::get_current_gid())]);
+
+        // cookieファイルをコンテナ内の期待されるパスにマウント
+        command.args(["-v", &format!("{}:{}", cookie_path.display(), CONTAINER_COOKIE_PATH)]);
 
         // ワークスペースのマウントが必要な場合
         if mount_workspace {
@@ -125,18 +123,13 @@ impl OJContainer {
         println!("{}", format!("Opening problem URL: {}", problem.url).cyan());
         println!("{}", format!("Please open this URL in your browser: {}", problem.url).yellow());
 
-        let problem_test_dir = self.test_dir.join(&problem.problem_id);
-        if problem_test_dir.exists() && has_test_cases(&problem_test_dir)? {
-            println!("{}", "Test cases already exist, skipping download.".yellow());
-            return Ok(());
-        }
+        let test_dir = self.contest.root.join("test").join(&problem.problem_id);
 
-        let test_dir_relative = problem_test_dir.strip_prefix(&self.workspace_path)
-            .map_err(|_| "Failed to get relative test directory")?;
+        std::fs::create_dir_all(&test_dir)?;
 
         self.run_oj_command(&[
             "download",
-            "-d", test_dir_relative.to_str().unwrap(),
+            "-d", test_dir.to_str().unwrap(),
             &problem.url,
         ], true).await?;
 
@@ -153,6 +146,7 @@ impl OJContainer {
         self.run_oj_command(&[
             "submit",
             "--language", language_id,
+            "--wait=0",
             "--yes",
             &problem.url,
             source_path_relative.to_str().unwrap(),
