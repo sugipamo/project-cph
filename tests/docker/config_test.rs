@@ -19,8 +19,8 @@ fn test_runner_config_custom() {
 #[test]
 fn test_runner_config_from_yaml() {
     let config = RunnerConfig::from_yaml("src/config/docker.yaml").unwrap();
-    assert_eq!(config.timeout_seconds, 30);
-    assert_eq!(config.memory_limit_mb, 512);
+    assert_eq!(config.timeout_seconds, 5);
+    assert_eq!(config.memory_limit_mb, 128);
     assert_eq!(config.mount_point, "/compile");
 }
 
