@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use tempfile::TempDir;
 use tokio;
-use crate::helpers::{load_test_languages, setup_test_templates as setup_common_templates};
+use crate::helpers::setup_test_templates as setup_common_templates;
 use std::fs;
 
 /// テスト環境をセットアップする
@@ -54,14 +54,6 @@ async fn setup_test_config(test_dir: &PathBuf) {
         )
         .await
         .expect(&format!("{}の作成に失敗しました", filename));
-    }
-}
-
-/// コマンドの実行結果を検証する
-pub fn verify_command_result<T>(result: Result<T, Box<dyn std::error::Error>>) {
-    match result {
-        Ok(_) => (),
-        Err(e) => panic!("コマンドの実行に失敗しました: {}", e),
     }
 }
 

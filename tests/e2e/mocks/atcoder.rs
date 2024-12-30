@@ -32,9 +32,9 @@ impl AtCoderMock {
 
     /// 問題ページのアクセスをモック
     pub async fn mock_problem_page(&self, contest_id: &str, problem_id: &str) {
-        let path = format!("/contests/{}/tasks/{}_{}", contest_id, contest_id, problem_id);
+        let path_str = format!("/contests/{}/tasks/{}_{}", contest_id, contest_id, problem_id);
         Mock::given(method("GET"))
-            .and(path(path))
+            .and(path(&path_str))
             .respond_with(ResponseTemplate::new(200))
             .mount(&self.server)
             .await;
@@ -42,9 +42,9 @@ impl AtCoderMock {
 
     /// 提出APIをモック
     pub async fn mock_submit(&self, contest_id: &str, problem_id: &str) {
-        let path = format!("/contests/{}/submit", contest_id);
+        let path_str = format!("/contests/{}/submit", contest_id);
         Mock::given(method("POST"))
-            .and(path(path))
+            .and(path(&path_str))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "submission_id",
                 "problem_id": format!("{}_{}", contest_id, problem_id),
@@ -55,9 +55,9 @@ impl AtCoderMock {
     }
 
     /// エラーケースをモック
-    pub async fn mock_error(&self, path: &str, status: u16, message: &str) {
+    pub async fn mock_error(&self, path_str: &str, status: u16, message: &str) {
         Mock::given(method("POST"))
-            .and(path(path))
+            .and(path(path_str))
             .respond_with(
                 ResponseTemplate::new(status)
                     .set_body_json(json!({ "error": message }))

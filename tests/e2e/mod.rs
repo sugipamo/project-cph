@@ -8,11 +8,10 @@ mod mocks;
 
 use helpers::{
     setup_test_environment,
-    setup_test_templates,
     verify_directory_structure,
     verify_file_contents,
-    verify_command_result,
 };
+use crate::helpers::setup_test_templates;
 use mocks::{AtCoderMock, TestDockerRunner};
 
 /// AtCoderのワークフローをテストする
@@ -20,7 +19,7 @@ use mocks::{AtCoderMock, TestDockerRunner};
 async fn test_atcoder_workflow() {
     // テスト環境のセットアップ
     let test_dir = setup_test_environment().await;
-    setup_test_templates(&test_dir).await;
+    setup_test_templates();
 
     // モックサーバーの起動
     let mock_server = AtCoderMock::start().await;
@@ -28,7 +27,7 @@ async fn test_atcoder_workflow() {
     let problem_id = "a";
 
     // workコマンドのテスト
-    let result = Command::cargo_bin("cph")
+    Command::cargo_bin("cph")
         .unwrap()
         .args(&["atcoder", "work", contest_id])
         .current_dir(&test_dir)
@@ -50,7 +49,7 @@ contest:
 
     // openコマンドのテスト
     mock_server.mock_problem_page(contest_id, problem_id).await;
-    let result = Command::cargo_bin("cph")
+    Command::cargo_bin("cph")
         .unwrap()
         .args(&["atcoder", "open", problem_id])
         .current_dir(&test_dir)
@@ -70,7 +69,7 @@ contest:
     mock_server.mock_login().await;
     mock_server.mock_submit(contest_id, problem_id).await;
 
-    let result = Command::cargo_bin("cph")
+    Command::cargo_bin("cph")
         .unwrap()
         .args(&["atcoder", "submit", problem_id])
         .current_dir(&test_dir)
@@ -86,13 +85,13 @@ contest:
 async fn test_atcoder_error_cases() {
     // テスト環境のセットアップ
     let test_dir = setup_test_environment().await;
-    setup_test_templates(&test_dir).await;
+    setup_test_templates();
 
     // モックサーバーの起動
     let mock_server = AtCoderMock::start().await;
 
     // 無効なコンテストIDのテスト
-    let result = Command::cargo_bin("cph")
+    Command::cargo_bin("cph")
         .unwrap()
         .args(&["atcoder", "work", "invalid-contest-id"])
         .current_dir(&test_dir)
@@ -109,7 +108,7 @@ async fn test_atcoder_error_cases() {
         .assert()
         .success();
 
-    let result = Command::cargo_bin("cph")
+    Command::cargo_bin("cph")
         .unwrap()
         .args(&["atcoder", "open", "invalid-problem"])
         .current_dir(&test_dir)
@@ -119,7 +118,7 @@ async fn test_atcoder_error_cases() {
 
     // 提出失敗のテスト
     mock_server.mock_error("/contests/abc300/submit", 400, "提出に失敗しました").await;
-    let result = Command::cargo_bin("cph")
+    Command::cargo_bin("cph")
         .unwrap()
         .args(&["atcoder", "submit", "a"])
         .current_dir(&test_dir)

@@ -99,13 +99,29 @@ impl DockerRunner {
         current_state.can_transition_to(&RunnerState::Stop)?;
 
         if !self.container_id.is_empty() {
-            match self.docker.stop_container(&self.container_id, None).await {
+            // まず通常の停止を試みる（10秒のタイムアウト）
+            let stop_options = bollard::container::StopContainerOptions {
+                t: 10,
+            };
+
+            match self.docker.stop_container(&self.container_id, Some(stop_options)).await {
                 Ok(_) => (),
                 Err(e) => {
                     println!("Warning: Failed to stop runner {}: {:?}", self.container_id, e);
-                    // コンテナが既に存在しない場合は無視
+                    // コンテナが存在しない場合は無視
                     if !e.to_string().contains("No such container") {
-                        return Err(DockerError::ConnectionError(e));
+                        // 強制停止を試みる
+                        let kill_options = bollard::container::KillContainerOptions {
+                            signal: "SIGKILL",
+                        };
+                        match self.docker.kill_container(&self.container_id, Some(kill_options)).await {
+                            Ok(_) => (),
+                            Err(e) => {
+                                if !e.to_string().contains("No such container") {
+                                    return Err(DockerError::ConnectionError(e));
+                                }
+                            }
+                        }
                     }
                 }
             }

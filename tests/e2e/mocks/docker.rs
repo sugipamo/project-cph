@@ -24,14 +24,14 @@ pub struct TestDockerRunner {
 
 #[async_trait]
 impl DockerRunner for TestDockerRunner {
-    async fn run_in_docker(&mut self, source_code: &str) -> Result<RunOutput, String> {
+    async fn run_in_docker(&mut self, _source_code: &str) -> Result<RunOutput, String> {
         Ok(RunOutput {
             stdout: "".to_string(),
             stderr: "".to_string(),
         })
     }
 
-    async fn write(&mut self, input: &str) -> Result<(), String> {
+    async fn write(&mut self, _input: &str) -> Result<(), String> {
         Ok(())
     }
 

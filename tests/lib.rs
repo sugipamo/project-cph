@@ -5,7 +5,7 @@ mod helpers;
 mod docker;
 
 #[cfg(test)]
-mod E2E;
+mod e2e;
 
 #[cfg(test)]
 mod tests {
