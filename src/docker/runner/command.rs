@@ -1,9 +1,7 @@
 use std::process::Stdio;
 use tokio::process::Command;
-use tokio::fs;
 use uuid::Uuid;
 use crate::docker::state::RunnerState;
-use std::path::Path;
 
 pub struct DockerCommand {
     container_id: String,
@@ -73,7 +71,7 @@ impl DockerCommand {
     }
 
     // コンテイル言語用のコンパイル実行
-    pub async fn compile(&self, image: &str, compile_cmd: &str, compile_dir: &str) -> Result<(), String> {
+    pub async fn compile(&mut self, image: &str, compile_cmd: &[String], compile_dir: &str) -> Result<(), String> {
         println!("Compiling with command: {:?}", compile_cmd);
         
         let container_name = format!("compiler-{}", Uuid::new_v4());
@@ -84,11 +82,11 @@ impl DockerCommand {
             .arg("--name")
             .arg(&container_name)
             .arg("-v")
-            .arg(format!("{}:{}", compile_dir, compile_dir))  // コンパイルディレクトリをマウント
+            .arg(format!("{}:{}", compile_dir, compile_dir))
             .arg("-w")
-            .arg(compile_dir)  // 作業ディレクトリを設定
+            .arg(compile_dir)
             .arg(image)
-            .arg(compile_cmd)
+            .args(compile_cmd)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
@@ -113,11 +111,11 @@ impl DockerCommand {
 
     // コンテナの作成と実行
     pub async fn run_container(
-        &self,
+        &mut self,
         image: &str,
-        run_cmd: &str,
+        run_cmd: &[String],
         source_code: &str,
-        timeout: u64,
+        _timeout: u64,
         memory_limit: u64,
         compile_dir: Option<&str>,
     ) -> Result<String, String> {
@@ -127,15 +125,14 @@ impl DockerCommand {
         let mut command = Command::new("docker");
         command
             .arg("run")
-            .arg("--rm")  // コンテナを自動削除
-            .arg(format!("--memory={}m", memory_limit))  // メモリ制限
-            .arg("--memory-swap=-1")  // スワップ無効化
-            .arg("--cpus=1.0")  // CPU使用率を制限
-            .arg("--network=none")  // ネットワーク無効化
+            .arg("--rm")
+            .arg(format!("--memory={}m", memory_limit))
+            .arg("--memory-swap=-1")
+            .arg("--cpus=1.0")
+            .arg("--network=none")
             .arg("--name")
             .arg(&container_name);
 
-        // コンパイル済みの場合はディレクトリをマウント
         if let Some(dir) = compile_dir {
             command
                 .arg("-v")
@@ -146,9 +143,8 @@ impl DockerCommand {
 
         command
             .arg(image)
-            .arg(run_cmd);
+            .args(run_cmd);
 
-        // インタプリタ言語の場合はソースコードを直接渡す
         if compile_dir.is_none() {
             command.arg(source_code);
         }
@@ -206,14 +202,17 @@ impl DockerCommand {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_state(&self) -> RunnerState {
         self.state.clone()
     }
 
+    #[allow(dead_code)]
     pub fn get_output(&self) -> &str {
         &self.output
     }
 
+    #[allow(dead_code)]
     pub fn get_error(&self) -> &str {
         &self.error
     }

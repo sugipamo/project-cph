@@ -1,7 +1,7 @@
 pub mod config;
-mod runner;
-mod state;
+pub mod runner;
+pub mod state;
 
-pub use config::RunnerConfig;
+pub use config::{RunnerConfig, LanguageConfig};
 pub use runner::DockerRunner;
 pub use state::RunnerState; 

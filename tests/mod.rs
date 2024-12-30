@@ -1,6 +1,5 @@
 pub mod docker;
 pub mod helpers;
-pub mod e2e;
 
 #[cfg(test)]
 mod tests {

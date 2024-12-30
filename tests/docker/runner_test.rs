@@ -1,7 +1,7 @@
 use std::process::Command;
 use tokio::runtime::Runtime;
-use crate::docker::runner::DockerRunner;
-use crate::docker::config::{RunnerConfig, LanguageConfig};
+use cph::docker::DockerRunner;
+use cph::docker::{RunnerConfig, LanguageConfig};
 
 // Dockerデーモンが利用可能かチェックする
 fn check_docker_available() -> bool {
@@ -70,10 +70,7 @@ fn test_timeout() {
         let mut runner = DockerRunner::new(config, language_config);
         
         // 無限ループのプログラム
-        let source_code = r#"
-            while True:
-                pass
-        "#;
+        let source_code = "while True: pass";  // インデントを削除
         
         // 実行
         let result = runner.run_in_docker(source_code).await;
@@ -94,9 +91,7 @@ fn test_memory_limit() {
         let mut runner = DockerRunner::new(config, language_config);
         
         // メモリを大量に消費するプログラム
-        let source_code = r#"
-            x = [0] * 1000000000  # 大きな配列を作成
-        "#;
+        let source_code = "x = [0] * 1000000000";  // インデントを削除
         
         // 実行
         let result = runner.run_in_docker(source_code).await;

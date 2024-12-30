@@ -1,11 +1,8 @@
 #[cfg(test)]
-mod helpers;
-
-#[cfg(test)]
 mod docker;
 
 #[cfg(test)]
-mod e2e;
+mod helpers;
 
 #[cfg(test)]
 mod tests {

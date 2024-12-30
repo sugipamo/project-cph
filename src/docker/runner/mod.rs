@@ -42,7 +42,9 @@ impl DockerRunner {
             Ok(result) => result,
             Err(_) => {
                 println!("Execution timed out after {} seconds", self.config.timeout);
-                self.cleanup().await;
+                if let Err(e) = self.cleanup().await {
+                    println!("Failed to cleanup after timeout: {}", e);
+                }
                 *self.state.lock().await = RunnerState::Error;
                 Err("Execution timeout".to_string())
             }
@@ -59,7 +61,7 @@ impl DockerRunner {
             if let Some(ref compile_cmd) = self.language_config.compile {
                 if let Err(e) = self.command.compile(
                     &self.language_config.image,
-                    compile_cmd,
+                    compile_cmd.as_slice(),
                     self.language_config.get_compile_dir()
                 ).await {
                     println!("Compilation failed: {}", e);
@@ -71,7 +73,7 @@ impl DockerRunner {
         // 実行
         let output = self.command.run_container(
             &self.language_config.image,
-            &self.language_config.run,
+            self.language_config.run.as_slice(),
             source_code,
             self.config.timeout,
             self.config.memory_limit,

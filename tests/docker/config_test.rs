@@ -1,4 +1,4 @@
-use crate::docker::config::{RunnerConfig, LanguageConfig};
+use cph::docker::{RunnerConfig, LanguageConfig};
 
 #[test]
 fn test_runner_config_default() {
