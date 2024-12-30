@@ -30,9 +30,21 @@ docker --version
 docker run hello-world
 ```
 
-### 3. エディタ
+### 3. 言語環境
+
+#### Rust
+上記のRust toolchainで対応
+
+#### PyPy
+Dockerコンテナで実行されるため、ローカルへのインストールは不要
+
+### 4. エディタ
 以下のいずれかをインストール：
 - [Visual Studio Code](https://code.visualstudio.com/)
+  - 推奨拡張機能：
+    - rust-analyzer
+    - Python
+    - YAML
 - [Cursor](https://cursor.sh/)
 
 ## cphのインストール

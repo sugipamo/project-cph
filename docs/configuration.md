@@ -4,19 +4,29 @@
 
 ```
 .
-├── contests/          # アーカイブされたコンテスト
-│   └── abc001/
-│       └── a.rs
-├── contest_template/  # コンテスト用のテンプレート
-│   └── template/     # 言語別テンプレート
-│       ├── main.rs   # Rust用テンプレート
-│       ├── main.py   # Python用テンプレート
-│       └── template_gen.rs  # 生成スクリプトのテンプレート
-└── src/              # 現在の問題ファイル
-    ├── a.rs
-    ├── contests.yaml # コンテスト設定
-    ├── template/     # コピーされたテンプレート
-    └── .moveignore   # 移動対象外ファイルの設定
+├── active_contest/    # 現在作業中のコンテスト
+│   ├── contests.yaml # コンテスト設定
+│   ├── .moveignore  # 移動対象外ファイルの設定
+│   ├── a/           # 問題Aのディレクトリ
+│   │   ├── solution.{ext}  # 解答ファイル
+│   │   ├── generator.{ext} # テストケース生成
+│   │   └── test/    # テストケース
+│   └── b/           # 問題Bのディレクトリ
+│
+├── contests/         # アーカイブされたコンテスト
+│   └── abc001/      # コンテストごとのディレクトリ
+│       └── a/       # 問題ごとのディレクトリ
+│
+└── contest_template/ # 言語別テンプレート
+    ├── cpp/         # C++用テンプレート
+    │   ├── solution.cpp
+    │   └── generator.cpp
+    ├── rust/        # Rust用テンプレート
+    │   ├── solution.rs
+    │   └── generator.rs
+    └── pypy/        # PyPy用テンプレート
+        ├── solution.py
+        └── generator.py
 ```
 
 ## 設定ファイル
@@ -26,21 +36,9 @@
 コンテストの基本設定を管理します：
 
 ```yaml
-contest:
-  id: "abc001"
-  url: "https://atcoder.jp/contests/abc001"
-  problems:
-    - id: "a"
-      url: "https://atcoder.jp/contests/abc001/tasks/abc001_a"
-    - id: "b"
-      url: "https://atcoder.jp/contests/abc001/tasks/abc001_b"
-
-settings:
-  language: "rust"  # デフォルトの言語
-  template: "main.rs"  # デフォルトのテンプレート
-  test:
-    timeout: 30  # テストのタイムアウト（秒）
-    memory_limit: 256  # メモリ制限（MB）
+contest_id: "abc001"
+language: "rust"  # 使用言語
+site: "atcoder"   # 対象サイト
 ```
 
 ### .moveignore
@@ -49,16 +47,19 @@ settings:
 
 ```
 # コメント行
-template/      # テンプレートディレクトリ
 contests.yaml  # 設定ファイル
 .moveignore    # 移動対象外設定ファイル
+
+# テンプレートファイル - コンテスト間で共有
+template/
+template/**
 ```
 
 ## テンプレートのカスタマイズ
 
 ### 言語別テンプレート
 
-#### Rust (main.rs)
+#### Rust (solution.rs)
 ```rust
 use proconio::input;
 
@@ -71,7 +72,7 @@ fn main() {
 }
 ```
 
-#### PyPy (main.py)
+#### PyPy (solution.py)
 ```python
 def main():
     n = int(input())
@@ -81,9 +82,22 @@ if __name__ == "__main__":
     main()
 ```
 
+#### C++ (solution.cpp)
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    cout << n << endl;
+    return 0;
+}
+```
+
 ### テンプレートの編集方法
 
-1. `contest_template/template/`ディレクトリ内の対応するファイルを編集
+1. `contest_template/{言語}/`ディレクトリ内の対応するファイルを編集
 2. 変更は次回の問題作成時から適用
 
 ## テスト設定
@@ -110,6 +124,7 @@ settings:
 推奨される拡張機能：
 - rust-analyzer
 - Python
+- C/C++
 - YAML
 
 ### Cursor
