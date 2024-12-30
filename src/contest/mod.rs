@@ -165,24 +165,69 @@ impl Contest {
             fs::create_dir_all(&contest_dir)?;
         }
 
-        // ファイルの移動
+        // 再帰的にディレクトリを処理する関数
+        fn process_directory(
+            source_dir: &Path,
+            target_dir: &Path,
+            ignore_patterns: &[String],
+            should_ignore: &dyn Fn(&str, &[String]) -> bool
+        ) -> Result<()> {
+            for entry in fs::read_dir(source_dir)? {
+                let entry = entry?;
+                let path = entry.path();
+                let name = path.file_name()
+                    .ok_or_else(|| format!("Invalid name: {}", path.display()))?
+                    .to_string_lossy()
+                    .into_owned();
+
+                // .moveignoreパターンに一致する場合はスキップ
+                if should_ignore(&name, ignore_patterns) {
+                    println!("移動をスキップ: {}", name);
+                    continue;
+                }
+
+                let target_path = target_dir.join(&name);
+
+                if path.is_dir() {
+                    // ディレクトリの場合は再帰的に処理
+                    if !target_path.exists() {
+                        fs::create_dir_all(&target_path)?;
+                    }
+                    process_directory(&path, &target_path, ignore_patterns, should_ignore)?;
+                } else {
+                    // ファイルの場合は移動
+                    println!("ファイルを移動: {} -> {}", path.display(), target_path.display());
+                    fs::rename(&path, &target_path)?;
+                }
+            }
+            Ok(())
+        }
+
+        // 問題ディレクトリを走査
         for entry in fs::read_dir(&self.active_contest_dir)? {
             let entry = entry?;
             let path = entry.path();
-            let file_name = path.file_name()
-                .ok_or_else(|| format!("Invalid file name: {}", path.display()))?
+            let name = path.file_name()
+                .ok_or_else(|| format!("Invalid name: {}", path.display()))?
                 .to_string_lossy()
                 .into_owned();
 
-            // .moveignoreパターンに一致するファイルはスキップ
-            if self.should_ignore(&file_name, &ignore_patterns) {
-                println!("移動をスキップ: {}", file_name);
+            // .moveignoreパターンに一致する場合はスキップ
+            if self.should_ignore(&name, &ignore_patterns) {
+                println!("移動をスキップ: {}", name);
                 continue;
             }
 
-            // ファイルを移動
-            if path.is_file() {
-                let target_path = contest_dir.join(&file_name);
+            let target_path = contest_dir.join(&name);
+
+            if path.is_dir() {
+                // ディレクトリの場合は再帰的に処理
+                if !target_path.exists() {
+                    fs::create_dir_all(&target_path)?;
+                }
+                process_directory(&path, &target_path, &ignore_patterns, &|n, p| self.should_ignore(n, p))?;
+            } else {
+                // ファイルの場合は移動
                 println!("ファイルを移動: {} -> {}", path.display(), target_path.display());
                 fs::rename(&path, &target_path)?;
             }
