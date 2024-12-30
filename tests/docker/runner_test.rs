@@ -127,17 +127,13 @@ fn test_memory_limit() {
     rt.block_on(async {
         // docker.yamlから設定を読み込む
         let mut config = RunnerConfig::from_yaml("src/config/docker.yaml").unwrap();
-        // メモリ制限を6MBに設定
-        config.memory_limit_mb = 6;
+        // メモリ制限を32MBに設定（より現実的な値）
+        config.memory_limit_mb = 32;
         let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", "python").unwrap();
         let mut runner = DockerRunner::new(config, language_config);
         
         // メモリを大量に消費するプログラム
-        let source_code = r#"
-            x = []
-            while True:
-                x.extend([1] * 1000000)
-        "#;
+        let source_code = "x = []\nwhile True:\n    x.extend([1] * 1000000)";
         
         // 実行
         let result = runner.run_in_docker(source_code).await;
