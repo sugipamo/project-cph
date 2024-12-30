@@ -5,19 +5,19 @@ use tokio::sync::Mutex;
 use tokio::time::{timeout, Duration};
 
 use crate::docker::state::RunnerState;
-use crate::docker::config::RunnerConfig;
+use crate::docker::config::DockerConfig;
 use crate::config::languages::{LanguageConfig, LanguageInfo};
 use self::command::DockerCommand;
 
 pub struct DockerRunner {
     command: DockerCommand,
-    config: RunnerConfig,
+    config: DockerConfig,
     language_info: LanguageInfo,
     state: Arc<Mutex<RunnerState>>,
 }
 
 impl DockerRunner {
-    pub fn new(config: RunnerConfig, language_info: LanguageInfo) -> Self {
+    pub fn new(config: DockerConfig, language_info: LanguageInfo) -> Self {
         Self {
             command: DockerCommand::new(),
             config,
@@ -27,7 +27,7 @@ impl DockerRunner {
     }
 
     pub fn from_language(language: &str) -> std::io::Result<Self> {
-        let config = RunnerConfig::default();
+        let config = DockerConfig::default();
         let language_info = LanguageConfig::from_yaml("src/config/languages.yaml", language)?;
         
         Ok(Self::new(config, language_info))

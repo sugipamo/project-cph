@@ -6,7 +6,7 @@ use tokio::time::sleep;
 use tokio::time::timeout;
 use futures::future::join_all;
 
-use crate::docker::{DockerRunner, RunnerConfig, RunnerState};
+use crate::docker::{DockerRunner, DockerConfig, RunnerState};
 
 const MAX_BUFFER_SIZE: usize = 1024 * 1024;  // 1MB
 const OPERATION_TIMEOUT: Duration = Duration::from_secs(15);  // 15秒に延長
@@ -51,14 +51,14 @@ impl RunnersState {
 
 pub struct DockerRunners {
     docker: Docker,
-    config: RunnerConfig,
+    config: DockerConfig,
     runners: Arc<Mutex<Vec<Arc<Mutex<DockerRunner>>>>>,
     connections: Arc<Mutex<Vec<Vec<usize>>>>,
     state: Arc<Mutex<RunnersState>>,
 }
 
 impl DockerRunners {
-    pub fn new(docker: Docker, config: RunnerConfig) -> Self {
+    pub fn new(docker: Docker, config: DockerConfig) -> Self {
         Self {
             docker,
             config,

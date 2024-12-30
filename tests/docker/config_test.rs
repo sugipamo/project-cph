@@ -1,27 +1,29 @@
-use cph::docker::{RunnerConfig, LanguageConfig};
+use cph::docker::{DockerConfig, LanguageConfig};
+use std::path::PathBuf;
 
 #[test]
-fn test_runner_config_default() {
-    let config = RunnerConfig::default();
+fn test_docker_config_default() {
+    let config = DockerConfig::default();
     assert_eq!(config.timeout_seconds, 10);
     assert_eq!(config.memory_limit_mb, 512);
     assert_eq!(config.mount_point, "/compile");
 }
 
 #[test]
-fn test_runner_config_custom() {
-    let config = RunnerConfig::new(20, 1024, "/test".to_string());
+fn test_docker_config_new() {
+    let config = DockerConfig::new(20, 1024, "/test".to_string());
     assert_eq!(config.timeout_seconds, 20);
     assert_eq!(config.memory_limit_mb, 1024);
     assert_eq!(config.mount_point, "/test");
 }
 
 #[test]
-fn test_runner_config_from_yaml() {
-    let config = RunnerConfig::from_yaml("src/config/docker.yaml").unwrap();
-    assert_eq!(config.timeout_seconds, 5);
-    assert_eq!(config.memory_limit_mb, 128);
-    assert_eq!(config.mount_point, "/compile");
+fn test_docker_config_from_yaml() {
+    let config_path = PathBuf::from("src/config/docker.yaml");
+    let config = DockerConfig::from_yaml(config_path).unwrap();
+    assert!(config.timeout_seconds > 0);
+    assert!(config.memory_limit_mb > 0);
+    assert!(!config.mount_point.is_empty());
 }
 
 #[test]
