@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use tempfile::TempDir;
 use tokio;
+use crate::helpers::{load_test_languages, setup_test_templates as setup_common_templates};
+use std::fs;
 
 /// テスト環境をセットアップする
 pub async fn setup_test_environment() -> PathBuf {
@@ -27,109 +29,31 @@ pub async fn setup_test_environment() -> PathBuf {
     // テスト用の設定ファイルをコピー
     setup_test_config(&temp_dir).await;
 
+    // 共通のテンプレートをセットアップ
+    setup_common_templates();
+
     temp_dir
 }
 
 /// テスト用の設定ファイルを作成
 async fn setup_test_config(test_dir: &PathBuf) {
-    // languages.yaml
-    let languages_yaml = r#"
-languages:
-  rust:
-    display_name: "Rust (1.42.0)"
-    extension: "rs"
-    site_ids:
-      atcoder: "4050"
-    runner:
-      image: "rust:1.42.0"
-      compile: "rustc {source} -o {binary}"
-      run: "./{binary}"
-      compile_dir: "/workspace"
-  python:
-    display_name: "Python (3.8.2)"
-    extension: "py"
-    site_ids:
-      atcoder: "4006"
-    runner:
-      image: "python:3.8.2"
-      run: "python {source}"
-      compile_dir: "/workspace"
-"#;
-
-    // docker.yaml
-    let docker_yaml = r#"
-timeout_seconds: 5
-memory_limit_mb: 512
-mount_point: "/workspace"
-"#;
-
-    // sites.yaml
-    let sites_yaml = r#"
-sites:
-  atcoder:
-    aliases:
-      - at-coder
-      - at_coder
-      - AtCoder
-      - ac
-    url_pattern: "https://atcoder.jp/contests/{contest_id}/tasks/{problem_id}"
-"#;
-
-    // 設定ファイルを書き込む
+    // 既存の設定ファイルをコピー
     let config_files = [
-        ("languages.yaml", languages_yaml),
-        ("docker.yaml", docker_yaml),
-        ("sites.yaml", sites_yaml),
+        ("languages.yaml", "src/config/languages.yaml"),
+        ("docker.yaml", "src/config/docker.yaml"),
+        ("sites.yaml", "src/config/sites.yaml"),
     ];
 
-    for (filename, content) in config_files.iter() {
+    for (filename, source_path) in config_files.iter() {
+        let content = fs::read_to_string(source_path)
+            .unwrap_or_else(|_| panic!("{}の読み込みに失敗しました", source_path));
+
         tokio::fs::write(
             test_dir.join("src/config").join(filename),
             content.trim(),
         )
         .await
         .expect(&format!("{}の作成に失敗しました", filename));
-    }
-}
-
-/// テスト用のテンプレートファイルを作成
-pub async fn setup_test_templates(test_dir: &PathBuf) {
-    let templates = [
-        ("rust", "main.rs", r#"
-use proconio::input;
-
-fn main() {
-    input! {
-        n: i32,
-    }
-    println!("{}", n);
-}
-"#),
-        ("python", "main.py", r#"
-def solve():
-    n = int(input())
-    print(n)
-
-if __name__ == '__main__':
-    solve()
-"#),
-    ];
-
-    for (lang, filename, content) in templates.iter() {
-        let template_dir = test_dir
-            .join("active_contest/template")
-            .join(lang);
-        
-        tokio::fs::create_dir_all(&template_dir)
-            .await
-            .expect("テンプレートディレクトリの作成に失敗しました");
-
-        tokio::fs::write(
-            template_dir.join(filename),
-            content.trim(),
-        )
-        .await
-        .expect("テンプレートファイルの作成に失敗しました");
     }
 }
 
