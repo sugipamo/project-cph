@@ -1,74 +1,72 @@
-# 実装計画詳細
+# プロジェクト構造変更タスク
 
-## フェーズ1: テンプレート構造の変更
-予想所要時間: 2-3時間
+## 1. テンプレート構造の変更
 
-1. contest_template/の再構成
-   - [x] 各言語ディレクトリの作成（pypy, rust, cpp）
-   - [ ] 各言語用の基本ファイル作成
-     - solution.[ext]
-     - generator.[ext]
-     - .moveignore
-   - [ ] 既存のテンプレートファイルを新構造に移動
+### 設定ファイルの更新
+- [ ] `src/config/languages.yaml`の更新
+  - テンプレートパスの構造を新しい形式に対応
+  - 言語ごとの.moveignoreの設定を追加
 
-2. 設定ファイルの更新
-   - [ ] src/config/languages.yamlの更新
-     ```yaml
-     # 更新例
-     rust:
-       template_path: "contest_template/rust"
-       moveignore_path: "contest_template/rust/.moveignore"
-     ```
+## 2. active_contest構造の変更
 
-## フェーズ2: active_contest構造の変更
-予想所要時間: 3-4時間
+### ディレクトリ構造の変更
+- [ ] 問題ごとのディレクトリ構造に変更
+  ```
+  active_contest/
+  ├── a/
+  │   ├── solution.py
+  │   ├── generator.py
+  │   ├── test/
+  │   └── .moveignore
+  ├── b/
+  │   ├── solution.py
+  │   ├── generator.py
+  │   ├── test/
+  │   └── .moveignore
+  └── contests.yaml
+  ```
 
-1. ディレクトリ構造の変更
-   - [ ] 問題ごとのディレクトリ作成スクリプト実装
-   - [ ] test/ディレクトリの自動作成機能追加
-   - [ ] .moveignoreの自動配置機能実装
+## 3. コードの修正
 
-2. ファイル移行スクリプト作成
-   ```rust
-   // 実装すべき主な機能
-   - 問題IDの抽出
-   - ディレクトリ作成
-   - ファイル移動
-   - テストケース移動
-   ```
+### src/contest/mod.rs
+- [ ] `get_source_path`メソッドの更新
+  - 新しいディレクトリ構造に対応
+  - 問題IDごとのディレクトリを考慮
 
-## フェーズ3: コードベースの更新
-予想所要時間: 4-5時間
+### src/cli/commands/
+- [ ] `open.rs`の修正
+  - テストケースのダウンロード先を問題ディレクトリ内の`test/`に変更
+- [ ] `generate.rs`の修正
+  - 問題ディレクトリの作成処理を追加
+  - テンプレートのコピー処理を新構造に対応
+- [ ] `work.rs`の修正
+  - 新しいディレクトリ構造でのファイル移動処理に対応
 
-1. src/contest/mod.rs
-   - [ ] get_source_pathの更新
-     ```rust
-     // 新しいパス形式
-     format!("active_contest/{}/solution.{}", problem_id, extension)
-     ```
+### src/oj/mod.rs
+- [ ] `open`メソッドの修正
+  - テストケースのダウンロードパスを問題ディレクトリ内に変更
 
-2. src/cli/commands/の更新
-   - [ ] open.rs
-     - テストケースダウンロードパスの更新
-     - 問題ディレクトリ作成ロジックの追加
-   - [ ] generate.rs
-     - 新ディレクトリ構造対応
-   - [ ] work.rs
-     - ファイル移動処理の更新
+## 4. テストの更新
 
-3. src/oj/mod.rs
-   - [ ] openメソッドの更新
-     - テストケース保存先の変更
-     - ディレクトリ構造確認処理の追加
+### tests/
+- [ ] `helpers/mod.rs`の更新
+  - テスト用テンプレートディレクトリ構造の変更
+- [ ] 統合テストの更新
+  - 新しいディレクトリ構造に対応したテストケースの追加
 
-## フェーズ4: テストとドキュメント
-予想所要時間: 2-3時間
+## 5. ドキュメントの更新
 
-1. テスト更新
-   - [ ] helpers/mod.rsの更新
-   - [ ] 新構造用統合テストの追加
-   - [ ] 既存テストの修正
+### docs/
+- [ ] `configuration.md`の更新
+  - 新しいディレクトリ構造の説明を追加
+  - テンプレートのカスタマイズ方法の更新
+- [ ] `usage.md`の更新
+  - 新しい使用方法の説明を追加
 
-2. ドキュメント更新
-   - [ ] configuration.md
-   - [ ] usage.md
+## 6. 移行スクリプト
+
+### tools/
+- [ ] 既存のプロジェクトを新構造に移行するスクリプトの作成
+  - 既存の問題ファイルを新しいディレクトリ構造に移動
+  - テストケースの移動
+  - テンプレートの移行
