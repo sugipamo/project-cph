@@ -1,0 +1,4 @@
+.moveignore
+*.o
+*.out
+*.exe 

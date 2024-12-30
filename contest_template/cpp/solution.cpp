@@ -1,15 +1,11 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-void solve() {
+int main() {
     int n;
     cin >> n;
+    
+    // TODO: Implement solution
     cout << n << endl;
-}
-
-int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-    solve();
     return 0;
 } 
