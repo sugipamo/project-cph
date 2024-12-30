@@ -34,8 +34,11 @@ fn test_python_runner() {
     super::setup();
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        // Pythonランナーの作成
-        let mut runner = DockerRunner::from_language("python").unwrap();
+        let docker_config = load_docker_config();
+        // Pythonランナーの作成（設定ファイルから値を読み込む）
+        let config = RunnerConfig::new(docker_config.timeout_seconds, docker_config.memory_limit_mb);
+        let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", "python").unwrap();
+        let mut runner = DockerRunner::new(config, language_config);
         
         // Hello Worldプログラム
         let source_code = r#"print("Hello, World!")"#;
@@ -53,8 +56,11 @@ fn test_rust_runner() {
     super::setup();
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        // Rustランナーの作成
-        let mut runner = DockerRunner::from_language("rust").unwrap();
+        let docker_config = load_docker_config();
+        // Rustランナーの作成（設定ファイルから値を読み込む）
+        let config = RunnerConfig::new(docker_config.timeout_seconds, docker_config.memory_limit_mb);
+        let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", "rust").unwrap();
+        let mut runner = DockerRunner::new(config, language_config);
         
         // Hello Worldプログラム
         let source_code = r#"
@@ -100,17 +106,31 @@ fn test_memory_limit() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
         let docker_config = load_docker_config();
-        // メモリ制限を10MBに設定
-        let config = RunnerConfig::new(docker_config.timeout_seconds, 10);
+        // メモリ制限を6MBに設定（Dockerの最小制限）
+        let config = RunnerConfig::new(docker_config.timeout_seconds, 6);
         let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", "python").unwrap();
         let mut runner = DockerRunner::new(config, language_config);
         
-        // メモリを大量に消費するプログラム
-        let source_code = "x = [0] * 1000000000";
+        // メモリを大量に消費するプログラム（より確実なメモリ確保）
+        let source_code = r#"
+# メモリを大量に消費するプログラム
+memory = []
+try:
+    # 一度に大きなメモリを確保して確実にOOMを発生させる
+    chunk = bytearray(20 * 1024 * 1024)  # 20MB（制限の約3倍）
+    memory.append(chunk)
+    print("Memory allocation succeeded unexpectedly")
+except MemoryError:
+    print("Memory allocation failed")
+    exit(137)  # OOMエラーを示す終了コード
+"#;
         
         // 実行
         let result = runner.run_in_docker(source_code).await;
         assert!(result.is_err(), "メモリ制限エラーが発生すべき");
+        let err = result.unwrap_err();
+        assert!(err.contains("exit code") || err.contains("killed") || err.contains("OOM") || err.contains("137"),
+                "期待されるエラーメッセージが含まれていません: {}", err);
     });
     super::teardown();
 }
@@ -120,8 +140,11 @@ fn test_compilation_error() {
     super::setup();
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        // Rustランナーの作成
-        let mut runner = DockerRunner::from_language("rust").unwrap();
+        let docker_config = load_docker_config();
+        // Rustランナーの作成（設定ファイルから値を読み込む）
+        let config = RunnerConfig::new(docker_config.timeout_seconds, docker_config.memory_limit_mb);
+        let language_config = LanguageConfig::from_yaml("src/config/languages.yaml", "rust").unwrap();
+        let mut runner = DockerRunner::new(config, language_config);
         
         // コンパイルエラーを含むプログラム
         let source_code = r#"

@@ -2,9 +2,10 @@ use std::process::Stdio;
 use tokio::process::Command;
 use uuid::Uuid;
 use crate::docker::state::RunnerState;
+use std::time::Duration;
 
 pub struct DockerCommand {
-    container_id: String,
+    container_name: String,
     state: RunnerState,
     output: String,
     error: String,
@@ -13,7 +14,7 @@ pub struct DockerCommand {
 impl DockerCommand {
     pub fn new() -> Self {
         Self {
-            container_id: String::new(),
+            container_name: String::new(),
             state: RunnerState::Ready,
             output: String::new(),
             error: String::new(),
@@ -115,23 +116,22 @@ impl DockerCommand {
         image: &str,
         run_cmd: &[String],
         source_code: &str,
-        _timeout: u64,
+        timeout: u64,
         memory_limit: u64,
         compile_dir: Option<&str>,
     ) -> Result<String, String> {
         println!("Running container with image: {} and command: {:?}", image, run_cmd);
         
-        let container_name = format!("runner-{}", Uuid::new_v4());
+        self.container_name = format!("runner-{}", Uuid::new_v4());
         let mut command = Command::new("docker");
         command
             .arg("run")
             .arg("--rm")
-            .arg(format!("--memory={}m", memory_limit))
-            .arg("--memory-swap=-1")
+            .arg(format!("-m={}m", memory_limit))
             .arg("--cpus=1.0")
             .arg("--network=none")
             .arg("--name")
-            .arg(&container_name);
+            .arg(&self.container_name);
 
         if let Some(dir) = compile_dir {
             command
@@ -149,12 +149,36 @@ impl DockerCommand {
             command.arg(source_code);
         }
 
+        // タイムアウト用のスレッドを起動
+        let container_name_clone = self.container_name.clone();
+        let timeout_handle = tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(timeout)).await;
+            let stop_command = Command::new("docker")
+                .args(["stop", &container_name_clone])
+                .output()
+                .await;
+            if let Err(e) = stop_command {
+                println!("Failed to stop container after timeout: {}", e);
+            }
+        });
+
         let output = command.output().await;
+        timeout_handle.abort();  // コンテナが終了したらタイムアウトハンドラを中止
 
         match output {
             Ok(output) => {
                 self.output = String::from_utf8_lossy(&output.stdout).to_string();
                 self.error = String::from_utf8_lossy(&output.stderr).to_string();
+                
+                // 終了コードを確認
+                if !output.status.success() {
+                    let exit_code = output.status.code().unwrap_or(-1);
+                    println!("Container exited with code: {}", exit_code);
+                    if exit_code == 137 || self.error.contains("OOM") {
+                        self.state = RunnerState::Error;
+                        return Err("Container killed by OOM killer".to_string());
+                    }
+                }
                 
                 if !self.error.is_empty() {
                     println!("Container stderr: {}", self.error);
@@ -176,14 +200,14 @@ impl DockerCommand {
 
     // コンテナの停止
     pub async fn stop_container(&mut self) -> bool {
-        if self.container_id.is_empty() {
+        if self.container_name.is_empty() {
             return true;
         }
 
-        println!("Stopping container: {}", self.container_id);
+        println!("Stopping container: {}", self.container_name);
         
         let output = Command::new("docker")
-            .args(["stop", &self.container_id])
+            .args(["stop", &self.container_name])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
@@ -193,6 +217,7 @@ impl DockerCommand {
             Ok(_) => {
                 println!("Container stopped successfully");
                 self.state = RunnerState::Stop;
+                self.container_name.clear();  // コンテナ名をクリア
                 true
             }
             Err(e) => {

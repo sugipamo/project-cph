@@ -1,4 +1,4 @@
 # Docker実行環境の設定
-timeout_seconds: 5  # 実行タイムアウト（秒）
+timeout_seconds: 30  # 実行タイムアウト（秒）
 memory_limit_mb: 512  # メモリ制限（MB）
 mount_point: "/workspace"  # コンテナ内のマウントポイント 

@@ -77,7 +77,8 @@ impl DockerRunner {
                     host_config: Some(HostConfig {
                         auto_remove: Some(true),
                         memory: Some(self.config.memory_limit_mb * 1024 * 1024),
-                        memory_swap: Some(self.config.memory_limit_mb * 1024 * 1024),
+                        memory_swap: Some(0),
+                        oom_kill_disable: Some(false),
                         nano_cpus: Some(1_000_000_000),
                         security_opt: Some(vec![
                             String::from("seccomp=unconfined"),
