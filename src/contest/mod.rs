@@ -109,7 +109,7 @@ impl Contest {
             
             // テンプレートパスを取得
             if let Some(template_path) = lang_config.get_template(language, "solution") {
-                let source = PathBuf::from("templates/template").join(&template_path.solution);
+                let source = PathBuf::from("contest_template/template").join(&template_path.solution);
                 if !source.exists() {
                     return Err(format!("テンプレートファイルが見つかりません: {}", source.display()).into());
                 }
