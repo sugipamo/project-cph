@@ -24,3 +24,6 @@ active_contest
 # テストワークスペース
 /tests/test_workspace/
 .DS_Store
+
+# online-judge-tools
+.oj

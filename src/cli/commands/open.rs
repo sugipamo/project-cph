@@ -18,7 +18,7 @@ impl OpenCommand {
 
     fn get_problem_url(&self, contest_id: &str, problem_id: &str) -> String {
         match self.site {
-            Site::AtCoder => format!("https://atcoder.jp/contests/{}/tasks/{}_{}", contest_id, problem_id, problem_id),
+            Site::AtCoder => format!("https://atcoder.jp/contests/{}/tasks/{}_{}", contest_id, contest_id, problem_id),
         }
     }
 }
@@ -49,6 +49,12 @@ impl Command for OpenCommand {
 
         // OJコンテナを初期化
         let oj = OJContainer::new(self.workspace_path.clone())?;
+
+        // コンテナイメージの確認
+        if let Err(e) = oj.ensure_image().await {
+            println!("コンテナイメージの確認に失敗しました: {}", e);
+            return Err(e.into());
+        }
 
         let problem = ProblemInfo {
             url: url.clone(),

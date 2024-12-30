@@ -5,6 +5,10 @@ use std::process::Command;
 use crate::cli::Site;
 use std::env;
 
+const OJ_TOOLS_DIR: &str = ".local/share/online-judge-tools";
+const COOKIE_JAR_NAME: &str = "cookie.jar";
+const CONTAINER_OJ_DIR: &str = "/workspace/.oj";
+
 pub fn open_in_cursor(url: &str) -> Result<()> {
     // BROWSER環境変数を確認
     if let Ok(browser) = env::var("BROWSER") {
@@ -37,6 +41,56 @@ impl OJContainer {
         Ok(Self { workspace_path, test_dir })
     }
 
+    fn setup_cookie_dir(&self) -> Result<(PathBuf, PathBuf)> {
+        let cookie_path = dirs::home_dir()
+            .ok_or("Failed to get home directory")?
+            .join(OJ_TOOLS_DIR)
+            .join(COOKIE_JAR_NAME);
+
+        // cookie_pathをクローンして使用
+        let cookie_dir = cookie_path.parent()
+            .ok_or("Failed to get cookie directory")?
+            .to_path_buf();
+
+        // ディレクトリを作成
+        std::fs::create_dir_all(&cookie_dir)?;
+
+        // cookie.jarファイルを作成（存在しない場合）
+        if !cookie_path.exists() {
+            std::fs::write(&cookie_path, "")?;
+        }
+
+        Ok((cookie_path, cookie_dir))
+    }
+
+    async fn run_oj_command(&self, args: &[&str], mount_workspace: bool) -> Result<()> {
+        let (_, cookie_dir) = self.setup_cookie_dir()?;
+        let cookie_mount = format!("{}:{}", cookie_dir.display(), CONTAINER_OJ_DIR);
+        let mut command = Command::new("docker");
+
+        // 基本的なdockerコマンドを構築
+        command.args(["run", "--rm", "-it"]);
+        command.args(["-v", &cookie_mount]);
+
+        // ワークスペースのマウントが必要な場合
+        if mount_workspace {
+            let workspace_mount = format!("{}:/workspace", self.workspace_path.display());
+            command.args(["-v", &workspace_mount, "-w", "/workspace"]);
+        }
+
+        // OJコマンドを実行
+        let status = command
+            .args(["oj-container", "oj"])
+            .args(args)
+            .status()?;
+
+        if !status.success() {
+            return Err(format!("Command failed with status: {}", status).into());
+        }
+
+        Ok(())
+    }
+
     pub async fn ensure_image(&self) -> Result<()> {
         let dockerfile_path = PathBuf::from("src/oj/Dockerfile");
         if !dockerfile_path.exists() {
@@ -61,27 +115,7 @@ impl OJContainer {
         let site_url = site.get_url();
         println!("{}", format!("Logging in to {}...", site.get_name()).cyan());
 
-        let cookie_path = dirs::home_dir()
-            .ok_or("Failed to get home directory")?
-            .join(".local/share/online-judge-tools/cookie.jar");
-
-        let status = Command::new("docker")
-            .args([
-                "run",
-                "--rm",
-                "-it",
-                "-v", &format!("{}:/root/.local/share/online-judge-tools/cookie.jar", cookie_path.display()),
-                "oj-container",
-                "oj",
-                "login",
-                site_url,
-            ])
-            .status()?;
-
-        if !status.success() {
-            println!("{}", format!("Error: Login to {} failed", site.get_name()).red());
-            return Err("Failed to login".into());
-        }
+        self.run_oj_command(&["login", site_url], false).await?;
 
         println!("{}", format!("Successfully logged in to {}", site.get_name()).green());
         Ok(())
@@ -91,43 +125,20 @@ impl OJContainer {
         println!("{}", format!("Opening problem URL: {}", problem.url).cyan());
         println!("{}", format!("Please open this URL in your browser: {}", problem.url).yellow());
 
-        let cookie_path = dirs::home_dir()
-            .ok_or("Failed to get home directory")?
-            .join(".local/share/online-judge-tools/cookie.jar");
-
         let problem_test_dir = self.test_dir.join(&problem.problem_id);
-
         if problem_test_dir.exists() && has_test_cases(&problem_test_dir)? {
             println!("{}", "Test cases already exist, skipping download.".yellow());
             return Ok(());
         }
 
-        println!("Workspace path: {}", self.workspace_path.display());
-        println!("Source path: {}", problem.source_path.display());
-        println!("Test directory: {}", problem_test_dir.display());
-
         let test_dir_relative = problem_test_dir.strip_prefix(&self.workspace_path)
             .map_err(|_| "Failed to get relative test directory")?;
 
-        let status = Command::new("docker")
-            .args([
-                "run",
-                "--rm",
-                "-v", &format!("{}:/workspace", self.workspace_path.display()),
-                "-v", &format!("{}:/root/.local/share/online-judge-tools/cookie.jar", cookie_path.display()),
-                "-w", "/workspace",
-                "oj-container",
-                "oj",
-                "download",
-                "-d", test_dir_relative.to_str().unwrap(),
-                &problem.url,
-            ])
-            .status()?;
-
-        if !status.success() {
-            println!("{}", "Error: Download failed".red());
-            return Err("Failed to download test cases".into());
-        }
+        self.run_oj_command(&[
+            "download",
+            "-d", test_dir_relative.to_str().unwrap(),
+            &problem.url,
+        ], true).await?;
 
         println!("{}", "Problem setup completed".green());
         Ok(())
@@ -136,52 +147,16 @@ impl OJContainer {
     pub async fn submit(&self, problem: &ProblemInfo, _site: &Site, language_id: &str) -> Result<()> {
         println!("{}", format!("Submitting solution for problem {}...", problem.problem_id).cyan());
 
-        let cookie_path = dirs::home_dir()
-            .ok_or("Failed to get home directory")?
-            .join(".local/share/online-judge-tools/cookie.jar");
-
         let source_path_relative = problem.source_path.strip_prefix(&self.workspace_path)
             .map_err(|_| "Failed to get relative source path")?;
 
-        let output = Command::new("docker")
-            .args([
-                "run",
-                "--rm",
-                "-v", &format!("{}:/workspace", self.workspace_path.display()),
-                "-v", &format!("{}:/root/.local/share/online-judge-tools/cookie.jar", cookie_path.display()),
-                "-w", "/workspace",
-                "oj-container",
-                "oj",
-                "submit",
-                "--language", language_id,
-                "--yes",
-                &problem.url,
-                source_path_relative.to_str().unwrap(),
-            ])
-            .output()?;
-
-        if !output.status.success() {
-            println!("{}", "Error: Submission failed".red());
-            return Err("Failed to submit solution".into());
-        }
-
-        let output_str = String::from_utf8_lossy(&output.stdout);
-        if let Some(url) = output_str
-            .lines()
-            .find(|line| line.contains("[SUCCESS] result:"))
-            .and_then(|line| line.split(": ").nth(1))
-        {
-            println!("\n{}", "Submission successful!".green());
-            println!("{}", "Your submission can be found at:".cyan());
-            println!("{}", format!("  → {}", url).yellow());
-
-            // URLを開く
-            if let Err(e) = open_in_cursor(url) {
-                println!("{}", format!("Note: Failed to open URL: {}.", e).yellow());
-            }
-
-            println!("");
-        }
+        self.run_oj_command(&[
+            "submit",
+            "--language", language_id,
+            "--yes",
+            &problem.url,
+            source_path_relative.to_str().unwrap(),
+        ], true).await?;
 
         println!("{}", "Solution submitted successfully".green());
         Ok(())
