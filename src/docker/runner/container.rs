@@ -88,10 +88,7 @@ impl DockerRunner {
                         ]),
                         ..Default::default()
                     }),
-                    env: Some(vec![
-                        "PYTHONUNBUFFERED=1".to_string(),
-                        "PYTHONIOENCODING=utf-8".to_string(),
-                    ]),
+                    env: Some(lang_config.get_env_vars()),
                     ..Default::default()
                 },
             )

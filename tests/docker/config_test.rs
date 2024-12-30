@@ -25,34 +25,34 @@ fn test_runner_config_from_yaml() {
 }
 
 #[test]
-fn test_language_config_python() {
+fn test_python_config() {
     let config = LanguageConfig::from_yaml("src/config/languages.yaml", "python").unwrap();
-    assert_eq!(config.image, "python:3.9-slim");
-    assert!(config.compile.is_none());
-    assert!(!config.needs_compilation());
-    assert_eq!(config.compile_dir, "compile/python");
+    assert_eq!(config.runner.image, "python:3.9-slim");
+    assert!(config.runner.compile.is_none());
+    assert!(!config.runner.needs_compilation());
+    assert_eq!(config.runner.compile_dir, "compile/python");
 }
 
 #[test]
-fn test_language_config_rust() {
+fn test_rust_config() {
     let config = LanguageConfig::from_yaml("src/config/languages.yaml", "rust").unwrap();
-    assert_eq!(config.image, "rust:latest");
-    assert!(config.compile.is_some());
-    assert!(config.needs_compilation());
-    assert_eq!(config.compile_dir, "compile/rust");
+    assert_eq!(config.runner.image, "rust:latest");
+    assert!(config.runner.compile.is_some());
+    assert!(config.runner.needs_compilation());
+    assert_eq!(config.runner.compile_dir, "compile/rust");
 }
 
 #[test]
-fn test_language_config_invalid() {
+fn test_invalid_language() {
     let result = LanguageConfig::from_yaml("src/config/languages.yaml", "invalid_language");
     assert!(result.is_err());
 }
 
 #[test]
-fn test_language_config_cpp() {
+fn test_cpp_config() {
     let config = LanguageConfig::from_yaml("src/config/languages.yaml", "cpp").unwrap();
-    assert_eq!(config.image, "gcc:latest");
-    assert!(config.compile.is_some());
-    assert!(config.needs_compilation());
-    assert_eq!(config.compile_dir, "compile/cpp");
+    assert_eq!(config.runner.image, "gcc:latest");
+    assert!(config.runner.compile.is_some());
+    assert!(config.runner.needs_compilation());
+    assert_eq!(config.runner.compile_dir, "compile/cpp");
 } 

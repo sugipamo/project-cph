@@ -4,13 +4,19 @@ use uuid::Uuid;
 use crate::docker::state::RunnerState;
 use std::time::Duration;
 use std::env;
-use std::path::PathBuf;
 
 pub struct DockerCommand {
     container_name: String,
     state: RunnerState,
     output: String,
     error: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct CompileConfig {
+    pub extension: String,
+    pub needs_cargo: bool,
+    pub env_vars: Vec<String>,
 }
 
 impl DockerCommand {
@@ -81,6 +87,7 @@ impl DockerCommand {
         compile_dir: &str,
         mount_point: &str,
         source_code: &str,
+        config: CompileConfig,
     ) -> Result<(), String> {
         println!("Compiling with command: {:?}", compile_cmd);
         println!("Mount point: {}, Compile dir: {}", mount_point, compile_dir);
@@ -96,18 +103,18 @@ impl DockerCommand {
             .map_err(|e| format!("Failed to create compile directory: {}", e))?;
 
         // コンパイラに応じてソースファイルを配置
-        let source_file = if image.starts_with("rust:") {
-            // Rustの場合はsrcディレクトリとCargo.tomlが必要
+        let source_file = if config.needs_cargo {
+            // Cargoプロジェクトの場合はsrcディレクトリが必要
             if !absolute_compile_dir.join("Cargo.toml").exists() {
                 return Err(format!("Cargo.toml not found in {}", compile_dir));
             }
             let src_dir = absolute_compile_dir.join("src");
             fs::create_dir_all(&src_dir)
                 .map_err(|e| format!("Failed to create source directory: {}", e))?;
-            src_dir.join("main.rs")
+            src_dir.join(format!("main.{}", config.extension))
         } else {
-            // その他の言語（C++など）の場合は直接コンパイルディレクトリに配置
-            absolute_compile_dir.join("main.cpp")
+            // その他の言語の場合は直接コンパイルディレクトリに配置
+            absolute_compile_dir.join(format!("main.{}", config.extension))
         };
 
         fs::write(&source_file, source_code)
@@ -123,7 +130,14 @@ impl DockerCommand {
             .arg("-v")
             .arg(format!("{}:{}", absolute_compile_dir.display(), mount_point))
             .arg("-w")
-            .arg(mount_point)
+            .arg(mount_point);
+
+        // 環境変数の設定
+        for env_var in &config.env_vars {
+            command.arg("-e").arg(env_var);
+        }
+
+        command
             .arg(image)
             .args(compile_cmd)
             .stdout(Stdio::piped())

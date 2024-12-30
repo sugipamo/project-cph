@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 use std::path::{Path, PathBuf};
+use crate::docker::runner::command::CompileConfig;
 
 pub const DEFAULT_SOURCE_NAME: &str = "main";
 pub const SOURCE_NAME_ENV_KEY: &str = "CPH_SOURCE_NAME";
@@ -41,6 +42,32 @@ pub struct RunnerInfo {
     pub compile_dir: String,
 }
 
+impl RunnerInfo {
+    pub fn needs_compilation(&self) -> bool {
+        self.compile.is_some()
+    }
+
+    pub fn get_compile_dir(&self) -> &str {
+        &self.compile_dir
+    }
+
+    pub fn to_compile_config(&self, extension: &str) -> CompileConfig {
+        let mut env_vars = Vec::new();
+        
+        // イメージ名に基づいて環境変数を設定
+        if self.image.contains("python") || self.image.contains("pypy") {
+            env_vars.push("PYTHONUNBUFFERED=1".to_string());
+            env_vars.push("PYTHONIOENCODING=utf-8".to_string());
+        }
+
+        CompileConfig {
+            extension: extension.to_string(),
+            needs_cargo: self.image.starts_with("rust:"),
+            env_vars,
+        }
+    }
+}
+
 impl TemplatePattern {
     pub fn resolve(&self, source: &str) -> ResolvedPattern {
         ResolvedPattern {
@@ -71,6 +98,16 @@ impl LanguageConfig {
         let config = serde_yaml::from_str(&content)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
         Ok(config)
+    }
+
+    pub fn from_yaml(path: impl AsRef<Path>, language: &str) -> std::io::Result<LanguageInfo> {
+        let config = Self::load(path.as_ref().to_path_buf())?;
+        config.languages.get(language)
+            .cloned()
+            .ok_or_else(|| std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Language {} not found", language)
+            ))
     }
 
     pub fn resolve_template_path(&self, language: &str, template_base: impl AsRef<Path>, source: &str) -> Option<PathBuf> {

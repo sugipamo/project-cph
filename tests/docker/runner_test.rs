@@ -1,8 +1,8 @@
 use std::process::Command;
 use tokio::runtime::Runtime;
 use cph::docker::DockerRunner;
-use cph::docker::config::{RunnerConfig, LanguageConfig, DockerConfig};
-use serde::Deserialize;
+use cph::docker::config::{RunnerConfig, DockerConfig};
+use cph::config::languages::LanguageConfig;
 
 fn load_docker_config() -> DockerConfig {
     DockerConfig::from_yaml("src/config/docker.yaml").unwrap()
@@ -22,8 +22,8 @@ fn test_docker_available() {
     assert!(check_docker_available(), "Dockerが利用できません");
 }
 
-#[test]
-fn test_python_runner() {
+#[tokio::test]
+async fn test_docker_runner() {
     super::setup();
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
