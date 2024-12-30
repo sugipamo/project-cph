@@ -7,15 +7,15 @@
   ```
   contest_template/
   ├── pypy/
-  │   ├── main.py
+  │   ├── solution.py
   │   ├── generator.py
   │   └── .moveignore
   ├── rust/
-  │   ├── main.rs
+  │   ├── solution.rs
   │   ├── generator.rs
   │   └── .moveignore
   └── cpp/
-      ├── main.cpp
+      ├── solution.cpp
       ├── generator.cpp
       └── .moveignore
   ```
@@ -32,12 +32,12 @@
   ```
   active_contest/
   ├── a/
-  │   ├── main.py
+  │   ├── solution.py
   │   ├── generator.py
   │   ├── test/
   │   └── .moveignore
   ├── b/
-  │   ├── main.py
+  │   ├── solution.py
   │   ├── generator.py
   │   ├── test/
   │   └── .moveignore
