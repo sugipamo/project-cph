@@ -8,6 +8,7 @@ use crate::contest::Contest;
 use users;
 use std::os::unix::fs::PermissionsExt;
 use dirs;
+use crate::config::OJConfig;
 
 const COOKIE_DIR: &str = ".local/share/online-judge-tools";
 const COOKIE_FILE: &str = "cookie.jar";
@@ -49,12 +50,14 @@ pub struct ProblemInfo {
 pub struct OJContainer {
     workspace_path: PathBuf,
     contest: Contest,
+    config: OJConfig,
 }
 
 impl OJContainer {
     pub fn new(workspace_path: PathBuf) -> Result<Self> {
         let contest = Contest::new(workspace_path.clone())?;
-        Ok(Self { workspace_path, contest })
+        let config = OJConfig::load()?;
+        Ok(Self { workspace_path, contest, config })
     }
 
     fn get_dockerfile_path() -> PathBuf {
@@ -204,7 +207,7 @@ impl OJContainer {
 
         self.run_oj_command(&[
             "download",
-            "-d", &format!("{}/test", relative_problem_dir.display()),
+            "-d", &format!("{}/{}", relative_problem_dir.display(), self.config.test.directory),
             &problem.url,
         ], true).await?;
 
@@ -221,14 +224,23 @@ impl OJContainer {
         let source_path_relative = problem.source_path.strip_prefix(&self.workspace_path)
             .map_err(|_| "Failed to get relative source path")?;
 
-        self.run_oj_command(&[
+        let mut args = vec![
             "submit",
             "--language", language_id,
-            "--wait=0",
-            "--yes",
+        ];
+
+        // 設定に基づいてコマンドライン引数を追加
+        args.push(&format!("--wait={}", self.config.submit.wait));
+        if self.config.submit.auto_yes {
+            args.push("--yes");
+        }
+
+        args.extend(&[
             &problem.url,
             source_path_relative.to_str().unwrap(),
-        ], true).await?;
+        ]);
+
+        self.run_oj_command(&args, true).await?;
 
         println!("{}", "Solution submitted successfully".green());
         Ok(())
