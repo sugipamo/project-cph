@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use std::path::PathBuf;
 use crate::error::Result;
 use crate::config::get_config_paths;
 

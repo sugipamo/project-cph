@@ -230,8 +230,7 @@ impl OJContainer {
         ];
 
         // 設定に基づいてコマンドライン引数を追加
-        let wait_arg = format!("--wait={}", self.config.submit.wait);
-        args.push(&wait_arg);
+        args.push(&format!("--wait={}", self.config.submit.wait));
         if self.config.submit.auto_yes {
             args.push("--yes");
         }
