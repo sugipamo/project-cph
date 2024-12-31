@@ -1,8 +1,3 @@
-[workspace]
-members = [
-    ".",
-]
-
 [package]
 name = "cph"
 version = "0.1.0"
