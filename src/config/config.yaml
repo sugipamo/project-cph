@@ -4,7 +4,8 @@ base:
     active: "active_contest"  # 現在の作業ディレクトリ
     storage: "contests"  # コンテスト保存ディレクトリ
     template: "contest_template"  # コンテストテンプレートディレクトリ
-    compile: "compile"  # コンパイル用ディレクトリ
+  
+  compile_dir: "compile/{name}"  # コンパイル用ディレクトリ
 
   sites:
     base:  # サイト共通の設定
@@ -12,18 +13,20 @@ base:
         wait: 0
         auto_yes: true
       test:
-        directory: "test"
+        dir: "test"
     atcoder:
       aliases: ["at-coder", "at_coder", "AtCoder", "ac"]
-      url_pattern: "https://atcoder.jp/contests/{contest_id}/tasks/{problem_id}"
+      problem_url: "https://atcoder.jp/contests/{contest_id}/tasks/{problem_id}"
+      submit_url: "https://atcoder.jp/contests/{contest_id}/submit"
 
   docker:
     timeout_seconds: 5  # 実行タイムアウト（秒）
     memory_limit_mb: 128  # メモリ制限（MB）
 
-  solution: "solution.{extension}"  # 解答ファイルのパターン
-  generator: "generator.{extension}"  # ジェネレータファイルのパターン
-  tester: "tester.{extension}"  # テスターファイルのパターン
+  source_file:
+    solution: "solution.{extension}"  # 解答ファイルのパターン
+    generator: "generator.{extension}"  # ジェネレータファイルのパターン
+    tester: "tester.{extension}"  # テスターファイルのパターン
 
 # 言語設定（base の設定を継承）
 rust:  # デフォルト言語
