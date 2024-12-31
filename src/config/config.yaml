@@ -1,0 +1,83 @@
+# 競技プログラミングヘルパー設定ファイル
+
+# 共通設定
+common:
+  work_directory: "contests"  # 作業ディレクトリ
+  template_directory: "templates"  # テンプレートディレクトリ
+  default_site: "atcoder"  # デフォルトのサイト
+  default_language: "rust"  # デフォルトの言語
+
+# テンプレート設定
+templates:
+  base_directory: "templates"  # テンプレートのベースディレクトリ
+  patterns:
+    solution: "solution.{ext}"  # 解答ファイルのパターン
+    generator: "generator.{ext}"  # ジェネレータファイルのパターン
+    tester: "tester.{ext}"  # テスターファイルのパターン
+
+# 言語設定
+languages:
+  rust:
+    aliases: ["Rust", "rs", "RUST"]
+    extension: "rs"
+    template_directory: "rust"
+    site_ids:
+      atcoder: "5054"  # Rust (rustc 1.70.0)
+    runner:
+      image: "rust:latest"
+      compile: ["cargo", "build", "--release"]
+      run: ["./target/release/main"]
+      compile_dir: "compile/rust"
+  
+  pypy:
+    aliases: ["PyPy", "py-py", "PYPY", "Pypy", "py"]
+    extension: "py"
+    template_directory: "python"
+    site_ids:
+      atcoder: "5078"  # Python (PyPy 3.10-v7.3.12)
+    runner:
+      image: "pypy:3.9-slim"
+      run: ["pypy3", "-u", "-c"]
+      compile_dir: "compile/pypy"
+
+  python:
+    aliases: ["Python", "py", "PYTHON"]
+    extension: "py"
+    template_directory: "python"
+    site_ids:
+      atcoder: "5055"  # Python (CPython 3.11.4)
+    runner:
+      image: "python:3.9-slim"
+      run: ["python", "-u", "-c"]
+      compile_dir: "compile/python"
+  
+  cpp:
+    aliases: ["C++", "cpp", "CPP"]
+    extension: "cpp"
+    template_directory: "cpp"
+    site_ids:
+      atcoder: "5050"  # C++ (GCC 12.2.0)
+    runner:
+      image: "gcc:latest"
+      compile: ["g++", "-std=c++17", "-O2", "main.cpp"]
+      run: ["./a.out"]
+      compile_dir: "compile/cpp"
+
+# サイト設定
+sites:
+  atcoder:
+    aliases: ["at-coder", "at_coder", "AtCoder", "ac"]
+    url_pattern: "https://atcoder.jp/contests/{contest_id}/tasks/{problem_id}"
+    test_directory: "test"  # テストケースを保存するディレクトリ
+    submit:
+      wait: 0  # サブミット後の待機時間（秒）
+      auto_yes: true  # 確認プロンプトをスキップ
+
+# Docker実行環境設定
+docker:
+  defaults:
+    timeout_seconds: 5  # 実行タイムアウト（秒）
+    memory_limit_mb: 128  # メモリ制限（MB）
+    mount_point: "/compile"  # コンテナ内のマウントポイント
+  compile:
+    base_directory: "compile"  # コンパイル用ベースディレクトリ 
