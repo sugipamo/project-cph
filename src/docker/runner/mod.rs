@@ -7,7 +7,7 @@ use tokio::time::{timeout, Duration};
 use crate::docker::state::RunnerState;
 use crate::docker::config::DockerConfig;
 use crate::config::Config;
-use self::command::DockerCommand;
+use self::command::{DockerCommand, CompileConfig};
 
 pub struct DockerRunner {
     command: DockerCommand,
@@ -34,22 +34,22 @@ impl DockerRunner {
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
         // 言語設定を取得
-        let runner_image = config_builder.get::<String>(&format!("{}.runner.image", resolved))
+        let _runner_image = config_builder.get::<String>(&format!("{}.runner.image", resolved))
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
-        let compile_command = config_builder.get::<Vec<String>>(&format!("{}.runner.compile", resolved))
+        let _compile_command = config_builder.get::<Vec<String>>(&format!("{}.runner.compile", resolved))
             .unwrap_or_default();
 
-        let run_command = config_builder.get::<Vec<String>>(&format!("{}.runner.run", resolved))
+        let _run_command = config_builder.get::<Vec<String>>(&format!("{}.runner.run", resolved))
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
-        let needs_compilation = config_builder.get::<bool>(&format!("{}.runner.needs_compilation", resolved))
+        let _needs_compilation = config_builder.get::<bool>(&format!("{}.runner.needs_compilation", resolved))
             .unwrap_or(false);
 
-        let compile_dir = config_builder.get::<String>(&format!("{}.runner.compile_dir", resolved))
+        let _compile_dir = config_builder.get::<String>(&format!("{}.runner.compile_dir", resolved))
             .unwrap_or_else(|_| "/workspace".to_string());
 
-        let extension = config_builder.get::<String>(&format!("{}.extension", resolved))
+        let _extension = config_builder.get::<String>(&format!("{}.extension", resolved))
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
         Ok(Self::new(config))
@@ -93,13 +93,26 @@ impl DockerRunner {
                 .unwrap_or_default();
 
             if !compile_cmd.is_empty() {
+                let image = config_builder.get::<String>("runner.image")
+                    .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
+                let compile_dir = config_builder.get::<String>("runner.compile_dir")
+                    .map_err(|e| format!("コンパイルディレクトリの取得に失敗しました: {}", e))?;
+                let extension = config_builder.get::<String>("extension")
+                    .map_err(|e| format!("拡張子の取得に失敗しました: {}", e))?;
+
+                let compile_config = CompileConfig {
+                    extension,
+                    needs_cargo: false, // TODO: 設定から取得
+                    env_vars: Vec::new(), // TODO: 設定から取得
+                };
+
                 if let Err(e) = self.command.compile(
-                    &config_builder.get::<String>("runner.image")?,
+                    &image,
                     &compile_cmd,
-                    &config_builder.get::<String>("runner.compile_dir")?,
+                    &compile_dir,
                     &self.config.mount_point,
                     source_code,
-                    config_builder.get::<String>("extension")?,
+                    compile_config,
                 ).await {
                     println!("Compilation failed: {}", e);
                     return Err(e);
@@ -108,17 +121,24 @@ impl DockerRunner {
         }
 
         // 実行
+        let image = config_builder.get::<String>("runner.image")
+            .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
+        let run_cmd = config_builder.get::<Vec<String>>("runner.run")
+            .map_err(|e| format!("実行コマンドの取得に失敗しました: {}", e))?;
+        let compile_dir = if needs_compilation {
+            Some(config_builder.get::<String>("runner.compile_dir")
+                .map_err(|e| format!("コンパイルディレクトリの取得に失敗しました: {}", e))?)
+        } else {
+            None
+        };
+
         let output = self.command.run_container(
-            &config_builder.get::<String>("runner.image")?,
-            &config_builder.get::<Vec<String>>("runner.run")?,
+            &image,
+            &run_cmd,
             source_code,
             self.config.timeout_seconds,
             self.config.memory_limit_mb,
-            if needs_compilation {
-                Some(config_builder.get::<String>("runner.compile_dir")?)
-            } else {
-                None
-            },
+            compile_dir.as_deref(),
             &self.config.mount_point,
         ).await;
 
