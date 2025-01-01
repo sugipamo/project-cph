@@ -288,6 +288,40 @@ impl Config {
             path.to_string()
         }
     }
+
+    fn get_value_type_name(value: &Value) -> &'static str {
+        match value {
+            Value::Null => "null",
+            Value::Bool(_) => "boolean",
+            Value::Number(_) => "number",
+            Value::String(_) => "string",
+            Value::Sequence(_) => "array",
+            Value::Mapping(_) => "object",
+            Value::Tagged(_) => "tagged",
+        }
+    }
+
+    fn value_to_string(value: &Value) -> String {
+        match value {
+            Value::Null => "null".to_string(),
+            Value::Bool(b) => b.to_string(),
+            Value::Number(n) => n.to_string(),
+            Value::String(s) => s.clone(),
+            Value::Sequence(seq) => format!("[{}]", seq.iter()
+                .map(|v| Self::value_to_string(v))
+                .collect::<Vec<_>>()
+                .join(", ")),
+            Value::Mapping(map) => format!("{{{}}}", map.iter()
+                .map(|(k, v)| format!("{}: {}", 
+                    Self::value_to_string(k), 
+                    Self::value_to_string(v)))
+                .collect::<Vec<_>>()
+                .join(", ")),
+            Value::Tagged(tag) => format!("!{} {}", 
+                tag.tag, 
+                Self::value_to_string(&tag.value)),
+        }
+    }
 }
 
 // 基本的な型の実装
@@ -301,9 +335,9 @@ impl TypedValue for String {
             Value::Bool(b) => Ok(b.to_string()),
             _ => Err(ConfigError::TypeError {
                 expected: Self::TYPE,
-                found: value.type_name(),
+                found: Config::get_value_type_name(value),
                 path: String::new(),
-                value: value.to_string(),
+                value: Config::value_to_string(value),
             }),
         }
     }
@@ -327,9 +361,9 @@ impl TypedValue for bool {
             },
             _ => Err(ConfigError::TypeError {
                 expected: Self::TYPE,
-                found: value.type_name(),
+                found: Config::get_value_type_name(value),
                 path: String::new(),
-                value: value.to_string(),
+                value: Config::value_to_string(value),
             }),
         }
     }
@@ -342,9 +376,9 @@ impl TypedValue for Vec<String> {
         value.as_sequence()
             .ok_or_else(|| ConfigError::TypeError {
                 expected: Self::TYPE,
-                found: value.type_name(),
+                found: Config::get_value_type_name(value),
                 path: String::new(),
-                value: value.to_string(),
+                value: Config::value_to_string(value),
             })?
             .iter()
             .map(|v| String::from_yaml(v))
@@ -362,13 +396,13 @@ impl TypedValue for i64 {
                 expected: Self::TYPE,
                 found: "float",
                 path: String::new(),
-                value: n.to_string(),
+                value: Config::value_to_string(value),
             }),
             _ => Err(ConfigError::TypeError {
                 expected: Self::TYPE,
-                found: value.type_name(),
+                found: Config::get_value_type_name(value),
                 path: String::new(),
-                value: value.to_string(),
+                value: Config::value_to_string(value),
             }),
         }
     }
@@ -383,13 +417,13 @@ impl TypedValue for f64 {
                 expected: Self::TYPE,
                 found: "non-float number",
                 path: String::new(),
-                value: n.to_string(),
+                value: Config::value_to_string(value),
             }),
             _ => Err(ConfigError::TypeError {
                 expected: Self::TYPE,
-                found: value.type_name(),
+                found: Config::get_value_type_name(value),
                 path: String::new(),
-                value: value.to_string(),
+                value: Config::value_to_string(value),
             }),
         }
     }
@@ -418,8 +452,8 @@ impl std::fmt::Display for ConfigError {
                         "boolean" => "真偽値",
                         "array" => "配列",
                         "null" => "null",
-                        "invalid boolean string" => "無効な真偽値文字列",
-                        "non-float number" => "整数",
+                        "object" => "オブジェクト",
+                        "tagged" => "タグ付き値",
                         _ => found,
                     },
                     value
