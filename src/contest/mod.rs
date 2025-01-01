@@ -1,4 +1,4 @@
-use crate::{cli::Site, error::Result};
+use crate::{cli::Site, error::Result, config::Config};
 use serde::{Serialize, Deserialize};
 use std::path::{PathBuf, Path};
 use std::fs;
@@ -44,11 +44,13 @@ impl Contest {
             contest.active_contest_dir = active_dir;
             contest.workspace_dir = current_dir.clone();
 
-            // 言語設定からデフォルト言語を取得
-            if let Ok(lang_config) = LanguageConfig::load(current_dir.join("src/config/languages.yaml")) {
-                if let Some(default_lang) = lang_config.get_default_language() {
-                    contest.language = Some(default_lang);
-                }
+            // config/mod.rsを使用してデフォルト言語を取得
+            let config = Config::builder()
+                .add_alias_section("languages", "aliases")
+                .build();
+
+            if let Ok(default_lang) = config.get::<String>("languages.default") {
+                contest.language = Some(default_lang);
             }
 
             return Ok(contest);
@@ -80,12 +82,14 @@ impl Contest {
         let language = self.language.as_ref()
             .ok_or_else(|| "言語が設定されていません".to_string())?;
 
-        // 言語設定を読み込む
-        let lang_config = LanguageConfig::load(self.workspace_dir.join("src/config/languages.yaml"))?;
+        // config/mod.rsを使用して言語設定を取得
+        let config = Config::builder()
+            .add_alias_section("languages", "aliases")
+            .build();
         
         // 拡張子を取得
-        let extension = lang_config.get_extension(language)
-            .ok_or_else(|| format!("未知の言語です: {}", language))?;
+        let extension = config.get::<String>(&format!("{}.extension", language))
+            .map_err(|_| format!("未知の言語です: {}", language))?;
 
         // 問題ディレクトリのパスを生成
         let problem_dir = self.active_contest_dir.join(problem_id);

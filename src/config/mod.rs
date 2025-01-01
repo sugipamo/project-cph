@@ -225,7 +225,7 @@ impl Config {
                 expected,
                 found,
                 path: path.to_string(),
-                value: value.to_string(),
+                value: Self::value_to_string(value),
             },
             _ => e,
         })

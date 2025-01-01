@@ -5,6 +5,8 @@ system:
     storage: "${CPH_STORAGE_DIR-archive}"
     template: "${CPH_TEMPLATE_DIR-contest_template}"
   
+  active_contest_yaml: "${CPH_ACTIVE_CONTEST_YAML-active_contest.yaml}"
+
   compile_dir: "${CPH_COMPILE_DIR-compile/{name}}"
 
   docker:

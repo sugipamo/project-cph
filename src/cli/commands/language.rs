@@ -2,6 +2,7 @@ use super::{Command, Result, CommandContext};
 use crate::cli::Commands;
 use crate::error::Result;
 use crate::contest::Contest;
+use crate::config::Config;
 
 pub struct LanguageCommand {
     context: CommandContext,
@@ -16,15 +17,10 @@ impl LanguageCommand {
 #[async_trait::async_trait]
 impl Command for LanguageCommand {
     async fn execute(&self, command: &Commands) -> Result<()> {
-        println!("言語設定を読み込んでいます...");
-        let config_paths = config::get_config_paths();
-        let lang_config = match LanguageConfig::load(config_paths.languages) {
-            Ok(config) => config,
-            Err(e) => {
-                println!("言語設定の読み込みに失敗しました: {}", e);
-                return Err(e.into());
-            }
-        };
+        println!("設定を読み込んでいます...");
+        let config = Config::builder()
+            .add_alias_section("languages", "aliases")
+            .build();
 
         // コンテストを読み込む
         println!("コンテストの設定を読み込んでいます...");
@@ -40,17 +36,21 @@ impl Command for LanguageCommand {
             Commands::Language { language } => {
                 println!("言語を検証しています: {}", language);
                 // 言語を解析
-                let resolved = match lang_config.resolve_language(language) {
-                    Some(lang) => lang,
-                    None => {
+                let resolved = match config.get_with_alias::<String>(&format!("{}.name", language)) {
+                    Ok(lang) => lang,
+                    Err(_) => {
                         println!("無効な言語が指定されました: {}", language);
                         println!("利用可能な言語:");
-                        for lang in lang_config.list_languages() {
-                            let display_name = lang_config.get_display_name(&lang)
-                                .unwrap_or_else(|| lang.clone());
-                            if Some(lang.clone()) == lang_config.get_default_language() {
-                                println!("  * {} (デフォルト)", display_name);
-                            } else {
+                        if let Ok(languages) = config.get::<Vec<String>>("languages.available") {
+                            for lang in languages {
+                                let display_name = config.get::<String>(&format!("{}.display_name", lang))
+                                    .unwrap_or_else(|_| lang.clone());
+                                if let Ok(default_lang) = config.get::<String>("languages.default") {
+                                    if lang == default_lang {
+                                        println!("  * {} (デフォルト)", display_name);
+                                        continue;
+                                    }
+                                }
                                 println!("  * {}", display_name);
                             }
                         }
@@ -66,17 +66,21 @@ impl Command for LanguageCommand {
                     return Err(e.into());
                 }
 
-                println!("言語を設定しました: {}", 
-                    lang_config.get_display_name(&resolved)
-                        .unwrap_or(resolved));
+                let display_name = config.get::<String>(&format!("{}.display_name", resolved))
+                    .unwrap_or(resolved.clone());
+                println!("言語を設定しました: {}", display_name);
             }
             _ => {
                 // 現在の設定を表示
                 if let Some(current) = &contest.language {
-                    let display_name = lang_config.get_display_name(current)
+                    let display_name = config.get::<String>(&format!("{}.display_name", current))
                         .unwrap_or_else(|| current.to_string());
-                    if Some(current.clone()) == lang_config.get_default_language() {
-                        println!("現在の言語: {} (デフォルト)", display_name);
+                    if let Ok(default_lang) = config.get::<String>("languages.default") {
+                        if current == &default_lang {
+                            println!("現在の言語: {} (デフォルト)", display_name);
+                        } else {
+                            println!("現在の言語: {}", display_name);
+                        }
                     } else {
                         println!("現在の言語: {}", display_name);
                     }
@@ -85,12 +89,16 @@ impl Command for LanguageCommand {
                 }
                 
                 println!("\n利用可能な言語:");
-                for lang in lang_config.list_languages() {
-                    let display_name = lang_config.get_display_name(&lang)
-                        .unwrap_or_else(|| lang.clone());
-                    if Some(lang.clone()) == lang_config.get_default_language() {
-                        println!("  * {} (デフォルト)", display_name);
-                    } else {
+                if let Ok(languages) = config.get::<Vec<String>>("languages.available") {
+                    for lang in languages {
+                        let display_name = config.get::<String>(&format!("{}.display_name", lang))
+                            .unwrap_or_else(|_| lang.clone());
+                        if let Ok(default_lang) = config.get::<String>("languages.default") {
+                            if lang == default_lang {
+                                println!("  * {} (デフォルト)", display_name);
+                                continue;
+                            }
+                        }
                         println!("  * {}", display_name);
                     }
                 }
