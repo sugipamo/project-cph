@@ -50,6 +50,7 @@ commands:
 
 # 言語設定
 languages:
+  default: rust
   # 言語の基本設定をアンカーとして定義
   _base: &lang_base
     compile: []

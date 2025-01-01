@@ -3,7 +3,6 @@ use serde::{Serialize, Deserialize};
 use std::path::{PathBuf, Path};
 use std::fs;
 use std::io::BufRead;
-use crate::config::ConfigError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Contest {
@@ -158,19 +157,19 @@ impl Contest {
     // solution.[ext]のパスを取得
     pub fn get_solution_path(&self, problem_id: &str) -> Result<PathBuf> {
         self.get_problem_file_path(problem_id, "solution")
-            .map_err(|e| format!("ソリューションファイルのパス取得に失敗しました。", problem_id, e).into())
+            .map_err(|e| format!("ソリューションファイルのパス取得に失敗しました。\n問題ID: {}\nエラー: {}", problem_id, e).into())
     }
 
     // generator.[ext]のパスを取得
     pub fn get_generator_path(&self, problem_id: &str) -> Result<PathBuf> {
         self.get_problem_file_path(problem_id, "generator")
-            .map_err(|e| format!("ジェネレータファイルのパス取得に失敗しました。", problem_id, e).into())
+            .map_err(|e| format!("ジェネレータファイルのパス取得に失敗しました。\n問題ID: {}\nエラー: {}", problem_id, e).into())
     }
 
     // tester.[ext]のパスを取得
     pub fn get_tester_path(&self, problem_id: &str) -> Result<PathBuf> {
         self.get_problem_file_path(problem_id, "tester")
-            .map_err(|e| format!("テスターファイルのパス取得に失敗しました。", problem_id, e).into())
+            .map_err(|e| format!("テスターファイルのパス取得に失敗しました。\n問題ID: {}\nエラー: {}", problem_id, e).into())
     }
 
     pub fn set_contest(&mut self, contest_id: String) {

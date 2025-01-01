@@ -34,7 +34,23 @@ impl Command for OpenCommand {
 
         // ブラウザで問題ページを開く
         if let Some(url) = url {
-            open::that(url)?;
+            // ブラウザ設定を確認
+            if let Ok(browser) = config.get::<String>("system.browser") {
+                if let Err(e) = std::process::Command::new(&browser)
+                    .arg(&url)
+                    .spawn() {
+                    println!("Note: Failed to open URL with configured browser: {}", e);
+                    // フォールバック: open::thatを試す
+                    if let Err(e) = open::that(&url) {
+                        println!("Note: Failed to open URL with default browser: {}", e);
+                    }
+                }
+            } else {
+                // 設定がない場合はopen::thatを使用
+                if let Err(e) = open::that(&url) {
+                    println!("Note: Failed to open URL: {}", e);
+                }
+            }
         }
 
         // エディタでソースファイルを開く
