@@ -1,56 +1,79 @@
-# 基本設定（他の設定で継承される）
-base:
+# グステム全体の設定
+system:
   contest_dir:
-    active: "active_contest"  # 現在の作業ディレクトリ
-    storage: "contests"  # コンテスト保存ディレクトリ
-    template: "contest_template"  # コンテストテンプレートディレクトリ
+    active: "${CPH_ACTIVE_DIR-active_contest}"
+    storage: "${CPH_STORAGE_DIR-archive}"
+    template: "${CPH_TEMPLATE_DIR-contest_template}"
   
-  compile_dir: "compile/{name}"  # コンパイル用ディレクトリ
-
-  sites:
-    base:  # サイト共通の設定
-      submit:
-        wait: 0
-        auto_yes: true
-      test:
-        dir: "test"
-    atcoder:
-      aliases: ["at-coder", "at_coder", "AtCoder", "ac"]
-      problem_url: "https://atcoder.jp/contests/{contest_id}/tasks/{problem_id}"
-      submit_url: "https://atcoder.jp/contests/{contest_id}/submit"
+  compile_dir: "${CPH_COMPILE_DIR-compile/{name}}"
 
   docker:
-    timeout_seconds: 5  # 実行タイムアウト（秒）
-    memory_limit_mb: 128  # メモリ制限（MB）
+    timeout_seconds: ${CPH_DOCKER_TIMEOUT-10}
+    memory_limit_mb: ${CPH_DOCKER_MEMORY-256}
 
   source_file:
-    solution: "solution.{extension}"  # 解答ファイルのパターン
-    generator: "generator.{extension}"  # ジェネレータファイルのパターン
-    tester: "tester.{extension}"  # テスターファイルのパターン
+    solution: "${CPH_SOLUTION_FILE-main.{extension}}"
+    generator: "${CPH_GENERATOR_FILE-gen.{extension}}"
+    tester: "${CPH_TESTER_FILE-test.{extension}}"
 
-# 言語設定（base の設定を継承）
-rust:  # デフォルト言語
-  aliases: ["Rust", "rs", "RUST"]
-  extension: "rs"
-  image: "rust:latest"
-  compile: ["cargo", "build", "--release"]
-  run: ["./target/release/main"]
+  submit:
+    wait: ${CPH_SUBMIT_WAIT-5}
+    auto_yes: ${CPH_AUTO_YES-false}
+  
+  test:
+    dir: "${CPH_TEST_DIR-cases}"
 
-python:
-  aliases: ["Python", "py", "PYTHON"]
-  extension: "py"
-  image: "python:3.9-slim"
-  run: ["python", "-u", "-c"]
+languages:
+  # 言語の基本設定をアンカーとして定義
+  _base: &lang_base
+    compile: []
+    run: []
+    aliases: []
 
-pypy:
-  aliases: ["PyPy", "py-py", "PYPY", "Pypy"]
-  extension: "py"
-  image: "pypy:3.9-slim"
-  run: ["pypy3", "-u", "-c"]
+  rust:
+    <<: *lang_base
+    aliases: ["rs"]
+    extension: "rs"
+    image: "${CPH_RUST_IMAGE-rust:latest}"
+    compile: ["rustc", "main.rs"]
+    run: ["./main"]
 
-cpp:
-  aliases: ["C++", "cpp", "CPP"]
-  extension: "cpp"
-  image: "gcc:latest"
-  compile: ["g++", "-std=c++17", "-O2", "main.cpp"]
-  run: ["./a.out"]
+  python:
+    <<: *lang_base
+    aliases: ["py", "python3"]
+    extension: "py"
+    image: "${CPH_PYTHON_IMAGE-python:3.11-slim}"
+    run: ["python", "main.py"]
+
+  pypy:
+    <<: *lang_base
+    aliases: ["pypy3"]
+    extension: "py"
+    image: "${CPH_PYPY_IMAGE-pypy:latest}"
+    run: ["pypy3", "main.py"]
+
+  cpp:
+    <<: *lang_base
+    aliases: ["c++", "gcc"]
+    extension: "cpp"
+    image: "${CPH_CPP_IMAGE-gcc:latest}"
+    compile: ["g++", "-std=c++17", "-O2", "main.cpp"]
+    run: ["./a.out"]
+
+sites:
+  # サイトの基本設定をアンカーとして定義
+  _base: &site_base
+    problem_url: ""
+    submit_url: ""
+    aliases: []
+    submit: 
+      wait: ${CPH_SUBMIT_WAIT-5}
+      auto_yes: ${CPH_AUTO_YES-false}
+    test:
+      dir: "${CPH_TEST_DIR-cases}"
+
+  atcoder:
+    <<: *site_base
+    aliases: ["ac"]
+    problem_url: "https://atcoder.jp/contests/{contest_id}/tasks/{problem_id}"
+    submit_url: "https://atcoder.jp/contests/{contest_id}/submit" 
