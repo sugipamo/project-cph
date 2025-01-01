@@ -111,7 +111,7 @@ impl Contest {
         }
 
         // 2. デフォルト言語を設定から取得
-        self.config.get::<String>("languages.default")
+        Ok(self.config.get::<String>("languages.default")?)
     }
 
     pub fn save(&self) -> Result<()> {
@@ -203,7 +203,7 @@ impl Contest {
         // 3. サイトの設定
         self.site = match resolved_site.to_lowercase().as_str() {
             "atcoder" => Site::AtCoder,
-            _ => return Err(ConfigError::InvalidValue("unsupported_site".to_string()).into()),
+            _ => return Err(format!("サイト '{}' はサポートされていません", site_name).into()),
         };
         Ok(())
     }
@@ -238,7 +238,7 @@ impl Contest {
     // ファイルを contests ディレクトリに移動
     fn move_files_to_contests(&self) -> Result<()> {
         // 1. .moveignoreの読み込み
-        let ignore_patterns = self.read_moveignore()?;
+        let _ignore_patterns = self.read_moveignore()?;
         
         // 2. コンテストの保存先ディレクトリを設定から取得
         let storage_base = self.config.get::<String>("system.contest_dir.storage")
