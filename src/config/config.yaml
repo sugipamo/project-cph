@@ -10,11 +10,14 @@ system:
   docker:
     timeout_seconds: ${CPH_DOCKER_TIMEOUT-10}
     memory_limit_mb: ${CPH_DOCKER_MEMORY-256}
+    mount_point: "/compile"
 
-  source_file:
-    solution: "${CPH_SOLUTION_FILE-main.{extension}}"
-    generator: "${CPH_GENERATOR_FILE-gen.{extension}}"
-    tester: "${CPH_TESTER_FILE-test.{extension}}"
+  templates:
+    patterns:
+      solution: "${CPH_SOLUTION_FILE-solution.{extension}}"
+      generator: "${CPH_GENERATOR_FILE-generator.{extension}}"
+      tester: "${CPH_TESTER_FILE-tester.{extension}}"
+    directory: "${CPH_TEMPLATE_DIR-{name}}"
 
   submit:
     wait: ${CPH_SUBMIT_WAIT-5}
@@ -23,6 +26,22 @@ system:
   test:
     dir: "${CPH_TEST_DIR-cases}"
 
+# コマンドのエイリアス設定
+commands:
+  test:
+    aliases: ["t", "check"]
+  open:
+    aliases: ["o", "show"]
+  submit:
+    aliases: ["s", "sub"]
+  init:
+    aliases: ["i", "create"]
+  language:
+    aliases: ["l", "lang"]
+  login:
+    aliases: ["auth"]
+
+# 言語設定
 languages:
   # 言語の基本設定をアンカーとして定義
   _base: &lang_base
@@ -32,11 +51,15 @@ languages:
 
   rust:
     <<: *lang_base
-    aliases: ["rs"]
+    aliases: ["rs", "Rust", "RUST"]
     extension: "rs"
     image: "${CPH_RUST_IMAGE-rust:latest}"
     compile: ["rustc", "main.rs"]
     run: ["./main"]
+    site_ids:
+      _source: "online_judge_tool"
+      _fallback:
+        atcoder: "5054"  # Rust (rustc 1.70.0)
 
   python:
     <<: *lang_base
@@ -44,13 +67,21 @@ languages:
     extension: "py"
     image: "${CPH_PYTHON_IMAGE-python:3.11-slim}"
     run: ["python", "main.py"]
+    site_ids:
+      _source: "online_judge_tool"
+      _fallback:
+        atcoder: "4047"  # Python (CPython 3.11.4)
 
   pypy:
     <<: *lang_base
-    aliases: ["pypy3"]
+    aliases: ["pypy3", "PyPy", "PYPY"]
     extension: "py"
     image: "${CPH_PYPY_IMAGE-pypy:latest}"
     run: ["pypy3", "main.py"]
+    site_ids:
+      _source: "online_judge_tool"
+      _fallback:
+        atcoder: "5078"  # Python (PyPy 3.10-v7.3.12)
 
   cpp:
     <<: *lang_base
@@ -59,7 +90,12 @@ languages:
     image: "${CPH_CPP_IMAGE-gcc:latest}"
     compile: ["g++", "-std=c++17", "-O2", "main.cpp"]
     run: ["./a.out"]
+    site_ids:
+      _source: "online_judge_tool"
+      _fallback:
+        atcoder: "5001"  # C++ (GCC 9.2.1)
 
+# サイト設定
 sites:
   # サイトの基本設定をアンカーとして定義
   _base: &site_base
@@ -74,6 +110,6 @@ sites:
 
   atcoder:
     <<: *site_base
-    aliases: ["ac"]
+    aliases: ["ac", "at-coder", "at_coder", "AtCoder"]
     problem_url: "https://atcoder.jp/contests/{contest_id}/tasks/{problem_id}"
     submit_url: "https://atcoder.jp/contests/{contest_id}/submit" 
