@@ -7,7 +7,7 @@ system:
 
   contest_dir:
     active: "${CPH_ACTIVE_DIR-active_contest}"
-    storage: "${CPH_STORAGE_DIR-archive}"
+    storage: "${CPH_STORAGE_DIR-contest_archive}"
     template: "${CPH_TEMPLATE_DIR-contest_template}"
   
   active_contest_yaml: "${CPH_ACTIVE_CONTEST_YAML-active_contest.yaml}"
