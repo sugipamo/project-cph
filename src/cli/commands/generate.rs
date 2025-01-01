@@ -1,7 +1,7 @@
 use super::{Command, Result, CommandContext};
 use crate::cli::Commands;
 use crate::contest::Contest;
-use crate::config::{self};
+use crate::config::Config;
 use std::path::PathBuf;
 use std::fs;
 
@@ -66,19 +66,13 @@ impl Command for GenerateCommand {
             _ => return Err("不正なコマンドです".into()),
         };
 
-        println!("言語設定を読み込んでいます...");
-        let config_paths = config::get_config_paths();
-        let lang_config = LanguageConfig::load(config_paths.languages)?;
+        // config/mod.rsを使用して設定を取得
+        let config = Config::builder()
+            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
         // コンテストを読み込む
         println!("コンテストの設定を読み込んでいます...");
-        let contest = match Contest::new(self.context.active_contest_dir.clone()) {
-            Ok(contest) => contest,
-            Err(e) => {
-                println!("コンテストの読み込みに失敗しました: {}", e);
-                return Err(e.into());
-            }
-        };
+        let contest = Contest::new(self.context.active_contest_dir.clone())?;
 
         // 生成スクリプトを探す
         if let Some(generator_path) = self.find_generator(problem_id) {
@@ -89,13 +83,13 @@ impl Command for GenerateCommand {
         // 言語の取得
         let language = match &contest.language {
             Some(lang) => {
-                match lang_config.get_extension(lang) {
-                    Some(ext) => ext,
-                    None => {
-                        println!("言語の拡張子が見つかりません: {}", lang);
-                        return Err(format!("言語の拡張子が設定されていません: {}", lang).into());
-                    }
-                }
+                // エイリアス解決を使用して言語名を取得
+                let resolved = config.get_with_alias::<String>(&format!("{}.name", lang))
+                    .map_err(|_| format!("無効な言語です: {}", lang))?;
+
+                // 拡張子を取得
+                config.get::<String>(&format!("{}.extension", resolved))
+                    .map_err(|_| format!("言語の拡張子が設定されていません: {}", resolved))?
             },
             None => {
                 println!("言語が設定されていません");

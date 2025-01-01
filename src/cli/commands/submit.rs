@@ -3,7 +3,7 @@ use crate::cli::commands::{Command, Result};
 use crate::cli::Commands;
 use crate::contest::Contest;
 use crate::oj::{OJContainer, ProblemInfo};
-use crate::config::{self};
+use crate::config::Config;
 use std::path::PathBuf;
 
 pub struct SubmitCommand {
@@ -16,10 +16,20 @@ impl SubmitCommand {
         Self { site, workspace_path }
     }
 
-    fn get_problem_url(&self, contest_id: &str, problem_id: &str) -> String {
-        match self.site {
-            Site::AtCoder => format!("https://atcoder.jp/contests/{}/tasks/{}_{}", contest_id, contest_id, problem_id),
-        }
+    fn get_problem_url(&self, contest_id: &str, problem_id: &str) -> Result<String> {
+        // config/mod.rsを使用して設定を取得
+        let config = Config::builder()
+            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
+
+        // サイトのURLパターンを設定から取得
+        let url_pattern = config.get::<String>(&format!("sites.{}.problem_url", self.site.to_string().to_lowercase()))
+            .unwrap_or_else(|_| match self.site {
+                Site::AtCoder => "https://atcoder.jp/contests/{}/tasks/{}_{}"
+                    .to_string(),
+            });
+
+        Ok(url_pattern.replace("{contest_id}", contest_id)
+            .replace("{problem_id}", problem_id))
     }
 }
 
@@ -31,9 +41,9 @@ impl Command for SubmitCommand {
             _ => return Err("不正なコマンドです".into()),
         };
 
-        println!("言語設定を読み込んでいます...");
-        let config_paths = config::get_config_paths();
-        let lang_config = LanguageConfig::load(config_paths.languages)?;
+        // config/mod.rsを使用して設定を取得
+        let config = Config::builder()
+            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
         // コンテストを読み込む
         println!("コンテストの設定を読み込んでいます...");
@@ -42,13 +52,13 @@ impl Command for SubmitCommand {
         // 言語IDを取得
         let language_id = match &contest.language {
             Some(lang) => {
-                match lang_config.get_site_id(lang, &self.site.to_string()) {
-                    Some(id) => id,
-                    None => {
-                        println!("言語IDが見つかりません: {}", lang);
-                        return Err(format!("言語IDが設定されていません: {}", lang).into());
-                    }
-                }
+                // エイリアス解決を使用して言語名を取得
+                let resolved = config.get_with_alias::<String>(&format!("{}.name", lang))
+                    .map_err(|_| format!("無効な言語です: {}", lang))?;
+
+                // サイトIDを取得
+                config.get::<String>(&format!("{}.site_ids._fallback.{}", resolved, self.site.to_string().to_lowercase()))
+                    .map_err(|_| format!("言語IDが設定されていません: {}", resolved))?
             },
             None => {
                 println!("言語が設定されていません");
@@ -57,7 +67,7 @@ impl Command for SubmitCommand {
         };
 
         // 問題URLを生成
-        let url = self.get_problem_url(&contest.contest_id, problem_id);
+        let url = self.get_problem_url(&contest.contest_id, problem_id)?;
 
         // ソースファイルのパスを取得
         let source_path = contest.get_solution_path(problem_id)?;
@@ -69,24 +79,20 @@ impl Command for SubmitCommand {
         println!("OJコンテナを初期化しています...");
         let oj = OJContainer::new(self.workspace_path.clone())?;
 
+        // 問題情報を取得
         let problem = ProblemInfo {
             url: url.clone(),
-            source_path,
-            problem_id: problem_id.clone(),
+            id: problem_id.to_string(),
+            language_id: language_id.clone(),
         };
 
         // 提出を実行
         println!("提出を実行しています...");
-        match oj.submit(&problem, &self.site, &language_id).await {
-            Ok(_) => {
-                println!("提出が完了しました");
-                Ok(())
-            },
-            Err(e) => {
-                println!("提出に失敗しました: {}", e);
-                // 提出の失敗は重大なエラーとして扱う
-                Err(e.into())
-            }
-        }
+        println!("URL: {}", url);
+        println!("言語ID: {}", language_id);
+        oj.submit(&problem, &source_path).await?;
+
+        println!("提出が完了しました");
+        Ok(())
     }
 } 
