@@ -19,6 +19,28 @@ pub enum ContestError {
     Site(String),
 }
 
+impl ContestError {
+    /// 設定関連のエラーを生成
+    pub fn config(message: impl Into<String>) -> Self {
+        ContestError::Config(message.into())
+    }
+
+    /// ファイルシステム関連のエラーを生成
+    pub fn fs(message: impl Into<String>) -> Self {
+        ContestError::FileSystem(message.into())
+    }
+
+    /// 言語関連のエラーを生成
+    pub fn language(message: impl Into<String>) -> Self {
+        ContestError::Language(message.into())
+    }
+
+    /// サイト関連のエラーを生成
+    pub fn site(message: impl Into<String>) -> Self {
+        ContestError::Site(message.into())
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum CphError {
     #[error("IOエラー: {0}")]
