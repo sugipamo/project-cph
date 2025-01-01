@@ -366,23 +366,28 @@ impl Contest {
         Ok(())
     }
 
+    // configへのアクセスメソッドを追加
+    pub fn get_config<T: TypedValue>(&self, path: &str) -> Result<T> {
+        self.config.get(path)
+    }
+
     // URLを生成するメソッド
-    fn get_site_url(&self, url_type: &str) -> Result<String> {
-        let pattern = self.config.get::<String>(&format!("sites.{}.{}_url", self.site_id, url_type))?;
+    fn get_site_url(&self, url_type: &str, problem_id: &str) -> Result<String> {
+        let pattern = self.get_config::<String>(&format!("sites.{}.{}_url", self.site_id, url_type))?;
         
         Ok(pattern
-            .replace("{url}", &self.config.get::<String>(&format!("sites.{}.url", self.site_id))?)
+            .replace("{url}", &self.get_config::<String>(&format!("sites.{}.url", self.site_id))?)
             .replace("{contest_id}", &self.contest_id)
-            .replace("{problem_id}", &self.problem_id))
+            .replace("{problem_id}", problem_id))
     }
 
     // 問題URLを取得
-    pub fn get_problem_url(&self) -> Result<String> {
-        self.get_site_url("problem")
+    pub fn get_problem_url(&self, problem_id: &str) -> Result<String> {
+        self.get_site_url("problem", problem_id)
     }
 
     // 提出URLを取得
-    pub fn get_submit_url(&self) -> Result<String> {
-        self.get_site_url("submit")
+    pub fn get_submit_url(&self, problem_id: &str) -> Result<String> {
+        self.get_site_url("submit", problem_id)
     }
 } 

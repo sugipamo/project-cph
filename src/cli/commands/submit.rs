@@ -36,16 +36,15 @@ impl Command for SubmitCommand {
         let language = contest.get_solution_language()?;
 
         // 言語IDを取得
-        let language_id = config
-            .get::<String>(&format!(
-                "languages.{}.site_ids._fallback.{}",
-                language,
-                self.site_id.to_lowercase()
-            ))
-            .map_err(|_| format!("言語 {} の設定が見つかりません", language))?;
+        let language_id = contest.get_config::<String>(&format!(
+            "languages.{}.site_ids._fallback.{}",
+            language,
+            self.site_id.to_lowercase()
+        ))
+        .map_err(|_| format!("言語 {} の設定が見つかりません", language))?;
 
         // 問題URLを取得
-        let url = contest.get_problem_url()
+        let url = contest.get_problem_url(&self.problem_id)
             .map_err(|_| format!("問題URLの生成に失敗しました: {}", self.problem_id))?;
 
         // 問題情報を構築

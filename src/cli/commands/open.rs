@@ -38,9 +38,9 @@ impl Command for OpenCommand {
         let source_path = contest.get_solution_path(&self.problem_id)?;
 
         // 問題URLを取得
-        if let Ok(url) = contest.get_problem_url() {
+        if let Ok(url) = contest.get_problem_url(&self.problem_id) {
             // ブラウザ設定を確認
-            if let Ok(browser) = config.get::<String>("system.browser") {
+            if let Ok(browser) = contest.get_config::<String>("system.browser") {
                 if let Err(e) = std::process::Command::new(&browser)
                     .arg(&url)
                     .spawn() {
@@ -59,7 +59,7 @@ impl Command for OpenCommand {
         }
 
         // エディタでソースファイルを開く
-        if let Some(editor) = config.get::<String>("system.editors.0").ok() {
+        if let Some(editor) = contest.get_config::<String>("system.editors.0").ok() {
             std::process::Command::new(editor)
                 .arg(&source_path)
                 .spawn()?;
