@@ -1,18 +1,17 @@
-use std::path::{PathBuf};
 use crate::cli::Site;
 use crate::cli::commands::{Command, Result};
 use crate::cli::Commands;
 use crate::contest::Contest;
-use std::fs;
+use crate::config::Config;
 
 pub struct WorkCommand {
     pub site: Site,
-    pub workspace_path: PathBuf,
+    pub problem_id: String,
 }
 
 impl WorkCommand {
-    pub fn new(site: Site, workspace_path: PathBuf) -> Self {
-        Self { site, workspace_path }
+    pub fn new(site: Site, problem_id: String) -> Self {
+        Self { site, problem_id }
     }
 }
 
@@ -24,42 +23,26 @@ impl Command for WorkCommand {
             _ => return Err("不正なコマンドです".into()),
         };
 
-        // active_contestディレクトリを作成
-        let active_dir = self.workspace_path.join("active_contest");
-        if !active_dir.exists() {
-            println!("active_contestディレクトリを作成します");
-            if let Err(e) = fs::create_dir_all(&active_dir) {
-                println!("ディレクトリの作成に失敗しました: {}", e);
-                return Err(e.into());
-            }
-        }
+        // 設定を取得
+        let config = Config::builder()
+            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
         // コンテストを読み込む
-        let mut contest = match Contest::new(self.workspace_path.clone()) {
-            Ok(contest) => contest,
-            Err(e) => {
-                println!("コンテストの読み込みに失敗しました: {}", e);
-                return Err(e.into());
-            }
-        };
-        
-        // コンテストIDを設定
-        contest.set_contest(contest_id.clone());
+        let mut contest = Contest::new(&config, contest_id)?;
         
         // サイトを設定
         if let Err(e) = contest.set_site(&self.site.to_string()) {
             println!("サイトの設定に失敗しました: {}", e);
             return Err(e.into());
         }
-        
-        // 設定を保存（テンプレートのコピーと既存ファイルの移動も行われる）
+
+        // コンテストを保存
         if let Err(e) = contest.save() {
-            println!("設定の保存に失敗しました: {}", e);
+            println!("コンテストの保存に失敗しました: {}", e);
             return Err(e.into());
         }
 
-        println!("コンテストの設定を保存しました: {}", contest_id);
-        println!("テンプレートファイルは {} にコピーされました", active_dir.display());
+        println!("コンテストの設定が完了しました");
         Ok(())
     }
 } 

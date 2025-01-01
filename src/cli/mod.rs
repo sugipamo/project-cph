@@ -38,6 +38,16 @@ impl Site {
             Site::AtCoder => "atcoder".to_string(),
         }
     }
+
+    pub fn get_problem_url(&self, problem_id: &str) -> Option<String> {
+        match self {
+            Site::AtCoder => Some(format!("{}/contests/{}/tasks/{}", 
+                self.get_url(),
+                problem_id.split('_').next().unwrap_or(problem_id),
+                problem_id
+            )),
+        }
+    }
 }
 
 #[derive(Debug, Subcommand)]

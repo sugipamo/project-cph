@@ -54,8 +54,14 @@ pub struct OJContainer {
 
 impl OJContainer {
     pub fn new(workspace_path: PathBuf) -> Result<Self> {
-        let contest = Contest::new(workspace_path.clone())?;
-        Ok(Self { workspace_path, contest })
+        // 設定を取得
+        let config = Config::builder()
+            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
+
+        Ok(Self { 
+            workspace_path,
+            contest: Contest::default(),
+        })
     }
 
     fn get_dockerfile_path() -> PathBuf {
@@ -194,7 +200,33 @@ impl OJContainer {
             .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
         println!("{}", format!("Opening problem URL: {}", problem.url).cyan());
-        println!("{}", format!("Please open this URL in your browser: {}", problem.url).yellow());
+
+        // ブラウザ設定を確認
+        let browser = config.get::<String>("system.browser")
+            .or_else(|_| env::var("BROWSER"))
+            .unwrap_or_else(|_| {
+                println!("{}", format!("Note: To automatically open URLs, please set the $BROWSER environment variable or configure system.browser in config.yaml").yellow());
+                String::new()
+            });
+
+        if !browser.is_empty() {
+            if let Err(e) = Command::new(&browser).arg(&problem.url).output() {
+                println!("Note: Failed to open in browser: {}", e);
+            }
+        }
+
+        // エディタ設定を取得
+        let editors = config.get::<Vec<String>>("system.editors")
+            .unwrap_or_else(|_| vec!["code".to_string(), "cursor".to_string()]);
+
+        // 各エディタで開く
+        for editor in editors {
+            if let Some(source_path) = problem.source_path.to_str() {
+                if let Err(e) = Command::new(&editor).arg(source_path).output() {
+                    println!("Note: Failed to open in {}: {}", editor, e);
+                }
+            }
+        }
 
         // Dockerイメージの存在確認
         self.check_image_exists().await?;
@@ -221,7 +253,7 @@ impl OJContainer {
         Ok(())
     }
 
-    pub async fn submit(&self, problem: &ProblemInfo, site: &Site, language_id: &str) -> Result<()> {
+    pub async fn submit(&self, problem: &ProblemInfo, _site: &Site, language_id: &str) -> Result<()> {
         // 設定を取得
         let config = Config::builder()
             .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;

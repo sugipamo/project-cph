@@ -11,6 +11,32 @@ impl LanguageCommand {
     pub fn new(context: CommandContext) -> Self {
         Self { context }
     }
+
+    fn display_languages(&self, config: &Config, current: Option<&str>) -> Result<()> {
+        println!("\n利用可能な言語:");
+        if let Ok(languages) = config.get::<Vec<String>>("languages.available") {
+            for lang in languages {
+                let display_name = config.get::<String>(&format!("{}.display_name", lang))
+                    .unwrap_or_else(|_| lang.clone());
+                if let Ok(default_lang) = config.get::<String>("languages.default") {
+                    if lang == default_lang {
+                        if Some(lang.as_str()) == current {
+                            println!("  * {} (デフォルト) - 現在の設定", display_name);
+                        } else {
+                            println!("  * {} (デフォルト)", display_name);
+                        }
+                        continue;
+                    }
+                }
+                if Some(lang.as_str()) == current {
+                    println!("  * {} - 現在の設定", display_name);
+                } else {
+                    println!("  * {}", display_name);
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]
@@ -22,7 +48,7 @@ impl Command for LanguageCommand {
 
         // コンテストを読み込む
         println!("コンテストの設定を読み込んでいます...");
-        let mut contest = Contest::new(self.context.active_contest_dir.clone())?;
+        let mut contest = Contest::new(&config, &self.context.problem_id)?;
 
         match command {
             Commands::Language { language } => {
@@ -32,71 +58,40 @@ impl Command for LanguageCommand {
                     Ok(lang) => lang,
                     Err(_) => {
                         println!("無効な言語が指定されました: {}", language);
-                        println!("利用可能な言語:");
-                        if let Ok(languages) = config.get::<Vec<String>>("languages.available") {
-                            for lang in languages {
-                                let display_name = config.get::<String>(&format!("{}.display_name", lang))
-                                    .unwrap_or_else(|_| lang.clone());
-                                if let Ok(default_lang) = config.get::<String>("languages.default") {
-                                    if lang == default_lang {
-                                        println!("  * {} (デフォルト)", display_name);
-                                        continue;
-                                    }
-                                }
-                                println!("  * {}", display_name);
-                            }
-                        }
+                        self.display_languages(&config, contest.language.as_deref())?;
                         return Err(format!("無効な言語です: {}", language).into());
                     }
                 };
-                
+
                 // 言語を設定
-                println!("言語を設定しています...");
-                contest.set_language(&resolved);
-                if let Err(e) = contest.save() {
-                    println!("言語設定の保存に失敗しました: {}", e);
+                if let Err(e) = contest.set_language(&resolved) {
+                    println!("言語の設定に失敗しました: {}", e);
                     return Err(e.into());
                 }
 
-                let display_name = config.get::<String>(&format!("{}.display_name", resolved))
-                    .unwrap_or_else(|_| resolved.to_string());
-                println!("言語を設定しました: {}", display_name);
+                // 設定を保存
+                if let Err(e) = contest.save() {
+                    println!("設定の保存に失敗しました: {}", e);
+                    return Err(e.into());
+                }
+
+                println!("言語を設定しました: {}", resolved);
+                Ok(())
             }
             _ => {
                 // 現在の設定を表示
                 if let Some(current) = &contest.language {
                     let display_name = config.get::<String>(&format!("{}.display_name", current))
                         .unwrap_or_else(|_| current.to_string());
-                    if let Ok(default_lang) = config.get::<String>("languages.default") {
-                        if current == &default_lang {
-                            println!("現在の言語: {} (デフォルト)", display_name);
-                        } else {
-                            println!("現在の言語: {}", display_name);
-                        }
-                    } else {
-                        println!("現在の言語: {}", display_name);
-                    }
+                    println!("現在の言語: {}", display_name);
                 } else {
                     println!("言語が設定されていません");
                 }
-                
-                println!("\n利用可能な言語:");
-                if let Ok(languages) = config.get::<Vec<String>>("languages.available") {
-                    for lang in languages {
-                        let display_name = config.get::<String>(&format!("{}.display_name", lang))
-                            .unwrap_or_else(|_| lang.to_string());
-                        if let Ok(default_lang) = config.get::<String>("languages.default") {
-                            if lang == default_lang {
-                                println!("  * {} (デフォルト)", display_name);
-                                continue;
-                            }
-                        }
-                        println!("  * {}", display_name);
-                    }
-                }
+
+                // 利用可能な言語を表示
+                self.display_languages(&config, contest.language.as_deref())?;
+                Ok(())
             }
         }
-
-        Ok(())
     }
 } 

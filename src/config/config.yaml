@@ -1,5 +1,10 @@
 # グステム全体の設定
 system:
+  browser: "${BROWSER-chrome}"
+  editors:
+    - "code"
+    - "cursor"
+
   contest_dir:
     active: "${CPH_ACTIVE_DIR-active_contest}"
     storage: "${CPH_STORAGE_DIR-archive}"

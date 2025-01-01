@@ -44,32 +44,37 @@ impl Default for Contest {
 }
 
 impl Contest {
-    pub fn new(current_dir: PathBuf) -> Result<Self> {
-        // config/mod.rsを使用して設定を取得
-        let config = Config::builder()
-            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
-
+    pub fn new(config: &Config, problem_id: &str) -> Result<Self> {
         // アクティブコンテストのディレクトリを設定から取得
-        let active_base = config.get::<String>("system.contest_dir.active")
+        let active_dir = config.get::<String>("system.contest_dir.active")
             .unwrap_or_else(|_| "active_contest".to_string());
-        let active_dir = current_dir.join(&active_base);
+        
+        let workspace_dir = std::env::current_dir()?;
+        let active_contest_dir = workspace_dir.join(&active_dir);
 
-        if !active_dir.exists() {
-            println!("{}ディレクトリを作成します", active_base);
-            fs::create_dir_all(&active_dir)
-                .map_err(|e| format!("{}ディレクトリの作成に失敗しました: {}", active_base, e))?;
+        if !active_contest_dir.exists() {
+            println!("{}ディレクトリを作成します", active_dir);
+            fs::create_dir_all(&active_contest_dir)
+                .map_err(|e| format!("{}ディレクトリの作成に失敗しました: {}", active_dir, e))?;
         }
+
+        // コンテストIDを問題IDから抽出
+        let contest_id = problem_id.split('_')
+            .next()
+            .unwrap_or(problem_id)
+            .to_string();
 
         // コンテスト設定ファイル名を設定から取得
         let config_file = config.get::<String>("system.active_contest_yaml")
             .unwrap_or_else(|_| "contests.yaml".to_string());
-        let config_path = active_dir.join(&config_file);
+        let config_path = active_contest_dir.join(&config_file);
 
         if !config_path.exists() {
             // デフォルトのコンテスト設定を作成し、デフォルト言語を設定
             let mut contest = Self::default();
-            contest.active_contest_dir = active_dir;
-            contest.workspace_dir = current_dir.clone();
+            contest.active_contest_dir = active_contest_dir;
+            contest.workspace_dir = workspace_dir;
+            contest.contest_id = contest_id;
 
             // デフォルト言語を取得
             if let Ok(default_lang) = config.get::<String>("languages.default") {
@@ -83,9 +88,15 @@ impl Contest {
         let mut contest: Contest = serde_yaml::from_str(&content)
             .map_err(|e| format!("{}の解析に失敗しました: {}", config_file, e))?;
         
-        contest.active_contest_dir = active_dir;
-        contest.workspace_dir = current_dir;
+        contest.active_contest_dir = active_contest_dir;
+        contest.workspace_dir = workspace_dir;
+        contest.contest_id = contest_id;
         Ok(contest)
+    }
+
+    pub fn get_solution_language(&self) -> Result<String> {
+        self.language.clone()
+            .ok_or_else(|| "言語が設定されていません".into())
     }
 
     pub fn save(&self) -> Result<()> {
