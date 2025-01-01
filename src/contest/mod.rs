@@ -19,16 +19,18 @@ pub struct Contest {
 
 impl Default for Contest {
     fn default() -> Self {
-        let config = Config::new().expect("Failed to load config");
+        let config = Config::builder()
+            .expect("Failed to load config");
         let active_dir = config.get::<String>("system.contest_dir.active")
             .expect("Failed to get active contest directory");
-        let default_site = Site::default();
+        let default_site = Site::AtCoder;
 
         Contest {
             active_contest_dir: PathBuf::from(active_dir),
+            contest_id: String::new(),
             language: None,
             site: default_site,
-            problem: None,
+            workspace_dir: PathBuf::new(),
         }
     }
 }
@@ -152,44 +154,44 @@ impl Contest {
     }
 
     pub fn set_language(&mut self, language: &str) -> Result<()> {
-        let config = Config::new()?;
-        let language_exists = config.get::<Value>(&format!("languages.{}", language))
-            .map_err(|e| match e {
-                ConfigError::PathError(_) => ConfigError::RequiredValueError(
+        let config = Config::builder()?;
+        
+        // 言語の存在確認
+        match config.get::<String>(&format!("languages.{}.extension", language)) {
+            Ok(_) => {
+                self.language = Some(language.to_string());
+                Ok(())
+            },
+            Err(ConfigError::PathError(_)) => {
+                Err(Box::new(ConfigError::RequiredValueError(
                     format!("Language '{}' is not supported", language)
-                ),
-                _ => e,
-            })?;
-
-        if language_exists.is_null() {
-            return Err(Box::new(ConfigError::RequiredValueError(
-                format!("Language '{}' is not supported", language)
-            )));
+                )))
+            },
+            Err(e) => Err(Box::new(e)),
         }
-
-        self.language = Some(language.to_string());
-        Ok(())
     }
 
     pub fn set_site(&mut self, site_name: &str) -> Result<()> {
-        let config = Config::new()?;
+        let config = Config::builder()?;
         
-        let site_exists = config.get::<Value>(&format!("sites.{}", site_name))
-            .map_err(|e| match e {
-                ConfigError::PathError(_) => ConfigError::RequiredValueError(
+        // サイトの存在確認
+        match config.get::<String>(&format!("sites.{}.problem_url", site_name)) {
+            Ok(_) => {
+                self.site = match site_name.to_lowercase().as_str() {
+                    "atcoder" => Site::AtCoder,
+                    _ => return Err(Box::new(ConfigError::RequiredValueError(
+                        format!("Site '{}' is not supported", site_name)
+                    ))),
+                };
+                Ok(())
+            },
+            Err(ConfigError::PathError(_)) => {
+                Err(Box::new(ConfigError::RequiredValueError(
                     format!("Site '{}' is not supported", site_name)
-                ),
-                _ => e,
-            })?;
-
-        if site_exists.is_null() {
-            return Err(Box::new(ConfigError::RequiredValueError(
-                format!("Site '{}' is not supported", site_name)
-            )));
+                )))
+            },
+            Err(e) => Err(Box::new(e)),
         }
-
-        self.site = Site::from(site_name);
-        Ok(())
     }
 
     // ティレクトリ内容のコピー（再帰的）
