@@ -18,18 +18,11 @@ impl Command for LanguageCommand {
     async fn execute(&self, command: &Commands) -> Result<()> {
         println!("設定を読み込んでいます...");
         let config = Config::builder()
-            .add_alias_section("languages", "aliases")
-            .build();
+            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
         // コンテストを読み込む
         println!("コンテストの設定を読み込んでいます...");
-        let mut contest = match Contest::new(self.context.active_contest_dir.clone()) {
-            Ok(contest) => contest,
-            Err(e) => {
-                println!("コンテストの読み込みに失敗しました: {}", e);
-                return Err(e.into());
-            }
-        };
+        let mut contest = Contest::new(self.context.active_contest_dir.clone())?;
 
         match command {
             Commands::Language { language } => {
@@ -66,14 +59,14 @@ impl Command for LanguageCommand {
                 }
 
                 let display_name = config.get::<String>(&format!("{}.display_name", resolved))
-                    .unwrap_or(resolved.clone());
+                    .unwrap_or_else(|_| resolved.to_string());
                 println!("言語を設定しました: {}", display_name);
             }
             _ => {
                 // 現在の設定を表示
                 if let Some(current) = &contest.language {
                     let display_name = config.get::<String>(&format!("{}.display_name", current))
-                        .unwrap_or_else(|| current.to_string());
+                        .unwrap_or_else(|_| current.to_string());
                     if let Ok(default_lang) = config.get::<String>("languages.default") {
                         if current == &default_lang {
                             println!("現在の言語: {} (デフォルト)", display_name);
@@ -91,7 +84,7 @@ impl Command for LanguageCommand {
                 if let Ok(languages) = config.get::<Vec<String>>("languages.available") {
                     for lang in languages {
                         let display_name = config.get::<String>(&format!("{}.display_name", lang))
-                            .unwrap_or_else(|_| lang.clone());
+                            .unwrap_or_else(|_| lang.to_string());
                         if let Ok(default_lang) = config.get::<String>("languages.default") {
                             if lang == default_lang {
                                 println!("  * {} (デフォルト)", display_name);
