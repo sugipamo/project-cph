@@ -7,7 +7,7 @@ use std::io::BufRead;
 type Result<T> = std::result::Result<T, String>;
 
 mod parse;
-pub use parse::{ParsedCommand, ParseError};
+pub use parse::{CommandToken, TokenizeError};
 
 /// コンテスト情報を管理する構造体
 /// 
@@ -376,8 +376,8 @@ impl Contest {
     }
 
     /// コマンド文字列をパースしてコマンド種別とパラメータを抽出
-    pub fn parse_command(&self, input: &str) -> std::result::Result<ParsedCommand, ParseError> {
-        ParsedCommand::parse(input)
+    pub fn parse_command(&self, input: &str) -> std::result::Result<CommandToken, TokenizeError> {
+        CommandToken::parse(input)
     }
 }
 

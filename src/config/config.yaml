@@ -33,21 +33,6 @@ system:
   test:
     dir: "${CPH_TEST_DIR-test}"
 
-# コマンドのエイリアス設定
-commands:
-  test:
-    aliases: ["t", "check"]
-  open:
-    aliases: ["o", "show"]
-  submit:
-    aliases: ["s", "sub"]
-  init:
-    aliases: ["i", "create"]
-  language:
-    aliases: ["l", "lang"]
-  login:
-    aliases: ["auth"]
-
 # 言語設定
 languages:
   default: rust
