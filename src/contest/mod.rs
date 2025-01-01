@@ -1,9 +1,12 @@
-use crate::error::{Result, ContestError};
+use crate::error::Result;
 use crate::config::{Config, TypedValue};
 use serde::{Serialize, Deserialize};
 use std::path::{PathBuf, Path};
 use std::fs;
 use std::io::BufRead;
+
+mod error;
+pub use error::ContestError;
 
 /// コンテスト情報を管理する構造体
 /// 
