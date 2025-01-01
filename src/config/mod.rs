@@ -195,7 +195,7 @@ impl Config {
     }
 
     fn expand_env_vars(content: &str) -> Result<String, ConfigError> {
-        let re = Regex::new(r"\$\{([^}]+?)(?::[-=]([^}]+))?\}").unwrap();
+        let re = Regex::new(r"\$\{([^}-]+)(?:-([^}]+))?\}").unwrap();
         let mut result = content.to_string();
         let mut last_end = 0;
 
@@ -211,7 +211,7 @@ impl Config {
                         default.to_string()
                     } else {
                         return Err(ConfigError::EnvError(
-                            format!("環境変数 '{}' が見つからず、デフォルト値も指定されていません", var_name)
+                            format!("環境変数 '{}' が未設定で、デフォルト値も指定されていません", var_name)
                         ));
                     }
                 }
@@ -815,7 +815,7 @@ values:
         let env_error = Config::expand_env_vars("${NONEXISTENT_VAR}");
         assert_eq!(
             env_error.unwrap_err().to_string(),
-            "環境変数エラー: 環境変数 'NONEXISTENT_VAR' が見つからず、デフォルト値も指定されていません"
+            "環境変数エラー: 環境変数 'NONEXISTENT_VAR' が未設定で、デフォルト値も指定されていません"
         );
     }
 } 
