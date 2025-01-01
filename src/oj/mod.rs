@@ -5,6 +5,7 @@ use std::process::Command;
 use crate::cli::Site;
 use std::env;
 use crate::contest::Contest;
+use crate::config::Config;
 use users;
 use std::os::unix::fs::PermissionsExt;
 use dirs;
@@ -49,14 +50,12 @@ pub struct ProblemInfo {
 pub struct OJContainer {
     workspace_path: PathBuf,
     contest: Contest,
-    config: OJConfig,
 }
 
 impl OJContainer {
     pub fn new(workspace_path: PathBuf) -> Result<Self> {
         let contest = Contest::new(workspace_path.clone())?;
-        let config = OJConfig::load()?;
-        Ok(Self { workspace_path, contest, config })
+        Ok(Self { workspace_path, contest })
     }
 
     fn get_dockerfile_path() -> PathBuf {
@@ -190,6 +189,10 @@ impl OJContainer {
     }
 
     pub async fn open(&self, problem: ProblemInfo) -> Result<()> {
+        // 設定を取得
+        let config = Config::builder()
+            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
+
         println!("{}", format!("Opening problem URL: {}", problem.url).cyan());
         println!("{}", format!("Please open this URL in your browser: {}", problem.url).yellow());
 
@@ -204,9 +207,13 @@ impl OJContainer {
         let relative_problem_dir = problem_dir.strip_prefix(&self.workspace_path)
             .map_err(|_| "Failed to get relative problem path")?;
 
+        // テストディレクトリを設定から取得
+        let test_dir = config.get::<String>("system.test.directory")
+            .unwrap_or_else(|_| "test".to_string());
+
         self.run_oj_command(&[
             "download",
-            "-d", &format!("{}/{}", relative_problem_dir.display(), self.config.test.directory),
+            "-d", &format!("{}/{}", relative_problem_dir.display(), test_dir),
             &problem.url,
         ], true).await?;
 
@@ -214,7 +221,11 @@ impl OJContainer {
         Ok(())
     }
 
-    pub async fn submit(&self, problem: &ProblemInfo, _site: &Site, language_id: &str) -> Result<()> {
+    pub async fn submit(&self, problem: &ProblemInfo, site: &Site, language_id: &str) -> Result<()> {
+        // 設定を取得
+        let config = Config::builder()
+            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
+
         println!("{}", format!("Submitting solution for problem {}...", problem.problem_id).cyan());
 
         // Dockerイメージの存在確認
@@ -229,8 +240,14 @@ impl OJContainer {
         ];
 
         // 設定に基づいてコマンドライン引数を追加
-        args.push(&format!("--wait={}", self.config.submit.wait));
-        if self.config.submit.auto_yes {
+        let wait = config.get::<u64>("system.submit.wait")
+            .unwrap_or(0);
+        let wait_arg = format!("--wait={}", wait);
+        args.push(&wait_arg);
+
+        let auto_yes = config.get::<bool>("system.submit.auto_yes")
+            .unwrap_or(false);
+        if auto_yes {
             args.push("--yes");
         }
 

@@ -448,6 +448,42 @@ impl TypedValue for f64 {
     }
 }
 
+impl TypedValue for u64 {
+    const TYPE: ConfigType = ConfigType::Integer;
+
+    fn from_yaml(value: &Value) -> Result<Self, ConfigError> {
+        match value {
+            Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    if i < 0 {
+                        Err(ConfigError::TypeError {
+                            expected: Self::TYPE,
+                            found: "negative integer",
+                            path: String::new(),
+                            value: Config::value_to_string(value),
+                        })
+                    } else {
+                        Ok(i as u64)
+                    }
+                } else {
+                    Err(ConfigError::TypeError {
+                        expected: Self::TYPE,
+                        found: "non-integer number",
+                        path: String::new(),
+                        value: Config::value_to_string(value),
+                    })
+                }
+            },
+            _ => Err(ConfigError::TypeError {
+                expected: Self::TYPE,
+                found: Config::get_value_type_name(value),
+                path: String::new(),
+                value: Config::value_to_string(value),
+            }),
+        }
+    }
+}
+
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
