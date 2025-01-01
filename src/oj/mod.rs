@@ -4,7 +4,6 @@ use colored::*;
 use std::process::Command;
 use std::env;
 use crate::contest::Contest;
-use crate::config::Config;
 use users;
 use std::os::unix::fs::PermissionsExt;
 use dirs;
@@ -264,6 +263,7 @@ impl OJContainer {
     }
 }
 
+#[allow(dead_code)]
 fn has_test_cases(dir: &PathBuf) -> Result<bool> {
     if !dir.exists() {
         return Ok(false);

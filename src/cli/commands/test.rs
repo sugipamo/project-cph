@@ -1,7 +1,9 @@
-use super::{Command, Result, CommandContext};
+use crate::cli::commands::{Command, Result, CommandContext};
 use crate::cli::Commands;
-use crate::test;
+use crate::contest::Contest;
+use crate::config::Config;
 
+#[derive(Debug)]
 pub struct TestCommand {
     context: CommandContext,
 }
@@ -14,18 +16,17 @@ impl TestCommand {
 
 #[async_trait::async_trait]
 impl Command for TestCommand {
-    async fn execute(&self, command: &Commands) -> Result<()> {
-        match command {
-            Commands::Test { problem_id: _ } => (),
-            _ => return Err("不正なコマンドです".into()),
-        };
+    async fn execute(&self, _command: &Commands, site_id: &str) -> Result<()> {
+        // 設定を取得
+        let config = Config::load()
+            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
-        // Note: 現在は同期的な実装のみ
-        // TODO: テスト実行の非同期実装
-        if let Err(e) = test::run_test(&self.context.problem_id) {
-            println!("テストの実行に失敗しました: {}", e);
-            return Err(e.into());
-        }
+        // コンテストオブジェクトを作成
+        let mut contest = Contest::new(&config, &self.context.problem_id)?;
+        contest.set_site(site_id)?;
+
+        // テストを実行
+        contest.run_test(&self.context.problem_id)?;
 
         Ok(())
     }

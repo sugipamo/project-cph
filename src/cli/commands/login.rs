@@ -1,6 +1,6 @@
 use crate::cli::commands::{Command, Result};
 use crate::cli::Commands;
-use crate::oj::OnlineJudge;
+use crate::oj::OJContainer;
 
 #[derive(Debug)]
 pub struct LoginCommand;
@@ -13,16 +13,15 @@ impl LoginCommand {
 
 #[async_trait::async_trait]
 impl Command for LoginCommand {
-    async fn execute(&self, command: &Commands) -> Result<()> {
+    async fn execute(&self, _command: &Commands, site_id: &str) -> Result<()> {
         let mut contest = crate::contest::Contest::default();
+        contest.set_site(site_id)?;
 
-        // コマンドからsite_idを取得
-        if let Commands::Login = command {
-            // デフォルトのsite_idを使用
-        }
+        // ワークスペースディレクトリを取得
+        let workspace_path = std::env::current_dir()?;
 
-        // OnlineJudgeを初期化
-        let mut oj = OnlineJudge::new(&contest);
+        // OJコンテナを初期化
+        let oj = OJContainer::new(workspace_path, contest)?;
         oj.login().await?;
 
         Ok(())

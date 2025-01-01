@@ -1,6 +1,6 @@
 use clap::Parser;
 use cph::cli::{Cli, Commands};
-use cph::cli::commands::{Command, CommandContext};
+use cph::cli::commands::CommandContext;
 use cph::config::Config;
 
 #[tokio::main]
@@ -8,7 +8,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     // 設定を読み込む
-    let config = Config::load()?;
+    let _config = Config::load()?;
 
     // コマンドコンテキストを作成
     let context = match &cli.command {
@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // コマンドを生成して実行
     if let Some(command) = cph::cli::commands::create_command(cli.command.as_str(), context) {
-        command.execute(&cli.command).await?;
+        command.execute(&cli.command, &cli.site_id).await?;
     }
 
     Ok(())

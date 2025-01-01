@@ -314,6 +314,7 @@ impl Contest {
     }
 
     // ファイルが.moveignoreパターンに一致するかチェック
+    #[allow(dead_code)]
     fn should_ignore(&self, file_name: &str, patterns: &[String]) -> bool {
         patterns.iter().any(|pattern| {
             if pattern.ends_with("/**") {
@@ -389,5 +390,16 @@ impl Contest {
     // 提出URLを取得
     pub fn get_submit_url(&self, problem_id: &str) -> Result<String> {
         self.get_site_url("submit", problem_id)
+    }
+
+    // 一時的なスタブメソッド
+    pub fn run_test(&self, problem_id: &str) -> Result<()> {
+        println!("TODO: Implement run_test for problem {}", problem_id);
+        Ok(())
+    }
+
+    pub fn generate_test(&self, problem_id: &str) -> Result<()> {
+        println!("TODO: Implement generate_test for problem {}", problem_id);
+        Ok(())
     }
 } 

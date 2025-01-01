@@ -16,7 +16,7 @@ impl WorkCommand {
 
 #[async_trait::async_trait]
 impl Command for WorkCommand {
-    async fn execute(&self, command: &Commands) -> Result<()> {
+    async fn execute(&self, _command: &Commands, site_id: &str) -> Result<()> {
         // 設定を取得
         let config = Config::load()
             .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
@@ -24,6 +24,7 @@ impl Command for WorkCommand {
         // コンテストオブジェクトを作成
         let mut contest = Contest::new(&config, &self.contest_id)?;
         contest.set_contest(self.contest_id.clone());
+        contest.set_site(site_id)?;
 
         // コンテストの設定を保存
         contest.save()?;

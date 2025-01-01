@@ -1,5 +1,4 @@
 use clap::{Parser, Subcommand};
-use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -59,6 +58,20 @@ pub enum Commands {
         /// 問題ID
         problem_id: String,
     },
+}
+
+impl Commands {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Commands::Login => "login",
+            Commands::Work { .. } => "work",
+            Commands::Open { .. } => "open",
+            Commands::Language { .. } => "language",
+            Commands::Test { .. } => "test",
+            Commands::Submit { .. } => "submit",
+            Commands::Generate { .. } => "generate",
+        }
+    }
 }
 
 pub mod commands;
