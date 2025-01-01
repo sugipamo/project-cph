@@ -78,6 +78,7 @@ pub enum ConfigError {
     PathError(String),
     AliasError(String),
     EnvError(String),
+    RequiredValueError(String),  // 必須の設定値が未設定の場合のエラー
 }
 
 impl From<io::Error> for ConfigError {
@@ -517,6 +518,7 @@ impl std::fmt::Display for ConfigError {
             ConfigError::PathError(path) => write!(f, "パスエラー: パス '{}' が見つかりません", path),
             ConfigError::AliasError(msg) => write!(f, "エイリアスエラー: {}", msg),
             ConfigError::EnvError(msg) => write!(f, "環境変数エラー: {}", msg),
+            ConfigError::RequiredValueError(msg) => write!(f, "必須設定エラー: {}", msg),
         }
     }
 }

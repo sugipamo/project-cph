@@ -33,11 +33,15 @@ impl Default for Contest {
 
         // デフォルトのサイトを設定から取得
         let default_site = config.get_with_alias::<String>("sites.default.name")
-            .map(|site| match site.to_lowercase().as_str() {
-                "atcoder" => Site::AtCoder,
-                _ => {
-                    eprintln!("未知のサイト '{}' が指定されました", site);
-                    std::process::exit(1);
+            .map(|site| {
+                // エイリアス解決を使用してサイト名を正規化
+                let resolved = config.resolve_alias_path(&format!("{}.name", site));
+                match resolved.as_str() {
+                    "sites.atcoder.name" => Site::AtCoder,
+                    _ => {
+                        eprintln!("未知のサイト '{}' が指定されました", site);
+                        std::process::exit(1);
+                    }
                 }
             })
             .map_err(|e| {
@@ -173,34 +177,43 @@ impl Contest {
         self.contest_id = contest_id;
     }
 
-    pub fn set_language(&mut self, language: &str) -> Result<()> {
+    pub fn set_language(&mut self, language: &str) -> Result<(), ConfigError> {
         // config/mod.rsを使用して設定を取得
-        let config = Config::builder()
-            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
+        let config = Config::builder()?;
 
         // エイリアス解決を使用して言語名を取得
         let resolved = config.get_with_alias::<String>(&format!("{}.name", language))
-            .map_err(|_| format!("無効な言語です: {}", language))?;
+            .map_err(|e| match e {
+                ConfigError::PathError(_) => ConfigError::RequiredValueError(
+                    format!("言語 '{}' の設定が見つかりません", language)
+                ),
+                _ => e
+            })?;
 
         self.language = Some(resolved);
         Ok(())
     }
 
-    pub fn set_site(&mut self, site_name: &str) -> Result<()> {
+    pub fn set_site(&mut self, site_name: &str) -> Result<(), ConfigError> {
         // config/mod.rsを使用して設定を取得
-        let config = Config::builder()
-            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
+        let config = Config::builder()?;
 
-        // エイリアス解決を使用してサイト名を取得
-        let resolved = config.get_with_alias::<String>(&format!("{}.name", site_name))
-            .map_err(|_| format!("無効なサイトです: {}", site_name))?;
+        // サイト設定の存在確認
+        let site_exists = config.get::<Value>(&format!("sites.{}", site_name))
+            .map_err(|e| match e {
+                ConfigError::PathError(_) => ConfigError::RequiredValueError(
+                    format!("サイト '{}' の設定が見つかりません", site_name)
+                ),
+                _ => e
+            })?;
 
-        // 解決されたサイト名を適切なenumに変換
-        self.site = match resolved.to_lowercase().as_str() {
-            "atcoder" => Site::AtCoder,
-            _ => return Err(format!("未対応のサイトです: {}", resolved).into()),
-        };
+        if site_exists.is_null() {
+            return Err(ConfigError::RequiredValueError(
+                format!("サイト '{}' の設定が無効です", site_name)
+            ));
+        }
 
+        self.site = Some(site_name.to_string());
         Ok(())
     }
 

@@ -55,14 +55,23 @@ languages:
     compile: []
     run: []
     aliases: []
+    runner:
+      needs_compilation: false
+      require_files: []
+      env_vars: []
 
   rust:
     <<: *lang_base
     aliases: ["rs", "Rust", "RUST"]
     extension: "rs"
-    image: "${CPH_RUST_IMAGE-rust:latest}"
-    compile: ["rustc", "main.rs"]
-    run: ["./main"]
+    runner:
+      image: "${CPH_RUST_IMAGE-rust:latest}"
+      compile: ["rustc", "main.rs"]
+      run: ["./main"]
+      needs_compilation: true
+      require_files: ["Cargo.toml"]
+      env_vars:
+        - "RUST_BACKTRACE=1"
     site_ids:
       _source: "online_judge_tool"
       _fallback:
@@ -72,8 +81,9 @@ languages:
     <<: *lang_base
     aliases: ["py", "python3"]
     extension: "py"
-    image: "${CPH_PYTHON_IMAGE-python:3.11-slim}"
-    run: ["python", "main.py"]
+    runner:
+      image: "${CPH_PYTHON_IMAGE-python:3.11-slim}"
+      run: ["python", "main.py"]
     site_ids:
       _source: "online_judge_tool"
       _fallback:
@@ -83,8 +93,9 @@ languages:
     <<: *lang_base
     aliases: ["pypy3", "PyPy", "PYPY"]
     extension: "py"
-    image: "${CPH_PYPY_IMAGE-pypy:latest}"
-    run: ["pypy3", "main.py"]
+    runner:
+      image: "${CPH_PYPY_IMAGE-pypy:latest}"
+      run: ["pypy3", "main.py"]
     site_ids:
       _source: "online_judge_tool"
       _fallback:
@@ -94,9 +105,13 @@ languages:
     <<: *lang_base
     aliases: ["c++", "gcc"]
     extension: "cpp"
-    image: "${CPH_CPP_IMAGE-gcc:latest}"
-    compile: ["g++", "-std=c++17", "-O2", "main.cpp"]
-    run: ["./a.out"]
+    runner:
+      image: "${CPH_CPP_IMAGE-gcc:latest}"
+      compile: ["g++", "-std=c++17", "-O2", "main.cpp"]
+      run: ["./a.out"]
+      needs_compilation: true
+      env_vars:
+        - "CPLUS_INCLUDE_PATH=/usr/include/c++/9"
     site_ids:
       _source: "online_judge_tool"
       _fallback:

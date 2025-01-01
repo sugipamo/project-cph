@@ -15,8 +15,34 @@ pub struct DockerCommand {
 #[derive(Debug, Clone)]
 pub struct CompileConfig {
     pub extension: String,
-    pub needs_cargo: bool,
+    pub require_files: Vec<String>,
     pub env_vars: Vec<String>,
+}
+
+impl CompileConfig {
+    pub fn new(extension: String, require_files: Vec<String>, env_vars: Vec<String>) -> Self {
+        Self {
+            extension,
+            require_files,
+            env_vars,
+        }
+    }
+
+    pub fn from_config(config_builder: &crate::config::Config, language: &str) -> Result<Self, String> {
+        let extension = config_builder.get::<String>(&format!("{}.extension", language))
+            .map_err(|e| format!("拡張子の取得に失敗しました: {}", e))?;
+
+        let require_files = if language == "rust" {
+            vec!["Cargo.toml".to_string()]
+        } else {
+            vec![]
+        };
+
+        let env_vars = config_builder.get::<Vec<String>>(&format!("{}.runner.env_vars", language))
+            .map_err(|e| format!("環境変数設定の取得に失敗しました: {}", e))?;
+
+        Ok(Self::new(extension, require_files, env_vars))
+    }
 }
 
 impl DockerCommand {
@@ -102,12 +128,17 @@ impl DockerCommand {
         fs::create_dir_all(&absolute_compile_dir)
             .map_err(|e| format!("Failed to create compile directory: {}", e))?;
 
-        // コンパイラに応じてソースファイルを配置
-        let source_file = if config.needs_cargo {
-            // Cargoプロジェクトの場合はsrcディレクトリが必要
-            if !absolute_compile_dir.join("Cargo.toml").exists() {
-                return Err(format!("Cargo.toml not found in {}", compile_dir));
+        // 必要なファイルの存在チェック
+        for required_file in &config.require_files {
+            let file_path = absolute_compile_dir.join(required_file);
+            if !file_path.exists() {
+                return Err(format!("Required file not found: {}", required_file));
             }
+        }
+
+        // ソースファイルの配置
+        let source_file = if !config.require_files.is_empty() {
+            // 必要なファイルがある場合（例：Cargoプロジェクト）はsrcディレクトリを作成
             let src_dir = absolute_compile_dir.join("src");
             fs::create_dir_all(&src_dir)
                 .map_err(|e| format!("Failed to create source directory: {}", e))?;

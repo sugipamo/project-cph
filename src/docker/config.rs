@@ -1,6 +1,6 @@
 use std::path::Path;
 use serde::{Serialize, Deserialize};
-use crate::config::Config;
+use crate::config::{Config, ConfigError};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DockerConfig {
@@ -18,18 +18,32 @@ impl DockerConfig {
         }
     }
 
-    pub fn default() -> std::io::Result<Self> {
-        let config = Config::builder()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+    pub fn default() -> Result<Self, ConfigError> {
+        let config = Config::builder()?;
 
         let timeout_seconds = config.get::<u64>("system.docker.timeout_seconds")
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| match e {
+                ConfigError::PathError(_) => ConfigError::RequiredValueError(
+                    "system.docker.timeout_seconds が設定されていません".to_string()
+                ),
+                _ => e
+            })?;
 
         let memory_limit_mb = config.get::<u64>("system.docker.memory_limit_mb")
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| match e {
+                ConfigError::PathError(_) => ConfigError::RequiredValueError(
+                    "system.docker.memory_limit_mb が設定されていません".to_string()
+                ),
+                _ => e
+            })?;
 
         let mount_point = config.get::<String>("system.docker.mount_point")
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| match e {
+                ConfigError::PathError(_) => ConfigError::RequiredValueError(
+                    "system.docker.mount_point が設定されていません".to_string()
+                ),
+                _ => e
+            })?;
 
         Ok(Self {
             timeout_seconds,
@@ -38,9 +52,10 @@ impl DockerConfig {
         })
     }
 
-    pub fn from_yaml<P: AsRef<Path>>(path: P) -> std::io::Result<Self> {
-        let content = std::fs::read_to_string(path)?;
+    pub fn from_yaml<P: AsRef<Path>>(path: P) -> Result<Self, ConfigError> {
+        let content = std::fs::read_to_string(path)
+            .map_err(ConfigError::IoError)?;
         serde_yaml::from_str(&content)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+            .map_err(|e| ConfigError::ParseError(e))
     }
 } 

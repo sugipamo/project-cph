@@ -24,33 +24,59 @@ impl DockerRunner {
         }
     }
 
-    pub fn from_language(language: &str) -> std::io::Result<Self> {
-        let config = DockerConfig::default();
-        let config_builder = Config::builder()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+    pub fn from_language(language: &str) -> Result<Self, ConfigError> {
+        let config = DockerConfig::default()?;
+        let config_builder = Config::builder()?;
 
         // エイリアス解決を使用して言語名を取得
         let resolved = config_builder.get_with_alias::<String>(&format!("{}.name", language))
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| match e {
+                ConfigError::PathError(_) => ConfigError::RequiredValueError(
+                    format!("言語 '{}' の設定が見つかりません", language)
+                ),
+                _ => e
+            })?;
 
         // 言語設定を取得
         let _runner_image = config_builder.get::<String>(&format!("{}.runner.image", resolved))
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| match e {
+                ConfigError::PathError(_) => ConfigError::RequiredValueError(
+                    format!("言語 '{}' のイメージ設定が見つかりません", resolved)
+                ),
+                _ => e
+            })?;
 
         let _compile_command = config_builder.get::<Vec<String>>(&format!("{}.runner.compile", resolved))
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| match e {
+                ConfigError::PathError(_) => ConfigError::RequiredValueError(
+                    format!("言語 '{}' のコンパイルコマンド設定が見つかりません", resolved)
+                ),
+                _ => e
+            })?;
 
         let _run_command = config_builder.get::<Vec<String>>(&format!("{}.runner.run", resolved))
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| match e {
+                ConfigError::PathError(_) => ConfigError::RequiredValueError(
+                    format!("言語 '{}' の実行コマンド設定が見つかりません", resolved)
+                ),
+                _ => e
+            })?;
 
         let _needs_compilation = config_builder.get::<bool>(&format!("{}.runner.needs_compilation", resolved))
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
-
-        let _compile_dir = config_builder.get::<String>(&format!("{}.runner.compile_dir", resolved))
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| match e {
+                ConfigError::PathError(_) => ConfigError::RequiredValueError(
+                    format!("言語 '{}' のコンパイル要否設定が見つかりません", resolved)
+                ),
+                _ => e
+            })?;
 
         let _extension = config_builder.get::<String>(&format!("{}.extension", resolved))
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| match e {
+                ConfigError::PathError(_) => ConfigError::RequiredValueError(
+                    format!("言語 '{}' の拡張子設定が見つかりません", resolved)
+                ),
+                _ => e
+            })?;
 
         Ok(Self::new(config))
     }
@@ -97,16 +123,8 @@ impl DockerRunner {
                     .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
                 let compile_dir = config_builder.get::<String>("runner.compile_dir")
                     .map_err(|e| format!("コンパイルディレクトリの取得に失敗しました: {}", e))?;
-                let extension = config_builder.get::<String>("extension")
-                    .map_err(|e| format!("拡張子の取得に失敗しました: {}", e))?;
 
-                let compile_config = CompileConfig {
-                    extension,
-                    needs_cargo: config_builder.get::<bool>("runner.needs_cargo")
-                        .map_err(|e| format!("Cargo設定の取得に失敗しました: {}", e))?,
-                    env_vars: config_builder.get::<Vec<String>>("runner.env_vars")
-                        .map_err(|e| format!("環境変数設定の取得に失敗しました: {}", e))?,
-                };
+                let compile_config = CompileConfig::from_config(&config_builder, "runner")?;
 
                 if let Err(e) = self.command.compile(
                     &image,
