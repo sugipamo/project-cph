@@ -1,4 +1,5 @@
 use crate::{cli::Site, error::Result, config::Config};
+use crate::config::TypedValue;
 use serde::{Serialize, Deserialize};
 use std::path::{PathBuf, Path};
 use std::fs;
@@ -128,21 +129,46 @@ impl Contest {
         Ok(())
     }
 
-    // 共通の問題ファイルパス取得処理
-    fn get_problem_file_path(&self, problem_id: &str, file_type: &str) -> Result<PathBuf> {
+    // 言語固有の設定を考慮して設定値を取得
+    // 
+    // 指定されたパスの設定値を取得する際、現在の言語固有の設定を優先的に使用し、
+    // 存在しない場合はデフォルト設定にフォールバックする。
+    //
+    // # 引数
+    // * `config_path` - 設定値のパス（例: "templates.patterns.solution"）
+    //
+    // # 型パラメータ
+    // * `T` - 取得する設定値の型。TypedValueとDeserializeOwned を実装している必要がある
+    //
+    // # 戻り値
+    // * `Result<T>` - 設定値。エラーの場合は適切なエラーメッセージを含む
+    //
+    // # 例
+    // ```
+    // let pattern = self.get_language_config::<String>("templates.patterns.solution")?;
+    // let timeout = self.get_language_config::<i32>("submit.timeout")?;
+    // let runner = self.get_language_config::<RunnerConfig>("runner")?;
+    // ```
+    fn get_language_config<T: serde::de::DeserializeOwned + TypedValue>(&self, config_path: &str) -> Result<T> {
         // 1. 現在の言語設定を取得
         let language = if let Some(lang) = &self.language {
             lang.clone()
         } else {
             self.config.get::<String>("languages.default")?
         };
-        
-        // 2. 言語の存在確認と拡張子の取得
-        let extension = self.config.get_with_alias::<String>(&format!("{}.extension", language))
-            .or_else(|_| self.config.get::<String>(&format!("languages.{}.extension", language)))?;
 
-        // 3. ファイル名のパターンを取得
-        let pattern = self.config.get::<String>(&format!("system.templates.patterns.{}", file_type))?;
+        // 2. 言語固有の設定を試す
+        Ok(self.config.get::<T>(&format!("languages.{}.{}", language, config_path))
+            .or_else(|_| self.config.get::<T>(config_path))?)
+    }
+
+    // 共通の問題ファイルパス取得処理
+    fn get_problem_file_path(&self, problem_id: &str, file_type: &str) -> Result<PathBuf> {
+        // 1. 拡張子の取得
+        let extension = self.get_language_config::<String>("extension")?;
+
+        // 2. ファイル名のパターンを取得（言語固有の設定を優先）
+        let pattern = self.get_language_config::<String>(&format!("templates.patterns.{}", file_type))?;
         
         // パターンの{extension}を実際の拡張子に置換
         let file_name = pattern.replace("{extension}", &extension);

@@ -78,6 +78,12 @@ languages:
       _fallback:
         atcoder: "5054"  # Rust (rustc 1.70.0)
 
+    templates:
+      patterns:
+        solution: "${CPH_SOLUTION_FILE-src/solution.{extension}}"
+        generator: "${CPH_GENERATOR_FILE-src/generator.{extension}}"
+        tester: "${CPH_TESTER_FILE-src/tester.{extension}}"
+
   python:
     <<: *lang_base
     aliases: ["py", "python3"]
