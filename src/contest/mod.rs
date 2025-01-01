@@ -1,4 +1,4 @@
-use crate::{cli::Site, error::Result, config::Config};
+use crate::{error::Result, config::Config};
 use crate::config::TypedValue;
 use serde::{Serialize, Deserialize};
 use std::path::{PathBuf, Path};
@@ -368,7 +368,7 @@ impl Contest {
 
     // configへのアクセスメソッドを追加
     pub fn get_config<T: TypedValue>(&self, path: &str) -> Result<T> {
-        self.config.get(path)
+        Ok(self.config.get(path)?)
     }
 
     // URLを生成するメソッド

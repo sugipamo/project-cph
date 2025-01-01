@@ -1,17 +1,22 @@
-use crate::cli::Site;
-use crate::cli::commands::{Command, Result};
+use crate::error::Result;
 use crate::cli::Commands;
+use crate::cli::commands::Command;
 use crate::contest::Contest;
 use crate::config::Config;
 
 pub struct WorkCommand {
-    pub site: Site,
+    pub site_id: String,
     pub problem_id: String,
 }
 
 impl WorkCommand {
-    pub fn new(site: Site, problem_id: String) -> Self {
-        Self { site, problem_id }
+    pub fn new(problem_id: String) -> Self {
+        Self {
+            site_id: Config::load()
+                .and_then(|config| config.get("sites.default"))
+                .unwrap_or_else(|_| "atcoder".to_string()),
+            problem_id,
+        }
     }
 }
 
@@ -31,7 +36,7 @@ impl Command for WorkCommand {
         let mut contest = Contest::new(&config, contest_id)?;
         
         // サイトを設定
-        if let Err(e) = contest.set_site(&self.site.to_string()) {
+        if let Err(e) = contest.set_site(&self.site_id) {
             println!("サイトの設定に失敗しました: {}", e);
             return Err(e.into());
         }

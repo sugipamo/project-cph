@@ -5,7 +5,8 @@ use serde::{Serialize, Deserialize};
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
     /// サイト名（例: atcoder）
-    pub site: String,
+    #[arg(global = true, short = 's', long = "site", default_value = "atcoder")]
+    pub site_id: String,
 
     /// サブコマンド
     #[command(subcommand)]
