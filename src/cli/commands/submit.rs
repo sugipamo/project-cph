@@ -4,8 +4,6 @@ use crate::cli::commands::Command;
 use crate::contest::Contest;
 use crate::oj::{OJContainer, ProblemInfo};
 use crate::config::Config;
-use std::path::PathBuf;
-use colored::*;
 
 pub struct SubmitCommand {
     site: Site,

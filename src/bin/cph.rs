@@ -1,15 +1,31 @@
 use cph::cli::{Cli, Commands, commands::{create_command, CommandContext}};
 use clap::Parser;
-use std::env;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     // コマンドのコンテキストを作成
-    let context = CommandContext {
-        site: cli.site,
-        active_contest_dir: env::current_dir()?,
+    let context = match &cli.command {
+        Commands::Work { contest_id } => CommandContext {
+            site: cli.site,
+            problem_id: contest_id.clone(),
+        },
+        Commands::Test { problem_id } |
+        Commands::Open { problem_id } |
+        Commands::Submit { problem_id } |
+        Commands::Generate { problem_id } => CommandContext {
+            site: cli.site,
+            problem_id: problem_id.clone(),
+        },
+        Commands::Language { language: _ } => CommandContext {
+            site: cli.site,
+            problem_id: String::new(),
+        },
+        Commands::Login => CommandContext {
+            site: cli.site,
+            problem_id: String::new(),
+        },
     };
 
     // コマンドを作成して実行

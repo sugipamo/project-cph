@@ -22,7 +22,7 @@ impl Command for TestCommand {
 
         // Note: 現在は同期的な実装のみ
         // TODO: テスト実行の非同期実装
-        if let Err(e) = test::run_test(problem_id, self.context.active_contest_dir.clone()) {
+        if let Err(e) = test::run_test(&self.context.problem_id) {
             println!("テストの実行に失敗しました: {}", e);
             return Err(e.into());
         }

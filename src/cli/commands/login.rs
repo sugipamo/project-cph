@@ -20,8 +20,11 @@ impl Command for LoginCommand {
             _ => return Err("不正なコマンドです".into()),
         }
 
+        // ワークスペースディレクトリを取得
+        let workspace_path = std::env::current_dir()?;
+
         // OJコンテナを初期化
-        let oj = OJContainer::new(self.context.active_contest_dir.clone())?;
+        let oj = OJContainer::new(workspace_path)?;
 
         // コンテナイメージの確認
         if let Err(e) = oj.ensure_image().await {
