@@ -1,7 +1,7 @@
 use super::{Command, Result, CommandContext};
 use crate::cli::Commands;
+use crate::error::Result;
 use crate::contest::Contest;
-use crate::config::{self, LanguageConfig};
 
 pub struct LanguageCommand {
     context: CommandContext,

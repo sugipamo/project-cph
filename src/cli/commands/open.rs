@@ -4,7 +4,6 @@ use crate::cli::Commands;
 use crate::contest::Contest;
 use crate::oj::{open_in_cursor, OJContainer, ProblemInfo};
 use std::path::PathBuf;
-use crate::config::{self, LanguageConfig};
 
 pub struct OpenCommand {
     pub site: Site,

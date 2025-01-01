@@ -3,7 +3,7 @@ use crate::cli::commands::{Command, Result};
 use crate::cli::Commands;
 use crate::contest::Contest;
 use crate::oj::{OJContainer, ProblemInfo};
-use crate::config::{self, LanguageConfig};
+use crate::config::{self};
 use std::path::PathBuf;
 
 pub struct SubmitCommand {

@@ -1,7 +1,7 @@
 use super::{Command, Result, CommandContext};
 use crate::cli::Commands;
 use crate::contest::Contest;
-use crate::config::{self, LanguageConfig};
+use crate::config::{self};
 use std::path::PathBuf;
 use std::fs;
 
