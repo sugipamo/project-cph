@@ -46,7 +46,7 @@ impl Contest {
 
     /// 新しいコンテストインスタンスを作成
     pub fn new(config: &Config, problem_id: &str) -> Result<Self> {
-        let active_dir = config.get_system("contest_dir.active")
+        let active_dir = config.get::<String>("system.contest_dir.active")
             .map_err(|e| format!("アクティブディレクトリの設定取得に失敗: {}", e))?;
         
         let active_contest_dir = std::env::current_dir()
@@ -64,7 +64,7 @@ impl Contest {
             .unwrap_or(problem_id)
             .to_string();
 
-        let config_file = config.get_system("active_contest_yaml")
+        let config_file = config.get::<String>("system.active_contest_yaml")
             .map_err(|e| format!("コンテスト設定ファイル名の取得に失敗: {}", e))?;
         let config_path = active_contest_dir.join(&config_file);
 
@@ -77,7 +77,7 @@ impl Contest {
                 config: config.clone(),
             };
 
-            if let Ok(default_lang) = config.get_default_language() {
+            if let Ok(default_lang) = config.get::<String>("languages.default") {
                 contest.language = Some(default_lang);
             }
 
@@ -97,9 +97,9 @@ impl Contest {
 
     /// テンプレートディレクトリのパスを取得
     fn get_template_dir(&self, language: &str) -> Result<PathBuf> {
-        let template_pattern = self.config.get_system("templates.directory")
+        let template_pattern = self.config.get::<String>("system.templates.directory")
             .map_err(|e| format!("テンプレートパターンの取得に失敗: {}", e))?;
-        let template_base = self.config.get_system("contest_dir.template")
+        let template_base = self.config.get::<String>("system.contest_dir.template")
             .map_err(|e| format!("テンプレートディレクトリの設定取得に失敗: {}", e))?;
         
         let template_dir_name = template_pattern.replace("{name}", language);
@@ -110,7 +110,7 @@ impl Contest {
 
     /// コンテスト保存用ディレクトリのパスを取得
     fn get_contests_dir(&self) -> Result<PathBuf> {
-        let storage_base = self.config.get_system("contest_dir.storage")
+        let storage_base = self.config.get::<String>("system.contest_dir.storage")
             .map_err(|e| format!("コンテスト保存先ディレクトリの設定取得に失敗: {}", e))?;
         Ok(self.active_contest_dir.parent().unwrap().join(storage_base))
     }
@@ -121,13 +121,13 @@ impl Contest {
             return Ok(lang.clone());
         }
 
-        self.config.get_default_language()
+        self.config.get::<String>("languages.default")
             .map_err(|e| format!("デフォルト言語の取得に失敗: {}", e))
     }
 
     /// コンテストの設定を保存
     pub fn save(&self) -> Result<()> {
-        let config_file = self.config.get_system("active_contest_yaml")
+        let config_file = self.config.get::<String>("system.active_contest_yaml")
             .map_err(|e| format!("コンテスト設定ファイル名の取得に失敗: {}", e))?;
         let config_path = self.active_contest_dir.join(&config_file);
 
@@ -146,10 +146,10 @@ impl Contest {
         let language = self.language.as_ref()
             .ok_or_else(|| "言語が設定されていません".to_string())?;
 
-        let extension = self.config.get_language(language, "extension")
+        let extension = self.config.get::<String>(&format!("languages.{}.extension", language))
             .map_err(|e| format!("言語{}の拡張子取得に失敗: {}", language, e))?;
 
-        let pattern = self.config.get_system(&format!("templates.patterns.{}", file_type))
+        let pattern = self.config.get::<String>(&format!("system.templates.patterns.{}", file_type))
             .map_err(|e| format!("ファイルパターンの取得に失敗: {}", e))?;
 
         let file_name = pattern.replace("{extension}", &extension);
@@ -178,8 +178,10 @@ impl Contest {
 
     /// 使用言語を設定
     pub fn set_language(&mut self, language: &str) -> Result<()> {
-        let resolved_language = self.config.resolve_language(language);
-        self.config.get_language(&resolved_language, "extension")
+        let resolved_language = self.config.get_with_alias::<String>(&format!("{}.name", language))
+            .unwrap_or_else(|_| language.to_string());
+
+        self.config.get::<String>(&format!("languages.{}.extension", resolved_language))
             .map_err(|e| format!("言語{}は存在しません: {}", resolved_language, e))?;
         self.language = Some(resolved_language);
         Ok(())
@@ -187,7 +189,7 @@ impl Contest {
 
     /// サイトを設定
     pub fn set_site(&mut self, site_id: &str) -> Result<()> {
-        self.config.get_site(site_id, "problem_url")
+        self.config.get::<String>(&format!("sites.{}.problem_url", site_id))
             .map_err(|e| format!("サイト{}は存在しません: {}", site_id, e))?;
         self.site_id = site_id.to_string();
         Ok(())
@@ -250,11 +252,11 @@ impl Contest {
         let mut patterns = vec![];
 
         if !moveignore_path.exists() {
-            let config_file = self.config.get_system("active_contest_yaml")
+            let config_file = self.config.get::<String>("system.active_contest_yaml")
                 .map_err(|e| format!("コンテスト設定ファイル名の取得に失敗: {}", e))?;
 
             let mut ignore_patterns = vec![config_file];
-            if let Ok(additional_patterns) = self.config.get_system("ignore_patterns") {
+            if let Ok(additional_patterns) = self.config.get::<Vec<String>>("system.ignore_patterns") {
                 ignore_patterns.extend(additional_patterns);
             }
             return Ok(ignore_patterns);
@@ -324,10 +326,10 @@ impl Contest {
 
     /// サイトのURLを生成
     fn get_site_url(&self, url_type: &str, problem_id: &str) -> Result<String> {
-        let pattern = self.config.get_site(&self.site_id, &format!("{}_url", url_type))
+        let pattern = self.config.get::<String>(&format!("sites.{}.{}_url", self.site_id, url_type))
             .map_err(|e| format!("サイトURLパターンの取得に失敗: {}", e))?;
         
-        let site_url = self.config.get_site(&self.site_id, "url")
+        let site_url = self.config.get::<String>(&format!("sites.{}.url", self.site_id))
             .map_err(|e| format!("サイトURLの取得に失敗: {}", e))?;
 
         Ok(pattern
@@ -360,7 +362,7 @@ impl Contest {
 
     /// テストディレクトリのパスを取得
     pub fn get_test_dir(&self, problem_id: &str) -> Result<PathBuf> {
-        let test_dir = self.config.get_system("test.dir")
+        let test_dir = self.config.get::<String>("system.test.dir")
             .map_err(|e| format!("テストディレクトリの設定取得に失敗: {}", e))?;
         Ok(self.active_contest_dir.join(problem_id).join(test_dir))
     }
