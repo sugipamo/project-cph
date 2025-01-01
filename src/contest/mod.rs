@@ -6,6 +6,9 @@ use std::io::BufRead;
 
 type Result<T> = std::result::Result<T, String>;
 
+mod parse;
+pub use parse::{ParsedCommand, ParseError};
+
 /// コンテスト情報を管理する構造体
 /// 
 /// この構造体は以下の責務を持ちます：
@@ -69,7 +72,7 @@ impl Contest {
         let config_path = active_contest_dir.join(&config_file);
 
         // 既存の設定ファイルが存在する場合は読み込む
-        let mut contest = if config_path.exists() {
+        let contest = if config_path.exists() {
             let content = fs::read_to_string(&config_path)
                 .map_err(|e| format!("コンテスト設定ファイルの読み込みに失敗: {}", e))?;
             let mut contest: Contest = serde_yaml::from_str(&content)
@@ -370,6 +373,11 @@ impl Contest {
         let test_dir = self.config.get::<String>("system.test.dir")
             .map_err(|e| format!("テストディレクトリの設定取得に失敗: {}", e))?;
         Ok(self.active_contest_dir.join(problem_id).join(test_dir))
+    }
+
+    /// コマンド文字列をパースしてコマンド種別とパラメータを抽出
+    pub fn parse_command(&self, input: &str) -> std::result::Result<ParsedCommand, ParseError> {
+        ParsedCommand::parse(input)
     }
 }
 

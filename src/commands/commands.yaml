@@ -1,12 +1,52 @@
-test:
-  aliases: ["t", "check"]
-open:
-  aliases: ["o", "show"]
-submit:
-  aliases: ["s", "sub"]
-init:
-  aliases: ["i", "create"]
-language:
-  aliases: ["l", "lang"]
-login:
-  aliases: ["auth"]
+commands:
+  test:
+    commands: ["test", "t", "check"]
+    ordered:
+      - ["{site_id}", "{command}", "{problem_id}"]
+      - ["{command}", "{problem_id}"]
+    unordered:
+      - ["{site_id}", "{contest_id}", "{command}", "{problem_id}"]
+      - ["{contest_id}", "{command}", "{problem_id}"]
+      - ["{command}", "{contest_id}", "{problem_id}"]
+        
+  open:
+    commands: ["open", "o", "show"]
+    ordered:
+      - ["{site_id}", "{command}", "{problem_id}"]
+      - ["{command}", "{problem_id}"]
+    unordered:
+      - ["{site_id}", "{contest_id}", "{command}", "{problem_id}"]
+      - ["{contest_id}", "{command}", "{problem_id}"]
+      - ["{command}", "{contest_id}", "{problem_id}"]
+        
+  submit:
+    commands: ["submit", "s", "sub"]
+    ordered:
+      - ["{site_id}", "{command}", "{problem_id}"]
+      - ["{command}", "{problem_id}"]
+    unordered:
+      - ["{site_id}", "{contest_id}", "{command}", "{problem_id}"]
+      - ["{contest_id}", "{command}", "{problem_id}"]
+      - ["{command}", "{contest_id}", "{problem_id}"]
+
+  init:
+    commands: ["init", "i", "create"]
+    ordered:
+      - ["{site_id}", "{command}", "{contest_id}"]
+      - ["{command}", "{contest_id}"]
+    unordered:
+      - ["{command}", "{contest_id}"]
+
+  language:
+    commands: ["language", "l", "lang"]
+    ordered:
+      - ["{site_id}", "{command}", "{language}"]
+      - ["{command}", "{language}"]
+    unordered:
+      - ["{command}", "{language}"]
+
+  login:
+    commands: ["login", "auth"]
+    ordered:
+      - ["{site_id}", "{command}"]
+      - ["{command}"]
