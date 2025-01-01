@@ -55,7 +55,7 @@ pub struct OJContainer {
 impl OJContainer {
     pub fn new(workspace_path: PathBuf) -> Result<Self> {
         // 設定を取得
-        let config = Config::builder()
+        let _config = Config::builder()
             .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
         Ok(Self { 
@@ -196,13 +196,13 @@ impl OJContainer {
 
     pub async fn open(&self, problem: ProblemInfo) -> Result<()> {
         // 設定を取得
-        let config = Config::builder()
+        let _config = Config::builder()
             .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
         println!("{}", format!("Opening problem URL: {}", problem.url).cyan());
 
         // ブラウザ設定を確認
-        let browser = config.get::<String>("system.browser")
+        let browser = _config.get::<String>("system.browser")
             .or_else(|_| env::var("BROWSER"))
             .unwrap_or_else(|_| {
                 println!("{}", format!("Note: To automatically open URLs, please set the $BROWSER environment variable or configure system.browser in config.yaml").yellow());
@@ -216,7 +216,7 @@ impl OJContainer {
         }
 
         // エディタ設定を取得
-        let editors = config.get::<Vec<String>>("system.editors")
+        let editors = _config.get::<Vec<String>>("system.editors")
             .unwrap_or_else(|_| vec!["code".to_string(), "cursor".to_string()]);
 
         // 各エディタで開く
@@ -240,7 +240,7 @@ impl OJContainer {
             .map_err(|_| "Failed to get relative problem path")?;
 
         // テストディレクトリを設定から取得
-        let test_dir = config.get::<String>("system.test.directory")
+        let test_dir = _config.get::<String>("system.test.directory")
             .unwrap_or_else(|_| "test".to_string());
 
         self.run_oj_command(&[
@@ -255,7 +255,7 @@ impl OJContainer {
 
     pub async fn submit(&self, problem: &ProblemInfo, _site: &Site, language_id: &str) -> Result<()> {
         // 設定を取得
-        let config = Config::builder()
+        let _config = Config::builder()
             .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
         println!("{}", format!("Submitting solution for problem {}...", problem.problem_id).cyan());
@@ -272,12 +272,12 @@ impl OJContainer {
         ];
 
         // 設定に基づいてコマンドライン引数を追加
-        let wait = config.get::<u64>("system.submit.wait")
+        let wait = _config.get::<u64>("system.submit.wait")
             .unwrap_or(0);
         let wait_arg = format!("--wait={}", wait);
         args.push(&wait_arg);
 
-        let auto_yes = config.get::<bool>("system.submit.auto_yes")
+        let auto_yes = _config.get::<bool>("system.submit.auto_yes")
             .unwrap_or(false);
         if auto_yes {
             args.push("--yes");

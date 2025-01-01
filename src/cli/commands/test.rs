@@ -15,8 +15,8 @@ impl TestCommand {
 #[async_trait::async_trait]
 impl Command for TestCommand {
     async fn execute(&self, command: &Commands) -> Result<()> {
-        let problem_id = match command {
-            Commands::Test { problem_id } => problem_id,
+        match command {
+            Commands::Test { problem_id: _ } => (),
             _ => return Err("不正なコマンドです".into()),
         };
 
