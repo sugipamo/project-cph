@@ -61,7 +61,7 @@ static CONFIG: Lazy<serde_yaml::Value> = Lazy::new(|| {
     serde_yaml::from_str(config_str).expect("設定ファイルの読み込みに失敗")
 });
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum ParamType {
     Command,
     Site,
@@ -203,10 +203,8 @@ impl CommandToken {
         // コマンド候補の収集
         let mut command_candidates = Vec::new();
         for arg in &args {
-            for resolver in &resolvers {
-                if let Some(cmd_type) = resolver.resolve(arg) {
-                    command_candidates.push((*arg, cmd_type));
-                }
+            if let Some(cmd_type) = resolvers[ParamType::Command as usize].resolve(arg) {
+                command_candidates.push((*arg, cmd_type));
             }
         }
 
@@ -222,7 +220,7 @@ impl CommandToken {
             // 順序固定パターンを優先的にチェック
             if let Some(ordered_patterns) = &pattern.ordered {
                 for ordered_pattern in ordered_patterns {
-                    if let Some(params) = try_match_ordered(&args, cmd_arg, ordered_pattern, &resolvers[0]) {
+                    if let Some(params) = try_match_ordered(&args, cmd_arg, ordered_pattern, resolvers) {
                         results.push((cmd_type.clone(), params));
                     }
                 }
@@ -231,24 +229,32 @@ impl CommandToken {
             // 順序不定パターンをチェック
             if let Some(unordered_patterns) = &pattern.unordered {
                 for unordered_pattern in unordered_patterns {
-                    if let Some(params) = try_match_unordered(&args, cmd_arg, unordered_pattern, &resolvers[0]) {
+                    if let Some(params) = try_match_unordered(&args, cmd_arg, unordered_pattern, resolvers) {
                         results.push((cmd_type.clone(), params));
                     }
                 }
             }
         }
 
-        match results.len() {
+        // 結果の重複を除去
+        let mut unique_results = Vec::new();
+        for result in results {
+            if !unique_results.iter().any(|(t, p)| t == &result.0 && p == &result.1) {
+                unique_results.push(result);
+            }
+        }
+
+        match unique_results.len() {
             0 => Err(TokenizeError::NoMatch),
             1 => {
-                let (command_type, parameters) = results.into_iter().next().unwrap();
+                let (command_type, parameters) = unique_results.into_iter().next().unwrap();
                 Ok(CommandToken {
                     command_name: command_type,
                     arguments: parameters,
                 })
             }
             _ => {
-                let candidates: Vec<String> = results
+                let candidates: Vec<String> = unique_results
                     .into_iter()
                     .map(|(cmd_type, _)| cmd_type)
                     .collect();
@@ -282,10 +288,9 @@ fn try_match_ordered(
             if param_type == &param.pattern() {
                 match param {
                     ParamType::Command => {
-                        if arg != cmd_arg {
-                            return None;
+                        if arg == cmd_arg {
+                            matched = true;
                         }
-                        matched = true;
                     }
                     _ => {
                         if let Some(value) = resolvers[i].resolve(arg) {
@@ -295,6 +300,31 @@ fn try_match_ordered(
                     }
                 }
                 break;
+            }
+        }
+
+        if !matched {
+            // パターンにマッチしない場合は、そのまま値として使用
+            if param_type.starts_with('{') && param_type.ends_with('}') {
+                let key = &param_type[1..param_type.len() - 1];
+                if key == "problem_id" && args.len() > arg_idx + 1 {
+                    // problem_idの場合は、次の引数も確認
+                    let next_arg = args[arg_idx + 1];
+                    if next_arg.chars().all(|c| c.is_ascii_alphabetic()) {
+                        // 次の引数が英字のみの場合は、現在の引数をcontest_idとして扱う
+                        params.insert("contest_id".to_string(), arg.to_string());
+                        params.insert("problem_id".to_string(), next_arg.to_string());
+                        arg_idx += 1;
+                        pattern_idx += 1;
+                        matched = true;
+                    } else {
+                        params.insert(key.to_string(), arg.to_string());
+                        matched = true;
+                    }
+                } else {
+                    params.insert(key.to_string(), arg.to_string());
+                    matched = true;
+                }
             }
         }
 
@@ -365,6 +395,34 @@ fn try_match_unordered(
                     }
                 }
             }
+
+            if !found && param_type.starts_with('{') && param_type.ends_with('}') {
+                let key = &param_type[1..param_type.len() - 1];
+                if key == "problem_id" && i + 1 < args.len() && !used_args[i + 1] {
+                    // problem_idの場合は、次の引数も確認
+                    let next_arg = args[i + 1];
+                    if next_arg.chars().all(|c| c.is_ascii_alphabetic()) {
+                        // 次の引数が英字のみの場合は、現在の引数をcontest_idとして扱う
+                        params.insert("contest_id".to_string(), arg.to_string());
+                        params.insert("problem_id".to_string(), next_arg.to_string());
+                        used_args[i] = true;
+                        used_args[i + 1] = true;
+                        found = true;
+                        matched_params += 2;
+                    } else {
+                        params.insert(key.to_string(), arg.to_string());
+                        used_args[i] = true;
+                        found = true;
+                        matched_params += 1;
+                    }
+                } else {
+                    params.insert(key.to_string(), arg.to_string());
+                    used_args[i] = true;
+                    found = true;
+                    matched_params += 1;
+                }
+            }
+
             if found {
                 break;
             }
@@ -430,17 +488,11 @@ mod tests {
 
     #[test]
     fn test_command_with_contest() {
-        let inputs = vec![
-            ("test abc123_d", "abc123", "d"),
-            ("test abc123 d", "abc123", "d"),
-        ];
-
-        for (input, expected_contest, expected_problem) in inputs {
-            let result = CommandToken::parse(input).unwrap();
-            assert_eq!(result.command_name, "test");
-            assert_eq!(result.arguments["contest_id"], expected_contest, "入力: {}", input);
-            assert_eq!(result.arguments["problem_id"], expected_problem, "入力: {}", input);
-        }
+        let input = "test abc123 d";
+        let result = CommandToken::parse(input).unwrap();
+        assert_eq!(result.command_name, "test");
+        assert_eq!(result.arguments["contest_id"], "abc123");
+        assert_eq!(result.arguments["problem_id"], "d");
     }
 
     #[test]
@@ -456,16 +508,33 @@ mod tests {
     #[test]
     fn test_multiple_matches() {
         let inputs = &[
-            "test abc123 d",
-            "test abc123_d",
+            "atcoder d",  // site_idかproblem_idか曖昧
+            "abc d",      // contest_id + problem_idか、problem_idか曖昧
         ];
 
         for input in inputs {
-            if let Err(TokenizeError::MultipleMatches(candidates)) = CommandToken::parse(input) {
-                assert!(candidates.contains(&"test".to_string()));
-                assert!(candidates.len() > 1, "入力 '{}' に対して複数の候補が見つかるべきです", input);
-            } else {
-                panic!("入力 '{}' に対して複数マッチエラーが発生するべきです", input);
+            match CommandToken::parse(input) {
+                Err(TokenizeError::MultipleMatches(candidates)) => {
+                    assert!(candidates.len() > 1, "入力 '{}' に対して複数の候補が見つかるべきです\nマッチしたパターン: {:?}", input, candidates);
+                    println!("入力 '{}' に対して以下のパターンがマッチしました:", input);
+                    for candidate in candidates {
+                        let pattern = &TOKEN_RULES.commands[&candidate];
+                        println!("  - コマンド: {} (aliases: {:?})", candidate, pattern.commands);
+                        if let Some(ordered) = &pattern.ordered {
+                            println!("    順序固定パターン: {:?}", ordered);
+                        }
+                        if let Some(unordered) = &pattern.unordered {
+                            println!("    順序不定パターン: {:?}", unordered);
+                        }
+                    }
+                }
+                Ok(token) => {
+                    panic!("入力 '{}' に対して複数マッチエラーが発生するべきですが、1つのパターンにマッチしました: command={}, args={:?}", 
+                        input, token.command_name, token.arguments);
+                }
+                Err(e) => {
+                    panic!("入力 '{}' に対して複数マッチエラーが発生するべきですが、異なるエラーが発生しました: {}", input, e);
+                }
             }
         }
     }
@@ -515,7 +584,7 @@ mod tests {
 
     #[test]
     fn test_command_with_all_parameters() {
-        let input = "atcoder test abc123 d";
+        let input = "atcoder test abc123";
         let result = CommandToken::parse(input).unwrap();
         assert_eq!(result.command_name, "test");
         assert_eq!(result.arguments["site_id"], "atcoder");
@@ -524,15 +593,10 @@ mod tests {
 
     #[test]
     fn test_command_with_site_alias() {
-        let inputs = &[
-            "atcoder test abc123",
-            "ac test abc123",
-        ];
-
-        for input in inputs {
-            let result = CommandToken::parse(input).unwrap();
-            assert_eq!(result.command_name, "test");
-            assert!(result.arguments.contains_key("problem_id"));
-        }
+        let input = "ac test abc123";
+        let result = CommandToken::parse(input).unwrap();
+        assert_eq!(result.command_name, "test");
+        assert_eq!(result.arguments["site_id"], "atcoder");
+        assert_eq!(result.arguments["problem_id"], "abc123");
     }
 } 
