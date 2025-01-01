@@ -68,7 +68,19 @@ impl Contest {
             .map_err(|e| format!("コンテスト設定ファイル名の取得に失敗: {}", e))?;
         let config_path = active_contest_dir.join(&config_file);
 
-        if !config_path.exists() {
+        // 既存の設定ファイルが存在する場合は読み込む
+        let mut contest = if config_path.exists() {
+            let content = fs::read_to_string(&config_path)
+                .map_err(|e| format!("コンテスト設定ファイルの読み込みに失敗: {}", e))?;
+            let mut contest: Contest = serde_yaml::from_str(&content)
+                .map_err(|e| format!("{}の解析に失敗: {}", config_file, e))?;
+            
+            contest.active_contest_dir = active_contest_dir;
+            contest.contest_id = contest_id;
+            contest.config = config.clone();
+            contest
+        } else {
+            // 新規作成時はデフォルト値で初期化
             let mut contest = Self {
                 active_contest_dir,
                 contest_id,
@@ -77,21 +89,14 @@ impl Contest {
                 config: config.clone(),
             };
 
+            // デフォルト言語を設定
             if let Ok(default_lang) = config.get::<String>("languages.default") {
                 contest.language = Some(default_lang);
             }
 
-            return Ok(contest);
-        }
+            contest
+        };
 
-        let content = fs::read_to_string(&config_path)
-            .map_err(|e| format!("コンテスト設定ファイルの読み込みに失敗: {}", e))?;
-        let mut contest: Contest = serde_yaml::from_str(&content)
-            .map_err(|e| format!("{}の解析に失敗: {}", config_file, e))?;
-        
-        contest.active_contest_dir = active_contest_dir;
-        contest.contest_id = contest_id;
-        contest.config = config.clone();
         Ok(contest)
     }
 

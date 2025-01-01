@@ -1,0 +1,12 @@
+test:
+  aliases: ["t", "check"]
+open:
+  aliases: ["o", "show"]
+submit:
+  aliases: ["s", "sub"]
+init:
+  aliases: ["i", "create"]
+language:
+  aliases: ["l", "lang"]
+login:
+  aliases: ["auth"]
