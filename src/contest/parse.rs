@@ -6,6 +6,7 @@ use once_cell::sync::Lazy;
 pub struct CommandToken {
     pub command_name: String,
     pub arguments: HashMap<String, String>,
+    pub pattern_info: String,
 }
 
 #[derive(Debug)]
@@ -61,7 +62,7 @@ static CONFIG: Lazy<serde_yaml::Value> = Lazy::new(|| {
     serde_yaml::from_str(config_str).expect("設定ファイルの読み込みに失敗")
 });
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum ParamType {
     Command,
     Site,
@@ -227,96 +228,11 @@ static RESOLVERS: Lazy<Result<NameResolvers>> = Lazy::new(|| {
     build_resolvers().map(NameResolvers::new)
 });
 
-impl CommandToken {
-    /// コマンド文字列をパースしてコマンド種別とパラメータを抽出
-    pub fn parse(input: &str) -> Result<Self> {
-        let args: Vec<&str> = input.split_whitespace().collect();
-        if args.is_empty() {
-            return Err(TokenizeError::InvalidFormat("空のコマンドです".to_string()));
-        }
-
-        // 名前解決器の取得
-        let resolvers = RESOLVERS.as_ref()
-            .map_err(|e| TokenizeError::ConfigError(format!("名前解決器の初期化に失敗: {}", e)))?;
-
-        // コマンド候補の収集
-        let mut command_candidates = Vec::new();
-        for arg in &args {
-            let matches = resolvers.find_matches(arg);
-            for (param_type, cmd_type) in matches {
-                if param_type == ParamType::Command {
-                    command_candidates.push((*arg, cmd_type));
-                }
-            }
-        }
-
-        if command_candidates.is_empty() {
-            return Err(TokenizeError::NoMatch);
-        }
-
-        // 各コマンド候補に対してパターンマッチを試みる
-        let mut results = Vec::new();
-        for (cmd_arg, cmd_type) in command_candidates {
-            let pattern = &TOKEN_RULES.commands[&cmd_type];
-            let mut current_matches = Vec::new();
-            
-            // 順序固定パターンをチェック
-            if let Some(ordered_patterns) = &pattern.ordered {
-                for ordered_pattern in ordered_patterns {
-                    if let Some(params) = try_match_ordered(&args, cmd_arg, ordered_pattern, &resolvers.resolvers) {
-                        current_matches.push((ordered_pattern.len(), true, cmd_type.clone(), params));
-                    }
-                }
-            }
-
-            // 順序不定パターンをチェック
-            if let Some(unordered_patterns) = &pattern.unordered {
-                for unordered_pattern in unordered_patterns {
-                    if let Some(params) = try_match_unordered(&args, cmd_arg, unordered_pattern, &resolvers.resolvers) {
-                        current_matches.push((unordered_pattern.len(), false, cmd_type.clone(), params));
-                    }
-                }
-            }
-
-            // 最も長いパターンを見つける
-            if let Some(max_len) = current_matches.iter().map(|(len, _, _, _)| *len).max() {
-                // 最長のパターンの中から、orderedを優先して選択
-                let best_match = current_matches.iter()
-                    .filter(|(len, _, _, _)| *len == max_len)
-                    .max_by_key(|(_, is_ordered, _, _)| *is_ordered);
-                
-                if let Some((_, _, cmd, params)) = best_match {
-                    results.push((cmd.clone(), params.clone()));
-                }
-            }
-        }
-
-        // 結果の重複を除去
-        let mut unique_results = Vec::new();
-        for result in results {
-            if !unique_results.contains(&result) {
-                unique_results.push(result);
-            }
-        }
-
-        match unique_results.len() {
-            0 => Err(TokenizeError::NoMatch),
-            1 => {
-                let (command_type, parameters) = unique_results.into_iter().next().unwrap();
-                Ok(CommandToken {
-                    command_name: command_type,
-                    arguments: parameters,
-                })
-            }
-            _ => {
-                let candidates: Vec<String> = unique_results
-                    .into_iter()
-                    .map(|(cmd_type, _)| cmd_type)
-                    .collect();
-                Err(TokenizeError::MultipleMatches(candidates))
-            }
-        }
-    }
+#[derive(Debug, Clone, PartialEq)]
+struct MatchResult {
+    params: HashMap<String, String>,
+    command_name: String,
+    pattern_info: String,
 }
 
 // パターンの検証機構
@@ -327,7 +243,8 @@ fn verify_pattern_match(
     resolvers: &[NameResolver],
     arg_indices: &[usize],
     used_args: &mut [bool],
-) -> Option<HashMap<String, String>> {
+    pattern_info: &str,
+) -> Option<MatchResult> {
     let mut params = HashMap::new();
 
     // パターンと引数を順番に比較
@@ -377,7 +294,11 @@ fn verify_pattern_match(
         }
     }
 
-    Some(params)
+    Some(MatchResult {
+        params,
+        command_name: cmd_arg.to_string(),
+        pattern_info: pattern_info.to_string(),
+    })
 }
 
 fn try_match_ordered(
@@ -385,7 +306,7 @@ fn try_match_ordered(
     cmd_arg: &str,
     pattern: &[String],
     resolvers: &[NameResolver],
-) -> Option<HashMap<String, String>> {
+) -> Option<MatchResult> {
     // パターンの長さと引数の長さが一致しない場合はマッチしない
     if args.len() != pattern.len() {
         return None;
@@ -393,101 +314,273 @@ fn try_match_ordered(
 
     let mut used_args = vec![false; args.len()];
     let indices: Vec<_> = (0..args.len()).collect();
-    verify_pattern_match(args, cmd_arg, pattern, resolvers, &indices, &mut used_args)
+    let pattern_info = format!("ordered: {:?}", pattern);
+    verify_pattern_match(args, cmd_arg, pattern, resolvers, &indices, &mut used_args, &pattern_info)
+}
+
+fn is_param(s: &str) -> Option<&str> {
+    if s.starts_with('{') && s.ends_with('}') {
+        Some(&s[1..s.len() - 1])
+    } else {
+        None
+    }
 }
 
 fn try_match_unordered(
-    args: &[&str],
-    cmd_arg: &str,
     pattern: &[String],
-    resolvers: &[NameResolver],
-) -> Option<HashMap<String, String>> {
-    // パターンの長さと引数の長さが一致しない場合はマッチしない
-    if args.len() != pattern.len() {
+    args: &[(&str, HashMap<ParamType, String>)],
+    resolvers: &NameResolvers,
+) -> Option<MatchResult> {
+    if pattern.len() != args.len() {
         return None;
     }
 
     let mut used_args = vec![false; args.len()];
-    let mut indices: Vec<_> = (0..args.len()).collect();
+    let mut params = HashMap::new();
 
-    // コマンドの位置を特定
-    let mut cmd_idx = None;
-    for (i, &arg) in args.iter().enumerate() {
-        if arg == cmd_arg {
-            cmd_idx = Some(i);
-            break;
+    // パターンの各要素に対して、最適な引数を探す
+    for p in pattern {
+        let mut found = false;
+        if let Some(param_name) = is_param(p) {
+            // パラメータタイプに応じた解決を試みる
+            for param_type in ParamType::all() {
+                if param_name == param_type.as_str() {
+                    // まず解決済みの値を探す
+                    for (i, (_, resolved)) in args.iter().enumerate() {
+                        if used_args[i] {
+                            continue;
+                        }
+                        if let Some(value) = resolved.get(param_type) {
+                            params.insert(param_name.to_string(), value.clone());
+                            used_args[i] = true;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if found {
+                        break;
+                    }
+                }
+            }
+            // 解決済みの値が見つからない場合は、未使用の引数をそのまま使用
+            if !found {
+                for (i, (arg, _)) in args.iter().enumerate() {
+                    if used_args[i] {
+                        continue;
+                    }
+                    params.insert(param_name.to_string(), arg.to_string());
+                    used_args[i] = true;
+                    found = true;
+                    break;
+                }
+            }
+        } else {
+            // 固定文字列のマッチング
+            for (i, (arg, _)) in args.iter().enumerate() {
+                if used_args[i] {
+                    continue;
+                }
+                if p == *arg {
+                    used_args[i] = true;
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if !found {
+            return None;
         }
     }
 
-    // コマンドが見つからない場合はマッチしない
-    let cmd_idx = cmd_idx?;
+    if used_args.iter().all(|&used| used) {
+        Some(MatchResult {
+            params,
+            command_name: String::new(),
+            pattern_info: format!("unordered: {:?}", pattern),
+        })
+    } else {
+        None
+    }
+}
 
-    // コマンドの位置を先頭に移動
-    if cmd_idx != 0 {
-        indices.swap(0, cmd_idx);
+fn try_match_pattern(
+    pattern: &[String],
+    args: &[(&str, HashMap<ParamType, String>)],
+    resolvers: &NameResolvers,
+) -> Option<MatchResult> {
+    if pattern.len() != args.len() {
+        return None;
     }
 
-    // 残りの引数の順列を試す
-    let mut result = None;
-    let mut i = 1;
-    loop {
-        if let Some(params) = verify_pattern_match(args, cmd_arg, pattern, resolvers, &indices, &mut used_args.clone()) {
-            result = Some(params);
-            break;
-        }
+    let mut params = HashMap::new();
 
-        // 次の順列を生成
-        let mut j = indices.len() - 1;
-        while j > i && indices[j - 1] >= indices[j] {
-            j -= 1;
+    // パターンと引数を順番に比較
+    for (p, (arg, resolved)) in pattern.iter().zip(args.iter()) {
+        if let Some(param_name) = is_param(p) {
+            // パラメータタイプに応じた解決を試みる
+            let mut found = false;
+            for param_type in ParamType::all() {
+                if param_name == param_type.as_str() {
+                    if let Some(value) = resolved.get(param_type) {
+                        params.insert(param_name.to_string(), value.clone());
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            // パラメータタイプに一致しない場合は、そのまま値を使用
+            if !found {
+                params.insert(param_name.to_string(), arg.to_string());
+            }
+        } else if p != *arg {
+            return None;
         }
-        if j <= i {
-            break;
-        }
-
-        let mut k = indices.len() - 1;
-        while indices[j - 1] >= indices[k] {
-            k -= 1;
-        }
-
-        indices.swap(j - 1, k);
-        indices[j..].reverse();
     }
 
-    result
+    Some(MatchResult {
+        params,
+        command_name: String::new(),
+        pattern_info: format!("ordered: {:?}", pattern),
+    })
+}
+
+impl CommandToken {
+    /// コマンド文字列をパースしてコマンド種別とパラメータを抽出
+    pub fn parse(input: &str) -> Result<Self> {
+        let args: Vec<&str> = input.split_whitespace().collect();
+        if args.is_empty() {
+            return Err(TokenizeError::InvalidFormat("空のコマンドです".to_string()));
+        }
+
+        // 名前解決器の取得
+        let resolvers = RESOLVERS.as_ref()
+            .map_err(|e| TokenizeError::ConfigError(format!("名前解決器の初期化に失敗: {}", e)))?;
+
+        // 第1段階：コマンドの解決
+        let mut command_candidates = Vec::new();
+        for &arg in &args {
+            let matches = resolvers.find_matches(arg);
+            for (param_type, name) in matches {
+                if param_type == ParamType::Command {
+                    command_candidates.push((arg, name));
+                }
+            }
+        }
+
+        if command_candidates.is_empty() {
+            return Err(TokenizeError::NoMatch);
+        }
+
+        // 第2段階：各コマンド候補に対してパターンマッチを試みる
+        let mut results = Vec::new();
+        for (cmd_arg, cmd_type) in command_candidates {
+            let pattern = &TOKEN_RULES.commands[&cmd_type];
+            let mut current_matches = Vec::new();
+
+            // 引数の名前解決を行う
+            let mut resolved_args = Vec::new();
+            for &arg in &args {
+                let matches = resolvers.find_matches(arg);
+                let mut resolved_values = HashMap::new();
+                for (param_type, name) in matches {
+                    resolved_values.insert(param_type, name);
+                }
+                resolved_args.push((arg, resolved_values));
+            }
+            
+            // 順序固定パターンをチェック
+            if let Some(ordered_patterns) = &pattern.ordered {
+                for ordered_pattern in ordered_patterns {
+                    if let Some(mut params) = try_match_pattern(ordered_pattern, &resolved_args, resolvers) {
+                        params.command_name = cmd_type.clone();
+                        current_matches.push((ordered_pattern.len(), true, cmd_type.clone(), params));
+                    }
+                }
+            }
+
+            // 順序不定パターンをチェック
+            if let Some(unordered_patterns) = &pattern.unordered {
+                for unordered_pattern in unordered_patterns {
+                    if let Some(mut params) = try_match_unordered(unordered_pattern, &resolved_args, resolvers) {
+                        params.command_name = cmd_type.clone();
+                        current_matches.push((unordered_pattern.len(), false, cmd_type.clone(), params));
+                    }
+                }
+            }
+
+            // 最も長いパターンを見つける
+            if let Some(max_len) = current_matches.iter().map(|(len, _, _, _)| *len).max() {
+                // 最長のパターンの中から、orderedを優先して選択
+                let best_match = current_matches.iter()
+                    .filter(|(len, _, _, _)| *len == max_len)
+                    .max_by_key(|(_, is_ordered, _, _)| *is_ordered);
+                
+                if let Some((_, _, cmd, params)) = best_match {
+                    results.push((cmd.clone(), params.clone()));
+                }
+            }
+        }
+
+        // 結果の重複を除去
+        let mut unique_results = Vec::new();
+        for result in results {
+            if !unique_results.contains(&result) {
+                unique_results.push(result);
+            }
+        }
+
+        match unique_results.len() {
+            0 => Err(TokenizeError::NoMatch),
+            1 => {
+                let (command_type, match_result) = unique_results.into_iter().next().unwrap();
+                Ok(CommandToken {
+                    command_name: command_type,
+                    arguments: match_result.params,
+                    pattern_info: match_result.pattern_info,
+                })
+            }
+            _ => {
+                let candidates: Vec<String> = unique_results
+                    .into_iter()
+                    .map(|(cmd_type, _)| cmd_type)
+                    .collect();
+                Err(TokenizeError::MultipleMatches(candidates))
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // テスト用のアサーションマクロ
     macro_rules! assert_cmd_eq {
         ($result:expr, $expected_cmd:expr, $($key:expr => $value:expr),* $(,)?) => {
             let result = $result;
             assert_eq!(
                 result.command_name,
                 $expected_cmd,
-                "\nコマンド名が一致しません。\n期待値: {}\n実際: {}\n引数: {:?}",
+                "\nコマンド名が一致しません。\n期待値: {}\n実際: {}\n引数: {:?}\nパターン: {}",
                 $expected_cmd,
                 result.command_name,
-                result.arguments
+                result.arguments,
+                result.pattern_info
             );
             $(
                 assert_eq!(
                     result.arguments.get($key).unwrap_or(&String::new()),
                     $value,
-                    "\n引数 '{}' の値が一致しません。\n期待値: {}\n実際: {}\n全引数: {:?}",
+                    "\n引数 '{}' の値が一致しません。\n期待値: {}\n実際: {}\n全引数: {:?}\nパターン: {}",
                     $key,
                     $value,
                     result.arguments.get($key).unwrap_or(&String::new()),
-                    result.arguments
+                    result.arguments,
+                    result.pattern_info
                 );
             )*
         };
     }
 
-    // NameResolversのテスト用のヘルパー関数
     fn create_test_resolvers() -> NameResolvers {
         let mut command_resolver = NameResolver::new();
         command_resolver.register_alias("test", "test");
@@ -731,5 +824,65 @@ mod tests {
             "site_id" => "atcoder",
             "problem_id" => "abc123",
         );
+    }
+
+    #[test]
+    fn test_name_resolvers_non_command_strings() {
+        let resolvers = create_test_resolvers();
+
+        // 数値は解決されるべきでない
+        let matches = resolvers.find_matches("123");
+        assert!(matches.is_empty(), "数値がコマンドとして解決されました: {:?}", matches);
+
+        // 問題IDフォーマットは解決されるべきでない
+        let matches = resolvers.find_matches("abc123");
+        assert!(matches.is_empty(), "問題IDがコマンドとして解決されました: {:?}", matches);
+
+        // アンダースコアを含む文字列は解決されるべきでない
+        let matches = resolvers.find_matches("abc_123");
+        assert!(matches.is_empty(), "アンダースコア付き文字列がコマンドとして解決されました: {:?}", matches);
+    }
+
+    #[test]
+    fn test_name_resolvers_priority() {
+        let mut resolvers = create_test_resolvers();
+
+        // 同じエイリアスを異なるパラメータタイプに登録
+        resolvers.resolvers[ParamType::Command as usize].register_alias("cmd", "x");
+        resolvers.resolvers[ParamType::Site as usize].register_alias("site", "x");
+        resolvers.resolvers[ParamType::Language as usize].register_alias("lang", "x");
+
+        let matches = resolvers.find_matches("x");
+        assert_eq!(matches.len(), 3, "全てのパラメータタイプで解決されるべき");
+        
+        // 順序の検証
+        let expected = vec![
+            (ParamType::Command, "cmd"),
+            (ParamType::Site, "site"),
+            (ParamType::Language, "lang"),
+        ];
+        for (i, (param_type, name)) in expected.iter().enumerate() {
+            assert_eq!(matches[i].0, *param_type);
+            assert_eq!(matches[i].1, name.to_string());
+        }
+    }
+
+    #[test]
+    fn test_name_resolvers_pattern_matching() {
+        let resolvers = create_test_resolvers();
+
+        // 完全一致のみ解決される
+        let matches = resolvers.find_matches("tes");
+        assert!(matches.is_empty(), "部分文字列がマッチしました: {:?}", matches);
+
+        let matches = resolvers.find_matches("tests");
+        assert!(matches.is_empty(), "より長い文字列がマッチしました: {:?}", matches);
+
+        let matches = resolvers.find_matches("TEST");
+        assert!(matches.is_empty(), "大文字がマッチしました: {:?}", matches);
+
+        // エイリアスの解決
+        let matches = resolvers.find_matches("t");
+        assert_eq!(matches, vec![(ParamType::Command, "test".to_string())]);
     }
 } 
