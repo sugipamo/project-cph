@@ -1,18 +1,18 @@
 use crate::error::Result;
-use crate::cli::{Site, Commands};
+use crate::cli::Commands;
 use crate::cli::commands::Command;
 use crate::contest::Contest;
 use crate::oj::{OJContainer, ProblemInfo};
 use crate::config::Config;
 
 pub struct SubmitCommand {
-    site: Site,
+    site_id: String,
     problem_id: String,
 }
 
 impl SubmitCommand {
-    pub fn new(site: Site, problem_id: String) -> Self {
-        Self { site, problem_id }
+    pub fn new(site_id: String, problem_id: String) -> Self {
+        Self { site_id, problem_id }
     }
 }
 
@@ -24,7 +24,10 @@ impl Command for SubmitCommand {
             .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
         // コンテストディレクトリを取得
-        let contest = Contest::new(&config, &self.problem_id)?;
+        let mut contest = Contest::new(&config, &self.problem_id)?;
+
+        // サイトを設定
+        contest.set_site(&self.site_id)?;
 
         // ソースファイルのパスを取得
         let source_path = contest.get_solution_path(&self.problem_id)?;
@@ -37,13 +40,13 @@ impl Command for SubmitCommand {
             .get::<String>(&format!(
                 "languages.{}.site_ids._fallback.{}",
                 language,
-                self.site.to_string().to_lowercase()
+                self.site_id.to_lowercase()
             ))
             .map_err(|_| format!("言語 {} の設定が見つかりません", language))?;
 
         // 問題URLを取得
-        let url = self.site.get_problem_url(&self.problem_id)
-            .ok_or_else(|| format!("問題URLの生成に失敗しました: {}", self.problem_id))?;
+        let url = contest.get_problem_url()
+            .map_err(|_| format!("問題URLの生成に失敗しました: {}", self.problem_id))?;
 
         // 問題情報を構築
         let problem = ProblemInfo {
@@ -54,8 +57,8 @@ impl Command for SubmitCommand {
 
         // 提出を実行
         let workspace_path = std::env::current_dir()?;
-        let oj = OJContainer::new(workspace_path)?;
-        oj.submit(&problem, &self.site, &language_id).await?;
+        let oj = OJContainer::new(workspace_path, contest)?;
+        oj.submit(&problem, &language_id).await?;
 
         Ok(())
     }

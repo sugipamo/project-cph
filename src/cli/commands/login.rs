@@ -1,14 +1,16 @@
-use super::{Command, Result, CommandContext};
+use super::{Command, Result};
 use crate::cli::Commands;
 use crate::oj::OJContainer;
+use crate::contest::Contest;
+use crate::config::Config;
 
 pub struct LoginCommand {
-    context: CommandContext,
+    site_id: String,
 }
 
 impl LoginCommand {
-    pub fn new(context: CommandContext) -> Self {
-        Self { context }
+    pub fn new(site_id: String) -> Self {
+        Self { site_id }
     }
 }
 
@@ -20,11 +22,19 @@ impl Command for LoginCommand {
             _ => return Err("不正なコマンドです".into()),
         }
 
+        // 設定を取得
+        let config = Config::load()
+            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
+
+        // コンテストオブジェクトを作成
+        let mut contest = Contest::default();
+        contest.set_site(&self.site_id)?;
+
         // ワークスペースディレクトリを取得
         let workspace_path = std::env::current_dir()?;
 
         // OJコンテナを初期化
-        let oj = OJContainer::new(workspace_path)?;
+        let oj = OJContainer::new(workspace_path, contest)?;
 
         // コンテナイメージの確認
         if let Err(e) = oj.ensure_image().await {
@@ -33,7 +43,7 @@ impl Command for LoginCommand {
         }
         
         // ログイン処理
-        match oj.login(&self.context.site).await {
+        match oj.login().await {
             Ok(_) => {
                 println!("ログインが完了しました");
                 Ok(())

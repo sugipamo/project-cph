@@ -2,7 +2,6 @@ use crate::error::Result;
 use std::path::PathBuf;
 use colored::*;
 use std::process::Command;
-use crate::cli::Site;
 use std::env;
 use crate::contest::Contest;
 use crate::config::Config;
@@ -53,11 +52,8 @@ pub struct OJContainer {
 }
 
 impl OJContainer {
-    pub fn new(workspace_path: PathBuf) -> Result<Self> {
-        Ok(Self { 
-            workspace_path,
-            contest: Contest::default(),
-        })
+    pub fn new(workspace_path: PathBuf, contest: Contest) -> Result<Self> {
+        Ok(Self { workspace_path, contest })
     }
 
     fn get_dockerfile_path() -> PathBuf {
@@ -155,9 +151,12 @@ impl OJContainer {
         Ok(())
     }
 
-    pub async fn login(&self, site: &Site) -> Result<()> {
-        let site_url = site.get_url();
-        println!("{}", format!("Logging in to {}...", site.get_name()).cyan());
+    pub async fn login(&self) -> Result<()> {
+        // サイトのURLを取得
+        let url = self.contest.config.get::<String>(&format!("sites.{}.url", self.contest.site_id))?;
+        let name = self.contest.config.get::<String>(&format!("sites.{}.name", self.contest.site_id))?;
+
+        println!("{}", format!("Logging in to {}...", name).cyan());
 
         // cookieファイルをリセット
         println!("{}", "Resetting cookie file...".cyan());
@@ -184,9 +183,9 @@ impl OJContainer {
         }
 
         // ログインを実行
-        self.run_oj_command(&["login", site_url], false).await?;
+        self.run_oj_command(&["login", &url], false).await?;
 
-        println!("{}", format!("Successfully logged in to {}", site.get_name()).green());
+        println!("{}", format!("Successfully logged in to {}", name).green());
         Ok(())
     }
 
@@ -249,42 +248,20 @@ impl OJContainer {
         Ok(())
     }
 
-    pub async fn submit(&self, problem: &ProblemInfo, _site: &Site, language_id: &str) -> Result<()> {
-        // 設定を取得
-        let config = Config::load()
-            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
-
-        println!("{}", format!("Submitting solution for problem {}...", problem.problem_id).cyan());
-
+    pub async fn submit(&self, problem: &ProblemInfo, language_id: &str) -> Result<()> {
         // Dockerイメージの存在確認
         self.check_image_exists().await?;
 
-        let source_path_relative = problem.source_path.strip_prefix(&self.workspace_path)
-            .map_err(|_| "Failed to get relative source path")?;
+        // 提出コマンドを実行
+        println!("{}", format!("Submitting solution for problem {}...", problem.problem_id).cyan());
 
-        let mut args = vec![
+        self.run_oj_command(&[
             "submit",
-            "--language", language_id,
-        ];
-
-        // 設定に基づいてコマンドライン引数を追加
-        let wait = config.get::<u64>("system.submit.wait")
-            .unwrap_or(0);
-        let wait_arg = format!("--wait={}", wait);
-        args.push(&wait_arg);
-
-        let auto_yes = config.get::<bool>("system.submit.auto_yes")
-            .unwrap_or(false);
-        if auto_yes {
-            args.push("--yes");
-        }
-
-        args.extend(&[
+            "-l", language_id,
+            "-y",  // 確認をスキップ
             &problem.url,
-            source_path_relative.to_str().unwrap(),
-        ]);
-
-        self.run_oj_command(&args, true).await?;
+            &problem.source_path.to_string_lossy(),
+        ], true).await?;
 
         println!("{}", "Solution submitted successfully".green());
         Ok(())
