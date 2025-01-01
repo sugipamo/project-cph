@@ -3,9 +3,7 @@ use serde::{Serialize, Deserialize};
 use std::path::{PathBuf, Path};
 use std::fs;
 use std::io::BufRead;
-use serde_yaml::Value;
 use crate::config::ConfigError;
-use anyhow::anyhow;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Contest {
@@ -22,17 +20,30 @@ pub struct Contest {
 
 impl Default for Contest {
     fn default() -> Self {
-        let config = Config::load()
-            .expect("設定の読み込みに失敗しました");
+        // 1. 設定の読み込み
+        let config = Config::load().unwrap_or_else(|e| {
+            eprintln!("警告: 設定の読み込みに失敗しました: {}", e);
+            Config::default()
+        });
+
+        // 2. アクティブディレクトリの設定を取得
         let active_dir = config.get::<String>("system.contest_dir.active")
-            .expect("設定の読み込みに失敗しました");
-        let default_site = Site::AtCoder;
+            .or_else(|_| config.get_with_alias::<String>("contest_dir.active"))
+            .unwrap_or_else(|e| {
+                eprintln!("警告: アクティブディレクトリの設定の読み込みに失敗しました: {}", e);
+                "contests/active".to_string()
+            });
+
+        // 3. デフォルト言語の設定を試みる
+        let language = config.get::<String>("languages.default")
+            .or_else(|_| config.get_with_alias::<String>("default_language"))
+            .ok();
 
         Contest {
             active_contest_dir: PathBuf::from(active_dir),
             contest_id: String::new(),
-            language: None,
-            site: default_site,
+            language,
+            site: Site::AtCoder,
             workspace_dir: PathBuf::new(),
             config,
         }
@@ -94,8 +105,20 @@ impl Contest {
     }
 
     pub fn get_solution_language(&self) -> Result<String> {
-        self.language.clone()
-            .ok_or_else(|| "言語が設定されていません".into())
+        // 1. 現在の言語設定を確認
+        if let Some(lang) = &self.language {
+            return Ok(lang.clone());
+        }
+
+        // 2. デフォルト言語を設定から取得
+        self.config.get::<String>("languages.default")
+            .map_err(|_| format!(
+                "言語が設定されていません。\n'cph language <言語名>' コマンドで言語を設定してください。\n\
+                利用可能な言語は 'cph language' コマンドで確認できます。\n\
+                現在のコンテストID: {}\n\
+                ヒント: config.yamlの'languages.default'で既定の言語を設定できます。", 
+                self.contest_id
+            ).into())
     }
 
     pub fn save(&self) -> Result<()> {
@@ -115,19 +138,37 @@ impl Contest {
 
     // 共通の問題ファイルパス取得処理
     fn get_problem_file_path(&self, problem_id: &str, file_type: &str) -> Result<PathBuf> {
-        let language = self.language.as_ref()
-            .ok_or_else(|| "言語が設定されていません".to_string())?;
-
-        // config/mod.rsを使用して言語設定を取得
-        let config = Config::load()
-            .map_err(|_| "設定の読み込みに失敗しました".to_string())?;
+        // 1. 現在の言語設定を取得
+        let language = if let Some(lang) = &self.language {
+            lang.clone()
+        } else {
+            // デフォルト言語を試みる
+            self.config.get::<String>("languages.default")
+                .map_err(|_| format!(
+                    "言語が設定されていません。\n'cph language <言語名>' コマンドで言語を設定してください。\n\
+                    現在の問題ID: {}\nファイルタイプ: {}\n\
+                    ヒント: config.yamlの'languages.default'で既定の言語を設定できます。", 
+                    problem_id, 
+                    file_type
+                ))?
+        };
         
-        // 拡張子を取得
-        let extension = config.get::<String>(&format!("{}.extension", language))
-            .map_err(|_| format!("未知の言語です: {}", language))?;
+        // 2. 言語の存在確認と拡張子の取得
+        let extension = self.config.get_with_alias::<String>(&format!("{}.extension", language))
+            .or_else(|_| self.config.get::<String>(&format!("languages.{}.extension", language)))
+            .map_err(|_| format!(
+                "未知の言語です: {}。\n'cph language' コマンドで利用可能な言語を確認してください。\n\
+                現在の問題ID: {}\nファイルタイプ: {}", 
+                language, problem_id, file_type
+            ))?;
 
-        // ファイル名のパターンを取得
-        let pattern = config.get::<String>(&format!("system.templates.patterns.{}", file_type))?;
+        // 3. ファイル名のパターンを取得
+        let pattern = self.config.get::<String>(&format!("system.templates.patterns.{}", file_type))
+            .map_err(|e| format!(
+                "ファイルパターンの取得に失敗しました。\n\
+                ファイルタイプ: {}\nエラー: {}", 
+                file_type, e
+            ))?;
         
         // パターンの{extension}を実際の拡張子に置換
         let file_name = pattern.replace("{extension}", &extension);
@@ -142,16 +183,19 @@ impl Contest {
     // solution.[ext]のパスを取得
     pub fn get_solution_path(&self, problem_id: &str) -> Result<PathBuf> {
         self.get_problem_file_path(problem_id, "solution")
+            .map_err(|e| format!("ソリューションファイルのパス取得に失敗しました。\n問題ID: {}\nエラー: {}", problem_id, e).into())
     }
 
     // generator.[ext]のパスを取得
     pub fn get_generator_path(&self, problem_id: &str) -> Result<PathBuf> {
         self.get_problem_file_path(problem_id, "generator")
+            .map_err(|e| format!("ジェネレータファイルのパス取得に失敗しました。\n問題ID: {}\nエラー: {}", problem_id, e).into())
     }
 
     // tester.[ext]のパスを取得
     pub fn get_tester_path(&self, problem_id: &str) -> Result<PathBuf> {
         self.get_problem_file_path(problem_id, "tester")
+            .map_err(|e| format!("テスターファイルのパス取得に失敗しました。\n問題ID: {}\nエラー: {}", problem_id, e).into())
     }
 
     pub fn set_contest(&mut self, contest_id: String) {
@@ -159,39 +203,90 @@ impl Contest {
     }
 
     pub fn set_language(&mut self, language: &str) -> Result<()> {
-        // 言語の存在確認
-        match self.config.get::<String>(&format!("languages.{}.extension", language)) {
+        // 1. エイリアス解決を試みる
+        let resolved_language = self.config.get_with_alias::<String>(&format!("{}.name", language))
+            .unwrap_or_else(|_| language.to_string());
+
+        // 2. 言語の存在確認
+        match self.config.get::<String>(&format!("languages.{}.extension", resolved_language)) {
             Ok(_) => {
-                self.language = Some(language.to_string());
+                self.language = Some(resolved_language.clone());
                 Ok(())
             },
             Err(ConfigError::PathError(_)) => {
-                Err(Box::new(ConfigError::RequiredValueError(
-                    format!("Language '{}' is not supported", language)
-                )))
+                // 利用可能な言語のリストを取得
+                let available_languages = self.config.get::<Vec<String>>("languages.available")
+                    .unwrap_or_default();
+                
+                Err(format!(
+                    "言語 '{}' はサポートされていません。\n\
+                    'cph language' コマンドで利用可能な言語を確認してください。\n\
+                    利用可能な言語: {}\n\
+                    現在のコンテストID: {}", 
+                    language,
+                    available_languages.join(", "),
+                    self.contest_id
+                ).into())
             },
-            Err(e) => Err(Box::new(e)),
+            Err(e) => Err(format!(
+                "言語の設定中にエラーが発生しました。\n\
+                言語: {}\nエラー: {}\n\
+                現在のコンテストID: {}", 
+                language, e, self.contest_id
+            ).into()),
         }
     }
 
     pub fn set_site(&mut self, site_name: &str) -> Result<()> {
-        // サイトの存在確認
-        match self.config.get::<String>(&format!("sites.{}.problem_url", site_name)) {
+        // 1. エイリアス解決を試みる
+        let resolved_site = self.config.get_with_alias::<String>(&format!("{}.name", site_name))
+            .unwrap_or_else(|_| site_name.to_string());
+
+        // 2. サイトの存在確認
+        match self.config.get::<String>(&format!("sites.{}.problem_url", resolved_site)) {
             Ok(_) => {
-                self.site = match site_name.to_lowercase().as_str() {
+                // 3. 利用可能なサイトのリストを取得
+                let available_sites = self.config.get::<Vec<String>>("sites.available")
+                    .unwrap_or_else(|_| vec!["atcoder".to_string()]);
+
+                // 4. サイトの設定
+                self.site = match resolved_site.to_lowercase().as_str() {
                     "atcoder" => Site::AtCoder,
-                    _ => return Err(Box::new(ConfigError::RequiredValueError(
-                        format!("Site '{}' is not supported", site_name)
-                    ))),
+                    _ => return Err(format!(
+                        "サイト '{}' はサポートされていません。\n\
+                        利用可能なサイト: {}\n\
+                        現在のコンテストID: {}", 
+                        site_name,
+                        available_sites.join(", "),
+                        self.contest_id
+                    ).into()),
                 };
                 Ok(())
             },
             Err(ConfigError::PathError(_)) => {
-                Err(Box::new(ConfigError::RequiredValueError(
-                    format!("Site '{}' is not supported", site_name)
-                )))
+                // 5. 利用可能なサイトのリストを取得して表示
+                let available_sites = self.config.get::<Vec<String>>("sites.available")
+                    .unwrap_or_else(|_| vec!["atcoder".to_string()]);
+
+                Err(format!(
+                    "サイト '{}' の設定が見つかりません。\n\
+                    利用可能なサイト: {}\n\
+                    現在のコンテストID: {}", 
+                    site_name,
+                    available_sites.join(", "),
+                    self.contest_id
+                ).into())
             },
-            Err(e) => Err(Box::new(e)),
+            Err(e) => Err(format!(
+                "サイトの設定中にエラーが発生しました。\n\
+                サイト: {}\n\
+                エラー: {}\n\
+                現在のコンテストID: {}\n\
+                ヒント: config.yamlの'sites'セクションを確認してください。", 
+                site_name, 
+                e,
+                self.contest_id
+            ).into()),
         }
     }
 
@@ -224,77 +319,43 @@ impl Contest {
 
     // ファイルを contests ディレクトリに移動
     fn move_files_to_contests(&self) -> Result<()> {
-        // .moveignoreの読み込み
+        // 1. .moveignoreの読み込み
         let ignore_patterns = self.read_moveignore()?;
         
-        // コンテストの保存先ディレクトリを設定から取得
-        let storage_base = self.config.get::<String>("system.contest_dir.storage")?;
+        // 2. コンテストの保存先ディレクトリを設定から取得
+        let storage_base = self.config.get::<String>("system.contest_dir.storage")
+            .or_else(|_| self.config.get_with_alias::<String>("contest_dir.storage"))
+            .map_err(|e| format!(
+                "コンテストの保存先ディレクトリの設定の取得に失敗しました。\n\
+                エラー: {}\n\
+                ヒント: config.yamlの'system.contest_dir.storage'を設定してください。", 
+                e
+            ))?;
+
         let contests_dir = self.workspace_dir.join(&storage_base);
 
+        // 3. 保存先ディレクトリの作成
         if !contests_dir.exists() {
-            fs::create_dir_all(&contests_dir)?;
+            println!("{}ディレクトリを作成します", storage_base);
+            fs::create_dir_all(&contests_dir)
+                .map_err(|e| format!(
+                    "{}ディレクトリの作成に失敗しました。\n\
+                    エラー: {}", 
+                    storage_base, e
+                ))?;
         }
 
-        // コンテスト用のディレクトリを作成
+        // 4. コンテスト用のディレクトリを作成
         let contest_dir = contests_dir.join(&self.contest_id);
         if !contest_dir.exists() {
-            fs::create_dir_all(&contest_dir)?;
+            println!("{}ディレクトリを作成します", contest_dir.display());
+            fs::create_dir_all(&contest_dir)
+                .map_err(|e| format!(
+                    "{}ディレクトリの作成に失敗しました。\n\
+                    エラー: {}", 
+                    contest_dir.display(), e
+                ))?;
         }
-
-        // 再帰的にデァイルを探索して移動する関数
-        fn move_files(
-            source_dir: &Path,
-            target_base: &Path,
-            relative_path: &Path,
-            ignore_patterns: &[String],
-            should_ignore: &dyn Fn(&str, &[String]) -> bool
-        ) -> Result<bool> {
-            let mut has_moved = false;
-
-            for entry in fs::read_dir(source_dir)? {
-                let entry = entry?;
-                let path = entry.path();
-                let name = path.file_name()
-                    .ok_or_else(|| format!("Invalid name: {}", path.display()))?
-                    .to_string_lossy()
-                    .into_owned();
-
-                // .moveignoreパターンに一致する場合はスキップ
-                if should_ignore(&name, ignore_patterns) {
-                    println!("移動をスキップ: {}", name);
-                    continue;
-                }
-
-                if path.is_dir() {
-                    // ディレクトリの場合は再帰的に処理
-                    let new_relative = relative_path.join(&name);
-                    if move_files(&path, target_base, &new_relative, ignore_patterns, should_ignore)? {
-                        has_moved = true;
-                    }
-                } else {
-                    // ファイルの場合は移動先ディレクトリを作成してから移動
-                    let target_dir = target_base.join(relative_path);
-                    if !target_dir.exists() {
-                        fs::create_dir_all(&target_dir)?;
-                    }
-                    let target_path = target_dir.join(&name);
-                    println!("ファイルを移動: {} -> {}", path.display(), target_path.display());
-                    fs::rename(&path, &target_path)?;
-                    has_moved = true;
-                }
-            }
-
-            Ok(has_moved)
-        }
-
-        // ルートディレクトリからの相対パスを空のPathBufで初期化
-        move_files(
-            &self.active_contest_dir,
-            &contest_dir,
-            &PathBuf::new(),
-            &ignore_patterns,
-            &|n, p| self.should_ignore(n, p)
-        )?;
 
         Ok(())
     }

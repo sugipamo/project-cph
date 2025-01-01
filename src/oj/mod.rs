@@ -54,10 +54,6 @@ pub struct OJContainer {
 
 impl OJContainer {
     pub fn new(workspace_path: PathBuf) -> Result<Self> {
-        // 設定を取得
-        let config = Config::load()
-            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
-
         Ok(Self { 
             workspace_path,
             contest: Contest::default(),

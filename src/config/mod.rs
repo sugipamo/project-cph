@@ -125,6 +125,7 @@ pub trait TypedValue: Sized {
     fn from_yaml(value: &Value) -> Result<Self, ConfigError>;
 }
 
+#[derive(Debug, Clone)]
 pub struct AliasSection {
     path: String,
     alias_field: String,
@@ -175,12 +176,25 @@ impl ConfigBuilder {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Config {
     data: Value,
     alias_map: HashMap<String, String>,
     alias_sections: Vec<AliasSection>,
     anchor_prefix: String,
-    required_values: Vec<RequiredValue>,  // 必須設定値のリストを追加
+    required_values: Vec<RequiredValue>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            data: Value::Null,
+            alias_map: HashMap::new(),
+            alias_sections: Vec::new(),
+            anchor_prefix: String::from("_"),
+            required_values: Vec::new(),
+        }
+    }
 }
 
 impl Config {
