@@ -1,3 +1,55 @@
+// Configuration Module
+//
+// # 型変換機能
+// このモジュールは、YAML設定から様々な型への変換をサポートしています：
+//
+// ## 基本的な型変換
+// ```rust
+// // 文字列として取得
+// let value: String = config.get("system.source_file.solution")?;
+// 
+// // 数値として取得
+// let timeout: i64 = config.get("system.docker.timeout_seconds")?;
+// let memory: f64 = config.get("system.docker.memory_limit_mb")?;
+// 
+// // 真偽値として取得（"yes", "true", "on", "1" は true として扱われます）
+// let auto_yes: bool = config.get("system.submit.auto_yes")?;
+// 
+// // 文字列配列として取得
+// let aliases: Vec<String> = config.get("languages.rust.aliases")?;
+// ```
+//
+// ## エイリアス解決付きの型変換
+// ```rust
+// // エイリアスを解決して値を取得
+// // 例: "rs.extension" -> "languages.rust.extension"
+// let ext: String = config.get_with_alias("rs.extension")?;
+// ```
+//
+// ## 型変換エラー処理
+// ```rust
+// // エラーハンドリングの例
+// match config.get::<bool>("some.string.value") {
+//     Ok(value) => println!("値: {}", value),
+//     Err(ConfigError::TypeError { path, value, .. }) => {
+//         println!("型変換エラー - パス: {}, 値: {}", path, value);
+//     }
+//     Err(e) => println!("その他のエラー: {}", e),
+// }
+// ```
+//
+// ## カスタム型の実装
+// 新しい型のサポートを追加するには、`TypedValue` トレイトを実装します：
+// ```rust
+// impl TypedValue for MyType {
+//     const TYPE: ConfigType = ConfigType::String;  // 適切な型を指定
+//
+//     fn from_yaml(value: &Value) -> Result<Self, ConfigError> {
+//         // 値の変換ロジックを実装
+//     }
+// }
+// ```
+
 use std::collections::HashMap;
 use serde_yaml::Value;
 use std::io;
