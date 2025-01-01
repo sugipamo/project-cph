@@ -38,16 +38,16 @@ impl DockerRunner {
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
         let _compile_command = config_builder.get::<Vec<String>>(&format!("{}.runner.compile", resolved))
-            .unwrap_or_default();
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
         let _run_command = config_builder.get::<Vec<String>>(&format!("{}.runner.run", resolved))
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
         let _needs_compilation = config_builder.get::<bool>(&format!("{}.runner.needs_compilation", resolved))
-            .unwrap_or(false);
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
         let _compile_dir = config_builder.get::<String>(&format!("{}.runner.compile_dir", resolved))
-            .unwrap_or_else(|_| "/workspace".to_string());
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
         let _extension = config_builder.get::<String>(&format!("{}.extension", resolved))
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
@@ -84,13 +84,13 @@ impl DockerRunner {
 
         // 言語設定を取得
         let needs_compilation = config_builder.get::<bool>("runner.needs_compilation")
-            .unwrap_or(false);
+            .map_err(|e| format!("コンパイル設定の取得に失敗しました: {}", e))?;
 
         // コンパイルが必要な言語の場合
         if needs_compilation {
             println!("Compiling source code...");
             let compile_cmd = config_builder.get::<Vec<String>>("runner.compile")
-                .unwrap_or_default();
+                .map_err(|e| format!("コンパイルコマンドの取得に失敗しました: {}", e))?;
 
             if !compile_cmd.is_empty() {
                 let image = config_builder.get::<String>("runner.image")
@@ -102,8 +102,10 @@ impl DockerRunner {
 
                 let compile_config = CompileConfig {
                     extension,
-                    needs_cargo: false, // TODO: 設定から取得
-                    env_vars: Vec::new(), // TODO: 設定から取得
+                    needs_cargo: config_builder.get::<bool>("runner.needs_cargo")
+                        .map_err(|e| format!("Cargo設定の取得に失敗しました: {}", e))?,
+                    env_vars: config_builder.get::<Vec<String>>("runner.env_vars")
+                        .map_err(|e| format!("環境変数設定の取得に失敗しました: {}", e))?,
                 };
 
                 if let Err(e) = self.command.compile(

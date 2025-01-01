@@ -19,19 +19,31 @@ impl Default for Contest {
     fn default() -> Self {
         // config/mod.rsを使用して設定を取得
         let config = Config::builder()
-            .unwrap_or_else(|_| Config::builder().unwrap());  // エラー時は空の設定を使用
+            .map_err(|e| {
+                eprintln!("設定の読み込みに失敗しました: {}", e);
+                std::process::exit(1);
+            })?;
 
-        // デフォルトのアクティブディレクトリを設定から取得
+        // アクティブディレクトリを設定から取得
         let active_dir = config.get::<String>("system.contest_dir.active")
-            .unwrap_or_else(|_| "active_contest".to_string());
+            .map_err(|e| {
+                eprintln!("アクティブディレクトリの設定の読み込みに失敗しました: {}", e);
+                std::process::exit(1);
+            });
 
-        // デフォルトのサイトを設定から取得（エイリアス解決を使用）
+        // デフォルトのサイトを設定から取得
         let default_site = config.get_with_alias::<String>("sites.default.name")
             .map(|site| match site.to_lowercase().as_str() {
                 "atcoder" => Site::AtCoder,
-                _ => Site::AtCoder // デフォルトはAtCoder
+                _ => {
+                    eprintln!("未知のサイト '{}' が指定されました", site);
+                    std::process::exit(1);
+                }
             })
-            .unwrap_or(Site::AtCoder);
+            .map_err(|e| {
+                eprintln!("デフォルトサイトの設定の読み込みに失敗しました: {}", e);
+                std::process::exit(1);
+            });
 
         Self {
             active_contest_dir: PathBuf::from(active_dir),
@@ -46,8 +58,7 @@ impl Default for Contest {
 impl Contest {
     pub fn new(config: &Config, problem_id: &str) -> Result<Self> {
         // アクティブコンテストのディレクトリを設定から取得
-        let active_dir = config.get::<String>("system.contest_dir.active")
-            .unwrap_or_else(|_| "active_contest".to_string());
+        let active_dir = config.get::<String>("system.contest_dir.active")?;
         
         let workspace_dir = std::env::current_dir()?;
         let active_contest_dir = workspace_dir.join(&active_dir);
@@ -65,8 +76,7 @@ impl Contest {
             .to_string();
 
         // コンテスト設定ファイル名を設定から取得
-        let config_file = config.get::<String>("system.active_contest_yaml")
-            .unwrap_or_else(|_| "contests.yaml".to_string());
+        let config_file = config.get::<String>("system.active_contest_yaml")?;
         let config_path = active_contest_dir.join(&config_file);
 
         if !config_path.exists() {
@@ -105,8 +115,7 @@ impl Contest {
             .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
         // コンテスト設定ファイル名を設定から取得
-        let config_file = config.get::<String>("system.active_contest_yaml")
-            .unwrap_or_else(|_| "contests.yaml".to_string());
+        let config_file = config.get::<String>("system.active_contest_yaml")?;
         let config_path = self.active_contest_dir.join(&config_file);
 
         let content = serde_yaml::to_string(&self)
@@ -133,8 +142,7 @@ impl Contest {
             .map_err(|_| format!("未知の言語です: {}", language))?;
 
         // ファイル名のパターンを取得
-        let pattern = config.get::<String>(&format!("system.templates.patterns.{}", file_type))
-            .unwrap_or_else(|_| format!("{}.{{extension}}", file_type));
+        let pattern = config.get::<String>(&format!("system.templates.patterns.{}", file_type))?;
         
         // パターンの{extension}を実際の拡張子に置換
         let file_name = pattern.replace("{extension}", &extension);
@@ -233,8 +241,7 @@ impl Contest {
             .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
         // コンテストの保存先ディレクトリを設定から取得
-        let storage_base = config.get::<String>("system.contest_dir.storage")
-            .unwrap_or_else(|_| "contests".to_string());
+        let storage_base = config.get::<String>("system.contest_dir.storage")?;
         let contests_dir = self.workspace_dir.join(&storage_base);
 
         if !contests_dir.exists() {
@@ -314,23 +321,17 @@ impl Contest {
         let moveignore_path = self.active_contest_dir.join(".moveignore");
         let mut patterns = vec![];
 
-        // .moveignoreが存在しない場合はデフォルトのパターンを設定から取得
+        // .moveignoreが存在しない場合は設定から取得
         if !moveignore_path.exists() {
             // コンテスト設定ファイル名を取得
-            let config_file = config.get::<String>("system.active_contest_yaml")
-                .unwrap_or_else(|_| "contests.yaml".to_string());
+            let config_file = config.get::<String>("system.active_contest_yaml")?;
 
-            // デフォルトの無視パターンを設定から取得
-            let mut default_patterns = vec![config_file];
-
-            // 設定から追加の無視パターンを取得
+            // 無視パターンを設定から取得
+            let mut ignore_patterns = vec![config_file];
             if let Ok(additional_patterns) = config.get::<Vec<String>>("system.ignore_patterns") {
-                default_patterns.extend(additional_patterns);
-            } else {
-                default_patterns.push(".moveignore".to_string());
+                ignore_patterns.extend(additional_patterns);
             }
-
-            return Ok(default_patterns);
+            return Ok(ignore_patterns);
         }
 
         // ファイルを読み込む
@@ -380,18 +381,15 @@ impl Contest {
         }
 
         // テストディレクトリ名を設定から取得
-        let test_dir_name = config.get::<String>("system.test.dir")
-            .unwrap_or_else(|_| "test".to_string());
+        let test_dir_name = config.get::<String>("system.test.dir")?;
         let test_dir = problem_dir.join(test_dir_name);
         if !test_dir.exists() {
             fs::create_dir_all(&test_dir)?;
         }
 
         // テンプレートディレクトリのパターンを設定から取得
-        let template_pattern = config.get::<String>("system.templates.directory")
-            .unwrap_or_else(|_| "{name}".to_string());
-        let template_base = config.get::<String>("system.contest_dir.template")
-            .unwrap_or_else(|_| "contest_template".to_string());
+        let template_pattern = config.get::<String>("system.templates.directory")?;
+        let template_base = config.get::<String>("system.contest_dir.template")?;
         
         // パターンの{name}を言語名に置換
         let template_dir_name = template_pattern.replace("{name}", language);

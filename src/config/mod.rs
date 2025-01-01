@@ -537,9 +537,7 @@ mod tests {
 
     fn create_test_config(yaml: &str) -> Config {
         let data: Value = serde_yaml::from_str(yaml).unwrap();
-        let builder = Config::builder()
-            .add_alias_section("languages", "aliases")
-            .add_alias_section("sites", "aliases");
+        let builder = Config::builder();
         
         Config {
             data,
@@ -594,7 +592,6 @@ custom:
 "#;
         let data: Value = serde_yaml::from_str(yaml).unwrap();
         let mut config = Config::builder()
-            .add_alias_section("custom", "shortcuts")
             .set_anchor_prefix("$")
             .build();
         
@@ -678,7 +675,6 @@ languages:
 "#;
         let data: Value = serde_yaml::from_str(yaml).unwrap();
         let mut config = Config::builder()
-            .add_alias_section("languages", "aliases")
             .build();
         
         config.data = data;
