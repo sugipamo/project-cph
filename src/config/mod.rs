@@ -155,15 +155,34 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn builder() -> ConfigBuilder {
-        ConfigBuilder::new()
+    pub fn builder() -> Result<Self, ConfigError> {
+        let config_path = "src/config/config.yaml";
+        Self::from_file(config_path, ConfigBuilder::new())
     }
 
-    pub fn from_file(path: &str, builder: ConfigBuilder) -> Result<Self, ConfigError> {
+    pub fn from_file(path: &str, mut builder: ConfigBuilder) -> Result<Self, ConfigError> {
         let contents = std::fs::read_to_string(path)?;
         let contents = Self::expand_env_vars(&contents)?;
         let data: Value = serde_yaml::from_str(&contents)?;
         
+        // YAMLファイルからエイリアスセクションを自動検出
+        if let Value::Mapping(mapping) = &data {
+            for (key, value) in mapping {
+                if let (Value::String(section_name), Value::Mapping(section_data)) = (key, value) {
+                    // セクション内のエントリを確認
+                    for (_, entry) in section_data {
+                        if let Value::Mapping(entry_data) = entry {
+                            // aliasesフィールドを持つエントリを見つけたら、そのセクションをエイリアスセクションとして追加
+                            if entry_data.contains_key("aliases") {
+                                builder = builder.add_alias_section(section_name, "aliases");
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let mut config = Config {
             data,
             alias_map: HashMap::new(),

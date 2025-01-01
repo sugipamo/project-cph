@@ -8,7 +8,6 @@ use crate::contest::Contest;
 use users;
 use std::os::unix::fs::PermissionsExt;
 use dirs;
-use crate::config::OJConfig;
 
 const COOKIE_DIR: &str = ".local/share/online-judge-tools";
 const COOKIE_FILE: &str = "cookie.jar";

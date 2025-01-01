@@ -45,7 +45,12 @@ impl Command for WorkCommand {
         
         // コンテストIDを設定
         contest.set_contest(contest_id.clone());
-        contest.set_site(self.site.clone());
+        
+        // サイトを設定
+        if let Err(e) = contest.set_site(&self.site.to_string()) {
+            println!("サイトの設定に失敗しました: {}", e);
+            return Err(e.into());
+        }
         
         // 設定を保存（テンプレートのコピーと既存ファイルの移動も行われる）
         if let Err(e) = contest.save() {
