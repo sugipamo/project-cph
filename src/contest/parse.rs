@@ -319,22 +319,93 @@ impl CommandToken {
     }
 }
 
-fn try_match_ordered(
-    _args: &[&str],
-    _cmd_arg: &str,
-    _pattern: &[String],
-    _resolvers: &[NameResolver],
+fn try_match_pattern(
+    args: &[&str],
+    cmd_arg: &str,
+    pattern: &[String],
+    resolvers: &[NameResolver],
+    is_ordered: bool,
 ) -> Option<HashMap<String, String>> {
-    None
+    // パターンの長さと引数の長さが一致しない場合はマッチしない
+    if args.len() != pattern.len() {
+        return None;
+    }
+
+    // 固定パターンの場合のみ実装
+    if !is_ordered {
+        return None;
+    }
+
+    let mut params = HashMap::new();
+    let mut used_args = vec![false; args.len()];
+
+    // パターンと引数を順番に比較
+    for (pattern_idx, param_type) in pattern.iter().enumerate() {
+        let arg = args[pattern_idx];
+        let mut matched = false;
+
+        // パラメータタイプに応じたマッチング
+        for (resolver_idx, &param) in ParamType::all().iter().enumerate() {
+            if param_type == &param.pattern() {
+                match param {
+                    ParamType::Command => {
+                        if arg == cmd_arg {
+                            params.insert(param.as_str().to_string(), cmd_arg.to_string());
+                            used_args[pattern_idx] = true;
+                            matched = true;
+                        }
+                    }
+                    _ => {
+                        if let Some(value) = resolvers[resolver_idx].resolve(arg) {
+                            params.insert(param.as_str().to_string(), value);
+                            used_args[pattern_idx] = true;
+                            matched = true;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
+        // パラメータタイプにマッチしない場合は、プレースホルダーとして扱う
+        if !matched && param_type.starts_with('{') && param_type.ends_with('}') {
+            let key = &param_type[1..param_type.len() - 1];
+            params.insert(key.to_string(), arg.to_string());
+            used_args[pattern_idx] = true;
+            matched = true;
+        }
+
+        // マッチしない引数があれば、このパターンは不適合
+        if !matched {
+            return None;
+        }
+    }
+
+    // すべての引数が使用されていることを確認
+    if used_args.iter().all(|&used| used) {
+        Some(params)
+    } else {
+        None
+    }
+}
+
+// try_match_orderedとtry_match_unorderedは一時的にtry_match_patternを呼び出すだけにする
+fn try_match_ordered(
+    args: &[&str],
+    cmd_arg: &str,
+    pattern: &[String],
+    resolvers: &[NameResolver],
+) -> Option<HashMap<String, String>> {
+    try_match_pattern(args, cmd_arg, pattern, resolvers, true)
 }
 
 fn try_match_unordered(
-    _args: &[&str],
-    _cmd_arg: &str,
-    _pattern: &[String],
-    _resolvers: &[NameResolver],
+    args: &[&str],
+    cmd_arg: &str,
+    pattern: &[String],
+    resolvers: &[NameResolver],
 ) -> Option<HashMap<String, String>> {
-    None
+    try_match_pattern(args, cmd_arg, pattern, resolvers, false)
 }
 
 #[cfg(test)]
@@ -467,12 +538,59 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_basic_command() {
         let input = "test abc123";
         let result = CommandToken::parse(input).unwrap();
         assert_eq!(result.command_name, "test");
         assert_eq!(result.arguments["problem_id"], "abc123");
+    }
+
+    #[test]
+    fn test_command_with_site() {
+        let input = "atcoder test abc123";
+        let result = CommandToken::parse(input).unwrap();
+        assert_eq!(result.command_name, "test");
+        assert_eq!(result.arguments["site_id"], "atcoder");
+        assert_eq!(result.arguments["problem_id"], "abc123");
+    }
+
+    #[test]
+    fn test_command_aliases() {
+        for cmd in ["test", "t", "check"] {
+            let input = format!("{} abc123", cmd);
+            let result = CommandToken::parse(&input).unwrap();
+            assert_eq!(result.command_name, "test");
+            assert_eq!(result.arguments["problem_id"], "abc123");
+        }
+    }
+
+    #[test]
+    fn test_command_with_extra_spaces() {
+        let input = "  test   abc123  ";
+        let result = CommandToken::parse(input).unwrap();
+        assert_eq!(result.command_name, "test");
+        assert_eq!(result.arguments["problem_id"], "abc123");
+    }
+
+    #[test]
+    fn test_command_case_sensitivity() {
+        let input = "TEST abc123";
+        assert!(matches!(CommandToken::parse(input), Err(TokenizeError::NoMatch)));
+    }
+
+    #[test]
+    fn test_empty_command() {
+        let input = "";
+        assert!(matches!(
+            CommandToken::parse(input),
+            Err(TokenizeError::InvalidFormat(_))
+        ));
+    }
+
+    #[test]
+    fn test_invalid_command() {
+        let input = "invalid xyz";
+        assert!(matches!(CommandToken::parse(input), Err(TokenizeError::NoMatch)));
     }
 
     #[test]
@@ -486,33 +604,12 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_command_with_site() {
-        let input = "atcoder test abc123";
-        let result = CommandToken::parse(input).unwrap();
-        assert_eq!(result.command_name, "test");
-        assert_eq!(result.arguments["site_id"], "atcoder");
-        assert_eq!(result.arguments["problem_id"], "abc123");
-    }
-
-    #[test]
-    #[ignore]
     fn test_command_with_contest() {
         let input = "test abc123 d";
         let result = CommandToken::parse(input).unwrap();
         assert_eq!(result.command_name, "test");
         assert_eq!(result.arguments["contest_id"], "abc123");
         assert_eq!(result.arguments["problem_id"], "d");
-    }
-
-    #[test]
-    #[ignore]
-    fn test_command_aliases() {
-        for cmd in ["test", "t", "check"] {
-            let input = format!("{} abc123", cmd);
-            let result = CommandToken::parse(&input).unwrap();
-            assert_eq!(result.command_name, "test");
-            assert_eq!(result.arguments["problem_id"], "abc123");
-        }
     }
 
     #[test]
@@ -537,39 +634,6 @@ mod tests {
                 }
             }
         }
-    }
-
-    #[test]
-    #[ignore]
-    fn test_invalid_command() {
-        let input = "invalid xyz";
-        assert!(matches!(CommandToken::parse(input), Err(TokenizeError::NoMatch)));
-    }
-
-    #[test]
-    #[ignore]
-    fn test_empty_command() {
-        let input = "";
-        assert!(matches!(
-            CommandToken::parse(input),
-            Err(TokenizeError::InvalidFormat(_))
-        ));
-    }
-
-    #[test]
-    #[ignore]
-    fn test_command_with_extra_spaces() {
-        let input = "  test   abc123  ";
-        let result = CommandToken::parse(input).unwrap();
-        assert_eq!(result.command_name, "test");
-        assert_eq!(result.arguments["problem_id"], "abc123");
-    }
-
-    #[test]
-    #[ignore]
-    fn test_command_case_sensitivity() {
-        let input = "TEST abc123";
-        assert!(matches!(CommandToken::parse(input), Err(TokenizeError::NoMatch)));
     }
 
     #[test]
