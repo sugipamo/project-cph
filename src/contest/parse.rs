@@ -319,29 +319,25 @@ impl CommandToken {
     }
 }
 
-fn try_match_pattern(
+// パターンの検証機構
+fn verify_pattern_match(
     args: &[&str],
     cmd_arg: &str,
     pattern: &[String],
     resolvers: &[NameResolver],
-    is_ordered: bool,
+    arg_indices: &[usize],
+    used_args: &mut [bool],
 ) -> Option<HashMap<String, String>> {
-    // パターンの長さと引数の長さが一致しない場合はマッチしない
-    if args.len() != pattern.len() {
-        return None;
-    }
-
-    // 固定パターンの場合のみ実装
-    if !is_ordered {
-        return None;
-    }
-
     let mut params = HashMap::new();
-    let mut used_args = vec![false; args.len()];
 
     // パターンと引数を順番に比較
     for (pattern_idx, param_type) in pattern.iter().enumerate() {
-        let arg = args[pattern_idx];
+        let arg_idx = arg_indices[pattern_idx];
+        // すでに使用済みの引数は使えない
+        if used_args[arg_idx] {
+            return None;
+        }
+        let arg = args[arg_idx];
         let mut matched = false;
 
         // パラメータタイプに応じたマッチング
@@ -351,14 +347,14 @@ fn try_match_pattern(
                     ParamType::Command => {
                         if arg == cmd_arg {
                             params.insert(param.as_str().to_string(), cmd_arg.to_string());
-                            used_args[pattern_idx] = true;
+                            used_args[arg_idx] = true;
                             matched = true;
                         }
                     }
                     _ => {
                         if let Some(value) = resolvers[resolver_idx].resolve(arg) {
                             params.insert(param.as_str().to_string(), value);
-                            used_args[pattern_idx] = true;
+                            used_args[arg_idx] = true;
                             matched = true;
                         }
                     }
@@ -371,7 +367,7 @@ fn try_match_pattern(
         if !matched && param_type.starts_with('{') && param_type.ends_with('}') {
             let key = &param_type[1..param_type.len() - 1];
             params.insert(key.to_string(), arg.to_string());
-            used_args[pattern_idx] = true;
+            used_args[arg_idx] = true;
             matched = true;
         }
 
@@ -381,22 +377,23 @@ fn try_match_pattern(
         }
     }
 
-    // すべての引数が使用されていることを確認
-    if used_args.iter().all(|&used| used) {
-        Some(params)
-    } else {
-        None
-    }
+    Some(params)
 }
 
-// try_match_orderedとtry_match_unorderedは一時的にtry_match_patternを呼び出すだけにする
 fn try_match_ordered(
     args: &[&str],
     cmd_arg: &str,
     pattern: &[String],
     resolvers: &[NameResolver],
 ) -> Option<HashMap<String, String>> {
-    try_match_pattern(args, cmd_arg, pattern, resolvers, true)
+    // パターンの長さと引数の長さが一致しない場合はマッチしない
+    if args.len() != pattern.len() {
+        return None;
+    }
+
+    let mut used_args = vec![false; args.len()];
+    let indices: Vec<_> = (0..args.len()).collect();
+    verify_pattern_match(args, cmd_arg, pattern, resolvers, &indices, &mut used_args)
 }
 
 fn try_match_unordered(
@@ -405,7 +402,59 @@ fn try_match_unordered(
     pattern: &[String],
     resolvers: &[NameResolver],
 ) -> Option<HashMap<String, String>> {
-    try_match_pattern(args, cmd_arg, pattern, resolvers, false)
+    // パターンの長さと引数の長さが一致しない場合はマッチしない
+    if args.len() != pattern.len() {
+        return None;
+    }
+
+    let mut used_args = vec![false; args.len()];
+    let mut indices: Vec<_> = (0..args.len()).collect();
+
+    // コマンドの位置を特定
+    let mut cmd_idx = None;
+    for (i, &arg) in args.iter().enumerate() {
+        if arg == cmd_arg {
+            cmd_idx = Some(i);
+            break;
+        }
+    }
+
+    // コマンドが見つからない場合はマッチしない
+    let cmd_idx = cmd_idx?;
+
+    // コマンドの位置を先頭に移動
+    if cmd_idx != 0 {
+        indices.swap(0, cmd_idx);
+    }
+
+    // 残りの引数の順列を試す
+    let mut result = None;
+    let mut i = 1;
+    loop {
+        if let Some(params) = verify_pattern_match(args, cmd_arg, pattern, resolvers, &indices, &mut used_args.clone()) {
+            result = Some(params);
+            break;
+        }
+
+        // 次の順列を生成
+        let mut j = indices.len() - 1;
+        while j > i && indices[j - 1] >= indices[j] {
+            j -= 1;
+        }
+        if j <= i {
+            break;
+        }
+
+        let mut k = indices.len() - 1;
+        while indices[j - 1] >= indices[k] {
+            k -= 1;
+        }
+
+        indices.swap(j - 1, k);
+        indices[j..].reverse();
+    }
+
+    result
 }
 
 #[cfg(test)]
@@ -637,7 +686,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_command_unordered() {
         let test_cases = vec![
             ("abc123 test", "test"),
@@ -648,21 +696,11 @@ mod tests {
         for (input, expected_type) in test_cases {
             let result = CommandToken::parse(input).unwrap();
             assert_eq!(result.command_name, expected_type);
+            assert_eq!(result.arguments["problem_id"], "abc123");
         }
     }
 
     #[test]
-    #[ignore]
-    fn test_command_with_all_parameters() {
-        let input = "atcoder test abc123";
-        let result = CommandToken::parse(input).unwrap();
-        assert_eq!(result.command_name, "test");
-        assert_eq!(result.arguments["site_id"], "atcoder");
-        assert_eq!(result.arguments["problem_id"], "abc123");
-    }
-
-    #[test]
-    #[ignore]
     fn test_command_with_site_alias() {
         let input = "ac test abc123";
         let result = CommandToken::parse(input).unwrap();
