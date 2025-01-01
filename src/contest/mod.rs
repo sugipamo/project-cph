@@ -138,7 +138,7 @@ impl Contest {
     // * `config_path` - 設定値のパス（例: "templates.patterns.solution"）
     //
     // # 型パラメータ
-    // * `T` - 取得する設定値の型。TypedValueとDeserializeOwned を実装している必要がある
+    // * `T` - 取得する設定値の型。TypedValue を実装している必要がある
     //
     // # 戻り値
     // * `Result<T>` - 設定値。エラーの場合は適切なエラーメッセージを含む
@@ -149,7 +149,7 @@ impl Contest {
     // let timeout = self.get_language_config::<i32>("submit.timeout")?;
     // let runner = self.get_language_config::<RunnerConfig>("runner")?;
     // ```
-    fn get_language_config<T: serde::de::DeserializeOwned + TypedValue>(&self, config_path: &str) -> Result<T> {
+    fn get_language_config<T: TypedValue>(&self, config_path: &str) -> Result<T> {
         // 1. 現在の言語設定を取得
         let language = if let Some(lang) = &self.language {
             lang.clone()
