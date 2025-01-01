@@ -27,10 +27,11 @@ impl DockerRunner {
 
     pub fn from_language(language: &str) -> Result<Self, ConfigError> {
         let config = DockerConfig::default()?;
-        let config_builder = Config::builder()?;
+        let config = Config::load()
+            .map_err(|e| ConfigError::RequiredValueError("設定の読み込みに失敗しました".to_string()))?;
 
         // エイリアス解決を使用して言語名を取得
-        let resolved = config_builder.get_with_alias::<String>(&format!("{}.name", language))
+        let resolved = config.get_with_alias::<String>(&format!("{}.name", language))
             .map_err(|e| match e {
                 ConfigError::PathError(_) => ConfigError::RequiredValueError(
                     format!("言語 '{}' の設定が見つかりません", language)
@@ -39,7 +40,7 @@ impl DockerRunner {
             })?;
 
         // 言語設定を取得
-        let _runner_image = config_builder.get::<String>(&format!("{}.runner.image", resolved))
+        let _runner_image = config.get::<String>(&format!("{}.runner.image", resolved))
             .map_err(|e| match e {
                 ConfigError::PathError(_) => ConfigError::RequiredValueError(
                     format!("言語 '{}' のイメージ設定が見つかりません", resolved)
@@ -47,7 +48,7 @@ impl DockerRunner {
                 _ => e
             })?;
 
-        let _compile_command = config_builder.get::<Vec<String>>(&format!("{}.runner.compile", resolved))
+        let _compile_command = config.get::<Vec<String>>(&format!("{}.runner.compile", resolved))
             .map_err(|e| match e {
                 ConfigError::PathError(_) => ConfigError::RequiredValueError(
                     format!("言語 '{}' のコンパイルコマンド設定が見つかりません", resolved)
@@ -55,7 +56,7 @@ impl DockerRunner {
                 _ => e
             })?;
 
-        let _run_command = config_builder.get::<Vec<String>>(&format!("{}.runner.run", resolved))
+        let _run_command = config.get::<Vec<String>>(&format!("{}.runner.run", resolved))
             .map_err(|e| match e {
                 ConfigError::PathError(_) => ConfigError::RequiredValueError(
                     format!("言語 '{}' の実行コマンド設定が見つかりません", resolved)
@@ -63,7 +64,7 @@ impl DockerRunner {
                 _ => e
             })?;
 
-        let _needs_compilation = config_builder.get::<bool>(&format!("{}.runner.needs_compilation", resolved))
+        let _needs_compilation = config.get::<bool>(&format!("{}.runner.needs_compilation", resolved))
             .map_err(|e| match e {
                 ConfigError::PathError(_) => ConfigError::RequiredValueError(
                     format!("言語 '{}' のコンパイル要否設定が見つかりません", resolved)
@@ -71,7 +72,7 @@ impl DockerRunner {
                 _ => e
             })?;
 
-        let _extension = config_builder.get::<String>(&format!("{}.extension", resolved))
+        let _extension = config.get::<String>(&format!("{}.extension", resolved))
             .map_err(|e| match e {
                 ConfigError::PathError(_) => ConfigError::RequiredValueError(
                     format!("言語 '{}' の拡張子設定が見つかりません", resolved)
@@ -106,26 +107,26 @@ impl DockerRunner {
         self.initialize().await?;
 
         // 設定を取得
-        let config_builder = Config::builder()
+        let config = Config::load()
             .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
         // 言語設定を取得
-        let needs_compilation = config_builder.get::<bool>("runner.needs_compilation")
-            .map_err(|e| format!("コンパイル設定の取得に失敗しました: {}", e))?;
+        let needs_compilation = config.get::<bool>("runner.needs_compilation")
+            .map_err(|e| format!("設定の読み込みに失敗しました"))?;
 
         // コンパイルが必要な言語の場合
         if needs_compilation {
             println!("Compiling source code...");
-            let compile_cmd = config_builder.get::<Vec<String>>("runner.compile")
-                .map_err(|e| format!("コンパイルコマンドの取得に失敗しました: {}", e))?;
+            let compile_cmd = config.get::<Vec<String>>("runner.compile")
+                .map_err(|e| format!("設定の読み込みに失敗しました"))?;
 
             if !compile_cmd.is_empty() {
-                let image = config_builder.get::<String>("runner.image")
-                    .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
-                let compile_dir = config_builder.get::<String>("runner.compile_dir")
-                    .map_err(|e| format!("コンパイルディレクトリの取得に失敗しました: {}", e))?;
+                let image = config.get::<String>("runner.image")
+                    .map_err(|e| format!("設定の読み込みに失敗しました"))?;
+                let compile_dir = config.get::<String>("runner.compile_dir")
+                    .map_err(|e| format!("設定の読み込みに失敗しました"))?;
 
-                let compile_config = CompileConfig::from_config(&config_builder, "runner")?;
+                let compile_config = CompileConfig::from_config(&config, "runner")?;
 
                 if let Err(e) = self.command.compile(
                     &image,
@@ -142,13 +143,13 @@ impl DockerRunner {
         }
 
         // 実行
-        let image = config_builder.get::<String>("runner.image")
-            .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
-        let run_cmd = config_builder.get::<Vec<String>>("runner.run")
-            .map_err(|e| format!("実行コマンドの取得に失敗しました: {}", e))?;
+        let image = config.get::<String>("runner.image")
+            .map_err(|e| format!("設定の読み込みに失敗しました"))?;
+        let run_cmd = config.get::<Vec<String>>("runner.run")
+            .map_err(|e| format!("設定の読み込みに失敗しました"))?;
         let compile_dir = if needs_compilation {
-            Some(config_builder.get::<String>("runner.compile_dir")
-                .map_err(|e| format!("コンパイルディレクトリの取得に失敗しました: {}", e))?)
+            Some(config.get::<String>("runner.compile_dir")
+                .map_err(|e| format!("設定の読み込みに失敗しました"))?)
         } else {
             None
         };
@@ -176,12 +177,12 @@ impl DockerRunner {
         *self.state.lock().await = RunnerState::Running;
 
         // 設定を取得
-        let config_builder = Config::builder()
-            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
+        let config = Config::load()
+            .map_err(|e| format!("設定の読み込みに失敗しました"))?;
 
         // イメージ名を取得
-        let image = config_builder.get::<String>("runner.image")
-            .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
+        let image = config.get::<String>("runner.image")
+            .map_err(|e| format!("設定の読み込みに失敗しました"))?;
 
         // イメージの確認と取得
         if !self.command.check_image(&image).await {
@@ -217,12 +218,12 @@ impl DockerRunner {
 
     pub async fn inspect_mount_point(&mut self) -> Result<String, String> {
         // 設定を取得
-        let config_builder = Config::builder()
-            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
+        let config = Config::load()
+            .map_err(|e| format!("設定の読み込みに失敗しました"))?;
 
         // イメージ名を取得
-        let image = config_builder.get::<String>("runner.image")
-            .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
+        let image = config.get::<String>("runner.image")
+            .map_err(|e| format!("設定の読み込みに失敗しました"))?;
 
         println!("Inspecting mount point directory: {}", self.config.mount_point);
         self.command.inspect_directory(&image, &self.config.mount_point).await

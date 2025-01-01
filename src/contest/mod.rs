@@ -5,6 +5,7 @@ use std::fs;
 use std::io::BufRead;
 use serde_yaml::Value;
 use crate::config::ConfigError;
+use anyhow::anyhow;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Contest {
@@ -15,14 +16,16 @@ pub struct Contest {
     pub site: Site,
     #[serde(skip)]
     workspace_dir: PathBuf,
+    #[serde(skip)]
+    config: Config,
 }
 
 impl Default for Contest {
     fn default() -> Self {
-        let config = Config::builder()
-            .expect("Failed to load config");
+        let config = Config::load()
+            .expect("設定の読み込みに失敗しました");
         let active_dir = config.get::<String>("system.contest_dir.active")
-            .expect("Failed to get active contest directory");
+            .expect("設定の読み込みに失敗しました");
         let default_site = Site::AtCoder;
 
         Contest {
@@ -31,6 +34,7 @@ impl Default for Contest {
             language: None,
             site: default_site,
             workspace_dir: PathBuf::new(),
+            config,
         }
     }
 }
@@ -61,10 +65,14 @@ impl Contest {
 
         if !config_path.exists() {
             // デフォルトのコンテスト設定を作成し、デフォルト言語を設定
-            let mut contest = Self::default();
-            contest.active_contest_dir = active_contest_dir;
-            contest.workspace_dir = workspace_dir;
-            contest.contest_id = contest_id;
+            let mut contest = Self {
+                active_contest_dir,
+                workspace_dir,
+                contest_id,
+                language: None,
+                site: Site::AtCoder,
+                config: config.clone(),
+            };
 
             // デフォルト言語を取得
             if let Ok(default_lang) = config.get::<String>("languages.default") {
@@ -81,6 +89,7 @@ impl Contest {
         contest.active_contest_dir = active_contest_dir;
         contest.workspace_dir = workspace_dir;
         contest.contest_id = contest_id;
+        contest.config = config.clone();
         Ok(contest)
     }
 
@@ -90,12 +99,8 @@ impl Contest {
     }
 
     pub fn save(&self) -> Result<()> {
-        // config/mod.rsを使用して設定を取得
-        let config = Config::builder()
-            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
-
         // コンテスト設定ファイル名を設定から取得
-        let config_file = config.get::<String>("system.active_contest_yaml")?;
+        let config_file = self.config.get::<String>("system.active_contest_yaml")?;
         let config_path = self.active_contest_dir.join(&config_file);
 
         let content = serde_yaml::to_string(&self)
@@ -114,8 +119,8 @@ impl Contest {
             .ok_or_else(|| "言語が設定されていません".to_string())?;
 
         // config/mod.rsを使用して言語設定を取得
-        let config = Config::builder()
-            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
+        let config = Config::load()
+            .map_err(|_| "設定の読み込みに失敗しました".to_string())?;
         
         // 拡張子を取得
         let extension = config.get::<String>(&format!("{}.extension", language))
@@ -154,10 +159,8 @@ impl Contest {
     }
 
     pub fn set_language(&mut self, language: &str) -> Result<()> {
-        let config = Config::builder()?;
-        
         // 言語の存在確認
-        match config.get::<String>(&format!("languages.{}.extension", language)) {
+        match self.config.get::<String>(&format!("languages.{}.extension", language)) {
             Ok(_) => {
                 self.language = Some(language.to_string());
                 Ok(())
@@ -172,10 +175,8 @@ impl Contest {
     }
 
     pub fn set_site(&mut self, site_name: &str) -> Result<()> {
-        let config = Config::builder()?;
-        
         // サイトの存在確認
-        match config.get::<String>(&format!("sites.{}.problem_url", site_name)) {
+        match self.config.get::<String>(&format!("sites.{}.problem_url", site_name)) {
             Ok(_) => {
                 self.site = match site_name.to_lowercase().as_str() {
                     "atcoder" => Site::AtCoder,
@@ -226,12 +227,8 @@ impl Contest {
         // .moveignoreの読み込み
         let ignore_patterns = self.read_moveignore()?;
         
-        // config/mod.rsを使用して設定を取得
-        let config = Config::builder()
-            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
-
         // コンテストの保存先ディレクトリを設定から取得
-        let storage_base = config.get::<String>("system.contest_dir.storage")?;
+        let storage_base = self.config.get::<String>("system.contest_dir.storage")?;
         let contests_dir = self.workspace_dir.join(&storage_base);
 
         if !contests_dir.exists() {
@@ -304,21 +301,17 @@ impl Contest {
 
     // .moveignoreファイルを読み込む
     fn read_moveignore(&self) -> Result<Vec<String>> {
-        // config/mod.rsを使用して設定を取得
-        let config = Config::builder()
-            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
-
         let moveignore_path = self.active_contest_dir.join(".moveignore");
         let mut patterns = vec![];
 
         // .moveignoreが存在しない場合は設定から取得
         if !moveignore_path.exists() {
             // コンテスト設定ファイル名を取得
-            let config_file = config.get::<String>("system.active_contest_yaml")?;
+            let config_file = self.config.get::<String>("system.active_contest_yaml")?;
 
             // 無視パターンを設定から取得
             let mut ignore_patterns = vec![config_file];
-            if let Ok(additional_patterns) = config.get::<Vec<String>>("system.ignore_patterns") {
+            if let Ok(additional_patterns) = self.config.get::<Vec<String>>("system.ignore_patterns") {
                 ignore_patterns.extend(additional_patterns);
             }
             return Ok(ignore_patterns);
@@ -360,10 +353,6 @@ impl Contest {
         let language = self.language.as_ref()
             .ok_or_else(|| "言語が設定されていません".to_string())?;
 
-        // config/mod.rsを使用して設定を取得
-        let config = Config::builder()
-            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
-
         // 問題ディレクトリのパスを生成
         let problem_dir = self.active_contest_dir.join(problem_id);
         if !problem_dir.exists() {
@@ -371,15 +360,15 @@ impl Contest {
         }
 
         // テストディレクトリ名を設定から取得
-        let test_dir_name = config.get::<String>("system.test.dir")?;
+        let test_dir_name = self.config.get::<String>("system.test.dir")?;
         let test_dir = problem_dir.join(test_dir_name);
         if !test_dir.exists() {
             fs::create_dir_all(&test_dir)?;
         }
 
         // テンプレートディレクトリのパターンを設定から取得
-        let template_pattern = config.get::<String>("system.templates.directory")?;
-        let template_base = config.get::<String>("system.contest_dir.template")?;
+        let template_pattern = self.config.get::<String>("system.templates.directory")?;
+        let template_base = self.config.get::<String>("system.contest_dir.template")?;
         
         // パターンの{name}を言語名に置換
         let template_dir_name = template_pattern.replace("{name}", language);

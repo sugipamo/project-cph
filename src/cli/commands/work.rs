@@ -24,7 +24,7 @@ impl Command for WorkCommand {
         };
 
         // 設定を取得
-        let config = Config::builder()
+        let config = Config::load()
             .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
         // コンテストを読み込む

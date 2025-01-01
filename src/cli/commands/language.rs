@@ -43,7 +43,7 @@ impl LanguageCommand {
 impl Command for LanguageCommand {
     async fn execute(&self, command: &Commands) -> Result<()> {
         println!("設定を読み込んでいます...");
-        let config = Config::builder()
+        let config = Config::load()
             .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
 
         // コンテストを読み込む

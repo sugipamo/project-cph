@@ -19,37 +19,24 @@ impl DockerConfig {
     }
 
     pub fn default() -> Result<Self, ConfigError> {
-        let config = Config::builder()?;
+        let config = Config::load()?;
 
         let timeout_seconds = config.get::<u64>("system.docker.timeout_seconds")
-            .map_err(|e| match e {
-                ConfigError::PathError(_) => ConfigError::RequiredValueError(
-                    "system.docker.timeout_seconds が設定されていません".to_string()
-                ),
-                _ => e
-            })?;
+            .map_err(|e| ConfigError::RequiredValueError(
+                format!("設定の読み込みに失敗しました: {}", e)
+            ))?;
 
         let memory_limit_mb = config.get::<u64>("system.docker.memory_limit_mb")
-            .map_err(|e| match e {
-                ConfigError::PathError(_) => ConfigError::RequiredValueError(
-                    "system.docker.memory_limit_mb が設定されていません".to_string()
-                ),
-                _ => e
-            })?;
+            .map_err(|e| ConfigError::RequiredValueError(
+                format!("設定の読み込みに失敗しました: {}", e)
+            ))?;
 
         let mount_point = config.get::<String>("system.docker.mount_point")
-            .map_err(|e| match e {
-                ConfigError::PathError(_) => ConfigError::RequiredValueError(
-                    "system.docker.mount_point が設定されていません".to_string()
-                ),
-                _ => e
-            })?;
+            .map_err(|e| ConfigError::RequiredValueError(
+                format!("設定の読み込みに失敗しました: {}", e)
+            ))?;
 
-        Ok(Self {
-            timeout_seconds,
-            memory_limit_mb,
-            mount_point,
-        })
+        Ok(Self::new(timeout_seconds, memory_limit_mb, mount_point))
     }
 
     pub fn from_yaml<P: AsRef<Path>>(path: P) -> Result<Self, ConfigError> {

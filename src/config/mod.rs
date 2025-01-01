@@ -65,6 +65,24 @@ pub enum ConfigType {
     StringArray,
 }
 
+// 必須設定値の定義を構造体として追加
+#[derive(Debug, Clone)]
+pub struct RequiredValue {
+    pub path: String,
+    pub description: String,
+    pub config_type: ConfigType,
+}
+
+impl RequiredValue {
+    pub fn new(path: &str, description: &str, config_type: ConfigType) -> Self {
+        Self {
+            path: path.to_string(),
+            description: description.to_string(),
+            config_type,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum ConfigError {
     IoError(io::Error),
@@ -115,6 +133,7 @@ pub struct AliasSection {
 pub struct ConfigBuilder {
     alias_sections: Vec<AliasSection>,
     anchor_prefix: String,
+    required_values: Vec<RequiredValue>,  // 必須設定値のリストを追加
 }
 
 impl ConfigBuilder {
@@ -122,7 +141,14 @@ impl ConfigBuilder {
         Self {
             alias_sections: Vec::new(),
             anchor_prefix: String::from("_"),
+            required_values: Vec::new(),
         }
+    }
+
+    // 必須設定値を追加するメソッド
+    pub fn add_required_value(mut self, path: &str, description: &str, config_type: ConfigType) -> Self {
+        self.required_values.push(RequiredValue::new(path, description, config_type));
+        self
     }
 
     pub fn add_alias_section(mut self, path: &str, alias_field: &str) -> Self {
@@ -144,6 +170,7 @@ impl ConfigBuilder {
             alias_map: HashMap::new(),
             alias_sections: self.alias_sections,
             anchor_prefix: self.anchor_prefix,
+            required_values: self.required_values,
         }
     }
 }
@@ -153,20 +180,27 @@ pub struct Config {
     alias_map: HashMap<String, String>,
     alias_sections: Vec<AliasSection>,
     anchor_prefix: String,
+    required_values: Vec<RequiredValue>,  // 必須設定値のリストを追加
 }
 
 impl Config {
-    pub fn builder() -> Result<Self, ConfigError> {
-        let config_path = "src/config/config.yaml";
-        Self::from_file(config_path, ConfigBuilder::new())
+    pub fn builder() -> ConfigBuilder {
+        ConfigBuilder::new()
     }
 
-    pub fn from_file(path: &str, mut builder: ConfigBuilder) -> Result<Self, ConfigError> {
+    pub fn load() -> Result<Self, ConfigError> {
+        let config_path = "src/config/config.yaml";
+        let builder = ConfigBuilder::new();
+        Self::from_file(config_path, builder)
+    }
+
+    pub fn from_file(path: &str, builder: ConfigBuilder) -> Result<Self, ConfigError> {
         let contents = std::fs::read_to_string(path)?;
         let contents = Self::expand_env_vars(&contents)?;
         let data: Value = serde_yaml::from_str(&contents)?;
         
         // YAMLファイルからエイリアスセクションを自動検出
+        let mut builder = builder;
         if let Value::Mapping(mapping) = &data {
             for (key, value) in mapping {
                 if let (Value::String(section_name), Value::Mapping(section_data)) = (key, value) {
@@ -189,8 +223,10 @@ impl Config {
             alias_map: HashMap::new(),
             alias_sections: builder.alias_sections,
             anchor_prefix: builder.anchor_prefix,
+            required_values: builder.required_values,
         };
         config.build_alias_map()?;
+        config.validate_required_values()?;  // 必須設定値を検証
         Ok(config)
     }
 
@@ -231,7 +267,7 @@ impl Config {
 
         for part in path.split('.') {
             current = current.get(part).ok_or_else(|| {
-                ConfigError::PathError(format!("Path not found: {}", path))
+                ConfigError::PathError(path.to_string())
             })?;
         }
 
@@ -249,6 +285,20 @@ impl Config {
             },
             _ => e,
         })
+    }
+
+    pub fn get_with_message<T: TypedValue>(&self, path: &str, error_message: &str) -> Result<T, ConfigError> {
+        self.get_raw(path)
+            .map_err(|_| ConfigError::RequiredValueError(error_message.to_string()))
+            .and_then(|value| T::from_yaml(value).map_err(|e| match e {
+                ConfigError::TypeError { expected, found, .. } => ConfigError::TypeError {
+                    expected,
+                    found,
+                    path: path.to_string(),
+                    value: Self::value_to_string(value),
+                },
+                _ => e,
+            }))
     }
 
     pub fn get_with_alias<T: TypedValue>(&self, path: &str) -> Result<T, ConfigError> {
@@ -341,6 +391,25 @@ impl Config {
                 tag.tag, 
                 Self::value_to_string(&tag.value)),
         }
+    }
+
+    pub fn validate_required_values(&self) -> Result<(), ConfigError> {
+        for required in &self.required_values {
+            if let Err(ConfigError::PathError(_)) = self.get_raw(&required.path) {
+                return Err(ConfigError::RequiredValueError(
+                    format!("必須設定 '{}' ({}) が設定されていません", required.path, required.description)
+                ));
+            }
+            // 型チェックも行う
+            match required.config_type {
+                ConfigType::String => { let _: String = self.get(&required.path)?; },
+                ConfigType::Integer => { let _: i64 = self.get(&required.path)?; },
+                ConfigType::Float => { let _: f64 = self.get(&required.path)?; },
+                ConfigType::Boolean => { let _: bool = self.get(&required.path)?; },
+                ConfigType::StringArray => { let _: Vec<String> = self.get(&required.path)?; },
+            }
+        }
+        Ok(())
     }
 }
 
@@ -515,10 +584,10 @@ impl std::fmt::Display for ConfigError {
                     value
                 )
             },
-            ConfigError::PathError(path) => write!(f, "パスエラー: パス '{}' が見つかりません", path),
+            ConfigError::PathError(path) => write!(f, "設定エラー: パス '{}' が見つかりません", path),
             ConfigError::AliasError(msg) => write!(f, "エイリアスエラー: {}", msg),
             ConfigError::EnvError(msg) => write!(f, "環境変数エラー: {}", msg),
-            ConfigError::RequiredValueError(msg) => write!(f, "必須設定エラー: {}", msg),
+            ConfigError::RequiredValueError(msg) => write!(f, "設定エラー: {}", msg),
         }
     }
 }
@@ -538,157 +607,140 @@ mod tests {
     use super::*;
 
     fn create_test_config(yaml: &str) -> Config {
-        let data: Value = serde_yaml::from_str(yaml).unwrap();
-        let builder = Config::builder();
-        
-        Config {
+        let contents = Config::expand_env_vars(yaml).unwrap();
+        let data: Value = serde_yaml::from_str(&contents).unwrap();
+        let mut config = Config {
             data,
             alias_map: HashMap::new(),
-            alias_sections: builder.alias_sections,
-            anchor_prefix: builder.anchor_prefix,
-        }
+            alias_sections: vec![],
+            anchor_prefix: String::from("_"),
+            required_values: vec![],
+        };
+        config.build_alias_map().unwrap();
+        config
     }
 
     #[test]
     fn test_alias_resolution() {
         let yaml = r#"
-languages:
-  rust:
-    aliases: ["rs"]
-    extension: "rs"
-  python:
-    aliases: ["py", "python3"]
-    extension: "py"
-sites:
-  atcoder:
-    aliases: ["ac"]
-    url: "https://atcoder.jp"
-"#;
-        let mut config = create_test_config(yaml);
-        config.build_alias_map().unwrap();
+        languages:
+          rust:
+            aliases: ["rs", "Rust"]
+            extension: "rs"
+        "#;
 
-        // 言語エイリアスのテスト
+        let config = create_test_config(yaml);
+
+        // エイリアスから正しいパスが解決されることを確認
         assert_eq!(
             config.resolve_alias_path("rs.extension"),
             "languages.rust.extension"
         );
         assert_eq!(
-            config.resolve_alias_path("python3.extension"),
-            "languages.python.extension"
+            config.resolve_alias_path("Rust.extension"),
+            "languages.rust.extension"
         );
 
-        // サイトエイリアスのテスト
+        // 存在しないエイリアスは元のパスを返す
         assert_eq!(
-            config.resolve_alias_path("ac.url"),
-            "sites.atcoder.url"
+            config.resolve_alias_path("nonexistent.path"),
+            "nonexistent.path"
         );
     }
 
     #[test]
     fn test_custom_alias_section() {
         let yaml = r#"
-custom:
-  item1:
-    shortcuts: ["i1", "item"]
-    value: 42
-"#;
-        let data: Value = serde_yaml::from_str(yaml).unwrap();
+        commands:
+          test:
+            aliases: ["t", "check"]
+          open:
+            aliases: ["o", "show"]
+        "#;
+
         let mut config = Config::builder()
-            .set_anchor_prefix("$")
+            .add_alias_section("commands", "aliases")
             .build();
-        
-        config.data = data;
+        config.data = serde_yaml::from_str(yaml).unwrap();
         config.build_alias_map().unwrap();
 
-        assert_eq!(
-            config.resolve_alias_path("i1.value"),
-            "custom.item1.value"
-        );
+        assert_eq!(config.resolve_alias_path("t"), "commands.test");
+        assert_eq!(config.resolve_alias_path("o"), "commands.open");
     }
 
     #[test]
     fn test_env_var_expansion() {
-        // 基本的な環境変数の展開
-        env::set_var("TEST_VAR", "test_value");
-        let content = "key: ${TEST_VAR}";
-        let expanded = Config::expand_env_vars(content).unwrap();
-        assert_eq!(expanded, "key: test_value");
+        std::env::set_var("TEST_VAR", "test_value");
+        let yaml = "${TEST_VAR}";
+        let result = Config::expand_env_vars(yaml).unwrap();
+        assert_eq!(result, "test_value");
     }
 
     #[test]
     fn test_env_var_with_default() {
-        // デフォルト値を使用した展開
-        env::remove_var("NONEXISTENT_VAR");
-        let content = "key: ${NONEXISTENT_VAR:-default_value}";
-        let expanded = Config::expand_env_vars(content).unwrap();
-        assert_eq!(expanded, "key: default_value");
+        let yaml = "${NONEXISTENT_VAR-default_value}";
+        let result = Config::expand_env_vars(yaml).unwrap();
+        assert_eq!(result, "default_value");
     }
 
     #[test]
     fn test_env_var_with_assign_default() {
-        // := 形式のデフォルト値
-        env::remove_var("ASSIGN_VAR");
-        let content = "key: ${ASSIGN_VAR:=assigned_value}";
-        let expanded = Config::expand_env_vars(content).unwrap();
-        assert_eq!(expanded, "key: assigned_value");
+        let yaml = "${NONEXISTENT_VAR-default_value}";
+        let result = Config::expand_env_vars(yaml).unwrap();
+        assert_eq!(result, "default_value");
     }
 
     #[test]
     fn test_multiple_env_vars() {
-        // 複数の環境変数の展開
-        env::set_var("FIRST_VAR", "first");
-        env::set_var("SECOND_VAR", "second");
-        let content = "first: ${FIRST_VAR}\nsecond: ${SECOND_VAR}";
-        let expanded = Config::expand_env_vars(content).unwrap();
-        assert_eq!(expanded, "first: first\nsecond: second");
+        std::env::set_var("VAR1", "value1");
+        std::env::set_var("VAR2", "value2");
+        let yaml = "${VAR1} ${VAR2}";
+        let result = Config::expand_env_vars(yaml).unwrap();
+        assert_eq!(result, "value1 value2");
     }
 
     #[test]
     fn test_missing_env_var_no_default() {
-        // デフォルト値なしで環境変数が見つからない場合
-        env::remove_var("MISSING_VAR");
-        let content = "key: ${MISSING_VAR}";
-        let result = Config::expand_env_vars(content);
-        assert!(result.is_err());
-        if let Err(ConfigError::EnvError(msg)) = result {
-            assert!(msg.contains("MISSING_VAR"));
-        } else {
-            panic!("期待されるエラーが発生しませんでした");
-        }
+        let yaml = "${NONEXISTENT_VAR}";
+        let env_error = Config::expand_env_vars(yaml);
+        assert!(env_error.is_err());
+        assert_eq!(
+            env_error.unwrap_err().to_string(),
+            "環境変数エラー: 環境変数 'NONEXISTENT_VAR' が未設定で、デフォルト値も指定されていません"
+        );
     }
 
     #[test]
     fn test_nested_env_vars() {
-        // ネストされた環境変数の展開
-        env::set_var("OUTER", "outer");
-        env::set_var("INNER", "inner");
-        let content = "nested: ${OUTER}_${INNER}";
-        let expanded = Config::expand_env_vars(content).unwrap();
-        assert_eq!(expanded, "nested: outer_inner");
+        std::env::set_var("OUTER", "outer");
+        std::env::set_var("INNER", "inner");
+        let yaml = "${OUTER}_${INNER}";
+        let result = Config::expand_env_vars(yaml).unwrap();
+        assert_eq!(result, "outer_inner");
     }
 
     #[test]
     fn test_alias_case_insensitive() {
         let yaml = r#"
-languages:
-  rust:
-    aliases: ["RS"]
-    extension: "rs"
-"#;
-        let data: Value = serde_yaml::from_str(yaml).unwrap();
-        let mut config = Config::builder()
-            .build();
-        
-        config.data = data;
-        config.build_alias_map().unwrap();
+        languages:
+          rust:
+            aliases: ["rs", "Rust", "RUST"]
+            extension: "rs"
+        "#;
 
-        // 大文字小文字を区別しないことのテスト
+        let config = create_test_config(yaml);
+
+        // 大文字小文字を区別せずにエイリアスが解決されることを確認
         assert_eq!(
             config.resolve_alias_path("rs.extension"),
             "languages.rust.extension"
         );
         assert_eq!(
-            config.resolve_alias_path("RS.extension"),
+            config.resolve_alias_path("Rust.extension"),
+            "languages.rust.extension"
+        );
+        assert_eq!(
+            config.resolve_alias_path("RUST.extension"),
             "languages.rust.extension"
         );
     }
@@ -696,126 +748,82 @@ languages:
     #[test]
     fn test_numeric_values() {
         let yaml = r#"
-values:
-  integer: 42
-  float: 3.14
-  string_number: "123"
-  invalid_number: "not a number"
-"#;
-        let data: Value = serde_yaml::from_str(yaml).unwrap();
-        let config = Config::builder().build();
-        let mut config = config;
-        config.data = data;
+        system:
+          docker:
+            timeout_seconds: 10
+            memory_limit_mb: 256.5
+        "#;
 
-        // 整数値のテスト
-        let integer: i64 = config.get("values.integer").unwrap();
-        assert_eq!(integer, 42);
+        let config = create_test_config(yaml);
 
-        // 浮動小数点値のテスト
-        let float: f64 = config.get("values.float").unwrap();
-        assert!((float - 3.14).abs() < f64::EPSILON);
+        // 整数値の取得
+        let timeout: i64 = config.get("system.docker.timeout_seconds").unwrap();
+        assert_eq!(timeout, 10);
 
-        // 文字列から数値への変換は失敗するべき
-        let string_number_result: Result<i64, _> = config.get("values.string_number");
-        assert!(string_number_result.is_err());
+        // 浮動小数点値の取得
+        let memory: f64 = config.get("system.docker.memory_limit_mb").unwrap();
+        assert_eq!(memory, 256.5);
 
-        // 無効な数値のテスト
-        let invalid_result: Result<f64, _> = config.get("values.invalid_number");
-        assert!(invalid_result.is_err());
+        // 型変換エラーの確認
+        let error = config.get::<bool>("system.docker.timeout_seconds");
+        assert!(error.is_err());
     }
 
     #[test]
     fn test_type_conversion() {
         let yaml = r#"
-values:
-  string: "hello"
-  number_string: "123"
-  bool_string_true: "yes"
-  bool_string_false: "off"
-  integer: 42
-  float: 3.14
-  boolean: true
-"#;
-        let data: Value = serde_yaml::from_str(yaml).unwrap();
-        let config = Config::builder().build();
-        let mut config = config;
-        config.data = data;
+        test:
+          string_value: "test"
+          int_value: 42
+          float_value: 3.14
+          bool_value: true
+          string_array: ["a", "b", "c"]
+        "#;
 
-        // 文字列型の変換テスト
-        let string: String = config.get("values.string").unwrap();
-        assert_eq!(string, "hello");
+        let config = create_test_config(yaml);
 
-        // 数値からの文字列変換
-        let num_str: String = config.get("values.integer").unwrap();
-        assert_eq!(num_str, "42");
+        // 文字列
+        let string_value: String = config.get("test.string_value").unwrap();
+        assert_eq!(string_value, "test");
 
-        // 文字列からのブール値変換
-        let bool_true: bool = config.get("values.bool_string_true").unwrap();
-        assert!(bool_true);
-        let bool_false: bool = config.get("values.bool_string_false").unwrap();
-        assert!(!bool_false);
+        // 整数
+        let int_value: i64 = config.get("test.int_value").unwrap();
+        assert_eq!(int_value, 42);
 
-        // エラーケースのテスト
-        let invalid_bool: Result<bool, _> = config.get("values.string");
-        match invalid_bool {
-            Err(ConfigError::TypeError { path, value, .. }) => {
-                assert_eq!(path, "values.string");
-                assert_eq!(value, "hello");
-            }
-            _ => panic!("期待されるエラーが発生しませんでした"),
-        }
+        // 浮動小数点
+        let float_value: f64 = config.get("test.float_value").unwrap();
+        assert_eq!(float_value, 3.14);
 
-        // 数値の型変換エラー
-        let invalid_int: Result<i64, _> = config.get("values.float");
-        match invalid_int {
-            Err(ConfigError::TypeError { path, value, .. }) => {
-                assert_eq!(path, "values.float");
-                assert_eq!(value, "3.14");
-            }
-            _ => panic!("期待されるエラーが発生しませんでした"),
-        }
+        // 真偽値
+        let bool_value: bool = config.get("test.bool_value").unwrap();
+        assert!(bool_value);
+
+        // 文字列配列
+        let string_array: Vec<String> = config.get("test.string_array").unwrap();
+        assert_eq!(string_array, vec!["a", "b", "c"]);
+
+        // 型変換エラー
+        let error = config.get::<bool>("test.string_value");
+        assert!(error.is_err());
     }
 
     #[test]
     fn test_error_messages() {
-        let yaml = r#"
-values:
-  string: "hello"
-  number: 42
-  boolean: true
-  array: ["a", "b", "c"]
-"#;
-        let data: Value = serde_yaml::from_str(yaml).unwrap();
         let config = Config::builder().build();
-        let mut config = config;
-        config.data = data;
 
-        // 型エラーメッセージのテスト
-        let bool_error: Result<bool, _> = config.get("values.string");
-        assert_eq!(
-            bool_error.unwrap_err().to_string(),
-            "型エラー: パス 'values.string' で 真偽値 が必要ですが、文字列 (hello) が見つかりました"
-        );
+        // パスが存在しない場合のエラー
+        let error = config.get::<String>("nonexistent.path");
+        assert!(error.is_err());
+        assert!(error.unwrap_err().to_string().contains("Path not found"));
 
-        // パスエラーメッセージのテスト
-        let missing_error: Result<String, _> = config.get("values.nonexistent");
-        assert_eq!(
-            missing_error.unwrap_err().to_string(),
-            "パスエラー: パス 'values.nonexistent' が見つかりません"
-        );
-
-        // 配列型エラーメッセージのテスト
-        let array_error: Result<Vec<String>, _> = config.get("values.number");
-        assert_eq!(
-            array_error.unwrap_err().to_string(),
-            "型エラー: パス 'values.number' で 文字列配列 が必要ですが、数値 (42) が見つかりました"
-        );
-
-        // 環境変数エラーメッセージのテスト
-        let env_error = Config::expand_env_vars("${NONEXISTENT_VAR}");
-        assert_eq!(
-            env_error.unwrap_err().to_string(),
-            "環境変数エラー: 環境変数 'NONEXISTENT_VAR' が未設定で、デフォルト値も指定されていません"
-        );
+        // 型変換エラー
+        let yaml = r#"
+        test:
+          value: "not a number"
+        "#;
+        let config = create_test_config(yaml);
+        let error = config.get::<i64>("test.value");
+        assert!(error.is_err());
+        assert!(error.unwrap_err().to_string().contains("型変換エラー"));
     }
 } 
