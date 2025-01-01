@@ -7,6 +7,7 @@ use tokio::time::{timeout, Duration};
 use crate::docker::state::RunnerState;
 use crate::docker::config::DockerConfig;
 use crate::config::Config;
+use crate::config::ConfigError;
 use self::command::{DockerCommand, CompileConfig};
 
 pub struct DockerRunner {

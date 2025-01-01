@@ -3,6 +3,8 @@ use serde::{Serialize, Deserialize};
 use std::path::{PathBuf, Path};
 use std::fs;
 use std::io::BufRead;
+use serde_yaml::Value;
+use crate::config::ConfigError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Contest {
@@ -17,44 +19,16 @@ pub struct Contest {
 
 impl Default for Contest {
     fn default() -> Self {
-        // config/mod.rsを使用して設定を取得
-        let config = Config::builder()
-            .map_err(|e| {
-                eprintln!("設定の読み込みに失敗しました: {}", e);
-                std::process::exit(1);
-            })?;
-
-        // アクティブディレクトリを設定から取得
+        let config = Config::new().expect("Failed to load config");
         let active_dir = config.get::<String>("system.contest_dir.active")
-            .map_err(|e| {
-                eprintln!("アクティブディレクトリの設定の読み込みに失敗しました: {}", e);
-                std::process::exit(1);
-            });
+            .expect("Failed to get active contest directory");
+        let default_site = Site::default();
 
-        // デフォルトのサイトを設定から取得
-        let default_site = config.get_with_alias::<String>("sites.default.name")
-            .map(|site| {
-                // エイリアス解決を使用してサイト名を正規化
-                let resolved = config.resolve_alias_path(&format!("{}.name", site));
-                match resolved.as_str() {
-                    "sites.atcoder.name" => Site::AtCoder,
-                    _ => {
-                        eprintln!("未知のサイト '{}' が指定されました", site);
-                        std::process::exit(1);
-                    }
-                }
-            })
-            .map_err(|e| {
-                eprintln!("デフォルトサイトの設定の読み込みに失敗しました: {}", e);
-                std::process::exit(1);
-            });
-
-        Self {
+        Contest {
             active_contest_dir: PathBuf::from(active_dir),
-            contest_id: String::new(),
             language: None,
             site: default_site,
-            workspace_dir: PathBuf::new(),
+            problem: None,
         }
     }
 }
@@ -177,43 +151,44 @@ impl Contest {
         self.contest_id = contest_id;
     }
 
-    pub fn set_language(&mut self, language: &str) -> Result<(), ConfigError> {
-        // config/mod.rsを使用して設定を取得
-        let config = Config::builder()?;
-
-        // エイリアス解決を使用して言語名を取得
-        let resolved = config.get_with_alias::<String>(&format!("{}.name", language))
+    pub fn set_language(&mut self, language: &str) -> Result<()> {
+        let config = Config::new()?;
+        let language_exists = config.get::<Value>(&format!("languages.{}", language))
             .map_err(|e| match e {
                 ConfigError::PathError(_) => ConfigError::RequiredValueError(
-                    format!("言語 '{}' の設定が見つかりません", language)
+                    format!("Language '{}' is not supported", language)
                 ),
-                _ => e
+                _ => e,
             })?;
 
-        self.language = Some(resolved);
+        if language_exists.is_null() {
+            return Err(Box::new(ConfigError::RequiredValueError(
+                format!("Language '{}' is not supported", language)
+            )));
+        }
+
+        self.language = Some(language.to_string());
         Ok(())
     }
 
-    pub fn set_site(&mut self, site_name: &str) -> Result<(), ConfigError> {
-        // config/mod.rsを使用して設定を取得
-        let config = Config::builder()?;
-
-        // サイト設定の存在確認
+    pub fn set_site(&mut self, site_name: &str) -> Result<()> {
+        let config = Config::new()?;
+        
         let site_exists = config.get::<Value>(&format!("sites.{}", site_name))
             .map_err(|e| match e {
                 ConfigError::PathError(_) => ConfigError::RequiredValueError(
-                    format!("サイト '{}' の設定が見つかりません", site_name)
+                    format!("Site '{}' is not supported", site_name)
                 ),
-                _ => e
+                _ => e,
             })?;
 
         if site_exists.is_null() {
-            return Err(ConfigError::RequiredValueError(
-                format!("サイト '{}' の設定が無効です", site_name)
-            ));
+            return Err(Box::new(ConfigError::RequiredValueError(
+                format!("Site '{}' is not supported", site_name)
+            )));
         }
 
-        self.site = Some(site_name.to_string());
+        self.site = Site::from(site_name);
         Ok(())
     }
 
