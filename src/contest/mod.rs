@@ -1,4 +1,4 @@
-use crate::config::{Config, TypedValue};
+use crate::config::Config;
 use serde::{Serialize, Deserialize};
 use std::path::{PathBuf, Path};
 use std::fs;

@@ -7,6 +7,7 @@ use crate::contest::Contest;
 use users;
 use std::os::unix::fs::PermissionsExt;
 use dirs;
+use crate::config::Config;
 
 const COOKIE_DIR: &str = ".local/share/online-judge-tools";
 const COOKIE_FILE: &str = "cookie.jar";
@@ -48,11 +49,14 @@ pub struct ProblemInfo {
 pub struct OJContainer {
     workspace_path: PathBuf,
     contest: Contest,
+    config: Config,
 }
 
 impl OJContainer {
     pub fn new(workspace_path: PathBuf, contest: Contest) -> Result<Self> {
-        Ok(Self { workspace_path, contest })
+        let config = Config::load()
+            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
+        Ok(Self { workspace_path, contest, config })
     }
 
     fn get_dockerfile_path() -> PathBuf {
@@ -152,8 +156,8 @@ impl OJContainer {
 
     pub async fn login(&self) -> Result<()> {
         // サイトのURLを取得
-        let url = self.contest.get_config::<String>(&format!("sites.{}.url", self.contest.site_id))?;
-        let name = self.contest.get_config::<String>(&format!("sites.{}.name", self.contest.site_id))?;
+        let url = self.config.get::<String>(&format!("sites.{}.url", self.contest.site_id))?;
+        let name = self.config.get::<String>(&format!("sites.{}.name", self.contest.site_id))?;
 
         println!("{}", format!("Logging in to {}...", name).cyan());
 
@@ -192,7 +196,7 @@ impl OJContainer {
         println!("{}", format!("Opening problem URL: {}", problem.url).cyan());
 
         // ブラウザ設定を確認
-        let browser = self.contest.get_config::<String>("system.browser")
+        let browser = self.config.get::<String>("system.browser")
             .or_else(|_| env::var("BROWSER"))
             .unwrap_or_else(|_| {
                 println!("{}", format!("Note: To automatically open URLs, please set the $BROWSER environment variable or configure system.browser in config.yaml").yellow());
@@ -206,7 +210,7 @@ impl OJContainer {
         }
 
         // エディタ設定を取得
-        let editors = self.contest.get_config::<Vec<String>>("system.editors")
+        let editors = self.config.get::<Vec<String>>("system.editors")
             .unwrap_or_else(|_| vec!["code".to_string(), "cursor".to_string()]);
 
         // 各エディタで開く
@@ -230,7 +234,7 @@ impl OJContainer {
             .map_err(|_| "Failed to get relative problem path")?;
 
         // テストディレクトリを設定から取得
-        let test_dir = self.contest.get_config::<String>("system.test.directory")
+        let test_dir = self.config.get::<String>("system.test.directory")
             .unwrap_or_else(|_| "test".to_string());
 
         self.run_oj_command(&[

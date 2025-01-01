@@ -33,7 +33,7 @@ impl Command for SubmitCommand {
         let language = contest.get_solution_language()?;
 
         // 言語IDを取得
-        let language_id = contest.get_config::<String>(&format!(
+        let language_id = config.get::<String>(&format!(
             "languages.{}.site_ids._fallback.{}",
             language,
             site_id.to_lowercase()
