@@ -461,6 +461,32 @@ fn try_match_unordered(
 mod tests {
     use super::*;
 
+    // テスト用のアサーションマクロ
+    macro_rules! assert_cmd_eq {
+        ($result:expr, $expected_cmd:expr, $($key:expr => $value:expr),* $(,)?) => {
+            let result = $result;
+            assert_eq!(
+                result.command_name,
+                $expected_cmd,
+                "\nコマンド名が一致しません。\n期待値: {}\n実際: {}\n引数: {:?}",
+                $expected_cmd,
+                result.command_name,
+                result.arguments
+            );
+            $(
+                assert_eq!(
+                    result.arguments.get($key).unwrap_or(&String::new()),
+                    $value,
+                    "\n引数 '{}' の値が一致しません。\n期待値: {}\n実際: {}\n全引数: {:?}",
+                    $key,
+                    $value,
+                    result.arguments.get($key).unwrap_or(&String::new()),
+                    result.arguments
+                );
+            )*
+        };
+    }
+
     // NameResolversのテスト用のヘルパー関数
     fn create_test_resolvers() -> NameResolvers {
         let mut command_resolver = NameResolver::new();
@@ -590,17 +616,17 @@ mod tests {
     fn test_basic_command() {
         let input = "test abc123";
         let result = CommandToken::parse(input).unwrap();
-        assert_eq!(result.command_name, "test");
-        assert_eq!(result.arguments["problem_id"], "abc123");
+        assert_cmd_eq!(result, "test", "problem_id" => "abc123");
     }
 
     #[test]
     fn test_command_with_site() {
         let input = "atcoder test abc123";
         let result = CommandToken::parse(input).unwrap();
-        assert_eq!(result.command_name, "test");
-        assert_eq!(result.arguments["site_id"], "atcoder");
-        assert_eq!(result.arguments["problem_id"], "abc123");
+        assert_cmd_eq!(result, "test",
+            "site_id" => "atcoder",
+            "problem_id" => "abc123",
+        );
     }
 
     #[test]
@@ -608,8 +634,7 @@ mod tests {
         for cmd in ["test", "t", "check"] {
             let input = format!("{} abc123", cmd);
             let result = CommandToken::parse(&input).unwrap();
-            assert_eq!(result.command_name, "test");
-            assert_eq!(result.arguments["problem_id"], "abc123");
+            assert_cmd_eq!(result, "test", "problem_id" => "abc123");
         }
     }
 
@@ -617,8 +642,7 @@ mod tests {
     fn test_command_with_extra_spaces() {
         let input = "  test   abc123  ";
         let result = CommandToken::parse(input).unwrap();
-        assert_eq!(result.command_name, "test");
-        assert_eq!(result.arguments["problem_id"], "abc123");
+        assert_cmd_eq!(result, "test", "problem_id" => "abc123");
     }
 
     #[test]
@@ -695,8 +719,7 @@ mod tests {
 
         for (input, expected_type) in test_cases {
             let result = CommandToken::parse(input).unwrap();
-            assert_eq!(result.command_name, expected_type);
-            assert_eq!(result.arguments["problem_id"], "abc123");
+            assert_cmd_eq!(result, expected_type, "problem_id" => "abc123");
         }
     }
 
@@ -704,8 +727,9 @@ mod tests {
     fn test_command_with_site_alias() {
         let input = "ac test abc123";
         let result = CommandToken::parse(input).unwrap();
-        assert_eq!(result.command_name, "test");
-        assert_eq!(result.arguments["site_id"], "atcoder");
-        assert_eq!(result.arguments["problem_id"], "abc123");
+        assert_cmd_eq!(result, "test",
+            "site_id" => "atcoder",
+            "problem_id" => "abc123",
+        );
     }
 } 
