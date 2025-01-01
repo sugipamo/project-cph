@@ -31,7 +31,7 @@ system:
     auto_yes: ${CPH_AUTO_YES-false}
   
   test:
-    dir: "${CPH_TEST_DIR-cases}"
+    dir: "${CPH_TEST_DIR-test}"
 
 # コマンドのエイリアス設定
 commands:
@@ -129,7 +129,7 @@ sites:
       wait: ${CPH_SUBMIT_WAIT-5}
       auto_yes: ${CPH_AUTO_YES-false}
     test:
-      dir: "${CPH_TEST_DIR-cases}"
+      dir: "${CPH_TEST_DIR-test}"
 
   atcoder:
     <<: *site_base

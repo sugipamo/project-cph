@@ -26,6 +26,11 @@ impl Command for OpenCommand {
         // コンテストディレクトリを取得
         let contest = Contest::new(&config, &self.problem_id)?;
 
+        // 問題ディレクトリを作成し、テンプレートをコピー
+        if let Err(e) = contest.create_problem_directory(&self.problem_id) {
+            println!("Note: 問題ディレクトリの作成に失敗しました: {}", e);
+        }
+
         // ソースファイルのパスを取得
         let source_path = contest.get_solution_path(&self.problem_id)?;
 
