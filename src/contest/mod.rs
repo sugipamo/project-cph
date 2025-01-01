@@ -11,7 +11,7 @@ pub struct Contest {
     pub active_contest_dir: PathBuf,
     pub contest_id: String,
     pub language: Option<String>,
-    pub site: Site,
+    pub site_id: String,
     #[serde(skip)]
     workspace_dir: PathBuf,
     #[serde(skip)]
@@ -43,7 +43,7 @@ impl Default for Contest {
             active_contest_dir: PathBuf::from(active_dir),
             contest_id: String::new(),
             language,
-            site: Site::AtCoder,
+            site_id: String::new(),
             workspace_dir: PathBuf::new(),
             config,
         }
@@ -81,7 +81,7 @@ impl Contest {
                 workspace_dir,
                 contest_id,
                 language: None,
-                site: Site::AtCoder,
+                site_id: String::new(),
                 config: config.clone(),
             };
 
@@ -217,19 +217,10 @@ impl Contest {
         }
     }
 
-    pub fn set_site(&mut self, site_name: &str) -> Result<()> {
-        // 1. エイリアス解決を試みる
-        let resolved_site = self.config.get_with_alias::<String>(&format!("{}.name", site_name))
-            .unwrap_or_else(|_| site_name.to_string());
-
-        // 2. サイトの存在確認と設定
-        self.config.get::<String>(&format!("sites.{}.problem_url", resolved_site))?;
-        
-        // 3. サイトの設定
-        self.site = match resolved_site.to_lowercase().as_str() {
-            "atcoder" => Site::AtCoder,
-            _ => return Err(format!("サイト '{}' はサポートされていません", site_name).into()),
-        };
+    pub fn set_site(&mut self, site_id: &str) -> Result<()> {
+        // サイトの存在確認
+        self.config.get::<String>(&format!("sites.{}.problem_url", site_id))?;
+        self.site_id = site_id.to_string();
         Ok(())
     }
 
@@ -373,5 +364,25 @@ impl Contest {
 
         println!("テンプレートのコピーが完了しました");
         Ok(())
+    }
+
+    // URLを生成するメソッド
+    fn get_site_url(&self, url_type: &str) -> Result<String> {
+        let pattern = self.config.get::<String>(&format!("sites.{}.{}_url", self.site_id, url_type))?;
+        
+        Ok(pattern
+            .replace("{url}", &self.config.get::<String>(&format!("sites.{}.url", self.site_id))?)
+            .replace("{contest_id}", &self.contest_id)
+            .replace("{problem_id}", &self.problem_id))
+    }
+
+    // 問題URLを取得
+    pub fn get_problem_url(&self) -> Result<String> {
+        self.get_site_url("problem")
+    }
+
+    // 提出URLを取得
+    pub fn get_submit_url(&self) -> Result<String> {
+        self.get_site_url("submit")
     }
 } 

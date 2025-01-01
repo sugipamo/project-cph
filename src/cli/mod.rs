@@ -4,50 +4,12 @@ use serde::{Serialize, Deserialize};
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
-    /// サイト名
-    #[arg(value_enum)]
-    pub site: Site,
+    /// サイト名（例: atcoder）
+    pub site: String,
 
     /// サブコマンド
     #[command(subcommand)]
     pub command: Commands,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum, Serialize, Deserialize)]
-#[clap(rename_all = "lowercase")]
-pub enum Site {
-    /// AtCoder
-    AtCoder,
-}
-
-impl Site {
-    pub fn get_url(&self) -> &'static str {
-        match self {
-            Site::AtCoder => "https://atcoder.jp",
-        }
-    }
-
-    pub fn get_name(&self) -> &'static str {
-        match self {
-            Site::AtCoder => "AtCoder",
-        }
-    }
-
-    pub fn to_string(&self) -> String {
-        match self {
-            Site::AtCoder => "atcoder".to_string(),
-        }
-    }
-
-    pub fn get_problem_url(&self, problem_id: &str) -> Option<String> {
-        match self {
-            Site::AtCoder => Some(format!("{}/contests/{}/tasks/{}", 
-                self.get_url(),
-                problem_id.split('_').next().unwrap_or(problem_id),
-                problem_id
-            )),
-        }
-    }
 }
 
 #[derive(Debug, Subcommand)]
