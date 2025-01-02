@@ -1,0 +1,38 @@
+parameter_types:
+  command:
+    - test
+    - t
+    - language
+    - l
+  site_id:
+    - atcoder
+    - ac
+  contest:
+    - abc001
+  problem:
+    - a
+  language:
+    - rust
+    - rs
+    - python
+    - py
+
+commands:
+  test:
+    aliases: ["test", "t"]
+    ordered:
+      - ["site_id", "command", "contest", "problem"]
+      - ["command", "contest", "problem"]
+      - ["site_id", "command", "contest", "problem", "language"]
+      - ["command", "contest", "problem", "language"]
+    unordered:
+      - ["site_id", "contest", "command", "problem"]
+      - ["contest", "command", "problem"]
+      - ["command", "contest", "problem"]
+      - ["site_id", "contest", "command", "problem", "language"]
+      - ["contest", "command", "problem", "language"]
+      - ["command", "contest", "problem", "language"]
+  language:
+    aliases: ["language", "l"]
+    ordered:
+      - ["command", "language"] 

@@ -285,7 +285,7 @@ impl NameResolvers {
         if cfg!(test) {
             println!("取得した順序付きパターン: {:?}", ordered_patterns);
         }
-        let mut matching_ordered: Vec<_> = ordered_patterns.iter()
+        let matching_ordered: Vec<_> = ordered_patterns.iter()
             .filter(|pattern| self.check_pattern_matches(pattern, &matched_args))
             .collect();
         if cfg!(test) {
@@ -293,7 +293,7 @@ impl NameResolvers {
         }
 
         let unordered_patterns = self.get_patterns(|cmd| &cmd.unordered, args_len);
-        let mut matching_unordered: Vec<_> = unordered_patterns.iter()
+        let matching_unordered: Vec<_> = unordered_patterns.iter()
             .filter(|pattern| self.check_pattern_matches(pattern, &matched_args))
             .collect();
         if cfg!(test) {
@@ -386,13 +386,23 @@ mod tests {
             let mut command_resolver = NameResolver::new("command".to_string());
             command_resolver.register_alias("test", "test");
             command_resolver.register_alias("test", "t");
+            command_resolver.register_alias("submit", "submit");
+            command_resolver.register_alias("submit", "s");
+            command_resolver.register_alias("language", "language");
+            command_resolver.register_alias("language", "l");
 
             let mut site_resolver = NameResolver::new("site_id".to_string());
             site_resolver.register_alias("atcoder", "atcoder");
             site_resolver.register_alias("atcoder", "ac");
 
+            let mut language_resolver = NameResolver::new("language".to_string());
+            language_resolver.register_alias("rust", "rust");
+            language_resolver.register_alias("rust", "rs");
+            language_resolver.register_alias("python", "python");
+            language_resolver.register_alias("python", "py");
+
             NameResolvers {
-                resolvers: vec![command_resolver, site_resolver],
+                resolvers: vec![command_resolver, site_resolver, language_resolver],
             }
         }
 
@@ -593,12 +603,173 @@ mod tests {
             assert_eq!(parsed.contest_id, Some("abc001".to_string()));
             assert_eq!(parsed.problem_id, Some("a".to_string()));
 
-            // 不正なコマンドのパース
+            // 順序なしパターンのパース
+            let result = resolvers.parse_command("abc001 a test");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.command, Some("test".to_string()));
+            assert_eq!(parsed.contest_id, Some("abc001".to_string()));
+            assert_eq!(parsed.problem_id, Some("a".to_string()));
+
+            // 全てエイリアスを使用したパース
+            let result = resolvers.parse_command("ac t abc001 a");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.site_id, Some("atcoder".to_string()));
+            assert_eq!(parsed.command, Some("test".to_string()));
+            assert_eq!(parsed.contest_id, Some("abc001".to_string()));
+            assert_eq!(parsed.problem_id, Some("a".to_string()));
+
+            // 余分なスペースを含むパース
+            let result = resolvers.parse_command("  ac   test   abc001   a  ");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.site_id, Some("atcoder".to_string()));
+            assert_eq!(parsed.command, Some("test".to_string()));
+            assert_eq!(parsed.contest_id, Some("abc001".to_string()));
+            assert_eq!(parsed.problem_id, Some("a".to_string()));
+
+            // エラーケース
+            // 空のコマンド
             let result = resolvers.parse_command("");
             assert!(result.is_err());
 
+            // スペースのみのコマンド
+            let result = resolvers.parse_command("   ");
+            assert!(result.is_err());
+
+            // 未知のコマンド
             let result = resolvers.parse_command("unknown abc001 a");
             assert!(result.is_err());
+
+            // パラメータ不足
+            let result = resolvers.parse_command("test");
+            assert!(result.is_err());
+
+            // パラメータ過剰
+            let result = resolvers.parse_command("test abc001 a extra param");
+            assert!(result.is_err());
+
+            // 未知のエイリアス
+            let result = resolvers.parse_command("unknown_site test abc001 a");
+            assert!(result.is_err());
+        }
+
+        #[test]
+        fn test_parse_command_with_language() {
+            let resolvers = create_test_resolvers();
+            
+            // 基本的な言語指定付きテストコマンド
+            let result = resolvers.parse_command("test abc001 a rust");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.command, Some("test".to_string()));
+            assert_eq!(parsed.contest_id, Some("abc001".to_string()));
+            assert_eq!(parsed.problem_id, Some("a".to_string()));
+            assert_eq!(parsed.language, Some("rust".to_string()));
+
+            // エイリアスを使用した言語指定
+            let result = resolvers.parse_command("t abc001 a rs");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.command, Some("test".to_string()));
+            assert_eq!(parsed.contest_id, Some("abc001".to_string()));
+            assert_eq!(parsed.problem_id, Some("a".to_string()));
+            assert_eq!(parsed.language, Some("rust".to_string()));
+
+            // サイトIDと言語指定を含むテストコマンド
+            let result = resolvers.parse_command("ac test abc001 a python");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.site_id, Some("atcoder".to_string()));
+            assert_eq!(parsed.command, Some("test".to_string()));
+            assert_eq!(parsed.contest_id, Some("abc001".to_string()));
+            assert_eq!(parsed.problem_id, Some("a".to_string()));
+            assert_eq!(parsed.language, Some("python".to_string()));
+
+            // 順序なしパターンでの言語指定
+            let result = resolvers.parse_command("abc001 a test py");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.command, Some("test".to_string()));
+            assert_eq!(parsed.contest_id, Some("abc001".to_string()));
+            assert_eq!(parsed.problem_id, Some("a".to_string()));
+            assert_eq!(parsed.language, Some("python".to_string()));
+
+            // 不正な言語指定
+            let result = resolvers.parse_command("test abc001 a invalid_lang");
+            assert!(result.is_err());
+        }
+
+        #[test]
+        fn test_parse_submit_with_language() {
+            let resolvers = create_test_resolvers();
+            
+            // 基本的な言語指定付き提出コマンド
+            let result = resolvers.parse_command("submit abc001 a rust");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.command, Some("submit".to_string()));
+            assert_eq!(parsed.contest_id, Some("abc001".to_string()));
+            assert_eq!(parsed.problem_id, Some("a".to_string()));
+            assert_eq!(parsed.language, Some("rust".to_string()));
+
+            // エイリアスを使用した言語指定
+            let result = resolvers.parse_command("s abc001 a rs");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.command, Some("submit".to_string()));
+            assert_eq!(parsed.contest_id, Some("abc001".to_string()));
+            assert_eq!(parsed.problem_id, Some("a".to_string()));
+            assert_eq!(parsed.language, Some("rust".to_string()));
+
+            // サイトIDと言語指定を含む提出コマンド
+            let result = resolvers.parse_command("ac submit abc001 a python");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.site_id, Some("atcoder".to_string()));
+            assert_eq!(parsed.command, Some("submit".to_string()));
+            assert_eq!(parsed.contest_id, Some("abc001".to_string()));
+            assert_eq!(parsed.problem_id, Some("a".to_string()));
+            assert_eq!(parsed.language, Some("python".to_string()));
+
+            // 順序なしパターンでの言語指定
+            let result = resolvers.parse_command("abc001 a submit py");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.command, Some("submit".to_string()));
+            assert_eq!(parsed.contest_id, Some("abc001".to_string()));
+            assert_eq!(parsed.problem_id, Some("a".to_string()));
+            assert_eq!(parsed.language, Some("python".to_string()));
+
+            // 不正な言語指定
+            let result = resolvers.parse_command("submit abc001 a invalid_lang");
+            assert!(result.is_err());
+        }
+
+        #[test]
+        fn test_parse_ambiguous_commands() {
+            let resolvers = create_test_resolvers();
+            
+            // test submitのケース
+            let result = resolvers.parse_command("test submit abc001 a");
+            assert!(result.is_err());
+            assert!(result.unwrap_err().contains("マッチするコマンドパターンが見つかりません"));
+
+            // submitをproblem_idとして解釈するケース
+            let result = resolvers.parse_command("test submit");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.command, Some("test".to_string()));
+            assert_eq!(parsed.problem_id, Some("submit".to_string()));
+
+            // test submit with language
+            let result = resolvers.parse_command("test submit rust");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.command, Some("test".to_string()));
+            assert_eq!(parsed.problem_id, Some("submit".to_string()));
+            assert_eq!(parsed.language, Some("rust".to_string()));
         }
     }
 }

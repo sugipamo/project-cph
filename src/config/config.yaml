@@ -33,6 +33,20 @@ system:
   test:
     dir: "${CPH_TEST_DIR-test}"
 
+commands:
+  init:
+    aliases: ["init", "i", "create"]
+  login:
+    aliases: ["login", "auth"]
+  open:
+    aliases: ["open", "o", "show"]
+  test:
+    aliases: ["test", "t", "check"]
+  submit:
+    aliases: ["submit", "s", "sub"]
+  
+  
+
 # 言語設定
 languages:
   default: rust

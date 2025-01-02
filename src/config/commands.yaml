@@ -1,6 +1,10 @@
 parameter_types:
-  - name: command
-    pattern: "command"
+  - name: test
+    pattern: "test"
+    config_key: "test"
+  - name: submit
+    pattern: "submit"
+    config_key: "submit"
   - name: site_id
     pattern: "site"
     config_key: "sites"
@@ -12,53 +16,22 @@ parameter_types:
   - name: problem
     pattern: "problem_id"
 
-commands:
-  test:
-    aliases: ["test", "t", "check"]
-    ordered:
-      - ["site_id", "command", "problem_id"]
-      - ["command", "problem_id"]
-    unordered:
-      - ["site_id", "contest_id", "command", "problem_id"]
-      - ["contest_id", "command", "problem_id"]
-      - ["command", "contest_id", "problem_id"]
-  open:
-    aliases: ["open", "o", "show"]
-    ordered:
-      - ["site_id", "command", "problem_id"]
-      - ["command", "problem_id"]
-    unordered:
-      - ["site_id", "contest_id", "command", "problem_id"]
-      - ["contest_id", "command", "problem_id"]
-      - ["command", "contest_id", "problem_id"]
-  submit:
-    aliases: ["submit", "s", "sub"]
-    ordered:
-      - ["site_id", "command", "problem_id"]
-      - ["command", "problem_id"]
-    unordered:
-      - ["site_id", "contest_id", "command", "problem_id"]
-      - ["contest_id", "command", "problem_id"]
-      - ["command", "contest_id", "problem_id"]
+ordered:
+  - ["site_id", "command", "problem_id"]
+  - ["command", "problem_id"]
+  - ["site_id", "command", "problem_id", "language"]
+  - ["command", "problem_id", "language"]
+  - ["site_id", "command", "contest_id"]
+  - ["command", "contest_id"]
+  - ["site_id", "command"]
+  - ["command"]
+  - ["command", "language"]
 
-  init:
-    aliases: ["init", "i", "create"]
-    ordered:
-      - ["site_id", "command", "contest_id"]
-      - ["command", "contest_id"]
-    unordered:
-      - ["command", "contest_id"]
-
-  language:
-    aliases: ["language", "l", "lang"]
-    ordered:
-      - ["site_id", "command", "language"]
-      - ["command", "language"]
-    unordered:
-      - ["command", "language"]
-
-  login:
-    aliases: ["login", "auth"]
-    ordered:
-      - ["site_id", "command"]
-      - ["command"]
+unordered:
+  - ["site_id", "contest_id", "command", "problem_id"]
+  - ["contest_id", "command", "problem_id"]
+  - ["command", "contest_id", "problem_id"]
+  - ["site_id", "contest_id", "command", "problem_id", "language"]
+  - ["contest_id", "command", "problem_id", "language"]
+  - ["command", "contest_id", "problem_id", "language"]
+  - ["command", "contest_id"]
