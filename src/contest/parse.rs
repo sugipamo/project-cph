@@ -63,14 +63,20 @@ impl NameResolver {
     }
 
     fn load_aliases_from_config(&mut self, config: &serde_yaml::Value) {
-        println!("Loading aliases for type: {}", self.param_type);
+        if cfg!(test) && std::env::var("TEST_DEBUG").is_ok() {
+            println!("Loading aliases for type: {}", self.param_type);
+        }
 
         // コマンドのエイリアスはcommands.yamlから読み込む
         if self.param_type == "command" {
-            println!("Loading command aliases from COMMAND_CONFIG");
+            if cfg!(test) && std::env::var("TEST_DEBUG").is_ok() {
+                println!("Loading command aliases from COMMAND_CONFIG");
+            }
             for (name, pattern) in &COMMAND_CONFIG.commands {
                 for alias in &pattern.commands {
-                    println!("Registering command alias: {} -> {}", alias, name);
+                    if cfg!(test) && std::env::var("TEST_DEBUG").is_ok() {
+                        println!("Registering command alias: {} -> {}", alias, name);
+                    }
                     self.register_alias(name, alias);
                 }
             }
@@ -79,26 +85,36 @@ impl NameResolver {
 
         // param_typeをクローンして所有権の問題を回避
         let target_type = self.param_type.clone();
-        println!("Starting recursive search for aliases of type: {}", target_type);
+        if cfg!(test) && std::env::var("TEST_DEBUG").is_ok() {
+            println!("Starting recursive search for aliases of type: {}", target_type);
+        }
         // config.yamlから再帰的にaliasesを探索
         self.load_aliases_recursive(config, &target_type);
-        println!("Finished loading aliases for type: {}", self.param_type);
-        println!("Current aliases: {:?}", self.aliases);
+        if cfg!(test) && std::env::var("TEST_DEBUG").is_ok() {
+            println!("Finished loading aliases for type: {}", self.param_type);
+            println!("Current aliases: {:?}", self.aliases);
+        }
     }
 
     fn load_aliases_recursive(&mut self, value: &serde_yaml::Value, target_type: &str) {
         // エイリアス登録のロジックをクロージャとして定義
         let register_aliases = |resolver: &mut NameResolver, value: &serde_yaml::Value, name: &str| {
             // 元の名前自体をエイリアスとして登録
-            println!("Registering original name as alias: {} -> {}", name, name);
+            if cfg!(test) && std::env::var("TEST_DEBUG").is_ok() {
+                println!("Registering original name as alias: {} -> {}", name, name);
+            }
             resolver.register_alias(name, name);
 
             if let Some(aliases) = value.get("aliases") {
-                println!("Found aliases field for {}: {:?}", name, aliases);
+                if cfg!(test) && std::env::var("TEST_DEBUG").is_ok() {
+                    println!("Found aliases field for {}: {:?}", name, aliases);
+                }
                 if let Some(aliases) = aliases.as_sequence() {
                     for alias in aliases {
                         if let Some(alias) = alias.as_str() {
-                            println!("Registering alias: {} -> {}", alias, name);
+                            if cfg!(test) && std::env::var("TEST_DEBUG").is_ok() {
+                                println!("Registering alias: {} -> {}", alias, name);
+                            }
                             resolver.register_alias(name, alias);
                         }
                     }
@@ -114,7 +130,9 @@ impl NameResolver {
                         if key.starts_with('_') {
                             continue;
                         }
-                        println!("Checking key: {}", key);
+                        if cfg!(test) && std::env::var("TEST_DEBUG").is_ok() {
+                            println!("Checking key: {}", key);
+                        }
 
                         // parameter_typesから設定のキーを取得
                         let config_key = COMMAND_CONFIG.parameter_types.iter()
@@ -142,7 +160,9 @@ impl NameResolver {
                 }
             }
             serde_yaml::Value::Sequence(seq) => {
-                println!("Checking sequence");
+                if cfg!(test) && std::env::var("TEST_DEBUG").is_ok() {
+                    println!("Checking sequence");
+                }
                 for value in seq {
                     self.load_aliases_recursive(value, target_type);
                 }
@@ -274,16 +294,68 @@ mod tests {
         
         // 大文字小文字を区別することを確認
         if let Some(resolver) = resolvers.get_by_type("site") {
-            assert!(resolver.resolve("AtcodeR").is_none());
-            assert!(resolver.resolve("ATCODER").is_none());
-            assert!(resolver.resolve("atcoder").is_some());
+            let result = resolver.resolve("AtcodeR");
+            if result.is_some() {
+                dbg!(&resolver.aliases);  // エイリアスの内容を表示（失敗時のみ）
+                assert!(
+                    result.is_none(),
+                    "大文字小文字の区別が正しくありません。aliases: {:?}", 
+                    resolver.aliases
+                );
+            }
+
+            let result = resolver.resolve("ATCODER");
+            if result.is_some() {
+                dbg!(&resolver.aliases);  // エイリアスの内容を表示（失敗時のみ）
+                assert!(
+                    result.is_none(),
+                    "大文字小文字の区別が正しくありません。aliases: {:?}", 
+                    resolver.aliases
+                );
+            }
+
+            let result = resolver.resolve("atcoder");
+            if result.is_none() {
+                dbg!(&resolver.aliases);  // エイリアスの内容を表示（失敗時のみ）
+                assert!(
+                    result.is_some(),
+                    "小文字のエイリアスが見つかりません。aliases: {:?}", 
+                    resolver.aliases
+                );
+            }
         }
 
         // 言語の大文字小文字の区別も確認
         if let Some(resolver) = resolvers.get_by_type("language") {
-            assert!(resolver.resolve("Python").is_none());
-            assert!(resolver.resolve("PYTHON").is_none());
-            assert!(resolver.resolve("python").is_some());
+            let result = resolver.resolve("Python");
+            if result.is_some() {
+                dbg!(&resolver.aliases);  // エイリアスの内容を表示（失敗時のみ）
+                assert!(
+                    result.is_none(),
+                    "大文字小文字の区別が正しくありません。aliases: {:?}", 
+                    resolver.aliases
+                );
+            }
+
+            let result = resolver.resolve("PYTHON");
+            if result.is_some() {
+                dbg!(&resolver.aliases);  // エイリアスの内容を表示（失敗時のみ）
+                assert!(
+                    result.is_none(),
+                    "大文字小文字の区別が正しくありません。aliases: {:?}", 
+                    resolver.aliases
+                );
+            }
+
+            let result = resolver.resolve("python");
+            if result.is_none() {
+                dbg!(&resolver.aliases);  // エイリアスの内容を表示（失敗時のみ）
+                assert!(
+                    result.is_some(),
+                    "小文字のエイリアスが見つかりません。aliases: {:?}", 
+                    resolver.aliases
+                );
+            }
         }
     }
 
