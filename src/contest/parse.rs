@@ -162,7 +162,8 @@ impl NameResolvers {
         if cfg!(test) {
             println!("引数のマッチを試行: {}", arg);
         }
-        // 各リゾルバで順番にマッチを試行し、最初にマッチしたものを返す
+        // 全てのリゾルバでマッチを試行し、マッチしたものを全て返す
+        let mut matches = Vec::new();
         for resolver in &self.resolvers {
             if cfg!(test) {
                 println!("  リゾルバをチェック: {}", resolver.param_type);
@@ -171,13 +172,13 @@ impl NameResolvers {
                 if cfg!(test) {
                     println!("  マッチ成功: {} -> {}", resolver.param_type, value);
                 }
-                return vec![(resolver.param_type.clone(), value)];
+                matches.push((resolver.param_type.clone(), value));
             }
         }
-        if cfg!(test) {
+        if matches.is_empty() && cfg!(test) {
             println!("  マッチ失敗");
         }
-        vec![]
+        matches
     }
 
     fn normalize_input<'a>(&self, input: &'a str) -> Result<Vec<&'a str>, String> {
@@ -196,8 +197,12 @@ impl NameResolvers {
 
         // 各パターン要素について、対応する位置の引数とマッチするか確認
         pattern.iter().enumerate().all(|(i, param_type)| {
-            let type_name = param_type.trim_start_matches('{').trim_end_matches('}');
-            matched_args[i].iter().any(|(arg_type, _)| arg_type == type_name)
+            // マッチが空の場合は、まだ型が決定されていないので許容する
+            if matched_args[i].is_empty() {
+                return true;
+            }
+            // マッチが存在する場合は、少なくとも1つのマッチが期待される型と一致する必要がある
+            matched_args[i].iter().any(|(arg_type, _)| arg_type == param_type)
         })
     }
 
