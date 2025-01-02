@@ -1,8 +1,8 @@
 parameter_types:
   - name: command
     pattern: "command"
-  - name: site
-    pattern: "site_id"
+  - name: site_id
+    pattern: "site"
     config_key: "sites"
   - name: language
     pattern: "language"

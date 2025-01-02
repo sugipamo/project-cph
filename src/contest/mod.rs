@@ -6,7 +6,7 @@ use std::io::BufRead;
 
 type Result<T> = std::result::Result<T, String>;
 
-mod parse;
+pub mod parse;
 
 /// コンテスト情報を管理する構造体
 /// 
