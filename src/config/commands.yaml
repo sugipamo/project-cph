@@ -14,7 +14,7 @@ parameter_types:
 
 commands:
   test:
-    commands: ["test", "t", "check"]
+    aliases: ["test", "t", "check"]
     ordered:
       - ["site_id", "command", "problem_id"]
       - ["command", "problem_id"]
@@ -22,9 +22,8 @@ commands:
       - ["site_id", "contest_id", "command", "problem_id"]
       - ["contest_id", "command", "problem_id"]
       - ["command", "contest_id", "problem_id"]
-        
   open:
-    commands: ["open", "o", "show"]
+    aliases: ["open", "o", "show"]
     ordered:
       - ["site_id", "command", "problem_id"]
       - ["command", "problem_id"]
@@ -32,9 +31,8 @@ commands:
       - ["site_id", "contest_id", "command", "problem_id"]
       - ["contest_id", "command", "problem_id"]
       - ["command", "contest_id", "problem_id"]
-        
   submit:
-    commands: ["submit", "s", "sub"]
+    aliases: ["submit", "s", "sub"]
     ordered:
       - ["site_id", "command", "problem_id"]
       - ["command", "problem_id"]
@@ -44,7 +42,7 @@ commands:
       - ["command", "contest_id", "problem_id"]
 
   init:
-    commands: ["init", "i", "create"]
+    aliases: ["init", "i", "create"]
     ordered:
       - ["site_id", "command", "contest_id"]
       - ["command", "contest_id"]
@@ -52,7 +50,7 @@ commands:
       - ["command", "contest_id"]
 
   language:
-    commands: ["language", "l", "lang"]
+    aliases: ["language", "l", "lang"]
     ordered:
       - ["site_id", "command", "language"]
       - ["command", "language"]
@@ -60,7 +58,7 @@ commands:
       - ["command", "language"]
 
   login:
-    commands: ["login", "auth"]
+    aliases: ["login", "auth"]
     ordered:
       - ["site_id", "command"]
       - ["command"]

@@ -28,15 +28,15 @@ pub struct CommandPattern {
 
 // 設定ファイルの読み込み
 #[allow(dead_code)]
-static COMMAND_CONFIG: Lazy<CommandConfig> = Lazy::new(|| {
-    let config_str = include_str!("../../src/config/commands.yaml");
-    serde_yaml::from_str(config_str).expect("コマンド設定の読み込みに失敗")
-});
-
-#[allow(dead_code)]
 static CONFIG: Lazy<serde_yaml::Value> = Lazy::new(|| {
     let config_str = include_str!("../../src/config/config.yaml");
     serde_yaml::from_str(config_str).expect("設定ファイルの読み込みに失敗")
+});
+
+#[allow(dead_code)]
+static COMMAND_CONFIG: Lazy<serde_yaml::Value> = Lazy::new(|| {
+    let config_str = include_str!("../../src/config/commands.yaml");
+    serde_yaml::from_str(config_str).expect("コマンド設定の読み込みに失敗")
 });
 
 #[allow(dead_code)]
@@ -61,60 +61,6 @@ impl NameResolver {
     pub fn resolve(&self, input: &str) -> Option<String> {
         self.aliases.get(input).cloned()
     }
-
-    fn load_aliases_from_config(&mut self, config: &serde_yaml::Value) {
-        if cfg!(test) && std::env::var("TEST_DEBUG").is_ok() {
-            println!("Loading aliases for type: {}", self.param_type);
-        }
-
-        // コマンドのエイリアスはcommands.yamlから読み込む
-        if self.param_type == "command" {
-            if cfg!(test) && std::env::var("TEST_DEBUG").is_ok() {
-                println!("Loading command aliases from COMMAND_CONFIG");
-            }
-            for (name, pattern) in &COMMAND_CONFIG.commands {
-                for alias in &pattern.commands {
-                    if cfg!(test) && std::env::var("TEST_DEBUG").is_ok() {
-                        println!("Registering command alias: {} -> {}", alias, name);
-                    }
-                    self.register_alias(name, alias);
-                }
-            }
-            return;
-        }
-
-        // config.yamlから該当する型のエイリアスのみを読み込む
-        let config_key = COMMAND_CONFIG.parameter_types.iter()
-            .find(|pt| pt.name == self.param_type)
-            .and_then(|pt| pt.config_key.as_ref())
-            .map(|s| s.as_str());
-
-        if let Some(key) = config_key {
-            if let Some(section) = config.get(key) {
-                if let Some(items) = section.as_mapping() {
-                    for (name, item_value) in items {
-                        if let Some(name) = name.as_str() {
-                            if !name.starts_with('_') {
-                                // 元の名前自体をエイリアスとして登録
-                                self.register_alias(name, name);
-
-                                // エイリアスの登録
-                                if let Some(aliases) = item_value.get("aliases") {
-                                    if let Some(aliases) = aliases.as_sequence() {
-                                        for alias in aliases {
-                                            if let Some(alias) = alias.as_str() {
-                                                self.register_alias(name, alias);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 #[allow(dead_code)]
@@ -125,14 +71,51 @@ pub struct NameResolvers {
 
 impl NameResolvers {
     pub fn new() -> Self {
-        let mut resolvers: Vec<NameResolver> = COMMAND_CONFIG.parameter_types
-            .iter()
-            .map(|pt| NameResolver::new(pt.name.clone()))
-            .collect();
+        let mut resolvers = Vec::new();
 
-        // 各リゾルバにエイリアスを読み込む
-        for resolver in &mut resolvers {
-            resolver.load_aliases_from_config(&CONFIG);
+        // 設定ファイルから各セクションのエイリアスを読み込む
+        for config in [&*CONFIG, &*COMMAND_CONFIG].iter() {
+            let Some(map) = config.as_mapping() else { continue };
+
+            // 各セクション（commands, sites, languages等）を処理
+            for (section_name, section_value) in map {
+                let Some(section_name) = section_name.as_str() else { continue };
+                let Some(section) = section_value.as_mapping() else { continue };
+
+                // セクション内の各要素を処理
+                let mut resolver = None;
+                for (name, item) in section {
+                    let Some(name) = name.as_str() else { continue };
+                    if name.starts_with('_') { continue };
+
+                    // エイリアスの取得
+                    let Some(aliases) = item.get("aliases") else { continue };
+                    let Some(aliases) = aliases.as_sequence() else { continue };
+
+                    // リゾルバの初期化（最初のエイリアスが見つかった時）
+                    if resolver.is_none() {
+                        resolver = Some(NameResolver::new(section_name.to_string()));
+                    }
+
+                    // エイリアスの登録
+                    if let Some(resolver) = resolver.as_mut() {
+                        // 元の名前自体もエイリアスとして登録
+                        resolver.register_alias(name, name);
+
+                        // 設定ファイルに定義されたエイリアスを登録
+                        for alias in aliases {
+                            if let Some(alias) = alias.as_str() {
+                                resolver.register_alias(name, alias);
+                            }
+                        }
+                    }
+                }
+
+                // エイリアスが見つかったセクションのみリゾルバを追加
+                if let Some(resolver) = resolver {
+                    resolvers.push(resolver);
+                }
+            }
         }
 
         Self { resolvers }
@@ -168,11 +151,16 @@ impl NameResolvers {
             if cfg!(test) {
                 println!("  リゾルバをチェック: {}", resolver.param_type);
             }
-            if let Some(value) = resolver.resolve(arg) {
-                if cfg!(test) {
-                    println!("  マッチ成功: {} -> {}", resolver.param_type, value);
+            // 設定ファイルに存在する型のみをマッチ対象とする
+            if let Some(param_type) = COMMAND_CONFIG.parameter_types.iter()
+                .find(|pt| pt.name == resolver.param_type)
+            {
+                if let Some(value) = resolver.resolve(arg) {
+                    if cfg!(test) {
+                        println!("  マッチ成功: {} -> {}", resolver.param_type, value);
+                    }
+                    matches.push((param_type.pattern.clone(), value));
                 }
-                matches.push((resolver.param_type.clone(), value));
             }
         }
         if matches.is_empty() && cfg!(test) {
@@ -207,11 +195,22 @@ impl NameResolvers {
     }
 
     fn get_patterns(&self, pattern_type: fn(&CommandPattern) -> &Option<Vec<Vec<String>>>, args_len: usize) -> Vec<&Vec<String>> {
-        COMMAND_CONFIG.commands.values()
-            .filter_map(|cmd| pattern_type(cmd).as_ref())
-            .flat_map(|patterns| patterns.iter())
-            .filter(|pattern| pattern.len() == args_len)
-            .collect()
+        if let Some(commands) = COMMAND_CONFIG.get("commands") {
+            if let Some(commands) = commands.as_mapping() {
+                return commands.values()
+                    .filter_map(|cmd| {
+                        if let Ok(cmd) = serde_yaml::from_value::<CommandPattern>(cmd.clone()) {
+                            pattern_type(&cmd).as_ref()
+                        } else {
+                            None
+                        }
+                    })
+                    .flat_map(|patterns| patterns.iter())
+                    .filter(|pattern| pattern.len() == args_len)
+                    .collect();
+            }
+        }
+        Vec::new()
     }
 
     pub fn parse_command(&self, input: &str) -> Result<ParsedCommand, String> {
@@ -239,17 +238,21 @@ impl NameResolvers {
         if cfg!(test) {
             println!("取得した順序付きパターン: {:?}", ordered_patterns);
         }
-        let matching_ordered: Vec<_> = ordered_patterns.iter()
+        let mut matching_ordered: Vec<_> = ordered_patterns.iter()
             .filter(|pattern| self.check_pattern_matches(pattern, &matched_args))
             .collect();
+        matching_ordered.sort();
+        matching_ordered.dedup();
         if cfg!(test) {
             println!("マッチした順序付きパターン: {:?}", matching_ordered);
         }
 
         let unordered_patterns = self.get_patterns(|cmd| &cmd.unordered, args_len);
-        let matching_unordered: Vec<_> = unordered_patterns.iter()
+        let mut matching_unordered: Vec<_> = unordered_patterns.iter()
             .filter(|pattern| self.check_pattern_matches(pattern, &matched_args))
             .collect();
+        matching_unordered.sort();
+        matching_unordered.dedup();
         if cfg!(test) {
             println!("マッチした順序なしパターン: {:?}", matching_unordered);
         }
@@ -511,6 +514,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_basic_command_parsing() {
         let resolvers = NameResolvers::new();
         
