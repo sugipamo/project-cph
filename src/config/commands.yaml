@@ -1,66 +1,66 @@
 parameter_types:
   - name: command
-    pattern: "{command}"
+    pattern: "command"
   - name: site
-    pattern: "{site_id}"
+    pattern: "site_id"
     config_key: "sites"
   - name: language
-    pattern: "{language}"
+    pattern: "language"
     config_key: "languages"
   - name: contest
-    pattern: "{contest_id}"
+    pattern: "contest_id"
   - name: problem
-    pattern: "{problem_id}"
+    pattern: "problem_id"
 
 commands:
   test:
     commands: ["test", "t", "check"]
     ordered:
-      - ["{site_id}", "{command}", "{problem_id}"]
-      - ["{command}", "{problem_id}"]
+      - ["site_id", "command", "problem_id"]
+      - ["command", "problem_id"]
     unordered:
-      - ["{site_id}", "{contest_id}", "{command}", "{problem_id}"]
-      - ["{contest_id}", "{command}", "{problem_id}"]
-      - ["{command}", "{contest_id}", "{problem_id}"]
+      - ["site_id", "contest_id", "command", "problem_id"]
+      - ["contest_id", "command", "problem_id"]
+      - ["command", "contest_id", "problem_id"]
         
   open:
     commands: ["open", "o", "show"]
     ordered:
-      - ["{site_id}", "{command}", "{problem_id}"]
-      - ["{command}", "{problem_id}"]
+      - ["site_id", "command", "problem_id"]
+      - ["command", "problem_id"]
     unordered:
-      - ["{site_id}", "{contest_id}", "{command}", "{problem_id}"]
-      - ["{contest_id}", "{command}", "{problem_id}"]
-      - ["{command}", "{contest_id}", "{problem_id}"]
+      - ["site_id", "contest_id", "command", "problem_id"]
+      - ["contest_id", "command", "problem_id"]
+      - ["command", "contest_id", "problem_id"]
         
   submit:
     commands: ["submit", "s", "sub"]
     ordered:
-      - ["{site_id}", "{command}", "{problem_id}"]
-      - ["{command}", "{problem_id}"]
+      - ["site_id", "command", "problem_id"]
+      - ["command", "problem_id"]
     unordered:
-      - ["{site_id}", "{contest_id}", "{command}", "{problem_id}"]
-      - ["{contest_id}", "{command}", "{problem_id}"]
-      - ["{command}", "{contest_id}", "{problem_id}"]
+      - ["site_id", "contest_id", "command", "problem_id"]
+      - ["contest_id", "command", "problem_id"]
+      - ["command", "contest_id", "problem_id"]
 
   init:
     commands: ["init", "i", "create"]
     ordered:
-      - ["{site_id}", "{command}", "{contest_id}"]
-      - ["{command}", "{contest_id}"]
+      - ["site_id", "command", "contest_id"]
+      - ["command", "contest_id"]
     unordered:
-      - ["{command}", "{contest_id}"]
+      - ["command", "contest_id"]
 
   language:
     commands: ["language", "l", "lang"]
     ordered:
-      - ["{site_id}", "{command}", "{language}"]
-      - ["{command}", "{language}"]
+      - ["site_id", "command", "language"]
+      - ["command", "language"]
     unordered:
-      - ["{command}", "{language}"]
+      - ["command", "language"]
 
   login:
     commands: ["login", "auth"]
     ordered:
-      - ["{site_id}", "{command}"]
-      - ["{command}"]
+      - ["site_id", "command"]
+      - ["command"]

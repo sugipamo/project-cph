@@ -159,11 +159,23 @@ impl NameResolvers {
     }
 
     fn find_matches_for_arg(&self, arg: &str) -> Vec<(String, String)> {
+        if cfg!(test) {
+            println!("引数のマッチを試行: {}", arg);
+        }
         // 各リゾルバで順番にマッチを試行し、最初にマッチしたものを返す
         for resolver in &self.resolvers {
+            if cfg!(test) {
+                println!("  リゾルバをチェック: {}", resolver.param_type);
+            }
             if let Some(value) = resolver.resolve(arg) {
+                if cfg!(test) {
+                    println!("  マッチ成功: {} -> {}", resolver.param_type, value);
+                }
                 return vec![(resolver.param_type.clone(), value)];
             }
+        }
+        if cfg!(test) {
+            println!("  マッチ失敗");
         }
         vec![]
     }
@@ -184,7 +196,8 @@ impl NameResolvers {
 
         // 各パターン要素について、対応する位置の引数とマッチするか確認
         pattern.iter().enumerate().all(|(i, param_type)| {
-            matched_args[i].iter().any(|(arg_type, _)| arg_type == param_type)
+            let type_name = param_type.trim_start_matches('{').trim_end_matches('}');
+            matched_args[i].iter().any(|(arg_type, _)| arg_type == type_name)
         })
     }
 
@@ -218,6 +231,9 @@ impl NameResolvers {
 
         // マッチするパターンを探す
         let ordered_patterns = self.get_patterns(|cmd| &cmd.ordered, args_len);
+        if cfg!(test) {
+            println!("取得した順序付きパターン: {:?}", ordered_patterns);
+        }
         let matching_ordered: Vec<_> = ordered_patterns.iter()
             .filter(|pattern| self.check_pattern_matches(pattern, &matched_args))
             .collect();
