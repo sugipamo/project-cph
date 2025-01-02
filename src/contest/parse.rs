@@ -212,6 +212,89 @@ impl NameResolvers {
         }
         matches
     }
+
+    fn find_matches_for_arg(&self, arg: &str) -> Vec<(String, String)> {
+        self.find_matches(arg)
+            .into_iter()
+            .map(|(index, value)| {
+                let param_type = &COMMAND_CONFIG.parameter_types[index].name;
+                (param_type.clone(), value)
+            })
+            .collect()
+    }
+
+    fn normalize_input<'a>(&self, input: &'a str) -> Result<Vec<&'a str>, String> {
+        let normalized: Vec<&'a str> = input.split_whitespace().collect();
+        if normalized.is_empty() {
+            return Err("空のコマンドです".to_string());
+        }
+        Ok(normalized)
+    }
+
+    fn check_pattern_matches(&self, pattern: &[String], matched_args: &[Vec<(String, String)>]) -> bool {
+        // 長さが異なる場合は即座にfalse
+        if pattern.len() != matched_args.len() {
+            return false;
+        }
+
+        // 各パターン要素について、対応する位置の引数とマッチするか確認
+        pattern.iter().enumerate().all(|(i, param_type)| {
+            matched_args[i].iter().any(|(arg_type, _)| arg_type == param_type)
+        })
+    }
+
+    fn get_patterns(&self, pattern_type: fn(&CommandPattern) -> &Option<Vec<Vec<String>>>, args_len: usize) -> Vec<&Vec<String>> {
+        COMMAND_CONFIG.commands.values()
+            .filter_map(|cmd| pattern_type(cmd).as_ref())
+            .flat_map(|patterns| patterns.iter())
+            .filter(|pattern| pattern.len() == args_len)
+            .collect()
+    }
+
+    pub fn parse_command(&self, input: &str) -> Result<ParsedCommand, String> {
+        let mut result = ParsedCommand::new();
+        
+        // 入力の正規化
+        let normalized = self.normalize_input(input)?;
+
+        // 各引数に対してマッチを試行
+        let matched_args: Vec<Vec<(String, String)>> = normalized.iter()
+            .map(|&arg| self.find_matches_for_arg(arg))
+            .collect();
+
+        // コマンドパターンの候補を取得
+        let args_len = normalized.len();
+
+        // マッチするパターンを探す
+        let matching_ordered = self.get_patterns(|cmd| &cmd.ordered, args_len)
+            .iter()
+            .filter(|pattern| self.check_pattern_matches(pattern, &matched_args))
+            .collect::<Vec<_>>();
+
+        let matching_unordered = self.get_patterns(|cmd| &cmd.unordered, args_len)
+            .iter()
+            .filter(|pattern| self.check_pattern_matches(pattern, &matched_args))
+            .collect::<Vec<_>>();
+
+        // TODO: マッチしたパターンからParsedCommandを構築
+
+        Ok(result)
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct ParsedCommand {
+    pub command: Option<String>,
+    pub site_id: Option<String>,
+    pub contest_id: Option<String>,
+    pub problem_id: Option<String>,
+    pub language: Option<String>,
+}
+
+impl ParsedCommand {
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 #[cfg(test)]
@@ -447,5 +530,182 @@ mod tests {
         } else {
             panic!("sites セクションが見つかりません");
         }
+    }
+
+    #[test]
+    fn test_basic_command_parsing() {
+        let resolvers = NameResolvers::new();
+        
+        // 基本的なコマンドのパース
+        let result = resolvers.parse_command("test a.rs").unwrap();
+        assert_eq!(result.command, Some("test".to_string()));
+        assert_eq!(result.problem_id, Some("a".to_string()));
+        
+        // サイトIDを含むコマンド
+        let result = resolvers.parse_command("ac test b.rs").unwrap();
+        assert_eq!(result.command, Some("test".to_string()));
+        assert_eq!(result.site_id, Some("atcoder".to_string()));
+        assert_eq!(result.problem_id, Some("b".to_string()));
+    }
+
+    #[test]
+    fn test_input_normalization() {
+        let resolvers = NameResolvers::new();
+        
+        // 空入力のテスト
+        assert!(resolvers.normalize_input("").is_err());
+        assert!(resolvers.normalize_input("   ").is_err());
+        
+        // 基本的な正規化
+        assert_eq!(
+            resolvers.normalize_input("test a.rs").unwrap(),
+            vec!["test", "a.rs"]
+        );
+        
+        // 連続する空白の正規化
+        assert_eq!(
+            resolvers.normalize_input("test   a.rs").unwrap(),
+            vec!["test", "a.rs"]
+        );
+        
+        // 前後の空白の除去
+        assert_eq!(
+            resolvers.normalize_input("  test a.rs  ").unwrap(),
+            vec!["test", "a.rs"]
+        );
+        
+        // タブと空白の混在
+        assert_eq!(
+            resolvers.normalize_input("test\t \ta.rs").unwrap(),
+            vec!["test", "a.rs"]
+        );
+    }
+
+    #[test]
+    fn test_find_matches_for_arg() {
+        let resolvers = NameResolvers::new();
+        
+        // コマンドのマッチング
+        let matches = resolvers.find_matches_for_arg("test");
+        assert!(!matches.is_empty(), "コマンドのマッチが見つかりません");
+        assert!(matches.iter().any(|(param_type, value)| 
+            param_type == "command" && value == "test"
+        ));
+
+        // サイトIDのマッチング
+        let matches = resolvers.find_matches_for_arg("ac");
+        assert!(!matches.is_empty(), "サイトIDのマッチが見つかりません");
+        assert!(matches.iter().any(|(param_type, value)| 
+            param_type == "site" && value == "atcoder"
+        ));
+
+        // 複数のマッチが可能な場合
+        let matches = resolvers.find_matches_for_arg("rs");
+        assert!(!matches.is_empty(), "言語のマッチが見つかりません");
+        assert!(matches.iter().any(|(param_type, value)| 
+            param_type == "language" && value == "rust"
+        ));
+    }
+
+    #[test]
+    fn test_pattern_matching() {
+        let resolvers = NameResolvers::new();
+        
+        // 基本的なパターンマッチング
+        let result = resolvers.parse_command("test a.rs").unwrap();
+        assert_eq!(result.command, Some("test".to_string()));
+        assert_eq!(result.problem_id, Some("a".to_string()));
+        
+        // 順序が重要なパターン
+        let result = resolvers.parse_command("ac test a.rs").unwrap();
+        assert_eq!(result.site_id, Some("atcoder".to_string()));
+        assert_eq!(result.command, Some("test".to_string()));
+        assert_eq!(result.problem_id, Some("a".to_string()));
+        
+        // 無効なパターン
+        let result = resolvers.parse_command("a.rs test");
+        assert!(result.is_err(), "無効なパターンがエラーを返していません");
+    }
+
+    #[test]
+    fn test_check_pattern_matches() {
+        let resolvers = NameResolvers::new();
+        
+        // テスト用のマッチ結果を作成
+        let matched_args = vec![
+            vec![("command".to_string(), "test".to_string())],
+            vec![("problem_id".to_string(), "a".to_string())],
+        ];
+
+        // 正しいパターンのテスト
+        let pattern = vec!["command".to_string(), "problem_id".to_string()];
+        assert!(resolvers.check_pattern_matches(&pattern, &matched_args));
+
+        // 順序が異なるパターンのテスト
+        let wrong_pattern = vec!["problem_id".to_string(), "command".to_string()];
+        assert!(!resolvers.check_pattern_matches(&wrong_pattern, &matched_args));
+
+        // 長さが異なるパターンのテスト
+        let long_pattern = vec!["command".to_string(), "problem_id".to_string(), "site".to_string()];
+        assert!(!resolvers.check_pattern_matches(&long_pattern, &matched_args));
+
+        // 存在しないパラメータタイプのテスト
+        let invalid_pattern = vec!["command".to_string(), "invalid_type".to_string()];
+        assert!(!resolvers.check_pattern_matches(&invalid_pattern, &matched_args));
+
+        // 複数のマッチを含む引数のテスト
+        let multi_matched_args = vec![
+            vec![
+                ("command".to_string(), "test".to_string()),
+                ("site".to_string(), "atcoder".to_string()),
+            ],
+            vec![("problem_id".to_string(), "a".to_string())],
+        ];
+        let pattern = vec!["command".to_string(), "problem_id".to_string()];
+        assert!(resolvers.check_pattern_matches(&pattern, &multi_matched_args));
+    }
+
+    #[test]
+    fn test_get_patterns() {
+        let resolvers = NameResolvers::new();
+        
+        // 順序付きパターンのテスト
+        let ordered_patterns = resolvers.get_patterns(|cmd| &cmd.ordered, 2);
+        assert!(!ordered_patterns.is_empty(), "順序付きパターンが見つかりません");
+        
+        // 引数の長さが一致するパターンのみが返されることを確認
+        for pattern in &ordered_patterns {
+            assert_eq!(pattern.len(), 2, "パターンの長さが一致しません");
+        }
+
+        // 順序なしパターンのテスト
+        let unordered_patterns = resolvers.get_patterns(|cmd| &cmd.unordered, 3);
+        assert!(!unordered_patterns.is_empty(), "順序なしパターンが見つかりません");
+        
+        // 引数の長さが一致するパターンのみが返されることを確認
+        for pattern in &unordered_patterns {
+            assert_eq!(pattern.len(), 3, "パターンの長さが一致しません");
+        }
+
+        // 存在しない長さのパターンのテスト
+        let no_patterns = resolvers.get_patterns(|cmd| &cmd.ordered, 10);
+        assert!(no_patterns.is_empty(), "存在しない長さのパターンが返されています");
+
+        // パターンの内容の検証
+        let test_patterns = resolvers.get_patterns(|cmd| &cmd.ordered, 2);
+        assert!(test_patterns.iter().any(|pattern| {
+            pattern.contains(&"{command}".to_string()) && pattern.contains(&"{problem_id}".to_string())
+        }), "期待されるパターンが含まれていません");
+
+        // 特定のコマンドパターンの検証
+        let login_patterns = resolvers.get_patterns(|cmd| &cmd.ordered, 1);
+        assert!(login_patterns.iter().any(|pattern| {
+            pattern.contains(&"{command}".to_string())
+        }), "loginコマンドのパターンが含まれていません");
+
+        let init_patterns = resolvers.get_patterns(|cmd| &cmd.ordered, 2);
+        assert!(init_patterns.iter().any(|pattern| {
+            pattern.contains(&"{command}".to_string()) && pattern.contains(&"{contest_id}".to_string())
+        }), "initコマンドのパターンが含まれていません");
     }
 } 
