@@ -1,3 +1,15 @@
+parameter_types:
+  - name: command
+    pattern: "{command}"
+  - name: site
+    pattern: "{site_id}"
+  - name: language
+    pattern: "{language}"
+  - name: contest
+    pattern: "{contest_id}"
+  - name: problem
+    pattern: "{problem_id}"
+
 commands:
   test:
     commands: ["test", "t", "check"]
