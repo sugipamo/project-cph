@@ -3,8 +3,10 @@ parameter_types:
     pattern: "{command}"
   - name: site
     pattern: "{site_id}"
+    config_key: "sites"
   - name: language
     pattern: "{language}"
+    config_key: "languages"
   - name: contest
     pattern: "{contest_id}"
   - name: problem

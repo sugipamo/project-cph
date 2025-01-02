@@ -2,18 +2,23 @@ use std::collections::HashMap;
 use serde::Deserialize;
 use once_cell::sync::Lazy;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 pub struct ParameterType {
     pub name: String,
     pub pattern: String,
+    #[serde(default)]
+    pub config_key: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 pub struct CommandConfig {
     pub parameter_types: Vec<ParameterType>,
     pub commands: HashMap<String, CommandPattern>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 pub struct CommandPattern {
     pub commands: Vec<String>,
@@ -22,16 +27,19 @@ pub struct CommandPattern {
 }
 
 // 設定ファイルの読み込み
+#[allow(dead_code)]
 static COMMAND_CONFIG: Lazy<CommandConfig> = Lazy::new(|| {
-    let config_str = include_str!("../config/commands.yaml");
+    let config_str = include_str!("../../src/config/commands.yaml");
     serde_yaml::from_str(config_str).expect("コマンド設定の読み込みに失敗")
 });
 
+#[allow(dead_code)]
 static CONFIG: Lazy<serde_yaml::Value> = Lazy::new(|| {
-    let config_str = include_str!("../config/config.yaml");
+    let config_str = include_str!("../../src/config/config.yaml");
     serde_yaml::from_str(config_str).expect("設定ファイルの読み込みに失敗")
 });
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct NameResolver {
     param_type: String,
@@ -55,10 +63,14 @@ impl NameResolver {
     }
 
     fn load_aliases_from_config(&mut self, config: &serde_yaml::Value) {
+        println!("Loading aliases for type: {}", self.param_type);
+
         // コマンドのエイリアスはcommands.yamlから読み込む
         if self.param_type == "command" {
+            println!("Loading command aliases from COMMAND_CONFIG");
             for (name, pattern) in &COMMAND_CONFIG.commands {
                 for alias in &pattern.commands {
+                    println!("Registering command alias: {} -> {}", alias, name);
                     self.register_alias(name, alias);
                 }
             }
@@ -67,17 +79,26 @@ impl NameResolver {
 
         // param_typeをクローンして所有権の問題を回避
         let target_type = self.param_type.clone();
+        println!("Starting recursive search for aliases of type: {}", target_type);
         // config.yamlから再帰的にaliasesを探索
         self.load_aliases_recursive(config, &target_type);
+        println!("Finished loading aliases for type: {}", self.param_type);
+        println!("Current aliases: {:?}", self.aliases);
     }
 
     fn load_aliases_recursive(&mut self, value: &serde_yaml::Value, target_type: &str) {
         // エイリアス登録のロジックをクロージャとして定義
         let register_aliases = |resolver: &mut NameResolver, value: &serde_yaml::Value, name: &str| {
+            // 元の名前自体をエイリアスとして登録
+            println!("Registering original name as alias: {} -> {}", name, name);
+            resolver.register_alias(name, name);
+
             if let Some(aliases) = value.get("aliases") {
+                println!("Found aliases field for {}: {:?}", name, aliases);
                 if let Some(aliases) = aliases.as_sequence() {
                     for alias in aliases {
                         if let Some(alias) = alias.as_str() {
+                            println!("Registering alias: {} -> {}", alias, name);
                             resolver.register_alias(name, alias);
                         }
                     }
@@ -87,29 +108,41 @@ impl NameResolver {
 
         match value {
             serde_yaml::Value::Mapping(map) => {
-                // nameフィールドによる一致チェック
-                if let Some(name_value) = map.get("name") {
-                    if let Some(name) = name_value.as_str() {
-                        if name == target_type {
-                            register_aliases(self, value, name);
-                            return;
-                        }
-                    }
-                }
-
-                // キー名による一致チェックと再帰
+                // アンダースコアで始まるキーは無視
                 for (key, value) in map {
                     if let Some(key) = key.as_str() {
-                        if !key.starts_with('_') {
-                            if key == target_type {
-                                register_aliases(self, value, key);
+                        if key.starts_with('_') {
+                            continue;
+                        }
+                        println!("Checking key: {}", key);
+
+                        // parameter_typesから設定のキーを取得
+                        let config_key = COMMAND_CONFIG.parameter_types.iter()
+                            .find(|pt| pt.name == target_type)
+                            .and_then(|pt| pt.config_key.as_ref())
+                            .map(|s| s.as_str())
+                            .unwrap_or(key);
+
+                        // 設定のキーが一致する場合、エイリアスを登録
+                        if config_key == key {
+                            if let Some(items) = value.as_mapping() {
+                                for (name, item_value) in items {
+                                    if let Some(name) = name.as_str() {
+                                        if !name.starts_with('_') {
+                                            register_aliases(self, item_value, name);
+                                        }
+                                    }
+                                }
                             }
+                        } else {
+                            // 再帰的に探索
                             self.load_aliases_recursive(value, target_type);
                         }
                     }
                 }
             }
             serde_yaml::Value::Sequence(seq) => {
+                println!("Checking sequence");
                 for value in seq {
                     self.load_aliases_recursive(value, target_type);
                 }
@@ -119,6 +152,7 @@ impl NameResolver {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct NameResolvers {
     resolvers: Vec<NameResolver>,
@@ -240,9 +274,16 @@ mod tests {
         
         // 大文字小文字を区別することを確認
         if let Some(resolver) = resolvers.get_by_type("site") {
+            assert!(resolver.resolve("AtcodeR").is_none());
             assert!(resolver.resolve("ATCODER").is_none());
-            assert!(resolver.resolve("AtCoder").is_none());
             assert!(resolver.resolve("atcoder").is_some());
+        }
+
+        // 言語の大文字小文字の区別も確認
+        if let Some(resolver) = resolvers.get_by_type("language") {
+            assert!(resolver.resolve("Python").is_none());
+            assert!(resolver.resolve("PYTHON").is_none());
+            assert!(resolver.resolve("python").is_some());
         }
     }
 
@@ -282,5 +323,57 @@ mod tests {
         resolver.register_alias("name2", "alias");
         
         assert_eq!(resolver.resolve("alias"), Some("name2".to_string()));
+    }
+
+    #[test]
+    fn test_config_loading() {
+        // 設定ファイルが正しく読み込まれていることを確認
+        assert!(CONFIG.get("languages").is_some(), "languages セクションが見つかりません");
+        assert!(CONFIG.get("sites").is_some(), "sites セクションが見つかりません");
+        assert!(CONFIG.get("system").is_some(), "system セクションが見つかりません");
+
+        // コマンド設定が正しく読み込まれていることを確認
+        assert!(!COMMAND_CONFIG.parameter_types.is_empty(), "parameter_types が空です");
+        assert!(!COMMAND_CONFIG.commands.is_empty(), "commands が空です");
+
+        // 言語設定のエイリアスが正しく読み込まれていることを確認
+        if let Some(languages) = CONFIG.get("languages") {
+            if let Some(rust) = languages.get("rust") {
+                if let Some(aliases) = rust.get("aliases") {
+                    if let Some(aliases) = aliases.as_sequence() {
+                        assert!(!aliases.is_empty(), "rust の aliases が空です");
+                        assert!(aliases.iter().any(|a| a.as_str() == Some("rs")), "rust の alias 'rs' が見つかりません");
+                    } else {
+                        panic!("rust の aliases が配列ではありません");
+                    }
+                } else {
+                    panic!("rust の aliases フィールドが見つかりません");
+                }
+            } else {
+                panic!("rust 言語の設定が見つかりません");
+            }
+        } else {
+            panic!("languages セクションが見つかりません");
+        }
+
+        // サイト設定のエイリアスが正しく読み込まれていることを確認
+        if let Some(sites) = CONFIG.get("sites") {
+            if let Some(atcoder) = sites.get("atcoder") {
+                if let Some(aliases) = atcoder.get("aliases") {
+                    if let Some(aliases) = aliases.as_sequence() {
+                        assert!(!aliases.is_empty(), "atcoder の aliases が空です");
+                        assert!(aliases.iter().any(|a| a.as_str() == Some("ac")), "atcoder の alias 'ac' が見つかりません");
+                    } else {
+                        panic!("atcoder の aliases が配列ではありません");
+                    }
+                } else {
+                    panic!("atcoder の aliases フィールドが見つかりません");
+                }
+            } else {
+                panic!("atcoder サイトの設定が見つかりません");
+            }
+        } else {
+            panic!("sites セクションが見つかりません");
+        }
     }
 } 
