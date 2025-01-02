@@ -47,7 +47,7 @@ pub struct NameResolver {
 }
 
 impl NameResolver {
-    pub fn new(param_type: String) -> Self {
+    fn new(param_type: String) -> Self {
         Self {
             param_type,
             aliases: HashMap::new(),
@@ -63,25 +63,6 @@ impl NameResolver {
     }
 }
 
-#[cfg(test)]
-impl NameResolver {
-    pub fn get_param_type(&self) -> &str {
-        &self.param_type
-    }
-
-    pub fn get_aliases_len(&self) -> usize {
-        self.aliases.len()
-    }
-
-    pub fn get_alias(&self, alias: &str) -> Option<String> {
-        self.aliases.get(alias).cloned()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.aliases.is_empty()
-    }
-}
-
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct NameResolvers {
@@ -90,11 +71,15 @@ pub struct NameResolvers {
 
 impl NameResolvers {
     pub fn new() -> Self {
+        Self::new_with_config(&CONFIG, &COMMAND_CONFIG)
+    }
+
+    fn new_with_config(config: &serde_yaml::Value, command_config: &serde_yaml::Value) -> Self {
         let mut resolvers = Vec::new();
         let mut resolver_map = HashMap::new();
 
         // parameter_typesからリゾルバの型を取得
-        if let Some(parameter_types) = COMMAND_CONFIG.get("parameter_types") {
+        if let Some(parameter_types) = command_config.get("parameter_types") {
             if let Some(parameter_types) = parameter_types.as_sequence() {
                 for param_type in parameter_types {
                     if let Some(name) = param_type.get("name").and_then(|n| n.as_str()) {
@@ -109,8 +94,8 @@ impl NameResolvers {
         }
 
         // 設定ファイルから各セクションのエイリアスを読み込む
-        for config in [&*CONFIG, &*COMMAND_CONFIG].iter() {
-            let Some(map) = config.as_mapping() else { 
+        for cfg in [config, command_config].iter() {
+            let Some(map) = cfg.as_mapping() else { 
                 if cfg!(test) { println!("設定がマッピングではありません"); }
                 continue;
             };
@@ -276,7 +261,7 @@ impl NameResolvers {
     }
 
     pub fn parse_command(&self, input: &str) -> Result<ParsedCommand, String> {
-        let result = ParsedCommand::new();
+        let mut result = ParsedCommand::new();
         
         // 入力の正規化
         let normalized = self.normalize_input(input)?;
@@ -303,8 +288,6 @@ impl NameResolvers {
         let mut matching_ordered: Vec<_> = ordered_patterns.iter()
             .filter(|pattern| self.check_pattern_matches(pattern, &matched_args))
             .collect();
-        matching_ordered.sort();
-        matching_ordered.dedup();
         if cfg!(test) {
             println!("マッチした順序付きパターン: {:?}", matching_ordered);
         }
@@ -313,13 +296,32 @@ impl NameResolvers {
         let mut matching_unordered: Vec<_> = unordered_patterns.iter()
             .filter(|pattern| self.check_pattern_matches(pattern, &matched_args))
             .collect();
-        matching_unordered.sort();
-        matching_unordered.dedup();
         if cfg!(test) {
             println!("マッチした順序なしパターン: {:?}", matching_unordered);
         }
 
-        // TODO: マッチしたパターンからParsedCommandを構築
+        // マッチしたパターンが存在しない場合はエラー
+        if matching_ordered.is_empty() && matching_unordered.is_empty() {
+            return Err("マッチするコマンドパターンが見つかりません".to_string());
+        }
+
+        // マッチしたパターンから結果を構築
+        for (_i, matches) in matched_args.iter().enumerate() {
+            if matches.is_empty() {
+                continue;
+            }
+
+            // 最初にマッチした値を使用
+            let (param_type, value) = &matches[0];
+            match param_type.as_str() {
+                "command" => result.command = Some(value.clone()),
+                "site_id" => result.site_id = Some(value.clone()),
+                "contest_id" => result.contest_id = Some(value.clone()),
+                "problem_id" => result.problem_id = Some(value.clone()),
+                "language" => result.language = Some(value.clone()),
+                _ => {},
+            }
+        }
 
         Ok(result)
     }
@@ -337,5 +339,266 @@ pub struct ParsedCommand {
 impl ParsedCommand {
     pub fn new() -> Self {
         Self::default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod name_resolver {
+        use super::*;
+
+        #[test]
+        fn test_resolver_basic() {
+            let mut resolver = NameResolver::new("test_type".to_string());
+            
+            // 基本的なエイリアス登録と解決
+            resolver.register_alias("original", "alias");
+            assert_eq!(resolver.resolve("alias"), Some("original".to_string()));
+            
+            // 元の名前でも解決できることを確認
+            assert_eq!(resolver.resolve("original"), Some("original".to_string()));
+            
+            // 存在しない名前の解決
+            assert_eq!(resolver.resolve("unknown"), None);
+        }
+
+        #[test]
+        fn test_resolver_multiple_aliases() {
+            let mut resolver = NameResolver::new("test_type".to_string());
+            
+            // 複数のエイリアスを登録
+            resolver.register_alias("original", "alias1");
+            resolver.register_alias("original", "alias2");
+            
+            // 全てのエイリアスが解決できることを確認
+            assert_eq!(resolver.resolve("alias1"), Some("original".to_string()));
+            assert_eq!(resolver.resolve("alias2"), Some("original".to_string()));
+            assert_eq!(resolver.resolve("original"), Some("original".to_string()));
+        }
+    }
+
+    mod name_resolvers {
+        use super::*;
+
+        fn create_test_resolvers() -> NameResolvers {
+            let mut command_resolver = NameResolver::new("command".to_string());
+            command_resolver.register_alias("test", "test");
+            command_resolver.register_alias("test", "t");
+
+            let mut site_resolver = NameResolver::new("site_id".to_string());
+            site_resolver.register_alias("atcoder", "atcoder");
+            site_resolver.register_alias("atcoder", "ac");
+
+            NameResolvers {
+                resolvers: vec![command_resolver, site_resolver],
+            }
+        }
+
+        #[test]
+        fn test_resolvers_basic() {
+            let resolvers = create_test_resolvers();
+            
+            // コマンド型のリゾルバが存在することを確認
+            let command_resolver = resolvers.get(0).expect("コマンドリゾルバが存在しない");
+            assert_eq!(command_resolver.resolve("test"), Some("test".to_string()));
+            assert_eq!(command_resolver.resolve("t"), Some("test".to_string()));
+
+            // サイト型のリゾルバが存在することを確認
+            let site_resolver = resolvers.get(1).expect("サイトリゾルバが存在しない");
+            assert_eq!(site_resolver.resolve("atcoder"), Some("atcoder".to_string()));
+            assert_eq!(site_resolver.resolve("ac"), Some("atcoder".to_string()));
+        }
+
+        #[test]
+        fn test_find_matches() {
+            let resolvers = create_test_resolvers();
+            
+            // コマンドのマッチを確認
+            let matches = resolvers.find_matches("test");
+            assert_eq!(matches.len(), 1);
+            assert_eq!(matches[0], (0, "test".to_string()));
+
+            // エイリアスのマッチを確認
+            let matches = resolvers.find_matches("ac");
+            assert_eq!(matches.len(), 1);
+            assert_eq!(matches[0], (1, "atcoder".to_string()));
+
+            // 存在しない値のマッチを確認
+            let matches = resolvers.find_matches("unknown");
+            assert_eq!(matches.len(), 0);
+        }
+
+        #[test]
+        fn test_find_matches_for_arg() {
+            let resolvers = create_test_resolvers();
+            
+            // コマンドのマッチを確認
+            let matches = resolvers.find_matches_for_arg("test");
+            assert_eq!(matches.len(), 1);
+            assert_eq!(matches[0], ("command".to_string(), "test".to_string()));
+
+            // エイリアスのマッチを確認
+            let matches = resolvers.find_matches_for_arg("ac");
+            assert_eq!(matches.len(), 1);
+            assert_eq!(matches[0], ("site_id".to_string(), "atcoder".to_string()));
+
+            // 存在しない値のマッチを確認
+            let matches = resolvers.find_matches_for_arg("unknown");
+            assert_eq!(matches.len(), 0);
+
+            // 複数のリゾルバにマッチする場合
+            let mut resolver = create_test_resolvers();
+            let mut another_resolver = NameResolver::new("another".to_string());
+            another_resolver.register_alias("test", "test");
+            resolver.resolvers.push(another_resolver);
+
+            let matches = resolver.find_matches_for_arg("test");
+            assert_eq!(matches.len(), 2);
+            assert!(matches.contains(&("command".to_string(), "test".to_string())));
+            assert!(matches.contains(&("another".to_string(), "test".to_string())));
+        }
+
+        #[test]
+        fn test_normalize_input() {
+            let resolvers = create_test_resolvers();
+            
+            // 基本的な入力の正規化
+            let result = resolvers.normalize_input("test abc001 a");
+            assert!(result.is_ok());
+            let normalized = result.unwrap();
+            assert_eq!(normalized, vec!["test", "abc001", "a"]);
+
+            // 複数のスペースを含む入力
+            let result = resolvers.normalize_input("test   abc001    a");
+            assert!(result.is_ok());
+            let normalized = result.unwrap();
+            assert_eq!(normalized, vec!["test", "abc001", "a"]);
+
+            // 前後のスペースを含む入力
+            let result = resolvers.normalize_input("  test abc001 a  ");
+            assert!(result.is_ok());
+            let normalized = result.unwrap();
+            assert_eq!(normalized, vec!["test", "abc001", "a"]);
+
+            // 空の入力
+            let result = resolvers.normalize_input("");
+            assert!(result.is_err());
+            assert_eq!(result.unwrap_err(), "空のコマンドです".to_string());
+
+            // スペースのみの入力
+            let result = resolvers.normalize_input("   ");
+            assert!(result.is_err());
+            assert_eq!(result.unwrap_err(), "空のコマンドです".to_string());
+        }
+
+        #[test]
+        fn test_check_pattern_matches() {
+            let resolvers = create_test_resolvers();
+            
+            // パターンと引数の準備
+            let pattern = vec![
+                "command".to_string(),
+                "site_id".to_string(),
+            ];
+
+            // 完全一致のケース
+            let matched_args = vec![
+                vec![("command".to_string(), "test".to_string())],
+                vec![("site_id".to_string(), "atcoder".to_string())],
+            ];
+            assert!(resolvers.check_pattern_matches(&pattern, &matched_args));
+
+            // 順序が一致しないケース
+            let matched_args = vec![
+                vec![("site_id".to_string(), "atcoder".to_string())],
+                vec![("command".to_string(), "test".to_string())],
+            ];
+            assert!(!resolvers.check_pattern_matches(&pattern, &matched_args));
+
+            // 長さが異なるケース
+            let matched_args = vec![
+                vec![("command".to_string(), "test".to_string())],
+            ];
+            assert!(!resolvers.check_pattern_matches(&pattern, &matched_args));
+
+            // 空のマッチを含むケース（型が未決定の場合）
+            let matched_args = vec![
+                vec![("command".to_string(), "test".to_string())],
+                vec![],
+            ];
+            assert!(resolvers.check_pattern_matches(&pattern, &matched_args));
+
+            // 複数のマッチを含むケース
+            let matched_args = vec![
+                vec![
+                    ("command".to_string(), "test".to_string()),
+                    ("another".to_string(), "test".to_string()),
+                ],
+                vec![("site_id".to_string(), "atcoder".to_string())],
+            ];
+            assert!(resolvers.check_pattern_matches(&pattern, &matched_args));
+        }
+
+        #[test]
+        fn test_get_patterns() {
+            let resolvers = create_test_resolvers();
+            
+            // 順序付きパターンのテスト
+            let ordered_patterns = resolvers.get_patterns(|cmd| &cmd.ordered, 2);
+            assert!(!ordered_patterns.is_empty());
+            
+            // 順序なしパターンのテスト
+            let unordered_patterns = resolvers.get_patterns(|cmd| &cmd.unordered, 3);
+            assert!(!unordered_patterns.is_empty());
+
+            // 存在しない長さのパターン
+            let patterns = resolvers.get_patterns(|cmd| &cmd.ordered, 10);
+            assert!(patterns.is_empty());
+
+            // パターンの内容確認
+            let patterns = resolvers.get_patterns(|cmd| &cmd.ordered, 2);
+            assert!(patterns.iter().any(|p| {
+                p.len() == 2 && p[0] == "command" && p[1] == "problem_id"
+            }));
+        }
+
+        #[test]
+        fn test_parse_command() {
+            let resolvers = create_test_resolvers();
+            
+            // 基本的なコマンドのパース
+            let result = resolvers.parse_command("test abc001 a");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.command, Some("test".to_string()));
+            assert_eq!(parsed.contest_id, Some("abc001".to_string()));
+            assert_eq!(parsed.problem_id, Some("a".to_string()));
+
+            // エイリアスを含むコマンドのパース
+            let result = resolvers.parse_command("t abc001 a");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.command, Some("test".to_string()));
+            assert_eq!(parsed.contest_id, Some("abc001".to_string()));
+            assert_eq!(parsed.problem_id, Some("a".to_string()));
+
+            // サイトIDを含むコマンドのパース
+            let result = resolvers.parse_command("ac test abc001 a");
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.site_id, Some("atcoder".to_string()));
+            assert_eq!(parsed.command, Some("test".to_string()));
+            assert_eq!(parsed.contest_id, Some("abc001".to_string()));
+            assert_eq!(parsed.problem_id, Some("a".to_string()));
+
+            // 不正なコマンドのパース
+            let result = resolvers.parse_command("");
+            assert!(result.is_err());
+
+            let result = resolvers.parse_command("unknown abc001 a");
+            assert!(result.is_err());
+        }
     }
 }
