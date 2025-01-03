@@ -5,16 +5,15 @@ pub fn setup() {
     // テスト用の設定を読み込む
     let config = Config::load().unwrap();
     
-    // マウントポイントディレクトリを作成
-    let mount_point = config.get::<String>("system.docker.mount_point").unwrap();
-    fs::create_dir_all(&mount_point).unwrap();
+    // マスト用のディレクトリを作成
+    fs::create_dir_all("/tmp/test-rust").unwrap();
+    fs::create_dir_all("/tmp/test-pypy").unwrap();
+    fs::create_dir_all("/tmp/test-cpp").unwrap();
 }
 
 pub fn teardown() {
-    // テスト用の設定を読み込む
-    let config = Config::load().unwrap();
-    
-    // マウントポイントディレクトリを削除
-    let mount_point = config.get::<String>("system.docker.mount_point").unwrap();
-    let _ = fs::remove_dir_all(&mount_point);
+    // テスト用のディレクトリを削除
+    let _ = fs::remove_dir_all("/tmp/test-rust");
+    let _ = fs::remove_dir_all("/tmp/test-pypy");
+    let _ = fs::remove_dir_all("/tmp/test-cpp");
 } 

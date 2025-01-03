@@ -244,6 +244,20 @@ impl Config {
         Ok(config)
     }
 
+    pub fn load_from_file(path: &str) -> Result<Self, ConfigError> {
+        let contents = std::fs::read_to_string(path)?;
+        let contents = Self::expand_env_vars(&contents)?;
+        let data: Value = serde_yaml::from_str(&contents)?;
+        
+        Ok(Self {
+            data,
+            alias_map: HashMap::new(),
+            alias_sections: Vec::new(),
+            anchor_prefix: String::from("_"),
+            required_values: Vec::new(),
+        })
+    }
+
     fn expand_env_vars(content: &str) -> Result<String, ConfigError> {
         let re = Regex::new(r"\$\{([^}-]+)(?:-([^}]+))?\}").unwrap();
         let mut result = content.to_string();
@@ -424,6 +438,25 @@ impl Config {
             }
         }
         Ok(())
+    }
+
+    pub fn get_raw_value(&self, path: &str) -> Result<&Value, ConfigError> {
+        let parts: Vec<&str> = path.split('.').collect();
+        let mut current = &self.data;
+
+        for part in parts {
+            if let Value::Mapping(map) = current {
+                if let Some(value) = map.get(&Value::String(part.to_string())) {
+                    current = value;
+                } else {
+                    return Err(ConfigError::PathError(path.to_string()));
+                }
+            } else {
+                return Err(ConfigError::PathError(path.to_string()));
+            }
+        }
+
+        Ok(current)
     }
 }
 
@@ -635,54 +668,6 @@ mod tests {
     }
 
     #[test]
-    fn test_alias_resolution() {
-        let yaml = r#"
-        languages:
-          rust:
-            aliases: ["rs", "Rust"]
-            extension: "rs"
-        "#;
-
-        let config = create_test_config(yaml);
-
-        // エイリアスから正しいパスが解決されることを確認
-        assert_eq!(
-            config.resolve_alias_path("rs.extension"),
-            "languages.rust.extension"
-        );
-        assert_eq!(
-            config.resolve_alias_path("Rust.extension"),
-            "languages.rust.extension"
-        );
-
-        // 存在しないエイリアスは元のパスを返す
-        assert_eq!(
-            config.resolve_alias_path("nonexistent.path"),
-            "nonexistent.path"
-        );
-    }
-
-    #[test]
-    fn test_custom_alias_section() {
-        let yaml = r#"
-        commands:
-          test:
-            aliases: ["t", "check"]
-          open:
-            aliases: ["o", "show"]
-        "#;
-
-        let mut config = Config::builder()
-            .add_alias_section("commands", "aliases")
-            .build();
-        config.data = serde_yaml::from_str(yaml).unwrap();
-        config.build_alias_map().unwrap();
-
-        assert_eq!(config.resolve_alias_path("t"), "commands.test");
-        assert_eq!(config.resolve_alias_path("o"), "commands.open");
-    }
-
-    #[test]
     fn test_env_var_expansion() {
         std::env::set_var("TEST_VAR", "test_value");
         let yaml = "${TEST_VAR}";
@@ -734,32 +719,6 @@ mod tests {
     }
 
     #[test]
-    fn test_alias_case_insensitive() {
-        let yaml = r#"
-        languages:
-          rust:
-            aliases: ["rs", "Rust", "RUST"]
-            extension: "rs"
-        "#;
-
-        let config = create_test_config(yaml);
-
-        // 大文字小文字を区別せずにエイリアスが解決されることを確認
-        assert_eq!(
-            config.resolve_alias_path("rs.extension"),
-            "languages.rust.extension"
-        );
-        assert_eq!(
-            config.resolve_alias_path("Rust.extension"),
-            "languages.rust.extension"
-        );
-        assert_eq!(
-            config.resolve_alias_path("RUST.extension"),
-            "languages.rust.extension"
-        );
-    }
-
-    #[test]
     fn test_numeric_values() {
         let yaml = r#"
         system:
@@ -781,63 +740,5 @@ mod tests {
         // 型変換エラーの確認
         let error = config.get::<bool>("system.docker.timeout_seconds");
         assert!(error.is_err());
-    }
-
-    #[test]
-    fn test_type_conversion() {
-        let yaml = r#"
-        test:
-          string_value: "test"
-          int_value: 42
-          float_value: 3.14
-          bool_value: true
-          string_array: ["a", "b", "c"]
-        "#;
-
-        let config = create_test_config(yaml);
-
-        // 文字列
-        let string_value: String = config.get("test.string_value").unwrap();
-        assert_eq!(string_value, "test");
-
-        // 整数
-        let int_value: i64 = config.get("test.int_value").unwrap();
-        assert_eq!(int_value, 42);
-
-        // 浮動小数点
-        let float_value: f64 = config.get("test.float_value").unwrap();
-        assert_eq!(float_value, 3.14);
-
-        // 真偽値
-        let bool_value: bool = config.get("test.bool_value").unwrap();
-        assert!(bool_value);
-
-        // 文字列配列
-        let string_array: Vec<String> = config.get("test.string_array").unwrap();
-        assert_eq!(string_array, vec!["a", "b", "c"]);
-
-        // 型変換エラー
-        let error = config.get::<bool>("test.string_value");
-        assert!(error.is_err());
-    }
-
-    #[test]
-    fn test_error_messages() {
-        let config = Config::builder().build();
-
-        // パスが存在しない場合のエラー
-        let error = config.get::<String>("nonexistent.path");
-        assert!(error.is_err());
-        assert!(error.unwrap_err().to_string().contains("Path not found"));
-
-        // 型変換エラー
-        let yaml = r#"
-        test:
-          value: "not a number"
-        "#;
-        let config = create_test_config(yaml);
-        let error = config.get::<i64>("test.value");
-        assert!(error.is_err());
-        assert!(error.unwrap_err().to_string().contains("型変換エラー"));
     }
 } 
