@@ -19,9 +19,7 @@ pub struct ResolvedCommand {
 pub enum ParseError {
     InvalidCommand(String),
     ConfigError(ConfigError),
-    InvalidArgument(String),
     MissingSection(String),
-    InvalidPriority(String),
 }
 
 impl std::fmt::Display for ParseError {
@@ -29,9 +27,7 @@ impl std::fmt::Display for ParseError {
         match self {
             ParseError::InvalidCommand(msg) => write!(f, "無効なコマンド: {}", msg),
             ParseError::ConfigError(err) => write!(f, "設定エラー: {}", err),
-            ParseError::InvalidArgument(msg) => write!(f, "無効な引数: {}", msg),
             ParseError::MissingSection(msg) => write!(f, "設定セクションが見つかりません: {}", msg),
-            ParseError::InvalidPriority(msg) => write!(f, "無効な優先度設定: {}", msg),
         }
     }
 }

@@ -3,7 +3,7 @@ use cph::config::Config;
 
 pub fn setup() {
     // テスト用の設定を読み込む
-    let config = Config::load().unwrap();
+    let _config = Config::load().unwrap();
     
     // マスト用のディレクトリを作成
     fs::create_dir_all("/tmp/test-rust").unwrap();

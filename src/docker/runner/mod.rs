@@ -2,13 +2,14 @@ pub mod command;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tokio::time::{timeout, Duration};
+use std::path::PathBuf;
+use std::process::Stdio;
+use tokio::process::Command;
 
-use crate::docker::state::RunnerState;
 use crate::config::Config;
-use crate::config::ConfigError;
 use crate::config::TypedValue;
 use self::command::DockerCommand;
+use crate::docker::state::RunnerState;
 
 pub struct DockerRunner {
     command: DockerCommand,
