@@ -28,14 +28,8 @@ pub struct CommandPattern {
 
 // 設定ファイルの読み込み
 #[allow(dead_code)]
-static CONFIG: Lazy<serde_yaml::Value> = Lazy::new(|| {
-    let config_str = include_str!("../../src/config/config.yaml");
-    serde_yaml::from_str(config_str).expect("設定ファイルの読み込みに失敗")
-});
-
-#[allow(dead_code)]
 static COMMAND_CONFIG: Lazy<serde_yaml::Value> = Lazy::new(|| {
-    let config_str = include_str!("../../src/config/commands.yaml");
+    let config_str = include_str!("commands.yaml");
     serde_yaml::from_str(config_str).expect("コマンド設定の読み込みに失敗")
 });
 
@@ -71,10 +65,10 @@ pub struct NameResolvers {
 
 impl NameResolvers {
     pub fn new() -> Self {
-        Self::new_with_config(&CONFIG, &COMMAND_CONFIG)
+        Self::new_with_config(&COMMAND_CONFIG)
     }
 
-    fn new_with_config(config: &serde_yaml::Value, command_config: &serde_yaml::Value) -> Self {
+    fn new_with_config(command_config: &serde_yaml::Value) -> Self {
         let mut resolvers = Vec::new();
         let mut resolver_map = HashMap::new();
 
@@ -94,7 +88,7 @@ impl NameResolvers {
         }
 
         // 設定ファイルから各セクションのエイリアスを読み込む
-        for cfg in [config, command_config].iter() {
+        for cfg in [command_config].iter() {
             let Some(map) = cfg.as_mapping() else { 
                 if cfg!(test) { println!("設定がマッピングではありません"); }
                 continue;
