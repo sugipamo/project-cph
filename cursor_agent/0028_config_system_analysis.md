@@ -156,3 +156,58 @@ let config_builder = Config::builder()
    - 設定ファイルのスキーマ定義
    - 使用例の追加
    - エラーメッセージの日本語化 
+
+## 6. 既存の設定ファイル分析
+
+### 6.1 Docker関連の設定構造
+```yaml
+docker:
+  timeout_seconds: ${CPH_DOCKER_TIMEOUT-10}
+  memory_limit_mb: ${CPH_DOCKER_MEMORY-256}
+  mount_point: "/compile"
+```
+
+### 6.2 言語固有のDocker設定
+```yaml
+languages:
+  rust:
+    runner:
+      image: "${CPH_RUST_IMAGE-rust:latest}"
+      compile: ["rustc", "main.rs"]
+      run: ["./main"]
+      require_files: ["Cargo.toml"]
+      env_vars:
+        - "RUST_BACKTRACE=1"
+```
+
+### 6.3 環境変数による設定カスタマイズ
+- `CPH_DOCKER_TIMEOUT`: タイムアウト時間
+- `CPH_DOCKER_MEMORY`: メモリ制限
+- `CPH_RUST_IMAGE`: Rustコンテナイメージ
+- その他言語固有の環境変数
+
+### 6.4 設定の再利用
+- アンカー（`&lang_base`）を使用した設定の継承
+- 言語間での共通設定の再利用
+- オーバーライド可能なデフォルト値の提供
+
+## 7. 結論
+
+現状の設定ファイルは、Docker関連の機能を十分にカバーしており、以下の利点があります：
+
+1. **柔軟な設定構造**
+   - 言語ごとの個別設定
+   - 共通設定の継承
+   - 環境変数によるカスタマイズ
+
+2. **運用性**
+   - デフォルト値の提供
+   - 環境変数による上書き
+   - 設定の再利用性
+
+3. **拡張性**
+   - 新しい言語の追加が容易
+   - Docker設定のカスタマイズが容易
+   - 言語固有の要件に対応可能
+
+提案された設定システムの改善は、この既存の設定構造を活かしつつ、型安全性と保守性を向上させることが可能です。 
