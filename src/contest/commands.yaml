@@ -20,14 +20,14 @@ settings:
     
   language:
     rust:
-      aliases: ["rs", "Rust", "RUST"]
+      aliases: ["rust", "rs", "Rust", "RUST"]
     python:
-      aliases: ["python3"]
+      aliases: ["python", "python3"]
     pypy:
-      aliases: ["py", "pypy3", "PyPy", "PYPY"]
+      aliases: ["pypy", "py", "pypy3", "PyPy", "PYPY"]
     cpp:
-      aliases: ["c++", "gcc"]
+      aliases: ["cpp", "c++", "gcc"]
 
   site:
     atcoder:
-      aliases: ["ac", "at-coder", "at_coder", "AtCoder"]
+      aliases: ["atcoder", "ac", "at-coder", "at_coder", "AtCoder"]
