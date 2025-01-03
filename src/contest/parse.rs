@@ -98,6 +98,46 @@ impl NameResolver {
         }
     }
 
+    fn try_resolve_setting(
+        &self,
+        setting: &Value,
+        token: &str,
+    ) -> Result<Option<String>, ParseError> {
+        if let Value::Mapping(setting_map) = setting {
+            // 設定の種類を判断
+            let has_priority = setting_map.contains_key("priority");
+            let has_inner_settings = setting_map.values().any(|v| {
+                if let Value::Mapping(m) = v {
+                    m.contains_key("aliases")
+                } else {
+                    false
+                }
+            });
+
+            if has_priority && !has_inner_settings {
+                // コンテストと問題の場合は直接トークンをマッチング
+                return Ok(Some(token.to_string()));
+            } else {
+                // 言語とサイトの場合はエイリアスをチェック
+                for (name, config) in setting_map {
+                    if let Value::Mapping(config_map) = config {
+                        if let Some(Value::Sequence(aliases)) = config_map.get("aliases") {
+                            let aliases: Vec<String> = aliases.iter()
+                                .filter_map(|v| v.as_str())
+                                .map(|s| s.to_lowercase())
+                                .collect();
+
+                            if aliases.contains(&token.to_lowercase()) {
+                                return Ok(Some(name.as_str().unwrap_or_default().to_string()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(None)
+    }
+
     pub fn resolve(&self, input: &str) -> Result<ResolvedCommand, ParseError> {
         // 空白の正規化と分割
         let tokens: Vec<&str> = input
@@ -111,7 +151,6 @@ impl NameResolver {
         // コマンドの解決
         let mut commands = Vec::new();
         let mut current_pos = 0;
-        let mut remaining_tokens = Vec::new();
 
         while current_pos < tokens.len() {
             let token = tokens[current_pos].to_lowercase();
@@ -119,7 +158,6 @@ impl NameResolver {
                 commands.push(command.name.clone());
                 current_pos += 1;
             } else {
-                // コマンドとして解決できないトークンは残りの引数として扱う
                 break;
             }
         }
@@ -129,77 +167,45 @@ impl NameResolver {
         }
 
         // 残りのトークンを収集
-        remaining_tokens.extend(tokens[current_pos..].iter().map(|&s| s.to_string()));
-
-        // 設定値の解決
+        let mut remaining_tokens: Vec<String> = tokens[current_pos..].iter().map(|&s| s.to_string()).collect();
         let mut args = HashMap::new();
-        let mut unresolved_tokens = remaining_tokens.clone();
 
-        // 優先度順に設定値を解決
-        let mut priorities: Vec<(String, i32)> = Vec::new();
-        for (key, value) in &self.settings {
-            if let Value::Mapping(setting) = value {
-                if let Some(Value::Number(priority)) = setting.get("priority") {
-                    if let Some(priority) = priority.as_i64() {
-                        priorities.push((key.clone(), priority as i32));
-                    }
-                }
-            }
-        }
-
-        // 優先度の高い（数値が大きい）順にソート
-        priorities.sort_by(|a, b| b.1.cmp(&a.1));
-
-        for (setting_name, _) in priorities {
-            if let Some(setting_value) = self.settings.get(&setting_name) {
-                if unresolved_tokens.is_empty() {
-                    break;
+        // 言語とサイトの解決
+        let mut i = 0;
+        while i < remaining_tokens.len() {
+            let mut token_resolved = false;
+            
+            for (setting_name, setting_value) in &self.settings {
+                if setting_name == "contest" || setting_name == "problem" {
+                    continue;
                 }
 
                 if let Some(resolved_value) = self.try_resolve_setting(
                     setting_value,
-                    &unresolved_tokens[0],
+                    &remaining_tokens[i],
                 )? {
                     args.insert(setting_name.clone(), resolved_value);
-                    unresolved_tokens.remove(0);
+                    remaining_tokens.remove(i);
+                    token_resolved = true;
+                    break;
                 }
+            }
+
+            if !token_resolved {
+                i += 1;
             }
         }
 
-        // 未解決のトークンがある場合は問題IDとして扱う
-        if !unresolved_tokens.is_empty() {
-            args.insert("problem_id".to_string(), unresolved_tokens.join(" "));
+        // コンテストと問題の解決
+        if remaining_tokens.len() >= 2 {
+            args.insert("contest".to_string(), remaining_tokens[0].clone());
+            args.insert("problem".to_string(), remaining_tokens[1].clone());
+        } else if !remaining_tokens.is_empty() {
+            // 解決できなかったトークンは問題IDとして扱う
+            args.insert("problem_id".to_string(), remaining_tokens.join(" "));
         }
 
         Ok(ResolvedCommand { commands, args })
-    }
-
-    fn try_resolve_setting(
-        &self,
-        setting: &Value,
-        token: &str,
-    ) -> Result<Option<String>, ParseError> {
-        if let Value::Mapping(setting_map) = setting {
-            for (name, config) in setting_map {
-                if let (Some(name_str), Value::Mapping(config_map)) = (name.as_str(), config) {
-                    if name_str == "priority" {
-                        continue;
-                    }
-
-                    if let Some(Value::Sequence(aliases)) = config_map.get("aliases") {
-                        let aliases: Vec<String> = aliases.iter()
-                            .filter_map(|v| v.as_str())
-                            .map(|s| s.to_lowercase())
-                            .collect();
-
-                        if aliases.contains(&token.to_lowercase()) {
-                            return Ok(Some(name_str.to_string()));
-                        }
-                    }
-                }
-            }
-        }
-        Ok(None)
     }
 }
 
@@ -211,72 +217,167 @@ mod tests {
         Config::load_from_file("src/contest/commands.yaml").unwrap()
     }
 
-    #[test]
-    fn test_command_resolution() {
-        let config = create_test_config();
-        let resolver = NameResolver::new(&config).unwrap();
+    mod command_tests {
+        use super::*;
 
-        // 基本的なコマンド解決
-        let result = resolver.resolve("login").unwrap();
-        assert_eq!(result.commands, vec!["login"]);
+        #[test]
+        fn test_single_command() {
+            let config = create_test_config();
+            let resolver = NameResolver::new(&config).unwrap();
 
-        // エイリアスの解決
-        let result = resolver.resolve("auth").unwrap();
-        assert_eq!(result.commands, vec!["login"]);
+            let result = resolver.resolve("login").unwrap();
+            assert_eq!(result.commands, vec!["login"]);
+        }
 
-        // 複数のコマンド
-        let result = resolver.resolve("login test").unwrap();
-        assert_eq!(result.commands, vec!["login", "test"]);
+        #[test]
+        fn test_command_alias() {
+            let config = create_test_config();
+            let resolver = NameResolver::new(&config).unwrap();
+
+            let result = resolver.resolve("auth").unwrap();
+            assert_eq!(result.commands, vec!["login"]);
+
+            let result = resolver.resolve("o").unwrap();
+            assert_eq!(result.commands, vec!["open"]);
+        }
+
+        #[test]
+        fn test_multiple_commands() {
+            let config = create_test_config();
+            let resolver = NameResolver::new(&config).unwrap();
+
+            let result = resolver.resolve("login test").unwrap();
+            assert_eq!(result.commands, vec!["login", "test"]);
+        }
     }
 
-    #[test]
-    fn test_argument_resolution() {
-        let config = create_test_config();
-        let resolver = NameResolver::new(&config).unwrap();
+    mod argument_tests {
+        use super::*;
 
-        // 言語の解決
-        let result = resolver.resolve("test rs abc001_a").unwrap();
-        assert_eq!(result.args.get("language").unwrap(), "rust");
+        #[test]
+        fn test_language_resolution() {
+            let config = create_test_config();
+            let resolver = NameResolver::new(&config).unwrap();
 
-        // サイトの解決
-        let result = resolver.resolve("login ac").unwrap();
-        assert_eq!(result.args.get("site").unwrap(), "atcoder");
+            // 基本的な言語解決
+            let result = resolver.resolve("test rs abc001 a").unwrap();
+            assert_eq!(result.args.get("language").unwrap(), "rust");
 
-        // 問題IDの解決
-        let result = resolver.resolve("test abc001_a").unwrap();
-        assert_eq!(result.args.get("problem_id").unwrap(), "abc001_a");
+            // 大文字小文字の違いを無視
+            let result = resolver.resolve("test RUST abc001 a").unwrap();
+            assert_eq!(result.args.get("language").unwrap(), "rust");
+
+            // 別のエイリアス
+            let result = resolver.resolve("test python3 abc001 a").unwrap();
+            assert_eq!(result.args.get("language").unwrap(), "python");
+        }
+
+        #[test]
+        fn test_site_resolution() {
+            let config = create_test_config();
+            let resolver = NameResolver::new(&config).unwrap();
+
+            // 基本的なサイト解決
+            let result = resolver.resolve("login ac").unwrap();
+            assert_eq!(result.args.get("site").unwrap(), "atcoder");
+
+            // エイリアスの解決
+            let result = resolver.resolve("login at-coder").unwrap();
+            assert_eq!(result.args.get("site").unwrap(), "atcoder");
+        }
+
+        #[test]
+        fn test_problem_id_resolution() {
+            let config = create_test_config();
+            let resolver = NameResolver::new(&config).unwrap();
+
+            // コンテストと問題の形式
+            let result = resolver.resolve("test abc001 a").unwrap();
+            assert!(result.args.contains_key("contest"));
+            assert!(result.args.contains_key("problem"));
+            assert_eq!(result.args.get("contest").unwrap(), "abc001");
+            assert_eq!(result.args.get("problem").unwrap(), "a");
+
+            // 未解決の場合は問題IDとして扱う
+            let result = resolver.resolve("test other_format").unwrap();
+            assert_eq!(result.args.get("problem_id").unwrap(), "other_format");
+        }
     }
 
-    #[test]
-    fn test_priority_resolution() {
-        let config = create_test_config();
-        let resolver = NameResolver::new(&config).unwrap();
+    mod priority_tests {
+        use super::*;
 
-        // 優先度に基づく解決
-        let result = resolver.resolve("test abc001 a").unwrap();
-        assert_eq!(result.args.get("contest").unwrap(), "abc001");
-        assert_eq!(result.args.get("problem").unwrap(), "a");
+        #[test]
+        fn test_contest_priority() {
+            let config = create_test_config();
+            let resolver = NameResolver::new(&config).unwrap();
+
+            let result = resolver.resolve("test abc001 a").unwrap();
+            assert_eq!(result.args.get("contest").unwrap(), "abc001");
+        }
+
+        #[test]
+        fn test_problem_priority() {
+            let config = create_test_config();
+            let resolver = NameResolver::new(&config).unwrap();
+
+            let result = resolver.resolve("test abc001 a").unwrap();
+            assert_eq!(result.args.get("problem").unwrap(), "a");
+        }
+
+        #[test]
+        fn test_multiple_settings_priority() {
+            let config = create_test_config();
+            let resolver = NameResolver::new(&config).unwrap();
+
+            let result = resolver.resolve("test rs abc001 a").unwrap();
+            assert!(result.args.contains_key("language"));
+            assert!(result.args.contains_key("contest"));
+            assert!(result.args.contains_key("problem"));
+        }
     }
 
-    #[test]
-    fn test_invalid_inputs() {
-        let config = create_test_config();
-        let resolver = NameResolver::new(&config).unwrap();
+    mod error_tests {
+        use super::*;
 
-        // 無効なコマンド
-        assert!(matches!(
-            resolver.resolve("invalid"),
-            Err(ParseError::InvalidCommand(_))
-        ));
+        #[test]
+        fn test_empty_input() {
+            let config = create_test_config();
+            let resolver = NameResolver::new(&config).unwrap();
 
-        // 空のコマンド
-        assert!(matches!(
-            resolver.resolve(""),
-            Err(ParseError::InvalidCommand(_))
-        ));
+            assert!(matches!(
+                resolver.resolve(""),
+                Err(ParseError::InvalidCommand(_))
+            ));
+        }
 
-        // 無効なサイト名
-        let result = resolver.resolve("login invalid_site").unwrap();
-        assert!(!result.args.contains_key("site"));
+        #[test]
+        fn test_invalid_command() {
+            let config = create_test_config();
+            let resolver = NameResolver::new(&config).unwrap();
+
+            assert!(matches!(
+                resolver.resolve("invalid"),
+                Err(ParseError::InvalidCommand(_))
+            ));
+        }
+
+        #[test]
+        fn test_invalid_site() {
+            let config = create_test_config();
+            let resolver = NameResolver::new(&config).unwrap();
+
+            let result = resolver.resolve("login invalid_site").unwrap();
+            assert!(!result.args.contains_key("site"));
+        }
+
+        #[test]
+        fn test_invalid_language() {
+            let config = create_test_config();
+            let resolver = NameResolver::new(&config).unwrap();
+
+            let result = resolver.resolve("test invalid_lang abc001_a").unwrap();
+            assert!(!result.args.contains_key("language"));
+        }
     }
 } 
