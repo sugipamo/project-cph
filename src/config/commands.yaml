@@ -1,20 +1,31 @@
 parameter_types:
-  - name: test
-    pattern: "test"
-    config_key: "test"
-  - name: submit
-    pattern: "submit"
-    config_key: "submit"
-  - name: site_id
-    pattern: "site"
-    config_key: "sites"
-  - name: language
-    pattern: "language"
-    config_key: "languages"
-  - name: contest
-    pattern: "contest_id"
-  - name: problem
-    pattern: "problem_id"
+  init:
+    aliases: ["init", "i", "create"]
+    execute: "init"
+  login:
+    aliases: ["login", "auth"]
+    execute: "login"
+  open:
+    aliases: ["open", "o", "show"]
+    execute: "open"
+  test:
+    aliases: ["test", "t", "check"]
+    execute: "test"
+  submit:
+    aliases: ["submit", "s", "sub"]
+    execute: "submit"
+  language:
+    rust:
+      aliases: ["rs", "Rust", "RUST"]
+    python:
+      aliases: ["py", "python3"]
+    pypy:
+      aliases: ["pypy3", "PyPy", "PYPY"]
+    cpp:
+      aliases: ["c++", "gcc"]
+  site:
+    atcoder:
+      aliases: ["ac", "at-coder", "at_coder", "AtCoder"]
 
 ordered:
   - ["site_id", "command", "problem_id"]
