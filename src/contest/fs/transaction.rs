@@ -1,0 +1,104 @@
+use std::path::{Path, PathBuf};
+use crate::contest::error::{Result, ContestError, ErrorContext};
+use super::backup::BackupManager;
+use std::collections::VecDeque;
+
+/// ファイルシステム操作のトランザクション
+#[derive(Debug)]
+pub struct FileTransaction {
+    /// 実行予定の操作キュー
+    operations: VecDeque<Box<dyn FileOperation>>,
+    /// バックアップマネージャー
+    backup: BackupManager,
+    /// トランザクションの状態
+    state: TransactionState,
+    /// エラーコンテキスト
+    context: ErrorContext,
+}
+
+/// トランザクションの状態
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TransactionState {
+    /// 初期状態
+    Initial,
+    /// 実行中
+    InProgress,
+    /// コミット済み
+    Committed,
+    /// ロールバック済み
+    RolledBack,
+}
+
+/// ファイル操作のトレイト
+pub trait FileOperation: std::fmt::Debug {
+    /// 操作を実行
+    fn execute(&self) -> Result<()>;
+    /// 操作を取り消し
+    fn rollback(&self) -> Result<()>;
+    /// 操作の説明を取得
+    fn description(&self) -> String;
+}
+
+impl FileTransaction {
+    /// 新しいトランザクションを作成
+    pub fn new(operation_name: impl Into<String>) -> Result<Self> {
+        Ok(Self {
+            operations: VecDeque::new(),
+            backup: BackupManager::new()?,
+            state: TransactionState::Initial,
+            context: ErrorContext::new(operation_name, "FileTransaction"),
+        })
+    }
+
+    /// 操作を追加
+    pub fn add_operation(&mut self, operation: impl FileOperation + 'static) -> &mut Self {
+        self.operations.push_back(Box::new(operation));
+        self
+    }
+
+    /// トランザクションを実行
+    pub fn execute(&mut self) -> Result<()> {
+        if self.state != TransactionState::Initial {
+            return Err(ContestError::Transaction {
+                message: "トランザクションは既に実行されています".to_string(),
+                context: self.context.clone(),
+            });
+        }
+
+        self.state = TransactionState::InProgress;
+        
+        // バックアップを作成
+        self.backup.create(&PathBuf::from("."))?;
+
+        // 全ての操作を実行
+        while let Some(operation) = self.operations.pop_front() {
+            if let Err(e) = operation.execute() {
+                // エラーが発生した場合はロールバック
+                self.rollback()?;
+                return Err(e);
+            }
+        }
+
+        self.state = TransactionState::Committed;
+        self.backup.cleanup()?;
+        Ok(())
+    }
+
+    /// トランザクションをロールバック
+    pub fn rollback(&mut self) -> Result<()> {
+        if self.state != TransactionState::InProgress {
+            return Ok(());
+        }
+
+        // バックアップから復元
+        self.backup.restore()?;
+        self.state = TransactionState::RolledBack;
+        self.backup.cleanup()?;
+        Ok(())
+    }
+
+    /// 現在の状態を取得
+    pub fn state(&self) -> TransactionState {
+        self.state
+    }
+} 

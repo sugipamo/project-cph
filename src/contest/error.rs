@@ -1,59 +1,91 @@
 use std::path::PathBuf;
+use std::error::Error as StdError;
+use thiserror::Error;
 
 /// コンテスト操作に関するエラー
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum ContestError {
-    /// ファイル操作エラー
-    FileError {
-        source: std::io::Error,
-        path: PathBuf,
+    #[error("設定エラー: {message}")]
+    Config { 
+        message: String,
+        source: Option<Box<dyn StdError + Send + Sync>>
     },
-    /// 設定エラー
-    ConfigError(String),
-    /// バリデーションエラー
-    ValidationError(String),
-}
 
-impl std::fmt::Display for ContestError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::FileError { source, path } => {
-                write!(f, "ファイル操作エラー ({}): {}", path.display(), source)
-            }
-            Self::ConfigError(msg) => write!(f, "設定エラー: {}", msg),
-            Self::ValidationError(msg) => write!(f, "検証エラー: {}", msg),
-        }
-    }
-}
+    #[error("ファイルシステムエラー: {message}, パス: {path:?}")]
+    FileSystem {
+        message: String,
+        source: std::io::Error,
+        path: PathBuf
+    },
 
-impl std::error::Error for ContestError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::FileError { source, .. } => Some(source),
-            _ => None,
-        }
+    #[error("検証エラー: {message}")]
+    Validation {
+        message: String
+    },
+
+    #[error("バックアップエラー: {message}, パス: {path:?}")]
+    Backup {
+        message: String,
+        path: PathBuf,
+        source: Option<Box<dyn StdError + Send + Sync>>
+    },
+
+    #[error("トランザクションエラー: {message}")]
+    Transaction {
+        message: String,
+        context: ErrorContext
     }
 }
 
 impl From<std::io::Error> for ContestError {
-    fn from(error: std::io::Error) -> Self {
-        Self::FileError {
-            source: error,
-            path: PathBuf::from("."),
+    fn from(err: std::io::Error) -> Self {
+        ContestError::FileSystem {
+            message: err.to_string(),
+            source: err,
+            path: PathBuf::new()
         }
     }
 }
 
 impl From<serde_yaml::Error> for ContestError {
-    fn from(error: serde_yaml::Error) -> Self {
-        Self::ConfigError(error.to_string())
+    fn from(err: serde_yaml::Error) -> Self {
+        ContestError::Config {
+            message: err.to_string(),
+            source: Some(Box::new(err))
+        }
     }
 }
 
 impl From<String> for ContestError {
-    fn from(error: String) -> Self {
-        Self::ConfigError(error)
+    fn from(message: String) -> Self {
+        ContestError::Validation {
+            message
+        }
     }
 }
 
+/// エラーのコンテキスト情報
+#[derive(Debug, Clone)]
+pub struct ErrorContext {
+    pub operation: String,
+    pub location: String,
+    pub details: std::collections::HashMap<String, String>,
+}
+
+impl ErrorContext {
+    pub fn new(operation: impl Into<String>, location: impl Into<String>) -> Self {
+        Self {
+            operation: operation.into(),
+            location: location.into(),
+            details: std::collections::HashMap::new(),
+        }
+    }
+
+    pub fn add_detail(&mut self, key: impl Into<String>, value: impl Into<String>) -> &mut Self {
+        self.details.insert(key.into(), value.into());
+        self
+    }
+}
+
+/// Result型のエイリアス
 pub type Result<T> = std::result::Result<T, ContestError>; 
