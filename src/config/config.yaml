@@ -114,5 +114,5 @@ sites:
 
   atcoder:
     <<: *site_base
-    problem_url: "https://atcoder.jp/contests/{contest_id}/tasks/{problem_id}"
-    submit_url: "https://atcoder.jp/contests/{contest_id}/submit" 
+    problem_url: "https://atcoder.jp/contests/{contest}/tasks/{contest}_{problem}"
+    submit_url: "https://atcoder.jp/contests/{contest}/submit?taskScreenName={contest}_{problem}"
