@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use colored::*;
 use std::process::Command;
 use std::env;
-use crate::contest::Contest;
 use users;
 use std::os::unix::fs::PermissionsExt;
 use dirs;
@@ -48,15 +47,15 @@ pub struct ProblemInfo {
 
 pub struct OJContainer {
     workspace_path: PathBuf,
-    contest: Contest,
+    site_name: String,
     config: Config,
 }
 
 impl OJContainer {
-    pub fn new(workspace_path: PathBuf, contest: Contest) -> Result<Self> {
+    pub fn new(workspace_path: PathBuf, site_name: String) -> Result<Self> {
         let config = Config::load()
             .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
-        Ok(Self { workspace_path, contest, config })
+        Ok(Self { workspace_path, site_name, config })
     }
 
     fn get_dockerfile_path() -> PathBuf {
@@ -156,8 +155,8 @@ impl OJContainer {
 
     pub async fn login(&self) -> Result<()> {
         // サイトのURLを取得
-        let url = self.config.get::<String>(&format!("sites.{}.url", self.contest.site))?;
-        let name = self.config.get::<String>(&format!("sites.{}.name", self.contest.site))?;
+        let url = self.config.get::<String>(&format!("sites.{}.url", self.site_name))?;
+        let name = self.config.get::<String>(&format!("sites.{}.name", self.site_name))?;
 
         println!("{}", format!("Logging in to {}...", name).cyan());
 

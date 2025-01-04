@@ -96,7 +96,7 @@ pub enum ConfigError {
     PathError(String),
     AliasError(String),
     EnvError(String),
-    RequiredValueError(String),  // 必須の設定値が未設定の場合のエラー
+    RequiredValueError(String),
 }
 
 impl From<io::Error> for ConfigError {
@@ -108,6 +108,16 @@ impl From<io::Error> for ConfigError {
 impl From<serde_yaml::Error> for ConfigError {
     fn from(err: serde_yaml::Error) -> Self {
         ConfigError::ParseError(err)
+    }
+}
+
+impl std::error::Error for ConfigError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            ConfigError::IoError(err) => Some(err),
+            ConfigError::ParseError(err) => Some(err),
+            _ => None,
+        }
     }
 }
 
@@ -670,16 +680,6 @@ impl std::fmt::Display for ConfigError {
             ConfigError::AliasError(msg) => write!(f, "エイリアスエラー: {}", msg),
             ConfigError::EnvError(msg) => write!(f, "環境変数エラー: {}", msg),
             ConfigError::RequiredValueError(msg) => write!(f, "設定エラー: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for ConfigError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            ConfigError::IoError(err) => Some(err),
-            ConfigError::ParseError(err) => Some(err),
-            _ => None,
         }
     }
 }

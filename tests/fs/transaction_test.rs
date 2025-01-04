@@ -7,6 +7,7 @@ use crate::contest::fs::{
     RemoveOperation,
     TransactionState,
 };
+use cph::contest::error::{ContestError, Result};
 
 #[tokio::test]
 async fn test_transaction_basic_operations() -> anyhow::Result<()> {
@@ -145,4 +146,109 @@ async fn test_complex_transaction() -> anyhow::Result<()> {
     assert_eq!(std::fs::read_to_string(&file2)?, "content2");
 
     Ok(())
+}
+
+#[derive(Debug)]
+struct TestOperation {
+    should_fail: bool,
+    description: String,
+}
+
+impl TestOperation {
+    fn new(should_fail: bool, description: impl Into<String>) -> Self {
+        Self {
+            should_fail,
+            description: description.into(),
+        }
+    }
+}
+
+impl FileOperation for TestOperation {
+    fn execute(&self) -> Result<()> {
+        if self.should_fail {
+            Err(ContestError::FileSystem {
+                message: "テスト用のエラー".to_string(),
+                source: std::io::Error::new(std::io::ErrorKind::Other, "テストエラー"),
+                path: PathBuf::from("test.txt"),
+            })
+        } else {
+            Ok(())
+        }
+    }
+
+    fn rollback(&self) -> Result<()> {
+        Ok(())
+    }
+
+    fn description(&self) -> String {
+        self.description.clone()
+    }
+}
+
+#[test]
+fn test_transaction_error_handling() {
+    let mut transaction = FileTransaction::new("テストトランザクション").unwrap();
+    
+    // 成功する操作を追加
+    transaction.add_operation(TestOperation::new(false, "成功する操作"));
+    
+    // 失敗する操作を追加
+    transaction.add_operation(TestOperation::new(true, "失敗する操作"));
+    
+    // トランザクションを実行
+    let result = transaction.execute();
+    
+    // エラーを検証
+    match result {
+        Err(ContestError::FileSystem { message, .. }) => {
+            assert!(message.contains("テスト用のエラー"));
+        }
+        _ => panic!("expected FileSystem error"),
+    }
+    
+    // トランザクションの状態を確認
+    assert_eq!(transaction.state(), TransactionState::RolledBack);
+}
+
+#[test]
+fn test_transaction_already_executed() {
+    let mut transaction = FileTransaction::new("テストトランザクション").unwrap();
+    
+    // 成功する操作を追加して実行
+    transaction.add_operation(TestOperation::new(false, "成功する操作"));
+    transaction.execute().unwrap();
+    
+    // 再度実行を試みる
+    let result = transaction.execute();
+    
+    // エラーを検証
+    match result {
+        Err(ContestError::Transaction { message, context }) => {
+            assert!(message.contains("既に実行されています"));
+            assert!(context.details.get("hint").unwrap().contains("一度だけ実行できます"));
+            
+            #[cfg(debug_assertions)]
+            assert!(context.details.contains_key("stack_trace"));
+        }
+        _ => panic!("expected Transaction error"),
+    }
+}
+
+#[test]
+fn test_transaction_error_context() {
+    let mut transaction = FileTransaction::new("テストトランザクション").unwrap();
+    transaction.add_operation(TestOperation::new(true, "エラーを発生させる操作"));
+    
+    let result = transaction.execute();
+    
+    match result {
+        Err(e) => {
+            let error_string = format!("{}", e);
+            assert!(error_string.contains("テスト用のエラー"));
+            assert!(error_string.contains("トランザクション操作の実行"));
+            assert!(error_string.contains("エラーを発生させる操作"));
+            assert!(error_string.contains("操作をロールバックしました"));
+        }
+        _ => panic!("expected error"),
+    }
 } 

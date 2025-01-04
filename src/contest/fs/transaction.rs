@@ -61,26 +61,47 @@ impl FileTransaction {
         if self.state != TransactionState::Initial {
             return Err(ContestError::Transaction {
                 message: "トランザクションは既に実行されています".to_string(),
-                context: self.context.clone(),
+                context: self.context.clone()
+                    .with_hint("トランザクションは一度だけ実行できます")
+                    .with_stack_trace(),
             });
         }
 
         self.state = TransactionState::InProgress;
         
         // バックアップを作成
-        self.backup.create(&PathBuf::from("."))?;
+        if let Err(e) = self.backup.create(&PathBuf::from(".")) {
+            return Err(e.with_context("バックアップの作成", ".")
+                .add_hint("バックアップディレクトリの権限を確認してください"));
+        }
 
         // 全ての操作を実行
         while let Some(operation) = self.operations.pop_front() {
             if let Err(e) = operation.execute() {
                 // エラーが発生した場合はロールバック
-                self.rollback()?;
-                return Err(e);
+                if let Err(rollback_err) = self.rollback() {
+                    return Err(ContestError::Transaction {
+                        message: format!(
+                            "操作の実行とロールバックの両方が失敗しました: {} / {}",
+                            e, rollback_err
+                        ),
+                        context: self.context.clone()
+                            .with_hint("システム管理者に連絡してください")
+                            .with_stack_trace(),
+                    });
+                }
+                return Err(e.with_context(
+                    "トランザクション操作の実行",
+                    operation.description()
+                ).add_hint("操作をロールバックしました"));
             }
         }
 
         self.state = TransactionState::Committed;
-        self.backup.cleanup()?;
+        if let Err(e) = self.backup.cleanup() {
+            return Err(e.with_context("バックアップのクリーンアップ", ".")
+                .add_hint("バックアップファイルの削除に失敗しましたが、操作自体は成功しています"));
+        }
         Ok(())
     }
 
@@ -91,9 +112,15 @@ impl FileTransaction {
         }
 
         // バックアップから復元
-        self.backup.restore()?;
+        if let Err(e) = self.backup.restore() {
+            return Err(e.with_context("バックアップの復元", ".")
+                .add_hint("システムの状態が不整合である可能性があります"));
+        }
         self.state = TransactionState::RolledBack;
-        self.backup.cleanup()?;
+        if let Err(e) = self.backup.cleanup() {
+            return Err(e.with_context("バックアップのクリーンアップ", ".")
+                .add_hint("バックアップファイルの削除に失敗しましたが、ロールバックは成功しています"));
+        }
         Ok(())
     }
 
