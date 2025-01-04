@@ -193,15 +193,15 @@ impl Contest {
     }
 
     /// コンテストの設定を保存
-    pub fn save(&self) -> Result<()> {
+    pub fn save(&mut self) -> Result<()> {
         let config_file = self.config.get::<String>("system.active_contest_yaml")
             .map_err(|e| ContestError::ConfigError(
                 format!("コンテスト設定ファイル名の取得に失敗: {}", e)
             ))?;
-        let config_path = self.active_contest_dir.join(&config_file);
+        let config_path = self.get_absolute_contest_dir()?.join(&config_file);
 
         // FileManagerを使用してバックアップを作成
-        if let Some(file_manager) = &self.file_manager {
+        if let Some(file_manager) = &mut self.file_manager {
             file_manager.backup(&self.active_contest_dir)?;
         }
 
@@ -232,7 +232,7 @@ impl Contest {
         }
 
         // 成功した場合、バックアップをクリーンアップ
-        if let Some(file_manager) = &self.file_manager {
+        if let Some(file_manager) = &mut self.file_manager {
             file_manager.cleanup()?;
         }
 
@@ -241,21 +241,26 @@ impl Contest {
 
     /// テンプレートディレクトリのパスを取得
     fn get_template_dir(&self, language: &str) -> Result<PathBuf> {
-        let template_pattern = self.config.get::<String>("system.templates.directory")
+        let template_dir = self.config.get::<String>(&format!("languages.{}.templates.directory", language))
             .map_err(|e| ContestError::ConfigError(
-                format!("テンプレートパターンの取得に失敗: {}", e)
+                format!("テンプレートディレクトリの設定取得に失敗: {}", e)
             ))?;
+        
         let template_base = self.config.get::<String>("system.contest_dir.template")
             .map_err(|e| ContestError::ConfigError(
                 format!("テンプレートディレクトリの設定取得に失敗: {}", e)
             ))?;
         
-        let template_dir_name = template_pattern.replace("{name}", language);
-        Ok(self.get_absolute_contest_dir()?
-            .parent()
-            .unwrap()
-            .join(template_base)
-            .join(template_dir_name))
+        let template_path = PathBuf::from(template_base).join(template_dir);
+        if !template_path.exists() {
+            fs::create_dir_all(&template_path)
+                .map_err(|e| ContestError::FileError {
+                    source: e,
+                    path: template_path.clone(),
+                })?;
+        }
+        
+        Ok(template_path)
     }
 
     /// コンテスト保存用ディレクトリのパスを取得
@@ -282,13 +287,13 @@ impl Contest {
                 format!("言語{}の拡張子取得に失敗: {}", language, e)
             ))?;
 
-        let pattern = self.config.get::<String>(&format!("system.templates.patterns.{}", file_type))
+        let pattern = self.config.get::<String>(&format!("languages.{}.templates.patterns.{}", language, file_type))
             .map_err(|e| ContestError::ConfigError(
                 format!("ファイルパターンの取得に失敗: {}", e)
             ))?;
 
         let file_name = pattern.replace("{extension}", &extension);
-        Ok(self.active_contest_dir.join(problem_id).join(file_name))
+        Ok(self.get_absolute_contest_dir()?.join(problem_id).join(file_name))
     }
 
     /// ソリューションファイルのパスを取得
@@ -315,12 +320,30 @@ impl Contest {
 
     /// パス解決のためのヘルパーメソッド
     fn get_absolute_contest_dir(&self) -> Result<PathBuf> {
-        std::env::current_dir()
+        let current_dir = std::env::current_dir()
             .map_err(|e| ContestError::FileError {
                 source: e,
                 path: PathBuf::from("."),
-            })?
-            .join(&self.active_contest_dir)
+            })?;
+        
+        if !current_dir.exists() {
+            fs::create_dir_all(&current_dir)
+                .map_err(|e| ContestError::FileError {
+                    source: e,
+                    path: current_dir.clone(),
+                })?;
+        }
+        
+        let absolute_path = current_dir.join(&self.active_contest_dir);
+        if !absolute_path.exists() {
+            fs::create_dir_all(&absolute_path)
+                .map_err(|e| ContestError::FileError {
+                    source: e,
+                    path: absolute_path.clone(),
+                })?;
+        }
+        
+        Ok(absolute_path)
     }
 
     /// ディレクトリ内容を再帰的にコピー
@@ -370,13 +393,13 @@ impl Contest {
     }
 
     /// ファイルをcontestsディレクトリに移動
-    fn move_files_to_contests(&self) -> Result<()> {
+    fn move_files_to_contests(&mut self) -> Result<()> {
         let _ignore_patterns = self.read_moveignore()?;
         
         let contests_dir = self.get_contests_dir()?;
 
         // FileManagerを使用してバックアップを作成
-        if let Some(file_manager) = &self.file_manager {
+        if let Some(file_manager) = &mut self.file_manager {
             file_manager.backup(&contests_dir)?;
         }
 
@@ -409,7 +432,7 @@ impl Contest {
         }
 
         // 成功した場合、バックアップをクリーンアップ
-        if let Some(file_manager) = &self.file_manager {
+        if let Some(file_manager) = &mut self.file_manager {
             file_manager.cleanup()?;
         }
 
@@ -469,24 +492,22 @@ impl Contest {
             ))?;
 
         let template_dir = self.get_template_dir(language)?;
-        let problem_dir = self.active_contest_dir.join(problem_id);
+        let problem_dir = self.get_absolute_contest_dir()?.join(problem_id);
 
-        if !problem_dir.exists() {
-            fs::create_dir_all(&problem_dir)
-                .map_err(|e| ContestError::FileError {
-                    source: e,
-                    path: problem_dir.clone(),
-                })?;
-        }
+        // 問題ディレクトリの作成
+        fs::create_dir_all(&problem_dir)
+            .map_err(|e| ContestError::FileError {
+                source: e,
+                path: problem_dir.clone(),
+            })?;
 
+        // テストディレクトリの作成
         let test_dir = self.get_test_dir(problem_id)?;
-        if !test_dir.exists() {
-            fs::create_dir_all(&test_dir)
-                .map_err(|e| ContestError::FileError {
-                    source: e,
-                    path: test_dir.clone(),
-                })?;
-        }
+        fs::create_dir_all(&test_dir)
+            .map_err(|e| ContestError::FileError {
+                source: e,
+                path: test_dir.clone(),
+            })?;
 
         if !template_dir.exists() {
             return Err(ContestError::ValidationError(
@@ -500,7 +521,64 @@ impl Contest {
 
         self.copy_dir_contents(&template_dir, &problem_dir)?;
 
+        // ディレクトリの存在を確認
+        if !problem_dir.exists() {
+            return Err(ContestError::ValidationError(
+                format!("問題ディレクトリの作成に失敗しました: {}", problem_dir.display())
+            ));
+        }
+
         println!("テンプレートのコピーが完了しました");
+        Ok(())
+    }
+
+    /// 解答の言語を取得
+    pub fn get_solution_language(&self) -> Result<String> {
+        self.language.clone().ok_or_else(|| ContestError::ValidationError(
+            "言語が設定されていません".to_string()
+        ))
+    }
+
+    /// テストを生成
+    pub fn generate_test(&self, problem_id: &str) -> Result<()> {
+        let language = self.language.as_ref()
+            .ok_or_else(|| ContestError::ValidationError(
+                "言語が設定されていません".to_string()
+            ))?;
+
+        // テストディレクトリのパスを取得
+        let test_dir = self.get_test_dir(problem_id)?;
+        if !test_dir.exists() {
+            fs::create_dir_all(&test_dir)
+                .map_err(|e| ContestError::FileError {
+                    source: e,
+                    path: test_dir.clone(),
+                })?;
+        }
+
+        // ジェネレータファイルのパスを取得
+        let generator_path = self.get_generator_path(problem_id)?;
+        if !generator_path.exists() {
+            return Err(ContestError::ValidationError(
+                format!("ジェネレータファイルが見つかりません: {}", generator_path.display())
+            ));
+        }
+
+        // テスターファイルのパスを取得
+        let tester_path = self.get_tester_path(problem_id)?;
+        if !tester_path.exists() {
+            return Err(ContestError::ValidationError(
+                format!("テスターファイルが見つかりません: {}", tester_path.display())
+            ));
+        }
+
+        // TODO: 言語に応じたコンパイルと実行
+        println!("テストを生成します...");
+        println!("言語: {}", language);
+        println!("テストディレクトリ: {}", test_dir.display());
+        println!("ジェネレータ: {}", generator_path.display());
+        println!("テスター: {}", tester_path.display());
+
         Ok(())
     }
 }
@@ -511,7 +589,7 @@ mod tests {
     use tempfile::tempdir;
 
     fn create_test_config() -> Config {
-        let config = r#"
+        let config_str = r#"
 system:
   contest_dir:
     active: "active"
@@ -533,11 +611,23 @@ system:
 languages:
   default: "cpp"
   cpp:
-    name: "cpp"
     extension: "cpp"
+    name: "cpp"
+    templates:
+      directory: "cpp"
+      patterns:
+        solution: "main.{extension}"
+        generator: "gen.{extension}"
+        tester: "test.{extension}"
   python:
-    name: "python"
     extension: "py"
+    name: "python"
+    templates:
+      directory: "python"
+      patterns:
+        solution: "main.{extension}"
+        generator: "gen.{extension}"
+        tester: "test.{extension}"
 
 sites:
   atcoder:
@@ -545,14 +635,15 @@ sites:
     problem_url: "{url}/contests/{contest}/tasks/{contest}_{problem}"
     submit_url: "{url}/contests/{contest}/tasks/{contest}_{problem}/submit"
 "#;
-        serde_yaml::from_str(config).unwrap()
+        let builder = Config::builder();
+        Config::from_str(config_str, builder).unwrap()
     }
 
     #[test]
     fn test_new_contest() -> Result<()> {
         let config = create_test_config();
-        let test_dir = tempdir().unwrap();
-        std::env::set_current_dir(test_dir.path()).unwrap();
+        let test_dir = tempdir()?;
+        std::env::set_current_dir(test_dir.path())?;
 
         let contest = Contest::new(&config, "a")?;
         assert_eq!(contest.active_contest_dir, PathBuf::from("active"));
@@ -564,8 +655,8 @@ sites:
     #[test]
     fn test_set_language() -> Result<()> {
         let config = create_test_config();
-        let test_dir = tempdir().unwrap();
-        std::env::set_current_dir(test_dir.path()).unwrap();
+        let test_dir = tempdir()?;
+        std::env::set_current_dir(test_dir.path())?;
 
         let mut contest = Contest::new(&config, "a")?;
         contest.set_language("python")?;
@@ -579,8 +670,8 @@ sites:
     #[test]
     fn test_set_site() -> Result<()> {
         let config = create_test_config();
-        let test_dir = tempdir().unwrap();
-        std::env::set_current_dir(test_dir.path()).unwrap();
+        let test_dir = tempdir()?;
+        std::env::set_current_dir(test_dir.path())?;
 
         let mut contest = Contest::new(&config, "a")?;
         contest.set_site("atcoder")?;
@@ -594,8 +685,8 @@ sites:
     #[test]
     fn test_get_problem_url() -> Result<()> {
         let config = create_test_config();
-        let test_dir = tempdir().unwrap();
-        std::env::set_current_dir(test_dir.path()).unwrap();
+        let test_dir = tempdir()?;
+        std::env::set_current_dir(test_dir.path())?;
 
         let mut contest = Contest::new(&config, "a")?;
         contest.set_site("atcoder")?;
@@ -609,38 +700,38 @@ sites:
     #[test]
     fn test_create_problem_directory() -> Result<()> {
         let config = create_test_config();
-        let test_dir = tempdir().unwrap();
-        std::env::set_current_dir(test_dir.path()).unwrap();
+        let test_dir = tempdir()?;
+        let test_path = test_dir.path().to_path_buf();
+        std::env::set_current_dir(&test_path)?;
 
         // テンプレートディレクトリの作成
-        let template_dir = test_dir.path().join("templates").join("cpp");
-        fs::create_dir_all(&template_dir)?;
-        fs::write(template_dir.join("main.cpp"), "// Test template")?;
+        fs::create_dir_all("templates/cpp")?;
+        fs::write("templates/cpp/main.cpp", "// Test template")?;
 
         // アクティブディレクトリの作成
-        let active_dir = test_dir.path().join("active");
-        fs::create_dir_all(&active_dir)?;
+        fs::create_dir_all("active")?;
 
         let mut contest = Contest::new(&config, "a")?;
+        contest.set_language("cpp")?;
         contest.create_problem_directory("a")?;
 
         // ディレクトリとファイルの存在確認
-        let problem_dir = active_dir.join("a");
-        assert!(problem_dir.exists());
-        assert!(problem_dir.join("main.cpp").exists());
-        assert!(problem_dir.join("test").exists());
+        assert!(Path::new("active/a").exists(), "Problem directory does not exist");
+        assert!(Path::new("active/a/main.cpp").exists(), "main.cpp does not exist");
+        assert!(Path::new("active/a/test").exists(), "test directory does not exist");
 
         // テンプレートの内容確認
-        let content = fs::read_to_string(problem_dir.join("main.cpp"))?;
+        let content = fs::read_to_string("active/a/main.cpp")?;
         assert_eq!(content, "// Test template");
+
         Ok(())
     }
 
     #[test]
     fn test_save_and_load() -> Result<()> {
         let config = create_test_config();
-        let test_dir = tempdir().unwrap();
-        std::env::set_current_dir(test_dir.path()).unwrap();
+        let test_dir = tempdir()?;
+        std::env::set_current_dir(test_dir.path())?;
 
         // アクティブディレクトリの作成
         let active_dir = test_dir.path().join("active");
@@ -649,6 +740,8 @@ sites:
         let mut contest = Contest::new(&config, "a")?;
         contest.set_site("atcoder")?;
         contest.set_contest("abc123".to_string());
+
+        // 設定ファイルの保存
         contest.save()?;
 
         // 設定ファイルの存在確認
@@ -660,6 +753,39 @@ sites:
         let loaded: Contest = serde_yaml::from_str(&content)?;
         assert_eq!(loaded.site, "atcoder");
         assert_eq!(loaded.contest, "abc123");
+        Ok(())
+    }
+
+    #[test]
+    fn test_generate_test() -> Result<()> {
+        let config = create_test_config();
+        let test_dir = tempdir()?;
+        let test_path = test_dir.path().to_path_buf();
+        std::env::set_current_dir(&test_path)?;
+
+        // テンプレートディレクトリの作成
+        fs::create_dir_all("templates/cpp")?;
+        fs::write("templates/cpp/main.cpp", "// Test template")?;
+        fs::write("templates/cpp/gen.cpp", "// Generator template")?;
+        fs::write("templates/cpp/test.cpp", "// Tester template")?;
+
+        // アクティブディレクトリの作成
+        fs::create_dir_all("active")?;
+
+        let mut contest = Contest::new(&config, "a")?;
+        contest.set_language("cpp")?;
+        contest.create_problem_directory("a")?;
+
+        // 必要なファイルが存在することを確認
+        assert!(Path::new("active/a").exists(), "Problem directory does not exist");
+        assert!(Path::new("active/a/main.cpp").exists(), "main.cpp does not exist");
+        assert!(Path::new("active/a/gen.cpp").exists(), "gen.cpp does not exist");
+        assert!(Path::new("active/a/test.cpp").exists(), "test.cpp does not exist");
+        assert!(Path::new("active/a/test").exists(), "test directory does not exist");
+
+        // テスト生成を実行
+        contest.generate_test("a")?;
+
         Ok(())
     }
 } 

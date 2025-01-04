@@ -26,4 +26,34 @@ impl std::fmt::Display for ContestError {
     }
 }
 
+impl std::error::Error for ContestError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::FileError { source, .. } => Some(source),
+            _ => None,
+        }
+    }
+}
+
+impl From<std::io::Error> for ContestError {
+    fn from(error: std::io::Error) -> Self {
+        Self::FileError {
+            source: error,
+            path: PathBuf::from("."),
+        }
+    }
+}
+
+impl From<serde_yaml::Error> for ContestError {
+    fn from(error: serde_yaml::Error) -> Self {
+        Self::ConfigError(error.to_string())
+    }
+}
+
+impl From<String> for ContestError {
+    fn from(error: String) -> Self {
+        Self::ConfigError(error)
+    }
+}
+
 pub type Result<T> = std::result::Result<T, ContestError>; 

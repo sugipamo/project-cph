@@ -3,7 +3,7 @@ use tempfile::TempDir;
 use fs_extra::dir::{copy, CopyOptions};
 use std::fs;
 
-type Result<T> = std::result::Result<T, String>;
+use super::error::{Result, ContestError};
 
 /// ファイル操作を管理する構造体
 /// 
@@ -11,21 +11,34 @@ type Result<T> = std::result::Result<T, String>;
 /// - ファイルのバックアップ作成
 /// - エラー時のロールバック
 /// - 一時ファイルの管理
+#[derive(Debug)]
 pub struct FileManager {
     /// バックアップ用の一時ディレクトリ
-    backup_dir: TempDir,
+    backup_dir: Option<TempDir>,
     /// 現在の状態を保持しているパス
     current_state: PathBuf,
+}
+
+impl Clone for FileManager {
+    fn clone(&self) -> Self {
+        Self {
+            backup_dir: None,
+            current_state: self.current_state.clone(),
+        }
+    }
 }
 
 impl FileManager {
     /// 新しいFileManagerインスタンスを作成
     pub fn new() -> Result<Self> {
         let backup_dir = TempDir::new()
-            .map_err(|e| format!("一時ディレクトリの作成に失敗: {}", e))?;
+            .map_err(|e| ContestError::FileError {
+                source: std::io::Error::new(std::io::ErrorKind::Other, e.to_string()),
+                path: PathBuf::from("temp"),
+            })?;
         
         Ok(Self {
-            backup_dir,
+            backup_dir: Some(backup_dir),
             current_state: PathBuf::new(),
         })
     }
@@ -40,8 +53,13 @@ impl FileManager {
             .overwrite(true)
             .copy_inside(true);
 
-        copy(path, &self.backup_dir, &options)
-            .map_err(|e| format!("バックアップの作成に失敗: {}", e))?;
+        if let Some(backup_dir) = &self.backup_dir {
+            copy(path, backup_dir, &options)
+                .map_err(|e| ContestError::FileError {
+                    source: std::io::Error::new(std::io::ErrorKind::Other, e.to_string()),
+                    path: path.to_path_buf(),
+                })?;
+        }
         
         self.current_state = path.to_path_buf();
         Ok(())
@@ -56,23 +74,37 @@ impl FileManager {
         // 現在のディレクトリを削除
         if self.current_state.exists() {
             fs::remove_dir_all(&self.current_state)
-                .map_err(|e| format!("ディレクトリの削除に失敗: {}", e))?;
+                .map_err(|e| ContestError::FileError {
+                    source: e,
+                    path: self.current_state.clone(),
+                })?;
         }
 
         let options = CopyOptions::new()
             .overwrite(true)
             .copy_inside(true);
 
-        copy(&self.backup_dir, &self.current_state, &options)
-            .map_err(|e| format!("ロールバックに失敗: {}", e))?;
+        if let Some(backup_dir) = &self.backup_dir {
+            copy(backup_dir, &self.current_state, &options)
+                .map_err(|e| ContestError::FileError {
+                    source: std::io::Error::new(std::io::ErrorKind::Other, e.to_string()),
+                    path: self.current_state.clone(),
+                })?;
+        }
 
         Ok(())
     }
 
     /// バックアップを削除
-    pub fn cleanup(&self) -> Result<()> {
-        self.backup_dir.close()
-            .map_err(|e| format!("一時ディレクトリの削除に失敗: {}", e))?;
+    pub fn cleanup(&mut self) -> Result<()> {
+        if let Some(backup_dir) = self.backup_dir.take() {
+            let path = backup_dir.path().to_path_buf();
+            backup_dir.close()
+                .map_err(|e| ContestError::FileError {
+                    source: std::io::Error::new(std::io::ErrorKind::Other, e.to_string()),
+                    path,
+                })?;
+        }
         Ok(())
     }
 

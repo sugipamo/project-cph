@@ -156,8 +156,8 @@ impl OJContainer {
 
     pub async fn login(&self) -> Result<()> {
         // サイトのURLを取得
-        let url = self.config.get::<String>(&format!("sites.{}.url", self.contest.site_id))?;
-        let name = self.config.get::<String>(&format!("sites.{}.name", self.contest.site_id))?;
+        let url = self.config.get::<String>(&format!("sites.{}.url", self.contest.site))?;
+        let name = self.config.get::<String>(&format!("sites.{}.name", self.contest.site))?;
 
         println!("{}", format!("Logging in to {}...", name).cyan());
 
