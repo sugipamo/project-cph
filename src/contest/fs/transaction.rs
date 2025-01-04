@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use crate::contest::error::{Result, ContestError, ErrorContext};
 use super::backup::BackupManager;
 use std::collections::VecDeque;

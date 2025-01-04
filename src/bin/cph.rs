@@ -1,44 +1,25 @@
-use clap::Parser;
-use cph::cli::{Cli, Commands};
-use cph::cli::commands::CommandContext;
 use cph::config::Config;
+use cph::contest::parse::NameResolver;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let cli = Cli::parse();
-
+async fn main() -> cph::error::Result<()> {
     // 設定を読み込む
-    let _config = Config::load()?;
+    let config = Config::load()?;
 
-    // コマンドコンテキストを作成
-    let context = match &cli.command {
-        Commands::Work { contest_id } => CommandContext {
-            problem_id: contest_id.clone(),
-        },
-        Commands::Test { problem_id } => CommandContext {
-            problem_id: problem_id.clone(),
-        },
-        Commands::Language { language } => CommandContext {
-            problem_id: language.clone(),
-        },
-        Commands::Open { problem_id } => CommandContext {
-            problem_id: problem_id.clone(),
-        },
-        Commands::Submit { problem_id } => CommandContext {
-            problem_id: problem_id.clone(),
-        },
-        Commands::Generate { problem_id } => CommandContext {
-            problem_id: problem_id.clone(),
-        },
-        Commands::Login => CommandContext {
-            problem_id: String::new(),
-        },
-    };
-
-    // コマンドを生成して実行
-    if let Some(command) = cph::cli::commands::create_command(cli.command.as_str(), context) {
-        command.execute(&cli.command, &cli.site_id).await?;
+    // コマンドライン引数を取得
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.is_empty() {
+        println!("使用方法: cph <command> [args...]");
+        return Ok(());
     }
+
+    // コマンドを解決
+    let resolver = NameResolver::new(&config)?;
+    let command = resolver.resolve(&args.join(" "))?;
+
+    // コマンドを実行
+    // TODO: 実際のコマンド実行処理を実装
+    println!("実行されたコマンド: {:?}", command);
 
     Ok(())
 }

@@ -39,9 +39,9 @@ pub async fn run_test_cases(test_dir: &Path) -> Result<()> {
 
     // 各テストケースを実行
     for test_file in test_files {
-        let input = std::fs::read_to_string(&test_file)?;
+        let _input = std::fs::read_to_string(&test_file)?;
         let expected_path = test_file.with_extension("out");
-        let expected = std::fs::read_to_string(&expected_path)?;
+        let _expected = std::fs::read_to_string(&expected_path)?;
 
         // TODO: 実際のテスト実行を実装
         println!("テストケース {}: 実行中...", test_file.display());

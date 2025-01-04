@@ -2,10 +2,6 @@ pub mod command;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use std::path::PathBuf;
-use std::process::Stdio;
-use tokio::process::Command;
-
 use crate::config::Config;
 use crate::config::TypedValue;
 use self::command::DockerCommand;
