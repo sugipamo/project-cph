@@ -1,5 +1,4 @@
 use cph::config::Config;
-use cph::contest::parse::NameResolver;
 
 #[tokio::main]
 async fn main() -> cph::error::Result<()> {
@@ -13,13 +12,8 @@ async fn main() -> cph::error::Result<()> {
         return Ok(());
     }
 
-    // コマンドを解決
-    let resolver = NameResolver::new(&config)?;
-    let command = resolver.resolve(&args.join(" "))?;
-
     // コマンドを実行
     // TODO: 実際のコマンド実行処理を実装
-    println!("実行されたコマンド: {:?}", command);
 
     Ok(())
 }
