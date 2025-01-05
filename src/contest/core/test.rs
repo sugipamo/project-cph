@@ -33,6 +33,20 @@ impl TestManager {
                 })?;
         }
 
+        // ジェネレータファイルの存在確認
+        if !generator_path.exists() {
+            return Err(ContestError::Validation {
+                message: format!("ジェネレータファイルが見つかりません: {}", generator_path.display()),
+            });
+        }
+
+        // テスターファイルの存在確認
+        if !tester_path.exists() {
+            return Err(ContestError::Validation {
+                message: format!("テスターファイルが見つかりません: {}", tester_path.display()),
+            });
+        }
+
         Ok(Self {
             test_dir,
             generator_path,
@@ -49,59 +63,13 @@ impl TestManager {
         println!("ジェネレータ: {}", self.generator_path.display());
         println!("テスター: {}", self.tester_path.display());
 
-        // ジェネレータが存在する場合は実行
-        if self.generator_path.exists() {
-            // TODO: 言語に応じたコンパイルと実行
-        }
-
+        // TODO: 言語に応じたコンパイルと実行
         Ok(())
     }
 
     /// テストを実行
     pub fn run(&self, problem_id: &str) -> Result<()> {
-        if !self.test_dir.exists() {
-            return Err(ContestError::FileSystem {
-                message: "テストディレクトリが存在しません".to_string(),
-                source: std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    "test directory not found"
-                ),
-                path: self.test_dir.clone(),
-            });
-        }
-
-        // テストケースのファイルを列挙
-        let mut test_files = Vec::new();
-        for entry in fs::read_dir(&self.test_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_file() && path.extension().map_or(false, |ext| ext == "in") {
-                test_files.push(path);
-            }
-        }
-
-        if test_files.is_empty() {
-            return Err(ContestError::Validation {
-                message: "テストケースが見つかりません".to_string(),
-            });
-        }
-
-        println!("問題 {} のテストを実行します...", problem_id);
-        println!("言語: {}", self.language);
-        println!("テストケース数: {}", test_files.len());
-
-        // 各テストケースを実行
-        for test_file in test_files {
-            let input = fs::read_to_string(&test_file)?;
-            let expected_path = test_file.with_extension("out");
-            let expected = fs::read_to_string(&expected_path)?;
-
-            println!("テストケース {}: 実行中...", test_file.display());
-            // TODO: 言語に応じたテスト実行
-            println!("入力: {}", input);
-            println!("期待される出力: {}", expected);
-        }
-
+        println!("TODO: Implement run_test for problem {}", problem_id);
         Ok(())
     }
 } 
