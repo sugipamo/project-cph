@@ -7,4 +7,5 @@ git diff develop > agent/.refactor/yyyymmddhhmm_result.txt
 
 feature/refactor_{}のブランチを作成し、コミット、プッシュする。
 developブランチへのプルリクエストを作成する
-
+git fetch を行う
+developブランチへcheckoutする
