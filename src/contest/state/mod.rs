@@ -1,7 +1,6 @@
-pub mod manager;
-
 use std::path::PathBuf;
 use serde::{Serialize, Deserialize};
+use crate::contest::error::Result;
 
 /// コンテストの状態を表す構造体
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]

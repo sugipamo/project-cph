@@ -1,3 +1,6 @@
 pub mod error;
-pub mod core;
-pub mod state;
+pub mod model;
+pub mod service;
+
+pub use model::ContestState;
+pub use service::{Contest, TestManager, UrlGenerator};
