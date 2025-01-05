@@ -62,4 +62,24 @@ impl ContestState {
         self.active_contest_dir = dir;
         self
     }
-} 
+
+    /// 問題IDを取得
+    pub fn problem_id(&self) -> Option<&str> {
+        self.problem.as_deref()
+    }
+
+    /// 言語を取得
+    pub fn language(&self) -> Option<&str> {
+        self.language.as_deref()
+    }
+
+    /// アクティブディレクトリを取得
+    pub fn active_dir(&self) -> &PathBuf {
+        &self.active_contest_dir
+    }
+
+    /// 問題を設定
+    pub fn set_problem(&mut self, problem_id: &str) {
+        self.problem = Some(problem_id.to_string());
+    }
+}

@@ -57,6 +57,15 @@ impl From<serde_yaml::Error> for ContestError {
     }
 }
 
+impl From<serde_json::Error> for ContestError {
+    fn from(err: serde_json::Error) -> Self {
+        ContestError::Config {
+            message: err.to_string(),
+            source: Some(Box::new(err))
+        }
+    }
+}
+
 impl From<String> for ContestError {
     fn from(message: String) -> Self {
         ContestError::Validation {
@@ -169,4 +178,4 @@ impl ErrorContext {
 }
 
 /// Result型のエイリアス
-pub type Result<T> = std::result::Result<T, ContestError>; 
+pub type Result<T> = std::result::Result<T, ContestError>;
