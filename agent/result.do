@@ -16,4 +16,4 @@ developブランチへのプルリクエストを作成する
 gitを最新の状態に同期する
 developブランチへcheckoutする
 developブランチへマージする
-gitを最新の状態に同期して、main, develop以外のローカル、リモートブランチを削除する
+gitを最新の状態に同期して、git branchをする。main, develop以外のローカル、リモートブランチを削除する
