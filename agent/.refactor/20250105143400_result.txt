@@ -1,0 +1,538 @@
+diff --git a/src/contest/fs/backup.rs b/src/contest/fs/backup.rs
+deleted file mode 100644
+index df3aeb0..0000000
+--- a/src/contest/fs/backup.rs
++++ /dev/null
+@@ -1,114 +0,0 @@
+-use std::path::{Path, PathBuf};
+-use tempfile::TempDir;
+-use fs_extra::dir::{copy, CopyOptions};
+-use std::fs;
+-use crate::contest::error::{Result, ContestError};
+-
+-/// バックアップを管理する構造体
+-#[derive(Debug)]
+-pub struct BackupManager {
+-    /// バックアップ用の一時ディレクトリ
+-    backup_dir: Option<TempDir>,
+-    /// 現在の状態を保持しているパス
+-    current_state: PathBuf,
+-}
+-
+-impl BackupManager {
+-    /// 新しいバックアップマネージャーを作成
+-    pub fn new() -> Result<Self> {
+-        let backup_dir = TempDir::new()
+-            .map_err(|e| ContestError::FileSystem {
+-                message: "一時ディレクトリの作成に失敗".to_string(),
+-                source: std::io::Error::new(std::io::ErrorKind::Other, e.to_string()),
+-                path: PathBuf::from("temp"),
+-            })?;
+-
+-        Ok(Self {
+-            backup_dir: Some(backup_dir),
+-            current_state: PathBuf::new(),
+-        })
+-    }
+-
+-    /// バックアップを作成
+-    pub fn create(&mut self, path: &Path) -> Result<()> {
+-        if !path.exists() {
+-            return Ok(());
+-        }
+-
+-        let options = CopyOptions::new()
+-            .overwrite(true)
+-            .copy_inside(true);
+-
+-        if let Some(backup_dir) = &self.backup_dir {
+-            copy(path, backup_dir, &options)
+-                .map_err(|e| ContestError::Backup {
+-                    message: "バックアップの作成に失敗".to_string(),
+-                    path: path.to_path_buf(),
+-                    source: Some(Box::new(std::io::Error::new(
+-                        std::io::ErrorKind::Other,
+-                        e.to_string()
+-                    ))),
+-                })?;
+-        }
+-
+-        self.current_state = path.to_path_buf();
+-        Ok(())
+-    }
+-
+-    /// バックアップから復元
+-    pub fn restore(&self) -> Result<()> {
+-        if !self.current_state.exists() {
+-            return Ok(());
+-        }
+-
+-        // 現在のディレクトリを削除
+-        if self.current_state.exists() {
+-            fs::remove_dir_all(&self.current_state)
+-                .map_err(|e| ContestError::FileSystem {
+-                    message: "ディレクトリの削除に失敗".to_string(),
+-                    source: e,
+-                    path: self.current_state.clone(),
+-                })?;
+-        }
+-
+-        let options = CopyOptions::new()
+-            .overwrite(true)
+-            .copy_inside(true);
+-
+-        if let Some(backup_dir) = &self.backup_dir {
+-            copy(backup_dir, &self.current_state, &options)
+-                .map_err(|e| ContestError::Backup {
+-                    message: "バックアップからの復元に失敗".to_string(),
+-                    path: self.current_state.clone(),
+-                    source: Some(Box::new(std::io::Error::new(
+-                        std::io::ErrorKind::Other,
+-                        e.to_string()
+-                    ))),
+-                })?;
+-        }
+-
+-        Ok(())
+-    }
+-
+-    /// バックアップを削除
+-    pub fn cleanup(&mut self) -> Result<()> {
+-        if let Some(backup_dir) = self.backup_dir.take() {
+-            let path = backup_dir.path().to_path_buf();
+-            backup_dir.close()
+-                .map_err(|e| ContestError::Backup {
+-                    message: "バックアップの削除に失敗".to_string(),
+-                    path,
+-                    source: Some(Box::new(std::io::Error::new(
+-                        std::io::ErrorKind::Other,
+-                        e.to_string()
+-                    ))),
+-                })?;
+-        }
+-        Ok(())
+-    }
+-
+-    /// 現在のバックアップパスを取得
+-    pub fn current_state(&self) -> &Path {
+-        &self.current_state
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/contest/fs/manager.rs b/src/contest/fs/manager.rs
+deleted file mode 100644
+index 7fb34cc..0000000
+--- a/src/contest/fs/manager.rs
++++ /dev/null
+@@ -1,94 +0,0 @@
+-use std::path::{Path, PathBuf};
+-use super::{BackupManager, FileOperation, FileOperationBuilder};
+-use crate::contest::error::{Result, ContestError};
+-
+-/// ファイル操作を管理する構造体
+-#[derive(Debug)]
+-pub struct FileManager {
+-    /// バックアップマネージャー
+-    backup_manager: BackupManager,
+-    /// 基準となるパス
+-    base_path: PathBuf,
+-}
+-
+-impl FileManager {
+-    /// 新しいファイルマネージャーを作成
+-    pub fn new() -> Result<Self> {
+-        Ok(Self {
+-            backup_manager: BackupManager::new()?,
+-            base_path: PathBuf::new(),
+-        })
+-    }
+-
+-    /// 基準パスを設定
+-    pub fn with_base_path<P: AsRef<Path>>(mut self, path: P) -> Self {
+-        self.base_path = path.as_ref().to_path_buf();
+-        self
+-    }
+-
+-    /// トランザクション的なファイル操作を実行
+-    pub fn execute_operations(&mut self, operations: Vec<FileOperation>) -> Result<()> {
+-        // バックアップを作成
+-        self.backup_manager.create(&self.base_path)?;
+-
+-        // 操作を実行
+-        for op in operations {
+-            if let Err(e) = op.execute() {
+-                // エラーが発生した場合、バックアップから復元
+-                self.backup_manager.restore()?;
+-                return Err(e);
+-            }
+-        }
+-
+-        // 成功した場合、バックアップをクリーンアップ
+-        self.backup_manager.cleanup()?;
+-        Ok(())
+-    }
+-
+-    /// ディレクトリを作成
+-    pub fn create_directory(&mut self, path: &Path) -> Result<()> {
+-        let operations = FileOperationBuilder::new()
+-            .create_dir(path)
+-            .build();
+-        self.execute_operations(operations)
+-    }
+-
+-    /// ファイルをコピー
+-    pub fn copy_file(&mut self, from: &Path, to: &Path) -> Result<()> {
+-        let operations = FileOperationBuilder::new()
+-            .copy_file(from, to)
+-            .build();
+-        self.execute_operations(operations)
+-    }
+-
+-    /// ファイルを移動
+-    pub fn move_file(&mut self, from: &Path, to: &Path) -> Result<()> {
+-        let operations = FileOperationBuilder::new()
+-            .move_file(from, to)
+-            .build();
+-        self.execute_operations(operations)
+-    }
+-
+-    /// ファイルを削除
+-    pub fn delete_file(&mut self, path: &Path) -> Result<()> {
+-        let operations = FileOperationBuilder::new()
+-            .delete_file(path)
+-            .build();
+-        self.execute_operations(operations)
+-    }
+-
+-    /// バックアップを作成
+-    pub fn backup(&mut self, path: &Path) -> Result<()> {
+-        self.backup_manager.create(path)
+-    }
+-
+-    /// バックアップから復元
+-    pub fn rollback(&self) -> Result<()> {
+-        self.backup_manager.restore()
+-    }
+-
+-    /// バックアップをクリーンアップ
+-    pub fn cleanup(&mut self) -> Result<()> {
+-        self.backup_manager.cleanup()
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/contest/fs/mod.rs b/src/contest/fs/mod.rs
+deleted file mode 100644
+index 77ac844..0000000
+--- a/src/contest/fs/mod.rs
++++ /dev/null
+@@ -1,7 +0,0 @@
+-mod backup;
+-mod operations;
+-mod transaction;
+-
+-pub use backup::BackupManager;
+-pub use operations::{CopyOperation, CreateDirOperation, RemoveOperation};
+-pub use transaction::{FileTransaction, FileOperation, TransactionState}; 
+\ No newline at end of file
+diff --git a/src/contest/fs/operations.rs b/src/contest/fs/operations.rs
+deleted file mode 100644
+index 4893105..0000000
+--- a/src/contest/fs/operations.rs
++++ /dev/null
+@@ -1,131 +0,0 @@
+-use std::path::{Path, PathBuf};
+-use crate::contest::error::{Result, ContestError};
+-use std::fs;
+-use super::transaction::FileOperation;
+-
+-/// ファイルのコピー操作
+-#[derive(Debug)]
+-pub struct CopyOperation {
+-    source: PathBuf,
+-    destination: PathBuf,
+-}
+-
+-impl CopyOperation {
+-    pub fn new(source: impl AsRef<Path>, destination: impl AsRef<Path>) -> Self {
+-        Self {
+-            source: source.as_ref().to_path_buf(),
+-            destination: destination.as_ref().to_path_buf(),
+-        }
+-    }
+-}
+-
+-impl FileOperation for CopyOperation {
+-    fn execute(&self) -> Result<()> {
+-        fs::copy(&self.source, &self.destination)
+-            .map_err(|e| ContestError::FileSystem {
+-                message: "ファイルのコピーに失敗".to_string(),
+-                source: e,
+-                path: self.destination.clone(),
+-            })?;
+-        Ok(())
+-    }
+-
+-    fn rollback(&self) -> Result<()> {
+-        if self.destination.exists() {
+-            fs::remove_file(&self.destination)
+-                .map_err(|e| ContestError::FileSystem {
+-                    message: "ファイルの削除に失敗".to_string(),
+-                    source: e,
+-                    path: self.destination.clone(),
+-                })?;
+-        }
+-        Ok(())
+-    }
+-
+-    fn description(&self) -> String {
+-        format!("Copy {} to {}", self.source.display(), self.destination.display())
+-    }
+-}
+-
+-/// ディレクトリの作成操作
+-#[derive(Debug)]
+-pub struct CreateDirOperation {
+-    path: PathBuf,
+-}
+-
+-impl CreateDirOperation {
+-    pub fn new(path: impl AsRef<Path>) -> Self {
+-        Self {
+-            path: path.as_ref().to_path_buf(),
+-        }
+-    }
+-}
+-
+-impl FileOperation for CreateDirOperation {
+-    fn execute(&self) -> Result<()> {
+-        fs::create_dir_all(&self.path)
+-            .map_err(|e| ContestError::FileSystem {
+-                message: "ディレクトリの作成に失敗".to_string(),
+-                source: e,
+-                path: self.path.clone(),
+-            })?;
+-        Ok(())
+-    }
+-
+-    fn rollback(&self) -> Result<()> {
+-        if self.path.exists() {
+-            fs::remove_dir_all(&self.path)
+-                .map_err(|e| ContestError::FileSystem {
+-                    message: "ディレクトリの削除に失敗".to_string(),
+-                    source: e,
+-                    path: self.path.clone(),
+-                })?;
+-        }
+-        Ok(())
+-    }
+-
+-    fn description(&self) -> String {
+-        format!("Create directory {}", self.path.display())
+-    }
+-}
+-
+-/// ファイルの削除操作
+-#[derive(Debug)]
+-pub struct RemoveOperation {
+-    path: PathBuf,
+-    is_dir: bool,
+-}
+-
+-impl RemoveOperation {
+-    pub fn new(path: impl AsRef<Path>, is_dir: bool) -> Self {
+-        Self {
+-            path: path.as_ref().to_path_buf(),
+-            is_dir,
+-        }
+-    }
+-}
+-
+-impl FileOperation for RemoveOperation {
+-    fn execute(&self) -> Result<()> {
+-        if self.is_dir {
+-            fs::remove_dir_all(&self.path)
+-        } else {
+-            fs::remove_file(&self.path)
+-        }
+-        .map_err(|e| ContestError::FileSystem {
+-            message: "ファイル/ディレクトリの削除に失敗".to_string(),
+-            source: e,
+-            path: self.path.clone(),
+-        })?;
+-        Ok(())
+-    }
+-
+-    fn rollback(&self) -> Result<()> {
+-        // 削除操作のロールバックは、バックアップからの復元に依存
+-        Ok(())
+-    }
+-
+-    fn description(&self) -> String {
+-        format!("Remove {}", self.path.display())
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/contest/fs/transaction.rs b/src/contest/fs/transaction.rs
+deleted file mode 100644
+index 0e41dbb..0000000
+--- a/src/contest/fs/transaction.rs
++++ /dev/null
+@@ -1,131 +0,0 @@
+-use std::path::PathBuf;
+-use crate::contest::error::{Result, ContestError, ErrorContext};
+-use super::backup::BackupManager;
+-use std::collections::VecDeque;
+-
+-/// ファイルシステム操作のトランザクション
+-#[derive(Debug)]
+-pub struct FileTransaction {
+-    /// 実行予定の操作キュー
+-    operations: VecDeque<Box<dyn FileOperation>>,
+-    /// バックアップマネージャー
+-    backup: BackupManager,
+-    /// トランザクションの状態
+-    state: TransactionState,
+-    /// エラーコンテキスト
+-    context: ErrorContext,
+-}
+-
+-/// トランザクションの状態
+-#[derive(Debug, Clone, Copy, PartialEq)]
+-pub enum TransactionState {
+-    /// 初期状態
+-    Initial,
+-    /// 実行中
+-    InProgress,
+-    /// コミット済み
+-    Committed,
+-    /// ロールバック済み
+-    RolledBack,
+-}
+-
+-/// ファイル操作のトレイト
+-pub trait FileOperation: std::fmt::Debug {
+-    /// 操作を実行
+-    fn execute(&self) -> Result<()>;
+-    /// 操作を取り消し
+-    fn rollback(&self) -> Result<()>;
+-    /// 操作の説明を取得
+-    fn description(&self) -> String;
+-}
+-
+-impl FileTransaction {
+-    /// 新しいトランザクションを作成
+-    pub fn new(operation_name: impl Into<String>) -> Result<Self> {
+-        Ok(Self {
+-            operations: VecDeque::new(),
+-            backup: BackupManager::new()?,
+-            state: TransactionState::Initial,
+-            context: ErrorContext::new(operation_name, "FileTransaction"),
+-        })
+-    }
+-
+-    /// 操作を追加
+-    pub fn add_operation(&mut self, operation: impl FileOperation + 'static) -> &mut Self {
+-        self.operations.push_back(Box::new(operation));
+-        self
+-    }
+-
+-    /// トランザクションを実行
+-    pub fn execute(&mut self) -> Result<()> {
+-        if self.state != TransactionState::Initial {
+-            return Err(ContestError::Transaction {
+-                message: "トランザクションは既に実行されています".to_string(),
+-                context: self.context.clone()
+-                    .with_hint("トランザクションは一度だけ実行できます")
+-                    .with_stack_trace(),
+-            });
+-        }
+-
+-        self.state = TransactionState::InProgress;
+-        
+-        // バックアップを作成
+-        if let Err(e) = self.backup.create(&PathBuf::from(".")) {
+-            return Err(e.with_context("バックアップの作成", ".")
+-                .add_hint("バックアップディレクトリの権限を確認してください"));
+-        }
+-
+-        // 全ての操作を実行
+-        while let Some(operation) = self.operations.pop_front() {
+-            if let Err(e) = operation.execute() {
+-                // エラーが発生した場合はロールバック
+-                if let Err(rollback_err) = self.rollback() {
+-                    return Err(ContestError::Transaction {
+-                        message: format!(
+-                            "操作の実行とロールバックの両方が失敗しました: {} / {}",
+-                            e, rollback_err
+-                        ),
+-                        context: self.context.clone()
+-                            .with_hint("システム管理者に連絡してください")
+-                            .with_stack_trace(),
+-                    });
+-                }
+-                return Err(e.with_context(
+-                    "トランザクション操作の実行",
+-                    operation.description()
+-                ).add_hint("操作をロールバックしました"));
+-            }
+-        }
+-
+-        self.state = TransactionState::Committed;
+-        if let Err(e) = self.backup.cleanup() {
+-            return Err(e.with_context("バックアップのクリーンアップ", ".")
+-                .add_hint("バックアップファイルの削除に失敗しましたが、操作自体は成功しています"));
+-        }
+-        Ok(())
+-    }
+-
+-    /// トランザクションをロールバック
+-    pub fn rollback(&mut self) -> Result<()> {
+-        if self.state != TransactionState::InProgress {
+-            return Ok(());
+-        }
+-
+-        // バックアップから復元
+-        if let Err(e) = self.backup.restore() {
+-            return Err(e.with_context("バックアップの復元", ".")
+-                .add_hint("システムの状態が不整合である可能性があります"));
+-        }
+-        self.state = TransactionState::RolledBack;
+-        if let Err(e) = self.backup.cleanup() {
+-            return Err(e.with_context("バックアップのクリーンアップ", ".")
+-                .add_hint("バックアップファイルの削除に失敗しましたが、ロールバックは成功しています"));
+-        }
+-        Ok(())
+-    }
+-
+-    /// 現在の状態を取得
+-    pub fn state(&self) -> TransactionState {
+-        self.state
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/contest/mod.rs b/src/contest/mod.rs
+index c8d70cf..c3b8739 100644
+--- a/src/contest/mod.rs
++++ b/src/contest/mod.rs
+@@ -1,7 +1,7 @@
+ pub mod error;
+-pub mod fs;
+ 
+ use crate::config::Config;
++use crate::fs;
+ use error::{Result, ContestError};
+ use std::sync::Arc;
+ use std::path::{Path, PathBuf};
+diff --git a/src/lib.rs b/src/lib.rs
+index 7bac953..c2a2a72 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -4,3 +4,4 @@ pub mod test;
+ pub mod contest;
+ pub mod oj;
+ pub mod config;
++pub mod fs;
+
+# 作業結果
+- src/contest/fs ディレクトリ内のファイルを src/fs に移動
+- バックアップ関連の機能をリファクタリング

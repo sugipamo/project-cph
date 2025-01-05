@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use super::{BackupManager, FileOperation, FileOperationBuilder};
-use crate::contest::error::{Result, ContestError};
+use crate::contest::error::Result;
 
 /// ファイル操作を管理する構造体
 #[derive(Debug)]
@@ -27,7 +27,7 @@ impl FileManager {
     }
 
     /// トランザクション的なファイル操作を実行
-    pub fn execute_operations(&mut self, operations: Vec<FileOperation>) -> Result<()> {
+    pub fn execute_operations(&mut self, operations: Vec<Box<dyn FileOperation>>) -> Result<()> {
         // バックアップを作成
         self.backup_manager.create(&self.base_path)?;
 

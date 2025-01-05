@@ -1,8 +1,7 @@
-use crate::config::{Config, ConfigBuilder};
-use serde_json;
+use crate::config::Config;
 use super::{ContestState, state_manager::StateManager};
 use crate::contest::error::Result;
-use crate::fs::SafeFileSystem;
+use crate::fs::FileManager;
 
 /// コンテスト情報を管理する構造体
 #[derive(Debug)]
@@ -12,7 +11,7 @@ pub struct Contest {
     /// 設定情報
     config: Config,
     /// バァイルシステム操作
-    fs: SafeFileSystem,
+    fs: FileManager,
 }
 
 impl StateManager for Contest {
@@ -31,7 +30,7 @@ impl Contest {
         Ok(Self {
             state: ContestState::new(),
             config,
-            fs: SafeFileSystem::new()?,
+            fs: FileManager::new()?,
         })
     }
 
@@ -40,7 +39,7 @@ impl Contest {
         let active_dir = config.get::<String>("system.contest_dir.active")?;
         let mut state = ContestState::new()
             .with_problem(problem_id)
-            .with_active_dir(active_dir.into());
+            .with_active_dir(active_dir.clone().into());
 
         if let Ok(default_lang) = config.get::<String>("languages.default") {
             state = state.with_language(&default_lang);
@@ -49,7 +48,7 @@ impl Contest {
         Ok(Self {
             state,
             config,
-            fs: SafeFileSystem::new()?.with_base_path(&active_dir),
+            fs: FileManager::new()?.with_base_path(&active_dir),
         })
     }
 
@@ -59,12 +58,12 @@ impl Contest {
     }
 
     /// ファイルシステム操作を取得
-    pub fn fs(&self) -> &SafeFileSystem {
+    pub fn fs(&self) -> &FileManager {
         &self.fs
     }
 
     /// ファイルシステム操作を可変で取得
-    pub fn fs_mut(&mut self) -> &mut SafeFileSystem {
+    pub fn fs_mut(&mut self) -> &mut FileManager {
         &mut self.fs
     }
 }

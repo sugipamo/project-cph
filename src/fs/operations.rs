@@ -128,4 +128,43 @@ impl FileOperation for RemoveOperation {
     fn description(&self) -> String {
         format!("Remove {}", self.path.display())
     }
+}
+
+/// ファイル操作のビルダー
+#[derive(Debug, Default)]
+pub struct FileOperationBuilder {
+    operations: Vec<Box<dyn FileOperation>>,
+}
+
+impl FileOperationBuilder {
+    pub fn new() -> Self {
+        Self {
+            operations: Vec::new(),
+        }
+    }
+
+    pub fn create_dir(mut self, path: impl AsRef<Path>) -> Self {
+        self.operations.push(Box::new(CreateDirOperation::new(path)));
+        self
+    }
+
+    pub fn copy_file(mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Self {
+        self.operations.push(Box::new(CopyOperation::new(from, to)));
+        self
+    }
+
+    pub fn move_file(mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Self {
+        self.operations.push(Box::new(CopyOperation::new(from.as_ref(), to.as_ref())));
+        self.operations.push(Box::new(RemoveOperation::new(from, false)));
+        self
+    }
+
+    pub fn delete_file(mut self, path: impl AsRef<Path>) -> Self {
+        self.operations.push(Box::new(RemoveOperation::new(path, false)));
+        self
+    }
+
+    pub fn build(self) -> Vec<Box<dyn FileOperation>> {
+        self.operations
+    }
 } 
