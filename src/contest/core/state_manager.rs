@@ -12,5 +12,8 @@ pub trait StateManager {
     /// 状態を更新
     fn update_state<F>(&mut self, f: F) -> Result<()>
     where
-        F: FnOnce(&mut ContestState) -> Result<()>;
+        F: FnOnce(&mut ContestState) -> Result<()>,
+    {
+        f(self.state_mut())
+    }
 }
