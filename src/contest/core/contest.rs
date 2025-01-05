@@ -1,5 +1,6 @@
 use crate::config::Config;
-use super::{ContestState, state::manager::ContestStateManager};
+use crate::contest::state::ContestState;
+use crate::contest::state::manager::ContestStateManager;
 use crate::contest::error::Result;
 use crate::fs::FileManager;
 

@@ -1,16 +1,28 @@
 pub mod manager;
 
 use std::path::PathBuf;
+use serde::{Serialize, Deserialize};
 
 /// コンテストの状態を表す構造体
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ContestState {
+    /// アクティブなコンテストのディレクトリ
+    #[serde(default)]
+    pub active_contest_dir: PathBuf,
+
+    /// コンテスト情報
+    #[serde(default)]
+    pub contest: String,
+
     /// 問題ID
-    problem_id: Option<String>,
+    pub problem_id: Option<String>,
+
     /// 使用言語
-    language: Option<String>,
-    /// アクティブディレクトリ
-    active_dir: Option<PathBuf>,
+    pub language: Option<String>,
+
+    /// サイトID（例: atcoder, codeforces）
+    #[serde(default)]
+    pub site: String,
 }
 
 impl ContestState {
@@ -31,9 +43,21 @@ impl ContestState {
         self
     }
 
+    /// コンテスト情報を設定
+    pub fn with_contest(mut self, contest_id: &str) -> Self {
+        self.contest = contest_id.to_string();
+        self
+    }
+
+    /// サイトIDを設定
+    pub fn with_site(mut self, site: &str) -> Self {
+        self.site = site.to_string();
+        self
+    }
+
     /// アクティブディレクトリを設定
-    pub fn with_active_dir(mut self, active_dir: PathBuf) -> Self {
-        self.active_dir = Some(active_dir);
+    pub fn with_active_dir(mut self, dir: PathBuf) -> Self {
+        self.active_contest_dir = dir;
         self
     }
 
@@ -48,7 +72,12 @@ impl ContestState {
     }
 
     /// アクティブディレクトリを取得
-    pub fn active_dir(&self) -> Option<&PathBuf> {
-        self.active_dir.as_ref()
+    pub fn active_dir(&self) -> &PathBuf {
+        &self.active_contest_dir
+    }
+
+    /// 問題IDを設定（可変参照版）
+    pub fn set_problem(&mut self, problem_id: &str) {
+        self.problem_id = Some(problem_id.to_string());
     }
 } 
