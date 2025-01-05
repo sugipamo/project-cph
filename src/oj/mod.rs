@@ -8,14 +8,39 @@ use std::os::unix::fs::PermissionsExt;
 use dirs;
 use crate::config::Config;
 
-const COOKIE_DIR: &str = ".local/share/online-judge-tools";
-const COOKIE_FILE: &str = "cookie.jar";
-const DOCKERFILE_PATH: &str = "src/oj/Dockerfile";
-const DOCKER_IMAGE_NAME: &str = "oj-container";
+/// ブラウザでURLを開く
+fn open_in_browser(url: &str, config: &Config) -> Result<()> {
+    let browser = config.get::<String>("system.browser")
+        .or_else(|_| env::var("BROWSER"))
+        .unwrap_or_else(|_| {
+            println!("{}", "Note: ブラウザを自動で開くには、system.browserを設定するか$BROWSER環境変数を設定してください。".yellow());
+            String::new()
+        });
 
-// エラーメッセージ
-const ERROR_DOCKER_IMAGE_NOT_FOUND: &str = "Dockerイメージが見つかりません。'cargo run -- atcoder login'を実行してログインしてください。";
-const ERROR_DOCKERFILE_NOT_FOUND: &str = "Dockerfile not found";
+    if !browser.is_empty() {
+        Command::new(&browser)
+            .arg(url)
+            .output()?;
+    }
+
+    Ok(())
+}
+
+/// エディタでファイルを開く
+fn open_in_editor(path: &PathBuf, config: &Config) -> Result<()> {
+    let editors = config.get::<Vec<String>>("system.editors")
+        .unwrap_or_else(|_| vec!["code".to_string(), "cursor".to_string()]);
+
+    for editor in editors {
+        if let Some(path_str) = path.to_str() {
+            if let Err(e) = Command::new(&editor).arg(path_str).output() {
+                println!("Note: {}でファイルを開けませんでした: {}", editor, e);
+            }
+        }
+    }
+
+    Ok(())
+}
 
 pub fn open_in_cursor(url: &str, source_path: Option<&PathBuf>) -> Result<()> {
     // 問題ページを開く
@@ -24,15 +49,13 @@ pub fn open_in_cursor(url: &str, source_path: Option<&PathBuf>) -> Result<()> {
             .arg(url)
             .output()?;
     } else {
-        println!("{}", format!("Note: To automatically open URLs, please set the $BROWSER environment variable.").yellow());
+        println!("{}", "Note: URLを自動で開くには、$BROWSER環境変数を設定してください。".yellow());
     }
     
-    if let Err(e) = Command::new("code").arg(source_path.unwrap().display().to_string()).output() {
-        println!("Note: Failed to open in VSCode: {}", e);
-    }
-
-    if let Err(e) = Command::new("cursor").arg(source_path.unwrap().display().to_string()).output() {
-        println!("Note: Failed to open in Cursor: {}", e);
+    if let Some(path) = source_path {
+        if let Err(e) = Command::new("code").arg(path.display().to_string()).output() {
+            println!("Note: VSCodeでファイルを開けませんでした: {}", e);
+        }
     }
 
     Ok(())
@@ -195,31 +218,10 @@ impl OJContainer {
         println!("{}", format!("Opening problem URL: {}", problem.url).cyan());
 
         // ブラウザ設定を確認
-        let browser = self.config.get::<String>("system.browser")
-            .or_else(|_| env::var("BROWSER"))
-            .unwrap_or_else(|_| {
-                println!("{}", format!("Note: To automatically open URLs, please set the $BROWSER environment variable or configure system.browser in config.yaml").yellow());
-                String::new()
-            });
-
-        if !browser.is_empty() {
-            if let Err(e) = Command::new(&browser).arg(&problem.url).output() {
-                println!("Note: Failed to open in browser: {}", e);
-            }
-        }
+        open_in_browser(&problem.url, &self.config)?;
 
         // エディタ設定を取得
-        let editors = self.config.get::<Vec<String>>("system.editors")
-            .unwrap_or_else(|_| vec!["code".to_string(), "cursor".to_string()]);
-
-        // 各エディタで開く
-        for editor in editors {
-            if let Some(source_path) = problem.source_path.to_str() {
-                if let Err(e) = Command::new(&editor).arg(source_path).output() {
-                    println!("Note: Failed to open in {}: {}", editor, e);
-                }
-            }
-        }
+        open_in_editor(&problem.source_path, &self.config)?;
 
         // Dockerイメージの存在確認
         self.check_image_exists().await?;

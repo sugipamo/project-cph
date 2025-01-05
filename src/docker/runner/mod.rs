@@ -41,25 +41,10 @@ impl DockerRunner {
         Self::new(config, language.to_string())
     }
 
-    pub async fn run_in_docker(&mut self, source_code: &str) -> Result<String, String> {
-        println!("Starting Docker execution");
-        
+    pub async fn run(&mut self, source_code: &str) -> Result<DockerOutput, String> {
         // イメージ名を取得
         let image = self.config.get::<String>(&format!("languages.{}.runner.image", self.language))
             .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
-
-        // イメージの確認と取得
-        if !self.command.check_image(&image).await {
-            println!("Image not found, attempting to pull: {}", image);
-            if !self.command.pull_image(&image).await {
-                println!("Failed to pull image: {}", image);
-                *self.state.lock().await = RunnerState::Error;
-                return Err(format!("Failed to pull image: {}", image));
-            }
-        }
-
-        println!("Image is ready: {}", image);
-        *self.state.lock().await = RunnerState::Running;
 
         // ソースコードの実行
         let result = self.command.run_code(&image, source_code).await;
@@ -70,21 +55,24 @@ impl DockerRunner {
             }
             Err(e) => {
                 *self.state.lock().await = RunnerState::Error;
-                Err(e)
+                Err(format!("実行エラー: {}", e))
             }
         }
     }
 
     pub async fn cleanup(&mut self) -> Result<(), String> {
-        println!("Cleaning up Docker runner");
+        let state = self.state.lock().await;
+        if *state == RunnerState::Stop {
+            return Ok(());
+        }
+        drop(state);
+
         if self.command.stop_container().await {
-            println!("Container stopped successfully");
             *self.state.lock().await = RunnerState::Stop;
             Ok(())
         } else {
-            println!("Failed to stop container");
             *self.state.lock().await = RunnerState::Error;
-            Err("Failed to stop container".to_string())
+            Err("コンテナの停止に失敗しました".to_string())
         }
     }
 
@@ -101,7 +89,7 @@ impl DockerRunner {
         let mount_point = self.config.get::<String>("system.docker.mount_point")
             .map_err(|e| format!("マウントポイントの設定の読み込みに失敗しました: {}", e))?;
 
-        println!("Inspecting mount point directory: {}", &mount_point);
         self.command.inspect_directory(&image, &mount_point).await
+            .map_err(|e| format!("マウントポイントの検査に失敗しました: {}", e))
     }
 } 
