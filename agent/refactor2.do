@@ -10,3 +10,4 @@ developブランチへのプルリクエストを作成する
 git fetch を行う
 developブランチへcheckoutする
 developブランチへマージする
+作成されたブランチを削除する
