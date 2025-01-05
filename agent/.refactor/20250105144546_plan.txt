@@ -1,0 +1,25 @@
+# リファクタリング計画: Contest構造体からの状態管理機能の切り出し
+
+## 概要
+Contest構造体から状態管理（ContestState）に関する機能を切り出し、新しい構造体ContestStateManagerを作成します。
+これにより、Contest構造体の責務を減らし、状態管理に関する機能を独立したモジュールとして管理できるようになります。
+
+## 変更内容
+
+1. src/contest/state/manager.rsを新規作成
+   - ContestStateManager構造体を定義
+   - StateManagerトレイトの実装を移動
+   - 状態管理に関する機能を実装
+
+2. src/contest/core/contest.rsの修正
+   - ContestStateManagerをフィールドとして追加
+   - StateManagerトレイトの実装を削除
+   - state関連のメソッドをContestStateManagerに委譲
+
+3. src/contest/mod.rsの修正
+   - 新しいモジュールの追加
+
+## 期待される効果
+- 状態管理の責務が明確に分離される
+- Contest構造体がより単一責任の原則に従う形になる
+- 状態管理機能の拡張や変更が容易になる 

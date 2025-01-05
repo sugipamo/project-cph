@@ -1,34 +1,24 @@
 use crate::config::Config;
-use super::{ContestState, state_manager::StateManager};
+use super::{ContestState, state::manager::ContestStateManager};
 use crate::contest::error::Result;
 use crate::fs::FileManager;
 
 /// コンテスト情報を管理する構造体
 #[derive(Debug)]
 pub struct Contest {
-    /// コンテストの状態
-    state: ContestState,
+    /// 状態管理
+    state_manager: ContestStateManager,
     /// 設定情報
     config: Config,
     /// バァイルシステム操作
     fs: FileManager,
 }
 
-impl StateManager for Contest {
-    fn state(&self) -> &ContestState {
-        &self.state
-    }
-
-    fn state_mut(&mut self) -> &mut ContestState {
-        &mut self.state
-    }
-}
-
 impl Contest {
     /// サイト認証用のコンテストインスタンスを作成
     pub fn for_site_auth(config: Config) -> Result<Self> {
         Ok(Self {
-            state: ContestState::new(),
+            state_manager: ContestStateManager::new(ContestState::new()),
             config,
             fs: FileManager::new()?,
         })
@@ -46,10 +36,20 @@ impl Contest {
         }
 
         Ok(Self {
-            state,
+            state_manager: ContestStateManager::new(state),
             config,
             fs: FileManager::new()?.with_base_path(&active_dir),
         })
+    }
+
+    /// 状態を取得
+    pub fn state(&self) -> &ContestState {
+        self.state_manager.state()
+    }
+
+    /// 状態を可変で取得
+    pub fn state_mut(&mut self) -> &mut ContestState {
+        self.state_manager.state_mut()
     }
 
     /// 設定を取得
