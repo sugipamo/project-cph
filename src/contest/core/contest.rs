@@ -7,13 +7,6 @@ use crate::contest::fs::BackupManager;
 /// コンテスト情報を管理する構造体
 #[derive(Debug)]
 pub struct Contest {
-    /// コンテストの管理者
-    manager: ContestManager,
-}
-
-/// コンテストの内部状態を管理する構造体
-#[derive(Debug)]
-struct ContestManager {
     /// コンテストの状態
     state: ContestState,
     /// 設定情報
@@ -22,7 +15,7 @@ struct ContestManager {
     backup_manager: BackupManager,
 }
 
-impl StateManager for ContestManager {
+impl StateManager for Contest {
     fn state(&self) -> &ContestState {
         &self.state
     }
@@ -39,37 +32,14 @@ impl StateManager for ContestManager {
     }
 }
 
-impl ContestManager {
-    /// 新しいコンテスト管理者を作成
-    fn new(config: Config, state: ContestState) -> Result<Self> {
-        Ok(Self {
-            state,
-            config,
-            backup_manager: BackupManager::new()?,
-        })
-    }
-
-    /// 設定を取得
-    fn config(&self) -> &Config {
-        &self.config
-    }
-
-    /// バックアップマネージャーを取得
-    fn backup_manager(&self) -> &BackupManager {
-        &self.backup_manager
-    }
-
-    /// バックアップマネージャーを可変で取得
-    fn backup_manager_mut(&mut self) -> &mut BackupManager {
-        &mut self.backup_manager
-    }
-}
-
 impl Contest {
     /// サイト認証用のコンテストインスタンスを作成
     pub fn for_site_auth(config: Config) -> Result<Self> {
-        let manager = ContestManager::new(config, ContestState::new())?;
-        Ok(Self { manager })
+        Ok(Self {
+            state: ContestState::new(),
+            config,
+            backup_manager: BackupManager::new()?,
+        })
     }
 
     /// 新しいコンテストインスタンスを作成
@@ -83,33 +53,27 @@ impl Contest {
             state = state.with_language(&default_lang);
         }
 
-        let manager = ContestManager::new(config, state)?;
-        Ok(Self { manager })
+        Ok(Self {
+            state,
+            config,
+            backup_manager: BackupManager::new()?,
+        })
     }
 
-    /// 状態を取得
-    pub fn state(&self) -> &ContestState {
-        self.manager.state()
-    }
-
-    /// 状態を可変で取得
-    pub fn state_mut(&mut self) -> &mut ContestState {
-        self.manager.state_mut()
-    }
 
     /// 設定を取得
     pub fn config(&self) -> &Config {
-        self.manager.config()
+        &self.config
     }
 
     /// バックアップマネージャーを取得
     pub fn backup_manager(&self) -> &BackupManager {
-        self.manager.backup_manager()
+        &self.backup_manager
     }
 
     /// バックアップマネージャーを可変で取得
     pub fn backup_manager_mut(&mut self) -> &mut BackupManager {
-        self.manager.backup_manager_mut()
+        &mut self.backup_manager
     }
 }
 
