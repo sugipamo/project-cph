@@ -1,0 +1,464 @@
+diff --git a/agent/refactor.do b/agent/refactor.do
+index 6d295ee..e59c4c5 100644
+--- a/agent/refactor.do
++++ b/agent/refactor.do
+@@ -1,3 +1,4 @@
+ date +%Y%m%d%H%M%Sを実行
+ 必要なファイルを検索、修正するべき点をまとめ、実装計画をagent/.refactor/yyyymmddhhmm_plan.txtに記述する
+-その後、作業を開始する
+\ No newline at end of file
++その後、作業を開始する
++作業後cargo checkを行う
+\ No newline at end of file
+diff --git a/src/contest/core/contest.rs b/src/contest/core/contest.rs
+deleted file mode 100644
+index 55d4b70..0000000
+--- a/src/contest/core/contest.rs
++++ /dev/null
+@@ -1,70 +0,0 @@
+-use crate::config::Config;
+-use crate::contest::state::ContestState;
+-use crate::contest::state::manager::ContestStateManager;
+-use crate::contest::error::Result;
+-use crate::fs::FileManager;
+-
+-/// コンテスト情報を管理する構造体
+-#[derive(Debug)]
+-pub struct Contest {
+-    /// 状態管理
+-    state_manager: ContestStateManager,
+-    /// 設定情報
+-    config: Config,
+-    /// バァイルシステム操作
+-    fs: FileManager,
+-}
+-
+-impl Contest {
+-    /// サイト認証用のコンテストインスタンスを作成
+-    pub fn for_site_auth(config: Config) -> Result<Self> {
+-        Ok(Self {
+-            state_manager: ContestStateManager::new(ContestState::new()),
+-            config,
+-            fs: FileManager::new()?,
+-        })
+-    }
+-
+-    /// 新しいコンテストインスタンスを作成
+-    pub fn new(config: Config, problem_id: &str) -> Result<Self> {
+-        let active_dir = config.get::<String>("system.contest_dir.active")?;
+-        let mut state = ContestState::new()
+-            .with_problem(problem_id)
+-            .with_active_dir(active_dir.clone().into());
+-
+-        if let Ok(default_lang) = config.get::<String>("languages.default") {
+-            state = state.with_language(&default_lang);
+-        }
+-
+-        Ok(Self {
+-            state_manager: ContestStateManager::new(state),
+-            config,
+-            fs: FileManager::new()?.with_base_path(&active_dir),
+-        })
+-    }
+-
+-    /// 状態を取得
+-    pub fn state(&self) -> &ContestState {
+-        self.state_manager.state()
+-    }
+-
+-    /// 状態を可変で取得
+-    pub fn state_mut(&mut self) -> &mut ContestState {
+-        self.state_manager.state_mut()
+-    }
+-
+-    /// 設定を取得
+-    pub fn config(&self) -> &Config {
+-        &self.config
+-    }
+-
+-    /// ファイルシステム操作を取得
+-    pub fn fs(&self) -> &FileManager {
+-        &self.fs
+-    }
+-
+-    /// ファイルシステム操作を可変で取得
+-    pub fn fs_mut(&mut self) -> &mut FileManager {
+-        &mut self.fs
+-    }
+-}
+diff --git a/src/contest/core/mod.rs b/src/contest/core/mod.rs
+deleted file mode 100644
+index 346c5b3..0000000
+--- a/src/contest/core/mod.rs
++++ /dev/null
+@@ -1,12 +0,0 @@
+-mod contest;
+-mod state_manager;
+-mod test;
+-mod url;
+-mod path;
+-
+-pub use contest::Contest;
+-pub use crate::contest::state::ContestState;
+-pub use state_manager::StateManager;
+-pub use test::TestManager;
+-pub use url::UrlGenerator;
+-pub use path::PathResolver;
+diff --git a/src/contest/core/path.rs b/src/contest/core/path.rs
+deleted file mode 100644
+index b72aafb..0000000
+--- a/src/contest/core/path.rs
++++ /dev/null
+@@ -1,188 +0,0 @@
+-use std::path::{Path, PathBuf};
+-use std::fs;
+-use crate::config::Config;
+-use crate::contest::error::{Result, ContestError};
+-
+-/// パス解決を担当する構造体
+-#[derive(Debug)]
+-pub struct PathResolver {
+-    /// 基準となるパス
+-    base_path: PathBuf,
+-    /// 設定情報
+-    config: Config,
+-}
+-
+-impl PathResolver {
+-    /// 新しいパスリゾルバを作成
+-    pub fn new(base_path: PathBuf, config: Config) -> Self {
+-        Self {
+-            base_path,
+-            config,
+-        }
+-    }
+-
+-    /// テンプレートディレクトリのパスを取得
+-    pub fn get_template_dir(&self, language: &str) -> Result<PathBuf> {
+-        let template_dir = self.config.get::<String>(&format!("languages.{}.templates.directory", language))
+-            .map_err(|e| ContestError::Config {
+-                message: format!("テンプレートディレクトリの設定取得に失敗: {}", e),
+-                source: None,
+-            })?;
+-        
+-        let template_base = self.config.get::<String>("system.contest_dir.template")
+-            .map_err(|e| ContestError::Config {
+-                message: format!("テンプレートディレクトリの設定取得に失敗: {}", e),
+-                source: None,
+-            })?;
+-        
+-        let template_path = PathBuf::from(template_base).join(template_dir);
+-        if !template_path.exists() {
+-            fs::create_dir_all(&template_path)
+-                .map_err(|e| ContestError::FileSystem {
+-                    message: "テンプレートディレクトリの作成に失敗".to_string(),
+-                    source: e,
+-                    path: template_path.clone(),
+-                })?;
+-        }
+-        
+-        Ok(template_path)
+-    }
+-
+-    /// コンテスト保存用ディレクトリのパスを取得
+-    pub fn get_contests_dir(&self) -> Result<PathBuf> {
+-        let storage_base = self.config.get::<String>("system.contest_dir.storage")
+-            .map_err(|e| ContestError::Config {
+-                message: format!("コンテスト保存先ディレクトリの設定取得に失敗: {}", e),
+-                source: None,
+-            })?;
+-        Ok(self.get_absolute_contest_dir()?
+-            .parent()
+-            .unwrap()
+-            .join(storage_base))
+-    }
+-
+-    /// 問題ファイルのパスを取得
+-    pub fn get_problem_file_path(&self, problem_id: &str, language: &str, file_type: &str) -> Result<PathBuf> {
+-        let extension = self.config.get::<String>(&format!("languages.{}.extension", language))
+-            .map_err(|e| ContestError::Config {
+-                message: format!("言語{}の拡張子取得に失敗: {}", language, e),
+-                source: None,
+-            })?;
+-
+-        let pattern = self.config.get::<String>(&format!("languages.{}.templates.patterns.{}", language, file_type))
+-            .map_err(|e| ContestError::Config {
+-                message: format!("ファイルパターンの取得に失敗: {}", e),
+-                source: None,
+-            })?;
+-
+-        let file_name = pattern.replace("{extension}", &extension);
+-        Ok(self.get_absolute_contest_dir()?.join(problem_id).join(file_name))
+-    }
+-
+-    /// ソリューションファイルのパスを取得
+-    pub fn get_solution_path(&self, problem_id: &str, language: &str) -> Result<PathBuf> {
+-        self.get_problem_file_path(problem_id, language, "solution")
+-    }
+-
+-    /// ジェネレータファイルのパスを取得
+-    pub fn get_generator_path(&self, problem_id: &str, language: &str) -> Result<PathBuf> {
+-        self.get_problem_file_path(problem_id, language, "generator")
+-    }
+-
+-    /// テスターファイルのパスを取得
+-    pub fn get_tester_path(&self, problem_id: &str, language: &str) -> Result<PathBuf> {
+-        self.get_problem_file_path(problem_id, language, "tester")
+-    }
+-
+-    /// テストディレクトリのパスを取得
+-    pub fn get_test_dir(&self, problem_id: &str) -> Result<PathBuf> {
+-        let test_dir = self.config.get::<String>("system.test.dir")
+-            .map_err(|e| ContestError::Config {
+-                message: format!("テストディレクトリの設定取得に失敗: {}", e),
+-                source: None,
+-            })?;
+-        Ok(self.get_absolute_contest_dir()?.join(problem_id).join(test_dir))
+-    }
+-
+-    /// パス解決のためのヘルパーメソッド
+-    fn get_absolute_contest_dir(&self) -> Result<PathBuf> {
+-        let current_dir = std::env::current_dir()
+-            .map_err(|e| ContestError::FileSystem {
+-                message: "カレントディレクトリの取得に失敗".to_string(),
+-                source: e,
+-                path: PathBuf::from("."),
+-            })?;
+-        
+-        if !current_dir.exists() {
+-            fs::create_dir_all(&current_dir)
+-                .map_err(|e| ContestError::FileSystem {
+-                    message: "ディレクトリの作成に失敗".to_string(),
+-                    source: e,
+-                    path: current_dir.clone(),
+-                })?;
+-        }
+-        
+-        let absolute_path = current_dir.join(&self.base_path);
+-        if !absolute_path.exists() {
+-            fs::create_dir_all(&absolute_path)
+-                .map_err(|e| ContestError::FileSystem {
+-                    message: "ディレクトリの作成に失敗".to_string(),
+-                    source: e,
+-                    path: absolute_path.clone(),
+-                })?;
+-        }
+-        
+-        Ok(absolute_path)
+-    }
+-
+-    /// ディレクトリ内容を再帰的にコピー
+-    pub fn copy_dir_contents(&self, source: &Path, target: &Path) -> Result<()> {
+-        for entry in fs::read_dir(source)
+-            .map_err(|e| ContestError::FileSystem {
+-                message: "ディレクトリの読み取りに失敗".to_string(),
+-                source: e,
+-                path: source.to_path_buf(),
+-            })? {
+-            let entry = entry.map_err(|e| ContestError::FileSystem {
+-                message: "ディレクトリエントリの読み取りに失敗".to_string(),
+-                source: e,
+-                path: source.to_path_buf(),
+-            })?;
+-            let file_type = entry.file_type()
+-                .map_err(|e| ContestError::FileSystem {
+-                    message: "ファイルタイプの取得に失敗".to_string(),
+-                    source: e,
+-                    path: entry.path(),
+-                })?;
+-            let source_path = entry.path();
+-            let file_name = entry.file_name();
+-            let target_path = target.join(&file_name);
+-
+-            if file_type.is_dir() {
+-                if !target_path.exists() {
+-                    println!("ディレクトリを作成: {}", target_path.display());
+-                    fs::create_dir_all(&target_path)
+-                        .map_err(|e| ContestError::FileSystem {
+-                            message: "ディレクトリの作成に失敗".to_string(),
+-                            source: e,
+-                            path: target_path.clone(),
+-                        })?;
+-                }
+-                self.copy_dir_contents(&source_path, &target_path)?;
+-            } else {
+-                if !target_path.exists() {
+-                    println!("ファイルをコピー: {} -> {}", source_path.display(), target_path.display());
+-                    fs::copy(&source_path, &target_path)
+-                        .map_err(|e| ContestError::FileSystem {
+-                            message: "ファイルのコピーに失敗".to_string(),
+-                            source: e,
+-                            path: target_path.clone(),
+-                        })?;
+-                } else {
+-                    println!("ファイルはすでに存在します（スキップ）: {}", target_path.display());
+-                }
+-            }
+-        }
+-        Ok(())
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/contest/core/state_manager.rs b/src/contest/core/state_manager.rs
+deleted file mode 100644
+index d3562cb..0000000
+--- a/src/contest/core/state_manager.rs
++++ /dev/null
+@@ -1,19 +0,0 @@
+-use crate::contest::error::Result;
+-use super::ContestState;
+-
+-/// コンテストの状態管理を行うトレイト
+-pub trait StateManager {
+-    /// 現在の状態を取得
+-    fn state(&self) -> &ContestState;
+-    
+-    /// 可変の状態を取得
+-    fn state_mut(&mut self) -> &mut ContestState;
+-    
+-    /// 状態を更新
+-    fn update_state<F>(&mut self, f: F) -> Result<()>
+-    where
+-        F: FnOnce(&mut ContestState) -> Result<()>,
+-    {
+-        f(self.state_mut())
+-    }
+-}
+diff --git a/src/contest/service/mod.rs b/src/contest/service/mod.rs
+index c8b5c2b..f17acd7 100644
+--- a/src/contest/service/mod.rs
++++ b/src/contest/service/mod.rs
+@@ -1,7 +1,9 @@
+ mod contest;
+ mod test;
+ mod url;
++mod path;
+ 
+ pub use contest::Contest;
+ pub use test::TestManager;
+-pub use url::UrlGenerator; 
+\ No newline at end of file
++pub use url::UrlGenerator;
++pub use path::PathResolver; 
+\ No newline at end of file
+diff --git a/src/contest/state/manager.rs b/src/contest/state/manager.rs
+deleted file mode 100644
+index 24f69ff..0000000
+--- a/src/contest/state/manager.rs
++++ /dev/null
+@@ -1,25 +0,0 @@
+-use super::ContestState;
+-
+-/// コンテストの状態を管理する構造体
+-#[derive(Debug)]
+-pub struct ContestStateManager {
+-    /// コンテストの状態
+-    state: ContestState,
+-}
+-
+-impl ContestStateManager {
+-    /// 新しい状態管理インスタンスを作成
+-    pub fn new(state: ContestState) -> Self {
+-        Self { state }
+-    }
+-
+-    /// 状態を取得
+-    pub fn state(&self) -> &ContestState {
+-        &self.state
+-    }
+-
+-    /// 状態を可変で取得
+-    pub fn state_mut(&mut self) -> &mut ContestState {
+-        &mut self.state
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/contest/state/mod.rs b/src/contest/state/mod.rs
+deleted file mode 100644
+index bead632..0000000
+--- a/src/contest/state/mod.rs
++++ /dev/null
+@@ -1,82 +0,0 @@
+-use std::path::PathBuf;
+-use serde::{Serialize, Deserialize};
+-use crate::contest::error::Result;
+-
+-/// コンテストの状態を表す構造体
+-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+-pub struct ContestState {
+-    /// アクティブなコンテストのディレクトリ
+-    #[serde(default)]
+-    pub active_contest_dir: PathBuf,
+-
+-    /// コンテスト情報
+-    #[serde(default)]
+-    pub contest: String,
+-
+-    /// 問題ID
+-    pub problem_id: Option<String>,
+-
+-    /// 使用言語
+-    pub language: Option<String>,
+-
+-    /// サイトID（例: atcoder, codeforces）
+-    #[serde(default)]
+-    pub site: String,
+-}
+-
+-impl ContestState {
+-    /// 新しい状態を作成
+-    pub fn new() -> Self {
+-        Self::default()
+-    }
+-
+-    /// 問題IDを設定
+-    pub fn with_problem(mut self, problem_id: &str) -> Self {
+-        self.problem_id = Some(problem_id.to_string());
+-        self
+-    }
+-
+-    /// 言語を設定
+-    pub fn with_language(mut self, language: &str) -> Self {
+-        self.language = Some(language.to_string());
+-        self
+-    }
+-
+-    /// コンテスト情報を設定
+-    pub fn with_contest(mut self, contest_id: &str) -> Self {
+-        self.contest = contest_id.to_string();
+-        self
+-    }
+-
+-    /// サイトIDを設定
+-    pub fn with_site(mut self, site: &str) -> Self {
+-        self.site = site.to_string();
+-        self
+-    }
+-
+-    /// アクティブディレクトリを設定
+-    pub fn with_active_dir(mut self, dir: PathBuf) -> Self {
+-        self.active_contest_dir = dir;
+-        self
+-    }
+-
+-    /// 問題IDを取得
+-    pub fn problem_id(&self) -> Option<&str> {
+-        self.problem_id.as_deref()
+-    }
+-
+-    /// 言語を取得
+-    pub fn language(&self) -> Option<&str> {
+-        self.language.as_deref()
+-    }
+-
+-    /// アクティブディレクトリを取得
+-    pub fn active_dir(&self) -> &PathBuf {
+-        &self.active_contest_dir
+-    }
+-
+-    /// 問題IDを設定（可変参照版）
+-    pub fn set_problem(&mut self, problem_id: &str) {
+-        self.problem_id = Some(problem_id.to_string());
+-    }
+-} 
+\ No newline at end of file
