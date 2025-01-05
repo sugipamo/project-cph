@@ -8,56 +8,58 @@ use crate::docker::state::RunnerState;
 use super::DockerRunner;
 
 impl DockerRunner {
-    pub async fn write(&self, input: &str) -> () {
+    pub async fn write(&self, input: &str) -> Result<(), String> {
         println!("Writing to container: {}", input);
         let tx = match self.stdin_tx.as_ref() {
             Some(tx) => tx,
             None => {
                 println!("Container not initialized for writing");
-                return;
+                return Err("コンテナが書き込み用に初期化されていません".to_string());
             }
         };
 
         match tx.send(input.to_string()).await {
             Ok(_) => {
                 println!("Successfully wrote to container");
+                Ok(())
             }
             Err(e) => {
                 println!("Failed to write to container: {:?}", e);
+                Err(format!("コンテナへの書き込みに失敗しました: {}", e))
             }
         }
     }
 
-    pub async fn read(&self) -> String {
+    pub async fn read(&self) -> Result<String, String> {
         println!("Attempting to read from container");
         let stdout = self.stdout_buffer.lock().await;
         match stdout.last() {
             Some(output) => {
                 println!("Read from container: '{}'", output);
-                output.clone()
+                Ok(output.clone())
             }
             None => {
                 println!("No output available from container");
-                String::new()
+                Ok(String::new())
             }
         }
     }
 
-    pub async fn read_error(&self) -> String {
+    pub async fn read_error(&self) -> Result<String, String> {
         let stderr = self.stderr_buffer.lock().await;
         match stderr.last() {
             Some(error) => {
                 println!("Read error from container: '{}'", error);
-                error.clone()
+                Ok(error.clone())
             }
             None => {
                 println!("No error output available from container");
-                String::new()
+                Ok(String::new())
             }
         }
     }
 
-    pub(crate) async fn setup_io(&mut self) -> () {
+    pub(crate) async fn setup_io(&mut self) -> Result<(), String> {
         println!("Setting up I/O for container: {}", self.container_id);
         let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(32);
         self.stdin_tx = Some(tx);
@@ -67,7 +69,11 @@ impl DockerRunner {
         let stdout_buffer = self.stdout_buffer.clone();
         let stderr_buffer = self.stderr_buffer.clone();
         let state = self.state.clone();
-        let timeout_duration = Duration::from_secs(self.config.timeout_seconds);
+
+        // タイムアウト設定の取得
+        let timeout_seconds = self.config.get::<u64>("system.docker.timeout_seconds")
+            .map_err(|e| format!("タイムアウト設定の読み込みに失敗しました: {}", e))?;
+        let timeout_duration = Duration::from_secs(timeout_seconds);
 
         // 標準出力の監視
         let stdout_options = LogsOptions::<String> {
@@ -156,5 +162,6 @@ impl DockerRunner {
         });
 
         println!("I/O setup completed for container {}", self.container_id);
+        Ok(())
     }
 } 

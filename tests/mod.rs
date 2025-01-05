@@ -1,5 +1,6 @@
 pub mod docker;
 pub mod helpers;
+mod fs;
 
 #[cfg(test)]
 mod tests {

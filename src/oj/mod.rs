@@ -2,13 +2,11 @@ use crate::error::Result;
 use std::path::PathBuf;
 use colored::*;
 use std::process::Command;
-use crate::cli::Site;
 use std::env;
-use crate::contest::Contest;
 use users;
 use std::os::unix::fs::PermissionsExt;
 use dirs;
-use crate::config::OJConfig;
+use crate::config::Config;
 
 const COOKIE_DIR: &str = ".local/share/online-judge-tools";
 const COOKIE_FILE: &str = "cookie.jar";
@@ -49,15 +47,15 @@ pub struct ProblemInfo {
 
 pub struct OJContainer {
     workspace_path: PathBuf,
-    contest: Contest,
-    config: OJConfig,
+    site_name: String,
+    config: Config,
 }
 
 impl OJContainer {
-    pub fn new(workspace_path: PathBuf) -> Result<Self> {
-        let contest = Contest::new(workspace_path.clone())?;
-        let config = OJConfig::load()?;
-        Ok(Self { workspace_path, contest, config })
+    pub fn new(workspace_path: PathBuf, site_name: String) -> Result<Self> {
+        let config = Config::load()
+            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
+        Ok(Self { workspace_path, site_name, config })
     }
 
     fn get_dockerfile_path() -> PathBuf {
@@ -155,9 +153,12 @@ impl OJContainer {
         Ok(())
     }
 
-    pub async fn login(&self, site: &Site) -> Result<()> {
-        let site_url = site.get_url();
-        println!("{}", format!("Logging in to {}...", site.get_name()).cyan());
+    pub async fn login(&self) -> Result<()> {
+        // サイトのURLを取得
+        let url = self.config.get::<String>(&format!("sites.{}.url", self.site_name))?;
+        let name = self.config.get::<String>(&format!("sites.{}.name", self.site_name))?;
+
+        println!("{}", format!("Logging in to {}...", name).cyan());
 
         // cookieファイルをリセット
         println!("{}", "Resetting cookie file...".cyan());
@@ -184,15 +185,41 @@ impl OJContainer {
         }
 
         // ログインを実行
-        self.run_oj_command(&["login", site_url], false).await?;
+        self.run_oj_command(&["login", &url], false).await?;
 
-        println!("{}", format!("Successfully logged in to {}", site.get_name()).green());
+        println!("{}", format!("Successfully logged in to {}", name).green());
         Ok(())
     }
 
     pub async fn open(&self, problem: ProblemInfo) -> Result<()> {
         println!("{}", format!("Opening problem URL: {}", problem.url).cyan());
-        println!("{}", format!("Please open this URL in your browser: {}", problem.url).yellow());
+
+        // ブラウザ設定を確認
+        let browser = self.config.get::<String>("system.browser")
+            .or_else(|_| env::var("BROWSER"))
+            .unwrap_or_else(|_| {
+                println!("{}", format!("Note: To automatically open URLs, please set the $BROWSER environment variable or configure system.browser in config.yaml").yellow());
+                String::new()
+            });
+
+        if !browser.is_empty() {
+            if let Err(e) = Command::new(&browser).arg(&problem.url).output() {
+                println!("Note: Failed to open in browser: {}", e);
+            }
+        }
+
+        // エディタ設定を取得
+        let editors = self.config.get::<Vec<String>>("system.editors")
+            .unwrap_or_else(|_| vec!["code".to_string(), "cursor".to_string()]);
+
+        // 各エディタで開く
+        for editor in editors {
+            if let Some(source_path) = problem.source_path.to_str() {
+                if let Err(e) = Command::new(&editor).arg(source_path).output() {
+                    println!("Note: Failed to open in {}: {}", editor, e);
+                }
+            }
+        }
 
         // Dockerイメージの存在確認
         self.check_image_exists().await?;
@@ -205,9 +232,13 @@ impl OJContainer {
         let relative_problem_dir = problem_dir.strip_prefix(&self.workspace_path)
             .map_err(|_| "Failed to get relative problem path")?;
 
+        // テストディレクトリを設定から取得
+        let test_dir = self.config.get::<String>("system.test.directory")
+            .unwrap_or_else(|_| "test".to_string());
+
         self.run_oj_command(&[
             "download",
-            "-d", &format!("{}/{}", relative_problem_dir.display(), self.config.test.directory),
+            "-d", &format!("{}/{}", relative_problem_dir.display(), test_dir),
             &problem.url,
         ], true).await?;
 
@@ -215,38 +246,27 @@ impl OJContainer {
         Ok(())
     }
 
-    pub async fn submit(&self, problem: &ProblemInfo, _site: &Site, language_id: &str) -> Result<()> {
-        println!("{}", format!("Submitting solution for problem {}...", problem.problem_id).cyan());
-
+    pub async fn submit(&self, problem: &ProblemInfo, language_id: &str) -> Result<()> {
         // Dockerイメージの存在確認
         self.check_image_exists().await?;
 
-        let source_path_relative = problem.source_path.strip_prefix(&self.workspace_path)
-            .map_err(|_| "Failed to get relative source path")?;
+        // 提出コマンドを実行
+        println!("{}", format!("Submitting solution for problem {}...", problem.problem_id).cyan());
 
-        let mut args = vec![
+        self.run_oj_command(&[
             "submit",
-            "--language", language_id,
-        ];
-
-        // 設定に基づいてコマンドライン引数を追加
-        args.push(&format!("--wait={}", self.config.submit.wait));
-        if self.config.submit.auto_yes {
-            args.push("--yes");
-        }
-
-        args.extend(&[
+            "-l", language_id,
+            "-y",  // 確認をスキップ
             &problem.url,
-            source_path_relative.to_str().unwrap(),
-        ]);
-
-        self.run_oj_command(&args, true).await?;
+            &problem.source_path.to_string_lossy(),
+        ], true).await?;
 
         println!("{}", "Solution submitted successfully".green());
         Ok(())
     }
 }
 
+#[allow(dead_code)]
 fn has_test_cases(dir: &PathBuf) -> Result<bool> {
     if !dir.exists() {
         return Ok(false);

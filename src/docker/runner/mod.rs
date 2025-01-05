@@ -2,118 +2,77 @@ pub mod command;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tokio::time::{timeout, Duration};
-
-use crate::docker::state::RunnerState;
-use crate::docker::config::DockerConfig;
-use crate::config::languages::{LanguageConfig, LanguageInfo};
+use crate::config::Config;
+use crate::config::TypedValue;
 use self::command::DockerCommand;
+use crate::docker::state::RunnerState;
 
 pub struct DockerRunner {
     command: DockerCommand,
-    config: DockerConfig,
-    language_info: LanguageInfo,
+    config: Arc<Config>,
+    language: String,
     state: Arc<Mutex<RunnerState>>,
 }
 
 impl DockerRunner {
-    pub fn new(config: DockerConfig, language_info: LanguageInfo) -> Self {
-        Self {
-            command: DockerCommand::new(),
-            config,
-            language_info,
-            state: Arc::new(Mutex::new(RunnerState::Ready)),
-        }
+    fn load_config_value<T: TypedValue>(config: &Config, key: &str) -> Result<T, String> {
+        config.get::<T>(key)
+            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))
     }
 
-    pub fn from_language(language: &str) -> std::io::Result<Self> {
-        let config = DockerConfig::default();
-        let language_info = LanguageConfig::from_yaml("src/config/languages.yaml", language)?;
+    pub fn new(config: Config, language: String) -> Result<Self, String> {
+        // 言語の存在確認
+        let config = Arc::new(config);
+        let _resolved = config.get_with_alias::<String>(&format!("languages.{}.extension", language))
+            .map_err(|e| format!("言語名の解決に失敗しました: {}", e))?;
+
+        Ok(Self {
+            command: DockerCommand::new(),
+            config: config.clone(),
+            language,
+            state: Arc::new(Mutex::new(RunnerState::Ready)),
+        })
+    }
+
+    pub fn from_language(language: &str) -> Result<Self, String> {
+        let config = Config::load()
+            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
         
-        Ok(Self::new(config, language_info))
+        Self::new(config, language.to_string())
     }
 
     pub async fn run_in_docker(&mut self, source_code: &str) -> Result<String, String> {
-        println!("Starting Docker execution with image: {}", self.language_info.runner.image);
+        println!("Starting Docker execution");
         
-        match timeout(
-            Duration::from_secs(self.config.timeout_seconds),
-            self.execute(source_code)
-        ).await {
-            Ok(result) => result,
-            Err(_) => {
-                println!("Execution timed out after {} seconds", self.config.timeout_seconds);
-                if let Err(e) = self.cleanup().await {
-                    println!("Failed to cleanup after timeout: {}", e);
-                }
-                *self.state.lock().await = RunnerState::Error;
-                Err("Execution timeout".to_string())
-            }
-        }
-    }
-
-    async fn execute(&mut self, source_code: &str) -> Result<String, String> {
-        // 初期化
-        self.initialize().await?;
-
-        // コンパイルが必要な言語の場合
-        if self.language_info.runner.needs_compilation() {
-            println!("Compiling source code...");
-            if let Some(ref compile_cmd) = self.language_info.runner.compile {
-                if let Err(e) = self.command.compile(
-                    &self.language_info.runner.image,
-                    compile_cmd.as_slice(),
-                    self.language_info.runner.get_compile_dir(),
-                    &self.config.mount_point,
-                    source_code,
-                    self.language_info.runner.to_compile_config(&self.language_info.extension),
-                ).await {
-                    println!("Compilation failed: {}", e);
-                    return Err(e);
-                }
-            }
-        }
-
-        // 実行
-        let output = self.command.run_container(
-            &self.language_info.runner.image,
-            self.language_info.runner.run.as_slice(),
-            source_code,
-            self.config.timeout_seconds,
-            self.config.memory_limit_mb,
-            if self.language_info.runner.needs_compilation() {
-                Some(self.language_info.runner.get_compile_dir())
-            } else {
-                None
-            },
-            &self.config.mount_point,
-        ).await;
-
-        // クリーンアップ
-        if let Err(e) = self.cleanup().await {
-            println!("Cleanup failed: {}", e);
-        }
-
-        output
-    }
-
-    async fn initialize(&mut self) -> Result<(), String> {
-        println!("Initializing Docker runner");
-        *self.state.lock().await = RunnerState::Running;
+        // イメージ名を取得
+        let image = self.config.get::<String>(&format!("languages.{}.runner.image", self.language))
+            .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
 
         // イメージの確認と取得
-        if !self.command.check_image(&self.language_info.runner.image).await {
-            println!("Image not found, attempting to pull: {}", self.language_info.runner.image);
-            if !self.command.pull_image(&self.language_info.runner.image).await {
-                println!("Failed to pull image: {}", self.language_info.runner.image);
+        if !self.command.check_image(&image).await {
+            println!("Image not found, attempting to pull: {}", image);
+            if !self.command.pull_image(&image).await {
+                println!("Failed to pull image: {}", image);
                 *self.state.lock().await = RunnerState::Error;
-                return Err(format!("Failed to pull image: {}", self.language_info.runner.image));
+                return Err(format!("Failed to pull image: {}", image));
             }
         }
 
-        println!("Image is ready: {}", self.language_info.runner.image);
+        println!("Image is ready: {}", image);
         *self.state.lock().await = RunnerState::Running;
-        Ok(())
+
+        // ソースコードの実行
+        let result = self.command.run_code(&image, source_code).await;
+        match result {
+            Ok(output) => {
+                *self.state.lock().await = RunnerState::Ready;
+                Ok(output)
+            }
+            Err(e) => {
+                *self.state.lock().await = RunnerState::Error;
+                Err(e)
+            }
+        }
     }
 
     pub async fn cleanup(&mut self) -> Result<(), String> {
@@ -134,7 +93,15 @@ impl DockerRunner {
     }
 
     pub async fn inspect_mount_point(&mut self) -> Result<String, String> {
-        println!("Inspecting mount point directory: {}", self.config.mount_point);
-        self.command.inspect_directory(&self.language_info.runner.image, &self.config.mount_point).await
+        // イメージ名を取得
+        let image = self.config.get::<String>(&format!("languages.{}.runner.image", self.language))
+            .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
+
+        // マウントポイントを取得
+        let mount_point = self.config.get::<String>("system.docker.mount_point")
+            .map_err(|e| format!("マウントポイントの設定の読み込みに失敗しました: {}", e))?;
+
+        println!("Inspecting mount point directory: {}", &mount_point);
+        self.command.inspect_directory(&image, &mount_point).await
     }
 } 
