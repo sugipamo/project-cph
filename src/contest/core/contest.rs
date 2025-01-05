@@ -2,7 +2,7 @@ use crate::config::{Config, ConfigBuilder};
 use serde_json;
 use super::{ContestState, state_manager::StateManager};
 use crate::contest::error::Result;
-use crate::contest::fs::BackupManager;
+use crate::fs::SafeFileSystem;
 
 /// コンテスト情報を管理する構造体
 #[derive(Debug)]
@@ -11,8 +11,8 @@ pub struct Contest {
     state: ContestState,
     /// 設定情報
     config: Config,
-    /// バックアップマネージャー
-    backup_manager: BackupManager,
+    /// バァイルシステム操作
+    fs: SafeFileSystem,
 }
 
 impl StateManager for Contest {
@@ -31,7 +31,7 @@ impl Contest {
         Ok(Self {
             state: ContestState::new(),
             config,
-            backup_manager: BackupManager::new()?,
+            fs: SafeFileSystem::new()?,
         })
     }
 
@@ -49,23 +49,22 @@ impl Contest {
         Ok(Self {
             state,
             config,
-            backup_manager: BackupManager::new()?,
+            fs: SafeFileSystem::new()?.with_base_path(&active_dir),
         })
     }
-
 
     /// 設定を取得
     pub fn config(&self) -> &Config {
         &self.config
     }
 
-    /// バックアップマネージャーを取得
-    pub fn backup_manager(&self) -> &BackupManager {
-        &self.backup_manager
+    /// ファイルシステム操作を取得
+    pub fn fs(&self) -> &SafeFileSystem {
+        &self.fs
     }
 
-    /// バックアップマネージャーを可変で取得
-    pub fn backup_manager_mut(&mut self) -> &mut BackupManager {
-        &mut self.backup_manager
+    /// ファイルシステム操作を可変で取得
+    pub fn fs_mut(&mut self) -> &mut SafeFileSystem {
+        &mut self.fs
     }
 }

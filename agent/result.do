@@ -10,5 +10,5 @@ developブランチへのプルリクエストを作成する
 git fetch を行う
 developブランチへcheckoutする
 developブランチへマージする
-developブランチを最新の状態にする
+git fetch を行う
 作成されたブランチを削除する
