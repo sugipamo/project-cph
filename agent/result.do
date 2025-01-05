@@ -7,8 +7,7 @@ git diff develop > agent/.refactor/yyyymmddhhmm_result.txt
 今回の作業結果を作成されたファイルに追記する、関数名などの変更があればメモしておく
 feature/refactor_{}のブランチを作成し、コミット、プッシュする。
 developブランチへのプルリクエストを作成する
-git fetch を行う
+gitを最新の状態に同期する
 developブランチへcheckoutする
 developブランチへマージする
-git fetch を行う
-作成されたブランチを削除する
+gitを最新の状態に同期して、main, develop以外のローカル、リモートブランチを削除する
