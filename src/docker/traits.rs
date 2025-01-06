@@ -1,99 +1,42 @@
 use async_trait::async_trait;
-use crate::docker::error::DockerResult;
 use std::time::Duration;
+use crate::docker::error::DockerResult;
+use crate::docker::config::ContainerConfig;
 
 #[async_trait]
-pub trait ContainerManager: Send + Sync {
-    async fn create_container(&mut self, image: &str, cmd: Vec<String>, working_dir: &str) -> DockerResult<()>;
-    async fn start_container(&mut self) -> DockerResult<()>;
-    async fn stop_container(&mut self) -> DockerResult<()>;
-    async fn check_image(&self, image: &str) -> DockerResult<bool>;
-    async fn pull_image(&self, image: &str) -> DockerResult<()>;
+pub trait DockerOperations: Send + Sync {
+    /// コンテナを作成し、初期化する
+    async fn initialize(&mut self, config: ContainerConfig) -> DockerResult<()>;
+
+    /// コンテナを起動する
+    async fn start(&mut self) -> DockerResult<()>;
+
+    /// コンテナを停止する
+    async fn stop(&mut self) -> DockerResult<()>;
+
+    /// コンテナにコマンドを実行する
+    async fn execute(&mut self, command: &str) -> DockerResult<(String, String)>;
+
+    /// コンテナの標準入力にデータを書き込む
+    async fn write(&mut self, input: &str) -> DockerResult<()>;
+
+    /// コンテナの標準出力からデータを読み取る
+    async fn read_stdout(&mut self, timeout: Duration) -> DockerResult<String>;
+
+    /// コンテナの標準エラー出力からデータを読み取る
+    async fn read_stderr(&mut self, timeout: Duration) -> DockerResult<String>;
 }
 
 #[async_trait]
-pub trait IOHandler: Send + Sync {
-    async fn write(&self, input: &str) -> DockerResult<()>;
-    async fn read_stdout(&self, timeout: Duration) -> DockerResult<String>;
-    async fn read_stderr(&self, timeout: Duration) -> DockerResult<String>;
-    async fn setup_io(&mut self) -> DockerResult<()>;
-}
-
-#[async_trait]
-pub trait CompilationManager: Send + Sync {
+pub trait CompilationOperations: Send + Sync {
+    /// ソースコードをコンパイルする
     async fn compile(
         &mut self,
         source_code: &str,
         compile_cmd: Option<Vec<String>>,
         env_vars: Vec<String>,
     ) -> DockerResult<()>;
-    
+
+    /// コンパイル結果を取得する
     async fn get_compilation_output(&self) -> DockerResult<(String, String)>;
-}
-
-#[async_trait]
-pub trait DockerCommandExecutor: Send + Sync {
-    /// Dockerコマンドを実行し、結果を返す
-    /// 
-    /// # 引数
-    /// * `args` - Dockerコマンドの引数
-    /// 
-    /// # 戻り値
-    /// * `DockerResult<(bool, String, String)>` - (成功したか, 標準出力, 標準エラー出力)
-    async fn execute_command(&self, args: Vec<String>) -> DockerResult<(bool, String, String)>;
-}
-
-#[async_trait]
-pub trait DockerRunner: Send + Sync {
-    /// コンテナを初期化し、実行準備を行う
-    async fn initialize(&mut self, cmd: Vec<String>) -> DockerResult<()>;
-
-    /// コンテナに入力を送信する
-    async fn write(&mut self, input: &str) -> DockerResult<()>;
-
-    /// コンテナの標準出力を読み取る
-    async fn read_stdout(&mut self) -> DockerResult<String>;
-
-    /// コンテナの標準エラー出力を読み取る
-    async fn read_stderr(&mut self) -> DockerResult<String>;
-
-    /// コンテナを停止する
-    async fn stop(&mut self) -> DockerResult<()>;
-}
-
-#[async_trait]
-pub trait DockerOperation: Send + Sync {
-    /// Dockerコンテナの操作を実行する
-    async fn execute(&self, command: DockerCommand) -> DockerResult<CommandOutput>;
-    
-    /// コンテナのI/O操作を処理する
-    async fn handle_io(&self) -> DockerResult<()>;
-    
-    /// リソースのクリーンアップを行う
-    async fn cleanup(&self) -> DockerResult<()>;
-}
-
-#[derive(Debug, Clone)]
-pub struct DockerCommand {
-    pub command_type: CommandType,
-    pub args: Vec<String>,
-    pub timeout: Option<Duration>,
-}
-
-#[derive(Debug, Clone)]
-pub enum CommandType {
-    Create,
-    Start,
-    Stop,
-    Execute,
-    Pull,
-    Inspect,
-}
-
-#[derive(Debug)]
-pub struct CommandOutput {
-    pub success: bool,
-    pub stdout: String,
-    pub stderr: String,
-    pub exit_code: Option<i32>,
 } 
