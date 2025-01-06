@@ -1,5 +1,5 @@
 date +%Y%m%d%H%M%Sを実行
-git diff develop > agent/.result/yyyymmddhhmm.txt
+git diff develop > agent/.commit/yyyymmddhhmm.txt
 を実行し、変更点を確認する。
 
 もし、重要な機能を削除しているのであれば作業を中断、今回の作業結果を作成されたファイルに追記する
