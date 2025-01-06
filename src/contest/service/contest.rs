@@ -1,8 +1,9 @@
+use std::sync::Arc;
+use std::time::Duration;
 use crate::config::Config;
-use crate::docker::DockerRunner;
-use crate::contest::error::{ContestError, ContestResult};
-use crate::docker::traits::{ContainerManager, IOHandler, CompilationManager};
-use crate::docker::runner::default_impl::{DefaultContainerManager, DefaultIOHandler, DefaultCompilationManager};
+use crate::docker::runner::{DockerRunner, DockerCommandLayer, DefaultDockerExecutor, ContainerConfig};
+use crate::docker::traits::DockerRunner as DockerRunnerTrait;
+use crate::contest::error::{ContestResult, ContestError};
 
 pub struct ContestService {
     config: Config,
@@ -13,34 +14,57 @@ impl ContestService {
         Self { config }
     }
 
-    pub async fn run_test(&self, source_code: &str) -> ContestResult<String> {
-        let config = self.config.clone();
-        let memory_limit = config.get_memory_limit()
-            .map_err(|e| ContestError::Config(e.to_string()))?;
-        let mount_point = config.get_mount_point()
-            .map_err(|e| ContestError::Config(e.to_string()))?;
-        let working_dir = config.get_working_dir()
-            .map_err(|e| ContestError::Config(e.to_string()))?;
+    pub async fn run_code(&self, source_code: &str) -> ContestResult<String> {
+        // 設定から必要な情報を取得
+        let memory_limit = self.config.get::<u64>("system.docker.memory_limit_mb")
+            .map_err(|e| ContestError::Config(format!("メモリ制限の取得に失敗: {}", e)))?;
+        
+        let mount_point = self.config.get::<String>("system.docker.mount_point")
+            .map_err(|e| ContestError::Config(format!("マウントポイントの取得に失敗: {}", e)))?;
+        
+        let working_dir = self.config.get::<String>("system.docker.working_dir")
+            .map_err(|e| ContestError::Config(format!("作業ディレクトリの取得に失敗: {}", e)))?;
+        
+        let image = self.config.get::<String>("system.docker.image")
+            .map_err(|e| ContestError::Config(format!("Dockerイメージの取得に失敗: {}", e)))?;
 
-        let container_manager = Box::new(DefaultContainerManager::new(
+        let timeout = self.config.get::<u64>("system.docker.timeout_seconds")
+            .map_err(|e| ContestError::Config(format!("タイムアウト設定の取得に失敗: {}", e)))?;
+
+        let run_cmd = self.config.get::<Vec<String>>("system.docker.run_cmd")
+            .map_err(|e| ContestError::Config(format!("実行コマンドの取得に失敗: {}", e)))?;
+
+        // DockerRunnerの設定
+        let docker = Arc::new(DockerCommandLayer::new(Box::new(DefaultDockerExecutor::new())));
+        let container_config = ContainerConfig {
+            image,
             memory_limit,
             mount_point,
-        ));
-        let io_handler = Box::new(DefaultIOHandler::new(String::new()));
-        let compilation_manager = Box::new(DefaultCompilationManager::new(
-            String::new(),
             working_dir,
-        ));
+        };
 
         let mut docker_runner = DockerRunner::new(
-            config,
-            container_manager,
-            io_handler,
-            compilation_manager,
+            docker,
+            container_config,
+            Duration::from_secs(timeout),
         );
 
-        docker_runner.run_in_docker(source_code)
-            .await
-            .map_err(|e| ContestError::Contest(e.to_string()))
+        // コンテナの初期化と実行
+        DockerRunnerTrait::initialize(&mut docker_runner, run_cmd).await
+            .map_err(|e| ContestError::Docker(format!("コンテナの初期化に失敗: {}", e)))?;
+
+        // ソースコードの書き込み
+        DockerRunnerTrait::write(&docker_runner, source_code).await
+            .map_err(|e| ContestError::Docker(format!("ソースコードの書き込みに失敗: {}", e)))?;
+
+        // 実行結果の取得
+        let output = DockerRunnerTrait::read_stdout(&docker_runner).await
+            .map_err(|e| ContestError::Docker(format!("実行結果の取得に失敗: {}", e)))?;
+
+        // コンテナの停止
+        DockerRunnerTrait::stop(&mut docker_runner).await
+            .map_err(|e| ContestError::Docker(format!("コンテナの停止に失敗: {}", e)))?;
+
+        Ok(output)
     }
 } 

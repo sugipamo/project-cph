@@ -1,8 +1,6 @@
 use cph::config::Config;
-use std::error::Error;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    let _config = Config::load()?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let _config = Config::new()?;
     Ok(())
 }

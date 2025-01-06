@@ -52,187 +52,70 @@
 
 use std::fs;
 use serde::{Deserialize, Serialize};
-use crate::docker::error::{DockerError, DockerResult};
-use std::time::Duration;
+use serde_yaml::{self, Value};
+use thiserror::Error;
 
-#[derive(Debug, Deserialize, Clone, Serialize)]
+#[derive(Error, Debug)]
+pub enum ConfigError {
+    #[error("設定エラー: {0}")]
+    Config(String),
+}
+
+pub type ConfigResult<T> = Result<T, ConfigError>;
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
-    system: SystemConfig,
-    languages: std::collections::HashMap<String, LanguageConfig>,
-}
-
-#[derive(Debug, Deserialize, Clone, Serialize)]
-struct SystemConfig {
-    docker: DockerSystemConfig,
-}
-
-#[derive(Debug, Deserialize, Clone, Serialize)]
-struct DockerSystemConfig {
-    memory_limit_mb: u64,
-    timeout_seconds: u64,
-    mount_point: String,
-    working_dir: String,
-}
-
-#[derive(Debug, Deserialize, Clone, Serialize)]
-struct LanguageConfig {
-    name: String,
-    image: String,
-    extension: String,
-    compile_cmd: Option<Vec<String>>,
-    run_cmd: Vec<String>,
-    env_vars: Option<Vec<String>>,
+    system: Value,
+    languages: Value,
 }
 
 impl Config {
-    pub fn load() -> DockerResult<Self> {
-        let config_str = fs::read_to_string("src/config/config.yaml")
-            .map_err(|e| DockerError::Config(format!("設定ファイルの読み込みに失敗しました: {}", e)))?;
-        
-        serde_yaml::from_str(&config_str)
-            .map_err(|e| DockerError::Config(format!("設定ファイルのパースに失敗しました: {}", e)))
+    pub fn new() -> ConfigResult<Self> {
+        let config_str = fs::read_to_string("config.yml")
+            .map_err(|e| ConfigError::Config(format!("設定ファイルの読み込みに失敗しました: {}", e)))?;
+
+        let config: Config = serde_yaml::from_str(&config_str)
+            .map_err(|e| ConfigError::Config(format!("設定ファイルのパースに失敗しました: {}", e)))?;
+
+        Ok(config)
     }
 
-    pub fn get<T: ConfigValue>(&self, path: &str) -> DockerResult<T> {
+    pub fn get<T: serde::de::DeserializeOwned>(&self, path: &str) -> ConfigResult<T> {
         let parts: Vec<&str> = path.split('.').collect();
-        let mut current = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
+        let mut current = match parts[0] {
+            "system" => serde_yaml::to_value(&self.system)
+                .map_err(|e| ConfigError::Config(e.to_string()))?,
+            "languages" => serde_yaml::to_value(&self.languages)
+                .map_err(|e| ConfigError::Config(e.to_string()))?,
+            _ => return Err(ConfigError::Config(format!("無効な設定パス: {}", path))),
+        };
 
-        // システム設定とカスタム設定をマージ
-        let mut map = serde_yaml::Mapping::new();
-        map.insert(
-            serde_yaml::Value::String("system".to_string()),
-            serde_yaml::to_value(&self.system).map_err(|e| DockerError::Config(e.to_string()))?,
-        );
-        map.insert(
-            serde_yaml::Value::String("languages".to_string()),
-            serde_yaml::to_value(&self.languages).map_err(|e| DockerError::Config(e.to_string()))?,
-        );
-        current = serde_yaml::Value::Mapping(map);
-
-        // パスに従って値を取得
-        for part in parts {
-            current = match current {
-                serde_yaml::Value::Mapping(map) => {
-                    map.get(&serde_yaml::Value::String(part.to_string()))
-                        .ok_or_else(|| DockerError::Config(format!("設定パス{}が見つかりません", path)))?
-                        .clone()
-                }
-                _ => return Err(DockerError::Config(format!("無効な設定パス: {}", path))),
-            };
+        for &part in &parts[1..] {
+            current = current.get(part)
+                .ok_or_else(|| ConfigError::Config(format!("設定パス{}が見つかりません", path)))?
+                .clone();
         }
 
-        T::from_value(current)
-            .map_err(|e| DockerError::Config(format!("値の変換に失敗しました: {}", e)))
+        serde_yaml::from_value(current)
+            .map_err(|e| ConfigError::Config(format!("値の変換に失敗しました: {}", e)))
     }
 
-    pub fn get_image(&self) -> DockerResult<String> {
-        self.get_current_language()
-            .map(|lang| lang.image.clone())
-    }
-
-    pub fn get_compile_cmd(&self) -> DockerResult<Option<Vec<String>>> {
-        self.get_current_language()
-            .map(|lang| lang.compile_cmd.clone())
-    }
-
-    pub fn get_run_cmd(&self) -> DockerResult<Vec<String>> {
-        self.get_current_language()
-            .map(|lang| lang.run_cmd.clone())
-    }
-
-    pub fn get_env_vars(&self) -> DockerResult<Vec<String>> {
-        self.get_current_language()
-            .map(|lang| lang.env_vars.clone().unwrap_or_default())
-    }
-
-    pub fn get_working_dir(&self) -> DockerResult<String> {
-        Ok(self.system.docker.working_dir.clone())
-    }
-
-    pub fn get_timeout(&self) -> DockerResult<Duration> {
-        Ok(Duration::from_secs(self.system.docker.timeout_seconds))
-    }
-
-    pub fn get_memory_limit(&self) -> DockerResult<u64> {
-        Ok(self.system.docker.memory_limit_mb)
-    }
-
-    pub fn get_mount_point(&self) -> DockerResult<String> {
-        Ok(self.system.docker.mount_point.clone())
-    }
-
-    fn get_current_language(&self) -> DockerResult<&LanguageConfig> {
-        // Note: 実際の実装では現在の言語を追跡する方法が必要です
-        self.languages.get("rust")
-            .ok_or_else(|| DockerError::Config("言語設定が見つかりません".to_string()))
-    }
-} 
-
-// 設定値の型変換トレイト
-pub trait ConfigValue: Sized {
-    fn from_value(value: serde_yaml::Value) -> Result<Self, String>;
-}
-
-// String型の実装
-impl ConfigValue for String {
-    fn from_value(value: serde_yaml::Value) -> Result<Self, String> {
-        match value {
-            serde_yaml::Value::String(s) => Ok(s),
-            _ => Err(format!("文字列ではありません: {:?}", value)),
+    pub fn get_with_alias<T: serde::de::DeserializeOwned>(&self, path: &str) -> ConfigResult<T> {
+        let result = self.get::<T>(path);
+        if result.is_ok() {
+            return result;
         }
-    }
-}
 
-// Vec<String>型の実装
-impl ConfigValue for Vec<String> {
-    fn from_value(value: serde_yaml::Value) -> Result<Self, String> {
-        match value {
-            serde_yaml::Value::Sequence(seq) => {
-                seq.into_iter()
-                    .map(|v| match v {
-                        serde_yaml::Value::String(s) => Ok(s),
-                        _ => Err(format!("文字列ではありません: {:?}", v)),
-                    })
-                    .collect()
+        // エイリアスの解決を試みる
+        let parts: Vec<&str> = path.split('.').collect();
+        if parts.len() >= 2 && parts[0] == "languages" {
+            let alias_path = format!("languages.{}.alias", parts[1]);
+            if let Ok(alias) = self.get::<String>(&alias_path) {
+                let new_path = format!("languages.{}.{}", alias, parts[2..].join("."));
+                return self.get::<T>(&new_path);
             }
-            _ => Err(format!("配列ではありません: {:?}", value)),
         }
-    }
-}
 
-// bool型の実装
-impl ConfigValue for bool {
-    fn from_value(value: serde_yaml::Value) -> Result<Self, String> {
-        match value {
-            serde_yaml::Value::Bool(b) => Ok(b),
-            serde_yaml::Value::String(s) => match s.to_lowercase().as_str() {
-                "true" | "yes" | "on" | "1" => Ok(true),
-                "false" | "no" | "off" | "0" => Ok(false),
-                _ => Err(format!("真偽値として解釈できません: {}", s)),
-            },
-            _ => Err(format!("真偽値ではありません: {:?}", value)),
-        }
-    }
-}
-
-// u64型の実装
-impl ConfigValue for u64 {
-    fn from_value(value: serde_yaml::Value) -> Result<Self, String> {
-        match value {
-            serde_yaml::Value::Number(n) => n.as_u64()
-                .ok_or_else(|| format!("u64として解釈できません: {:?}", n)),
-            _ => Err(format!("数値ではありません: {:?}", value)),
-        }
-    }
-}
-
-// i64型の実装
-impl ConfigValue for i64 {
-    fn from_value(value: serde_yaml::Value) -> Result<Self, String> {
-        match value {
-            serde_yaml::Value::Number(n) => n.as_i64()
-                .ok_or_else(|| format!("i64として解釈できません: {:?}", n)),
-            _ => Err(format!("数値ではありません: {:?}", value)),
-        }
+        result
     }
 } 

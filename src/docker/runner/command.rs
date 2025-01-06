@@ -1,319 +1,68 @@
-use std::process::Stdio;
-use tokio::process::Command;
-use uuid::Uuid;
-use std::time::Duration;
-use std::env;
-use tokio::time::timeout;
-use std::path::Path;
-use std::fs;
-use std::os::unix::fs::PermissionsExt;
+use std::process::Command;
+use async_trait::async_trait;
+use crate::docker::error::{DockerError, DockerResult};
+use crate::docker::traits::DockerCommandExecutor;
 
-#[derive(Debug)]
-pub struct DockerCommand {
-    container_name: String,
+pub struct DockerCommandLayer {
+    executor: Box<dyn DockerCommandExecutor>,
 }
 
-impl DockerCommand {
-    pub fn new() -> Self {
-        Self {
-            container_name: String::new(),
+impl DockerCommandLayer {
+    pub fn new(executor: Box<dyn DockerCommandExecutor>) -> Self {
+        Self { executor }
+    }
+
+    pub async fn run_command(&self, args: Vec<String>) -> DockerResult<(String, String)> {
+        let (success, stdout, stderr) = self.executor.execute_command(args).await?;
+        if success {
+            Ok((stdout, stderr))
+        } else {
+            Err(DockerError::Command(format!(
+                "Dockerコマンドの実行に失敗しました: {}",
+                stderr
+            )))
         }
     }
 
-    fn ensure_directory_permissions(dir: &Path) -> Result<(), String> {
-        let metadata = fs::metadata(dir)
-            .map_err(|e| format!("メタデータの取得に失敗しました: {}", e))?;
-        let mut perms = metadata.permissions();
-        perms.set_mode(0o777);
-        fs::set_permissions(dir, perms)
-            .map_err(|e| format!("パーミッションの設定に失敗しました: {}", e))?;
-        Ok(())
-    }
-
-    pub async fn run_code(
+    pub async fn run_container_command(
         &self,
-        image: &str,
-        source_code: &str,
-        memory_limit: u32,
-        timeout_seconds: u32,
-        mount_point: &str,
-        extension: &str,
-        compile_cmd: Option<&[String]>,
-        run_cmd: &[String],
-    ) -> Result<String, String> {
-        // コンテナ名を生成
-        let container_name = format!("runner-{}", Uuid::new_v4());
+        container_id: &str,
+        command: &str,
+    ) -> DockerResult<(String, String)> {
+        let args = vec![
+            "exec".to_string(),
+            "-i".to_string(),
+            container_id.to_string(),
+            "sh".to_string(),
+            "-c".to_string(),
+            command.to_string(),
+        ];
+        self.run_command(args).await
+    }
+}
 
-        // 一時ディレクトリを作成
-        let temp_dir = std::env::temp_dir().join(format!("cph_{}", Uuid::new_v4()));
-        fs::create_dir_all(&temp_dir)
-            .map_err(|e| format!("一時ディレクトリの作成に失敗しました: {}", e))?;
+pub struct DefaultDockerExecutor;
 
-        // ディレクトリのパーミッションを設定
-        Self::ensure_directory_permissions(&temp_dir)?;
+impl DefaultDockerExecutor {
+    pub fn new() -> Self {
+        Self
+    }
+}
 
-        // ソースコードを書き込み
-        let source_file = temp_dir.join(format!("main.{}", extension));
-        fs::write(&source_file, source_code)
-            .map_err(|e| format!("ソースコードの書き込みに失敗しました: {}", e))?;
-
-        // ファイルのパーミッションを設定
-        let metadata = fs::metadata(&source_file)
-            .map_err(|e| format!("ソースファイルのメタデータの取得に失敗しました: {}", e))?;
-        let mut perms = metadata.permissions();
-        perms.set_mode(0o644);
-        fs::set_permissions(&source_file, perms)
-            .map_err(|e| format!("ソースファイルのパーミッションの設定に失敗しました: {}", e))?;
-
-        // Dockerコマンドを構築
+#[async_trait]
+impl DockerCommandExecutor for DefaultDockerExecutor {
+    async fn execute_command(&self, args: Vec<String>) -> DockerResult<(bool, String, String)> {
         let mut command = Command::new("docker");
-        command
-            .arg("run")
-            .arg("--rm")
-            .arg("--name")
-            .arg(&container_name)
-            .arg("--memory")
-            .arg(format!("{}m", memory_limit))
-            .arg("--cpus")
-            .arg("1.0")
-            .arg("--network")
-            .arg("none")
-            .arg("-v")
-            .arg(format!("{}:{}", temp_dir.display(), mount_point))
-            .arg("-w")
-            .arg(mount_point)
-            .arg(image)
-            .arg("sh")
-            .arg("-c");
+        command.args(&args);
 
-        // コマンドを構築
-        let cmd = if let Some(compile_cmd) = compile_cmd {
-            let compile_str = compile_cmd.iter()
-                .map(|s| s.to_string())
-                .collect::<Vec<_>>()
-                .join(" ");
-            let run_str = run_cmd.iter()
-                .map(|s| s.to_string())
-                .collect::<Vec<_>>()
-                .join(" ");
-            format!(
-                "ls -la && pwd && echo '{}' > main.{} && cat main.{} && {} && {}",
-                source_code.replace("'", "'\"'\"'"),
-                extension,
-                extension,
-                compile_str,
-                run_str
-            )
-        } else {
-            let run_str = run_cmd.iter()
-                .map(|s| s.to_string())
-                .collect::<Vec<_>>()
-                .join(" ");
-            format!(
-                "ls -la && pwd && echo '{}' > main.{} && cat main.{} && {}",
-                source_code.replace("'", "'\"'\"'"),
-                extension,
-                extension,
-                run_str
-            )
-        };
-
-        command.arg(&cmd)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        println!("Running command: {:?}", command);
-        println!("Source code directory: {}", temp_dir.display());
-        println!("Mount point: {}", mount_point);
-
-        // コマンドを実行
-        let result = match timeout(Duration::from_secs(timeout_seconds.into()), command.output()).await {
-            Ok(result) => {
-                match result {
-                    Ok(output) => {
-                        println!("Command stdout: {}", String::from_utf8_lossy(&output.stdout));
-                        println!("Command stderr: {}", String::from_utf8_lossy(&output.stderr));
-                        if output.status.success() {
-                            Ok(String::from_utf8_lossy(&output.stdout).to_string())
-                        } else {
-                            Err(String::from_utf8_lossy(&output.stderr).to_string())
-                        }
-                    }
-                    Err(e) => Err(format!("コマンドの実行に失敗しました: {}", e)),
-                }
-            }
-            Err(_) => Err("実行がタイムアウトしました".to_string()),
-        };
-
-        // 一時ディレクトリを削除
-        let _ = fs::remove_dir_all(temp_dir);
-
-        result
-    }
-
-    pub async fn compile(
-        &mut self,
-        image: &str,
-        compile_cmd: &[String],
-        compile_dir: &str,
-        mount_point: &str,
-        source_code: &str,
-        extension: &str,
-        require_files: &[String],
-        env_vars: &[String],
-        memory_limit: u32,
-        timeout_seconds: u32,
-    ) -> Result<(), String> {
-        println!("Compiling with command: {:?}", compile_cmd);
-        println!("Mount point: {}, Compile dir: {}", mount_point, compile_dir);
-        
-        // 現在のワーキングディレクトリを取得し、compile_dirへの絶対パスを構築
-        let current_dir = env::current_dir()
-            .map_err(|e| format!("カレントディレクトリの取得に失敗しました: {}", e))?;
-        let absolute_compile_dir = current_dir.join(compile_dir);
-
-        // コンパイルディレクトリを作成し、パーミッションを設定
-        fs::create_dir_all(&absolute_compile_dir)
-            .map_err(|e| format!("コンパイルディレクトリの作成に失敗しました: {}", e))?;
-        Self::ensure_directory_permissions(&absolute_compile_dir)?;
-
-        // 必要なファイルの存在チェック
-        for required_file in require_files {
-            let file_path = absolute_compile_dir.join(required_file);
-            if !file_path.exists() {
-                return Err(format!("必要なファイルが見つかりません: {}", required_file));
-            }
-        }
-
-        // ソースファイルの配置
-        let source_file = if !require_files.is_empty() {
-            let src_dir = absolute_compile_dir.join("src");
-            fs::create_dir_all(&src_dir)
-                .map_err(|e| format!("ソースディレクトリの作成に失敗しました: {}", e))?;
-            Self::ensure_directory_permissions(&src_dir)?;
-            src_dir.join(format!("main.{}", extension))
-        } else {
-            absolute_compile_dir.join(format!("main.{}", extension))
-        };
-
-        fs::write(&source_file, source_code)
-            .map_err(|e| format!("ソースコードの書き込みに失敗しました: {}", e))?;
-        
-        let container_name = format!("compiler-{}", Uuid::new_v4());
-        self.container_name = container_name.clone();
-
-        let mut command = Command::new("docker");
-        command
-            .arg("run")
-            .arg("--rm")
-            .arg("--name")
-            .arg(&container_name)
-            .arg("-m")
-            .arg(format!("{}m", memory_limit))
-            .arg("--memory-swap")
-            .arg(format!("{}m", memory_limit))
-            .arg("-v")
-            .arg(format!("{}:{}", absolute_compile_dir.display(), mount_point))
-            .arg("-w")
-            .arg(mount_point);
-
-        // 環境変数の設定
-        for env_var in env_vars {
-            command.arg("-e").arg(env_var);
-        }
-
-        command
-            .arg(image)
-            .args(compile_cmd)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        println!("Running compile command: {:?}", command);
-        let output = match timeout(Duration::from_secs(timeout_seconds.into()), command.output()).await {
-            Ok(result) => result.map_err(|e| format!("コンパイルコマンドの実行に失敗しました: {}", e))?,
-            Err(_) => {
-                self.stop_container().await;
-                return Err("コンパイルがタイムアウトしました".to_string());
-            }
-        };
-
-        if !output.status.success() {
-            let error = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("コンパイルに失敗しました: {}", error));
-        }
-
-        Ok(())
-    }
-
-    pub async fn check_image(&self, image: &str) -> bool {
-        let output = Command::new("docker")
-            .arg("image")
-            .arg("inspect")
-            .arg(image)
+        let output = command
             .output()
-            .await;
+            .map_err(|e| DockerError::Command(format!("コマンドの実行に失敗しました: {}", e)))?;
 
-        match output {
-            Ok(output) => output.status.success(),
-            Err(_) => false,
-        }
-    }
-
-    pub async fn pull_image(&self, image: &str) -> bool {
-        let output = Command::new("docker")
-            .arg("pull")
-            .arg(image)
-            .output()
-            .await;
-
-        match output {
-            Ok(output) => output.status.success(),
-            Err(_) => false,
-        }
-    }
-
-    pub async fn stop_container(&self) -> bool {
-        if self.container_name.is_empty() {
-            return true;
-        }
-
-        let output = Command::new("docker")
-            .arg("stop")
-            .arg(&self.container_name)
-            .output()
-            .await;
-
-        match output {
-            Ok(output) => output.status.success(),
-            Err(_) => false,
-        }
-    }
-
-    pub async fn inspect_directory(&self, image: &str, mount_point: &str) -> Result<String, String> {
-        let container_name = format!("inspector-{}", Uuid::new_v4());
-        let mut command = Command::new("docker");
-        command
-            .arg("run")
-            .arg("--rm")
-            .arg("--name")
-            .arg(&container_name)
-            .arg("-v")
-            .arg(format!("{}:{}", mount_point, mount_point))
-            .arg("-w")
-            .arg(mount_point)
-            .arg(image)
-            .arg("ls")
-            .arg("-la")
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        let output = command.output().await
-            .map_err(|e| format!("Failed to execute inspect command: {}", e))?;
-
-        if output.status.success() {
-            Ok(String::from_utf8_lossy(&output.stdout).to_string())
-        } else {
-            Err(String::from_utf8_lossy(&output.stderr).to_string())
-        }
+        Ok((
+            output.status.success(),
+            String::from_utf8_lossy(&output.stdout).to_string(),
+            String::from_utf8_lossy(&output.stderr).to_string(),
+        ))
     }
 } 

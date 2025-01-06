@@ -11,6 +11,12 @@ pub enum ContestError {
 
     #[error("コンテストエラー: {0}")]
     Contest(String),
+
+    #[error("Dockerエラー: {0}")]
+    Docker(String),
+
+    #[error("I/Oエラー: {0}")]
+    IO(String),
 }
 
 pub type ContestResult<T> = Result<T, ContestError>;

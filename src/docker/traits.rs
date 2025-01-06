@@ -41,4 +41,22 @@ pub trait DockerCommandExecutor: Send + Sync {
     /// # 戻り値
     /// * `DockerResult<(bool, String, String)>` - (成功したか, 標準出力, 標準エラー出力)
     async fn execute_command(&self, args: Vec<String>) -> DockerResult<(bool, String, String)>;
+}
+
+#[async_trait]
+pub trait DockerRunner: Send + Sync {
+    /// コンテナを初期化し、実行準備を行う
+    async fn initialize(&mut self, cmd: Vec<String>) -> DockerResult<()>;
+
+    /// コンテナに入力を送信する
+    async fn write(&self, input: &str) -> DockerResult<()>;
+
+    /// コンテナの標準出力を読み取る
+    async fn read_stdout(&self) -> DockerResult<String>;
+
+    /// コンテナの標準エラー出力を読み取る
+    async fn read_stderr(&self) -> DockerResult<String>;
+
+    /// コンテナを停止する
+    async fn stop(&mut self) -> DockerResult<()>;
 } 
