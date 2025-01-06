@@ -1,35 +1,37 @@
 use thiserror::Error;
-use tokio::time::error::Elapsed;
 use crate::docker::state::StateError;
 
-#[derive(Debug, Error)]
+#[derive(Error, Debug)]
 pub enum DockerError {
-    #[error("コマンドの実行に失敗しました: {0}")]
+    #[error("Container error: {0}")]
+    Container(String),
+    #[error("IO error: {0}")]
+    IO(String),
+    #[error("Compilation error: {0}")]
+    Compilation(String),
+    #[error("Command error: {0}")]
     Command(String),
-
-    #[error("コンテナの状態エラー: {0}")]
+    #[error("State error: {0}")]
     State(#[from] StateError),
-
-    #[error("タイムアウトエラー")]
-    Timeout(#[from] Elapsed),
-
-    #[error("ファイルシステムエラー: {0}")]
-    Filesystem(String),
-
-    #[error("システムエラー: {0}")]
-    System(String),
 }
 
-impl From<nix::errno::Errno> for DockerError {
-    fn from(err: nix::errno::Errno) -> Self {
-        DockerError::System(err.to_string())
-    }
-}
+pub type DockerResult<T> = Result<T, DockerError>;
 
 impl From<std::io::Error> for DockerError {
     fn from(err: std::io::Error) -> Self {
-        DockerError::Filesystem(err.to_string())
+        DockerError::IO(err.to_string())
     }
 }
 
-pub type DockerResult<T> = Result<T, DockerError>; 
+impl From<tokio::time::error::Elapsed> for DockerError {
+    fn from(err: tokio::time::error::Elapsed) -> Self {
+        DockerError::Command(format!("操作がタイムアウトしました: {}", err))
+    }
+}
+
+#[derive(Debug)]
+pub struct ErrorContext {
+    pub operation: String,
+    pub container_id: Option<String>,
+    pub command: Option<String>,
+} 
