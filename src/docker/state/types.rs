@@ -1,5 +1,6 @@
 use std::fmt;
 use std::time::{Duration, Instant};
+use std::process::ExitStatus;
 
 #[derive(Debug, Clone)]
 pub enum ContainerState {

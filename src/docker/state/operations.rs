@@ -64,6 +64,7 @@ pub async fn stop_container(current_state: &ContainerState) -> Result<ContainerS
             Ok(ContainerState::Stopped {
                 container_id: container_id.clone(),
                 stopped_at: Instant::now(),
+                exit_status: None,
             })
         },
         _ => {

@@ -1,0 +1,116 @@
+diff --git a/.cursorrules b/.cursorrules
+index 98f6220..774d62a 100644
+--- a/.cursorrules
++++ b/.cursorrules
+@@ -1,2 +1,2 @@
+ 日本語で返答する
+-{}.doの形式で入力された場合は、そのファイルの指示に従う
++{}.doの形式で入力された場合は、agent/{}.doのファイルの指示に従う
+diff --git a/src/contest/error.rs b/src/contest/error.rs
+index c1adb98..a66f8c1 100644
+--- a/src/contest/error.rs
++++ b/src/contest/error.rs
+@@ -1,13 +1,14 @@
+-use crate::error::CphError;
++use std::error::Error;
++use crate::error::{CphError, ContestError};
+ 
+-pub fn site_err(msg: String) -> CphError {
+-    CphError::Contest(format!("サイトエラー: {}", msg))
++pub fn site_err(msg: String) -> Box<dyn Error> {
++    Box::new(CphError::Contest(ContestError::Site(msg)))
+ }
+ 
+-pub fn language_err(msg: String) -> CphError {
+-    CphError::Contest(format!("言語エラー: {}", msg))
++pub fn language_err(msg: String) -> Box<dyn Error> {
++    Box::new(CphError::Contest(ContestError::Language(msg)))
+ }
+ 
+-pub fn config_err(msg: String) -> CphError {
+-    CphError::Contest(format!("設定エラー: {}", msg))
++pub fn config_err(msg: String) -> Box<dyn Error> {
++    Box::new(CphError::Contest(ContestError::Config(msg)))
+ }
+diff --git a/src/docker/error.rs b/src/docker/error.rs
+index 497a0b9..e134810 100644
+--- a/src/docker/error.rs
++++ b/src/docker/error.rs
+@@ -1,21 +1,22 @@
++use std::error::Error;
+ use crate::error::CphError;
+ 
+-pub fn docker_err(msg: String) -> CphError {
+-    CphError::Docker(msg)
++pub fn docker_err(msg: String) -> Box<dyn Error> {
++    Box::new(CphError::Docker(msg))
+ }
+ 
+-pub fn container_err(msg: String) -> CphError {
+-    CphError::Docker(format!("コンテナエラー: {}", msg))
++pub fn container_err(msg: String) -> Box<dyn Error> {
++    Box::new(CphError::Docker(format!("コンテナエラー: {}", msg)))
+ }
+ 
+-pub fn compilation_err(msg: String) -> CphError {
+-    CphError::Docker(format!("コンパイルエラー: {}", msg))
++pub fn compilation_err(msg: String) -> Box<dyn Error> {
++    Box::new(CphError::Docker(format!("コンパイルエラー: {}", msg)))
+ }
+ 
+-pub fn command_err(msg: String) -> CphError {
+-    CphError::Docker(format!("コマンドエラー: {}", msg))
++pub fn command_err(msg: String) -> Box<dyn Error> {
++    Box::new(CphError::Docker(format!("コマンドエラー: {}", msg)))
+ }
+ 
+-pub fn state_err(msg: String) -> CphError {
+-    CphError::Docker(format!("状態エラー: {}", msg))
++pub fn state_err(msg: String) -> Box<dyn Error> {
++    Box::new(CphError::Docker(format!("状態エラー: {}", msg)))
+ } 
+\ No newline at end of file
+diff --git a/src/docker/state/operations.rs b/src/docker/state/operations.rs
+index f15f957..6f8ad1a 100644
+--- a/src/docker/state/operations.rs
++++ b/src/docker/state/operations.rs
+@@ -64,6 +64,7 @@ pub async fn stop_container(current_state: &ContainerState) -> Result<ContainerS
+             Ok(ContainerState::Stopped {
+                 container_id: container_id.clone(),
+                 stopped_at: Instant::now(),
++                exit_status: None,
+             })
+         },
+         _ => {
+diff --git a/src/docker/state/types.rs b/src/docker/state/types.rs
+index 6cf1e6e..886f679 100644
+--- a/src/docker/state/types.rs
++++ b/src/docker/state/types.rs
+@@ -1,5 +1,6 @@
+ use std::fmt;
+ use std::time::{Duration, Instant};
++use std::process::ExitStatus;
+ 
+ #[derive(Debug, Clone)]
+ pub enum ContainerState {
+diff --git a/src/fs/error.rs b/src/fs/error.rs
+index d4924f6..4d9ce2b 100644
+--- a/src/fs/error.rs
++++ b/src/fs/error.rs
+@@ -1,9 +1,10 @@
++use std::error::Error;
+ use crate::error::CphError;
+ 
+-pub fn fs_err(msg: String) -> CphError {
+-    CphError::Fs(msg)
++pub fn fs_err(msg: String) -> Box<dyn Error> {
++    Box::new(CphError::Fs(msg))
+ }
+ 
+-pub fn fs_err_with_source<E: std::error::Error>(msg: &str, source: E) -> CphError {
+-    CphError::Fs(format!("{}: {}", msg, source))
++pub fn fs_err_with_source<E: std::error::Error>(msg: &str, source: E) -> Box<dyn Error> {
++    Box::new(CphError::Fs(format!("{}: {}", msg, source)))
+ } 
+\ No newline at end of file
+レビュー結果：エラー処理の改善が主な変更。重要な機能の削除なし。コンパイルエラーなし（警告は存在するが重大ではない）。機能の重複なし。実装は効率的。判断：問題なし
