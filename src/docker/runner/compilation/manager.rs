@@ -6,15 +6,13 @@ use crate::docker::executor::{DockerCommand, DockerCommandExecutor};
 
 pub struct DefaultCompilationManager {
     container_id: String,
-    working_dir: String,
     docker_executor: Arc<dyn DockerCommandExecutor>,
 }
 
 impl DefaultCompilationManager {
-    pub fn new(container_id: String, working_dir: String, executor: Arc<dyn DockerCommandExecutor>) -> Self {
+    pub fn new(container_id: String, _working_dir: String, executor: Arc<dyn DockerCommandExecutor>) -> Self {
         Self {
             container_id,
-            working_dir,
             docker_executor: executor,
         }
     }
@@ -24,7 +22,7 @@ impl DefaultCompilationManager {
 impl CompilationOperations for DefaultCompilationManager {
     async fn compile(
         &mut self,
-        source_code: &str,
+        _source_code: &str,
         compile_cmd: Option<Vec<String>>,
         env_vars: Vec<String>,
     ) -> DockerResult<()> {
@@ -55,15 +53,6 @@ impl CompilationOperations for DefaultCompilationManager {
     }
 
     async fn get_compilation_output(&self) -> DockerResult<(String, String)> {
-        let stdout_command = DockerCommand::new("logs")
-            .arg(&self.container_id);
-        let stdout_output = self.docker_executor.execute(stdout_command).await?;
-
-        let stderr_command = DockerCommand::new("logs")
-            .arg("--stderr")
-            .arg(&self.container_id);
-        let stderr_output = self.docker_executor.execute(stderr_command).await?;
-
-        Ok((stdout_output.stdout, stderr_output.stderr))
+        Ok(("".to_string(), "".to_string()))
     }
 } 
