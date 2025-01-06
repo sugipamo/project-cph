@@ -469,19 +469,19 @@ impl Config {
         Ok(current)
     }
 
-    pub fn from_str(content: &str, builder: ConfigBuilder) -> Result<Self, ConfigError> {
-        let contents = Self::expand_env_vars(content)?;
-        let data: Value = serde_yaml::from_str(&contents)?;
+    pub fn from_str(content: &str, builder: ConfigBuilder) -> Result<Self, String> {
+        let contents = Self::expand_env_vars(content)
+            .map_err(|e| format!("環境変数の展開に失敗しました: {}", e))?;
+        let data: Value = serde_yaml::from_str(&contents)
+            .map_err(|e| format!("YAML形式の解析に失敗しました: {}", e))?;
         
         // YAMLファイルからエイリアスセクションを自動検出
         let mut builder = builder;
         if let Value::Mapping(mapping) = &data {
             for (key, value) in mapping {
                 if let (Value::String(section_name), Value::Mapping(section_data)) = (key, value) {
-                    // セクション内のエントリを確認
                     for (_, entry) in section_data {
                         if let Value::Mapping(entry_data) = entry {
-                            // aliasesフィールドを持つエントリを見つけたら、そのセクションをエイリアスセクションとして追加
                             if entry_data.contains_key("aliases") {
                                 builder = builder.add_alias_section(section_name, "aliases");
                                 break;
@@ -492,15 +492,19 @@ impl Config {
             }
         }
 
-        let mut config = Config {
+        let mut config = Self {
             data,
             alias_map: HashMap::new(),
             alias_sections: builder.alias_sections,
             anchor_prefix: builder.anchor_prefix,
             required_values: builder.required_values,
         };
-        config.build_alias_map()?;
-        config.validate_required_values()?;  // 必須設定値を検証
+
+        config.build_alias_map()
+            .map_err(|e| format!("エイリアスマップの構築に失敗しました: {}", e))?;
+        config.validate_required_values()
+            .map_err(|e| format!("必須値の検証に失敗しました: {}", e))?;
+
         Ok(config)
     }
 }

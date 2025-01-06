@@ -8,10 +8,11 @@ fn test_config_load() {
     let default_lang = config.get::<String>("languages.default").unwrap();
     assert!(!default_lang.is_empty(), "デフォルト言語が設定されていません");
 
-    let memory_limit = config.get::<u64>("languages._base.docker.memory_limit_mb").unwrap();
+    // システム全体のDocker設定を確認
+    let memory_limit = config.get::<u64>("system.docker.memory_limit_mb").unwrap();
     assert!(memory_limit > 0, "メモリ制限値が無効です");
 
-    let mount_point = config.get::<String>("languages._base.docker.mount_point").unwrap();
+    let mount_point = config.get::<String>("system.docker.mount_point").unwrap();
     assert!(!mount_point.is_empty(), "マウントポイントが設定されていません");
 }
 

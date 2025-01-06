@@ -57,6 +57,18 @@ impl DockerRunner {
         let image = self.config.get::<String>(&format!("languages.{}.runner.image", self.language))
             .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
 
+        // 拡張子を取得
+        let extension = self.config.get::<String>(&format!("languages.{}.extension", self.language))
+            .map_err(|e| format!("拡張子の取得に失敗しました: {}", e))?;
+
+        // コンパイルコマンドを取得（オプション）
+        let compile_cmd = self.config.get::<Vec<String>>(&format!("languages.{}.runner.compile", self.language))
+            .ok();
+
+        // 実行コマンドを取得
+        let run_cmd = self.config.get::<Vec<String>>(&format!("languages.{}.runner.run", self.language))
+            .map_err(|e| format!("実行コマンドの取得に失敗しました: {}", e))?;
+
         // Docker設定を取得
         let (timeout_seconds, memory_limit, mount_point) = self.get_docker_config()?;
 
@@ -74,7 +86,17 @@ impl DockerRunner {
         *self.state.lock().await = RunnerState::Running;
 
         // ソースコードの実行
-        let result = self.command.run_code(&image, source_code, memory_limit, timeout_seconds, &mount_point).await;
+        let result = self.command.run_code(
+            &image,
+            source_code,
+            memory_limit,
+            timeout_seconds,
+            &mount_point,
+            &extension,
+            compile_cmd.as_deref(),
+            &run_cmd,
+        ).await;
+
         match result {
             Ok(output) => {
                 *self.state.lock().await = RunnerState::Ready;

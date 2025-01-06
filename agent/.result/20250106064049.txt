@@ -1,0 +1,215 @@
+diff --git a/src/config/mod.rs b/src/config/mod.rs
+index 49a24ae..95ad40c 100644
+--- a/src/config/mod.rs
++++ b/src/config/mod.rs
+@@ -469,19 +469,19 @@ impl Config {
+         Ok(current)
+     }
+ 
+-    pub fn from_str(content: &str, builder: ConfigBuilder) -> Result<Self, ConfigError> {
+-        let contents = Self::expand_env_vars(content)?;
+-        let data: Value = serde_yaml::from_str(&contents)?;
++    pub fn from_str(content: &str, builder: ConfigBuilder) -> Result<Self, String> {
++        let contents = Self::expand_env_vars(content)
++            .map_err(|e| format!("環境変数の展開に失敗しました: {}", e))?;
++        let data: Value = serde_yaml::from_str(&contents)
++            .map_err(|e| format!("YAML形式の解析に失敗しました: {}", e))?;
+         
+         // YAMLファイルからエイリアスセクションを自動検出
+         let mut builder = builder;
+         if let Value::Mapping(mapping) = &data {
+             for (key, value) in mapping {
+                 if let (Value::String(section_name), Value::Mapping(section_data)) = (key, value) {
+-                    // セクション内のエントリを確認
+                     for (_, entry) in section_data {
+                         if let Value::Mapping(entry_data) = entry {
+-                            // aliasesフィールドを持つエントリを見つけたら、そのセクションをエイリアスセクションとして追加
+                             if entry_data.contains_key("aliases") {
+                                 builder = builder.add_alias_section(section_name, "aliases");
+                                 break;
+@@ -492,15 +492,19 @@ impl Config {
+             }
+         }
+ 
+-        let mut config = Config {
++        let mut config = Self {
+             data,
+             alias_map: HashMap::new(),
+             alias_sections: builder.alias_sections,
+             anchor_prefix: builder.anchor_prefix,
+             required_values: builder.required_values,
+         };
+-        config.build_alias_map()?;
+-        config.validate_required_values()?;  // 必須設定値を検証
++
++        config.build_alias_map()
++            .map_err(|e| format!("エイリアスマップの構築に失敗しました: {}", e))?;
++        config.validate_required_values()
++            .map_err(|e| format!("必須値の検証に失敗しました: {}", e))?;
++
+         Ok(config)
+     }
+ }
+diff --git a/src/docker/runner/command.rs b/src/docker/runner/command.rs
+index 03daf6b..6f1db1d 100644
+--- a/src/docker/runner/command.rs
++++ b/src/docker/runner/command.rs
+@@ -1,7 +1,6 @@
+ use std::process::Stdio;
+ use tokio::process::Command;
+ use uuid::Uuid;
+-use crate::docker::state::RunnerState;
+ use std::time::Duration;
+ use std::env;
+ use tokio::time::timeout;
+@@ -32,19 +31,21 @@ impl DockerCommand {
+     }
+ 
+     pub async fn run_code(
+-        &mut self,
++        &self,
+         image: &str,
+         source_code: &str,
+         memory_limit: u32,
+         timeout_seconds: u32,
+         mount_point: &str,
++        extension: &str,
++        compile_cmd: Option<&[String]>,
++        run_cmd: &[String],
+     ) -> Result<String, String> {
+         // コンテナ名を生成
+         let container_name = format!("runner-{}", Uuid::new_v4());
+-        self.container_name = container_name.clone();
+ 
+         // 一時ディレクトリを作成
+-        let temp_dir = env::temp_dir().join(&container_name);
++        let temp_dir = std::env::temp_dir().join(format!("cph_{}", Uuid::new_v4()));
+         fs::create_dir_all(&temp_dir)
+             .map_err(|e| format!("一時ディレクトリの作成に失敗しました: {}", e))?;
+ 
+@@ -52,10 +53,18 @@ impl DockerCommand {
+         Self::ensure_directory_permissions(&temp_dir)?;
+ 
+         // ソースコードを書き込み
+-        let source_file = temp_dir.join("main.rs");
++        let source_file = temp_dir.join(format!("main.{}", extension));
+         fs::write(&source_file, source_code)
+             .map_err(|e| format!("ソースコードの書き込みに失敗しました: {}", e))?;
+ 
++        // ファイルのパーミッションを設定
++        let metadata = fs::metadata(&source_file)
++            .map_err(|e| format!("ソースファイルのメタデータの取得に失敗しました: {}", e))?;
++        let mut perms = metadata.permissions();
++        perms.set_mode(0o644);
++        fs::set_permissions(&source_file, perms)
++            .map_err(|e| format!("ソースファイルのパーミッションの設定に失敗しました: {}", e))?;
++
+         // Dockerコマンドを構築
+         let mut command = Command::new("docker");
+         command
+@@ -63,18 +72,40 @@ impl DockerCommand {
+             .arg("--rm")
+             .arg("--name")
+             .arg(&container_name)
+-            .arg("-m")
+-            .arg(format!("{}m", memory_limit))
+-            .arg("--memory-swap")
++            .arg("--memory")
+             .arg(format!("{}m", memory_limit))
++            .arg("--cpus")
++            .arg("1.0")
++            .arg("--network")
++            .arg("none")
+             .arg("-v")
+             .arg(format!("{}:{}", temp_dir.display(), mount_point))
+             .arg("-w")
+             .arg(mount_point)
+             .arg(image)
+             .arg("sh")
+-            .arg("-c")
+-            .arg("rustc main.rs && ./main")
++            .arg("-c");
++
++        // コマンドを構築
++        let cmd = if let Some(compile_cmd) = compile_cmd {
++            let compile_str = compile_cmd.iter()
++                .map(|s| s.replace("main.rs", &format!("main.{}", extension)))
++                .collect::<Vec<_>>()
++                .join(" ");
++            let run_str = run_cmd.iter()
++                .map(|s| s.replace("main.rs", &format!("main.{}", extension)))
++                .collect::<Vec<_>>()
++                .join(" ");
++            format!("ls -la && {} && {}", compile_str, run_str)
++        } else {
++            let run_str = run_cmd.iter()
++                .map(|s| s.replace("main.rs", &format!("main.{}", extension)))
++                .collect::<Vec<_>>()
++                .join(" ");
++            format!("ls -la && {}", run_str)
++        };
++
++        command.arg(cmd)
+             .stdout(Stdio::piped())
+             .stderr(Stdio::piped());
+ 
+diff --git a/src/docker/runner/mod.rs b/src/docker/runner/mod.rs
+index 2aff9ad..0d54c76 100644
+--- a/src/docker/runner/mod.rs
++++ b/src/docker/runner/mod.rs
+@@ -57,6 +57,18 @@ impl DockerRunner {
+         let image = self.config.get::<String>(&format!("languages.{}.runner.image", self.language))
+             .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
+ 
++        // 拡張子を取得
++        let extension = self.config.get::<String>(&format!("languages.{}.extension", self.language))
++            .map_err(|e| format!("拡張子の取得に失敗しました: {}", e))?;
++
++        // コンパイルコマンドを取得（オプション）
++        let compile_cmd = self.config.get::<Vec<String>>(&format!("languages.{}.runner.compile", self.language))
++            .ok();
++
++        // 実行コマンドを取得
++        let run_cmd = self.config.get::<Vec<String>>(&format!("languages.{}.runner.run", self.language))
++            .map_err(|e| format!("実行コマンドの取得に失敗しました: {}", e))?;
++
+         // Docker設定を取得
+         let (timeout_seconds, memory_limit, mount_point) = self.get_docker_config()?;
+ 
+@@ -74,7 +86,17 @@ impl DockerRunner {
+         *self.state.lock().await = RunnerState::Running;
+ 
+         // ソースコードの実行
+-        let result = self.command.run_code(&image, source_code, memory_limit, timeout_seconds, &mount_point).await;
++        let result = self.command.run_code(
++            &image,
++            source_code,
++            memory_limit,
++            timeout_seconds,
++            &mount_point,
++            &extension,
++            compile_cmd.as_deref(),
++            &run_cmd,
++        ).await;
++
+         match result {
+             Ok(output) => {
+                 *self.state.lock().await = RunnerState::Ready;
+diff --git a/tests/docker/config_test.rs b/tests/docker/config_test.rs
+index ea55f67..4cd03b8 100644
+--- a/tests/docker/config_test.rs
++++ b/tests/docker/config_test.rs
+@@ -8,10 +8,11 @@ fn test_config_load() {
+     let default_lang = config.get::<String>("languages.default").unwrap();
+     assert!(!default_lang.is_empty(), "デフォルト言語が設定されていません");
+ 
+-    let memory_limit = config.get::<u64>("languages._base.docker.memory_limit_mb").unwrap();
++    // システム全体のDocker設定を確認
++    let memory_limit = config.get::<u64>("system.docker.memory_limit_mb").unwrap();
+     assert!(memory_limit > 0, "メモリ制限値が無効です");
+ 
+-    let mount_point = config.get::<String>("languages._base.docker.mount_point").unwrap();
++    let mount_point = config.get::<String>("system.docker.mount_point").unwrap();
+     assert!(!mount_point.is_empty(), "マウントポイントが設定されていません");
+ }
+ 

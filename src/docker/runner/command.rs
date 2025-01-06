@@ -1,7 +1,6 @@
 use std::process::Stdio;
 use tokio::process::Command;
 use uuid::Uuid;
-use crate::docker::state::RunnerState;
 use std::time::Duration;
 use std::env;
 use tokio::time::timeout;
@@ -32,19 +31,21 @@ impl DockerCommand {
     }
 
     pub async fn run_code(
-        &mut self,
+        &self,
         image: &str,
         source_code: &str,
         memory_limit: u32,
         timeout_seconds: u32,
         mount_point: &str,
+        extension: &str,
+        compile_cmd: Option<&[String]>,
+        run_cmd: &[String],
     ) -> Result<String, String> {
         // コンテナ名を生成
         let container_name = format!("runner-{}", Uuid::new_v4());
-        self.container_name = container_name.clone();
 
         // 一時ディレクトリを作成
-        let temp_dir = env::temp_dir().join(&container_name);
+        let temp_dir = std::env::temp_dir().join(format!("cph_{}", Uuid::new_v4()));
         fs::create_dir_all(&temp_dir)
             .map_err(|e| format!("一時ディレクトリの作成に失敗しました: {}", e))?;
 
@@ -52,9 +53,17 @@ impl DockerCommand {
         Self::ensure_directory_permissions(&temp_dir)?;
 
         // ソースコードを書き込み
-        let source_file = temp_dir.join("main.rs");
+        let source_file = temp_dir.join(format!("main.{}", extension));
         fs::write(&source_file, source_code)
             .map_err(|e| format!("ソースコードの書き込みに失敗しました: {}", e))?;
+
+        // ファイルのパーミッションを設定
+        let metadata = fs::metadata(&source_file)
+            .map_err(|e| format!("ソースファイルのメタデータの取得に失敗しました: {}", e))?;
+        let mut perms = metadata.permissions();
+        perms.set_mode(0o644);
+        fs::set_permissions(&source_file, perms)
+            .map_err(|e| format!("ソースファイルのパーミッションの設定に失敗しました: {}", e))?;
 
         // Dockerコマンドを構築
         let mut command = Command::new("docker");
@@ -63,18 +72,40 @@ impl DockerCommand {
             .arg("--rm")
             .arg("--name")
             .arg(&container_name)
-            .arg("-m")
+            .arg("--memory")
             .arg(format!("{}m", memory_limit))
-            .arg("--memory-swap")
-            .arg(format!("{}m", memory_limit))
+            .arg("--cpus")
+            .arg("1.0")
+            .arg("--network")
+            .arg("none")
             .arg("-v")
             .arg(format!("{}:{}", temp_dir.display(), mount_point))
             .arg("-w")
             .arg(mount_point)
             .arg(image)
             .arg("sh")
-            .arg("-c")
-            .arg("rustc main.rs && ./main")
+            .arg("-c");
+
+        // コマンドを構築
+        let cmd = if let Some(compile_cmd) = compile_cmd {
+            let compile_str = compile_cmd.iter()
+                .map(|s| s.replace("main.rs", &format!("main.{}", extension)))
+                .collect::<Vec<_>>()
+                .join(" ");
+            let run_str = run_cmd.iter()
+                .map(|s| s.replace("main.rs", &format!("main.{}", extension)))
+                .collect::<Vec<_>>()
+                .join(" ");
+            format!("ls -la && {} && {}", compile_str, run_str)
+        } else {
+            let run_str = run_cmd.iter()
+                .map(|s| s.replace("main.rs", &format!("main.{}", extension)))
+                .collect::<Vec<_>>()
+                .join(" ");
+            format!("ls -la && {}", run_str)
+        };
+
+        command.arg(cmd)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
