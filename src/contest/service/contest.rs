@@ -54,11 +54,11 @@ impl ContestService {
             .map_err(|e| ContestError::Docker(format!("コンテナの初期化に失敗: {}", e)))?;
 
         // ソースコードの書き込み
-        DockerRunnerTrait::write(&docker_runner, source_code).await
+        DockerRunnerTrait::write(&mut docker_runner, source_code).await
             .map_err(|e| ContestError::Docker(format!("ソースコードの書き込みに失敗: {}", e)))?;
 
         // 実行結果の取得
-        let output = DockerRunnerTrait::read_stdout(&docker_runner).await
+        let output = DockerRunnerTrait::read_stdout(&mut docker_runner).await
             .map_err(|e| ContestError::Docker(format!("実行結果の取得に失敗: {}", e)))?;
 
         // コンテナの停止

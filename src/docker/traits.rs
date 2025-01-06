@@ -49,13 +49,13 @@ pub trait DockerRunner: Send + Sync {
     async fn initialize(&mut self, cmd: Vec<String>) -> DockerResult<()>;
 
     /// コンテナに入力を送信する
-    async fn write(&self, input: &str) -> DockerResult<()>;
+    async fn write(&mut self, input: &str) -> DockerResult<()>;
 
     /// コンテナの標準出力を読み取る
-    async fn read_stdout(&self) -> DockerResult<String>;
+    async fn read_stdout(&mut self) -> DockerResult<String>;
 
     /// コンテナの標準エラー出力を読み取る
-    async fn read_stderr(&self) -> DockerResult<String>;
+    async fn read_stderr(&mut self) -> DockerResult<String>;
 
     /// コンテナを停止する
     async fn stop(&mut self) -> DockerResult<()>;
