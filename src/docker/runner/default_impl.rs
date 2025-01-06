@@ -26,11 +26,22 @@ impl DefaultContainerManager {
             docker_executor: executor,
         }
     }
+
+    async fn ensure_container_exists(&self) -> DockerResult<()> {
+        if self.container_id.is_empty() {
+            return Err(DockerError::Container("コンテナが作成されていません".to_string()));
+        }
+        Ok(())
+    }
 }
 
 #[async_trait]
 impl ContainerManager for DefaultContainerManager {
     async fn create_container(&mut self, image: &str, cmd: Vec<String>, working_dir: &str) -> DockerResult<()> {
+        if !self.container_id.is_empty() {
+            return Err(DockerError::Container("コンテナは既に作成されています".to_string()));
+        }
+
         let command = DockerCommand::new("create")
             .arg("-i")
             .arg("--rm")
@@ -57,6 +68,8 @@ impl ContainerManager for DefaultContainerManager {
     }
 
     async fn start_container(&mut self) -> DockerResult<()> {
+        self.ensure_container_exists().await?;
+
         let command = DockerCommand::new("start")
             .arg(&self.container_id);
 
@@ -73,20 +86,47 @@ impl ContainerManager for DefaultContainerManager {
     }
 
     async fn stop_container(&mut self) -> DockerResult<()> {
-        if !self.container_id.is_empty() {
-            let command = DockerCommand::new("stop")
-                .arg(&self.container_id);
-
-            let output = self.docker_executor.execute(command).await?;
-
-            if !output.success {
-                return Err(DockerError::Container(format!(
-                    "コンテナの停止に失敗しました: {}",
-                    output.stderr
-                )));
-            }
+        if self.container_id.is_empty() {
+            return Ok(());
         }
-        Ok(())
+
+        let command = DockerCommand::new("stop")
+            .arg(&self.container_id);
+
+        let output = self.docker_executor.execute(command).await?;
+
+        if output.success {
+            Ok(())
+        } else {
+            Err(DockerError::Container(format!(
+                "コンテナの停止に失敗しました: {}",
+                output.stderr
+            )))
+        }
+    }
+
+    async fn get_container_id(&self) -> DockerResult<String> {
+        self.ensure_container_exists().await?;
+        Ok(self.container_id.clone())
+    }
+
+    async fn get_exit_code(&self) -> DockerResult<i32> {
+        self.ensure_container_exists().await?;
+
+        let command = DockerCommand::new("inspect")
+            .arg("--format={{.State.ExitCode}}")
+            .arg(&self.container_id);
+
+        let output = self.docker_executor.execute(command).await?;
+        if output.success {
+            output.stdout.trim().parse::<i32>()
+                .map_err(|e| DockerError::Container(format!("終了コードの解析に失敗しました: {}", e)))
+        } else {
+            Err(DockerError::Container(format!(
+                "終了コードの取得に失敗しました: {}",
+                output.stderr
+            )))
+        }
     }
 
     async fn check_image(&self, image: &str) -> DockerResult<bool> {
