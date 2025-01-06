@@ -1,0 +1,48 @@
+# Docker Runner テスト容易性向上のための分析と提案
+
+## 現状の課題
+1. DefaultContainerManagerが実際のDockerコマンドに強く依存しており、テストが困難
+2. IOHandlerのテストが実際のDockerコンテナに依存
+3. モックやスタブの使用が困難な構造
+
+## 改善提案
+
+### 1. インターフェースの抽象化
+- DockerCommandExecutorトレイトの導入
+  - Dockerコマンドの実行を抽象化
+  - テスト時にモック実装に置き換え可能
+
+```rust
+#[async_trait]
+pub trait DockerCommandExecutor {
+    async fn execute_command(&self, args: Vec<String>) -> DockerResult<(bool, String, String)>;
+}
+```
+
+### 2. 依存性注入の導入
+- DefaultContainerManagerの改善
+  - DockerCommandExecutorを依存性として注入
+  - テスト時にモック実装を使用可能
+
+### 3. テストヘルパーの拡充
+- MockDockerCommandExecutorの実装
+- テスト用のフィクスチャー作成
+- 一般的なテストケースの共通化
+
+### 4. 非同期処理のテスト改善
+- タイムアウト処理のテスト容易性向上
+- 非同期イベントのモック化サポート
+
+## 実装計画
+
+1. DockerCommandExecutorトレイトの実装
+2. DefaultContainerManagerのリファクタリング
+3. テストヘルパーの実装
+4. 既存テストの移行
+
+## 期待される効果
+
+1. ユニットテストの容易性向上
+2. テストの信頼性向上
+3. テスト実行時間の短縮
+4. 開発効率の向上 

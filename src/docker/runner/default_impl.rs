@@ -5,14 +5,16 @@ use std::time::Duration;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use std::process::Command;
+use std::collections::HashMap;
 
 use crate::docker::error::{DockerError, DockerResult};
-use crate::docker::traits::{ContainerManager, IOHandler, CompilationManager};
+use crate::docker::traits::{ContainerManager, IOHandler, CompilationManager, DockerCommandExecutor};
 
 pub struct DefaultContainerManager {
     container_id: String,
     memory_limit: u64,
     mount_point: String,
+    docker_executor: Box<dyn DockerCommandExecutor>,
 }
 
 impl DefaultContainerManager {
@@ -21,6 +23,16 @@ impl DefaultContainerManager {
             container_id: String::new(),
             memory_limit,
             mount_point,
+            docker_executor: Box::new(DefaultDockerCommandExecutor::new()),
+        }
+    }
+
+    pub fn with_executor(memory_limit: u64, mount_point: String, executor: Box<dyn DockerCommandExecutor>) -> Self {
+        Self {
+            container_id: String::new(),
+            memory_limit,
+            mount_point,
+            docker_executor: executor,
         }
     }
 }
@@ -28,54 +40,56 @@ impl DefaultContainerManager {
 #[async_trait]
 impl ContainerManager for DefaultContainerManager {
     async fn create_container(&mut self, image: &str, cmd: Vec<String>, working_dir: &str) -> DockerResult<()> {
-        let output = Command::new("docker")
-            .args(["create", "-i", "--rm"])
-            .args(["-m", &format!("{}m", self.memory_limit)])
-            .args(["-v", &format!("{}:{}", self.mount_point, working_dir)])
-            .args(["-w", working_dir])
-            .arg(image)
-            .args(cmd)
-            .output()
-            .map_err(|e| DockerError::Container(format!("コンテナの作成に失敗しました: {}", e)))?;
+        let mut args = vec![
+            "create".to_string(),
+            "-i".to_string(),
+            "--rm".to_string(),
+            "-m".to_string(),
+            format!("{}m", self.memory_limit),
+            "-v".to_string(),
+            format!("{}:{}", self.mount_point, working_dir),
+            "-w".to_string(),
+            working_dir.to_string(),
+            image.to_string(),
+        ];
+        args.extend(cmd);
 
-        if output.status.success() {
-            self.container_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let (success, stdout, stderr) = self.docker_executor.execute_command(args).await?;
+
+        if success {
+            self.container_id = stdout.trim().to_string();
             Ok(())
         } else {
             Err(DockerError::Container(format!(
                 "コンテナの作成に失敗しました: {}",
-                String::from_utf8_lossy(&output.stderr)
+                stderr
             )))
         }
     }
 
     async fn start_container(&mut self) -> DockerResult<()> {
-        let output = Command::new("docker")
-            .args(["start", &self.container_id])
-            .output()
-            .map_err(|e| DockerError::Container(format!("コンテナの起動に失敗しました: {}", e)))?;
+        let args = vec!["start".to_string(), self.container_id.clone()];
+        let (success, _, stderr) = self.docker_executor.execute_command(args).await?;
 
-        if output.status.success() {
+        if success {
             Ok(())
         } else {
             Err(DockerError::Container(format!(
                 "コンテナの起動に失敗しました: {}",
-                String::from_utf8_lossy(&output.stderr)
+                stderr
             )))
         }
     }
 
     async fn stop_container(&mut self) -> DockerResult<()> {
         if !self.container_id.is_empty() {
-            let output = Command::new("docker")
-                .args(["stop", &self.container_id])
-                .output()
-                .map_err(|e| DockerError::Container(format!("コンテナの停止に失敗しました: {}", e)))?;
+            let args = vec!["stop".to_string(), self.container_id.clone()];
+            let (success, _, stderr) = self.docker_executor.execute_command(args).await?;
 
-            if !output.status.success() {
+            if !success {
                 return Err(DockerError::Container(format!(
                     "コンテナの停止に失敗しました: {}",
-                    String::from_utf8_lossy(&output.stderr)
+                    stderr
                 )));
             }
         }
@@ -83,26 +97,21 @@ impl ContainerManager for DefaultContainerManager {
     }
 
     async fn check_image(&self, image: &str) -> DockerResult<bool> {
-        let output = Command::new("docker")
-            .args(["image", "inspect", image])
-            .output()
-            .map_err(|e| DockerError::Container(format!("イメージの確認に失敗しました: {}", e)))?;
-
-        Ok(output.status.success())
+        let args = vec!["image".to_string(), "inspect".to_string(), image.to_string()];
+        let (success, _, _) = self.docker_executor.execute_command(args).await?;
+        Ok(success)
     }
 
     async fn pull_image(&self, image: &str) -> DockerResult<()> {
-        let output = Command::new("docker")
-            .args(["pull", image])
-            .output()
-            .map_err(|e| DockerError::Container(format!("イメージの取得に失敗しました: {}", e)))?;
+        let args = vec!["pull".to_string(), image.to_string()];
+        let (success, _, stderr) = self.docker_executor.execute_command(args).await?;
 
-        if output.status.success() {
+        if success {
             Ok(())
         } else {
             Err(DockerError::Container(format!(
                 "イメージの取得に失敗しました: {}",
-                String::from_utf8_lossy(&output.stderr)
+                stderr
             )))
         }
     }
@@ -229,5 +238,136 @@ impl CompilationManager for DefaultCompilationManager {
             String::from_utf8_lossy(&stdout.stdout).to_string(),
             String::from_utf8_lossy(&stderr.stderr).to_string(),
         ))
+    }
+}
+
+pub struct DefaultDockerCommandExecutor;
+
+impl DefaultDockerCommandExecutor {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+#[async_trait]
+impl DockerCommandExecutor for DefaultDockerCommandExecutor {
+    async fn execute_command(&self, args: Vec<String>) -> DockerResult<(bool, String, String)> {
+        let output = Command::new("docker")
+            .args(&args)
+            .output()
+            .map_err(|e| DockerError::Container(format!("Dockerコマンドの実行に失敗しました: {}", e)))?;
+
+        Ok((
+            output.status.success(),
+            String::from_utf8_lossy(&output.stdout).to_string(),
+            String::from_utf8_lossy(&output.stderr).to_string(),
+        ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
+    use std::collections::HashMap;
+
+    struct TestDockerExecutor {
+        responses: Arc<Mutex<HashMap<String, (bool, String, String)>>>,
+    }
+
+    impl TestDockerExecutor {
+        fn new() -> Self {
+            Self {
+                responses: Arc::new(Mutex::new(HashMap::new())),
+            }
+        }
+
+        async fn set_response(&self, args: Vec<String>, response: (bool, String, String)) {
+            let key = args.join(" ");
+            self.responses.lock().await.insert(key, response);
+        }
+    }
+
+    #[async_trait]
+    impl DockerCommandExecutor for TestDockerExecutor {
+        async fn execute_command(&self, args: Vec<String>) -> DockerResult<(bool, String, String)> {
+            let key = args.join(" ");
+            let responses = self.responses.lock().await;
+            
+            match responses.get(&key) {
+                Some(response) => Ok(response.clone()),
+                None => Ok((true, String::new(), String::new())),
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_container_lifecycle() {
+        let executor = TestDockerExecutor::new();
+        
+        // create_containerのレスポンスを設定
+        executor
+            .set_response(
+                vec![
+                    "create".to_string(),
+                    "-i".to_string(),
+                    "--rm".to_string(),
+                    "-m".to_string(),
+                    "512m".to_string(),
+                    "-v".to_string(),
+                    "/tmp:/workspace".to_string(),
+                    "-w".to_string(),
+                    "/workspace".to_string(),
+                    "test-image".to_string(),
+                    "test-cmd".to_string(),
+                ],
+                (true, "test-container-id".to_string(), String::new()),
+            )
+            .await;
+
+        let mut manager = DefaultContainerManager::with_executor(
+            512,
+            "/tmp".to_string(),
+            Box::new(executor),
+        );
+
+        // コンテナの作成
+        let result = manager
+            .create_container(
+                "test-image",
+                vec!["test-cmd".to_string()],
+                "/workspace",
+            )
+            .await;
+        assert!(result.is_ok());
+        assert_eq!(manager.container_id, "test-container-id");
+
+        // コンテナの起動
+        let result = manager.start_container().await;
+        assert!(result.is_ok());
+
+        // コンテナの停止
+        let result = manager.stop_container().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_image_operations() {
+        let executor = TestDockerExecutor::new();
+        let manager = DefaultContainerManager::with_executor(
+            512,
+            "/tmp".to_string(),
+            Box::new(executor),
+        );
+
+        // イメージの確認
+        let result = manager.check_image("test-image").await;
+        assert!(result.is_ok());
+        assert!(result.unwrap());
+
+        // イメージの取得
+        let result = manager.pull_image("test-image").await;
+        assert!(result.is_ok());
     }
 } 

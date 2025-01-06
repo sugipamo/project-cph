@@ -29,4 +29,16 @@ pub trait CompilationManager: Send + Sync {
     ) -> DockerResult<()>;
     
     async fn get_compilation_output(&self) -> DockerResult<(String, String)>;
+}
+
+#[async_trait]
+pub trait DockerCommandExecutor: Send + Sync {
+    /// Dockerコマンドを実行し、結果を返す
+    /// 
+    /// # 引数
+    /// * `args` - Dockerコマンドの引数
+    /// 
+    /// # 戻り値
+    /// * `DockerResult<(bool, String, String)>` - (成功したか, 標準出力, 標準エラー出力)
+    async fn execute_command(&self, args: Vec<String>) -> DockerResult<(bool, String, String)>;
 } 
