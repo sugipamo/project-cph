@@ -1,5 +1,36 @@
+pub mod command;
+pub mod container;
+pub mod compilation;
+
+pub use command::DefaultDockerCommandExecutor;
+pub use container::DefaultContainerManager;
+pub use compilation::DefaultCompilationManager;
+
+// 共通のトレイトと型定義
 use async_trait::async_trait;
 use crate::docker::error::DockerResult;
+
+#[derive(Debug)]
+pub struct CommandOutput {
+    pub success: bool,
+    pub stdout: String,
+    pub stderr: String,
+}
+
+impl CommandOutput {
+    pub fn new(success: bool, stdout: String, stderr: String) -> Self {
+        Self {
+            success,
+            stdout,
+            stderr,
+        }
+    }
+}
+
+#[async_trait]
+pub trait DockerCommandExecutor: Send + Sync {
+    async fn execute(&self, command: DockerCommand) -> DockerResult<CommandOutput>;
+}
 
 #[derive(Debug)]
 pub struct DockerCommand {
@@ -31,27 +62,5 @@ impl DockerCommand {
 
     pub fn get_args(&self) -> Vec<String> {
         self.args.clone()
-    }
-}
-
-#[async_trait]
-pub trait DockerCommandExecutor: Send + Sync {
-    async fn execute(&self, command: DockerCommand) -> DockerResult<CommandOutput>;
-}
-
-#[derive(Debug)]
-pub struct CommandOutput {
-    pub success: bool,
-    pub stdout: String,
-    pub stderr: String,
-}
-
-impl CommandOutput {
-    pub fn new(success: bool, stdout: String, stderr: String) -> Self {
-        Self {
-            success,
-            stdout,
-            stderr,
-        }
     }
 } 

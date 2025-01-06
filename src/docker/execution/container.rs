@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use crate::docker::error::{DockerError, DockerResult};
 use crate::docker::traits::ContainerManager;
-use crate::docker::executor::{DockerCommand, DockerCommandExecutor};
+use super::{DockerCommand, DockerCommandExecutor};
 
 pub struct DefaultContainerManager {
     container_id: String,
@@ -32,27 +32,24 @@ impl DefaultContainerManager {
 #[async_trait]
 impl ContainerManager for DefaultContainerManager {
     async fn create_container(&mut self, image: &str, cmd: Vec<String>, working_dir: &str) -> DockerResult<()> {
-        if !self.container_id.is_empty() {
-            return Err(DockerError::Container("コンテナは既に作成されています".to_string()));
+        if !self.check_image(image).await? {
+            self.pull_image(image).await?;
         }
 
-        let memory_limit = format!("{}m", self.memory_limit);
-        let mount_point = format!("{}:{}", self.mount_point, working_dir);
-
-        let command = DockerCommand::new("create")
-            .arg("-i")
-            .arg("--rm")
-            .arg("-m")
-            .arg(&memory_limit)
+        let mut command = DockerCommand::new("create")
+            .arg("--memory")
+            .arg(&format!("{}m", self.memory_limit))
             .arg("-v")
-            .arg(&mount_point)
+            .arg(&format!("{}:/workspace", self.mount_point))
             .arg("-w")
             .arg(working_dir)
-            .arg(image)
-            .args(cmd);
+            .arg(image);
+
+        if !cmd.is_empty() {
+            command = command.args(cmd);
+        }
 
         let output = self.docker_executor.execute(command).await?;
-
         if output.success {
             self.container_id = output.stdout.trim().to_string();
             Ok(())
@@ -71,7 +68,6 @@ impl ContainerManager for DefaultContainerManager {
             .arg(&self.container_id);
 
         let output = self.docker_executor.execute(command).await?;
-
         if output.success {
             Ok(())
         } else {
@@ -83,15 +79,12 @@ impl ContainerManager for DefaultContainerManager {
     }
 
     async fn stop_container(&mut self) -> DockerResult<()> {
-        if self.container_id.is_empty() {
-            return Ok(());
-        }
+        self.ensure_container_exists().await?;
 
         let command = DockerCommand::new("stop")
             .arg(&self.container_id);
 
         let output = self.docker_executor.execute(command).await?;
-
         if output.success {
             Ok(())
         } else {
@@ -140,7 +133,6 @@ impl ContainerManager for DefaultContainerManager {
             .arg(image);
 
         let output = self.docker_executor.execute(command).await?;
-
         if output.success {
             Ok(())
         } else {
@@ -149,5 +141,36 @@ impl ContainerManager for DefaultContainerManager {
                 output.stderr
             )))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use mockall::predicate::*;
+    use crate::docker::test_helpers::MockDockerCommandExecutor;
+
+    #[tokio::test]
+    async fn test_container_creation() {
+        let mut mock_executor = MockDockerCommandExecutor::new();
+        mock_executor.expect_execute()
+            .returning(|_| {
+                Ok(super::super::CommandOutput::new(
+                    true,
+                    "container_id".to_string(),
+                    String::new(),
+                ))
+            });
+
+        let executor = Arc::new(mock_executor);
+        let mut manager = DefaultContainerManager::new(
+            512,
+            "/tmp".to_string(),
+            executor,
+        );
+
+        let result = manager.create_container("test-image", vec![], "/workspace").await;
+        assert!(result.is_ok());
     }
 } 
