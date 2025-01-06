@@ -162,6 +162,123 @@ impl ContainerStateManager {
         let state = self.state.lock().await;
         state.clone()
     }
+
+    pub async fn start_container(&self, container_id: String) -> Result<(), StateError> {
+        let current_state = self.get_current_state().await;
+        match current_state {
+            ContainerState::Created { container_id: current_id, .. } if current_id == container_id => {
+                self.transition_to(ContainerState::Running {
+                    container_id,
+                    started_at: Instant::now(),
+                }).await
+            },
+            _ => Err(StateError::InvalidTransition {
+                from: current_state,
+                to: ContainerState::Running {
+                    container_id,
+                    started_at: Instant::now(),
+                },
+            }),
+        }
+    }
+
+    pub async fn execute_command(&self, container_id: String, command: String) -> Result<(), StateError> {
+        let current_state = self.get_current_state().await;
+        match current_state {
+            ContainerState::Running { container_id: current_id, .. } if current_id == container_id => {
+                self.transition_to(ContainerState::Executing {
+                    container_id,
+                    started_at: Instant::now(),
+                    command,
+                }).await
+            },
+            _ => Err(StateError::InvalidTransition {
+                from: current_state,
+                to: ContainerState::Executing {
+                    container_id,
+                    started_at: Instant::now(),
+                    command,
+                },
+            }),
+        }
+    }
+
+    pub async fn stop_container(&self, container_id: String, exit_code: i32) -> Result<(), StateError> {
+        let current_state = self.get_current_state().await;
+        let execution_time = current_state.duration_since_start()
+            .ok_or_else(|| StateError::InvalidTransition {
+                from: current_state.clone(),
+                to: ContainerState::Stopped {
+                    container_id: container_id.clone(),
+                    exit_code,
+                    execution_time: Duration::from_secs(0),
+                },
+            })?;
+
+        match current_state {
+            ContainerState::Running { container_id: current_id, .. } |
+            ContainerState::Executing { container_id: current_id, .. }
+                if current_id == container_id => {
+                self.transition_to(ContainerState::Stopped {
+                    container_id,
+                    exit_code,
+                    execution_time,
+                }).await
+            },
+            _ => Err(StateError::InvalidTransition {
+                from: current_state,
+                to: ContainerState::Stopped {
+                    container_id,
+                    exit_code,
+                    execution_time,
+                },
+            }),
+        }
+    }
+
+    pub async fn fail_container(&self, container_id: String, error: String) -> Result<(), StateError> {
+        let current_state = self.get_current_state().await;
+        match current_state {
+            ContainerState::Initial |
+            ContainerState::Stopped { .. } |
+            ContainerState::Failed { .. } => {
+                Err(StateError::InvalidTransition {
+                    from: current_state,
+                    to: ContainerState::Failed {
+                        container_id,
+                        error,
+                        occurred_at: Instant::now(),
+                    },
+                })
+            },
+            _ => {
+                self.transition_to(ContainerState::Failed {
+                    container_id,
+                    error,
+                    occurred_at: Instant::now(),
+                }).await
+            }
+        }
+    }
+
+    pub async fn create_container(&self, container_id: String) -> Result<(), StateError> {
+        let current_state = self.get_current_state().await;
+        match current_state {
+            ContainerState::Initial => {
+                self.transition_to(ContainerState::Created {
+                    container_id,
+                    created_at: Instant::now(),
+                }).await
+            },
+            _ => Err(StateError::InvalidTransition {
+                from: current_state,
+                to: ContainerState::Created {
+                    container_id,
+                    created_at: Instant::now(),
+                },
+            }),
+        }
+    }
 }
 
 impl ContainerState {
@@ -262,5 +379,57 @@ mod tests {
         // Verify subscriber received the state
         let received_state = rx.recv().await.unwrap();
         assert_eq!(received_state, new_state);
+    }
+
+    #[tokio::test]
+    async fn test_container_lifecycle() {
+        let manager = ContainerStateManager::new();
+        let container_id = "test_container".to_string();
+
+        // Created状態に遷移
+        let created_state = ContainerState::Created {
+            container_id: container_id.clone(),
+            created_at: Instant::now(),
+        };
+        assert!(manager.transition_to(created_state).await.is_ok());
+
+        // コンテナ起動
+        assert!(manager.start_container(container_id.clone()).await.is_ok());
+        let state = manager.get_current_state().await;
+        assert!(matches!(state, ContainerState::Running { .. }));
+
+        // コマンド実行
+        assert!(manager.execute_command(container_id.clone(), "test command".to_string()).await.is_ok());
+        let state = manager.get_current_state().await;
+        assert!(matches!(state, ContainerState::Executing { .. }));
+
+        // コンテナ停止
+        assert!(manager.stop_container(container_id.clone(), 0).await.is_ok());
+        let state = manager.get_current_state().await;
+        assert!(matches!(state, ContainerState::Stopped { .. }));
+    }
+
+    #[tokio::test]
+    async fn test_container_failure() {
+        let manager = ContainerStateManager::new();
+        let container_id = "test_container".to_string();
+
+        // Created状態に遷移
+        let created_state = ContainerState::Created {
+            container_id: container_id.clone(),
+            created_at: Instant::now(),
+        };
+        assert!(manager.transition_to(created_state).await.is_ok());
+
+        // コンテナ起動
+        assert!(manager.start_container(container_id.clone()).await.is_ok());
+
+        // エラー発生
+        assert!(manager.fail_container(container_id.clone(), "テストエラー".to_string()).await.is_ok());
+        let state = manager.get_current_state().await;
+        assert!(matches!(state, ContainerState::Failed { .. }));
+
+        // 失敗状態からの遷移は不可
+        assert!(manager.start_container(container_id.clone()).await.is_err());
     }
 } 

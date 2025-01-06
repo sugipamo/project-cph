@@ -1,10 +1,10 @@
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
 use crate::docker::error::{DockerError, DockerResult};
-use crate::docker::state::container::{ContainerState, ContainerStateManager, StateError};
+use crate::docker::state::container::{ContainerState, ContainerStateManager};
 use crate::docker::config::ContainerConfig;
 use crate::docker::executor::{DockerCommand, DockerCommandExecutor};
 use crate::docker::traits::ContainerManager;
@@ -37,55 +37,54 @@ impl DockerRunner {
         let container_id = manager.get_container_id().await?;
         self.state_manager.set_container_id(container_id.clone()).await;
         
-        self.state_manager.transition_to(ContainerState::Created {
-            container_id,
-            created_at: Instant::now(),
-        }).await.map_err(DockerError::State)?;
-
-        Ok(())
+        self.state_manager.create_container(container_id)
+            .await
+            .map_err(DockerError::State)
     }
 
     pub async fn start(&mut self) -> DockerResult<()> {
-        let mut manager = self.container_manager.lock().await;
-        manager.start_container().await?;
+        let container_id = {
+            let manager = self.container_manager.lock().await;
+            manager.get_container_id().await?
+        };
 
-        self.state_manager.transition_to(ContainerState::Running {
-            container_id: manager.get_container_id().await?,
-            started_at: Instant::now(),
-        }).await.map_err(DockerError::State)?;
+        {
+            let mut manager = self.container_manager.lock().await;
+            manager.start_container().await?;
+        }
 
-        Ok(())
+        self.state_manager.start_container(container_id)
+            .await
+            .map_err(DockerError::State)
     }
 
     pub async fn stop(&mut self) -> DockerResult<()> {
-        let mut manager = self.container_manager.lock().await;
-        let container_id = manager.get_container_id().await?;
-        
-        manager.stop_container().await?;
+        let container_id = {
+            let manager = self.container_manager.lock().await;
+            manager.get_container_id().await?
+        };
 
-        let current_state = self.state_manager.get_current_state().await;
-        let execution_time = current_state.duration_since_start().unwrap_or_default();
-        let exit_code = manager.get_exit_code().await?;
+        let exit_code = {
+            let mut manager = self.container_manager.lock().await;
+            manager.stop_container().await?;
+            manager.get_exit_code().await?
+        };
 
-        self.state_manager.transition_to(ContainerState::Stopped {
-            container_id,
-            exit_code,
-            execution_time,
-        }).await.map_err(DockerError::State)?;
-
-        Ok(())
+        self.state_manager.stop_container(container_id, exit_code)
+            .await
+            .map_err(DockerError::State)
     }
 
     pub async fn execute(&mut self, command: &str) -> DockerResult<(String, String)> {
-        let mut manager = self.container_manager.lock().await;
-        let container_id = manager.get_container_id().await?;
+        let container_id = {
+            let manager = self.container_manager.lock().await;
+            manager.get_container_id().await?
+        };
 
-        // 実行状態に遷移
-        self.state_manager.transition_to(ContainerState::Executing {
-            container_id: container_id.clone(),
-            started_at: Instant::now(),
-            command: command.to_string(),
-        }).await.map_err(DockerError::State)?;
+        // コマンド実行状態に遷移
+        self.state_manager.execute_command(container_id.clone(), command.to_string())
+            .await
+            .map_err(DockerError::State)?;
 
         // タイムアウト付きでコマンドを実行
         let command = DockerCommand::new("exec")
@@ -101,28 +100,25 @@ impl DockerRunner {
             Ok(cmd_result) => {
                 match cmd_result {
                     Ok(output) => {
-                        self.state_manager.transition_to(ContainerState::Running {
-                            container_id,
-                            started_at: Instant::now(),
-                        }).await.map_err(DockerError::State)?;
+                        self.state_manager.start_container(container_id)
+                            .await
+                            .map_err(DockerError::State)?;
                         Ok((output.stdout, output.stderr))
                     }
                     Err(e) => {
-                        self.state_manager.transition_to(ContainerState::Failed {
+                        self.state_manager.fail_container(
                             container_id,
-                            error: e.to_string(),
-                            occurred_at: Instant::now(),
-                        }).await.map_err(DockerError::State)?;
+                            e.to_string(),
+                        ).await.map_err(DockerError::State)?;
                         Err(e)
                     }
                 }
             }
             Err(_) => {
-                self.state_manager.transition_to(ContainerState::Failed {
-                    container_id,
-                    error: format!("コマンドの実行がタイムアウトしました（{}秒）", self.timeout.as_secs()),
-                    occurred_at: Instant::now(),
-                }).await.map_err(DockerError::State)?;
+                let error = format!("コマンドの実行がタイムアウトしました（{}秒）", self.timeout.as_secs());
+                self.state_manager.fail_container(container_id, error.clone())
+                    .await
+                    .map_err(DockerError::State)?;
                 Err(DockerError::Command("コマンドの実行がタイムアウトしました".to_string()))
             }
         }
@@ -153,13 +149,16 @@ mod tests {
     }
 
     mock! {
-        DockerOps {}
+        ContainerOps {}
         #[async_trait::async_trait]
-        impl DockerOperations for DockerOps {
-            async fn initialize(&mut self, config: ContainerConfig) -> DockerResult<()>;
-            async fn start(&mut self) -> DockerResult<()>;
-            async fn stop(&mut self) -> DockerResult<()>;
-            async fn execute(&mut self, command: &str) -> DockerResult<(String, String)>;
+        impl ContainerManager for ContainerOps {
+            async fn create_container(&mut self, image: &str, cmd: Vec<String>, working_dir: &str) -> DockerResult<()>;
+            async fn start_container(&mut self) -> DockerResult<()>;
+            async fn stop_container(&mut self) -> DockerResult<()>;
+            async fn get_container_id(&self) -> DockerResult<String>;
+            async fn get_exit_code(&self) -> DockerResult<i32>;
+            async fn check_image(&self, image: &str) -> DockerResult<bool>;
+            async fn pull_image(&self, image: &str) -> DockerResult<()>;
         }
     }
 
@@ -174,16 +173,22 @@ mod tests {
                 stderr: "".to_string(),
             }));
 
-        let mut mock_ops = MockDockerOps::new();
+        let mut mock_ops = MockContainerOps::new();
         mock_ops
-            .expect_initialize()
-            .returning(|_| Ok(()));
+            .expect_create_container()
+            .returning(|_, _, _| Ok(()));
         mock_ops
-            .expect_start()
+            .expect_get_container_id()
+            .returning(|| Ok("test_container".to_string()));
+        mock_ops
+            .expect_start_container()
             .returning(|| Ok(()));
         mock_ops
-            .expect_stop()
+            .expect_stop_container()
             .returning(|| Ok(()));
+        mock_ops
+            .expect_get_exit_code()
+            .returning(|| Ok(0));
 
         let mut runner = DockerRunner::new(
             Arc::new(Mutex::new(mock_ops)),
@@ -218,19 +223,19 @@ mod tests {
         let mut mock_executor = MockDockerExecutor::new();
         mock_executor
             .expect_execute()
-            .returning(|_| Ok(CommandOutput {
-                success: true,
-                stdout: "container_id".to_string(),
-                stderr: "".to_string(),
-            }));
+            .returning(|_| {
+                sleep(Duration::from_secs(2));
+                Ok(CommandOutput {
+                    success: true,
+                    stdout: "".to_string(),
+                    stderr: "".to_string(),
+                })
+            });
 
-        let mut mock_ops = MockDockerOps::new();
+        let mut mock_ops = MockContainerOps::new();
         mock_ops
-            .expect_execute()
-            .returning(|_| async {
-                sleep(Duration::from_secs(2)).await;
-                Ok(("output".to_string(), "".to_string()))
-            }.boxed());
+            .expect_get_container_id()
+            .returning(|| Ok("test_container".to_string()));
 
         let mut runner = DockerRunner::new(
             Arc::new(Mutex::new(mock_ops)),
@@ -250,26 +255,22 @@ mod tests {
         let mut mock_executor = MockDockerExecutor::new();
         mock_executor
             .expect_execute()
-            .returning(|cmd| {
-                if cmd.command == "inspect" {
-                    Ok(CommandOutput {
-                        success: true,
-                        stdout: "137".to_string(),
-                        stderr: "".to_string(),
-                    })
-                } else {
-                    Ok(CommandOutput {
-                        success: true,
-                        stdout: "container_id".to_string(),
-                        stderr: "".to_string(),
-                    })
-                }
-            });
+            .returning(|_| Ok(CommandOutput {
+                success: true,
+                stdout: "".to_string(),
+                stderr: "".to_string(),
+            }));
 
-        let mut mock_ops = MockDockerOps::new();
+        let mut mock_ops = MockContainerOps::new();
         mock_ops
-            .expect_stop()
+            .expect_get_container_id()
+            .returning(|| Ok("test_container".to_string()));
+        mock_ops
+            .expect_stop_container()
             .returning(|| Ok(()));
+        mock_ops
+            .expect_get_exit_code()
+            .returning(|| Ok(137));
 
         let mut runner = DockerRunner::new(
             Arc::new(Mutex::new(mock_ops)),
