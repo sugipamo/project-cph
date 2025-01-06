@@ -7,6 +7,7 @@ use crate::docker::state::RunnerState;
 use crate::docker::config::DockerConfig;
 use crate::docker::fs::{DockerFileManager, DefaultDockerFileManager};
 use crate::docker::executor::{DockerCommandExecutor, DefaultDockerExecutor};
+use std::fs;
 
 pub struct DockerRunner {
     config: DockerConfig,
@@ -52,27 +53,34 @@ impl DockerRunner {
 
         // 一時ディレクトリの作成
         let temp_dir = self.file_manager.create_temp_directory()?;
+        let compile_dir = temp_dir.join("compile");
+        fs::create_dir_all(&compile_dir)?;
         
         // ソースファイルの作成
         let source_file = self.file_manager.write_source_file(
-            &temp_dir,
+            &compile_dir,
             &format!("main.{}", self.config.extension()),
             source_code,
         )?;
         
         // ファイルのパーミッション設定
         self.file_manager.set_permissions(&source_file, 0o644)?;
-        self.file_manager.set_permissions(&temp_dir, 0o777)?;
+        self.file_manager.set_permissions(&compile_dir, 0o777)?;
 
         // コマンドの構築
         let command = if let Some(compile_cmd) = self.config.compile_cmd() {
             format!(
-                "{} && {}",
+                "cd {} && {} && {}",
+                self.config.mount_point(),
                 compile_cmd.join(" "),
                 self.config.run_cmd().join(" ")
             )
         } else {
-            self.config.run_cmd().join(" ")
+            format!(
+                "cd {} && {}",
+                self.config.mount_point(),
+                self.config.run_cmd().join(" ")
+            )
         };
 
         // コンテナの実行
@@ -81,22 +89,26 @@ impl DockerRunner {
             &container_name,
             self.config.image(),
             self.config.memory_limit(),
-            temp_dir.to_str().unwrap(),
+            compile_dir.to_str().unwrap(),
             self.config.mount_point(),
             &command,
             self.config.timeout_seconds(),
         ).await;
 
         // 一時ディレクトリの削除
-        self.file_manager.cleanup(&temp_dir)?;
+        let _ = self.file_manager.cleanup(&temp_dir);
 
         // 状態の更新と結果の返却
-        *self.state.lock().await = match &result {
-            Ok(_) => RunnerState::Completed,
-            Err(_) => RunnerState::Error,
-        };
-
-        result
+        match &result {
+            Ok(_) => {
+                *self.state.lock().await = RunnerState::Completed;
+                result
+            }
+            Err(_) => {
+                *self.state.lock().await = RunnerState::Error;
+                result
+            }
+        }
     }
 
     pub async fn cleanup(&mut self) -> DockerResult<()> {
@@ -135,8 +147,11 @@ mod tests {
             state: Arc::new(Mutex::new(RunnerState::Ready)),
         };
 
-        let result = runner.run_in_docker("fn main() {}").await;
+        let result = runner.run_in_docker("fn main() { println!(\"Hello from Rust!\"); }").await;
         assert!(result.is_ok());
+        if let Ok(output) = result {
+            assert!(output.contains("Hello from Rust!"));
+        }
         assert_eq!(runner.get_state().await, RunnerState::Completed);
     }
 

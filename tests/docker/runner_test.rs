@@ -3,6 +3,17 @@ use tokio::test;
 use cph::config::Config;
 use cph::docker::{DockerRunner, DockerError};
 use std::fs;
+use std::path::PathBuf;
+
+fn setup() -> PathBuf {
+    let temp_dir = std::env::temp_dir().join("cph-test");
+    fs::create_dir_all(&temp_dir).unwrap();
+    temp_dir
+}
+
+fn teardown(temp_dir: &PathBuf) {
+    let _ = fs::remove_dir_all(temp_dir);
+}
 
 // Dockerデーモンが利用可能かチェックする
 fn check_docker_available() -> bool {
@@ -33,7 +44,7 @@ async fn test_docker_available() {
 
 #[tokio::test]
 async fn test_rust_runner() {
-    super::setup();
+    let temp_dir = setup();
     
     let config = Config::load().unwrap();
     let mut runner = DockerRunner::new(config, "rust".to_string()).unwrap();
@@ -53,6 +64,8 @@ async fn test_rust_runner() {
             panic!("実行に失敗しました");
         }
     }
+
+    teardown(&temp_dir);
 }
 
 #[tokio::test]

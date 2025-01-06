@@ -160,11 +160,11 @@ impl MockDockerExecutor {
 #[async_trait::async_trait]
 impl DockerCommandExecutor for MockDockerExecutor {
     async fn check_image(&self, _image: &str) -> DockerResult<bool> {
-        Ok(!self.should_fail)
+        Ok(true)
     }
 
     async fn pull_image(&self, _image: &str) -> DockerResult<bool> {
-        Ok(!self.should_fail)
+        Ok(true)
     }
 
     async fn run_container(
@@ -174,13 +174,21 @@ impl DockerCommandExecutor for MockDockerExecutor {
         _memory_limit: u32,
         _mount_source: &str,
         _mount_target: &str,
-        _command: &str,
+        command: &str,
         _timeout_seconds: u32,
     ) -> DockerResult<String> {
         if self.should_fail {
             Err(DockerError::Runtime("モックエラー".to_string()))
         } else {
-            Ok("モック出力".to_string())
+            if command.contains("main.rs") {
+                Ok("Hello from Rust!\n".to_string())
+            } else if command.contains("main.py") {
+                Ok("Hello from Python!\n".to_string())
+            } else if command.contains("main.cpp") {
+                Ok("Hello from C++!\n".to_string())
+            } else {
+                Ok("実行成功\n".to_string())
+            }
         }
     }
 
@@ -194,6 +202,6 @@ impl DockerCommandExecutor for MockDockerExecutor {
         _image: &str,
         _mount_point: &str,
     ) -> DockerResult<String> {
-        Ok("モックディレクトリ一覧".to_string())
+        Ok("total 4\ndrwxr-xr-x 2 root root 4096 Jan 1 00:00 .\n".to_string())
     }
 } 
