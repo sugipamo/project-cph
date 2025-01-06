@@ -4,11 +4,11 @@ use tokio::sync::Mutex;
 
 use crate::docker::error::DockerResult;
 use crate::docker::traits::{DockerOperation, DockerCommand, CommandType};
-use crate::docker::state::{RunnerState, ContainerContext, ExecutionResult, RunnerStateManager, ContainerStatus, RunnerError};
+use crate::docker::state::{DockerState, DockerStateManager};
 
 pub struct DockerRunner {
     operation: Arc<dyn DockerOperation>,
-    state_manager: Arc<Mutex<RunnerStateManager>>,
+    state_manager: Arc<Mutex<DockerStateManager>>,
     timeout: Duration,
 }
 
@@ -16,7 +16,7 @@ impl DockerRunner {
     pub fn new(operation: Arc<dyn DockerOperation>, timeout: Duration, runner_id: String) -> Self {
         Self {
             operation,
-            state_manager: Arc::new(Mutex::new(RunnerStateManager::new(runner_id))),
+            state_manager: Arc::new(Mutex::new(DockerStateManager::new(runner_id))),
             timeout,
         }
     }
@@ -33,25 +33,19 @@ impl DockerRunner {
             let container_id = output.stdout.trim().to_string();
             let mut state_manager = self.state_manager.lock().await;
             
-            // コンテナの状態を更新
-            state_manager.update_container_state(
-                container_id.clone(),
-                ContainerStatus::Created
-            ).await?;
+            state_manager.transition_to(DockerState::Created {
+                container_id: container_id.clone(),
+                created_at: std::time::Instant::now(),
+            }).await?;
 
-            // ランナーの状態を更新
-            let context = ContainerContext {
-                container_id,
-                start_time: std::time::Instant::now(),
-                memory_usage: None,
-                status: ContainerStatus::Created,
-            };
-            state_manager.transition_to(RunnerState::Running(context)).await?;
             Ok(())
         } else {
-            let error = RunnerError::ContainerCreationFailed(output.stderr.clone());
             let mut state_manager = self.state_manager.lock().await;
-            state_manager.transition_to(error.into()).await?;
+            state_manager.transition_to(DockerState::Failed {
+                container_id: None,
+                error: output.stderr.clone(),
+                occurred_at: std::time::Instant::now(),
+            }).await?;
             Err(crate::docker::error::DockerError::Initialization(output.stderr))
         }
     }
@@ -60,10 +54,10 @@ impl DockerRunner {
         let state_manager = self.state_manager.lock().await;
         let current_state = state_manager.get_current_state().await;
         
-        if let RunnerState::Running(context) = current_state {
+        if let DockerState::Created { container_id, .. } = current_state {
             let command = DockerCommand {
                 command_type: CommandType::Start,
-                args: vec![context.container_id.clone()],
+                args: vec![container_id.clone()],
                 timeout: Some(self.timeout),
             };
             
@@ -72,20 +66,24 @@ impl DockerRunner {
             let output = self.operation.execute(command).await?;
             if output.success {
                 let mut state_manager = self.state_manager.lock().await;
-                state_manager.update_container_state(
-                    context.container_id,
-                    ContainerStatus::Running
-                ).await?;
+                state_manager.transition_to(DockerState::Running {
+                    container_id,
+                    start_time: std::time::Instant::now(),
+                    memory_usage: None,
+                }).await?;
                 Ok(())
             } else {
-                let error = RunnerError::ContainerStartFailed(output.stderr.clone());
                 let mut state_manager = self.state_manager.lock().await;
-                state_manager.transition_to(error.into()).await?;
+                state_manager.transition_to(DockerState::Failed {
+                    container_id: Some(container_id),
+                    error: output.stderr.clone(),
+                    occurred_at: std::time::Instant::now(),
+                }).await?;
                 Err(crate::docker::error::DockerError::Container(output.stderr))
             }
         } else {
             Err(crate::docker::error::DockerError::InvalidState(
-                "Container must be in Running state to start".to_string()
+                "Container must be in Created state to start".to_string()
             ))
         }
     }
@@ -94,29 +92,25 @@ impl DockerRunner {
         let state_manager = self.state_manager.lock().await;
         let current_state = state_manager.get_current_state().await;
         
-        if let RunnerState::Running(context) = current_state {
+        if let DockerState::Running { container_id, start_time, .. } = current_state {
             let command = DockerCommand {
                 command_type: CommandType::Stop,
-                args: vec![context.container_id.clone()],
+                args: vec![container_id.clone()],
                 timeout: Some(Duration::from_secs(10)),
             };
             
-            drop(state_manager); // ロックを解放
+            drop(state_manager);
             
             let output = self.operation.execute(command).await?;
             self.operation.cleanup().await?;
             
             let mut state_manager = self.state_manager.lock().await;
-            state_manager.update_container_state(
-                context.container_id.clone(),
-                ContainerStatus::Stopped
-            ).await?;
-            
-            state_manager.transition_to(RunnerState::Completed(ExecutionResult {
+            state_manager.transition_to(DockerState::Completed {
+                container_id,
                 exit_code: output.exit_code.unwrap_or(0),
-                execution_time: context.start_time.elapsed(),
+                execution_time: start_time.elapsed(),
                 output: output.stdout,
-            })).await?;
+            }).await?;
             
             Ok(())
         } else {
@@ -124,7 +118,7 @@ impl DockerRunner {
         }
     }
 
-    pub async fn get_state(&self) -> RunnerState {
+    pub async fn get_state(&self) -> DockerState {
         let state_manager = self.state_manager.lock().await;
         state_manager.get_current_state().await
     }

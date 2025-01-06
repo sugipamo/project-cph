@@ -1,0 +1,460 @@
+diff --git a/src/contest/service/contest.rs b/src/contest/service/contest.rs
+index 9c8a417..4b9f19e 100644
+--- a/src/contest/service/contest.rs
++++ b/src/contest/service/contest.rs
+@@ -4,7 +4,7 @@ use async_trait::async_trait;
+ 
+ use crate::docker::runner::{DockerRunner, ContainerConfig};
+ use crate::docker::traits::{DockerOperation, DockerCommand, CommandOutput};
+-use crate::docker::state::RunnerState;
++use crate::docker::state::DockerState;
+ use crate::docker::error::DockerResult;
+ use crate::contest::error::{ContestResult, ContestError};
+ use crate::config::Config;
+@@ -57,8 +57,8 @@ impl ContestService {
+         // 実行結果の取得
+         let state = docker_runner.get_state().await;
+         match state {
+-            RunnerState::Completed(result) => Ok(result.output),
+-            RunnerState::Failed(error) => Err(ContestError::Docker(error.to_string())),
++            DockerState::Completed { output, .. } => Ok(output),
++            DockerState::Failed { error, .. } => Err(ContestError::Docker(error)),
+             _ => Err(ContestError::Docker("Unexpected state".to_string())),
+         }
+     }
+diff --git a/src/docker/runner/mod.rs b/src/docker/runner/mod.rs
+index 45e9e3f..ce73355 100644
+--- a/src/docker/runner/mod.rs
++++ b/src/docker/runner/mod.rs
+@@ -4,11 +4,11 @@ use tokio::sync::Mutex;
+ 
+ use crate::docker::error::DockerResult;
+ use crate::docker::traits::{DockerOperation, DockerCommand, CommandType};
+-use crate::docker::state::{RunnerState, ContainerContext, ExecutionResult, RunnerStateManager, ContainerStatus, RunnerError};
++use crate::docker::state::{DockerState, DockerStateManager};
+ 
+ pub struct DockerRunner {
+     operation: Arc<dyn DockerOperation>,
+-    state_manager: Arc<Mutex<RunnerStateManager>>,
++    state_manager: Arc<Mutex<DockerStateManager>>,
+     timeout: Duration,
+ }
+ 
+@@ -16,7 +16,7 @@ impl DockerRunner {
+     pub fn new(operation: Arc<dyn DockerOperation>, timeout: Duration, runner_id: String) -> Self {
+         Self {
+             operation,
+-            state_manager: Arc::new(Mutex::new(RunnerStateManager::new(runner_id))),
++            state_manager: Arc::new(Mutex::new(DockerStateManager::new(runner_id))),
+             timeout,
+         }
+     }
+@@ -33,25 +33,19 @@ impl DockerRunner {
+             let container_id = output.stdout.trim().to_string();
+             let mut state_manager = self.state_manager.lock().await;
+             
+-            // コンテナの状態を更新
+-            state_manager.update_container_state(
+-                container_id.clone(),
+-                ContainerStatus::Created
+-            ).await?;
++            state_manager.transition_to(DockerState::Created {
++                container_id: container_id.clone(),
++                created_at: std::time::Instant::now(),
++            }).await?;
+ 
+-            // ランナーの状態を更新
+-            let context = ContainerContext {
+-                container_id,
+-                start_time: std::time::Instant::now(),
+-                memory_usage: None,
+-                status: ContainerStatus::Created,
+-            };
+-            state_manager.transition_to(RunnerState::Running(context)).await?;
+             Ok(())
+         } else {
+-            let error = RunnerError::ContainerCreationFailed(output.stderr.clone());
+             let mut state_manager = self.state_manager.lock().await;
+-            state_manager.transition_to(error.into()).await?;
++            state_manager.transition_to(DockerState::Failed {
++                container_id: None,
++                error: output.stderr.clone(),
++                occurred_at: std::time::Instant::now(),
++            }).await?;
+             Err(crate::docker::error::DockerError::Initialization(output.stderr))
+         }
+     }
+@@ -60,10 +54,10 @@ impl DockerRunner {
+         let state_manager = self.state_manager.lock().await;
+         let current_state = state_manager.get_current_state().await;
+         
+-        if let RunnerState::Running(context) = current_state {
++        if let DockerState::Created { container_id, .. } = current_state {
+             let command = DockerCommand {
+                 command_type: CommandType::Start,
+-                args: vec![context.container_id.clone()],
++                args: vec![container_id.clone()],
+                 timeout: Some(self.timeout),
+             };
+             
+@@ -72,20 +66,24 @@ impl DockerRunner {
+             let output = self.operation.execute(command).await?;
+             if output.success {
+                 let mut state_manager = self.state_manager.lock().await;
+-                state_manager.update_container_state(
+-                    context.container_id,
+-                    ContainerStatus::Running
+-                ).await?;
++                state_manager.transition_to(DockerState::Running {
++                    container_id,
++                    start_time: std::time::Instant::now(),
++                    memory_usage: None,
++                }).await?;
+                 Ok(())
+             } else {
+-                let error = RunnerError::ContainerStartFailed(output.stderr.clone());
+                 let mut state_manager = self.state_manager.lock().await;
+-                state_manager.transition_to(error.into()).await?;
++                state_manager.transition_to(DockerState::Failed {
++                    container_id: Some(container_id),
++                    error: output.stderr.clone(),
++                    occurred_at: std::time::Instant::now(),
++                }).await?;
+                 Err(crate::docker::error::DockerError::Container(output.stderr))
+             }
+         } else {
+             Err(crate::docker::error::DockerError::InvalidState(
+-                "Container must be in Running state to start".to_string()
++                "Container must be in Created state to start".to_string()
+             ))
+         }
+     }
+@@ -94,29 +92,25 @@ impl DockerRunner {
+         let state_manager = self.state_manager.lock().await;
+         let current_state = state_manager.get_current_state().await;
+         
+-        if let RunnerState::Running(context) = current_state {
++        if let DockerState::Running { container_id, start_time, .. } = current_state {
+             let command = DockerCommand {
+                 command_type: CommandType::Stop,
+-                args: vec![context.container_id.clone()],
++                args: vec![container_id.clone()],
+                 timeout: Some(Duration::from_secs(10)),
+             };
+             
+-            drop(state_manager); // ロックを解放
++            drop(state_manager);
+             
+             let output = self.operation.execute(command).await?;
+             self.operation.cleanup().await?;
+             
+             let mut state_manager = self.state_manager.lock().await;
+-            state_manager.update_container_state(
+-                context.container_id.clone(),
+-                ContainerStatus::Stopped
+-            ).await?;
+-            
+-            state_manager.transition_to(RunnerState::Completed(ExecutionResult {
++            state_manager.transition_to(DockerState::Completed {
++                container_id,
+                 exit_code: output.exit_code.unwrap_or(0),
+-                execution_time: context.start_time.elapsed(),
++                execution_time: start_time.elapsed(),
+                 output: output.stdout,
+-            })).await?;
++            }).await?;
+             
+             Ok(())
+         } else {
+@@ -124,7 +118,7 @@ impl DockerRunner {
+         }
+     }
+ 
+-    pub async fn get_state(&self) -> RunnerState {
++    pub async fn get_state(&self) -> DockerState {
+         let state_manager = self.state_manager.lock().await;
+         state_manager.get_current_state().await
+     }
+diff --git a/src/docker/state.rs b/src/docker/state.rs
+index b88e335..871a6d4 100644
+--- a/src/docker/state.rs
++++ b/src/docker/state.rs
+@@ -1,122 +1,102 @@
+ use std::fmt;
+-use std::collections::HashMap;
+ use std::sync::Arc;
+ use std::time::{Duration, Instant};
+ use tokio::sync::{Mutex, mpsc};
+ use crate::docker::error::{DockerError, DockerResult};
+ 
+ #[derive(Debug, Clone, PartialEq)]
+-pub enum RunnerState {
++pub enum DockerState {
+     Initial,
+-    Running(ContainerContext),
+-    Completed(ExecutionResult),
+-    Failed(RunnerError),
+-}
+-
+-#[derive(Debug, Clone, PartialEq)]
+-pub struct ContainerContext {
+-    pub container_id: String,
+-    pub start_time: Instant,
+-    pub memory_usage: Option<u64>,
+-    pub status: ContainerStatus,
+-}
+-
+-#[derive(Debug, Clone, PartialEq)]
+-pub enum ContainerStatus {
+-    Created,
+-    Running,
+-    Stopped,
+-    Failed(String),
+-}
+-
+-#[derive(Debug, Clone, PartialEq)]
+-pub struct ExecutionResult {
+-    pub exit_code: i32,
+-    pub execution_time: Duration,
+-    pub output: String,
+-}
+-
+-#[derive(Debug, Clone, PartialEq)]
+-pub enum RunnerError {
+-    ContainerCreationFailed(String),
+-    ContainerStartFailed(String),
+-    ExecutionTimeout(Duration),
+-    ResourceExhausted(String),
+-    InvalidStateTransition(String),
++    Created {
++        container_id: String,
++        created_at: Instant,
++    },
++    Running {
++        container_id: String,
++        start_time: Instant,
++        memory_usage: Option<u64>,
++    },
++    Completed {
++        container_id: String,
++        exit_code: i32,
++        execution_time: Duration,
++        output: String,
++    },
++    Failed {
++        container_id: Option<String>,
++        error: String,
++        occurred_at: Instant,
++    },
+ }
+ 
+ #[derive(Debug, Clone)]
+ pub struct StateChange {
+     pub runner_id: String,
+-    pub previous_state: RunnerState,
+-    pub new_state: RunnerState,
++    pub previous_state: DockerState,
++    pub new_state: DockerState,
+     pub timestamp: Instant,
+ }
+ 
+-pub struct RunnerStateManager {
+-    state: Arc<Mutex<RunnerState>>,
+-    container_states: Arc<Mutex<HashMap<String, ContainerContext>>>,
++pub struct DockerStateManager {
++    state: Arc<Mutex<DockerState>>,
+     subscribers: Arc<Mutex<Vec<mpsc::Sender<StateChange>>>>,
+     runner_id: String,
+ }
+ 
+-impl RunnerStateManager {
++impl DockerStateManager {
+     pub fn new(runner_id: String) -> Self {
+         Self {
+-            state: Arc::new(Mutex::new(RunnerState::Initial)),
+-            container_states: Arc::new(Mutex::new(HashMap::new())),
++            state: Arc::new(Mutex::new(DockerState::Initial)),
+             subscribers: Arc::new(Mutex::new(Vec::new())),
+             runner_id,
+         }
+     }
+ 
+-    pub async fn transition_to(&mut self, new_state: RunnerState) -> DockerResult<()> {
+-        let mut state = self.state.lock().await;
+-        if state.can_transition_to(&new_state) {
+-            let previous_state = state.clone();
+-            *state = new_state.clone();
+-            
+-            // 状態変更を通知
+-            self.notify_state_change(previous_state, new_state).await;
+-            Ok(())
+-        } else {
+-            Err(DockerError::InvalidState(format!(
+-                "Invalid state transition from {:?} to {:?}",
+-                *state, new_state
+-            )))
++    pub async fn transition_to(&mut self, new_state: DockerState) -> DockerResult<()> {
++        let mut current = self.state.lock().await;
++        
++        // 状態遷移の検証
++        if !self.is_valid_transition(&current, &new_state) {
++            return Err(DockerError::InvalidState(format!(
++                "Invalid transition from {:?} to {:?}",
++                *current, new_state
++            )));
+         }
+-    }
+ 
+-    pub async fn update_container_state(
+-        &mut self,
+-        container_id: String,
+-        status: ContainerStatus,
+-    ) -> DockerResult<()> {
+-        let mut states = self.container_states.lock().await;
+-        if let Some(context) = states.get_mut(&container_id) {
+-            context.status = status;
+-            Ok(())
+-        } else {
+-            let context = ContainerContext {
+-                container_id: container_id.clone(),
+-                start_time: Instant::now(),
+-                memory_usage: None,
+-                status,
+-            };
+-            states.insert(container_id, context);
+-            Ok(())
+-        }
++        let previous = current.clone();
++        *current = new_state.clone();
++        
++        // 状態変更を通知
++        self.notify_state_change(previous, new_state).await;
++        Ok(())
+     }
+ 
+-    pub async fn get_container_state(&self, container_id: &str) -> Option<ContainerContext> {
+-        let states = self.container_states.lock().await;
+-        states.get(container_id).cloned()
++    fn is_valid_transition(&self, from: &DockerState, to: &DockerState) -> bool {
++        use DockerState::*;
++        matches!(
++            (from, to),
++            (Initial, Created { .. }) |
++            (Created { .. }, Running { .. }) |
++            (Running { .. }, Completed { .. }) |
++            (_, Failed { .. })
++        )
+     }
+ 
+-    pub async fn get_current_state(&self) -> RunnerState {
++    pub async fn get_current_state(&self) -> DockerState {
+         self.state.lock().await.clone()
+     }
+ 
++    pub async fn get_container_id(&self) -> Option<String> {
++        let state = self.state.lock().await;
++        match &*state {
++            DockerState::Created { container_id, .. } |
++            DockerState::Running { container_id, .. } |
++            DockerState::Completed { container_id, .. } => Some(container_id.clone()),
++            DockerState::Failed { container_id, .. } => container_id.clone(),
++            _ => None,
++        }
++    }
++
+     pub async fn subscribe(&mut self) -> mpsc::Receiver<StateChange> {
+         let (tx, rx) = mpsc::channel(100);
+         let mut subscribers = self.subscribers.lock().await;
+@@ -124,7 +104,7 @@ impl RunnerStateManager {
+         rx
+     }
+ 
+-    async fn notify_state_change(&self, previous_state: RunnerState, new_state: RunnerState) {
++    async fn notify_state_change(&self, previous_state: DockerState, new_state: DockerState) {
+         let change = StateChange {
+             runner_id: self.runner_id.clone(),
+             previous_state,
+@@ -137,37 +117,61 @@ impl RunnerStateManager {
+             let _ = subscriber.send(change.clone()).await;
+         }
+     }
+-}
+-
+-impl RunnerState {
+-    pub fn is_terminal(&self) -> bool {
+-        matches!(self, RunnerState::Completed(_) | RunnerState::Failed(_))
+-    }
+ 
+-    pub fn can_transition_to(&self, next: &RunnerState) -> bool {
+-        match (self, next) {
+-            (RunnerState::Initial, RunnerState::Running(_)) => true,
+-            (RunnerState::Running(_), RunnerState::Completed(_)) => true,
+-            (RunnerState::Running(_), RunnerState::Failed(_)) => true,
+-            _ => false,
++    pub async fn update_memory_usage(&mut self, memory: u64) -> DockerResult<()> {
++        let mut current = self.state.lock().await;
++        match &*current {
++            DockerState::Running { container_id, start_time, .. } => {
++                *current = DockerState::Running {
++                    container_id: container_id.clone(),
++                    start_time: *start_time,
++                    memory_usage: Some(memory),
++                };
++                Ok(())
++            }
++            _ => Err(DockerError::InvalidState(
++                "Memory usage can only be updated in Running state".to_string()
++            )),
+         }
+     }
+ }
+ 
+-impl From<RunnerError> for RunnerState {
+-    fn from(error: RunnerError) -> Self {
+-        RunnerState::Failed(error)
++impl DockerState {
++    pub fn is_terminal(&self) -> bool {
++        matches!(self, DockerState::Completed { .. } | DockerState::Failed { .. })
+     }
+ }
+ 
+-impl fmt::Display for RunnerError {
++impl fmt::Display for DockerState {
+     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+         match self {
+-            RunnerError::ContainerCreationFailed(msg) => write!(f, "コンテナの作成に失敗しました: {}", msg),
+-            RunnerError::ContainerStartFailed(msg) => write!(f, "コンテナの起動に失敗しました: {}", msg),
+-            RunnerError::ExecutionTimeout(duration) => write!(f, "実行がタイムアウトしました: {:?}", duration),
+-            RunnerError::ResourceExhausted(msg) => write!(f, "リソースが枯渇しました: {}", msg),
+-            RunnerError::InvalidStateTransition(msg) => write!(f, "不正な状態遷移です: {}", msg),
++            DockerState::Initial => write!(f, "初期状態"),
++            DockerState::Created { container_id, .. } => {
++                write!(f, "コンテナ作成済み (ID: {})", container_id)
++            }
++            DockerState::Running { container_id, memory_usage, .. } => {
++                write!(
++                    f,
++                    "実行中 (ID: {}, メモリ使用量: {})",
++                    container_id,
++                    memory_usage.map_or("不明".to_string(), |m| format!("{}MB", m))
++                )
++            }
++            DockerState::Completed { container_id, exit_code, execution_time, .. } => {
++                write!(
++                    f,
++                    "完了 (ID: {}, 終了コード: {}, 実行時間: {:?})",
++                    container_id, exit_code, execution_time
++                )
++            }
++            DockerState::Failed { container_id, error, .. } => {
++                write!(
++                    f,
++                    "失敗 (ID: {}, エラー: {})",
++                    container_id.as_deref().unwrap_or("なし"),
++                    error
++                )
++            }
+         }
+     }
+ } 
+\ No newline at end of file

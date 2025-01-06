@@ -1,120 +1,100 @@
 use std::fmt;
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, mpsc};
 use crate::docker::error::{DockerError, DockerResult};
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum RunnerState {
+pub enum DockerState {
     Initial,
-    Running(ContainerContext),
-    Completed(ExecutionResult),
-    Failed(RunnerError),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ContainerContext {
-    pub container_id: String,
-    pub start_time: Instant,
-    pub memory_usage: Option<u64>,
-    pub status: ContainerStatus,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum ContainerStatus {
-    Created,
-    Running,
-    Stopped,
-    Failed(String),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ExecutionResult {
-    pub exit_code: i32,
-    pub execution_time: Duration,
-    pub output: String,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum RunnerError {
-    ContainerCreationFailed(String),
-    ContainerStartFailed(String),
-    ExecutionTimeout(Duration),
-    ResourceExhausted(String),
-    InvalidStateTransition(String),
+    Created {
+        container_id: String,
+        created_at: Instant,
+    },
+    Running {
+        container_id: String,
+        start_time: Instant,
+        memory_usage: Option<u64>,
+    },
+    Completed {
+        container_id: String,
+        exit_code: i32,
+        execution_time: Duration,
+        output: String,
+    },
+    Failed {
+        container_id: Option<String>,
+        error: String,
+        occurred_at: Instant,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub struct StateChange {
     pub runner_id: String,
-    pub previous_state: RunnerState,
-    pub new_state: RunnerState,
+    pub previous_state: DockerState,
+    pub new_state: DockerState,
     pub timestamp: Instant,
 }
 
-pub struct RunnerStateManager {
-    state: Arc<Mutex<RunnerState>>,
-    container_states: Arc<Mutex<HashMap<String, ContainerContext>>>,
+pub struct DockerStateManager {
+    state: Arc<Mutex<DockerState>>,
     subscribers: Arc<Mutex<Vec<mpsc::Sender<StateChange>>>>,
     runner_id: String,
 }
 
-impl RunnerStateManager {
+impl DockerStateManager {
     pub fn new(runner_id: String) -> Self {
         Self {
-            state: Arc::new(Mutex::new(RunnerState::Initial)),
-            container_states: Arc::new(Mutex::new(HashMap::new())),
+            state: Arc::new(Mutex::new(DockerState::Initial)),
             subscribers: Arc::new(Mutex::new(Vec::new())),
             runner_id,
         }
     }
 
-    pub async fn transition_to(&mut self, new_state: RunnerState) -> DockerResult<()> {
-        let mut state = self.state.lock().await;
-        if state.can_transition_to(&new_state) {
-            let previous_state = state.clone();
-            *state = new_state.clone();
-            
-            // 状態変更を通知
-            self.notify_state_change(previous_state, new_state).await;
-            Ok(())
-        } else {
-            Err(DockerError::InvalidState(format!(
-                "Invalid state transition from {:?} to {:?}",
-                *state, new_state
-            )))
+    pub async fn transition_to(&mut self, new_state: DockerState) -> DockerResult<()> {
+        let mut current = self.state.lock().await;
+        
+        // 状態遷移の検証
+        if !self.is_valid_transition(&current, &new_state) {
+            return Err(DockerError::InvalidState(format!(
+                "Invalid transition from {:?} to {:?}",
+                *current, new_state
+            )));
         }
+
+        let previous = current.clone();
+        *current = new_state.clone();
+        
+        // 状態変更を通知
+        self.notify_state_change(previous, new_state).await;
+        Ok(())
     }
 
-    pub async fn update_container_state(
-        &mut self,
-        container_id: String,
-        status: ContainerStatus,
-    ) -> DockerResult<()> {
-        let mut states = self.container_states.lock().await;
-        if let Some(context) = states.get_mut(&container_id) {
-            context.status = status;
-            Ok(())
-        } else {
-            let context = ContainerContext {
-                container_id: container_id.clone(),
-                start_time: Instant::now(),
-                memory_usage: None,
-                status,
-            };
-            states.insert(container_id, context);
-            Ok(())
-        }
+    fn is_valid_transition(&self, from: &DockerState, to: &DockerState) -> bool {
+        use DockerState::*;
+        matches!(
+            (from, to),
+            (Initial, Created { .. }) |
+            (Created { .. }, Running { .. }) |
+            (Running { .. }, Completed { .. }) |
+            (_, Failed { .. })
+        )
     }
 
-    pub async fn get_container_state(&self, container_id: &str) -> Option<ContainerContext> {
-        let states = self.container_states.lock().await;
-        states.get(container_id).cloned()
-    }
-
-    pub async fn get_current_state(&self) -> RunnerState {
+    pub async fn get_current_state(&self) -> DockerState {
         self.state.lock().await.clone()
+    }
+
+    pub async fn get_container_id(&self) -> Option<String> {
+        let state = self.state.lock().await;
+        match &*state {
+            DockerState::Created { container_id, .. } |
+            DockerState::Running { container_id, .. } |
+            DockerState::Completed { container_id, .. } => Some(container_id.clone()),
+            DockerState::Failed { container_id, .. } => container_id.clone(),
+            _ => None,
+        }
     }
 
     pub async fn subscribe(&mut self) -> mpsc::Receiver<StateChange> {
@@ -124,7 +104,7 @@ impl RunnerStateManager {
         rx
     }
 
-    async fn notify_state_change(&self, previous_state: RunnerState, new_state: RunnerState) {
+    async fn notify_state_change(&self, previous_state: DockerState, new_state: DockerState) {
         let change = StateChange {
             runner_id: self.runner_id.clone(),
             previous_state,
@@ -137,37 +117,61 @@ impl RunnerStateManager {
             let _ = subscriber.send(change.clone()).await;
         }
     }
-}
 
-impl RunnerState {
-    pub fn is_terminal(&self) -> bool {
-        matches!(self, RunnerState::Completed(_) | RunnerState::Failed(_))
-    }
-
-    pub fn can_transition_to(&self, next: &RunnerState) -> bool {
-        match (self, next) {
-            (RunnerState::Initial, RunnerState::Running(_)) => true,
-            (RunnerState::Running(_), RunnerState::Completed(_)) => true,
-            (RunnerState::Running(_), RunnerState::Failed(_)) => true,
-            _ => false,
+    pub async fn update_memory_usage(&mut self, memory: u64) -> DockerResult<()> {
+        let mut current = self.state.lock().await;
+        match &*current {
+            DockerState::Running { container_id, start_time, .. } => {
+                *current = DockerState::Running {
+                    container_id: container_id.clone(),
+                    start_time: *start_time,
+                    memory_usage: Some(memory),
+                };
+                Ok(())
+            }
+            _ => Err(DockerError::InvalidState(
+                "Memory usage can only be updated in Running state".to_string()
+            )),
         }
     }
 }
 
-impl From<RunnerError> for RunnerState {
-    fn from(error: RunnerError) -> Self {
-        RunnerState::Failed(error)
+impl DockerState {
+    pub fn is_terminal(&self) -> bool {
+        matches!(self, DockerState::Completed { .. } | DockerState::Failed { .. })
     }
 }
 
-impl fmt::Display for RunnerError {
+impl fmt::Display for DockerState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            RunnerError::ContainerCreationFailed(msg) => write!(f, "コンテナの作成に失敗しました: {}", msg),
-            RunnerError::ContainerStartFailed(msg) => write!(f, "コンテナの起動に失敗しました: {}", msg),
-            RunnerError::ExecutionTimeout(duration) => write!(f, "実行がタイムアウトしました: {:?}", duration),
-            RunnerError::ResourceExhausted(msg) => write!(f, "リソースが枯渇しました: {}", msg),
-            RunnerError::InvalidStateTransition(msg) => write!(f, "不正な状態遷移です: {}", msg),
+            DockerState::Initial => write!(f, "初期状態"),
+            DockerState::Created { container_id, .. } => {
+                write!(f, "コンテナ作成済み (ID: {})", container_id)
+            }
+            DockerState::Running { container_id, memory_usage, .. } => {
+                write!(
+                    f,
+                    "実行中 (ID: {}, メモリ使用量: {})",
+                    container_id,
+                    memory_usage.map_or("不明".to_string(), |m| format!("{}MB", m))
+                )
+            }
+            DockerState::Completed { container_id, exit_code, execution_time, .. } => {
+                write!(
+                    f,
+                    "完了 (ID: {}, 終了コード: {}, 実行時間: {:?})",
+                    container_id, exit_code, execution_time
+                )
+            }
+            DockerState::Failed { container_id, error, .. } => {
+                write!(
+                    f,
+                    "失敗 (ID: {}, エラー: {})",
+                    container_id.as_deref().unwrap_or("なし"),
+                    error
+                )
+            }
         }
     }
 } 

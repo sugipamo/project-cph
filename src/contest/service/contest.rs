@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 use crate::docker::runner::{DockerRunner, ContainerConfig};
 use crate::docker::traits::{DockerOperation, DockerCommand, CommandOutput};
-use crate::docker::state::RunnerState;
+use crate::docker::state::DockerState;
 use crate::docker::error::DockerResult;
 use crate::contest::error::{ContestResult, ContestError};
 use crate::config::Config;
@@ -57,8 +57,8 @@ impl ContestService {
         // 実行結果の取得
         let state = docker_runner.get_state().await;
         match state {
-            RunnerState::Completed(result) => Ok(result.output),
-            RunnerState::Failed(error) => Err(ContestError::Docker(error.to_string())),
+            DockerState::Completed { output, .. } => Ok(output),
+            DockerState::Failed { error, .. } => Err(ContestError::Docker(error)),
             _ => Err(ContestError::Docker("Unexpected state".to_string())),
         }
     }
