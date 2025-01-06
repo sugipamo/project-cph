@@ -1,6 +1,6 @@
 use std::path::Path;
 use std::os::unix::fs::PermissionsExt;
-use crate::error::Result;
+use crate::error::{CphError, FileSystemError, Result};
 use nix::unistd::{Uid, Gid};
 
 pub trait DockerFileOperations {
@@ -9,23 +9,36 @@ pub trait DockerFileOperations {
     fn write_source_file<P: AsRef<Path>>(&self, dir: P, filename: &str, content: &str) -> Result<std::path::PathBuf>;
 }
 
-/// Docker環境でのファイル操作のデフォルト実装
 pub trait DefaultDockerFileOperations: DockerFileOperations {
-    /// ディレクトリの権限を確認・設定
     fn ensure_directory_permissions(&self, dir: &Path) -> Result<()> {
-        let metadata = std::fs::metadata(dir)?;
+        let metadata = std::fs::metadata(dir)
+            .map_err(|e| CphError::Fs(FileSystemError::Io(e)))?;
         let mut perms = metadata.permissions();
         perms.set_mode(0o777);
-        std::fs::set_permissions(dir, perms)?;
+        std::fs::set_permissions(dir, perms)
+            .map_err(|e| CphError::Fs(FileSystemError::Io(e)))?;
         Ok(())
     }
 
-    /// 現在のユーザーIDとグループIDを取得
     fn get_current_user_ids(&self) -> (Uid, Gid) {
         let uid = Uid::from_raw(std::process::id() as u32);
         let gid = Gid::from_raw(unsafe { libc::getgid() } as u32);
         (uid, gid)
     }
+}
+
+pub fn set_docker_dir_permissions<P: AsRef<Path>>(dir: P) -> Result<()> {
+    let dir = dir.as_ref();
+
+    let metadata = std::fs::metadata(dir)
+        .map_err(|e| CphError::Fs(FileSystemError::Io(e)))?;
+
+    let mut perms = metadata.permissions();
+    perms.set_mode(0o777);
+    std::fs::set_permissions(dir, perms)
+        .map_err(|e| CphError::Fs(FileSystemError::Io(e)))?;
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -52,24 +65,19 @@ mod tests {
         }
 
         fn set_permissions<P: AsRef<Path>>(&self, path: P, _mode: u32) -> Result<()> {
-            if path.exists() {
+            if path.as_ref().exists() {
                 Ok(())
             } else {
-                Err("Path does not exist".into())
-            }
-        }
-
-        fn set_ownership(&self, path: &Path, _uid: Option<Uid>, _gid: Option<Gid>) -> Result<()> {
-            if path.exists() {
-                Ok(())
-            } else {
-                Err("Path does not exist".into())
+                Err(CphError::Fs(FileSystemError::NotFound {
+                    path: path.as_ref().to_string_lossy().to_string()
+                }))
             }
         }
 
         fn write_source_file<P: AsRef<Path>>(&self, dir: P, filename: &str, content: &str) -> Result<std::path::PathBuf> {
-            let file_path = dir.join(filename);
-            fs::write(&file_path, content)?;
+            let file_path = dir.as_ref().join(filename);
+            fs::write(&file_path, content)
+                .map_err(|e| CphError::Fs(FileSystemError::Io(e)))?;
             Ok(file_path)
         }
     }
@@ -77,23 +85,40 @@ mod tests {
     impl DefaultDockerFileOperations for MockDockerFileOps {}
 
     #[test]
-    fn test_mock_docker_file_ops() {
+    fn test_mock_docker_file_ops() -> Result<()> {
         let ops = MockDockerFileOps::new();
         
         // テスト一時ディレクトリの作成
-        let temp_dir = ops.create_temp_directory().unwrap();
+        let temp_dir = ops.create_temp_directory()?;
         assert!(temp_dir.exists());
 
         // ソースファイルの書き込み
-        let file_path = ops.write_source_file(&temp_dir, "test.txt", "test content").unwrap();
+        let file_path = ops.write_source_file(&temp_dir, "test.txt", "test content")?;
         assert!(file_path.exists());
-        assert_eq!(fs::read_to_string(file_path).unwrap(), "test content");
+        assert_eq!(fs::read_to_string(&file_path)
+            .map_err(|e| CphError::Fs(FileSystemError::Io(e)))?, "test content");
 
         // 権限設定
-        assert!(ops.set_permissions(&temp_dir, 0o777).is_ok());
+        ops.set_permissions(&temp_dir, 0o777)?;
 
-        // 所有者設定
-        let (uid, gid) = ops.get_current_user_ids();
-        assert!(ops.set_ownership(&temp_dir, Some(uid), Some(gid)).is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn test_set_docker_dir_permissions() -> Result<()> {
+        let temp_dir = TempDir::new()
+            .map_err(|e| CphError::Fs(FileSystemError::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("一時ディレクトリの作成に失敗しました: {}", e),
+            ))))?;
+
+        set_docker_dir_permissions(temp_dir.path())?;
+
+        let metadata = fs::metadata(temp_dir.path())
+            .map_err(|e| CphError::Fs(FileSystemError::Io(e)))?;
+        let mode = metadata.permissions().mode();
+        assert_eq!(mode & 0o777, 0o777);
+
+        Ok(())
     }
 } 

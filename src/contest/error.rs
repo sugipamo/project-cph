@@ -1,14 +1,13 @@
-use std::error::Error;
-use crate::error::{CphError, ContestError};
+use crate::error::{CphError, ContestError, ConfigError, LanguageError};
 
-pub fn site_err(msg: String) -> Box<dyn Error> {
-    Box::new(CphError::Contest(ContestError::Site(msg)))
+pub fn site_err(msg: String) -> CphError {
+    CphError::Contest(ContestError::Site { message: msg })
 }
 
-pub fn language_err(msg: String) -> Box<dyn Error> {
-    Box::new(CphError::Contest(ContestError::Language(msg)))
+pub fn language_err(msg: String) -> CphError {
+    CphError::Contest(ContestError::Language(LanguageError::Config { message: msg }))
 }
 
-pub fn config_err(msg: String) -> Box<dyn Error> {
-    Box::new(CphError::Contest(ContestError::Config(msg)))
+pub fn config_err(msg: String) -> CphError {
+    CphError::Contest(ContestError::Config(ConfigError::NotFound { path: msg }))
 }

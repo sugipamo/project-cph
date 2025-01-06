@@ -1,86 +1,57 @@
-use std::fmt::Debug;
-use crate::error::Result;
-use super::error::fs_err;
+use crate::error::{CphError, FileSystemError, Result};
 
-/// ファイル操作のトランザクション状態
-#[derive(Debug, PartialEq)]
-pub enum TransactionState {
-    /// 初期状態
-    Initial,
-    /// 実行中
-    InProgress,
-    /// コミット済み
-    Committed,
-    /// ロールバック済み
-    RolledBack,
-}
-
-/// ファイル操作のトレイト
-pub trait FileOperation: Debug {
-    /// 操作を実行
+pub trait FileOperation {
     fn execute(&self) -> Result<()>;
-    /// 操作をロールバック
     fn rollback(&self) -> Result<()>;
 }
 
-/// ファイル操作のトランザクション
-#[derive(Debug)]
-pub struct FileTransaction {
-    /// 操作のリスト
+pub struct Transaction {
     operations: Vec<Box<dyn FileOperation>>,
-    /// トランザクションの状態
-    state: TransactionState,
+    executed: bool,
 }
 
-impl FileTransaction {
-    /// 新しいトランザクションを作成
-    pub fn new(operations: Vec<Box<dyn FileOperation>>) -> Self {
+impl Transaction {
+    pub fn new() -> Self {
         Self {
-            operations,
-            state: TransactionState::Initial,
+            operations: Vec::new(),
+            executed: false,
         }
     }
 
-    /// トランザクションを実行
+    pub fn add_operation(&mut self, operation: Box<dyn FileOperation>) {
+        self.operations.push(operation);
+    }
+
     pub fn execute(&mut self) -> Result<()> {
-        if self.state != TransactionState::Initial {
-            return Err(fs_err("トランザクションは既に実行されています".to_string()));
+        if self.executed {
+            return Err(CphError::Fs(FileSystemError::NotFound {
+                path: "トランザクションは既に実行されています".to_string()
+            }));
         }
 
-        self.state = TransactionState::InProgress;
-
-        // 各操作を実行
+        let mut executed_operations = Vec::new();
         for operation in &self.operations {
-            if let Err(e) = operation.execute() {
-                // エラーが発生した場合、ロールバック
-                self.rollback()?;
-                return Err(fs_err(format!("操作の実行中にエラーが発生しました: {}", e)));
+            match operation.execute() {
+                Ok(()) => executed_operations.push(operation),
+                Err(e) => {
+                    // ロールバック
+                    for executed_operation in executed_operations.iter().rev() {
+                        if let Err(rollback_err) = executed_operation.rollback() {
+                            return Err(CphError::Fs(FileSystemError::Io(std::io::Error::new(
+                                std::io::ErrorKind::Other,
+                                format!("ロールバック中にエラーが発生しました: {}", rollback_err),
+                            ))));
+                        }
+                    }
+                    return Err(CphError::Fs(FileSystemError::Io(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("操作の実行中にエラーが発生しました: {}", e),
+                    ))));
+                }
             }
         }
 
-        self.state = TransactionState::Committed;
+        self.executed = true;
         Ok(())
-    }
-
-    /// トランザクションをロールバック
-    pub fn rollback(&mut self) -> Result<()> {
-        if self.state != TransactionState::InProgress {
-            return Ok(());
-        }
-
-        // 逆順で各操作をロールバック
-        for operation in self.operations.iter().rev() {
-            if let Err(e) = operation.rollback() {
-                return Err(fs_err(format!("ロールバック中にエラーが発生しました: {}", e)));
-            }
-        }
-
-        self.state = TransactionState::RolledBack;
-        Ok(())
-    }
-
-    /// トランザクションの状態を取得
-    pub fn state(&self) -> &TransactionState {
-        &self.state
     }
 } 

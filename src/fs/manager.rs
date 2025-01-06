@@ -1,67 +1,62 @@
-use std::path::{Path, PathBuf};
-use crate::error::Result;
-use super::error::{fs_err, fs_err_with_source};
-use super::{FileOperationBuilder, FileTransaction};
+use std::path::PathBuf;
+use crate::error::{CphError, FileSystemError, Result};
 
 pub struct FileManager {
-    builder: FileOperationBuilder,
+    root: PathBuf,
 }
 
 impl FileManager {
-    pub fn new() -> Result<Self> {
-        Ok(Self {
-            builder: FileOperationBuilder::new(),
-        })
+    pub fn new(root: PathBuf) -> Self {
+        Self { root }
     }
 
-    pub fn create_directory<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let operation = self.builder.create_dir(path);
-        let mut transaction = FileTransaction::new(vec![operation]);
-        transaction.execute()
+    pub fn create_dir(&self, path: &str) -> Result<PathBuf> {
+        let full_path = self.root.join(path);
+        std::fs::create_dir_all(&full_path)
+            .map_err(|e| CphError::Fs(FileSystemError::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("ディレクトリの作成に失敗しました: {}", e),
+            ))))?;
+        Ok(full_path)
     }
 
-    pub fn copy_file<P: AsRef<Path>>(&self, from: P, to: P) -> Result<()> {
-        let operation = self.builder.copy(from, to);
-        let mut transaction = FileTransaction::new(vec![operation]);
-        transaction.execute()
+    pub fn write_file(&self, path: &str, content: &str) -> Result<PathBuf> {
+        let full_path = self.root.join(path);
+        if let Some(parent) = full_path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| CphError::Fs(FileSystemError::Io(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("ディレクトリの作成に失敗しました: {}", e),
+                ))))?;
+        }
+        std::fs::write(&full_path, content)
+            .map_err(|e| CphError::Fs(FileSystemError::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("ファイルの書き込みに失敗しました: {}", e),
+            ))))?;
+        Ok(full_path)
     }
 
-    pub fn move_file<P: AsRef<Path>>(&self, from: P, to: P) -> Result<()> {
-        let copy_operation = self.builder.copy(from.as_ref(), to.as_ref());
-        let remove_operation = self.builder.remove(from);
-        let mut transaction = FileTransaction::new(vec![copy_operation, remove_operation]);
-        transaction.execute()
-    }
+    pub fn set_permissions(&self, path: &str, mode: u32) -> Result<()> {
+        let full_path = self.root.join(path);
+        let metadata = std::fs::metadata(&full_path)
+            .map_err(|e| CphError::Fs(FileSystemError::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("メタデータの取得に失敗しました: {}", e),
+            ))))?;
 
-    pub fn delete_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let operation = self.builder.remove(path);
-        let mut transaction = FileTransaction::new(vec![operation]);
-        transaction.execute()
-    }
-
-    pub fn create_temp_directory(&self) -> Result<PathBuf> {
-        let temp_dir = tempfile::TempDir::new()
-            .map_err(|e| fs_err_with_source("一時ディレクトリの作成に失敗しました", e))?;
-        let path = temp_dir.path().to_path_buf();
-        Ok(path)
-    }
-
-    pub fn write_source_file<P: AsRef<Path>>(&self, dir: P, filename: &str, content: &str) -> Result<PathBuf> {
-        let path = dir.as_ref().join(filename);
-        std::fs::write(&path, content)
-            .map_err(|e| fs_err_with_source("ソースファイルの書き込みに失敗しました", e))?;
-        Ok(path)
-    }
-
-    pub fn set_permissions<P: AsRef<Path>>(&self, path: P, mode: u32) -> Result<()> {
-        use std::os::unix::fs::PermissionsExt;
-        let path = path.as_ref();
-        let metadata = std::fs::metadata(path)
-            .map_err(|e| fs_err(format!("メタデータの取得に失敗しました: {}", e)))?;
         let mut perms = metadata.permissions();
-        perms.set_mode(mode);
-        std::fs::set_permissions(path, perms)
-            .map_err(|e| fs_err(format!("権限の設定に失敗しました: {}", e)))?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            perms.set_mode(mode);
+        }
+        std::fs::set_permissions(&full_path, perms)
+            .map_err(|e| CphError::Fs(FileSystemError::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("権限の設定に失敗しました: {}", e),
+            ))))?;
+
         Ok(())
     }
 } 

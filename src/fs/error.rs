@@ -1,10 +1,12 @@
-use std::error::Error;
-use crate::error::CphError;
+use crate::error::{CphError, FileSystemError};
 
-pub fn fs_err(msg: String) -> Box<dyn Error> {
-    Box::new(CphError::Fs(msg))
+pub fn fs_err(msg: String) -> CphError {
+    CphError::Fs(FileSystemError::NotFound { path: msg })
 }
 
-pub fn fs_err_with_source<E: std::error::Error>(msg: &str, source: E) -> Box<dyn Error> {
-    Box::new(CphError::Fs(format!("{}: {}", msg, source)))
+pub fn fs_err_with_source(msg: &str, source: impl std::error::Error) -> CphError {
+    CphError::Fs(FileSystemError::Io(std::io::Error::new(
+        std::io::ErrorKind::Other,
+        format!("{}: {}", msg, source),
+    )))
 } 
