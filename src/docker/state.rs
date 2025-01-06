@@ -4,8 +4,9 @@ use std::fmt;
 pub enum RunnerState {
     Ready,
     Running,
-    Stop,
     Error,
+    Stop,
+    Completed,
 }
 
 impl fmt::Display for RunnerState {

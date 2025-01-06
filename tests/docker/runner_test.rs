@@ -1,7 +1,7 @@
 use std::process::Command;
 use tokio::test;
 use cph::config::Config;
-use cph::docker::DockerRunner;
+use cph::docker::{DockerRunner, DockerError};
 use std::fs;
 
 // Dockerデーモンが利用可能かチェックする
@@ -77,7 +77,10 @@ async fn test_timeout() {
 
     match runner.run_in_docker(source_code).await {
         Ok(_) => panic!("タイムアウトが発生しませんでした"),
-        Err(e) => assert!(e.contains("タイムアウト")),
+        Err(e) => match e {
+            DockerError::Timeout(_) => (),
+            _ => panic!("予期しないエラー: {}", e),
+        },
     }
 }
 
@@ -98,11 +101,11 @@ async fn test_memory_limit() {
     "#;
 
     match runner.run_in_docker(source_code).await {
-        Ok(_) => panic!("メモリ制限が機能していません"),
-        Err(e) => {
-            println!("Error message: {}", e);
-            assert!(e.contains("out of memory") || e.contains("Killed") || e.contains("タイムアウト"));
-        }
+        Ok(_) => panic!("メモリ制限が機能してせんでした"),
+        Err(e) => match e {
+            DockerError::Memory(_) | DockerError::Runtime(_) => (),
+            _ => panic!("予期しないエラー: {}", e),
+        },
     }
 }
 

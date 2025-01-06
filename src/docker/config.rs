@@ -1,86 +1,90 @@
-use std::path::Path;
-use serde::{Serialize, Deserialize};
-use crate::config::{Config, ConfigError};
+use crate::config::Config;
+use crate::docker::error::{DockerError, DockerResult};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct DockerConfig {
-    pub timeout_seconds: u64,
-    pub memory_limit_mb: u64,
-    pub mount_point: String,
+    timeout_seconds: u32,
+    memory_limit: u32,
+    mount_point: String,
+    image: String,
+    extension: String,
+    compile_cmd: Option<Vec<String>>,
+    run_cmd: Vec<String>,
 }
 
 impl DockerConfig {
-    pub fn new(timeout_seconds: u64, memory_limit_mb: u64, mount_point: String) -> Self {
-        Self {
+    pub fn new(config: &Config, language: &str) -> DockerResult<Self> {
+        let base_path = format!("languages.{}.runner", language);
+        
+        // 言語の存在確認
+        let extension = config
+            .get::<String>(&format!("languages.{}.extension", language))
+            .map_err(|e| DockerError::Config(format!("言語名の解決に失敗しました: {}", e)))?;
+
+        // Docker設定の取得
+        let docker_path = format!("{}.docker", base_path);
+        let timeout_seconds = config
+            .get::<u64>(&format!("{}.timeout_seconds", docker_path))
+            .unwrap_or(10) as u32;
+        
+        let memory_limit = config
+            .get::<u64>(&format!("{}.memory_limit_mb", docker_path))
+            .unwrap_or(256) as u32;
+        
+        let mount_point = config
+            .get::<String>(&format!("{}.mount_point", docker_path))
+            .unwrap_or_else(|_| "/compile".to_string());
+
+        // イメージ名を取得
+        let image = config
+            .get::<String>(&format!("{}.image", base_path))
+            .map_err(|e| DockerError::Config(format!("イメージ名の取得に失敗しました: {}", e)))?;
+
+        // コマンドを取得
+        let compile_cmd = config
+            .get::<Vec<String>>(&format!("{}.compile", base_path))
+            .ok();
+
+        let run_cmd = config
+            .get::<Vec<String>>(&format!("{}.run", base_path))
+            .map_err(|e| DockerError::Config(format!("実行コマンドの取得に失敗しました: {}", e)))?;
+
+        Ok(Self {
             timeout_seconds,
-            memory_limit_mb,
+            memory_limit,
             mount_point,
-        }
+            image,
+            extension,
+            compile_cmd,
+            run_cmd,
+        })
     }
 
-    pub fn default() -> Result<Self, ConfigError> {
-        let config = Config::load()?;
-        Self::from_config(&config)
+    pub fn timeout_seconds(&self) -> u32 {
+        self.timeout_seconds
     }
 
-    pub fn from_config(config: &Config) -> Result<Self, ConfigError> {
-        let timeout_seconds = config.get::<u64>("system.docker.timeout_seconds")
-            .map_err(|e| ConfigError::RequiredValueError(
-                format!("タイムアウト設定の読み込みに失敗しました: {}", e)
-            ))?;
-
-        let memory_limit_mb = config.get::<u64>("system.docker.memory_limit_mb")
-            .map_err(|e| ConfigError::RequiredValueError(
-                format!("メモリ制限設定の読み込みに失敗しました: {}", e)
-            ))?;
-
-        let mount_point = config.get::<String>("system.docker.mount_point")
-            .map_err(|e| ConfigError::RequiredValueError(
-                format!("マウントポイント設定の読み込みに失敗しました: {}", e)
-            ))?;
-
-        Ok(Self::new(timeout_seconds, memory_limit_mb, mount_point))
+    pub fn memory_limit(&self) -> u32 {
+        self.memory_limit
     }
 
-    pub fn from_yaml<P: AsRef<Path>>(path: P) -> Result<Self, ConfigError> {
-        let content = std::fs::read_to_string(path)
-            .map_err(ConfigError::IoError)?;
-        serde_yaml::from_str(&content)
-            .map_err(ConfigError::ParseError)
+    pub fn mount_point(&self) -> &str {
+        &self.mount_point
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::config::ConfigBuilder;
+    pub fn image(&self) -> &str {
+        &self.image
+    }
 
-    #[test]
-    fn test_docker_config_from_config() -> Result<(), ConfigError> {
-        let builder = ConfigBuilder::new()
-            .add_required_value(
-                "system.docker.timeout_seconds",
-                "実行タイムアウト時間",
-                crate::config::ConfigType::Integer
-            )
-            .add_required_value(
-                "system.docker.memory_limit_mb",
-                "メモリ制限",
-                crate::config::ConfigType::Integer
-            )
-            .add_required_value(
-                "system.docker.mount_point",
-                "マウントポイント",
-                crate::config::ConfigType::String
-            );
+    pub fn extension(&self) -> &str {
+        &self.extension
+    }
 
-        let config = Config::load()?;
-        let docker_config = DockerConfig::from_config(&config)?;
+    pub fn compile_cmd(&self) -> Option<&[String]> {
+        self.compile_cmd.as_deref()
+    }
 
-        assert!(docker_config.timeout_seconds > 0);
-        assert!(docker_config.memory_limit_mb > 0);
-        assert!(!docker_config.mount_point.is_empty());
-
-        Ok(())
+    pub fn run_cmd(&self) -> &[String] {
+        &self.run_cmd
     }
 } 

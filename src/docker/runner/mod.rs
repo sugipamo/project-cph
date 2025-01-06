@@ -1,140 +1,159 @@
-pub mod command;
-
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use uuid::Uuid;
 use crate::config::Config;
-use self::command::DockerCommand;
+use crate::docker::error::{DockerError, DockerResult};
 use crate::docker::state::RunnerState;
+use crate::docker::config::DockerConfig;
+use crate::docker::fs::{DockerFileManager, DefaultDockerFileManager};
+use crate::docker::executor::{DockerCommandExecutor, DefaultDockerExecutor};
 
 pub struct DockerRunner {
-    command: DockerCommand,
-    config: Arc<Config>,
-    language: String,
+    config: DockerConfig,
+    file_manager: Box<dyn DockerFileManager>,
+    executor: Box<dyn DockerCommandExecutor>,
     state: Arc<Mutex<RunnerState>>,
 }
 
 impl DockerRunner {
-    pub fn new(config: Config, language: String) -> Result<Self, String> {
-        // 言語の存在確認
-        let config = Arc::new(config);
-        let _resolved = config.get_with_alias::<String>(&format!("languages.{}.extension", language))
-            .map_err(|e| format!("言語名の解決に失敗しました: {}", e))?;
-
+    pub fn new(config: Config, language: String) -> DockerResult<Self> {
+        let docker_config = DockerConfig::new(&config, &language)?;
+        
         Ok(Self {
-            command: DockerCommand::new(),
-            config: config.clone(),
-            language,
+            config: docker_config,
+            file_manager: Box::new(DefaultDockerFileManager::new()),
+            executor: Box::new(DefaultDockerExecutor::new()),
             state: Arc::new(Mutex::new(RunnerState::Ready)),
         })
     }
 
-    pub fn from_language(language: &str) -> Result<Self, String> {
+    pub fn from_language(language: &str) -> DockerResult<Self> {
         let config = Config::load()
-            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))?;
+            .map_err(|e| DockerError::Config(format!("設定の読み込みに失敗しました: {}", e)))?;
         
         Self::new(config, language.to_string())
     }
 
-    fn get_docker_config(&self) -> Result<(u32, u32, String), String> {
-        let base_path = format!("languages.{}.runner.docker", self.language);
-        
-        let timeout_seconds = self.config.get::<u64>(&format!("{}.timeout_seconds", base_path))
-            .unwrap_or(10) as u32;
-        
-        let memory_limit = self.config.get::<u64>(&format!("{}.memory_limit_mb", base_path))
-            .unwrap_or(256) as u32;
-        
-        let mount_point = self.config.get::<String>(&format!("{}.mount_point", base_path))
-            .unwrap_or_else(|_| "/compile".to_string());
-
-        Ok((timeout_seconds, memory_limit, mount_point))
-    }
-
-    pub async fn run_in_docker(&mut self, source_code: &str) -> Result<String, String> {
+    pub async fn run_in_docker(&mut self, source_code: &str) -> DockerResult<String> {
         println!("Starting Docker execution");
         
-        // イメージ名を取得
-        let image = self.config.get::<String>(&format!("languages.{}.runner.image", self.language))
-            .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
-
-        // 拡張子を取得
-        let extension = self.config.get::<String>(&format!("languages.{}.extension", self.language))
-            .map_err(|e| format!("拡張子の取得に失敗しました: {}", e))?;
-
-        // コンパイルコマンドを取得（オプション）
-        let compile_cmd = self.config.get::<Vec<String>>(&format!("languages.{}.runner.compile", self.language))
-            .ok();
-
-        // 実行コマンドを取得
-        let run_cmd = self.config.get::<Vec<String>>(&format!("languages.{}.runner.run", self.language))
-            .map_err(|e| format!("実行コマンドの取得に失敗しました: {}", e))?;
-
-        // Docker設定を取得
-        let (timeout_seconds, memory_limit, mount_point) = self.get_docker_config()?;
-
         // イメージの確認と取得
-        if !self.command.check_image(&image).await {
-            println!("Image not found, attempting to pull: {}", image);
-            if !self.command.pull_image(&image).await {
-                println!("Failed to pull image: {}", image);
+        if !self.executor.check_image(self.config.image()).await? {
+            println!("Image not found, attempting to pull: {}", self.config.image());
+            if !self.executor.pull_image(self.config.image()).await? {
+                println!("Failed to pull image: {}", self.config.image());
                 *self.state.lock().await = RunnerState::Error;
-                return Err(format!("Failed to pull image: {}", image));
+                return Err(DockerError::Runtime(format!("Failed to pull image: {}", self.config.image())));
             }
         }
 
-        println!("Image is ready: {}", image);
+        println!("Image is ready: {}", self.config.image());
         *self.state.lock().await = RunnerState::Running;
 
-        // ソースコードの実行
-        let result = self.command.run_code(
-            &image,
+        // 一時ディレクトリの作成
+        let temp_dir = self.file_manager.create_temp_directory()?;
+        
+        // ソースファイルの作成
+        let source_file = self.file_manager.write_source_file(
+            &temp_dir,
+            &format!("main.{}", self.config.extension()),
             source_code,
-            memory_limit,
-            timeout_seconds,
-            &mount_point,
-            &extension,
-            compile_cmd.as_deref(),
-            &run_cmd,
+        )?;
+        
+        // ファイルのパーミッション設定
+        self.file_manager.set_permissions(&source_file, 0o644)?;
+        self.file_manager.set_permissions(&temp_dir, 0o777)?;
+
+        // コマンドの構築
+        let command = if let Some(compile_cmd) = self.config.compile_cmd() {
+            format!(
+                "{} && {}",
+                compile_cmd.join(" "),
+                self.config.run_cmd().join(" ")
+            )
+        } else {
+            self.config.run_cmd().join(" ")
+        };
+
+        // コンテナの実行
+        let container_name = format!("runner-{}", Uuid::new_v4());
+        let result = self.executor.run_container(
+            &container_name,
+            self.config.image(),
+            self.config.memory_limit(),
+            temp_dir.to_str().unwrap(),
+            self.config.mount_point(),
+            &command,
+            self.config.timeout_seconds(),
         ).await;
 
-        match result {
-            Ok(output) => {
-                *self.state.lock().await = RunnerState::Ready;
-                Ok(output)
-            }
-            Err(e) => {
-                *self.state.lock().await = RunnerState::Error;
-                Err(e)
-            }
-        }
+        // 一時ディレクトリの削除
+        self.file_manager.cleanup(&temp_dir)?;
+
+        // 状態の更新と結果の返却
+        *self.state.lock().await = match &result {
+            Ok(_) => RunnerState::Completed,
+            Err(_) => RunnerState::Error,
+        };
+
+        result
     }
 
-    pub async fn cleanup(&mut self) -> Result<(), String> {
-        println!("Cleaning up Docker runner");
-        if self.command.stop_container().await {
-            println!("Container stopped successfully");
-            *self.state.lock().await = RunnerState::Stop;
-            Ok(())
-        } else {
-            println!("Failed to stop container");
-            *self.state.lock().await = RunnerState::Error;
-            Err("Failed to stop container".to_string())
-        }
+    pub async fn cleanup(&mut self) -> DockerResult<()> {
+        Ok(())
     }
 
     pub async fn get_state(&self) -> RunnerState {
         self.state.lock().await.clone()
     }
 
-    pub async fn inspect_mount_point(&mut self) -> Result<String, String> {
-        // Docker設定を取得
-        let (_, _, mount_point) = self.get_docker_config()?;
+    pub async fn inspect_mount_point(&mut self) -> DockerResult<String> {
+        let container_name = format!("inspector-{}", Uuid::new_v4());
+        self.executor.inspect_directory(
+            &container_name,
+            self.config.image(),
+            self.config.mount_point(),
+        ).await
+    }
+}
 
-        // イメージ名を取得
-        let image = self.config.get::<String>(&format!("languages.{}.runner.image", self.language))
-            .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::docker::fs::MockDockerFileManager;
+    use crate::docker::executor::MockDockerExecutor;
 
-        println!("Inspecting mount point directory: {}", &mount_point);
-        self.command.inspect_directory(&image, &mount_point).await
+    #[tokio::test]
+    async fn test_docker_runner_success() {
+        let config = Config::load().unwrap();
+        let docker_config = DockerConfig::new(&config, "rust").unwrap();
+        
+        let mut runner = DockerRunner {
+            config: docker_config,
+            file_manager: Box::new(MockDockerFileManager::new()),
+            executor: Box::new(MockDockerExecutor::new(false)),
+            state: Arc::new(Mutex::new(RunnerState::Ready)),
+        };
+
+        let result = runner.run_in_docker("fn main() {}").await;
+        assert!(result.is_ok());
+        assert_eq!(runner.get_state().await, RunnerState::Completed);
+    }
+
+    #[tokio::test]
+    async fn test_docker_runner_failure() {
+        let config = Config::load().unwrap();
+        let docker_config = DockerConfig::new(&config, "rust").unwrap();
+        
+        let mut runner = DockerRunner {
+            config: docker_config,
+            file_manager: Box::new(MockDockerFileManager::new()),
+            executor: Box::new(MockDockerExecutor::new(true)),
+            state: Arc::new(Mutex::new(RunnerState::Ready)),
+        };
+
+        let result = runner.run_in_docker("fn main() {}").await;
+        assert!(result.is_err());
+        assert_eq!(runner.get_state().await, RunnerState::Error);
     }
 } 
