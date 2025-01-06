@@ -1,5 +1,6 @@
 use std::fmt::Debug;
-use super::error::{Result, FsError};
+use crate::error::Result;
+use super::error::fs_err;
 
 /// ファイル操作のトランザクション状態
 #[derive(Debug, PartialEq)]
@@ -43,10 +44,7 @@ impl FileTransaction {
     /// トランザクションを実行
     pub fn execute(&mut self) -> Result<()> {
         if self.state != TransactionState::Initial {
-            return Err(FsError::Transaction {
-                message: "トランザクションは既に実行されています".to_string(),
-                source: None,
-            });
+            return Err(fs_err("トランザクションは既に実行されています".to_string()));
         }
 
         self.state = TransactionState::InProgress;
@@ -56,10 +54,7 @@ impl FileTransaction {
             if let Err(e) = operation.execute() {
                 // エラーが発生した場合、ロールバック
                 self.rollback()?;
-                return Err(FsError::Transaction {
-                    message: format!("操作の実行中にエラーが発生しました: {}", e),
-                    source: Some(Box::new(e)),
-                });
+                return Err(fs_err(format!("操作の実行中にエラーが発生しました: {}", e)));
             }
         }
 
@@ -76,10 +71,7 @@ impl FileTransaction {
         // 逆順で各操作をロールバック
         for operation in self.operations.iter().rev() {
             if let Err(e) = operation.rollback() {
-                return Err(FsError::Transaction {
-                    message: format!("ロールバック中にエラーが発生しました: {}", e),
-                    source: Some(Box::new(e)),
-                });
+                return Err(fs_err(format!("ロールバック中にエラーが発生しました: {}", e)));
             }
         }
 

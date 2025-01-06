@@ -1,37 +1,46 @@
-use crate::contest::error::{ContestError, ContestResult};
-use crate::config::Config;
+use crate::error::Result;
+use crate::contest::error::site_err;
 
 pub struct UrlService {
-    config: Config,
     site: String,
 }
 
 impl UrlService {
-    pub fn new(config: Config, site: String) -> Self {
-        Self { config, site }
+    pub fn new(site: String) -> Result<Self> {
+        if site.is_empty() {
+            return Err(site_err("サイトが指定されていません".to_string()));
+        }
+        Ok(Self { site })
     }
 
-    pub fn get_contest_url(&self, contest_id: &str) -> ContestResult<String> {
-        self.get_url(contest_id, "contest")
-    }
+    pub fn get_contest_url(&self, contest_id: &str) -> Result<String> {
+        if contest_id.is_empty() {
+            return Err(site_err("コンテストIDが指定されていません".to_string()));
+        }
 
-    pub fn get_problem_url(&self, contest_id: &str, problem_id: &str) -> ContestResult<String> {
-        let _contest_url = self.get_contest_url(contest_id)?;
-        let problem_pattern = self.config.get::<String>(&format!("sites.{}.problem_url", self.site))
-            .map_err(|e| ContestError::Config(e.to_string()))?;
-
-        let url = problem_pattern
-            .replace("{contest_id}", contest_id)
-            .replace("{problem_id}", problem_id);
+        let url = match self.site.as_str() {
+            "atcoder" => format!("https://atcoder.jp/contests/{}", contest_id),
+            "codeforces" => format!("https://codeforces.com/contest/{}", contest_id),
+            _ => return Err(site_err(format!("未対応のサイトです: {}", self.site))),
+        };
 
         Ok(url)
     }
 
-    fn get_url(&self, contest_id: &str, url_type: &str) -> ContestResult<String> {
-        let pattern = self.config.get::<String>(&format!("sites.{}.{}_url", self.site, url_type))
-            .map_err(|e| ContestError::Config(e.to_string()))?;
+    pub fn get_problem_url(&self, contest_id: &str, problem_id: &str) -> Result<String> {
+        if contest_id.is_empty() {
+            return Err(site_err("コンテストIDが指定されていません".to_string()));
+        }
+        if problem_id.is_empty() {
+            return Err(site_err("問題IDが指定されていません".to_string()));
+        }
 
-        let url = pattern.replace("{contest_id}", contest_id);
+        let url = match self.site.as_str() {
+            "atcoder" => format!("https://atcoder.jp/contests/{}/tasks/{}", contest_id, problem_id),
+            "codeforces" => format!("https://codeforces.com/contest/{}/problem/{}", contest_id, problem_id),
+            _ => return Err(site_err(format!("未対応のサイトです: {}", self.site))),
+        };
+
         Ok(url)
     }
 } 

@@ -33,6 +33,12 @@ pub enum CphError {
     #[error("{0}")]
     Contest(#[from] ContestError),
 
+    #[error("Dockerエラー: {0}")]
+    Docker(String),
+
+    #[error("ファイルシステムエラー: {0}")]
+    Fs(String),
+
     #[error("{0}")]
     Message(String),
 }

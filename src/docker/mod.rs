@@ -1,19 +1,14 @@
-pub mod config;
 pub mod error;
 pub mod execution;
-pub mod fs;
 pub mod state;
-pub mod test_helpers;
-pub mod traits;
+pub mod fs;
 
 pub use execution::{
-    DefaultDockerCommandExecutor,
-    DefaultContainerManager,
-    DefaultCompilationManager,
-};
-
-pub use traits::{
+    DockerCommand,
     ContainerManager,
-    DockerOperations,
-    CompilationOperations,
-}; 
+    CompilationManager,
+    DockerCommandExecutor,
+    CommandOutput,
+};
+pub use state::{ContainerState, ContainerStateManager};
+pub use fs::{DockerFileOperations, DefaultDockerFileOperations}; 

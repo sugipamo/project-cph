@@ -1,176 +1,141 @@
-use async_trait::async_trait;
-use std::sync::Arc;
-use crate::docker::error::{DockerError, DockerResult};
-use crate::docker::traits::ContainerManager;
-use super::{DockerCommand, DockerCommandExecutor};
+use std::path::Path;
+use tokio::process::Command;
+use crate::error::Result;
+use crate::docker::error::container_err;
 
-pub struct DefaultContainerManager {
-    container_id: String,
-    memory_limit: u64,
-    mount_point: String,
-    docker_executor: Arc<dyn DockerCommandExecutor>,
+pub struct ContainerManager {
+    container_id: Option<String>,
 }
 
-impl DefaultContainerManager {
-    pub fn new(memory_limit: u64, mount_point: String, executor: Arc<dyn DockerCommandExecutor>) -> Self {
+impl ContainerManager {
+    pub fn new() -> Self {
         Self {
-            container_id: String::new(),
-            memory_limit,
-            mount_point,
-            docker_executor: executor,
+            container_id: None,
         }
     }
 
-    async fn ensure_container_exists(&self) -> DockerResult<()> {
-        if self.container_id.is_empty() {
-            return Err(DockerError::Container("コンテナが作成されていません".to_string()));
+    pub async fn create_container<P: AsRef<Path>>(&mut self, image: &str, cmd: Vec<String>, working_dir: P) -> Result<()> {
+        if self.container_id.is_some() {
+            return Err(container_err("コンテナは既に作成されています".to_string()));
         }
+
+        let output = Command::new("docker")
+            .arg("create")
+            .arg("--rm")
+            .arg("-w")
+            .arg(working_dir.as_ref().to_string_lossy().to_string())
+            .arg(image)
+            .args(cmd)
+            .output()
+            .await
+            .map_err(|e| container_err(format!("コンテナの作成に失敗しました: {}", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(container_err(format!("コンテナの作成に失敗しました: {}", stderr)));
+        }
+
+        let container_id = String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .to_string();
+        self.container_id = Some(container_id);
+
         Ok(())
     }
-}
 
-#[async_trait]
-impl ContainerManager for DefaultContainerManager {
-    async fn create_container(&mut self, image: &str, cmd: Vec<String>, working_dir: &str) -> DockerResult<()> {
-        if !self.check_image(image).await? {
-            self.pull_image(image).await?;
+    pub async fn start_container(&self) -> Result<()> {
+        let container_id = self.container_id.as_ref()
+            .ok_or_else(|| container_err("コンテナが作成されていません".to_string()))?;
+
+        let output = Command::new("docker")
+            .arg("start")
+            .arg(container_id)
+            .output()
+            .await
+            .map_err(|e| container_err(format!("コンテナの起動に失敗しました: {}", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(container_err(format!("コンテナの起動に失敗しました: {}", stderr)));
         }
 
-        let mut command = DockerCommand::new("create")
-            .arg("--memory")
-            .arg(&format!("{}m", self.memory_limit))
-            .arg("-v")
-            .arg(&format!("{}:/workspace", self.mount_point))
-            .arg("-w")
-            .arg(working_dir)
-            .arg(image);
-
-        if !cmd.is_empty() {
-            command = command.args(cmd);
-        }
-
-        let output = self.docker_executor.execute(command).await?;
-        if output.success {
-            self.container_id = output.stdout.trim().to_string();
-            Ok(())
-        } else {
-            Err(DockerError::Container(format!(
-                "コンテナの作成に失敗しました: {}",
-                output.stderr
-            )))
-        }
+        Ok(())
     }
 
-    async fn start_container(&mut self) -> DockerResult<()> {
-        self.ensure_container_exists().await?;
+    pub async fn stop_container(&self) -> Result<()> {
+        let container_id = self.container_id.as_ref()
+            .ok_or_else(|| container_err("コンテナが作成されていません".to_string()))?;
 
-        let command = DockerCommand::new("start")
-            .arg(&self.container_id);
+        let output = Command::new("docker")
+            .arg("stop")
+            .arg(container_id)
+            .output()
+            .await
+            .map_err(|e| container_err(format!("コンテナの停止に失敗しました: {}", e)))?;
 
-        let output = self.docker_executor.execute(command).await?;
-        if output.success {
-            Ok(())
-        } else {
-            Err(DockerError::Container(format!(
-                "コンテナの起動に失敗しました: {}",
-                output.stderr
-            )))
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(container_err(format!("コンテナの停止に失敗しました: {}", stderr)));
         }
+
+        Ok(())
     }
 
-    async fn stop_container(&mut self) -> DockerResult<()> {
-        self.ensure_container_exists().await?;
-
-        let command = DockerCommand::new("stop")
-            .arg(&self.container_id);
-
-        let output = self.docker_executor.execute(command).await?;
-        if output.success {
-            Ok(())
-        } else {
-            Err(DockerError::Container(format!(
-                "コンテナの停止に失敗しました: {}",
-                output.stderr
-            )))
-        }
+    pub async fn get_container_id(&self) -> Result<String> {
+        self.container_id.clone()
+            .ok_or_else(|| container_err("コンテナが作成されていません".to_string()))
     }
 
-    async fn get_container_id(&self) -> DockerResult<String> {
-        self.ensure_container_exists().await?;
-        Ok(self.container_id.clone())
-    }
+    pub async fn get_exit_code(&self) -> Result<i32> {
+        let container_id = self.container_id.as_ref()
+            .ok_or_else(|| container_err("コンテナが作成されていません".to_string()))?;
 
-    async fn get_exit_code(&self) -> DockerResult<i32> {
-        self.ensure_container_exists().await?;
-
-        let command = DockerCommand::new("inspect")
-            .arg("--format={{.State.ExitCode}}")
-            .arg(&self.container_id);
-
-        let output = self.docker_executor.execute(command).await?;
-        if output.success {
-            output.stdout.trim().parse::<i32>()
-                .map_err(|e| DockerError::Container(format!("終了コードの解析に失敗しました: {}", e)))
-        } else {
-            Err(DockerError::Container(format!(
-                "終了コードの取得に失敗しました: {}",
-                output.stderr
-            )))
-        }
-    }
-
-    async fn check_image(&self, image: &str) -> DockerResult<bool> {
-        let command = DockerCommand::new("image")
+        let output = Command::new("docker")
             .arg("inspect")
-            .arg(image);
+            .arg(container_id)
+            .arg("--format={{.State.ExitCode}}")
+            .output()
+            .await
+            .map_err(|e| container_err(format!("終了コードの取得に失敗しました: {}", e)))?;
 
-        let output = self.docker_executor.execute(command).await?;
-        Ok(output.success)
-    }
-
-    async fn pull_image(&self, image: &str) -> DockerResult<()> {
-        let command = DockerCommand::new("pull")
-            .arg(image);
-
-        let output = self.docker_executor.execute(command).await?;
-        if output.success {
-            Ok(())
-        } else {
-            Err(DockerError::Container(format!(
-                "イメージの取得に失敗しました: {}",
-                output.stderr
-            )))
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(container_err(format!("終了コードの取得に失敗しました: {}", stderr)));
         }
+
+        let exit_code = String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .parse::<i32>()
+            .map_err(|e| container_err(format!("終了コードの解析に失敗しました: {}", e)))?;
+
+        Ok(exit_code)
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::Arc;
-    use mockall::predicate::*;
-    use crate::docker::test_helpers::MockDockerCommandExecutor;
+    pub async fn check_image(&self, image: &str) -> Result<bool> {
+        let output = Command::new("docker")
+            .arg("image")
+            .arg("inspect")
+            .arg(image)
+            .output()
+            .await
+            .map_err(|e| container_err(format!("イメージの確認に失敗しました: {}", e)))?;
 
-    #[tokio::test]
-    async fn test_container_creation() {
-        let mut mock_executor = MockDockerCommandExecutor::new();
-        mock_executor.expect_execute()
-            .returning(|_| {
-                Ok(super::super::CommandOutput::new(
-                    true,
-                    "container_id".to_string(),
-                    String::new(),
-                ))
-            });
+        Ok(output.status.success())
+    }
 
-        let executor = Arc::new(mock_executor);
-        let mut manager = DefaultContainerManager::new(
-            512,
-            "/tmp".to_string(),
-            executor,
-        );
+    pub async fn pull_image(&self, image: &str) -> Result<()> {
+        let output = Command::new("docker")
+            .arg("pull")
+            .arg(image)
+            .output()
+            .await
+            .map_err(|e| container_err(format!("イメージの取得に失敗しました: {}", e)))?;
 
-        let result = manager.create_container("test-image", vec![], "/workspace").await;
-        assert!(result.is_ok());
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(container_err(format!("イメージの取得に失敗しました: {}", stderr)));
+        }
+
+        Ok(())
     }
 } 

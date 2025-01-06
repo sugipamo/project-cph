@@ -1,23 +1,13 @@
-use thiserror::Error;
-use std::io;
-use crate::docker::error::DockerError;
+use crate::error::CphError;
 
-#[derive(Error, Debug)]
-pub enum ContestError {
-    #[error("IO error: {0}")]
-    IO(#[from] io::Error),
-    
-    #[error("Docker error: {0}")]
-    Docker(String),
-    
-    #[error("Invalid configuration: {0}")]
-    Config(String),
+pub fn site_err(msg: String) -> CphError {
+    CphError::Contest(format!("サイトエラー: {}", msg))
 }
 
-impl From<DockerError> for ContestError {
-    fn from(err: DockerError) -> Self {
-        ContestError::Docker(err.to_string())
-    }
+pub fn language_err(msg: String) -> CphError {
+    CphError::Contest(format!("言語エラー: {}", msg))
 }
 
-pub type ContestResult<T> = Result<T, ContestError>;
+pub fn config_err(msg: String) -> CphError {
+    CphError::Contest(format!("設定エラー: {}", msg))
+}

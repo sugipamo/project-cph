@@ -1,7 +1,7 @@
+use std::fmt;
 use std::time::{Duration, Instant};
-use thiserror::Error;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum ContainerState {
     Initial,
     Created {
@@ -19,30 +19,14 @@ pub enum ContainerState {
     },
     Stopped {
         container_id: String,
-        exit_code: i32,
-        execution_time: Duration,
+        stopped_at: Instant,
+        exit_status: Option<ExitStatus>,
     },
     Failed {
         container_id: String,
         error: String,
         occurred_at: Instant,
     },
-}
-
-#[derive(Debug, Error)]
-pub enum StateError {
-    #[error("Invalid state transition from {from:?} to {to:?}")]
-    InvalidTransition {
-        from: ContainerState,
-        to: ContainerState,
-    },
-    #[error("Container ID mismatch: expected {expected}, got {actual}")]
-    ContainerIdMismatch {
-        expected: String,
-        actual: String,
-    },
-    #[error("Container not found: {0}")]
-    ContainerNotFound(String),
 }
 
 impl ContainerState {
@@ -57,15 +41,36 @@ impl ContainerState {
         }
     }
 
-    pub fn is_terminal(&self) -> bool {
-        matches!(self, ContainerState::Stopped { .. } | ContainerState::Failed { .. })
-    }
-
     pub fn duration_since_start(&self) -> Option<Duration> {
         match self {
             ContainerState::Running { started_at, .. } |
-            ContainerState::Executing { started_at, .. } => Some(started_at.elapsed()),
+            ContainerState::Executing { started_at, .. } => {
+                Some(started_at.elapsed())
+            }
             _ => None,
+        }
+    }
+}
+
+impl fmt::Display for ContainerState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ContainerState::Initial => write!(f, "初期状態"),
+            ContainerState::Created { container_id, .. } => {
+                write!(f, "作成済み(ID: {})", container_id)
+            }
+            ContainerState::Running { container_id, .. } => {
+                write!(f, "実行中(ID: {})", container_id)
+            }
+            ContainerState::Executing { container_id, command, .. } => {
+                write!(f, "コマンド実行中(ID: {}, コマンド: {})", container_id, command)
+            }
+            ContainerState::Stopped { container_id, .. } => {
+                write!(f, "停止済み(ID: {})", container_id)
+            }
+            ContainerState::Failed { container_id, error, .. } => {
+                write!(f, "失敗(ID: {}, エラー: {})", container_id, error)
+            }
         }
     }
 } 

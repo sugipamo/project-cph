@@ -10,4 +10,4 @@ pub use operations::{CopyOperation, CreateDirOperation, RemoveOperation, FileOpe
 pub use transaction::{FileTransaction, FileOperation, TransactionState};
 pub use manager::FileManager;
 pub use docker::{DockerFileOperations, DefaultDockerFileOperations};
-pub use error::{Result, FsError}; 
+pub use crate::error::Result; 

@@ -1,48 +1,51 @@
-use async_trait::async_trait;
+use std::process::Output;
 use tokio::process::Command;
-use crate::docker::error::{DockerError, DockerResult};
-use super::{DockerCommand, DockerCommandExecutor, CommandOutput};
+use crate::error::Result;
+use crate::docker::error::command_err;
 
-pub struct DefaultDockerCommandExecutor;
-
-impl DefaultDockerCommandExecutor {
-    pub fn new() -> Self {
-        Self
-    }
+#[derive(Debug)]
+pub struct DockerCommand {
+    command: String,
+    args: Vec<String>,
 }
 
-#[async_trait]
-impl DockerCommandExecutor for DefaultDockerCommandExecutor {
-    async fn execute(&self, command: DockerCommand) -> DockerResult<CommandOutput> {
-        let mut cmd = Command::new("docker");
-        cmd.args(command.get_args());
-
-        let output = cmd.output().await.map_err(|e| {
-            DockerError::Command(format!("Dockerコマンドの実行に失敗しました: {}", e))
-        })?;
-
-        Ok(CommandOutput::new(
-            output.status.success(),
-            String::from_utf8_lossy(&output.stdout).to_string(),
-            String::from_utf8_lossy(&output.stderr).to_string(),
-        ))
+impl DockerCommand {
+    pub fn new<S: Into<String>>(command: S) -> Self {
+        Self {
+            command: command.into(),
+            args: Vec::new(),
+        }
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+    pub fn arg<S: Into<String>>(mut self, arg: S) -> Self {
+        self.args.push(arg.into());
+        self
+    }
 
-    #[tokio::test]
-    async fn test_docker_command_executor() {
-        let executor = DefaultDockerCommandExecutor::new();
-        let command = DockerCommand::new("version");
-        
-        let result = executor.execute(command).await;
-        assert!(result.is_ok());
-        
-        let output = result.unwrap();
-        assert!(output.success);
-        assert!(!output.stdout.is_empty());
+    pub fn args<I, S>(mut self, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.args.extend(args.into_iter().map(Into::into));
+        self
+    }
+
+    pub async fn execute(&self) -> Result<Output> {
+        let output = Command::new(&self.command)
+            .args(&self.args)
+            .output()
+            .await
+            .map_err(|e| command_err(format!("コマンドの実行に失敗しました: {}", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(command_err(format!(
+                "コマンドが失敗しました: {}",
+                stderr
+            )));
+        }
+
+        Ok(output)
     }
 } 

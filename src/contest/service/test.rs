@@ -1,60 +1,69 @@
 use std::path::PathBuf;
-use crate::config::Config;
-use crate::contest::error::{ContestResult, ContestError};
-use crate::test::TestCase;
+use crate::error::Result;
+use crate::contest::error::config_err;
 
 pub struct TestService {
-    config: Config,
+    test_dir: PathBuf,
 }
 
 impl TestService {
-    pub fn new(config: Config) -> Self {
-        Self { config }
+    pub fn new(test_dir: PathBuf) -> Self {
+        Self { test_dir }
     }
 
-    pub async fn run_tests(&self, problem_id: &str) -> ContestResult<()> {
-        let test_dir = self.get_test_dir(problem_id)?;
-        if !test_dir.exists() {
-            return Err(ContestError::Config(
-                format!("テストディレクトリが存在しません: {:?}", test_dir)
-            ));
+    pub fn add_test_case(&self, input: &str, expected: &str) -> Result<()> {
+        if input.is_empty() {
+            return Err(config_err("入力が空です".to_string()));
+        }
+        if expected.is_empty() {
+            return Err(config_err("期待値が空です".to_string()));
         }
 
-        let entries = std::fs::read_dir(&test_dir)
-            .map_err(|e| ContestError::IO(e))?;
+        let test_count = self.get_test_count()?;
+        let input_file = self.test_dir.join(format!("test{}.in", test_count + 1));
+        let expected_file = self.test_dir.join(format!("test{}.out", test_count + 1));
 
-        for entry in entries {
-            let entry = entry.map_err(|e| ContestError::IO(e))?;
-            let path = entry.path();
-            if path.is_file() && path.extension().map_or(false, |ext| ext == "in") {
-                let _test_case = self.load_test_case(&path)?;
-                // TODO: テストケースの実行処理を実装
-            }
-        }
+        std::fs::write(&input_file, input)
+            .map_err(|e| config_err(format!("テストケースの入力ファイルの作成に失敗しました: {}", e)))?;
+        std::fs::write(&expected_file, expected)
+            .map_err(|e| config_err(format!("テストケースの期待値ファイルの作成に失敗しました: {}", e)))?;
 
         Ok(())
     }
 
-    fn get_test_dir(&self, problem_id: &str) -> ContestResult<PathBuf> {
-        let default_lang = self.config
-            .get::<String>("languages.default")
-            .map_err(|e| ContestError::Config(e.to_string()))?;
+    pub fn get_test_count(&self) -> Result<usize> {
+        let entries = std::fs::read_dir(&self.test_dir)
+            .map_err(|e| config_err(format!("テストディレクトリの読み取りに失敗しました: {}", e)))?;
 
-        let active_dir = self.config
-            .get::<String>(&format!("languages.{}.contest_dir.active", default_lang))
-            .map_err(|e| ContestError::Config(e.to_string()))?;
+        let count = entries
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| {
+                entry.path()
+                    .extension()
+                    .map(|ext| ext == "in")
+                    .unwrap_or(false)
+            })
+            .count();
 
-        Ok(PathBuf::from(active_dir).join("test").join(problem_id))
+        Ok(count)
     }
 
-    fn load_test_case(&self, test_file: &PathBuf) -> ContestResult<TestCase> {
-        let input = std::fs::read_to_string(test_file)
-            .map_err(|e| ContestError::IO(e))?;
+    pub fn get_test_cases(&self) -> Result<Vec<(String, String)>> {
+        let mut test_cases = Vec::new();
+        let test_count = self.get_test_count()?;
 
-        let expected_path = test_file.with_extension("out");
-        let expected = std::fs::read_to_string(&expected_path)
-            .map_err(|e| ContestError::IO(e))?;
+        for i in 1..=test_count {
+            let input_file = self.test_dir.join(format!("test{}.in", i));
+            let expected_file = self.test_dir.join(format!("test{}.out", i));
 
-        Ok(TestCase { input, expected })
+            let input = std::fs::read_to_string(&input_file)
+                .map_err(|e| config_err(format!("テストケースの入力ファイルの読み取りに失敗しました: {}", e)))?;
+            let expected = std::fs::read_to_string(&expected_file)
+                .map_err(|e| config_err(format!("テストケースの期待値ファイルの読み取りに失敗しました: {}", e)))?;
+
+            test_cases.push((input, expected));
+        }
+
+        Ok(test_cases)
     }
 } 

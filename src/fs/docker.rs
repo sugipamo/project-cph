@@ -1,21 +1,12 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::os::unix::fs::PermissionsExt;
+use crate::error::Result;
 use nix::unistd::{Uid, Gid};
-use super::error::Result;
 
-/// Docker環境でのファイル操作に特化したトレイト
 pub trait DockerFileOperations {
-    /// 一時ディレクトリを作成
-    fn create_temp_directory(&self) -> Result<PathBuf>;
-    
-    /// ファイルの権限を設定
-    fn set_permissions(&self, path: &Path, mode: u32) -> Result<()>;
-    
-    /// ファイルの所有者とグループを設定
-    fn set_ownership(&self, path: &Path, uid: Option<Uid>, gid: Option<Gid>) -> Result<()>;
-    
-    /// ソースファイルを書き込み
-    fn write_source_file(&self, dir: &Path, filename: &str, content: &str) -> Result<PathBuf>;
+    fn create_temp_directory(&self) -> Result<std::path::PathBuf>;
+    fn set_permissions<P: AsRef<Path>>(&self, path: P, mode: u32) -> Result<()>;
+    fn write_source_file<P: AsRef<Path>>(&self, dir: P, filename: &str, content: &str) -> Result<std::path::PathBuf>;
 }
 
 /// Docker環境でのファイル操作のデフォルト実装
@@ -56,11 +47,11 @@ mod tests {
     }
 
     impl DockerFileOperations for MockDockerFileOps {
-        fn create_temp_directory(&self) -> Result<PathBuf> {
+        fn create_temp_directory(&self) -> Result<std::path::PathBuf> {
             Ok(self.temp_dir.path().to_path_buf())
         }
 
-        fn set_permissions(&self, path: &Path, _mode: u32) -> Result<()> {
+        fn set_permissions<P: AsRef<Path>>(&self, path: P, _mode: u32) -> Result<()> {
             if path.exists() {
                 Ok(())
             } else {
@@ -76,7 +67,7 @@ mod tests {
             }
         }
 
-        fn write_source_file(&self, dir: &Path, filename: &str, content: &str) -> Result<PathBuf> {
+        fn write_source_file<P: AsRef<Path>>(&self, dir: P, filename: &str, content: &str) -> Result<std::path::PathBuf> {
             let file_path = dir.join(filename);
             fs::write(&file_path, content)?;
             Ok(file_path)

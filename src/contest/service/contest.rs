@@ -1,41 +1,70 @@
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use crate::config::Config;
-use crate::contest::error::{ContestError, ContestResult};
-use crate::docker::traits::DockerOperations;
+use std::path::PathBuf;
+use crate::error::Result;
+use crate::contest::error::{config_err, site_err, language_err};
+use crate::contest::model::ContestState;
 
 pub struct ContestService {
-    config: Config,
-    docker_operations: Arc<Mutex<Box<dyn DockerOperations>>>,
+    state: ContestState,
 }
 
 impl ContestService {
-    pub fn new(config: Config, docker_operations: Arc<Mutex<Box<dyn DockerOperations>>>) -> Self {
-        Self {
-            config,
-            docker_operations,
+    pub fn new(
+        site: String,
+        contest_id: String,
+        problem_id: String,
+        language: String,
+        source_path: PathBuf,
+    ) -> Result<Self> {
+        let state = ContestState::new(site, contest_id, problem_id, language, source_path)?;
+        Ok(Self { state })
+    }
+
+    pub fn get_state(&self) -> &ContestState {
+        &self.state
+    }
+
+    pub fn update_site(&mut self, site: String) -> Result<()> {
+        if site.is_empty() {
+            return Err(site_err("サイトが指定されていません".to_string()));
         }
-    }
-
-    pub async fn run_contest(&self, source_code: &str) -> ContestResult<String> {
-        self.compile_source(source_code).await?;
-        self.run_tests().await
-    }
-
-    async fn compile_source(&self, _source_code: &str) -> ContestResult<()> {
-        // TODO: コンパイル処理の実装
+        let state = ContestState::new(
+            site,
+            self.state.contest_id.clone(),
+            self.state.problem_id.clone(),
+            self.state.language.clone(),
+            self.state.source_path.clone(),
+        )?;
+        self.state = state;
         Ok(())
     }
 
-    async fn run_tests(&self) -> ContestResult<String> {
-        let mut ops = self.docker_operations.lock().await;
-        let (stdout, stderr) = ops.execute("cargo test").await
-            .map_err(|e| ContestError::Docker(e.to_string()))?;
-
-        if stderr.is_empty() {
-            Ok(stdout)
-        } else {
-            Err(ContestError::Docker(stderr))
+    pub fn update_language(&mut self, language: String) -> Result<()> {
+        if language.is_empty() {
+            return Err(language_err("言語が指定されていません".to_string()));
         }
+        let state = ContestState::new(
+            self.state.site.clone(),
+            self.state.contest_id.clone(),
+            self.state.problem_id.clone(),
+            language,
+            self.state.source_path.clone(),
+        )?;
+        self.state = state;
+        Ok(())
+    }
+
+    pub fn update_problem(&mut self, problem_id: String) -> Result<()> {
+        if problem_id.is_empty() {
+            return Err(config_err("問題IDが指定されていません".to_string()));
+        }
+        let state = ContestState::new(
+            self.state.site.clone(),
+            self.state.contest_id.clone(),
+            problem_id,
+            self.state.language.clone(),
+            self.state.source_path.clone(),
+        )?;
+        self.state = state;
+        Ok(())
     }
 } 

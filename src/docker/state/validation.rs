@@ -1,6 +1,8 @@
-use crate::docker::state::types::{ContainerState, StateError};
+use crate::docker::error::state_err;
+use crate::error::Result;
+use super::ContainerState;
 
-pub async fn validate_transition(current: &ContainerState, new: &ContainerState) -> Result<(), StateError> {
+pub async fn validate_transition(current: &ContainerState, new: &ContainerState) -> Result<()> {
     match (current, new) {
         // 初期状態からの遷移
         (ContainerState::Initial, ContainerState::Created { .. }) => Ok(()),
@@ -28,30 +30,31 @@ pub async fn validate_transition(current: &ContainerState, new: &ContainerState)
         // 終端状態からの遷移は許可しない
         (ContainerState::Stopped { .. }, _) |
         (ContainerState::Failed { .. }, _) => {
-            Err(StateError::InvalidTransition {
-                from: current.clone(),
-                to: new.clone(),
-            })
+            Err(state_err(format!(
+                "無効な状態遷移: {} -> {}",
+                current, new
+            )))
         }
         
         // その他の遷移は無効
-        _ => Err(StateError::InvalidTransition {
-            from: current.clone(),
-            to: new.clone(),
-        }),
+        _ => Err(state_err(format!(
+            "無効な状態遷移: {} -> {}",
+            current, new
+        ))),
     }
 }
 
-pub fn validate_container_id(current: &ContainerState, new: &ContainerState) -> Result<(), StateError> {
-    let current_id = current.container_id().unwrap_or_default();
-    let new_id = new.container_id().unwrap_or_default();
+fn validate_container_id(current: &ContainerState, new: &ContainerState) -> Result<()> {
+    let current_id = current.container_id();
+    let new_id = new.container_id();
     
-    if current_id == new_id {
-        Ok(())
+    if current_id != new_id {
+        Err(state_err(format!(
+            "コンテナIDが一致しません: {} != {}",
+            current_id.unwrap_or("なし"),
+            new_id.unwrap_or("なし")
+        )))
     } else {
-        Err(StateError::ContainerIdMismatch {
-            expected: current_id.to_string(),
-            actual: new_id.to_string(),
-        })
+        Ok(())
     }
 } 

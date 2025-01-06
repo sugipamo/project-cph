@@ -1,64 +1,58 @@
 use std::sync::Arc;
-use tokio::sync::{Mutex, mpsc};
-use crate::docker::state::types::{ContainerState, StateError};
-use crate::docker::state::validation::validate_transition;
+use tokio::sync::RwLock;
+use crate::error::Result;
+use super::ContainerState;
+use crate::docker::error::state_err;
+use crate::docker::state::operations;
 
+#[derive(Debug, Clone)]
 pub struct ContainerStateManager {
-    state: Arc<Mutex<ContainerState>>,
-    container_id: Arc<Mutex<Option<String>>>,
-    subscribers: Arc<Mutex<Vec<mpsc::Sender<ContainerState>>>>,
+    state: Arc<RwLock<ContainerState>>,
 }
 
 impl ContainerStateManager {
     pub fn new() -> Self {
         Self {
-            state: Arc::new(Mutex::new(ContainerState::Initial)),
-            container_id: Arc::new(Mutex::new(None)),
-            subscribers: Arc::new(Mutex::new(Vec::new())),
+            state: Arc::new(RwLock::new(ContainerState::Initial)),
         }
     }
 
-    pub async fn set_container_id(&self, id: String) {
-        let mut container_id = self.container_id.lock().await;
-        *container_id = Some(id);
+    pub async fn get_current_state(&self) -> ContainerState {
+        self.state.read().await.clone()
     }
 
-    pub async fn get_container_id(&self) -> Option<String> {
-        let container_id = self.container_id.lock().await;
-        container_id.clone()
-    }
-
-    pub async fn transition_to(&self, new_state: ContainerState) -> Result<(), StateError> {
-        let mut state = self.state.lock().await;
-        
-        // 状態遷移の検証
-        validate_transition(&state, &new_state).await?;
-        
-        // 状態を更新
-        *state = new_state.clone();
-        
-        // 購読者に通知
-        self.notify_subscribers(new_state).await;
-        
+    pub async fn create_container(&self, container_id: String) -> Result<()> {
+        let current_state = self.get_current_state().await;
+        let new_state = operations::create_container(&current_state, container_id).await?;
+        *self.state.write().await = new_state;
         Ok(())
     }
 
-    async fn notify_subscribers(&self, state: ContainerState) {
-        let mut subscribers = self.subscribers.lock().await;
-        subscribers.retain_mut(|subscriber| {
-            subscriber.try_send(state.clone()).is_ok()
-        });
+    pub async fn start_container(&self) -> Result<()> {
+        let current_state = self.get_current_state().await;
+        let new_state = operations::start_container(&current_state).await?;
+        *self.state.write().await = new_state;
+        Ok(())
     }
 
-    pub async fn subscribe(&self) -> mpsc::Receiver<ContainerState> {
-        let (tx, rx) = mpsc::channel(32);
-        let mut subscribers = self.subscribers.lock().await;
-        subscribers.push(tx);
-        rx
+    pub async fn stop_container(&self) -> Result<()> {
+        let current_state = self.get_current_state().await;
+        let new_state = operations::stop_container(&current_state).await?;
+        *self.state.write().await = new_state;
+        Ok(())
     }
 
-    pub async fn get_current_state(&self) -> ContainerState {
-        let state = self.state.lock().await;
-        state.clone()
+    pub async fn fail_container(&self, container_id: String, error: String) -> Result<()> {
+        let current_state = self.get_current_state().await;
+        let new_state = operations::fail_container(&current_state, container_id, error).await?;
+        *self.state.write().await = new_state;
+        Ok(())
+    }
+
+    pub async fn get_container_id(&self) -> Result<String> {
+        let state = self.get_current_state().await;
+        state.container_id()
+            .map(String::from)
+            .ok_or_else(|| state_err("コンテナIDが見つかりません".to_string()))
     }
 } 

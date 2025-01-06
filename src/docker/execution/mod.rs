@@ -1,14 +1,14 @@
-pub mod command;
-pub mod container;
-pub mod compilation;
+mod command;
+mod container;
+mod compilation;
 
-pub use command::DefaultDockerCommandExecutor;
-pub use container::DefaultContainerManager;
-pub use compilation::DefaultCompilationManager;
+pub use command::DockerCommand;
+pub use container::ContainerManager;
+pub use compilation::CompilationManager;
 
 // 共通のトレイトと型定義
 use async_trait::async_trait;
-use crate::docker::error::DockerResult;
+use crate::error::Result;
 
 #[derive(Debug)]
 pub struct CommandOutput {
@@ -29,38 +29,5 @@ impl CommandOutput {
 
 #[async_trait]
 pub trait DockerCommandExecutor: Send + Sync {
-    async fn execute(&self, command: DockerCommand) -> DockerResult<CommandOutput>;
-}
-
-#[derive(Debug)]
-pub struct DockerCommand {
-    args: Vec<String>,
-}
-
-impl DockerCommand {
-    pub fn new(command: &str) -> Self {
-        Self {
-            args: vec![command.to_string()],
-        }
-    }
-
-    pub fn arg(mut self, arg: &str) -> Self {
-        self.args.push(arg.to_string());
-        self
-    }
-
-    pub fn args(mut self, args: Vec<String>) -> Self {
-        self.args.extend(args);
-        self
-    }
-
-    pub fn env(mut self, key: &str, value: &str) -> Self {
-        self.args.push("-e".to_string());
-        self.args.push(format!("{}={}", key, value));
-        self
-    }
-
-    pub fn get_args(&self) -> Vec<String> {
-        self.args.clone()
-    }
+    async fn execute(&self, command: DockerCommand) -> Result<CommandOutput>;
 } 

@@ -1,7 +1,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use fs_extra::dir::{self, CopyOptions};
-use super::error::{Result, FsError};
+use tempfile::TempDir;
+use crate::error::Result;
+use super::error::{fs_err, fs_err_with_source};
 
 /// バックアップを管理する構造体
 #[derive(Debug)]
@@ -13,46 +14,35 @@ pub struct BackupManager {
 impl BackupManager {
     /// 新しいバックアップマネージャーを作成
     pub fn new() -> Result<Self> {
-        let backup_dir = std::env::temp_dir().join("cph_backup");
-        fs::create_dir_all(&backup_dir)
-            .map_err(|e| FsError::FileSystem {
-                message: format!("バックアップディレクトリの作成に失敗しました: {}", e),
-                source: Some(e),
-            })?;
-
         Ok(Self {
-            backup_dir: Some(backup_dir),
+            backup_dir: None,
         })
     }
 
     /// バックアップを作成
-    pub fn create(&mut self, path: &Path) -> Result<()> {
-        if let Some(backup_dir) = &self.backup_dir {
-            // 既存のバックアップをクリーンアップ
-            if backup_dir.exists() {
-                fs::remove_dir_all(backup_dir)
-                    .map_err(|e| FsError::Backup {
-                        message: format!("既存のバックアップの削除に失敗しました: {}", e),
-                        source: Some(e),
-                    })?;
-            }
-
-            // バックアップディレクトリを作成
-            fs::create_dir_all(backup_dir)
-                .map_err(|e| FsError::Backup {
-                        message: format!("バックアップディレクトリの作成に失敗しました: {}", e),
-                        source: Some(e),
-                    })?;
-
-            // ディレクトリをコピー
-            let options = CopyOptions::new();
-            dir::copy(path, backup_dir, &options)
-                .map_err(|e| FsError::FileSystem {
-                    message: format!("ファイルのバックアップに失敗しました: {}", e),
-                    source: Some(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())),
-                })?;
+    pub fn create<P: AsRef<Path>>(&mut self, target_dir: P) -> Result<()> {
+        if self.backup_dir.is_some() {
+            return Ok(());
         }
 
+        let temp_dir = TempDir::new()
+            .map_err(|e| fs_err_with_source("バックアップディレクトリの作成に失敗しました", e))?;
+
+        let backup_path = temp_dir.path().to_path_buf();
+        fs::create_dir_all(&backup_path)
+            .map_err(|e| fs_err_with_source("バックアップディレクトリの作成に失敗しました", e))?;
+
+        // ターゲットディレクトリの内容をコピー
+        if target_dir.as_ref().exists() {
+            fs_extra::dir::copy(
+                target_dir.as_ref(),
+                &backup_path,
+                &fs_extra::dir::CopyOptions::new(),
+            )
+            .map_err(|e| fs_err(format!("バックアップの作成に失敗しました: {}", e)))?;
+        }
+
+        self.backup_dir = Some(backup_path);
         Ok(())
     }
 
@@ -60,12 +50,9 @@ impl BackupManager {
     pub fn restore(&self) -> Result<()> {
         if let Some(backup_dir) = &self.backup_dir {
             if backup_dir.exists() {
-                let options = CopyOptions::new();
-                dir::copy(backup_dir, "..", &options)
-                    .map_err(|e| FsError::Backup {
-                        message: format!("バックアップからの復元に失敗しました: {}", e),
-                        source: Some(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())),
-                    })?;
+                let options = fs_extra::dir::CopyOptions::new();
+                fs_extra::dir::copy(backup_dir, "..", &options)
+                    .map_err(|e| fs_err(format!("バックアップからの復元に失敗しました: {}", e)))?;
             }
         }
 
@@ -77,10 +64,7 @@ impl BackupManager {
         if let Some(backup_dir) = &self.backup_dir {
             if backup_dir.exists() {
                 fs::remove_dir_all(backup_dir)
-                    .map_err(|e| FsError::Backup {
-                        message: format!("バックアップのクリーンアップに失敗しました: {}", e),
-                        source: Some(e),
-                    })?;
+                    .map_err(|e| fs_err_with_source("バックアップのクリーンアップに失敗しました", e))?;
             }
         }
 
