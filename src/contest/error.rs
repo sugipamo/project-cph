@@ -3,16 +3,14 @@ use crate::error::{CphError, helpers, ErrorExt};
 pub fn site_err(msg: String) -> CphError {
     helpers::contest_site(
         "サイトアクセス",
-        "Contest Site",
-        Box::new(std::io::Error::new(std::io::ErrorKind::Other, msg))
+        format!("Contest Site: {}", msg)
     )
 }
 
 pub fn site_err_with_hint(msg: String, hint: String) -> CphError {
     helpers::contest_site(
         "サイトアクセス",
-        "Contest Site",
-        Box::new(std::io::Error::new(std::io::ErrorKind::Other, msg))
+        format!("Contest Site: {}", msg)
     ).with_hint(hint)
 }
 
@@ -21,7 +19,10 @@ pub fn language_err(msg: String) -> CphError {
 }
 
 pub fn config_err(msg: String) -> CphError {
-    helpers::config_invalid("コンテスト設定", "contest", msg)
+    CphError::Config {
+        context: crate::error::ErrorContext::new("コンテスト設定", "contest").with_hint(msg),
+        kind: crate::error::config::ConfigErrorKind::InvalidValue,
+    }
 }
 
 pub fn unsupported_language_err(lang: String) -> CphError {
@@ -32,6 +33,9 @@ pub fn unsupported_language_err(lang: String) -> CphError {
 
 pub fn compiler_not_found_err(compiler: String) -> CphError {
     let compiler_clone = compiler.clone();
-    helpers::contest_compiler("コンパイラチェック", compiler)
-        .with_hint(format!("コンパイラが見つかりません: {}", compiler_clone))
+    CphError::Contest {
+        context: crate::error::ErrorContext::new("コンパイラチェック", compiler)
+            .with_hint(format!("コンパイラが見つかりません: {}", compiler_clone)),
+        kind: crate::error::contest::ContestErrorKind::Compiler,
+    }
 }

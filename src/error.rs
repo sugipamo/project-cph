@@ -4,6 +4,12 @@ use thiserror::Error;
 
 pub const NO_ACTIVE_CONTEST: &str = "アクティブなコンテストがありません。'work'コマンドで設定してください。";
 
+// サブモジュールの定義
+pub mod fs;
+pub mod docker;
+pub mod contest;
+pub mod config;
+
 /// エラーコンテキストを表す構造体
 #[derive(Debug, Clone)]
 pub struct ErrorContext {
@@ -11,6 +17,17 @@ pub struct ErrorContext {
     pub location: String,
     pub hint: Option<String>,
     pub source: Option<Arc<dyn std::error::Error + Send + Sync>>,
+    // トレース情報の追加
+    pub backtrace: Option<String>,
+    pub system_state: Option<SystemState>,
+}
+
+/// システム状態を表す構造体
+#[derive(Debug, Clone)]
+pub struct SystemState {
+    pub working_directory: String,
+    pub active_contest: Option<String>,
+    pub docker_status: Option<String>,
 }
 
 impl ErrorContext {
@@ -20,6 +37,8 @@ impl ErrorContext {
             location: location.into(),
             hint: None,
             source: None,
+            backtrace: std::backtrace::Backtrace::capture().to_string().into(),
+            system_state: None,
         }
     }
 
@@ -30,6 +49,11 @@ impl ErrorContext {
 
     pub fn with_source(mut self, source: impl std::error::Error + Send + Sync + 'static) -> Self {
         self.source = Some(Arc::new(source));
+        self
+    }
+
+    pub fn with_system_state(mut self, state: SystemState) -> Self {
+        self.system_state = Some(state);
         self
     }
 }
@@ -43,7 +67,7 @@ pub enum CphError {
         context.hint.as_deref().unwrap_or("ファイルシステムの操作を確認してください。"))]
     FileSystem {
         context: ErrorContext,
-        kind: FileSystemErrorKind,
+        kind: fs::FileSystemErrorKind,
     },
 
     #[error("Dockerエラー\n操作: {}\n場所: {}\nエラー: {}\nヒント: {}", 
@@ -52,7 +76,7 @@ pub enum CphError {
         context.hint.as_deref().unwrap_or("Docker環境を確認してください。"))]
     Docker {
         context: ErrorContext,
-        kind: DockerErrorKind,
+        kind: docker::DockerErrorKind,
     },
 
     #[error("コンテストエラー\n操作: {}\n場所: {}\nエラー: {}\nヒント: {}", 
@@ -61,7 +85,7 @@ pub enum CphError {
         context.hint.as_deref().unwrap_or("コンテストの設定を確認してください。"))]
     Contest {
         context: ErrorContext,
-        kind: ContestErrorKind,
+        kind: contest::ContestErrorKind,
     },
 
     #[error("設定エラー\n操作: {}\n場所: {}\nエラー: {}\nヒント: {}", 
@@ -70,7 +94,7 @@ pub enum CphError {
         context.hint.as_deref().unwrap_or("設定ファイルを確認してください。"))]
     Config {
         context: ErrorContext,
-        kind: ConfigErrorKind,
+        kind: config::ConfigErrorKind,
     },
 
     #[error("{}\nヒント: {}", 
@@ -248,91 +272,85 @@ pub type Result<T> = std::result::Result<T, CphError>;
 pub mod helpers {
     use super::*;
 
-    // FileSystem
+    // ファイルシステム関連のヘルパー
     pub fn fs_not_found(operation: impl Into<String>, path: impl Into<String>) -> CphError {
         CphError::FileSystem {
             context: ErrorContext::new(operation, path),
-            kind: FileSystemErrorKind::NotFound,
+            kind: fs::FileSystemErrorKind::NotFound,
         }
     }
 
     pub fn fs_permission(operation: impl Into<String>, path: impl Into<String>) -> CphError {
         CphError::FileSystem {
             context: ErrorContext::new(operation, path),
-            kind: FileSystemErrorKind::Permission,
+            kind: fs::FileSystemErrorKind::Permission,
         }
     }
 
     pub fn fs_io(operation: impl Into<String>, path: impl Into<String>, error: io::Error) -> CphError {
         CphError::FileSystem {
             context: ErrorContext::new(operation, path).with_source(error),
-            kind: FileSystemErrorKind::Io,
+            kind: fs::FileSystemErrorKind::Io,
         }
     }
 
-    // Docker
-    pub fn docker_connection(operation: impl Into<String>) -> CphError {
+    // Docker関連のヘルパー
+    pub fn docker_connection(operation: impl Into<String>, details: impl Into<String>) -> CphError {
         CphError::Docker {
-            context: ErrorContext::new(operation, "Docker daemon"),
-            kind: DockerErrorKind::ConnectionFailed,
+            context: ErrorContext::new(operation, details),
+            kind: docker::DockerErrorKind::ConnectionFailed,
         }
     }
 
-    pub fn docker_build(operation: impl Into<String>, image: impl Into<String>, error: impl std::error::Error + Send + Sync + 'static) -> CphError {
+    pub fn docker_build(operation: impl Into<String>, details: impl Into<String>, error: impl std::error::Error + Send + Sync + 'static) -> CphError {
         CphError::Docker {
-            context: ErrorContext::new(operation, image).with_source(error),
-            kind: DockerErrorKind::BuildFailed,
+            context: ErrorContext::new(operation, details).with_source(error),
+            kind: docker::DockerErrorKind::BuildFailed,
         }
     }
 
-    pub fn docker_execution(operation: impl Into<String>, container: impl Into<String>, error: impl std::error::Error + Send + Sync + 'static) -> CphError {
-        CphError::Docker {
-            context: ErrorContext::new(operation, container).with_source(error),
-            kind: DockerErrorKind::ExecutionFailed,
-        }
-    }
-
-    // Contest
-    pub fn contest_site(operation: impl Into<String>, site: impl Into<String>, error: impl std::error::Error + Send + Sync + 'static) -> CphError {
+    // コンテスト関連のヘルパー
+    pub fn contest_site(operation: impl Into<String>, details: impl Into<String>) -> CphError {
         CphError::Contest {
-            context: ErrorContext::new(operation, site).with_source(error),
-            kind: ContestErrorKind::Site,
+            context: ErrorContext::new(operation, details),
+            kind: contest::ContestErrorKind::Site,
         }
     }
 
-    pub fn contest_language(operation: impl Into<String>, lang: impl Into<String>) -> CphError {
+    pub fn contest_language(operation: impl Into<String>, details: impl Into<String>) -> CphError {
         CphError::Contest {
-            context: ErrorContext::new(operation, lang),
-            kind: ContestErrorKind::Language,
+            context: ErrorContext::new(operation, details),
+            kind: contest::ContestErrorKind::Language,
         }
     }
 
-    pub fn contest_compiler(operation: impl Into<String>, compiler: impl Into<String>) -> CphError {
-        CphError::Contest {
-            context: ErrorContext::new(operation, compiler),
-            kind: ContestErrorKind::Compiler,
-        }
-    }
-
-    // Config
+    // 設定関連のヘルパー
     pub fn config_not_found(operation: impl Into<String>, path: impl Into<String>) -> CphError {
         CphError::Config {
             context: ErrorContext::new(operation, path),
-            kind: ConfigErrorKind::NotFound,
+            kind: config::ConfigErrorKind::NotFound,
         }
     }
 
     pub fn config_parse(operation: impl Into<String>, path: impl Into<String>, error: impl std::error::Error + Send + Sync + 'static) -> CphError {
         CphError::Config {
             context: ErrorContext::new(operation, path).with_source(error),
-            kind: ConfigErrorKind::Parse,
+            kind: config::ConfigErrorKind::Parse,
         }
     }
+}
 
-    pub fn config_invalid(operation: impl Into<String>, field: impl Into<String>, message: impl Into<String>) -> CphError {
-        CphError::Config {
-            context: ErrorContext::new(operation, field).with_hint(message),
-            kind: ConfigErrorKind::InvalidValue,
+// エラー変換マクロ
+#[macro_export]
+macro_rules! into_cph_error {
+    ($operation:expr, $location:expr, $error:expr) => {
+        match $error {
+            err @ std::io::Error { .. } => {
+                crate::error::helpers::fs_io($operation, $location, err)
+            }
+            err => CphError::Other {
+                context: ErrorContext::new($operation, $location).with_source(err),
+            },
         }
-    }
+    };
 } 
