@@ -1,0 +1,57 @@
+# src/dockerディレクトリのリファクタリング計画
+
+## 現状の構造
+```
+src/docker/
+├── error.rs
+├── mod.rs
+├── traits.rs
+├── executor/
+│   └── mod.rs
+├── runner/
+│   ├── mod.rs
+│   ├── executor/
+│   ├── compilation/
+│   ├── container/
+│   ├── io.rs
+│   ├── manager.rs
+│   ├── test_helpers.rs
+│   └── compiler.rs
+├── testing/
+├── state/
+│   ├── container.rs
+│   └── mod.rs
+├── config.rs
+└── fs.rs
+```
+
+## 問題点
+1. `runner`と`executor`の責務が不明確で重複している可能性がある
+2. `testing`ディレクトリが空である
+3. `state`ディレクトリの`container.rs`が435行と長すぎる
+4. `fs.rs`が147行とやや長い
+
+## 改善計画
+1. `runner`と`executor`の責務を明確に分離
+   - `executor`: コンテナ内でのコマンド実行に関する処理
+   - `runner`: コンパイルやテスト実行のワークフロー管理
+
+2. `state/container.rs`の分割
+   - コンテナの状態管理
+   - コンテナの操作
+   - コンテナのメタデータ管理
+   に分割する
+
+3. `fs.rs`の整理
+   - ファイル操作の種類ごとにモジュールを分割
+   - 共通処理を抽出
+
+4. `testing`ディレクトリの用途を明確化
+   - テストヘルパー関数の移動
+   - テスト用のモックやフィクスチャの追加
+
+## 実装順序
+1. `state/container.rs`の分割
+2. `runner`と`executor`の責務分離
+3. `fs.rs`の整理
+4. `testing`ディレクトリの整備 
