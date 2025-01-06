@@ -1,0 +1,44 @@
+diff --git a/agent/diff-review.do b/agent/diff-review.do
+index f45472c..ec51393 100644
+--- a/agent/diff-review.do
++++ b/agent/diff-review.do
+@@ -1,5 +1,5 @@
+-$ date +%Y%m%d%H%M%S
++date +%Y%m%d%H%M%S
+ git diff > agent/.diff-review/yyyymmddhhmm.txt
+ 不要な変更の特定
+ 機能に無関係な変更ないか
+-問題箇所を特定し、具体的な修正案を提示。
+\ No newline at end of file
++問題があれば変更を元に戻し、再修正する
+\ No newline at end of file
+diff --git a/tests/docker/runner_test.rs b/tests/docker/runner_test.rs
+index 935cda0..7415d92 100644
+--- a/tests/docker/runner_test.rs
++++ b/tests/docker/runner_test.rs
+@@ -37,7 +37,6 @@ async fn test_docker_available() {
+ }
+ 
+ #[tokio::test]
+-#[ignore = "マウントポイントの問題を修正する必要があります"]
+ async fn test_rust_runner() {
+     super::setup();
+     
+@@ -62,7 +61,6 @@ async fn test_rust_runner() {
+ }
+ 
+ #[tokio::test]
+-#[ignore = "タイムアウトの検出方法を修正する必要があります"]
+ async fn test_timeout() {
+     super::setup();
+     
+@@ -79,7 +77,7 @@ async fn test_timeout() {
+ 
+     match runner.run_in_docker(source_code).await {
+         Ok(_) => panic!("タイムアウトが発生しませんでした"),
+-        Err(e) => assert!(e.to_string().contains("timed out")),
++        Err(e) => assert!(e.contains("タイムアウト")),
+     }
+ }
+ 
+変更内容の確認結果：\n1. テストコードの改善\n2. #[ignore]属性の削除\n3. エラーメッセージの日本語化\n4. 軽微な警告（未使用変数）以外のエラーなし\n5. 機能の重複なし\n6. 実装は効率的

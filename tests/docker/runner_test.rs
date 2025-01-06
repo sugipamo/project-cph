@@ -37,7 +37,6 @@ async fn test_docker_available() {
 }
 
 #[tokio::test]
-#[ignore = "マウントポイントの問題を修正する必要があります"]
 async fn test_rust_runner() {
     super::setup();
     
@@ -62,7 +61,6 @@ async fn test_rust_runner() {
 }
 
 #[tokio::test]
-#[ignore = "タイムアウトの検出方法を修正する必要があります"]
 async fn test_timeout() {
     super::setup();
     
@@ -79,7 +77,7 @@ async fn test_timeout() {
 
     match runner.run_in_docker(source_code).await {
         Ok(_) => panic!("タイムアウトが発生しませんでした"),
-        Err(e) => assert!(e.to_string().contains("timed out")),
+        Err(e) => assert!(e.contains("タイムアウト")),
     }
 }
 
