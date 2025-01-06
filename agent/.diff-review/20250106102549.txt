@@ -1,0 +1,365 @@
+diff --git a/src/docker/runner/mod.rs b/src/docker/runner/mod.rs
+index 4495a6c..0e746bf 100644
+--- a/src/docker/runner/mod.rs
++++ b/src/docker/runner/mod.rs
+@@ -1,16 +1,17 @@
+ use std::sync::Arc;
+ use std::time::{Duration, Instant};
+ use tokio::sync::Mutex;
++use tokio::time::timeout;
+ 
+ use crate::docker::error::{DockerError, DockerResult};
+ use crate::docker::traits::DockerOperations;
+-use crate::docker::state::{ContainerState, StateManager, StateError};
++use crate::docker::state::container::{ContainerState, ContainerStateManager, StateError};
+ use crate::docker::config::ContainerConfig;
+ use crate::docker::executor::{DockerCommand, DockerCommandExecutor};
+ 
+ pub struct DockerRunner {
+     operations: Arc<Mutex<dyn DockerOperations>>,
+-    state_manager: Arc<Mutex<StateManager>>,
++    state_manager: Arc<ContainerStateManager>,
+     timeout: Duration,
+     docker_executor: Arc<dyn DockerCommandExecutor>,
+ }
+@@ -23,7 +24,7 @@ impl DockerRunner {
+     ) -> Self {
+         Self {
+             operations,
+-            state_manager: Arc::new(Mutex::new(StateManager::new())),
++            state_manager: Arc::new(ContainerStateManager::new()),
+             timeout,
+             docker_executor,
+         }
+@@ -33,9 +34,11 @@ impl DockerRunner {
+         let mut ops = self.operations.lock().await;
+         ops.initialize(config).await?;
+ 
+-        let mut state_manager = self.state_manager.lock().await;
+-        state_manager.transition_to(ContainerState::Created {
+-            container_id: self.get_container_id().await?,
++        let container_id = self.get_container_id().await?;
++        self.state_manager.set_container_id(container_id.clone()).await;
++        
++        self.state_manager.transition_to(ContainerState::Created {
++            container_id,
+             created_at: Instant::now(),
+         }).await.map_err(DockerError::State)?;
+ 
+@@ -46,8 +49,7 @@ impl DockerRunner {
+         let mut ops = self.operations.lock().await;
+         ops.start().await?;
+ 
+-        let mut state_manager = self.state_manager.lock().await;
+-        state_manager.transition_to(ContainerState::Running {
++        self.state_manager.transition_to(ContainerState::Running {
+             container_id: self.get_container_id().await?,
+             started_at: Instant::now(),
+         }).await.map_err(DockerError::State)?;
+@@ -56,16 +58,20 @@ impl DockerRunner {
+     }
+ 
+     pub async fn stop(&mut self) -> DockerResult<()> {
++        let container_id = self.get_container_id().await?;
++        
++        // 終了コードを取得
++        let exit_code = self.get_exit_code(&container_id).await?;
++        
+         let mut ops = self.operations.lock().await;
+         ops.stop().await?;
+ 
+-        let mut state_manager = self.state_manager.lock().await;
+-        let current_state = state_manager.get_current_state();
++        let current_state = self.state_manager.get_current_state().await;
+         let execution_time = current_state.duration_since_start().unwrap_or_default();
+ 
+-        state_manager.transition_to(ContainerState::Stopped {
+-            container_id: self.get_container_id().await?,
+-            exit_code: 0, // TODO: 実際の終了コードを取得
++        self.state_manager.transition_to(ContainerState::Stopped {
++            container_id,
++            exit_code,
+             execution_time,
+         }).await.map_err(DockerError::State)?;
+ 
+@@ -74,47 +80,63 @@ impl DockerRunner {
+ 
+     pub async fn execute(&mut self, command: &str) -> DockerResult<(String, String)> {
+         let container_id = self.get_container_id().await?;
+-        let mut state_manager = self.state_manager.lock().await;
+ 
+         // 実行状態に遷移
+-        state_manager.transition_to(ContainerState::Executing {
++        self.state_manager.transition_to(ContainerState::Executing {
+             container_id: container_id.clone(),
+             started_at: Instant::now(),
+             command: command.to_string(),
+         }).await.map_err(DockerError::State)?;
+ 
+-        // コマンドを実行
++        // タイムアウト付きでコマンドを実行
+         let mut ops = self.operations.lock().await;
+-        let result = ops.execute(command).await;
++        let result = timeout(self.timeout, ops.execute(command)).await;
+ 
+-        // 結果に応じて状態を更新
+-        match &result {
+-            Ok(_) => {
+-                state_manager.transition_to(ContainerState::Running {
+-                    container_id,
+-                    started_at: Instant::now(),
+-                }).await.map_err(DockerError::State)?;
++        match result {
++            Ok(cmd_result) => {
++                match cmd_result {
++                    Ok(output) => {
++                        self.state_manager.transition_to(ContainerState::Running {
++                            container_id,
++                            started_at: Instant::now(),
++                        }).await.map_err(DockerError::State)?;
++                        Ok(output)
++                    }
++                    Err(e) => {
++                        self.state_manager.transition_to(ContainerState::Failed {
++                            container_id,
++                            error: e.to_string(),
++                            occurred_at: Instant::now(),
++                        }).await.map_err(DockerError::State)?;
++                        Err(e)
++                    }
++                }
+             }
+-            Err(e) => {
+-                state_manager.transition_to(ContainerState::Failed {
++            Err(_) => {
++                self.state_manager.transition_to(ContainerState::Failed {
+                     container_id,
+-                    error: e.to_string(),
++                    error: format!("コマンドの実行がタイムアウトしました（{}秒）", self.timeout.as_secs()),
+                     occurred_at: Instant::now(),
+                 }).await.map_err(DockerError::State)?;
++                Err(DockerError::Command("コマンドの実行がタイムアウトしました".to_string()))
+             }
+         }
+-
+-        result
+     }
+ 
+     async fn get_container_id(&self) -> DockerResult<String> {
++        if let Some(id) = self.state_manager.get_container_id().await {
++            return Ok(id);
++        }
++
+         let command = DockerCommand::new("ps")
+             .arg("-q")
+             .arg("-l");
+ 
+         let output = self.docker_executor.execute(command).await?;
+         if output.success {
+-            Ok(output.stdout.trim().to_string())
++            let id = output.stdout.trim().to_string();
++            self.state_manager.set_container_id(id.clone()).await;
++            Ok(id)
+         } else {
+             Err(DockerError::State(StateError::ContainerNotFound(
+                 "コンテナIDの取得に失敗しました".to_string()
+@@ -122,13 +144,178 @@ impl DockerRunner {
+         }
+     }
+ 
+-    pub async fn subscribe_to_state_changes(&mut self) -> tokio::sync::mpsc::Receiver<ContainerState> {
+-        let mut state_manager = self.state_manager.lock().await;
+-        state_manager.subscribe().await
++    pub async fn subscribe_to_state_changes(&self) -> tokio::sync::mpsc::Receiver<ContainerState> {
++        self.state_manager.subscribe().await
+     }
+ 
+     pub async fn get_current_state(&self) -> ContainerState {
+-        let state_manager = self.state_manager.lock().await;
+-        state_manager.get_current_state().clone()
++        self.state_manager.get_current_state().await
++    }
++
++    async fn get_exit_code(&self, container_id: &str) -> DockerResult<i32> {
++        let command = DockerCommand::new("inspect")
++            .arg("--format={{.State.ExitCode}}")
++            .arg(container_id);
++
++        let output = self.docker_executor.execute(command).await?;
++        if output.success {
++            output.stdout.trim().parse::<i32>()
++                .map_err(|e| DockerError::Container(format!("終了コードの解析に失敗しました: {}", e)))
++        } else {
++            Err(DockerError::Container(format!(
++                "終了コードの取得に失敗しました: {}",
++                output.stderr
++            )))
++        }
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::docker::executor::CommandOutput;
++    use mockall::mock;
++    use tokio::time::sleep;
++
++    mock! {
++        DockerExecutor {}
++        #[async_trait::async_trait]
++        impl DockerCommandExecutor for DockerExecutor {
++            async fn execute(&self, command: DockerCommand) -> DockerResult<CommandOutput>;
++        }
++    }
++
++    mock! {
++        DockerOps {}
++        #[async_trait::async_trait]
++        impl DockerOperations for DockerOps {
++            async fn initialize(&mut self, config: ContainerConfig) -> DockerResult<()>;
++            async fn start(&mut self) -> DockerResult<()>;
++            async fn stop(&mut self) -> DockerResult<()>;
++            async fn execute(&mut self, command: &str) -> DockerResult<(String, String)>;
++        }
++    }
++
++    #[tokio::test]
++    async fn test_docker_runner_lifecycle() {
++        let mut mock_executor = MockDockerExecutor::new();
++        mock_executor
++            .expect_execute()
++            .returning(|_| Ok(CommandOutput {
++                success: true,
++                stdout: "container_id".to_string(),
++                stderr: "".to_string(),
++            }));
++
++        let mut mock_ops = MockDockerOps::new();
++        mock_ops
++            .expect_initialize()
++            .returning(|_| Ok(()));
++        mock_ops
++            .expect_start()
++            .returning(|| Ok(()));
++        mock_ops
++            .expect_stop()
++            .returning(|| Ok(()));
++
++        let mut runner = DockerRunner::new(
++            Arc::new(Mutex::new(mock_ops)),
++            Arc::new(mock_executor),
++            Duration::from_secs(30),
++        );
++
++        // Test initialization
++        let config = ContainerConfig {
++            image: "test-image".to_string(),
++            memory_limit: 512,
++            mount_point: "/tmp".to_string(),
++            working_dir: "/workspace".to_string(),
++        };
++        assert!(runner.initialize(config).await.is_ok());
++
++        // Test state transitions
++        let state = runner.get_current_state().await;
++        assert!(matches!(state, ContainerState::Created { .. }));
++
++        assert!(runner.start().await.is_ok());
++        let state = runner.get_current_state().await;
++        assert!(matches!(state, ContainerState::Running { .. }));
++
++        assert!(runner.stop().await.is_ok());
++        let state = runner.get_current_state().await;
++        assert!(matches!(state, ContainerState::Stopped { .. }));
++    }
++
++    #[tokio::test]
++    async fn test_command_timeout() {
++        let mut mock_executor = MockDockerExecutor::new();
++        mock_executor
++            .expect_execute()
++            .returning(|_| Ok(CommandOutput {
++                success: true,
++                stdout: "container_id".to_string(),
++                stderr: "".to_string(),
++            }));
++
++        let mut mock_ops = MockDockerOps::new();
++        mock_ops
++            .expect_execute()
++            .returning(|_| async {
++                sleep(Duration::from_secs(2)).await;
++                Ok(("output".to_string(), "".to_string()))
++            }.boxed());
++
++        let mut runner = DockerRunner::new(
++            Arc::new(Mutex::new(mock_ops)),
++            Arc::new(mock_executor),
++            Duration::from_secs(1),
++        );
++
++        let result = runner.execute("test_command").await;
++        assert!(matches!(result, Err(DockerError::Command(_))));
++
++        let state = runner.get_current_state().await;
++        assert!(matches!(state, ContainerState::Failed { .. }));
++    }
++
++    #[tokio::test]
++    async fn test_exit_code() {
++        let mut mock_executor = MockDockerExecutor::new();
++        mock_executor
++            .expect_execute()
++            .returning(|cmd| {
++                if cmd.command == "inspect" {
++                    Ok(CommandOutput {
++                        success: true,
++                        stdout: "137".to_string(),
++                        stderr: "".to_string(),
++                    })
++                } else {
++                    Ok(CommandOutput {
++                        success: true,
++                        stdout: "container_id".to_string(),
++                        stderr: "".to_string(),
++                    })
++                }
++            });
++
++        let mut mock_ops = MockDockerOps::new();
++        mock_ops
++            .expect_stop()
++            .returning(|| Ok(()));
++
++        let mut runner = DockerRunner::new(
++            Arc::new(Mutex::new(mock_ops)),
++            Arc::new(mock_executor),
++            Duration::from_secs(30),
++        );
++
++        assert!(runner.stop().await.is_ok());
++        let state = runner.get_current_state().await;
++        if let ContainerState::Stopped { exit_code, .. } = state {
++            assert_eq!(exit_code, 137);
++        } else {
++            panic!("Expected Stopped state");
++        }
+     }
+ } 
+\ No newline at end of file
+
+# レビュー結果
+
+## 問題点
+1. モジュール構造の問題:
+   - stateモジュールが重複して存在（src/docker/state.rsとsrc/docker/state/mod.rs）
+   - インポートパスの解決エラー
+
+## 改善点
+1. タイムアウト処理の追加
+2. 状態管理の効率化
+3. テストコードの追加
+
+## 結論
+作業を中断し、モジュール構造とインポートパスの問題を修正する必要があります。
