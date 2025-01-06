@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use serde::{Serialize, Deserialize};
-use crate::contest::error::{ContestResult, ContestError};
+use crate::contest::error::{ContestError};
 
 /// コンテストの状態を表す構造体
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]

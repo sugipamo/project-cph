@@ -1,16 +1,18 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::contest::error::{ContestResult, ContestError};
+use crate::config::Config;
+use crate::contest::error::{ContestError, ContestResult};
 use crate::docker::traits::DockerOperations;
-use crate::docker::config::ContainerConfig;
 
 pub struct ContestService {
-    docker_operations: Arc<Mutex<dyn DockerOperations>>,
+    config: Config,
+    docker_operations: Arc<Mutex<Box<dyn DockerOperations>>>,
 }
 
 impl ContestService {
-    pub fn new(docker_operations: Arc<Mutex<dyn DockerOperations>>) -> Self {
+    pub fn new(config: Config, docker_operations: Arc<Mutex<Box<dyn DockerOperations>>>) -> Self {
         Self {
+            config,
             docker_operations,
         }
     }
@@ -20,21 +22,8 @@ impl ContestService {
         self.run_tests().await
     }
 
-    async fn compile_source(&self, source_code: &str) -> ContestResult<()> {
-        let mut ops = self.docker_operations.lock().await;
-        let config = ContainerConfig::new(
-            "rust:latest".to_string(),
-            512,
-            "/workspace".to_string(),
-            "/tmp".to_string(),
-        );
-
-        ops.initialize(config).await
-            .map_err(|e| ContestError::Docker(e.to_string()))?;
-        
-        ops.start().await
-            .map_err(|e| ContestError::Docker(e.to_string()))?;
-
+    async fn compile_source(&self, _source_code: &str) -> ContestResult<()> {
+        // TODO: コンパイル処理の実装
         Ok(())
     }
 

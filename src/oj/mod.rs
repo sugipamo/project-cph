@@ -27,12 +27,14 @@ pub fn open_in_cursor(url: &str, source_path: Option<&PathBuf>) -> Result<()> {
         println!("{}", format!("Note: To automatically open URLs, please set the $BROWSER environment variable.").yellow());
     }
     
-    if let Err(e) = Command::new("code").arg(source_path.unwrap().display().to_string()).output() {
-        println!("Note: Failed to open in VSCode: {}", e);
-    }
+    if let Some(path) = source_path {
+        if let Err(e) = Command::new("code").arg(path.display().to_string()).output() {
+            println!("Note: Failed to open in VSCode: {}", e);
+        }
 
-    if let Err(e) = Command::new("cursor").arg(source_path.unwrap().display().to_string()).output() {
-        println!("Note: Failed to open in Cursor: {}", e);
+        if let Err(e) = Command::new("cursor").arg(path.display().to_string()).output() {
+            println!("Note: Failed to open in Cursor: {}", e);
+        }
     }
 
     Ok(())
@@ -266,8 +268,7 @@ impl OJContainer {
     }
 }
 
-#[allow(dead_code)]
-fn has_test_cases(dir: &PathBuf) -> Result<bool> {
+pub fn has_test_cases(dir: &PathBuf) -> Result<bool> {
     if !dir.exists() {
         return Ok(false);
     }

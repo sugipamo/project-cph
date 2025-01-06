@@ -65,11 +65,14 @@ mod tests {
         // ソースファイルの書き込み
         let file_path = manager.write_source_file(&temp_dir, "test.txt", "test content")?;
         assert!(file_path.exists());
-        assert_eq!(fs::read_to_string(&file_path).unwrap(), "test content");
+        let content = fs::read_to_string(&file_path)
+            .map_err(|e| DockerError::Filesystem(e.to_string()))?;
+        assert_eq!(content, "test content");
 
         // 権限設定
         manager.set_permissions(&temp_dir, 0o777)?;
-        let metadata = fs::metadata(&temp_dir).unwrap();
+        let metadata = fs::metadata(&temp_dir)
+            .map_err(|e| DockerError::Filesystem(e.to_string()))?;
         assert_eq!(metadata.permissions().mode() & 0o777, 0o777);
 
         // クリーンアップ

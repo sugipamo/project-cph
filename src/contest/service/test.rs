@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use crate::config::Config;
-use crate::contest::error::{ContestError, ContestResult};
-use crate::test::{TestCase, TestRunner};
+use crate::contest::error::{ContestResult, ContestError};
+use crate::test::TestCase;
 
 pub struct TestService {
     config: Config,
@@ -12,30 +12,27 @@ impl TestService {
         Self { config }
     }
 
-    pub async fn run_test(&self, problem_id: &str) -> ContestResult<Vec<bool>> {
+    pub async fn run_tests(&self, problem_id: &str) -> ContestResult<()> {
         let test_dir = self.get_test_dir(problem_id)?;
-        
         if !test_dir.exists() {
-            std::fs::create_dir_all(&test_dir)
-                .map_err(|e| ContestError::IO(e))?;
+            return Err(ContestError::Config(
+                format!("テストディレクトリが存在しません: {:?}", test_dir)
+            ));
         }
 
-        let mut results = Vec::new();
         let entries = std::fs::read_dir(&test_dir)
             .map_err(|e| ContestError::IO(e))?;
 
         for entry in entries {
             let entry = entry.map_err(|e| ContestError::IO(e))?;
             let path = entry.path();
-
             if path.is_file() && path.extension().map_or(false, |ext| ext == "in") {
-                let test_case = self.load_test_case(&path)?;
-                // TODO: 実際のテスト実行を実装
-                results.push(true);
+                let _test_case = self.load_test_case(&path)?;
+                // TODO: テストケースの実行処理を実装
             }
         }
 
-        Ok(results)
+        Ok(())
     }
 
     fn get_test_dir(&self, problem_id: &str) -> ContestResult<PathBuf> {

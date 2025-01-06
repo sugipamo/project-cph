@@ -1,5 +1,4 @@
-use std::path::{Path, PathBuf};
-use crate::config::Config;
+use std::path::PathBuf;
 use crate::contest::error::{ContestError, ContestResult};
 
 pub struct TestCase {
