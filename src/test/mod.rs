@@ -10,7 +10,8 @@ pub struct TestCase {
 pub fn load_test_cases(test_dir: &PathBuf) -> Result<Vec<TestCase>> {
     let entries = std::fs::read_dir(test_dir)
         .map_err(|e| CphError::Config(ConfigError::NotFound {
-            path: format!("テストディレクトリの読み取りに失敗しました: {}", e)
+            path: format!("テストディレクトリの読み取りに失敗しました: {}", e),
+            hint: None,
         }))?;
 
     let mut test_cases = Vec::new();
@@ -18,7 +19,8 @@ pub fn load_test_cases(test_dir: &PathBuf) -> Result<Vec<TestCase>> {
     for entry in entries {
         let entry = entry
             .map_err(|e| CphError::Config(ConfigError::NotFound {
-                path: format!("テストファイルの読み取りに失敗しました: {}", e)
+                path: format!("テストファイルの読み取りに失敗しました: {}", e),
+                hint: None,
             }))?;
 
         let path = entry.path();
@@ -29,24 +31,41 @@ pub fn load_test_cases(test_dir: &PathBuf) -> Result<Vec<TestCase>> {
         let expected_path = path.with_extension("out");
         if !expected_path.exists() {
             return Err(CphError::Config(ConfigError::NotFound {
-                path: format!("期待値ファイルが存在しません: {:?}", expected_path)
+                path: format!("期待値ファイルが存在しません: {:?}", expected_path),
+                hint: Some("テストケースには.inファイルと対応する.outファイルが必要です。".to_string()),
             }));
         }
 
         let input = std::fs::read_to_string(&path)
             .map_err(|e| CphError::Config(ConfigError::NotFound {
-                path: format!("入力ファイルの読み取りに失敗しました: {}", e)
+                path: format!("入力ファイルの読み取りに失敗しました: {}", e),
+                hint: None,
             }))?;
 
         let expected = std::fs::read_to_string(&expected_path)
             .map_err(|e| CphError::Config(ConfigError::NotFound {
-                path: format!("期待値ファイルの読み取りに失敗しました: {}", e)
+                path: format!("期待値ファイルの読み取りに失敗しました: {}", e),
+                hint: None,
             }))?;
 
         test_cases.push(TestCase { input, expected });
     }
 
     Ok(test_cases)
+}
+
+pub fn config_not_found_err(path: String) -> CphError {
+    CphError::Config(ConfigError::NotFound {
+        path,
+        hint: None,
+    })
+}
+
+pub fn config_not_found_err_with_hint(path: String, hint: String) -> CphError {
+    CphError::Config(ConfigError::NotFound {
+        path,
+        hint: Some(hint),
+    })
 }
 
 #[cfg(test)]

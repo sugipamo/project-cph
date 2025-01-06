@@ -1,7 +1,17 @@
-use crate::error::{CphError, ContestError, ConfigError, LanguageError};
+use crate::error::{CphError, ContestError, LanguageError, ConfigError};
 
 pub fn site_err(msg: String) -> CphError {
-    CphError::Contest(ContestError::Site { message: msg })
+    CphError::Contest(ContestError::Site {
+        message: msg,
+        hint: None,
+    })
+}
+
+pub fn site_err_with_hint(msg: String, hint: String) -> CphError {
+    CphError::Contest(ContestError::Site {
+        message: msg,
+        hint: Some(hint),
+    })
 }
 
 pub fn language_err(msg: String) -> CphError {
