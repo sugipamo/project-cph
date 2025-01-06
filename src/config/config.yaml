@@ -4,6 +4,10 @@ system:
   editors:
     - "code"
     - "cursor"
+  docker:
+    timeout_seconds: ${CPH_DOCKER_TIMEOUT-10}
+    memory_limit_mb: ${CPH_DOCKER_MEMORY-256}
+    mount_point: "/compile"
 
 # 言語設定
 languages:
@@ -16,6 +20,10 @@ languages:
       compile_dir: "${CPH_COMPILE_DIR-compile/{name}}"
       require_files: []
       env_vars: []
+      docker:
+        timeout_seconds: ${CPH_DOCKER_TIMEOUT-10}
+        memory_limit_mb: ${CPH_DOCKER_MEMORY-256}
+        mount_point: "/compile"
 
     templates:
       patterns:
@@ -31,15 +39,6 @@ languages:
     
     active_contest_yaml: "${CPH_ACTIVE_CONTEST_YAML-active_contest.yaml}"
 
-    docker:
-      timeout_seconds: ${CPH_DOCKER_TIMEOUT-10}
-      memory_limit_mb: ${CPH_DOCKER_MEMORY-256}
-      mount_point: "/compile"
-
-    submit:
-      wait: ${CPH_SUBMIT_WAIT-5}
-      auto_yes: ${CPH_AUTO_YES-false}
-  
     test:
       dir: "${CPH_TEST_DIR-test}"
 
@@ -48,53 +47,48 @@ languages:
     extension: "rs"
     runner:
       image: "${CPH_RUST_IMAGE-rust:latest}"
+      compile_dir: "${CPH_COMPILE_DIR-compile/rust}"
       compile: ["rustc", "main.rs"]
       run: ["./main"]
       require_files: ["Cargo.toml"]
       env_vars:
         - "RUST_BACKTRACE=1"
+      docker:
+        timeout_seconds: ${CPH_RUST_TIMEOUT-15}
+        memory_limit_mb: ${CPH_RUST_MEMORY-512}
     site_ids:
       _source: "online_judge_tool"
       _fallback:
         atcoder: "5054"  # Rust (rustc 1.70.0)
-
-    templates:
-      patterns:
-        solution: "${CPH_SOLUTION_FILE-src/solution.{extension}}"
-        generator: "${CPH_GENERATOR_FILE-src/generator.{extension}}"
-        tester: "${CPH_TESTER_FILE-src/tester.{extension}}"
 
   python:
     <<: *lang_base
     extension: "py"
     runner:
       image: "${CPH_PYTHON_IMAGE-python:3.11-slim}"
+      compile_dir: "${CPH_COMPILE_DIR-compile/python}"
       run: ["python", "main.py"]
+      docker:
+        timeout_seconds: ${CPH_PYTHON_TIMEOUT-10}
+        memory_limit_mb: ${CPH_PYTHON_MEMORY-256}
     site_ids:
       _source: "online_judge_tool"
       _fallback:
         atcoder: "4047"  # Python (CPython 3.11.4)
-
-  pypy:
-    <<: *lang_base
-    extension: "py"
-    runner:
-      image: "${CPH_PYPY_IMAGE-pypy:latest}"
-      run: ["pypy3", "main.py"]
-    site_ids:
-      _source: "online_judge_tool"
-      _fallback:
-        atcoder: "5078"  # Python (PyPy 3.10-v7.3.12)
 
   cpp:
     <<: *lang_base
     extension: "cpp"
     runner:
       image: "${CPH_CPP_IMAGE-gcc:latest}"
+      compile_dir: "${CPH_COMPILE_DIR-compile/cpp}"
       compile: ["g++", "-std=c++17", "-O2", "main.cpp"]
       run: ["./a.out"]
       env_vars:
         - "CPLUS_INCLUDE_PATH=/usr/include/c++/9"
+      docker:
+        timeout_seconds: ${CPH_CPP_TIMEOUT-10}
+        memory_limit_mb: ${CPH_CPP_MEMORY-512}
     site_ids:
       _source: "online_judge_tool"
       _fallback:

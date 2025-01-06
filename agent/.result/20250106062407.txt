@@ -1,0 +1,406 @@
+diff --git a/src/config/config.yaml b/src/config/config.yaml
+index 6538340..2364ae7 100644
+--- a/src/config/config.yaml
++++ b/src/config/config.yaml
+@@ -4,6 +4,10 @@ system:
+   editors:
+     - "code"
+     - "cursor"
++  docker:
++    timeout_seconds: ${CPH_DOCKER_TIMEOUT-10}
++    memory_limit_mb: ${CPH_DOCKER_MEMORY-256}
++    mount_point: "/compile"
+ 
+ # 言語設定
+ languages:
+@@ -16,6 +20,10 @@ languages:
+       compile_dir: "${CPH_COMPILE_DIR-compile/{name}}"
+       require_files: []
+       env_vars: []
++      docker:
++        timeout_seconds: ${CPH_DOCKER_TIMEOUT-10}
++        memory_limit_mb: ${CPH_DOCKER_MEMORY-256}
++        mount_point: "/compile"
+ 
+     templates:
+       patterns:
+@@ -31,15 +39,6 @@ languages:
+     
+     active_contest_yaml: "${CPH_ACTIVE_CONTEST_YAML-active_contest.yaml}"
+ 
+-    docker:
+-      timeout_seconds: ${CPH_DOCKER_TIMEOUT-10}
+-      memory_limit_mb: ${CPH_DOCKER_MEMORY-256}
+-      mount_point: "/compile"
+-
+-    submit:
+-      wait: ${CPH_SUBMIT_WAIT-5}
+-      auto_yes: ${CPH_AUTO_YES-false}
+-  
+     test:
+       dir: "${CPH_TEST_DIR-test}"
+ 
+@@ -48,53 +47,48 @@ languages:
+     extension: "rs"
+     runner:
+       image: "${CPH_RUST_IMAGE-rust:latest}"
++      compile_dir: "${CPH_COMPILE_DIR-compile/rust}"
+       compile: ["rustc", "main.rs"]
+       run: ["./main"]
+       require_files: ["Cargo.toml"]
+       env_vars:
+         - "RUST_BACKTRACE=1"
++      docker:
++        timeout_seconds: ${CPH_RUST_TIMEOUT-15}
++        memory_limit_mb: ${CPH_RUST_MEMORY-512}
+     site_ids:
+       _source: "online_judge_tool"
+       _fallback:
+         atcoder: "5054"  # Rust (rustc 1.70.0)
+ 
+-    templates:
+-      patterns:
+-        solution: "${CPH_SOLUTION_FILE-src/solution.{extension}}"
+-        generator: "${CPH_GENERATOR_FILE-src/generator.{extension}}"
+-        tester: "${CPH_TESTER_FILE-src/tester.{extension}}"
+-
+   python:
+     <<: *lang_base
+     extension: "py"
+     runner:
+       image: "${CPH_PYTHON_IMAGE-python:3.11-slim}"
++      compile_dir: "${CPH_COMPILE_DIR-compile/python}"
+       run: ["python", "main.py"]
++      docker:
++        timeout_seconds: ${CPH_PYTHON_TIMEOUT-10}
++        memory_limit_mb: ${CPH_PYTHON_MEMORY-256}
+     site_ids:
+       _source: "online_judge_tool"
+       _fallback:
+         atcoder: "4047"  # Python (CPython 3.11.4)
+ 
+-  pypy:
+-    <<: *lang_base
+-    extension: "py"
+-    runner:
+-      image: "${CPH_PYPY_IMAGE-pypy:latest}"
+-      run: ["pypy3", "main.py"]
+-    site_ids:
+-      _source: "online_judge_tool"
+-      _fallback:
+-        atcoder: "5078"  # Python (PyPy 3.10-v7.3.12)
+-
+   cpp:
+     <<: *lang_base
+     extension: "cpp"
+     runner:
+       image: "${CPH_CPP_IMAGE-gcc:latest}"
++      compile_dir: "${CPH_COMPILE_DIR-compile/cpp}"
+       compile: ["g++", "-std=c++17", "-O2", "main.cpp"]
+       run: ["./a.out"]
+       env_vars:
+         - "CPLUS_INCLUDE_PATH=/usr/include/c++/9"
++      docker:
++        timeout_seconds: ${CPH_CPP_TIMEOUT-10}
++        memory_limit_mb: ${CPH_CPP_MEMORY-512}
+     site_ids:
+       _source: "online_judge_tool"
+       _fallback:
+diff --git a/src/docker/runner/command.rs b/src/docker/runner/command.rs
+index 4d0d4d3..03daf6b 100644
+--- a/src/docker/runner/command.rs
++++ b/src/docker/runner/command.rs
+@@ -5,37 +5,55 @@ use crate::docker::state::RunnerState;
+ use std::time::Duration;
+ use std::env;
+ use tokio::time::timeout;
++use std::path::Path;
++use std::fs;
++use std::os::unix::fs::PermissionsExt;
+ 
++#[derive(Debug)]
+ pub struct DockerCommand {
+     container_name: String,
+-    state: RunnerState,
+-    output: String,
+-    error: String,
+ }
+ 
+ impl DockerCommand {
+     pub fn new() -> Self {
+         Self {
+             container_name: String::new(),
+-            state: RunnerState::Ready,
+-            output: String::new(),
+-            error: String::new(),
+         }
+     }
+ 
+-    pub async fn run_code(&mut self, image: &str, source_code: &str) -> Result<String, String> {
++    fn ensure_directory_permissions(dir: &Path) -> Result<(), String> {
++        let metadata = fs::metadata(dir)
++            .map_err(|e| format!("メタデータの取得に失敗しました: {}", e))?;
++        let mut perms = metadata.permissions();
++        perms.set_mode(0o777);
++        fs::set_permissions(dir, perms)
++            .map_err(|e| format!("パーミッションの設定に失敗しました: {}", e))?;
++        Ok(())
++    }
++
++    pub async fn run_code(
++        &mut self,
++        image: &str,
++        source_code: &str,
++        memory_limit: u32,
++        timeout_seconds: u32,
++        mount_point: &str,
++    ) -> Result<String, String> {
+         // コンテナ名を生成
+         let container_name = format!("runner-{}", Uuid::new_v4());
+         self.container_name = container_name.clone();
+ 
+         // 一時ディレクトリを作成
+         let temp_dir = env::temp_dir().join(&container_name);
+-        std::fs::create_dir_all(&temp_dir)
++        fs::create_dir_all(&temp_dir)
+             .map_err(|e| format!("一時ディレクトリの作成に失敗しました: {}", e))?;
+ 
++        // ディレクトリのパーミッションを設定
++        Self::ensure_directory_permissions(&temp_dir)?;
++
+         // ソースコードを書き込み
+         let source_file = temp_dir.join("main.rs");
+-        std::fs::write(&source_file, source_code)
++        fs::write(&source_file, source_code)
+             .map_err(|e| format!("ソースコードの書き込みに失敗しました: {}", e))?;
+ 
+         // Dockerコマンドを構築
+@@ -45,10 +63,14 @@ impl DockerCommand {
+             .arg("--rm")
+             .arg("--name")
+             .arg(&container_name)
++            .arg("-m")
++            .arg(format!("{}m", memory_limit))
++            .arg("--memory-swap")
++            .arg(format!("{}m", memory_limit))
+             .arg("-v")
+-            .arg(format!("{}:/code", temp_dir.display()))
++            .arg(format!("{}:{}", temp_dir.display(), mount_point))
+             .arg("-w")
+-            .arg("/code")
++            .arg(mount_point)
+             .arg(image)
+             .arg("sh")
+             .arg("-c")
+@@ -56,9 +78,9 @@ impl DockerCommand {
+             .stdout(Stdio::piped())
+             .stderr(Stdio::piped());
+ 
+-        // コマンドを実行
++        // コマンドを実行（タイムアウト付き）
+         println!("Running command: {:?}", command);
+-        let output = match timeout(Duration::from_secs(10), command.output()).await {
++        let output = match timeout(Duration::from_secs(timeout_seconds.into()), command.output()).await {
+             Ok(result) => result.map_err(|e| format!("コマンドの実行に失敗しました: {}", e))?,
+             Err(_) => {
+                 self.stop_container().await;
+@@ -67,7 +89,7 @@ impl DockerCommand {
+         };
+ 
+         // 一時ディレクトリを削除
+-        let _ = std::fs::remove_dir_all(temp_dir);
++        let _ = fs::remove_dir_all(temp_dir);
+ 
+         if output.status.success() {
+             Ok(String::from_utf8_lossy(&output.stdout).to_string())
+@@ -76,7 +98,6 @@ impl DockerCommand {
+         }
+     }
+ 
+-    // コンパイル実行
+     pub async fn compile(
+         &mut self,
+         image: &str,
+@@ -84,45 +105,46 @@ impl DockerCommand {
+         compile_dir: &str,
+         mount_point: &str,
+         source_code: &str,
+-        extension: String,
+-        require_files: Vec<String>,
+-        env_vars: Vec<String>,
++        extension: &str,
++        require_files: &[String],
++        env_vars: &[String],
++        memory_limit: u32,
++        timeout_seconds: u32,
+     ) -> Result<(), String> {
+         println!("Compiling with command: {:?}", compile_cmd);
+         println!("Mount point: {}, Compile dir: {}", mount_point, compile_dir);
+         
+         // 現在のワーキングディレクトリを取得し、compile_dirへの絶対パスを構築
+         let current_dir = env::current_dir()
+-            .map_err(|e| format!("Failed to get current directory: {}", e))?;
++            .map_err(|e| format!("カレントディレクトリの取得に失敗しました: {}", e))?;
+         let absolute_compile_dir = current_dir.join(compile_dir);
+ 
+-        // ソースコードをファイルに書き込む
+-        use std::fs;
++        // コンパイルディレクトリを作成し、パーミッションを設定
+         fs::create_dir_all(&absolute_compile_dir)
+-            .map_err(|e| format!("Failed to create compile directory: {}", e))?;
++            .map_err(|e| format!("コンパイルディレクトリの作成に失敗しました: {}", e))?;
++        Self::ensure_directory_permissions(&absolute_compile_dir)?;
+ 
+         // 必要なファイルの存在チェック
+-        for required_file in &require_files {
++        for required_file in require_files {
+             let file_path = absolute_compile_dir.join(required_file);
+             if !file_path.exists() {
+-                return Err(format!("Required file not found: {}", required_file));
++                return Err(format!("必要なファイルが見つかりません: {}", required_file));
+             }
+         }
+ 
+         // ソースファイルの配置
+         let source_file = if !require_files.is_empty() {
+-            // 必要なファイルがある場合（例：Cargoプロジェクト）はsrcディレクトリを作成
+             let src_dir = absolute_compile_dir.join("src");
+             fs::create_dir_all(&src_dir)
+-                .map_err(|e| format!("Failed to create source directory: {}", e))?;
++                .map_err(|e| format!("ソースディレクトリの作成に失敗しました: {}", e))?;
++            Self::ensure_directory_permissions(&src_dir)?;
+             src_dir.join(format!("main.{}", extension))
+         } else {
+-            // その他の言語の場合は直接コンパイルディレクトリに配置
+             absolute_compile_dir.join(format!("main.{}", extension))
+         };
+ 
+         fs::write(&source_file, source_code)
+-            .map_err(|e| format!("Failed to write source code: {}", e))?;
++            .map_err(|e| format!("ソースコードの書き込みに失敗しました: {}", e))?;
+         
+         let container_name = format!("compiler-{}", Uuid::new_v4());
+         self.container_name = container_name.clone();
+@@ -133,13 +155,17 @@ impl DockerCommand {
+             .arg("--rm")
+             .arg("--name")
+             .arg(&container_name)
++            .arg("-m")
++            .arg(format!("{}m", memory_limit))
++            .arg("--memory-swap")
++            .arg(format!("{}m", memory_limit))
+             .arg("-v")
+             .arg(format!("{}:{}", absolute_compile_dir.display(), mount_point))
+             .arg("-w")
+             .arg(mount_point);
+ 
+         // 環境変数の設定
+-        for env_var in &env_vars {
++        for env_var in env_vars {
+             command.arg("-e").arg(env_var);
+         }
+ 
+@@ -150,12 +176,17 @@ impl DockerCommand {
+             .stderr(Stdio::piped());
+ 
+         println!("Running compile command: {:?}", command);
+-        let output = command.output().await
+-            .map_err(|e| format!("Failed to execute compile command: {}", e))?;
++        let output = match timeout(Duration::from_secs(timeout_seconds.into()), command.output()).await {
++            Ok(result) => result.map_err(|e| format!("コンパイルコマンドの実行に失敗しました: {}", e))?,
++            Err(_) => {
++                self.stop_container().await;
++                return Err("コンパイルがタイムアウトしました".to_string());
++            }
++        };
+ 
+         if !output.status.success() {
+             let error = String::from_utf8_lossy(&output.stderr);
+-            return Err(format!("Compilation failed: {}", error));
++            return Err(format!("コンパイルに失敗しました: {}", error));
+         }
+ 
+         Ok(())
+diff --git a/src/docker/runner/mod.rs b/src/docker/runner/mod.rs
+index 4e37e06..2aff9ad 100644
+--- a/src/docker/runner/mod.rs
++++ b/src/docker/runner/mod.rs
+@@ -3,7 +3,6 @@ pub mod command;
+ use std::sync::Arc;
+ use tokio::sync::Mutex;
+ use crate::config::Config;
+-use crate::config::TypedValue;
+ use self::command::DockerCommand;
+ use crate::docker::state::RunnerState;
+ 
+@@ -15,11 +14,6 @@ pub struct DockerRunner {
+ }
+ 
+ impl DockerRunner {
+-    fn load_config_value<T: TypedValue>(config: &Config, key: &str) -> Result<T, String> {
+-        config.get::<T>(key)
+-            .map_err(|e| format!("設定の読み込みに失敗しました: {}", e))
+-    }
+-
+     pub fn new(config: Config, language: String) -> Result<Self, String> {
+         // 言語の存在確認
+         let config = Arc::new(config);
+@@ -41,6 +35,21 @@ impl DockerRunner {
+         Self::new(config, language.to_string())
+     }
+ 
++    fn get_docker_config(&self) -> Result<(u32, u32, String), String> {
++        let base_path = format!("languages.{}.runner.docker", self.language);
++        
++        let timeout_seconds = self.config.get::<u64>(&format!("{}.timeout_seconds", base_path))
++            .unwrap_or(10) as u32;
++        
++        let memory_limit = self.config.get::<u64>(&format!("{}.memory_limit_mb", base_path))
++            .unwrap_or(256) as u32;
++        
++        let mount_point = self.config.get::<String>(&format!("{}.mount_point", base_path))
++            .unwrap_or_else(|_| "/compile".to_string());
++
++        Ok((timeout_seconds, memory_limit, mount_point))
++    }
++
+     pub async fn run_in_docker(&mut self, source_code: &str) -> Result<String, String> {
+         println!("Starting Docker execution");
+         
+@@ -48,6 +57,9 @@ impl DockerRunner {
+         let image = self.config.get::<String>(&format!("languages.{}.runner.image", self.language))
+             .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
+ 
++        // Docker設定を取得
++        let (timeout_seconds, memory_limit, mount_point) = self.get_docker_config()?;
++
+         // イメージの確認と取得
+         if !self.command.check_image(&image).await {
+             println!("Image not found, attempting to pull: {}", image);
+@@ -62,7 +74,7 @@ impl DockerRunner {
+         *self.state.lock().await = RunnerState::Running;
+ 
+         // ソースコードの実行
+-        let result = self.command.run_code(&image, source_code).await;
++        let result = self.command.run_code(&image, source_code, memory_limit, timeout_seconds, &mount_point).await;
+         match result {
+             Ok(output) => {
+                 *self.state.lock().await = RunnerState::Ready;
+@@ -93,14 +105,13 @@ impl DockerRunner {
+     }
+ 
+     pub async fn inspect_mount_point(&mut self) -> Result<String, String> {
++        // Docker設定を取得
++        let (_, _, mount_point) = self.get_docker_config()?;
++
+         // イメージ名を取得
+         let image = self.config.get::<String>(&format!("languages.{}.runner.image", self.language))
+             .map_err(|e| format!("イメージ名の取得に失敗しました: {}", e))?;
+ 
+-        // マウントポイントを取得
+-        let mount_point = self.config.get::<String>("system.docker.mount_point")
+-            .map_err(|e| format!("マウントポイントの設定の読み込みに失敗しました: {}", e))?;
+-
+         println!("Inspecting mount point directory: {}", &mount_point);
+         self.command.inspect_directory(&image, &mount_point).await
+     }

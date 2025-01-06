@@ -5,37 +5,55 @@ use crate::docker::state::RunnerState;
 use std::time::Duration;
 use std::env;
 use tokio::time::timeout;
+use std::path::Path;
+use std::fs;
+use std::os::unix::fs::PermissionsExt;
 
+#[derive(Debug)]
 pub struct DockerCommand {
     container_name: String,
-    state: RunnerState,
-    output: String,
-    error: String,
 }
 
 impl DockerCommand {
     pub fn new() -> Self {
         Self {
             container_name: String::new(),
-            state: RunnerState::Ready,
-            output: String::new(),
-            error: String::new(),
         }
     }
 
-    pub async fn run_code(&mut self, image: &str, source_code: &str) -> Result<String, String> {
+    fn ensure_directory_permissions(dir: &Path) -> Result<(), String> {
+        let metadata = fs::metadata(dir)
+            .map_err(|e| format!("メタデータの取得に失敗しました: {}", e))?;
+        let mut perms = metadata.permissions();
+        perms.set_mode(0o777);
+        fs::set_permissions(dir, perms)
+            .map_err(|e| format!("パーミッションの設定に失敗しました: {}", e))?;
+        Ok(())
+    }
+
+    pub async fn run_code(
+        &mut self,
+        image: &str,
+        source_code: &str,
+        memory_limit: u32,
+        timeout_seconds: u32,
+        mount_point: &str,
+    ) -> Result<String, String> {
         // コンテナ名を生成
         let container_name = format!("runner-{}", Uuid::new_v4());
         self.container_name = container_name.clone();
 
         // 一時ディレクトリを作成
         let temp_dir = env::temp_dir().join(&container_name);
-        std::fs::create_dir_all(&temp_dir)
+        fs::create_dir_all(&temp_dir)
             .map_err(|e| format!("一時ディレクトリの作成に失敗しました: {}", e))?;
+
+        // ディレクトリのパーミッションを設定
+        Self::ensure_directory_permissions(&temp_dir)?;
 
         // ソースコードを書き込み
         let source_file = temp_dir.join("main.rs");
-        std::fs::write(&source_file, source_code)
+        fs::write(&source_file, source_code)
             .map_err(|e| format!("ソースコードの書き込みに失敗しました: {}", e))?;
 
         // Dockerコマンドを構築
@@ -45,10 +63,14 @@ impl DockerCommand {
             .arg("--rm")
             .arg("--name")
             .arg(&container_name)
+            .arg("-m")
+            .arg(format!("{}m", memory_limit))
+            .arg("--memory-swap")
+            .arg(format!("{}m", memory_limit))
             .arg("-v")
-            .arg(format!("{}:/code", temp_dir.display()))
+            .arg(format!("{}:{}", temp_dir.display(), mount_point))
             .arg("-w")
-            .arg("/code")
+            .arg(mount_point)
             .arg(image)
             .arg("sh")
             .arg("-c")
@@ -56,9 +78,9 @@ impl DockerCommand {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        // コマンドを実行
+        // コマンドを実行（タイムアウト付き）
         println!("Running command: {:?}", command);
-        let output = match timeout(Duration::from_secs(10), command.output()).await {
+        let output = match timeout(Duration::from_secs(timeout_seconds.into()), command.output()).await {
             Ok(result) => result.map_err(|e| format!("コマンドの実行に失敗しました: {}", e))?,
             Err(_) => {
                 self.stop_container().await;
@@ -67,7 +89,7 @@ impl DockerCommand {
         };
 
         // 一時ディレクトリを削除
-        let _ = std::fs::remove_dir_all(temp_dir);
+        let _ = fs::remove_dir_all(temp_dir);
 
         if output.status.success() {
             Ok(String::from_utf8_lossy(&output.stdout).to_string())
@@ -76,7 +98,6 @@ impl DockerCommand {
         }
     }
 
-    // コンパイル実行
     pub async fn compile(
         &mut self,
         image: &str,
@@ -84,45 +105,46 @@ impl DockerCommand {
         compile_dir: &str,
         mount_point: &str,
         source_code: &str,
-        extension: String,
-        require_files: Vec<String>,
-        env_vars: Vec<String>,
+        extension: &str,
+        require_files: &[String],
+        env_vars: &[String],
+        memory_limit: u32,
+        timeout_seconds: u32,
     ) -> Result<(), String> {
         println!("Compiling with command: {:?}", compile_cmd);
         println!("Mount point: {}, Compile dir: {}", mount_point, compile_dir);
         
         // 現在のワーキングディレクトリを取得し、compile_dirへの絶対パスを構築
         let current_dir = env::current_dir()
-            .map_err(|e| format!("Failed to get current directory: {}", e))?;
+            .map_err(|e| format!("カレントディレクトリの取得に失敗しました: {}", e))?;
         let absolute_compile_dir = current_dir.join(compile_dir);
 
-        // ソースコードをファイルに書き込む
-        use std::fs;
+        // コンパイルディレクトリを作成し、パーミッションを設定
         fs::create_dir_all(&absolute_compile_dir)
-            .map_err(|e| format!("Failed to create compile directory: {}", e))?;
+            .map_err(|e| format!("コンパイルディレクトリの作成に失敗しました: {}", e))?;
+        Self::ensure_directory_permissions(&absolute_compile_dir)?;
 
         // 必要なファイルの存在チェック
-        for required_file in &require_files {
+        for required_file in require_files {
             let file_path = absolute_compile_dir.join(required_file);
             if !file_path.exists() {
-                return Err(format!("Required file not found: {}", required_file));
+                return Err(format!("必要なファイルが見つかりません: {}", required_file));
             }
         }
 
         // ソースファイルの配置
         let source_file = if !require_files.is_empty() {
-            // 必要なファイルがある場合（例：Cargoプロジェクト）はsrcディレクトリを作成
             let src_dir = absolute_compile_dir.join("src");
             fs::create_dir_all(&src_dir)
-                .map_err(|e| format!("Failed to create source directory: {}", e))?;
+                .map_err(|e| format!("ソースディレクトリの作成に失敗しました: {}", e))?;
+            Self::ensure_directory_permissions(&src_dir)?;
             src_dir.join(format!("main.{}", extension))
         } else {
-            // その他の言語の場合は直接コンパイルディレクトリに配置
             absolute_compile_dir.join(format!("main.{}", extension))
         };
 
         fs::write(&source_file, source_code)
-            .map_err(|e| format!("Failed to write source code: {}", e))?;
+            .map_err(|e| format!("ソースコードの書き込みに失敗しました: {}", e))?;
         
         let container_name = format!("compiler-{}", Uuid::new_v4());
         self.container_name = container_name.clone();
@@ -133,13 +155,17 @@ impl DockerCommand {
             .arg("--rm")
             .arg("--name")
             .arg(&container_name)
+            .arg("-m")
+            .arg(format!("{}m", memory_limit))
+            .arg("--memory-swap")
+            .arg(format!("{}m", memory_limit))
             .arg("-v")
             .arg(format!("{}:{}", absolute_compile_dir.display(), mount_point))
             .arg("-w")
             .arg(mount_point);
 
         // 環境変数の設定
-        for env_var in &env_vars {
+        for env_var in env_vars {
             command.arg("-e").arg(env_var);
         }
 
@@ -150,12 +176,17 @@ impl DockerCommand {
             .stderr(Stdio::piped());
 
         println!("Running compile command: {:?}", command);
-        let output = command.output().await
-            .map_err(|e| format!("Failed to execute compile command: {}", e))?;
+        let output = match timeout(Duration::from_secs(timeout_seconds.into()), command.output()).await {
+            Ok(result) => result.map_err(|e| format!("コンパイルコマンドの実行に失敗しました: {}", e))?,
+            Err(_) => {
+                self.stop_container().await;
+                return Err("コンパイルがタイムアウトしました".to_string());
+            }
+        };
 
         if !output.status.success() {
             let error = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("Compilation failed: {}", error));
+            return Err(format!("コンパイルに失敗しました: {}", error));
         }
 
         Ok(())
