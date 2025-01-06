@@ -1,65 +1,61 @@
 use bollard::exec::CreateExecOptions;
+use bollard::container::{LogsOptions, LogOutput};
 use futures::StreamExt;
 use tokio::time::timeout;
-use bollard::container::{LogsOptions, LogOutput};
 use std::time::Duration;
+use thiserror::Error;
 
 use crate::docker::state::RunnerState;
-use super::DockerRunner;
 
-impl DockerRunner {
-    pub async fn write(&self, input: &str) -> Result<(), String> {
+#[derive(Error, Debug)]
+pub enum IOError {
+    #[error("Container not initialized for writing")]
+    ContainerNotInitialized,
+    #[error("Failed to write to container: {0}")]
+    WriteError(String),
+    #[error("Failed to read from container: {0}")]
+    ReadError(String),
+    #[error("Timeout error: {0}")]
+    TimeoutError(String),
+}
+
+pub trait IOHandler {
+    async fn write(&self, input: &str) -> Result<(), IOError>;
+    async fn read(&self) -> Result<String, IOError>;
+    async fn read_error(&self) -> Result<String, IOError>;
+    async fn setup_io(&mut self) -> Result<(), IOError>;
+}
+
+impl IOHandler for DockerRunner {
+    async fn write(&self, input: &str) -> Result<(), IOError> {
         println!("Writing to container: {}", input);
-        let tx = match self.stdin_tx.as_ref() {
-            Some(tx) => tx,
-            None => {
-                println!("Container not initialized for writing");
-                return Err("コンテナが書き込み用に初期化されていません".to_string());
-            }
-        };
+        let tx = self.stdin_tx.as_ref()
+            .ok_or(IOError::ContainerNotInitialized)?;
 
-        match tx.send(input.to_string()).await {
-            Ok(_) => {
-                println!("Successfully wrote to container");
-                Ok(())
-            }
-            Err(e) => {
-                println!("Failed to write to container: {:?}", e);
-                Err(format!("コンテナへの書き込みに失敗しました: {}", e))
-            }
-        }
+        tx.send(input.to_string())
+            .await
+            .map_err(|e| IOError::WriteError(e.to_string()))?;
+        
+        println!("Successfully wrote to container");
+        Ok(())
     }
 
-    pub async fn read(&self) -> Result<String, String> {
+    async fn read(&self) -> Result<String, IOError> {
         println!("Attempting to read from container");
         let stdout = self.stdout_buffer.lock().await;
-        match stdout.last() {
-            Some(output) => {
-                println!("Read from container: '{}'", output);
-                Ok(output.clone())
-            }
-            None => {
-                println!("No output available from container");
-                Ok(String::new())
-            }
-        }
+        Ok(stdout.last()
+            .cloned()
+            .unwrap_or_default())
     }
 
-    pub async fn read_error(&self) -> Result<String, String> {
+    async fn read_error(&self) -> Result<String, IOError> {
         let stderr = self.stderr_buffer.lock().await;
-        match stderr.last() {
-            Some(error) => {
-                println!("Read error from container: '{}'", error);
-                Ok(error.clone())
-            }
-            None => {
-                println!("No error output available from container");
-                Ok(String::new())
-            }
-        }
+        Ok(stderr.last()
+            .cloned()
+            .unwrap_or_default())
     }
 
-    pub(crate) async fn setup_io(&mut self) -> Result<(), String> {
+    async fn setup_io(&mut self) -> Result<(), IOError> {
         println!("Setting up I/O for container: {}", self.container_id);
         let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(32);
         self.stdin_tx = Some(tx);
@@ -70,12 +66,10 @@ impl DockerRunner {
         let stderr_buffer = self.stderr_buffer.clone();
         let state = self.state.clone();
 
-        // タイムアウト設定の取得
-        let timeout_seconds = self.config.get::<u64>("system.docker.timeout_seconds")
-            .map_err(|e| format!("タイムアウト設定の読み込みに失敗しました: {}", e))?;
-        let timeout_duration = Duration::from_secs(timeout_seconds);
-
-        // 標準出力の監視
+        let timeout_seconds = self.config
+            .get::<u64>("system.docker.timeout_seconds")
+            .map_err(|e| IOError::TimeoutError(e.to_string()))?;
+        
         let stdout_options = LogsOptions::<String> {
             follow: true,
             stdout: true,
@@ -90,7 +84,6 @@ impl DockerRunner {
             ..Default::default()
         };
 
-        // 標準出力の処理
         let stdout_container_id = container_id.clone();
         let mut stdout_stream = docker.logs(&stdout_container_id, Some(stdout_options));
         tokio::spawn(async move {
@@ -104,7 +97,6 @@ impl DockerRunner {
             println!("Stdout stream ended for container {}", stdout_container_id);
         });
 
-        // 標準エラー出力の処理
         let stderr_container_id = container_id.clone();
         let mut stderr_stream = docker.logs(&stderr_container_id, Some(stderr_options));
         tokio::spawn(async move {
@@ -118,7 +110,6 @@ impl DockerRunner {
             println!("Stderr stream ended for container {}", stderr_container_id);
         });
 
-        // 標準入力の処理
         let input_container_id = container_id.clone();
         let input_docker = docker.clone();
         tokio::spawn(async move {
@@ -164,4 +155,6 @@ impl DockerRunner {
         println!("I/O setup completed for container {}", self.container_id);
         Ok(())
     }
-} 
+}
+
+// ... existing helper functions and implementations ...

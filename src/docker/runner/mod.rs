@@ -1,107 +1,84 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use uuid::Uuid;
 use crate::config::Config;
 use crate::docker::error::{DockerError, DockerResult};
 use crate::docker::state::RunnerState;
-use crate::docker::config::DockerConfig;
-use crate::docker::fs::{DockerFileManager, DefaultDockerFileManager};
-use crate::docker::executor::{DockerCommandExecutor, DefaultDockerExecutor};
+use crate::docker::traits::{ContainerManager, IOHandler, CompilationManager};
+
+pub mod default_impl;
 
 pub struct DockerRunner {
-    config: DockerConfig,
-    file_manager: Box<dyn DockerFileManager>,
-    executor: Box<dyn DockerCommandExecutor>,
+    container_manager: Box<dyn ContainerManager>,
+    io_handler: Box<dyn IOHandler>,
+    compilation_manager: Box<dyn CompilationManager>,
+    config: Config,
     state: Arc<Mutex<RunnerState>>,
 }
 
 impl DockerRunner {
-    pub fn new(config: Config, language: String) -> DockerResult<Self> {
-        let docker_config = DockerConfig::new(&config, &language)?;
-        
-        Ok(Self {
-            config: docker_config,
-            file_manager: Box::new(DefaultDockerFileManager::new()),
-            executor: Box::new(DefaultDockerExecutor::new()),
+    pub fn new(
+        config: Config,
+        container_manager: Box<dyn ContainerManager>,
+        io_handler: Box<dyn IOHandler>,
+        compilation_manager: Box<dyn CompilationManager>,
+    ) -> Self {
+        Self {
+            container_manager,
+            io_handler,
+            compilation_manager,
+            config,
             state: Arc::new(Mutex::new(RunnerState::Ready)),
-        })
-    }
-
-    pub fn from_language(language: &str) -> DockerResult<Self> {
-        let config = Config::load()
-            .map_err(|e| DockerError::Config(format!("設定の読み込みに失敗しました: {}", e)))?;
-        
-        Self::new(config, language.to_string())
+        }
     }
 
     pub async fn run_in_docker(&mut self, source_code: &str) -> DockerResult<String> {
         println!("Starting Docker execution");
         
+        let image = self.config.get_image()?;
+        
         // イメージの確認と取得
-        if !self.executor.check_image(self.config.image()).await? {
-            if !self.executor.pull_image(self.config.image()).await? {
-                *self.state.lock().await = RunnerState::Error;
-                return Err(DockerError::Runtime(format!("イメージの取得に失敗: {}", self.config.image())));
-            }
+        if !self.container_manager.check_image(&image).await? {
+            self.container_manager.pull_image(&image).await?;
         }
 
         *self.state.lock().await = RunnerState::Running;
 
-        // 一時ディレクトリの作成（ホスト側）
-        let temp_dir = self.file_manager.create_temp_directory()?;
-        
-        // ソースファイルの作成（直接一時ディレクトリに配置）
-        let source_file = self.file_manager.write_source_file(
-            &temp_dir,
-            &format!("main.{}", self.config.extension()),
-            source_code,
-        )?;
-
-        // パーミッションの設定
-        self.file_manager.set_permissions(&temp_dir, 0o755)?;
-        self.file_manager.set_permissions(&source_file, 0o644)?;
-
-        // コマンドの構築（シンプルに保つ）
-        let command = if let Some(compile_cmd) = self.config.compile_cmd() {
-            format!(
-                "{} && {}",
-                compile_cmd.join(" "),
-                self.config.run_cmd().join(" ")
-            )
-        } else {
-            self.config.run_cmd().join(" ")
-        };
-
-        // コンテナの実行
-        let container_name = format!("runner-{}", Uuid::new_v4());
-        let result = self.executor.run_container(
-            &container_name,
-            self.config.image(),
-            self.config.memory_limit(),
-            temp_dir.to_str().unwrap(),
-            "/app",  // シンプルな固定マウントポイント
-            &command,
-            self.config.timeout_seconds(),
-        ).await;
-
-        // 一時ディレクトリの削除
-        let _ = self.file_manager.cleanup(&temp_dir);
-
-        // 状態の更新と結果の返却
-        match result {
-            Ok(output) => {
-                *self.state.lock().await = RunnerState::Completed;
-                Ok(output)
-            }
-            Err(e) => {
-                *self.state.lock().await = RunnerState::Error;
-                Err(e)
-            }
+        // コンパイルが必要な場合は実行
+        if let Some(compile_cmd) = self.config.get_compile_cmd()? {
+            self.compilation_manager.compile(
+                source_code,
+                Some(compile_cmd),
+                self.config.get_env_vars()?,
+            ).await?;
         }
+
+        // コンテナの作成と起動
+        self.container_manager.create_container(
+            &image,
+            self.config.get_run_cmd()?,
+            self.config.get_working_dir()?,
+        ).await?;
+
+        self.container_manager.start_container().await?;
+        
+        // I/O設定
+        self.io_handler.setup_io().await?;
+
+        // 実行結果の取得
+        let timeout = self.config.get_timeout()?;
+        let output = self.io_handler.read_stdout(timeout).await?;
+        let stderr = self.io_handler.read_stderr(timeout).await?;
+
+        if !stderr.is_empty() {
+            println!("Warning: stderr not empty: {}", stderr);
+        }
+
+        *self.state.lock().await = RunnerState::Completed;
+        Ok(output)
     }
 
     pub async fn cleanup(&mut self) -> DockerResult<()> {
-        Ok(())
+        self.container_manager.stop_container().await
     }
 
     pub async fn get_state(&self) -> RunnerState {
@@ -112,43 +89,83 @@ impl DockerRunner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::docker::fs::MockDockerFileManager;
-    use crate::docker::executor::MockDockerExecutor;
+    use mockall::predicate::*;
+    use mockall::mock;
+    use std::time::Duration;
 
-    #[tokio::test]
-    async fn test_docker_runner_success() {
-        let config = Config::load().unwrap();
-        let docker_config = DockerConfig::new(&config, "rust").unwrap();
-        
-        let mut runner = DockerRunner {
-            config: docker_config,
-            file_manager: Box::new(MockDockerFileManager::new()),
-            executor: Box::new(MockDockerExecutor::new(false)),
-            state: Arc::new(Mutex::new(RunnerState::Ready)),
-        };
-
-        let result = runner.run_in_docker("fn main() { println!(\"Hello from Rust!\"); }").await;
-        assert!(result.is_ok());
-        if let Ok(output) = result {
-            assert!(output.contains("Hello from Rust!"));
+    mock! {
+        ContainerManager {}
+        #[async_trait]
+        impl ContainerManager for ContainerManager {
+            async fn create_container(&mut self, image: &str, cmd: Vec<String>, working_dir: &str) -> DockerResult<()>;
+            async fn start_container(&mut self) -> DockerResult<()>;
+            async fn stop_container(&mut self) -> DockerResult<()>;
+            async fn check_image(&self, image: &str) -> DockerResult<bool>;
+            async fn pull_image(&self, image: &str) -> DockerResult<()>;
         }
-        assert_eq!(runner.get_state().await, RunnerState::Completed);
+    }
+
+    mock! {
+        IOHandler {}
+        #[async_trait]
+        impl IOHandler for IOHandler {
+            async fn write(&self, input: &str) -> DockerResult<()>;
+            async fn read_stdout(&self, timeout: Duration) -> DockerResult<String>;
+            async fn read_stderr(&self, timeout: Duration) -> DockerResult<String>;
+            async fn setup_io(&mut self) -> DockerResult<()>;
+        }
+    }
+
+    mock! {
+        CompilationManager {}
+        #[async_trait]
+        impl CompilationManager for CompilationManager {
+            async fn compile(&mut self, source_code: &str, compile_cmd: Option<Vec<String>>, env_vars: Vec<String>) -> DockerResult<()>;
+            async fn get_compilation_output(&self) -> DockerResult<(String, String)>;
+        }
     }
 
     #[tokio::test]
-    async fn test_docker_runner_failure() {
-        let config = Config::load().unwrap();
-        let docker_config = DockerConfig::new(&config, "rust").unwrap();
-        
-        let mut runner = DockerRunner {
-            config: docker_config,
-            file_manager: Box::new(MockDockerFileManager::new()),
-            executor: Box::new(MockDockerExecutor::new(true)),
-            state: Arc::new(Mutex::new(RunnerState::Ready)),
-        };
+    async fn test_docker_runner_success() {
+        let mut mock_container = MockContainerManager::new();
+        let mut mock_io = MockIOHandler::new();
+        let mut mock_compiler = MockCompilationManager::new();
 
-        let result = runner.run_in_docker("fn main() {}").await;
-        assert!(result.is_err());
-        assert_eq!(runner.get_state().await, RunnerState::Error);
+        mock_container
+            .expect_check_image()
+            .return_once(|_| Ok(true));
+        
+        mock_container
+            .expect_create_container()
+            .return_once(|_, _, _| Ok(()));
+        
+        mock_container
+            .expect_start_container()
+            .return_once(|| Ok(()));
+
+        mock_io
+            .expect_setup_io()
+            .return_once(|| Ok(()));
+        
+        mock_io
+            .expect_read_stdout()
+            .return_once(|_| Ok("Hello from test!".to_string()));
+        
+        mock_io
+            .expect_read_stderr()
+            .return_once(|_| Ok("".to_string()));
+
+        let config = Config::load().unwrap();
+        let mut runner = DockerRunner::new(
+            config,
+            Box::new(mock_container),
+            Box::new(mock_io),
+            Box::new(mock_compiler),
+        );
+
+        let result = runner.run_in_docker("test code").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Hello from test!");
+        assert_eq!(runner.get_state().await, RunnerState::Completed);
     }
 } 

@@ -9,8 +9,6 @@ thread_local! {
     static TEST_DIR: std::cell::RefCell<Option<TempDir>> = std::cell::RefCell::new(None);
 }
 
-pub mod docker_debug;
-
 pub fn setup() {
     // テスト用の一時ディレクトリを作成
     let temp_dir = TempDir::new().unwrap();

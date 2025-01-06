@@ -1,75 +1,59 @@
 use std::path::PathBuf;
-use crate::contest::error::{Result, ContestError};
-use std::fs;
+use crate::contest::error::{ContestError, ContestResult};
+use crate::config::Config;
 
-/// テスト関連の機能を提供する構造体
-#[derive(Debug)]
-pub struct TestManager {
-    /// テストディレクトリ
-    test_dir: PathBuf,
-    /// ジェネレータファイルのパス
-    generator_path: PathBuf,
-    /// テスターファイルのパス
-    tester_path: PathBuf,
-    /// 使用言語
-    language: String,
+pub struct TestService {
+    config: Config,
 }
 
-impl TestManager {
-    /// 新しいテストマネージャーを作成
-    pub fn new(
-        test_dir: PathBuf,
-        generator_path: PathBuf,
-        tester_path: PathBuf,
-        language: String,
-    ) -> Result<Self> {
-        // テストディレクトリの作成
-        if !test_dir.exists() {
-            fs::create_dir_all(&test_dir)
-                .map_err(|e| ContestError::FileSystem {
-                    message: "テストディレクトリの作成に失敗".to_string(),
-                    source: e,
-                    path: test_dir.clone(),
-                })?;
-        }
-
-        // ジェネレータファイルの存在確認
-        if !generator_path.exists() {
-            return Err(ContestError::Validation {
-                message: format!("ジェネレータファイルが見つかりません: {}", generator_path.display()),
-            });
-        }
-
-        // テスターファイルの存在確認
-        if !tester_path.exists() {
-            return Err(ContestError::Validation {
-                message: format!("テスターファイルが見つかりません: {}", tester_path.display()),
-            });
-        }
-
-        Ok(Self {
-            test_dir,
-            generator_path,
-            tester_path,
-            language,
-        })
+impl TestService {
+    pub fn new(config: Config) -> Self {
+        Self { config }
     }
 
-    /// テストを生成
-    pub fn generate(&self) -> Result<()> {
-        println!("テストを生成します...");
-        println!("言語: {}", self.language);
-        println!("テストディレクトリ: {}", self.test_dir.display());
-        println!("ジェネレータ: {}", self.generator_path.display());
-        println!("テスター: {}", self.tester_path.display());
-
-        // TODO: 言語に応じたコンパイルと実行
-        Ok(())
+    pub fn get_test_dir(&self) -> ContestResult<PathBuf> {
+        let test_dir = self.config.get::<String>("system.test.dir")
+            .map_err(|e| ContestError::Config(e.to_string()))?;
+        
+        let path = PathBuf::from(test_dir);
+        if !path.exists() {
+            std::fs::create_dir_all(&path)
+                .map_err(|e| ContestError::Io(e))?;
+        }
+        Ok(path)
     }
 
-    /// テストを実行
-    pub fn run(&self, problem_id: &str) -> Result<()> {
-        println!("TODO: Implement run_test for problem {}", problem_id);
-        Ok(())
+    pub fn get_test_cases(&self, problem_dir: &PathBuf) -> ContestResult<Vec<(PathBuf, PathBuf)>> {
+        let mut test_cases = Vec::new();
+        let entries = std::fs::read_dir(problem_dir)
+            .map_err(|e| ContestError::Io(e))?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| ContestError::Io(e))?;
+            let path = entry.path();
+            
+            if path.is_file() {
+                if let Some(file_name) = path.file_name() {
+                    let file_name = file_name.to_string_lossy();
+                    if file_name.ends_with(".in") {
+                        let out_file = path.with_extension("out");
+                        if out_file.exists() {
+                            test_cases.push((path, out_file));
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(test_cases)
+    }
+
+    pub fn read_test_case(&self, input_file: &PathBuf, output_file: &PathBuf) -> ContestResult<(String, String)> {
+        let input = std::fs::read_to_string(input_file)
+            .map_err(|e| ContestError::Io(e))?;
+        let expected = std::fs::read_to_string(output_file)
+            .map_err(|e| ContestError::Io(e))?;
+        
+        Ok((input, expected))
     }
 } 

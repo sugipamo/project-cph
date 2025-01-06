@@ -3,7 +3,7 @@ mod test;
 mod url;
 mod path;
 
-pub use contest::Contest;
-pub use test::TestManager;
-pub use url::UrlGenerator;
-pub use path::PathResolver; 
+pub use contest::ContestService;
+pub use test::TestService;
+pub use url::UrlService;
+pub use path::PathService; 

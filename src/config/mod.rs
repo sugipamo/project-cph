@@ -50,734 +50,189 @@
 // }
 // ```
 
-use std::collections::HashMap;
-use serde_yaml::Value;
-use std::io;
-use std::env;
-use regex::Regex;
+use std::fs;
+use serde::{Deserialize, Serialize};
+use crate::docker::error::{DockerError, DockerResult};
+use std::time::Duration;
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum ConfigType {
-    String,
-    Integer,
-    Float,
-    Boolean,
-    StringArray,
-}
-
-// 必須設定値の定義を構造体として追加
-#[derive(Debug, Clone)]
-pub struct RequiredValue {
-    pub path: String,
-    pub description: String,
-    pub config_type: ConfigType,
-}
-
-impl RequiredValue {
-    pub fn new(path: &str, description: &str, config_type: ConfigType) -> Self {
-        Self {
-            path: path.to_string(),
-            description: description.to_string(),
-            config_type,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum ConfigError {
-    IoError(io::Error),
-    ParseError(serde_yaml::Error),
-    TypeError {
-        expected: ConfigType,
-        found: &'static str,
-        path: String,
-        value: String,
-    },
-    PathError(String),
-    AliasError(String),
-    EnvError(String),
-    RequiredValueError(String),
-}
-
-impl From<io::Error> for ConfigError {
-    fn from(err: io::Error) -> Self {
-        ConfigError::IoError(err)
-    }
-}
-
-impl From<serde_yaml::Error> for ConfigError {
-    fn from(err: serde_yaml::Error) -> Self {
-        ConfigError::ParseError(err)
-    }
-}
-
-impl std::error::Error for ConfigError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            ConfigError::IoError(err) => Some(err),
-            ConfigError::ParseError(err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum ConfigValue {
-    String(String),
-    Integer(i64),
-    Float(f64),
-    Boolean(bool),
-    StringArray(Vec<String>),
-}
-
-pub trait TypedValue: Sized {
-    const TYPE: ConfigType;
-    fn from_yaml(value: &Value) -> Result<Self, ConfigError>;
-}
-
-#[derive(Debug, Clone)]
-pub struct AliasSection {
-    path: String,
-    alias_field: String,
-}
-
-pub struct ConfigBuilder {
-    alias_sections: Vec<AliasSection>,
-    anchor_prefix: String,
-    required_values: Vec<RequiredValue>,  // 必須設定値のリストを追加
-}
-
-impl ConfigBuilder {
-    pub fn new() -> Self {
-        Self {
-            alias_sections: Vec::new(),
-            anchor_prefix: String::from("_"),
-            required_values: Vec::new(),
-        }
-    }
-
-    // 必須設定値を追加するメソッド
-    pub fn add_required_value(mut self, path: &str, description: &str, config_type: ConfigType) -> Self {
-        self.required_values.push(RequiredValue::new(path, description, config_type));
-        self
-    }
-
-    pub fn add_alias_section(mut self, path: &str, alias_field: &str) -> Self {
-        self.alias_sections.push(AliasSection {
-            path: path.to_string(),
-            alias_field: alias_field.to_string(),
-        });
-        self
-    }
-
-    pub fn set_anchor_prefix(mut self, prefix: &str) -> Self {
-        self.anchor_prefix = prefix.to_string();
-        self
-    }
-
-    pub fn build(self) -> Config {
-        Config {
-            data: Value::Null,
-            alias_map: HashMap::new(),
-            alias_sections: self.alias_sections,
-            anchor_prefix: self.anchor_prefix,
-            required_values: self.required_values,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct Config {
-    data: Value,
-    alias_map: HashMap<String, String>,
-    alias_sections: Vec<AliasSection>,
-    anchor_prefix: String,
-    required_values: Vec<RequiredValue>,
+    system: SystemConfig,
+    languages: std::collections::HashMap<String, LanguageConfig>,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            data: Value::Null,
-            alias_map: HashMap::new(),
-            alias_sections: Vec::new(),
-            anchor_prefix: String::from("_"),
-            required_values: Vec::new(),
-        }
-    }
+#[derive(Debug, Deserialize, Clone, Serialize)]
+struct SystemConfig {
+    docker: DockerSystemConfig,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize)]
+struct DockerSystemConfig {
+    memory_limit_mb: u64,
+    timeout_seconds: u64,
+    mount_point: String,
+    working_dir: String,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize)]
+struct LanguageConfig {
+    name: String,
+    image: String,
+    extension: String,
+    compile_cmd: Option<Vec<String>>,
+    run_cmd: Vec<String>,
+    env_vars: Option<Vec<String>>,
 }
 
 impl Config {
-    pub fn builder() -> ConfigBuilder {
-        ConfigBuilder::new()
-    }
-
-    pub fn load() -> Result<Self, ConfigError> {
-        let config_path = "src/config/config.yaml";
-        let builder = ConfigBuilder::new();
-        Self::from_file(config_path, builder)
-    }
-
-    pub fn from_file(path: &str, builder: ConfigBuilder) -> Result<Self, ConfigError> {
-        let contents = std::fs::read_to_string(path)?;
-        let contents = Self::expand_env_vars(&contents)?;
-        let data: Value = serde_yaml::from_str(&contents)?;
+    pub fn load() -> DockerResult<Self> {
+        let config_str = fs::read_to_string("src/config/config.yaml")
+            .map_err(|e| DockerError::Config(format!("設定ファイルの読み込みに失敗しました: {}", e)))?;
         
-        // YAMLファイルからエイリアスセクションを自動検出
-        let mut builder = builder;
-        if let Value::Mapping(mapping) = &data {
-            for (key, value) in mapping {
-                if let (Value::String(section_name), Value::Mapping(section_data)) = (key, value) {
-                    // セクション内のエントリを確認
-                    for (_, entry) in section_data {
-                        if let Value::Mapping(entry_data) = entry {
-                            // aliasesフィールドを持つエントリを見つけたら、そのセクションをエイリアスセクションとして追加
-                            if entry_data.contains_key("aliases") {
-                                builder = builder.add_alias_section(section_name, "aliases");
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let mut config = Config {
-            data,
-            alias_map: HashMap::new(),
-            alias_sections: builder.alias_sections,
-            anchor_prefix: builder.anchor_prefix,
-            required_values: builder.required_values,
-        };
-        config.build_alias_map()?;
-        config.validate_required_values()?;  // 必須設定値を検証
-        Ok(config)
+        serde_yaml::from_str(&config_str)
+            .map_err(|e| DockerError::Config(format!("設定ファイルのパースに失敗しました: {}", e)))
     }
 
-    pub fn load_from_file(path: &str) -> Result<Self, ConfigError> {
-        let contents = std::fs::read_to_string(path)?;
-        let contents = Self::expand_env_vars(&contents)?;
-        let data: Value = serde_yaml::from_str(&contents)?;
-        
-        Ok(Self {
-            data,
-            alias_map: HashMap::new(),
-            alias_sections: Vec::new(),
-            anchor_prefix: String::from("_"),
-            required_values: Vec::new(),
-        })
-    }
-
-    fn expand_env_vars(content: &str) -> Result<String, ConfigError> {
-        let re = Regex::new(r"\$\{([^}-]+)(?:-([^}]+))?\}").unwrap();
-        let mut result = content.to_string();
-        let mut last_end = 0;
-
-        while let Some(cap) = re.captures(&result[last_end..]) {
-            let full_match = cap.get(0).unwrap();
-            let var_name = &cap[1];
-            let default_value = cap.get(2).map(|m| m.as_str());
-            
-            let var_value = match env::var(var_name) {
-                Ok(value) => value,
-                Err(_) => {
-                    if let Some(default) = default_value {
-                        default.to_string()
-                    } else {
-                        return Err(ConfigError::EnvError(
-                            format!("環境変数 '{}' が未設定で、デフォルト値も指定されていません", var_name)
-                        ));
-                    }
-                }
-            };
-            
-            let start = last_end + full_match.start();
-            let end = last_end + full_match.end();
-            result.replace_range(start..end, &var_value);
-            last_end = start + var_value.len();
-        }
-        
-        Ok(result)
-    }
-
-    fn get_raw(&self, path: &str) -> Result<&Value, ConfigError> {
-        let mut current = &self.data;
-
-        for part in path.split('.') {
-            current = current.get(part).ok_or_else(|| {
-                ConfigError::PathError(path.to_string())
-            })?;
-        }
-
-        Ok(current)
-    }
-
-    pub fn get<T: TypedValue>(&self, path: &str) -> Result<T, ConfigError> {
-        let value = self.get_raw(path)?;
-        T::from_yaml(value).map_err(|e| match e {
-            ConfigError::TypeError { expected, found, .. } => ConfigError::TypeError {
-                expected,
-                found,
-                path: path.to_string(),
-                value: Self::value_to_string(value),
-            },
-            _ => e,
-        })
-    }
-
-    pub fn get_with_message<T: TypedValue>(&self, path: &str, error_message: &str) -> Result<T, ConfigError> {
-        self.get_raw(path)
-            .map_err(|_| ConfigError::RequiredValueError(error_message.to_string()))
-            .and_then(|value| T::from_yaml(value).map_err(|e| match e {
-                ConfigError::TypeError { expected, found, .. } => ConfigError::TypeError {
-                    expected,
-                    found,
-                    path: path.to_string(),
-                    value: Self::value_to_string(value),
-                },
-                _ => e,
-            }))
-    }
-
-    pub fn get_with_alias<T: TypedValue>(&self, path: &str) -> Result<T, ConfigError> {
-        let resolved_path = self.resolve_alias_path(path);
-        self.get::<T>(&resolved_path)
-    }
-
-    fn build_alias_map(&mut self) -> Result<(), ConfigError> {
-        for section in &self.alias_sections {
-            if let Some(section_data) = self.data.get(&section.path) {
-                if let Some(mapping) = section_data.as_mapping() {
-                    for (name, config) in mapping {
-                        if let Some(name) = name.as_str() {
-                            if name.starts_with(&self.anchor_prefix) {
-                                continue; // アンカーをスキップ
-                            }
-                            if let Some(aliases) = config.get(&section.alias_field) {
-                                if let Some(aliases) = aliases.as_sequence() {
-                                    for alias in aliases {
-                                        if let Some(alias) = alias.as_str() {
-                                            self.alias_map.insert(
-                                                alias.to_lowercase(),
-                                                format!("{}.{}", section.path, name),
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn resolve_alias_path(&self, path: &str) -> String {
-        let mut parts = path.split('.');
-        
-        if let Some(first) = parts.next() {
-            // 最初の部分がエイリアスかどうかをチェック
-            if let Some(resolved) = self.alias_map.get(&first.to_lowercase()) {
-                if let Some(rest) = parts.next() {
-                    // 残りのパスがある場合は結合
-                    let remaining: String = parts.fold(rest.to_string(), |acc, part| {
-                        acc + "." + part
-                    });
-                    format!("{}.{}", resolved, remaining)
-                } else {
-                    // エイリアスのみの場合
-                    resolved.clone()
-                }
-            } else {
-                path.to_string()
-            }
-        } else {
-            path.to_string()
-        }
-    }
-
-    fn get_value_type_name(value: &Value) -> &'static str {
-        match value {
-            Value::Null => "null",
-            Value::Bool(_) => "boolean",
-            Value::Number(_) => "number",
-            Value::String(_) => "string",
-            Value::Sequence(_) => "array",
-            Value::Mapping(_) => "object",
-            Value::Tagged(_) => "tagged",
-        }
-    }
-
-    fn value_to_string(value: &Value) -> String {
-        match value {
-            Value::Null => "null".to_string(),
-            Value::Bool(b) => b.to_string(),
-            Value::Number(n) => n.to_string(),
-            Value::String(s) => s.clone(),
-            Value::Sequence(seq) => format!("[{}]", seq.iter()
-                .map(|v| Self::value_to_string(v))
-                .collect::<Vec<_>>()
-                .join(", ")),
-            Value::Mapping(map) => format!("{{{}}}", map.iter()
-                .map(|(k, v)| format!("{}: {}", 
-                    Self::value_to_string(k), 
-                    Self::value_to_string(v)))
-                .collect::<Vec<_>>()
-                .join(", ")),
-            Value::Tagged(tag) => format!("!{} {}", 
-                tag.tag, 
-                Self::value_to_string(&tag.value)),
-        }
-    }
-
-    pub fn validate_required_values(&self) -> Result<(), ConfigError> {
-        for required in &self.required_values {
-            if let Err(ConfigError::PathError(_)) = self.get_raw(&required.path) {
-                return Err(ConfigError::RequiredValueError(
-                    format!("必須設定 '{}' ({}) が設定されていません", required.path, required.description)
-                ));
-            }
-            // 型チェックも行う
-            match required.config_type {
-                ConfigType::String => { let _: String = self.get(&required.path)?; },
-                ConfigType::Integer => { let _: i64 = self.get(&required.path)?; },
-                ConfigType::Float => { let _: f64 = self.get(&required.path)?; },
-                ConfigType::Boolean => { let _: bool = self.get(&required.path)?; },
-                ConfigType::StringArray => { let _: Vec<String> = self.get(&required.path)?; },
-            }
-        }
-        Ok(())
-    }
-
-    pub fn get_raw_value(&self, path: &str) -> Result<&Value, ConfigError> {
+    pub fn get<T: ConfigValue>(&self, path: &str) -> DockerResult<T> {
         let parts: Vec<&str> = path.split('.').collect();
-        let mut current = &self.data;
+        let mut current = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
 
+        // システム設定とカスタム設定をマージ
+        let mut map = serde_yaml::Mapping::new();
+        map.insert(
+            serde_yaml::Value::String("system".to_string()),
+            serde_yaml::to_value(&self.system).map_err(|e| DockerError::Config(e.to_string()))?,
+        );
+        map.insert(
+            serde_yaml::Value::String("languages".to_string()),
+            serde_yaml::to_value(&self.languages).map_err(|e| DockerError::Config(e.to_string()))?,
+        );
+        current = serde_yaml::Value::Mapping(map);
+
+        // パスに従って値を取得
         for part in parts {
-            if let Value::Mapping(map) = current {
-                if let Some(value) = map.get(&Value::String(part.to_string())) {
-                    current = value;
-                } else {
-                    return Err(ConfigError::PathError(path.to_string()));
+            current = match current {
+                serde_yaml::Value::Mapping(map) => {
+                    map.get(&serde_yaml::Value::String(part.to_string()))
+                        .ok_or_else(|| DockerError::Config(format!("設定パス{}が見つかりません", path)))?
+                        .clone()
                 }
-            } else {
-                return Err(ConfigError::PathError(path.to_string()));
-            }
+                _ => return Err(DockerError::Config(format!("無効な設定パス: {}", path))),
+            };
         }
 
-        Ok(current)
+        T::from_value(current)
+            .map_err(|e| DockerError::Config(format!("値の変換に失敗しました: {}", e)))
     }
 
-    pub fn from_str(content: &str, builder: ConfigBuilder) -> Result<Self, String> {
-        let contents = Self::expand_env_vars(content)
-            .map_err(|e| format!("環境変数の展開に失敗しました: {}", e))?;
-        let data: Value = serde_yaml::from_str(&contents)
-            .map_err(|e| format!("YAML形式の解析に失敗しました: {}", e))?;
-        
-        // YAMLファイルからエイリアスセクションを自動検出
-        let mut builder = builder;
-        if let Value::Mapping(mapping) = &data {
-            for (key, value) in mapping {
-                if let (Value::String(section_name), Value::Mapping(section_data)) = (key, value) {
-                    for (_, entry) in section_data {
-                        if let Value::Mapping(entry_data) = entry {
-                            if entry_data.contains_key("aliases") {
-                                builder = builder.add_alias_section(section_name, "aliases");
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
+    pub fn get_image(&self) -> DockerResult<String> {
+        self.get_current_language()
+            .map(|lang| lang.image.clone())
+    }
+
+    pub fn get_compile_cmd(&self) -> DockerResult<Option<Vec<String>>> {
+        self.get_current_language()
+            .map(|lang| lang.compile_cmd.clone())
+    }
+
+    pub fn get_run_cmd(&self) -> DockerResult<Vec<String>> {
+        self.get_current_language()
+            .map(|lang| lang.run_cmd.clone())
+    }
+
+    pub fn get_env_vars(&self) -> DockerResult<Vec<String>> {
+        self.get_current_language()
+            .map(|lang| lang.env_vars.clone().unwrap_or_default())
+    }
+
+    pub fn get_working_dir(&self) -> DockerResult<String> {
+        Ok(self.system.docker.working_dir.clone())
+    }
+
+    pub fn get_timeout(&self) -> DockerResult<Duration> {
+        Ok(Duration::from_secs(self.system.docker.timeout_seconds))
+    }
+
+    pub fn get_memory_limit(&self) -> DockerResult<u64> {
+        Ok(self.system.docker.memory_limit_mb)
+    }
+
+    pub fn get_mount_point(&self) -> DockerResult<String> {
+        Ok(self.system.docker.mount_point.clone())
+    }
+
+    fn get_current_language(&self) -> DockerResult<&LanguageConfig> {
+        // Note: 実際の実装では現在の言語を追跡する方法が必要です
+        self.languages.get("rust")
+            .ok_or_else(|| DockerError::Config("言語設定が見つかりません".to_string()))
+    }
+} 
+
+// 設定値の型変換トレイト
+pub trait ConfigValue: Sized {
+    fn from_value(value: serde_yaml::Value) -> Result<Self, String>;
+}
+
+// String型の実装
+impl ConfigValue for String {
+    fn from_value(value: serde_yaml::Value) -> Result<Self, String> {
+        match value {
+            serde_yaml::Value::String(s) => Ok(s),
+            _ => Err(format!("文字列ではありません: {:?}", value)),
         }
-
-        let mut config = Self {
-            data,
-            alias_map: HashMap::new(),
-            alias_sections: builder.alias_sections,
-            anchor_prefix: builder.anchor_prefix,
-            required_values: builder.required_values,
-        };
-
-        config.build_alias_map()
-            .map_err(|e| format!("エイリアスマップの構築に失敗しました: {}", e))?;
-        config.validate_required_values()
-            .map_err(|e| format!("必須値の検証に失敗しました: {}", e))?;
-
-        Ok(config)
     }
 }
 
-// 基本的な型の実装
-impl TypedValue for String {
-    const TYPE: ConfigType = ConfigType::String;
-
-    fn from_yaml(value: &Value) -> Result<Self, ConfigError> {
+// Vec<String>型の実装
+impl ConfigValue for Vec<String> {
+    fn from_value(value: serde_yaml::Value) -> Result<Self, String> {
         match value {
-            Value::String(s) => Ok(s.clone()),
-            Value::Number(n) => Ok(n.to_string()),
-            Value::Bool(b) => Ok(b.to_string()),
-            _ => Err(ConfigError::TypeError {
-                expected: Self::TYPE,
-                found: Config::get_value_type_name(value),
-                path: String::new(),
-                value: Config::value_to_string(value),
-            }),
+            serde_yaml::Value::Sequence(seq) => {
+                seq.into_iter()
+                    .map(|v| match v {
+                        serde_yaml::Value::String(s) => Ok(s),
+                        _ => Err(format!("文字列ではありません: {:?}", v)),
+                    })
+                    .collect()
+            }
+            _ => Err(format!("配列ではありません: {:?}", value)),
         }
     }
 }
 
-impl TypedValue for bool {
-    const TYPE: ConfigType = ConfigType::Boolean;
-
-    fn from_yaml(value: &Value) -> Result<Self, ConfigError> {
+// bool型の実装
+impl ConfigValue for bool {
+    fn from_value(value: serde_yaml::Value) -> Result<Self, String> {
         match value {
-            Value::Bool(b) => Ok(*b),
-            Value::String(s) => match s.to_lowercase().as_str() {
+            serde_yaml::Value::Bool(b) => Ok(b),
+            serde_yaml::Value::String(s) => match s.to_lowercase().as_str() {
                 "true" | "yes" | "on" | "1" => Ok(true),
                 "false" | "no" | "off" | "0" => Ok(false),
-                _ => Err(ConfigError::TypeError {
-                    expected: Self::TYPE,
-                    found: "invalid boolean string",
-                    path: String::new(),
-                    value: s.clone(),
-                }),
+                _ => Err(format!("真偽値として解釈できません: {}", s)),
             },
-            _ => Err(ConfigError::TypeError {
-                expected: Self::TYPE,
-                found: Config::get_value_type_name(value),
-                path: String::new(),
-                value: Config::value_to_string(value),
-            }),
+            _ => Err(format!("真偽値ではありません: {:?}", value)),
         }
     }
 }
 
-impl TypedValue for Vec<String> {
-    const TYPE: ConfigType = ConfigType::StringArray;
-
-    fn from_yaml(value: &Value) -> Result<Self, ConfigError> {
-        value.as_sequence()
-            .ok_or_else(|| ConfigError::TypeError {
-                expected: Self::TYPE,
-                found: Config::get_value_type_name(value),
-                path: String::new(),
-                value: Config::value_to_string(value),
-            })?
-            .iter()
-            .map(|v| String::from_yaml(v))
-            .collect()
-    }
-}
-
-// 数値型の実装
-impl TypedValue for i64 {
-    const TYPE: ConfigType = ConfigType::Integer;
-
-    fn from_yaml(value: &Value) -> Result<Self, ConfigError> {
+// u64型の実装
+impl ConfigValue for u64 {
+    fn from_value(value: serde_yaml::Value) -> Result<Self, String> {
         match value {
-            Value::Number(n) => n.as_i64().ok_or_else(|| ConfigError::TypeError {
-                expected: Self::TYPE,
-                found: "float",
-                path: String::new(),
-                value: Config::value_to_string(value),
-            }),
-            _ => Err(ConfigError::TypeError {
-                expected: Self::TYPE,
-                found: Config::get_value_type_name(value),
-                path: String::new(),
-                value: Config::value_to_string(value),
-            }),
+            serde_yaml::Value::Number(n) => n.as_u64()
+                .ok_or_else(|| format!("u64として解釈できません: {:?}", n)),
+            _ => Err(format!("数値ではありません: {:?}", value)),
         }
     }
 }
 
-impl TypedValue for f64 {
-    const TYPE: ConfigType = ConfigType::Float;
-
-    fn from_yaml(value: &Value) -> Result<Self, ConfigError> {
+// i64型の実装
+impl ConfigValue for i64 {
+    fn from_value(value: serde_yaml::Value) -> Result<Self, String> {
         match value {
-            Value::Number(n) => n.as_f64().ok_or_else(|| ConfigError::TypeError {
-                expected: Self::TYPE,
-                found: "non-float number",
-                path: String::new(),
-                value: Config::value_to_string(value),
-            }),
-            _ => Err(ConfigError::TypeError {
-                expected: Self::TYPE,
-                found: Config::get_value_type_name(value),
-                path: String::new(),
-                value: Config::value_to_string(value),
-            }),
+            serde_yaml::Value::Number(n) => n.as_i64()
+                .ok_or_else(|| format!("i64として解釈できません: {:?}", n)),
+            _ => Err(format!("数値ではありません: {:?}", value)),
         }
-    }
-}
-
-impl TypedValue for u64 {
-    const TYPE: ConfigType = ConfigType::Integer;
-
-    fn from_yaml(value: &Value) -> Result<Self, ConfigError> {
-        match value {
-            Value::Number(n) => {
-                if let Some(i) = n.as_i64() {
-                    if i < 0 {
-                        Err(ConfigError::TypeError {
-                            expected: Self::TYPE,
-                            found: "negative integer",
-                            path: String::new(),
-                            value: Config::value_to_string(value),
-                        })
-                    } else {
-                        Ok(i as u64)
-                    }
-                } else {
-                    Err(ConfigError::TypeError {
-                        expected: Self::TYPE,
-                        found: "non-integer number",
-                        path: String::new(),
-                        value: Config::value_to_string(value),
-                    })
-                }
-            },
-            _ => Err(ConfigError::TypeError {
-                expected: Self::TYPE,
-                found: Config::get_value_type_name(value),
-                path: String::new(),
-                value: Config::value_to_string(value),
-            }),
-        }
-    }
-}
-
-impl std::fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ConfigError::IoError(err) => write!(f, "ファイル操作エラー: {}", err),
-            ConfigError::ParseError(err) => write!(f, "YAML解析エラー: {}", err),
-            ConfigError::TypeError { expected, found, path, value } => {
-                write!(f, "型エラー: パス '{}' で {} が必要ですが、{} ({}) が見つかりました",
-                    path,
-                    match expected {
-                        ConfigType::String => "文字列",
-                        ConfigType::Integer => "整数",
-                        ConfigType::Float => "浮動小数点数",
-                        ConfigType::Boolean => "真偽値",
-                        ConfigType::StringArray => "文字列配列",
-                    },
-                    match *found {
-                        "string" => "文字列",
-                        "number" => "数値",
-                        "float" => "浮動小数点数",
-                        "integer" => "整数",
-                        "boolean" => "真偽値",
-                        "array" => "配列",
-                        "null" => "null",
-                        "object" => "オブジェクト",
-                        "tagged" => "タグ付き値",
-                        _ => found,
-                    },
-                    value
-                )
-            },
-            ConfigError::PathError(path) => write!(f, "設定エラー: パス '{}' が見つかりません", path),
-            ConfigError::AliasError(msg) => write!(f, "エイリアスエラー: {}", msg),
-            ConfigError::EnvError(msg) => write!(f, "環境変数エラー: {}", msg),
-            ConfigError::RequiredValueError(msg) => write!(f, "設定エラー: {}", msg),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn create_test_config(yaml: &str) -> Config {
-        let contents = Config::expand_env_vars(yaml).unwrap();
-        let data: Value = serde_yaml::from_str(&contents).unwrap();
-        let mut config = Config {
-            data,
-            alias_map: HashMap::new(),
-            alias_sections: vec![],
-            anchor_prefix: String::from("_"),
-            required_values: vec![],
-        };
-        config.build_alias_map().unwrap();
-        config
-    }
-
-    #[test]
-    fn test_env_var_expansion() {
-        std::env::set_var("TEST_VAR", "test_value");
-        let yaml = "${TEST_VAR}";
-        let result = Config::expand_env_vars(yaml).unwrap();
-        assert_eq!(result, "test_value");
-    }
-
-    #[test]
-    fn test_env_var_with_default() {
-        let yaml = "${NONEXISTENT_VAR-default_value}";
-        let result = Config::expand_env_vars(yaml).unwrap();
-        assert_eq!(result, "default_value");
-    }
-
-    #[test]
-    fn test_env_var_with_assign_default() {
-        let yaml = "${NONEXISTENT_VAR-default_value}";
-        let result = Config::expand_env_vars(yaml).unwrap();
-        assert_eq!(result, "default_value");
-    }
-
-    #[test]
-    fn test_multiple_env_vars() {
-        std::env::set_var("VAR1", "value1");
-        std::env::set_var("VAR2", "value2");
-        let yaml = "${VAR1} ${VAR2}";
-        let result = Config::expand_env_vars(yaml).unwrap();
-        assert_eq!(result, "value1 value2");
-    }
-
-    #[test]
-    fn test_missing_env_var_no_default() {
-        let yaml = "${NONEXISTENT_VAR}";
-        let env_error = Config::expand_env_vars(yaml);
-        assert!(env_error.is_err());
-        assert_eq!(
-            env_error.unwrap_err().to_string(),
-            "環境変数エラー: 環境変数 'NONEXISTENT_VAR' が未設定で、デフォルト値も指定されていません"
-        );
-    }
-
-    #[test]
-    fn test_nested_env_vars() {
-        std::env::set_var("OUTER", "outer");
-        std::env::set_var("INNER", "inner");
-        let yaml = "${OUTER}_${INNER}";
-        let result = Config::expand_env_vars(yaml).unwrap();
-        assert_eq!(result, "outer_inner");
-    }
-
-    #[test]
-    fn test_numeric_values() {
-        let yaml = r#"
-        system:
-          docker:
-            timeout_seconds: 10
-            memory_limit_mb: 256.5
-        "#;
-
-        let config = create_test_config(yaml);
-
-        // 整数値の取得
-        let timeout: i64 = config.get("system.docker.timeout_seconds").unwrap();
-        assert_eq!(timeout, 10);
-
-        // 浮動小数点値の取得
-        let memory: f64 = config.get("system.docker.memory_limit_mb").unwrap();
-        assert_eq!(memory, 256.5);
-
-        // 型変換エラーの確認
-        let error = config.get::<bool>("system.docker.timeout_seconds");
-        assert!(error.is_err());
     }
 } 
