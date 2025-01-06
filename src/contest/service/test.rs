@@ -1,6 +1,7 @@
 use std::path::PathBuf;
-use crate::contest::error::{ContestError, ContestResult};
 use crate::config::Config;
+use crate::contest::error::{ContestError, ContestResult};
+use crate::test::{TestCase, TestRunner};
 
 pub struct TestService {
     config: Config,
@@ -11,49 +12,52 @@ impl TestService {
         Self { config }
     }
 
-    pub fn get_test_dir(&self) -> ContestResult<PathBuf> {
-        let test_dir = self.config.get::<String>("system.test.dir")
-            .map_err(|e| ContestError::Config(e.to_string()))?;
+    pub async fn run_test(&self, problem_id: &str) -> ContestResult<Vec<bool>> {
+        let test_dir = self.get_test_dir(problem_id)?;
         
-        let path = PathBuf::from(test_dir);
-        if !path.exists() {
-            std::fs::create_dir_all(&path)
-                .map_err(|e| ContestError::Io(e))?;
+        if !test_dir.exists() {
+            std::fs::create_dir_all(&test_dir)
+                .map_err(|e| ContestError::IO(e))?;
         }
-        Ok(path)
-    }
 
-    pub fn get_test_cases(&self, problem_dir: &PathBuf) -> ContestResult<Vec<(PathBuf, PathBuf)>> {
-        let mut test_cases = Vec::new();
-        let entries = std::fs::read_dir(problem_dir)
-            .map_err(|e| ContestError::Io(e))?;
+        let mut results = Vec::new();
+        let entries = std::fs::read_dir(&test_dir)
+            .map_err(|e| ContestError::IO(e))?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| ContestError::Io(e))?;
+            let entry = entry.map_err(|e| ContestError::IO(e))?;
             let path = entry.path();
-            
-            if path.is_file() {
-                if let Some(file_name) = path.file_name() {
-                    let file_name = file_name.to_string_lossy();
-                    if file_name.ends_with(".in") {
-                        let out_file = path.with_extension("out");
-                        if out_file.exists() {
-                            test_cases.push((path, out_file));
-                        }
-                    }
-                }
+
+            if path.is_file() && path.extension().map_or(false, |ext| ext == "in") {
+                let test_case = self.load_test_case(&path)?;
+                // TODO: 実際のテスト実行を実装
+                results.push(true);
             }
         }
 
-        Ok(test_cases)
+        Ok(results)
     }
 
-    pub fn read_test_case(&self, input_file: &PathBuf, output_file: &PathBuf) -> ContestResult<(String, String)> {
-        let input = std::fs::read_to_string(input_file)
-            .map_err(|e| ContestError::Io(e))?;
-        let expected = std::fs::read_to_string(output_file)
-            .map_err(|e| ContestError::Io(e))?;
-        
-        Ok((input, expected))
+    fn get_test_dir(&self, problem_id: &str) -> ContestResult<PathBuf> {
+        let default_lang = self.config
+            .get::<String>("languages.default")
+            .map_err(|e| ContestError::Config(e.to_string()))?;
+
+        let active_dir = self.config
+            .get::<String>(&format!("languages.{}.contest_dir.active", default_lang))
+            .map_err(|e| ContestError::Config(e.to_string()))?;
+
+        Ok(PathBuf::from(active_dir).join("test").join(problem_id))
+    }
+
+    fn load_test_case(&self, test_file: &PathBuf) -> ContestResult<TestCase> {
+        let input = std::fs::read_to_string(test_file)
+            .map_err(|e| ContestError::IO(e))?;
+
+        let expected_path = test_file.with_extension("out");
+        let expected = std::fs::read_to_string(&expected_path)
+            .map_err(|e| ContestError::IO(e))?;
+
+        Ok(TestCase { input, expected })
     }
 } 

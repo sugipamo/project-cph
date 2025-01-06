@@ -41,22 +41,25 @@ impl ContestService {
         };
 
         let operation = Arc::new(DefaultDockerOperation::new());
-        let mut docker_runner = DockerRunner::new(operation, timeout);
+        let mut docker_runner = DockerRunner::new(
+            operation,
+            timeout,
+            format!("runner_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs())
+        );
 
         // コンテナの初期化
         docker_runner.initialize(container_config).await
             .map_err(|e| ContestError::Docker(e.to_string()))?;
 
-        // ソースコードの実行
-        docker_runner.execute(vec![source_code.to_string()]).await
-            .map_err(|e| ContestError::Docker(e.to_string()))?;
+        // コンテナの起動
+        docker_runner.start().await?;
 
-        // 結果の取得
+        // 実行結果の取得
         let state = docker_runner.get_state().await;
         match state {
             RunnerState::Completed(result) => Ok(result.output),
             RunnerState::Failed(error) => Err(ContestError::Docker(error.to_string())),
-            _ => Err(ContestError::Docker("実行が完了しませんでした".to_string())),
+            _ => Err(ContestError::Docker("Unexpected state".to_string())),
         }
     }
 }

@@ -2,64 +2,53 @@ use std::path::{Path, PathBuf};
 use crate::config::Config;
 use crate::contest::error::{ContestError, ContestResult};
 
-/// テストディレクトリのパスを取得
-pub fn get_test_dir(config: &Config, problem_id: &str) -> ContestResult<PathBuf> {
-    let default_lang = config.get::<String>("languages.default")
-        .map_err(|e| ContestError::Config(e.to_string()))?;
-    let active_dir = config.get::<String>(&format!("languages.{}.contest_dir.active", default_lang))
-        .map_err(|e| ContestError::Config(e.to_string()))?;
-    Ok(PathBuf::from(active_dir).join("test").join(problem_id))
+pub struct TestCase {
+    pub input: String,
+    pub expected: String,
 }
 
-/// テストケースを実行
-pub async fn run_test_cases(test_dir: &Path) -> ContestResult<()> {
-    if !test_dir.exists() {
-        return Err(ContestError::Contest(
-            format!("テストディレクトリが存在しません: {}", test_dir.display())
+pub trait TestRunner {
+    fn run_test(&self, test_case: &TestCase) -> ContestResult<bool>;
+}
+
+pub fn load_test_cases(test_dir: &str) -> ContestResult<Vec<TestCase>> {
+    if !std::path::Path::new(test_dir).exists() {
+        return Err(ContestError::Config(
+            format!("テストディレクトリが存在しません: {}", test_dir)
         ));
     }
 
-    // テストケースのファイルを列挙
-    let mut test_files = Vec::new();
-    for entry in std::fs::read_dir(test_dir)
-        .map_err(|e| ContestError::Io(e))? {
-        let entry = entry.map_err(|e| ContestError::Io(e))?;
+    let entries = std::fs::read_dir(test_dir)
+        .map_err(|e| ContestError::IO(e))?;
+
+    let mut test_cases = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|e| ContestError::IO(e))?;
         let path = entry.path();
+
         if path.is_file() && path.extension().map_or(false, |ext| ext == "in") {
-            test_files.push(path);
+            let test_file = path.to_str().ok_or_else(|| ContestError::Config(
+                format!("テストファイルのパスが無効です: {:?}", path)
+            ))?;
+
+            let expected_path = PathBuf::from(test_file).with_extension("out");
+            if !expected_path.exists() {
+                return Err(ContestError::Config(
+                    format!("期待値ファイルが存在しません: {:?}", expected_path)
+                ));
+            }
+
+            let input = std::fs::read_to_string(&test_file)
+                .map_err(|e| ContestError::IO(e))?;
+
+            let expected = std::fs::read_to_string(&expected_path)
+                .map_err(|e| ContestError::IO(e))?;
+
+            test_cases.push(TestCase { input, expected });
         }
     }
 
-    if test_files.is_empty() {
-        return Err(ContestError::Contest(
-            "テストケースが見つかりません".to_string()
-        ));
-    }
-
-    // 各テストケースを実行
-    for test_file in test_files {
-        let input = std::fs::read_to_string(&test_file)
-            .map_err(|e| ContestError::Io(e))?;
-        let expected_path = test_file.with_extension("out");
-        let expected = std::fs::read_to_string(&expected_path)
-            .map_err(|e| ContestError::Io(e))?;
-
-        // TODO: 実際のテスト実行を実装
-        println!("テストケース {}: 実行中...", test_file.display());
-    }
-
-    Ok(())
-}
-
-/// テストを実行
-pub async fn run_test(
-    config: &Config,
-    problem_id: &str,
-    _site_id: &str,
-) -> ContestResult<()> {
-    let test_dir = get_test_dir(config, problem_id)?;
-    run_test_cases(&test_dir).await?;
-    Ok(())
+    Ok(test_cases)
 }
 
 #[cfg(test)]
