@@ -1,29 +1,17 @@
-use crate::error::{CphError, FileSystemError};
+use crate::error::{CphError, helpers};
 
 pub fn not_found_err(path: String) -> CphError {
-    CphError::Fs(FileSystemError::NotFound {
-        path,
-        hint: None,
-    })
+    helpers::fs_not_found(path)
 }
 
 pub fn io_err(error: std::io::Error, context: String) -> CphError {
-    CphError::Fs(FileSystemError::Io {
-        source: error,
-        context,
-    })
+    helpers::fs_io(context, error)
 }
 
 pub fn permission_err(path: String) -> CphError {
-    CphError::Fs(FileSystemError::Permission {
-        path,
-        hint: None,
-    })
+    helpers::fs_permission(path)
 }
 
 pub fn transaction_err(error: std::io::Error, context: String) -> CphError {
-    CphError::Fs(FileSystemError::Io {
-        source: error,
-        context,
-    })
+    helpers::fs_io(context, error)
 } 
