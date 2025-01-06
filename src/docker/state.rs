@@ -1,62 +1,86 @@
-use std::fmt;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
-use crate::docker::error::DockerResult;
+use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ContainerState {
-    /// 初期状態
     Initial,
-    /// コンテナが作成された状態
     Created {
         container_id: String,
+        created_at: Instant,
     },
-    /// コンテナが実行中の状態
     Running {
         container_id: String,
-        start_time: Instant,
+        started_at: Instant,
     },
-    /// コンテナが停止した状態
+    Compiling {
+        container_id: String,
+        started_at: Instant,
+    },
+    Executing {
+        container_id: String,
+        started_at: Instant,
+        command: String,
+    },
     Stopped {
         container_id: String,
         exit_code: i32,
         execution_time: Duration,
     },
-    /// エラーが発生した状態
     Failed {
+        container_id: String,
         error: String,
+        occurred_at: Instant,
     },
 }
 
-impl fmt::Display for ContainerState {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+#[derive(Debug, Error)]
+pub enum StateError {
+    #[error("Invalid state transition from {from:?} to {to:?}")]
+    InvalidTransition {
+        from: ContainerState,
+        to: ContainerState,
+    },
+    #[error("Container ID mismatch: expected {expected}, got {actual}")]
+    ContainerIdMismatch {
+        expected: String,
+        actual: String,
+    },
+    #[error("Container not found: {0}")]
+    ContainerNotFound(String),
+    #[error("Internal state error: {0}")]
+    Internal(String),
+}
+
+pub type StateResult<T> = Result<T, StateError>;
+
+impl ContainerState {
+    pub fn container_id(&self) -> Option<&str> {
         match self {
-            ContainerState::Initial => write!(f, "初期状態"),
-            ContainerState::Created { container_id } => {
-                write!(f, "コンテナ作成済み (ID: {})", container_id)
-            }
-            ContainerState::Running { container_id, start_time } => {
-                write!(
-                    f,
-                    "実行中 (ID: {}, 経過時間: {:?})",
-                    container_id,
-                    start_time.elapsed()
-                )
-            }
-            ContainerState::Stopped {
-                container_id,
-                exit_code,
-                execution_time,
-            } => {
-                write!(
-                    f,
-                    "停止 (ID: {}, 終了コード: {}, 実行時間: {:?})",
-                    container_id, exit_code, execution_time
-                )
-            }
-            ContainerState::Failed { error } => {
-                write!(f, "エラー: {}", error)
-            }
+            ContainerState::Initial => None,
+            ContainerState::Created { container_id, .. } => Some(container_id),
+            ContainerState::Running { container_id, .. } => Some(container_id),
+            ContainerState::Compiling { container_id, .. } => Some(container_id),
+            ContainerState::Executing { container_id, .. } => Some(container_id),
+            ContainerState::Stopped { container_id, .. } => Some(container_id),
+            ContainerState::Failed { container_id, .. } => Some(container_id),
+        }
+    }
+
+    pub fn is_terminal(&self) -> bool {
+        matches!(
+            self,
+            ContainerState::Stopped { .. } | ContainerState::Failed { .. }
+        )
+    }
+
+    pub fn duration_since_start(&self) -> Option<Duration> {
+        match self {
+            ContainerState::Running { started_at, .. }
+            | ContainerState::Compiling { started_at, .. }
+            | ContainerState::Executing { started_at, .. } => Some(started_at.elapsed()),
+            ContainerState::Stopped { execution_time, .. } => Some(*execution_time),
+            _ => None,
         }
     }
 }
@@ -74,66 +98,178 @@ impl StateManager {
         }
     }
 
-    pub async fn transition_to(&mut self, new_state: ContainerState) -> DockerResult<()> {
-        self.current_state = new_state.clone();
-        
-        // 状態変更を購読者に通知
-        let mut failed_subscribers = Vec::new();
-        for (index, subscriber) in self.subscribers.iter().enumerate() {
-            if subscriber.send(new_state.clone()).await.is_err() {
-                failed_subscribers.push(index);
-            }
-        }
+    pub async fn transition_to(&mut self, new_state: ContainerState) -> StateResult<()> {
+        // 状態遷移の検証
+        self.validate_transition(&new_state)?;
 
-        // 切断された購読者を削除
-        for index in failed_subscribers.into_iter().rev() {
-            self.subscribers.swap_remove(index);
-        }
+        // 状態を更新
+        self.current_state = new_state.clone();
+
+        // 購読者に通知
+        self.notify_subscribers(new_state).await;
 
         Ok(())
     }
 
-    pub fn get_current_state(&self) -> &ContainerState {
-        &self.current_state
+    fn validate_transition(&self, new_state: &ContainerState) -> StateResult<()> {
+        use ContainerState::*;
+
+        match (&self.current_state, new_state) {
+            // 初期状態からの遷移
+            (Initial, Created { .. }) => Ok(()),
+
+            // Created状態からの遷移
+            (Created { container_id, .. }, Running { container_id: new_id, .. })
+            | (Created { container_id, .. }, Failed { container_id: new_id, .. }) => {
+                if container_id == new_id {
+                    Ok(())
+                } else {
+                    Err(StateError::ContainerIdMismatch {
+                        expected: container_id.clone(),
+                        actual: new_id.clone(),
+                    })
+                }
+            }
+
+            // Running状態からの遷移
+            (Running { container_id, .. }, Compiling { container_id: new_id, .. })
+            | (Running { container_id, .. }, Executing { container_id: new_id, .. })
+            | (Running { container_id, .. }, Stopped { container_id: new_id, .. })
+            | (Running { container_id, .. }, Failed { container_id: new_id, .. }) => {
+                if container_id == new_id {
+                    Ok(())
+                } else {
+                    Err(StateError::ContainerIdMismatch {
+                        expected: container_id.clone(),
+                        actual: new_id.clone(),
+                    })
+                }
+            }
+
+            // Compiling状態からの遷移
+            (Compiling { container_id, .. }, Running { container_id: new_id, .. })
+            | (Compiling { container_id, .. }, Failed { container_id: new_id, .. }) => {
+                if container_id == new_id {
+                    Ok(())
+                } else {
+                    Err(StateError::ContainerIdMismatch {
+                        expected: container_id.clone(),
+                        actual: new_id.clone(),
+                    })
+                }
+            }
+
+            // Executing状態からの遷移
+            (Executing { container_id, .. }, Running { container_id: new_id, .. })
+            | (Executing { container_id, .. }, Stopped { container_id: new_id, .. })
+            | (Executing { container_id, .. }, Failed { container_id: new_id, .. }) => {
+                if container_id == new_id {
+                    Ok(())
+                } else {
+                    Err(StateError::ContainerIdMismatch {
+                        expected: container_id.clone(),
+                        actual: new_id.clone(),
+                    })
+                }
+            }
+
+            // 終端状態からの遷移は許可しない
+            (Stopped { .. }, _) | (Failed { .. }, _) => {
+                Err(StateError::InvalidTransition {
+                    from: self.current_state.clone(),
+                    to: new_state.clone(),
+                })
+            }
+
+            // その他の遷移は無効
+            _ => Err(StateError::InvalidTransition {
+                from: self.current_state.clone(),
+                to: new_state.clone(),
+            }),
+        }
+    }
+
+    async fn notify_subscribers(&mut self, state: ContainerState) {
+        let mut closed_indices = Vec::new();
+
+        for (i, subscriber) in self.subscribers.iter().enumerate() {
+            if subscriber.send(state.clone()).await.is_err() {
+                closed_indices.push(i);
+            }
+        }
+
+        // クローズされた購読者を削除
+        for i in closed_indices.iter().rev() {
+            self.subscribers.remove(*i);
+        }
     }
 
     pub async fn subscribe(&mut self) -> mpsc::Receiver<ContainerState> {
-        let (tx, rx) = mpsc::channel(8);
+        let (tx, rx) = mpsc::channel(32);
         self.subscribers.push(tx);
         rx
+    }
+
+    pub fn get_current_state(&self) -> &ContainerState {
+        &self.current_state
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::time::sleep;
 
     #[tokio::test]
-    async fn test_state_transitions() {
+    async fn test_valid_state_transitions() {
         let mut manager = StateManager::new();
-        assert_eq!(*manager.get_current_state(), ContainerState::Initial);
-
-        // Created状態への遷移
+        
+        // Initial -> Created
         let created_state = ContainerState::Created {
             container_id: "test_container".to_string(),
+            created_at: Instant::now(),
         };
-        manager.transition_to(created_state.clone()).await.unwrap();
-        assert_eq!(*manager.get_current_state(), created_state);
+        assert!(manager.transition_to(created_state.clone()).await.is_ok());
 
-        // Running状態への遷移
+        // Created -> Running
         let running_state = ContainerState::Running {
             container_id: "test_container".to_string(),
-            start_time: Instant::now(),
+            started_at: Instant::now(),
         };
-        manager.transition_to(running_state.clone()).await.unwrap();
-        assert_eq!(
-            match manager.get_current_state() {
-                ContainerState::Running { container_id, .. } => container_id.as_str(),
-                _ => "",
-            },
-            "test_container"
-        );
+        assert!(manager.transition_to(running_state).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_invalid_state_transitions() {
+        let mut manager = StateManager::new();
+
+        // Initial -> Running (invalid)
+        let running_state = ContainerState::Running {
+            container_id: "test_container".to_string(),
+            started_at: Instant::now(),
+        };
+        assert!(manager.transition_to(running_state).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_container_id_mismatch() {
+        let mut manager = StateManager::new();
+
+        // Setup initial state
+        let created_state = ContainerState::Created {
+            container_id: "container1".to_string(),
+            created_at: Instant::now(),
+        };
+        assert!(manager.transition_to(created_state).await.is_ok());
+
+        // Try to transition with different container ID
+        let running_state = ContainerState::Running {
+            container_id: "container2".to_string(),
+            started_at: Instant::now(),
+        };
+        assert!(matches!(
+            manager.transition_to(running_state).await,
+            Err(StateError::ContainerIdMismatch { .. })
+        ));
     }
 
     #[tokio::test]
@@ -141,19 +277,15 @@ mod tests {
         let mut manager = StateManager::new();
         let mut rx = manager.subscribe().await;
 
-        // 状態変更を非同期で監視
-        let monitor_handle = tokio::spawn(async move {
-            let state = rx.recv().await.unwrap();
-            matches!(state, ContainerState::Created { .. })
-        });
-
-        // 状態を変更
+        // Create state change
         let new_state = ContainerState::Created {
             container_id: "test_container".to_string(),
+            created_at: Instant::now(),
         };
-        manager.transition_to(new_state).await.unwrap();
+        manager.transition_to(new_state.clone()).await.unwrap();
 
-        // 監視タスクの結果を確認
-        assert!(monitor_handle.await.unwrap());
+        // Verify subscriber received the state
+        let received_state = rx.recv().await.unwrap();
+        assert_eq!(received_state, new_state);
     }
 } 

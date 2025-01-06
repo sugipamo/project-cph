@@ -1,24 +1,31 @@
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 
-use crate::docker::error::DockerResult;
+use crate::docker::error::{DockerError, DockerResult};
 use crate::docker::traits::DockerOperations;
-use crate::docker::state::{ContainerState, StateManager};
+use crate::docker::state::{ContainerState, StateManager, StateError};
 use crate::docker::config::ContainerConfig;
+use crate::docker::executor::{DockerCommand, DockerCommandExecutor};
 
 pub struct DockerRunner {
     operations: Arc<Mutex<dyn DockerOperations>>,
     state_manager: Arc<Mutex<StateManager>>,
     timeout: Duration,
+    docker_executor: Arc<dyn DockerCommandExecutor>,
 }
 
 impl DockerRunner {
-    pub fn new(operations: Arc<Mutex<dyn DockerOperations>>, timeout: Duration) -> Self {
+    pub fn new(
+        operations: Arc<Mutex<dyn DockerOperations>>,
+        docker_executor: Arc<dyn DockerCommandExecutor>,
+        timeout: Duration
+    ) -> Self {
         Self {
             operations,
             state_manager: Arc::new(Mutex::new(StateManager::new())),
             timeout,
+            docker_executor,
         }
     }
 
@@ -28,8 +35,9 @@ impl DockerRunner {
 
         let mut state_manager = self.state_manager.lock().await;
         state_manager.transition_to(ContainerState::Created {
-            container_id: "temp_id".to_string(), // TODO: 実際のコンテナIDを取得
-        }).await?;
+            container_id: self.get_container_id().await?,
+            created_at: Instant::now(),
+        }).await.map_err(DockerError::State)?;
 
         Ok(())
     }
@@ -40,9 +48,9 @@ impl DockerRunner {
 
         let mut state_manager = self.state_manager.lock().await;
         state_manager.transition_to(ContainerState::Running {
-            container_id: "temp_id".to_string(), // TODO: 実際のコンテナIDを取得
-            start_time: std::time::Instant::now(),
-        }).await?;
+            container_id: self.get_container_id().await?,
+            started_at: Instant::now(),
+        }).await.map_err(DockerError::State)?;
 
         Ok(())
     }
@@ -52,33 +60,66 @@ impl DockerRunner {
         ops.stop().await?;
 
         let mut state_manager = self.state_manager.lock().await;
+        let current_state = state_manager.get_current_state();
+        let execution_time = current_state.duration_since_start().unwrap_or_default();
+
         state_manager.transition_to(ContainerState::Stopped {
-            container_id: "temp_id".to_string(), // TODO: 実際のコンテナIDを取得
+            container_id: self.get_container_id().await?,
             exit_code: 0, // TODO: 実際の終了コードを取得
-            execution_time: Duration::from_secs(0), // TODO: 実際の実行時間を計算
-        }).await?;
+            execution_time,
+        }).await.map_err(DockerError::State)?;
 
         Ok(())
     }
 
     pub async fn execute(&mut self, command: &str) -> DockerResult<(String, String)> {
+        let container_id = self.get_container_id().await?;
+        let mut state_manager = self.state_manager.lock().await;
+
+        // 実行状態に遷移
+        state_manager.transition_to(ContainerState::Executing {
+            container_id: container_id.clone(),
+            started_at: Instant::now(),
+            command: command.to_string(),
+        }).await.map_err(DockerError::State)?;
+
+        // コマンドを実行
         let mut ops = self.operations.lock().await;
-        ops.execute(command).await
+        let result = ops.execute(command).await;
+
+        // 結果に応じて状態を更新
+        match &result {
+            Ok(_) => {
+                state_manager.transition_to(ContainerState::Running {
+                    container_id,
+                    started_at: Instant::now(),
+                }).await.map_err(DockerError::State)?;
+            }
+            Err(e) => {
+                state_manager.transition_to(ContainerState::Failed {
+                    container_id,
+                    error: e.to_string(),
+                    occurred_at: Instant::now(),
+                }).await.map_err(DockerError::State)?;
+            }
+        }
+
+        result
     }
 
-    pub async fn write(&mut self, input: &str) -> DockerResult<()> {
-        let mut ops = self.operations.lock().await;
-        ops.write(input).await
-    }
+    async fn get_container_id(&self) -> DockerResult<String> {
+        let command = DockerCommand::new("ps")
+            .arg("-q")
+            .arg("-l");
 
-    pub async fn read_stdout(&mut self) -> DockerResult<String> {
-        let mut ops = self.operations.lock().await;
-        ops.read_stdout(self.timeout).await
-    }
-
-    pub async fn read_stderr(&mut self) -> DockerResult<String> {
-        let mut ops = self.operations.lock().await;
-        ops.read_stderr(self.timeout).await
+        let output = self.docker_executor.execute(command).await?;
+        if output.success {
+            Ok(output.stdout.trim().to_string())
+        } else {
+            Err(DockerError::State(StateError::ContainerNotFound(
+                "コンテナIDの取得に失敗しました".to_string()
+            )))
+        }
     }
 
     pub async fn subscribe_to_state_changes(&mut self) -> tokio::sync::mpsc::Receiver<ContainerState> {

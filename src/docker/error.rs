@@ -1,28 +1,18 @@
 use thiserror::Error;
-use std::time::Duration;
+use crate::docker::state::StateError;
 
 #[derive(Error, Debug)]
 pub enum DockerError {
-    #[error("Container operation failed: {0}")]
+    #[error("Container error: {0}")]
     Container(String),
-    
-    #[error("IO operation failed: {0}")]
+    #[error("IO error: {0}")]
     IO(String),
-    
-    #[error("Command execution failed: {0}")]
+    #[error("Compilation error: {0}")]
+    Compilation(String),
+    #[error("Command error: {0}")]
     Command(String),
-    
-    #[error("Invalid state: {0}")]
-    InvalidState(String),
-    
-    #[error("Initialization failed: {0}")]
-    Initialization(String),
-    
-    #[error("Timeout after {0:?}")]
-    Timeout(Duration),
-    
-    #[error("Resource exhausted: {0}")]
-    ResourceExhausted(String),
+    #[error("State error: {0}")]
+    State(#[from] StateError),
 }
 
 pub type DockerResult<T> = Result<T, DockerError>;
@@ -34,8 +24,8 @@ impl From<std::io::Error> for DockerError {
 }
 
 impl From<tokio::time::error::Elapsed> for DockerError {
-    fn from(_: tokio::time::error::Elapsed) -> Self {
-        DockerError::Timeout(Duration::from_secs(30))
+    fn from(err: tokio::time::error::Elapsed) -> Self {
+        DockerError::Command(format!("操作がタイムアウトしました: {}", err))
     }
 }
 
