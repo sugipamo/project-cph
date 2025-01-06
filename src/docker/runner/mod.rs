@@ -56,7 +56,7 @@ impl DockerRunner {
         self.container_manager.create_container(
             &image,
             self.config.get_run_cmd()?,
-            self.config.get_working_dir()?,
+            &self.config.get_working_dir()?,
         ).await?;
 
         self.container_manager.start_container().await?;

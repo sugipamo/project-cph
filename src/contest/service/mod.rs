@@ -1,7 +1,7 @@
-mod contest;
-mod test;
-mod url;
-mod path;
+pub mod contest;
+pub mod test;
+pub mod url;
+pub mod path;
 
 pub use contest::ContestService;
 pub use test::TestService;

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use serde::{Serialize, Deserialize};
-use crate::contest::error::Result;
+use crate::contest::error::{ContestResult, ContestError};
 
 /// コンテストの状態を表す構造体
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -101,9 +101,9 @@ impl ContestState {
     }
 
     /// 状態を更新
-    pub fn update<F>(&mut self, f: F) -> Result<()>
+    pub fn update<F>(&mut self, f: F) -> Result<(), ContestError>
     where
-        F: FnOnce(&mut Self) -> Result<()>,
+        F: FnOnce(&mut Self) -> Result<(), ContestError>,
     {
         f(self)
     }
