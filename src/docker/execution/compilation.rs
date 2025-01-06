@@ -14,7 +14,7 @@ impl CompilationManager {
         }
     }
 
-    pub async fn compile<P: AsRef<Path>>(&mut self, source_code: &str, compile_cmd: Option<Vec<String>>, env_vars: Vec<String>, working_dir: P) -> Result<()> {
+    pub async fn compile<P: AsRef<Path>>(&mut self, _source_code: &str, compile_cmd: Option<Vec<String>>, env_vars: Vec<String>, working_dir: P) -> Result<()> {
         if self.container_id.is_some() {
             return Err(compilation_err("コンパイルは既に実行されています".to_string()));
         }
