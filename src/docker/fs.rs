@@ -1,7 +1,9 @@
-use std::path::{Path, PathBuf};
-use crate::docker::error::DockerResult;
 use std::fs;
-use uuid::Uuid;
+use std::path::{Path, PathBuf};
+use std::os::unix::fs::PermissionsExt;
+use tempfile::TempDir;
+use crate::docker::error::{DockerError, DockerResult};
+use nix::unistd::{Uid, Gid};
 
 pub trait DockerFileManager {
     fn create_temp_directory(&self) -> DockerResult<PathBuf>;
@@ -16,27 +18,66 @@ impl DefaultDockerFileManager {
     pub fn new() -> Self {
         Self
     }
+
+    fn ensure_directory_permissions(&self, dir: &Path) -> DockerResult<()> {
+        let metadata = fs::metadata(dir)?;
+        let mut perms = metadata.permissions();
+        perms.set_mode(0o777);
+        fs::set_permissions(dir, perms)?;
+        Ok(())
+    }
 }
 
 impl DockerFileManager for DefaultDockerFileManager {
     fn create_temp_directory(&self) -> DockerResult<PathBuf> {
-        let temp_dir = std::env::temp_dir().join(format!("cph_{}", Uuid::new_v4()));
-        fs::create_dir_all(&temp_dir)?;
-        Ok(temp_dir)
+        let temp_dir = TempDir::new()
+            .map_err(|e| DockerError::Filesystem(format!("一時ディレクトリの作成に失敗しました: {}", e)))?;
+        
+        let temp_path = temp_dir.path().to_path_buf();
+        self.ensure_directory_permissions(&temp_path)?;
+
+        // 所有者とグループを現在のユーザーに設定
+        let uid = Uid::from_raw(std::process::id() as u32);
+        let gid = Gid::from_raw(unsafe { libc::getgid() } as u32);
+        
+        nix::unistd::chown(&temp_path, Some(uid), Some(gid))?;
+
+        println!("=== Temporary Directory Created ===");
+        println!("Path: {:?}", temp_path);
+        println!("Permissions: {:o}", fs::metadata(&temp_path)?.permissions().mode());
+        println!("Owner: {}:{}", uid, gid);
+
+        Ok(temp_path)
     }
 
     fn write_source_file(&self, dir: &Path, filename: &str, content: &str) -> DockerResult<PathBuf> {
         let file_path = dir.join(filename);
         fs::write(&file_path, content)?;
+
+        // 所有者とグループを現在のユーザーに設定
+        let uid = Uid::from_raw(std::process::id() as u32);
+        let gid = Gid::from_raw(unsafe { libc::getgid() } as u32);
+        
+        nix::unistd::chown(&file_path, Some(uid), Some(gid))?;
+
+        println!("=== Source File Created ===");
+        println!("Path: {:?}", file_path);
+        println!("Permissions: {:o}", fs::metadata(&file_path)?.permissions().mode());
+        println!("Owner: {}:{}", uid, gid);
+
         Ok(file_path)
     }
 
     fn set_permissions(&self, path: &Path, mode: u32) -> DockerResult<()> {
-        use std::os::unix::fs::PermissionsExt;
         let metadata = fs::metadata(path)?;
         let mut perms = metadata.permissions();
         perms.set_mode(mode);
         fs::set_permissions(path, perms)?;
+
+        println!("=== Permissions Set ===");
+        println!("Path: {:?}", path);
+        println!("Mode: {:o}", mode);
+
         Ok(())
     }
 
@@ -50,50 +91,35 @@ impl DockerFileManager for DefaultDockerFileManager {
 
 #[cfg(test)]
 pub struct MockDockerFileManager {
-    temp_dir: PathBuf,
+    temp_dir: TempDir,
 }
 
 #[cfg(test)]
 impl MockDockerFileManager {
     pub fn new() -> Self {
-        let temp_dir = std::env::temp_dir().join("mock-cph-test");
-        if temp_dir.exists() {
-            let _ = fs::remove_dir_all(&temp_dir);
+        Self {
+            temp_dir: TempDir::new().unwrap(),
         }
-        let _ = fs::create_dir_all(&temp_dir);
-        Self { temp_dir }
     }
 }
 
 #[cfg(test)]
 impl DockerFileManager for MockDockerFileManager {
     fn create_temp_directory(&self) -> DockerResult<PathBuf> {
-        let dir = self.temp_dir.join(Uuid::new_v4().to_string());
-        fs::create_dir_all(&dir)?;
-        Ok(dir)
+        Ok(self.temp_dir.path().to_path_buf())
     }
 
     fn write_source_file(&self, dir: &Path, filename: &str, content: &str) -> DockerResult<PathBuf> {
         let file_path = dir.join(filename);
-        fs::create_dir_all(dir)?;
         fs::write(&file_path, content)?;
         Ok(file_path)
     }
 
-    fn set_permissions(&self, path: &Path, _mode: u32) -> DockerResult<()> {
-        if path.exists() {
-            Ok(())
-        } else {
-            Err(crate::docker::error::DockerError::Runtime(
-                format!("Path does not exist: {:?}", path)
-            ))
-        }
+    fn set_permissions(&self, _path: &Path, _mode: u32) -> DockerResult<()> {
+        Ok(())
     }
 
-    fn cleanup(&self, dir: &Path) -> DockerResult<()> {
-        if dir.exists() {
-            fs::remove_dir_all(dir)?;
-        }
+    fn cleanup(&self, _dir: &Path) -> DockerResult<()> {
         Ok(())
     }
 } 

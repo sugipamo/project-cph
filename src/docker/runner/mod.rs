@@ -7,7 +7,6 @@ use crate::docker::state::RunnerState;
 use crate::docker::config::DockerConfig;
 use crate::docker::fs::{DockerFileManager, DefaultDockerFileManager};
 use crate::docker::executor::{DockerCommandExecutor, DefaultDockerExecutor};
-use std::fs;
 
 pub struct DockerRunner {
     config: DockerConfig,
@@ -40,47 +39,37 @@ impl DockerRunner {
         
         // イメージの確認と取得
         if !self.executor.check_image(self.config.image()).await? {
-            println!("Image not found, attempting to pull: {}", self.config.image());
             if !self.executor.pull_image(self.config.image()).await? {
-                println!("Failed to pull image: {}", self.config.image());
                 *self.state.lock().await = RunnerState::Error;
-                return Err(DockerError::Runtime(format!("Failed to pull image: {}", self.config.image())));
+                return Err(DockerError::Runtime(format!("イメージの取得に失敗: {}", self.config.image())));
             }
         }
 
-        println!("Image is ready: {}", self.config.image());
         *self.state.lock().await = RunnerState::Running;
 
-        // 一時ディレクトリの作成
+        // 一時ディレクトリの作成（ホスト側）
         let temp_dir = self.file_manager.create_temp_directory()?;
-        let compile_dir = temp_dir.join("compile");
-        fs::create_dir_all(&compile_dir)?;
         
-        // ソースファイルの作成
+        // ソースファイルの作成（直接一時ディレクトリに配置）
         let source_file = self.file_manager.write_source_file(
-            &compile_dir,
+            &temp_dir,
             &format!("main.{}", self.config.extension()),
             source_code,
         )?;
-        
-        // ファイルのパーミッション設定
-        self.file_manager.set_permissions(&source_file, 0o644)?;
-        self.file_manager.set_permissions(&compile_dir, 0o777)?;
 
-        // コマンドの構築
+        // パーミッションの設定
+        self.file_manager.set_permissions(&temp_dir, 0o755)?;
+        self.file_manager.set_permissions(&source_file, 0o644)?;
+
+        // コマンドの構築（シンプルに保つ）
         let command = if let Some(compile_cmd) = self.config.compile_cmd() {
             format!(
-                "cd {} && {} && {}",
-                self.config.mount_point(),
+                "{} && {}",
                 compile_cmd.join(" "),
                 self.config.run_cmd().join(" ")
             )
         } else {
-            format!(
-                "cd {} && {}",
-                self.config.mount_point(),
-                self.config.run_cmd().join(" ")
-            )
+            self.config.run_cmd().join(" ")
         };
 
         // コンテナの実行
@@ -89,8 +78,8 @@ impl DockerRunner {
             &container_name,
             self.config.image(),
             self.config.memory_limit(),
-            compile_dir.to_str().unwrap(),
-            self.config.mount_point(),
+            temp_dir.to_str().unwrap(),
+            "/app",  // シンプルな固定マウントポイント
             &command,
             self.config.timeout_seconds(),
         ).await;
@@ -99,14 +88,14 @@ impl DockerRunner {
         let _ = self.file_manager.cleanup(&temp_dir);
 
         // 状態の更新と結果の返却
-        match &result {
-            Ok(_) => {
+        match result {
+            Ok(output) => {
                 *self.state.lock().await = RunnerState::Completed;
-                result
+                Ok(output)
             }
-            Err(_) => {
+            Err(e) => {
                 *self.state.lock().await = RunnerState::Error;
-                result
+                Err(e)
             }
         }
     }
@@ -117,15 +106,6 @@ impl DockerRunner {
 
     pub async fn get_state(&self) -> RunnerState {
         self.state.lock().await.clone()
-    }
-
-    pub async fn inspect_mount_point(&mut self) -> DockerResult<String> {
-        let container_name = format!("inspector-{}", Uuid::new_v4());
-        self.executor.inspect_directory(
-            &container_name,
-            self.config.image(),
-            self.config.mount_point(),
-        ).await
     }
 }
 

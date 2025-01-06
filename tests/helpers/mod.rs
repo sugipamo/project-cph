@@ -2,9 +2,49 @@ use std::fs;
 use cph::config::Config;
 use tempfile::TempDir;
 use std::env;
+use std::path::Path;
+use std::process::Command;
 
 thread_local! {
     static TEST_DIR: std::cell::RefCell<Option<TempDir>> = std::cell::RefCell::new(None);
+}
+
+pub mod docker_debug {
+    use std::path::Path;
+    use std::process::Command;
+
+    pub fn inspect_directory(path: &Path) -> String {
+        let output = Command::new("ls")
+            .arg("-la")
+            .arg(path)
+            .output()
+            .unwrap_or_else(|e| panic!("Failed to inspect directory: {}", e));
+
+        String::from_utf8_lossy(&output.stdout).to_string()
+    }
+
+    pub fn inspect_docker_container(container_name: &str, path: &str) -> String {
+        let output = Command::new("docker")
+            .arg("exec")
+            .arg(container_name)
+            .arg("ls")
+            .arg("-la")
+            .arg(path)
+            .output()
+            .unwrap_or_else(|e| panic!("Failed to inspect container: {}", e));
+
+        String::from_utf8_lossy(&output.stdout).to_string()
+    }
+
+    pub fn get_docker_logs(container_name: &str) -> String {
+        let output = Command::new("docker")
+            .arg("logs")
+            .arg(container_name)
+            .output()
+            .unwrap_or_else(|e| panic!("Failed to get container logs: {}", e));
+
+        String::from_utf8_lossy(&output.stdout).to_string()
+    }
 }
 
 pub fn setup() {

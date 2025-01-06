@@ -1,11 +1,10 @@
-use std::process::Stdio;
 use tokio::process::Command;
+use tokio::time::{timeout, Duration};
+use async_trait::async_trait;
 use crate::docker::error::{DockerError, DockerResult};
-use std::time::Duration;
-use tokio::time::timeout;
 
-#[async_trait::async_trait]
-pub trait DockerCommandExecutor {
+#[async_trait]
+pub trait DockerCommandExecutor: Send + Sync {
     async fn check_image(&self, image: &str) -> DockerResult<bool>;
     async fn pull_image(&self, image: &str) -> DockerResult<bool>;
     async fn run_container(
@@ -18,13 +17,6 @@ pub trait DockerCommandExecutor {
         command: &str,
         timeout_seconds: u32,
     ) -> DockerResult<String>;
-    async fn stop_container(&self, container_name: &str) -> DockerResult<()>;
-    async fn inspect_directory(
-        &self,
-        container_name: &str,
-        image: &str,
-        mount_point: &str,
-    ) -> DockerResult<String>;
 }
 
 pub struct DefaultDockerExecutor;
@@ -35,31 +27,29 @@ impl DefaultDockerExecutor {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl DockerCommandExecutor for DefaultDockerExecutor {
     async fn check_image(&self, image: &str) -> DockerResult<bool> {
         let output = Command::new("docker")
             .arg("image")
             .arg("inspect")
             .arg(image)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
+            .output()
             .await
-            .map_err(|e| DockerError::Runtime(format!("イメージの確認に失敗しました: {}", e)))?;
+            .map_err(|e| DockerError::Runtime(e.to_string()))?;
 
-        Ok(output.success())
+        Ok(output.status.success())
     }
 
     async fn pull_image(&self, image: &str) -> DockerResult<bool> {
         let output = Command::new("docker")
             .arg("pull")
             .arg(image)
-            .status()
+            .output()
             .await
-            .map_err(|e| DockerError::Runtime(format!("イメージの取得に失敗しました: {}", e)))?;
+            .map_err(|e| DockerError::Runtime(e.to_string()))?;
 
-        Ok(output.success())
+        Ok(output.status.success())
     }
 
     async fn run_container(
@@ -72,6 +62,9 @@ impl DockerCommandExecutor for DefaultDockerExecutor {
         command: &str,
         timeout_seconds: u32,
     ) -> DockerResult<String> {
+        let uid = std::process::id();
+        let gid = unsafe { libc::getgid() };
+
         let mut cmd = Command::new("docker");
         cmd.arg("run")
             .arg("--rm")
@@ -83,10 +76,14 @@ impl DockerCommandExecutor for DefaultDockerExecutor {
             .arg("1.0")
             .arg("--network")
             .arg("none")
-            .arg("-v")
-            .arg(format!("{}:{}", mount_source, mount_target))
-            .arg("-w")
+            .arg("--security-opt")
+            .arg("seccomp=unconfined")
+            .arg("--user")
+            .arg(format!("{}:{}", uid, gid))
+            .arg("--workdir")
             .arg(mount_target)
+            .arg("-v")
+            .arg(format!("{}:{}:rw,z", mount_source, mount_target))
             .arg(image)
             .arg("sh")
             .arg("-c")
@@ -94,10 +91,9 @@ impl DockerCommandExecutor for DefaultDockerExecutor {
 
         let timeout_duration = Duration::from_secs(timeout_seconds as u64);
         let output = match timeout(timeout_duration, cmd.output()).await {
-            Ok(result) => result.map_err(|e| DockerError::Runtime(format!("コンテナの実行に失敗しました: {}", e)))?,
+            Ok(result) => result.map_err(|e| DockerError::Runtime(e.to_string()))?,
             Err(_) => {
-                self.stop_container(container_name).await?;
-                return Err(DockerError::Timeout("実行がタイムアウトしました".to_string()));
+                return Err(DockerError::Timeout(format!("実行がタイムアウトしました: {}秒", timeout_seconds)))
             }
         };
 
@@ -109,44 +105,11 @@ impl DockerCommandExecutor for DefaultDockerExecutor {
 
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
-
-    async fn stop_container(&self, container_name: &str) -> DockerResult<()> {
-        Command::new("docker")
-            .arg("stop")
-            .arg(container_name)
-            .output()
-            .await
-            .map_err(|e| DockerError::Runtime(format!("コンテナの停止に失敗しました: {}", e)))?;
-
-        Ok(())
-    }
-
-    async fn inspect_directory(
-        &self,
-        container_name: &str,
-        image: &str,
-        mount_point: &str,
-    ) -> DockerResult<String> {
-        let output = Command::new("docker")
-            .arg("run")
-            .arg("--rm")
-            .arg("--name")
-            .arg(container_name)
-            .arg(image)
-            .arg("ls")
-            .arg("-la")
-            .arg(mount_point)
-            .output()
-            .await
-            .map_err(|e| DockerError::Runtime(format!("ディレクトリの検査に失敗しました: {}", e)))?;
-
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    }
 }
 
 #[cfg(test)]
 pub struct MockDockerExecutor {
-    pub should_fail: bool,
+    should_fail: bool,
 }
 
 #[cfg(test)]
@@ -157,7 +120,7 @@ impl MockDockerExecutor {
 }
 
 #[cfg(test)]
-#[async_trait::async_trait]
+#[async_trait]
 impl DockerCommandExecutor for MockDockerExecutor {
     async fn check_image(&self, _image: &str) -> DockerResult<bool> {
         Ok(true)
@@ -174,34 +137,13 @@ impl DockerCommandExecutor for MockDockerExecutor {
         _memory_limit: u32,
         _mount_source: &str,
         _mount_target: &str,
-        command: &str,
+        _command: &str,
         _timeout_seconds: u32,
     ) -> DockerResult<String> {
         if self.should_fail {
-            Err(DockerError::Runtime("モックエラー".to_string()))
+            Err(DockerError::Runtime("Mock execution failed".to_string()))
         } else {
-            if command.contains("main.rs") {
-                Ok("Hello from Rust!\n".to_string())
-            } else if command.contains("main.py") {
-                Ok("Hello from Python!\n".to_string())
-            } else if command.contains("main.cpp") {
-                Ok("Hello from C++!\n".to_string())
-            } else {
-                Ok("実行成功\n".to_string())
-            }
+            Ok("Hello from Rust!\n".to_string())
         }
-    }
-
-    async fn stop_container(&self, _container_name: &str) -> DockerResult<()> {
-        Ok(())
-    }
-
-    async fn inspect_directory(
-        &self,
-        _container_name: &str,
-        _image: &str,
-        _mount_point: &str,
-    ) -> DockerResult<String> {
-        Ok("total 4\ndrwxr-xr-x 2 root root 4096 Jan 1 00:00 .\n".to_string())
     }
 } 
