@@ -94,6 +94,21 @@ languages:
       _fallback:
         atcoder: "5001"  # C++ (GCC 9.2.1)
 
+  pypy:
+    <<: *lang_base
+    extension: "py"
+    runner:
+      image: "${CPH_PYPY_IMAGE-pypy:latest}"
+      compile_dir: "${CPH_COMPILE_DIR-compile/pypy}"
+      run: ["pypy3", "main.py"]
+      docker:
+        timeout_seconds: ${CPH_PYPY_TIMEOUT-10}
+        memory_limit_mb: ${CPH_PYPY_MEMORY-256}
+    site_ids:
+      _source: "online_judge_tool"
+      _fallback:
+        atcoder: "4047"  # PyPy3 (7.3.0)
+
 # サイト設定
 sites:
   # サイトの基本設定をアンカーとして定義
