@@ -89,37 +89,59 @@ impl DockerFileManager for DefaultDockerFileManager {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 pub struct MockDockerFileManager {
     temp_dir: TempDir,
+    should_fail: bool,
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 impl MockDockerFileManager {
     pub fn new() -> Self {
         Self {
             temp_dir: TempDir::new().unwrap(),
+            should_fail: false,
         }
+    }
+
+    pub fn set_should_fail(&mut self, should_fail: bool) {
+        self.should_fail = should_fail;
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 impl DockerFileManager for MockDockerFileManager {
     fn create_temp_directory(&self) -> DockerResult<PathBuf> {
+        if self.should_fail {
+            return Err(DockerError::Filesystem("モックエラー".to_string()));
+        }
         Ok(self.temp_dir.path().to_path_buf())
     }
 
     fn write_source_file(&self, dir: &Path, filename: &str, content: &str) -> DockerResult<PathBuf> {
+        if self.should_fail {
+            return Err(DockerError::Filesystem("モックエラー".to_string()));
+        }
         let file_path = dir.join(filename);
         fs::write(&file_path, content)?;
         Ok(file_path)
     }
 
-    fn set_permissions(&self, _path: &Path, _mode: u32) -> DockerResult<()> {
-        Ok(())
+    fn set_permissions(&self, path: &Path, _mode: u32) -> DockerResult<()> {
+        if self.should_fail {
+            return Err(DockerError::Filesystem("モックエラー".to_string()));
+        }
+        if path.exists() {
+            Ok(())
+        } else {
+            Err(DockerError::Filesystem(format!("Path does not exist: {:?}", path)))
+        }
     }
 
     fn cleanup(&self, _dir: &Path) -> DockerResult<()> {
+        if self.should_fail {
+            return Err(DockerError::Filesystem("モックエラー".to_string()));
+        }
         Ok(())
     }
 } 

@@ -16,6 +16,7 @@ path = "src/bin/cph.rs"
 
 [features]
 default = []
+testing = []
 docker_test = []
 
 [dependencies]

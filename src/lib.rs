@@ -1,7 +1,9 @@
-pub mod docker;
-pub mod error;
-pub mod test;
-pub mod contest;
-pub mod oj;
+#[cfg(test)]
+mod tests {
+    use super::*;
+}
+
 pub mod config;
-pub mod fs;
+pub mod docker;
+pub mod contest;
+pub mod test;

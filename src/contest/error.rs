@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::error::Error as StdError;
 use thiserror::Error;
 use crate::config::ConfigError;
+use crate::docker::DockerError;
 
 /// コンテスト操作に関するエラー
 #[derive(Error, Debug)]
@@ -24,10 +25,9 @@ pub enum ContestError {
         message: String
     },
 
-    #[error("バックアップエラー: {message}, パス: {path:?}")]
-    Backup {
+    #[error("Dockerエラー: {message}")]
+    Docker {
         message: String,
-        path: PathBuf,
         source: Option<Box<dyn StdError + Send + Sync>>
     },
 
@@ -48,8 +48,8 @@ impl From<std::io::Error> for ContestError {
     }
 }
 
-impl From<serde_yaml::Error> for ContestError {
-    fn from(err: serde_yaml::Error) -> Self {
+impl From<ConfigError> for ContestError {
+    fn from(err: ConfigError) -> Self {
         ContestError::Config {
             message: err.to_string(),
             source: Some(Box::new(err))
@@ -57,9 +57,9 @@ impl From<serde_yaml::Error> for ContestError {
     }
 }
 
-impl From<serde_json::Error> for ContestError {
-    fn from(err: serde_json::Error) -> Self {
-        ContestError::Config {
+impl From<DockerError> for ContestError {
+    fn from(err: DockerError) -> Self {
+        ContestError::Docker {
             message: err.to_string(),
             source: Some(Box::new(err))
         }
@@ -70,69 +70,6 @@ impl From<String> for ContestError {
     fn from(message: String) -> Self {
         ContestError::Validation {
             message
-        }
-    }
-}
-
-impl From<ConfigError> for ContestError {
-    fn from(err: ConfigError) -> Self {
-        ContestError::Config {
-            message: err.to_string(),
-            source: Some(Box::new(err))
-        }
-    }
-}
-
-impl ContestError {
-    pub fn with_context(self, operation: impl Into<String>, location: impl Into<String>) -> Self {
-        match self {
-            Self::Config { message, source } => Self::Config {
-                message: format!("{} (操作: {}, 場所: {})", message, operation.into(), location.into()),
-                source,
-            },
-            Self::FileSystem { message, source, path } => Self::FileSystem {
-                message: format!("{} (操作: {}, 場所: {})", message, operation.into(), location.into()),
-                source,
-                path,
-            },
-            Self::Validation { message } => Self::Validation {
-                message: format!("{} (操作: {}, 場所: {})", message, operation.into(), location.into()),
-            },
-            Self::Backup { message, path, source } => Self::Backup {
-                message: format!("{} (操作: {}, 場所: {})", message, operation.into(), location.into()),
-                path,
-                source,
-            },
-            Self::Transaction { message, context } => Self::Transaction {
-                message: format!("{} (操作: {}, 場所: {})", message, operation.into(), location.into()),
-                context,
-            },
-        }
-    }
-
-    pub fn add_hint(self, hint: impl Into<String>) -> Self {
-        match self {
-            Self::Config { message, source } => Self::Config {
-                message: format!("{}. ヒント: {}", message, hint.into()),
-                source,
-            },
-            Self::FileSystem { message, source, path } => Self::FileSystem {
-                message: format!("{}. ヒント: {}", message, hint.into()),
-                source,
-                path,
-            },
-            Self::Validation { message } => Self::Validation {
-                message: format!("{}. ヒント: {}", message, hint.into()),
-            },
-            Self::Backup { message, path, source } => Self::Backup {
-                message: format!("{}. ヒント: {}", message, hint.into()),
-                path,
-                source,
-            },
-            Self::Transaction { message, context } => Self::Transaction {
-                message: format!("{}. ヒント: {}", message, hint.into()),
-                context,
-            },
         }
     }
 }
@@ -177,5 +114,56 @@ impl ErrorContext {
     }
 }
 
-/// Result型のエイリアス
 pub type Result<T> = std::result::Result<T, ContestError>;
+
+impl ContestError {
+    pub fn with_context(self, operation: impl Into<String>, location: impl Into<String>) -> Self {
+        match self {
+            Self::Config { message, source } => Self::Config {
+                message: format!("{} (操作: {}, 場所: {})", message, operation.into(), location.into()),
+                source,
+            },
+            Self::FileSystem { message, source, path } => Self::FileSystem {
+                message: format!("{} (操作: {}, 場所: {})", message, operation.into(), location.into()),
+                source,
+                path,
+            },
+            Self::Validation { message } => Self::Validation {
+                message: format!("{} (操作: {}, 場所: {})", message, operation.into(), location.into()),
+            },
+            Self::Docker { message, source } => Self::Docker {
+                message: format!("{} (操作: {}, 場所: {})", message, operation.into(), location.into()),
+                source,
+            },
+            Self::Transaction { message, context } => Self::Transaction {
+                message: format!("{} (操作: {}, 場所: {})", message, operation.into(), location.into()),
+                context,
+            },
+        }
+    }
+
+    pub fn add_hint(self, hint: impl Into<String>) -> Self {
+        match self {
+            Self::Config { message, source } => Self::Config {
+                message: format!("{}. ヒント: {}", message, hint.into()),
+                source,
+            },
+            Self::FileSystem { message, source, path } => Self::FileSystem {
+                message: format!("{}. ヒント: {}", message, hint.into()),
+                source,
+                path,
+            },
+            Self::Validation { message } => Self::Validation {
+                message: format!("{}. ヒント: {}", message, hint.into()),
+            },
+            Self::Docker { message, source } => Self::Docker {
+                message: format!("{}. ヒント: {}", message, hint.into()),
+                source,
+            },
+            Self::Transaction { message, context } => Self::Transaction {
+                message: format!("{}. ヒント: {}", message, hint.into()),
+                context,
+            },
+        }
+    }
+}
