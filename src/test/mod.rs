@@ -4,7 +4,8 @@ use crate::contest::error::{Result, ContestError};
 
 /// テストディレクトリのパスを取得
 pub fn get_test_dir(config: &Config, problem_id: &str) -> Result<PathBuf> {
-    let active_dir = config.get::<String>("languages.default.contest_dir.active")?;
+    let default_lang = config.get::<String>("languages.default")?;
+    let active_dir = config.get::<String>(&format!("languages.{}.contest_dir.active", default_lang))?;
     Ok(PathBuf::from(active_dir).join("test").join(problem_id))
 }
 

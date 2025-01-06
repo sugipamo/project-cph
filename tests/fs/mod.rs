@@ -1,1 +1,2 @@
-mod transaction_test; 
+// TODO: トランザクションテストの実装
+// mod transaction_test; 

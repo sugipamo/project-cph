@@ -26,14 +26,12 @@ impl Contest {
 
     /// 新しいコンテストインスタンスを作成
     pub fn new(config: Config, problem_id: &str) -> Result<Self> {
-        let active_dir = config.get::<String>("system.contest_dir.active")?;
-        let mut state = ContestState::new()
+        let default_lang = config.get::<String>("languages.default")?;
+        let active_dir = config.get::<String>(&format!("languages.{}.contest_dir.active", default_lang))?;
+        let state = ContestState::new()
             .with_problem(problem_id)
-            .with_active_dir(active_dir.clone().into());
-
-        if let Ok(default_lang) = config.get::<String>("languages.default") {
-            state = state.with_language(&default_lang);
-        }
+            .with_active_dir(active_dir.clone().into())
+            .with_language(&default_lang);
 
         Ok(Self {
             state,
@@ -79,13 +77,16 @@ impl Contest {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
 
     fn create_test_config() -> Config {
-        let mut config_map = HashMap::new();
-        config_map.insert("system.contest_dir.active".to_string(), "/tmp/contest".to_string());
-        config_map.insert("languages.default".to_string(), "rust".to_string());
-        Config::from_str(&serde_json::to_string(&config_map).unwrap(), Config::builder()).unwrap()
+        let yaml = r#"
+languages:
+  default: rust
+  rust:
+    contest_dir:
+      active: /tmp/contest
+"#;
+        Config::from_str(yaml, Config::builder()).unwrap()
     }
 
     #[test]
