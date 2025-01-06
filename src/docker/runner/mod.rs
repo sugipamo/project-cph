@@ -89,83 +89,117 @@ impl DockerRunner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mockall::predicate::*;
-    use mockall::mock;
-    use std::time::Duration;
-
-    mock! {
-        ContainerManager {}
-        #[async_trait]
-        impl ContainerManager for ContainerManager {
-            async fn create_container(&mut self, image: &str, cmd: Vec<String>, working_dir: &str) -> DockerResult<()>;
-            async fn start_container(&mut self) -> DockerResult<()>;
-            async fn stop_container(&mut self) -> DockerResult<()>;
-            async fn check_image(&self, image: &str) -> DockerResult<bool>;
-            async fn pull_image(&self, image: &str) -> DockerResult<()>;
-        }
-    }
-
-    mock! {
-        IOHandler {}
-        #[async_trait]
-        impl IOHandler for IOHandler {
-            async fn write(&self, input: &str) -> DockerResult<()>;
-            async fn read_stdout(&self, timeout: Duration) -> DockerResult<String>;
-            async fn read_stderr(&self, timeout: Duration) -> DockerResult<String>;
-            async fn setup_io(&mut self) -> DockerResult<()>;
-        }
-    }
-
-    mock! {
-        CompilationManager {}
-        #[async_trait]
-        impl CompilationManager for CompilationManager {
-            async fn compile(&mut self, source_code: &str, compile_cmd: Option<Vec<String>>, env_vars: Vec<String>) -> DockerResult<()>;
-            async fn get_compilation_output(&self) -> DockerResult<(String, String)>;
-        }
-    }
+    use crate::docker::runner::test_helpers::{TestHelper, create_test_config};
+    use tokio::time::Duration;
 
     #[tokio::test]
-    async fn test_docker_runner_success() {
-        let mut mock_container = MockContainerManager::new();
-        let mut mock_io = MockIOHandler::new();
-        let mut mock_compiler = MockCompilationManager::new();
+    async fn test_docker_runner_basic_success() {
+        let mut helper = TestHelper::new();
+        helper.setup_success_expectations();
 
-        mock_container
-            .expect_check_image()
-            .return_once(|_| Ok(true));
-        
-        mock_container
-            .expect_create_container()
-            .return_once(|_, _, _| Ok(()));
-        
-        mock_container
-            .expect_start_container()
-            .return_once(|| Ok(()));
-
-        mock_io
-            .expect_setup_io()
-            .return_once(|| Ok(()));
-        
-        mock_io
-            .expect_read_stdout()
-            .return_once(|_| Ok("Hello from test!".to_string()));
-        
-        mock_io
-            .expect_read_stderr()
-            .return_once(|_| Ok("".to_string()));
-
-        let config = Config::load().unwrap();
+        let config = create_test_config();
         let mut runner = DockerRunner::new(
             config,
-            Box::new(mock_container),
-            Box::new(mock_io),
-            Box::new(mock_compiler),
+            Box::new(helper.container_manager),
+            Box::new(helper.io_handler),
+            Box::new(helper.compilation_manager),
         );
 
         let result = runner.run_in_docker("test code").await;
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "Hello from test!");
+        assert_eq!(result.unwrap(), "Test output");
         assert_eq!(runner.get_state().await, RunnerState::Completed);
+    }
+
+    #[tokio::test]
+    async fn test_docker_runner_with_compilation() {
+        let mut helper = TestHelper::new();
+        helper.setup_success_expectations();
+        helper.setup_compilation_expectations();
+
+        let mut config = create_test_config();
+        config.set("languages.test.compile_cmd", vec!["gcc", "-o", "test"]).unwrap();
+
+        let mut runner = DockerRunner::new(
+            config,
+            Box::new(helper.container_manager),
+            Box::new(helper.io_handler),
+            Box::new(helper.compilation_manager),
+        );
+
+        let result = runner.run_in_docker("test code").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_docker_runner_image_pull() {
+        let mut helper = TestHelper::new();
+        helper.container_manager
+            .expect_check_image()
+            .returning(|_| Ok(false));
+        
+        helper.container_manager
+            .expect_pull_image()
+            .returning(|_| Ok(()));
+
+        helper.setup_success_expectations();
+
+        let config = create_test_config();
+        let mut runner = DockerRunner::new(
+            config,
+            Box::new(helper.container_manager),
+            Box::new(helper.io_handler),
+            Box::new(helper.compilation_manager),
+        );
+
+        let result = runner.run_in_docker("test code").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_docker_runner_cleanup() {
+        let mut helper = TestHelper::new();
+        helper.setup_success_expectations();
+        helper.container_manager
+            .expect_stop_container()
+            .returning(|| Ok(()));
+
+        let config = create_test_config();
+        let mut runner = DockerRunner::new(
+            config,
+            Box::new(helper.container_manager),
+            Box::new(helper.io_handler),
+            Box::new(helper.compilation_manager),
+        );
+
+        let run_result = runner.run_in_docker("test code").await;
+        assert!(run_result.is_ok());
+
+        let cleanup_result = runner.cleanup().await;
+        assert!(cleanup_result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_docker_runner_error_handling() {
+        let mut helper = TestHelper::new();
+        helper.container_manager
+            .expect_check_image()
+            .returning(|_| Ok(true));
+        
+        helper.container_manager
+            .expect_create_container()
+            .returning(|_, _, _| Err(DockerError::Container("Test error".to_string())));
+
+        let config = create_test_config();
+        let mut runner = DockerRunner::new(
+            config,
+            Box::new(helper.container_manager),
+            Box::new(helper.io_handler),
+            Box::new(helper.compilation_manager),
+        );
+
+        let result = runner.run_in_docker("test code").await;
+        assert!(result.is_err());
+        assert_eq!(runner.get_state().await, RunnerState::Error);
     }
 } 

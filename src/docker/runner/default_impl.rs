@@ -268,106 +268,118 @@ impl DockerCommandExecutor for DefaultDockerCommandExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
-    use tokio::sync::Mutex;
-    use std::collections::HashMap;
+    use std::time::Duration;
+    use crate::docker::error::DockerError;
 
-    struct TestDockerExecutor {
-        responses: Arc<Mutex<HashMap<String, (bool, String, String)>>>,
-    }
-
-    impl TestDockerExecutor {
-        fn new() -> Self {
-            Self {
-                responses: Arc::new(Mutex::new(HashMap::new())),
-            }
-        }
-
-        async fn set_response(&self, args: Vec<String>, response: (bool, String, String)) {
-            let key = args.join(" ");
-            self.responses.lock().await.insert(key, response);
-        }
-    }
-
-    #[async_trait]
-    impl DockerCommandExecutor for TestDockerExecutor {
-        async fn execute_command(&self, args: Vec<String>) -> DockerResult<(bool, String, String)> {
-            let key = args.join(" ");
-            let responses = self.responses.lock().await;
-            
-            match responses.get(&key) {
-                Some(response) => Ok(response.clone()),
-                None => Ok((true, String::new(), String::new())),
-            }
+    // DockerCommandExecutorのモック
+    mock! {
+        DockerCommandExecutor {}
+        #[async_trait]
+        impl DockerCommandExecutor for DockerCommandExecutor {
+            async fn execute_command(&self, args: Vec<String>) -> DockerResult<(bool, String, String)>;
         }
     }
 
     #[tokio::test]
-    async fn test_container_lifecycle() {
-        let executor = TestDockerExecutor::new();
-        
-        // create_containerのレスポンスを設定
-        executor
-            .set_response(
-                vec![
-                    "create".to_string(),
-                    "-i".to_string(),
-                    "--rm".to_string(),
-                    "-m".to_string(),
-                    "512m".to_string(),
-                    "-v".to_string(),
-                    "/tmp:/workspace".to_string(),
-                    "-w".to_string(),
-                    "/workspace".to_string(),
-                    "test-image".to_string(),
-                    "test-cmd".to_string(),
-                ],
-                (true, "test-container-id".to_string(), String::new()),
-            )
-            .await;
+    async fn test_default_container_manager_create() {
+        let mut mock_executor = MockDockerCommandExecutor::new();
+        mock_executor
+            .expect_execute_command()
+            .returning(|_| Ok((true, "container_id".to_string(), "".to_string())));
 
-        let mut manager = DefaultContainerManager::with_executor(
-            512,
-            "/tmp".to_string(),
-            Box::new(executor),
-        );
+        let mut manager = DefaultContainerManager {
+            container_id: String::new(),
+            memory_limit: 512,
+            mount_point: "/tmp".to_string(),
+            docker_executor: Box::new(mock_executor),
+        };
 
-        // コンテナの作成
-        let result = manager
-            .create_container(
-                "test-image",
-                vec!["test-cmd".to_string()],
-                "/workspace",
-            )
-            .await;
+        let result = manager.create_container(
+            "test-image",
+            vec!["test".to_string()],
+            "/workspace",
+        ).await;
+
         assert!(result.is_ok());
-        assert_eq!(manager.container_id, "test-container-id");
+        assert_eq!(manager.container_id, "container_id");
+    }
 
-        // コンテナの起動
+    #[tokio::test]
+    async fn test_default_container_manager_start() {
+        let mut mock_executor = MockDockerCommandExecutor::new();
+        mock_executor
+            .expect_execute_command()
+            .returning(|_| Ok((true, "".to_string(), "".to_string())));
+
+        let mut manager = DefaultContainerManager {
+            container_id: "test_container".to_string(),
+            memory_limit: 512,
+            mount_point: "/tmp".to_string(),
+            docker_executor: Box::new(mock_executor),
+        };
+
         let result = manager.start_container().await;
         assert!(result.is_ok());
-
-        // コンテナの停止
-        let result = manager.stop_container().await;
-        assert!(result.is_ok());
     }
 
     #[tokio::test]
-    async fn test_image_operations() {
-        let executor = TestDockerExecutor::new();
-        let manager = DefaultContainerManager::with_executor(
-            512,
-            "/tmp".to_string(),
-            Box::new(executor),
-        );
+    async fn test_default_container_manager_error() {
+        let mut mock_executor = MockDockerCommandExecutor::new();
+        mock_executor
+            .expect_execute_command()
+            .returning(|_| Ok((false, "".to_string(), "Error message".to_string())));
 
-        // イメージの確認
-        let result = manager.check_image("test-image").await;
+        let mut manager = DefaultContainerManager {
+            container_id: "test_container".to_string(),
+            memory_limit: 512,
+            mount_point: "/tmp".to_string(),
+            docker_executor: Box::new(mock_executor),
+        };
+
+        let result = manager.start_container().await;
+        assert!(result.is_err());
+        match result {
+            Err(DockerError::Container(msg)) => assert!(msg.contains("Error message")),
+            _ => panic!("Expected Container error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_default_io_handler() {
+        let mut mock_executor = MockDockerCommandExecutor::new();
+        mock_executor
+            .expect_execute_command()
+            .returning(|_| Ok((true, "output".to_string(), "".to_string())));
+
+        let handler = DefaultIOHandler {
+            container_id: "test_container".to_string(),
+            docker_executor: Box::new(mock_executor),
+        };
+
+        let result = handler.read_stdout(Duration::from_secs(1)).await;
         assert!(result.is_ok());
-        assert!(result.unwrap());
+        assert_eq!(result.unwrap(), "output");
+    }
 
-        // イメージの取得
-        let result = manager.pull_image("test-image").await;
+    #[tokio::test]
+    async fn test_default_compilation_manager() {
+        let mut mock_executor = MockDockerCommandExecutor::new();
+        mock_executor
+            .expect_execute_command()
+            .returning(|_| Ok((true, "".to_string(), "".to_string())));
+
+        let mut manager = DefaultCompilationManager {
+            container_id: "test_container".to_string(),
+            docker_executor: Box::new(mock_executor),
+            compilation_output: None,
+        };
+
+        let result = manager.compile(
+            "test code",
+            Some(vec!["gcc".to_string(), "-o".to_string(), "test".to_string()]),
+            vec![],
+        ).await;
+
         assert!(result.is_ok());
     }
 } 
