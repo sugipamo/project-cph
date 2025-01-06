@@ -1,0 +1,191 @@
+diff --git a/src/docker/runner/command.rs b/src/docker/runner/command.rs
+index 6f1db1d..f7f3962 100644
+--- a/src/docker/runner/command.rs
++++ b/src/docker/runner/command.rs
+@@ -89,44 +89,66 @@ impl DockerCommand {
+         // コマンドを構築
+         let cmd = if let Some(compile_cmd) = compile_cmd {
+             let compile_str = compile_cmd.iter()
+-                .map(|s| s.replace("main.rs", &format!("main.{}", extension)))
++                .map(|s| s.to_string())
+                 .collect::<Vec<_>>()
+                 .join(" ");
+             let run_str = run_cmd.iter()
+-                .map(|s| s.replace("main.rs", &format!("main.{}", extension)))
++                .map(|s| s.to_string())
+                 .collect::<Vec<_>>()
+                 .join(" ");
+-            format!("ls -la && {} && {}", compile_str, run_str)
++            format!(
++                "ls -la && pwd && echo '{}' > main.{} && cat main.{} && {} && {}",
++                source_code.replace("'", "'\"'\"'"),
++                extension,
++                extension,
++                compile_str,
++                run_str
++            )
+         } else {
+             let run_str = run_cmd.iter()
+-                .map(|s| s.replace("main.rs", &format!("main.{}", extension)))
++                .map(|s| s.to_string())
+                 .collect::<Vec<_>>()
+                 .join(" ");
+-            format!("ls -la && {}", run_str)
++            format!(
++                "ls -la && pwd && echo '{}' > main.{} && cat main.{} && {}",
++                source_code.replace("'", "'\"'\"'"),
++                extension,
++                extension,
++                run_str
++            )
+         };
+ 
+-        command.arg(cmd)
++        command.arg(&cmd)
+             .stdout(Stdio::piped())
+             .stderr(Stdio::piped());
+ 
+-        // コマンドを実行（タイムアウト付き）
+         println!("Running command: {:?}", command);
+-        let output = match timeout(Duration::from_secs(timeout_seconds.into()), command.output()).await {
+-            Ok(result) => result.map_err(|e| format!("コマンドの実行に失敗しました: {}", e))?,
+-            Err(_) => {
+-                self.stop_container().await;
+-                return Err("実行がタイムアウトしました".to_string());
++        println!("Source code directory: {}", temp_dir.display());
++        println!("Mount point: {}", mount_point);
++
++        // コマンドを実行
++        let result = match timeout(Duration::from_secs(timeout_seconds.into()), command.output()).await {
++            Ok(result) => {
++                match result {
++                    Ok(output) => {
++                        println!("Command stdout: {}", String::from_utf8_lossy(&output.stdout));
++                        println!("Command stderr: {}", String::from_utf8_lossy(&output.stderr));
++                        if output.status.success() {
++                            Ok(String::from_utf8_lossy(&output.stdout).to_string())
++                        } else {
++                            Err(String::from_utf8_lossy(&output.stderr).to_string())
++                        }
++                    }
++                    Err(e) => Err(format!("コマンドの実行に失敗しました: {}", e)),
++                }
+             }
++            Err(_) => Err("実行がタイムアウトしました".to_string()),
+         };
+ 
+         // 一時ディレクトリを削除
+         let _ = fs::remove_dir_all(temp_dir);
+ 
+-        if output.status.success() {
+-            Ok(String::from_utf8_lossy(&output.stdout).to_string())
+-        } else {
+-            Err(String::from_utf8_lossy(&output.stderr).to_string())
+-        }
++        result
+     }
+ 
+     pub async fn compile(
+diff --git a/tests/docker/runner_test.rs b/tests/docker/runner_test.rs
+index aff5bf2..935cda0 100644
+--- a/tests/docker/runner_test.rs
++++ b/tests/docker/runner_test.rs
+@@ -44,13 +44,9 @@ async fn test_rust_runner() {
+     let config = Config::load().unwrap();
+     let mut runner = DockerRunner::new(config, "rust".to_string()).unwrap();
+ 
+-    let source_code = r#"
+-        fn main() {
+-            println!("Hello from Rust!");
+-        }
+-    "#;
+-
+-    prepare_test_file("/tmp/test-rust", "main.rs", source_code).await.unwrap();
++    let source_code = r#"fn main() {
++    println!("Hello from Rust!");
++}"#;
+ 
+     match runner.run_in_docker(source_code).await {
+         Ok(output) => {
+@@ -175,4 +171,80 @@ int main() {
+         Ok(output) => assert!(output.contains("Hello from C++!")),
+         Err(e) => panic!("C++の実行に失敗しました: {}", e),
+     }
++}
++
++#[tokio::test]
++async fn test_python_runner() {
++    super::setup();
++    
++    let config = Config::load().unwrap();
++    let mut runner = DockerRunner::new(config, "python".to_string()).unwrap();
++
++    let source_code = r#"
++print("Hello from Python!")
++    "#;
++
++    match runner.run_in_docker(source_code).await {
++        Ok(output) => {
++            println!("=== Python Execution Output ===");
++            println!("{}", output);
++            assert!(output.contains("Hello from Python!"));
++        }
++        Err(e) => {
++            println!("Error: {}", e);
++            panic!("Pythonの実行に失敗しました: {}", e);
++        }
++    }
++}
++
++#[tokio::test]
++async fn test_cpp_runner_with_extension() {
++    super::setup();
++    
++    let config = Config::load().unwrap();
++    let mut runner = DockerRunner::new(config, "cpp".to_string()).unwrap();
++
++    let source_code = r#"
++#include <iostream>
++int main() {
++    std::cout << "Hello from C++!" << std::endl;
++    return 0;
++}
++    "#;
++
++    match runner.run_in_docker(source_code).await {
++        Ok(output) => {
++            println!("=== C++ Execution Output ===");
++            println!("{}", output);
++            assert!(output.contains("Hello from C++!"));
++        }
++        Err(e) => {
++            println!("Error: {}", e);
++            panic!("C++の実行に失敗しました: {}", e);
++        }
++    }
++}
++
++#[tokio::test]
++async fn test_rust_runner_with_extension() {
++    super::setup();
++    
++    let config = Config::load().unwrap();
++    let mut runner = DockerRunner::new(config, "rust".to_string()).unwrap();
++
++    let source_code = r#"fn main() {
++    println!("Hello from Rust!");
++}"#;
++
++    match runner.run_in_docker(source_code).await {
++        Ok(output) => {
++            println!("=== Rust Execution Output ===");
++            println!("{}", output);
++            assert!(output.contains("Hello from Rust!"));
++        }
++        Err(e) => {
++            println!("Error: {}", e);
++            panic!("Rustの実行に失敗しました: {}", e);
++        }
++    }
+ } 
+\ No newline at end of file

@@ -44,13 +44,9 @@ async fn test_rust_runner() {
     let config = Config::load().unwrap();
     let mut runner = DockerRunner::new(config, "rust".to_string()).unwrap();
 
-    let source_code = r#"
-        fn main() {
-            println!("Hello from Rust!");
-        }
-    "#;
-
-    prepare_test_file("/tmp/test-rust", "main.rs", source_code).await.unwrap();
+    let source_code = r#"fn main() {
+    println!("Hello from Rust!");
+}"#;
 
     match runner.run_in_docker(source_code).await {
         Ok(output) => {
@@ -174,5 +170,81 @@ int main() {
     match runner.run_in_docker(source_code).await {
         Ok(output) => assert!(output.contains("Hello from C++!")),
         Err(e) => panic!("C++の実行に失敗しました: {}", e),
+    }
+}
+
+#[tokio::test]
+async fn test_python_runner() {
+    super::setup();
+    
+    let config = Config::load().unwrap();
+    let mut runner = DockerRunner::new(config, "python".to_string()).unwrap();
+
+    let source_code = r#"
+print("Hello from Python!")
+    "#;
+
+    match runner.run_in_docker(source_code).await {
+        Ok(output) => {
+            println!("=== Python Execution Output ===");
+            println!("{}", output);
+            assert!(output.contains("Hello from Python!"));
+        }
+        Err(e) => {
+            println!("Error: {}", e);
+            panic!("Pythonの実行に失敗しました: {}", e);
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_cpp_runner_with_extension() {
+    super::setup();
+    
+    let config = Config::load().unwrap();
+    let mut runner = DockerRunner::new(config, "cpp".to_string()).unwrap();
+
+    let source_code = r#"
+#include <iostream>
+int main() {
+    std::cout << "Hello from C++!" << std::endl;
+    return 0;
+}
+    "#;
+
+    match runner.run_in_docker(source_code).await {
+        Ok(output) => {
+            println!("=== C++ Execution Output ===");
+            println!("{}", output);
+            assert!(output.contains("Hello from C++!"));
+        }
+        Err(e) => {
+            println!("Error: {}", e);
+            panic!("C++の実行に失敗しました: {}", e);
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_rust_runner_with_extension() {
+    super::setup();
+    
+    let config = Config::load().unwrap();
+    let mut runner = DockerRunner::new(config, "rust".to_string()).unwrap();
+
+    let source_code = r#"fn main() {
+    println!("Hello from Rust!");
+}"#;
+
+    match runner.run_in_docker(source_code).await {
+        Ok(output) => {
+            println!("=== Rust Execution Output ===");
+            println!("{}", output);
+            assert!(output.contains("Hello from Rust!"));
+        }
+        Err(e) => {
+            println!("Error: {}", e);
+            panic!("Rustの実行に失敗しました: {}", e);
+        }
     }
 } 

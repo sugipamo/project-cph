@@ -89,44 +89,66 @@ impl DockerCommand {
         // コマンドを構築
         let cmd = if let Some(compile_cmd) = compile_cmd {
             let compile_str = compile_cmd.iter()
-                .map(|s| s.replace("main.rs", &format!("main.{}", extension)))
+                .map(|s| s.to_string())
                 .collect::<Vec<_>>()
                 .join(" ");
             let run_str = run_cmd.iter()
-                .map(|s| s.replace("main.rs", &format!("main.{}", extension)))
+                .map(|s| s.to_string())
                 .collect::<Vec<_>>()
                 .join(" ");
-            format!("ls -la && {} && {}", compile_str, run_str)
+            format!(
+                "ls -la && pwd && echo '{}' > main.{} && cat main.{} && {} && {}",
+                source_code.replace("'", "'\"'\"'"),
+                extension,
+                extension,
+                compile_str,
+                run_str
+            )
         } else {
             let run_str = run_cmd.iter()
-                .map(|s| s.replace("main.rs", &format!("main.{}", extension)))
+                .map(|s| s.to_string())
                 .collect::<Vec<_>>()
                 .join(" ");
-            format!("ls -la && {}", run_str)
+            format!(
+                "ls -la && pwd && echo '{}' > main.{} && cat main.{} && {}",
+                source_code.replace("'", "'\"'\"'"),
+                extension,
+                extension,
+                run_str
+            )
         };
 
-        command.arg(cmd)
+        command.arg(&cmd)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        // コマンドを実行（タイムアウト付き）
         println!("Running command: {:?}", command);
-        let output = match timeout(Duration::from_secs(timeout_seconds.into()), command.output()).await {
-            Ok(result) => result.map_err(|e| format!("コマンドの実行に失敗しました: {}", e))?,
-            Err(_) => {
-                self.stop_container().await;
-                return Err("実行がタイムアウトしました".to_string());
+        println!("Source code directory: {}", temp_dir.display());
+        println!("Mount point: {}", mount_point);
+
+        // コマンドを実行
+        let result = match timeout(Duration::from_secs(timeout_seconds.into()), command.output()).await {
+            Ok(result) => {
+                match result {
+                    Ok(output) => {
+                        println!("Command stdout: {}", String::from_utf8_lossy(&output.stdout));
+                        println!("Command stderr: {}", String::from_utf8_lossy(&output.stderr));
+                        if output.status.success() {
+                            Ok(String::from_utf8_lossy(&output.stdout).to_string())
+                        } else {
+                            Err(String::from_utf8_lossy(&output.stderr).to_string())
+                        }
+                    }
+                    Err(e) => Err(format!("コマンドの実行に失敗しました: {}", e)),
+                }
             }
+            Err(_) => Err("実行がタイムアウトしました".to_string()),
         };
 
         // 一時ディレクトリを削除
         let _ = fs::remove_dir_all(temp_dir);
 
-        if output.status.success() {
-            Ok(String::from_utf8_lossy(&output.stdout).to_string())
-        } else {
-            Err(String::from_utf8_lossy(&output.stderr).to_string())
-        }
+        result
     }
 
     pub async fn compile(
