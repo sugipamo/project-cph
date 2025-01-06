@@ -13,11 +13,6 @@ fn check_docker_available() -> bool {
         .unwrap_or(false)
 }
 
-async fn prepare_test_file(dir: &str, filename: &str, content: &str) -> std::io::Result<()> {
-    fs::create_dir_all(dir)?;
-    fs::write(format!("{}/{}", dir, filename), content)
-}
-
 #[tokio::test]
 async fn test_docker_runner_creation() {
     let config = Config::load().unwrap();
@@ -73,8 +68,6 @@ async fn test_timeout() {
         }
     "#;
 
-    prepare_test_file("/tmp/test-timeout", "main.rs", source_code).await.unwrap();
-
     match runner.run_in_docker(source_code).await {
         Ok(_) => panic!("タイムアウトが発生しませんでした"),
         Err(e) => match e {
@@ -121,8 +114,6 @@ async fn test_compilation_error() {
             let x: i32 = "not a number";
         }
     "#;
-
-    prepare_test_file("/tmp/test-compile", "main.rs", source_code).await.unwrap();
 
     match runner.run_in_docker(source_code).await {
         Ok(_) => panic!("コンパイルエラーが検出されませんでした"),

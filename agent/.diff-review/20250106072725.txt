@@ -1,0 +1,43 @@
+diff --git a/tests/docker/runner_test.rs b/tests/docker/runner_test.rs
+index 7ba1c6a..9f92534 100644
+--- a/tests/docker/runner_test.rs
++++ b/tests/docker/runner_test.rs
+@@ -3,6 +3,8 @@ use tokio::test;
+ use cph::config::Config;
+ use cph::docker::{DockerRunner, DockerError};
+ use std::fs;
++use std::env;
++use std::path::PathBuf;
+ 
+ // Dockerデーモンが利用可能かチェックする
+ fn check_docker_available() -> bool {
+@@ -13,11 +15,6 @@ fn check_docker_available() -> bool {
+         .unwrap_or(false)
+ }
+ 
+-async fn prepare_test_file(dir: &str, filename: &str, content: &str) -> std::io::Result<()> {
+-    fs::create_dir_all(dir)?;
+-    fs::write(format!("{}/{}", dir, filename), content)
+-}
+-
+ #[tokio::test]
+ async fn test_docker_runner_creation() {
+     let config = Config::load().unwrap();
+@@ -73,8 +70,6 @@ async fn test_timeout() {
+         }
+     "#;
+ 
+-    prepare_test_file("/tmp/test-timeout", "main.rs", source_code).await.unwrap();
+-
+     match runner.run_in_docker(source_code).await {
+         Ok(_) => panic!("タイムアウトが発生しませんでした"),
+         Err(e) => match e {
+@@ -122,8 +117,6 @@ async fn test_compilation_error() {
+         }
+     "#;
+ 
+-    prepare_test_file("/tmp/test-compile", "main.rs", source_code).await.unwrap();
+-
+     match runner.run_in_docker(source_code).await {
+         Ok(_) => panic!("コンパイルエラーが検出されませんでした"),
+         Err(e) => assert!(e.to_string().contains("error")),
