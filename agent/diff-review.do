@@ -1,4 +1,5 @@
 date +%Y%m%d%H%M%Sを実行
+tree ./ を実行
 git diff develop > agent/.diff-review/yyyymmddhhmm.txt
 を実行し、変更点を確認する。
 
