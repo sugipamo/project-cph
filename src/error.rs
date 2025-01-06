@@ -6,53 +6,53 @@ pub const NO_ACTIVE_CONTEST: &str = "アクティブなコンテストがあり�
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
-    #[error("設定ファイルが見つかりません: {path}")]
+    #[error("設定ファイルが見つかりません: {path}\nヒント: 'config.yaml'ファイルが正しい場所にあることを確認してください。")]
     NotFound { path: String },
     
-    #[error("設定ファイルの解析に失敗しました: {0}")]
+    #[error("設定ファイルの解析に失敗しました: {0}\nヒント: YAMLの構文が正しいことを確認してください。")]
     Parse(#[from] serde_yaml::Error),
     
-    #[error("無効な設定値: {field} - {message}")]
-    InvalidValue { field: String, message: String },
+    #[error("無効な設定値: {field} - {message}\nヒント: {help}")]
+    InvalidValue { field: String, message: String, help: String },
 }
 
 #[derive(Debug, Error)]
 pub enum FileSystemError {
-    #[error("ファイルが見つかりません: {path}")]
+    #[error("ファイルが見つかりません: {path}\nヒント: パスが正しいことを確認してください。")]
     NotFound { path: String },
     
-    #[error("アクセス権限がありません: {path}")]
+    #[error("アクセス権限がありません: {path}\nヒント: ファイルの権限設定を確認してください。")]
     Permission { path: String },
     
-    #[error("IOエラー: {0}")]
-    Io(#[from] io::Error),
+    #[error("IOエラー: {0}\nコンテキスト: {1}")]
+    Io(io::Error, String),
     
-    #[error("パスエラー: {0}")]
+    #[error("パスエラー: {0}\nヒント: パスが有効であることを確認してください。")]
     Path(#[from] StripPrefixError),
 }
 
 #[derive(Debug, Error)]
 pub enum LanguageError {
-    #[error("サポートされていない言語です: {lang}")]
+    #[error("サポートされていない言語です: {lang}\nヒント: サポートされている言語は: cpp, python, rust です。")]
     Unsupported { lang: String },
     
-    #[error("コンパイラが見つかりません: {compiler}")]
+    #[error("コンパイラが見つかりません: {compiler}\nヒント: {compiler}がインストールされていることを確認してください。")]
     CompilerNotFound { compiler: String },
     
-    #[error("言語設定エラー: {message}")]
-    Config { message: String },
+    #[error("言語設定エラー: {message}\nヒント: {help}")]
+    Config { message: String, help: String },
 }
 
 #[derive(Debug, Error)]
 pub enum DockerError {
-    #[error("Dockerデーモンに接続できません")]
+    #[error("Dockerデーモンに接続できません\nヒント: Dockerが起動していることを確認してください。")]
     ConnectionFailed,
     
-    #[error("イメージのビルドに失敗しました: {image}")]
-    BuildFailed { image: String },
+    #[error("イメージのビルドに失敗しました: {image}\nコンテキスト: {context}\nヒント: Dockerfileを確認してください。")]
+    BuildFailed { image: String, context: String },
     
-    #[error("コンテナの実行に失敗しました: {message}")]
-    ExecutionFailed { message: String },
+    #[error("コンテナの実行に失敗しました: {message}\nコンテキスト: {context}")]
+    ExecutionFailed { message: String, context: String },
     
     #[error("ファイルシステムエラー: {0}")]
     Fs(#[from] FileSystemError),

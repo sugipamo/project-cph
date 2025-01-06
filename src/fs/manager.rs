@@ -16,7 +16,7 @@ impl FileManager {
             .map_err(|e| CphError::Fs(FileSystemError::Io(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 format!("ディレクトリの作成に失敗しました: {}", e),
-            ))))?;
+            ), "ファイルシステム操作中のエラー".to_string())))?;
         Ok(full_path)
     }
 
@@ -27,13 +27,13 @@ impl FileManager {
                 .map_err(|e| CphError::Fs(FileSystemError::Io(std::io::Error::new(
                     std::io::ErrorKind::Other,
                     format!("ディレクトリの作成に失敗しました: {}", e),
-                ))))?;
+                ), "ファイルシステム操作中のエラー".to_string())))?;
         }
         std::fs::write(&full_path, content)
             .map_err(|e| CphError::Fs(FileSystemError::Io(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 format!("ファイルの書き込みに失敗しました: {}", e),
-            ))))?;
+            ), "ファイルシステム操作中のエラー".to_string())))?;
         Ok(full_path)
     }
 
@@ -43,7 +43,7 @@ impl FileManager {
             .map_err(|e| CphError::Fs(FileSystemError::Io(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 format!("メタデータの取得に失敗しました: {}", e),
-            ))))?;
+            ), "ファイルシステム操作中のエラー".to_string())))?;
 
         let mut perms = metadata.permissions();
         #[cfg(unix)]
@@ -55,7 +55,7 @@ impl FileManager {
             .map_err(|e| CphError::Fs(FileSystemError::Io(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 format!("権限の設定に失敗しました: {}", e),
-            ))))?;
+            ), "ファイルシステム操作中のエラー".to_string())))?;
 
         Ok(())
     }

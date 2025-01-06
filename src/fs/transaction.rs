@@ -40,13 +40,13 @@ impl Transaction {
                             return Err(CphError::Fs(FileSystemError::Io(std::io::Error::new(
                                 std::io::ErrorKind::Other,
                                 format!("ロールバック中にエラーが発生しました: {}", rollback_err),
-                            ))));
+                            ), "トランザクション操作中のエラー".to_string())));
                         }
                     }
                     return Err(CphError::Fs(FileSystemError::Io(std::io::Error::new(
                         std::io::ErrorKind::Other,
                         format!("操作の実行中にエラーが発生しました: {}", e),
-                    ))));
+                    ), "トランザクション操作中のエラー".to_string())));
                 }
             }
         }
