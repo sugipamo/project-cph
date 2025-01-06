@@ -1,3 +1,20 @@
+/*
+TODO: リファクタリング計画 - トレイトの分割と整理
+
+このファイルは将来的に以下のような構造に分割することを検討:
+
+src/docker/traits/
+├── mod.rs          - トレイトモジュールのエントリーポイント
+├── container.rs    - ContainerManagerトレイト
+├── operations.rs   - DockerOperationsトレイト
+└── compilation.rs  - CompilationOperationsトレイト
+
+目的:
+- 各トレイトの責務をより明確に分離
+- テスタビリティの向上
+- コードの保守性と可読性の向上
+*/
+
 use async_trait::async_trait;
 use std::time::Duration;
 use crate::docker::error::DockerResult;

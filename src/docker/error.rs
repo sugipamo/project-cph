@@ -1,34 +1,59 @@
-use thiserror::Error;
-use tokio::time::error::Elapsed;
+use std::error::Error;
+use std::fmt;
+use std::io;
+use nix::errno::Errno;
 use crate::docker::state::StateError;
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum DockerError {
-    #[error("コマンドの実行に失敗しました: {0}")]
+    Container(String),
+    Compilation(String),
     Command(String),
-
-    #[error("コンテナの状態エラー: {0}")]
-    State(#[from] StateError),
-
-    #[error("タイムアウトエラー")]
-    Timeout(#[from] Elapsed),
-
-    #[error("ファイルシステムエラー: {0}")]
+    State(StateError),
+    IO(io::Error),
     Filesystem(String),
-
-    #[error("システムエラー: {0}")]
     System(String),
 }
 
-impl From<nix::errno::Errno> for DockerError {
-    fn from(err: nix::errno::Errno) -> Self {
-        DockerError::System(err.to_string())
+impl fmt::Display for DockerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DockerError::Container(msg) => write!(f, "コンテナエラー: {}", msg),
+            DockerError::Compilation(msg) => write!(f, "コンパイルエラー: {}", msg),
+            DockerError::Command(msg) => write!(f, "コマンドエラー: {}", msg),
+            DockerError::State(err) => write!(f, "状態エラー: {}", err),
+            DockerError::IO(err) => write!(f, "I/Oエラー: {}", err),
+            DockerError::Filesystem(msg) => write!(f, "ファイルシステムエラー: {}", msg),
+            DockerError::System(msg) => write!(f, "システムエラー: {}", msg),
+        }
     }
 }
 
-impl From<std::io::Error> for DockerError {
-    fn from(err: std::io::Error) -> Self {
-        DockerError::Filesystem(err.to_string())
+impl Error for DockerError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            DockerError::State(err) => Some(err),
+            DockerError::IO(err) => Some(err),
+            _ => None,
+        }
+    }
+}
+
+impl From<io::Error> for DockerError {
+    fn from(err: io::Error) -> Self {
+        DockerError::IO(err)
+    }
+}
+
+impl From<StateError> for DockerError {
+    fn from(err: StateError) -> Self {
+        DockerError::State(err)
+    }
+}
+
+impl From<Errno> for DockerError {
+    fn from(err: Errno) -> Self {
+        DockerError::System(err.to_string())
     }
 }
 

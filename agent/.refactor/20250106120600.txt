@@ -1,0 +1,52 @@
+# src/docker配下の構造分析とリファクタリング計画
+
+## 現在の構造
+```
+src/docker/
+├── runner/
+│   ├── io.rs          - I/O関連の処理
+│   ├── manager.rs     - ランナーの管理
+│   ├── mod.rs         - モジュールの定義と主要な実装
+│   ├── test_helpers.rs - テスト用ヘルパー
+│   ├── compiler.rs    - コンパイル関連の処理
+│   ├── container.rs   - コンテナ操作の実装
+│   ├── default_impl.rs - デフォルト実装
+│   └── executor.rs    - 実行関連の処理
+├── state/
+│   ├── container.rs   - コンテナの状態管理
+│   └── mod.rs         - 状態管理モジュールの定義
+├── traits.rs          - トレイト定義
+├── config.rs          - 設定関連
+├── error.rs           - エラー定義
+├── fs.rs              - ファイルシステム操作
+└── mod.rs             - モジュール定義
+
+## 課題点
+1. runner/default_impl.rsが387行と肥大化している
+2. state/container.rsが435行と肥大化している
+3. fs.rsも147行とやや大きい
+
+## リファクタリング提案
+1. runner/default_impl.rsの分割
+   - 機能ごとに新しいモジュールに分割
+   - テスト関連の処理を別モジュールへ
+   - ユーティリティ関数の分離
+
+2. state/container.rsの整理
+   - 状態遷移のロジックを別モジュールへ
+   - コンテナ操作の基本機能と拡張機能を分離
+   - テストコードの整理
+
+3. fs.rsの改善
+   - 関連する機能でグループ化
+   - ユーティリティ関数の分離
+   - エラーハンドリングの統一
+
+## 実装手順
+1. runner/default_impl.rsの分割
+2. state/container.rsの整理
+3. fs.rsの改善
+4. テストの追加と修正
+5. ドキュメントの更新
+
+各ステップ完了後にcargo checkを実行し、コンパイルエラーがないことを確認する。 
