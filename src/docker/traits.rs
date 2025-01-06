@@ -59,4 +59,41 @@ pub trait DockerRunner: Send + Sync {
 
     /// コンテナを停止する
     async fn stop(&mut self) -> DockerResult<()>;
+}
+
+#[async_trait]
+pub trait DockerOperation: Send + Sync {
+    /// Dockerコンテナの操作を実行する
+    async fn execute(&self, command: DockerCommand) -> DockerResult<CommandOutput>;
+    
+    /// コンテナのI/O操作を処理する
+    async fn handle_io(&self) -> DockerResult<()>;
+    
+    /// リソースのクリーンアップを行う
+    async fn cleanup(&self) -> DockerResult<()>;
+}
+
+#[derive(Debug, Clone)]
+pub struct DockerCommand {
+    pub command_type: CommandType,
+    pub args: Vec<String>,
+    pub timeout: Option<Duration>,
+}
+
+#[derive(Debug, Clone)]
+pub enum CommandType {
+    Create,
+    Start,
+    Stop,
+    Execute,
+    Pull,
+    Inspect,
+}
+
+#[derive(Debug)]
+pub struct CommandOutput {
+    pub success: bool,
+    pub stdout: String,
+    pub stderr: String,
+    pub exit_code: Option<i32>,
 } 

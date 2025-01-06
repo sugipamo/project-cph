@@ -1,70 +1,91 @@
 use std::sync::Arc;
 use std::time::Duration;
-use crate::config::Config;
-use crate::docker::runner::{DockerRunner, DockerCommandLayer, DefaultDockerExecutor, ContainerConfig};
-use crate::docker::traits::DockerRunner as DockerRunnerTrait;
+use async_trait::async_trait;
+
+use crate::docker::runner::{DockerRunner, ContainerConfig};
+use crate::docker::traits::{DockerOperation, DockerCommand, CommandOutput};
+use crate::docker::state::RunnerState;
+use crate::docker::error::DockerResult;
 use crate::contest::error::{ContestResult, ContestError};
+use crate::config::Config;
 
 pub struct ContestService {
-    config: Config,
+    config: Arc<Config>,
 }
 
 impl ContestService {
     pub fn new(config: Config) -> Self {
-        Self { config }
+        Self {
+            config: Arc::new(config),
+        }
     }
 
-    pub async fn run_code(&self, source_code: &str) -> ContestResult<String> {
-        // 設定から必要な情報を取得
-        let memory_limit = self.config.get::<u64>("system.docker.memory_limit_mb")
-            .map_err(|e| ContestError::Config(format!("メモリ制限の取得に失敗: {}", e)))?;
-        
-        let mount_point = self.config.get::<String>("system.docker.mount_point")
-            .map_err(|e| ContestError::Config(format!("マウントポイントの取得に失敗: {}", e)))?;
-        
-        let working_dir = self.config.get::<String>("system.docker.working_dir")
-            .map_err(|e| ContestError::Config(format!("作業ディレクトリの取得に失敗: {}", e)))?;
-        
-        let image = self.config.get::<String>("system.docker.image")
-            .map_err(|e| ContestError::Config(format!("Dockerイメージの取得に失敗: {}", e)))?;
-
-        let timeout = self.config.get::<u64>("system.docker.timeout_seconds")
-            .map_err(|e| ContestError::Config(format!("タイムアウト設定の取得に失敗: {}", e)))?;
-
-        let run_cmd = self.config.get::<Vec<String>>("system.docker.run_cmd")
-            .map_err(|e| ContestError::Config(format!("実行コマンドの取得に失敗: {}", e)))?;
-
-        // DockerRunnerの設定
-        let docker = Arc::new(DockerCommandLayer::new(Box::new(DefaultDockerExecutor::new())));
-        let container_config = ContainerConfig {
-            image,
-            memory_limit,
-            mount_point,
-            working_dir,
-        };
-
-        let mut docker_runner = DockerRunner::new(
-            docker,
-            container_config,
-            Duration::from_secs(timeout),
+    pub async fn run_contest(&self, source_code: &str) -> ContestResult<String> {
+        let timeout = Duration::from_secs(
+            self.config
+                .get("system.docker.timeout_seconds")
+                .unwrap_or(10),
         );
 
-        // コンテナの初期化と実行
-        DockerRunnerTrait::initialize(&mut docker_runner, run_cmd).await
-            .map_err(|e| ContestError::Docker(format!("コンテナの初期化に失敗: {}", e)))?;
+        let container_config = ContainerConfig {
+            image: self.config
+                .get("system.docker.image")
+                .unwrap_or_else(|_| "rust:latest".to_string()),
+            memory_limit: self.config
+                .get("system.docker.memory_limit")
+                .unwrap_or(512),
+            working_dir: "/workspace".to_string(),
+            mount_point: self.config
+                .get("system.docker.mount_point")
+                .unwrap_or_else(|_| "/tmp".to_string()),
+        };
 
-        // ソースコードの書き込み
-        DockerRunnerTrait::write(&mut docker_runner, source_code).await
-            .map_err(|e| ContestError::Docker(format!("ソースコードの書き込みに失敗: {}", e)))?;
+        let operation = Arc::new(DefaultDockerOperation::new());
+        let mut docker_runner = DockerRunner::new(operation, timeout);
 
-        // 実行結果の取得
-        let output = DockerRunnerTrait::read_stdout(&mut docker_runner).await
-            .map_err(|e| ContestError::Docker(format!("実行結果の取得に失敗: {}", e)))?;
+        // コンテナの初期化
+        docker_runner.initialize(container_config).await
+            .map_err(|e| ContestError::Docker(e.to_string()))?;
 
-        // コンテナの停止
-        DockerRunnerTrait::stop(&mut docker_runner).await
-            .map_err(|e| ContestError::Docker(format!("コンテナの停止に失敗: {}", e)))?;
+        // ソースコードの実行
+        docker_runner.execute(vec![source_code.to_string()]).await
+            .map_err(|e| ContestError::Docker(e.to_string()))?;
 
-        Ok(output)
+        // 結果の取得
+        let state = docker_runner.get_state().await;
+        match state {
+            RunnerState::Completed(result) => Ok(result.output),
+            RunnerState::Failed(error) => Err(ContestError::Docker(error.to_string())),
+            _ => Err(ContestError::Docker("実行が完了しませんでした".to_string())),
+        }
+    }
+}
+
+// DefaultDockerOperationの実装
+pub struct DefaultDockerOperation {
+    // 必要なフィールドを追加
+}
+
+impl DefaultDockerOperation {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+#[async_trait]
+impl DockerOperation for DefaultDockerOperation {
+    async fn execute(&self, command: DockerCommand) -> DockerResult<CommandOutput> {
+        // 実装を追加
+        todo!()
+    }
+    
+    async fn handle_io(&self) -> DockerResult<()> {
+        // 実装を追加
+        todo!()
+    }
+    
+    async fn cleanup(&self) -> DockerResult<()> {
+        // 実装を追加
+        todo!()
     }
 } 
