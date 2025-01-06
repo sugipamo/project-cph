@@ -1,60 +1,16 @@
 use std::path::{Path, PathBuf};
-use crate::contest::error::{Result, ContestError};
-use std::fs;
-use super::transaction::FileOperation;
+use super::error::{Result, FsError};
+use super::FileOperation;
 
-/// ファイルのコピー操作
-#[derive(Debug)]
-pub struct CopyOperation {
-    source: PathBuf,
-    destination: PathBuf,
-}
-
-impl CopyOperation {
-    pub fn new(source: impl AsRef<Path>, destination: impl AsRef<Path>) -> Self {
-        Self {
-            source: source.as_ref().to_path_buf(),
-            destination: destination.as_ref().to_path_buf(),
-        }
-    }
-}
-
-impl FileOperation for CopyOperation {
-    fn execute(&self) -> Result<()> {
-        fs::copy(&self.source, &self.destination)
-            .map_err(|e| ContestError::FileSystem {
-                message: "ファイルのコピーに失敗".to_string(),
-                source: e,
-                path: self.destination.clone(),
-            })?;
-        Ok(())
-    }
-
-    fn rollback(&self) -> Result<()> {
-        if self.destination.exists() {
-            fs::remove_file(&self.destination)
-                .map_err(|e| ContestError::FileSystem {
-                    message: "ファイルの削除に失敗".to_string(),
-                    source: e,
-                    path: self.destination.clone(),
-                })?;
-        }
-        Ok(())
-    }
-
-    fn description(&self) -> String {
-        format!("Copy {} to {}", self.source.display(), self.destination.display())
-    }
-}
-
-/// ディレクトリの作成操作
+/// ディレクトリを作成する操作
 #[derive(Debug)]
 pub struct CreateDirOperation {
     path: PathBuf,
 }
 
 impl CreateDirOperation {
-    pub fn new(path: impl AsRef<Path>) -> Self {
+    /// 新しいディレクトリ作成操作を作成
+    pub fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
             path: path.as_ref().to_path_buf(),
         }
@@ -63,70 +19,95 @@ impl CreateDirOperation {
 
 impl FileOperation for CreateDirOperation {
     fn execute(&self) -> Result<()> {
-        fs::create_dir_all(&self.path)
-            .map_err(|e| ContestError::FileSystem {
-                message: "ディレクトリの作成に失敗".to_string(),
-                source: e,
-                path: self.path.clone(),
+        std::fs::create_dir_all(&self.path)
+            .map_err(|e| FsError::FileSystem {
+                message: format!("ディレクトリの作成に失敗しました: {}", e),
+                source: Some(e),
             })?;
         Ok(())
     }
 
     fn rollback(&self) -> Result<()> {
         if self.path.exists() {
-            fs::remove_dir_all(&self.path)
-                .map_err(|e| ContestError::FileSystem {
-                    message: "ディレクトリの削除に失敗".to_string(),
-                    source: e,
-                    path: self.path.clone(),
+            std::fs::remove_dir_all(&self.path)
+                .map_err(|e| FsError::FileSystem {
+                    message: format!("ディレクトリの削除に失敗しました: {}", e),
+                    source: Some(e),
                 })?;
         }
         Ok(())
     }
+}
 
-    fn description(&self) -> String {
-        format!("Create directory {}", self.path.display())
+/// ファイルをコピーする操作
+#[derive(Debug)]
+pub struct CopyOperation {
+    from: PathBuf,
+    to: PathBuf,
+}
+
+impl CopyOperation {
+    /// 新しいファイルコピー操作を作成
+    pub fn new<P: AsRef<Path>>(from: P, to: P) -> Self {
+        Self {
+            from: from.as_ref().to_path_buf(),
+            to: to.as_ref().to_path_buf(),
+        }
     }
 }
 
-/// ファイルの削除操作
+impl FileOperation for CopyOperation {
+    fn execute(&self) -> Result<()> {
+        std::fs::copy(&self.from, &self.to)
+            .map_err(|e| FsError::FileSystem {
+                message: format!("ファイルのコピーに失敗しました: {}", e),
+                source: Some(e),
+            })?;
+        Ok(())
+    }
+
+    fn rollback(&self) -> Result<()> {
+        if self.to.exists() {
+            std::fs::remove_file(&self.to)
+                .map_err(|e| FsError::FileSystem {
+                    message: format!("ファイルの削除に失敗しました: {}", e),
+                    source: Some(e),
+                })?;
+        }
+        Ok(())
+    }
+}
+
+/// ファイルを削除する操作
 #[derive(Debug)]
 pub struct RemoveOperation {
     path: PathBuf,
-    is_dir: bool,
 }
 
 impl RemoveOperation {
-    pub fn new(path: impl AsRef<Path>, is_dir: bool) -> Self {
+    /// 新しいファイル削除操作を作成
+    pub fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
             path: path.as_ref().to_path_buf(),
-            is_dir,
         }
     }
 }
 
 impl FileOperation for RemoveOperation {
     fn execute(&self) -> Result<()> {
-        if self.is_dir {
-            fs::remove_dir_all(&self.path)
-        } else {
-            fs::remove_file(&self.path)
+        if self.path.exists() {
+            std::fs::remove_file(&self.path)
+                .map_err(|e| FsError::FileSystem {
+                    message: format!("ファイルの削除に失敗しました: {}", e),
+                    source: Some(e),
+                })?;
         }
-        .map_err(|e| ContestError::FileSystem {
-            message: "ファイル/ディレクトリの削除に失敗".to_string(),
-            source: e,
-            path: self.path.clone(),
-        })?;
         Ok(())
     }
 
     fn rollback(&self) -> Result<()> {
-        // 削除操作のロールバックは、バックアップからの復元に依存
+        // 削除操作のロールバックは何もしない
         Ok(())
-    }
-
-    fn description(&self) -> String {
-        format!("Remove {}", self.path.display())
     }
 }
 
@@ -137,33 +118,32 @@ pub struct FileOperationBuilder {
 }
 
 impl FileOperationBuilder {
+    /// 新しいビルダーを作成
     pub fn new() -> Self {
         Self {
             operations: Vec::new(),
         }
     }
 
-    pub fn create_dir(mut self, path: impl AsRef<Path>) -> Self {
+    /// ディレクトリを作成する操作を追加
+    pub fn create_dir<P: AsRef<Path>>(mut self, path: P) -> Self {
         self.operations.push(Box::new(CreateDirOperation::new(path)));
         self
     }
 
-    pub fn copy_file(mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Self {
+    /// ファイルをコピーする操作を追加
+    pub fn copy_file<P: AsRef<Path>>(mut self, from: P, to: P) -> Self {
         self.operations.push(Box::new(CopyOperation::new(from, to)));
         self
     }
 
-    pub fn move_file(mut self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> Self {
-        self.operations.push(Box::new(CopyOperation::new(from.as_ref(), to.as_ref())));
-        self.operations.push(Box::new(RemoveOperation::new(from, false)));
+    /// ファイルを削除する操作を追加
+    pub fn delete_file<P: AsRef<Path>>(mut self, path: P) -> Self {
+        self.operations.push(Box::new(RemoveOperation::new(path)));
         self
     }
 
-    pub fn delete_file(mut self, path: impl AsRef<Path>) -> Self {
-        self.operations.push(Box::new(RemoveOperation::new(path, false)));
-        self
-    }
-
+    /// 操作のリストを構築
     pub fn build(self) -> Vec<Box<dyn FileOperation>> {
         self.operations
     }
