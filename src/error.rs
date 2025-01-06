@@ -1,4 +1,5 @@
 use std::io;
+use std::sync::Arc;
 use thiserror::Error;
 
 pub const NO_ACTIVE_CONTEST: &str = "アクティブなコンテストがありません。'work'コマンドで設定してください。";
@@ -9,6 +10,7 @@ pub struct ErrorContext {
     pub operation: String,
     pub location: String,
     pub hint: Option<String>,
+    pub source: Option<Arc<dyn std::error::Error + Send + Sync>>,
 }
 
 impl ErrorContext {
@@ -17,6 +19,7 @@ impl ErrorContext {
             operation: operation.into(),
             location: location.into(),
             hint: None,
+            source: None,
         }
     }
 
@@ -24,43 +27,57 @@ impl ErrorContext {
         self.hint = Some(hint.into());
         self
     }
+
+    pub fn with_source(mut self, source: impl std::error::Error + Send + Sync + 'static) -> Self {
+        self.source = Some(Arc::new(source));
+        self
+    }
 }
 
 /// 共通のエラー型
 #[derive(Debug, Error)]
 pub enum CphError {
-    #[error("ファイルシステムエラー\n{kind}\n場所: {path}\nヒント: {}", .hint.as_deref().unwrap_or("ファイルシステムの操作を確認してください。"))]
+    #[error("ファイルシステムエラー\n操作: {}\n場所: {}\nエラー: {}\nヒント: {}", 
+        context.operation, context.location, 
+        context.source.as_ref().map_or("不明".to_string(), |e| e.to_string()),
+        context.hint.as_deref().unwrap_or("ファイルシステムの操作を確認してください。"))]
     FileSystem {
+        context: ErrorContext,
         kind: FileSystemErrorKind,
-        path: String,
-        hint: Option<String>,
     },
 
-    #[error("Dockerエラー\n{kind}\n内容: {message}\nヒント: {}", .hint.as_deref().unwrap_or("Docker環境を確認してください。"))]
+    #[error("Dockerエラー\n操作: {}\n場所: {}\nエラー: {}\nヒント: {}", 
+        context.operation, context.location,
+        context.source.as_ref().map_or("不明".to_string(), |e| e.to_string()),
+        context.hint.as_deref().unwrap_or("Docker環境を確認してください。"))]
     Docker {
+        context: ErrorContext,
         kind: DockerErrorKind,
-        message: String,
-        hint: Option<String>,
     },
 
-    #[error("コンテストエラー\n{kind}\n内容: {message}\nヒント: {}", .hint.as_deref().unwrap_or("コンテストの設定を確認してください。"))]
+    #[error("コンテストエラー\n操作: {}\n場所: {}\nエラー: {}\nヒント: {}", 
+        context.operation, context.location,
+        context.source.as_ref().map_or("不明".to_string(), |e| e.to_string()),
+        context.hint.as_deref().unwrap_or("コンテストの設定を確認してください。"))]
     Contest {
+        context: ErrorContext,
         kind: ContestErrorKind,
-        message: String,
-        hint: Option<String>,
     },
 
-    #[error("設定エラー\n{kind}\n内容: {message}\nヒント: {}", .hint.as_deref().unwrap_or("設定ファイルを確認してください。"))]
+    #[error("設定エラー\n操作: {}\n場所: {}\nエラー: {}\nヒント: {}", 
+        context.operation, context.location,
+        context.source.as_ref().map_or("不明".to_string(), |e| e.to_string()),
+        context.hint.as_deref().unwrap_or("設定ファイルを確認してください。"))]
     Config {
+        context: ErrorContext,
         kind: ConfigErrorKind,
-        message: String,
-        hint: Option<String>,
     },
 
-    #[error("{message}\nヒント: {}", .hint.as_deref().unwrap_or("詳細については、ドキュメントを参照してください。"))]
+    #[error("{}\nヒント: {}", 
+        context.operation,
+        context.hint.as_deref().unwrap_or("詳細については、ドキュメントを参照してください。"))]
     Other {
-        message: String,
-        hint: Option<String>,
+        context: ErrorContext,
     },
 }
 
@@ -140,58 +157,85 @@ impl std::fmt::Display for ConfigErrorKind {
 
 /// エラーにコンテキストを追加するためのトレイト
 pub trait ErrorExt {
-    fn with_context(self, context: impl Into<String>) -> Self;
+    fn with_context(self, context: ErrorContext) -> Self;
     fn with_hint(self, hint: impl Into<String>) -> Self;
+    fn with_source(self, source: impl std::error::Error + Send + Sync + 'static) -> Self;
 }
 
 impl ErrorExt for CphError {
-    fn with_context(self, context: impl Into<String>) -> Self {
+    fn with_context(self, context: ErrorContext) -> Self {
         match self {
-            CphError::Docker { kind, message: _, hint } => {
-                CphError::Docker {
-                    kind,
-                    message: context.into(),
-                    hint,
-                }
-            }
-            _ => self,
+            CphError::FileSystem { kind, .. } => CphError::FileSystem { context, kind },
+            CphError::Docker { kind, .. } => CphError::Docker { context, kind },
+            CphError::Contest { kind, .. } => CphError::Contest { context, kind },
+            CphError::Config { kind, .. } => CphError::Config { context, kind },
+            CphError::Other { .. } => CphError::Other { context },
         }
     }
 
     fn with_hint(self, hint: impl Into<String>) -> Self {
         match self {
-            CphError::FileSystem { kind, path, hint: _ } => {
+            CphError::FileSystem { context, kind } => {
                 CphError::FileSystem {
+                    context: context.with_hint(hint),
                     kind,
-                    path,
-                    hint: Some(hint.into()),
                 }
             }
-            CphError::Docker { kind, message, hint: _ } => {
+            CphError::Docker { context, kind } => {
                 CphError::Docker {
+                    context: context.with_hint(hint),
                     kind,
-                    message,
-                    hint: Some(hint.into()),
                 }
             }
-            CphError::Contest { kind, message, hint: _ } => {
+            CphError::Contest { context, kind } => {
                 CphError::Contest {
+                    context: context.with_hint(hint),
                     kind,
-                    message,
-                    hint: Some(hint.into()),
                 }
             }
-            CphError::Config { kind, message, hint: _ } => {
+            CphError::Config { context, kind } => {
                 CphError::Config {
+                    context: context.with_hint(hint),
                     kind,
-                    message,
-                    hint: Some(hint.into()),
                 }
             }
-            CphError::Other { message, hint: _ } => {
+            CphError::Other { context } => {
                 CphError::Other {
-                    message,
-                    hint: Some(hint.into()),
+                    context: context.with_hint(hint),
+                }
+            }
+        }
+    }
+
+    fn with_source(self, source: impl std::error::Error + Send + Sync + 'static) -> Self {
+        match self {
+            CphError::FileSystem { context, kind } => {
+                CphError::FileSystem {
+                    context: context.with_source(source),
+                    kind,
+                }
+            }
+            CphError::Docker { context, kind } => {
+                CphError::Docker {
+                    context: context.with_source(source),
+                    kind,
+                }
+            }
+            CphError::Contest { context, kind } => {
+                CphError::Contest {
+                    context: context.with_source(source),
+                    kind,
+                }
+            }
+            CphError::Config { context, kind } => {
+                CphError::Config {
+                    context: context.with_source(source),
+                    kind,
+                }
+            }
+            CphError::Other { context } => {
+                CphError::Other {
+                    context: context.with_source(source),
                 }
             }
         }
@@ -205,102 +249,90 @@ pub mod helpers {
     use super::*;
 
     // FileSystem
-    pub fn fs_not_found(path: impl Into<String>) -> CphError {
+    pub fn fs_not_found(operation: impl Into<String>, path: impl Into<String>) -> CphError {
         CphError::FileSystem {
+            context: ErrorContext::new(operation, path),
             kind: FileSystemErrorKind::NotFound,
-            path: path.into(),
-            hint: None,
         }
     }
 
-    pub fn fs_permission(path: impl Into<String>) -> CphError {
+    pub fn fs_permission(operation: impl Into<String>, path: impl Into<String>) -> CphError {
         CphError::FileSystem {
+            context: ErrorContext::new(operation, path),
             kind: FileSystemErrorKind::Permission,
-            path: path.into(),
-            hint: None,
         }
     }
 
-    pub fn fs_io(path: impl Into<String>, error: io::Error) -> CphError {
+    pub fn fs_io(operation: impl Into<String>, path: impl Into<String>, error: io::Error) -> CphError {
         CphError::FileSystem {
+            context: ErrorContext::new(operation, path).with_source(error),
             kind: FileSystemErrorKind::Io,
-            path: path.into(),
-            hint: Some(error.to_string()),
         }
     }
 
     // Docker
-    pub fn docker_connection() -> CphError {
+    pub fn docker_connection(operation: impl Into<String>) -> CphError {
         CphError::Docker {
+            context: ErrorContext::new(operation, "Docker daemon"),
             kind: DockerErrorKind::ConnectionFailed,
-            message: "Dockerデーモンに接続できません".to_string(),
-            hint: None,
         }
     }
 
-    pub fn docker_build(message: impl Into<String>) -> CphError {
+    pub fn docker_build(operation: impl Into<String>, image: impl Into<String>, error: impl std::error::Error + Send + Sync + 'static) -> CphError {
         CphError::Docker {
+            context: ErrorContext::new(operation, image).with_source(error),
             kind: DockerErrorKind::BuildFailed,
-            message: message.into(),
-            hint: None,
         }
     }
 
-    pub fn docker_execution(message: impl Into<String>) -> CphError {
+    pub fn docker_execution(operation: impl Into<String>, container: impl Into<String>, error: impl std::error::Error + Send + Sync + 'static) -> CphError {
         CphError::Docker {
+            context: ErrorContext::new(operation, container).with_source(error),
             kind: DockerErrorKind::ExecutionFailed,
-            message: message.into(),
-            hint: None,
         }
     }
 
     // Contest
-    pub fn contest_site(message: impl Into<String>) -> CphError {
+    pub fn contest_site(operation: impl Into<String>, site: impl Into<String>, error: impl std::error::Error + Send + Sync + 'static) -> CphError {
         CphError::Contest {
+            context: ErrorContext::new(operation, site).with_source(error),
             kind: ContestErrorKind::Site,
-            message: message.into(),
-            hint: None,
         }
     }
 
-    pub fn contest_language(message: impl Into<String>) -> CphError {
+    pub fn contest_language(operation: impl Into<String>, lang: impl Into<String>) -> CphError {
         CphError::Contest {
+            context: ErrorContext::new(operation, lang),
             kind: ContestErrorKind::Language,
-            message: message.into(),
-            hint: None,
         }
     }
 
-    pub fn contest_compiler(compiler: impl Into<String>) -> CphError {
+    pub fn contest_compiler(operation: impl Into<String>, compiler: impl Into<String>) -> CphError {
         CphError::Contest {
+            context: ErrorContext::new(operation, compiler),
             kind: ContestErrorKind::Compiler,
-            message: format!("コンパイラが見つかりません: {}", compiler.into()),
-            hint: None,
         }
     }
 
     // Config
-    pub fn config_not_found(path: impl Into<String>) -> CphError {
+    pub fn config_not_found(operation: impl Into<String>, path: impl Into<String>) -> CphError {
         CphError::Config {
+            context: ErrorContext::new(operation, path),
             kind: ConfigErrorKind::NotFound,
-            message: format!("設定ファイルが見つかりません: {}", path.into()),
-            hint: None,
         }
     }
 
-    pub fn config_parse(error: impl std::error::Error) -> CphError {
+    pub fn config_parse(operation: impl Into<String>, path: impl Into<String>, error: impl std::error::Error + Send + Sync + 'static) -> CphError {
         CphError::Config {
+            context: ErrorContext::new(operation, path).with_source(error),
             kind: ConfigErrorKind::Parse,
-            message: error.to_string(),
-            hint: None,
         }
     }
 
-    pub fn config_invalid(field: impl Into<String>, message: impl Into<String>) -> CphError {
+    pub fn config_invalid(operation: impl Into<String>, field: impl Into<String>, message: impl Into<String>) -> CphError {
         CphError::Config {
+            context: ErrorContext::new(operation, field).with_hint(message),
             kind: ConfigErrorKind::InvalidValue,
-            message: format!("{}: {}", field.into(), message.into()),
-            hint: None,
         }
     }
 } 
