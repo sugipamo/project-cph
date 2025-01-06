@@ -1,5 +1,5 @@
 date +%Y%m%d%H%M%Sを実行
-git diff develop > agent/.refactor/yyyymmddhhmm_result.txt
+git diff develop > agent/.result/yyyymmddhhmm.txt
 を実行し、変更点を確認する。
 
 もし、重要な機能を削除しているのであれば作業を中断、今回の作業結果を作成されたファイルに追記する
@@ -11,10 +11,9 @@ cargo checkを行い、エラーがないか確認する。エラーがあれば
 追加された機能について、実装が非効率になっていないか確認する。非効率な点があれば、作業を中断し、今回の作業結果を作成されたファイルに追記する
 
 今回の作業結果を作成されたファイルに追記する
-feature/refactor_{}のブランチを作成し、コミット、プッシュする。
+feature/yyyymmddhhmm_{}のブランチを作成し、コミット、プッシュする。
 developブランチへのプルリクエストを作成する
 gitを最新の状態に同期する
 developブランチへcheckoutする
 developブランチへマージする
-gitを最新の状態に同期して、git branchで残っているブランチを確認する。
-main, develop以外のローカル、リモートブランチを削除する
+gitを最新の状態に同期して、作成したローカル、リモートブランチを削除する
