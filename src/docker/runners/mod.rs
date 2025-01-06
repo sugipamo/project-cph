@@ -63,17 +63,21 @@ impl DockerRunners {
         // タイムアウト設定の取得
         let timeout_seconds = self.config.get::<u64>("system.docker.timeout_seconds")
             .map_err(|e| format!("タイムアウト設定の読み込みに失敗しました: {}", e))?;
-        let timeout = Duration::from_secs(timeout_seconds);
-        let start = Instant::now();
+        let timeout_duration = Duration::from_secs(timeout_seconds);
 
-        loop {
-            if start.elapsed() > timeout {
-                println!("Execution timeout reached after {:?}", start.elapsed());
+        tokio::select! {
+            _ = tokio::time::sleep(timeout_duration) => {
+                println!("Execution timeout reached after {:?}", timeout_duration);
                 let mut state = self.state.lock().await;
-                state.error(format!("実行がタイムアウトしました: {:?}", timeout));
-                return Err(format!("実行がタイムアウトしました: {:?}", timeout));
+                state.error(format!("実行がタイムアウトしました: {:?}", timeout_duration));
+                Err(format!("実行がタイムアウトしました: {:?}", timeout_duration))
             }
+            result = self.run_internal() => result,
+        }
+    }
 
+    async fn run_internal(&self) -> Result<(), String> {
+        loop {
             if !self.check_runners(None).await {
                 println!("Runner error detected");
                 let mut state = self.state.lock().await;
@@ -83,7 +87,7 @@ impl DockerRunners {
 
             // 他のチェックロジック...
 
-            sleep(Duration::from_millis(100)).await;
+            tokio::time::sleep(Duration::from_millis(100)).await;
         }
     }
 

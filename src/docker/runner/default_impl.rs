@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use crate::docker::error::{DockerError, DockerResult};
 use crate::docker::traits::{ContainerManager, IOHandler, CompilationManager};
 use crate::docker::executor::{DockerCommand, DockerCommandExecutor, CommandOutput};
+use crate::docker::runner::io::ContainerIO;
 
 pub struct DefaultContainerManager {
     container_id: String,
@@ -152,70 +153,6 @@ impl ContainerManager for DefaultContainerManager {
                 output.stderr
             )))
         }
-    }
-}
-
-pub struct DefaultIOHandler {
-    container_id: String,
-    stdout_buffer: Arc<Mutex<Vec<String>>>,
-    stderr_buffer: Arc<Mutex<Vec<String>>>,
-    stdin_tx: Option<mpsc::Sender<String>>,
-    docker_executor: Arc<dyn DockerCommandExecutor>,
-}
-
-impl DefaultIOHandler {
-    pub fn new(container_id: String, executor: Arc<dyn DockerCommandExecutor>) -> Self {
-        Self {
-            container_id,
-            stdout_buffer: Arc::new(Mutex::new(Vec::new())),
-            stderr_buffer: Arc::new(Mutex::new(Vec::new())),
-            stdin_tx: None,
-            docker_executor: executor,
-        }
-    }
-}
-
-#[async_trait]
-impl IOHandler for DefaultIOHandler {
-    async fn write(&self, input: &str) -> DockerResult<()> {
-        let command = DockerCommand::new("exec")
-            .arg("-i")
-            .arg(&self.container_id)
-            .arg("sh")
-            .arg("-c")
-            .arg(input);
-
-        let output = self.docker_executor.execute(command).await?;
-
-        if output.success {
-            Ok(())
-        } else {
-            Err(DockerError::IO(format!(
-                "入力の送信に失敗しました: {}",
-                output.stderr
-            )))
-        }
-    }
-
-    async fn read_stdout(&self, timeout_duration: Duration) -> DockerResult<String> {
-        let command = DockerCommand::new("logs")
-            .arg(&self.container_id);
-
-        let output = self.docker_executor.execute(command).await?;
-        Ok(output.stdout)
-    }
-
-    async fn read_stderr(&self, timeout_duration: Duration) -> DockerResult<String> {
-        let command = DockerCommand::new("logs")
-            .arg("--stderr")
-            .arg(&self.container_id);
-
-        let output = self.docker_executor.execute(command).await?;
-        Ok(output.stderr)
-    }
-
-    async fn setup_io(&mut self) -> DockerResult<()> {
-        Ok(())
     }
 }
 
