@@ -1,53 +1,71 @@
-use super::*;
-use crate::{fs_error, docker_error, contest_error, config_error};
+use crate::error::{CphError, ErrorContext, ErrorSeverity};
+use crate::error::fs::FileSystemErrorKind;
+use crate::error::docker::DockerErrorKind;
+use crate::error::contest::ContestErrorKind;
+use crate::error::config::ConfigErrorKind;
 
-// ファイルシステム関連のヘルパー
-pub fn fs_not_found(op: impl Into<String>, path: impl Into<String>) -> CphError {
-    fs_error!(op.into(), path.into(), FileSystemErrorKind::NotFound)
+// ファイルシステム関連のヘルパー関数
+pub fn fs_error(kind: FileSystemErrorKind, op: impl Into<String>, path: impl Into<String>) -> CphError {
+    CphError::FileSystem {
+        context: ErrorContext::new(op, path).with_severity(match kind {
+            FileSystemErrorKind::NotFound => ErrorSeverity::Warning,
+            FileSystemErrorKind::Permission => ErrorSeverity::Error,
+            FileSystemErrorKind::Io => ErrorSeverity::Error,
+            FileSystemErrorKind::Path => ErrorSeverity::Warning,
+        }),
+        kind,
+    }
 }
 
-pub fn fs_permission(op: impl Into<String>, path: impl Into<String>) -> CphError {
-    fs_error!(op.into(), path.into(), FileSystemErrorKind::Permission)
+// Docker関連のヘルパー関数
+pub fn docker_error(kind: DockerErrorKind, op: impl Into<String>, context: impl Into<String>) -> CphError {
+    CphError::Docker {
+        context: ErrorContext::new(op, context).with_severity(match kind {
+            DockerErrorKind::ConnectionFailed => ErrorSeverity::Critical,
+            DockerErrorKind::BuildFailed => ErrorSeverity::Error,
+            DockerErrorKind::ExecutionFailed => ErrorSeverity::Error,
+            DockerErrorKind::StateFailed => ErrorSeverity::Warning,
+        }),
+        kind,
+    }
 }
 
-pub fn fs_io(op: impl Into<String>, path: impl Into<String>, error: std::io::Error) -> CphError {
-    fs_error!(op.into(), path.into(), FileSystemErrorKind::Io)
-        .with_source(error)
+// コンテスト関連のヘルパー関数
+pub fn contest_error(kind: ContestErrorKind, op: impl Into<String>, context: impl Into<String>) -> CphError {
+    CphError::Contest {
+        context: ErrorContext::new(op, context).with_severity(match kind {
+            ContestErrorKind::Site => ErrorSeverity::Error,
+            ContestErrorKind::Language => ErrorSeverity::Warning,
+            ContestErrorKind::Compiler => ErrorSeverity::Error,
+            ContestErrorKind::State => ErrorSeverity::Warning,
+        }),
+        kind,
+    }
 }
 
-// Docker関連のヘルパー
-pub fn docker_build(op: impl Into<String>, context: impl Into<String>, error: std::io::Error) -> CphError {
-    docker_error!(op.into(), context.into(), DockerErrorKind::BuildFailed)
-        .with_source(error)
+// 設定関連のヘルパー関数
+pub fn config_error(kind: ConfigErrorKind, op: impl Into<String>, context: impl Into<String>) -> CphError {
+    CphError::Config {
+        context: ErrorContext::new(op, context).with_severity(match kind {
+            ConfigErrorKind::NotFound => ErrorSeverity::Warning,
+            ConfigErrorKind::Parse => ErrorSeverity::Error,
+            ConfigErrorKind::InvalidValue => ErrorSeverity::Error,
+        }),
+        kind,
+    }
 }
 
-pub fn docker_execution(op: impl Into<String>, context: impl Into<String>, error: std::io::Error) -> CphError {
-    docker_error!(op.into(), context.into(), DockerErrorKind::ExecutionFailed)
-        .with_source(error)
+// 一般的なエラーヘルパー関数
+pub fn other_error(op: impl Into<String>, context: impl Into<String>, severity: ErrorSeverity) -> CphError {
+    CphError::Other {
+        context: ErrorContext::new(op, context).with_severity(severity),
+    }
 }
 
-pub fn docker_connection(op: impl Into<String>, context: impl Into<String>) -> CphError {
-    docker_error!(op.into(), context.into(), DockerErrorKind::ConnectionFailed)
-}
-
-// コンテスト関連のヘルパー
-pub fn contest_site(op: impl Into<String>, context: impl Into<String>) -> CphError {
-    contest_error!(op.into(), context.into(), ContestErrorKind::Site)
-}
-
-pub fn contest_language(op: impl Into<String>, context: impl Into<String>) -> CphError {
-    contest_error!(op.into(), context.into(), ContestErrorKind::Language)
-}
-
-// 設定関連のヘルパー
-pub fn config_not_found(op: impl Into<String>, path: impl Into<String>) -> CphError {
-    config_error!(op.into(), path.into(), ConfigErrorKind::NotFound)
-}
-
-pub fn config_parse(op: impl Into<String>, path: impl Into<String>) -> CphError {
-    config_error!(op.into(), path.into(), ConfigErrorKind::Parse)
-}
-
-pub fn config_invalid(op: impl Into<String>, path: impl Into<String>) -> CphError {
-    config_error!(op.into(), path.into(), ConfigErrorKind::InvalidValue)
+// バックトレース付きのエラーコンテキスト生成
+pub fn with_backtrace(mut context: ErrorContext) -> ErrorContext {
+    if context.backtrace.is_none() {
+        context.backtrace = Some(std::backtrace::Backtrace::capture().to_string());
+    }
+    context
 } 

@@ -1,7 +1,6 @@
 #[macro_use]
 pub mod macros;
 
-use std::io;
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -20,6 +19,12 @@ pub enum ErrorSeverity {
     Warning,
     Error,
     Critical,
+}
+
+impl Default for ErrorSeverity {
+    fn default() -> Self {
+        Self::Error
+    }
 }
 
 /// エラーコンテキストを表す構造体
@@ -44,6 +49,20 @@ pub struct SystemState {
     pub environment_info: Option<String>,
 }
 
+impl Default for ErrorContext {
+    fn default() -> Self {
+        Self {
+            operation: String::new(),
+            location: String::new(),
+            hint: None,
+            source: None,
+            backtrace: None,
+            system_state: None,
+            severity: ErrorSeverity::default(),
+        }
+    }
+}
+
 impl ErrorContext {
     pub fn new(operation: impl Into<String>, location: impl Into<String>) -> Self {
         Self {
@@ -51,9 +70,9 @@ impl ErrorContext {
             location: location.into(),
             hint: None,
             source: None,
-            backtrace: Some(std::backtrace::Backtrace::capture().to_string()),
+            backtrace: None,
             system_state: None,
-            severity: ErrorSeverity::Error,
+            severity: ErrorSeverity::default(),
         }
     }
 
@@ -263,6 +282,7 @@ pub enum FileSystemErrorKind {
     Permission,
     Io,
     Path,
+    Transaction,
 }
 
 impl std::fmt::Display for FileSystemErrorKind {
@@ -272,6 +292,7 @@ impl std::fmt::Display for FileSystemErrorKind {
             Self::Permission => write!(f, "アクセス権限がありません"),
             Self::Io => write!(f, "IOエラー"),
             Self::Path => write!(f, "パスエラー"),
+            Self::Transaction => write!(f, "トランザクションエラー"),
         }
     }
 }
@@ -282,6 +303,7 @@ pub enum DockerErrorKind {
     BuildFailed,
     ExecutionFailed,
     StateFailed,
+    ValidationFailed,
 }
 
 impl std::fmt::Display for DockerErrorKind {
@@ -291,6 +313,7 @@ impl std::fmt::Display for DockerErrorKind {
             Self::BuildFailed => write!(f, "イメージのビルドに失敗しました"),
             Self::ExecutionFailed => write!(f, "コンテナの実行に失敗しました"),
             Self::StateFailed => write!(f, "コンテナの状態管理に失敗しました"),
+            Self::ValidationFailed => write!(f, "バリデーションエラー"),
         }
     }
 }
@@ -301,6 +324,7 @@ pub enum ContestErrorKind {
     Language,
     Compiler,
     State,
+    Parse,
 }
 
 impl std::fmt::Display for ContestErrorKind {
@@ -310,6 +334,7 @@ impl std::fmt::Display for ContestErrorKind {
             Self::Language => write!(f, "言語エラー"),
             Self::Compiler => write!(f, "コンパイラエラー"),
             Self::State => write!(f, "状態管理エラー"),
+            Self::Parse => write!(f, "パースエラー"),
         }
     }
 }
@@ -319,6 +344,7 @@ pub enum ConfigErrorKind {
     NotFound,
     Parse,
     InvalidValue,
+    Validation,
 }
 
 impl std::fmt::Display for ConfigErrorKind {
@@ -327,6 +353,7 @@ impl std::fmt::Display for ConfigErrorKind {
             Self::NotFound => write!(f, "設定ファイルが見つかりません"),
             Self::Parse => write!(f, "設定ファイルの解析に失敗しました"),
             Self::InvalidValue => write!(f, "無効な設定値"),
+            Self::Validation => write!(f, "バリデーションエラー"),
         }
     }
 }
@@ -336,53 +363,79 @@ pub type Result<T> = std::result::Result<T, CphError>;
 // エラーヘルパー関数
 pub mod helpers {
     use super::*;
+    use super::fs::FileSystemErrorKind;
+    use super::docker::DockerErrorKind;
+    use super::contest::ContestErrorKind;
+    use super::config::ConfigErrorKind;
 
-    // ファイルシステム関連のヘルパー
-    pub fn fs_not_found(op: impl Into<String>, path: impl Into<String>) -> CphError {
-        fs_error!(op.into(), path.into(), FileSystemErrorKind::NotFound)
+    // ファイルシステム関連のヘルパー関数
+    pub fn fs_error(kind: FileSystemErrorKind, op: impl Into<String>, path: impl Into<String>) -> CphError {
+        CphError::FileSystem {
+            context: ErrorContext::new(op, path).with_severity(match kind {
+                FileSystemErrorKind::NotFound => ErrorSeverity::Warning,
+                FileSystemErrorKind::Permission => ErrorSeverity::Error,
+                FileSystemErrorKind::Io => ErrorSeverity::Error,
+                FileSystemErrorKind::Path => ErrorSeverity::Warning,
+                FileSystemErrorKind::Transaction => ErrorSeverity::Error,
+            }),
+            kind,
+        }
     }
 
-    pub fn fs_permission(op: impl Into<String>, path: impl Into<String>) -> CphError {
-        fs_error!(op.into(), path.into(), FileSystemErrorKind::Permission)
+    // Docker関連のヘルパー関数
+    pub fn docker_error(kind: DockerErrorKind, op: impl Into<String>, context: impl Into<String>) -> CphError {
+        CphError::Docker {
+            context: ErrorContext::new(op, context).with_severity(match kind {
+                DockerErrorKind::ConnectionFailed => ErrorSeverity::Critical,
+                DockerErrorKind::BuildFailed => ErrorSeverity::Error,
+                DockerErrorKind::ExecutionFailed => ErrorSeverity::Error,
+                DockerErrorKind::StateFailed => ErrorSeverity::Warning,
+                DockerErrorKind::ValidationFailed => ErrorSeverity::Error,
+            }),
+            kind,
+        }
     }
 
-    pub fn fs_io(op: impl Into<String>, path: impl Into<String>, error: std::io::Error) -> CphError {
-        fs_error!(op.into(), path.into(), FileSystemErrorKind::Io)
-            .with_source(error)
+    // コンテスト関連のヘルパー関数
+    pub fn contest_error(kind: ContestErrorKind, op: impl Into<String>, context: impl Into<String>) -> CphError {
+        CphError::Contest {
+            context: ErrorContext::new(op, context).with_severity(match kind {
+                ContestErrorKind::Site => ErrorSeverity::Error,
+                ContestErrorKind::Language => ErrorSeverity::Warning,
+                ContestErrorKind::Compiler => ErrorSeverity::Error,
+                ContestErrorKind::State => ErrorSeverity::Warning,
+                ContestErrorKind::Parse => ErrorSeverity::Error,
+            }),
+            kind,
+        }
     }
 
-    // Docker関連のヘルパー
-    pub fn docker_build(op: impl Into<String>, context: impl Into<String>, error: std::io::Error) -> CphError {
-        docker_error!(op.into(), context.into(), DockerErrorKind::BuildFailed)
-            .with_source(error)
+    // 設定関連のヘルパー関数
+    pub fn config_error(kind: ConfigErrorKind, op: impl Into<String>, context: impl Into<String>) -> CphError {
+        CphError::Config {
+            context: ErrorContext::new(op, context).with_severity(match kind {
+                ConfigErrorKind::NotFound => ErrorSeverity::Warning,
+                ConfigErrorKind::Parse => ErrorSeverity::Error,
+                ConfigErrorKind::InvalidValue => ErrorSeverity::Error,
+                ConfigErrorKind::Validation => ErrorSeverity::Error,
+            }),
+            kind,
+        }
     }
 
-    pub fn docker_execution(op: impl Into<String>, context: impl Into<String>, error: std::io::Error) -> CphError {
-        docker_error!(op.into(), context.into(), DockerErrorKind::ExecutionFailed)
-            .with_source(error)
+    // 一般的なエラーヘルパー関数
+    pub fn other_error(op: impl Into<String>, context: impl Into<String>, severity: ErrorSeverity) -> CphError {
+        CphError::Other {
+            context: ErrorContext::new(op, context).with_severity(severity),
+        }
     }
 
-    pub fn docker_connection(op: impl Into<String>, context: impl Into<String>) -> CphError {
-        docker_error!(op.into(), context.into(), DockerErrorKind::ConnectionFailed)
-    }
-
-    // コンテスト関連のヘルパー
-    pub fn contest_site(op: impl Into<String>, context: impl Into<String>) -> CphError {
-        contest_error!(op.into(), context.into(), ContestErrorKind::Site)
-    }
-
-    pub fn contest_language(op: impl Into<String>, context: impl Into<String>) -> CphError {
-        contest_error!(op.into(), context.into(), ContestErrorKind::Language)
-    }
-
-    // 設定関連のヘルパー
-    pub fn config_not_found(op: impl Into<String>, path: impl Into<String>) -> CphError {
-        config_error!(op.into(), path.into(), ConfigErrorKind::NotFound)
-    }
-
-    pub fn config_parse(op: impl Into<String>, path: impl Into<String>, error: impl std::error::Error + Send + Sync + 'static) -> CphError {
-        config_error!(op.into(), path.into(), ConfigErrorKind::Parse)
-            .with_source(error)
+    // バックトレース付きのエラーコンテキスト生成
+    pub fn with_backtrace(mut context: ErrorContext) -> ErrorContext {
+        if context.backtrace.is_none() {
+            context.backtrace = Some(std::backtrace::Backtrace::capture().to_string());
+        }
+        context
     }
 }
 
