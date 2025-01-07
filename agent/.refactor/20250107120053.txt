@@ -1,0 +1,37 @@
+# src/languageモジュールのsrc/contestへの統合計画
+
+## 目的
+- src/languageモジュールの機能をsrc/contestモジュールに統合し、コードの求心性と保守性を向上させる
+
+## 変更内容
+
+1. 新規ファイルの作成
+   - src/contest/model/language.rs: 言語関連のモデル定義
+   - src/contest/service/language_service.rs: 言語関連のサービス実装
+
+2. 既存の機能移行
+   - src/language/mod.rsの機能を適切に分割して移行
+   - get_solution_path → language_service.rs
+   - update_language_setting → language_service.rs
+   - is_valid_language → language_service.rs
+   - set_language → language_service.rs
+
+3. モジュール構成の更新
+   - src/contest/mod.rsに新規モジュールを追加
+   - 必要な型やトレイトをre-exportする
+
+4. 依存関係の整理
+   - Configの利用方法を見直し
+   - エラー型の統合（ContestError）
+
+5. テストの移行と拡充
+   - 既存のテストケースを新しい構造に合わせて移行
+   - 必要に応じてテストを追加
+
+## 削除対象
+- src/language/mod.rs（移行完了後）
+
+## 注意点
+- 既存の機能を損なわないよう、段階的に移行
+- テストカバレッジを維持
+- APIの後方互換性を考慮 

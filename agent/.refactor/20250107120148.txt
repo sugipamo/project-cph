@@ -1,0 +1,60 @@
+# src/languageモジュールのsrc/contestへの統合計画（更新版）
+
+## 現状分析
+1. src/contestモジュールには既に言語関連の実装が存在
+   - model/state.rs: 言語状態管理
+   - service/contest.rs: 言語設定・検証
+   - error.rs: 言語関連エラー
+   - parse.rs: 言語指定のパース処理
+
+2. src/languageモジュールの主要機能
+   - get_solution_path: ソリューションファイルパスの生成
+   - update_language_setting: 言語設定の更新
+   - is_valid_language: 言語の検証
+   - set_language: 言語設定
+
+## 統合方針
+
+1. 機能統合
+   - get_solution_path → contest/service/contest.rsのContestServiceに統合
+     - ファイルパス生成をサービスの責務として実装
+   - is_valid_language → contest/service/contest.rsのvalidate_language()に統合
+     - 既存の検証ロジックを拡張
+   - set_language → contest/model/state.rsのSetLanguage状態遷移に統合
+     - 既存の状態管理システムを活用
+
+2. 設定管理の改善
+   - Configの利用方法を統一
+   - 言語設定の永続化処理を状態管理システムに統合
+
+3. エラー処理の統合
+   - ContestErrorを活用
+   - エラーメッセージの統一
+
+## 実装手順
+
+1. contest/service/contest.rsの拡張
+   - get_solution_pathの実装を移行
+   - validate_languageの機能拡充
+
+2. contest/model/state.rsの調整
+   - 言語設定の状態遷移を確認
+   - 必要に応じて拡張
+
+3. テストの統合
+   - src/languageのテストケースを対応する場所に移行
+   - 既存のテストとの重複を排除
+
+4. 依存関係の整理
+   - Configの参照方法を統一
+   - モジュール間の依存関係を最適化
+
+5. クリーンアップ
+   - src/languageモジュールの削除
+   - 不要になった依存関係の削除
+
+## 注意点
+- 既存のAPIとの互換性維持
+- テストカバレッジの維持
+- 状態管理システムとの整合性確保
+- 設定ファイルの互換性維持 
