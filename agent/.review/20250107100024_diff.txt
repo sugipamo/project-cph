@@ -1,0 +1,323 @@
+diff --git a/src/error/contest.rs b/src/error/contest.rs
+index 56b6d5c..72d9403 100644
+--- a/src/error/contest.rs
++++ b/src/error/contest.rs
+@@ -1,43 +1,36 @@
+-use std::fmt;
+-use crate::error::{Error, ErrorSeverity};
++use anyhow::{Error, Context as _};
+ 
+-#[derive(Debug, Clone)]
+-pub enum ContestErrorKind {
+-    NotFound,
+-    Invalid,
+-    InvalidLanguage,
+-    InvalidUrl,
+-    Parse,
+-    IO,
+-    Docker,
+-    Other(String),
++pub fn contest_err(error: impl Into<String>, message: impl Into<String>) -> Error {
++    Error::msg(format!("{}: {}", message.into(), error.into()))
++        .context("コンテストの操作に失敗しました")
+ }
+ 
+-impl ErrorKind for ContestErrorKind {
+-    fn severity(&self) -> ErrorSeverity {
+-        match self {
+-            Self::NotFound => ErrorSeverity::Warning,
+-            _ => ErrorSeverity::Error,
+-        }
+-    }
++pub fn not_found_err(resource: impl Into<String>) -> Error {
++    Error::msg(format!("リソースが見つかりません: {}", resource.into()))
++        .context("リソースの存在を確認してください")
+ }
+ 
+-impl fmt::Display for ContestErrorKind {
+-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+-        match self {
+-            Self::NotFound => write!(f, "リソースが見つかりません"),
+-            Self::Invalid => write!(f, "入力値が不正です"),
+-            Self::InvalidLanguage => write!(f, "サポートされていない言語です"),
+-            Self::InvalidUrl => write!(f, "URLの形式が正しくありません"),
+-            Self::Parse => write!(f, "パースに失敗しました"),
+-            Self::IO => write!(f, "I/Oエラーが発生しました"),
+-            Self::Docker => write!(f, "Dockerの操作に失敗しました"),
+-            Self::Other(s) => write!(f, "{}", s),
+-        }
+-    }
++pub fn invalid_language_err(language: impl Into<String>) -> Error {
++    Error::msg(format!("サポートされていない言語です: {}", language.into()))
++        .context("対応している言語を確認してください")
+ }
+ 
+-pub fn contest_error(kind: ContestErrorKind, message: impl Into<String>) -> Error {
+-    Error::new(kind, message)
+-        .with_hint("コンテストの操作に失敗しました")
++pub fn invalid_url_err(url: impl Into<String>) -> Error {
++    Error::msg(format!("URLの形式が正しくありません: {}", url.into()))
++        .context("URLの形式を確認してください")
++}
++
++pub fn parse_err(error: impl Into<String>) -> Error {
++    Error::msg(format!("パースに失敗しました: {}", error.into()))
++        .context("入力データの形式を確認してください")
++}
++
++pub fn io_err(error: std::io::Error, message: impl Into<String>) -> Error {
++    error.context(message.into())
++        .context("I/O操作に失敗しました")
++}
++
++pub fn docker_err(error: impl Into<String>) -> Error {
++    Error::msg(format!("Dockerの操作に失敗しました: {}", error.into()))
++        .context("Dockerの状態を確認してください")
+ } 
+\ No newline at end of file
+diff --git a/src/error/docker.rs b/src/error/docker.rs
+index cf9d394..1432a38 100644
+--- a/src/error/docker.rs
++++ b/src/error/docker.rs
+@@ -1,44 +1,36 @@
+-use std::fmt;
+-use crate::error::{Error, ErrorSeverity};
++use anyhow::{Error, Context as _};
+ 
+ pub fn docker_err(error: impl Into<String>, message: impl Into<String>) -> Error {
+-    Error::new(
+-        DockerErrorKind::Other(error.into()),
+-        message
+-    ).with_hint("Dockerの操作に失敗しました")
++    Error::msg(format!("{}: {}", message.into(), error.into()))
++        .context("Dockerの操作に失敗しました")
+ }
+ 
+-#[derive(Debug, Clone)]
+-pub enum DockerErrorKind {
+-    ContainerNotFound,
+-    ImageNotFound,
+-    NetworkError,
+-    ExecutionError,
+-    CompilationError,
+-    ValidationError,
+-    Other(String),
++pub fn container_not_found_err(container_id: impl Into<String>) -> Error {
++    Error::msg(format!("コンテナが見つかりません: {}", container_id.into()))
++        .context("コンテナの存在を確認してください")
+ }
+ 
+-impl ErrorKind for DockerErrorKind {
+-    fn severity(&self) -> ErrorSeverity {
+-        match self {
+-            Self::NetworkError => ErrorSeverity::Fatal,
+-            Self::ExecutionError | Self::CompilationError => ErrorSeverity::Error,
+-            _ => ErrorSeverity::Warning,
+-        }
+-    }
++pub fn image_not_found_err(image: impl Into<String>) -> Error {
++    Error::msg(format!("イメージが見つかりません: {}", image.into()))
++        .context("イメージの存在を確認してください")
+ }
+ 
+-impl fmt::Display for DockerErrorKind {
+-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+-        match self {
+-            Self::ContainerNotFound => write!(f, "コンテナが見つかりません"),
+-            Self::ImageNotFound => write!(f, "イメージが見つかりません"),
+-            Self::NetworkError => write!(f, "ネットワークエラー"),
+-            Self::ExecutionError => write!(f, "実行エラー"),
+-            Self::CompilationError => write!(f, "コンパイルエラー"),
+-            Self::ValidationError => write!(f, "検証エラー"),
+-            Self::Other(s) => write!(f, "{}", s),
+-        }
+-    }
++pub fn network_err(error: impl Into<String>) -> Error {
++    Error::msg(format!("ネットワークエラー: {}", error.into()))
++        .context("ネットワークの接続を確認してください")
++}
++
++pub fn execution_err(error: impl Into<String>) -> Error {
++    Error::msg(format!("実行エラー: {}", error.into()))
++        .context("コマンドの実行に失敗しました")
++}
++
++pub fn compilation_err(error: impl Into<String>) -> Error {
++    Error::msg(format!("コンパイルエラー: {}", error.into()))
++        .context("ソースコードのコンパイルに失敗しました")
++}
++
++pub fn validation_err(error: impl Into<String>) -> Error {
++    Error::msg(format!("検証エラー: {}", error.into()))
++        .context("入力値や状態を確認してください")
+ } 
+\ No newline at end of file
+diff --git a/src/error/macros.rs b/src/error/macros.rs
+index a0bda0c..56785fc 100644
+--- a/src/error/macros.rs
++++ b/src/error/macros.rs
+@@ -1,102 +1,70 @@
+ /// エラーを作成するための共通マクロ
+ #[macro_export]
+ macro_rules! create_error {
+-    // 基本形: 種類、操作、場所
+-    ($kind:expr, $op:expr, $loc:expr) => {{
+-        use $crate::error::{CphError, ErrorContext};
+-        CphError::$kind {
+-            context: ErrorContext::new($op, $loc),
+-            kind: $kind,
+-        }
++    // 基本形: メッセージとコンテキスト
++    ($message:expr, $context:expr) => {{
++        use anyhow::{Error, Context as _};
++        Error::msg($message).context($context)
+     }};
+     // ヒント付き
+-    ($kind:expr, $op:expr, $loc:expr, $hint:expr) => {{
+-        use $crate::error::{CphError, ErrorContext};
+-        CphError::$kind {
+-            context: ErrorContext::new($op, $loc).with_hint($hint),
+-            kind: $kind,
+-        }
++    ($message:expr, $context:expr, $hint:expr) => {{
++        use anyhow::{Error, Context as _};
++        use $crate::error::ErrorExt;
++        Error::msg($message)
++            .context($context)
++            .with_hint($hint)
+     }};
+     // ヒントと重大度付き
+-    ($kind:expr, $op:expr, $loc:expr, $hint:expr, $severity:expr) => {{
+-        use $crate::error::{CphError, ErrorContext, ErrorSeverity};
+-        CphError::$kind {
+-            context: ErrorContext::new($op, $loc)
+-                .with_hint($hint)
+-                .with_severity($severity),
+-            kind: $kind,
+-        }
+-    }};
+-    // ソース付き
+-    ($kind:expr, $op:expr, $loc:expr, $hint:expr, $source:expr) => {{
+-        use $crate::error::{CphError, ErrorContext};
+-        CphError::$kind {
+-            context: ErrorContext::new($op, $loc)
+-                .with_hint($hint)
+-                .with_source($source),
+-            kind: $kind,
+-        }
+-    }};
+-    // 全指定
+-    ($kind:expr, $op:expr, $loc:expr, $hint:expr, $source:expr, $severity:expr) => {{
+-        use $crate::error::{CphError, ErrorContext, ErrorSeverity};
+-        CphError::$kind {
+-            context: ErrorContext::new($op, $loc)
+-                .with_hint($hint)
+-                .with_source($source)
+-                .with_severity($severity),
+-            kind: $kind,
+-        }
++    ($message:expr, $context:expr, $hint:expr, $severity:expr) => {{
++        use anyhow::{Error, Context as _};
++        use $crate::error::ErrorExt;
++        Error::msg($message)
++            .context($context)
++            .with_hint($hint)
++            .with_severity($severity)
+     }};
+ }
+ 
+ /// ファイルシステムエラーを作成するマクロ
+ #[macro_export]
+ macro_rules! fs_error {
+-    ($kind:expr, $message:expr) => {
+-        crate::error::Error::fs($kind, $message)
++    ($message:expr, $context:expr) => {
++        create_error!($message, $context)
++    };
++    ($message:expr, $context:expr, $hint:expr) => {
++        create_error!($message, $context, $hint)
+     };
+ }
+ 
+ /// コンテストエラーを作成するマクロ
+ #[macro_export]
+ macro_rules! contest_error {
+-    ($op:expr, $loc:expr, $kind:expr) => {
+-        create_error!(Contest, $op, $loc, $kind)
++    ($message:expr, $context:expr) => {
++        create_error!($message, $context)
+     };
+-    ($op:expr, $loc:expr, $kind:expr, $hint:expr) => {
+-        create_error!(Contest, $op, $loc, $hint, $kind)
+-    };
+-    ($op:expr, $loc:expr, $kind:expr, $hint:expr, $source:expr) => {
+-        create_error!(Contest, $op, $loc, $hint, $source, $kind)
++    ($message:expr, $context:expr, $hint:expr) => {
++        create_error!($message, $context, $hint)
+     };
+ }
+ 
+ /// 設定エラーを作成するマクロ
+ #[macro_export]
+ macro_rules! config_error {
+-    ($kind:expr, $message:expr) => {
+-        crate::error::Error::config($kind, $message)
+-    };
+-}
+-
+-/// その他のエラーを作成するマクロ
+-#[macro_export]
+-macro_rules! other_error {
+-    ($op:expr, $loc:expr) => {
+-        create_error!(Other, $op, $loc)
++    ($message:expr, $context:expr) => {
++        create_error!($message, $context)
+     };
+-    ($op:expr, $loc:expr, $hint:expr) => {
+-        create_error!(Other, $op, $loc, $hint)
+-    };
+-    ($op:expr, $loc:expr, $hint:expr, $severity:expr) => {
+-        create_error!(Other, $op, $loc, $hint, $severity)
++    ($message:expr, $context:expr, $hint:expr) => {
++        create_error!($message, $context, $hint)
+     };
+ }
+ 
++/// Dockerエラーを作成するマクロ
+ #[macro_export]
+ macro_rules! docker_error {
+-    ($kind:expr, $message:expr) => {
+-        crate::error::Error::docker($kind, $message)
++    ($message:expr, $context:expr) => {
++        create_error!($message, $context)
++    };
++    ($message:expr, $context:expr, $hint:expr) => {
++        create_error!($message, $context, $hint)
+     };
+ } 
+\ No newline at end of file
+diff --git a/src/error/mod.rs b/src/error/mod.rs
+index 2d8d139..df72735 100644
+--- a/src/error/mod.rs
++++ b/src/error/mod.rs
+@@ -15,18 +15,13 @@ pub enum ErrorSeverity {
+ }
+ 
+ pub trait ErrorExt {
+-    fn severity(&self) -> ErrorSeverity;
+     fn with_severity(self, severity: ErrorSeverity) -> Error;
+     fn with_hint<C>(self, hint: C) -> Error where C: std::fmt::Display + Send + Sync + 'static;
+ }
+ 
+ impl ErrorExt for Error {
+-    fn severity(&self) -> ErrorSeverity {
+-        ErrorSeverity::Error
+-    }
+-
+-    fn with_severity(self, _severity: ErrorSeverity) -> Error {
+-        self.context(format!("重大度: {:?}", _severity))
++    fn with_severity(self, severity: ErrorSeverity) -> Error {
++        self.context(format!("重大度: {:?}", severity))
+     }
+ 
+     fn with_hint<C>(self, hint: C) -> Error

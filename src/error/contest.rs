@@ -1,43 +1,36 @@
-use std::fmt;
-use crate::error::{Error, ErrorSeverity};
+use anyhow::{Error, Context as _};
 
-#[derive(Debug, Clone)]
-pub enum ContestErrorKind {
-    NotFound,
-    Invalid,
-    InvalidLanguage,
-    InvalidUrl,
-    Parse,
-    IO,
-    Docker,
-    Other(String),
+pub fn contest_err(error: impl Into<String>, message: impl Into<String>) -> Error {
+    Error::msg(format!("{}: {}", message.into(), error.into()))
+        .context("コンテストの操作に失敗しました")
 }
 
-impl ErrorKind for ContestErrorKind {
-    fn severity(&self) -> ErrorSeverity {
-        match self {
-            Self::NotFound => ErrorSeverity::Warning,
-            _ => ErrorSeverity::Error,
-        }
-    }
+pub fn not_found_err(resource: impl Into<String>) -> Error {
+    Error::msg(format!("リソースが見つかりません: {}", resource.into()))
+        .context("リソースの存在を確認してください")
 }
 
-impl fmt::Display for ContestErrorKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::NotFound => write!(f, "リソースが見つかりません"),
-            Self::Invalid => write!(f, "入力値が不正です"),
-            Self::InvalidLanguage => write!(f, "サポートされていない言語です"),
-            Self::InvalidUrl => write!(f, "URLの形式が正しくありません"),
-            Self::Parse => write!(f, "パースに失敗しました"),
-            Self::IO => write!(f, "I/Oエラーが発生しました"),
-            Self::Docker => write!(f, "Dockerの操作に失敗しました"),
-            Self::Other(s) => write!(f, "{}", s),
-        }
-    }
+pub fn invalid_language_err(language: impl Into<String>) -> Error {
+    Error::msg(format!("サポートされていない言語です: {}", language.into()))
+        .context("対応している言語を確認してください")
 }
 
-pub fn contest_error(kind: ContestErrorKind, message: impl Into<String>) -> Error {
-    Error::new(kind, message)
-        .with_hint("コンテストの操作に失敗しました")
+pub fn invalid_url_err(url: impl Into<String>) -> Error {
+    Error::msg(format!("URLの形式が正しくありません: {}", url.into()))
+        .context("URLの形式を確認してください")
+}
+
+pub fn parse_err(error: impl Into<String>) -> Error {
+    Error::msg(format!("パースに失敗しました: {}", error.into()))
+        .context("入力データの形式を確認してください")
+}
+
+pub fn io_err(error: std::io::Error, message: impl Into<String>) -> Error {
+    error.context(message.into())
+        .context("I/O操作に失敗しました")
+}
+
+pub fn docker_err(error: impl Into<String>) -> Error {
+    Error::msg(format!("Dockerの操作に失敗しました: {}", error.into()))
+        .context("Dockerの状態を確認してください")
 } 

@@ -1,44 +1,36 @@
-use std::fmt;
-use crate::error::{Error, ErrorSeverity};
+use anyhow::{Error, Context as _};
 
 pub fn docker_err(error: impl Into<String>, message: impl Into<String>) -> Error {
-    Error::new(
-        DockerErrorKind::Other(error.into()),
-        message
-    ).with_hint("Dockerの操作に失敗しました")
+    Error::msg(format!("{}: {}", message.into(), error.into()))
+        .context("Dockerの操作に失敗しました")
 }
 
-#[derive(Debug, Clone)]
-pub enum DockerErrorKind {
-    ContainerNotFound,
-    ImageNotFound,
-    NetworkError,
-    ExecutionError,
-    CompilationError,
-    ValidationError,
-    Other(String),
+pub fn container_not_found_err(container_id: impl Into<String>) -> Error {
+    Error::msg(format!("コンテナが見つかりません: {}", container_id.into()))
+        .context("コンテナの存在を確認してください")
 }
 
-impl ErrorKind for DockerErrorKind {
-    fn severity(&self) -> ErrorSeverity {
-        match self {
-            Self::NetworkError => ErrorSeverity::Fatal,
-            Self::ExecutionError | Self::CompilationError => ErrorSeverity::Error,
-            _ => ErrorSeverity::Warning,
-        }
-    }
+pub fn image_not_found_err(image: impl Into<String>) -> Error {
+    Error::msg(format!("イメージが見つかりません: {}", image.into()))
+        .context("イメージの存在を確認してください")
 }
 
-impl fmt::Display for DockerErrorKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ContainerNotFound => write!(f, "コンテナが見つかりません"),
-            Self::ImageNotFound => write!(f, "イメージが見つかりません"),
-            Self::NetworkError => write!(f, "ネットワークエラー"),
-            Self::ExecutionError => write!(f, "実行エラー"),
-            Self::CompilationError => write!(f, "コンパイルエラー"),
-            Self::ValidationError => write!(f, "検証エラー"),
-            Self::Other(s) => write!(f, "{}", s),
-        }
-    }
+pub fn network_err(error: impl Into<String>) -> Error {
+    Error::msg(format!("ネットワークエラー: {}", error.into()))
+        .context("ネットワークの接続を確認してください")
+}
+
+pub fn execution_err(error: impl Into<String>) -> Error {
+    Error::msg(format!("実行エラー: {}", error.into()))
+        .context("コマンドの実行に失敗しました")
+}
+
+pub fn compilation_err(error: impl Into<String>) -> Error {
+    Error::msg(format!("コンパイルエラー: {}", error.into()))
+        .context("ソースコードのコンパイルに失敗しました")
+}
+
+pub fn validation_err(error: impl Into<String>) -> Error {
+    Error::msg(format!("検証エラー: {}", error.into()))
+        .context("入力値や状態を確認してください")
 } 
