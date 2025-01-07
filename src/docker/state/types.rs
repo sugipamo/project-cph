@@ -4,6 +4,21 @@ use std::process::ExitStatus;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
+pub enum StateType {
+    Running,
+    Executing(Arc<String>),
+    Stopped,
+    Failed(Arc<String>),
+}
+
+#[derive(Debug, Clone)]
+pub struct StateInfo {
+    pub container_id: Arc<String>,
+    pub state_type: StateType,
+    pub timestamp: Arc<Instant>,
+}
+
+#[derive(Debug, Clone)]
 pub enum ContainerState {
     Initial,
     Created {
@@ -106,6 +121,58 @@ impl ContainerState {
             ContainerState::Executing { started_at, .. } => {
                 Some(started_at.elapsed())
             }
+            _ => None,
+        }
+    }
+
+    pub fn regenerate(&self) -> Option<Self> {
+        self.get_container_id_for_regeneration()
+            .map(|container_id| Self::Created {
+                container_id: Arc::clone(container_id),
+                created_at: Arc::new(Instant::now()),
+            })
+    }
+
+    fn get_container_id_for_regeneration(&self) -> Option<&Arc<String>> {
+        match self {
+            Self::Running { container_id, .. } |
+            Self::Executing { container_id, .. } |
+            Self::Stopped { container_id, .. } |
+            Self::Failed { container_id, .. } => Some(container_id),
+            _ => None,
+        }
+    }
+
+    pub fn can_regenerate(&self) -> bool {
+        self.get_container_id_for_regeneration().is_some()
+    }
+
+    pub fn get_state_info(&self) -> Option<StateInfo> {
+        self.create_state_info()
+    }
+
+    fn create_state_info(&self) -> Option<StateInfo> {
+        match self {
+            Self::Running { container_id, started_at } => Some(StateInfo {
+                container_id: Arc::clone(container_id),
+                state_type: StateType::Running,
+                timestamp: Arc::clone(started_at),
+            }),
+            Self::Executing { container_id, started_at, command } => Some(StateInfo {
+                container_id: Arc::clone(container_id),
+                state_type: StateType::Executing(Arc::clone(command)),
+                timestamp: Arc::clone(started_at),
+            }),
+            Self::Stopped { container_id, stopped_at, .. } => Some(StateInfo {
+                container_id: Arc::clone(container_id),
+                state_type: StateType::Stopped,
+                timestamp: Arc::clone(stopped_at),
+            }),
+            Self::Failed { container_id, occurred_at, error } => Some(StateInfo {
+                container_id: Arc::clone(container_id),
+                state_type: StateType::Failed(Arc::clone(error)),
+                timestamp: Arc::clone(occurred_at),
+            }),
             _ => None,
         }
     }

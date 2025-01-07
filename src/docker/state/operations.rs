@@ -82,4 +82,21 @@ pub async fn stop_container(current_state: &ContainerState) -> Result<ContainerS
             ))
         }
     }
+}
+
+pub async fn regenerate_container(current_state: &ContainerState) -> Result<ContainerState> {
+    if !current_state.can_regenerate() {
+        return Err(state_err(
+            "状態遷移",
+            format!("無効な状態からの再生成遷移: {}", current_state)
+        ));
+    }
+
+    let state_info = current_state.get_state_info()
+        .ok_or_else(|| state_err("状態遷移", "状態情報の取得に失敗しました"))?;
+
+    Ok(ContainerState::Created {
+        container_id: state_info.container_id,
+        created_at: Arc::new(Instant::now()),
+    })
 } 

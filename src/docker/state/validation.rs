@@ -1,6 +1,7 @@
 use crate::error::docker::DockerErrorKind;
 use crate::error::Result;
 use crate::docker_error;
+use crate::docker::state::ContainerState;
 
 pub fn validate_image_name(image_name: &str) -> Result<()> {
     if image_name.is_empty() {
@@ -69,6 +70,26 @@ pub fn validate_env(key: &str, value: &str) -> Result<()> {
         return Err(docker_error!(
             DockerErrorKind::ValidationError,
             "環境変数の値が指定されていません"
+        ));
+    }
+    Ok(())
+}
+
+pub fn validate_regeneration(current_state: &ContainerState) -> Result<()> {
+    if !current_state.can_regenerate() {
+        return Err(docker_error!(
+            DockerErrorKind::ValidationError,
+            format!("現在の状態からは再生成できません: {}", current_state)
+        ));
+    }
+    Ok(())
+}
+
+pub fn validate_state_restoration(current_state: &ContainerState) -> Result<()> {
+    if !matches!(current_state, ContainerState::Created { .. }) {
+        return Err(docker_error!(
+            DockerErrorKind::ValidationError,
+            format!("状態の復元は作成済み状態からのみ可能です: {}", current_state)
         ));
     }
     Ok(())
