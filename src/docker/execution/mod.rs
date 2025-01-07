@@ -1,33 +1,31 @@
-mod command;
-mod container;
-mod compilation;
+pub mod command;
+pub mod compilation;
+pub mod container;
 
 pub use command::DockerCommand;
-pub use container::ContainerManager;
 pub use compilation::CompilationManager;
+pub use container::DockerContainer;
 
-// 共通のトレイトと型定義
-use async_trait::async_trait;
 use crate::error::Result;
+use std::process::Output;
 
-#[derive(Debug)]
 pub struct CommandOutput {
-    pub success: bool,
     pub stdout: String,
     pub stderr: String,
+    pub status: i32,
 }
 
-impl CommandOutput {
-    pub fn new(success: bool, stdout: String, stderr: String) -> Self {
+impl From<Output> for CommandOutput {
+    fn from(output: Output) -> Self {
         Self {
-            success,
-            stdout,
-            stderr,
+            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+            status: output.status.code().unwrap_or(-1),
         }
     }
 }
 
-#[async_trait]
-pub trait DockerCommandExecutor: Send + Sync {
+#[async_trait::async_trait]
+pub trait Executor {
     async fn execute(&self, command: DockerCommand) -> Result<CommandOutput>;
 } 

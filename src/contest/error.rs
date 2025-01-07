@@ -1,36 +1,23 @@
-use crate::error::{CphError, helpers, ErrorExt};
-use crate::error::contest::ContestErrorKind;
-use crate::error::config::ConfigErrorKind;
+use crate::error::Error;
 
-pub fn site_err(msg: String) -> CphError {
-    helpers::contest_error(ContestErrorKind::Site, "サイトアクセス", format!("Contest Site: {}", msg))
+pub use crate::error::contest::ContestErrorKind;
+
+pub fn contest_error(kind: ContestErrorKind, message: impl Into<String>) -> Error {
+    Error::new(kind, message)
 }
 
-pub fn site_err_with_hint(msg: String, hint: String) -> CphError {
-    helpers::contest_error(ContestErrorKind::Site, "サイトアクセス", format!("Contest Site: {}", msg))
-        .with_hint(hint)
+pub fn not_found_error(message: impl Into<String>) -> Error {
+    contest_error(ContestErrorKind::NotFound, message)
 }
 
-pub fn language_err(msg: String) -> CphError {
-    helpers::contest_error(ContestErrorKind::Language, "言語設定", msg)
+pub fn invalid_language_error(message: impl Into<String>) -> Error {
+    contest_error(ContestErrorKind::InvalidLanguage, message)
 }
 
-pub fn config_err(msg: String) -> CphError {
-    helpers::config_error(ConfigErrorKind::InvalidValue, "コンテスト設定", msg)
+pub fn invalid_url_error(message: impl Into<String>) -> Error {
+    contest_error(ContestErrorKind::InvalidUrl, message)
 }
 
-pub fn unsupported_language_err(lang: String) -> CphError {
-    let hint = format!("サポートされていない言語です: {}", lang);
-    helpers::contest_error(ContestErrorKind::Language, "言語チェック", lang)
-        .with_hint(hint)
-}
-
-pub fn compiler_not_found_err(compiler: String) -> CphError {
-    let hint = format!("コンパイラが見つかりません: {}", compiler);
-    helpers::contest_error(ContestErrorKind::Compiler, "コンパイラチェック", compiler)
-        .with_hint(hint)
-}
-
-pub fn state_err(msg: String) -> CphError {
-    helpers::contest_error(ContestErrorKind::State, "状態管理", msg)
+pub fn parse_error(message: impl Into<String>) -> Error {
+    contest_error(ContestErrorKind::Parse, message)
 }

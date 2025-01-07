@@ -1,9 +1,9 @@
 pub mod contest;
+pub mod path;
 pub mod test;
 pub mod url;
-mod path;
 
 pub use contest::ContestService;
+pub use path::PathService;
 pub use test::TestService;
-pub use url::UrlService;
-pub use path::ContestPath; 
+pub use url::UrlService; 

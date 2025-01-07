@@ -1,46 +1,98 @@
 use crate::error::Result;
-use crate::contest::error::site_err;
+use crate::error::contest::ContestErrorKind;
+use crate::contest::error::contest_error;
 
 pub struct UrlService {
-    site: String,
+    site: Option<String>,
+    contest_id: Option<String>,
+    problem_id: Option<String>,
 }
 
 impl UrlService {
-    pub fn new(site: String) -> Result<Self> {
-        if site.is_empty() {
-            return Err(site_err("サイトが指定されていません".to_string()));
+    pub fn new() -> Self {
+        Self {
+            site: None,
+            contest_id: None,
+            problem_id: None,
         }
-        Ok(Self { site })
     }
 
-    pub fn get_contest_url(&self, contest_id: &str) -> Result<String> {
-        if contest_id.is_empty() {
-            return Err(site_err("コンテストIDが指定されていません".to_string()));
+    pub fn validate_site(&self) -> Result<()> {
+        if self.site.is_none() {
+            return Err(contest_error(
+                ContestErrorKind::NotFound,
+                "サイトが指定されていません"
+            ));
         }
-
-        let url = match self.site.as_str() {
-            "atcoder" => format!("https://atcoder.jp/contests/{}", contest_id),
-            "codeforces" => format!("https://codeforces.com/contest/{}", contest_id),
-            _ => return Err(site_err(format!("未対応のサイトです: {}", self.site))),
-        };
-
-        Ok(url)
+        Ok(())
     }
 
-    pub fn get_problem_url(&self, contest_id: &str, problem_id: &str) -> Result<String> {
-        if contest_id.is_empty() {
-            return Err(site_err("コンテストIDが指定されていません".to_string()));
+    pub fn validate_contest_id(&self) -> Result<()> {
+        if self.contest_id.is_none() {
+            return Err(contest_error(
+                ContestErrorKind::NotFound,
+                "コンテストIDが指定されていません"
+            ));
         }
-        if problem_id.is_empty() {
-            return Err(site_err("問題IDが指定されていません".to_string()));
+        Ok(())
+    }
+
+    pub fn validate_problem_id(&self) -> Result<()> {
+        if self.problem_id.is_none() {
+            return Err(contest_error(
+                ContestErrorKind::NotFound,
+                "問題IDが指定されていません"
+            ));
         }
+        Ok(())
+    }
 
-        let url = match self.site.as_str() {
-            "atcoder" => format!("https://atcoder.jp/contests/{}/tasks/{}", contest_id, problem_id),
-            "codeforces" => format!("https://codeforces.com/contest/{}/problem/{}", contest_id, problem_id),
-            _ => return Err(site_err(format!("未対応のサイトです: {}", self.site))),
-        };
+    pub fn get_contest_url(&self) -> Result<String> {
+        self.validate_site()?;
+        self.validate_contest_id()?;
 
-        Ok(url)
+        match self.site.as_deref().unwrap() {
+            "atcoder" => Ok(format!(
+                "https://atcoder.jp/contests/{}",
+                self.contest_id.as_ref().unwrap()
+            )),
+            _ => Err(contest_error(
+                ContestErrorKind::InvalidUrl,
+                format!("未対応のサイトです: {}", self.site.as_ref().unwrap())
+            )),
+        }
+    }
+
+    pub fn get_problem_url(&self) -> Result<String> {
+        self.validate_site()?;
+        self.validate_contest_id()?;
+        self.validate_problem_id()?;
+
+        match self.site.as_deref().unwrap() {
+            "atcoder" => Ok(format!(
+                "https://atcoder.jp/contests/{}/tasks/{}",
+                self.contest_id.as_ref().unwrap(),
+                self.problem_id.as_ref().unwrap()
+            )),
+            _ => Err(contest_error(
+                ContestErrorKind::InvalidUrl,
+                format!("未対応のサイトです: {}", self.site.as_ref().unwrap())
+            )),
+        }
+    }
+
+    pub fn with_site(mut self, site: impl Into<String>) -> Self {
+        self.site = Some(site.into());
+        self
+    }
+
+    pub fn with_contest_id(mut self, contest_id: impl Into<String>) -> Self {
+        self.contest_id = Some(contest_id.into());
+        self
+    }
+
+    pub fn with_problem_id(mut self, problem_id: impl Into<String>) -> Self {
+        self.problem_id = Some(problem_id.into());
+        self
     }
 } 

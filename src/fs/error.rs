@@ -1,24 +1,37 @@
-use crate::error::{CphError, helpers, ErrorExt};
-use crate::error::fs::FileSystemErrorKind;
+use std::path::PathBuf;
+use crate::error::{Error, fs::FileSystemErrorKind};
 
-pub fn not_found_err(path: String) -> CphError {
-    helpers::fs_error(FileSystemErrorKind::NotFound, "ファイル検索", path)
+pub fn io_err(error: std::io::Error, message: impl Into<String>) -> Error {
+    Error::fs(
+        FileSystemErrorKind::IO,
+        format!("{}: {}", message.into(), error)
+    )
 }
 
-pub fn io_err(error: std::io::Error, context: String) -> CphError {
-    helpers::fs_error(FileSystemErrorKind::Io, "ファイル操作", context)
-        .with_source(error)
+pub fn not_found_err(path: impl Into<PathBuf>) -> Error {
+    Error::fs(
+        FileSystemErrorKind::NotFound,
+        format!("ファイルが見つかりません: {}", path.into().display())
+    )
 }
 
-pub fn permission_err(path: String) -> CphError {
-    helpers::fs_error(FileSystemErrorKind::Permission, "ファイルアクセス", path)
+pub fn permission_err(path: impl Into<PathBuf>) -> Error {
+    Error::fs(
+        FileSystemErrorKind::Permission,
+        format!("アクセス権限がありません: {}", path.into().display())
+    )
 }
 
-pub fn transaction_err(error: std::io::Error, context: String) -> CphError {
-    helpers::fs_error(FileSystemErrorKind::Transaction, "トランザクション処理", context)
-        .with_source(error)
+pub fn validation_err(error: impl Into<String>, message: impl Into<String>) -> Error {
+    Error::fs(
+        FileSystemErrorKind::Validation,
+        format!("{}: {}", message.into(), error.into())
+    )
 }
 
-pub fn path_err(path: String) -> CphError {
-    helpers::fs_error(FileSystemErrorKind::Path, "パス解決", path)
+pub fn invalid_path_err(path: impl Into<PathBuf>) -> Error {
+    Error::fs(
+        FileSystemErrorKind::InvalidPath,
+        format!("無効なパス: {}", path.into().display())
+    )
 } 

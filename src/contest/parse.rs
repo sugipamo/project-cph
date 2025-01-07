@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::collections::HashMap;
 use serde_yaml::Value;
-use crate::config::{Config, ConfigError};
+use crate::config::{Config, ConfigError, ConfigType};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CommandType {
@@ -86,10 +86,8 @@ impl NameResolver {
             })
         } else {
             Err(ParseError::ConfigError(ConfigError::TypeError {
-                expected: crate::config::ConfigType::StringArray,
-                found: "not_mapping",
-                path: "settings".to_string(),
-                value: "".to_string(),
+                expected: ConfigType::StringArray,
+                actual: ConfigType::Null,
             }))
         }
     }

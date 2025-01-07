@@ -1,8 +1,8 @@
 use std::path::Path;
-use crate::error::CphError;
+use crate::error::Error;
 use crate::fs::error::io_err;
 
-pub fn copy_to_container<P: AsRef<Path>>(container_id: &str, src: P, dest: P) -> Result<(), CphError> {
+pub fn copy_to_container<P: AsRef<Path>>(container_id: &str, src: P, dest: P) -> Result<(), Error> {
     let output = std::process::Command::new("docker")
         .arg("cp")
         .arg(src.as_ref())
@@ -23,7 +23,7 @@ pub fn copy_to_container<P: AsRef<Path>>(container_id: &str, src: P, dest: P) ->
     Ok(())
 }
 
-pub fn copy_from_container<P: AsRef<Path>>(container_id: &str, src: P, dest: P) -> Result<(), CphError> {
+pub fn copy_from_container<P: AsRef<Path>>(container_id: &str, src: P, dest: P) -> Result<(), Error> {
     let output = std::process::Command::new("docker")
         .arg("cp")
         .arg(format!("{}:{}", container_id, src.as_ref().display()))

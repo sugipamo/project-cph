@@ -4,6 +4,7 @@ use crate::error::Result;
 use super::ContainerState;
 use crate::docker::error::state_err;
 use crate::docker::state::operations;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct ContainerStateManager {
@@ -53,6 +54,41 @@ impl ContainerStateManager {
         let state = self.get_current_state().await;
         state.container_id()
             .map(String::from)
-            .ok_or_else(|| state_err("コンテナIDが見つかりません".to_string()))
+            .ok_or_else(|| state_err("状態管理", "コンテナIDが見つかりません"))
+    }
+}
+
+pub struct StateManager {
+    states: HashMap<String, ContainerState>,
+}
+
+impl StateManager {
+    pub fn new() -> Self {
+        Self {
+            states: HashMap::new(),
+        }
+    }
+
+    pub fn get_state(&self, container_id: &str) -> Option<&ContainerState> {
+        self.states.get(container_id)
+    }
+
+    pub fn set_state(&mut self, container_id: String, state: ContainerState) {
+        self.states.insert(container_id, state);
+    }
+
+    pub fn remove_state(&mut self, container_id: &str) {
+        self.states.remove(container_id);
+    }
+
+    pub fn get_container_id(&self) -> Result<String> {
+        self.states
+            .keys()
+            .next()
+            .map(|s| s.to_string())
+            .ok_or_else(|| state_err(
+                "状態管理",
+                "コンテナIDが見つかりません"
+            ))
     }
 } 

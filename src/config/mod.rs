@@ -57,8 +57,33 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
-    #[error("設定エラー: {0}")]
+    #[error("設定ファイルが見つかりません: {0}")]
+    NotFound(String),
+
+    #[error("設定ファイルの読み込みに失敗しました: {0}")]
+    Read(String),
+
+    #[error("設定ファイルの解析に失敗しました: {0}")]
+    Parse(String),
+
+    #[error("設定値の型が不正です: {expected:?} が必要ですが {actual:?} が指定されています")]
+    TypeError {
+        expected: ConfigType,
+        actual: ConfigType,
+    },
+
+    #[error("{0}")]
     Config(String),
+}
+
+#[derive(Debug)]
+pub enum ConfigType {
+    String,
+    StringArray,
+    Object,
+    Boolean,
+    Number,
+    Null,
 }
 
 pub type ConfigResult<T> = Result<T, ConfigError>;
@@ -117,5 +142,9 @@ impl Config {
         }
 
         result
+    }
+
+    pub fn get_raw_value(&self, key: &str) -> ConfigResult<&Value> {
+        self.system.get(key).ok_or_else(|| ConfigError::Config(format!("設定キーが見つかりません: {}", key)))
     }
 } 

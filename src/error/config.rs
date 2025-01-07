@@ -1,29 +1,40 @@
+use std::fmt;
+use crate::error::{Error, ErrorKind, ErrorSeverity};
+
+pub fn config_err(error: impl Into<String>, message: impl Into<String>) -> Error {
+    Error::config(
+        ConfigErrorKind::Other(error.into()),
+        message
+    )
+}
+
 #[derive(Debug, Clone)]
 pub enum ConfigErrorKind {
     NotFound,
-    Parse,
+    InvalidFormat,
     InvalidValue,
-    Validation,
+    IO,
+    Other(String),
 }
 
-impl std::fmt::Display for ConfigErrorKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl ErrorKind for ConfigErrorKind {
+    fn severity(&self) -> ErrorSeverity {
         match self {
-            Self::NotFound => write!(f, "設定ファイルが見つかりません"),
-            Self::Parse => write!(f, "設定ファイルの解析に失敗しました"),
-            Self::InvalidValue => write!(f, "無効な設定値"),
-            Self::Validation => write!(f, "設定値の検証に失敗しました"),
+            Self::NotFound => ErrorSeverity::Warning,
+            Self::IO => ErrorSeverity::Fatal,
+            _ => ErrorSeverity::Error,
         }
     }
 }
 
-impl ConfigErrorKind {
-    pub fn hint(&self) -> &'static str {
+impl fmt::Display for ConfigErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NotFound => "設定ファイルの場所を確認してください",
-            Self::Parse => "設定ファイルの形式を確認してください",
-            Self::InvalidValue => "設定値の範囲や形式を確認してください",
-            Self::Validation => "設定値の組み合わせを確認してください",
+            Self::NotFound => write!(f, "設定ファイルが見つかりません"),
+            Self::InvalidFormat => write!(f, "設定ファイルの形式が不正です"),
+            Self::InvalidValue => write!(f, "設定値が不正です"),
+            Self::IO => write!(f, "設定ファイルのI/O操作に失敗しました"),
+            Self::Other(s) => write!(f, "{}", s),
         }
     }
 } 

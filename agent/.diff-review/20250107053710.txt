@@ -1,0 +1,3889 @@
+diff --git a/agent/.refactor/20250106153713.txt b/agent/.refactor/20250106153713.txt
+new file mode 100644
+index 0000000..05533c6
+--- /dev/null
++++ b/agent/.refactor/20250106153713.txt
+@@ -0,0 +1,46 @@
++# リファクタリング計画
++
++## 1. エラー処理の統一化
++
++### 1.1 エラーマクロの改善
++- マクロの重複を排除し、共通のマクロ実装を作成
++- エラーメッセージのフォーマットを統一
++- バックトレース情報の追加を一貫して行う
++
++### 1.2 エラー型の整理
++- 各モジュールのErrorKind列挙型を統一的な形式に整理
++- エラーコンテキストの構造を最適化
++- エラーの重大度の使用方法を統一
++
++## 2. コードの構造化
++
++### 2.1 モジュール構造の改善
++- エラー関連のコードを一箇所に集約
++- 共通のエラーヘルパー関数の作成
++- エラー変換トレイトの実装
++
++### 2.2 エラーハンドリングの改善
++- Result型のエイリアスの統一
++- エラー変換メソッドの追加
++- エラーチェーンの改善
++
++## 3. ドキュメンテーションの充実
++
++### 3.1 コードドキュメントの追加
++- 各エラー型にドキュメントコメントを追加
++- エラーハンドリングの使用例を追加
++- エラーメッセージの日本語訳を統一
++
++### 3.2 エラーガイドラインの作成
++- エラー処理のベストプラクティスを文書化
++- エラーメッセージの作成ガイドラインを追加
++- エラーハンドリングの例を追加
++
++## 実装手順
++
++1. エラーマクロの統一化
++2. エラー型の整理
++3. モジュール構造の改善
++4. ドキュメントの追加
++5. テストの追加と更新
++6. コードレビューとフィードバック 
+\ No newline at end of file
+diff --git a/src/config/mod.rs b/src/config/mod.rs
+index d2f213b..8fd795b 100644
+--- a/src/config/mod.rs
++++ b/src/config/mod.rs
+@@ -57,10 +57,35 @@ use thiserror::Error;
+ 
+ #[derive(Error, Debug)]
+ pub enum ConfigError {
+-    #[error("設定エラー: {0}")]
++    #[error("設定ファイルが見つかりません: {0}")]
++    NotFound(String),
++
++    #[error("設定ファイルの読み込みに失敗しました: {0}")]
++    Read(String),
++
++    #[error("設定ファイルの解析に失敗しました: {0}")]
++    Parse(String),
++
++    #[error("設定値の型が不正です: {expected:?} が必要ですが {actual:?} が指定されています")]
++    TypeError {
++        expected: ConfigType,
++        actual: ConfigType,
++    },
++
++    #[error("{0}")]
+     Config(String),
+ }
+ 
++#[derive(Debug)]
++pub enum ConfigType {
++    String,
++    StringArray,
++    Object,
++    Boolean,
++    Number,
++    Null,
++}
++
+ pub type ConfigResult<T> = Result<T, ConfigError>;
+ 
+ #[derive(Debug, Serialize, Deserialize)]
+@@ -118,4 +143,8 @@ impl Config {
+ 
+         result
+     }
++
++    pub fn get_raw_value(&self, key: &str) -> ConfigResult<&Value> {
++        self.system.get(key).ok_or_else(|| ConfigError::Config(format!("設定キーが見つかりません: {}", key)))
++    }
+ } 
+\ No newline at end of file
+diff --git a/src/contest/error.rs b/src/contest/error.rs
+index c0fc777..0a2bc98 100644
+--- a/src/contest/error.rs
++++ b/src/contest/error.rs
+@@ -1,36 +1,23 @@
+-use crate::error::{CphError, helpers, ErrorExt};
+-use crate::error::contest::ContestErrorKind;
+-use crate::error::config::ConfigErrorKind;
++use crate::error::Error;
+ 
+-pub fn site_err(msg: String) -> CphError {
+-    helpers::contest_error(ContestErrorKind::Site, "サイトアクセス", format!("Contest Site: {}", msg))
+-}
+-
+-pub fn site_err_with_hint(msg: String, hint: String) -> CphError {
+-    helpers::contest_error(ContestErrorKind::Site, "サイトアクセス", format!("Contest Site: {}", msg))
+-        .with_hint(hint)
+-}
++pub use crate::error::contest::ContestErrorKind;
+ 
+-pub fn language_err(msg: String) -> CphError {
+-    helpers::contest_error(ContestErrorKind::Language, "言語設定", msg)
++pub fn contest_error(kind: ContestErrorKind, message: impl Into<String>) -> Error {
++    Error::new(kind, message)
+ }
+ 
+-pub fn config_err(msg: String) -> CphError {
+-    helpers::config_error(ConfigErrorKind::InvalidValue, "コンテスト設定", msg)
++pub fn not_found_error(message: impl Into<String>) -> Error {
++    contest_error(ContestErrorKind::NotFound, message)
+ }
+ 
+-pub fn unsupported_language_err(lang: String) -> CphError {
+-    let hint = format!("サポートされていない言語です: {}", lang);
+-    helpers::contest_error(ContestErrorKind::Language, "言語チェック", lang)
+-        .with_hint(hint)
++pub fn invalid_language_error(message: impl Into<String>) -> Error {
++    contest_error(ContestErrorKind::InvalidLanguage, message)
+ }
+ 
+-pub fn compiler_not_found_err(compiler: String) -> CphError {
+-    let hint = format!("コンパイラが見つかりません: {}", compiler);
+-    helpers::contest_error(ContestErrorKind::Compiler, "コンパイラチェック", compiler)
+-        .with_hint(hint)
++pub fn invalid_url_error(message: impl Into<String>) -> Error {
++    contest_error(ContestErrorKind::InvalidUrl, message)
+ }
+ 
+-pub fn state_err(msg: String) -> CphError {
+-    helpers::contest_error(ContestErrorKind::State, "状態管理", msg)
++pub fn parse_error(message: impl Into<String>) -> Error {
++    contest_error(ContestErrorKind::Parse, message)
+ }
+diff --git a/src/contest/mod.rs b/src/contest/mod.rs
+index d9a337e..845d1c4 100644
+--- a/src/contest/mod.rs
++++ b/src/contest/mod.rs
+@@ -1,8 +1,8 @@
+ pub mod error;
+ pub mod model;
++pub mod parse;
+ pub mod service;
+ 
+-pub use model::ContestState;
+-pub use service::contest::ContestService;
+-pub use service::test::TestService;
+-pub use service::url::UrlService;
++pub use error::{contest_error, ContestErrorKind};
++pub use model::{Contest, TestCase};
++pub use service::{ContestService, TestService};
+diff --git a/src/contest/model/mod.rs b/src/contest/model/mod.rs
+index 91fec0a..ab371d7 100644
+--- a/src/contest/model/mod.rs
++++ b/src/contest/model/mod.rs
+@@ -1,3 +1,29 @@
+-mod state;
++pub mod state;
+ 
+-pub use state::ContestState; 
+\ No newline at end of file
++#[derive(Debug, Clone)]
++pub struct Contest {
++    pub id: String,
++    pub name: String,
++    pub url: String,
++    pub site: String,
++    pub contest_id: String,
++    pub problem_id: String,
++    pub language: String,
++}
++
++#[derive(Debug, Clone)]
++pub struct TestCase {
++    pub input: String,
++    pub expected: String,
++    pub path: String,
++}
++
++impl TestCase {
++    pub fn new(input: String, expected: String) -> Self {
++        Self {
++            input,
++            expected,
++            path: String::new(),
++        }
++    }
++} 
+\ No newline at end of file
+diff --git a/src/contest/model/state.rs b/src/contest/model/state.rs
+index 2a916b8..a6d2c6b 100644
+--- a/src/contest/model/state.rs
++++ b/src/contest/model/state.rs
+@@ -1,43 +1,85 @@
+ use std::path::PathBuf;
+ use crate::error::Result;
+-use crate::contest::error::config_err;
++use crate::error::contest::ContestErrorKind;
++use crate::contest::error::contest_error;
+ 
+ #[derive(Debug, Clone)]
+ pub struct ContestState {
+-    pub site: String,
+-    pub contest_id: String,
+-    pub problem_id: String,
+-    pub language: String,
+-    pub source_path: PathBuf,
++    pub site: Option<String>,
++    pub contest_id: Option<String>,
++    pub problem_id: Option<String>,
++    pub language: Option<String>,
++    pub source_path: Option<PathBuf>,
+ }
+ 
+ impl ContestState {
+-    pub fn new(
+-        site: String,
+-        contest_id: String,
+-        problem_id: String,
+-        language: String,
+-        source_path: PathBuf,
+-    ) -> Result<Self> {
+-        if site.is_empty() {
+-            return Err(config_err("サイトが指定されていません".to_string()));
++    pub fn new() -> Self {
++        Self {
++            site: None,
++            contest_id: None,
++            problem_id: None,
++            language: None,
++            source_path: None,
+         }
+-        if contest_id.is_empty() {
+-            return Err(config_err("コンテストIDが指定されていません".to_string()));
++    }
++
++    pub fn validate_site(&self) -> Result<()> {
++        if self.site.is_none() {
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                "サイトが指定されていません"
++            ));
++        }
++        Ok(())
++    }
++
++    pub fn validate_contest_id(&self) -> Result<()> {
++        if self.contest_id.is_none() {
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                "コンテストIDが指定されていません"
++            ));
+         }
+-        if problem_id.is_empty() {
+-            return Err(config_err("問題IDが指定されていません".to_string()));
++        Ok(())
++    }
++
++    pub fn validate_problem_id(&self) -> Result<()> {
++        if self.problem_id.is_none() {
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                "問題IDが指定されていません"
++            ));
+         }
+-        if language.is_empty() {
+-            return Err(config_err("言語が指定されていません".to_string()));
++        Ok(())
++    }
++
++    pub fn validate_language(&self) -> Result<()> {
++        if self.language.is_none() {
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                "言語が指定されていません"
++            ));
+         }
++        Ok(())
++    }
++
++    pub fn with_site(mut self, site: impl Into<String>) -> Self {
++        self.site = Some(site.into());
++        self
++    }
++
++    pub fn with_contest_id(mut self, contest_id: impl Into<String>) -> Self {
++        self.contest_id = Some(contest_id.into());
++        self
++    }
++
++    pub fn with_problem_id(mut self, problem_id: impl Into<String>) -> Self {
++        self.problem_id = Some(problem_id.into());
++        self
++    }
+ 
+-        Ok(Self {
+-            site,
+-            contest_id,
+-            problem_id,
+-            language,
+-            source_path,
+-        })
++    pub fn with_language(mut self, language: impl Into<String>) -> Self {
++        self.language = Some(language.into());
++        self
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/contest/parse.rs b/src/contest/parse.rs
+index 3bdcc27..dbcb8ac 100644
+--- a/src/contest/parse.rs
++++ b/src/contest/parse.rs
+@@ -1,7 +1,7 @@
+ use std::error::Error;
+ use std::collections::HashMap;
+ use serde_yaml::Value;
+-use crate::config::{Config, ConfigError};
++use crate::config::{Config, ConfigError, ConfigType};
+ 
+ #[derive(Debug, Clone, PartialEq)]
+ pub struct CommandType {
+@@ -86,10 +86,8 @@ impl NameResolver {
+             })
+         } else {
+             Err(ParseError::ConfigError(ConfigError::TypeError {
+-                expected: crate::config::ConfigType::StringArray,
+-                found: "not_mapping",
+-                path: "settings".to_string(),
+-                value: "".to_string(),
++                expected: ConfigType::StringArray,
++                actual: ConfigType::Null,
+             }))
+         }
+     }
+diff --git a/src/contest/service/contest.rs b/src/contest/service/contest.rs
+index 6707691..51010f6 100644
+--- a/src/contest/service/contest.rs
++++ b/src/contest/service/contest.rs
+@@ -1,70 +1,118 @@
+ use std::path::PathBuf;
+ use crate::error::Result;
+-use crate::contest::error::{config_err, site_err, language_err};
+-use crate::contest::model::ContestState;
++use crate::error::contest::ContestErrorKind;
++use crate::contest::error::contest_error;
++use crate::contest::model::Contest;
+ 
+ pub struct ContestService {
+-    state: ContestState,
++    site: Option<String>,
++    contest_id: Option<String>,
++    problem_id: Option<String>,
++    language: Option<String>,
++    url: Option<String>,
+ }
+ 
+ impl ContestService {
+-    pub fn new(
+-        site: String,
+-        contest_id: String,
+-        problem_id: String,
+-        language: String,
+-        source_path: PathBuf,
+-    ) -> Result<Self> {
+-        let state = ContestState::new(site, contest_id, problem_id, language, source_path)?;
+-        Ok(Self { state })
++    pub fn new() -> Self {
++        Self {
++            site: None,
++            contest_id: None,
++            problem_id: None,
++            language: None,
++            url: None,
++        }
++    }
++
++    pub fn validate_site(&self) -> Result<()> {
++        if self.site.is_none() {
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                "サイトが指定されていません"
++            ));
++        }
++        Ok(())
+     }
+ 
+-    pub fn get_state(&self) -> &ContestState {
+-        &self.state
++    pub fn validate_language(&self) -> Result<()> {
++        if self.language.is_none() {
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                "言語が指定されていません"
++            ));
++        }
++        Ok(())
+     }
+ 
+-    pub fn update_site(&mut self, site: String) -> Result<()> {
+-        if site.is_empty() {
+-            return Err(site_err("サイトが指定されていません".to_string()));
++    pub fn validate_contest_id(&self) -> Result<()> {
++        if self.contest_id.is_none() {
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                "コンテストIDが指定されていません"
++            ));
+         }
+-        let state = ContestState::new(
+-            site,
+-            self.state.contest_id.clone(),
+-            self.state.problem_id.clone(),
+-            self.state.language.clone(),
+-            self.state.source_path.clone(),
+-        )?;
+-        self.state = state;
+         Ok(())
+     }
+ 
+-    pub fn update_language(&mut self, language: String) -> Result<()> {
+-        if language.is_empty() {
+-            return Err(language_err("言語が指定されていません".to_string()));
++    pub fn validate_problem_id(&self) -> Result<()> {
++        if self.problem_id.is_none() {
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                "問題IDが指定されていません"
++            ));
+         }
+-        let state = ContestState::new(
+-            self.state.site.clone(),
+-            self.state.contest_id.clone(),
+-            self.state.problem_id.clone(),
+-            language,
+-            self.state.source_path.clone(),
+-        )?;
+-        self.state = state;
+         Ok(())
+     }
+ 
+-    pub fn update_problem(&mut self, problem_id: String) -> Result<()> {
+-        if problem_id.is_empty() {
+-            return Err(config_err("問題IDが指定されていません".to_string()));
++    pub fn validate_url(&self) -> Result<()> {
++        if self.url.is_none() {
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                "URLが指定されていません"
++            ));
+         }
+-        let state = ContestState::new(
+-            self.state.site.clone(),
+-            self.state.contest_id.clone(),
+-            problem_id,
+-            self.state.language.clone(),
+-            self.state.source_path.clone(),
+-        )?;
+-        self.state = state;
+         Ok(())
+     }
++
++    pub fn with_site(mut self, site: impl Into<String>) -> Self {
++        self.site = Some(site.into());
++        self
++    }
++
++    pub fn with_contest_id(mut self, contest_id: impl Into<String>) -> Self {
++        self.contest_id = Some(contest_id.into());
++        self
++    }
++
++    pub fn with_problem_id(mut self, problem_id: impl Into<String>) -> Self {
++        self.problem_id = Some(problem_id.into());
++        self
++    }
++
++    pub fn with_language(mut self, language: impl Into<String>) -> Self {
++        self.language = Some(language.into());
++        self
++    }
++
++    pub fn with_url(mut self, url: impl Into<String>) -> Self {
++        self.url = Some(url.into());
++        self
++    }
++
++    pub fn build(self) -> Result<Contest> {
++        self.validate_site()?;
++        self.validate_contest_id()?;
++        self.validate_problem_id()?;
++        self.validate_language()?;
++        self.validate_url()?;
++
++        Ok(Contest {
++            id: self.contest_id.clone().unwrap(),
++            name: format!("{} {}", self.site.clone().unwrap(), self.problem_id.clone().unwrap()),
++            url: self.url.unwrap(),
++            site: self.site.unwrap(),
++            contest_id: self.contest_id.unwrap(),
++            problem_id: self.problem_id.unwrap(),
++            language: self.language.unwrap(),
++        })
++    }
+ } 
+\ No newline at end of file
+diff --git a/src/contest/service/mod.rs b/src/contest/service/mod.rs
+index 171b850..a9443bb 100644
+--- a/src/contest/service/mod.rs
++++ b/src/contest/service/mod.rs
+@@ -1,9 +1,9 @@
+ pub mod contest;
++pub mod path;
+ pub mod test;
+ pub mod url;
+-mod path;
+ 
+ pub use contest::ContestService;
++pub use path::PathService;
+ pub use test::TestService;
+-pub use url::UrlService;
+-pub use path::ContestPath; 
+\ No newline at end of file
++pub use url::UrlService; 
+\ No newline at end of file
+diff --git a/src/contest/service/path.rs b/src/contest/service/path.rs
+index 6af3636..1ab44dc 100644
+--- a/src/contest/service/path.rs
++++ b/src/contest/service/path.rs
+@@ -1,48 +1,68 @@
+ use std::path::{Path, PathBuf};
+ use crate::error::Result;
+-use crate::contest::error::config_err;
++use crate::contest::error::{contest_error, ContestErrorKind};
+ 
+-pub struct ContestPath {
++pub struct PathService {
+     base_dir: PathBuf,
+ }
+ 
+-impl ContestPath {
+-    pub fn new<P: AsRef<Path>>(base_dir: P) -> Result<Self> {
+-        let base_dir = base_dir.as_ref().to_path_buf();
+-        if !base_dir.exists() {
+-            return Err(config_err(format!("コンテストディレクトリが存在しません: {:?}", base_dir)));
++impl PathService {
++    pub fn new(base_dir: impl Into<PathBuf>) -> Self {
++        Self {
++            base_dir: base_dir.into(),
+         }
+-        Ok(Self { base_dir })
+     }
+ 
+-    pub fn get_source_path(&self, problem_id: &str) -> Result<PathBuf> {
+-        let source_dir = self.base_dir.join("src");
++    pub fn validate_base_dir(&self) -> Result<()> {
++        if !self.base_dir.exists() {
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                format!("コンテストディレクトリが存在しません: {:?}", self.base_dir)
++            ));
++        }
++        Ok(())
++    }
++
++    pub fn validate_source_dir(&self, source_dir: impl AsRef<Path>) -> Result<()> {
++        let source_dir = source_dir.as_ref();
+         if !source_dir.exists() {
+-            return Err(config_err(format!("ソースディレクトリが存在しません: {:?}", source_dir)));
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                format!("ソースディレクトリが存在しません: {:?}", source_dir)
++            ));
+         }
++        Ok(())
++    }
+ 
+-        let source_path = source_dir.join(format!("{}.rs", problem_id));
++    pub fn validate_source_file(&self, source_path: impl AsRef<Path>) -> Result<()> {
++        let source_path = source_path.as_ref();
+         if !source_path.exists() {
+-            return Err(config_err(format!("ソースファイルが存在しません: {:?}", source_path)));
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                format!("ソースファイルが存在しません: {:?}", source_path)
++            ));
+         }
+-
+-        Ok(source_path)
++        Ok(())
+     }
+ 
+-    pub fn get_test_dir(&self, problem_id: &str) -> Result<PathBuf> {
+-        let test_dir = self.base_dir.join("test").join(problem_id);
++    pub fn validate_test_dir(&self, test_dir: impl AsRef<Path>) -> Result<()> {
++        let test_dir = test_dir.as_ref();
+         if !test_dir.exists() {
+-            return Err(config_err(format!("テストディレクトリが存在しません: {:?}", test_dir)));
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                format!("テストディレクトリが存在しません: {:?}", test_dir)
++            ));
+         }
+-        Ok(test_dir)
++        Ok(())
+     }
+ 
+-    pub fn get_build_dir(&self) -> Result<PathBuf> {
+-        let build_dir = self.base_dir.join("target");
+-        if !build_dir.exists() {
+-            std::fs::create_dir_all(&build_dir)
+-                .map_err(|e| config_err(format!("ビルドディレクトリの作成に失敗しました: {}", e)))?;
+-        }
+-        Ok(build_dir)
++    pub fn create_build_dir(&self, build_dir: impl AsRef<Path>) -> Result<()> {
++        let build_dir = build_dir.as_ref();
++        std::fs::create_dir_all(build_dir)
++            .map_err(|e| contest_error(
++                ContestErrorKind::Parse,
++                format!("ビルドディレクトリの作成に失敗しました: {}", e)
++            ))?;
++        Ok(())
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/contest/service/test.rs b/src/contest/service/test.rs
+index c30c69d..d8f15e0 100644
+--- a/src/contest/service/test.rs
++++ b/src/contest/service/test.rs
+@@ -1,67 +1,80 @@
+-use std::path::PathBuf;
++use std::path::{Path, PathBuf};
+ use crate::error::Result;
+-use crate::contest::error::config_err;
++use crate::contest::error::{contest_error, ContestErrorKind};
++use crate::contest::model::TestCase;
+ 
+-pub struct TestService {
+-    test_dir: PathBuf,
+-}
++pub struct TestService;
+ 
+ impl TestService {
+-    pub fn new(test_dir: PathBuf) -> Self {
+-        Self { test_dir }
++    pub fn new() -> Self {
++        Self
+     }
+ 
+-    pub fn add_test_case(&self, input: &str, expected: &str) -> Result<()> {
+-        if input.is_empty() {
+-            return Err(config_err("入力が空です".to_string()));
+-        }
+-        if expected.is_empty() {
+-            return Err(config_err("期待値が空です".to_string()));
+-        }
++    pub fn read_test_case(&self, input_path: impl AsRef<Path>) -> Result<TestCase> {
++        let input_path = input_path.as_ref();
++        let expected_path = input_path.with_extension("out");
+ 
+-        let test_count = self.get_test_count()?;
+-        let input_file = self.test_dir.join(format!("test{}.in", test_count + 1));
+-        let expected_file = self.test_dir.join(format!("test{}.out", test_count + 1));
++        let input = std::fs::read_to_string(input_path)
++            .map_err(|e| contest_error(
++                ContestErrorKind::Parse,
++                format!("入力ファイルの読み取りに失敗しました: {:?}, {}", input_path, e)
++            ))?;
+ 
+-        std::fs::write(&input_file, input)
+-            .map_err(|e| config_err(format!("テストケースの入力ファイルの作成に失敗しました: {}", e)))?;
+-        std::fs::write(&expected_file, expected)
+-            .map_err(|e| config_err(format!("テストケースの期待値ファイルの作成に失敗しました: {}", e)))?;
++        let expected = std::fs::read_to_string(&expected_path)
++            .map_err(|e| contest_error(
++                ContestErrorKind::Parse,
++                format!("期待値ファイルの読み取りに失敗しました: {:?}, {}", expected_path, e)
++            ))?;
+ 
+-        Ok(())
++        Ok(TestCase::new(input, expected))
+     }
+ 
+-    pub fn get_test_count(&self) -> Result<usize> {
+-        let entries = std::fs::read_dir(&self.test_dir)
+-            .map_err(|e| config_err(format!("テストディレクトリの読み取りに失敗しました: {}", e)))?;
++    pub fn find_test_files(&self, test_dir: impl AsRef<Path>) -> Result<Vec<PathBuf>> {
++        let test_dir = test_dir.as_ref();
++        if !test_dir.exists() {
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                format!("テストディレクトリが見つかりません: {}", test_dir.display())
++            ));
++        }
+ 
+-        let count = entries
+-            .filter_map(|entry| entry.ok())
+-            .filter(|entry| {
+-                entry.path()
+-                    .extension()
+-                    .map(|ext| ext == "in")
+-                    .unwrap_or(false)
+-            })
+-            .count();
++        let entries = std::fs::read_dir(test_dir)
++            .map_err(|e| contest_error(
++                ContestErrorKind::Parse,
++                format!("テストディレクトリの読み取りに失敗しました: {}", e)
++            ))?;
+ 
+-        Ok(count)
+-    }
++        let mut test_files = Vec::new();
++        for entry in entries {
++            let entry = entry
++                .map_err(|e| contest_error(
++                    ContestErrorKind::Parse,
++                    format!("テストファイルの読み取りに失敗しました: {}", e)
++                ))?;
+ 
+-    pub fn get_test_cases(&self) -> Result<Vec<(String, String)>> {
+-        let mut test_cases = Vec::new();
+-        let test_count = self.get_test_count()?;
++            let path = entry.path();
++            if path.is_file() && path.extension().map_or(false, |ext| ext == "in") {
++                let expected_path = path.with_extension("out");
++                if !expected_path.exists() {
++                    return Err(contest_error(
++                        ContestErrorKind::NotFound,
++                        format!("期待値ファイルが見つかりません: {:?}", expected_path)
++                    ));
++                }
++                test_files.push(path);
++            }
++        }
+ 
+-        for i in 1..=test_count {
+-            let input_file = self.test_dir.join(format!("test{}.in", i));
+-            let expected_file = self.test_dir.join(format!("test{}.out", i));
++        Ok(test_files)
++    }
+ 
+-            let input = std::fs::read_to_string(&input_file)
+-                .map_err(|e| config_err(format!("テストケースの入力ファイルの読み取りに失敗しました: {}", e)))?;
+-            let expected = std::fs::read_to_string(&expected_file)
+-                .map_err(|e| config_err(format!("テストケースの期待値ファイルの読み取りに失敗しました: {}", e)))?;
++    pub fn read_test_cases(&self, test_dir: impl AsRef<Path>) -> Result<Vec<TestCase>> {
++        let test_files = self.find_test_files(test_dir)?;
++        let mut test_cases = Vec::new();
+ 
+-            test_cases.push((input, expected));
++        for path in test_files {
++            let test_case = self.read_test_case(&path)?;
++            test_cases.push(test_case);
+         }
+ 
+         Ok(test_cases)
+diff --git a/src/contest/service/url.rs b/src/contest/service/url.rs
+index 13bd9c5..21268a9 100644
+--- a/src/contest/service/url.rs
++++ b/src/contest/service/url.rs
+@@ -1,46 +1,98 @@
+ use crate::error::Result;
+-use crate::contest::error::site_err;
++use crate::error::contest::ContestErrorKind;
++use crate::contest::error::contest_error;
+ 
+ pub struct UrlService {
+-    site: String,
++    site: Option<String>,
++    contest_id: Option<String>,
++    problem_id: Option<String>,
+ }
+ 
+ impl UrlService {
+-    pub fn new(site: String) -> Result<Self> {
+-        if site.is_empty() {
+-            return Err(site_err("サイトが指定されていません".to_string()));
++    pub fn new() -> Self {
++        Self {
++            site: None,
++            contest_id: None,
++            problem_id: None,
+         }
+-        Ok(Self { site })
+     }
+ 
+-    pub fn get_contest_url(&self, contest_id: &str) -> Result<String> {
+-        if contest_id.is_empty() {
+-            return Err(site_err("コンテストIDが指定されていません".to_string()));
++    pub fn validate_site(&self) -> Result<()> {
++        if self.site.is_none() {
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                "サイトが指定されていません"
++            ));
+         }
+-        if problem_id.is_empty() {
+-            return Err(site_err("問題IDが指定されていません".to_string()));
++        Ok(())
++    }
+ 
+-        let url = match self.site.as_str() {
+-            "atcoder" => format!("https://atcoder.jp/contests/{}", contest_id),
+-            "codeforces" => format!("https://codeforces.com/contest/{}", contest_id),
+-            _ => return Err(site_err(format!("未対応のサイトです: {}", self.site))),
+-        };
++    pub fn validate_contest_id(&self) -> Result<()> {
++        if self.contest_id.is_none() {
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                "コンテストIDが指定されていません"
++            ));
++        }
++        Ok(())
++    }
+ 
+-        Ok(url)
++    pub fn validate_problem_id(&self) -> Result<()> {
++        if self.problem_id.is_none() {
++            return Err(contest_error(
++                ContestErrorKind::NotFound,
++                "問題IDが指定されていません"
++            ));
++        }
++        Ok(())
+     }
+ 
+-    pub fn get_problem_url(&self, contest_id: &str, problem_id: &str) -> Result<String> {
+-        if contest_id.is_empty() {
+-            return Err(site_err("コンテストIDが指定されていません".to_string()));
++    pub fn get_contest_url(&self) -> Result<String> {
++        self.validate_site()?;
++        self.validate_contest_id()?;
++
++        match self.site.as_deref().unwrap() {
++            "atcoder" => Ok(format!(
++                "https://atcoder.jp/contests/{}",
++                self.contest_id.as_ref().unwrap()
++            )),
++            _ => Err(contest_error(
++                ContestErrorKind::InvalidUrl,
++                format!("未対応のサイトです: {}", self.site.as_ref().unwrap())
++            )),
+         }
+-        if problem_id.is_empty() {
+-            return Err(site_err("問題IDが指定されていません".to_string()));
++    }
++
++    pub fn get_problem_url(&self) -> Result<String> {
++        self.validate_site()?;
++        self.validate_contest_id()?;
++        self.validate_problem_id()?;
++
++        match self.site.as_deref().unwrap() {
++            "atcoder" => Ok(format!(
++                "https://atcoder.jp/contests/{}/tasks/{}",
++                self.contest_id.as_ref().unwrap(),
++                self.problem_id.as_ref().unwrap()
++            )),
++            _ => Err(contest_error(
++                ContestErrorKind::InvalidUrl,
++                format!("未対応のサイトです: {}", self.site.as_ref().unwrap())
++            )),
+         }
++    }
+ 
+-        let url = match self.site.as_str() {
+-            "atcoder" => format!("https://atcoder.jp/contests/{}/tasks/{}", contest_id, problem_id),
+-            "codeforces" => format!("https://codeforces.com/contest/{}/problem/{}", contest_id, problem_id),
+-            _ => return Err(site_err(format!("未対応のサイトです: {}", self.site))),
+-        };
++    pub fn with_site(mut self, site: impl Into<String>) -> Self {
++        self.site = Some(site.into());
++        self
++    }
++
++    pub fn with_contest_id(mut self, contest_id: impl Into<String>) -> Self {
++        self.contest_id = Some(contest_id.into());
++        self
++    }
+ 
+-        Ok(url)
++    pub fn with_problem_id(mut self, problem_id: impl Into<String>) -> Self {
++        self.problem_id = Some(problem_id.into());
++        self
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/docker/error.rs b/src/docker/error.rs
+index 42f42b5..3b27070 100644
+--- a/src/docker/error.rs
++++ b/src/docker/error.rs
+@@ -1,36 +1,39 @@
+-use crate::error::{CphError, helpers, ErrorExt};
++use crate::error::Error;
+ use crate::error::docker::DockerErrorKind;
+ 
+-pub fn docker_err(msg: String) -> CphError {
+-    helpers::docker_error(DockerErrorKind::ExecutionFailed, "Docker操作", msg)
+-}
+-
+-pub fn container_err(msg: String) -> CphError {
+-    helpers::docker_error(DockerErrorKind::ExecutionFailed, "コンテナ操作", msg)
+-}
+-
+-pub fn compilation_err(msg: String) -> CphError {
+-    helpers::docker_error(DockerErrorKind::BuildFailed, "コンパイル", msg)
+-}
++pub type DockerResult<T> = Result<T, Error>;
+ 
+-pub fn command_err(msg: String) -> CphError {
+-    helpers::docker_error(DockerErrorKind::ExecutionFailed, "コマンド実行", msg)
++pub fn docker_err(error: impl Into<String>, message: impl Into<String>) -> Error {
++    Error::docker(
++        DockerErrorKind::Other(error.into()),
++        message
++    )
+ }
+ 
+-pub fn state_err(msg: String) -> CphError {
+-    helpers::docker_error(DockerErrorKind::StateFailed, "状態管理", msg)
++pub fn execution_err(_: impl Into<String>, message: impl Into<String>) -> Error {
++    Error::docker(
++        DockerErrorKind::ExecutionError,
++        message
++    )
+ }
+ 
+-pub fn build_err(image: String, context: String) -> CphError {
+-    helpers::docker_error(DockerErrorKind::BuildFailed, "イメージビルド", &image)
+-        .with_hint(format!("コンテキスト: {}", context))
++pub fn compilation_err(_: impl Into<String>, message: impl Into<String>) -> Error {
++    Error::docker(
++        DockerErrorKind::CompilationError,
++        message
++    )
+ }
+ 
+-pub fn build_err_with_hint(image: String, context: String, hint: String) -> CphError {
+-    helpers::docker_error(DockerErrorKind::BuildFailed, "イメージビルド", &image)
+-        .with_hint(format!("コンテキスト: {}, ヒント: {}", context, hint))
++pub fn container_err(_: impl Into<String>, message: impl Into<String>) -> Error {
++    Error::docker(
++        DockerErrorKind::ContainerNotFound,
++        message
++    )
+ }
+ 
+-pub fn connection_err() -> CphError {
+-    helpers::docker_error(DockerErrorKind::ConnectionFailed, "Docker接続", "接続に失敗しました")
++pub fn state_err(_: impl Into<String>, message: impl Into<String>) -> Error {
++    Error::docker(
++        DockerErrorKind::ValidationError,
++        message
++    )
+ } 
+\ No newline at end of file
+diff --git a/src/docker/execution/command.rs b/src/docker/execution/command.rs
+index 0ce8ecf..3478d67 100644
+--- a/src/docker/execution/command.rs
++++ b/src/docker/execution/command.rs
+@@ -1,51 +1,70 @@
+-use std::process::Output;
+-use tokio::process::Command;
++use std::process::Command;
+ use crate::error::Result;
+-use crate::docker::error::command_err;
++use crate::docker::error::execution_err;
+ 
+-#[derive(Debug)]
+ pub struct DockerCommand {
+-    command: String,
+-    args: Vec<String>,
++    command: Command,
+ }
+ 
+ impl DockerCommand {
+-    pub fn new<S: Into<String>>(command: S) -> Self {
+-        Self {
+-            command: command.into(),
+-            args: Vec::new(),
+-        }
++    pub fn new(name: &str) -> Self {
++        let mut command = Command::new("docker");
++        command.arg(name);
++        Self { command }
+     }
+ 
+-    pub fn arg<S: Into<String>>(mut self, arg: S) -> Self {
+-        self.args.push(arg.into());
++    pub fn arg<S: AsRef<str>>(mut self, arg: S) -> Self {
++        self.command.arg(arg.as_ref());
+         self
+     }
+ 
+     pub fn args<I, S>(mut self, args: I) -> Self
+     where
+         I: IntoIterator<Item = S>,
+-        S: Into<String>,
++        S: AsRef<str>,
+     {
+-        self.args.extend(args.into_iter().map(Into::into));
++        for arg in args {
++            self.command.arg(arg.as_ref());
++        }
+         self
+     }
+ 
+-    pub async fn execute(&self) -> Result<Output> {
+-        let output = Command::new(&self.command)
+-            .args(&self.args)
++    pub fn execute(&mut self) -> Result<String> {
++        let output = self.command
+             .output()
+-            .await
+-            .map_err(|e| command_err(format!("コマンドの実行に失敗しました: {}", e)))?;
++            .map_err(|e| execution_err("コマンド実行", e.to_string()))?;
+ 
+         if !output.status.success() {
+-            let stderr = String::from_utf8_lossy(&output.stderr);
+-            return Err(command_err(format!(
+-                "コマンドが失敗しました: {}",
+-                stderr
+-            )));
++            let error = String::from_utf8_lossy(&output.stderr);
++            return Err(execution_err(
++                "コマンド実行",
++                format!("コマンドの実行に失敗: {}", error)
++            ));
+         }
+ 
+-        Ok(output)
++        String::from_utf8(output.stdout)
++            .map_err(|e| execution_err("コマンド実行", e.to_string()))
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn test_docker_command() {
++        let mut cmd = DockerCommand::new("version")
++            .arg("--format")
++            .arg("{{.Server.Version}}");
++
++        let result = cmd.execute();
++        assert!(result.is_ok());
++    }
++
++    #[test]
++    fn test_invalid_command() {
++        let mut cmd = DockerCommand::new("invalid_command");
++        let result = cmd.execute();
++        assert!(result.is_err());
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/docker/execution/compilation.rs b/src/docker/execution/compilation.rs
+index 77790a6..b92094a 100644
+--- a/src/docker/execution/compilation.rs
++++ b/src/docker/execution/compilation.rs
+@@ -1,5 +1,4 @@
+-use std::path::Path;
+-use tokio::process::Command;
++use std::process::Command;
+ use crate::error::Result;
+ use crate::docker::error::compilation_err;
+ 
+@@ -14,77 +13,76 @@ impl CompilationManager {
+         }
+     }
+ 
+-    pub async fn compile<P: AsRef<Path>>(&mut self, _source_code: &str, compile_cmd: Option<Vec<String>>, env_vars: Vec<String>, working_dir: P) -> Result<()> {
++    pub fn compile(&mut self, command: &[String]) -> Result<()> {
+         if self.container_id.is_some() {
+             return Err(compilation_err(
+-                "コンパイルは既に実行されています。新しいコンパイルを開始する前に、現在のコンパイルを終了してください。".to_string()
++                "コンパイル実行",
++                "コンパイルは既に実行されています。新しいコンパイルを開始する前に、現在のコンパイルを終了してください。"
+             ));
+         }
+ 
+-        let mut command = Command::new("docker");
+-        command
+-            .arg("run")
+-            .arg("--rm")
+-            .args(env_vars.iter().flat_map(|var| vec!["-e", var]))
+-            .arg("-w")
+-            .arg(working_dir.as_ref().to_string_lossy().to_string());
+-
+-        if let Some(cmd) = compile_cmd {
+-            command.args(cmd);
+-        }
+-
+-        let output = command
++        let output = Command::new(&command[0])
++            .args(&command[1..])
+             .output()
+-            .await
+-            .map_err(|e| compilation_err(format!(
+-                "コンパイルの実行に失敗しました: {}。\nコマンド: {:?}", 
+-                e, 
+-                command
+-            )))?;
++            .map_err(|e| compilation_err(
++                "コンパイル実行",
++                format!(
++                    "コンパイルの実行に失敗しました: {}。\nコマンド: {:?}",
++                    e,
++                    command
++                )
++            ))?;
+ 
+         if !output.status.success() {
+             let stderr = String::from_utf8_lossy(&output.stderr);
+             let stdout = String::from_utf8_lossy(&output.stdout);
+-            return Err(compilation_err(format!(
+-                "コンパイルに失敗しました。\n標準エラー出力: {}\n標準出力: {}\n終了コード: {:?}",
+-                stderr,
+-                stdout,
+-                output.status.code()
+-            )));
+-        }
+-
+-        let container_id = String::from_utf8_lossy(&output.stdout)
+-            .trim()
+-            .to_string();
+-        
+-        if container_id.is_empty() {
+-            return Err(compilation_err("コンテナIDが取得できませんでした。".to_string()));
++            return Err(compilation_err(
++                "コンパイル実行",
++                format!(
++                    "コンパイルに失敗しました。\n標準エラー出力: {}\n標準出力: {}\n終了コード: {:?}",
++                    stderr,
++                    stdout,
++                    output.status.code()
++                )
++            ));
+         }
+ 
+-        self.container_id = Some(container_id);
+         Ok(())
+     }
+ 
+-    pub async fn get_compilation_output(&self) -> Result<(String, String)> {
+-        let container_id = self.container_id.as_ref()
++    pub fn get_container_id(&self) -> Result<String> {
++        self.container_id
++            .clone()
++            .ok_or_else(|| compilation_err(
++                "コンパイル状態",
++                "コンテナIDが取得できませんでした。"
++            ))
++    }
++
++    pub fn get_output(&self) -> Result<String> {
++        let container_id = self.container_id
++            .as_ref()
+             .ok_or_else(|| compilation_err(
+-                "コンパイルが実行されていません。compile()メソッドを先に実行してください。".to_string()
++                "コンパイル状態",
++                "コンパイルが実行されていません。compile()メソッドを先に実行してください。"
+             ))?;
+ 
+         let output = Command::new("docker")
+-            .arg("logs")
+-            .arg(container_id)
++            .args(["logs", container_id])
+             .output()
+-            .await
+-            .map_err(|e| compilation_err(format!(
+-                "コンパイル出力の取得に失敗しました: {}。\nコンテナID: {}", 
+-                e, 
+-                container_id
+-            )))?;
++            .map_err(|e| compilation_err(
++                "コンパイル出力",
++                format!(
++                    "コンパイル出力の取得に失敗しました: {}。\nコンテナID: {}",
++                    e,
++                    container_id
++                )
++            ))?;
+ 
+-        Ok((
+-            String::from_utf8_lossy(&output.stdout).to_string(),
+-            String::from_utf8_lossy(&output.stderr).to_string(),
+-        ))
++        String::from_utf8(output.stdout)
++            .map_err(|e| compilation_err(
++                "コンパイル出力",
++                format!("コンパイル出力の解析に失敗しました: {}", e)
++            ))
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/docker/execution/container.rs b/src/docker/execution/container.rs
+index 948eb40..1911ced 100644
+--- a/src/docker/execution/container.rs
++++ b/src/docker/execution/container.rs
+@@ -1,139 +1,181 @@
+-use std::path::Path;
+-use tokio::process::Command;
+-use crate::error::Result;
++use std::process::Command;
+ use crate::docker::error::container_err;
++use crate::error::docker::DockerErrorKind;
++use crate::error::Result;
+ 
+-pub struct ContainerManager {
++pub struct DockerContainer {
+     container_id: Option<String>,
+ }
+ 
+-impl ContainerManager {
++impl DockerContainer {
+     pub fn new() -> Self {
+         Self {
+             container_id: None,
+         }
+     }
+ 
+-    pub async fn create_container<P: AsRef<Path>>(&mut self, image: &str, cmd: Vec<String>, working_dir: P) -> Result<()> {
++    pub fn create(&mut self, image: &str) -> Result<()> {
+         if self.container_id.is_some() {
+-            return Err(container_err("コンテナは既に作成されています".to_string()));
++            return Err(container_err(
++                "コンテナ作成",
++                "コンテナは既に作成されています"
++            ));
+         }
+ 
+         let output = Command::new("docker")
+-            .arg("create")
+-            .arg("--rm")
+-            .arg("-w")
+-            .arg(working_dir.as_ref().to_string_lossy().to_string())
+-            .arg(image)
+-            .args(cmd)
++            .args(["create", image])
+             .output()
+-            .await
+-            .map_err(|e| container_err(format!("コンテナの作成に失敗しました: {}", e)))?;
++            .map_err(|e| container_err(
++                "コンテナ作成",
++                format!("コンテナの作成に失敗しました: {}", e)
++            ))?;
+ 
+         if !output.status.success() {
+             let stderr = String::from_utf8_lossy(&output.stderr);
+-            return Err(container_err(format!("コンテナの作成に失敗しました: {}", stderr)));
++            return Err(container_err(
++                "コンテナ作成",
++                format!("コンテナの作成に失敗しました: {}", stderr)
++            ));
+         }
+ 
+-        let container_id = String::from_utf8_lossy(&output.stdout)
++        let container_id = String::from_utf8(output.stdout)
++            .map_err(|e| container_err(
++                "コンテナ作成",
++                format!("コンテナIDの解析に失敗しました: {}", e)
++            ))?
+             .trim()
+             .to_string();
+-        self.container_id = Some(container_id);
+ 
++        self.container_id = Some(container_id);
+         Ok(())
+     }
+ 
+-    pub async fn start_container(&self) -> Result<()> {
+-        let container_id = self.container_id.as_ref()
+-            .ok_or_else(|| container_err("コンテナが作成されていません".to_string()))?;
++    pub fn start(&mut self) -> Result<()> {
++        let _container_id = self.container_id
++            .as_ref()
++            .ok_or_else(|| container_err(
++                "コンテナ起動",
++                "コンテナが作成されていません"
++            ))?;
+ 
+         let output = Command::new("docker")
+-            .arg("start")
+-            .arg(container_id)
++            .args(["start", _container_id])
+             .output()
+-            .await
+-            .map_err(|e| container_err(format!("コンテナの起動に失敗しました: {}", e)))?;
++            .map_err(|e| container_err(
++                "コンテナ起動",
++                format!("コンテナの起動に失敗しました: {}", e)
++            ))?;
+ 
+         if !output.status.success() {
+             let stderr = String::from_utf8_lossy(&output.stderr);
+-            return Err(container_err(format!("コンテナの起動に失敗しました: {}", stderr)));
++            return Err(container_err(
++                "コンテナ起動",
++                format!("コンテナの起動に失敗しました: {}", stderr)
++            ));
+         }
+ 
+         Ok(())
+     }
+ 
+-    pub async fn stop_container(&self) -> Result<()> {
+-        let container_id = self.container_id.as_ref()
+-            .ok_or_else(|| container_err("コンテナが作成されていません".to_string()))?;
++    pub fn stop(&mut self) -> Result<()> {
++        let _container_id = self.container_id
++            .as_ref()
++            .ok_or_else(|| container_err(
++                "コンテナ停止",
++                "コンテナが作成されていません"
++            ))?;
+ 
+         let output = Command::new("docker")
+-            .arg("stop")
+-            .arg(container_id)
++            .args(["stop", _container_id])
+             .output()
+-            .await
+-            .map_err(|e| container_err(format!("コンテナの停止に失敗しました: {}", e)))?;
++            .map_err(|e| container_err(
++                "コンテナ停止",
++                format!("コンテナの停止に失敗しました: {}", e)
++            ))?;
+ 
+         if !output.status.success() {
+             let stderr = String::from_utf8_lossy(&output.stderr);
+-            return Err(container_err(format!("コンテナの停止に失敗しました: {}", stderr)));
++            return Err(container_err(
++                "コンテナ停止",
++                format!("コンテナの停止に失敗しました: {}", stderr)
++            ));
+         }
+ 
+         Ok(())
+     }
+ 
+-    pub async fn get_container_id(&self) -> Result<String> {
+-        self.container_id.clone()
+-            .ok_or_else(|| container_err("コンテナが作成されていません".to_string()))
+-    }
+-
+-    pub async fn get_exit_code(&self) -> Result<i32> {
+-        let container_id = self.container_id.as_ref()
+-            .ok_or_else(|| container_err("コンテナが作成されていません".to_string()))?;
++    pub fn wait(&mut self) -> Result<i32> {
++        let _container_id = self.container_id
++            .as_ref()
++            .ok_or_else(|| container_err(
++                "コンテナ待機",
++                "コンテナが作成されていません"
++            ))
++            .and_then(|id| Ok(id.clone()))?;
++
++        let _container_id = self.container_id
++            .as_ref()
++            .ok_or_else(|| container_err(
++                "コンテナ待機",
++                "コンテナが作成されていません"
++            ))?;
+ 
+         let output = Command::new("docker")
+-            .arg("inspect")
+-            .arg(container_id)
+-            .arg("--format={{.State.ExitCode}}")
++            .args(["wait", _container_id])
+             .output()
+-            .await
+-            .map_err(|e| container_err(format!("終了コードの取得に失敗しました: {}", e)))?;
++            .map_err(|e| container_err(
++                "コンテナ待機",
++                format!("終了コードの取得に失敗しました: {}", e)
++            ))?;
+ 
+         if !output.status.success() {
+             let stderr = String::from_utf8_lossy(&output.stderr);
+-            return Err(container_err(format!("終了コードの取得に失敗しました: {}", stderr)));
++            return Err(container_err(
++                "コンテナ待機",
++                format!("終了コードの取得に失敗しました: {}", stderr)
++            ));
+         }
+ 
+-        let exit_code = String::from_utf8_lossy(&output.stdout)
++        let exit_code = String::from_utf8(output.stdout)
++            .map_err(|e| container_err(
++                "コンテナ待機",
++                format!("終了コードの解析に失敗しました: {}", e)
++            ))?
+             .trim()
+-            .parse::<i32>()
+-            .map_err(|e| container_err(format!("終了コードの解析に失敗しました: {}", e)))?;
++            .parse()
++            .map_err(|e| container_err(
++                "コンテナ待機",
++                format!("終了コードの解析に失敗しました: {}", e)
++            ))?;
+ 
+         Ok(exit_code)
+     }
+ 
+-    pub async fn check_image(&self, image: &str) -> Result<bool> {
+-        let output = Command::new("docker")
+-            .arg("image")
+-            .arg("inspect")
+-            .arg(image)
+-            .output()
+-            .await
+-            .map_err(|e| container_err(format!("イメージの確認に失敗しました: {}", e)))?;
+-
+-        Ok(output.status.success())
+-    }
+-
+-    pub async fn pull_image(&self, image: &str) -> Result<()> {
++    pub fn ensure_image(&self, image: &str) -> Result<()> {
+         let output = Command::new("docker")
+-            .arg("pull")
+-            .arg(image)
++            .args(["images", "-q", image])
+             .output()
+-            .await
+-            .map_err(|e| container_err(format!("イメージの取得に失敗しました: {}", e)))?;
+-
+-        if !output.status.success() {
+-            let stderr = String::from_utf8_lossy(&output.stderr);
+-            return Err(container_err(format!("イメージの取得に失敗しました: {}", stderr)));
++            .map_err(|e| container_err(
++                "イメージ確認",
++                format!("イメージの確認に失敗しました: {}", e)
++            ))?;
++
++        if output.stdout.is_empty() {
++            let output = Command::new("docker")
++                .args(["pull", image])
++                .output()
++                .map_err(|e| container_err(
++                    "イメージ取得",
++                    format!("イメージの取得に失敗しました: {}", e)
++                ))?;
++
++            if !output.status.success() {
++                let stderr = String::from_utf8_lossy(&output.stderr);
++                return Err(container_err(
++                    "イメージ取得",
++                    format!("イメージの取得に失敗しました: {}", stderr)
++                ));
++            }
+         }
+ 
+         Ok(())
+diff --git a/src/docker/execution/mod.rs b/src/docker/execution/mod.rs
+index 5a4fd93..aaf3ecd 100644
+--- a/src/docker/execution/mod.rs
++++ b/src/docker/execution/mod.rs
+@@ -1,33 +1,31 @@
+-mod command;
+-mod container;
+-mod compilation;
++pub mod command;
++pub mod compilation;
++pub mod container;
+ 
+ pub use command::DockerCommand;
+-pub use container::ContainerManager;
+ pub use compilation::CompilationManager;
++pub use container::DockerContainer;
+ 
+-// 共通のトレイトと型定義
+-use async_trait::async_trait;
+ use crate::error::Result;
++use std::process::Output;
+ 
+-#[derive(Debug)]
+ pub struct CommandOutput {
+-    pub success: bool,
+     pub stdout: String,
+     pub stderr: String,
++    pub status: i32,
+ }
+ 
+-impl CommandOutput {
+-    pub fn new(success: bool, stdout: String, stderr: String) -> Self {
++impl From<Output> for CommandOutput {
++    fn from(output: Output) -> Self {
+         Self {
+-            success,
+-            stdout,
+-            stderr,
++            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
++            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
++            status: output.status.code().unwrap_or(-1),
+         }
+     }
+ }
+ 
+-#[async_trait]
+-pub trait DockerCommandExecutor: Send + Sync {
++#[async_trait::async_trait]
++pub trait Executor {
+     async fn execute(&self, command: DockerCommand) -> Result<CommandOutput>;
+ } 
+\ No newline at end of file
+diff --git a/src/docker/fs.rs b/src/docker/fs.rs
+index ec344ac..00b7680 100644
+--- a/src/docker/fs.rs
++++ b/src/docker/fs.rs
+@@ -1,100 +1,35 @@
+-use std::path::Path;
+-use std::os::unix::fs::PermissionsExt;
++use std::process::Command;
+ use crate::error::Result;
+-use nix::unistd::{Uid, Gid};
+-use crate::docker::error::docker_err;
+-
+-pub trait DockerFileOperations {
+-    fn create_temp_directory(&self) -> Result<std::path::PathBuf>;
+-    fn set_permissions<P: AsRef<Path>>(&self, path: P, mode: u32) -> Result<()>;
+-    fn write_source_file<P: AsRef<Path>>(&self, dir: P, filename: &str, content: &str) -> Result<std::path::PathBuf>;
+-}
+-
+-/// Docker環境でのファイル操作のデフォルト実装
+-pub trait DefaultDockerFileOperations: DockerFileOperations {
+-    /// ディレクトリの権限を確認・設定
+-    fn ensure_directory_permissions(&self, dir: &Path) -> Result<()> {
+-        let metadata = std::fs::metadata(dir)
+-            .map_err(|e| docker_err(format!("ディレクトリのメタデータの取得に失敗しました: {}", e)))?;
+-        let mut perms = metadata.permissions();
+-        perms.set_mode(0o777);
+-        std::fs::set_permissions(dir, perms)
+-            .map_err(|e| docker_err(format!("ディレクトリの権限設定に失敗しました: {}", e)))?;
+-        Ok(())
+-    }
+-
+-    /// 現在のユーザーIDとグループIDを取得
+-    fn get_current_user_ids(&self) -> (Uid, Gid) {
+-        let uid = Uid::from_raw(std::process::id() as u32);
+-        let gid = Gid::from_raw(unsafe { libc::getgid() } as u32);
+-        (uid, gid)
+-    }
++use crate::fs::io_err;
++
++pub fn copy_to_container(container_id: &str, source: &str, target: &str) -> Result<()> {
++    Command::new("docker")
++        .args(["cp", source, &format!("{}:{}", container_id, target)])
++        .output()
++        .map_err(|e| {
++            let msg = format!("ファイルのコピーに失敗しました: {}", e);
++            io_err(e, msg)
++        })?;
++
++    Ok(())
+ }
+ 
+-#[cfg(test)]
+-mod tests {
+-    use super::*;
+-    use tempfile::TempDir;
+-    use std::fs;
+-
+-    struct MockDockerFileOps {
+-        temp_dir: TempDir,
++pub fn copy_from_container(container_id: &str, source: &str, target: &str) -> Result<()> {
++    let output = Command::new("docker")
++        .args(["cp", &format!("{}:{}", container_id, source), target])
++        .output()
++        .map_err(|e| {
++            let msg = format!("ファイルのコピーに失敗しました: {}", e);
++            io_err(e, msg)
++        })?;
++
++    if !output.status.success() {
++        let stderr = String::from_utf8_lossy(&output.stderr);
++        return Err(io_err(
++            std::io::Error::new(std::io::ErrorKind::Other, stderr.to_string()),
++            "ファイルのコピーに失敗しました"
++        ));
+     }
+ 
+-    impl MockDockerFileOps {
+-        fn new() -> Result<Self> {
+-            let temp_dir = TempDir::new()
+-                .map_err(|e| container_err(format!("一時ディレクトリの作成に失敗しました: {}", e)))?;
+-            Ok(Self { temp_dir })
+-        }
+-    }
+-
+-    impl DockerFileOperations for MockDockerFileOps {
+-        fn create_temp_directory(&self) -> Result<std::path::PathBuf> {
+-            Ok(self.temp_dir.path().to_path_buf())
+-        }
+-
+-        fn set_permissions<P: AsRef<Path>>(&self, path: P, _mode: u32) -> Result<()> {
+-            if path.as_ref().exists() {
+-                Ok(())
+-            } else {
+-                Err(container_err("パスが存在しません".to_string()))
+-            }
+-        }
+-
+-        fn write_source_file<P: AsRef<Path>>(&self, dir: P, filename: &str, content: &str) -> Result<std::path::PathBuf> {
+-            let file_path = dir.as_ref().join(filename);
+-            fs::write(&file_path, content)
+-                .map_err(|e| container_err(format!("ソースファイルの書き込みに失敗しました: {}", e)))?;
+-            Ok(file_path)
+-        }
+-    }
+-
+-    impl DefaultDockerFileOperations for MockDockerFileOps {}
+-
+-    #[test]
+-    fn test_mock_docker_file_ops() -> Result<()> {
+-        let ops = MockDockerFileOps::new()?;
+-        
+-        // テスト一時ディレクトリの作成
+-        let temp_dir = ops.create_temp_directory()?;
+-        assert!(temp_dir.exists());
+-
+-        // ソースファイルの書き込み
+-        let file_path = ops.write_source_file(&temp_dir, "test.txt", "test content")?;
+-        assert!(file_path.exists());
+-        let content = fs::read_to_string(&file_path)
+-            .map_err(|e| container_err(format!("ファイルの読み取りに失敗しました: {}", e)))?;
+-        assert_eq!(content, "test content");
+-
+-        // 権限設定
+-        assert!(ops.set_permissions(&temp_dir, 0o777).is_ok());
+-
+-        // 所有者設定
+-        let (uid, gid) = ops.get_current_user_ids();
+-        assert!(uid.is_root() || !uid.is_root());
+-        assert!(gid.is_root() || !gid.is_root());
+-
+-        Ok(())
+-    }
++    Ok(())
+ } 
+\ No newline at end of file
+diff --git a/src/docker/mod.rs b/src/docker/mod.rs
+index 68c7bde..280461c 100644
+--- a/src/docker/mod.rs
++++ b/src/docker/mod.rs
+@@ -1,14 +1,17 @@
++pub mod config;
+ pub mod error;
+ pub mod execution;
+-pub mod state;
+ pub mod fs;
++pub mod state;
++pub mod test_helpers;
++pub mod traits;
+ 
+-pub use execution::{
+-    DockerCommand,
+-    ContainerManager,
+-    CompilationManager,
+-    DockerCommandExecutor,
+-    CommandOutput,
++pub use error::{
++    docker_err,
++    execution_err,
++    compilation_err,
++    container_err,
++    state_err,
+ };
+-pub use state::{ContainerState, ContainerStateManager};
+-pub use fs::{DockerFileOperations, DefaultDockerFileOperations}; 
+\ No newline at end of file
++
++pub use crate::error::docker::DockerErrorKind; 
+\ No newline at end of file
+diff --git a/src/docker/state/manager.rs b/src/docker/state/manager.rs
+index 8e4f440..8e937d9 100644
+--- a/src/docker/state/manager.rs
++++ b/src/docker/state/manager.rs
+@@ -4,6 +4,7 @@ use crate::error::Result;
+ use super::ContainerState;
+ use crate::docker::error::state_err;
+ use crate::docker::state::operations;
++use std::collections::HashMap;
+ 
+ #[derive(Debug, Clone)]
+ pub struct ContainerStateManager {
+@@ -53,6 +54,41 @@ impl ContainerStateManager {
+         let state = self.get_current_state().await;
+         state.container_id()
+             .map(String::from)
+-            .ok_or_else(|| state_err("コンテナIDが見つかりません".to_string()))
++            .ok_or_else(|| state_err("状態管理", "コンテナIDが見つかりません"))
++    }
++}
++
++pub struct StateManager {
++    states: HashMap<String, ContainerState>,
++}
++
++impl StateManager {
++    pub fn new() -> Self {
++        Self {
++            states: HashMap::new(),
++        }
++    }
++
++    pub fn get_state(&self, container_id: &str) -> Option<&ContainerState> {
++        self.states.get(container_id)
++    }
++
++    pub fn set_state(&mut self, container_id: String, state: ContainerState) {
++        self.states.insert(container_id, state);
++    }
++
++    pub fn remove_state(&mut self, container_id: &str) {
++        self.states.remove(container_id);
++    }
++
++    pub fn get_container_id(&self) -> Result<String> {
++        self.states
++            .keys()
++            .next()
++            .map(|s| s.to_string())
++            .ok_or_else(|| state_err(
++                "状態管理",
++                "コンテナIDが見つかりません"
++            ))
++    }
++} 
+\ No newline at end of file
+diff --git a/src/docker/state/operations.rs b/src/docker/state/operations.rs
+index 6f8ad1a..dc4d767 100644
+--- a/src/docker/state/operations.rs
++++ b/src/docker/state/operations.rs
+@@ -3,15 +3,22 @@ use crate::error::Result;
+ use super::ContainerState;
+ use crate::docker::error::state_err;
+ 
++pub trait StateOperations {
++    fn fail(&mut self, current_state: &ContainerState) -> Result<()>;
++    fn create(&mut self, current_state: &ContainerState) -> Result<()>;
++    fn start(&mut self, current_state: &ContainerState) -> Result<()>;
++    fn stop(&mut self, current_state: &ContainerState) -> Result<()>;
++}
++
+ pub async fn fail_container(current_state: &ContainerState, container_id: String, error: String) -> Result<ContainerState> {
+     match current_state {
+         ContainerState::Initial |
+         ContainerState::Stopped { .. } |
+         ContainerState::Failed { .. } => {
+-            Err(state_err(format!(
+-                "無効な状態からの失敗遷移: {}",
+-                current_state
+-            )))
++            Err(state_err(
++                "状態遷移",
++                format!("無効な状態からの失敗遷移: {}", current_state)
++            ))
+         },
+         _ => {
+             Ok(ContainerState::Failed {
+@@ -32,10 +39,10 @@ pub async fn create_container(current_state: &ContainerState, container_id: Stri
+             })
+         },
+         _ => {
+-            Err(state_err(format!(
+-                "無効な状態からの作成遷移: {}",
+-                current_state
+-            )))
++            Err(state_err(
++                "状態遷移",
++                format!("無効な状態からの作成遷移: {}", current_state)
++            ))
+         }
+     }
+ }
+@@ -49,10 +56,10 @@ pub async fn start_container(current_state: &ContainerState) -> Result<Container
+             })
+         },
+         _ => {
+-            Err(state_err(format!(
+-                "無効な状態からの開始遷移: {}",
+-                current_state
+-            )))
++            Err(state_err(
++                "状態遷移",
++                format!("無効な状態からの開始遷移: {}", current_state)
++            ))
+         }
+     }
+ }
+@@ -68,10 +75,10 @@ pub async fn stop_container(current_state: &ContainerState) -> Result<ContainerS
+             })
+         },
+         _ => {
+-            Err(state_err(format!(
+-                "無効な状態からの停止遷移: {}",
+-                current_state
+-            )))
++            Err(state_err(
++                "状態遷移",
++                format!("無効な状態からの停止遷移: {}", current_state)
++            ))
+         }
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/docker/state/validation.rs b/src/docker/state/validation.rs
+index 8d42168..5de39ee 100644
+--- a/src/docker/state/validation.rs
++++ b/src/docker/state/validation.rs
+@@ -1,119 +1,75 @@
++use crate::error::docker::DockerErrorKind;
+ use crate::error::Result;
+-use super::types::ContainerState;
+-use crate::docker::error::docker_err;
++use crate::docker_error;
+ 
+-#[allow(dead_code)]
+-pub async fn validate_transition(current: &ContainerState, new: &ContainerState) -> Result<()> {
+-    validate_container_id(current, new)?;
+-    validate_state_transition(current, new)?;
++pub fn validate_image_name(image_name: &str) -> Result<()> {
++    if image_name.is_empty() {
++        return Err(docker_error!(
++            DockerErrorKind::ValidationError,
++            "イメージ名が指定されていません"
++        ));
++    }
+     Ok(())
+ }
+ 
+-#[allow(dead_code)]
+-fn validate_container_id(current: &ContainerState, new: &ContainerState) -> Result<()> {
+-    match (current.container_id(), new.container_id()) {
+-        (Some(current_id), Some(new_id)) if current_id != new_id => {
+-            Err(docker_err(format!(
+-                "コンテナIDが一致しません。\n現在のID: {}\n新しいID: {}\nコンテナIDは状態遷移中に変更できません。",
+-                current_id, new_id
+-            )))
+-        }
+-        _ => Ok(())
++pub fn validate_container_name(container_name: &str) -> Result<()> {
++    if container_name.is_empty() {
++        return Err(docker_error!(
++            DockerErrorKind::ValidationError,
++            "コンテナ名が指定されていません"
++        ));
+     }
++    Ok(())
+ }
+ 
+-#[allow(dead_code)]
+-fn validate_state_transition(current: &ContainerState, new: &ContainerState) -> Result<()> {
+-    use ContainerState::*;
+-    
+-    match (current, new) {
+-        // 初期状態からの遷移
+-        (Initial, Created { .. }) => Ok(()),
+-        
+-        // Created状態からの遷移
+-        (Created { .. }, Running { .. }) |
+-        (Created { .. }, Failed { .. }) => Ok(()),
+-        
+-        // Running状態からの遷移
+-        (Running { .. }, Executing { .. }) |
+-        (Running { .. }, Stopped { .. }) |
+-        (Running { .. }, Failed { .. }) => Ok(()),
+-        
+-        // Executing状態からの遷移
+-        (Executing { .. }, Running { .. }) |
+-        (Executing { .. }, Stopped { .. }) |
+-        (Executing { .. }, Failed { .. }) => Ok(()),
+-        
+-        // 終端状態からの遷移は許可しない
+-        (Stopped { .. }, _) => {
+-            Err(docker_err(format!(
+-                "停止済みのコンテナの状態を変更することはできません。\n現在の状態: {}\n要求された状態: {}\n新しい操作を開始するには、新しいコンテナを作成してください。",
+-                current, new
+-            )))
+-        }
+-        (Failed { .. }, _) => {
+-            Err(docker_err(format!(
+-                "失敗状態のコンテナの状態を変更することはできません。\n現在の状態: {}\n要求された状態: {}\nエラーを解決し、新しいコンテナで再試行してください。",
+-                current, new
+-            )))
+-        }
+-        
+-        // その他の遷移は無効
+-        _ => Err(docker_err(format!(
+-            "無効な状態遷移が要求されました。\n現在の状態: {}\n要求された状態: {}\n許可される遷移については、ドキュメントを参照してください。",
+-            current, new
+-        ))),
++pub fn validate_command(command: &str) -> Result<()> {
++    if command.is_empty() {
++        return Err(docker_error!(
++            DockerErrorKind::ValidationError,
++            "コマンドが指定されていません"
++        ));
+     }
++    Ok(())
+ }
+ 
+-#[cfg(test)]
+-mod tests {
+-    use super::*;
+-
+-    #[tokio::test]
+-    async fn test_valid_transitions() {
+-        let initial = ContainerState::Initial;
+-        let created = ContainerState::Created {
+-            container_id: Some("test_id".to_string())
+-        };
+-        let running = ContainerState::Running {
+-            container_id: Some("test_id".to_string())
+-        };
+-
+-        // 初期状態 -> Created
+-        assert!(validate_transition(&initial, &created).await.is_ok());
+-
+-        // Created -> Running
+-        assert!(validate_transition(&created, &running).await.is_ok());
++pub fn validate_working_dir(working_dir: &str) -> Result<()> {
++    if working_dir.is_empty() {
++        return Err(docker_error!(
++            DockerErrorKind::ValidationError,
++            "作業ディレクトリが指定されていません"
++        ));
+     }
+ 
+-    #[tokio::test]
+-    async fn test_invalid_container_id_transition() {
+-        let current = ContainerState::Running {
+-            container_id: Some("id1".to_string())
+-        };
+-        let new = ContainerState::Running {
+-            container_id: Some("id2".to_string())
+-        };
+-
+-        let result = validate_transition(&current, &new).await;
+-        assert!(result.is_err());
+-        assert!(result.unwrap_err().to_string().contains("コンテナIDが一致しません"));
++    Ok(())
++}
+ 
+-    #[tokio::test]
+-    async fn test_invalid_state_transitions() {
+-        let stopped = ContainerState::Stopped {
+-            container_id: Some("test_id".to_string()),
+-            exit_code: 0
+-        };
+-        let running = ContainerState::Running {
+-            container_id: Some("test_id".to_string())
+-        };
+-
+-        // 停止状態からの遷移は許可されない
+-        let result = validate_transition(&stopped, &running).await;
+-        assert!(result.is_err());
+-        assert!(result.unwrap_err().to_string().contains("停止済みのコンテナ"));
+     }
++pub fn validate_volume(source: &str, target: &str) -> Result<()> {
++    if source.is_empty() {
++        return Err(docker_error!(
++            DockerErrorKind::ValidationError,
++            "ボリュームのソースパスが指定されていません"
++        ));
++    }
++    if target.is_empty() {
++        return Err(docker_error!(
++            DockerErrorKind::ValidationError,
++            "ボリュームのターゲットパスが指定されていません"
++        ));
++    }
++    Ok(())
++}
+ 
+-    #[tokio::test]
+-    async fn test_invalid_state_transitions() {
+-        let stopped = ContainerState::Stopped {
+-            container_id: Some("test_id".to_string()),
+-            exit_code: 0
+-        };
+-        let running = ContainerState::Running {
+-            container_id: Some("test_id".to_string())
+-        };
+-
+-        // 停止状態からの遷移は許可されない
+-        let result = validate_transition(&stopped, &running).await;
+-        assert!(result.is_err());
+-        assert!(result.unwrap_err().to_string().contains("停止済みのコンテナ"));
+-    }
++pub fn validate_env(key: &str, value: &str) -> Result<()> {
++    if key.is_empty() {
++        return Err(docker_error!(
++            DockerErrorKind::ValidationError,
++            "環境変数のキーが指定されていません"
++        ));
++    }
++    if value.is_empty() {
++        return Err(docker_error!(
++            DockerErrorKind::ValidationError,
++            "環境変数の値が指定されていません"
++        ));
++    }
++    Ok(())
++} 
+\ No newline at end of file
+diff --git a/src/error.rs b/src/error.rs
+deleted file mode 100644
+index 5f0a8fd..0000000
+--- a/src/error.rs
++++ /dev/null
+@@ -1,455 +0,0 @@
+-#[macro_use]
+-pub mod macros;
+-
+-use std::sync::Arc;
+-use thiserror::Error;
+-
+-pub const NO_ACTIVE_CONTEST: &str = "アクティブなコンテストがありません。'work'コマンドで設定してください。";
+-
+-// サブモジュールの定義
+-pub mod fs;
+-pub mod docker;
+-pub mod contest;
+-pub mod config;
+-
+-/// エラーの重大度を表す列挙型
+-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+-pub enum ErrorSeverity {
+-    Info,
+-    Warning,
+-    Error,
+-    Critical,
+-}
+-
+-impl Default for ErrorSeverity {
+-    fn default() -> Self {
+-        Self::Error
+-    }
+-}
+-
+-/// エラーコンテキストを表す構造体
+-#[derive(Debug, Clone)]
+-pub struct ErrorContext {
+-    pub operation: String,
+-    pub location: String,
+-    pub hint: Option<String>,
+-    pub source: Option<Arc<dyn std::error::Error + Send + Sync>>,
+-    pub backtrace: Option<String>,
+-    pub system_state: Option<SystemState>,
+-    pub severity: ErrorSeverity,
+-}
+-
+-/// システム状態を表す構造体
+-#[derive(Debug, Clone)]
+-pub struct SystemState {
+-    pub working_directory: String,
+-    pub active_contest: Option<String>,
+-    pub docker_status: Option<String>,
+-    pub last_operation: Option<String>,
+-    pub environment_info: Option<String>,
+-}
+-
+-impl Default for ErrorContext {
+-    fn default() -> Self {
+-        Self {
+-            operation: String::new(),
+-            location: String::new(),
+-            hint: None,
+-            source: None,
+-            backtrace: None,
+-            system_state: None,
+-            severity: ErrorSeverity::default(),
+-        }
+-    }
+-}
+-
+-impl ErrorContext {
+-    pub fn new(operation: impl Into<String>, location: impl Into<String>) -> Self {
+-        Self {
+-            operation: operation.into(),
+-            location: location.into(),
+-            hint: None,
+-            source: None,
+-            backtrace: None,
+-            system_state: None,
+-            severity: ErrorSeverity::default(),
+-        }
+-    }
+-
+-    pub fn with_hint(mut self, hint: impl Into<String>) -> Self {
+-        self.hint = Some(hint.into());
+-        self
+-    }
+-
+-    pub fn with_source(mut self, source: impl std::error::Error + Send + Sync + 'static) -> Self {
+-        self.source = Some(Arc::new(source));
+-        self
+-    }
+-
+-    pub fn with_system_state(mut self, state: SystemState) -> Self {
+-        self.system_state = Some(state);
+-        self
+-    }
+-
+-    pub fn with_severity(mut self, severity: ErrorSeverity) -> Self {
+-        self.severity = severity;
+-        self
+-    }
+-}
+-
+-/// 共通のエラー型
+-#[derive(Debug, Error)]
+-pub enum CphError {
+-    #[error("{}\n場所: {}\n重大度: {:?}\nエラー: {}\nヒント: {}", 
+-        context.operation,
+-        context.location,
+-        context.severity,
+-        context.source.as_ref().map_or("不明".to_string(), |e| e.to_string()),
+-        context.hint.as_deref().unwrap_or("詳細については、ドキュメントを参照してください。"))]
+-    FileSystem {
+-        context: ErrorContext,
+-        kind: fs::FileSystemErrorKind,
+-    },
+-
+-    #[error("{}\n場所: {}\n重大度: {:?}\nエラー: {}\nヒント: {}", 
+-        context.operation,
+-        context.location,
+-        context.severity,
+-        context.source.as_ref().map_or("不明".to_string(), |e| e.to_string()),
+-        context.hint.as_deref().unwrap_or("Dockerの設定を確認してください。"))]
+-    Docker {
+-        context: ErrorContext,
+-        kind: docker::DockerErrorKind,
+-    },
+-
+-    #[error("{}\n場所: {}\n重大度: {:?}\nエラー: {}\nヒント: {}", 
+-        context.operation,
+-        context.location,
+-        context.severity,
+-        context.source.as_ref().map_or("不明".to_string(), |e| e.to_string()),
+-        context.hint.as_deref().unwrap_or("コンテストの設定を確認してください。"))]
+-    Contest {
+-        context: ErrorContext,
+-        kind: contest::ContestErrorKind,
+-    },
+-
+-    #[error("{}\n場所: {}\n重大度: {:?}\nエラー: {}\nヒント: {}", 
+-        context.operation,
+-        context.location,
+-        context.severity,
+-        context.source.as_ref().map_or("不明".to_string(), |e| e.to_string()),
+-        context.hint.as_deref().unwrap_or("設定ファイルを確認してください。"))]
+-    Config {
+-        context: ErrorContext,
+-        kind: config::ConfigErrorKind,
+-    },
+-
+-    #[error("{}\n場所: {}\n重大度: {:?}\nヒント: {}", 
+-        context.operation,
+-        context.location,
+-        context.severity,
+-        context.hint.as_deref().unwrap_or("詳細については、ドキュメントを参照してください。"))]
+-    Other {
+-        context: ErrorContext,
+-    },
+-}
+-
+-/// エラーにコンテキストを追加するためのトレイト
+-pub trait ErrorExt {
+-    fn with_context(self, context: ErrorContext) -> Self;
+-    fn with_hint(self, hint: impl Into<String>) -> Self;
+-    fn with_source(self, source: impl std::error::Error + Send + Sync + 'static) -> Self;
+-    fn with_severity(self, severity: ErrorSeverity) -> Self;
+-}
+-
+-impl ErrorExt for CphError {
+-    fn with_context(self, context: ErrorContext) -> Self {
+-        match self {
+-            CphError::FileSystem { kind, .. } => CphError::FileSystem { context, kind },
+-            CphError::Docker { kind, .. } => CphError::Docker { context, kind },
+-            CphError::Contest { kind, .. } => CphError::Contest { context, kind },
+-            CphError::Config { kind, .. } => CphError::Config { context, kind },
+-            CphError::Other { .. } => CphError::Other { context },
+-        }
+-    }
+-
+-    fn with_hint(self, hint: impl Into<String>) -> Self {
+-        match self {
+-            CphError::FileSystem { context, kind } => {
+-                CphError::FileSystem {
+-                    context: context.with_hint(hint),
+-                    kind,
+-                }
+-            }
+-            CphError::Docker { context, kind } => {
+-                CphError::Docker {
+-                    context: context.with_hint(hint),
+-                    kind,
+-                }
+-            }
+-            CphError::Contest { context, kind } => {
+-                CphError::Contest {
+-                    context: context.with_hint(hint),
+-                    kind,
+-                }
+-            }
+-            CphError::Config { context, kind } => {
+-                CphError::Config {
+-                    context: context.with_hint(hint),
+-                    kind,
+-                }
+-            }
+-            CphError::Other { context } => {
+-                CphError::Other {
+-                    context: context.with_hint(hint),
+-                }
+-            }
+-        }
+-    }
+-
+-    fn with_source(self, source: impl std::error::Error + Send + Sync + 'static) -> Self {
+-        match self {
+-            CphError::FileSystem { context, kind } => {
+-                CphError::FileSystem {
+-                    context: context.with_source(source),
+-                    kind,
+-                }
+-            }
+-            CphError::Docker { context, kind } => {
+-                CphError::Docker {
+-                    context: context.with_source(source),
+-                    kind,
+-                }
+-            }
+-            CphError::Contest { context, kind } => {
+-                CphError::Contest {
+-                    context: context.with_source(source),
+-                    kind,
+-                }
+-            }
+-            CphError::Config { context, kind } => {
+-                CphError::Config {
+-                    context: context.with_source(source),
+-                    kind,
+-                }
+-            }
+-            CphError::Other { context } => {
+-                CphError::Other {
+-                    context: context.with_source(source),
+-                }
+-            }
+-        }
+-    }
+-
+-    fn with_severity(self, severity: ErrorSeverity) -> Self {
+-        match self {
+-            CphError::FileSystem { context, kind } => {
+-                CphError::FileSystem {
+-                    context: context.with_severity(severity),
+-                    kind,
+-                }
+-            }
+-            CphError::Docker { context, kind } => {
+-                CphError::Docker {
+-                    context: context.with_severity(severity),
+-                    kind,
+-                }
+-            }
+-            CphError::Contest { context, kind } => {
+-                CphError::Contest {
+-                    context: context.with_severity(severity),
+-                    kind,
+-                }
+-            }
+-            CphError::Config { context, kind } => {
+-                CphError::Config {
+-                    context: context.with_severity(severity),
+-                    kind,
+-                }
+-            }
+-            CphError::Other { context } => {
+-                CphError::Other {
+-                    context: context.with_severity(severity),
+-                }
+-            }
+-        }
+-    }
+-}
+-
+-#[derive(Debug, Clone)]
+-pub enum FileSystemErrorKind {
+-    NotFound,
+-    Permission,
+-    Io,
+-    Path,
+-    Transaction,
+-}
+-
+-impl std::fmt::Display for FileSystemErrorKind {
+-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+-        match self {
+-            Self::NotFound => write!(f, "ファイルが見つかりません"),
+-            Self::Permission => write!(f, "アクセス権限がありません"),
+-            Self::Io => write!(f, "IOエラー"),
+-            Self::Path => write!(f, "パスエラー"),
+-            Self::Transaction => write!(f, "トランザクションエラー"),
+-        }
+-    }
+-}
+-
+-#[derive(Debug, Clone)]
+-pub enum DockerErrorKind {
+-    ConnectionFailed,
+-    BuildFailed,
+-    ExecutionFailed,
+-    StateFailed,
+-    ValidationFailed,
+-}
+-
+-impl std::fmt::Display for DockerErrorKind {
+-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+-        match self {
+-            Self::ConnectionFailed => write!(f, "Dockerデーモンに接続できません"),
+-            Self::BuildFailed => write!(f, "イメージのビルドに失敗しました"),
+-            Self::ExecutionFailed => write!(f, "コンテナの実行に失敗しました"),
+-            Self::StateFailed => write!(f, "コンテナの状態管理に失敗しました"),
+-            Self::ValidationFailed => write!(f, "バリデーションエラー"),
+-        }
+-    }
+-}
+-
+-#[derive(Debug, Clone)]
+-pub enum ContestErrorKind {
+-    Site,
+-    Language,
+-    Compiler,
+-    State,
+-    Parse,
+-}
+-
+-impl std::fmt::Display for ContestErrorKind {
+-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+-        match self {
+-            Self::Site => write!(f, "サイトエラー"),
+-            Self::Language => write!(f, "言語エラー"),
+-            Self::Compiler => write!(f, "コンパイラエラー"),
+-            Self::State => write!(f, "状態管理エラー"),
+-            Self::Parse => write!(f, "パースエラー"),
+-        }
+-    }
+-}
+-
+-#[derive(Debug, Clone)]
+-pub enum ConfigErrorKind {
+-    NotFound,
+-    Parse,
+-    InvalidValue,
+-    Validation,
+-}
+-
+-impl std::fmt::Display for ConfigErrorKind {
+-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+-        match self {
+-            Self::NotFound => write!(f, "設定ファイルが見つかりません"),
+-            Self::Parse => write!(f, "設定ファイルの解析に失敗しました"),
+-            Self::InvalidValue => write!(f, "無効な設定値"),
+-            Self::Validation => write!(f, "バリデーションエラー"),
+-        }
+-    }
+-}
+-
+-pub type Result<T> = std::result::Result<T, CphError>;
+-
+-// エラーヘルパー関数
+-pub mod helpers {
+-    use super::*;
+-    use super::fs::FileSystemErrorKind;
+-    use super::docker::DockerErrorKind;
+-    use super::contest::ContestErrorKind;
+-    use super::config::ConfigErrorKind;
+-
+-    // ファイルシステム関連のヘルパー関数
+-    pub fn fs_error(kind: FileSystemErrorKind, op: impl Into<String>, path: impl Into<String>) -> CphError {
+-        CphError::FileSystem {
+-            context: ErrorContext::new(op, path).with_severity(match kind {
+-                FileSystemErrorKind::NotFound => ErrorSeverity::Warning,
+-                FileSystemErrorKind::Permission => ErrorSeverity::Error,
+-                FileSystemErrorKind::Io => ErrorSeverity::Error,
+-                FileSystemErrorKind::Path => ErrorSeverity::Warning,
+-                FileSystemErrorKind::Transaction => ErrorSeverity::Error,
+-            }),
+-            kind,
+-        }
+-    }
+-
+-    // Docker関連のヘルパー関数
+-    pub fn docker_error(kind: DockerErrorKind, op: impl Into<String>, context: impl Into<String>) -> CphError {
+-        CphError::Docker {
+-            context: ErrorContext::new(op, context).with_severity(match kind {
+-                DockerErrorKind::ConnectionFailed => ErrorSeverity::Critical,
+-                DockerErrorKind::BuildFailed => ErrorSeverity::Error,
+-                DockerErrorKind::ExecutionFailed => ErrorSeverity::Error,
+-                DockerErrorKind::StateFailed => ErrorSeverity::Warning,
+-                DockerErrorKind::ValidationFailed => ErrorSeverity::Error,
+-            }),
+-            kind,
+-        }
+-    }
+-
+-    // コンテスト関連のヘルパー関数
+-    pub fn contest_error(kind: ContestErrorKind, op: impl Into<String>, context: impl Into<String>) -> CphError {
+-        CphError::Contest {
+-            context: ErrorContext::new(op, context).with_severity(match kind {
+-                ContestErrorKind::Site => ErrorSeverity::Error,
+-                ContestErrorKind::Language => ErrorSeverity::Warning,
+-                ContestErrorKind::Compiler => ErrorSeverity::Error,
+-                ContestErrorKind::State => ErrorSeverity::Warning,
+-                ContestErrorKind::Parse => ErrorSeverity::Error,
+-            }),
+-            kind,
+-        }
+-    }
+-
+-    // 設定関連のヘルパー関数
+-    pub fn config_error(kind: ConfigErrorKind, op: impl Into<String>, context: impl Into<String>) -> CphError {
+-        CphError::Config {
+-            context: ErrorContext::new(op, context).with_severity(match kind {
+-                ConfigErrorKind::NotFound => ErrorSeverity::Warning,
+-                ConfigErrorKind::Parse => ErrorSeverity::Error,
+-                ConfigErrorKind::InvalidValue => ErrorSeverity::Error,
+-                ConfigErrorKind::Validation => ErrorSeverity::Error,
+-            }),
+-            kind,
+-        }
+-    }
+-
+-    // 一般的なエラーヘルパー関数
+-    pub fn other_error(op: impl Into<String>, context: impl Into<String>, severity: ErrorSeverity) -> CphError {
+-        CphError::Other {
+-            context: ErrorContext::new(op, context).with_severity(severity),
+-        }
+-    }
+-
+-    // バックトレース付きのエラーコンテキスト生成
+-    pub fn with_backtrace(mut context: ErrorContext) -> ErrorContext {
+-        if context.backtrace.is_none() {
+-            context.backtrace = Some(std::backtrace::Backtrace::capture().to_string());
+-        }
+-        context
+-    }
+-}
+-
+-// エラー変換マクロ
+-#[macro_export]
+-macro_rules! into_cph_error {
+-    ($operation:expr, $location:expr, $error:expr) => {
+-        match $error {
+-            err @ std::io::Error { .. } => {
+-                crate::error::helpers::fs_io($operation, $location, err)
+-            }
+-            err => CphError::Other {
+-                context: ErrorContext::new($operation, $location).with_source(err),
+-            },
+-        }
+-    };
+-} 
+\ No newline at end of file
+diff --git a/src/error/config.rs b/src/error/config.rs
+index 3ed426f..f6e6ecc 100644
+--- a/src/error/config.rs
++++ b/src/error/config.rs
+@@ -1,29 +1,40 @@
++use std::fmt;
++use crate::error::{Error, ErrorKind, ErrorSeverity};
++
++pub fn config_err(error: impl Into<String>, message: impl Into<String>) -> Error {
++    Error::config(
++        ConfigErrorKind::Other(error.into()),
++        message
++    )
++}
++
+ #[derive(Debug, Clone)]
+ pub enum ConfigErrorKind {
+     NotFound,
+-    Parse,
++    InvalidFormat,
+     InvalidValue,
+-    Validation,
++    IO,
++    Other(String),
+ }
+ 
+-impl std::fmt::Display for ConfigErrorKind {
+-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++impl ErrorKind for ConfigErrorKind {
++    fn severity(&self) -> ErrorSeverity {
+         match self {
+-            Self::NotFound => write!(f, "設定ファイルが見つかりません"),
+-            Self::Parse => write!(f, "設定ファイルの解析に失敗しました"),
+-            Self::InvalidValue => write!(f, "無効な設定値"),
+-            Self::Validation => write!(f, "設定値の検証に失敗しました"),
++            Self::NotFound => ErrorSeverity::Warning,
++            Self::IO => ErrorSeverity::Fatal,
++            _ => ErrorSeverity::Error,
+         }
+     }
+ }
+ 
+-impl ConfigErrorKind {
+-    pub fn hint(&self) -> &'static str {
++impl fmt::Display for ConfigErrorKind {
++    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+         match self {
+-            Self::NotFound => "設定ファイルの場所を確認してください",
+-            Self::Parse => "設定ファイルの形式を確認してください",
+-            Self::InvalidValue => "設定値の範囲や形式を確認してください",
+-            Self::Validation => "設定値の組み合わせを確認してください",
++            Self::NotFound => write!(f, "設定ファイルが見つかりません"),
++            Self::InvalidFormat => write!(f, "設定ファイルの形式が不正です"),
++            Self::InvalidValue => write!(f, "設定値が不正です"),
++            Self::IO => write!(f, "設定ファイルのI/O操作に失敗しました"),
++            Self::Other(s) => write!(f, "{}", s),
+         }
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/error/contest.rs b/src/error/contest.rs
+index 8a63a42..217884c 100644
+--- a/src/error/contest.rs
++++ b/src/error/contest.rs
+@@ -1,32 +1,41 @@
++use std::fmt;
++use crate::error::{Error, ErrorKind, ErrorSeverity};
++
++pub fn contest_err(error: impl Into<String>, message: impl Into<String>) -> Error {
++    Error::new(
++        ContestErrorKind::Other(error.into()),
++        message
++    ).with_hint("コンテストの操作に失敗しました")
++}
++
+ #[derive(Debug, Clone)]
+ pub enum ContestErrorKind {
+-    Site,
+-    Language,
+-    Compiler,
+-    State,
++    NotFound,
++    InvalidLanguage,
++    InvalidTestCase,
++    InvalidUrl,
+     Parse,
++    Other(String),
+ }
+ 
+-impl std::fmt::Display for ContestErrorKind {
+-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++impl ErrorKind for ContestErrorKind {
++    fn severity(&self) -> ErrorSeverity {
+         match self {
+-            Self::Site => write!(f, "コンテストサイトエラー"),
+-            Self::Language => write!(f, "プログラミング言語エラー"),
+-            Self::Compiler => write!(f, "コンパイラエラー"),
+-            Self::State => write!(f, "コンテスト状態エラー"),
+-            Self::Parse => write!(f, "コンテスト情報の解析エラー"),
++            Self::NotFound => ErrorSeverity::Warning,
++            _ => ErrorSeverity::Error,
+         }
+     }
+ }
+ 
+-impl ContestErrorKind {
+-    pub fn hint(&self) -> &'static str {
++impl fmt::Display for ContestErrorKind {
++    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+         match self {
+-            Self::Site => "コンテストサイトの接続を確認してください",
+-            Self::Language => "対応言語リストを確認してください",
+-            Self::Compiler => "コンパイラの設定を確認してください",
+-            Self::State => "コンテストの状態を確認してください",
+-            Self::Parse => "コンテスト情報の形式を確認してください",
++            Self::NotFound => write!(f, "リソースが見つかりません"),
++            Self::InvalidLanguage => write!(f, "サポートされていない言語です"),
++            Self::InvalidTestCase => write!(f, "テストケースが不正です"),
++            Self::InvalidUrl => write!(f, "URLの形式が正しくありません"),
++            Self::Parse => write!(f, "パースに失敗しました"),
++            Self::Other(s) => write!(f, "{}", s),
+         }
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/error/docker.rs b/src/error/docker.rs
+index d86150b..19dc820 100644
+--- a/src/error/docker.rs
++++ b/src/error/docker.rs
+@@ -1,32 +1,44 @@
++use std::fmt;
++use crate::error::{Error, ErrorKind, ErrorSeverity};
++
++pub fn docker_err(error: impl Into<String>, message: impl Into<String>) -> Error {
++    Error::new(
++        DockerErrorKind::Other(error.into()),
++        message
++    ).with_hint("Dockerの操作に失敗しました")
++}
++
+ #[derive(Debug, Clone)]
+ pub enum DockerErrorKind {
+-    ConnectionFailed,
+-    BuildFailed,
+-    ExecutionFailed,
+-    StateFailed,
+-    ValidationFailed,
++    ContainerNotFound,
++    ImageNotFound,
++    NetworkError,
++    ExecutionError,
++    CompilationError,
++    ValidationError,
++    Other(String),
+ }
+ 
+-impl std::fmt::Display for DockerErrorKind {
+-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++impl ErrorKind for DockerErrorKind {
++    fn severity(&self) -> ErrorSeverity {
+         match self {
+-            Self::ConnectionFailed => write!(f, "Dockerデーモンに接続できません"),
+-            Self::BuildFailed => write!(f, "イメージのビルドに失敗しました"),
+-            Self::ExecutionFailed => write!(f, "コンテナの実行に失敗しました"),
+-            Self::StateFailed => write!(f, "コンテナの状態管理に失敗しました"),
+-            Self::ValidationFailed => write!(f, "コンテナの検証に失敗しました"),
++            Self::NetworkError => ErrorSeverity::Fatal,
++            Self::ExecutionError | Self::CompilationError => ErrorSeverity::Error,
++            _ => ErrorSeverity::Warning,
+         }
+     }
+ }
+ 
+-impl DockerErrorKind {
+-    pub fn hint(&self) -> &'static str {
++impl fmt::Display for DockerErrorKind {
++    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+         match self {
+-            Self::ConnectionFailed => "Dockerデーモンが実行中か確認してください",
+-            Self::BuildFailed => "Dockerfileの内容を確認してください",
+-            Self::ExecutionFailed => "コンテナの実行パラメータを確認してください",
+-            Self::StateFailed => "コンテナの状態を確認してください",
+-            Self::ValidationFailed => "コンテナの設定を確認してください",
++            Self::ContainerNotFound => write!(f, "コンテナが見つかりません"),
++            Self::ImageNotFound => write!(f, "イメージが見つかりません"),
++            Self::NetworkError => write!(f, "ネットワークエラー"),
++            Self::ExecutionError => write!(f, "実行エラー"),
++            Self::CompilationError => write!(f, "コンパイルエラー"),
++            Self::ValidationError => write!(f, "検証エラー"),
++            Self::Other(s) => write!(f, "{}", s),
+         }
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/error/fs.rs b/src/error/fs.rs
+index e8b3c2c..1c4f803 100644
+--- a/src/error/fs.rs
++++ b/src/error/fs.rs
+@@ -1,32 +1,81 @@
++use crate::error::{Error, ErrorKind, ErrorSeverity};
++use std::fmt;
++
++pub fn fs_error(kind: FileSystemErrorKind, message: impl Into<String>) -> Error {
++    Error::new(kind, message)
++}
++
++pub fn io_err(error: std::io::Error, message: impl Into<String>) -> Error {
++    Error::new(
++        FileSystemErrorKind::IO,
++        format!("{}: {}", message.into(), error)
++    ).with_hint("ファイル操作に失敗しました")
++}
++
++pub fn not_found_err(path: impl Into<String>) -> Error {
++    Error::new(
++        FileSystemErrorKind::NotFound,
++        format!("ファイルが見つかりません: {}", path.into())
++    ).with_hint("ファイルの存在を確認してください")
++}
++
++pub fn permission_err(path: impl Into<String>) -> Error {
++    Error::new(
++        FileSystemErrorKind::Permission,
++        format!("アクセス権限がありません: {}", path.into())
++    ).with_hint("ファイルのアクセス権限を確認してください")
++}
++
++pub fn transaction_err(error: std::io::Error, message: impl Into<String>) -> Error {
++    Error::new(
++        FileSystemErrorKind::Validation,
++        format!("{}: {}", message.into(), error)
++    ).with_hint("トランザクションの実行に失敗しました")
++}
++
++pub fn path_err(path: impl Into<String>) -> Error {
++    Error::new(
++        FileSystemErrorKind::Validation,
++        format!("無効なパス: {}", path.into())
++    ).with_hint("パスの形式を確認してください")
++}
++
++pub fn fs_err(error: impl Into<String>, message: impl Into<String>) -> Error {
++    Error::fs(
++        FileSystemErrorKind::Other(error.into()),
++        message
++    )
++}
++
+ #[derive(Debug, Clone)]
+ pub enum FileSystemErrorKind {
++    IO,
+     NotFound,
+     Permission,
+-    Io,
+-    Path,
+-    Transaction,
++    Validation,
++    InvalidPath,
++    Other(String),
+ }
+ 
+-impl std::fmt::Display for FileSystemErrorKind {
+-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++impl ErrorKind for FileSystemErrorKind {
++    fn severity(&self) -> ErrorSeverity {
+         match self {
+-            Self::NotFound => write!(f, "ファイルが見つかりません"),
+-            Self::Permission => write!(f, "アクセス権限がありません"),
+-            Self::Io => write!(f, "IOエラー"),
+-            Self::Path => write!(f, "パスエラー"),
+-            Self::Transaction => write!(f, "トランザクションエラー"),
++            Self::IO | Self::Permission => ErrorSeverity::Fatal,
++            Self::NotFound | Self::InvalidPath => ErrorSeverity::Warning,
++            _ => ErrorSeverity::Error,
+         }
+     }
+ }
+ 
+-impl FileSystemErrorKind {
+-    pub fn hint(&self) -> &'static str {
++impl fmt::Display for FileSystemErrorKind {
++    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+         match self {
+-            Self::NotFound => "ファイルパスを確認してください",
+-            Self::Permission => "ファイルのアクセス権限を確認してください",
+-            Self::Io => "ファイルシステムの状態を確認してください",
+-            Self::Path => "パスの形式を確認してください",
+-            Self::Transaction => "トランザクションの整合性を確認してください",
++            Self::IO => write!(f, "IOエラー"),
++            Self::NotFound => write!(f, "ファイルが見つかりません"),
++            Self::Permission => write!(f, "権限がありません"),
++            Self::Validation => write!(f, "検証エラー"),
++            Self::InvalidPath => write!(f, "無効なパスです"),
++            Self::Other(s) => write!(f, "{}", s),
+         }
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/error/helpers.rs b/src/error/helpers.rs
+index 91fa13f..71a380d 100644
+--- a/src/error/helpers.rs
++++ b/src/error/helpers.rs
+@@ -1,71 +1,43 @@
+-use crate::error::{CphError, ErrorContext, ErrorSeverity};
+-use crate::error::fs::FileSystemErrorKind;
+-use crate::error::docker::DockerErrorKind;
+-use crate::error::contest::ContestErrorKind;
+-use crate::error::config::ConfigErrorKind;
++use std::fmt;
++use crate::error::{
++    Error,
++    ErrorKind,
++    ErrorSeverity,
++    config::ConfigErrorKind,
++    docker::DockerErrorKind,
++    fs::FileSystemErrorKind,
++};
+ 
+-// ファイルシステム関連のヘルパー関数
+-pub fn fs_error(kind: FileSystemErrorKind, op: impl Into<String>, path: impl Into<String>) -> CphError {
+-    CphError::FileSystem {
+-        context: ErrorContext::new(op, path).with_severity(match kind {
+-            FileSystemErrorKind::NotFound => ErrorSeverity::Warning,
+-            FileSystemErrorKind::Permission => ErrorSeverity::Error,
+-            FileSystemErrorKind::Io => ErrorSeverity::Error,
+-            FileSystemErrorKind::Path => ErrorSeverity::Warning,
+-        }),
+-        kind,
+-    }
++pub fn fs_error(kind: FileSystemErrorKind, message: impl Into<String>) -> Error {
++    Error::new(kind, message)
+ }
+ 
+-// Docker関連のヘルパー関数
+-pub fn docker_error(kind: DockerErrorKind, op: impl Into<String>, context: impl Into<String>) -> CphError {
+-    CphError::Docker {
+-        context: ErrorContext::new(op, context).with_severity(match kind {
+-            DockerErrorKind::ConnectionFailed => ErrorSeverity::Critical,
+-            DockerErrorKind::BuildFailed => ErrorSeverity::Error,
+-            DockerErrorKind::ExecutionFailed => ErrorSeverity::Error,
+-            DockerErrorKind::StateFailed => ErrorSeverity::Warning,
+-        }),
+-        kind,
+-    }
++pub fn docker_error(kind: DockerErrorKind, message: impl Into<String>) -> Error {
++    Error::new(kind, message)
+ }
+ 
+-// コンテスト関連のヘルパー関数
+-pub fn contest_error(kind: ContestErrorKind, op: impl Into<String>, context: impl Into<String>) -> CphError {
+-    CphError::Contest {
+-        context: ErrorContext::new(op, context).with_severity(match kind {
+-            ContestErrorKind::Site => ErrorSeverity::Error,
+-            ContestErrorKind::Language => ErrorSeverity::Warning,
+-            ContestErrorKind::Compiler => ErrorSeverity::Error,
+-            ContestErrorKind::State => ErrorSeverity::Warning,
+-        }),
+-        kind,
+-    }
++pub fn config_error(kind: ConfigErrorKind, message: impl Into<String>) -> Error {
++    Error::new(kind, message)
+ }
+ 
+-// 設定関連のヘルパー関数
+-pub fn config_error(kind: ConfigErrorKind, op: impl Into<String>, context: impl Into<String>) -> CphError {
+-    CphError::Config {
+-        context: ErrorContext::new(op, context).with_severity(match kind {
+-            ConfigErrorKind::NotFound => ErrorSeverity::Warning,
+-            ConfigErrorKind::Parse => ErrorSeverity::Error,
+-            ConfigErrorKind::InvalidValue => ErrorSeverity::Error,
+-        }),
+-        kind,
+-    }
++pub fn other_err(error: impl Into<String>, message: impl Into<String>) -> Error {
++    Error::new(
++        OtherErrorKind(error.into()),
++        message
++    ).with_hint("予期しないエラーが発生しました")
+ }
+ 
+-// 一般的なエラーヘルパー関数
+-pub fn other_error(op: impl Into<String>, context: impl Into<String>, severity: ErrorSeverity) -> CphError {
+-    CphError::Other {
+-        context: ErrorContext::new(op, context).with_severity(severity),
++#[derive(Debug, Clone)]
++pub struct OtherErrorKind(String);
++
++impl ErrorKind for OtherErrorKind {
++    fn severity(&self) -> ErrorSeverity {
++        ErrorSeverity::Error
+     }
+ }
+ 
+-// バックトレース付きのエラーコンテキスト生成
+-pub fn with_backtrace(mut context: ErrorContext) -> ErrorContext {
+-    if context.backtrace.is_none() {
+-        context.backtrace = Some(std::backtrace::Backtrace::capture().to_string());
++impl fmt::Display for OtherErrorKind {
++    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
++        write!(f, "{}", self.0)
+     }
+-    context
+-} 
+\ No newline at end of file
++}
+\ No newline at end of file
+diff --git a/src/error/macros.rs b/src/error/macros.rs
+index 6934753..a0bda0c 100644
+--- a/src/error/macros.rs
++++ b/src/error/macros.rs
+@@ -1,5 +1,7 @@
++/// エラーを作成するための共通マクロ
+ #[macro_export]
+-macro_rules! cph_error {
++macro_rules! create_error {
++    // 基本形: 種類、操作、場所
+     ($kind:expr, $op:expr, $loc:expr) => {{
+         use $crate::error::{CphError, ErrorContext};
+         CphError::$kind {
+@@ -7,6 +9,7 @@ macro_rules! cph_error {
+             kind: $kind,
+         }
+     }};
++    // ヒント付き
+     ($kind:expr, $op:expr, $loc:expr, $hint:expr) => {{
+         use $crate::error::{CphError, ErrorContext};
+         CphError::$kind {
+@@ -14,6 +17,7 @@ macro_rules! cph_error {
+             kind: $kind,
+         }
+     }};
++    // ヒントと重大度付き
+     ($kind:expr, $op:expr, $loc:expr, $hint:expr, $severity:expr) => {{
+         use $crate::error::{CphError, ErrorContext, ErrorSeverity};
+         CphError::$kind {
+@@ -23,99 +27,76 @@ macro_rules! cph_error {
+             kind: $kind,
+         }
+     }};
+-}
+-
+-#[macro_export]
+-macro_rules! fs_error {
+-    ($op:expr, $loc:expr, $kind:expr) => {{
+-        use $crate::error::{CphError, ErrorContext, fs::FileSystemErrorKind};
+-        CphError::FileSystem {
+-            context: ErrorContext::new($op, $loc),
++    // ソース付き
++    ($kind:expr, $op:expr, $loc:expr, $hint:expr, $source:expr) => {{
++        use $crate::error::{CphError, ErrorContext};
++        CphError::$kind {
++            context: ErrorContext::new($op, $loc)
++                .with_hint($hint)
++                .with_source($source),
+             kind: $kind,
+         }
+     }};
+-    ($op:expr, $loc:expr, $kind:expr, $hint:expr) => {{
+-        use $crate::error::{CphError, ErrorContext, fs::FileSystemErrorKind};
+-        CphError::FileSystem {
+-            context: ErrorContext::new($op, $loc).with_hint($hint),
++    // 全指定
++    ($kind:expr, $op:expr, $loc:expr, $hint:expr, $source:expr, $severity:expr) => {{
++        use $crate::error::{CphError, ErrorContext, ErrorSeverity};
++        CphError::$kind {
++            context: ErrorContext::new($op, $loc)
++                .with_hint($hint)
++                .with_source($source)
++                .with_severity($severity),
+             kind: $kind,
+         }
+     }};
+ }
+ 
++/// ファイルシステムエラーを作成するマクロ
+ #[macro_export]
+-macro_rules! docker_error {
+-    ($op:expr, $loc:expr, $kind:expr) => {{
+-        use $crate::error::{CphError, ErrorContext, docker::DockerErrorKind};
+-        CphError::Docker {
+-            context: ErrorContext::new($op, $loc),
+-            kind: $kind,
+-        }
+-    }};
+-    ($op:expr, $loc:expr, $kind:expr, $hint:expr) => {{
+-        use $crate::error::{CphError, ErrorContext, docker::DockerErrorKind};
+-        CphError::Docker {
+-            context: ErrorContext::new($op, $loc).with_hint($hint),
+-            kind: $kind,
+-        }
+-    }};
++macro_rules! fs_error {
++    ($kind:expr, $message:expr) => {
++        crate::error::Error::fs($kind, $message)
++    };
+ }
+ 
++/// コンテストエラーを作成するマクロ
+ #[macro_export]
+ macro_rules! contest_error {
+-    ($op:expr, $loc:expr, $kind:expr) => {{
+-        use $crate::error::{CphError, ErrorContext, contest::ContestErrorKind};
+-        CphError::Contest {
+-            context: ErrorContext::new($op, $loc),
+-            kind: $kind,
+-        }
+-    }};
+-    ($op:expr, $loc:expr, $kind:expr, $hint:expr) => {{
+-        use $crate::error::{CphError, ErrorContext, contest::ContestErrorKind};
+-        CphError::Contest {
+-            context: ErrorContext::new($op, $loc).with_hint($hint),
+-            kind: $kind,
+-        }
+-    }};
++    ($op:expr, $loc:expr, $kind:expr) => {
++        create_error!(Contest, $op, $loc, $kind)
++    };
++    ($op:expr, $loc:expr, $kind:expr, $hint:expr) => {
++        create_error!(Contest, $op, $loc, $hint, $kind)
++    };
++    ($op:expr, $loc:expr, $kind:expr, $hint:expr, $source:expr) => {
++        create_error!(Contest, $op, $loc, $hint, $source, $kind)
++    };
+ }
+ 
++/// 設定エラーを作成するマクロ
+ #[macro_export]
+ macro_rules! config_error {
+-    ($op:expr, $loc:expr, $kind:expr) => {{
+-        use $crate::error::{CphError, ErrorContext, config::ConfigErrorKind};
+-        CphError::Config {
+-            context: ErrorContext::new($op, $loc),
+-            kind: $kind,
+-        }
+-    }};
+-    ($op:expr, $loc:expr, $kind:expr, $hint:expr) => {{
+-        use $crate::error::{CphError, ErrorContext, config::ConfigErrorKind};
+-        CphError::Config {
+-            context: ErrorContext::new($op, $loc).with_hint($hint),
+-            kind: $kind,
+-        }
+-    }};
++    ($kind:expr, $message:expr) => {
++        crate::error::Error::config($kind, $message)
++    };
+ }
+ 
+-/// エラー変換用のヘルパーマクロ
++/// その他のエラーを作成するマクロ
+ #[macro_export]
+-macro_rules! try_with_context {
+-    ($expr:expr, $op:expr, $loc:expr) => {
+-        match $expr {
+-            Ok(val) => Ok(val),
+-            Err(e) => Err($crate::error::CphError::Other {
+-                context: $crate::error::ErrorContext::new($op, $loc).with_source(e),
+-            }),
+-        }
++macro_rules! other_error {
++    ($op:expr, $loc:expr) => {
++        create_error!(Other, $op, $loc)
+     };
+-    ($expr:expr, $op:expr, $loc:expr, $hint:expr) => {
+-        match $expr {
+-            Ok(val) => Ok(val),
+-            Err(e) => Err($crate::error::CphError::Other {
+-                context: $crate::error::ErrorContext::new($op, $loc)
+-                    .with_source(e)
+-                    .with_hint($hint),
+-            }),
+-        }
++    ($op:expr, $loc:expr, $hint:expr) => {
++        create_error!(Other, $op, $loc, $hint)
++    };
++    ($op:expr, $loc:expr, $hint:expr, $severity:expr) => {
++        create_error!(Other, $op, $loc, $hint, $severity)
++    };
++}
++
++#[macro_export]
++macro_rules! docker_error {
++    ($kind:expr, $message:expr) => {
++        crate::error::Error::docker($kind, $message)
+     };
+ } 
+\ No newline at end of file
+diff --git a/src/error/mod.rs b/src/error/mod.rs
+new file mode 100644
+index 0000000..6fea7ed
+--- /dev/null
++++ b/src/error/mod.rs
+@@ -0,0 +1,130 @@
++pub mod config;
++pub mod contest;
++pub mod docker;
++pub mod fs;
++pub mod helpers;
++pub mod macros;
++
++use std::fmt;
++use crate::error::{
++    config::ConfigErrorKind,
++    fs::FileSystemErrorKind,
++    docker::DockerErrorKind,
++};
++
++#[derive(Debug, Clone, Copy)]
++pub enum ErrorSeverity {
++    Warning,
++    Error,
++    Fatal,
++}
++
++pub trait ErrorKind: fmt::Debug + fmt::Display {
++    fn severity(&self) -> ErrorSeverity;
++}
++
++#[derive(Debug)]
++pub struct Error {
++    kind: Box<dyn ErrorKind>,
++    message: String,
++    hint: Option<String>,
++}
++
++impl Error {
++    pub fn new(kind: impl ErrorKind + 'static, message: impl Into<String>) -> Self {
++        Self {
++            kind: Box::new(kind),
++            message: message.into(),
++            hint: None,
++        }
++    }
++
++    pub fn fs(kind: FileSystemErrorKind, message: impl Into<String>) -> Self {
++        Self::new(kind, message)
++    }
++
++    pub fn config(kind: ConfigErrorKind, message: impl Into<String>) -> Self {
++        Self::new(kind, message)
++    }
++
++    pub fn docker(kind: DockerErrorKind, message: impl Into<String>) -> Self {
++        Self::new(kind, message)
++    }
++
++    pub fn other(message: impl Into<String>) -> Self {
++        Self::new(OtherErrorKind(message.into()), "その他のエラー")
++    }
++
++    pub fn kind(&self) -> &dyn ErrorKind {
++        &*self.kind
++    }
++
++    pub fn message(&self) -> &str {
++        &self.message
++    }
++
++    pub fn hint(&self) -> Option<&str> {
++        self.hint.as_deref()
++    }
++
++    pub fn with_hint(mut self, hint: impl Into<String>) -> Self {
++        self.hint = Some(hint.into());
++        self
++    }
++}
++
++impl std::error::Error for Error {}
++
++impl fmt::Display for Error {
++    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
++        write!(f, "{}", self.message)?;
++        if let Some(hint) = &self.hint {
++            write!(f, " (ヒント: {})", hint)?;
++        }
++        Ok(())
++    }
++}
++
++impl From<std::io::Error> for Error {
++    fn from(error: std::io::Error) -> Self {
++        Error::fs(
++            FileSystemErrorKind::IO,
++            format!("IO error: {}", error)
++        )
++    }
++}
++
++impl From<FileSystemErrorKind> for Error {
++    fn from(kind: FileSystemErrorKind) -> Self {
++        Error::fs(kind.clone(), kind.to_string())
++    }
++}
++
++impl From<ConfigErrorKind> for Error {
++    fn from(kind: ConfigErrorKind) -> Self {
++        Error::config(kind.clone(), kind.to_string())
++    }
++}
++
++impl From<DockerErrorKind> for Error {
++    fn from(kind: DockerErrorKind) -> Self {
++        Error::docker(kind.clone(), kind.to_string())
++    }
++}
++
++#[derive(Debug, Clone)]
++struct OtherErrorKind(String);
++
++impl fmt::Display for OtherErrorKind {
++    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
++        write!(f, "{}", self.0)
++    }
++}
++
++impl ErrorKind for OtherErrorKind {
++    fn severity(&self) -> ErrorSeverity {
++        ErrorSeverity::Error
++    }
++}
++
++pub type Result<T> = std::result::Result<T, Error>; 
+\ No newline at end of file
+diff --git a/src/fs/docker.rs b/src/fs/docker.rs
+index ff1c020..0ab4842 100644
+--- a/src/fs/docker.rs
++++ b/src/fs/docker.rs
+@@ -1,8 +1,8 @@
+ use std::path::Path;
+-use crate::error::CphError;
++use crate::error::Error;
+ use crate::fs::error::io_err;
+ 
+-pub fn copy_to_container<P: AsRef<Path>>(container_id: &str, src: P, dest: P) -> Result<(), CphError> {
++pub fn copy_to_container<P: AsRef<Path>>(container_id: &str, src: P, dest: P) -> Result<(), Error> {
+     let output = std::process::Command::new("docker")
+         .arg("cp")
+         .arg(src.as_ref())
+@@ -23,7 +23,7 @@ pub fn copy_to_container<P: AsRef<Path>>(container_id: &str, src: P, dest: P) ->
+     Ok(())
+ }
+ 
+-pub fn copy_from_container<P: AsRef<Path>>(container_id: &str, src: P, dest: P) -> Result<(), CphError> {
++pub fn copy_from_container<P: AsRef<Path>>(container_id: &str, src: P, dest: P) -> Result<(), Error> {
+     let output = std::process::Command::new("docker")
+         .arg("cp")
+         .arg(format!("{}:{}", container_id, src.as_ref().display()))
+diff --git a/src/fs/error.rs b/src/fs/error.rs
+index c80c972..56c8d6c 100644
+--- a/src/fs/error.rs
++++ b/src/fs/error.rs
+@@ -1,24 +1,37 @@
+-use crate::error::{CphError, helpers, ErrorExt};
+-use crate::error::fs::FileSystemErrorKind;
++use std::path::PathBuf;
++use crate::error::{Error, fs::FileSystemErrorKind};
+ 
+-pub fn not_found_err(path: String) -> CphError {
+-    helpers::fs_error(FileSystemErrorKind::NotFound, "ファイル検索", path)
++pub fn io_err(error: std::io::Error, context: impl Into<String>) -> Error {
++    Error::fs(
++        FileSystemErrorKind::IO,
++        format!("{}: {}", context.into(), error)
++    )
+ }
+ 
+-pub fn io_err(error: std::io::Error, context: String) -> CphError {
+-    helpers::fs_error(FileSystemErrorKind::Io, "ファイル操作", context)
+-        .with_source(error)
++pub fn not_found_err(path: impl Into<PathBuf>) -> Error {
++    Error::fs(
++        FileSystemErrorKind::NotFound,
++        format!("ファイルが見つかりません: {}", path.into().display())
++    )
+ }
+ 
+-pub fn permission_err(path: String) -> CphError {
+-    helpers::fs_error(FileSystemErrorKind::Permission, "ファイルアクセス", path)
++pub fn permission_err(path: impl Into<PathBuf>) -> Error {
++    Error::fs(
++        FileSystemErrorKind::Permission,
++        format!("アクセス権限がありません: {}", path.into().display())
++    )
+ }
+ 
+-pub fn transaction_err(error: std::io::Error, context: String) -> CphError {
+-    helpers::fs_error(FileSystemErrorKind::Transaction, "トランザクション処理", context)
+-        .with_source(error)
++pub fn validation_err(error: impl Into<String>, message: impl Into<String>) -> Error {
++    Error::fs(
++        FileSystemErrorKind::Validation,
++        format!("{}: {}", message.into(), error.into())
++    )
+ }
+ 
+-pub fn path_err(path: String) -> CphError {
+-    helpers::fs_error(FileSystemErrorKind::Path, "パス解決", path)
++pub fn invalid_path_err(path: impl Into<PathBuf>) -> Error {
++    Error::fs(
++        FileSystemErrorKind::InvalidPath,
++        format!("無効なパス: {}", path.into().display())
++    )
+ } 
+\ No newline at end of file
+diff --git a/src/fs/error/helpers.rs b/src/fs/error/helpers.rs
+new file mode 100644
+index 0000000..4a0e619
+--- /dev/null
++++ b/src/fs/error/helpers.rs
+@@ -0,0 +1,82 @@
++use crate::error::{CphError, ErrorContext};
++use super::FileSystemErrorKind;
++
++/// ファイルが見つからない場合のエラーを作成します
++pub fn not_found_err(path: impl Into<String>) -> CphError {
++    CphError::FileSystem {
++        context: ErrorContext::new("ファイル検索", path.into())
++            .with_hint(FileSystemErrorKind::NotFound.hint())
++            .with_severity(FileSystemErrorKind::NotFound.severity()),
++        kind: FileSystemErrorKind::NotFound,
++    }
++}
++
++/// I/Oエラーを作成します
++pub fn io_err(error: std::io::Error, context: impl Into<String>) -> CphError {
++    CphError::FileSystem {
++        context: ErrorContext::new("ファイル操作", context.into())
++            .with_hint(FileSystemErrorKind::Io.hint())
++            .with_severity(FileSystemErrorKind::Io.severity())
++            .with_source(error),
++        kind: FileSystemErrorKind::Io,
++    }
++}
++
++/// アクセス権限エラーを作成します
++pub fn permission_err(path: impl Into<String>) -> CphError {
++    CphError::FileSystem {
++        context: ErrorContext::new("ファイルアクセス", path.into())
++            .with_hint(FileSystemErrorKind::Permission.hint())
++            .with_severity(FileSystemErrorKind::Permission.severity()),
++        kind: FileSystemErrorKind::Permission,
++    }
++}
++
++/// トランザクションエラーを作成します
++pub fn transaction_err(error: std::io::Error, context: impl Into<String>) -> CphError {
++    CphError::FileSystem {
++        context: ErrorContext::new("トランザクション処理", context.into())
++            .with_hint(FileSystemErrorKind::Transaction.hint())
++            .with_severity(FileSystemErrorKind::Transaction.severity())
++            .with_source(error),
++        kind: FileSystemErrorKind::Transaction,
++    }
++}
++
++/// パスエラーを作成します
++pub fn path_err(path: impl Into<String>) -> CphError {
++    CphError::FileSystem {
++        context: ErrorContext::new("パス解決", path.into())
++            .with_hint(FileSystemErrorKind::Path.hint())
++            .with_severity(FileSystemErrorKind::Path.severity()),
++        kind: FileSystemErrorKind::Path,
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use std::io::{Error, ErrorKind};
++
++    #[test]
++    fn test_helper_functions() {
++        let not_found = not_found_err("test.txt");
++        if let CphError::FileSystem { context, kind } = not_found {
++            assert_eq!(context.operation, "ファイル検索");
++            assert_eq!(context.location, "test.txt");
++            assert!(matches!(kind, FileSystemErrorKind::NotFound));
++        } else {
++            panic!("Expected FileSystem error");
++        }
++
++        let error = Error::new(ErrorKind::Other, "test error");
++        let io = io_err(error, "test.txt");
++        if let CphError::FileSystem { context, kind } = io {
++            assert_eq!(context.operation, "ファイル操作");
++            assert_eq!(context.location, "test.txt");
++            assert!(matches!(kind, FileSystemErrorKind::Io));
++        } else {
++            panic!("Expected FileSystem error");
++        }
++    }
++} 
+\ No newline at end of file
+diff --git a/src/fs/error/kind.rs b/src/fs/error/kind.rs
+new file mode 100644
+index 0000000..89c9a47
+--- /dev/null
++++ b/src/fs/error/kind.rs
+@@ -0,0 +1,53 @@
++use std::fmt;
++use crate::error::ErrorSeverity;
++
++/// ファイルシステムエラーの種類を表す列挙型
++#[derive(Debug, Clone)]
++pub enum FileSystemErrorKind {
++    /// ファイルまたはディレクトリが見つからない
++    NotFound,
++    /// アクセス権限がない
++    Permission,
++    /// I/O操作に失敗
++    Io,
++    /// パスの操作に失敗
++    Path,
++    /// トランザクション処理に失敗
++    Transaction,
++}
++
++impl FileSystemErrorKind {
++    /// エラーの重大度を返します
++    pub fn severity(&self) -> ErrorSeverity {
++        match self {
++            Self::NotFound => ErrorSeverity::Warning,
++            Self::Permission => ErrorSeverity::Error,
++            Self::Io => ErrorSeverity::Error,
++            Self::Path => ErrorSeverity::Warning,
++            Self::Transaction => ErrorSeverity::Error,
++        }
++    }
++
++    /// エラーのデフォルトのヒントメッセージを返します
++    pub fn hint(&self) -> &'static str {
++        match self {
++            Self::NotFound => "ファイルまたはディレクトリの存在を確認してください。",
++            Self::Permission => "必要な権限があるか確認してください。",
++            Self::Io => "ディスクの空き容量やファイルの状態を確認してください。",
++            Self::Path => "パスの形式が正しいか確認してください。",
++            Self::Transaction => "操作をやり直してください。",
++        }
++    }
++}
++
++impl fmt::Display for FileSystemErrorKind {
++    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
++        match self {
++            Self::NotFound => write!(f, "ファイルが見つかりません"),
++            Self::Permission => write!(f, "アクセス権限がありません"),
++            Self::Io => write!(f, "IOエラー"),
++            Self::Path => write!(f, "パスエラー"),
++            Self::Transaction => write!(f, "トランザクションエラー"),
++        }
++    }
++} 
+\ No newline at end of file
+diff --git a/src/fs/manager.rs b/src/fs/manager.rs
+index c57680e..693a174 100644
+--- a/src/fs/manager.rs
++++ b/src/fs/manager.rs
+@@ -1,67 +1,111 @@
+-use std::path::{Path, PathBuf};
+-use crate::error::CphError;
++use std::path::Path;
++use crate::error::Result;
+ use crate::fs::error::{io_err, not_found_err};
+ 
+ pub struct FileManager {
+-    root_dir: PathBuf,
++    root: String,
+ }
+ 
+ impl FileManager {
+-    pub fn new<P: AsRef<Path>>(root_dir: P) -> Result<Self, CphError> {
+-        let root_dir = root_dir.as_ref().to_path_buf();
+-        if !root_dir.exists() {
+-            std::fs::create_dir_all(&root_dir)
+-                .map_err(|e| io_err(e, "ルートディレクトリの作成に失敗".to_string()))?;
++    pub fn new(root: impl Into<String>) -> Self {
++        Self {
++            root: root.into(),
+         }
+-        Ok(Self { root_dir })
+     }
+ 
+-    pub fn get_root_dir(&self) -> &Path {
+-        &self.root_dir
++    pub fn read_file(&self, path: impl AsRef<Path>) -> Result<String> {
++        let path = path.as_ref();
++        if !path.exists() {
++            return Err(not_found_err(path.display().to_string()));
++        }
++        std::fs::read_to_string(path)
++            .map_err(|e| io_err(e, format!("ファイルの読み込みに失敗: {}", path.display())))
+     }
+ 
+-    pub fn create_directory<P: AsRef<Path>>(&self, path: P) -> Result<PathBuf, CphError> {
+-        let full_path = self.root_dir.join(path);
+-        std::fs::create_dir_all(&full_path)
+-            .map_err(|e| io_err(e, format!("ディレクトリの作成に失敗: {}", full_path.display())))?;
+-        Ok(full_path)
++    pub fn write_file(&self, path: impl AsRef<Path>, content: impl AsRef<str>) -> Result<()> {
++        let path = path.as_ref();
++        std::fs::write(path, content.as_ref())
++            .map_err(|e| io_err(e, format!("ファイルの書き込みに失敗: {}", path.display())))
+     }
+ 
+-    pub fn write_file<P: AsRef<Path>>(&self, path: P, content: &str) -> Result<PathBuf, CphError> {
+-        let full_path = self.root_dir.join(path);
+-        if let Some(parent) = full_path.parent() {
+-            std::fs::create_dir_all(parent)
+-                .map_err(|e| io_err(e, format!("親ディレクトリの作成に失敗: {}", parent.display())))?;
+-        }
+-        std::fs::write(&full_path, content)
+-            .map_err(|e| io_err(e, format!("ファイルの書き込みに失敗: {}", full_path.display())))?;
+-        Ok(full_path)
++    pub fn create_dir(&self, path: impl AsRef<Path>) -> Result<()> {
++        let path = path.as_ref();
++        std::fs::create_dir_all(path)
++            .map_err(|e| io_err(e, format!("ディレクトリの作成に失敗: {}", path.display())))
+     }
+ 
+-    pub fn read_file<P: AsRef<Path>>(&self, path: P) -> Result<String, CphError> {
+-        let full_path = self.root_dir.join(path);
+-        if !full_path.exists() {
+-            return Err(not_found_err(full_path.to_string_lossy().to_string()));
++    pub fn remove_file(&self, path: impl AsRef<Path>) -> Result<()> {
++        let path = path.as_ref();
++        if !path.exists() {
++            return Ok(());
+         }
+-        std::fs::read_to_string(&full_path)
+-            .map_err(|e| io_err(e, format!("ファイルの読み込みに失敗: {}", full_path.display())))
++        std::fs::remove_file(path)
++            .map_err(|e| io_err(e, format!("ファイルの削除に失敗: {}", path.display())))
+     }
+ 
+-    pub fn remove_file<P: AsRef<Path>>(&self, path: P) -> Result<(), CphError> {
+-        let full_path = self.root_dir.join(path);
+-        if !full_path.exists() {
++    pub fn remove_dir(&self, path: impl AsRef<Path>) -> Result<()> {
++        let path = path.as_ref();
++        if !path.exists() {
+             return Ok(());
+         }
+-        std::fs::remove_file(&full_path)
+-            .map_err(|e| io_err(e, format!("ファイルの削除に失敗: {}", full_path.display())))
++        std::fs::remove_dir_all(path)
++            .map_err(|e| io_err(e, format!("ディレクトリの削除に失敗: {}", path.display())))
+     }
++}
+ 
+-    pub fn remove_directory<P: AsRef<Path>>(&self, path: P) -> Result<(), CphError> {
+-        let full_path = self.root_dir.join(path);
+-        if !full_path.exists() {
+-            return Ok(());
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use std::fs;
++    use tempfile::tempdir;
++
++    #[test]
++    fn test_file_operations() -> Result<()> {
++        let temp_dir = tempdir().unwrap();
++        let manager = FileManager::new(temp_dir.path().to_string_lossy().to_string());
++
++        // テストファイルの作成
++        let test_file = temp_dir.path().join("test.txt");
++        manager.write_file(&test_file, "Hello, World!")?;
++
++        // ファイルの読み込み
++        let content = manager.read_file(&test_file)?;
++        assert_eq!(content, "Hello, World!");
++
++        // ファイルの削除
++        manager.remove_file(&test_file)?;
++        assert!(!test_file.exists());
++
++        // ディレクトリの作成
++        let test_dir = temp_dir.path().join("test_dir");
++        manager.create_dir(&test_dir)?;
++        assert!(test_dir.exists());
++
++        // ディレクトリの削除
++        manager.remove_dir(&test_dir)?;
++        assert!(!test_dir.exists());
++
++        Ok(())
++    }
++
++    #[test]
++    fn test_error_handling() {
++        let temp_dir = tempdir().unwrap();
++        let manager = FileManager::new(temp_dir.path().to_string_lossy().to_string());
++
++        // 存在しないファイルの読み込み
++        let result = manager.read_file("nonexistent.txt");
++        assert!(result.is_err());
++
++        // 権限のないディレクトリへの書き込み
++        if cfg!(unix) {
++            let readonly_dir = temp_dir.path().join("readonly");
++            fs::create_dir(&readonly_dir).unwrap();
++            fs::set_permissions(&readonly_dir, fs::Permissions::from_mode(0o444)).unwrap();
++
++            let test_file = readonly_dir.join("test.txt");
++            let result = manager.write_file(&test_file, "test");
++            assert!(result.is_err());
+         }
+-        std::fs::remove_dir_all(&full_path)
+-            .map_err(|e| io_err(e, format!("ディレクトリの削除に失敗: {}", full_path.display())))
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/fs/mod.rs b/src/fs/mod.rs
+index a928829..344874c 100644
+--- a/src/fs/mod.rs
++++ b/src/fs/mod.rs
+@@ -1,13 +1,14 @@
+-mod backup;
+-mod docker;
+-mod error;
+-mod manager;
+-mod operations;
+-mod transaction;
++pub mod backup;
++pub mod docker;
++pub mod error;
++pub mod manager;
++pub mod operations;
++pub mod transaction;
+ 
+-pub use backup::BackupManager;
+-pub use docker::{copy_to_container, copy_from_container};
+-pub use error::{io_err, not_found_err, permission_err, transaction_err};
+-pub use manager::FileManager;
+-pub use operations::{ensure_directory, ensure_file, read_file, write_file};
+-pub use transaction::{FileOperation, FileTransaction, CopyOperation, CreateDirectoryOperation}; 
+\ No newline at end of file
++pub use error::{
++    io_err,
++    not_found_err,
++    permission_err,
++    validation_err,
++    invalid_path_err,
++}; 
+\ No newline at end of file
+diff --git a/src/fs/operations.rs b/src/fs/operations.rs
+index 048fdf7..a4b5c46 100644
+--- a/src/fs/operations.rs
++++ b/src/fs/operations.rs
+@@ -1,8 +1,8 @@
+ use std::path::{Path, PathBuf};
+-use crate::error::CphError;
++use crate::error::Error;
+ use crate::fs::error::{not_found_err, io_err};
+ 
+-pub fn ensure_directory<P: AsRef<Path>>(path: P) -> Result<PathBuf, CphError> {
++pub fn ensure_directory<P: AsRef<Path>>(path: P) -> Result<PathBuf, Error> {
+     let path = path.as_ref();
+     if !path.exists() {
+         std::fs::create_dir_all(path)
+@@ -11,7 +11,7 @@ pub fn ensure_directory<P: AsRef<Path>>(path: P) -> Result<PathBuf, CphError> {
+     Ok(path.to_path_buf())
+ }
+ 
+-pub fn ensure_file<P: AsRef<Path>>(path: P) -> Result<PathBuf, CphError> {
++pub fn ensure_file<P: AsRef<Path>>(path: P) -> Result<PathBuf, Error> {
+     let path = path.as_ref();
+     if !path.exists() {
+         if let Some(parent) = path.parent() {
+@@ -23,7 +23,7 @@ pub fn ensure_file<P: AsRef<Path>>(path: P) -> Result<PathBuf, CphError> {
+     Ok(path.to_path_buf())
+ }
+ 
+-pub fn read_file<P: AsRef<Path>>(path: P) -> Result<String, CphError> {
++pub fn read_file<P: AsRef<Path>>(path: P) -> Result<String, Error> {
+     let path = path.as_ref();
+     if !path.exists() {
+         return Err(not_found_err(path.to_string_lossy().to_string()));
+@@ -32,7 +32,7 @@ pub fn read_file<P: AsRef<Path>>(path: P) -> Result<String, CphError> {
+         .map_err(|e| io_err(e, format!("ファイルの読み込みに失敗: {}", path.display())))
+ }
+ 
+-pub fn write_file<P: AsRef<Path>>(path: P, content: &str) -> Result<(), CphError> {
++pub fn write_file<P: AsRef<Path>>(path: P, content: &str) -> Result<(), Error> {
+     let path = path.as_ref();
+     if let Some(parent) = path.parent() {
+         ensure_directory(parent)?;
+diff --git a/src/fs/transaction.rs b/src/fs/transaction.rs
+index d78a2f1..e65aad4 100644
+--- a/src/fs/transaction.rs
++++ b/src/fs/transaction.rs
+@@ -1,5 +1,5 @@
+ use std::path::{Path, PathBuf};
+-use crate::error::CphError;
++use crate::error::Error;
+ use crate::fs::error::{io_err, not_found_err};
+ 
+ pub struct FileTransaction {
+@@ -19,7 +19,7 @@ impl FileTransaction {
+         self.operations.push(operation);
+     }
+ 
+-    pub fn execute(&mut self) -> Result<(), CphError> {
++    pub fn execute(&mut self) -> Result<(), Error> {
+         if self.executed {
+             return Ok(());
+         }
+@@ -35,7 +35,7 @@ impl FileTransaction {
+         Ok(())
+     }
+ 
+-    pub fn rollback(&mut self) -> Result<(), CphError> {
++    pub fn rollback(&mut self) -> Result<(), Error> {
+         for operation in self.operations.iter().rev() {
+             if let Err(e) = operation.rollback() {
+                 return Err(io_err(
+@@ -50,8 +50,8 @@ impl FileTransaction {
+ }
+ 
+ pub trait FileOperation: Send + Sync {
+-    fn execute(&self) -> Result<(), CphError>;
+-    fn rollback(&self) -> Result<(), CphError>;
++    fn execute(&self) -> Result<(), Error>;
++    fn rollback(&self) -> Result<(), Error>;
+ }
+ 
+ pub struct CopyOperation {
+@@ -69,7 +69,7 @@ impl CopyOperation {
+ }
+ 
+ impl FileOperation for CopyOperation {
+-    fn execute(&self) -> Result<(), CphError> {
++    fn execute(&self) -> Result<(), Error> {
+         if !self.source.exists() {
+             return Err(not_found_err(self.source.to_string_lossy().to_string()));
+         }
+@@ -85,7 +85,7 @@ impl FileOperation for CopyOperation {
+         Ok(())
+     }
+ 
+-    fn rollback(&self) -> Result<(), CphError> {
++    fn rollback(&self) -> Result<(), Error> {
+         if self.destination.exists() {
+             std::fs::remove_file(&self.destination)
+                 .map_err(|e| io_err(e, format!("ファイルの削除に失敗: {}", self.destination.display())))?;
+@@ -107,13 +107,13 @@ impl CreateDirectoryOperation {
+ }
+ 
+ impl FileOperation for CreateDirectoryOperation {
+-    fn execute(&self) -> Result<(), CphError> {
++    fn execute(&self) -> Result<(), Error> {
+         std::fs::create_dir_all(&self.path)
+             .map_err(|e| io_err(e, format!("ディレクトリの作成に失敗: {}", self.path.display())))?;
+         Ok(())
+     }
+ 
+-    fn rollback(&self) -> Result<(), CphError> {
++    fn rollback(&self) -> Result<(), Error> {
+         if self.path.exists() {
+             std::fs::remove_dir_all(&self.path)
+                 .map_err(|e| io_err(e, format!("ディレクトリの削除に失敗: {}", self.path.display())))?;
+diff --git a/src/lib.rs b/src/lib.rs
+index 40eff6d..a190cb7 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -12,4 +12,4 @@ pub mod error;
+ 
+ pub use config::Config;
+ pub use contest::ContestService;
+-pub use error::{CphError, Result};
++pub use error::{Error, Result};
+diff --git a/src/test/mod.rs b/src/test/mod.rs
+index e0b9dbe..e7afd7f 100644
+--- a/src/test/mod.rs
++++ b/src/test/mod.rs
+@@ -1,70 +1,79 @@
+-use crate::error::{helpers, CphError, ErrorExt};
++use std::path::{Path, PathBuf};
++use crate::error::{helpers, Result};
+ use crate::error::config::ConfigErrorKind;
+ 
+-#[derive(Debug, Clone)]
+-pub struct TestCase {
+-    pub input: String,
+-    pub expected: String,
+-    pub path: String,
++pub fn validate_expected_file(expected_path: impl AsRef<Path>) -> Result<()> {
++    if !expected_path.as_ref().exists() {
++        return Err(helpers::config_error(
++            ConfigErrorKind::NotFound,
++            format!("期待値ファイルが見つかりません: {:?}", expected_path.as_ref())
++        ));
++    }
++    Ok(())
+ }
+ 
+-pub fn read_test_cases(test_dir: &str) -> Result<Vec<TestCase>, CphError> {
++pub fn find_test_files(test_dir: impl AsRef<Path>) -> Result<Vec<PathBuf>> {
++    let test_dir = test_dir.as_ref();
++    if !test_dir.exists() {
++        return Err(helpers::config_error(
++            ConfigErrorKind::NotFound,
++            format!("テストディレクトリが見つかりません: {}", test_dir.display())
++        ));
++    }
++
+     let entries = std::fs::read_dir(test_dir)
+         .map_err(|e| helpers::config_error(
+-            ConfigErrorKind::NotFound,
+-            "テストディレクトリの読み取り",
+-            format!("ディレクトリ: {}, エラー: {}", test_dir, e)
++            ConfigErrorKind::IO,
++            format!("テストディレクトリの読み取りに失敗しました: {}", e)
+         ))?;
+ 
+-    let mut test_cases = Vec::new();
++    let mut test_files = Vec::new();
+     for entry in entries {
+         let entry = entry
+             .map_err(|e| helpers::config_error(
+-                ConfigErrorKind::NotFound,
+-                "テストファイルの読み取り",
+-                format!("エラー: {}", e)
++                ConfigErrorKind::IO,
++                format!("テストファイルの読み取りに失敗しました: {}", e)
+             ))?;
+ 
+         let path = entry.path();
+-        if path.extension().map_or(false, |ext| ext == "in") {
++        if path.is_file() {
+             let expected_path = path.with_extension("out");
+             if !expected_path.exists() {
+                 return Err(helpers::config_error(
+                     ConfigErrorKind::NotFound,
+-                    "期待値ファイルの確認",
+-                    format!("ファイル: {:?}", expected_path)
+-                ).with_hint("テストケースには.inファイルと対応する.outファイルが必要です。"));
++                    format!("期待値ファイルが見つかりません: {:?}", expected_path)
++                ));
+             }
+ 
+-            let input = std::fs::read_to_string(&path)
++            let _input = std::fs::read_to_string(&path)
+                 .map_err(|e| helpers::config_error(
+-                    ConfigErrorKind::NotFound,
+-                    "入力ファイルの読み取り",
+-                    format!("ファイル: {:?}, エラー: {}", path, e)
++                    ConfigErrorKind::IO,
++                    format!("入力ファイルの読み取りに失敗しました: {:?}, {}", path, e)
+                 ))?;
+ 
+-            let expected = std::fs::read_to_string(&expected_path)
++            let _expected = std::fs::read_to_string(&expected_path)
+                 .map_err(|e| helpers::config_error(
+-                    ConfigErrorKind::NotFound,
+-                    "期待値ファイルの読み取り",
+-                    format!("ファイル: {:?}, エラー: {}", expected_path, e)
++                    ConfigErrorKind::IO,
++                    format!("期待値ファイルの読み取りに失敗しました: {:?}, {}", expected_path, e)
+                 ))?;
+ 
+-            test_cases.push(TestCase {
+-                input,
+-                expected,
+-                path: path.to_string_lossy().into_owned(),
+-            });
++            test_files.push(path);
+         }
+     }
+ 
+-    Ok(test_cases)
++    Ok(test_files)
+ }
+ 
+-pub fn not_found_err(path: String) -> CphError {
+-    helpers::config_error(ConfigErrorKind::NotFound, "ファイル検索", path)
++pub fn not_found_err(path: impl Into<String>) -> crate::error::Error {
++    helpers::config_error(
++        ConfigErrorKind::NotFound,
++        format!("ファイルが見つかりません: {}", path.into())
++    )
+ }
+ 
+-pub fn not_found_err_with_hint(path: String, hint: String) -> CphError {
+-    helpers::config_error(ConfigErrorKind::NotFound, "ファイル検索", path).with_hint(hint)
+-} 
+\ No newline at end of file
++pub fn not_found_err_with_hint(path: impl Into<String>, hint: &'static str) -> crate::error::Error {
++    helpers::config_error(
++        ConfigErrorKind::NotFound,
++        format!("ファイルが見つかりません: {}", path.into())
++    ).with_hint(hint)
++}
+\ No newline at end of file

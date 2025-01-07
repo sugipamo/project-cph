@@ -1,139 +1,181 @@
-use std::path::Path;
-use tokio::process::Command;
-use crate::error::Result;
+use std::process::Command;
 use crate::docker::error::container_err;
+use crate::error::docker::DockerErrorKind;
+use crate::error::Result;
 
-pub struct ContainerManager {
+pub struct DockerContainer {
     container_id: Option<String>,
 }
 
-impl ContainerManager {
+impl DockerContainer {
     pub fn new() -> Self {
         Self {
             container_id: None,
         }
     }
 
-    pub async fn create_container<P: AsRef<Path>>(&mut self, image: &str, cmd: Vec<String>, working_dir: P) -> Result<()> {
+    pub fn create(&mut self, image: &str) -> Result<()> {
         if self.container_id.is_some() {
-            return Err(container_err("コンテナは既に作成されています".to_string()));
+            return Err(container_err(
+                "コンテナ作成",
+                "コンテナは既に作成されています"
+            ));
         }
 
         let output = Command::new("docker")
-            .arg("create")
-            .arg("--rm")
-            .arg("-w")
-            .arg(working_dir.as_ref().to_string_lossy().to_string())
-            .arg(image)
-            .args(cmd)
+            .args(["create", image])
             .output()
-            .await
-            .map_err(|e| container_err(format!("コンテナの作成に失敗しました: {}", e)))?;
+            .map_err(|e| container_err(
+                "コンテナ作成",
+                format!("コンテナの作成に失敗しました: {}", e)
+            ))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(container_err(format!("コンテナの作成に失敗しました: {}", stderr)));
+            return Err(container_err(
+                "コンテナ作成",
+                format!("コンテナの作成に失敗しました: {}", stderr)
+            ));
         }
 
-        let container_id = String::from_utf8_lossy(&output.stdout)
+        let container_id = String::from_utf8(output.stdout)
+            .map_err(|e| container_err(
+                "コンテナ作成",
+                format!("コンテナIDの解析に失敗しました: {}", e)
+            ))?
             .trim()
             .to_string();
+
         self.container_id = Some(container_id);
-
         Ok(())
     }
 
-    pub async fn start_container(&self) -> Result<()> {
-        let container_id = self.container_id.as_ref()
-            .ok_or_else(|| container_err("コンテナが作成されていません".to_string()))?;
+    pub fn start(&mut self) -> Result<()> {
+        let _container_id = self.container_id
+            .as_ref()
+            .ok_or_else(|| container_err(
+                "コンテナ起動",
+                "コンテナが作成されていません"
+            ))?;
 
         let output = Command::new("docker")
-            .arg("start")
-            .arg(container_id)
+            .args(["start", _container_id])
             .output()
-            .await
-            .map_err(|e| container_err(format!("コンテナの起動に失敗しました: {}", e)))?;
+            .map_err(|e| container_err(
+                "コンテナ起動",
+                format!("コンテナの起動に失敗しました: {}", e)
+            ))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(container_err(format!("コンテナの起動に失敗しました: {}", stderr)));
+            return Err(container_err(
+                "コンテナ起動",
+                format!("コンテナの起動に失敗しました: {}", stderr)
+            ));
         }
 
         Ok(())
     }
 
-    pub async fn stop_container(&self) -> Result<()> {
-        let container_id = self.container_id.as_ref()
-            .ok_or_else(|| container_err("コンテナが作成されていません".to_string()))?;
+    pub fn stop(&mut self) -> Result<()> {
+        let _container_id = self.container_id
+            .as_ref()
+            .ok_or_else(|| container_err(
+                "コンテナ停止",
+                "コンテナが作成されていません"
+            ))?;
 
         let output = Command::new("docker")
-            .arg("stop")
-            .arg(container_id)
+            .args(["stop", _container_id])
             .output()
-            .await
-            .map_err(|e| container_err(format!("コンテナの停止に失敗しました: {}", e)))?;
+            .map_err(|e| container_err(
+                "コンテナ停止",
+                format!("コンテナの停止に失敗しました: {}", e)
+            ))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(container_err(format!("コンテナの停止に失敗しました: {}", stderr)));
+            return Err(container_err(
+                "コンテナ停止",
+                format!("コンテナの停止に失敗しました: {}", stderr)
+            ));
         }
 
         Ok(())
     }
 
-    pub async fn get_container_id(&self) -> Result<String> {
-        self.container_id.clone()
-            .ok_or_else(|| container_err("コンテナが作成されていません".to_string()))
-    }
+    pub fn wait(&mut self) -> Result<i32> {
+        let _container_id = self.container_id
+            .as_ref()
+            .ok_or_else(|| container_err(
+                "コンテナ待機",
+                "コンテナが作成されていません"
+            ))
+            .and_then(|id| Ok(id.clone()))?;
 
-    pub async fn get_exit_code(&self) -> Result<i32> {
-        let container_id = self.container_id.as_ref()
-            .ok_or_else(|| container_err("コンテナが作成されていません".to_string()))?;
+        let _container_id = self.container_id
+            .as_ref()
+            .ok_or_else(|| container_err(
+                "コンテナ待機",
+                "コンテナが作成されていません"
+            ))?;
 
         let output = Command::new("docker")
-            .arg("inspect")
-            .arg(container_id)
-            .arg("--format={{.State.ExitCode}}")
+            .args(["wait", _container_id])
             .output()
-            .await
-            .map_err(|e| container_err(format!("終了コードの取得に失敗しました: {}", e)))?;
+            .map_err(|e| container_err(
+                "コンテナ待機",
+                format!("終了コードの取得に失敗しました: {}", e)
+            ))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(container_err(format!("終了コードの取得に失敗しました: {}", stderr)));
+            return Err(container_err(
+                "コンテナ待機",
+                format!("終了コードの取得に失敗しました: {}", stderr)
+            ));
         }
 
-        let exit_code = String::from_utf8_lossy(&output.stdout)
+        let exit_code = String::from_utf8(output.stdout)
+            .map_err(|e| container_err(
+                "コンテナ待機",
+                format!("終了コードの解析に失敗しました: {}", e)
+            ))?
             .trim()
-            .parse::<i32>()
-            .map_err(|e| container_err(format!("終了コードの解析に失敗しました: {}", e)))?;
+            .parse()
+            .map_err(|e| container_err(
+                "コンテナ待機",
+                format!("終了コードの解析に失敗しました: {}", e)
+            ))?;
 
         Ok(exit_code)
     }
 
-    pub async fn check_image(&self, image: &str) -> Result<bool> {
+    pub fn ensure_image(&self, image: &str) -> Result<()> {
         let output = Command::new("docker")
-            .arg("image")
-            .arg("inspect")
-            .arg(image)
+            .args(["images", "-q", image])
             .output()
-            .await
-            .map_err(|e| container_err(format!("イメージの確認に失敗しました: {}", e)))?;
+            .map_err(|e| container_err(
+                "イメージ確認",
+                format!("イメージの確認に失敗しました: {}", e)
+            ))?;
 
-        Ok(output.status.success())
-    }
+        if output.stdout.is_empty() {
+            let output = Command::new("docker")
+                .args(["pull", image])
+                .output()
+                .map_err(|e| container_err(
+                    "イメージ取得",
+                    format!("イメージの取得に失敗しました: {}", e)
+                ))?;
 
-    pub async fn pull_image(&self, image: &str) -> Result<()> {
-        let output = Command::new("docker")
-            .arg("pull")
-            .arg(image)
-            .output()
-            .await
-            .map_err(|e| container_err(format!("イメージの取得に失敗しました: {}", e)))?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(container_err(format!("イメージの取得に失敗しました: {}", stderr)));
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                return Err(container_err(
+                    "イメージ取得",
+                    format!("イメージの取得に失敗しました: {}", stderr)
+                ));
+            }
         }
 
         Ok(())
