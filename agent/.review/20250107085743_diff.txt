@@ -1,0 +1,120 @@
+diff --git a/src/fs/backup.rs b/src/fs/backup.rs
+index 10d32c7..9b33aa6 100644
+--- a/src/fs/backup.rs
++++ b/src/fs/backup.rs
+@@ -1,14 +1,15 @@
+ use std::fs;
+ use std::path::{Path, PathBuf};
++use std::sync::Arc;
+ use tempfile::TempDir;
+ use crate::error::Result;
+ use super::error::helpers::create_io_error;
+ 
+ /// バックアップを管理する構造体
+-#[derive(Debug)]
++#[derive(Debug, Clone)]
+ pub struct BackupManager {
+     /// バックアップディレクトリのパス
+-    backup_dir: Option<PathBuf>,
++    backup_dir: Option<Arc<PathBuf>>,
+ }
+ 
+ impl BackupManager {
+@@ -19,10 +20,10 @@ impl BackupManager {
+         })
+     }
+ 
+-    /// バックアップを作成
+-    pub fn create<P: AsRef<Path>>(&mut self, target_dir: P) -> Result<()> {
++    /// バックアップを作成し、新しいインスタンスを返す
++    pub fn create<P: AsRef<Path>>(self, target_dir: P) -> Result<Self> {
+         if self.backup_dir.is_some() {
+-            return Ok(());
++            return Ok(self);
+         }
+ 
+         let temp_dir = TempDir::new()
+@@ -45,16 +46,17 @@ impl BackupManager {
+             ))?;
+         }
+ 
+-        self.backup_dir = Some(backup_path);
+-        Ok(())
++        Ok(Self {
++            backup_dir: Some(Arc::new(backup_path)),
++        })
+     }
+ 
+     /// バックアップから復元
+-    pub fn restore(&self) -> Result<()> {
++    pub fn restore(self) -> Result<Self> {
+         if let Some(backup_dir) = &self.backup_dir {
+             if backup_dir.exists() {
+                 let options = fs_extra::dir::CopyOptions::new();
+-                fs_extra::dir::copy(backup_dir, "..", &options)
++                fs_extra::dir::copy(&**backup_dir, "..", &options)
+                     .map_err(|e| create_io_error(
+                         std::io::Error::new(std::io::ErrorKind::Other, e.to_string()),
+                         "バックアップからの復元に失敗しました"
+@@ -62,18 +64,56 @@ impl BackupManager {
+             }
+         }
+ 
+-        Ok(())
++        Ok(self)
+     }
+ 
+-    /// バックアップをクリーンアップ
+-    pub fn cleanup(&mut self) -> Result<()> {
++    /// バックアップをクリーンアップし、新しいインスタンスを返す
++    pub fn cleanup(self) -> Result<Self> {
+         if let Some(backup_dir) = &self.backup_dir {
+             if backup_dir.exists() {
+-                fs::remove_dir_all(backup_dir)
++                fs::remove_dir_all(&**backup_dir)
+                     .map_err(|e| create_io_error(e, "バックアップのクリーンアップに失敗しました"))?;
+             }
+         }
+ 
++        Ok(Self {
++            backup_dir: None,
++        })
++    }
++
++    /// バックアップディレクトリのパスを取得
++    pub fn backup_path(&self) -> Option<&Path> {
++        self.backup_dir.as_ref().map(|p| p.as_path())
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use tempfile::tempdir;
++
++    #[test]
++    fn test_backup_lifecycle() -> Result<()> {
++        // テスト用の一時ディレクトリを作成
++        let temp_dir = tempdir()?;
++        let test_file_path = temp_dir.path().join("test.txt");
++        std::fs::write(&test_file_path, "test content")?;
++
++        // バックアップの作成
++        let manager = BackupManager::new()?;
++        let manager = manager.create(temp_dir.path())?;
++        
++        // バックアップディレクトリが存在することを確認
++        assert!(manager.backup_path().is_some());
++        assert!(manager.backup_path().unwrap().exists());
++
++        // バックアップから復元
++        let manager = manager.restore()?;
++        
++        // クリーンアップ
++        let manager = manager.cleanup()?;
++        assert!(manager.backup_path().is_none());
++
+         Ok(())
+     }
+ } 
+\ No newline at end of file
