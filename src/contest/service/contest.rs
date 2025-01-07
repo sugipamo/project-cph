@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use crate::error::Result;
 use crate::error::contest::ContestErrorKind;
 use crate::contest::error::contest_error;
@@ -13,6 +12,17 @@ pub struct ContestService {
     language: Option<String>,
     url: Option<String>,
     file_manager: Option<FileManager>,
+}
+
+// 状態遷移を表現する型
+#[derive(Debug, Clone)]
+pub enum ServiceTransition {
+    SetSite(String),
+    SetContestId(String),
+    SetProblemId(String),
+    SetLanguage(String),
+    SetUrl(String),
+    SetFileManager(FileManager),
 }
 
 impl ContestService {
@@ -46,6 +56,18 @@ impl ContestService {
 
     pub fn url(&self) -> Option<&str> {
         self.url.as_deref()
+    }
+
+    // 状態遷移を適用するメソッド
+    pub fn apply_transition(self, transition: ServiceTransition) -> Self {
+        match transition {
+            ServiceTransition::SetSite(site) => self.with_site(site),
+            ServiceTransition::SetContestId(id) => self.with_contest_id(id),
+            ServiceTransition::SetProblemId(id) => self.with_problem_id(id),
+            ServiceTransition::SetLanguage(lang) => self.with_language(lang),
+            ServiceTransition::SetUrl(url) => self.with_url(url),
+            ServiceTransition::SetFileManager(manager) => self.with_file_manager(manager),
+        }
     }
 
     // バリデーションメソッド
@@ -180,16 +202,17 @@ impl ContestService {
         Ok((contest, file_manager))
     }
 
+    // テストケースの保存をイミュータブルに処理
+    fn save_test_cases(contest: &Contest, file_manager: FileManager, test_cases: &[TestCase]) -> Result<FileManager> {
+        test_cases.iter().enumerate().try_fold(file_manager, |manager, (index, test_case)| {
+            contest.save_test_case(manager, test_case, index)
+        })
+    }
+
     pub fn setup_contest(self, template: &str, test_cases: &[TestCase]) -> Result<(Contest, FileManager)> {
         let (contest, file_manager) = self.build()?;
-        
         let file_manager = contest.save_template(file_manager, template)?;
-        
-        let mut current_manager = file_manager;
-        for (index, test_case) in test_cases.iter().enumerate() {
-            current_manager = contest.save_test_case(current_manager, test_case, index)?;
-        }
-
-        Ok((contest, current_manager))
+        let file_manager = Self::save_test_cases(&contest, file_manager, test_cases)?;
+        Ok((contest, file_manager))
     }
 } 

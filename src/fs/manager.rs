@@ -4,47 +4,74 @@ use crate::error::Result;
 use crate::fs::error::{io_err, not_found_err, invalid_path_err};
 use crate::fs::transaction::{FileTransaction, FileOperation, CreateFileOperation, DeleteFileOperation};
 
+// ファイルマネージャーの状態を表現する型
+#[derive(Debug, Clone)]
+pub enum ManagerState {
+    Idle,
+    InTransaction(FileTransaction),
+}
+
+// 状態遷移を表現する型
+#[derive(Debug, Clone)]
+pub enum ManagerTransition {
+    BeginTransaction,
+    AddOperation(Arc<dyn FileOperation>),
+    Commit,
+    Rollback,
+}
+
 #[derive(Debug, Clone)]
 pub struct FileManager {
     root: Arc<PathBuf>,
-    transaction: Option<FileTransaction>,
+    state: ManagerState,
 }
 
 impl FileManager {
     pub fn new(root: impl Into<PathBuf>) -> Self {
         Self {
             root: Arc::new(root.into()),
-            transaction: None,
+            state: ManagerState::Idle,
         }
     }
 
-    pub fn begin_transaction(self) -> Self {
-        Self {
-            root: self.root.clone(),
-            transaction: Some(FileTransaction::new()),
-        }
-    }
-
-    pub fn commit(self) -> Result<Self> {
-        match self.transaction {
-            Some(transaction) => {
-                let _executed = transaction.execute()?;
+    // 状態遷移を適用するメソッド
+    fn apply_transition(self, transition: ManagerTransition) -> Result<Self> {
+        match (self.state, transition) {
+            (ManagerState::Idle, ManagerTransition::BeginTransaction) => {
                 Ok(Self {
                     root: self.root,
-                    transaction: None,
+                    state: ManagerState::InTransaction(FileTransaction::new()),
                 })
-            }
-            None => Ok(self),
-        }
-    }
-
-    pub fn rollback(self) -> Self {
-        match self.transaction {
-            Some(_) => Self {
-                root: self.root,
-                transaction: None,
             },
-            None => self,
+            (ManagerState::InTransaction(transaction), ManagerTransition::AddOperation(operation)) => {
+                let new_transaction = transaction.with_operation(operation)?;
+                Ok(Self {
+                    root: self.root,
+                    state: ManagerState::InTransaction(new_transaction),
+                })
+            },
+            (ManagerState::InTransaction(transaction), ManagerTransition::Commit) => {
+                let _ = transaction.execute()?;
+                Ok(Self {
+                    root: self.root,
+                    state: ManagerState::Idle,
+                })
+            },
+            (ManagerState::InTransaction(_), ManagerTransition::Rollback) => {
+                Ok(Self {
+                    root: self.root,
+                    state: ManagerState::Idle,
+                })
+            },
+            (state, transition) => {
+                Err(io_err(
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        format!("無効な状態遷移: {:?} -> {:?}", state, transition)
+                    ),
+                    "ファイルマネージャー状態遷移エラー".to_string(),
+                ))
+            }
         }
     }
 
@@ -86,6 +113,19 @@ impl FileManager {
         Ok(self.root.join(normalized))
     }
 
+    // 公開APIメソッド
+    pub fn begin_transaction(self) -> Result<Self> {
+        self.apply_transition(ManagerTransition::BeginTransaction)
+    }
+
+    pub fn commit(self) -> Result<Self> {
+        self.apply_transition(ManagerTransition::Commit)
+    }
+
+    pub fn rollback(self) -> Result<Self> {
+        self.apply_transition(ManagerTransition::Rollback)
+    }
+
     pub fn read_file(&self, path: impl AsRef<Path>) -> Result<String> {
         let path = self.normalize_path(path)?;
         if !path.exists() {
@@ -100,61 +140,44 @@ impl FileManager {
 
     pub fn write_file(self, path: impl AsRef<Path>, content: impl AsRef<str>) -> Result<Self> {
         let path = self.normalize_path(path)?;
-        match &self.transaction {
-            Some(transaction) => {
-                let operation = Arc::new(CreateFileOperation::new(path, content.as_ref().to_string()));
-                Ok(Self {
-                    root: self.root,
-                    transaction: Some(transaction.clone().with_operation(operation)),
-                })
-            }
-            None => {
-                let mut transaction = FileTransaction::new();
-                let operation = Arc::new(CreateFileOperation::new(path, content.as_ref().to_string()));
-                transaction = transaction.with_operation(operation);
-                let _executed = transaction.execute()?;
-                Ok(Self {
-                    root: self.root,
-                    transaction: None,
-                })
+        let operation = Arc::new(CreateFileOperation::new(path, content.as_ref().to_string()));
+        
+        match self.state {
+            ManagerState::InTransaction(_) => {
+                self.apply_transition(ManagerTransition::AddOperation(operation))
+            },
+            ManagerState::Idle => {
+                self.begin_transaction()?
+                    .apply_transition(ManagerTransition::AddOperation(operation))?
+                    .commit()
             }
         }
     }
 
     pub fn delete_file(self, path: impl AsRef<Path>) -> Result<Self> {
         let path = self.normalize_path(path)?;
-        match &self.transaction {
-            Some(transaction) => {
-                let operation = Arc::new(DeleteFileOperation::new(path)?);
-                Ok(Self {
-                    root: self.root,
-                    transaction: Some(transaction.clone().with_operation(operation)),
-                })
-            }
-            None => {
-                let mut transaction = FileTransaction::new();
-                let operation = Arc::new(DeleteFileOperation::new(path)?);
-                transaction = transaction.with_operation(operation);
-                let _executed = transaction.execute()?;
-                Ok(Self {
-                    root: self.root,
-                    transaction: None,
-                })
+        let operation = Arc::new(DeleteFileOperation::new(path)?);
+        
+        match self.state {
+            ManagerState::InTransaction(_) => {
+                self.apply_transition(ManagerTransition::AddOperation(operation))
+            },
+            ManagerState::Idle => {
+                self.begin_transaction()?
+                    .apply_transition(ManagerTransition::AddOperation(operation))?
+                    .commit()
             }
         }
     }
 
     pub fn create_dir(self, path: impl AsRef<Path>) -> Result<Self> {
         let path = self.normalize_path(path)?;
-        match &self.transaction {
-            Some(transaction) => {
+        match self.state {
+            ManagerState::InTransaction(_) => {
                 let operation = Arc::new(CreateFileOperation::new(path, String::new()));
-                Ok(Self {
-                    root: self.root,
-                    transaction: Some(transaction.clone().with_operation(operation)),
-                })
-            }
-            None => {
+                self.apply_transition(ManagerTransition::AddOperation(operation))
+            },
+            ManagerState::Idle => {
                 std::fs::create_dir_all(&path)
                     .map_err(|e| io_err(e, format!("ディレクトリの作成に失敗: {}", path.display())))?;
                 Ok(self)
@@ -183,7 +206,7 @@ mod tests {
         let manager = FileManager::new(temp_dir.path().to_string_lossy().to_string());
 
         // トランザクション内での操作
-        let manager = manager.begin_transaction()
+        let manager = manager.begin_transaction()?
             .write_file("test1.txt", "Hello")?
             .write_file("test2.txt", "World")?
             .commit()?;
@@ -193,9 +216,9 @@ mod tests {
         assert_eq!(manager.read_file("test2.txt")?, "World");
 
         // ロールバックのテスト
-        let manager = manager.begin_transaction()
+        let manager = manager.begin_transaction()?
             .write_file("test3.txt", "Should not exist")?
-            .rollback();
+            .rollback()?;
 
         assert!(manager.read_file("test3.txt").is_err());
 

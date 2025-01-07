@@ -1,0 +1,693 @@
+diff --git a/src/contest/service/contest.rs b/src/contest/service/contest.rs
+index 1635d60..8e1b505 100644
+--- a/src/contest/service/contest.rs
++++ b/src/contest/service/contest.rs
+@@ -15,6 +15,17 @@ pub struct ContestService {
+     file_manager: Option<FileManager>,
+ }
+ 
++// 状態遷移を表現する型
++#[derive(Debug, Clone)]
++pub enum ServiceTransition {
++    SetSite(String),
++    SetContestId(String),
++    SetProblemId(String),
++    SetLanguage(String),
++    SetUrl(String),
++    SetFileManager(FileManager),
++}
++
+ impl ContestService {
+     pub fn new() -> Self {
+         Self {
+@@ -48,6 +59,18 @@ impl ContestService {
+         self.url.as_deref()
+     }
+ 
++    // 状態遷移を適用するメソッド
++    pub fn apply_transition(self, transition: ServiceTransition) -> Self {
++        match transition {
++            ServiceTransition::SetSite(site) => self.with_site(site),
++            ServiceTransition::SetContestId(id) => self.with_contest_id(id),
++            ServiceTransition::SetProblemId(id) => self.with_problem_id(id),
++            ServiceTransition::SetLanguage(lang) => self.with_language(lang),
++            ServiceTransition::SetUrl(url) => self.with_url(url),
++            ServiceTransition::SetFileManager(manager) => self.with_file_manager(manager),
++        }
++    }
++
+     // バリデーションメソッド
+     pub fn validate_site(&self) -> Result<()> {
+         if self.site.is_none() {
+@@ -180,16 +203,17 @@ impl ContestService {
+         Ok((contest, file_manager))
+     }
+ 
++    // テストケースの保存をイミュータブルに処理
++    fn save_test_cases(contest: &Contest, file_manager: FileManager, test_cases: &[TestCase]) -> Result<FileManager> {
++        test_cases.iter().enumerate().try_fold(file_manager, |manager, (index, test_case)| {
++            contest.save_test_case(manager, test_case, index)
++        })
++    }
++
+     pub fn setup_contest(self, template: &str, test_cases: &[TestCase]) -> Result<(Contest, FileManager)> {
+         let (contest, file_manager) = self.build()?;
+-        
+         let file_manager = contest.save_template(file_manager, template)?;
+-        
+-        let mut current_manager = file_manager;
+-        for (index, test_case) in test_cases.iter().enumerate() {
+-            current_manager = contest.save_test_case(current_manager, test_case, index)?;
+-        }
+-
+-        Ok((contest, current_manager))
++        let file_manager = Self::save_test_cases(&contest, file_manager, test_cases)?;
++        Ok((contest, file_manager))
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/docker/state/manager.rs b/src/docker/state/manager.rs
+index e8c65a1..0e6ca54 100644
+--- a/src/docker/state/manager.rs
++++ b/src/docker/state/manager.rs
+@@ -5,6 +5,18 @@ use super::ContainerState;
+ use crate::docker::error::state_err;
+ use super::types::{StateInfo, StateType};
+ 
++// 状態遷移を表現する型
++#[derive(Debug, Clone)]
++pub enum StateTransition {
++    Create(String),
++    Start,
++    Execute(String),
++    Stop,
++    Fail(String),
++    Regenerate,
++    Restore(StateInfo),
++}
++
+ #[derive(Debug, Clone)]
+ pub struct ContainerStateManager {
+     state: Arc<RwLock<ContainerState>>,
+@@ -21,112 +33,122 @@ impl ContainerStateManager {
+         self.state.read().await.clone()
+     }
+ 
+-    pub async fn create_container(&self, container_id: String) -> Result<()> {
++    // 状態遷移を適用する共通メソッド
++    async fn apply_transition(&self, transition: StateTransition) -> Result<()> {
+         let current_state = self.get_current_state().await;
+-        if !matches!(current_state, ContainerState::Initial) {
+-            return Err(state_err(
+-                "状態遷移",
+-                format!("無効な状態からの作成遷移: {}", current_state)
+-            ));
+-        }
+-        *self.state.write().await = ContainerState::create(container_id);
++        let new_state = match transition {
++            StateTransition::Create(container_id) => {
++                if !matches!(current_state, ContainerState::Initial) {
++                    return Err(state_err(
++                        "状態遷移",
++                        format!("無効な状態からの作成遷移: {}", current_state)
++                    ));
++                }
++                ContainerState::create(container_id)
++            },
++            StateTransition::Start => {
++                current_state.start()
++                    .ok_or_else(|| state_err(
++                        "状態遷移",
++                        format!("無効な状態からの開始遷移: {}", current_state)
++                    ))?
++            },
++            StateTransition::Execute(command) => {
++                current_state.execute(command)
++                    .ok_or_else(|| state_err(
++                        "状態遷移",
++                        format!("無効な状態からのコマンド実行遷移: {}", current_state)
++                    ))?
++            },
++            StateTransition::Stop => {
++                current_state.stop()
++                    .ok_or_else(|| state_err(
++                        "状態遷移",
++                        format!("無効な状態からの停止遷移: {}", current_state)
++                    ))?
++            },
++            StateTransition::Fail(error) => {
++                current_state.fail(error)
++                    .ok_or_else(|| state_err(
++                        "状態遷移",
++                        format!("無効な状態からの失敗遷移: {}", current_state)
++                    ))?
++            },
++            StateTransition::Regenerate => {
++                current_state.regenerate()
++                    .ok_or_else(|| state_err(
++                        "状態遷移",
++                        format!("無効な状態からの再生成遷移: {}", current_state)
++                    ))?
++            },
++            StateTransition::Restore(state_info) => {
++                if !matches!(current_state, ContainerState::Created { .. }) {
++                    return Err(state_err(
++                        "状態遷移",
++                        format!("無効な状態からの状態復元: {}", current_state)
++                    ));
++                }
++                match state_info.state_type {
++                    StateType::Running => ContainerState::Running {
++                        container_id: state_info.container_id,
++                        started_at: state_info.timestamp,
++                    },
++                    StateType::Executing(command) => ContainerState::Executing {
++                        container_id: state_info.container_id,
++                        started_at: state_info.timestamp,
++                        command,
++                    },
++                    StateType::Stopped => ContainerState::Stopped {
++                        container_id: state_info.container_id,
++                        stopped_at: state_info.timestamp,
++                        exit_status: None,
++                    },
++                    StateType::Failed(error) => ContainerState::Failed {
++                        container_id: state_info.container_id,
++                        error,
++                        occurred_at: state_info.timestamp,
++                    },
++                }
++            },
++        };
++
++        *self.state.write().await = new_state;
+         Ok(())
+     }
+ 
++    // 公開APIメソッド
++    pub async fn create_container(&self, container_id: String) -> Result<()> {
++        self.apply_transition(StateTransition::Create(container_id)).await
++    }
++
+     pub async fn start_container(&self) -> Result<()> {
+-        let current_state = self.get_current_state().await;
+-        let new_state = current_state.start()
+-            .ok_or_else(|| state_err(
+-                "状態遷移",
+-                format!("無効な状態からの開始遷移: {}", current_state)
+-            ))?;
+-        *self.state.write().await = new_state;
+-        Ok(())
++        self.apply_transition(StateTransition::Start).await
+     }
+ 
+     pub async fn execute_command(&self, command: String) -> Result<()> {
+-        let current_state = self.get_current_state().await;
+-        let new_state = current_state.execute(command)
+-            .ok_or_else(|| state_err(
+-                "状態遷移",
+-                format!("無効な状態からのコマンド実行遷移: {}", current_state)
+-            ))?;
+-        *self.state.write().await = new_state;
+-        Ok(())
++        self.apply_transition(StateTransition::Execute(command)).await
+     }
+ 
+     pub async fn stop_container(&self) -> Result<()> {
+-        let current_state = self.get_current_state().await;
+-        let new_state = current_state.stop()
+-            .ok_or_else(|| state_err(
+-                "状態遷移",
+-                format!("無効な状態からの停止遷移: {}", current_state)
+-            ))?;
+-        *self.state.write().await = new_state;
+-        Ok(())
++        self.apply_transition(StateTransition::Stop).await
+     }
+ 
+     pub async fn fail_container(&self, error: String) -> Result<()> {
+-        let current_state = self.get_current_state().await;
+-        let new_state = current_state.fail(error)
+-            .ok_or_else(|| state_err(
+-                "状態遷移",
+-                format!("無効な状態からの失敗遷移: {}", current_state)
+-            ))?;
+-        *self.state.write().await = new_state;
+-        Ok(())
+-    }
+-
+-    pub async fn get_container_id(&self) -> Result<String> {
+-        let state = self.get_current_state().await;
+-        state.container_id()
+-            .map(String::from)
+-            .ok_or_else(|| state_err("状態管理", "コンテナIDが見つかりません"))
++        self.apply_transition(StateTransition::Fail(error)).await
+     }
+ 
+     pub async fn regenerate_container(&self) -> Result<()> {
+-        let current_state = self.get_current_state().await;
+-        let new_state = current_state.regenerate()
+-            .ok_or_else(|| state_err(
+-                "状態遷移",
+-                format!("無効な状態からの再生成遷移: {}", current_state)
+-            ))?;
+-        *self.state.write().await = new_state;
+-        Ok(())
++        self.apply_transition(StateTransition::Regenerate).await
+     }
+ 
+     pub async fn restore_state(&self, state_info: StateInfo) -> Result<()> {
+-        let current_state = self.get_current_state().await;
+-        if !matches!(current_state, ContainerState::Created { .. }) {
+-            return Err(state_err(
+-                "状態遷移",
+-                format!("無効な状態からの状態復元: {}", current_state)
+-            ));
+-        }
+-
+-        let new_state = match state_info.state_type {
+-            StateType::Running => ContainerState::Running {
+-                container_id: state_info.container_id,
+-                started_at: state_info.timestamp,
+-            },
+-            StateType::Executing(command) => ContainerState::Executing {
+-                container_id: state_info.container_id,
+-                started_at: state_info.timestamp,
+-                command,
+-            },
+-            StateType::Stopped => ContainerState::Stopped {
+-                container_id: state_info.container_id,
+-                stopped_at: state_info.timestamp,
+-                exit_status: None,
+-            },
+-            StateType::Failed(error) => ContainerState::Failed {
+-                container_id: state_info.container_id,
+-                error,
+-                occurred_at: state_info.timestamp,
+-            },
+-        };
++        self.apply_transition(StateTransition::Restore(state_info)).await
++    }
+ 
+-        *self.state.write().await = new_state;
+-        Ok(())
++    pub async fn get_container_id(&self) -> Result<String> {
++        let state = self.get_current_state().await;
++        state.container_id()
++            .map(String::from)
++            .ok_or_else(|| state_err("状態管理", "コンテナIDが見つかりません"))
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/fs/manager.rs b/src/fs/manager.rs
+index aadd96b..7fca3c4 100644
+--- a/src/fs/manager.rs
++++ b/src/fs/manager.rs
+@@ -4,47 +4,74 @@ use crate::error::Result;
+ use crate::fs::error::{io_err, not_found_err, invalid_path_err};
+ use crate::fs::transaction::{FileTransaction, FileOperation, CreateFileOperation, DeleteFileOperation};
+ 
++// ファイルマネージャーの状態を表現する型
++#[derive(Debug, Clone)]
++pub enum ManagerState {
++    Idle,
++    InTransaction(FileTransaction),
++}
++
++// 状態遷移を表現する型
++#[derive(Debug, Clone)]
++pub enum ManagerTransition {
++    BeginTransaction,
++    AddOperation(Arc<dyn FileOperation>),
++    Commit,
++    Rollback,
++}
++
+ #[derive(Debug, Clone)]
+ pub struct FileManager {
+     root: Arc<PathBuf>,
+-    transaction: Option<FileTransaction>,
++    state: ManagerState,
+ }
+ 
+ impl FileManager {
+     pub fn new(root: impl Into<PathBuf>) -> Self {
+         Self {
+             root: Arc::new(root.into()),
+-            transaction: None,
++            state: ManagerState::Idle,
+         }
+     }
+ 
+-    pub fn begin_transaction(self) -> Self {
+-        Self {
+-            root: self.root.clone(),
+-            transaction: Some(FileTransaction::new()),
+-        }
+-    }
+-
+-    pub fn commit(self) -> Result<Self> {
+-        match self.transaction {
+-            Some(transaction) => {
+-                let _executed = transaction.execute()?;
++    // 状態遷移を適用するメソッド
++    fn apply_transition(self, transition: ManagerTransition) -> Result<Self> {
++        match (self.state, transition) {
++            (ManagerState::Idle, ManagerTransition::BeginTransaction) => {
+                 Ok(Self {
+                     root: self.root,
+-                    transaction: None,
++                    state: ManagerState::InTransaction(FileTransaction::new()),
+                 })
+-            }
+-            None => Ok(self),
+-        }
+-    }
+-
+-    pub fn rollback(self) -> Self {
+-        match self.transaction {
+-            Some(_) => Self {
+-                root: self.root,
+-                transaction: None,
+             },
+-            None => self,
++            (ManagerState::InTransaction(transaction), ManagerTransition::AddOperation(operation)) => {
++                let new_transaction = transaction.with_operation(operation)?;
++                Ok(Self {
++                    root: self.root,
++                    state: ManagerState::InTransaction(new_transaction),
++                })
++            },
++            (ManagerState::InTransaction(transaction), ManagerTransition::Commit) => {
++                let executed = transaction.execute()?;
++                Ok(Self {
++                    root: self.root,
++                    state: ManagerState::Idle,
++                })
++            },
++            (ManagerState::InTransaction(_), ManagerTransition::Rollback) => {
++                Ok(Self {
++                    root: self.root,
++                    state: ManagerState::Idle,
++                })
++            },
++            (state, transition) => {
++                Err(io_err(
++                    std::io::Error::new(
++                        std::io::ErrorKind::InvalidInput,
++                        format!("無効な状態遷移: {:?} -> {:?}", state, transition)
++                    ),
++                    "ファイルマネージャー状態遷移エラー".to_string(),
++                ))
++            }
+         }
+     }
+ 
+@@ -86,6 +113,19 @@ impl FileManager {
+         Ok(self.root.join(normalized))
+     }
+ 
++    // 公開APIメソッド
++    pub fn begin_transaction(self) -> Result<Self> {
++        self.apply_transition(ManagerTransition::BeginTransaction)
++    }
++
++    pub fn commit(self) -> Result<Self> {
++        self.apply_transition(ManagerTransition::Commit)
++    }
++
++    pub fn rollback(self) -> Result<Self> {
++        self.apply_transition(ManagerTransition::Rollback)
++    }
++
+     pub fn read_file(&self, path: impl AsRef<Path>) -> Result<String> {
+         let path = self.normalize_path(path)?;
+         if !path.exists() {
+@@ -100,61 +140,44 @@ impl FileManager {
+ 
+     pub fn write_file(self, path: impl AsRef<Path>, content: impl AsRef<str>) -> Result<Self> {
+         let path = self.normalize_path(path)?;
+-        match &self.transaction {
+-            Some(transaction) => {
+-                let operation = Arc::new(CreateFileOperation::new(path, content.as_ref().to_string()));
+-                Ok(Self {
+-                    root: self.root,
+-                    transaction: Some(transaction.clone().with_operation(operation)),
+-                })
+-            }
+-            None => {
+-                let mut transaction = FileTransaction::new();
+-                let operation = Arc::new(CreateFileOperation::new(path, content.as_ref().to_string()));
+-                transaction = transaction.with_operation(operation);
+-                let _executed = transaction.execute()?;
+-                Ok(Self {
+-                    root: self.root,
+-                    transaction: None,
+-                })
++        let operation = Arc::new(CreateFileOperation::new(path, content.as_ref().to_string()));
++        
++        match self.state {
++            ManagerState::InTransaction(_) => {
++                self.apply_transition(ManagerTransition::AddOperation(operation))
++            },
++            ManagerState::Idle => {
++                self.begin_transaction()?
++                    .apply_transition(ManagerTransition::AddOperation(operation))?
++                    .commit()
+             }
+         }
+     }
+ 
+     pub fn delete_file(self, path: impl AsRef<Path>) -> Result<Self> {
+         let path = self.normalize_path(path)?;
+-        match &self.transaction {
+-            Some(transaction) => {
+-                let operation = Arc::new(DeleteFileOperation::new(path)?);
+-                Ok(Self {
+-                    root: self.root,
+-                    transaction: Some(transaction.clone().with_operation(operation)),
+-                })
+-            }
+-            None => {
+-                let mut transaction = FileTransaction::new();
+-                let operation = Arc::new(DeleteFileOperation::new(path)?);
+-                transaction = transaction.with_operation(operation);
+-                let _executed = transaction.execute()?;
+-                Ok(Self {
+-                    root: self.root,
+-                    transaction: None,
+-                })
++        let operation = Arc::new(DeleteFileOperation::new(path)?);
++        
++        match self.state {
++            ManagerState::InTransaction(_) => {
++                self.apply_transition(ManagerTransition::AddOperation(operation))
++            },
++            ManagerState::Idle => {
++                self.begin_transaction()?
++                    .apply_transition(ManagerTransition::AddOperation(operation))?
++                    .commit()
+             }
+         }
+     }
+ 
+     pub fn create_dir(self, path: impl AsRef<Path>) -> Result<Self> {
+         let path = self.normalize_path(path)?;
+-        match &self.transaction {
+-            Some(transaction) => {
++        match self.state {
++            ManagerState::InTransaction(_) => {
+                 let operation = Arc::new(CreateFileOperation::new(path, String::new()));
+-                Ok(Self {
+-                    root: self.root,
+-                    transaction: Some(transaction.clone().with_operation(operation)),
+-                })
+-            }
+-            None => {
++                self.apply_transition(ManagerTransition::AddOperation(operation))
++            },
++            ManagerState::Idle => {
+                 std::fs::create_dir_all(&path)
+                     .map_err(|e| io_err(e, format!("ディレクトリの作成に失敗: {}", path.display())))?;
+                 Ok(self)
+@@ -183,7 +206,7 @@ mod tests {
+         let manager = FileManager::new(temp_dir.path().to_string_lossy().to_string());
+ 
+         // トランザクション内での操作
+-        let manager = manager.begin_transaction()
++        let manager = manager.begin_transaction()?
+             .write_file("test1.txt", "Hello")?
+             .write_file("test2.txt", "World")?
+             .commit()?;
+@@ -193,9 +216,9 @@ mod tests {
+         assert_eq!(manager.read_file("test2.txt")?, "World");
+ 
+         // ロールバックのテスト
+-        let manager = manager.begin_transaction()
++        let manager = manager.begin_transaction()?
+             .write_file("test3.txt", "Should not exist")?
+-            .rollback();
++            .rollback()?;
+ 
+         assert!(manager.read_file("test3.txt").is_err());
+ 
+diff --git a/src/fs/transaction.rs b/src/fs/transaction.rs
+index 8e1999f..ad77051 100644
+--- a/src/fs/transaction.rs
++++ b/src/fs/transaction.rs
+@@ -9,6 +9,14 @@ pub trait FileOperation: Send + Sync + std::fmt::Debug {
+     fn description(&self) -> String;
+ }
+ 
++// 状態遷移を表現する型
++#[derive(Debug, Clone)]
++pub enum TransactionTransition {
++    AddOperation(Arc<dyn FileOperation>),
++    Execute,
++    Rollback,
++}
++
+ #[derive(Debug, Clone)]
+ pub enum TransactionState {
+     Pending,
+@@ -31,61 +39,76 @@ impl FileTransaction {
+         }
+     }
+ 
+-    pub fn with_operation(self, operation: Arc<dyn FileOperation>) -> Self {
+-        match self.state {
+-            TransactionState::Pending => {
++    // 状態遷移を適用するメソッド
++    pub fn apply_transition(self, transition: TransactionTransition) -> Result<Self, Error> {
++        match (self.state, transition) {
++            (TransactionState::Pending, TransactionTransition::AddOperation(op)) => {
+                 let mut operations = (*self.operations).clone();
+-                operations.push(operation);
+-                Self {
++                operations.push(op);
++                Ok(Self {
+                     operations: Arc::new(operations),
+                     state: TransactionState::Pending,
+-                }
+-            }
+-            _ => self,
+-        }
+-    }
+-
+-    pub fn execute(self) -> Result<Self, Error> {
+-        match self.state {
+-            TransactionState::Pending => {
+-                let transaction = self;
+-                for operation in transaction.operations.iter() {
++                })
++            },
++            (TransactionState::Pending, TransactionTransition::Execute) => {
++                let mut current = self;
++                for operation in current.operations.iter() {
+                     if let Err(e) = operation.execute() {
+-                        return Ok(Self {
+-                            operations: transaction.operations.clone(),
++                        current = Self {
++                            operations: current.operations.clone(),
+                             state: TransactionState::Failed(Arc::new(e)),
+-                        }.rollback());
++                        };
++                        return Ok(current.apply_transition(TransactionTransition::Rollback)?);
+                     }
+                 }
+                 Ok(Self {
+-                    operations: transaction.operations,
++                    operations: current.operations,
+                     state: TransactionState::Executed,
+                 })
+-            }
+-            _ => Ok(self),
+-        }
+-    }
+-
+-    pub fn rollback(self) -> Self {
+-        match self.state {
+-            TransactionState::Executed | TransactionState::Pending => {
+-                for operation in self.operations.iter().rev() {
++            },
++            (TransactionState::Executed | TransactionState::Pending, TransactionTransition::Rollback) => {
++                let mut current = self;
++                for operation in current.operations.iter().rev() {
+                     if let Err(e) = operation.rollback() {
+-                        return Self {
+-                            operations: self.operations.clone(),
++                        return Ok(Self {
++                            operations: current.operations.clone(),
+                             state: TransactionState::Failed(Arc::new(e)),
+-                        };
++                        });
+                     }
+                 }
+-                Self {
+-                    operations: self.operations,
++                Ok(Self {
++                    operations: current.operations,
+                     state: TransactionState::RolledBack,
+-                }
++                })
++            },
++            (state, transition) => {
++                Ok(Self {
++                    operations: self.operations,
++                    state: TransactionState::Failed(Arc::new(io_err(
++                        std::io::Error::new(
++                            std::io::ErrorKind::InvalidInput,
++                            format!("無効な状態遷移: {:?} -> {:?}", state, transition)
++                        ),
++                        "トランザクション状態遷移エラー".to_string(),
++                    ))),
++                })
+             }
+-            _ => self,
+         }
+     }
+ 
++    // 公開APIメソッド
++    pub fn with_operation(self, operation: Arc<dyn FileOperation>) -> Result<Self, Error> {
++        self.apply_transition(TransactionTransition::AddOperation(operation))
++    }
++
++    pub fn execute(self) -> Result<Self, Error> {
++        self.apply_transition(TransactionTransition::Execute)
++    }
++
++    pub fn rollback(self) -> Result<Self, Error> {
++        self.apply_transition(TransactionTransition::Rollback)
++    }
++
+     pub fn state(&self) -> &TransactionState {
+         &self.state
+     }
+@@ -93,6 +116,27 @@ impl FileTransaction {
+     pub fn operations(&self) -> &[Arc<dyn FileOperation>] {
+         &self.operations
+     }
++
++    // トランザクションの合成メソッド
++    pub fn combine(self, other: Self) -> Result<Self, Error> {
++        match (self.state, other.state) {
++            (TransactionState::Pending, TransactionState::Pending) => {
++                let mut operations = (*self.operations).clone();
++                operations.extend((*other.operations).clone());
++                Ok(Self {
++                    operations: Arc::new(operations),
++                    state: TransactionState::Pending,
++                })
++            },
++            _ => Err(io_err(
++                std::io::Error::new(
++                    std::io::ErrorKind::InvalidInput,
++                    "トランザクションの合成は保留状態でのみ可能です"
++                ),
++                "トランザクション合成エラー".to_string(),
++            )),
++        }
++    }
+ }
+ 
+ // イミュータブルな操作を実装するための具体的な型

@@ -9,6 +9,14 @@ pub trait FileOperation: Send + Sync + std::fmt::Debug {
     fn description(&self) -> String;
 }
 
+// 状態遷移を表現する型
+#[derive(Debug, Clone)]
+pub enum TransactionTransition {
+    AddOperation(Arc<dyn FileOperation>),
+    Execute,
+    Rollback,
+}
+
 #[derive(Debug, Clone)]
 pub enum TransactionState {
     Pending,
@@ -31,59 +39,74 @@ impl FileTransaction {
         }
     }
 
-    pub fn with_operation(self, operation: Arc<dyn FileOperation>) -> Self {
-        match self.state {
-            TransactionState::Pending => {
+    // 状態遷移を適用するメソッド
+    pub fn apply_transition(self, transition: TransactionTransition) -> Result<Self, Error> {
+        match (self.state, transition) {
+            (TransactionState::Pending, TransactionTransition::AddOperation(op)) => {
                 let mut operations = (*self.operations).clone();
-                operations.push(operation);
-                Self {
+                operations.push(op);
+                Ok(Self {
                     operations: Arc::new(operations),
                     state: TransactionState::Pending,
-                }
-            }
-            _ => self,
-        }
-    }
-
-    pub fn execute(self) -> Result<Self, Error> {
-        match self.state {
-            TransactionState::Pending => {
-                let transaction = self;
-                for operation in transaction.operations.iter() {
+                })
+            },
+            (TransactionState::Pending, TransactionTransition::Execute) => {
+                let operations = self.operations.clone();
+                for operation in operations.iter() {
                     if let Err(e) = operation.execute() {
-                        return Ok(Self {
-                            operations: transaction.operations.clone(),
+                        let failed_state = Self {
+                            operations: operations.clone(),
                             state: TransactionState::Failed(Arc::new(e)),
-                        }.rollback());
+                        };
+                        return Ok(failed_state.apply_transition(TransactionTransition::Rollback)?);
                     }
                 }
                 Ok(Self {
-                    operations: transaction.operations,
+                    operations,
                     state: TransactionState::Executed,
                 })
+            },
+            (TransactionState::Executed | TransactionState::Pending, TransactionTransition::Rollback) => {
+                let operations = self.operations.clone();
+                for operation in operations.iter().rev() {
+                    if let Err(e) = operation.rollback() {
+                        return Ok(Self {
+                            operations,
+                            state: TransactionState::Failed(Arc::new(e)),
+                        });
+                    }
+                }
+                Ok(Self {
+                    operations,
+                    state: TransactionState::RolledBack,
+                })
+            },
+            (state, transition) => {
+                Ok(Self {
+                    operations: self.operations,
+                    state: TransactionState::Failed(Arc::new(io_err(
+                        std::io::Error::new(
+                            std::io::ErrorKind::InvalidInput,
+                            format!("無効な状態遷移: {:?} -> {:?}", state, transition)
+                        ),
+                        "トランザクション状態遷移エラー".to_string(),
+                    ))),
+                })
             }
-            _ => Ok(self),
         }
     }
 
-    pub fn rollback(self) -> Self {
-        match self.state {
-            TransactionState::Executed | TransactionState::Pending => {
-                for operation in self.operations.iter().rev() {
-                    if let Err(e) = operation.rollback() {
-                        return Self {
-                            operations: self.operations.clone(),
-                            state: TransactionState::Failed(Arc::new(e)),
-                        };
-                    }
-                }
-                Self {
-                    operations: self.operations,
-                    state: TransactionState::RolledBack,
-                }
-            }
-            _ => self,
-        }
+    // 公開APIメソッド
+    pub fn with_operation(self, operation: Arc<dyn FileOperation>) -> Result<Self, Error> {
+        self.apply_transition(TransactionTransition::AddOperation(operation))
+    }
+
+    pub fn execute(self) -> Result<Self, Error> {
+        self.apply_transition(TransactionTransition::Execute)
+    }
+
+    pub fn rollback(self) -> Result<Self, Error> {
+        self.apply_transition(TransactionTransition::Rollback)
     }
 
     pub fn state(&self) -> &TransactionState {
@@ -92,6 +115,27 @@ impl FileTransaction {
 
     pub fn operations(&self) -> &[Arc<dyn FileOperation>] {
         &self.operations
+    }
+
+    // トランザクションの合成メソッド
+    pub fn combine(self, other: Self) -> Result<Self, Error> {
+        match (self.state, other.state) {
+            (TransactionState::Pending, TransactionState::Pending) => {
+                let mut operations = (*self.operations).clone();
+                operations.extend((*other.operations).clone());
+                Ok(Self {
+                    operations: Arc::new(operations),
+                    state: TransactionState::Pending,
+                })
+            },
+            _ => Err(io_err(
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "トランザクションの合成は保留状態でのみ可能です"
+                ),
+                "トランザクション合成エラー".to_string(),
+            )),
+        }
     }
 }
 
