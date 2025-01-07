@@ -1,7 +1,12 @@
 pub mod backup;
 pub mod core;
+pub mod error;
 pub mod manager;
+pub mod path;
 pub mod transaction;
+
+#[cfg(test)]
+pub mod tests;
 
 pub use core::{
     ensure_directory,
@@ -17,13 +22,19 @@ pub use core::{
     check_permissions,
 };
 
-pub use crate::error::fs::{
-    not_found_error as create_not_found_error,
-    io_error as create_io_error,
-    permission_error as create_permission_error,
-    invalid_path_error as create_invalid_path_error,
-    transaction_error as create_transaction_error,
-    backup_error as create_backup_error,
-    validation_error as create_validation_error,
-    fs_error as create_other_error,
+pub use path::{
+    normalize_path,
+    validate_path,
+    ensure_path_exists,
+};
+
+pub use error::{
+    not_found_error,
+    io_error,
+    permission_error,
+    invalid_path_error,
+    transaction_error,
+    backup_error,
+    validation_error,
+    ErrorExt,
 }; 

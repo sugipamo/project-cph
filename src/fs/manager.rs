@@ -1,11 +1,8 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use anyhow::Result;
-use crate::error::fs::{
-    io_error as create_io_error,
-    not_found_error as create_not_found_error,
-    invalid_path_error as create_invalid_path_error
-};
+use crate::fs::error::{io_error, not_found_error, transaction_error, ErrorExt};
+use crate::fs::path::normalize_path;
 use crate::fs::transaction::{FileTransaction, FileOperation, CreateFileOperation, DeleteFileOperation};
 
 // ファイルマネージャーの状態を表現する型
@@ -68,54 +65,9 @@ impl FileManager {
                 })
             },
             (state, transition) => {
-                Err(create_io_error(
-                    std::io::Error::new(
-                        std::io::ErrorKind::InvalidInput,
-                        format!("無効な状態遷移: {:?} -> {:?}", state, transition)
-                    ),
-                    "ファイルマネージャー状態遷移エラー"
-                ))
+                Err(transaction_error(format!("無効な状態遷移: {:?} -> {:?}", state, transition)))
             }
         }
-    }
-
-    // パスの正規化と検証を行うヘルパーメソッド
-    fn normalize_path(&self, path: impl AsRef<Path>) -> Result<PathBuf> {
-        let path = path.as_ref();
-        
-        // 絶対パスの場合はエラー
-        if path.is_absolute() {
-            return Err(create_invalid_path_error(path));
-        }
-
-        // パスのトラバーサルを防ぐ
-        let normalized = path.components()
-            .try_fold(Vec::new(), |components, component| {
-                match component {
-                    std::path::Component::ParentDir => {
-                        if components.is_empty() {
-                            Err(create_invalid_path_error(path))
-                        } else {
-                            Ok(components[..components.len() - 1].to_vec())
-                        }
-                    },
-                    std::path::Component::Normal(name) => {
-                        let mut new_components = components;
-                        new_components.push(name.to_owned());
-                        Ok(new_components)
-                    },
-                    _ => Ok(components),
-                }
-            })?;
-
-        // コンポーネントからパスを構築
-        let path = normalized.iter()
-            .fold(PathBuf::new(), |mut path, component| {
-                path.push(component);
-                path
-            });
-
-        Ok(self.root.join(path))
     }
 
     // 公開APIメソッド
@@ -132,16 +84,16 @@ impl FileManager {
     }
 
     pub fn read_file(&self, path: impl AsRef<Path>) -> Result<String> {
-        let path = self.normalize_path(path)?;
+        let path = normalize_path(&*self.root, path)?;
         if !path.exists() {
-            return Err(create_not_found_error(&path));
+            return Err(not_found_error(&path));
         }
         std::fs::read_to_string(&path)
-            .map_err(|e| create_io_error(e, format!("ファイルの読み込みに失敗: {}", path.display())))
+            .with_context_io(format!("ファイルの読み込みに失敗: {}", path.display()))
     }
 
     pub fn write_file(self, path: impl AsRef<Path>, content: impl AsRef<str>) -> Result<Self> {
-        let path = self.normalize_path(path)?;
+        let path = normalize_path(&*self.root, path)?;
         let operation = Arc::new(CreateFileOperation::new(path, content.as_ref().to_string()));
         
         match self.state {
@@ -157,7 +109,7 @@ impl FileManager {
     }
 
     pub fn delete_file(self, path: impl AsRef<Path>) -> Result<Self> {
-        let path = self.normalize_path(path)?;
+        let path = normalize_path(&*self.root, path)?;
         let operation = Arc::new(DeleteFileOperation::new(path)?);
         
         match self.state {
@@ -173,7 +125,7 @@ impl FileManager {
     }
 
     pub fn create_dir(self, path: impl AsRef<Path>) -> Result<Self> {
-        let path = self.normalize_path(path)?;
+        let path = normalize_path(&*self.root, path)?;
         match self.state {
             ManagerState::InTransaction(_) => {
                 let operation = Arc::new(CreateFileOperation::new(path, String::new()));
@@ -181,14 +133,14 @@ impl FileManager {
             },
             ManagerState::Idle => {
                 std::fs::create_dir_all(&path)
-                    .map_err(|e| create_io_error(e, format!("ディレクトリの作成に失敗: {}", path.display())))?;
+                    .with_context_io(format!("ディレクトリの作成に失敗: {}", path.display()))?;
                 Ok(self)
             }
         }
     }
 
     pub fn exists(&self, path: impl AsRef<Path>) -> Result<bool> {
-        let path = self.normalize_path(path)?;
+        let path = normalize_path(&*self.root, path)?;
         Ok(path.exists())
     }
 
@@ -200,12 +152,12 @@ impl FileManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
+    use crate::fs::tests::TestDirectory;
 
     #[test]
     fn test_transaction_operations() -> Result<()> {
-        let temp_dir = tempdir().unwrap();
-        let manager = FileManager::new(temp_dir.path().to_string_lossy().to_string());
+        let test_dir = TestDirectory::new()?;
+        let manager = FileManager::new(test_dir.path().to_string_lossy().to_string());
 
         // トランザクション内での操作
         let manager = manager.begin_transaction()?

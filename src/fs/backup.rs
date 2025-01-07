@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::TempDir;
 use anyhow::Result;
-use crate::error::fs::io_error as create_io_error;
+use crate::fs::error::{backup_error, ErrorExt};
+use crate::fs::path::ensure_path_exists;
 
 /// バックアップを管理する構造体
 #[derive(Debug, Clone)]
@@ -27,11 +28,10 @@ impl BackupManager {
         }
 
         let temp_dir = TempDir::new()
-            .map_err(|e| create_io_error(e, "バックアップディレクトリの作成に失敗しました"))?;
+            .with_context_io("バックアップディレクトリの作成に失敗しました")?;
 
         let backup_path = temp_dir.path().to_path_buf();
-        fs::create_dir_all(&backup_path)
-            .map_err(|e| create_io_error(e, "バックアップディレクトリの作成に失敗しました"))?;
+        ensure_path_exists(&backup_path)?;
 
         // ターゲットディレクトリの内容をコピー
         if target_dir.as_ref().exists() {
@@ -40,10 +40,7 @@ impl BackupManager {
                 &backup_path,
                 &fs_extra::dir::CopyOptions::new(),
             )
-            .map_err(|e| create_io_error(
-                std::io::Error::new(std::io::ErrorKind::Other, e.to_string()),
-                "バックアップの作成に失敗しました"
-            ))?;
+            .map_err(|e| backup_error(format!("バックアップの作成に失敗しました: {}", e)))?;
         }
 
         Ok(Self {
@@ -57,10 +54,7 @@ impl BackupManager {
             if backup_dir.exists() {
                 let options = fs_extra::dir::CopyOptions::new();
                 fs_extra::dir::copy(&**backup_dir, "..", &options)
-                    .map_err(|e| create_io_error(
-                        std::io::Error::new(std::io::ErrorKind::Other, e.to_string()),
-                        "バックアップからの復元に失敗しました"
-                    ))?;
+                    .map_err(|e| backup_error(format!("バックアップからの復元に失敗しました: {}", e)))?;
             }
         }
 
@@ -72,7 +66,7 @@ impl BackupManager {
         if let Some(backup_dir) = &self.backup_dir {
             if backup_dir.exists() {
                 fs::remove_dir_all(&**backup_dir)
-                    .map_err(|e| create_io_error(e, "バックアップのクリーンアップに失敗しました"))?;
+                    .with_context_io("バックアップのクリーンアップに失敗しました")?;
             }
         }
 
@@ -90,18 +84,18 @@ impl BackupManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
+    use crate::fs::tests::TestDirectory;
 
     #[test]
     fn test_backup_lifecycle() -> Result<()> {
         // テスト用の一時ディレクトリを作成
-        let temp_dir = tempdir()?;
-        let test_file_path = temp_dir.path().join("test.txt");
+        let test_dir = TestDirectory::new()?;
+        let test_file_path = test_dir.path().join("test.txt");
         std::fs::write(&test_file_path, "test content")?;
 
         // バックアップの作成
         let manager = BackupManager::new()?;
-        let manager = manager.create(temp_dir.path())?;
+        let manager = manager.create(test_dir.path())?;
         
         // バックアップディレクトリが存在することを確認
         assert!(manager.backup_path().is_some());

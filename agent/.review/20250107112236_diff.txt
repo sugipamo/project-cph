@@ -1,0 +1,730 @@
+diff --git a/src/fs/backup.rs b/src/fs/backup.rs
+index 435e826..3028507 100644
+--- a/src/fs/backup.rs
++++ b/src/fs/backup.rs
+@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
+ use std::sync::Arc;
+ use tempfile::TempDir;
+ use anyhow::Result;
+-use crate::error::fs::io_error as create_io_error;
++use crate::fs::error::{backup_error, ErrorExt};
++use crate::fs::path::ensure_path_exists;
+ 
+ /// バックアップを管理する構造体
+ #[derive(Debug, Clone)]
+@@ -27,11 +28,10 @@ impl BackupManager {
+         }
+ 
+         let temp_dir = TempDir::new()
+-            .map_err(|e| create_io_error(e, "バックアップディレクトリの作成に失敗しました"))?;
++            .with_context_io("バックアップディレクトリの作成に失敗しました")?;
+ 
+         let backup_path = temp_dir.path().to_path_buf();
+-        fs::create_dir_all(&backup_path)
+-            .map_err(|e| create_io_error(e, "バックアップディレクトリの作成に失敗しました"))?;
++        ensure_path_exists(&backup_path)?;
+ 
+         // ターゲットディレクトリの内容をコピー
+         if target_dir.as_ref().exists() {
+@@ -40,10 +40,7 @@ impl BackupManager {
+                 &backup_path,
+                 &fs_extra::dir::CopyOptions::new(),
+             )
+-            .map_err(|e| create_io_error(
+-                std::io::Error::new(std::io::ErrorKind::Other, e.to_string()),
+-                "バックアップの作成に失敗しました"
+-            ))?;
++            .map_err(|e| backup_error(format!("バックアップの作成に失敗しました: {}", e)))?;
+         }
+ 
+         Ok(Self {
+@@ -57,10 +54,7 @@ impl BackupManager {
+             if backup_dir.exists() {
+                 let options = fs_extra::dir::CopyOptions::new();
+                 fs_extra::dir::copy(&**backup_dir, "..", &options)
+-                    .map_err(|e| create_io_error(
+-                        std::io::Error::new(std::io::ErrorKind::Other, e.to_string()),
+-                        "バックアップからの復元に失敗しました"
+-                    ))?;
++                    .map_err(|e| backup_error(format!("バックアップからの復元に失敗しました: {}", e)))?;
+             }
+         }
+ 
+@@ -72,7 +66,7 @@ impl BackupManager {
+         if let Some(backup_dir) = &self.backup_dir {
+             if backup_dir.exists() {
+                 fs::remove_dir_all(&**backup_dir)
+-                    .map_err(|e| create_io_error(e, "バックアップのクリーンアップに失敗しました"))?;
++                    .with_context_io("バックアップのクリーンアップに失敗しました")?;
+             }
+         }
+ 
+@@ -90,18 +84,18 @@ impl BackupManager {
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+-    use tempfile::tempdir;
++    use crate::fs::tests::TestDirectory;
+ 
+     #[test]
+     fn test_backup_lifecycle() -> Result<()> {
+         // テスト用の一時ディレクトリを作成
+-        let temp_dir = tempdir()?;
+-        let test_file_path = temp_dir.path().join("test.txt");
++        let test_dir = TestDirectory::new()?;
++        let test_file_path = test_dir.path().join("test.txt");
+         std::fs::write(&test_file_path, "test content")?;
+ 
+         // バックアップの作成
+         let manager = BackupManager::new()?;
+-        let manager = manager.create(temp_dir.path())?;
++        let manager = manager.create(test_dir.path())?;
+         
+         // バックアップディレクトリが存在することを確認
+         assert!(manager.backup_path().is_some());
+diff --git a/src/fs/core.rs b/src/fs/core.rs
+index 2175e83..ac80669 100644
+--- a/src/fs/core.rs
++++ b/src/fs/core.rs
+@@ -1,21 +1,17 @@
+ use std::path::{Path, PathBuf};
+ use std::fs;
+ use anyhow::Result;
+-use crate::error::fs::{
+-    not_found_error as create_not_found_error,
+-    io_error as create_io_error,
+-    permission_error as create_permission_error,
+-    invalid_path_error as create_invalid_path_error
+-};
++use crate::fs::error::{not_found_error, io_error, permission_error, invalid_path_error, ErrorExt};
++use crate::fs::path::{validate_path, ensure_path_exists};
+ 
+ /// ディレクトリの存在を確認し、存在しない場合は作成します
+ pub fn ensure_directory<P: AsRef<Path>>(path: P) -> Result<PathBuf> {
+     let path = path.as_ref();
+     if !path.exists() {
+         std::fs::create_dir_all(path)
+-            .map_err(|e| create_io_error(e, format!("ディレクトリの作成に失敗: {}", path.display())))?;
++            .with_context_io(format!("ディレクトリの作成に失敗: {}", path.display()))?;
+     } else if !path.is_dir() {
+-        return Err(create_invalid_path_error(path));
++        return Err(invalid_path_error(path));
+     }
+     Ok(path.to_path_buf())
+ }
+@@ -28,9 +24,9 @@ pub fn ensure_file<P: AsRef<Path>>(path: P) -> Result<PathBuf> {
+             ensure_directory(parent)?;
+         }
+         std::fs::write(path, "")
+-            .map_err(|e| create_io_error(e, format!("ファイルの作成に失敗: {}", path.display())))?;
++            .with_context_io(format!("ファイルの作成に失敗: {}", path.display()))?;
+     } else if !path.is_file() {
+-        return Err(create_invalid_path_error(path));
++        return Err(invalid_path_error(path));
+     }
+     Ok(path.to_path_buf())
+ }
+@@ -39,13 +35,13 @@ pub fn ensure_file<P: AsRef<Path>>(path: P) -> Result<PathBuf> {
+ pub fn read_file<P: AsRef<Path>>(path: P) -> Result<String> {
+     let path = path.as_ref();
+     if !path.exists() {
+-        return Err(create_not_found_error(path));
++        return Err(not_found_error(path));
+     }
+     if !path.is_file() {
+-        return Err(create_invalid_path_error(path));
++        return Err(invalid_path_error(path));
+     }
+     std::fs::read_to_string(path)
+-        .map_err(|e| create_io_error(e, format!("ファイルの読み込みに失敗: {}", path.display())))
++        .with_context_io(format!("ファイルの読み込みに失敗: {}", path.display()))
+ }
+ 
+ /// ファイルに書き込みます
+@@ -55,7 +51,7 @@ pub fn write_file<P: AsRef<Path>>(path: P, content: impl AsRef<[u8]>) -> Result<
+         ensure_directory(parent)?;
+     }
+     std::fs::write(path, content)
+-        .map_err(|e| create_io_error(e, format!("ファイルの書き込みに失敗: {}", path.display())))
++        .with_context_io(format!("ファイルの書き込みに失敗: {}", path.display()))
+ }
+ 
+ /// ファイルを削除します
+@@ -65,10 +61,10 @@ pub fn delete_file<P: AsRef<Path>>(path: P) -> Result<()> {
+         return Ok(());
+     }
+     if !path.is_file() {
+-        return Err(create_invalid_path_error(path));
++        return Err(invalid_path_error(path));
+     }
+     std::fs::remove_file(path)
+-        .map_err(|e| create_io_error(e, format!("ファイルの削除に失敗: {}", path.display())))
++        .with_context_io(format!("ファイルの削除に失敗: {}", path.display()))
+ }
+ 
+ /// ディレクトリを削除します
+@@ -78,10 +74,10 @@ pub fn delete_directory<P: AsRef<Path>>(path: P) -> Result<()> {
+         return Ok(());
+     }
+     if !path.is_dir() {
+-        return Err(create_invalid_path_error(path));
++        return Err(invalid_path_error(path));
+     }
+     std::fs::remove_dir_all(path)
+-        .map_err(|e| create_io_error(e, format!("ディレクトリの削除に失敗: {}", path.display())))
++        .with_context_io(format!("ディレクトリの削除に失敗: {}", path.display()))
+ }
+ 
+ /// パスが存在するかどうかを確認します
+@@ -103,7 +99,7 @@ pub fn is_directory<P: AsRef<Path>>(path: P) -> bool {
+ pub fn metadata<P: AsRef<Path>>(path: P) -> Result<std::fs::Metadata> {
+     let path = path.as_ref();
+     std::fs::metadata(path)
+-        .map_err(|e| create_io_error(e, format!("メタデータの取得に失敗: {}", path.display())))
++        .with_context_io(format!("メタデータの取得に失敗: {}", path.display()))
+ }
+ 
+ /// パスの権限を確認します
+@@ -112,7 +108,7 @@ pub fn check_permissions<P: AsRef<Path>>(path: P, write_required: bool) -> Resul
+     let metadata = metadata(path)?;
+     
+     if !metadata.permissions().readonly() && write_required {
+-        return Err(create_permission_error(path));
++        return Err(permission_error(path));
+     }
+     Ok(())
+ }
+@@ -120,12 +116,12 @@ pub fn check_permissions<P: AsRef<Path>>(path: P, write_required: bool) -> Resul
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+-    use tempfile::tempdir;
++    use crate::fs::tests::TestDirectory;
+ 
+     #[test]
+     fn test_ensure_directory() -> Result<()> {
+-        let temp = tempdir()?;
+-        let dir_path = temp.path().join("test_dir");
++        let test_dir = TestDirectory::new()?;
++        let dir_path = test_dir.path().join("test_dir");
+         
+         let result = ensure_directory(&dir_path)?;
+         assert_eq!(result, dir_path);
+@@ -136,8 +132,8 @@ mod tests {
+ 
+     #[test]
+     fn test_ensure_file() -> Result<()> {
+-        let temp = tempdir()?;
+-        let file_path = temp.path().join("test.txt");
++        let test_dir = TestDirectory::new()?;
++        let file_path = test_dir.path().join("test.txt");
+         
+         let result = ensure_file(&file_path)?;
+         assert_eq!(result, file_path);
+@@ -148,8 +144,8 @@ mod tests {
+ 
+     #[test]
+     fn test_read_write_file() -> Result<()> {
+-        let temp = tempdir()?;
+-        let file_path = temp.path().join("test.txt");
++        let test_dir = TestDirectory::new()?;
++        let file_path = test_dir.path().join("test.txt");
+         
+         write_file(&file_path, "Hello, World!")?;
+         assert!(is_file(&file_path));
+@@ -162,9 +158,9 @@ mod tests {
+ 
+     #[test]
+     fn test_delete_operations() -> Result<()> {
+-        let temp = tempdir()?;
+-        let file_path = temp.path().join("test.txt");
+-        let dir_path = temp.path().join("test_dir");
++        let test_dir = TestDirectory::new()?;
++        let file_path = test_dir.path().join("test.txt");
++        let dir_path = test_dir.path().join("test_dir");
+         
+         write_file(&file_path, "Hello")?;
+         ensure_directory(&dir_path)?;
+@@ -183,8 +179,8 @@ mod tests {
+ 
+     #[test]
+     fn test_metadata_and_permissions() -> Result<()> {
+-        let temp = tempdir()?;
+-        let file_path = temp.path().join("test.txt");
++        let test_dir = TestDirectory::new()?;
++        let file_path = test_dir.path().join("test.txt");
+         
+         write_file(&file_path, "Hello")?;
+         
+diff --git a/src/fs/manager.rs b/src/fs/manager.rs
+index 910de70..4b8a656 100644
+--- a/src/fs/manager.rs
++++ b/src/fs/manager.rs
+@@ -1,11 +1,8 @@
+ use std::path::{Path, PathBuf};
+ use std::sync::Arc;
+ use anyhow::Result;
+-use crate::error::fs::{
+-    io_error as create_io_error,
+-    not_found_error as create_not_found_error,
+-    invalid_path_error as create_invalid_path_error
+-};
++use crate::fs::error::{io_error, not_found_error, transaction_error, ErrorExt};
++use crate::fs::path::normalize_path;
+ use crate::fs::transaction::{FileTransaction, FileOperation, CreateFileOperation, DeleteFileOperation};
+ 
+ // ファイルマネージャーの状態を表現する型
+@@ -68,56 +65,11 @@ impl FileManager {
+                 })
+             },
+             (state, transition) => {
+-                Err(create_io_error(
+-                    std::io::Error::new(
+-                        std::io::ErrorKind::InvalidInput,
+-                        format!("無効な状態遷移: {:?} -> {:?}", state, transition)
+-                    ),
+-                    "ファイルマネージャー状態遷移エラー"
+-                ))
++                Err(transaction_error(format!("無効な状態遷移: {:?} -> {:?}", state, transition)))
+             }
+         }
+     }
+ 
+-    // パスの正規化と検証を行うヘルパーメソッド
+-    fn normalize_path(&self, path: impl AsRef<Path>) -> Result<PathBuf> {
+-        let path = path.as_ref();
+-        
+-        // 絶対パスの場合はエラー
+-        if path.is_absolute() {
+-            return Err(create_invalid_path_error(path));
+-        }
+-
+-        // パスのトラバーサルを防ぐ
+-        let normalized = path.components()
+-            .try_fold(Vec::new(), |components, component| {
+-                match component {
+-                    std::path::Component::ParentDir => {
+-                        if components.is_empty() {
+-                            Err(create_invalid_path_error(path))
+-                        } else {
+-                            Ok(components[..components.len() - 1].to_vec())
+-                        }
+-                    },
+-                    std::path::Component::Normal(name) => {
+-                        let mut new_components = components;
+-                        new_components.push(name.to_owned());
+-                        Ok(new_components)
+-                    },
+-                    _ => Ok(components),
+-                }
+-            })?;
+-
+-        // コンポーネントからパスを構築
+-        let path = normalized.iter()
+-            .fold(PathBuf::new(), |mut path, component| {
+-                path.push(component);
+-                path
+-            });
+-
+-        Ok(self.root.join(path))
+-    }
+-
+     // 公開APIメソッド
+     pub fn begin_transaction(self) -> Result<Self> {
+         self.apply_transition(ManagerTransition::BeginTransaction)
+@@ -132,16 +84,16 @@ impl FileManager {
+     }
+ 
+     pub fn read_file(&self, path: impl AsRef<Path>) -> Result<String> {
+-        let path = self.normalize_path(path)?;
++        let path = normalize_path(&*self.root, path)?;
+         if !path.exists() {
+-            return Err(create_not_found_error(&path));
++            return Err(not_found_error(&path));
+         }
+         std::fs::read_to_string(&path)
+-            .map_err(|e| create_io_error(e, format!("ファイルの読み込みに失敗: {}", path.display())))
++            .with_context_io(format!("ファイルの読み込みに失敗: {}", path.display()))
+     }
+ 
+     pub fn write_file(self, path: impl AsRef<Path>, content: impl AsRef<str>) -> Result<Self> {
+-        let path = self.normalize_path(path)?;
++        let path = normalize_path(&*self.root, path)?;
+         let operation = Arc::new(CreateFileOperation::new(path, content.as_ref().to_string()));
+         
+         match self.state {
+@@ -157,7 +109,7 @@ impl FileManager {
+     }
+ 
+     pub fn delete_file(self, path: impl AsRef<Path>) -> Result<Self> {
+-        let path = self.normalize_path(path)?;
++        let path = normalize_path(&*self.root, path)?;
+         let operation = Arc::new(DeleteFileOperation::new(path)?);
+         
+         match self.state {
+@@ -173,7 +125,7 @@ impl FileManager {
+     }
+ 
+     pub fn create_dir(self, path: impl AsRef<Path>) -> Result<Self> {
+-        let path = self.normalize_path(path)?;
++        let path = normalize_path(&*self.root, path)?;
+         match self.state {
+             ManagerState::InTransaction(_) => {
+                 let operation = Arc::new(CreateFileOperation::new(path, String::new()));
+@@ -181,14 +133,14 @@ impl FileManager {
+             },
+             ManagerState::Idle => {
+                 std::fs::create_dir_all(&path)
+-                    .map_err(|e| create_io_error(e, format!("ディレクトリの作成に失敗: {}", path.display())))?;
++                    .with_context_io(format!("ディレクトリの作成に失敗: {}", path.display()))?;
+                 Ok(self)
+             }
+         }
+     }
+ 
+     pub fn exists(&self, path: impl AsRef<Path>) -> Result<bool> {
+-        let path = self.normalize_path(path)?;
++        let path = normalize_path(&*self.root, path)?;
+         Ok(path.exists())
+     }
+ 
+@@ -200,12 +152,12 @@ impl FileManager {
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+-    use tempfile::tempdir;
++    use crate::fs::tests::TestDirectory;
+ 
+     #[test]
+     fn test_transaction_operations() -> Result<()> {
+-        let temp_dir = tempdir().unwrap();
+-        let manager = FileManager::new(temp_dir.path().to_string_lossy().to_string());
++        let test_dir = TestDirectory::new()?;
++        let manager = FileManager::new(test_dir.path().to_string_lossy().to_string());
+ 
+         // トランザクション内での操作
+         let manager = manager.begin_transaction()?
+diff --git a/src/fs/mod.rs b/src/fs/mod.rs
+index 734163e..f39f38d 100644
+--- a/src/fs/mod.rs
++++ b/src/fs/mod.rs
+@@ -1,8 +1,13 @@
+ pub mod backup;
+ pub mod core;
++pub mod error;
+ pub mod manager;
++pub mod path;
+ pub mod transaction;
+ 
++#[cfg(test)]
++pub mod tests;
++
+ pub use core::{
+     ensure_directory,
+     ensure_file,
+@@ -17,13 +22,19 @@ pub use core::{
+     check_permissions,
+ };
+ 
+-pub use crate::error::fs::{
+-    not_found_error as create_not_found_error,
+-    io_error as create_io_error,
+-    permission_error as create_permission_error,
+-    invalid_path_error as create_invalid_path_error,
+-    transaction_error as create_transaction_error,
+-    backup_error as create_backup_error,
+-    validation_error as create_validation_error,
+-    fs_error as create_other_error,
++pub use path::{
++    normalize_path,
++    validate_path,
++    ensure_path_exists,
++};
++
++pub use error::{
++    not_found_error,
++    io_error,
++    permission_error,
++    invalid_path_error,
++    transaction_error,
++    backup_error,
++    validation_error,
++    ErrorExt,
+ }; 
+\ No newline at end of file
+diff --git a/src/fs/transaction.rs b/src/fs/transaction.rs
+index b262c9b..0dfb8ab 100644
+--- a/src/fs/transaction.rs
++++ b/src/fs/transaction.rs
+@@ -1,13 +1,14 @@
+ use std::path::{Path, PathBuf};
+ use std::sync::Arc;
+-use anyhow::Error;
+-use crate::error::fs::io_error as create_io_error;
++use anyhow::{Error, Result};
++use crate::fs::error::{io_error, transaction_error, validation_error, ErrorExt};
++use crate::fs::path::ensure_path_exists;
+ 
+ pub trait FileOperation: Send + Sync + std::fmt::Debug {
+-    fn execute(&self) -> Result<(), Error>;
+-    fn rollback(&self) -> Result<(), Error>;
++    fn execute(&self) -> Result<()>;
++    fn rollback(&self) -> Result<()>;
+     fn description(&self) -> String;
+-    fn validate(&self) -> Result<(), Error>;
++    fn validate(&self) -> Result<()>;
+ }
+ 
+ #[derive(Debug, Clone)]
+@@ -53,17 +54,11 @@ impl FileTransaction {
+         }
+     }
+ 
+-    pub fn apply_transition(self, transition: TransactionTransition) -> Result<Self, Error> {
++    pub fn apply_transition(self, transition: TransactionTransition) -> Result<Self> {
+         match (self.state.clone(), transition.clone()) {
+             (TransactionState::Pending, TransactionTransition::AddOperation(op)) => {
+                 if let Err(e) = op.validate() {
+-                    return Err(create_io_error(
+-                        std::io::Error::new(
+-                            std::io::ErrorKind::InvalidInput,
+-                            format!("操作の検証に失敗: {}", e)
+-                        ),
+-                        "操作の検証に失敗"
+-                    ));
++                    return Err(validation_error(format!("操作の検証に失敗: {}", e)));
+                 }
+ 
+                 let operations = Arc::new(
+@@ -104,31 +99,21 @@ impl FileTransaction {
+                 })
+             },
+             (state, transition) => {
+-                let error = create_io_error(
+-                    std::io::Error::new(
+-                        std::io::ErrorKind::InvalidInput,
+-                        format!("無効な状態遷移: {:?} -> {:?}", state, transition)
+-                    ),
+-                    "トランザクション状態遷移エラー"
+-                );
+-                Ok(Self {
+-                    operations: self.operations,
+-                    state: TransactionState::Failed(Arc::new(error))
+-                })
++                Err(transaction_error(format!("無効な状態遷移: {:?} -> {:?}", state, transition)))
+             }
+         }
+     }
+ 
+     // 公開APIメソッド
+-    pub fn with_operation(self, operation: Arc<dyn FileOperation>) -> Result<Self, Error> {
++    pub fn with_operation(self, operation: Arc<dyn FileOperation>) -> Result<Self> {
+         self.apply_transition(TransactionTransition::AddOperation(operation))
+     }
+ 
+-    pub fn execute(self) -> Result<Self, Error> {
++    pub fn execute(self) -> Result<Self> {
+         self.apply_transition(TransactionTransition::Execute)
+     }
+ 
+-    pub fn rollback(self) -> Result<Self, Error> {
++    pub fn rollback(self) -> Result<Self> {
+         self.apply_transition(TransactionTransition::Rollback)
+     }
+ 
+@@ -141,7 +126,7 @@ impl FileTransaction {
+     }
+ 
+     // トランザクションの合成メソッド
+-    pub fn combine(self, other: Self) -> Result<Self, Error> {
++    pub fn combine(self, other: Self) -> Result<Self> {
+         match (self.state.clone(), other.state) {
+             (TransactionState::Pending, TransactionState::Pending) => {
+                 let operations = Arc::new(
+@@ -156,17 +141,7 @@ impl FileTransaction {
+                 })
+             },
+             _ => {
+-                let error = create_io_error(
+-                    std::io::Error::new(
+-                        std::io::ErrorKind::InvalidInput,
+-                        "トランザクションの合成は保留状態でのみ可能です"
+-                    ),
+-                    "トランザクション合成エラー"
+-                );
+-                Ok(Self {
+-                    operations: self.operations,
+-                    state: TransactionState::Failed(Arc::new(error))
+-                })
++                Err(transaction_error("トランザクションの合成は保留状態でのみ可能です"))
+             }
+         }
+     }
+@@ -189,19 +164,18 @@ impl CreateFileOperation {
+ }
+ 
+ impl FileOperation for CreateFileOperation {
+-    fn execute(&self) -> Result<(), Error> {
++    fn execute(&self) -> Result<()> {
+         if let Some(parent) = self.path.parent() {
+-            std::fs::create_dir_all(parent)
+-                .map_err(|e| create_io_error(e, format!("ディレクトリの作成に失敗: {}", parent.display())))?;
++            ensure_path_exists(parent)?;
+         }
+         std::fs::write(&*self.path, &*self.content)
+-            .map_err(|e| create_io_error(e, format!("ファイルの書き込みに失敗: {}", self.path.display())))
++            .with_context_io(format!("ファイルの書き込みに失敗: {}", self.path.display()))
+     }
+ 
+-    fn rollback(&self) -> Result<(), Error> {
++    fn rollback(&self) -> Result<()> {
+         if self.path.exists() {
+             std::fs::remove_file(&*self.path)
+-                .map_err(|e| create_io_error(e, format!("ファイルの削除に失敗: {}", self.path.display())))?;
++                .with_context_io(format!("ファイルの削除に失敗: {}", self.path.display()))?;
+         }
+         Ok(())
+     }
+@@ -210,15 +184,9 @@ impl FileOperation for CreateFileOperation {
+         format!("ファイル作成: {}", self.path.display())
+     }
+ 
+-    fn validate(&self) -> Result<(), Error> {
++    fn validate(&self) -> Result<()> {
+         if self.path.exists() {
+-            return Err(create_io_error(
+-                std::io::Error::new(
+-                    std::io::ErrorKind::AlreadyExists,
+-                    format!("ファイルが既に存在します: {}", self.path.display())
+-                ),
+-                "ファイル作成の検証に失敗"
+-            ));
++            return Err(validation_error(format!("ファイルが既に存在します: {}", self.path.display())));
+         }
+         Ok(())
+     }
+@@ -231,10 +199,10 @@ pub struct DeleteFileOperation {
+ }
+ 
+ impl DeleteFileOperation {
+-    pub fn new(path: PathBuf) -> Result<Self, Error> {
++    pub fn new(path: PathBuf) -> Result<Self> {
+         let original_content = if path.exists() {
+             Some(Arc::new(std::fs::read_to_string(&path)
+-                .map_err(|e| create_io_error(e, format!("ファイルの読み込みに失敗: {}", path.display())))?))
++                .with_context_io(format!("ファイルの読み込みに失敗: {}", path.display()))?))
+         } else {
+             None
+         };
+@@ -247,22 +215,21 @@ impl DeleteFileOperation {
+ }
+ 
+ impl FileOperation for DeleteFileOperation {
+-    fn execute(&self) -> Result<(), Error> {
++    fn execute(&self) -> Result<()> {
+         if self.path.exists() {
+             std::fs::remove_file(&*self.path)
+-                .map_err(|e| create_io_error(e, format!("ファイルの削除に失敗: {}", self.path.display())))?;
++                .with_context_io(format!("ファイルの削除に失敗: {}", self.path.display()))?;
+         }
+         Ok(())
+     }
+ 
+-    fn rollback(&self) -> Result<(), Error> {
++    fn rollback(&self) -> Result<()> {
+         if let Some(content) = &self.original_content {
+             if let Some(parent) = self.path.parent() {
+-                std::fs::create_dir_all(parent)
+-                    .map_err(|e| create_io_error(e, format!("ディレクトリの作成に失敗: {}", parent.display())))?;
++                ensure_path_exists(parent)?;
+             }
+             std::fs::write(&*self.path, &**content)
+-                .map_err(|e| create_io_error(e, format!("ファイルの復元に失敗: {}", self.path.display())))?;
++                .with_context_io(format!("ファイルの復元に失敗: {}", self.path.display()))?;
+         }
+         Ok(())
+     }
+@@ -271,16 +238,75 @@ impl FileOperation for DeleteFileOperation {
+         format!("ファイル削除: {}", self.path.display())
+     }
+ 
+-    fn validate(&self) -> Result<(), Error> {
++    fn validate(&self) -> Result<()> {
+         if !self.path.exists() {
+-            return Err(create_io_error(
+-                std::io::Error::new(
+-                    std::io::ErrorKind::NotFound,
+-                    format!("ファイルが存在しません: {}", self.path.display())
+-                ),
+-                "ファイル削除の検証に失敗"
+-            ));
++            return Err(validation_error(format!("ファイルが存在しません: {}", self.path.display())));
+         }
++        Ok(())
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::fs::tests::TestDirectory;
++
++    #[test]
++    fn test_file_operations() -> Result<()> {
++        let test_dir = TestDirectory::new()?;
++        
++        // CreateFileOperationのテスト
++        let file_path = test_dir.path().join("test.txt");
++        let create_op = CreateFileOperation::new(file_path.clone(), "Hello, World!".to_string());
++        
++        create_op.execute()?;
++        assert!(file_path.exists());
++        assert_eq!(std::fs::read_to_string(&file_path)?, "Hello, World!");
++        
++        create_op.rollback()?;
++        assert!(!file_path.exists());
++        
++        // DeleteFileOperationのテスト
++        std::fs::write(&file_path, "Test content")?;
++        let delete_op = DeleteFileOperation::new(file_path.clone())?;
++        
++        delete_op.execute()?;
++        assert!(!file_path.exists());
++        
++        delete_op.rollback()?;
++        assert!(file_path.exists());
++        assert_eq!(std::fs::read_to_string(&file_path)?, "Test content");
++        
++        Ok(())
++    }
++
++    #[test]
++    fn test_transaction() -> Result<()> {
++        let test_dir = TestDirectory::new()?;
++        let file1_path = test_dir.path().join("file1.txt");
++        let file2_path = test_dir.path().join("file2.txt");
++        
++        let mut transaction = FileTransaction::new();
++        
++        // 操作の追加
++        transaction = transaction.with_operation(Arc::new(
++            CreateFileOperation::new(file1_path.clone(), "File 1".to_string())
++        ))?;
++        
++        transaction = transaction.with_operation(Arc::new(
++            CreateFileOperation::new(file2_path.clone(), "File 2".to_string())
++        ))?;
++        
++        // トランザクションの実行
++        transaction = transaction.execute()?;
++        assert!(file1_path.exists());
++        assert!(file2_path.exists());
++        
++        // ロールバック
++        transaction = transaction.rollback()?;
++        assert!(!file1_path.exists());
++        assert!(!file2_path.exists());
++        
+         Ok(())
+     }
+ } 
