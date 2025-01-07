@@ -10,17 +10,17 @@ pub fn not_found_err(path: impl Into<String>) -> Error {
         .context("設定ファイルの存在を確認してください")
 }
 
-pub fn invalid_format_err(message: impl Into<String>) -> Error {
-    Error::msg(format!("設定ファイルの形式が不正です: {}", message.into()))
+pub fn parse_err(error: impl Into<String>) -> Error {
+    Error::msg(format!("設定ファイルのパースに失敗しました: {}", error.into()))
         .context("設定ファイルの形式を確認してください")
 }
 
-pub fn invalid_value_err(message: impl Into<String>) -> Error {
-    Error::msg(format!("設定値が不正です: {}", message.into()))
+pub fn validation_err(error: impl Into<String>) -> Error {
+    Error::msg(format!("設定値の検証に失敗しました: {}", error.into()))
         .context("設定値を確認してください")
 }
 
-pub fn io_err(error: std::io::Error, message: impl Into<String>) -> Error {
-    error.context(message.into())
-        .context("設定ファイルのI/O操作に失敗しました")
+pub fn invalid_value_err(key: impl Into<String>, value: impl Into<String>) -> Error {
+    Error::msg(format!("無効な設定値: {} = {}", key.into(), value.into()))
+        .context("設定値の形式を確認してください")
 } 

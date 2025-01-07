@@ -27,44 +27,44 @@ macro_rules! create_error {
 
 /// ファイルシステムエラーを作成するマクロ
 #[macro_export]
-macro_rules! fs_error {
-    ($message:expr, $context:expr) => {
-        create_error!($message, $context)
+macro_rules! fs_err {
+    ($msg:expr) => {
+        anyhow::Error::msg($msg).context("ファイルシステムエラー")
     };
-    ($message:expr, $context:expr, $hint:expr) => {
-        create_error!($message, $context, $hint)
+    ($fmt:expr, $($arg:tt)*) => {
+        anyhow::Error::msg(format!($fmt, $($arg)*)).context("ファイルシステムエラー")
     };
 }
 
 /// コンテストエラーを作成するマクロ
 #[macro_export]
-macro_rules! contest_error {
-    ($message:expr, $context:expr) => {
-        create_error!($message, $context)
+macro_rules! contest_err {
+    ($msg:expr) => {
+        anyhow::Error::msg($msg).context("コンテストエラー")
     };
-    ($message:expr, $context:expr, $hint:expr) => {
-        create_error!($message, $context, $hint)
+    ($fmt:expr, $($arg:tt)*) => {
+        anyhow::Error::msg(format!($fmt, $($arg)*)).context("コンテストエラー")
     };
 }
 
 /// 設定エラーを作成するマクロ
 #[macro_export]
-macro_rules! config_error {
-    ($message:expr, $context:expr) => {
-        create_error!($message, $context)
+macro_rules! config_err {
+    ($msg:expr) => {
+        anyhow::Error::msg($msg).context("設定エラー")
     };
-    ($message:expr, $context:expr, $hint:expr) => {
-        create_error!($message, $context, $hint)
+    ($fmt:expr, $($arg:tt)*) => {
+        anyhow::Error::msg(format!($fmt, $($arg)*)).context("設定エラー")
     };
 }
 
 /// Dockerエラーを作成するマクロ
 #[macro_export]
-macro_rules! docker_error {
-    ($message:expr, $context:expr) => {
-        create_error!($message, $context)
+macro_rules! docker_err {
+    ($msg:expr) => {
+        anyhow::Error::msg($msg).context("Dockerエラー")
     };
-    ($message:expr, $context:expr, $hint:expr) => {
-        create_error!($message, $context, $hint)
+    ($fmt:expr, $($arg:tt)*) => {
+        anyhow::Error::msg(format!($fmt, $($arg)*)).context("Dockerエラー")
     };
 } 
