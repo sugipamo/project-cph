@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// ファイルシステム操作の結果を表す型
 pub type Result<T> = anyhow::Result<T>;
