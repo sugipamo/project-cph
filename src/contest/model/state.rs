@@ -39,6 +39,16 @@ pub struct ValidatedState {
     pub(crate) source_path: Arc<PathBuf>,
 }
 
+// 状態遷移の型安全性を向上させるための新しい型
+#[derive(Debug, Clone)]
+pub enum StateTransition {
+    SetSite(String),
+    SetContestId(String),
+    SetProblemId(String),
+    SetLanguage(String),
+    SetSourcePath(PathBuf),
+}
+
 impl ContestState {
     pub fn new() -> Self {
         Self {
@@ -70,29 +80,54 @@ impl ContestState {
         self.source_path.as_ref().map(|p| p.as_ref())
     }
 
+    // 型安全な状態遷移メソッドを追加
+    pub fn apply_transition(self, transition: StateTransition) -> Self {
+        match transition {
+            StateTransition::SetSite(site) => self.with_site(site),
+            StateTransition::SetContestId(id) => self.with_contest_id(id),
+            StateTransition::SetProblemId(id) => self.with_problem_id(id),
+            StateTransition::SetLanguage(lang) => self.with_language(lang),
+            StateTransition::SetSourcePath(path) => self.with_source_path(path),
+        }
+    }
+
+    // バリデーション機能を強化
     pub fn validate(&self) -> Result<ValidatedState> {
-        if self.site.is_none() {
-            return Err(contest_error(ContestErrorKind::NotFound, "サイトが指定されていません"));
+        let site = self.site.clone()
+            .ok_or_else(|| contest_error(ContestErrorKind::NotFound, "サイトが指定されていません"))?;
+        
+        let contest_id = self.contest_id.clone()
+            .ok_or_else(|| contest_error(ContestErrorKind::NotFound, "コンテストIDが指定されていません"))?;
+        
+        let problem_id = self.problem_id.clone()
+            .ok_or_else(|| contest_error(ContestErrorKind::NotFound, "問題IDが指定されていません"))?;
+        
+        let language = self.language.clone()
+            .ok_or_else(|| contest_error(ContestErrorKind::NotFound, "言語が指定されていません"))?;
+        
+        let source_path = self.source_path.clone()
+            .ok_or_else(|| contest_error(ContestErrorKind::NotFound, "ソースパスが指定されていません"))?;
+
+        // 追加のバリデーションルール
+        if site.is_empty() {
+            return Err(contest_error(ContestErrorKind::Invalid, "サイトが空です"));
         }
-        if self.contest_id.is_none() {
-            return Err(contest_error(ContestErrorKind::NotFound, "コンテストIDが指定されていません"));
+        if contest_id.is_empty() {
+            return Err(contest_error(ContestErrorKind::Invalid, "コンテストIDが空です"));
         }
-        if self.problem_id.is_none() {
-            return Err(contest_error(ContestErrorKind::NotFound, "問題IDが指定されていません"));
+        if problem_id.is_empty() {
+            return Err(contest_error(ContestErrorKind::Invalid, "問題IDが空です"));
         }
-        if self.language.is_none() {
-            return Err(contest_error(ContestErrorKind::NotFound, "言語が指定されていません"));
-        }
-        if self.source_path.is_none() {
-            return Err(contest_error(ContestErrorKind::NotFound, "ソースパスが指定されていません"));
+        if language.is_empty() {
+            return Err(contest_error(ContestErrorKind::Invalid, "言語が空です"));
         }
 
         Ok(ValidatedState {
-            site: Arc::clone(self.site.as_ref().unwrap()),
-            contest_id: Arc::clone(self.contest_id.as_ref().unwrap()),
-            problem_id: Arc::clone(self.problem_id.as_ref().unwrap()),
-            language: Arc::clone(self.language.as_ref().unwrap()),
-            source_path: Arc::clone(self.source_path.as_ref().unwrap()),
+            site,
+            contest_id,
+            problem_id,
+            language,
+            source_path,
         })
     }
 
@@ -141,5 +176,18 @@ impl ValidatedState {
 
     pub fn source_path(&self) -> &PathBuf {
         &self.source_path
+    }
+
+    // 新しいメソッド：状態の変更を試みる（新しいValidatedStateを返す）
+    pub fn try_update(&self, transition: StateTransition) -> Result<ValidatedState> {
+        let mut new_state = ContestState::new()
+            .with_site(self.site.as_ref().clone())
+            .with_contest_id(self.contest_id.as_ref().clone())
+            .with_problem_id(self.problem_id.as_ref().clone())
+            .with_language(self.language.as_ref().clone())
+            .with_source_path(self.source_path.as_ref().clone());
+
+        new_state = new_state.apply_transition(transition);
+        new_state.validate()
     }
 } 

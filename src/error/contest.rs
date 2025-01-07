@@ -1,20 +1,15 @@
 use std::fmt;
 use crate::error::{Error, ErrorKind, ErrorSeverity};
 
-pub fn contest_err(error: impl Into<String>, message: impl Into<String>) -> Error {
-    Error::new(
-        ContestErrorKind::Other(error.into()),
-        message
-    ).with_hint("コンテストの操作に失敗しました")
-}
-
 #[derive(Debug, Clone)]
 pub enum ContestErrorKind {
     NotFound,
+    Invalid,
     InvalidLanguage,
-    InvalidTestCase,
     InvalidUrl,
     Parse,
+    IO,
+    Docker,
     Other(String),
 }
 
@@ -31,11 +26,18 @@ impl fmt::Display for ContestErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::NotFound => write!(f, "リソースが見つかりません"),
+            Self::Invalid => write!(f, "入力値が不正です"),
             Self::InvalidLanguage => write!(f, "サポートされていない言語です"),
-            Self::InvalidTestCase => write!(f, "テストケースが不正です"),
             Self::InvalidUrl => write!(f, "URLの形式が正しくありません"),
             Self::Parse => write!(f, "パースに失敗しました"),
+            Self::IO => write!(f, "I/Oエラーが発生しました"),
+            Self::Docker => write!(f, "Dockerの操作に失敗しました"),
             Self::Other(s) => write!(f, "{}", s),
         }
     }
+}
+
+pub fn contest_error(kind: ContestErrorKind, message: impl Into<String>) -> Error {
+    Error::new(kind, message)
+        .with_hint("コンテストの操作に失敗しました")
 } 

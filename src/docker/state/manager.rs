@@ -3,7 +3,6 @@ use tokio::sync::RwLock;
 use crate::error::Result;
 use super::ContainerState;
 use crate::docker::error::state_err;
-use crate::docker::state::operations;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -14,7 +13,7 @@ pub struct ContainerStateManager {
 impl ContainerStateManager {
     pub fn new() -> Self {
         Self {
-            state: Arc::new(RwLock::new(ContainerState::Initial)),
+            state: Arc::new(RwLock::new(ContainerState::new())),
         }
     }
 
@@ -24,28 +23,56 @@ impl ContainerStateManager {
 
     pub async fn create_container(&self, container_id: String) -> Result<()> {
         let current_state = self.get_current_state().await;
-        let new_state = operations::create_container(&current_state, container_id).await?;
-        *self.state.write().await = new_state;
+        if !matches!(current_state, ContainerState::Initial) {
+            return Err(state_err(
+                "状態遷移",
+                format!("無効な状態からの作成遷移: {}", current_state)
+            ));
+        }
+        *self.state.write().await = ContainerState::create(container_id);
         Ok(())
     }
 
     pub async fn start_container(&self) -> Result<()> {
         let current_state = self.get_current_state().await;
-        let new_state = operations::start_container(&current_state).await?;
+        let new_state = current_state.start()
+            .ok_or_else(|| state_err(
+                "状態遷移",
+                format!("無効な状態からの開始遷移: {}", current_state)
+            ))?;
+        *self.state.write().await = new_state;
+        Ok(())
+    }
+
+    pub async fn execute_command(&self, command: String) -> Result<()> {
+        let current_state = self.get_current_state().await;
+        let new_state = current_state.execute(command)
+            .ok_or_else(|| state_err(
+                "状態遷移",
+                format!("無効な状態からのコマンド実行遷移: {}", current_state)
+            ))?;
         *self.state.write().await = new_state;
         Ok(())
     }
 
     pub async fn stop_container(&self) -> Result<()> {
         let current_state = self.get_current_state().await;
-        let new_state = operations::stop_container(&current_state).await?;
+        let new_state = current_state.stop()
+            .ok_or_else(|| state_err(
+                "状態遷移",
+                format!("無効な状態からの停止遷移: {}", current_state)
+            ))?;
         *self.state.write().await = new_state;
         Ok(())
     }
 
-    pub async fn fail_container(&self, container_id: String, error: String) -> Result<()> {
+    pub async fn fail_container(&self, error: String) -> Result<()> {
         let current_state = self.get_current_state().await;
-        let new_state = operations::fail_container(&current_state, container_id, error).await?;
+        let new_state = current_state.fail(error)
+            .ok_or_else(|| state_err(
+                "状態遷移",
+                format!("無効な状態からの失敗遷移: {}", current_state)
+            ))?;
         *self.state.write().await = new_state;
         Ok(())
     }
@@ -58,31 +85,36 @@ impl ContainerStateManager {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct StateManager {
-    states: HashMap<String, ContainerState>,
+    states: Arc<RwLock<HashMap<Arc<String>, ContainerState>>>,
 }
 
 impl StateManager {
     pub fn new() -> Self {
         Self {
-            states: HashMap::new(),
+            states: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
-    pub fn get_state(&self, container_id: &str) -> Option<&ContainerState> {
-        self.states.get(container_id)
+    pub async fn get_state(&self, container_id: &str) -> Option<ContainerState> {
+        self.states.read().await
+            .get(&Arc::new(container_id.to_string()))
+            .cloned()
     }
 
-    pub fn set_state(&mut self, container_id: String, state: ContainerState) {
-        self.states.insert(container_id, state);
+    pub async fn set_state(&self, container_id: String, state: ContainerState) {
+        self.states.write().await
+            .insert(Arc::new(container_id), state);
     }
 
-    pub fn remove_state(&mut self, container_id: &str) {
-        self.states.remove(container_id);
+    pub async fn remove_state(&self, container_id: &str) {
+        self.states.write().await
+            .remove(&Arc::new(container_id.to_string()));
     }
 
-    pub fn get_container_id(&self) -> Result<String> {
-        self.states
+    pub async fn get_container_id(&self) -> Result<String> {
+        self.states.read().await
             .keys()
             .next()
             .map(|s| s.to_string())

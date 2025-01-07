@@ -1,62 +1,102 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use crate::error::Result;
-use crate::fs::error::{io_err, not_found_err};
+use crate::fs::error::{io_err, not_found_err, invalid_path_err};
 
+#[derive(Debug, Clone)]
 pub struct FileManager {
-    root: String,
+    root: Arc<PathBuf>,
 }
 
 impl FileManager {
-    pub fn new(root: impl Into<String>) -> Self {
+    pub fn new(root: impl Into<PathBuf>) -> Self {
         Self {
-            root: root.into(),
+            root: Arc::new(root.into()),
         }
     }
 
-    pub fn read_file(&self, path: impl AsRef<Path>) -> Result<String> {
+    // パスの正規化と検証を行うヘルパーメソッド
+    fn normalize_path(&self, path: impl AsRef<Path>) -> Result<PathBuf> {
         let path = path.as_ref();
-        if !path.exists() {
-            return Err(not_found_err(path.to_string_lossy().to_string()));
+        
+        // 絶対パスの場合はエラー
+        if path.is_absolute() {
+            return Err(invalid_path_err(format!(
+                "絶対パスは使用できません: {}",
+                path.display()
+            )));
         }
-        std::fs::read_to_string(path)
+
+        // パスのトラバーサルを防ぐ
+        let normalized = path.components()
+            .fold(Ok(PathBuf::new()), |acc, component| {
+                let mut path = acc?;
+                match component {
+                    std::path::Component::ParentDir => {
+                        if path.pop() {
+                            Ok(path)
+                        } else {
+                            Err(invalid_path_err(format!(
+                                "パスが親ディレクトリを超えて遡ることはできません: {}",
+                                path.display()
+                            )))
+                        }
+                    },
+                    std::path::Component::Normal(name) => {
+                        path.push(name);
+                        Ok(path)
+                    },
+                    _ => Ok(path),
+                }
+            })?;
+
+        Ok(self.root.join(normalized))
+    }
+
+    pub fn read_file(&self, path: impl AsRef<Path>) -> Result<String> {
+        let path = self.normalize_path(path)?;
+        if !path.exists() {
+            return Err(not_found_err(format!(
+                "ファイルが見つかりません: {}",
+                path.display()
+            )));
+        }
+        std::fs::read_to_string(&path)
             .map_err(|e| io_err(e, format!("ファイルの読み込みに失敗: {}", path.display())))
     }
 
     pub fn write_file(&self, path: impl AsRef<Path>, content: impl AsRef<str>) -> Result<()> {
-        let path = path.as_ref();
+        let path = self.normalize_path(path)?;
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)
                 .map_err(|e| io_err(e, format!("ディレクトリの作成に失敗: {}", parent.display())))?;
         }
-        std::fs::write(path, content.as_ref())
+        std::fs::write(&path, content.as_ref())
             .map_err(|e| io_err(e, format!("ファイルの書き込みに失敗: {}", path.display())))
     }
 
-    pub fn create_dir(&self, path: impl AsRef<Path>) -> Result<()> {
-        let path = path.as_ref();
-        if path.exists() {
-            return Ok(());
-        }
-        std::fs::create_dir_all(path)
-            .map_err(|e| io_err(e, format!("ディレクトリの作成に失敗: {}", path.display())))
-    }
-
-    pub fn remove_file(&self, path: impl AsRef<Path>) -> Result<()> {
-        let path = path.as_ref();
+    pub fn delete_file(&self, path: impl AsRef<Path>) -> Result<()> {
+        let path = self.normalize_path(path)?;
         if !path.exists() {
             return Ok(());
         }
-        std::fs::remove_file(path)
+        std::fs::remove_file(&path)
             .map_err(|e| io_err(e, format!("ファイルの削除に失敗: {}", path.display())))
     }
 
-    pub fn remove_dir(&self, path: impl AsRef<Path>) -> Result<()> {
-        let path = path.as_ref();
-        if !path.exists() {
-            return Ok(());
-        }
-        std::fs::remove_dir_all(path)
-            .map_err(|e| io_err(e, format!("ディレクトリの削除に失敗: {}", path.display())))
+    pub fn create_dir(&self, path: impl AsRef<Path>) -> Result<()> {
+        let path = self.normalize_path(path)?;
+        std::fs::create_dir_all(&path)
+            .map_err(|e| io_err(e, format!("ディレクトリの作成に失敗: {}", path.display())))
+    }
+
+    pub fn exists(&self, path: impl AsRef<Path>) -> Result<bool> {
+        let path = self.normalize_path(path)?;
+        Ok(path.exists())
+    }
+
+    pub fn root_path(&self) -> &Path {
+        self.root.as_ref()
     }
 }
 
@@ -80,7 +120,7 @@ mod tests {
         assert_eq!(content, "Hello, World!");
 
         // ファイルの削除
-        manager.remove_file(&test_file)?;
+        manager.delete_file(&test_file)?;
         assert!(!test_file.exists());
 
         // ディレクトリの作成
@@ -89,7 +129,7 @@ mod tests {
         assert!(test_dir.exists());
 
         // ディレクトリの削除
-        manager.remove_dir(&test_dir)?;
+        manager.delete_file(&test_dir)?;
         assert!(!test_dir.exists());
 
         Ok(())

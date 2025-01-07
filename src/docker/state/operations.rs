@@ -1,4 +1,5 @@
 use std::time::Instant;
+use std::sync::Arc;
 use crate::error::Result;
 use super::ContainerState;
 use crate::docker::error::state_err;
@@ -22,9 +23,9 @@ pub async fn fail_container(current_state: &ContainerState, container_id: String
         },
         _ => {
             Ok(ContainerState::Failed {
-                container_id,
-                error,
-                occurred_at: Instant::now(),
+                container_id: Arc::new(container_id),
+                error: Arc::new(error),
+                occurred_at: Arc::new(Instant::now()),
             })
         }
     }
@@ -34,8 +35,8 @@ pub async fn create_container(current_state: &ContainerState, container_id: Stri
     match current_state {
         ContainerState::Initial => {
             Ok(ContainerState::Created {
-                container_id,
-                created_at: Instant::now(),
+                container_id: Arc::new(container_id),
+                created_at: Arc::new(Instant::now()),
             })
         },
         _ => {
@@ -51,8 +52,8 @@ pub async fn start_container(current_state: &ContainerState) -> Result<Container
     match current_state {
         ContainerState::Created { container_id, .. } => {
             Ok(ContainerState::Running {
-                container_id: container_id.clone(),
-                started_at: Instant::now(),
+                container_id: Arc::clone(container_id),
+                started_at: Arc::new(Instant::now()),
             })
         },
         _ => {
@@ -69,8 +70,8 @@ pub async fn stop_container(current_state: &ContainerState) -> Result<ContainerS
         ContainerState::Running { container_id, .. } |
         ContainerState::Executing { container_id, .. } => {
             Ok(ContainerState::Stopped {
-                container_id: container_id.clone(),
-                stopped_at: Instant::now(),
+                container_id: Arc::clone(container_id),
+                stopped_at: Arc::new(Instant::now()),
                 exit_status: None,
             })
         },
