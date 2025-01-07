@@ -1,7 +1,9 @@
+use std::path::PathBuf;
 use crate::error::Result;
 use crate::error::contest::ContestErrorKind;
 use crate::contest::error::contest_error;
-use crate::contest::model::Contest;
+use crate::contest::model::{Contest, TestCase};
+use crate::fs::manager::FileManager;
 
 #[derive(Clone)]
 pub struct ContestService {
@@ -10,6 +12,7 @@ pub struct ContestService {
     problem_id: Option<String>,
     language: Option<String>,
     url: Option<String>,
+    file_manager: Option<FileManager>,
 }
 
 impl ContestService {
@@ -20,6 +23,7 @@ impl ContestService {
             problem_id: None,
             language: None,
             url: None,
+            file_manager: None,
         }
     }
 
@@ -95,6 +99,16 @@ impl ContestService {
         Ok(())
     }
 
+    pub fn validate_file_manager(&self) -> Result<()> {
+        if self.file_manager.is_none() {
+            return Err(contest_error(
+                ContestErrorKind::NotFound,
+                "FileManagerが設定されていません"
+            ));
+        }
+        Ok(())
+    }
+
     // 全フィールドの一括バリデーション
     pub fn validate_all(&self) -> Result<()> {
         self.validate_site()?;
@@ -102,6 +116,7 @@ impl ContestService {
         self.validate_problem_id()?;
         self.validate_language()?;
         self.validate_url()?;
+        self.validate_file_manager()?;
         Ok(())
     }
 
@@ -141,15 +156,40 @@ impl ContestService {
         }
     }
 
-    pub fn build(self) -> Result<Contest> {
+    pub fn with_file_manager(self, file_manager: FileManager) -> Self {
+        Self {
+            file_manager: Some(file_manager),
+            ..self
+        }
+    }
+
+    pub fn build(self) -> Result<(Contest, FileManager)> {
         self.validate_all()?;
         
-        Ok(Contest::new(
+        let contest = Contest::new(
             self.site.unwrap(),
             self.contest_id.unwrap(),
             self.problem_id.unwrap(),
             self.language.unwrap(),
             self.url.unwrap(),
-        ))
+        );
+
+        let file_manager = self.file_manager.unwrap();
+        let file_manager = contest.create_workspace(file_manager)?;
+
+        Ok((contest, file_manager))
+    }
+
+    pub fn setup_contest(self, template: &str, test_cases: &[TestCase]) -> Result<(Contest, FileManager)> {
+        let (contest, file_manager) = self.build()?;
+        
+        let file_manager = contest.save_template(file_manager, template)?;
+        
+        let mut current_manager = file_manager;
+        for (index, test_case) in test_cases.iter().enumerate() {
+            current_manager = contest.save_test_case(current_manager, test_case, index)?;
+        }
+
+        Ok((contest, current_manager))
     }
 } 

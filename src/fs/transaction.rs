@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use crate::error::Error;
-use crate::fs::error::{io_err, not_found_err};
+use crate::fs::error::io_err;
 
 pub trait FileOperation: Send + Sync + std::fmt::Debug {
     fn execute(&self) -> Result<(), Error>;
@@ -10,55 +10,84 @@ pub trait FileOperation: Send + Sync + std::fmt::Debug {
 }
 
 #[derive(Debug, Clone)]
+pub enum TransactionState {
+    Pending,
+    Executed,
+    RolledBack,
+    Failed(Arc<Error>),
+}
+
+#[derive(Debug, Clone)]
 pub struct FileTransaction {
     operations: Arc<Vec<Arc<dyn FileOperation>>>,
-    executed: bool,
+    state: TransactionState,
 }
 
 impl FileTransaction {
     pub fn new() -> Self {
         Self {
             operations: Arc::new(Vec::new()),
-            executed: false,
+            state: TransactionState::Pending,
         }
     }
 
-    pub fn with_operation(mut self, operation: Arc<dyn FileOperation>) -> Self {
-        let mut operations = Arc::get_mut(&mut self.operations)
-            .expect("FileTransactionのoperationsが他で参照されています")
-            .clone();
-        operations.push(operation);
-        self.operations = Arc::new(operations);
-        self
-    }
-
-    pub fn execute(&mut self) -> Result<(), Error> {
-        if self.executed {
-            return Ok(());
-        }
-
-        for operation in self.operations.iter() {
-            if let Err(e) = operation.execute() {
-                self.rollback()?;
-                return Err(e);
+    pub fn with_operation(self, operation: Arc<dyn FileOperation>) -> Self {
+        match self.state {
+            TransactionState::Pending => {
+                let mut operations = (*self.operations).clone();
+                operations.push(operation);
+                Self {
+                    operations: Arc::new(operations),
+                    state: TransactionState::Pending,
+                }
             }
+            _ => self,
         }
-
-        self.executed = true;
-        Ok(())
     }
 
-    pub fn rollback(&self) -> Result<(), Error> {
-        for operation in self.operations.iter().rev() {
-            if let Err(e) = operation.rollback() {
-                return Err(e);
+    pub fn execute(self) -> Result<Self, Error> {
+        match self.state {
+            TransactionState::Pending => {
+                let transaction = self;
+                for operation in transaction.operations.iter() {
+                    if let Err(e) = operation.execute() {
+                        return Ok(Self {
+                            operations: transaction.operations.clone(),
+                            state: TransactionState::Failed(Arc::new(e)),
+                        }.rollback());
+                    }
+                }
+                Ok(Self {
+                    operations: transaction.operations,
+                    state: TransactionState::Executed,
+                })
             }
+            _ => Ok(self),
         }
-        Ok(())
     }
 
-    pub fn is_executed(&self) -> bool {
-        self.executed
+    pub fn rollback(self) -> Self {
+        match self.state {
+            TransactionState::Executed | TransactionState::Pending => {
+                for operation in self.operations.iter().rev() {
+                    if let Err(e) = operation.rollback() {
+                        return Self {
+                            operations: self.operations.clone(),
+                            state: TransactionState::Failed(Arc::new(e)),
+                        };
+                    }
+                }
+                Self {
+                    operations: self.operations,
+                    state: TransactionState::RolledBack,
+                }
+            }
+            _ => self,
+        }
+    }
+
+    pub fn state(&self) -> &TransactionState {
+        &self.state
     }
 
     pub fn operations(&self) -> &[Arc<dyn FileOperation>] {

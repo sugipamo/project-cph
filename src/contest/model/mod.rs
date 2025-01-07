@@ -1,5 +1,9 @@
 pub mod state;
 
+use std::path::PathBuf;
+use crate::error::Result;
+use crate::fs::manager::FileManager;
+
 #[derive(Debug, Clone)]
 pub struct Contest {
     pub id: String,
@@ -22,6 +26,43 @@ impl Contest {
             problem_id,
             language,
         }
+    }
+
+    pub fn create_workspace(&self, manager: FileManager) -> Result<FileManager> {
+        let workspace_path = PathBuf::from(&self.id);
+        
+        manager.begin_transaction()
+            .create_dir(&workspace_path)?
+            .create_dir(workspace_path.join("src"))?
+            .create_dir(workspace_path.join("test"))?
+            .commit()
+    }
+
+    pub fn save_template(&self, manager: FileManager, template: &str) -> Result<FileManager> {
+        let source_path = PathBuf::from(&self.id).join("src").join("main.rs");
+        
+        manager.begin_transaction()
+            .write_file(&source_path, template)?
+            .commit()
+    }
+
+    pub fn save_test_case(&self, manager: FileManager, test_case: &TestCase, index: usize) -> Result<FileManager> {
+        let test_dir = PathBuf::from(&self.id).join("test");
+        let input_path = test_dir.join(format!("input{}.txt", index));
+        let expected_path = test_dir.join(format!("expected{}.txt", index));
+
+        manager.begin_transaction()
+            .write_file(&input_path, &test_case.input)?
+            .write_file(&expected_path, &test_case.expected)?
+            .commit()
+    }
+
+    pub fn cleanup(&self, manager: FileManager) -> Result<FileManager> {
+        let workspace_path = PathBuf::from(&self.id);
+        
+        manager.begin_transaction()
+            .delete_file(&workspace_path)?
+            .commit()
     }
 }
 

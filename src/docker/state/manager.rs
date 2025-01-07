@@ -3,7 +3,6 @@ use tokio::sync::RwLock;
 use crate::error::Result;
 use super::ContainerState;
 use crate::docker::error::state_err;
-use std::collections::HashMap;
 use super::types::{StateInfo, StateType};
 
 #[derive(Debug, Clone)]
@@ -129,45 +128,5 @@ impl ContainerStateManager {
 
         *self.state.write().await = new_state;
         Ok(())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct StateManager {
-    states: Arc<RwLock<HashMap<Arc<String>, ContainerState>>>,
-}
-
-impl StateManager {
-    pub fn new() -> Self {
-        Self {
-            states: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-
-    pub async fn get_state(&self, container_id: &str) -> Option<ContainerState> {
-        self.states.read().await
-            .get(&Arc::new(container_id.to_string()))
-            .cloned()
-    }
-
-    pub async fn set_state(&self, container_id: String, state: ContainerState) {
-        self.states.write().await
-            .insert(Arc::new(container_id), state);
-    }
-
-    pub async fn remove_state(&self, container_id: &str) {
-        self.states.write().await
-            .remove(&Arc::new(container_id.to_string()));
-    }
-
-    pub async fn get_container_id(&self) -> Result<String> {
-        self.states.read().await
-            .keys()
-            .next()
-            .map(|s| s.to_string())
-            .ok_or_else(|| state_err(
-                "状態管理",
-                "コンテナIDが見つかりません"
-            ))
     }
 } 
