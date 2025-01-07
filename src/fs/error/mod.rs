@@ -1,5 +1,3 @@
-pub mod helpers;
-
 pub use helpers::{
     create_not_found_error,
     create_io_error,
@@ -9,4 +7,6 @@ pub use helpers::{
     create_backup_error,
     create_validation_error,
     create_other_error,
-}; 
+};
+
+mod helpers; 

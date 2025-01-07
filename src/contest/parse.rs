@@ -1,17 +1,8 @@
-use std::error::Error;
 use std::collections::HashMap;
 use serde_yaml::Value;
-use crate::config::{Config, ValueExt};
-use std::path::PathBuf;
+use crate::config::{Config, ConfigError};
 use crate::error::Result;
 use crate::contest::error::contest_error;
-use crate::contest::model::Contest;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct CommandType {
-    pub name: String,
-    pub aliases: Vec<String>,
-}
 
 #[derive(Debug, Clone)]
 pub struct ResolvedCommand {
@@ -19,336 +10,220 @@ pub struct ResolvedCommand {
     pub args: HashMap<String, String>,
 }
 
-#[derive(Debug)]
-pub enum ParseError {
-    InvalidCommand(String),
-    ConfigError(ConfigError),
-    MissingSection(String),
-    EmptyCommand,
-    UnknownCommand(String),
+pub struct CommandResolver {
+    config: Config,
 }
 
-impl std::fmt::Display for ParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ParseError::InvalidCommand(msg) => write!(f, "無効なコマンド: {}", msg),
-            ParseError::ConfigError(err) => write!(f, "設定エラー: {}", err),
-            ParseError::MissingSection(msg) => write!(f, "設定セクションが見つかりません: {}", msg),
-            ParseError::EmptyCommand => write!(f, "コマンドが空です"),
-            ParseError::UnknownCommand(cmd) => write!(f, "未知のコマンド: {}", cmd),
-        }
-    }
-}
-
-impl Error for ParseError {}
-
-impl From<ConfigError> for ParseError {
-    fn from(err: ConfigError) -> Self {
-        ParseError::ConfigError(err)
-    }
-}
-
-pub struct NameResolver {
-    command_aliases: HashMap<String, CommandType>,
-    settings: HashMap<String, Value>,
-}
-
-impl NameResolver {
-    pub fn new(config: &Config) -> Result<Self, ParseError> {
-        let mut command_aliases = HashMap::new();
-        let executions: Value = config.get("executions")
-            .map_err(|_| ParseError::MissingSection("executions".to_string()))?;
-
-        if let Value::Mapping(executions_map) = executions {
-            for (cmd_name, cmd_config) in executions_map {
-                if let (Value::String(name), Value::Mapping(config)) = (cmd_name, cmd_config) {
-                    if let Some(Value::Sequence(aliases)) = config.get("aliases") {
-                        let aliases: Vec<String> = aliases.iter()
-                            .filter_map(|v| v.as_str())
-                            .map(|s| s.to_lowercase())
-                            .collect();
-                        
-                        let command_type = CommandType {
-                            name: name.clone(),
-                            aliases: aliases.clone(),
-                        };
-
-                        // 各エイリアスをマップに登録
-                        for alias in aliases {
-                            command_aliases.insert(alias, command_type.clone());
-                        }
-                    }
-                }
-            }
-        }
-
-        let settings: Value = config.get("settings")
-            .map_err(|_| ParseError::MissingSection("settings".to_string()))?;
-
-        if let Value::Mapping(settings_map) = settings {
-            Ok(Self {
-                command_aliases,
-                settings: settings_map.iter()
-                    .map(|(k, v)| (k.as_str().unwrap_or_default().to_string(), v.clone()))
-                    .collect(),
-            })
-        } else {
-            Err(ParseError::ConfigError(ConfigError::TypeError {
-                expected: "object",
-                found: settings.type_str().to_string(),
-            }))
-        }
-    }
-
-    fn try_resolve_setting(
-        &self,
-        setting: &Value,
-        token: &str,
-    ) -> Result<Option<String>, ParseError> {
-        if let Value::Mapping(setting_map) = setting {
-            // 設定の種類を判断
-            let has_priority = setting_map.contains_key("priority");
-            let has_inner_settings = setting_map.values().any(|v| {
-                if let Value::Mapping(m) = v {
-                    m.contains_key("aliases")
-                } else {
-                    false
-                }
-            });
-
-            if has_priority && !has_inner_settings {
-                // コンテストと問題の場合は直接トークンをマッチング
-                return Ok(Some(token.to_string()));
-            } else {
-                // 言語とサイトの場合はエイリアスをチェック
-                for (name, config) in setting_map {
-                    if let Value::Mapping(config_map) = config {
-                        if let Some(Value::Sequence(aliases)) = config_map.get("aliases") {
-                            let aliases: Vec<String> = aliases.iter()
-                                .filter_map(|v| v.as_str())
-                                .map(|s| s.to_lowercase())
-                                .collect();
-
-                            if aliases.contains(&token.to_lowercase()) {
-                                return Ok(Some(name.as_str().unwrap_or_default().to_string()));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        Ok(None)
-    }
-
-    pub fn parse_command(&self, tokens: &[&str]) -> Result<(CommandType, HashMap<String, String>), ParseError> {
-        if tokens.is_empty() {
-            return Err(ParseError::EmptyCommand);
-        }
-
-        let mut current_pos = 0;
-        let command_type = if let Some(command_type) = self.command_aliases.get(tokens[0]) {
-            current_pos += 1;
-            command_type.clone()
-        } else {
-            return Err(ParseError::UnknownCommand(tokens[0].to_string()));
-        };
-
-        // 残りのトークンを収集
-        let remaining_tokens: Vec<String> = tokens[current_pos..].iter().map(|&s| s.to_string()).collect();
-        let mut args = HashMap::new();
-
-        // 言語とサイトの解決
-        for (_i, token) in remaining_tokens.iter().enumerate() {
-            for (setting_name, setting_value) in &self.settings {
-                if setting_name == "contest" || setting_name == "problem" {
-                    continue;
-                }
-
-                if let Some(resolved_value) = self.try_resolve_setting(
-                    setting_value,
-                    token,
-                )? {
-                    args.insert(setting_name.clone(), resolved_value);
-                    break;
-                }
-            }
-        }
-
-        Ok((command_type, args))
-    }
-
-    pub fn resolve(&self, input: &str) -> Result<ResolvedCommand, ParseError> {
-        if input.is_empty() {
-            return Err(ParseError::EmptyCommand);
-        }
-
-        let tokens: Vec<&str> = input.split_whitespace().collect();
-        let (command_type, args) = self.parse_command(&tokens)?;
-
-        Ok(ResolvedCommand {
-            commands: vec![command_type.name],
-            args,
+impl CommandResolver {
+    pub fn new(config: &Config) -> Result<Self> {
+        Ok(Self {
+            config: config.clone(),
         })
     }
+
+    fn get_executions(&self) -> Result<Vec<String>> {
+        let executions = self.config.get_all("executions")?
+            .into_iter()
+            .filter_map(|node| node.as_typed::<String>().ok())
+            .collect();
+        Ok(executions)
+    }
+
+    fn get_settings(&self) -> Result<HashMap<String, String>> {
+        let settings = self.config.get_all("settings")?
+            .into_iter()
+            .filter_map(|node| {
+                let key = node.key().ok()?;
+                let value = node.as_typed::<String>().ok()?;
+                Some((key, value))
+            })
+            .collect();
+        Ok(settings)
+    }
+
+    fn get_aliases(&self, command: &str) -> Result<Option<String>> {
+        let aliases = self.config.get("aliases")?;
+        let alias = aliases.get(command)
+            .and_then(|node| node.as_typed::<String>().ok());
+        Ok(alias)
+    }
+
+    pub fn parse_command(&self, tokens: &[&str]) -> Result<(CommandType, HashMap<String, String>)> {
+        if tokens.is_empty() {
+            return Err(anyhow::anyhow!("コマンドが空です"));
+        }
+
+        let command = tokens[0].to_lowercase();
+        let args = tokens[1..].iter().map(|s| s.to_string()).collect::<Vec<_>>();
+
+        match command.as_str() {
+            "test" => self.parse_test_command(&args),
+            "login" => self.parse_login_command(&args),
+            _ => Err(anyhow::anyhow!("未知のコマンド: {}", command)),
+        }
+    }
+
+    pub fn resolve(&self, input: &str) -> Result<ResolvedCommand> {
+        let tokens: Vec<_> = input.split_whitespace().collect();
+        if tokens.is_empty() {
+            return Err(anyhow::anyhow!("コマンドが空です"));
+        }
+
+        let (command_type, args) = self.parse_command(&tokens)?;
+        let mut resolved = ResolvedCommand {
+            commands: vec![],
+            args,
+        };
+
+        match command_type {
+            CommandType::Test => {
+                resolved.commands.push("test".to_string());
+            }
+            CommandType::Login => {
+                resolved.commands.push("login".to_string());
+            }
+        }
+
+        Ok(resolved)
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum CommandType {
+    Test,
+    Login,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn create_test_config() -> Config {
-        Config::load_from_file("src/contest/commands.yaml").unwrap()
+    #[test]
+    fn test_basic_command_resolution() {
+        let config = Config::default();
+        let resolver = CommandResolver::new(&config).unwrap();
+
+        let result = resolver.resolve("login").unwrap();
+        assert_eq!(result.commands, vec!["login"]);
     }
 
-    mod command_tests {
-        use super::*;
+    #[test]
+    fn test_alias_resolution() {
+        let config = Config::default();
+        let resolver = CommandResolver::new(&config).unwrap();
 
-        #[test]
-        fn test_single_command() {
-            let config = create_test_config();
-            let resolver = NameResolver::new(&config).unwrap();
+        let result = resolver.resolve("auth").unwrap();
+        assert_eq!(result.commands, vec!["login"]);
 
-            let result = resolver.resolve("login").unwrap();
-            assert_eq!(result.commands, vec!["login"]);
-        }
-
-        #[test]
-        fn test_command_alias() {
-            let config = create_test_config();
-            let resolver = NameResolver::new(&config).unwrap();
-
-            let result = resolver.resolve("auth").unwrap();
-            assert_eq!(result.commands, vec!["login"]);
-
-            let result = resolver.resolve("o").unwrap();
-            assert_eq!(result.commands, vec!["open"]);
-        }
-
-        #[test]
-        fn test_multiple_commands() {
-            let config = create_test_config();
-            let resolver = NameResolver::new(&config).unwrap();
-
-            let result = resolver.resolve("login test").unwrap();
-            assert_eq!(result.commands, vec!["login", "test"]);
-        }
+        let result = resolver.resolve("o").unwrap();
+        assert_eq!(result.commands, vec!["open"]);
     }
 
-    mod argument_tests {
-        use super::*;
+    #[test]
+    fn test_command_with_args() {
+        let config = Config::default();
+        let resolver = CommandResolver::new(&config).unwrap();
 
-        #[test]
-        fn test_language_resolution() {
-            let config = create_test_config();
-            let resolver = NameResolver::new(&config).unwrap();
-
-            // 基本的な言語解決
-            let result = resolver.resolve("test rs abc001 a").unwrap();
-            assert_eq!(result.args.get("language").unwrap(), "rust");
-
-            // 大文字小文字の違いを無視
-            let result = resolver.resolve("test RUST abc001 a").unwrap();
-            assert_eq!(result.args.get("language").unwrap(), "rust");
-
-            // 別のエイリアス
-            let result = resolver.resolve("test python3 abc001 a").unwrap();
-            assert_eq!(result.args.get("language").unwrap(), "python");
-        }
-
-        #[test]
-        fn test_site_resolution() {
-            let config = create_test_config();
-            let resolver = NameResolver::new(&config).unwrap();
-
-            // 基本的なサイト解決
-            let result = resolver.resolve("login ac").unwrap();
-            assert_eq!(result.args.get("site").unwrap(), "atcoder");
-
-            // エイリアスの解決
-            let result = resolver.resolve("login at-coder").unwrap();
-            assert_eq!(result.args.get("site").unwrap(), "atcoder");
-        }
-
-        #[test]
-        fn test_problem_id_resolution() {
-            let config = create_test_config();
-            let resolver = NameResolver::new(&config).unwrap();
-
-            // コンテストと問題の形式
-            let result = resolver.resolve("test abc001 a").unwrap();
-            assert!(result.args.contains_key("contest"));
-            assert!(result.args.contains_key("problem"));
-            assert_eq!(result.args.get("contest").unwrap(), "abc001");
-            assert_eq!(result.args.get("problem").unwrap(), "a");
-
-            // 未解決の場合は問題IDとして扱う
-            let result = resolver.resolve("test other_format").unwrap();
-            assert_eq!(result.args.get("problem_id").unwrap(), "other_format");
-        }
+        let result = resolver.resolve("login test").unwrap();
+        assert_eq!(result.commands, vec!["login", "test"]);
     }
 
-    mod priority_tests {
-        use super::*;
+    #[test]
+    fn test_language_normalization() {
+        let config = Config::default();
+        let resolver = CommandResolver::new(&config).unwrap();
 
-        #[test]
-        fn test_contest_priority() {
-            let config = create_test_config();
-            let resolver = NameResolver::new(&config).unwrap();
+        let result = resolver.resolve("test rs abc001 a").unwrap();
+        assert_eq!(result.args.get("language").unwrap(), "rust");
 
-            let result = resolver.resolve("test abc001 a").unwrap();
-            assert_eq!(result.args.get("contest").unwrap(), "abc001");
-        }
+        let result = resolver.resolve("test RUST abc001 a").unwrap();
+        assert_eq!(result.args.get("language").unwrap(), "rust");
 
-        #[test]
-        fn test_problem_priority() {
-            let config = create_test_config();
-            let resolver = NameResolver::new(&config).unwrap();
+        let result = resolver.resolve("test python3 abc001 a").unwrap();
+        assert_eq!(result.args.get("language").unwrap(), "python");
+    }
 
-            let result = resolver.resolve("test abc001 a").unwrap();
-            assert_eq!(result.args.get("problem").unwrap(), "a");
-        }
+    #[test]
+    fn test_site_normalization() {
+        let config = Config::default();
+        let resolver = CommandResolver::new(&config).unwrap();
 
-        #[test]
-        fn test_multiple_settings_priority() {
-            let config = create_test_config();
-            let resolver = NameResolver::new(&config).unwrap();
+        let result = resolver.resolve("login ac").unwrap();
+        assert_eq!(result.args.get("site").unwrap(), "atcoder");
 
-            let result = resolver.resolve("test rs abc001 a").unwrap();
-            assert!(result.args.contains_key("language"));
-            assert!(result.args.contains_key("contest"));
-            assert!(result.args.contains_key("problem"));
-        }
+        let result = resolver.resolve("login at-coder").unwrap();
+        assert_eq!(result.args.get("site").unwrap(), "atcoder");
+    }
+
+    #[test]
+    fn test_contest_problem_parsing() {
+        let config = Config::default();
+        let resolver = CommandResolver::new(&config).unwrap();
+
+        let result = resolver.resolve("test abc001 a").unwrap();
+        assert!(result.args.contains_key("contest"));
+        assert!(result.args.contains_key("problem"));
+        assert_eq!(result.args.get("contest").unwrap(), "abc001");
+        assert_eq!(result.args.get("problem").unwrap(), "a");
+
+        let result = resolver.resolve("test other_format").unwrap();
+        assert_eq!(result.args.get("problem_id").unwrap(), "other_format");
+    }
+
+    #[test]
+    fn test_contest_id_extraction() {
+        let config = Config::default();
+        let resolver = CommandResolver::new(&config).unwrap();
+
+        let result = resolver.resolve("test abc001 a").unwrap();
+        assert_eq!(result.args.get("contest").unwrap(), "abc001");
+    }
+
+    #[test]
+    fn test_problem_id_extraction() {
+        let config = Config::default();
+        let resolver = CommandResolver::new(&config).unwrap();
+
+        let result = resolver.resolve("test abc001 a").unwrap();
+        assert_eq!(result.args.get("problem").unwrap(), "a");
+    }
+
+    #[test]
+    fn test_full_command_parsing() {
+        let config = Config::default();
+        let resolver = CommandResolver::new(&config).unwrap();
+
+        let result = resolver.resolve("test rs abc001 a").unwrap();
+        assert!(result.args.contains_key("language"));
+        assert!(result.args.contains_key("contest"));
+        assert!(result.args.contains_key("problem"));
     }
 
     mod error_tests {
         use super::*;
 
         #[test]
-        fn test_empty_input() {
-            let config = create_test_config();
-            let resolver = NameResolver::new(&config).unwrap();
+        fn test_invalid_command_format() {
+            let config = Config::default();
+            let resolver = CommandResolver::new(&config).unwrap();
 
-            assert!(matches!(
-                resolver.resolve(""),
-                Err(ParseError::InvalidCommand(_))
-            ));
+            let result = resolver.resolve("");
+            assert!(result.is_err());
         }
 
         #[test]
-        fn test_invalid_command() {
-            let config = create_test_config();
-            let resolver = NameResolver::new(&config).unwrap();
+        fn test_unknown_command() {
+            let config = Config::default();
+            let resolver = CommandResolver::new(&config).unwrap();
 
-            assert!(matches!(
-                resolver.resolve("invalid"),
-                Err(ParseError::InvalidCommand(_))
-            ));
+            let result = resolver.resolve("unknown_command");
+            assert!(result.is_err());
         }
 
         #[test]
         fn test_invalid_site() {
-            let config = create_test_config();
-            let resolver = NameResolver::new(&config).unwrap();
+            let config = Config::default();
+            let resolver = CommandResolver::new(&config).unwrap();
 
             let result = resolver.resolve("login invalid_site").unwrap();
             assert!(!result.args.contains_key("site"));
@@ -356,8 +231,8 @@ mod tests {
 
         #[test]
         fn test_invalid_language() {
-            let config = create_test_config();
-            let resolver = NameResolver::new(&config).unwrap();
+            let config = Config::default();
+            let resolver = CommandResolver::new(&config).unwrap();
 
             let result = resolver.resolve("test invalid_lang abc001_a").unwrap();
             assert!(!result.args.contains_key("language"));
