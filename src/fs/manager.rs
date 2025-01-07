@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use anyhow::Result;
-use crate::fs::error::{io_error, not_found_error, transaction_error, ErrorExt};
+use crate::fs::error::{not_found_error, transaction_error, ErrorExt};
 use crate::fs::path::normalize_path;
 use crate::fs::transaction::{FileTransaction, FileOperation, CreateFileOperation, DeleteFileOperation};
 

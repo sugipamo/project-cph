@@ -1,0 +1,747 @@
+diff --git a/src/fs/core.rs b/src/fs/core.rs
+index ac80669..a4cbfff 100644
+--- a/src/fs/core.rs
++++ b/src/fs/core.rs
+@@ -1,8 +1,6 @@
+ use std::path::{Path, PathBuf};
+-use std::fs;
+ use anyhow::Result;
+-use crate::fs::error::{not_found_error, io_error, permission_error, invalid_path_error, ErrorExt};
+-use crate::fs::path::{validate_path, ensure_path_exists};
++use crate::fs::error::{not_found_error, permission_error, invalid_path_error, ErrorExt};
+ 
+ /// ディレクトリの存在を確認し、存在しない場合は作成します
+ pub fn ensure_directory<P: AsRef<Path>>(path: P) -> Result<PathBuf> {
+diff --git a/src/fs/error/mod.rs b/src/fs/error/mod.rs
+index 1abd5ad..ca477db 100644
+--- a/src/fs/error/mod.rs
++++ b/src/fs/error/mod.rs
+@@ -1,34 +1,49 @@
+ use std::path::Path;
+ use anyhow::{Result, Context, anyhow};
+ 
+-/// ファイルシステム操作に関連するエラーを生成する関数群
++/// エラーメッセージを生成するマクロ
++#[macro_export]
++macro_rules! fs_error {
++    ($kind:ident, $($arg:tt)*) => {
++        anyhow!("{}: {}", stringify!($kind), format!($($arg)*))
++    };
++}
++
++/// パスに関連するエラーメッセージを生成するマクロ
++#[macro_export]
++macro_rules! fs_path_error {
++    ($kind:ident, $path:expr) => {
++        anyhow!("{}: {}", stringify!($kind), $path.as_ref().display())
++    };
++}
+ 
++/// ファイルシステム操作に関連するエラーを生成する関数群
+ pub fn not_found_error(path: impl AsRef<Path>) -> anyhow::Error {
+-    anyhow!("パスが見つかりません: {}", path.as_ref().display())
++    fs_path_error!(NotFound, path)
+ }
+ 
+ pub fn io_error(error: std::io::Error, message: impl Into<String>) -> anyhow::Error {
+-    anyhow!("{}: {}", message.into(), error)
++    fs_error!(IoError, "{}: {}", message.into(), error)
+ }
+ 
+ pub fn permission_error(path: impl AsRef<Path>) -> anyhow::Error {
+-    anyhow!("権限がありません: {}", path.as_ref().display())
++    fs_path_error!(PermissionDenied, path)
+ }
+ 
+ pub fn invalid_path_error(path: impl AsRef<Path>) -> anyhow::Error {
+-    anyhow!("無効なパスです: {}", path.as_ref().display())
++    fs_path_error!(InvalidPath, path)
+ }
+ 
+ pub fn transaction_error(message: impl Into<String>) -> anyhow::Error {
+-    anyhow!("トランザクションエラー: {}", message.into())
++    fs_error!(TransactionError, "{}", message.into())
+ }
+ 
+ pub fn backup_error(message: impl Into<String>) -> anyhow::Error {
+-    anyhow!("バックアップエラー: {}", message.into())
++    fs_error!(BackupError, "{}", message.into())
+ }
+ 
+ pub fn validation_error(message: impl Into<String>) -> anyhow::Error {
+-    anyhow!("検証エラー: {}", message.into())
++    fs_error!(ValidationError, "{}", message.into())
+ }
+ 
+ /// エラー変換のための拡張トレイト
+@@ -37,13 +52,16 @@ pub trait ErrorExt<T> {
+     fn with_context_io(self, message: impl Into<String>) -> Result<T>;
+ }
+ 
+-impl<T, E: std::error::Error + Send + Sync + 'static> ErrorExt<T> for std::result::Result<T, E> {
++impl<T, E> ErrorExt<T> for std::result::Result<T, E>
++where
++    E: std::error::Error + Send + Sync + 'static,
++{
+     fn with_context_path(self, path: impl AsRef<Path>) -> Result<T> {
+-        self.with_context(|| format!("パス: {}", path.as_ref().display()))
++        self.with_context(|| format!("パス操作エラー: {}", path.as_ref().display()))
+     }
+ 
+     fn with_context_io(self, message: impl Into<String>) -> Result<T> {
+-        self.with_context(|| message.into())
++        self.with_context(|| format!("I/Oエラー: {}", message.into()))
+     }
+ }
+ 
+@@ -57,38 +75,47 @@ mod tests {
+         let path = PathBuf::from("/test/path");
+         
+         let err = not_found_error(&path);
++        assert!(err.to_string().contains("NotFound"));
+         assert!(err.to_string().contains("/test/path"));
+         
+         let io_err = std::io::Error::new(std::io::ErrorKind::Other, "test error");
+         let err = io_error(io_err, "Test message");
++        assert!(err.to_string().contains("IoError"));
+         assert!(err.to_string().contains("Test message"));
+         
+         let err = permission_error(&path);
++        assert!(err.to_string().contains("PermissionDenied"));
+         assert!(err.to_string().contains("/test/path"));
+         
+         let err = invalid_path_error(&path);
++        assert!(err.to_string().contains("InvalidPath"));
+         assert!(err.to_string().contains("/test/path"));
+         
+         let err = transaction_error("Test transaction error");
++        assert!(err.to_string().contains("TransactionError"));
+         assert!(err.to_string().contains("Test transaction error"));
+         
+         let err = backup_error("Test backup error");
++        assert!(err.to_string().contains("BackupError"));
+         assert!(err.to_string().contains("Test backup error"));
+         
+         let err = validation_error("Test validation error");
++        assert!(err.to_string().contains("ValidationError"));
+         assert!(err.to_string().contains("Test validation error"));
+     }
+ 
+     #[test]
+     fn test_error_context() {
+         let path = PathBuf::from("/test/path");
+-        let result: std::result::Result<(), std::io::Error> = 
+-            Err(std::io::Error::new(std::io::ErrorKind::Other, "test error"));
++        let result: Result<()> = Err(anyhow!("test error"));
+         
+-        let err = result.with_context_path(&path).unwrap_err();
+-        assert!(err.to_string().contains("/test/path"));
++        let err = result.with_context_path(&path);
++        assert!(err.is_err());
++        assert!(err.unwrap_err().to_string().contains("/test/path"));
+         
+-        let err = result.with_context_io("Test IO error").unwrap_err();
+-        assert!(err.to_string().contains("Test IO error"));
++        let result: Result<()> = Err(anyhow!("test error"));
++        let err = result.with_context_io("Test message");
++        assert!(err.is_err());
++        assert!(err.unwrap_err().to_string().contains("Test message"));
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/fs/manager.rs b/src/fs/manager.rs
+index 4b8a656..2f17222 100644
+--- a/src/fs/manager.rs
++++ b/src/fs/manager.rs
+@@ -1,7 +1,7 @@
+ use std::path::{Path, PathBuf};
+ use std::sync::Arc;
+ use anyhow::Result;
+-use crate::fs::error::{io_error, not_found_error, transaction_error, ErrorExt};
++use crate::fs::error::{not_found_error, transaction_error, ErrorExt};
+ use crate::fs::path::normalize_path;
+ use crate::fs::transaction::{FileTransaction, FileOperation, CreateFileOperation, DeleteFileOperation};
+ 
+diff --git a/src/fs/path.rs b/src/fs/path.rs
+index 6697232..ba8f197 100644
+--- a/src/fs/path.rs
++++ b/src/fs/path.rs
+@@ -2,70 +2,129 @@ use std::path::{Path, PathBuf};
+ use anyhow::Result;
+ use crate::fs::error::{invalid_path_error, ErrorExt};
+ 
++/// パスの検証レベルを定義する列挙型
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub enum PathValidationLevel {
++    /// 基本的な検証のみ（絶対パスとパストラバーサルのチェック）
++    Basic,
++    /// 厳格な検証（Basic + 特殊文字、非ASCII文字、長さ制限など）
++    Strict,
++}
++
+ /// パス操作に関する共通機能を提供するモジュール
++pub struct PathValidator {
++    /// パスの検証レベル
++    validation_level: PathValidationLevel,
++    /// パス長の最大値（バイト単位）
++    max_path_length: usize,
++    /// ファイル名の最大長（バイト単位）
++    max_filename_length: usize,
++}
+ 
+-/// パスの正規化と検証を行う
+-pub fn normalize_path(root: impl AsRef<Path>, path: impl AsRef<Path>) -> Result<PathBuf> {
+-    let path = path.as_ref();
+-    
+-    // 絶対パスの場合はエラー
+-    if path.is_absolute() {
+-        return Err(invalid_path_error(path));
++impl Default for PathValidator {
++    fn default() -> Self {
++        Self {
++            validation_level: PathValidationLevel::Basic,
++            max_path_length: 4096,
++            max_filename_length: 255,
++        }
+     }
++}
++
++impl PathValidator {
++    /// 新しいPathValidatorを作成
++    pub fn new(
++        validation_level: PathValidationLevel,
++        max_path_length: usize,
++        max_filename_length: usize,
++    ) -> Self {
++        Self {
++            validation_level,
++            max_path_length,
++            max_filename_length,
++        }
++    }
++
++    /// パスを検証
++    pub fn validate(&self, path: impl AsRef<Path>) -> Result<()> {
++        let path = path.as_ref();
++
++        // 基本的な検証
++        if path.is_absolute() {
++            return Err(invalid_path_error(path));
++        }
+ 
+-    // パスのトラバーサルを防ぐ
+-    let normalized = path.components()
+-        .try_fold(Vec::new(), |mut components, component| {
++        let path_str = path.to_string_lossy();
++        if path_str.len() > self.max_path_length {
++            return Err(invalid_path_error(format!("パスが長すぎます（最大{}バイト）", self.max_path_length)));
++        }
++
++        // パスコンポーネントの検証
++        for component in path.components() {
+             match component {
+                 std::path::Component::ParentDir => {
+-                    if components.is_empty() {
+-                        Err(invalid_path_error(path))
+-                    } else {
+-                        components.pop();
+-                        Ok(components)
+-                    }
+-                },
++                    return Err(invalid_path_error("パストラバーサルは許可されていません"));
++                }
++                std::path::Component::RootDir => {
++                    return Err(invalid_path_error("絶対パスは許可されていません"));
++                }
+                 std::path::Component::Normal(name) => {
+-                    components.push(name.to_owned());
+-                    Ok(components)
+-                },
+-                _ => Ok(components),
++                    let name_str = name.to_string_lossy();
++                    if name_str.len() > self.max_filename_length {
++                        return Err(invalid_path_error(
++                            format!("ファイル名が長すぎます（最大{}バイト）", self.max_filename_length)
++                        ));
++                    }
++
++                    if self.validation_level == PathValidationLevel::Strict {
++                        // 特殊文字のチェック
++                        if name_str.contains(|c: char| {
++                            c.is_control() || c == '<' || c == '>' || c == ':' || c == '"' ||
++                            c == '/' || c == '\\' || c == '|' || c == '?' || c == '*'
++                        }) {
++                            return Err(invalid_path_error("ファイル名に無効な文字が含まれています"));
++                        }
++
++                        // 非ASCII文字のチェック（必要に応じて）
++                        if !name_str.chars().all(|c| c.is_ascii()) {
++                            return Err(invalid_path_error("ファイル名に非ASCII文字が含まれています"));
++                        }
++                    }
++                }
++                _ => continue,
+             }
+-        })?;
++        }
+ 
+-    // コンポーネントからパスを構築
+-    let path = normalized.iter()
+-        .fold(PathBuf::new(), |mut path, component| {
+-            path.push(component);
+-            path
+-        });
++        Ok(())
++    }
+ 
+-    Ok(root.as_ref().join(path))
+-}
++    /// パスを正規化
++    pub fn normalize(&self, root: impl AsRef<Path>, path: impl AsRef<Path>) -> Result<PathBuf> {
++        let path = path.as_ref();
++        
++        // パスの検証
++        self.validate(path)?;
+ 
+-/// パスが安全かどうかを検証する
+-pub fn validate_path(path: impl AsRef<Path>) -> Result<()> {
+-    let path = path.as_ref();
++        // パスの正規化
++        let normalized = path.components()
++            .filter(|c| matches!(c, std::path::Component::Normal(_)))
++            .fold(PathBuf::new(), |mut result, component| {
++                result.push(component);
++                result
++            });
+ 
+-    // 絶対パスの検証
+-    if path.is_absolute() {
+-        return Err(invalid_path_error(path));
++        Ok(root.as_ref().join(normalized))
+     }
++}
+ 
+-    // パスコンポーネントの検証
+-    for component in path.components() {
+-        match component {
+-            std::path::Component::ParentDir => {
+-                return Err(invalid_path_error(path));
+-            },
+-            std::path::Component::RootDir => {
+-                return Err(invalid_path_error(path));
+-            },
+-            _ => continue,
+-        }
+-    }
++/// パスの正規化と検証を行う（デフォルトの設定を使用）
++pub fn normalize_path(root: impl AsRef<Path>, path: impl AsRef<Path>) -> Result<PathBuf> {
++    PathValidator::default().normalize(root, path)
++}
+ 
+-    Ok(())
++/// パスが安全かどうかを検証する（デフォルトの設定を使用）
++pub fn validate_path(path: impl AsRef<Path>) -> Result<()> {
++    PathValidator::default().validate(path)
+ }
+ 
+ /// パスの存在を確認する
+@@ -84,48 +143,59 @@ mod tests {
+     use tempfile::tempdir;
+ 
+     #[test]
+-    fn test_normalize_path() -> Result<()> {
+-        let root = PathBuf::from("/root");
+-        
+-        // 通常のパス
+-        let result = normalize_path(&root, "test/path")?;
+-        assert_eq!(result, PathBuf::from("/root/test/path"));
+-        
+-        // 親ディレクトリへの参照を含むパス
+-        let result = normalize_path(&root, "test/../path")?;
+-        assert_eq!(result, PathBuf::from("/root/path"));
+-        
+-        // 絶対パス（エラーになるべき）
+-        assert!(normalize_path(&root, "/absolute/path").is_err());
+-        
+-        // 不正なパストラバーサル（エラーになるべき）
+-        assert!(normalize_path(&root, "../../etc/passwd").is_err());
++    fn test_path_validation() {
++        let validator = PathValidator::default();
++
++        // 基本的な検証
++        assert!(validator.validate("normal/path").is_ok());
++        assert!(validator.validate("/absolute/path").is_err());
++        assert!(validator.validate("../parent/path").is_err());
+         
+-        Ok(())
++        // パス長の検証
++        let long_path = "a".repeat(5000);
++        assert!(validator.validate(long_path).is_err());
++
++        // 厳格な検証
++        let strict_validator = PathValidator::new(
++            PathValidationLevel::Strict,
++            4096,
++            255,
++        );
++        assert!(strict_validator.validate("normal-path_123.txt").is_ok());
++        assert!(strict_validator.validate("path/with/*/wildcard").is_err());
++        assert!(strict_validator.validate("path/with/<invalid>").is_err());
++        assert!(strict_validator.validate("path/with/日本語").is_err());
+     }
+ 
+     #[test]
+-    fn test_validate_path() -> Result<()> {
+-        // 通常のパス
+-        assert!(validate_path("test/path").is_ok());
+-        
+-        // 絶対パス
+-        assert!(validate_path("/absolute/path").is_err());
+-        
+-        // 不正なパストラバーサル
+-        assert!(validate_path("../../etc/passwd").is_err());
+-        
+-        Ok(())
++    fn test_path_normalization() {
++        let validator = PathValidator::default();
++        let temp_dir = tempdir().unwrap();
++
++        // 正常なパスの正規化
++        let normalized = validator.normalize(&temp_dir.path(), "normal/path").unwrap();
++        assert_eq!(
++            normalized,
++            temp_dir.path().join("normal").join("path")
++        );
++
++        // 不正なパスの正規化
++        assert!(validator.normalize(&temp_dir.path(), "/absolute/path").is_err());
++        assert!(validator.normalize(&temp_dir.path(), "../parent/path").is_err());
+     }
+ 
+     #[test]
+-    fn test_ensure_path_exists() -> Result<()> {
+-        let temp = tempdir()?;
+-        let test_path = temp.path().join("test/path");
+-        
+-        ensure_path_exists(&test_path)?;
++    fn test_ensure_path_exists() {
++        let temp_dir = tempdir().unwrap();
++        let test_path = temp_dir.path().join("test_dir");
++
++        // パスが存在しない場合は作成される
++        assert!(!test_path.exists());
++        ensure_path_exists(&test_path).unwrap();
+         assert!(test_path.exists());
+-        
+-        Ok(())
++        assert!(test_path.is_dir());
++
++        // パスが既に存在する場合はエラーにならない
++        ensure_path_exists(&test_path).unwrap();
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/fs/transaction.rs b/src/fs/transaction.rs
+index 0dfb8ab..f1c1cc8 100644
+--- a/src/fs/transaction.rs
++++ b/src/fs/transaction.rs
+@@ -1,9 +1,11 @@
+-use std::path::{Path, PathBuf};
++use std::path::PathBuf;
+ use std::sync::Arc;
+ use anyhow::{Error, Result};
+-use crate::fs::error::{io_error, transaction_error, validation_error, ErrorExt};
++use crate::fs::error::{transaction_error, validation_error, ErrorExt};
+ use crate::fs::path::ensure_path_exists;
++use std::time::{SystemTime, UNIX_EPOCH};
+ 
++/// ファイル操作のトレイト
+ pub trait FileOperation: Send + Sync + std::fmt::Debug {
+     fn execute(&self) -> Result<()>;
+     fn rollback(&self) -> Result<()>;
+@@ -11,35 +13,93 @@ pub trait FileOperation: Send + Sync + std::fmt::Debug {
+     fn validate(&self) -> Result<()>;
+ }
+ 
++/// トランザクションの状態を表す列挙型
+ #[derive(Debug, Clone)]
+ pub enum TransactionState {
+-    Pending,
+-    Executed,
+-    RolledBack,
+-    Failed(Arc<Error>),
++    /// 初期状態
++    Pending {
++        /// 作成時のタイムスタンプ
++        created_at: u64,
++    },
++    /// 実行済み
++    Executed {
++        /// 実行時のタイムスタンプ
++        executed_at: u64,
++    },
++    /// ロールバック済み
++    RolledBack {
++        /// ロールバック時のタイムスタンプ
++        rolled_back_at: u64,
++    },
++    /// 失敗
++    Failed {
++        /// エラー情報
++        error: Arc<Error>,
++        /// 失敗時のタイムスタンプ
++        failed_at: u64,
++    },
+ }
+ 
++impl TransactionState {
++    /// 現在のUNIXタイムスタンプを取得
++    fn now() -> u64 {
++        SystemTime::now()
++            .duration_since(UNIX_EPOCH)
++            .unwrap_or_default()
++            .as_secs()
++    }
++
++    /// 状態の説明を取得
++    fn description(&self) -> String {
++        match self {
++            Self::Pending { created_at } => {
++                format!("保留中 (作成: {})", created_at)
++            }
++            Self::Executed { executed_at } => {
++                format!("実行済み (実行: {})", executed_at)
++            }
++            Self::RolledBack { rolled_back_at } => {
++                format!("ロールバック済み (ロールバック: {})", rolled_back_at)
++            }
++            Self::Failed { error, failed_at } => {
++                format!("失敗 (時刻: {}): {}", failed_at, error)
++            }
++        }
++    }
++}
++
++/// トランザクションの遷移を表す列挙型
+ #[derive(Debug, Clone)]
+ pub enum TransactionTransition {
++    /// 操作の追加
+     AddOperation(Arc<dyn FileOperation>),
++    /// トランザクションの実行
+     Execute,
++    /// トランザクションのロールバック
+     Rollback,
+ }
+ 
++/// ファイルトランザクションを表す構造体
+ #[derive(Debug, Clone)]
+ pub struct FileTransaction {
++    /// ファイル操作のリスト
+     operations: Arc<Vec<Arc<dyn FileOperation>>>,
++    /// トランザクションの状態
+     state: TransactionState,
+ }
+ 
+ impl FileTransaction {
++    /// 新しいトランザクションを作成
+     pub fn new() -> Self {
+         Self {
+             operations: Arc::new(Vec::new()),
+-            state: TransactionState::Pending,
++            state: TransactionState::Pending {
++                created_at: TransactionState::now(),
++            },
+         }
+     }
+ 
++    /// 操作を追加
+     fn with_operations(&self, operations: Vec<Arc<dyn FileOperation>>) -> Self {
+         Self {
+             operations: Arc::new(operations),
+@@ -47,101 +107,128 @@ impl FileTransaction {
+         }
+     }
+ 
++    /// 状態を更新
+     fn with_state(&self, state: TransactionState) -> Self {
+         Self {
+-            operations: self.operations.clone(),
++            operations: Arc::clone(&self.operations),
+             state,
+         }
+     }
+ 
++    /// 状態遷移を適用
+     pub fn apply_transition(self, transition: TransactionTransition) -> Result<Self> {
+-        match (self.state.clone(), transition.clone()) {
+-            (TransactionState::Pending, TransactionTransition::AddOperation(op)) => {
+-                if let Err(e) = op.validate() {
+-                    return Err(validation_error(format!("操作の検証に失敗: {}", e)));
++        match (&self.state, transition) {
++            (TransactionState::Pending { .. }, TransactionTransition::AddOperation(op)) => {
++                let mut operations = (*self.operations).clone();
++                operations.push(op);
++                Ok(self.with_operations(operations))
++            }
++            (TransactionState::Pending { .. }, TransactionTransition::Execute) => {
++                // 全ての操作を検証
++                for op in self.operations.iter() {
++                    op.validate().map_err(|e| {
++                        transaction_error(format!("操作の検証に失敗: {}", e))
++                    })?;
+                 }
+ 
+-                let operations = Arc::new(
+-                    self.operations.iter()
+-                        .cloned()
+-                        .chain(std::iter::once(op))
+-                        .collect::<Vec<_>>()
+-                );
+-                Ok(Self { operations, state: self.state })
+-            },
+-            (TransactionState::Pending, TransactionTransition::Execute) => {
+-                for operation in self.operations.iter() {
+-                    if let Err(e) = operation.execute() {
+-                        let failed_state = Self {
+-                            operations: self.operations.clone(),
+-                            state: TransactionState::Failed(Arc::new(e))
+-                        };
+-                        return Ok(failed_state.apply_transition(TransactionTransition::Rollback)?);
++                // 全ての操作を実行
++                for op in self.operations.iter() {
++                    if let Err(e) = op.execute() {
++                        // エラーが発生した場合、実行済みの操作をロールバック
++                        for prev_op in self.operations.iter().rev() {
++                            if let Err(rollback_err) = prev_op.rollback() {
++                                return Err(transaction_error(format!(
++                                    "ロールバックに失敗: {}（元のエラー: {}）",
++                                    rollback_err, e
++                                )));
++                            }
++                        }
++                        return Ok(self.with_state(TransactionState::Failed {
++                            error: Arc::new(e),
++                            failed_at: TransactionState::now(),
++                        }));
+                     }
+                 }
+-                Ok(Self {
+-                    operations: self.operations,
+-                    state: TransactionState::Executed
+-                })
+-            },
+-            (TransactionState::Executed | TransactionState::Pending, TransactionTransition::Rollback) => {
+-                for operation in self.operations.iter().rev() {
+-                    if let Err(e) = operation.rollback() {
+-                        return Ok(Self {
+-                            operations: self.operations.clone(),
+-                            state: TransactionState::Failed(Arc::new(e))
+-                        });
+-                    }
++
++                Ok(self.with_state(TransactionState::Executed {
++                    executed_at: TransactionState::now(),
++                }))
++            }
++            (TransactionState::Executed { .. }, TransactionTransition::Rollback) => {
++                // 全ての操作を逆順でロールバック
++                for op in self.operations.iter().rev() {
++                    op.rollback().map_err(|e| {
++                        transaction_error(format!("ロールバックに失敗: {}", e))
++                    })?;
+                 }
+-                Ok(Self {
+-                    operations: self.operations,
+-                    state: TransactionState::RolledBack
+-                })
+-            },
++
++                Ok(self.with_state(TransactionState::RolledBack {
++                    rolled_back_at: TransactionState::now(),
++                }))
++            }
+             (state, transition) => {
+-                Err(transaction_error(format!("無効な状態遷移: {:?} -> {:?}", state, transition)))
++                Err(transaction_error(format!(
++                    "無効な状態遷移です: {:?} -> {:?}",
++                    state, transition
++                )))
+             }
+         }
+     }
+ 
+-    // 公開APIメソッド
++    /// トランザクションの状態を取得
++    pub fn state(&self) -> &TransactionState {
++        &self.state
++    }
++
++    /// トランザクションの説明を取得
++    pub fn description(&self) -> String {
++        format!(
++            "トランザクション（{}）:\n{}",
++            self.state.description(),
++            self.operations
++                .iter()
++                .enumerate()
++                .map(|(i, op)| format!("  {}: {}", i + 1, op.description()))
++                .collect::<Vec<_>>()
++                .join("\n")
++        )
++    }
++
++    /// 操作を追加
+     pub fn with_operation(self, operation: Arc<dyn FileOperation>) -> Result<Self> {
+         self.apply_transition(TransactionTransition::AddOperation(operation))
+     }
+ 
++    /// トランザクションを実行
+     pub fn execute(self) -> Result<Self> {
+         self.apply_transition(TransactionTransition::Execute)
+     }
+ 
++    /// トランザクションをロールバック
+     pub fn rollback(self) -> Result<Self> {
+         self.apply_transition(TransactionTransition::Rollback)
+     }
+ 
+-    pub fn state(&self) -> &TransactionState {
+-        &self.state
+-    }
+-
++    /// トランザクションの操作一覧を取得
+     pub fn operations(&self) -> &[Arc<dyn FileOperation>] {
+         &self.operations
+     }
+ 
+-    // トランザクションの合成メソッド
++    /// トランザクションを結合
+     pub fn combine(self, other: Self) -> Result<Self> {
+-        match (self.state.clone(), other.state) {
+-            (TransactionState::Pending, TransactionState::Pending) => {
+-                let operations = Arc::new(
+-                    self.operations.iter()
+-                        .chain(other.operations.iter())
+-                        .cloned()
+-                        .collect::<Vec<_>>()
+-                );
++        match (&self.state, &other.state) {
++            (TransactionState::Pending { .. }, TransactionState::Pending { .. }) => {
++                let mut operations = (*self.operations).clone();
++                operations.extend(other.operations.iter().cloned());
+                 Ok(Self {
+-                    operations,
+-                    state: TransactionState::Pending,
++                    operations: Arc::new(operations),
++                    state: TransactionState::Pending {
++                        created_at: TransactionState::now(),
++                    },
+                 })
+-            },
++            }
+             _ => {
+-                Err(transaction_error("トランザクションの合成は保留状態でのみ可能です"))
++                Err(transaction_error("トランザクションの結合は保留状態でのみ可能です"))
+             }
+         }
+     }

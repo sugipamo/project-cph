@@ -1,9 +1,11 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use anyhow::{Error, Result};
-use crate::fs::error::{io_error, transaction_error, validation_error, ErrorExt};
+use crate::fs::error::{transaction_error, validation_error, ErrorExt};
 use crate::fs::path::ensure_path_exists;
+use std::time::{SystemTime, UNIX_EPOCH};
 
+/// ファイル操作のトレイト
 pub trait FileOperation: Send + Sync + std::fmt::Debug {
     fn execute(&self) -> Result<()>;
     fn rollback(&self) -> Result<()>;
@@ -11,35 +13,93 @@ pub trait FileOperation: Send + Sync + std::fmt::Debug {
     fn validate(&self) -> Result<()>;
 }
 
+/// トランザクションの状態を表す列挙型
 #[derive(Debug, Clone)]
 pub enum TransactionState {
-    Pending,
-    Executed,
-    RolledBack,
-    Failed(Arc<Error>),
+    /// 初期状態
+    Pending {
+        /// 作成時のタイムスタンプ
+        created_at: u64,
+    },
+    /// 実行済み
+    Executed {
+        /// 実行時のタイムスタンプ
+        executed_at: u64,
+    },
+    /// ロールバック済み
+    RolledBack {
+        /// ロールバック時のタイムスタンプ
+        rolled_back_at: u64,
+    },
+    /// 失敗
+    Failed {
+        /// エラー情報
+        error: Arc<Error>,
+        /// 失敗時のタイムスタンプ
+        failed_at: u64,
+    },
 }
 
+impl TransactionState {
+    /// 現在のUNIXタイムスタンプを取得
+    fn now() -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+    }
+
+    /// 状態の説明を取得
+    fn description(&self) -> String {
+        match self {
+            Self::Pending { created_at } => {
+                format!("保留中 (作成: {})", created_at)
+            }
+            Self::Executed { executed_at } => {
+                format!("実行済み (実行: {})", executed_at)
+            }
+            Self::RolledBack { rolled_back_at } => {
+                format!("ロールバック済み (ロールバック: {})", rolled_back_at)
+            }
+            Self::Failed { error, failed_at } => {
+                format!("失敗 (時刻: {}): {}", failed_at, error)
+            }
+        }
+    }
+}
+
+/// トランザクションの遷移を表す列挙型
 #[derive(Debug, Clone)]
 pub enum TransactionTransition {
+    /// 操作の追加
     AddOperation(Arc<dyn FileOperation>),
+    /// トランザクションの実行
     Execute,
+    /// トランザクションのロールバック
     Rollback,
 }
 
+/// ファイルトランザクションを表す構造体
 #[derive(Debug, Clone)]
 pub struct FileTransaction {
+    /// ファイル操作のリスト
     operations: Arc<Vec<Arc<dyn FileOperation>>>,
+    /// トランザクションの状態
     state: TransactionState,
 }
 
 impl FileTransaction {
+    /// 新しいトランザクションを作成
     pub fn new() -> Self {
         Self {
             operations: Arc::new(Vec::new()),
-            state: TransactionState::Pending,
+            state: TransactionState::Pending {
+                created_at: TransactionState::now(),
+            },
         }
     }
 
+    /// 操作を追加
     fn with_operations(&self, operations: Vec<Arc<dyn FileOperation>>) -> Self {
         Self {
             operations: Arc::new(operations),
@@ -47,101 +107,128 @@ impl FileTransaction {
         }
     }
 
+    /// 状態を更新
     fn with_state(&self, state: TransactionState) -> Self {
         Self {
-            operations: self.operations.clone(),
+            operations: Arc::clone(&self.operations),
             state,
         }
     }
 
+    /// 状態遷移を適用
     pub fn apply_transition(self, transition: TransactionTransition) -> Result<Self> {
-        match (self.state.clone(), transition.clone()) {
-            (TransactionState::Pending, TransactionTransition::AddOperation(op)) => {
-                if let Err(e) = op.validate() {
-                    return Err(validation_error(format!("操作の検証に失敗: {}", e)));
+        match (&self.state, transition) {
+            (TransactionState::Pending { .. }, TransactionTransition::AddOperation(op)) => {
+                let mut operations = (*self.operations).clone();
+                operations.push(op);
+                Ok(self.with_operations(operations))
+            }
+            (TransactionState::Pending { .. }, TransactionTransition::Execute) => {
+                // 全ての操作を検証
+                for op in self.operations.iter() {
+                    op.validate().map_err(|e| {
+                        transaction_error(format!("操作の検証に失敗: {}", e))
+                    })?;
                 }
 
-                let operations = Arc::new(
-                    self.operations.iter()
-                        .cloned()
-                        .chain(std::iter::once(op))
-                        .collect::<Vec<_>>()
-                );
-                Ok(Self { operations, state: self.state })
-            },
-            (TransactionState::Pending, TransactionTransition::Execute) => {
-                for operation in self.operations.iter() {
-                    if let Err(e) = operation.execute() {
-                        let failed_state = Self {
-                            operations: self.operations.clone(),
-                            state: TransactionState::Failed(Arc::new(e))
-                        };
-                        return Ok(failed_state.apply_transition(TransactionTransition::Rollback)?);
+                // 全ての操作を実行
+                for op in self.operations.iter() {
+                    if let Err(e) = op.execute() {
+                        // エラーが発生した場合、実行済みの操作をロールバック
+                        for prev_op in self.operations.iter().rev() {
+                            if let Err(rollback_err) = prev_op.rollback() {
+                                return Err(transaction_error(format!(
+                                    "ロールバックに失敗: {}（元のエラー: {}）",
+                                    rollback_err, e
+                                )));
+                            }
+                        }
+                        return Ok(self.with_state(TransactionState::Failed {
+                            error: Arc::new(e),
+                            failed_at: TransactionState::now(),
+                        }));
                     }
                 }
-                Ok(Self {
-                    operations: self.operations,
-                    state: TransactionState::Executed
-                })
-            },
-            (TransactionState::Executed | TransactionState::Pending, TransactionTransition::Rollback) => {
-                for operation in self.operations.iter().rev() {
-                    if let Err(e) = operation.rollback() {
-                        return Ok(Self {
-                            operations: self.operations.clone(),
-                            state: TransactionState::Failed(Arc::new(e))
-                        });
-                    }
+
+                Ok(self.with_state(TransactionState::Executed {
+                    executed_at: TransactionState::now(),
+                }))
+            }
+            (TransactionState::Executed { .. }, TransactionTransition::Rollback) => {
+                // 全ての操作を逆順でロールバック
+                for op in self.operations.iter().rev() {
+                    op.rollback().map_err(|e| {
+                        transaction_error(format!("ロールバックに失敗: {}", e))
+                    })?;
                 }
-                Ok(Self {
-                    operations: self.operations,
-                    state: TransactionState::RolledBack
-                })
-            },
+
+                Ok(self.with_state(TransactionState::RolledBack {
+                    rolled_back_at: TransactionState::now(),
+                }))
+            }
             (state, transition) => {
-                Err(transaction_error(format!("無効な状態遷移: {:?} -> {:?}", state, transition)))
+                Err(transaction_error(format!(
+                    "無効な状態遷移です: {:?} -> {:?}",
+                    state, transition
+                )))
             }
         }
     }
 
-    // 公開APIメソッド
-    pub fn with_operation(self, operation: Arc<dyn FileOperation>) -> Result<Self> {
-        self.apply_transition(TransactionTransition::AddOperation(operation))
-    }
-
-    pub fn execute(self) -> Result<Self> {
-        self.apply_transition(TransactionTransition::Execute)
-    }
-
-    pub fn rollback(self) -> Result<Self> {
-        self.apply_transition(TransactionTransition::Rollback)
-    }
-
+    /// トランザクションの状態を取得
     pub fn state(&self) -> &TransactionState {
         &self.state
     }
 
+    /// トランザクションの説明を取得
+    pub fn description(&self) -> String {
+        format!(
+            "トランザクション（{}）:\n{}",
+            self.state.description(),
+            self.operations
+                .iter()
+                .enumerate()
+                .map(|(i, op)| format!("  {}: {}", i + 1, op.description()))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    }
+
+    /// 操作を追加
+    pub fn with_operation(self, operation: Arc<dyn FileOperation>) -> Result<Self> {
+        self.apply_transition(TransactionTransition::AddOperation(operation))
+    }
+
+    /// トランザクションを実行
+    pub fn execute(self) -> Result<Self> {
+        self.apply_transition(TransactionTransition::Execute)
+    }
+
+    /// トランザクションをロールバック
+    pub fn rollback(self) -> Result<Self> {
+        self.apply_transition(TransactionTransition::Rollback)
+    }
+
+    /// トランザクションの操作一覧を取得
     pub fn operations(&self) -> &[Arc<dyn FileOperation>] {
         &self.operations
     }
 
-    // トランザクションの合成メソッド
+    /// トランザクションを結合
     pub fn combine(self, other: Self) -> Result<Self> {
-        match (self.state.clone(), other.state) {
-            (TransactionState::Pending, TransactionState::Pending) => {
-                let operations = Arc::new(
-                    self.operations.iter()
-                        .chain(other.operations.iter())
-                        .cloned()
-                        .collect::<Vec<_>>()
-                );
+        match (&self.state, &other.state) {
+            (TransactionState::Pending { .. }, TransactionState::Pending { .. }) => {
+                let mut operations = (*self.operations).clone();
+                operations.extend(other.operations.iter().cloned());
                 Ok(Self {
-                    operations,
-                    state: TransactionState::Pending,
+                    operations: Arc::new(operations),
+                    state: TransactionState::Pending {
+                        created_at: TransactionState::now(),
+                    },
                 })
-            },
+            }
             _ => {
-                Err(transaction_error("トランザクションの合成は保留状態でのみ可能です"))
+                Err(transaction_error("トランザクションの結合は保留状態でのみ可能です"))
             }
         }
     }

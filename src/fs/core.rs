@@ -1,8 +1,6 @@
 use std::path::{Path, PathBuf};
-use std::fs;
 use anyhow::Result;
-use crate::fs::error::{not_found_error, io_error, permission_error, invalid_path_error, ErrorExt};
-use crate::fs::path::{validate_path, ensure_path_exists};
+use crate::fs::error::{not_found_error, permission_error, invalid_path_error, ErrorExt};
 
 /// ディレクトリの存在を確認し、存在しない場合は作成します
 pub fn ensure_directory<P: AsRef<Path>>(path: P) -> Result<PathBuf> {
