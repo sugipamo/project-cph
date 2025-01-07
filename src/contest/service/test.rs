@@ -44,39 +44,32 @@ impl TestService {
                 format!("テストディレクトリの読み取りに失敗しました: {}", e)
             ))?;
 
-        let mut test_files = Vec::new();
-        for entry in entries {
-            let entry = entry
-                .map_err(|e| contest_error(
-                    ContestErrorKind::Parse,
-                    format!("テストファイルの読み取りに失敗しました: {}", e)
-                ))?;
-
-            let path = entry.path();
-            if path.is_file() && path.extension().map_or(false, |ext| ext == "in") {
-                let expected_path = path.with_extension("out");
-                if !expected_path.exists() {
-                    return Err(contest_error(
-                        ContestErrorKind::NotFound,
-                        format!("期待値ファイルが見つかりません: {:?}", expected_path)
-                    ));
-                }
-                test_files.push(path);
-            }
-        }
-
-        Ok(test_files)
+        entries
+            .filter_map(|entry| {
+                entry.ok().and_then(|e| {
+                    let path = e.path();
+                    if path.is_file() && path.extension().map_or(false, |ext| ext == "in") {
+                        let expected_path = path.with_extension("out");
+                        if expected_path.exists() {
+                            Some(Ok(path))
+                        } else {
+                            Some(Err(contest_error(
+                                ContestErrorKind::NotFound,
+                                format!("期待値ファイルが見つかりません: {:?}", expected_path)
+                            )))
+                        }
+                    } else {
+                        None
+                    }
+                })
+            })
+            .collect()
     }
 
     pub fn read_test_cases(&self, test_dir: impl AsRef<Path>) -> Result<Vec<TestCase>> {
-        let test_files = self.find_test_files(test_dir)?;
-        let mut test_cases = Vec::new();
-
-        for path in test_files {
-            let test_case = self.read_test_case(&path)?;
-            test_cases.push(test_case);
-        }
-
-        Ok(test_cases)
+        self.find_test_files(test_dir)?
+            .into_iter()
+            .map(|path| self.read_test_case(&path))
+            .collect()
     }
 } 

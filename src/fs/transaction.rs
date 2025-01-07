@@ -66,28 +66,42 @@ impl FileTransaction {
                     ));
                 }
 
-                let mut operations = (*self.operations).clone();
-                operations.push(op);
-                Ok(self.with_operations(operations))
+                let operations = Arc::new(
+                    self.operations.iter()
+                        .cloned()
+                        .chain(std::iter::once(op))
+                        .collect::<Vec<_>>()
+                );
+                Ok(Self { operations, state: self.state })
             },
             (TransactionState::Pending, TransactionTransition::Execute) => {
-                let operations = self.operations.clone();
-                for operation in operations.iter() {
+                for operation in self.operations.iter() {
                     if let Err(e) = operation.execute() {
-                        let failed_state = self.with_state(TransactionState::Failed(Arc::new(e)));
+                        let failed_state = Self {
+                            operations: self.operations.clone(),
+                            state: TransactionState::Failed(Arc::new(e))
+                        };
                         return Ok(failed_state.apply_transition(TransactionTransition::Rollback)?);
                     }
                 }
-                Ok(self.with_state(TransactionState::Executed))
+                Ok(Self {
+                    operations: self.operations,
+                    state: TransactionState::Executed
+                })
             },
             (TransactionState::Executed | TransactionState::Pending, TransactionTransition::Rollback) => {
-                let operations = self.operations.clone();
-                for operation in operations.iter().rev() {
+                for operation in self.operations.iter().rev() {
                     if let Err(e) = operation.rollback() {
-                        return Ok(self.with_state(TransactionState::Failed(Arc::new(e))));
+                        return Ok(Self {
+                            operations: self.operations.clone(),
+                            state: TransactionState::Failed(Arc::new(e))
+                        });
                     }
                 }
-                Ok(self.with_state(TransactionState::RolledBack))
+                Ok(Self {
+                    operations: self.operations,
+                    state: TransactionState::RolledBack
+                })
             },
             (state, transition) => {
                 let error = create_io_error(
@@ -97,7 +111,10 @@ impl FileTransaction {
                     ),
                     "トランザクション状態遷移エラー"
                 );
-                Ok(self.with_state(TransactionState::Failed(Arc::new(error))))
+                Ok(Self {
+                    operations: self.operations,
+                    state: TransactionState::Failed(Arc::new(error))
+                })
             }
         }
     }
@@ -127,10 +144,14 @@ impl FileTransaction {
     pub fn combine(self, other: Self) -> Result<Self, Error> {
         match (self.state.clone(), other.state) {
             (TransactionState::Pending, TransactionState::Pending) => {
-                let mut operations = (*self.operations).clone();
-                operations.extend((*other.operations).clone());
+                let operations = Arc::new(
+                    self.operations.iter()
+                        .chain(other.operations.iter())
+                        .cloned()
+                        .collect::<Vec<_>>()
+                );
                 Ok(Self {
-                    operations: Arc::new(operations),
+                    operations,
                     state: TransactionState::Pending,
                 })
             },
@@ -142,7 +163,10 @@ impl FileTransaction {
                     ),
                     "トランザクション合成エラー"
                 );
-                Ok(self.with_state(TransactionState::Failed(Arc::new(error))))
+                Ok(Self {
+                    operations: self.operations,
+                    state: TransactionState::Failed(Arc::new(error))
+                })
             }
         }
     }

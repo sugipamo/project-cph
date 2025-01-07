@@ -357,34 +357,57 @@ impl FromConfigValue for ConfigNode {
 // 設定を探すためのヘルパーメソッド
 impl Config {
     fn find_matching_paths(&self, _pattern: &str) -> Vec<String> {
-        let mut paths = Vec::new();
-        self.collect_paths(&self.root.value, "root", &mut paths);
-        paths
+        self.collect_paths(&self.root.value)
     }
 
-    fn collect_paths(&self, value: &Value, current_path: &str, paths: &mut Vec<String>) {
-        paths.push(current_path.to_string());
-
+    fn collect_paths(&self, value: &Value) -> Vec<String> {
         match value {
             Value::Mapping(map) => {
-                for (key, value) in map {
-                    if let Value::String(key_str) = key {
-                        let new_path = if current_path == "root" {
-                            key_str.clone()
-                        } else {
-                            format!("{}.{}", current_path, key_str)
+                map.iter()
+                    .flat_map(|(key, val)| {
+                        let key_str = match key {
+                            Value::String(s) => s.clone(),
+                            Value::Number(n) => n.to_string(),
+                            Value::Bool(b) => b.to_string(),
+                            Value::Null => "null".to_string(),
+                            Value::Sequence(_) => "[array]".to_string(),
+                            Value::Mapping(_) => "{object}".to_string(),
+                            Value::Tagged(_) => "[tagged]".to_string(),
                         };
-                        self.collect_paths(value, &new_path, paths);
-                    }
-                }
-            }
+                        let key_for_sub = key_str.clone();
+                        let sub_paths = self.collect_paths(val)
+                            .into_iter()
+                            .map(move |sub_path| {
+                                if sub_path.is_empty() {
+                                    key_for_sub.clone()
+                                } else {
+                                    format!("{}.{}", key_for_sub, sub_path)
+                                }
+                            });
+                        std::iter::once(key_str).chain(sub_paths).collect::<Vec<_>>()
+                    })
+                    .collect()
+            },
             Value::Sequence(seq) => {
-                for (i, value) in seq.iter().enumerate() {
-                    let new_path = format!("{}.{}", current_path, i);
-                    self.collect_paths(value, &new_path, paths);
-                }
-            }
-            _ => {}
+                seq.iter()
+                    .enumerate()
+                    .flat_map(|(idx, val)| {
+                        let idx_str = idx.to_string();
+                        let idx_for_sub = idx_str.clone();
+                        let sub_paths = self.collect_paths(val)
+                            .into_iter()
+                            .map(move |sub_path| {
+                                if sub_path.is_empty() {
+                                    idx_for_sub.clone()
+                                } else {
+                                    format!("{}.{}", idx_for_sub, sub_path)
+                                }
+                            });
+                        std::iter::once(idx_str).chain(sub_paths).collect::<Vec<_>>()
+                    })
+                    .collect()
+            },
+            _ => vec![String::new()],
         }
     }
 } 

@@ -1,0 +1,310 @@
+diff --git a/src/config/mod.rs b/src/config/mod.rs
+index 259dd66..9800b56 100644
+--- a/src/config/mod.rs
++++ b/src/config/mod.rs
+@@ -357,34 +357,57 @@ impl FromConfigValue for ConfigNode {
+ // 設定を探すためのヘルパーメソッド
+ impl Config {
+     fn find_matching_paths(&self, _pattern: &str) -> Vec<String> {
+-        let mut paths = Vec::new();
+-        self.collect_paths(&self.root.value, "root", &mut paths);
+-        paths
++        self.collect_paths(&self.root.value)
+     }
+ 
+-    fn collect_paths(&self, value: &Value, current_path: &str, paths: &mut Vec<String>) {
+-        paths.push(current_path.to_string());
+-
++    fn collect_paths(&self, value: &Value) -> Vec<String> {
+         match value {
+             Value::Mapping(map) => {
+-                for (key, value) in map {
+-                    if let Value::String(key_str) = key {
+-                        let new_path = if current_path == "root" {
+-                            key_str.clone()
+-                        } else {
+-                            format!("{}.{}", current_path, key_str)
++                map.iter()
++                    .flat_map(|(key, val)| {
++                        let key_str = match key {
++                            Value::String(s) => s.clone(),
++                            Value::Number(n) => n.to_string(),
++                            Value::Bool(b) => b.to_string(),
++                            Value::Null => "null".to_string(),
++                            Value::Sequence(_) => "[array]".to_string(),
++                            Value::Mapping(_) => "{object}".to_string(),
++                            Value::Tagged(_) => "[tagged]".to_string(),
+                         };
+-                        self.collect_paths(value, &new_path, paths);
+-                    }
+-                }
+-            }
++                        let key_for_sub = key_str.clone();
++                        let sub_paths = self.collect_paths(val)
++                            .into_iter()
++                            .map(move |sub_path| {
++                                if sub_path.is_empty() {
++                                    key_for_sub.clone()
++                                } else {
++                                    format!("{}.{}", key_for_sub, sub_path)
++                                }
++                            });
++                        std::iter::once(key_str).chain(sub_paths).collect::<Vec<_>>()
++                    })
++                    .collect()
++            },
+             Value::Sequence(seq) => {
+-                for (i, value) in seq.iter().enumerate() {
+-                    let new_path = format!("{}.{}", current_path, i);
+-                    self.collect_paths(value, &new_path, paths);
+-                }
+-            }
+-            _ => {}
++                seq.iter()
++                    .enumerate()
++                    .flat_map(|(idx, val)| {
++                        let idx_str = idx.to_string();
++                        let idx_for_sub = idx_str.clone();
++                        let sub_paths = self.collect_paths(val)
++                            .into_iter()
++                            .map(move |sub_path| {
++                                if sub_path.is_empty() {
++                                    idx_for_sub.clone()
++                                } else {
++                                    format!("{}.{}", idx_for_sub, sub_path)
++                                }
++                            });
++                        std::iter::once(idx_str).chain(sub_paths).collect::<Vec<_>>()
++                    })
++                    .collect()
++            },
++            _ => vec![String::new()],
+         }
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/contest/service/test.rs b/src/contest/service/test.rs
+index d8f15e0..9147b9b 100644
+--- a/src/contest/service/test.rs
++++ b/src/contest/service/test.rs
+@@ -44,39 +44,32 @@ impl TestService {
+                 format!("テストディレクトリの読み取りに失敗しました: {}", e)
+             ))?;
+ 
+-        let mut test_files = Vec::new();
+-        for entry in entries {
+-            let entry = entry
+-                .map_err(|e| contest_error(
+-                    ContestErrorKind::Parse,
+-                    format!("テストファイルの読み取りに失敗しました: {}", e)
+-                ))?;
+-
+-            let path = entry.path();
+-            if path.is_file() && path.extension().map_or(false, |ext| ext == "in") {
+-                let expected_path = path.with_extension("out");
+-                if !expected_path.exists() {
+-                    return Err(contest_error(
+-                        ContestErrorKind::NotFound,
+-                        format!("期待値ファイルが見つかりません: {:?}", expected_path)
+-                    ));
+-                }
+-                test_files.push(path);
+-            }
+-        }
+-
+-        Ok(test_files)
++        entries
++            .filter_map(|entry| {
++                entry.ok().and_then(|e| {
++                    let path = e.path();
++                    if path.is_file() && path.extension().map_or(false, |ext| ext == "in") {
++                        let expected_path = path.with_extension("out");
++                        if expected_path.exists() {
++                            Some(Ok(path))
++                        } else {
++                            Some(Err(contest_error(
++                                ContestErrorKind::NotFound,
++                                format!("期待値ファイルが見つかりません: {:?}", expected_path)
++                            )))
++                        }
++                    } else {
++                        None
++                    }
++                })
++            })
++            .collect()
+     }
+ 
+     pub fn read_test_cases(&self, test_dir: impl AsRef<Path>) -> Result<Vec<TestCase>> {
+-        let test_files = self.find_test_files(test_dir)?;
+-        let mut test_cases = Vec::new();
+-
+-        for path in test_files {
+-            let test_case = self.read_test_case(&path)?;
+-            test_cases.push(test_case);
+-        }
+-
+-        Ok(test_cases)
++        self.find_test_files(test_dir)?
++            .into_iter()
++            .map(|path| self.read_test_case(&path))
++            .collect()
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/fs/error/helpers.rs b/src/fs/error/helpers.rs
+index 44cb0f5..441f919 100644
+--- a/src/fs/error/helpers.rs
++++ b/src/fs/error/helpers.rs
+@@ -1,4 +1,4 @@
+-use std::path::{Path, PathBuf};
++use std::path::Path;
+ use crate::error::Error;
+ use super::FileSystemErrorKind;
+ 
+diff --git a/src/fs/manager.rs b/src/fs/manager.rs
+index e3a23cf..f2ac24d 100644
+--- a/src/fs/manager.rs
++++ b/src/fs/manager.rs
+@@ -86,25 +86,32 @@ impl FileManager {
+ 
+         // パスのトラバーサルを防ぐ
+         let normalized = path.components()
+-            .fold(Ok(PathBuf::new()), |acc, component| {
+-                let mut path = acc?;
++            .try_fold(Vec::new(), |components, component| {
+                 match component {
+                     std::path::Component::ParentDir => {
+-                        if path.pop() {
+-                            Ok(path)
+-                        } else {
++                        if components.is_empty() {
+                             Err(create_invalid_path_error(path))
++                        } else {
++                            Ok(components[..components.len() - 1].to_vec())
+                         }
+                     },
+                     std::path::Component::Normal(name) => {
+-                        path.push(name);
+-                        Ok(path)
++                        let mut new_components = components;
++                        new_components.push(name.to_owned());
++                        Ok(new_components)
+                     },
+-                    _ => Ok(path),
++                    _ => Ok(components),
+                 }
+             })?;
+ 
+-        Ok(self.root.join(normalized))
++        // コンポーネントからパスを構築
++        let path = normalized.iter()
++            .fold(PathBuf::new(), |mut path, component| {
++                path.push(component);
++                path
++            });
++
++        Ok(self.root.join(path))
+     }
+ 
+     // 公開APIメソッド
+diff --git a/src/fs/transaction.rs b/src/fs/transaction.rs
+index e0c5f4a..90fd649 100644
+--- a/src/fs/transaction.rs
++++ b/src/fs/transaction.rs
+@@ -66,28 +66,42 @@ impl FileTransaction {
+                     ));
+                 }
+ 
+-                let mut operations = (*self.operations).clone();
+-                operations.push(op);
+-                Ok(self.with_operations(operations))
++                let operations = Arc::new(
++                    self.operations.iter()
++                        .cloned()
++                        .chain(std::iter::once(op))
++                        .collect::<Vec<_>>()
++                );
++                Ok(Self { operations, state: self.state })
+             },
+             (TransactionState::Pending, TransactionTransition::Execute) => {
+-                let operations = self.operations.clone();
+-                for operation in operations.iter() {
++                for operation in self.operations.iter() {
+                     if let Err(e) = operation.execute() {
+-                        let failed_state = self.with_state(TransactionState::Failed(Arc::new(e)));
++                        let failed_state = Self {
++                            operations: self.operations.clone(),
++                            state: TransactionState::Failed(Arc::new(e))
++                        };
+                         return Ok(failed_state.apply_transition(TransactionTransition::Rollback)?);
+                     }
+                 }
+-                Ok(self.with_state(TransactionState::Executed))
++                Ok(Self {
++                    operations: self.operations,
++                    state: TransactionState::Executed
++                })
+             },
+             (TransactionState::Executed | TransactionState::Pending, TransactionTransition::Rollback) => {
+-                let operations = self.operations.clone();
+-                for operation in operations.iter().rev() {
++                for operation in self.operations.iter().rev() {
+                     if let Err(e) = operation.rollback() {
+-                        return Ok(self.with_state(TransactionState::Failed(Arc::new(e))));
++                        return Ok(Self {
++                            operations: self.operations.clone(),
++                            state: TransactionState::Failed(Arc::new(e))
++                        });
+                     }
+                 }
+-                Ok(self.with_state(TransactionState::RolledBack))
++                Ok(Self {
++                    operations: self.operations,
++                    state: TransactionState::RolledBack
++                })
+             },
+             (state, transition) => {
+                 let error = create_io_error(
+@@ -97,7 +111,10 @@ impl FileTransaction {
+                     ),
+                     "トランザクション状態遷移エラー"
+                 );
+-                Ok(self.with_state(TransactionState::Failed(Arc::new(error))))
++                Ok(Self {
++                    operations: self.operations,
++                    state: TransactionState::Failed(Arc::new(error))
++                })
+             }
+         }
+     }
+@@ -127,10 +144,14 @@ impl FileTransaction {
+     pub fn combine(self, other: Self) -> Result<Self, Error> {
+         match (self.state.clone(), other.state) {
+             (TransactionState::Pending, TransactionState::Pending) => {
+-                let mut operations = (*self.operations).clone();
+-                operations.extend((*other.operations).clone());
++                let operations = Arc::new(
++                    self.operations.iter()
++                        .chain(other.operations.iter())
++                        .cloned()
++                        .collect::<Vec<_>>()
++                );
+                 Ok(Self {
+-                    operations: Arc::new(operations),
++                    operations,
+                     state: TransactionState::Pending,
+                 })
+             },
+@@ -142,7 +163,10 @@ impl FileTransaction {
+                     ),
+                     "トランザクション合成エラー"
+                 );
+-                Ok(self.with_state(TransactionState::Failed(Arc::new(error))))
++                Ok(Self {
++                    operations: self.operations,
++                    state: TransactionState::Failed(Arc::new(error))
++                })
+             }
+         }
+     }

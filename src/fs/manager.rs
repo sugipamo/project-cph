@@ -86,25 +86,32 @@ impl FileManager {
 
         // パスのトラバーサルを防ぐ
         let normalized = path.components()
-            .fold(Ok(PathBuf::new()), |acc, component| {
-                let mut path = acc?;
+            .try_fold(Vec::new(), |components, component| {
                 match component {
                     std::path::Component::ParentDir => {
-                        if path.pop() {
-                            Ok(path)
-                        } else {
+                        if components.is_empty() {
                             Err(create_invalid_path_error(path))
+                        } else {
+                            Ok(components[..components.len() - 1].to_vec())
                         }
                     },
                     std::path::Component::Normal(name) => {
-                        path.push(name);
-                        Ok(path)
+                        let mut new_components = components;
+                        new_components.push(name.to_owned());
+                        Ok(new_components)
                     },
-                    _ => Ok(path),
+                    _ => Ok(components),
                 }
             })?;
 
-        Ok(self.root.join(normalized))
+        // コンポーネントからパスを構築
+        let path = normalized.iter()
+            .fold(PathBuf::new(), |mut path, component| {
+                path.push(component);
+                path
+            });
+
+        Ok(self.root.join(path))
     }
 
     // 公開APIメソッド
