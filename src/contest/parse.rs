@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::collections::HashMap;
 use serde_yaml::Value;
-use crate::config::{Config, ConfigError, ConfigType};
+use crate::config::{Config, ConfigError, ValueExt};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CommandType {
@@ -52,9 +52,8 @@ pub struct NameResolver {
 impl NameResolver {
     pub fn new(config: &Config) -> Result<Self, ParseError> {
         let mut command_aliases = HashMap::new();
-        let executions = config.get_raw_value("executions")
+        let executions: Value = config.get("executions")
             .map_err(|_| ParseError::MissingSection("executions".to_string()))?;
-        let executions = executions.0;
 
         if let Value::Mapping(executions_map) = executions {
             for (cmd_name, cmd_config) in executions_map {
@@ -79,9 +78,8 @@ impl NameResolver {
             }
         }
 
-        let settings = config.get_raw_value("settings")
+        let settings: Value = config.get("settings")
             .map_err(|_| ParseError::MissingSection("settings".to_string()))?;
-        let settings = settings.0;
 
         if let Value::Mapping(settings_map) = settings {
             Ok(Self {
@@ -92,8 +90,8 @@ impl NameResolver {
             })
         } else {
             Err(ParseError::ConfigError(ConfigError::TypeError {
-                expected: ConfigType::StringArray,
-                actual: ConfigType::Null,
+                expected: "object",
+                found: settings.type_str().to_string(),
             }))
         }
     }

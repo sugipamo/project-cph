@@ -1,8 +1,8 @@
 以下のコマンドを行う
 date +%Y%m%d%H%M%S
 tree . >> agent/.review/yyyymmddhhmm_tree.txt
-cargo check >> agent/.review/yyyymmddhhmm_check.txt
 git diff develop >> agent/.review/yyyymmddhhmm_diff.txt
+cargo check
 
 txtnameを確認し、エラーを修正する
 
