@@ -1,6 +1,6 @@
 以下のコマンドを行う
 date +%Y%m%d%H%M%S
-tree . >> agent/.review/yyyymmddhhmm_tree.txt
+tree -I 'agent|target' ./ >> agent/.review/yyyymmddhhmm_tree.txt
 git diff develop >> agent/.review/yyyymmddhhmm_diff.txt
 cargo check
 
