@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
-use crate::error::Result;
-use crate::contest::error::contest_error;
+use anyhow::{Result, anyhow};
 use crate::contest::model::TestCase;
 
 pub struct TestService;
@@ -15,13 +14,13 @@ impl TestService {
         let expected_path = input_path.with_extension("out");
 
         let input = std::fs::read_to_string(input_path)
-            .map_err(|e| contest_error(
-                format!("入力ファイルの読み取りに失敗しました: {:?}, {}", input_path, e)
+            .map_err(|e| anyhow!(
+                "入力ファイルの読み取りに失敗しました: {:?}, {}", input_path, e
             ))?;
 
         let expected = std::fs::read_to_string(&expected_path)
-            .map_err(|e| contest_error(
-                format!("期待値ファイルの読み取りに失敗しました: {:?}, {}", expected_path, e)
+            .map_err(|e| anyhow!(
+                "期待値ファイルの読み取りに失敗しました: {:?}, {}", expected_path, e
             ))?;
 
         Ok(TestCase::new(input, expected))
@@ -30,14 +29,14 @@ impl TestService {
     pub fn find_test_files(&self, test_dir: impl AsRef<Path>) -> Result<Vec<PathBuf>> {
         let test_dir = test_dir.as_ref();
         if !test_dir.exists() {
-            return Err(contest_error(
-                format!("テストディレクトリが見つかりません: {}", test_dir.display())
+            return Err(anyhow!(
+                "テストディレクトリが見つかりません: {}", test_dir.display()
             ));
         }
 
         let entries = std::fs::read_dir(test_dir)
-            .map_err(|e| contest_error(
-                format!("テストディレクトリの読み取りに失敗しました: {}", e)
+            .map_err(|e| anyhow!(
+                "テストディレクトリの読み取りに失敗しました: {}", e
             ))?;
 
         entries
@@ -49,8 +48,8 @@ impl TestService {
                         if expected_path.exists() {
                             Some(Ok(path))
                         } else {
-                            Some(Err(contest_error(
-                                format!("期待値ファイルが見つかりません: {:?}", expected_path)
+                            Some(Err(anyhow!(
+                                "期待値ファイルが見つかりません: {:?}", expected_path
                             )))
                         }
                     } else {

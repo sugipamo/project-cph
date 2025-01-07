@@ -1,7 +1,7 @@
 pub mod state;
 
 use std::path::PathBuf;
-use crate::error::Result;
+use anyhow::Result;
 use crate::fs::manager::FileManager;
 
 #[derive(Debug, Clone)]

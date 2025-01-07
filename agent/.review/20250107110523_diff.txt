@@ -1,0 +1,243 @@
+diff --git a/src/contest/model/mod.rs b/src/contest/model/mod.rs
+index ea2ccbe..2f5b931 100644
+--- a/src/contest/model/mod.rs
++++ b/src/contest/model/mod.rs
+@@ -1,7 +1,7 @@
+ pub mod state;
+ 
+ use std::path::PathBuf;
+-use crate::error::Result;
++use anyhow::Result;
+ use crate::fs::manager::FileManager;
+ 
+ #[derive(Debug, Clone)]
+diff --git a/src/contest/service/path.rs b/src/contest/service/path.rs
+index 70359bb..b7faf79 100644
+--- a/src/contest/service/path.rs
++++ b/src/contest/service/path.rs
+@@ -1,6 +1,5 @@
+ use std::path::{Path, PathBuf};
+-use crate::error::Result;
+-use crate::contest::error::contest_error;
++use anyhow::{Result, anyhow};
+ 
+ pub struct PathService {
+     base_dir: PathBuf,
+@@ -15,8 +14,8 @@ impl PathService {
+ 
+     pub fn validate_base_dir(&self) -> Result<()> {
+         if !self.base_dir.exists() {
+-            return Err(contest_error(
+-                format!("コンテストディレクトリが存在しません: {:?}", self.base_dir)
++            return Err(anyhow!(
++                "コンテストディレクトリが存在しません: {:?}", self.base_dir
+             ));
+         }
+         Ok(())
+@@ -25,8 +24,8 @@ impl PathService {
+     pub fn validate_source_dir(&self, source_dir: impl AsRef<Path>) -> Result<()> {
+         let source_dir = source_dir.as_ref();
+         if !source_dir.exists() {
+-            return Err(contest_error(
+-                format!("ソースディレクトリが存在しません: {:?}", source_dir)
++            return Err(anyhow!(
++                "ソースディレクトリが存在しません: {:?}", source_dir
+             ));
+         }
+         Ok(())
+@@ -35,8 +34,8 @@ impl PathService {
+     pub fn validate_source_file(&self, source_path: impl AsRef<Path>) -> Result<()> {
+         let source_path = source_path.as_ref();
+         if !source_path.exists() {
+-            return Err(contest_error(
+-                format!("ソースファイルが存在しません: {:?}", source_path)
++            return Err(anyhow!(
++                "ソースファイルが存在しません: {:?}", source_path
+             ));
+         }
+         Ok(())
+@@ -45,8 +44,8 @@ impl PathService {
+     pub fn validate_test_dir(&self, test_dir: impl AsRef<Path>) -> Result<()> {
+         let test_dir = test_dir.as_ref();
+         if !test_dir.exists() {
+-            return Err(contest_error(
+-                format!("テストディレクトリが存在しません: {:?}", test_dir)
++            return Err(anyhow!(
++                "テストディレクトリが存在しません: {:?}", test_dir
+             ));
+         }
+         Ok(())
+@@ -55,8 +54,8 @@ impl PathService {
+     pub fn create_build_dir(&self, build_dir: impl AsRef<Path>) -> Result<()> {
+         let build_dir = build_dir.as_ref();
+         std::fs::create_dir_all(build_dir)
+-            .map_err(|e| contest_error(
+-                format!("ビルドディレクトリの作成に失敗しました: {}", e)
++            .map_err(|e| anyhow!(
++                "ビルドディレクトリの作成に失敗しました: {}", e
+             ))?;
+         Ok(())
+     }
+@@ -64,8 +63,8 @@ impl PathService {
+     pub fn get_contest_dir(&self, contest_id: &str) -> Result<PathBuf> {
+         let path = self.base_dir.join(contest_id);
+         if !path.exists() {
+-            return Err(contest_error(
+-                format!("コンテストディレクトリが見つかりません: {}", path.display())
++            return Err(anyhow!(
++                "コンテストディレクトリが見つかりません: {}", path.display()
+             ));
+         }
+         Ok(path)
+@@ -74,8 +73,8 @@ impl PathService {
+     pub fn get_problem_dir(&self, contest_id: &str, problem_id: &str) -> Result<PathBuf> {
+         let path = self.get_contest_dir(contest_id)?.join(problem_id);
+         if !path.exists() {
+-            return Err(contest_error(
+-                format!("問題ディレクトリが見つかりません: {}", path.display())
++            return Err(anyhow!(
++                "問題ディレクトリが見つかりません: {}", path.display()
+             ));
+         }
+         Ok(path)
+@@ -84,8 +83,8 @@ impl PathService {
+     pub fn get_source_file(&self, contest_id: &str, problem_id: &str) -> Result<PathBuf> {
+         let path = self.get_problem_dir(contest_id, problem_id)?.join("main.rs");
+         if !path.exists() {
+-            return Err(contest_error(
+-                format!("ソースファイルが見つかりません: {}", path.display())
++            return Err(anyhow!(
++                "ソースファイルが見つかりません: {}", path.display()
+             ));
+         }
+         Ok(path)
+@@ -94,8 +93,8 @@ impl PathService {
+     pub fn get_test_dir(&self, contest_id: &str, problem_id: &str) -> Result<PathBuf> {
+         let path = self.get_problem_dir(contest_id, problem_id)?.join("test");
+         if !path.exists() {
+-            return Err(contest_error(
+-                format!("テストディレクトリが見つかりません: {}", path.display())
++            return Err(anyhow!(
++                "テストディレクトリが見つかりません: {}", path.display()
+             ));
+         }
+         Ok(path)
+@@ -104,8 +103,8 @@ impl PathService {
+     pub fn create_contest_dir(&self, contest_id: &str) -> Result<PathBuf> {
+         let path = self.base_dir.join(contest_id);
+         std::fs::create_dir_all(&path)
+-            .map_err(|e| contest_error(
+-                format!("コンテストディレクトリの作成に失敗しました: {}", e)
++            .map_err(|e| anyhow!(
++                "コンテストディレクトリの作成に失敗しました: {}", e
+             ))?;
+         Ok(path)
+     }
+diff --git a/src/contest/service/test.rs b/src/contest/service/test.rs
+index fca9c3a..444fe08 100644
+--- a/src/contest/service/test.rs
++++ b/src/contest/service/test.rs
+@@ -1,6 +1,5 @@
+ use std::path::{Path, PathBuf};
+-use crate::error::Result;
+-use crate::contest::error::contest_error;
++use anyhow::{Result, anyhow};
+ use crate::contest::model::TestCase;
+ 
+ pub struct TestService;
+@@ -15,13 +14,13 @@ impl TestService {
+         let expected_path = input_path.with_extension("out");
+ 
+         let input = std::fs::read_to_string(input_path)
+-            .map_err(|e| contest_error(
+-                format!("入力ファイルの読み取りに失敗しました: {:?}, {}", input_path, e)
++            .map_err(|e| anyhow!(
++                "入力ファイルの読み取りに失敗しました: {:?}, {}", input_path, e
+             ))?;
+ 
+         let expected = std::fs::read_to_string(&expected_path)
+-            .map_err(|e| contest_error(
+-                format!("期待値ファイルの読み取りに失敗しました: {:?}, {}", expected_path, e)
++            .map_err(|e| anyhow!(
++                "期待値ファイルの読み取りに失敗しました: {:?}, {}", expected_path, e
+             ))?;
+ 
+         Ok(TestCase::new(input, expected))
+@@ -30,14 +29,14 @@ impl TestService {
+     pub fn find_test_files(&self, test_dir: impl AsRef<Path>) -> Result<Vec<PathBuf>> {
+         let test_dir = test_dir.as_ref();
+         if !test_dir.exists() {
+-            return Err(contest_error(
+-                format!("テストディレクトリが見つかりません: {}", test_dir.display())
++            return Err(anyhow!(
++                "テストディレクトリが見つかりません: {}", test_dir.display()
+             ));
+         }
+ 
+         let entries = std::fs::read_dir(test_dir)
+-            .map_err(|e| contest_error(
+-                format!("テストディレクトリの読み取りに失敗しました: {}", e)
++            .map_err(|e| anyhow!(
++                "テストディレクトリの読み取りに失敗しました: {}", e
+             ))?;
+ 
+         entries
+@@ -49,8 +48,8 @@ impl TestService {
+                         if expected_path.exists() {
+                             Some(Ok(path))
+                         } else {
+-                            Some(Err(contest_error(
+-                                format!("期待値ファイルが見つかりません: {:?}", expected_path)
++                            Some(Err(anyhow!(
++                                "期待値ファイルが見つかりません: {:?}", expected_path
+                             )))
+                         }
+                     } else {
+diff --git a/src/fs/backup.rs b/src/fs/backup.rs
+index 9b33aa6..927d141 100644
+--- a/src/fs/backup.rs
++++ b/src/fs/backup.rs
+@@ -2,7 +2,7 @@ use std::fs;
+ use std::path::{Path, PathBuf};
+ use std::sync::Arc;
+ use tempfile::TempDir;
+-use crate::error::Result;
++use anyhow::Result;
+ use super::error::helpers::create_io_error;
+ 
+ /// バックアップを管理する構造体
+diff --git a/src/fs/core.rs b/src/fs/core.rs
+index ae5c317..c7673ac 100644
+--- a/src/fs/core.rs
++++ b/src/fs/core.rs
+@@ -1,5 +1,5 @@
+ use std::path::{Path, PathBuf};
+-use crate::error::Result;
++use anyhow::Result;
+ use super::error::{
+     create_not_found_error,
+     create_io_error,
+diff --git a/src/fs/manager.rs b/src/fs/manager.rs
+index f2ac24d..5f6b0f9 100644
+--- a/src/fs/manager.rs
++++ b/src/fs/manager.rs
+@@ -1,6 +1,6 @@
+ use std::path::{Path, PathBuf};
+ use std::sync::Arc;
+-use crate::error::Result;
++use anyhow::Result;
+ use crate::fs::error::helpers::{create_io_error, create_not_found_error, create_invalid_path_error};
+ use crate::fs::transaction::{FileTransaction, FileOperation, CreateFileOperation, DeleteFileOperation};
+ 
+diff --git a/src/fs/transaction.rs b/src/fs/transaction.rs
+index 90fd649..3f6c915 100644
+--- a/src/fs/transaction.rs
++++ b/src/fs/transaction.rs
+@@ -1,6 +1,6 @@
+ use std::path::PathBuf;
+ use std::sync::Arc;
+-use crate::error::Error;
++use anyhow::Error;
+ use crate::fs::error::helpers::create_io_error;
+ 
+ pub trait FileOperation: Send + Sync + std::fmt::Debug {

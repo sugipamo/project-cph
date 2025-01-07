@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use crate::error::Result;
+use anyhow::Result;
 use crate::fs::error::helpers::{create_io_error, create_not_found_error, create_invalid_path_error};
 use crate::fs::transaction::{FileTransaction, FileOperation, CreateFileOperation, DeleteFileOperation};
 

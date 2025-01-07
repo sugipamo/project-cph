@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::TempDir;
-use crate::error::Result;
+use anyhow::Result;
 use super::error::helpers::create_io_error;
 
 /// バックアップを管理する構造体
