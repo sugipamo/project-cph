@@ -1,8 +1,8 @@
 以下のコマンドを行う
 date +%Y%m%d%H%M%S
-tree . >> agent/.fix-errors/yyyymmddhhmm_tree.txt
-cargo check >> agent/.fix-errors/yyyymmddhhmm_check.txt
-git diff develop >> agent/.fix-errors/yyyymmddhhmm_diff.txt
+tree . >> agent/.review/yyyymmddhhmm_tree.txt
+cargo check >> agent/.review/yyyymmddhhmm_check.txt
+git diff develop >> agent/.review/yyyymmddhhmm_diff.txt
 
 txtnameを確認し、エラーを修正する
 
@@ -16,4 +16,4 @@ txtnameを確認し、エラーを修正する
 
 可読性に問題はないか確認する。可読性に問題があれば、作業を中断。
 
-今回の作業結果をagent/.diff-review/yyyymmddhhmm_review.txtに記載
+今回の作業結果をagent/.review/yyyymmddhhmm_review.txtに記載
