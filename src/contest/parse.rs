@@ -172,6 +172,20 @@ impl NameResolver {
 
         Ok((command_type, args))
     }
+
+    pub fn resolve(&self, input: &str) -> Result<ResolvedCommand, ParseError> {
+        if input.is_empty() {
+            return Err(ParseError::EmptyCommand);
+        }
+
+        let tokens: Vec<&str> = input.split_whitespace().collect();
+        let (command_type, args) = self.parse_command(&tokens)?;
+
+        Ok(ResolvedCommand {
+            commands: vec![command_type.name],
+            args,
+        })
+    }
 }
 
 #[cfg(test)]

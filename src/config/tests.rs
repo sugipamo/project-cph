@@ -25,7 +25,7 @@ mod tests {
     fn test_basic_config_access() {
         let config = create_test_config();
         
-        // 元の記法での設定値の取得
+        // 基本的な設定値の取得
         let solution: String = config.get("system.source_file.solution").unwrap();
         assert_eq!(solution, "main.rs");
 
@@ -36,9 +36,8 @@ mod tests {
         assert!(auto_yes);
 
         // ConfigNodeを介した設定値の取得
-        let solution = config.get_node("system.source_file.solution")
-            .and_then(|node| node.as_typed::<String>())
-            .unwrap();
+        let solution_node = config.get_node("system.source_file.solution").unwrap();
+        let solution: String = solution_node.as_typed().unwrap();
         assert_eq!(solution, "main.rs");
     }
 
@@ -58,67 +57,84 @@ mod tests {
                     }
                 }
                 Err(ConfigError::ValidationError {
-                    message: "タイムアウトは1から10秒の間である必要があります".to_string(),
+                    message: "Timeout must be between 1 and 10 seconds".to_string(),
                 })
             }
 
             fn describe(&self) -> String {
-                "タイムアウト値の検証".to_string()
+                "Timeout value validation".to_string()
             }
         }
 
-        // 有効な値でのテスト
-        let node = config.get("system.docker.timeout_seconds").unwrap();
-        let schema = ConfigSchema::Custom(Arc::new(TimeoutSchema));
-        assert!(node.with_value(Value::Number(2.into())).is_ok());
+        // スキーマを持つ新しいノードの作成
+        let node = ConfigNode::new(Value::Number(2.into()), "timeout".to_string())
+            .with_schema(ConfigSchema::Custom(Arc::new(TimeoutSchema)));
 
-        // 無効な値でのテスト
-        assert!(node.with_value(Value::Number(11.into())).is_err());
-    }
-
-    #[test]
-    fn test_config_change_notification() {
-        use std::sync::atomic::{AtomicBool, Ordering};
-        use std::sync::Arc;
-
-        struct TestListener {
-            called: Arc<AtomicBool>,
-        }
-
-        impl ConfigListener for TestListener {
-            fn on_change(&self, _old: &ConfigNode, _new: &ConfigNode) {
-                self.called.store(true, Ordering::SeqCst);
-            }
-        }
-
-        let called = Arc::new(AtomicBool::new(false));
-        let config = create_test_config()
-            .with_listener(TestListener { called: called.clone() });
-
-        // 設定値の変更
-        if let Ok(node) = config.get("system.docker.timeout_seconds") {
-            let _new_node = node.with_value(Value::Number(3.into())).unwrap();
-            assert!(called.load(Ordering::SeqCst));
-        }
+        // スキーマによる検証
+        assert!(ConfigSchema::Custom(Arc::new(TimeoutSchema))
+            .validate(&Value::Number(2.into()))
+            .is_ok());
+        assert!(ConfigSchema::Custom(Arc::new(TimeoutSchema))
+            .validate(&Value::Number(11.into()))
+            .is_err());
     }
 
     #[test]
     fn test_type_conversion() {
         let config = create_test_config();
 
-        // 文字列への変換テスト
-        let node = config.get("system.docker.timeout_seconds").unwrap();
-        let str_val: String = node.as_typed().unwrap();
-        assert_eq!(str_val, "2");
+        // 文字列型への変換
+        let solution: String = config.get("system.source_file.solution").unwrap();
+        assert_eq!(solution, "main.rs");
 
-        // 真偽値への変換テスト
-        let node = config.get("system.submit.auto_yes").unwrap();
-        let bool_val: bool = node.as_typed().unwrap();
-        assert!(bool_val);
+        // 数値型への変換
+        let timeout: i64 = config.get("system.docker.timeout_seconds").unwrap();
+        assert_eq!(timeout, 2);
 
-        // 数値への変換テスト
-        let node = config.get("system.docker.timeout_seconds").unwrap();
-        let num_val: i64 = node.as_typed().unwrap();
-        assert_eq!(num_val, 2);
+        // 真偽値への変換
+        let auto_yes: bool = config.get("system.submit.auto_yes").unwrap();
+        assert!(auto_yes);
+
+        // 型変換エラーのテスト
+        let result: ConfigResult<bool> = config.get("system.source_file.solution");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_path_resolution() {
+        let config = create_test_config();
+
+        // 存在するパスの解決
+        assert!(config.exists("system.docker.timeout_seconds"));
+        assert!(config.exists("languages.rust.aliases"));
+
+        // 存在しないパスの解決
+        assert!(!config.exists("nonexistent.path"));
+        assert!(!config.exists("system.invalid"));
+    }
+
+    #[test]
+    fn test_metadata() {
+        // メタデータを持つノードの作成
+        let node = ConfigNode::new(Value::String("test".to_string()), "test".to_string())
+            .with_description("Test configuration value".to_string())
+            .with_schema(ConfigSchema::Primitive(PrimitiveType::String));
+
+        // メタデータの検証
+        assert!(node.metadata.description.is_some());
+        assert!(node.metadata.schema.is_some());
+    }
+
+    #[test]
+    fn test_pattern_matching() {
+        let config = create_test_config();
+
+        // system.docker.*のパターンマッチング
+        let docker_settings = config.get_all("system\\.docker\\..*").unwrap();
+        assert_eq!(docker_settings.len(), 2); // timeout_seconds と memory_limit_mb
+
+        // 存在しないパターンのマッチング
+        let empty_result = config.get_all("nonexistent\\..*").unwrap();
+        assert!(empty_result.is_empty());
     }
 } 

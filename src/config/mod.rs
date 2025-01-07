@@ -6,13 +6,13 @@
 // - イミュータブルな設定値
 // - カスタムスキーマによるバリデーション
 // - 柔軟な型変換システム
-// - 設定変更の追跡
 
 use std::sync::Arc;
 use std::collections::HashMap;
-use std::time::SystemTime;
 use serde_yaml::Value;
 use regex::Regex;
+use std::path::Path;
+use std::fs;
 
 // 基本的な設定ノード
 #[derive(Clone, Debug)]
@@ -68,21 +68,6 @@ pub trait FromConfigValue: Sized {
 #[derive(Clone)]
 pub struct Config {
     root: Arc<ConfigNode>,
-    listeners: Arc<Vec<Arc<dyn ConfigListener>>>,
-    history: Arc<Vec<ConfigChange>>,
-}
-
-#[derive(Clone, Debug)]
-pub struct ConfigChange {
-    timestamp: SystemTime,
-    path: String,
-    old_value: Option<Arc<Value>>,
-    new_value: Arc<Value>,
-}
-
-// 設定変更通知のトレイト
-pub trait ConfigListener: Send + Sync {
-    fn on_change(&self, old: &ConfigNode, new: &ConfigNode);
 }
 
 // エラー型
@@ -92,6 +77,7 @@ pub enum ConfigError {
     TypeError { expected: &'static str, found: String },
     ValidationError { message: String },
     ValueError { message: String },
+    IoError(String),
 }
 
 pub type ConfigResult<T> = Result<T, ConfigError>;
@@ -109,18 +95,18 @@ impl ConfigNode {
         }
     }
 
-    pub fn as_typed<T: FromConfigValue>(&self) -> ConfigResult<T> {
-        T::from_config_value(&self.value)
+    pub fn with_schema(mut self, schema: ConfigSchema) -> Self {
+        Arc::make_mut(&mut self.metadata).schema = Some(Arc::new(schema));
+        self
     }
 
-    pub fn with_value(&self, value: Value) -> ConfigResult<Self> {
-        if let Some(schema) = &self.metadata.schema {
-            schema.validate(&value)?;
-        }
-        Ok(Self {
-            value: Arc::new(value),
-            metadata: self.metadata.clone(),
-        })
+    pub fn with_description(mut self, description: String) -> Self {
+        Arc::make_mut(&mut self.metadata).description = Some(description);
+        self
+    }
+
+    pub fn as_typed<T: FromConfigValue>(&self) -> ConfigResult<T> {
+        T::from_config_value(&self.value)
     }
 }
 
@@ -129,33 +115,51 @@ impl Config {
     pub fn new(root_value: Value) -> Self {
         Self {
             root: Arc::new(ConfigNode::new(root_value, String::from("root"))),
-            listeners: Arc::new(Vec::new()),
-            history: Arc::new(Vec::new()),
         }
     }
 
-    pub fn with_listener<L: ConfigListener + 'static>(self, listener: L) -> Self {
-        let mut listeners = (*self.listeners).clone();
-        listeners.push(Arc::new(listener));
-        Self {
-            listeners: Arc::new(listeners),
-            ..self
-        }
-    }
-
-    fn notify_listeners(&self, old: &ConfigNode, new: &ConfigNode) {
-        for listener in self.listeners.iter() {
-            listener.on_change(old, new);
-        }
+    pub fn load_from_file<P: AsRef<Path>>(path: P) -> ConfigResult<Self> {
+        let contents = fs::read_to_string(path)
+            .map_err(|e| ConfigError::IoError(e.to_string()))?;
+        let value = serde_yaml::from_str(&contents)
+            .map_err(|e| ConfigError::ValueError { message: e.to_string() })?;
+        Ok(Self::new(value))
     }
 
     pub fn get<T: FromConfigValue>(&self, path: &str) -> ConfigResult<T> {
-        self.get_node(path).and_then(|node| node.as_typed())
+        self.get_node(path)?.as_typed()
     }
 
     fn get_node(&self, path: &str) -> ConfigResult<ConfigNode> {
-        self.resolve_path(path)
-            .map(|value| ConfigNode::new(value, path.to_string()))
+        let value = self.resolve_path(path)?;
+        Ok(ConfigNode::new(value, path.to_string()))
+    }
+
+    fn resolve_path(&self, path: &str) -> ConfigResult<Value> {
+        if path == "root" {
+            return Ok((*self.root.value).clone());
+        }
+
+        let parts: Vec<&str> = path.split('.').collect();
+        let mut current = &*self.root.value;
+
+        for part in parts {
+            match current {
+                Value::Mapping(map) => {
+                    current = map.get(&Value::String(part.to_string()))
+                        .ok_or_else(|| ConfigError::PathNotFound(path.to_string()))?;
+                }
+                Value::Sequence(seq) => {
+                    let index = part.parse::<usize>()
+                        .map_err(|_| ConfigError::PathNotFound(path.to_string()))?;
+                    current = seq.get(index)
+                        .ok_or_else(|| ConfigError::PathNotFound(path.to_string()))?;
+                }
+                _ => return Err(ConfigError::PathNotFound(path.to_string())),
+            }
+        }
+
+        Ok(current.clone())
     }
 }
 
@@ -166,26 +170,48 @@ impl ConfigAccess for Config {
     }
 
     fn get_all(&self, pattern: &str) -> ConfigResult<Vec<ConfigNode>> {
-        self.find_matching_paths(pattern)
+        let regex = Regex::new(pattern)
+            .map_err(|e| ConfigError::ValueError { message: e.to_string() })?;
+
+        Ok(self.find_matching_paths(pattern)
             .into_iter()
-            .map(|path| self.get(&path))
-            .collect()
+            .filter_map(|path| {
+                if regex.is_match(&path) {
+                    self.get_node(&path).ok()
+                } else {
+                    None
+                }
+            })
+            .collect())
     }
 
     fn exists(&self, path: &str) -> bool {
-        self.resolve_path(path).is_ok()
+        self.get_node(path).is_ok()
     }
 }
 
-// 基本型のFromConfigValue実装
+// 基本的な型変換の実装
 impl FromConfigValue for String {
     fn from_config_value(value: &Value) -> ConfigResult<Self> {
         match value {
             Value::String(s) => Ok(s.clone()),
-            Value::Number(n) => Ok(n.to_string()),
-            Value::Bool(b) => Ok(b.to_string()),
             _ => Err(ConfigError::TypeError {
-                expected: "string-convertible",
+                expected: "string",
+                found: value.type_str().to_string(),
+            }),
+        }
+    }
+}
+
+impl FromConfigValue for i64 {
+    fn from_config_value(value: &Value) -> ConfigResult<Self> {
+        match value {
+            Value::Number(n) => n.as_i64().ok_or_else(|| ConfigError::TypeError {
+                expected: "integer",
+                found: "non-integer number".to_string(),
+            }),
+            _ => Err(ConfigError::TypeError {
+                expected: "number",
                 found: value.type_str().to_string(),
             }),
         }
@@ -196,13 +222,6 @@ impl FromConfigValue for bool {
     fn from_config_value(value: &Value) -> ConfigResult<Self> {
         match value {
             Value::Bool(b) => Ok(*b),
-            Value::String(s) => match s.to_lowercase().as_str() {
-                "true" | "yes" | "on" | "1" => Ok(true),
-                "false" | "no" | "off" | "0" => Ok(false),
-                _ => Err(ConfigError::ValueError {
-                    message: format!("無効な真偽値: {}", s),
-                }),
-            },
             _ => Err(ConfigError::TypeError {
                 expected: "boolean",
                 found: value.type_str().to_string(),
@@ -211,49 +230,7 @@ impl FromConfigValue for bool {
     }
 }
 
-impl FromConfigValue for i64 {
-    fn from_config_value(value: &Value) -> ConfigResult<Self> {
-        match value {
-            Value::Number(n) => n.as_i64().ok_or_else(|| ConfigError::ValueError {
-                message: "数値が範囲外です".to_string(),
-            }),
-            Value::String(s) => s.parse().map_err(|_| ConfigError::ValueError {
-                message: format!("無効な数値: {}", s),
-            }),
-            _ => Err(ConfigError::TypeError {
-                expected: "number",
-                found: value.type_str().to_string(),
-            }),
-        }
-    }
-}
-
-// ヘルパーメソッド
-impl Config {
-    fn resolve_path(&self, path: &str) -> ConfigResult<Value> {
-        let parts: Vec<&str> = path.split('.').collect();
-        let mut current = self.root.value.clone();
-        
-        for part in parts {
-            match &*current {
-                Value::Mapping(map) => {
-                    current = Arc::new(map.get(part).ok_or_else(|| ConfigError::PathNotFound(
-                        path.to_string(),
-                    ))?.clone());
-                }
-                _ => return Err(ConfigError::PathNotFound(path.to_string())),
-            }
-        }
-        
-        Ok((*current).clone())
-    }
-
-    fn find_matching_paths(&self, _pattern: &str) -> Vec<String> {
-        // TODO: 実装
-        vec![]
-    }
-}
-
+// ヘルパートレイト
 pub trait ValueExt {
     fn type_str(&self) -> &'static str;
 }
@@ -261,13 +238,13 @@ pub trait ValueExt {
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConfigError::PathNotFound(path) => write!(f, "パスが見つかりません: {}", path),
-            ConfigError::TypeError { expected, found } => 
-                write!(f, "型エラー: 期待される型 {}, 実際の型 {}", expected, found),
-            ConfigError::ValidationError { message } => 
-                write!(f, "バリデーションエラー: {}", message),
-            ConfigError::ValueError { message } => 
-                write!(f, "値エラー: {}", message),
+            ConfigError::PathNotFound(path) => write!(f, "Path not found: {}", path),
+            ConfigError::TypeError { expected, found } => {
+                write!(f, "Type error: expected {}, found {}", expected, found)
+            }
+            ConfigError::ValidationError { message } => write!(f, "Validation error: {}", message),
+            ConfigError::ValueError { message } => write!(f, "Value error: {}", message),
+            ConfigError::IoError(message) => write!(f, "IO error: {}", message),
         }
     }
 }
@@ -289,13 +266,13 @@ impl ValueExt for Value {
 impl ConfigSchema {
     pub fn validate(&self, value: &Value) -> ConfigResult<()> {
         match self {
-            ConfigSchema::Primitive(ptype) => match (ptype, value) {
+            ConfigSchema::Primitive(primitive_type) => match (primitive_type, value) {
                 (PrimitiveType::String, Value::String(_)) => Ok(()),
                 (PrimitiveType::Number, Value::Number(_)) => Ok(()),
                 (PrimitiveType::Boolean, Value::Bool(_)) => Ok(()),
                 (PrimitiveType::Null, Value::Null) => Ok(()),
                 _ => Err(ConfigError::TypeError {
-                    expected: ptype.type_str(),
+                    expected: primitive_type.type_str(),
                     found: value.type_str().to_string(),
                 }),
             },
@@ -311,12 +288,12 @@ impl ConfigSchema {
                         found: value.type_str().to_string(),
                     })
                 }
-            },
-            ConfigSchema::Object(fields) => {
+            }
+            ConfigSchema::Object(properties) => {
                 if let Value::Mapping(map) = value {
-                    for (key, schema) in fields {
-                        if let Some(field_value) = map.get(key) {
-                            schema.validate(field_value)?;
+                    for (key, schema) in properties {
+                        if let Some(value) = map.get(&Value::String(key.clone())) {
+                            schema.validate(value)?;
                         }
                     }
                     Ok(())
@@ -326,7 +303,7 @@ impl ConfigSchema {
                         found: value.type_str().to_string(),
                     })
                 }
-            },
+            }
             ConfigSchema::Union(schemas) => {
                 for schema in schemas {
                     if schema.validate(value).is_ok() {
@@ -334,10 +311,10 @@ impl ConfigSchema {
                     }
                 }
                 Err(ConfigError::ValidationError {
-                    message: "値がユニオン型のいずれにも一致しません".to_string(),
+                    message: "Value does not match any schema in union".to_string(),
                 })
-            },
-            ConfigSchema::Custom(schema) => schema.validate(value),
+            }
+            ConfigSchema::Custom(custom) => custom.validate(value),
         }
     }
 }
@@ -361,13 +338,41 @@ impl FromConfigValue for Value {
 
 impl FromConfigValue for ConfigNode {
     fn from_config_value(value: &Value) -> ConfigResult<Self> {
-        Ok(ConfigNode {
-            value: Arc::new(value.clone()),
-            metadata: Arc::new(ConfigMetadata {
-                path: String::new(),
-                schema: None,
-                description: None,
-            }),
-        })
+        Ok(ConfigNode::new(value.clone(), String::new()))
+    }
+}
+
+// 設定を探すためのヘルパーメソッド
+impl Config {
+    fn find_matching_paths(&self, _pattern: &str) -> Vec<String> {
+        let mut paths = Vec::new();
+        self.collect_paths(&self.root.value, "root", &mut paths);
+        paths
+    }
+
+    fn collect_paths(&self, value: &Value, current_path: &str, paths: &mut Vec<String>) {
+        paths.push(current_path.to_string());
+
+        match value {
+            Value::Mapping(map) => {
+                for (key, value) in map {
+                    if let Value::String(key_str) = key {
+                        let new_path = if current_path == "root" {
+                            key_str.clone()
+                        } else {
+                            format!("{}.{}", current_path, key_str)
+                        };
+                        self.collect_paths(value, &new_path, paths);
+                    }
+                }
+            }
+            Value::Sequence(seq) => {
+                for (i, value) in seq.iter().enumerate() {
+                    let new_path = format!("{}.{}", current_path, i);
+                    self.collect_paths(value, &new_path, paths);
+                }
+            }
+            _ => {}
+        }
     }
 } 
