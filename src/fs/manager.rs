@@ -16,7 +16,7 @@ impl FileManager {
     pub fn read_file(&self, path: impl AsRef<Path>) -> Result<String> {
         let path = path.as_ref();
         if !path.exists() {
-            return Err(not_found_err(path.display().to_string()));
+            return Err(not_found_err(path.to_string_lossy().to_string()));
         }
         std::fs::read_to_string(path)
             .map_err(|e| io_err(e, format!("ファイルの読み込みに失敗: {}", path.display())))
@@ -24,12 +24,19 @@ impl FileManager {
 
     pub fn write_file(&self, path: impl AsRef<Path>, content: impl AsRef<str>) -> Result<()> {
         let path = path.as_ref();
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| io_err(e, format!("ディレクトリの作成に失敗: {}", parent.display())))?;
+        }
         std::fs::write(path, content.as_ref())
             .map_err(|e| io_err(e, format!("ファイルの書き込みに失敗: {}", path.display())))
     }
 
     pub fn create_dir(&self, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
+        if path.exists() {
+            return Ok(());
+        }
         std::fs::create_dir_all(path)
             .map_err(|e| io_err(e, format!("ディレクトリの作成に失敗: {}", path.display())))
     }
