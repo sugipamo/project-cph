@@ -1,8 +1,6 @@
 use std::collections::HashMap;
-use serde_yaml::Value;
-use crate::config::{Config, ConfigError};
-use crate::error::Result;
-use crate::contest::error::contest_error;
+use crate::config::{Config, ConfigAccess, ConfigNode};
+use anyhow::{Result, anyhow};
 
 #[derive(Debug, Clone)]
 pub struct ResolvedCommand {
@@ -42,15 +40,16 @@ impl CommandResolver {
     }
 
     fn get_aliases(&self, command: &str) -> Result<Option<String>> {
-        let aliases = self.config.get("aliases")?;
-        let alias = aliases.get(command)
-            .and_then(|node| node.as_typed::<String>().ok());
+        let aliases: ConfigNode = self.config.get("aliases")?;
+        let alias = aliases.as_typed::<HashMap<String, String>>()
+            .ok()
+            .and_then(|map| map.get(command).cloned());
         Ok(alias)
     }
 
     pub fn parse_command(&self, tokens: &[&str]) -> Result<(CommandType, HashMap<String, String>)> {
         if tokens.is_empty() {
-            return Err(anyhow::anyhow!("コマンドが空です"));
+            return Err(anyhow!("コマンドが空です"));
         }
 
         let command = tokens[0].to_lowercase();
@@ -59,14 +58,14 @@ impl CommandResolver {
         match command.as_str() {
             "test" => self.parse_test_command(&args),
             "login" => self.parse_login_command(&args),
-            _ => Err(anyhow::anyhow!("未知のコマンド: {}", command)),
+            _ => Err(anyhow!("未知のコマンド: {}", command)),
         }
     }
 
     pub fn resolve(&self, input: &str) -> Result<ResolvedCommand> {
         let tokens: Vec<_> = input.split_whitespace().collect();
         if tokens.is_empty() {
-            return Err(anyhow::anyhow!("コマンドが空です"));
+            return Err(anyhow!("コマンドが空です"));
         }
 
         let (command_type, args) = self.parse_command(&tokens)?;
@@ -85,6 +84,48 @@ impl CommandResolver {
         }
 
         Ok(resolved)
+    }
+
+    fn parse_test_command(&self, args: &[String]) -> Result<(CommandType, HashMap<String, String>)> {
+        let mut command_args = HashMap::new();
+        
+        if args.is_empty() {
+            return Err(anyhow!("テストコマンドには引数が必要です"));
+        }
+
+        // 言語の解析
+        if let Some(language) = args.first() {
+            match language.to_lowercase().as_str() {
+                "rs" | "rust" => { command_args.insert("language".to_string(), "rust".to_string()); }
+                "py" | "python" | "python3" => { command_args.insert("language".to_string(), "python".to_string()); }
+                _ => {}
+            }
+        }
+
+        // コンテストIDと問題IDの解析
+        if args.len() >= 3 {
+            command_args.insert("contest".to_string(), args[1].clone());
+            command_args.insert("problem".to_string(), args[2].clone());
+        } else if args.len() == 2 {
+            command_args.insert("problem_id".to_string(), args[1].clone());
+        }
+
+        Ok((CommandType::Test, command_args))
+    }
+
+    fn parse_login_command(&self, args: &[String]) -> Result<(CommandType, HashMap<String, String>)> {
+        let mut command_args = HashMap::new();
+        
+        if let Some(site) = args.first() {
+            match site.to_lowercase().as_str() {
+                "ac" | "atcoder" | "at-coder" => {
+                    command_args.insert("site".to_string(), "atcoder".to_string());
+                }
+                _ => {}
+            }
+        }
+
+        Ok((CommandType::Login, command_args))
     }
 }
 

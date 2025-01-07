@@ -17,9 +17,7 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use crate::error::Result;
-use crate::error::contest::ContestErrorKind;
-use crate::contest::error::contest_error;
+use anyhow::{Result, anyhow};
 
 #[derive(Debug, Clone)]
 pub struct ContestState {
@@ -92,40 +90,40 @@ impl ContestState {
 
     pub fn validate(&self) -> Result<ValidatedState> {
         let site = self.site.clone()
-            .ok_or_else(|| contest_error(ContestErrorKind::NotFound, "サイトが指定されていません"))?;
+            .ok_or_else(|| anyhow!("サイトが指定されていません"))?;
         
         let contest_id = self.contest_id.clone()
-            .ok_or_else(|| contest_error(ContestErrorKind::NotFound, "コンテストIDが指定されていません"))?;
+            .ok_or_else(|| anyhow!("コンテストIDが指定されていません"))?;
         
         let problem_id = self.problem_id.clone()
-            .ok_or_else(|| contest_error(ContestErrorKind::NotFound, "問題IDが指定されていません"))?;
+            .ok_or_else(|| anyhow!("問題IDが指定されていません"))?;
         
         let language = self.language.clone()
-            .ok_or_else(|| contest_error(ContestErrorKind::NotFound, "言語が指定されていません"))?;
+            .ok_or_else(|| anyhow!("言語が指定されていません"))?;
         
         let source_path = self.source_path.clone()
-            .ok_or_else(|| contest_error(ContestErrorKind::NotFound, "ソースパスが指定されていません"))?;
+            .ok_or_else(|| anyhow!("ソースパスが指定されていません"))?;
 
         // 拡張されたバリデーションルール
         if site.is_empty() {
-            return Err(contest_error(ContestErrorKind::Invalid, "サイトが空です"));
+            return Err(anyhow!("サイトが空です"));
         }
         if contest_id.is_empty() {
-            return Err(contest_error(ContestErrorKind::Invalid, "コンテストIDが空です"));
+            return Err(anyhow!("コンテストIDが空です"));
         }
         if problem_id.is_empty() {
-            return Err(contest_error(ContestErrorKind::Invalid, "問題IDが空です"));
+            return Err(anyhow!("問題IDが空です"));
         }
         if language.is_empty() {
-            return Err(contest_error(ContestErrorKind::Invalid, "言語が空です"));
+            return Err(anyhow!("言語が空です"));
         }
 
         // パスのバリデーション
         if !source_path.exists() {
-            return Err(contest_error(ContestErrorKind::Invalid, "指定されたソースパスが存在しません"));
+            return Err(anyhow!("指定されたソースパスが存在しません"));
         }
         if !source_path.is_file() {
-            return Err(contest_error(ContestErrorKind::Invalid, "指定されたソースパスはファイルではありません"));
+            return Err(anyhow!("指定されたソースパスはファイルではありません"));
         }
 
         Ok(ValidatedState {

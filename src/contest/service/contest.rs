@@ -1,6 +1,4 @@
-use crate::error::Result;
-use crate::error::contest::ContestErrorKind;
-use crate::contest::error::contest_error;
+use anyhow::{Result, anyhow};
 use crate::contest::model::{Contest, TestCase};
 use crate::fs::manager::FileManager;
 
@@ -73,60 +71,42 @@ impl ContestService {
     // バリデーションメソッド
     pub fn validate_site(&self) -> Result<()> {
         if self.site.is_none() {
-            return Err(contest_error(
-                ContestErrorKind::NotFound,
-                "サイトが指定されていません"
-            ));
+            return Err(anyhow!("サイトが指定されていません"));
         }
         Ok(())
     }
 
     pub fn validate_language(&self) -> Result<()> {
         if self.language.is_none() {
-            return Err(contest_error(
-                ContestErrorKind::NotFound,
-                "言語が指定されていません"
-            ));
+            return Err(anyhow!("言語が指定されていません"));
         }
         Ok(())
     }
 
     pub fn validate_contest_id(&self) -> Result<()> {
         if self.contest_id.is_none() {
-            return Err(contest_error(
-                ContestErrorKind::NotFound,
-                "コンテストIDが指定されていません"
-            ));
+            return Err(anyhow!("コンテストIDが指定されていません"));
         }
         Ok(())
     }
 
     pub fn validate_problem_id(&self) -> Result<()> {
         if self.problem_id.is_none() {
-            return Err(contest_error(
-                ContestErrorKind::NotFound,
-                "問題IDが指定されていません"
-            ));
+            return Err(anyhow!("問題IDが指定されていません"));
         }
         Ok(())
     }
 
     pub fn validate_url(&self) -> Result<()> {
         if self.url.is_none() {
-            return Err(contest_error(
-                ContestErrorKind::NotFound,
-                "URLが指定されていません"
-            ));
+            return Err(anyhow!("URLが指定されていません"));
         }
         Ok(())
     }
 
     pub fn validate_file_manager(&self) -> Result<()> {
         if self.file_manager.is_none() {
-            return Err(contest_error(
-                ContestErrorKind::NotFound,
-                "FileManagerが設定されていません"
-            ));
+            return Err(anyhow!("FileManagerが設定されていません"));
         }
         Ok(())
     }

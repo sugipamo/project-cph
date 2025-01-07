@@ -109,6 +109,13 @@ impl ConfigNode {
     pub fn as_typed<T: FromConfigValue>(&self) -> Result<T> {
         T::from_config_value(&self.value)
     }
+
+    pub fn key(&self) -> Result<String> {
+        match &*self.value {
+            Value::String(s) => Ok(s.clone()),
+            _ => Err(anyhow::anyhow!("キーは文字列である必要があります")),
+        }
+    }
 }
 
 // Configの実装
@@ -220,6 +227,29 @@ impl FromConfigValue for bool {
     }
 }
 
+impl FromConfigValue for HashMap<String, String> {
+    fn from_config_value(value: &Value) -> Result<Self> {
+        match value {
+            Value::Mapping(map) => {
+                let mut result = HashMap::new();
+                for (key, value) in map {
+                    let key = match key {
+                        Value::String(s) => s.clone(),
+                        _ => return Err(anyhow::anyhow!("マップのキーは文字列である必要があります")),
+                    };
+                    let value = match value {
+                        Value::String(s) => s.clone(),
+                        _ => return Err(anyhow::anyhow!("マップの値は文字列である必要があります")),
+                    };
+                    result.insert(key, value);
+                }
+                Ok(result)
+            }
+            _ => Err(anyhow::anyhow!("マップ型を期待しましたが、{}型が見つかりました", value.type_str())),
+        }
+    }
+}
+
 // ヘルパートレイト
 pub trait ValueExt {
     fn type_str(&self) -> &'static str;
@@ -313,6 +343,17 @@ impl ValueExt for Value {
             Value::Sequence(_) => "array",
             Value::Mapping(_) => "object",
             Value::Tagged(_) => "tagged",
+        }
+    }
+}
+
+impl ValueExt for PrimitiveType {
+    fn type_str(&self) -> &'static str {
+        match self {
+            PrimitiveType::String => "string",
+            PrimitiveType::Number => "number",
+            PrimitiveType::Boolean => "boolean",
+            PrimitiveType::Null => "null",
         }
     }
 }

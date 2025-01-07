@@ -9,4 +9,4 @@ pub use helpers::{
     create_other_error,
 };
 
-mod helpers; 
+pub mod helpers; 

@@ -12,6 +12,4 @@ pub use error::{
     compilation_err,
     container_err,
     state_err,
-};
-
-pub use crate::error::docker::DockerErrorKind; 
+}; 

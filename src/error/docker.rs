@@ -1,4 +1,4 @@
-use anyhow::{Error, Context as _};
+use anyhow::Error;
 
 pub fn docker_err(error: impl Into<String>, message: impl Into<String>) -> Error {
     Error::msg(format!("{}: {}", message.into(), error.into()))
