@@ -1,0 +1,40 @@
+イミュータブル化が必要な箇所の特定と改善計画
+
+1. src/contest/model/state.rs
+- 問題点：状態遷移時のhistoryの可変な操作
+- 改善案：
+  - historyをImmutableなVecとして扱う
+  - 新しい履歴を作成する際は、既存の履歴をcloneして新しい要素を追加
+  - Arc<Vec<_>>を使用して共有可能な不変データとして管理
+
+2. src/config/mod.rs
+- 問題点：with_schemaでのArc::make_mutの使用
+- 改善案：
+  - メタデータの更新を新しいインスタンスの作成で行う
+  - Arc::make_mutの代わりにcloneとnewを使用
+  - パスの収集をイミュータブルな方法で実装
+
+3. src/contest/service/contest.rs
+- 問題点：状態遷移の可変な実装
+- 改善案：
+  - すべての状態変更を新しいインスタンスの作成で行う
+  - バリデーションを純粋な関数として実装
+  - Option型の使用を最適化
+
+4. src/contest/model/mod.rs
+- 問題点：FileManagerの可変な使用
+- 改善案：
+  - トランザクションをイミュータブルなチェーンとして実装
+  - 各操作が新しいFileManagerインスタンスを返すように変更
+  - 状態の変更を新しいインスタンスの作成で表現
+
+実装の優先順位：
+1. contest/model/state.rsの改善（最も基本的な状態管理）
+2. config/mod.rsの改善（設定管理の基盤）
+3. contest/service/contest.rsの改善（サービスレイヤーの整理）
+4. contest/model/mod.rsの改善（ファイル操作の整理）
+
+注意点：
+- 既存のテストケースが壊れないように注意
+- パフォーマンスへの影響を考慮
+- 段階的な改善を行う 
