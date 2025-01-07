@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::SystemTime;
 use crate::error::Error;
-use crate::fs::error::io_err;
+use crate::fs::error::helpers::create_io_error;
 
 pub trait FileOperation: Send + Sync + std::fmt::Debug {
     fn execute(&self) -> Result<(), Error>;
@@ -134,12 +134,12 @@ impl FileTransaction {
                 ).with_state(TransactionState::RolledBack))
             },
             (state, transition) => {
-                let error = io_err(
+                let error = create_io_error(
                     std::io::Error::new(
                         std::io::ErrorKind::InvalidInput,
                         format!("無効な状態遷移: {:?} -> {:?}", state, transition)
                     ),
-                    "トランザクション状態遷移エラー".to_string(),
+                    "トランザクション状態遷移エラー"
                 );
                 Ok(self.with_transition_record(
                     transition,
@@ -189,12 +189,12 @@ impl FileTransaction {
                 })
             },
             _ => {
-                let error = io_err(
+                let error = create_io_error(
                     std::io::Error::new(
                         std::io::ErrorKind::InvalidInput,
                         "トランザクションの合成は保留状態でのみ可能です"
                     ),
-                    "トランザクション合成エラー".to_string(),
+                    "トランザクション合成エラー"
                 );
                 Ok(self.with_transition_record(
                     TransactionTransition::Execute,
@@ -225,16 +225,16 @@ impl FileOperation for CreateFileOperation {
     fn execute(&self) -> Result<(), Error> {
         if let Some(parent) = self.path.parent() {
             std::fs::create_dir_all(parent)
-                .map_err(|e| io_err(e, format!("ディレクトリの作成に失敗: {}", parent.display())))?;
+                .map_err(|e| create_io_error(e, format!("ディレクトリの作成に失敗: {}", parent.display())))?;
         }
         std::fs::write(&*self.path, &*self.content)
-            .map_err(|e| io_err(e, format!("ファイルの書き込みに失敗: {}", self.path.display())))
+            .map_err(|e| create_io_error(e, format!("ファイルの書き込みに失敗: {}", self.path.display())))
     }
 
     fn rollback(&self) -> Result<(), Error> {
         if self.path.exists() {
             std::fs::remove_file(&*self.path)
-                .map_err(|e| io_err(e, format!("ファイルの削除に失敗: {}", self.path.display())))?;
+                .map_err(|e| create_io_error(e, format!("ファイルの削除に失敗: {}", self.path.display())))?;
         }
         Ok(())
     }
@@ -245,24 +245,13 @@ impl FileOperation for CreateFileOperation {
 
     fn validate(&self) -> Result<(), Error> {
         if self.path.exists() {
-            return Err(io_err(
+            return Err(create_io_error(
                 std::io::Error::new(
                     std::io::ErrorKind::AlreadyExists,
                     format!("ファイルが既に存在します: {}", self.path.display())
                 ),
-                "ファイル作成検証エラー".to_string(),
+                "ファイル作成の検証に失敗"
             ));
-        }
-        if let Some(parent) = self.path.parent() {
-            if parent.exists() && !parent.is_dir() {
-                return Err(io_err(
-                    std::io::Error::new(
-                        std::io::ErrorKind::InvalidInput,
-                        format!("親パスがディレクトリではありません: {}", parent.display())
-                    ),
-                    "ファイル作成検証エラー".to_string(),
-                ));
-            }
         }
         Ok(())
     }
@@ -278,7 +267,7 @@ impl DeleteFileOperation {
     pub fn new(path: PathBuf) -> Result<Self, Error> {
         let original_content = if path.exists() {
             Some(Arc::new(std::fs::read_to_string(&path)
-                .map_err(|e| io_err(e, format!("ファイルの読み込みに失敗: {}", path.display())))?))
+                .map_err(|e| create_io_error(e, format!("ファイルの読み込みに失敗: {}", path.display())))?))
         } else {
             None
         };
@@ -294,7 +283,7 @@ impl FileOperation for DeleteFileOperation {
     fn execute(&self) -> Result<(), Error> {
         if self.path.exists() {
             std::fs::remove_file(&*self.path)
-                .map_err(|e| io_err(e, format!("ファイルの削除に失敗: {}", self.path.display())))?;
+                .map_err(|e| create_io_error(e, format!("ファイルの削除に失敗: {}", self.path.display())))?;
         }
         Ok(())
     }
@@ -303,10 +292,10 @@ impl FileOperation for DeleteFileOperation {
         if let Some(content) = &self.original_content {
             if let Some(parent) = self.path.parent() {
                 std::fs::create_dir_all(parent)
-                    .map_err(|e| io_err(e, format!("ディレクトリの作成に失敗: {}", parent.display())))?;
+                    .map_err(|e| create_io_error(e, format!("ディレクトリの作成に失敗: {}", parent.display())))?;
             }
             std::fs::write(&*self.path, &**content)
-                .map_err(|e| io_err(e, format!("ファイルの復元に失敗: {}", self.path.display())))?;
+                .map_err(|e| create_io_error(e, format!("ファイルの復元に失敗: {}", self.path.display())))?;
         }
         Ok(())
     }
@@ -317,21 +306,12 @@ impl FileOperation for DeleteFileOperation {
 
     fn validate(&self) -> Result<(), Error> {
         if !self.path.exists() {
-            return Err(io_err(
+            return Err(create_io_error(
                 std::io::Error::new(
                     std::io::ErrorKind::NotFound,
                     format!("ファイルが存在しません: {}", self.path.display())
                 ),
-                "ファイル削除検証エラー".to_string(),
-            ));
-        }
-        if !self.path.is_file() {
-            return Err(io_err(
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidInput,
-                    format!("パスがファイルではありません: {}", self.path.display())
-                ),
-                "ファイル削除検証エラー".to_string(),
+                "ファイル削除の検証に失敗"
             ));
         }
         Ok(())

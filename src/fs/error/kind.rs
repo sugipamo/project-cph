@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::error::ErrorSeverity;
+use crate::error::{ErrorKind, ErrorSeverity};
 
 /// ファイルシステムエラーの種類を表す列挙型
 #[derive(Debug, Clone)]
@@ -11,31 +11,23 @@ pub enum FileSystemErrorKind {
     /// I/O操作に失敗
     Io,
     /// パスの操作に失敗
-    Path,
+    InvalidPath,
     /// トランザクション処理に失敗
     Transaction,
+    /// バックアップ操作に失敗
+    Backup,
+    /// 検証エラー
+    Validation,
+    /// その他のエラー
+    Other(String),
 }
 
-impl FileSystemErrorKind {
-    /// エラーの重大度を返します
-    pub fn severity(&self) -> ErrorSeverity {
+impl ErrorKind for FileSystemErrorKind {
+    fn severity(&self) -> ErrorSeverity {
         match self {
-            Self::NotFound => ErrorSeverity::Warning,
-            Self::Permission => ErrorSeverity::Error,
-            Self::Io => ErrorSeverity::Error,
-            Self::Path => ErrorSeverity::Warning,
-            Self::Transaction => ErrorSeverity::Error,
-        }
-    }
-
-    /// エラーのデフォルトのヒントメッセージを返します
-    pub fn hint(&self) -> &'static str {
-        match self {
-            Self::NotFound => "ファイルまたはディレクトリの存在を確認してください。",
-            Self::Permission => "必要な権限があるか確認してください。",
-            Self::Io => "ディスクの空き容量やファイルの状態を確認してください。",
-            Self::Path => "パスの形式が正しいか確認してください。",
-            Self::Transaction => "操作をやり直してください。",
+            Self::NotFound | Self::InvalidPath => ErrorSeverity::Warning,
+            Self::Permission | Self::Io | Self::Transaction | Self::Backup => ErrorSeverity::Error,
+            Self::Validation | Self::Other(_) => ErrorSeverity::Warning,
         }
     }
 }
@@ -46,8 +38,40 @@ impl fmt::Display for FileSystemErrorKind {
             Self::NotFound => write!(f, "ファイルが見つかりません"),
             Self::Permission => write!(f, "アクセス権限がありません"),
             Self::Io => write!(f, "IOエラー"),
-            Self::Path => write!(f, "パスエラー"),
+            Self::InvalidPath => write!(f, "無効なパス"),
             Self::Transaction => write!(f, "トランザクションエラー"),
+            Self::Backup => write!(f, "バックアップエラー"),
+            Self::Validation => write!(f, "検証エラー"),
+            Self::Other(s) => write!(f, "{}", s),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_error_kind_severity() {
+        assert_eq!(FileSystemErrorKind::NotFound.severity(), ErrorSeverity::Warning);
+        assert_eq!(FileSystemErrorKind::Permission.severity(), ErrorSeverity::Error);
+        assert_eq!(FileSystemErrorKind::Io.severity(), ErrorSeverity::Error);
+        assert_eq!(FileSystemErrorKind::InvalidPath.severity(), ErrorSeverity::Warning);
+        assert_eq!(FileSystemErrorKind::Transaction.severity(), ErrorSeverity::Error);
+        assert_eq!(FileSystemErrorKind::Backup.severity(), ErrorSeverity::Error);
+        assert_eq!(FileSystemErrorKind::Validation.severity(), ErrorSeverity::Warning);
+        assert_eq!(FileSystemErrorKind::Other("test".to_string()).severity(), ErrorSeverity::Warning);
+    }
+
+    #[test]
+    fn test_error_kind_display() {
+        assert_eq!(FileSystemErrorKind::NotFound.to_string(), "ファイルが見つかりません");
+        assert_eq!(FileSystemErrorKind::Permission.to_string(), "アクセス権限がありません");
+        assert_eq!(FileSystemErrorKind::Io.to_string(), "IOエラー");
+        assert_eq!(FileSystemErrorKind::InvalidPath.to_string(), "無効なパス");
+        assert_eq!(FileSystemErrorKind::Transaction.to_string(), "トランザクションエラー");
+        assert_eq!(FileSystemErrorKind::Backup.to_string(), "バックアップエラー");
+        assert_eq!(FileSystemErrorKind::Validation.to_string(), "検証エラー");
+        assert_eq!(FileSystemErrorKind::Other("test".to_string()).to_string(), "test");
     }
 } 

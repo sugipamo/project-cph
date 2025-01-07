@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use crate::error::Result;
-use crate::fs::error::{io_err, not_found_err, invalid_path_err};
+use crate::fs::error::helpers::{create_io_error, create_not_found_error, create_invalid_path_error};
 use crate::fs::transaction::{FileTransaction, FileOperation, CreateFileOperation, DeleteFileOperation};
 
 // ファイルマネージャーの状態を表現する型
@@ -64,12 +64,12 @@ impl FileManager {
                 })
             },
             (state, transition) => {
-                Err(io_err(
+                Err(create_io_error(
                     std::io::Error::new(
                         std::io::ErrorKind::InvalidInput,
                         format!("無効な状態遷移: {:?} -> {:?}", state, transition)
                     ),
-                    "ファイルマネージャー状態遷移エラー".to_string(),
+                    "ファイルマネージャー状態遷移エラー"
                 ))
             }
         }
@@ -81,10 +81,7 @@ impl FileManager {
         
         // 絶対パスの場合はエラー
         if path.is_absolute() {
-            return Err(invalid_path_err(format!(
-                "絶対パスは使用できません: {}",
-                path.display()
-            )));
+            return Err(create_invalid_path_error(path));
         }
 
         // パスのトラバーサルを防ぐ
@@ -96,10 +93,7 @@ impl FileManager {
                         if path.pop() {
                             Ok(path)
                         } else {
-                            Err(invalid_path_err(format!(
-                                "パスが親ディレクトリを超えて遡ることはできません: {}",
-                                path.display()
-                            )))
+                            Err(create_invalid_path_error(path))
                         }
                     },
                     std::path::Component::Normal(name) => {
@@ -129,13 +123,10 @@ impl FileManager {
     pub fn read_file(&self, path: impl AsRef<Path>) -> Result<String> {
         let path = self.normalize_path(path)?;
         if !path.exists() {
-            return Err(not_found_err(format!(
-                "ファイルが見つかりません: {}",
-                path.display()
-            )));
+            return Err(create_not_found_error(&path));
         }
         std::fs::read_to_string(&path)
-            .map_err(|e| io_err(e, format!("ファイルの読み込みに失敗: {}", path.display())))
+            .map_err(|e| create_io_error(e, format!("ファイルの読み込みに失敗: {}", path.display())))
     }
 
     pub fn write_file(self, path: impl AsRef<Path>, content: impl AsRef<str>) -> Result<Self> {
@@ -179,7 +170,7 @@ impl FileManager {
             },
             ManagerState::Idle => {
                 std::fs::create_dir_all(&path)
-                    .map_err(|e| io_err(e, format!("ディレクトリの作成に失敗: {}", path.display())))?;
+                    .map_err(|e| create_io_error(e, format!("ディレクトリの作成に失敗: {}", path.display())))?;
                 Ok(self)
             }
         }
@@ -224,6 +215,4 @@ mod tests {
 
         Ok(())
     }
-
-    // ... 既存のテストは残す ...
 } 
