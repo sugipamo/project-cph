@@ -3,6 +3,6 @@ pub mod model;
 pub mod parse;
 pub mod service;
 
-pub use error::{contest_error, ContestErrorKind};
+pub use error::contest_error;
 pub use model::{Contest, TestCase};
 pub use service::{ContestService, TestService};

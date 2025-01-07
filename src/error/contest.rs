@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::error::{Error, ErrorKind, ErrorSeverity};
+use crate::error::{Error, ErrorSeverity};
 
 #[derive(Debug, Clone)]
 pub enum ContestErrorKind {

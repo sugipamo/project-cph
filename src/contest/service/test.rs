@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use crate::error::Result;
-use crate::contest::error::{contest_error, ContestErrorKind};
+use crate::contest::error::contest_error;
 use crate::contest::model::TestCase;
 
 pub struct TestService;
@@ -16,13 +16,11 @@ impl TestService {
 
         let input = std::fs::read_to_string(input_path)
             .map_err(|e| contest_error(
-                ContestErrorKind::Parse,
                 format!("入力ファイルの読み取りに失敗しました: {:?}, {}", input_path, e)
             ))?;
 
         let expected = std::fs::read_to_string(&expected_path)
             .map_err(|e| contest_error(
-                ContestErrorKind::Parse,
                 format!("期待値ファイルの読み取りに失敗しました: {:?}, {}", expected_path, e)
             ))?;
 
@@ -33,14 +31,12 @@ impl TestService {
         let test_dir = test_dir.as_ref();
         if !test_dir.exists() {
             return Err(contest_error(
-                ContestErrorKind::NotFound,
                 format!("テストディレクトリが見つかりません: {}", test_dir.display())
             ));
         }
 
         let entries = std::fs::read_dir(test_dir)
             .map_err(|e| contest_error(
-                ContestErrorKind::Parse,
                 format!("テストディレクトリの読み取りに失敗しました: {}", e)
             ))?;
 
@@ -54,7 +50,6 @@ impl TestService {
                             Some(Ok(path))
                         } else {
                             Some(Err(contest_error(
-                                ContestErrorKind::NotFound,
                                 format!("期待値ファイルが見つかりません: {:?}", expected_path)
                             )))
                         }

@@ -19,7 +19,6 @@ pub use core::{
 };
 
 pub use error::{
-    FileSystemErrorKind,
     create_not_found_error,
     create_io_error,
     create_permission_error,

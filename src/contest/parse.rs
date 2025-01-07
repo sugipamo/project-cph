@@ -1,7 +1,11 @@
 use std::error::Error;
 use std::collections::HashMap;
 use serde_yaml::Value;
-use crate::config::{Config, ConfigError, ValueExt};
+use crate::config::{Config, ValueExt};
+use std::path::PathBuf;
+use crate::error::Result;
+use crate::contest::error::contest_error;
+use crate::contest::model::Contest;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CommandType {

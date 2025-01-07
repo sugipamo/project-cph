@@ -1,7 +1,6 @@
 use std::fmt;
 use crate::error::{
     Error,
-    ErrorKind,
     ErrorSeverity,
     config::ConfigErrorKind,
     docker::DockerErrorKind,

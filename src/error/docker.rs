@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::error::{Error, ErrorKind, ErrorSeverity};
+use crate::error::{Error, ErrorSeverity};
 
 pub fn docker_err(error: impl Into<String>, message: impl Into<String>) -> Error {
     Error::new(

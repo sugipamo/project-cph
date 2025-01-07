@@ -1,4 +1,4 @@
-use crate::error::{Error, ErrorKind, ErrorSeverity};
+use crate::error::{Error, ErrorSeverity};
 use std::fmt;
 
 pub fn fs_error(kind: FileSystemErrorKind, message: impl Into<String>) -> Error {
@@ -57,7 +57,7 @@ pub enum FileSystemErrorKind {
     Other(String),
 }
 
-impl ErrorKind for FileSystemErrorKind {
+impl ErrorSeverity for FileSystemErrorKind {
     fn severity(&self) -> ErrorSeverity {
         match self {
             Self::IO | Self::Permission => ErrorSeverity::Fatal,

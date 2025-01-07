@@ -1,7 +1,5 @@
-mod kind;
 pub mod helpers;
 
-pub use kind::FileSystemErrorKind;
 pub use helpers::{
     create_not_found_error,
     create_io_error,

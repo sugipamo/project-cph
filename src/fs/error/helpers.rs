@@ -1,69 +1,52 @@
 use std::path::Path;
-use crate::error::Error;
-use super::FileSystemErrorKind;
+use anyhow::{Error, Context as _};
 
 /// ファイルが見つからない場合のエラーを作成します
 pub fn create_not_found_error(path: impl AsRef<Path>) -> Error {
-    Error::new(
-        FileSystemErrorKind::NotFound,
-        format!("ファイルが見つかりません: {}", path.as_ref().display())
-    ).with_hint("ファイルまたはディレクトリの存在を確認してください")
+    Error::msg(format!("ファイルが見つかりません: {}", path.as_ref().display()))
+        .context("ファイルまたはディレクトリの存在を確認してください")
 }
 
 /// I/Oエラーを作成します
 pub fn create_io_error(error: std::io::Error, context: impl Into<String>) -> Error {
-    Error::new(
-        FileSystemErrorKind::Io,
-        format!("{}: {}", context.into(), error)
-    ).with_hint("ディスクの空き容量やファイルの状態を確認してください")
+    error.context(context.into())
+        .context("ディスクの空き容量やファイルの状態を確認してください")
 }
 
 /// アクセス権限エラーを作成します
 pub fn create_permission_error(path: impl AsRef<Path>) -> Error {
-    Error::new(
-        FileSystemErrorKind::Permission,
-        format!("アクセス権限がありません: {}", path.as_ref().display())
-    ).with_hint("必要な権限があるか確認してください")
+    Error::msg(format!("アクセス権限がありません: {}", path.as_ref().display()))
+        .context("必要な権限があるか確認してください")
 }
 
 /// パスエラーを作成します
 pub fn create_invalid_path_error(path: impl AsRef<Path>) -> Error {
-    Error::new(
-        FileSystemErrorKind::InvalidPath,
-        format!("無効なパス: {}", path.as_ref().display())
-    ).with_hint("パスの形式が正しいか確認してください")
+    Error::msg(format!("無効なパス: {}", path.as_ref().display()))
+        .context("パスの形式が正しいか確認してください")
 }
 
 /// トランザクションエラーを作成します
 pub fn create_transaction_error(error: impl Into<String>, context: impl Into<String>) -> Error {
-    Error::new(
-        FileSystemErrorKind::Transaction,
-        format!("{}: {}", context.into(), error.into())
-    ).with_hint("トランザクションの操作をやり直してください")
+    Error::msg(format!("{}: {}", context.into(), error.into()))
+        .context("トランザクションの操作をやり直してください")
 }
 
 /// バックアップエラーを作成します
 pub fn create_backup_error(error: impl Into<String>, context: impl Into<String>) -> Error {
-    Error::new(
-        FileSystemErrorKind::Backup,
-        format!("{}: {}", context.into(), error.into())
-    ).with_hint("バックアップの操作をやり直してください")
+    Error::msg(format!("{}: {}", context.into(), error.into()))
+        .context("バックアップの操作をやり直してください")
 }
 
 /// 検証エラーを作成します
 pub fn create_validation_error(error: impl Into<String>, context: impl Into<String>) -> Error {
-    Error::new(
-        FileSystemErrorKind::Validation,
-        format!("{}: {}", context.into(), error.into())
-    ).with_hint("入力値や状態を確認してください")
+    Error::msg(format!("{}: {}", context.into(), error.into()))
+        .context("入力値や状態を確認してください")
 }
 
 /// その他のファイルシステムエラーを作成します
 pub fn create_other_error(error: impl Into<String>, context: impl Into<String>) -> Error {
-    Error::new(
-        FileSystemErrorKind::Other(error.into()),
-        context.into()
-    ).with_hint("操作をやり直すか、システム管理者に連絡してください")
+    Error::msg(format!("{}: {}", context.into(), error.into()))
+        .context("操作をやり直すか、システム管理者に連絡してください")
 }
 
 #[cfg(test)]
