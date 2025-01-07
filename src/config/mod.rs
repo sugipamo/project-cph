@@ -95,14 +95,26 @@ impl ConfigNode {
         }
     }
 
-    pub fn with_schema(mut self, schema: ConfigSchema) -> Self {
-        Arc::make_mut(&mut self.metadata).schema = Some(Arc::new(schema));
-        self
+    pub fn with_schema(self, schema: ConfigSchema) -> Self {
+        Self {
+            value: self.value,
+            metadata: Arc::new(ConfigMetadata {
+                path: self.metadata.path.clone(),
+                schema: Some(Arc::new(schema)),
+                description: self.metadata.description.clone(),
+            }),
+        }
     }
 
-    pub fn with_description(mut self, description: String) -> Self {
-        Arc::make_mut(&mut self.metadata).description = Some(description);
-        self
+    pub fn with_description(self, description: String) -> Self {
+        Self {
+            value: self.value,
+            metadata: Arc::new(ConfigMetadata {
+                path: self.metadata.path.clone(),
+                schema: self.metadata.schema.clone(),
+                description: Some(description),
+            }),
+        }
     }
 
     pub fn as_typed<T: FromConfigValue>(&self) -> ConfigResult<T> {

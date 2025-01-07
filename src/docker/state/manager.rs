@@ -53,12 +53,16 @@ impl ContainerStateManager {
     }
 
     fn create_new_manager(&self, new_state: ContainerState, transition_info: StateTransitionInfo) -> Self {
-        let mut new_history = (*self.history).clone();
-        new_history.push(transition_info);
+        let new_history = Arc::new({
+            let mut history = Vec::with_capacity(self.history.len() + 1);
+            history.extend_from_slice(&self.history);
+            history.push(transition_info);
+            history
+        });
         
         Self {
             state: Arc::new(new_state),
-            history: Arc::new(new_history),
+            history: new_history,
         }
     }
 

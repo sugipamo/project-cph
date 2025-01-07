@@ -1,0 +1,247 @@
+diff --git a/src/config/mod.rs b/src/config/mod.rs
+index d3f04cb..259dd66 100644
+--- a/src/config/mod.rs
++++ b/src/config/mod.rs
+@@ -95,14 +95,26 @@ impl ConfigNode {
+         }
+     }
+ 
+-    pub fn with_schema(mut self, schema: ConfigSchema) -> Self {
+-        Arc::make_mut(&mut self.metadata).schema = Some(Arc::new(schema));
+-        self
++    pub fn with_schema(self, schema: ConfigSchema) -> Self {
++        Self {
++            value: self.value,
++            metadata: Arc::new(ConfigMetadata {
++                path: self.metadata.path.clone(),
++                schema: Some(Arc::new(schema)),
++                description: self.metadata.description.clone(),
++            }),
++        }
+     }
+ 
+-    pub fn with_description(mut self, description: String) -> Self {
+-        Arc::make_mut(&mut self.metadata).description = Some(description);
+-        self
++    pub fn with_description(self, description: String) -> Self {
++        Self {
++            value: self.value,
++            metadata: Arc::new(ConfigMetadata {
++                path: self.metadata.path.clone(),
++                schema: self.metadata.schema.clone(),
++                description: Some(description),
++            }),
++        }
+     }
+ 
+     pub fn as_typed<T: FromConfigValue>(&self) -> ConfigResult<T> {
+diff --git a/src/contest/model/state.rs b/src/contest/model/state.rs
+index ae02905..07cf361 100644
+--- a/src/contest/model/state.rs
++++ b/src/contest/model/state.rs
+@@ -17,17 +17,10 @@
+ 
+ use std::path::PathBuf;
+ use std::sync::Arc;
+-use std::time::SystemTime;
+ use crate::error::Result;
+ use crate::error::contest::ContestErrorKind;
+ use crate::contest::error::contest_error;
+ 
+-#[derive(Debug, Clone)]
+-pub struct StateHistory {
+-    timestamp: SystemTime,
+-    transition: StateTransition,
+-}
+-
+ #[derive(Debug, Clone)]
+ pub struct ContestState {
+     site: Option<Arc<String>>,
+@@ -35,7 +28,6 @@ pub struct ContestState {
+     problem_id: Option<Arc<String>>,
+     language: Option<Arc<String>>,
+     source_path: Option<Arc<PathBuf>>,
+-    history: Vec<StateHistory>,
+ }
+ 
+ #[derive(Debug, Clone)]
+@@ -45,7 +37,6 @@ pub struct ValidatedState {
+     pub(crate) problem_id: Arc<String>,
+     pub(crate) language: Arc<String>,
+     pub(crate) source_path: Arc<PathBuf>,
+-    pub(crate) history: Arc<Vec<StateHistory>>,
+ }
+ 
+ // 状態遷移の型安全性を向上させるための新しい型
+@@ -66,7 +57,6 @@ impl ContestState {
+             problem_id: None,
+             language: None,
+             source_path: None,
+-            history: Vec::new(),
+         }
+     }
+ 
+@@ -90,34 +80,16 @@ impl ContestState {
+         self.source_path.as_ref().map(|p| p.as_ref())
+     }
+ 
+-    // 型安全な状態遷移メソッドを追加
+     pub fn apply_transition(self, transition: StateTransition) -> Self {
+-        let history_entry = StateHistory {
+-            timestamp: SystemTime::now(),
+-            transition: transition.clone(),
+-        };
+-        
+-        let new_state = match transition {
++        match transition {
+             StateTransition::SetSite(site) => self.with_site(site),
+             StateTransition::SetContestId(id) => self.with_contest_id(id),
+             StateTransition::SetProblemId(id) => self.with_problem_id(id),
+             StateTransition::SetLanguage(lang) => self.with_language(lang),
+             StateTransition::SetSourcePath(path) => self.with_source_path(path),
+-        };
+-
+-        let mut history = new_state.history.clone();
+-        history.push(history_entry);
+-        Self {
+-            site: new_state.site,
+-            contest_id: new_state.contest_id,
+-            problem_id: new_state.problem_id,
+-            language: new_state.language,
+-            source_path: new_state.source_path,
+-            history,
+         }
+     }
+ 
+-    // バリデーション機能を強化
+     pub fn validate(&self) -> Result<ValidatedState> {
+         let site = self.site.clone()
+             .ok_or_else(|| contest_error(ContestErrorKind::NotFound, "サイトが指定されていません"))?;
+@@ -162,33 +134,57 @@ impl ContestState {
+             problem_id,
+             language,
+             source_path,
+-            history: Arc::new(self.history.clone()),
+         })
+     }
+ 
+-    pub fn with_site<T: Into<String>>(mut self, site: T) -> Self {
+-        self.site = Some(Arc::new(site.into()));
+-        self
++    pub fn with_site<T: Into<String>>(self, site: T) -> Self {
++        Self {
++            site: Some(Arc::new(site.into())),
++            contest_id: self.contest_id,
++            problem_id: self.problem_id,
++            language: self.language,
++            source_path: self.source_path,
++        }
+     }
+ 
+-    pub fn with_contest_id<T: Into<String>>(mut self, contest_id: T) -> Self {
+-        self.contest_id = Some(Arc::new(contest_id.into()));
+-        self
++    pub fn with_contest_id<T: Into<String>>(self, contest_id: T) -> Self {
++        Self {
++            site: self.site,
++            contest_id: Some(Arc::new(contest_id.into())),
++            problem_id: self.problem_id,
++            language: self.language,
++            source_path: self.source_path,
++        }
+     }
+ 
+-    pub fn with_problem_id<T: Into<String>>(mut self, problem_id: T) -> Self {
+-        self.problem_id = Some(Arc::new(problem_id.into()));
+-        self
++    pub fn with_problem_id<T: Into<String>>(self, problem_id: T) -> Self {
++        Self {
++            site: self.site,
++            contest_id: self.contest_id,
++            problem_id: Some(Arc::new(problem_id.into())),
++            language: self.language,
++            source_path: self.source_path,
++        }
+     }
+ 
+-    pub fn with_language<T: Into<String>>(mut self, language: T) -> Self {
+-        self.language = Some(Arc::new(language.into()));
+-        self
++    pub fn with_language<T: Into<String>>(self, language: T) -> Self {
++        Self {
++            site: self.site,
++            contest_id: self.contest_id,
++            problem_id: self.problem_id,
++            language: Some(Arc::new(language.into())),
++            source_path: self.source_path,
++        }
+     }
+ 
+-    pub fn with_source_path<T: Into<PathBuf>>(mut self, source_path: T) -> Self {
+-        self.source_path = Some(Arc::new(source_path.into()));
+-        self
++    pub fn with_source_path<T: Into<PathBuf>>(self, source_path: T) -> Self {
++        Self {
++            site: self.site,
++            contest_id: self.contest_id,
++            problem_id: self.problem_id,
++            language: self.language,
++            source_path: Some(Arc::new(source_path.into())),
++        }
+     }
+ }
+ 
+@@ -213,15 +209,6 @@ impl ValidatedState {
+         &self.source_path
+     }
+ 
+-    pub fn history(&self) -> &[StateHistory] {
+-        &self.history
+-    }
+-
+-    pub fn last_transition(&self) -> Option<&StateHistory> {
+-        self.history.last()
+-    }
+-
+-    // 新しいメソッド：状態の変更を試みる（新しいValidatedStateを返す）
+     pub fn try_update(&self, transition: StateTransition) -> Result<ValidatedState> {
+         let mut new_state = ContestState::new()
+             .with_site(self.site.as_ref().clone())
+@@ -230,13 +217,11 @@ impl ValidatedState {
+             .with_language(self.language.as_ref().clone())
+             .with_source_path(self.source_path.as_ref().clone());
+ 
+-        new_state.history = (*self.history).clone();
+         new_state = new_state.apply_transition(transition);
+         new_state.validate()
+     }
+ }
+ 
+-// 新しい実装：状態の比較
+ impl PartialEq for ValidatedState {
+     fn eq(&self, other: &Self) -> bool {
+         self.site == other.site &&
+diff --git a/src/docker/state/manager.rs b/src/docker/state/manager.rs
+index 61c0fa5..e0fe488 100644
+--- a/src/docker/state/manager.rs
++++ b/src/docker/state/manager.rs
+@@ -53,12 +53,16 @@ impl ContainerStateManager {
+     }
+ 
+     fn create_new_manager(&self, new_state: ContainerState, transition_info: StateTransitionInfo) -> Self {
+-        let mut new_history = (*self.history).clone();
+-        new_history.push(transition_info);
++        let new_history = Arc::new({
++            let mut history = Vec::with_capacity(self.history.len() + 1);
++            history.extend_from_slice(&self.history);
++            history.push(transition_info);
++            history
++        });
+         
+         Self {
+             state: Arc::new(new_state),
+-            history: Arc::new(new_history),
++            history: new_history,
+         }
+     }
+ 
