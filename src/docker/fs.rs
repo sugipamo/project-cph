@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::process::Command;
-use crate::error::Result;
-use crate::fs::error::create_io_error;
+use anyhow::Result;
+use crate::error::fs::io_error as create_io_error;
 
 /// コンテナにファイルをコピーします
 pub fn copy_to_container<P: AsRef<Path>>(container_id: &str, source: P, target: P) -> Result<()> {

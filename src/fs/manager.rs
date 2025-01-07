@@ -1,7 +1,11 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use anyhow::Result;
-use crate::fs::error::helpers::{create_io_error, create_not_found_error, create_invalid_path_error};
+use crate::error::fs::{
+    io_error as create_io_error,
+    not_found_error as create_not_found_error,
+    invalid_path_error as create_invalid_path_error
+};
 use crate::fs::transaction::{FileTransaction, FileOperation, CreateFileOperation, DeleteFileOperation};
 
 // ファイルマネージャーの状態を表現する型

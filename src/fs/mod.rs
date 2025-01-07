@@ -1,6 +1,5 @@
 pub mod backup;
 pub mod core;
-pub mod error;
 pub mod manager;
 pub mod transaction;
 
@@ -18,13 +17,13 @@ pub use core::{
     check_permissions,
 };
 
-pub use error::{
-    create_not_found_error,
-    create_io_error,
-    create_permission_error,
-    create_invalid_path_error,
-    create_transaction_error,
-    create_backup_error,
-    create_validation_error,
-    create_other_error,
+pub use crate::error::fs::{
+    not_found_error as create_not_found_error,
+    io_error as create_io_error,
+    permission_error as create_permission_error,
+    invalid_path_error as create_invalid_path_error,
+    transaction_error as create_transaction_error,
+    backup_error as create_backup_error,
+    validation_error as create_validation_error,
+    fs_error as create_other_error,
 }; 

@@ -1,7 +1,7 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use anyhow::Error;
-use crate::fs::error::helpers::create_io_error;
+use crate::error::fs::io_error as create_io_error;
 
 pub trait FileOperation: Send + Sync + std::fmt::Debug {
     fn execute(&self) -> Result<(), Error>;

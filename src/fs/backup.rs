@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::TempDir;
 use anyhow::Result;
-use super::error::helpers::create_io_error;
+use crate::error::fs::io_error as create_io_error;
 
 /// バックアップを管理する構造体
 #[derive(Debug, Clone)]
