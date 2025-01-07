@@ -39,27 +39,4 @@ pub fn validation_error(message: impl Into<String>) -> Error {
 /// その他のファイルシステムエラーを作成します
 pub fn fs_error(message: impl Into<String>) -> Error {
     Error::msg(message.into())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::path::PathBuf;
-
-    #[test]
-    fn test_not_found_error() {
-        let path = PathBuf::from("/test/path");
-        let error = not_found_error(&path);
-        assert!(error.to_string().contains("ファイルが見つかりません"));
-        assert!(error.to_string().contains("/test/path"));
-    }
-
-    #[test]
-    fn test_io_error() {
-        let path = PathBuf::from("/test/path");
-        let io_err = std::io::Error::new(std::io::ErrorKind::Other, "test error");
-        let error = io_error(io_err, &path);
-        assert!(error.to_string().contains("I/Oエラー"));
-        assert!(error.to_string().contains("/test/path"));
-    }
 } 

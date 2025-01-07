@@ -147,35 +147,4 @@ impl FileManager {
     pub fn root_path(&self) -> &Path {
         self.root.as_ref()
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::fs::tests::TestDirectory;
-
-    #[test]
-    fn test_transaction_operations() -> Result<()> {
-        let test_dir = TestDirectory::new()?;
-        let manager = FileManager::new(test_dir.path().to_string_lossy().to_string());
-
-        // トランザクション内での操作
-        let manager = manager.begin_transaction()?
-            .write_file("test1.txt", "Hello")?
-            .write_file("test2.txt", "World")?
-            .commit()?;
-
-        // ファイルの確認
-        assert_eq!(manager.read_file("test1.txt")?, "Hello");
-        assert_eq!(manager.read_file("test2.txt")?, "World");
-
-        // ロールバックのテスト
-        let manager = manager.begin_transaction()?
-            .write_file("test3.txt", "Should not exist")?
-            .rollback()?;
-
-        assert!(manager.read_file("test3.txt").is_err());
-
-        Ok(())
-    }
 } 

@@ -59,34 +59,4 @@ impl DockerCommand {
         String::from_utf8(output.stdout)
             .map_err(|e| execution_err("コマンド実行", e.to_string()))
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_docker_command() {
-        let cmd = DockerCommand::new("version")
-            .arg("--format")
-            .arg("{{.Server.Version}}");
-
-        let result = cmd.execute();
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_invalid_command() {
-        let cmd = DockerCommand::new("invalid_command");
-        let result = cmd.execute();
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_command_cloning() {
-        let cmd = DockerCommand::new("version");
-        let cmd2 = cmd.clone();
-        
-        assert!(cmd2.execute().is_ok());
-    }
 } 

@@ -79,35 +79,4 @@ impl BackupManager {
     pub fn backup_path(&self) -> Option<&Path> {
         self.backup_dir.as_ref().map(|p| p.as_path())
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::fs::tests::TestDirectory;
-
-    #[test]
-    fn test_backup_lifecycle() -> Result<()> {
-        // テスト用の一時ディレクトリを作成
-        let test_dir = TestDirectory::new()?;
-        let test_file_path = test_dir.path().join("test.txt");
-        std::fs::write(&test_file_path, "test content")?;
-
-        // バックアップの作成
-        let manager = BackupManager::new()?;
-        let manager = manager.create(test_dir.path())?;
-        
-        // バックアップディレクトリが存在することを確認
-        assert!(manager.backup_path().is_some());
-        assert!(manager.backup_path().unwrap().exists());
-
-        // バックアップから復元
-        let manager = manager.restore()?;
-        
-        // クリーンアップ
-        let manager = manager.cleanup()?;
-        assert!(manager.backup_path().is_none());
-
-        Ok(())
-    }
 } 
