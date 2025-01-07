@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use crate::error::Result;
 use crate::error::contest::ContestErrorKind;
 use crate::contest::error::contest_error;

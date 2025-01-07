@@ -1,0 +1,160 @@
+diff --git a/src/contest/model/state.rs b/src/contest/model/state.rs
+index d3d50e7..61b001d 100644
+--- a/src/contest/model/state.rs
++++ b/src/contest/model/state.rs
+@@ -1,3 +1,13 @@
++// ContestStateとValidatedStateの実装について：
++// 
++// 当初はCow<'static, str>の使用を検討しましたが、以下の理由で単純なStringを使用しています：
++// 1. validate()メソッドで所有権の移動が必要（ValidatedStateの作成時）
++// 2. 文字列の変更が頻繁に発生する可能性がある
++// 3. 静的文字列の再利用機会が限られている
++// 
++// これらの理由から、Cowによるメモリ最適化のメリットよりも、
++// シンプルなStringを使用する方が適切と判断しました。
++
+ use std::path::PathBuf;
+ use crate::error::Result;
+ use crate::error::contest::ContestErrorKind;
+@@ -43,78 +53,85 @@ impl ContestState {
+         self.source_path.as_ref()
+     }
+ 
+-    pub fn validate_site(&self) -> Result<()> {
++    pub fn validate(&self) -> Result<ValidatedState> {
+         if self.site.is_none() {
+-            return Err(contest_error(
+-                ContestErrorKind::NotFound,
+-                "サイトが指定されていません"
+-            ));
++            return Err(contest_error(ContestErrorKind::NotFound, "サイトが指定されていません"));
+         }
+-        Ok(())
+-    }
+-
+-    pub fn validate_contest_id(&self) -> Result<()> {
+         if self.contest_id.is_none() {
+-            return Err(contest_error(
+-                ContestErrorKind::NotFound,
+-                "コンテストIDが指定されていません"
+-            ));
++            return Err(contest_error(ContestErrorKind::NotFound, "コンテストIDが指定されていません"));
+         }
+-        Ok(())
+-    }
+-
+-    pub fn validate_problem_id(&self) -> Result<()> {
+         if self.problem_id.is_none() {
+-            return Err(contest_error(
+-                ContestErrorKind::NotFound,
+-                "問題IDが指定されていません"
+-            ));
++            return Err(contest_error(ContestErrorKind::NotFound, "問題IDが指定されていません"));
+         }
+-        Ok(())
+-    }
+-
+-    pub fn validate_language(&self) -> Result<()> {
+         if self.language.is_none() {
+-            return Err(contest_error(
+-                ContestErrorKind::NotFound,
+-                "言語が指定されていません"
+-            ));
++            return Err(contest_error(ContestErrorKind::NotFound, "言語が指定されていません"));
++        }
++        if self.source_path.is_none() {
++            return Err(contest_error(ContestErrorKind::NotFound, "ソースパスが指定されていません"));
+         }
+-        Ok(())
++
++        Ok(ValidatedState {
++            site: self.site.take().unwrap(),
++            contest_id: self.contest_id.take().unwrap(),
++            problem_id: self.problem_id.take().unwrap(),
++            language: self.language.take().unwrap(),
++            source_path: self.source_path.take().unwrap(),
++        })
+     }
+ 
+-    pub fn with_site<T: Into<String>>(self, site: T) -> Self {
+-        Self {
+-            site: Some(site.into()),
+-            ..self
+-        }
++    pub fn with_site<T: Into<String>>(mut self, site: T) -> Self {
++        self.site = Some(site.into());
++        self
+     }
+ 
+-    pub fn with_contest_id<T: Into<String>>(self, contest_id: T) -> Self {
+-        Self {
+-            contest_id: Some(contest_id.into()),
+-            ..self
+-        }
++    pub fn with_contest_id<T: Into<String>>(mut self, contest_id: T) -> Self {
++        self.contest_id = Some(contest_id.into());
++        self
+     }
+ 
+-    pub fn with_problem_id<T: Into<String>>(self, problem_id: T) -> Self {
+-        Self {
+-            problem_id: Some(problem_id.into()),
+-            ..self
+-        }
++    pub fn with_problem_id<T: Into<String>>(mut self, problem_id: T) -> Self {
++        self.problem_id = Some(problem_id.into());
++        self
+     }
+ 
+-    pub fn with_language<T: Into<String>>(self, language: T) -> Self {
+-        Self {
+-            language: Some(language.into()),
+-            ..self
+-        }
++    pub fn with_language<T: Into<String>>(mut self, language: T) -> Self {
++        self.language = Some(language.into());
++        self
+     }
+ 
+-    pub fn with_source_path(self, path: PathBuf) -> Self {
+-        Self {
+-            source_path: Some(path),
+-            ..self
+-        }
++    pub fn with_source_path(mut self, path: PathBuf) -> Self {
++        self.source_path = Some(path);
++        self
++    }
++}
++
++#[derive(Debug)]
++pub struct ValidatedState {
++    site: String,
++    contest_id: String,
++    problem_id: String,
++    language: String,
++    source_path: PathBuf,
++}
++
++impl ValidatedState {
++    pub fn site(&self) -> &str {
++        &self.site
++    }
++
++    pub fn contest_id(&self) -> &str {
++        &self.contest_id
++    }
++
++    pub fn problem_id(&self) -> &str {
++        &self.problem_id
++    }
++
++    pub fn language(&self) -> &str {
++        &self.language
++    }
++
++    pub fn source_path(&self) -> &PathBuf {
++        &self.source_path
+     }
+ } 
+\ No newline at end of file
