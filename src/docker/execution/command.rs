@@ -1,36 +1,50 @@
 use std::process::Command;
+use std::borrow::Cow;
 use crate::error::Result;
 use crate::docker::error::execution_err;
 
+#[derive(Clone)]
 pub struct DockerCommand {
-    command: Command,
+    name: String,
+    args: Vec<String>,
 }
 
 impl DockerCommand {
-    pub fn new(name: &str) -> Self {
-        let mut command = Command::new("docker");
-        command.arg(name);
-        Self { command }
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            args: Vec::new(),
+        }
     }
 
-    pub fn arg<S: AsRef<str>>(mut self, arg: S) -> Self {
-        self.command.arg(arg.as_ref());
-        self
+    pub fn arg<'a, S: Into<Cow<'a, str>>>(self, arg: S) -> Self {
+        let mut args = self.args;
+        args.push(arg.into().into_owned());
+        Self {
+            name: self.name,
+            args,
+        }
     }
 
-    pub fn args<I, S>(mut self, args: I) -> Self
+    pub fn args<I, S>(self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        for arg in args {
-            self.command.arg(arg.as_ref());
+        let mut new_args = self.args;
+        new_args.extend(args.into_iter().map(|s| s.as_ref().to_owned()));
+        Self {
+            name: self.name,
+            args: new_args,
         }
-        self
     }
 
-    pub fn execute(&mut self) -> Result<String> {
-        let output = self.command
+    pub fn execute(self) -> Result<String> {
+        let mut command = Command::new("docker");
+        command.arg(&self.name);
+        command.args(&self.args);
+
+        let output = command
             .output()
             .map_err(|e| execution_err("コマンド実行", e.to_string()))?;
 
@@ -53,7 +67,7 @@ mod tests {
 
     #[test]
     fn test_docker_command() {
-        let mut cmd = DockerCommand::new("version")
+        let cmd = DockerCommand::new("version")
             .arg("--format")
             .arg("{{.Server.Version}}");
 
@@ -63,8 +77,16 @@ mod tests {
 
     #[test]
     fn test_invalid_command() {
-        let mut cmd = DockerCommand::new("invalid_command");
+        let cmd = DockerCommand::new("invalid_command");
         let result = cmd.execute();
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_command_cloning() {
+        let cmd = DockerCommand::new("version");
+        let cmd2 = cmd.clone();
+        
+        assert!(cmd2.execute().is_ok());
     }
 } 

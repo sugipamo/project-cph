@@ -1,0 +1,1 @@
+レビュー結果：1. コンパイルエラーが発生しています：- src/contest/model/state.rs: contest_errorのインポートエラー - src/contest/service/contest.rs: Contest::new関数が未定義 2. 警告：- src/docker/execution/container.rs: 未使用のインポート（DockerErrorKind）- src/contest/service/contest.rs: 未使用のインポート（PathBuf）- src/contest/parse.rs: 未使用の変数（i）作業を中断し、これらのエラーを修正する必要があります。

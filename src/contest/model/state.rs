@@ -5,11 +5,11 @@ use crate::contest::error::contest_error;
 
 #[derive(Debug, Clone)]
 pub struct ContestState {
-    pub site: Option<String>,
-    pub contest_id: Option<String>,
-    pub problem_id: Option<String>,
-    pub language: Option<String>,
-    pub source_path: Option<PathBuf>,
+    site: Option<String>,
+    contest_id: Option<String>,
+    problem_id: Option<String>,
+    language: Option<String>,
+    source_path: Option<PathBuf>,
 }
 
 impl ContestState {
@@ -21,6 +21,26 @@ impl ContestState {
             language: None,
             source_path: None,
         }
+    }
+
+    pub fn site(&self) -> Option<&str> {
+        self.site.as_deref()
+    }
+
+    pub fn contest_id(&self) -> Option<&str> {
+        self.contest_id.as_deref()
+    }
+
+    pub fn problem_id(&self) -> Option<&str> {
+        self.problem_id.as_deref()
+    }
+
+    pub fn language(&self) -> Option<&str> {
+        self.language.as_deref()
+    }
+
+    pub fn source_path(&self) -> Option<&PathBuf> {
+        self.source_path.as_ref()
     }
 
     pub fn validate_site(&self) -> Result<()> {
@@ -63,23 +83,38 @@ impl ContestState {
         Ok(())
     }
 
-    pub fn with_site(mut self, site: impl Into<String>) -> Self {
-        self.site = Some(site.into());
-        self
+    pub fn with_site<T: Into<String>>(self, site: T) -> Self {
+        Self {
+            site: Some(site.into()),
+            ..self
+        }
     }
 
-    pub fn with_contest_id(mut self, contest_id: impl Into<String>) -> Self {
-        self.contest_id = Some(contest_id.into());
-        self
+    pub fn with_contest_id<T: Into<String>>(self, contest_id: T) -> Self {
+        Self {
+            contest_id: Some(contest_id.into()),
+            ..self
+        }
     }
 
-    pub fn with_problem_id(mut self, problem_id: impl Into<String>) -> Self {
-        self.problem_id = Some(problem_id.into());
-        self
+    pub fn with_problem_id<T: Into<String>>(self, problem_id: T) -> Self {
+        Self {
+            problem_id: Some(problem_id.into()),
+            ..self
+        }
     }
 
-    pub fn with_language(mut self, language: impl Into<String>) -> Self {
-        self.language = Some(language.into());
-        self
+    pub fn with_language<T: Into<String>>(self, language: T) -> Self {
+        Self {
+            language: Some(language.into()),
+            ..self
+        }
+    }
+
+    pub fn with_source_path(self, path: PathBuf) -> Self {
+        Self {
+            source_path: Some(path),
+            ..self
+        }
     }
 } 

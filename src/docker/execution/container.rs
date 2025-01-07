@@ -1,6 +1,5 @@
 use std::process::Command;
 use crate::docker::error::container_err;
-use crate::error::docker::DockerErrorKind;
 use crate::error::Result;
 
 pub struct DockerContainer {

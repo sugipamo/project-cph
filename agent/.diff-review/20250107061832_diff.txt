@@ -1,0 +1,384 @@
+diff --git a/src/contest/model/mod.rs b/src/contest/model/mod.rs
+index ab371d7..d216cfd 100644
+--- a/src/contest/model/mod.rs
++++ b/src/contest/model/mod.rs
+@@ -11,6 +11,20 @@ pub struct Contest {
+     pub language: String,
+ }
+ 
++impl Contest {
++    pub fn new(site: String, contest_id: String, problem_id: String, language: String, url: String) -> Self {
++        Self {
++            id: format!("{}_{}", site, problem_id),
++            name: format!("{} - {}", contest_id, problem_id),
++            url,
++            site,
++            contest_id,
++            problem_id,
++            language,
++        }
++    }
++}
++
+ #[derive(Debug, Clone)]
+ pub struct TestCase {
+     pub input: String,
+diff --git a/src/contest/model/state.rs b/src/contest/model/state.rs
+index a6d2c6b..d3d50e7 100644
+--- a/src/contest/model/state.rs
++++ b/src/contest/model/state.rs
+@@ -5,11 +5,11 @@ use crate::contest::error::contest_error;
+ 
+ #[derive(Debug, Clone)]
+ pub struct ContestState {
+-    pub site: Option<String>,
+-    pub contest_id: Option<String>,
+-    pub problem_id: Option<String>,
+-    pub language: Option<String>,
+-    pub source_path: Option<PathBuf>,
++    site: Option<String>,
++    contest_id: Option<String>,
++    problem_id: Option<String>,
++    language: Option<String>,
++    source_path: Option<PathBuf>,
+ }
+ 
+ impl ContestState {
+@@ -23,6 +23,26 @@ impl ContestState {
+         }
+     }
+ 
++    pub fn site(&self) -> Option<&str> {
++        self.site.as_deref()
++    }
++
++    pub fn contest_id(&self) -> Option<&str> {
++        self.contest_id.as_deref()
++    }
++
++    pub fn problem_id(&self) -> Option<&str> {
++        self.problem_id.as_deref()
++    }
++
++    pub fn language(&self) -> Option<&str> {
++        self.language.as_deref()
++    }
++
++    pub fn source_path(&self) -> Option<&PathBuf> {
++        self.source_path.as_ref()
++    }
++
+     pub fn validate_site(&self) -> Result<()> {
+         if self.site.is_none() {
+             return Err(contest_error(
+@@ -63,23 +83,38 @@ impl ContestState {
+         Ok(())
+     }
+ 
+-    pub fn with_site(mut self, site: impl Into<String>) -> Self {
+-        self.site = Some(site.into());
+-        self
++    pub fn with_site<T: Into<String>>(self, site: T) -> Self {
++        Self {
++            site: Some(site.into()),
++            ..self
++        }
++    }
++
++    pub fn with_contest_id<T: Into<String>>(self, contest_id: T) -> Self {
++        Self {
++            contest_id: Some(contest_id.into()),
++            ..self
++        }
+     }
+ 
+-    pub fn with_contest_id(mut self, contest_id: impl Into<String>) -> Self {
+-        self.contest_id = Some(contest_id.into());
+-        self
++    pub fn with_problem_id<T: Into<String>>(self, problem_id: T) -> Self {
++        Self {
++            problem_id: Some(problem_id.into()),
++            ..self
++        }
+     }
+ 
+-    pub fn with_problem_id(mut self, problem_id: impl Into<String>) -> Self {
+-        self.problem_id = Some(problem_id.into());
+-        self
++    pub fn with_language<T: Into<String>>(self, language: T) -> Self {
++        Self {
++            language: Some(language.into()),
++            ..self
++        }
+     }
+ 
+-    pub fn with_language(mut self, language: impl Into<String>) -> Self {
+-        self.language = Some(language.into());
+-        self
++    pub fn with_source_path(self, path: PathBuf) -> Self {
++        Self {
++            source_path: Some(path),
++            ..self
++        }
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/contest/parse.rs b/src/contest/parse.rs
+index 13b603a..445a821 100644
+--- a/src/contest/parse.rs
++++ b/src/contest/parse.rs
+@@ -154,7 +154,7 @@ impl NameResolver {
+         let mut args = HashMap::new();
+ 
+         // 言語とサイトの解決
+-        for (i, token) in remaining_tokens.iter().enumerate() {
++        for (_i, token) in remaining_tokens.iter().enumerate() {
+             for (setting_name, setting_value) in &self.settings {
+                 if setting_name == "contest" || setting_name == "problem" {
+                     continue;
+diff --git a/src/contest/service/contest.rs b/src/contest/service/contest.rs
+index 51010f6..e6e08b1 100644
+--- a/src/contest/service/contest.rs
++++ b/src/contest/service/contest.rs
+@@ -1,9 +1,10 @@
+-use std::path::PathBuf;
++use std::borrow::Cow;
+ use crate::error::Result;
+ use crate::error::contest::ContestErrorKind;
+ use crate::contest::error::contest_error;
+ use crate::contest::model::Contest;
+ 
++#[derive(Clone)]
+ pub struct ContestService {
+     site: Option<String>,
+     contest_id: Option<String>,
+@@ -23,6 +24,28 @@ impl ContestService {
+         }
+     }
+ 
++    // アクセサメソッド
++    pub fn site(&self) -> Option<&str> {
++        self.site.as_deref()
++    }
++
++    pub fn contest_id(&self) -> Option<&str> {
++        self.contest_id.as_deref()
++    }
++
++    pub fn problem_id(&self) -> Option<&str> {
++        self.problem_id.as_deref()
++    }
++
++    pub fn language(&self) -> Option<&str> {
++        self.language.as_deref()
++    }
++
++    pub fn url(&self) -> Option<&str> {
++        self.url.as_deref()
++    }
++
++    // バリデーションメソッド
+     pub fn validate_site(&self) -> Result<()> {
+         if self.site.is_none() {
+             return Err(contest_error(
+@@ -73,46 +96,61 @@ impl ContestService {
+         Ok(())
+     }
+ 
+-    pub fn with_site(mut self, site: impl Into<String>) -> Self {
+-        self.site = Some(site.into());
+-        self
++    // 全フィールドの一括バリデーション
++    pub fn validate_all(&self) -> Result<()> {
++        self.validate_site()?;
++        self.validate_contest_id()?;
++        self.validate_problem_id()?;
++        self.validate_language()?;
++        self.validate_url()?;
++        Ok(())
++    }
++
++    // イミュータブルなビルダーメソッド
++    pub fn with_site<T: Into<String>>(self, site: T) -> Self {
++        Self {
++            site: Some(site.into()),
++            ..self
++        }
+     }
+ 
+-    pub fn with_contest_id(mut self, contest_id: impl Into<String>) -> Self {
+-        self.contest_id = Some(contest_id.into());
+-        self
++    pub fn with_contest_id<T: Into<String>>(self, contest_id: T) -> Self {
++        Self {
++            contest_id: Some(contest_id.into()),
++            ..self
++        }
+     }
+ 
+-    pub fn with_problem_id(mut self, problem_id: impl Into<String>) -> Self {
+-        self.problem_id = Some(problem_id.into());
+-        self
++    pub fn with_problem_id<T: Into<String>>(self, problem_id: T) -> Self {
++        Self {
++            problem_id: Some(problem_id.into()),
++            ..self
++        }
+     }
+ 
+-    pub fn with_language(mut self, language: impl Into<String>) -> Self {
+-        self.language = Some(language.into());
+-        self
++    pub fn with_language<T: Into<String>>(self, language: T) -> Self {
++        Self {
++            language: Some(language.into()),
++            ..self
++        }
+     }
+ 
+-    pub fn with_url(mut self, url: impl Into<String>) -> Self {
+-        self.url = Some(url.into());
+-        self
++    pub fn with_url<T: Into<String>>(self, url: T) -> Self {
++        Self {
++            url: Some(url.into()),
++            ..self
++        }
+     }
+ 
+     pub fn build(self) -> Result<Contest> {
+-        self.validate_site()?;
+-        self.validate_contest_id()?;
+-        self.validate_problem_id()?;
+-        self.validate_language()?;
+-        self.validate_url()?;
+-
+-        Ok(Contest {
+-            id: self.contest_id.clone().unwrap(),
+-            name: format!("{} {}", self.site.clone().unwrap(), self.problem_id.clone().unwrap()),
+-            url: self.url.unwrap(),
+-            site: self.site.unwrap(),
+-            contest_id: self.contest_id.unwrap(),
+-            problem_id: self.problem_id.unwrap(),
+-            language: self.language.unwrap(),
+-        })
++        self.validate_all()?;
++        
++        Ok(Contest::new(
++            self.site.unwrap(),
++            self.contest_id.unwrap(),
++            self.problem_id.unwrap(),
++            self.language.unwrap(),
++            self.url.unwrap(),
++        ))
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/docker/execution/command.rs b/src/docker/execution/command.rs
+index 3478d67..9609424 100644
+--- a/src/docker/execution/command.rs
++++ b/src/docker/execution/command.rs
+@@ -1,36 +1,50 @@
+ use std::process::Command;
++use std::borrow::Cow;
+ use crate::error::Result;
+ use crate::docker::error::execution_err;
+ 
++#[derive(Clone)]
+ pub struct DockerCommand {
+-    command: Command,
++    name: String,
++    args: Vec<String>,
+ }
+ 
+ impl DockerCommand {
+-    pub fn new(name: &str) -> Self {
+-        let mut command = Command::new("docker");
+-        command.arg(name);
+-        Self { command }
++    pub fn new(name: impl Into<String>) -> Self {
++        Self {
++            name: name.into(),
++            args: Vec::new(),
++        }
+     }
+ 
+-    pub fn arg<S: AsRef<str>>(mut self, arg: S) -> Self {
+-        self.command.arg(arg.as_ref());
+-        self
++    pub fn arg<'a, S: Into<Cow<'a, str>>>(self, arg: S) -> Self {
++        let mut args = self.args;
++        args.push(arg.into().into_owned());
++        Self {
++            name: self.name,
++            args,
++        }
+     }
+ 
+-    pub fn args<I, S>(mut self, args: I) -> Self
++    pub fn args<I, S>(self, args: I) -> Self
+     where
+         I: IntoIterator<Item = S>,
+         S: AsRef<str>,
+     {
+-        for arg in args {
+-            self.command.arg(arg.as_ref());
++        let mut new_args = self.args;
++        new_args.extend(args.into_iter().map(|s| s.as_ref().to_owned()));
++        Self {
++            name: self.name,
++            args: new_args,
+         }
+-        self
+     }
+ 
+-    pub fn execute(&mut self) -> Result<String> {
+-        let output = self.command
++    pub fn execute(self) -> Result<String> {
++        let mut command = Command::new("docker");
++        command.arg(&self.name);
++        command.args(&self.args);
++
++        let output = command
+             .output()
+             .map_err(|e| execution_err("コマンド実行", e.to_string()))?;
+ 
+@@ -53,7 +67,7 @@ mod tests {
+ 
+     #[test]
+     fn test_docker_command() {
+-        let mut cmd = DockerCommand::new("version")
++        let cmd = DockerCommand::new("version")
+             .arg("--format")
+             .arg("{{.Server.Version}}");
+ 
+@@ -63,8 +77,16 @@ mod tests {
+ 
+     #[test]
+     fn test_invalid_command() {
+-        let mut cmd = DockerCommand::new("invalid_command");
++        let cmd = DockerCommand::new("invalid_command");
+         let result = cmd.execute();
+         assert!(result.is_err());
+     }
++
++    #[test]
++    fn test_command_cloning() {
++        let cmd = DockerCommand::new("version");
++        let cmd2 = cmd.clone();
++        
++        assert!(cmd2.execute().is_ok());
++    }
+ } 
+\ No newline at end of file
+diff --git a/src/docker/execution/container.rs b/src/docker/execution/container.rs
+index 1911ced..6c6d8d3 100644
+--- a/src/docker/execution/container.rs
++++ b/src/docker/execution/container.rs
+@@ -1,6 +1,5 @@
+ use std::process::Command;
+ use crate::docker::error::container_err;
+-use crate::error::docker::DockerErrorKind;
+ use crate::error::Result;
+ 
+ pub struct DockerContainer {

@@ -154,7 +154,7 @@ impl NameResolver {
         let mut args = HashMap::new();
 
         // 言語とサイトの解決
-        for (i, token) in remaining_tokens.iter().enumerate() {
+        for (_i, token) in remaining_tokens.iter().enumerate() {
             for (setting_name, setting_value) in &self.settings {
                 if setting_name == "contest" || setting_name == "problem" {
                     continue;

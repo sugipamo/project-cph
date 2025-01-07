@@ -1,0 +1,31 @@
+イミュータブルなコードベースへのリファクタリング計画
+
+1. ContestState構造体の改善
+- 可変メソッドを削除し、with_*メソッドのみを使用するように変更
+- 状態更新時は新しいインスタンスを返すように修正
+- クローンの代わりにCowを使用して不要なコピーを削減
+
+2. DockerCommand構造体の改善
+- ビルダーパターンを維持しつつ、内部状態をイミュータブルに
+- Vec<String>の代わりにimmutable data structuresを使用
+
+3. Contest構造体の改善
+- 状態更新をイミュータブルな操作に変更
+- FileManagerの可変参照を避け、操作結果を返すように変更
+- 副作用を持つ操作を明確に分離
+
+4. エラー処理の改善
+- Result型を活用して状態変更を表現
+- エラー型を整理して型安全性を向上
+
+実装手順：
+1. ContestStateのリファクタリング
+2. DockerCommandのリファクタリング
+3. Contestのリファクタリング
+4. テストの更新
+
+影響を受ける主なファイル：
+- src/contest/model/state.rs
+- src/docker/execution/command.rs
+- src/contest/service/contest.rs
+- src/fs/manager.rs 
