@@ -1,4 +1,5 @@
 use anyhow::{Result, anyhow};
+use crate::config::Config;
 use crate::contest::model::{Contest, TestCase};
 use crate::fs::manager::FileManager;
 
@@ -10,6 +11,7 @@ pub struct ContestService {
     language: Option<String>,
     url: Option<String>,
     file_manager: Option<FileManager>,
+    config: Config,
 }
 
 // 状態遷移を表現する型
@@ -24,15 +26,16 @@ pub enum ServiceTransition {
 }
 
 impl ContestService {
-    pub fn new() -> Self {
-        Self {
+    pub fn new(config: &Config) -> Result<Self> {
+        Ok(Self {
             site: None,
             contest_id: None,
             problem_id: None,
             language: None,
             url: None,
             file_manager: None,
-        }
+            config: config.clone(),
+        })
     }
 
     // アクセサメソッド
@@ -194,5 +197,19 @@ impl ContestService {
         let file_manager = contest.save_template(file_manager, template)?;
         let file_manager = Self::save_test_cases(&contest, file_manager, test_cases)?;
         Ok((contest, file_manager))
+    }
+
+    // コマンド実行用のメソッド
+    pub fn open(&self, site: String, contest_id: Option<String>, problem_id: Option<String>) -> Result<()> {
+        // TODO: 実際のブラウザでの問題ページを開く処理を実装
+        println!("問題を開きます: site={}, contest={:?}, problem={:?}", 
+            site, contest_id, problem_id);
+        Ok(())
+    }
+
+    pub fn submit(&self, contest: &Contest) -> Result<()> {
+        // TODO: 実際の提出処理を実装
+        println!("提出を行います: contest={:?}", contest);
+        Ok(())
     }
 } 

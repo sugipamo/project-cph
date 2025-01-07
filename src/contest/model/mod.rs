@@ -81,4 +81,40 @@ impl TestCase {
             path: String::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Command {
+    Login,
+    Open {
+        site: String,
+        contest_id: Option<String>,
+        problem_id: Option<String>,
+    },
+    Test {
+        test_number: Option<usize>,
+    },
+    Submit,
+}
+
+#[derive(Debug, Clone)]
+pub struct CommandContext {
+    pub command: Command,
+    pub contest: Option<Contest>,
+}
+
+impl CommandContext {
+    pub fn new(command: Command) -> Self {
+        Self {
+            command,
+            contest: None,
+        }
+    }
+
+    pub fn with_contest(command: Command, contest: Contest) -> Self {
+        Self {
+            command,
+            contest: Some(contest),
+        }
+    }
 } 

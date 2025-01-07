@@ -18,4 +18,4 @@ txtnameを確認し、エラーを修正する
 
 今回の作業結果をagent/.review/yyyymmddhhmm_review.txtに記載
 
-最後にコミットメッセージを作成する
+最後にコミットメッセージをテキストにはせず作成

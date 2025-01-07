@@ -1,282 +1,224 @@
 use std::collections::HashMap;
-use crate::config::{Config, ConfigAccess, ConfigNode};
+use crate::config::{Config, FromConfigValue};
+use crate::contest::model::{Command, CommandContext};
 use anyhow::{Result, anyhow};
+use serde::Deserialize;
 
-#[derive(Debug, Clone)]
-pub struct ResolvedCommand {
-    pub commands: Vec<String>,
-    pub args: HashMap<String, String>,
+#[derive(Debug, Deserialize)]
+pub struct CommandConfig {
+    pub executions: HashMap<String, CommandAliases>,
+    pub settings: CommandSettings,
 }
 
-pub struct CommandResolver {
-    config: Config,
+#[derive(Debug, Deserialize)]
+pub struct CommandAliases {
+    pub aliases: Vec<String>,
 }
 
-impl CommandResolver {
+#[derive(Debug, Deserialize)]
+pub struct CommandSettings {
+    pub contest: SettingPriority,
+    pub problem: SettingPriority,
+    pub language: HashMap<String, LanguageConfig>,
+    pub site: HashMap<String, SiteConfig>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SettingPriority {
+    pub priority: i32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LanguageConfig {
+    pub aliases: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SiteConfig {
+    pub aliases: Vec<String>,
+}
+
+impl FromConfigValue for CommandConfig {
+    fn from_config_value(value: &serde_yaml::Value) -> Result<Self> {
+        serde_yaml::from_value(value.clone())
+            .map_err(|e| anyhow!("CommandConfigへの変換に失敗: {}", e))
+    }
+}
+
+pub struct CommandParser {
+    config: CommandConfig,
+}
+
+impl CommandParser {
     pub fn new(config: &Config) -> Result<Self> {
-        Ok(Self {
-            config: config.clone(),
-        })
+        let config: CommandConfig = config.get("commands")?;
+        Ok(Self { config })
     }
 
-    fn get_executions(&self) -> Result<Vec<String>> {
-        let executions = self.config.get_all("executions")?
-            .into_iter()
-            .filter_map(|node| node.as_typed::<String>().ok())
-            .collect();
-        Ok(executions)
-    }
-
-    fn get_settings(&self) -> Result<HashMap<String, String>> {
-        let settings = self.config.get_all("settings")?
-            .into_iter()
-            .filter_map(|node| {
-                let key = node.key().ok()?;
-                let value = node.as_typed::<String>().ok()?;
-                Some((key, value))
-            })
-            .collect();
-        Ok(settings)
-    }
-
-    fn get_aliases(&self, command: &str) -> Result<Option<String>> {
-        let aliases: ConfigNode = self.config.get("aliases")?;
-        let alias = aliases.as_typed::<HashMap<String, String>>()
-            .ok()
-            .and_then(|map| map.get(command).cloned());
-        Ok(alias)
-    }
-
-    pub fn parse_command(&self, tokens: &[&str]) -> Result<(CommandType, HashMap<String, String>)> {
-        if tokens.is_empty() {
-            return Err(anyhow!("コマンドが空です"));
-        }
-
-        let command = tokens[0].to_lowercase();
-        let args = tokens[1..].iter().map(|s| s.to_string()).collect::<Vec<_>>();
-
-        match command.as_str() {
-            "test" => self.parse_test_command(&args),
-            "login" => self.parse_login_command(&args),
-            _ => Err(anyhow!("未知のコマンド: {}", command)),
-        }
-    }
-
-    pub fn resolve(&self, input: &str) -> Result<ResolvedCommand> {
+    pub fn parse(&self, input: &str) -> Result<CommandContext> {
         let tokens: Vec<_> = input.split_whitespace().collect();
         if tokens.is_empty() {
             return Err(anyhow!("コマンドが空です"));
         }
 
-        let (command_type, args) = self.parse_command(&tokens)?;
-        let mut resolved = ResolvedCommand {
-            commands: vec![],
-            args,
+        let command = self.resolve_command(&tokens[0].to_lowercase())?;
+        let args = &tokens[1..];
+
+        let command = match command.as_str() {
+            "login" => Command::Login,
+            "open" => self.parse_open_command(args)?,
+            "test" => self.parse_test_command(args)?,
+            "submit" => Command::Submit,
+            _ => return Err(anyhow!("未知のコマンド: {}", command)),
         };
 
-        match command_type {
-            CommandType::Test => {
-                resolved.commands.push("test".to_string());
-            }
-            CommandType::Login => {
-                resolved.commands.push("login".to_string());
-            }
-        }
-
-        Ok(resolved)
+        Ok(CommandContext::new(command))
     }
 
-    fn parse_test_command(&self, args: &[String]) -> Result<(CommandType, HashMap<String, String>)> {
-        let mut command_args = HashMap::new();
-        
+    fn resolve_command(&self, cmd: &str) -> Result<String> {
+        for (name, aliases) in &self.config.executions {
+            if name == cmd || aliases.aliases.iter().any(|a| a == cmd) {
+                return Ok(name.clone());
+            }
+        }
+        Err(anyhow!("未知のコマンド: {}", cmd))
+    }
+
+    fn resolve_site(&self, site: &str) -> Result<String> {
+        for (name, config) in &self.config.settings.site {
+            if name == site || config.aliases.iter().any(|a| a == site) {
+                return Ok(name.clone());
+            }
+        }
+        Err(anyhow!("未知のサイト: {}", site))
+    }
+
+    fn parse_open_command(&self, args: &[&str]) -> Result<Command> {
         if args.is_empty() {
-            return Err(anyhow!("テストコマンドには引数が必要です"));
+            return Err(anyhow!("サイトの指定が必要です"));
         }
 
-        // 言語の解析
-        if let Some(language) = args.first() {
-            match language.to_lowercase().as_str() {
-                "rs" | "rust" => { command_args.insert("language".to_string(), "rust".to_string()); }
-                "py" | "python" | "python3" => { command_args.insert("language".to_string(), "python".to_string()); }
-                _ => {}
-            }
-        }
+        let site = self.resolve_site(&args[0].to_lowercase())?;
+        let (contest_id, problem_id) = match args.len() {
+            1 => (None, None),
+            2 => (Some(args[1].to_string()), None),
+            3 => (Some(args[1].to_string()), Some(args[2].to_string())),
+            _ => return Err(anyhow!("引数が多すぎます")),
+        };
 
-        // コンテストIDと問題IDの解析
-        if args.len() >= 3 {
-            command_args.insert("contest".to_string(), args[1].clone());
-            command_args.insert("problem".to_string(), args[2].clone());
-        } else if args.len() == 2 {
-            command_args.insert("problem_id".to_string(), args[1].clone());
-        }
-
-        Ok((CommandType::Test, command_args))
+        Ok(Command::Open {
+            site,
+            contest_id,
+            problem_id,
+        })
     }
 
-    fn parse_login_command(&self, args: &[String]) -> Result<(CommandType, HashMap<String, String>)> {
-        let mut command_args = HashMap::new();
-        
-        if let Some(site) = args.first() {
-            match site.to_lowercase().as_str() {
-                "ac" | "atcoder" | "at-coder" => {
-                    command_args.insert("site".to_string(), "atcoder".to_string());
-                }
-                _ => {}
-            }
-        }
+    fn parse_test_command(&self, args: &[&str]) -> Result<Command> {
+        let test_number = match args.first() {
+            Some(num) => match num.parse() {
+                Ok(n) => Some(n),
+                Err(_) => None,
+            },
+            None => None,
+        };
 
-        Ok((CommandType::Login, command_args))
+        Ok(Command::Test { test_number })
     }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum CommandType {
-    Test,
-    Login,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_basic_command_resolution() {
-        let config = Config::default();
-        let resolver = CommandResolver::new(&config).unwrap();
-
-        let result = resolver.resolve("login").unwrap();
-        assert_eq!(result.commands, vec!["login"]);
+    fn create_test_config() -> Config {
+        let yaml = r#"
+        commands:
+          executions:
+            login:
+              aliases: ["auth"]
+            open:
+              aliases: ["o", "show"]
+            test:
+              aliases: ["t", "check"]
+            submit:
+              aliases: ["s", "sub"]
+          settings:
+            contest:
+              priority: 2
+            problem:
+              priority: 1
+            language:
+              rust:
+                aliases: ["rs", "Rust", "RUST"]
+              python:
+                aliases: ["python", "python3"]
+              pypy:
+                aliases: ["pypy", "py", "pypy3"]
+              cpp:
+                aliases: ["cpp", "c++", "gcc"]
+            site:
+              atcoder:
+                aliases: ["ac", "at-coder", "at_coder"]
+        "#;
+        Config::from_str(yaml).unwrap()
     }
 
     #[test]
-    fn test_alias_resolution() {
-        let config = Config::default();
-        let resolver = CommandResolver::new(&config).unwrap();
+    fn test_parse_login() {
+        let config = create_test_config();
+        let parser = CommandParser::new(&config).unwrap();
 
-        let result = resolver.resolve("auth").unwrap();
-        assert_eq!(result.commands, vec!["login"]);
+        let result = parser.parse("login").unwrap();
+        assert!(matches!(result.command, Command::Login));
 
-        let result = resolver.resolve("o").unwrap();
-        assert_eq!(result.commands, vec!["open"]);
+        let result = parser.parse("auth").unwrap();
+        assert!(matches!(result.command, Command::Login));
     }
 
     #[test]
-    fn test_command_with_args() {
-        let config = Config::default();
-        let resolver = CommandResolver::new(&config).unwrap();
+    fn test_parse_open() {
+        let config = create_test_config();
+        let parser = CommandParser::new(&config).unwrap();
 
-        let result = resolver.resolve("login test").unwrap();
-        assert_eq!(result.commands, vec!["login", "test"]);
+        let result = parser.parse("open atcoder abc001 a").unwrap();
+        if let Command::Open { site, contest_id, problem_id } = result.command {
+            assert_eq!(site, "atcoder");
+            assert_eq!(contest_id, Some("abc001".to_string()));
+            assert_eq!(problem_id, Some("a".to_string()));
+        } else {
+            panic!("Expected Open command");
+        }
     }
 
     #[test]
-    fn test_language_normalization() {
-        let config = Config::default();
-        let resolver = CommandResolver::new(&config).unwrap();
+    fn test_parse_test() {
+        let config = create_test_config();
+        let parser = CommandParser::new(&config).unwrap();
 
-        let result = resolver.resolve("test rs abc001 a").unwrap();
-        assert_eq!(result.args.get("language").unwrap(), "rust");
-
-        let result = resolver.resolve("test RUST abc001 a").unwrap();
-        assert_eq!(result.args.get("language").unwrap(), "rust");
-
-        let result = resolver.resolve("test python3 abc001 a").unwrap();
-        assert_eq!(result.args.get("language").unwrap(), "python");
-    }
-
-    #[test]
-    fn test_site_normalization() {
-        let config = Config::default();
-        let resolver = CommandResolver::new(&config).unwrap();
-
-        let result = resolver.resolve("login ac").unwrap();
-        assert_eq!(result.args.get("site").unwrap(), "atcoder");
-
-        let result = resolver.resolve("login at-coder").unwrap();
-        assert_eq!(result.args.get("site").unwrap(), "atcoder");
-    }
-
-    #[test]
-    fn test_contest_problem_parsing() {
-        let config = Config::default();
-        let resolver = CommandResolver::new(&config).unwrap();
-
-        let result = resolver.resolve("test abc001 a").unwrap();
-        assert!(result.args.contains_key("contest"));
-        assert!(result.args.contains_key("problem"));
-        assert_eq!(result.args.get("contest").unwrap(), "abc001");
-        assert_eq!(result.args.get("problem").unwrap(), "a");
-
-        let result = resolver.resolve("test other_format").unwrap();
-        assert_eq!(result.args.get("problem_id").unwrap(), "other_format");
-    }
-
-    #[test]
-    fn test_contest_id_extraction() {
-        let config = Config::default();
-        let resolver = CommandResolver::new(&config).unwrap();
-
-        let result = resolver.resolve("test abc001 a").unwrap();
-        assert_eq!(result.args.get("contest").unwrap(), "abc001");
-    }
-
-    #[test]
-    fn test_problem_id_extraction() {
-        let config = Config::default();
-        let resolver = CommandResolver::new(&config).unwrap();
-
-        let result = resolver.resolve("test abc001 a").unwrap();
-        assert_eq!(result.args.get("problem").unwrap(), "a");
-    }
-
-    #[test]
-    fn test_full_command_parsing() {
-        let config = Config::default();
-        let resolver = CommandResolver::new(&config).unwrap();
-
-        let result = resolver.resolve("test rs abc001 a").unwrap();
-        assert!(result.args.contains_key("language"));
-        assert!(result.args.contains_key("contest"));
-        assert!(result.args.contains_key("problem"));
-    }
-
-    mod error_tests {
-        use super::*;
-
-        #[test]
-        fn test_invalid_command_format() {
-            let config = Config::default();
-            let resolver = CommandResolver::new(&config).unwrap();
-
-            let result = resolver.resolve("");
-            assert!(result.is_err());
+        let result = parser.parse("test 1").unwrap();
+        if let Command::Test { test_number } = result.command {
+            assert_eq!(test_number, Some(1));
+        } else {
+            panic!("Expected Test command");
         }
 
-        #[test]
-        fn test_unknown_command() {
-            let config = Config::default();
-            let resolver = CommandResolver::new(&config).unwrap();
-
-            let result = resolver.resolve("unknown_command");
-            assert!(result.is_err());
+        let result = parser.parse("test").unwrap();
+        if let Command::Test { test_number } = result.command {
+            assert_eq!(test_number, None);
+        } else {
+            panic!("Expected Test command");
         }
+    }
 
-        #[test]
-        fn test_invalid_site() {
-            let config = Config::default();
-            let resolver = CommandResolver::new(&config).unwrap();
+    #[test]
+    fn test_parse_submit() {
+        let config = create_test_config();
+        let parser = CommandParser::new(&config).unwrap();
 
-            let result = resolver.resolve("login invalid_site").unwrap();
-            assert!(!result.args.contains_key("site"));
-        }
+        let result = parser.parse("submit").unwrap();
+        assert!(matches!(result.command, Command::Submit));
 
-        #[test]
-        fn test_invalid_language() {
-            let config = Config::default();
-            let resolver = CommandResolver::new(&config).unwrap();
-
-            let result = resolver.resolve("test invalid_lang abc001_a").unwrap();
-            assert!(!result.args.contains_key("language"));
-        }
+        let result = parser.parse("s").unwrap();
+        assert!(matches!(result.command, Command::Submit));
     }
 } 

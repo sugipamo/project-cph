@@ -129,8 +129,27 @@ impl Config {
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let contents = fs::read_to_string(&path)
             .with_context(|| format!("設定ファイルの読み込みに失敗: {}", path.as_ref().display()))?;
-        let value = serde_yaml::from_str(&contents)
+        
+        // メイン設定を読み込む
+        let mut value = serde_yaml::from_str(&contents)
             .with_context(|| "YAMLのパースに失敗しました")?;
+
+        // commands.yamlを読み込む
+        let commands_path = path.as_ref().parent().unwrap().join("commands.yaml");
+        if commands_path.exists() {
+            let commands_contents = fs::read_to_string(&commands_path)
+                .with_context(|| format!("コマンド設定ファイルの読み込みに失敗: {}", commands_path.display()))?;
+            let commands_value: Value = serde_yaml::from_str(&commands_contents)
+                .with_context(|| "コマンド設定のパースに失敗しました")?;
+
+            // メイン設定にコマンド設定をマージ
+            if let Value::Mapping(ref mut map) = value {
+                if let Value::Mapping(commands_map) = commands_value {
+                    map.extend(commands_map);
+                }
+            }
+        }
+
         Ok(Self::new(value))
     }
 
@@ -168,6 +187,11 @@ impl Config {
         }
 
         Ok(current.clone())
+    }
+
+    pub fn get_typed<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T> {
+        let value = self.resolve_path(path)?;
+        serde_yaml::from_value(value).map_err(|e| anyhow::anyhow!("型変換に失敗しました: {}", e))
     }
 }
 

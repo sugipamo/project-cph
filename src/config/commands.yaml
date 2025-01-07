@@ -1,0 +1,27 @@
+commands:
+  executions:
+    login:
+      aliases: ["auth"]
+    open:
+      aliases: ["o", "show"]
+    test:
+      aliases: ["t", "check"]
+    submit:
+      aliases: ["s", "sub"]
+  settings:
+    contest:
+      priority: 2
+    problem:
+      priority: 1
+    language:
+      rust:
+        aliases: ["rs", "Rust", "RUST"]
+      python:
+        aliases: ["python", "python3"]
+      pypy:
+        aliases: ["pypy", "py", "pypy3", "PyPy", "PYPY"]
+      cpp:
+        aliases: ["cpp", "c++", "gcc"]
+    site:
+      atcoder:
+        aliases: ["ac", "at-coder", "at_coder", "AtCoder"]
