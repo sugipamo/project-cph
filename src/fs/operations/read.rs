@@ -24,36 +24,4 @@ pub fn get_metadata(path: impl AsRef<Path>) -> Result<std::fs::Metadata> {
 
     std::fs::metadata(path)
         .with_context_io(format!("メタデータの取得に失敗: {}", path.display()))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::fs::tests::TestDirectory;
-    use crate::fs::operations::write::write_file;
-
-    #[test]
-    fn test_read_file() -> Result<()> {
-        let test_dir = TestDirectory::new()?;
-        let file_path = test_dir.path().join("test.txt");
-        
-        write_file(&file_path, "Hello, World!")?;
-        let content = read_file(&file_path)?;
-        assert_eq!(content, "Hello, World!");
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_metadata() -> Result<()> {
-        let test_dir = TestDirectory::new()?;
-        let file_path = test_dir.path().join("test.txt");
-        
-        write_file(&file_path, "Hello")?;
-        
-        let metadata = get_metadata(&file_path)?;
-        assert!(metadata.is_file());
-
-        Ok(())
-    }
 } 

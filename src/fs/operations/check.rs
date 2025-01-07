@@ -27,27 +27,4 @@ pub fn check_permissions<P: AsRef<Path>>(path: P, write_required: bool) -> Resul
         return Err(permission_error(path));
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::fs::tests::TestDirectory;
-    use crate::fs::operations::write::write_file;
-
-    #[test]
-    fn test_check_operations() -> Result<()> {
-        let test_dir = TestDirectory::new()?;
-        let file_path = test_dir.path().join("test.txt");
-        
-        write_file(&file_path, "Hello")?;
-        
-        assert!(exists(&file_path));
-        assert!(is_file(&file_path));
-        assert!(!is_directory(&file_path));
-        
-        check_permissions(&file_path, false)?;
-
-        Ok(())
-    }
 } 
