@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::SystemTime;
 use crate::error::Error;
 use crate::fs::error::io_err;
 
@@ -7,9 +8,22 @@ pub trait FileOperation: Send + Sync + std::fmt::Debug {
     fn execute(&self) -> Result<(), Error>;
     fn rollback(&self) -> Result<(), Error>;
     fn description(&self) -> String;
+    fn validate(&self) -> Result<(), Error>;
 }
 
-// 状態遷移を表現する型
+#[derive(Debug, Clone)]
+pub struct TransactionHistory {
+    timestamp: SystemTime,
+    transition: TransactionTransition,
+    result: TransactionResult,
+}
+
+#[derive(Debug, Clone)]
+pub enum TransactionResult {
+    Success,
+    Failure(String),
+}
+
 #[derive(Debug, Clone)]
 pub enum TransactionTransition {
     AddOperation(Arc<dyn FileOperation>),
@@ -29,6 +43,7 @@ pub enum TransactionState {
 pub struct FileTransaction {
     operations: Arc<Vec<Arc<dyn FileOperation>>>,
     state: TransactionState,
+    history: Arc<Vec<TransactionHistory>>,
 }
 
 impl FileTransaction {
@@ -36,62 +51,100 @@ impl FileTransaction {
         Self {
             operations: Arc::new(Vec::new()),
             state: TransactionState::Pending,
+            history: Arc::new(Vec::new()),
         }
     }
 
-    // 状態遷移を適用するメソッド
+    fn with_transition_record(&self, transition: TransactionTransition, result: TransactionResult) -> Self {
+        let mut history = (*self.history).clone();
+        history.push(TransactionHistory {
+            timestamp: SystemTime::now(),
+            transition,
+            result,
+        });
+        Self {
+            operations: self.operations.clone(),
+            state: self.state.clone(),
+            history: Arc::new(history),
+        }
+    }
+
+    fn with_operations(&self, operations: Vec<Arc<dyn FileOperation>>) -> Self {
+        Self {
+            operations: Arc::new(operations),
+            state: self.state.clone(),
+            history: self.history.clone(),
+        }
+    }
+
+    fn with_state(&self, state: TransactionState) -> Self {
+        Self {
+            operations: self.operations.clone(),
+            state,
+            history: self.history.clone(),
+        }
+    }
+
     pub fn apply_transition(self, transition: TransactionTransition) -> Result<Self, Error> {
-        match (self.state, transition) {
+        match (self.state.clone(), transition.clone()) {
             (TransactionState::Pending, TransactionTransition::AddOperation(op)) => {
+                if let Err(e) = op.validate() {
+                    return Ok(self.with_transition_record(
+                        transition,
+                        TransactionResult::Failure(format!("操作の検証に失敗: {}", e))
+                    ));
+                }
+
                 let mut operations = (*self.operations).clone();
                 operations.push(op);
-                Ok(Self {
-                    operations: Arc::new(operations),
-                    state: TransactionState::Pending,
-                })
+                Ok(self.with_transition_record(
+                    transition,
+                    TransactionResult::Success
+                ).with_operations(operations))
             },
             (TransactionState::Pending, TransactionTransition::Execute) => {
                 let operations = self.operations.clone();
                 for operation in operations.iter() {
                     if let Err(e) = operation.execute() {
-                        let failed_state = Self {
-                            operations: operations.clone(),
-                            state: TransactionState::Failed(Arc::new(e)),
-                        };
+                        let failed_state = self.with_transition_record(
+                            transition.clone(),
+                            TransactionResult::Failure(format!("実行に失敗: {}", e))
+                        ).with_state(TransactionState::Failed(Arc::new(e)));
                         return Ok(failed_state.apply_transition(TransactionTransition::Rollback)?);
                     }
                 }
-                Ok(Self {
-                    operations,
-                    state: TransactionState::Executed,
-                })
+                Ok(self.with_transition_record(
+                    transition,
+                    TransactionResult::Success
+                ).with_state(TransactionState::Executed))
             },
             (TransactionState::Executed | TransactionState::Pending, TransactionTransition::Rollback) => {
                 let operations = self.operations.clone();
                 for operation in operations.iter().rev() {
                     if let Err(e) = operation.rollback() {
-                        return Ok(Self {
-                            operations,
-                            state: TransactionState::Failed(Arc::new(e)),
-                        });
+                        return Ok(self.with_transition_record(
+                            transition,
+                            TransactionResult::Failure(format!("ロールバックに失敗: {}", e))
+                        ).with_state(TransactionState::Failed(Arc::new(e))));
                     }
                 }
-                Ok(Self {
-                    operations,
-                    state: TransactionState::RolledBack,
-                })
+                Ok(self.with_transition_record(
+                    transition,
+                    TransactionResult::Success
+                ).with_state(TransactionState::RolledBack))
             },
             (state, transition) => {
-                Ok(Self {
-                    operations: self.operations,
-                    state: TransactionState::Failed(Arc::new(io_err(
-                        std::io::Error::new(
-                            std::io::ErrorKind::InvalidInput,
-                            format!("無効な状態遷移: {:?} -> {:?}", state, transition)
-                        ),
-                        "トランザクション状態遷移エラー".to_string(),
-                    ))),
-                })
+                let error = io_err(
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        format!("無効な状態遷移: {:?} -> {:?}", state, transition)
+                    ),
+                    "トランザクション状態遷移エラー".to_string(),
+                );
+                Ok(self.with_transition_record(
+                    transition,
+                    TransactionResult::Failure(error.to_string())
+                ).with_state(TransactionState::Failed(Arc::new(error))))
             }
         }
     }
@@ -117,24 +170,37 @@ impl FileTransaction {
         &self.operations
     }
 
+    pub fn history(&self) -> &[TransactionHistory] {
+        &self.history
+    }
+
     // トランザクションの合成メソッド
     pub fn combine(self, other: Self) -> Result<Self, Error> {
-        match (self.state, other.state) {
+        match (self.state.clone(), other.state) {
             (TransactionState::Pending, TransactionState::Pending) => {
                 let mut operations = (*self.operations).clone();
                 operations.extend((*other.operations).clone());
+                let mut history = (*self.history).clone();
+                history.extend((*other.history).clone());
                 Ok(Self {
                     operations: Arc::new(operations),
                     state: TransactionState::Pending,
+                    history: Arc::new(history),
                 })
             },
-            _ => Err(io_err(
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidInput,
-                    "トランザクションの合成は保留状態でのみ可能です"
-                ),
-                "トランザクション合成エラー".to_string(),
-            )),
+            _ => {
+                let error = io_err(
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        "トランザクションの合成は保留状態でのみ可能です"
+                    ),
+                    "トランザクション合成エラー".to_string(),
+                );
+                Ok(self.with_transition_record(
+                    TransactionTransition::Execute,
+                    TransactionResult::Failure(error.to_string())
+                ).with_state(TransactionState::Failed(Arc::new(error))))
+            }
         }
     }
 }
@@ -175,6 +241,30 @@ impl FileOperation for CreateFileOperation {
 
     fn description(&self) -> String {
         format!("ファイル作成: {}", self.path.display())
+    }
+
+    fn validate(&self) -> Result<(), Error> {
+        if self.path.exists() {
+            return Err(io_err(
+                std::io::Error::new(
+                    std::io::ErrorKind::AlreadyExists,
+                    format!("ファイルが既に存在します: {}", self.path.display())
+                ),
+                "ファイル作成検証エラー".to_string(),
+            ));
+        }
+        if let Some(parent) = self.path.parent() {
+            if parent.exists() && !parent.is_dir() {
+                return Err(io_err(
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        format!("親パスがディレクトリではありません: {}", parent.display())
+                    ),
+                    "ファイル作成検証エラー".to_string(),
+                ));
+            }
+        }
+        Ok(())
     }
 }
 
@@ -223,5 +313,27 @@ impl FileOperation for DeleteFileOperation {
 
     fn description(&self) -> String {
         format!("ファイル削除: {}", self.path.display())
+    }
+
+    fn validate(&self) -> Result<(), Error> {
+        if !self.path.exists() {
+            return Err(io_err(
+                std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    format!("ファイルが存在しません: {}", self.path.display())
+                ),
+                "ファイル削除検証エラー".to_string(),
+            ));
+        }
+        if !self.path.is_file() {
+            return Err(io_err(
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!("パスがファイルではありません: {}", self.path.display())
+                ),
+                "ファイル削除検証エラー".to_string(),
+            ));
+        }
+        Ok(())
     }
 } 

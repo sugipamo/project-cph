@@ -17,9 +17,16 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::SystemTime;
 use crate::error::Result;
 use crate::error::contest::ContestErrorKind;
 use crate::contest::error::contest_error;
+
+#[derive(Debug, Clone)]
+pub struct StateHistory {
+    timestamp: SystemTime,
+    transition: StateTransition,
+}
 
 #[derive(Debug, Clone)]
 pub struct ContestState {
@@ -28,6 +35,7 @@ pub struct ContestState {
     problem_id: Option<Arc<String>>,
     language: Option<Arc<String>>,
     source_path: Option<Arc<PathBuf>>,
+    history: Vec<StateHistory>,
 }
 
 #[derive(Debug, Clone)]
@@ -37,6 +45,7 @@ pub struct ValidatedState {
     pub(crate) problem_id: Arc<String>,
     pub(crate) language: Arc<String>,
     pub(crate) source_path: Arc<PathBuf>,
+    pub(crate) history: Arc<Vec<StateHistory>>,
 }
 
 // 状態遷移の型安全性を向上させるための新しい型
@@ -57,6 +66,7 @@ impl ContestState {
             problem_id: None,
             language: None,
             source_path: None,
+            history: Vec::new(),
         }
     }
 
@@ -82,12 +92,28 @@ impl ContestState {
 
     // 型安全な状態遷移メソッドを追加
     pub fn apply_transition(self, transition: StateTransition) -> Self {
-        match transition {
+        let history_entry = StateHistory {
+            timestamp: SystemTime::now(),
+            transition: transition.clone(),
+        };
+        
+        let new_state = match transition {
             StateTransition::SetSite(site) => self.with_site(site),
             StateTransition::SetContestId(id) => self.with_contest_id(id),
             StateTransition::SetProblemId(id) => self.with_problem_id(id),
             StateTransition::SetLanguage(lang) => self.with_language(lang),
             StateTransition::SetSourcePath(path) => self.with_source_path(path),
+        };
+
+        let mut history = new_state.history.clone();
+        history.push(history_entry);
+        Self {
+            site: new_state.site,
+            contest_id: new_state.contest_id,
+            problem_id: new_state.problem_id,
+            language: new_state.language,
+            source_path: new_state.source_path,
+            history,
         }
     }
 
@@ -108,7 +134,7 @@ impl ContestState {
         let source_path = self.source_path.clone()
             .ok_or_else(|| contest_error(ContestErrorKind::NotFound, "ソースパスが指定されていません"))?;
 
-        // 追加のバリデーションルール
+        // 拡張されたバリデーションルール
         if site.is_empty() {
             return Err(contest_error(ContestErrorKind::Invalid, "サイトが空です"));
         }
@@ -122,12 +148,21 @@ impl ContestState {
             return Err(contest_error(ContestErrorKind::Invalid, "言語が空です"));
         }
 
+        // パスのバリデーション
+        if !source_path.exists() {
+            return Err(contest_error(ContestErrorKind::Invalid, "指定されたソースパスが存在しません"));
+        }
+        if !source_path.is_file() {
+            return Err(contest_error(ContestErrorKind::Invalid, "指定されたソースパスはファイルではありません"));
+        }
+
         Ok(ValidatedState {
             site,
             contest_id,
             problem_id,
             language,
             source_path,
+            history: Arc::new(self.history.clone()),
         })
     }
 
@@ -178,6 +213,14 @@ impl ValidatedState {
         &self.source_path
     }
 
+    pub fn history(&self) -> &[StateHistory] {
+        &self.history
+    }
+
+    pub fn last_transition(&self) -> Option<&StateHistory> {
+        self.history.last()
+    }
+
     // 新しいメソッド：状態の変更を試みる（新しいValidatedStateを返す）
     pub fn try_update(&self, transition: StateTransition) -> Result<ValidatedState> {
         let mut new_state = ContestState::new()
@@ -187,7 +230,21 @@ impl ValidatedState {
             .with_language(self.language.as_ref().clone())
             .with_source_path(self.source_path.as_ref().clone());
 
+        new_state.history = (*self.history).clone();
         new_state = new_state.apply_transition(transition);
         new_state.validate()
     }
-} 
+}
+
+// 新しい実装：状態の比較
+impl PartialEq for ValidatedState {
+    fn eq(&self, other: &Self) -> bool {
+        self.site == other.site &&
+        self.contest_id == other.contest_id &&
+        self.problem_id == other.problem_id &&
+        self.language == other.language &&
+        self.source_path == other.source_path
+    }
+}
+
+impl Eq for ValidatedState {} 

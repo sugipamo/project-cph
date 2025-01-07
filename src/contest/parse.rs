@@ -54,9 +54,10 @@ impl NameResolver {
         let mut command_aliases = HashMap::new();
         let executions = config.get_raw_value("executions")
             .map_err(|_| ParseError::MissingSection("executions".to_string()))?;
+        let executions = executions.0;
 
-        if let Value::Mapping(executions) = executions {
-            for (cmd_name, cmd_config) in executions {
+        if let Value::Mapping(executions_map) = executions {
+            for (cmd_name, cmd_config) in executions_map {
                 if let (Value::String(name), Value::Mapping(config)) = (cmd_name, cmd_config) {
                     if let Some(Value::Sequence(aliases)) = config.get("aliases") {
                         let aliases: Vec<String> = aliases.iter()
@@ -80,11 +81,12 @@ impl NameResolver {
 
         let settings = config.get_raw_value("settings")
             .map_err(|_| ParseError::MissingSection("settings".to_string()))?;
+        let settings = settings.0;
 
-        if let Value::Mapping(settings) = settings {
+        if let Value::Mapping(settings_map) = settings {
             Ok(Self {
                 command_aliases,
-                settings: settings.iter()
+                settings: settings_map.iter()
                     .map(|(k, v)| (k.as_str().unwrap_or_default().to_string(), v.clone()))
                     .collect(),
             })

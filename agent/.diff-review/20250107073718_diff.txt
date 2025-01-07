@@ -1,0 +1,926 @@
+diff --git a/agent/fix-errors.do b/agent/fix-errors.do
+index d641092..947e596 100644
+--- a/agent/fix-errors.do
++++ b/agent/fix-errors.do
+@@ -1,8 +1,7 @@
+ 以下のコマンドを行う
+ date +%Y%m%d%H%M%S
+-txtname = agent/.fix-errors/yyyymmddhhmm.txt
+-tree . >> txtname
+-cargo check >> txtname
+-git diff develop >> txtname
++tree . >> agent/.fix-errors/yyyymmddhhmm_tree.txt
++cargo check >> agent/.fix-errors/yyyymmddhhmm_check.txt
++git diff develop >> agent/.fix-errors/yyyymmddhhmm_diff.txt
+ 
+ txtnameを確認し、エラーを修正する
+\ No newline at end of file
+diff --git a/src/config/mod.rs b/src/config/mod.rs
+index 8fd795b..4b0a839 100644
+--- a/src/config/mod.rs
++++ b/src/config/mod.rs
+@@ -51,6 +51,8 @@
+ // ```
+ 
+ use std::fs;
++use std::sync::Arc;
++use std::time::SystemTime;
+ use serde::{Deserialize, Serialize};
+ use serde_yaml::{self, Value};
+ use thiserror::Error;
+@@ -72,11 +74,14 @@ pub enum ConfigError {
+         actual: ConfigType,
+     },
+ 
++    #[error("設定の検証に失敗しました: {0}")]
++    Validation(String),
++
+     #[error("{0}")]
+     Config(String),
+ }
+ 
+-#[derive(Debug)]
++#[derive(Debug, Clone)]
+ pub enum ConfigType {
+     String,
+     StringArray,
+@@ -84,33 +89,99 @@ pub enum ConfigType {
+     Boolean,
+     Number,
+     Null,
++    Tagged,
++}
++
++#[derive(Debug, Clone)]
++pub struct ConfigAccess {
++    path: String,
++    timestamp: SystemTime,
++    value_type: ConfigType,
+ }
+ 
+ pub type ConfigResult<T> = Result<T, ConfigError>;
+ 
+-#[derive(Debug, Serialize, Deserialize)]
+-pub struct Config {
++#[derive(Debug, Clone, Serialize, Deserialize)]
++pub struct ConfigValue {
+     system: Value,
+     languages: Value,
+ }
+ 
++#[derive(Clone)]
++pub struct Config {
++    value: Arc<ConfigValue>,
++    access_history: Arc<Vec<ConfigAccess>>,
++    validation_rules: Arc<Vec<Arc<dyn Fn(&ConfigValue) -> ConfigResult<()> + Send + Sync>>>,
++}
++
++impl std::fmt::Debug for Config {
++    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++        f.debug_struct("Config")
++            .field("value", &self.value)
++            .field("access_history", &self.access_history)
++            .field("validation_rules", &format!("<{} rules>", self.validation_rules.len()))
++            .finish()
++    }
++}
++
+ impl Config {
+     pub fn new() -> ConfigResult<Self> {
+         let config_str = fs::read_to_string("config.yml")
+             .map_err(|e| ConfigError::Config(format!("設定ファイルの読み込みに失敗しました: {}", e)))?;
+ 
+-        let config: Config = serde_yaml::from_str(&config_str)
++        let value: ConfigValue = serde_yaml::from_str(&config_str)
+             .map_err(|e| ConfigError::Config(format!("設定ファイルのパースに失敗しました: {}", e)))?;
+ 
++        let config = Self {
++            value: Arc::new(value),
++            access_history: Arc::new(Vec::new()),
++            validation_rules: Arc::new(Vec::new()),
++        };
++
++        config.validate()?;
+         Ok(config)
+     }
+ 
+-    pub fn get<T: serde::de::DeserializeOwned>(&self, path: &str) -> ConfigResult<T> {
++    fn with_access(&self, path: String, value_type: ConfigType) -> Self {
++        let mut history = (*self.access_history).clone();
++        history.push(ConfigAccess {
++            path,
++            timestamp: SystemTime::now(),
++            value_type,
++        });
++        Self {
++            value: self.value.clone(),
++            access_history: Arc::new(history),
++            validation_rules: self.validation_rules.clone(),
++        }
++    }
++
++    pub fn with_validation_rule<F>(self, rule: F) -> Self
++    where
++        F: Fn(&ConfigValue) -> ConfigResult<()> + Send + Sync + 'static,
++    {
++        let mut rules = (*self.validation_rules).clone();
++        rules.push(Arc::new(rule));
++        Self {
++            value: self.value,
++            access_history: self.access_history,
++            validation_rules: Arc::new(rules),
++        }
++    }
++
++    pub fn validate(&self) -> ConfigResult<()> {
++        for rule in self.validation_rules.iter() {
++            rule(&self.value)?;
++        }
++        Ok(())
++    }
++
++    pub fn get<T: serde::de::DeserializeOwned>(&self, path: &str) -> ConfigResult<(T, Self)> {
+         let parts: Vec<&str> = path.split('.').collect();
+         let mut current = match parts[0] {
+-            "system" => serde_yaml::to_value(&self.system)
++            "system" => serde_yaml::to_value(&self.value.system)
+                 .map_err(|e| ConfigError::Config(e.to_string()))?,
+-            "languages" => serde_yaml::to_value(&self.languages)
++            "languages" => serde_yaml::to_value(&self.value.languages)
+                 .map_err(|e| ConfigError::Config(e.to_string()))?,
+             _ => return Err(ConfigError::Config(format!("無効な設定パス: {}", path))),
+         };
+@@ -121,30 +192,105 @@ impl Config {
+                 .clone();
+         }
+ 
+-        serde_yaml::from_value(current)
+-            .map_err(|e| ConfigError::Config(format!("値の変換に失敗しました: {}", e)))
+-    }
++        let value_type = match current {
++            Value::String(_) => ConfigType::String,
++            Value::Sequence(_) => ConfigType::StringArray,
++            Value::Mapping(_) => ConfigType::Object,
++            Value::Bool(_) => ConfigType::Boolean,
++            Value::Number(_) => ConfigType::Number,
++            Value::Null => ConfigType::Null,
++            Value::Tagged(_) => ConfigType::Tagged,
++        };
+ 
+-    pub fn get_with_alias<T: serde::de::DeserializeOwned>(&self, path: &str) -> ConfigResult<T> {
+-        let result = self.get::<T>(path);
+-        if result.is_ok() {
+-            return result;
+-        }
++        let new_config = self.with_access(path.to_string(), value_type);
++        let value = serde_yaml::from_value(current)
++            .map_err(|e| ConfigError::Config(format!("値の変換に失敗しました: {}", e)))?;
+ 
+-        // エイリアスの解決を試みる
+-        let parts: Vec<&str> = path.split('.').collect();
+-        if parts.len() >= 2 && parts[0] == "languages" {
+-            let alias_path = format!("languages.{}.alias", parts[1]);
+-            if let Ok(alias) = self.get::<String>(&alias_path) {
+-                let new_path = format!("languages.{}.{}", alias, parts[2..].join("."));
+-                return self.get::<T>(&new_path);
++        Ok((value, new_config))
++    }
++
++    pub fn get_with_alias<T: serde::de::DeserializeOwned>(&self, path: &str) -> ConfigResult<(T, Self)> {
++        match self.get::<T>(path) {
++            Ok(result) => Ok(result),
++            Err(_) => {
++                let parts: Vec<&str> = path.split('.').collect();
++                if parts.len() >= 2 && parts[0] == "languages" {
++                    let alias_path = format!("languages.{}.alias", parts[1]);
++                    let (alias, config) = self.get::<String>(&alias_path)?;
++                    let new_path = format!("languages.{}.{}", alias, parts[2..].join("."));
++                    config.get::<T>(&new_path)
++                } else {
++                    Err(ConfigError::Config(format!("設定パスが見つかりません: {}", path)))
++                }
+             }
+         }
++    }
++
++    pub fn get_raw_value(&self, key: &str) -> ConfigResult<(&Value, Self)> {
++        let value = self.value.system.get(key)
++            .ok_or_else(|| ConfigError::Config(format!("設定キーが見つかりません: {}", key)))?;
++
++        let value_type = match value {
++            Value::String(_) => ConfigType::String,
++            Value::Sequence(_) => ConfigType::StringArray,
++            Value::Mapping(_) => ConfigType::Object,
++            Value::Bool(_) => ConfigType::Boolean,
++            Value::Number(_) => ConfigType::Number,
++            Value::Null => ConfigType::Null,
++            Value::Tagged(_) => ConfigType::Tagged,
++        };
++
++        let new_config = self.with_access(key.to_string(), value_type);
++        Ok((value, new_config))
++    }
++
++    pub fn access_history(&self) -> &[ConfigAccess] {
++        &self.access_history
++    }
+ 
+-        result
++    pub fn get_accesses_since(&self, since: SystemTime) -> Vec<ConfigAccess> {
++        self.access_history
++            .iter()
++            .filter(|access| access.timestamp >= since)
++            .cloned()
++            .collect()
+     }
+ 
+-    pub fn get_raw_value(&self, key: &str) -> ConfigResult<&Value> {
+-        self.system.get(key).ok_or_else(|| ConfigError::Config(format!("設定キーが見つかりません: {}", key)))
++    pub fn merge(&self, other: &Config) -> ConfigResult<Self> {
++        let merged_value = self.merge_values(&self.value, &other.value)?;
++        let mut merged_rules = (*self.validation_rules).clone();
++        merged_rules.extend((*other.validation_rules).clone());
++
++        let config = Self {
++            value: Arc::new(merged_value),
++            access_history: Arc::new(Vec::new()),
++            validation_rules: Arc::new(merged_rules),
++        };
++
++        config.validate()?;
++        Ok(config)
++    }
++
++    fn merge_values(&self, base: &ConfigValue, other: &ConfigValue) -> ConfigResult<ConfigValue> {
++        let merged_system = self.merge_yaml(&base.system, &other.system)?;
++        let merged_languages = self.merge_yaml(&base.languages, &other.languages)?;
++
++        Ok(ConfigValue {
++            system: merged_system,
++            languages: merged_languages,
++        })
++    }
++
++    fn merge_yaml(&self, base: &Value, other: &Value) -> ConfigResult<Value> {
++        match (base, other) {
++            (Value::Mapping(base_map), Value::Mapping(other_map)) => {
++                let mut merged = base_map.clone();
++                for (key, value) in other_map {
++                    merged.insert(key.clone(), value.clone());
++                }
++                Ok(Value::Mapping(merged))
++            },
++            (_, other) => Ok(other.clone()),
++        }
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/contest/model/state.rs b/src/contest/model/state.rs
+index 2dab735..ae02905 100644
+--- a/src/contest/model/state.rs
++++ b/src/contest/model/state.rs
+@@ -17,10 +17,17 @@
+ 
+ use std::path::PathBuf;
+ use std::sync::Arc;
++use std::time::SystemTime;
+ use crate::error::Result;
+ use crate::error::contest::ContestErrorKind;
+ use crate::contest::error::contest_error;
+ 
++#[derive(Debug, Clone)]
++pub struct StateHistory {
++    timestamp: SystemTime,
++    transition: StateTransition,
++}
++
+ #[derive(Debug, Clone)]
+ pub struct ContestState {
+     site: Option<Arc<String>>,
+@@ -28,6 +35,7 @@ pub struct ContestState {
+     problem_id: Option<Arc<String>>,
+     language: Option<Arc<String>>,
+     source_path: Option<Arc<PathBuf>>,
++    history: Vec<StateHistory>,
+ }
+ 
+ #[derive(Debug, Clone)]
+@@ -37,6 +45,7 @@ pub struct ValidatedState {
+     pub(crate) problem_id: Arc<String>,
+     pub(crate) language: Arc<String>,
+     pub(crate) source_path: Arc<PathBuf>,
++    pub(crate) history: Arc<Vec<StateHistory>>,
+ }
+ 
+ // 状態遷移の型安全性を向上させるための新しい型
+@@ -57,6 +66,7 @@ impl ContestState {
+             problem_id: None,
+             language: None,
+             source_path: None,
++            history: Vec::new(),
+         }
+     }
+ 
+@@ -82,12 +92,28 @@ impl ContestState {
+ 
+     // 型安全な状態遷移メソッドを追加
+     pub fn apply_transition(self, transition: StateTransition) -> Self {
+-        match transition {
++        let history_entry = StateHistory {
++            timestamp: SystemTime::now(),
++            transition: transition.clone(),
++        };
++        
++        let new_state = match transition {
+             StateTransition::SetSite(site) => self.with_site(site),
+             StateTransition::SetContestId(id) => self.with_contest_id(id),
+             StateTransition::SetProblemId(id) => self.with_problem_id(id),
+             StateTransition::SetLanguage(lang) => self.with_language(lang),
+             StateTransition::SetSourcePath(path) => self.with_source_path(path),
++        };
++
++        let mut history = new_state.history.clone();
++        history.push(history_entry);
++        Self {
++            site: new_state.site,
++            contest_id: new_state.contest_id,
++            problem_id: new_state.problem_id,
++            language: new_state.language,
++            source_path: new_state.source_path,
++            history,
+         }
+     }
+ 
+@@ -108,7 +134,7 @@ impl ContestState {
+         let source_path = self.source_path.clone()
+             .ok_or_else(|| contest_error(ContestErrorKind::NotFound, "ソースパスが指定されていません"))?;
+ 
+-        // 追加のバリデーションルール
++        // 拡張されたバリデーションルール
+         if site.is_empty() {
+             return Err(contest_error(ContestErrorKind::Invalid, "サイトが空です"));
+         }
+@@ -122,12 +148,21 @@ impl ContestState {
+             return Err(contest_error(ContestErrorKind::Invalid, "言語が空です"));
+         }
+ 
++        // パスのバリデーション
++        if !source_path.exists() {
++            return Err(contest_error(ContestErrorKind::Invalid, "指定されたソースパスが存在しません"));
++        }
++        if !source_path.is_file() {
++            return Err(contest_error(ContestErrorKind::Invalid, "指定されたソースパスはファイルではありません"));
++        }
++
+         Ok(ValidatedState {
+             site,
+             contest_id,
+             problem_id,
+             language,
+             source_path,
++            history: Arc::new(self.history.clone()),
+         })
+     }
+ 
+@@ -178,6 +213,14 @@ impl ValidatedState {
+         &self.source_path
+     }
+ 
++    pub fn history(&self) -> &[StateHistory] {
++        &self.history
++    }
++
++    pub fn last_transition(&self) -> Option<&StateHistory> {
++        self.history.last()
++    }
++
+     // 新しいメソッド：状態の変更を試みる（新しいValidatedStateを返す）
+     pub fn try_update(&self, transition: StateTransition) -> Result<ValidatedState> {
+         let mut new_state = ContestState::new()
+@@ -187,7 +230,21 @@ impl ValidatedState {
+             .with_language(self.language.as_ref().clone())
+             .with_source_path(self.source_path.as_ref().clone());
+ 
++        new_state.history = (*self.history).clone();
+         new_state = new_state.apply_transition(transition);
+         new_state.validate()
+     }
+-} 
+\ No newline at end of file
++}
++
++// 新しい実装：状態の比較
++impl PartialEq for ValidatedState {
++    fn eq(&self, other: &Self) -> bool {
++        self.site == other.site &&
++        self.contest_id == other.contest_id &&
++        self.problem_id == other.problem_id &&
++        self.language == other.language &&
++        self.source_path == other.source_path
++    }
++}
++
++impl Eq for ValidatedState {} 
+\ No newline at end of file
+diff --git a/src/contest/parse.rs b/src/contest/parse.rs
+index 445a821..062b07d 100644
+--- a/src/contest/parse.rs
++++ b/src/contest/parse.rs
+@@ -54,9 +54,10 @@ impl NameResolver {
+         let mut command_aliases = HashMap::new();
+         let executions = config.get_raw_value("executions")
+             .map_err(|_| ParseError::MissingSection("executions".to_string()))?;
++        let executions = executions.0;
+ 
+-        if let Value::Mapping(executions) = executions {
+-            for (cmd_name, cmd_config) in executions {
++        if let Value::Mapping(executions_map) = executions {
++            for (cmd_name, cmd_config) in executions_map {
+                 if let (Value::String(name), Value::Mapping(config)) = (cmd_name, cmd_config) {
+                     if let Some(Value::Sequence(aliases)) = config.get("aliases") {
+                         let aliases: Vec<String> = aliases.iter()
+@@ -80,11 +81,12 @@ impl NameResolver {
+ 
+         let settings = config.get_raw_value("settings")
+             .map_err(|_| ParseError::MissingSection("settings".to_string()))?;
++        let settings = settings.0;
+ 
+-        if let Value::Mapping(settings) = settings {
++        if let Value::Mapping(settings_map) = settings {
+             Ok(Self {
+                 command_aliases,
+-                settings: settings.iter()
++                settings: settings_map.iter()
+                     .map(|(k, v)| (k.as_str().unwrap_or_default().to_string(), v.clone()))
+                     .collect(),
+             })
+diff --git a/src/docker/state/manager.rs b/src/docker/state/manager.rs
+index 0e6ca54..d576e5f 100644
+--- a/src/docker/state/manager.rs
++++ b/src/docker/state/manager.rs
+@@ -1,11 +1,25 @@
+ use std::sync::Arc;
++use std::time::{SystemTime, Duration};
+ use tokio::sync::RwLock;
+ use crate::error::Result;
+ use super::ContainerState;
+ use crate::docker::error::state_err;
+ use super::types::{StateInfo, StateType};
+ 
+-// 状態遷移を表現する型
++#[derive(Debug, Clone)]
++pub struct StateTransitionInfo {
++    pub timestamp: SystemTime,
++    pub transition: StateTransition,
++    pub result: TransitionResult,
++    pub duration: Duration,
++}
++
++#[derive(Debug, Clone)]
++pub enum TransitionResult {
++    Success(ContainerState),
++    Failure(String),
++}
++
+ #[derive(Debug, Clone)]
+ pub enum StateTransition {
+     Create(String),
+@@ -20,12 +34,14 @@ pub enum StateTransition {
+ #[derive(Debug, Clone)]
+ pub struct ContainerStateManager {
+     state: Arc<RwLock<ContainerState>>,
++    history: Arc<RwLock<Vec<StateTransitionInfo>>>,
+ }
+ 
+ impl ContainerStateManager {
+     pub fn new() -> Self {
+         Self {
+             state: Arc::new(RwLock::new(ContainerState::new())),
++            history: Arc::new(RwLock::new(Vec::new())),
+         }
+     }
+ 
+@@ -33,61 +49,91 @@ impl ContainerStateManager {
+         self.state.read().await.clone()
+     }
+ 
+-    // 状態遷移を適用する共通メソッド
++    pub async fn get_transition_history(&self) -> Vec<StateTransitionInfo> {
++        self.history.read().await.clone()
++    }
++
++    async fn record_transition(&self, transition: StateTransition, result: TransitionResult, duration: Duration) {
++        let info = StateTransitionInfo {
++            timestamp: SystemTime::now(),
++            transition,
++            result,
++            duration,
++        };
++        self.history.write().await.push(info);
++    }
++
++    async fn validate_transition(&self, transition: &StateTransition, current_state: &ContainerState) -> Result<()> {
++        match (current_state, transition) {
++            (ContainerState::Initial, StateTransition::Create(_)) => Ok(()),
++            (ContainerState::Created { .. }, StateTransition::Start) => Ok(()),
++            (ContainerState::Running { .. }, StateTransition::Execute(_)) => Ok(()),
++            (ContainerState::Running { .. } | ContainerState::Executing { .. }, StateTransition::Stop) => Ok(()),
++            (_, StateTransition::Fail(_)) => Ok(()),
++            (ContainerState::Failed { .. }, StateTransition::Regenerate) => Ok(()),
++            (ContainerState::Created { .. }, StateTransition::Restore(_)) => Ok(()),
++            _ => Err(state_err(
++                "状態遷移の検証",
++                format!("無効な状態遷移: {} -> {:?}", current_state, transition)
++            )),
++        }
++    }
++
+     async fn apply_transition(&self, transition: StateTransition) -> Result<()> {
++        let start_time = SystemTime::now();
+         let current_state = self.get_current_state().await;
+-        let new_state = match transition {
++
++        // 状態遷移の検証
++        if let Err(e) = self.validate_transition(&transition, &current_state).await {
++            let duration = start_time.elapsed().unwrap_or(Duration::from_secs(0));
++            self.record_transition(
++                transition,
++                TransitionResult::Failure(e.to_string()),
++                duration
++            ).await;
++            return Err(e);
++        }
++
++        let new_state = match transition.clone() {
+             StateTransition::Create(container_id) => {
+-                if !matches!(current_state, ContainerState::Initial) {
+-                    return Err(state_err(
+-                        "状態遷移",
+-                        format!("無効な状態からの作成遷移: {}", current_state)
+-                    ));
+-                }
+                 ContainerState::create(container_id)
+             },
+             StateTransition::Start => {
+                 current_state.start()
+                     .ok_or_else(|| state_err(
+                         "状態遷移",
+-                        format!("無効な状態からの開始遷移: {}", current_state)
++                        format!("開始遷移の失敗: {}", current_state)
+                     ))?
+             },
+             StateTransition::Execute(command) => {
+                 current_state.execute(command)
+                     .ok_or_else(|| state_err(
+                         "状態遷移",
+-                        format!("無効な状態からのコマンド実行遷移: {}", current_state)
++                        format!("コマンド実行遷移の失敗: {}", current_state)
+                     ))?
+             },
+             StateTransition::Stop => {
+                 current_state.stop()
+                     .ok_or_else(|| state_err(
+                         "状態遷移",
+-                        format!("無効な状態からの停止遷移: {}", current_state)
++                        format!("停止遷移の失敗: {}", current_state)
+                     ))?
+             },
+             StateTransition::Fail(error) => {
+                 current_state.fail(error)
+                     .ok_or_else(|| state_err(
+                         "状態遷移",
+-                        format!("無効な状態からの失敗遷移: {}", current_state)
++                        format!("失敗遷移の失敗: {}", current_state)
+                     ))?
+             },
+             StateTransition::Regenerate => {
+                 current_state.regenerate()
+                     .ok_or_else(|| state_err(
+                         "状態遷移",
+-                        format!("無効な状態からの再生成遷移: {}", current_state)
++                        format!("再生成遷移の失敗: {}", current_state)
+                     ))?
+             },
+             StateTransition::Restore(state_info) => {
+-                if !matches!(current_state, ContainerState::Created { .. }) {
+-                    return Err(state_err(
+-                        "状態遷移",
+-                        format!("無効な状態からの状態復元: {}", current_state)
+-                    ));
+-                }
+                 match state_info.state_type {
+                     StateType::Running => ContainerState::Running {
+                         container_id: state_info.container_id,
+@@ -112,7 +158,13 @@ impl ContainerStateManager {
+             },
+         };
+ 
+-        *self.state.write().await = new_state;
++        let duration = start_time.elapsed().unwrap_or(Duration::from_secs(0));
++        *self.state.write().await = new_state.clone();
++        self.record_transition(
++            transition,
++            TransitionResult::Success(new_state),
++            duration
++        ).await;
+         Ok(())
+     }
+ 
+@@ -151,4 +203,16 @@ impl ContainerStateManager {
+             .map(String::from)
+             .ok_or_else(|| state_err("状態管理", "コンテナIDが見つかりません"))
+     }
++
++    pub async fn get_last_transition(&self) -> Option<StateTransitionInfo> {
++        self.history.read().await.last().cloned()
++    }
++
++    pub async fn get_transitions_since(&self, since: SystemTime) -> Vec<StateTransitionInfo> {
++        self.history.read().await
++            .iter()
++            .filter(|info| info.timestamp >= since)
++            .cloned()
++            .collect()
++    }
+ } 
+\ No newline at end of file
+diff --git a/src/fs/transaction.rs b/src/fs/transaction.rs
+index c70aad2..9d5c46b 100644
+--- a/src/fs/transaction.rs
++++ b/src/fs/transaction.rs
+@@ -1,5 +1,6 @@
+ use std::path::PathBuf;
+ use std::sync::Arc;
++use std::time::SystemTime;
+ use crate::error::Error;
+ use crate::fs::error::io_err;
+ 
+@@ -7,9 +8,22 @@ pub trait FileOperation: Send + Sync + std::fmt::Debug {
+     fn execute(&self) -> Result<(), Error>;
+     fn rollback(&self) -> Result<(), Error>;
+     fn description(&self) -> String;
++    fn validate(&self) -> Result<(), Error>;
++}
++
++#[derive(Debug, Clone)]
++pub struct TransactionHistory {
++    timestamp: SystemTime,
++    transition: TransactionTransition,
++    result: TransactionResult,
++}
++
++#[derive(Debug, Clone)]
++pub enum TransactionResult {
++    Success,
++    Failure(String),
+ }
+ 
+-// 状態遷移を表現する型
+ #[derive(Debug, Clone)]
+ pub enum TransactionTransition {
+     AddOperation(Arc<dyn FileOperation>),
+@@ -29,6 +43,7 @@ pub enum TransactionState {
+ pub struct FileTransaction {
+     operations: Arc<Vec<Arc<dyn FileOperation>>>,
+     state: TransactionState,
++    history: Arc<Vec<TransactionHistory>>,
+ }
+ 
+ impl FileTransaction {
+@@ -36,62 +51,100 @@ impl FileTransaction {
+         Self {
+             operations: Arc::new(Vec::new()),
+             state: TransactionState::Pending,
++            history: Arc::new(Vec::new()),
++        }
++    }
++
++    fn with_transition_record(&self, transition: TransactionTransition, result: TransactionResult) -> Self {
++        let mut history = (*self.history).clone();
++        history.push(TransactionHistory {
++            timestamp: SystemTime::now(),
++            transition,
++            result,
++        });
++        Self {
++            operations: self.operations.clone(),
++            state: self.state.clone(),
++            history: Arc::new(history),
++        }
++    }
++
++    fn with_operations(&self, operations: Vec<Arc<dyn FileOperation>>) -> Self {
++        Self {
++            operations: Arc::new(operations),
++            state: self.state.clone(),
++            history: self.history.clone(),
++        }
++    }
++
++    fn with_state(&self, state: TransactionState) -> Self {
++        Self {
++            operations: self.operations.clone(),
++            state,
++            history: self.history.clone(),
+         }
+     }
+ 
+-    // 状態遷移を適用するメソッド
+     pub fn apply_transition(self, transition: TransactionTransition) -> Result<Self, Error> {
+-        match (self.state, transition) {
++        match (self.state.clone(), transition.clone()) {
+             (TransactionState::Pending, TransactionTransition::AddOperation(op)) => {
++                if let Err(e) = op.validate() {
++                    return Ok(self.with_transition_record(
++                        transition,
++                        TransactionResult::Failure(format!("操作の検証に失敗: {}", e))
++                    ));
++                }
++
+                 let mut operations = (*self.operations).clone();
+                 operations.push(op);
+-                Ok(Self {
+-                    operations: Arc::new(operations),
+-                    state: TransactionState::Pending,
+-                })
++                Ok(self.with_transition_record(
++                    transition,
++                    TransactionResult::Success
++                ).with_operations(operations))
+             },
+             (TransactionState::Pending, TransactionTransition::Execute) => {
+                 let operations = self.operations.clone();
+                 for operation in operations.iter() {
+                     if let Err(e) = operation.execute() {
+-                        let failed_state = Self {
+-                            operations: operations.clone(),
+-                            state: TransactionState::Failed(Arc::new(e)),
+-                        };
++                        let failed_state = self.with_transition_record(
++                            transition.clone(),
++                            TransactionResult::Failure(format!("実行に失敗: {}", e))
++                        ).with_state(TransactionState::Failed(Arc::new(e)));
+                         return Ok(failed_state.apply_transition(TransactionTransition::Rollback)?);
+                     }
+                 }
+-                Ok(Self {
+-                    operations,
+-                    state: TransactionState::Executed,
+-                })
++                Ok(self.with_transition_record(
++                    transition,
++                    TransactionResult::Success
++                ).with_state(TransactionState::Executed))
+             },
+             (TransactionState::Executed | TransactionState::Pending, TransactionTransition::Rollback) => {
+                 let operations = self.operations.clone();
+                 for operation in operations.iter().rev() {
+                     if let Err(e) = operation.rollback() {
+-                        return Ok(Self {
+-                            operations,
+-                            state: TransactionState::Failed(Arc::new(e)),
+-                        });
++                        return Ok(self.with_transition_record(
++                            transition,
++                            TransactionResult::Failure(format!("ロールバックに失敗: {}", e))
++                        ).with_state(TransactionState::Failed(Arc::new(e))));
+                     }
+                 }
+-                Ok(Self {
+-                    operations,
+-                    state: TransactionState::RolledBack,
+-                })
++                Ok(self.with_transition_record(
++                    transition,
++                    TransactionResult::Success
++                ).with_state(TransactionState::RolledBack))
+             },
+             (state, transition) => {
+-                Ok(Self {
+-                    operations: self.operations,
+-                    state: TransactionState::Failed(Arc::new(io_err(
+-                        std::io::Error::new(
+-                            std::io::ErrorKind::InvalidInput,
+-                            format!("無効な状態遷移: {:?} -> {:?}", state, transition)
+-                        ),
+-                        "トランザクション状態遷移エラー".to_string(),
+-                    ))),
+-                })
++                let error = io_err(
++                    std::io::Error::new(
++                        std::io::ErrorKind::InvalidInput,
++                        format!("無効な状態遷移: {:?} -> {:?}", state, transition)
++                    ),
++                    "トランザクション状態遷移エラー".to_string(),
++                );
++                Ok(self.with_transition_record(
++                    transition,
++                    TransactionResult::Failure(error.to_string())
++                ).with_state(TransactionState::Failed(Arc::new(error))))
+             }
+         }
+     }
+@@ -117,24 +170,37 @@ impl FileTransaction {
+         &self.operations
+     }
+ 
++    pub fn history(&self) -> &[TransactionHistory] {
++        &self.history
++    }
++
+     // トランザクションの合成メソッド
+     pub fn combine(self, other: Self) -> Result<Self, Error> {
+-        match (self.state, other.state) {
++        match (self.state.clone(), other.state) {
+             (TransactionState::Pending, TransactionState::Pending) => {
+                 let mut operations = (*self.operations).clone();
+                 operations.extend((*other.operations).clone());
++                let mut history = (*self.history).clone();
++                history.extend((*other.history).clone());
+                 Ok(Self {
+                     operations: Arc::new(operations),
+                     state: TransactionState::Pending,
++                    history: Arc::new(history),
+                 })
+             },
+-            _ => Err(io_err(
+-                std::io::Error::new(
+-                    std::io::ErrorKind::InvalidInput,
+-                    "トランザクションの合成は保留状態でのみ可能です"
+-                ),
+-                "トランザクション合成エラー".to_string(),
+-            )),
++            _ => {
++                let error = io_err(
++                    std::io::Error::new(
++                        std::io::ErrorKind::InvalidInput,
++                        "トランザクションの合成は保留状態でのみ可能です"
++                    ),
++                    "トランザクション合成エラー".to_string(),
++                );
++                Ok(self.with_transition_record(
++                    TransactionTransition::Execute,
++                    TransactionResult::Failure(error.to_string())
++                ).with_state(TransactionState::Failed(Arc::new(error))))
++            }
+         }
+     }
+ }
+@@ -176,6 +242,30 @@ impl FileOperation for CreateFileOperation {
+     fn description(&self) -> String {
+         format!("ファイル作成: {}", self.path.display())
+     }
++
++    fn validate(&self) -> Result<(), Error> {
++        if self.path.exists() {
++            return Err(io_err(
++                std::io::Error::new(
++                    std::io::ErrorKind::AlreadyExists,
++                    format!("ファイルが既に存在します: {}", self.path.display())
++                ),
++                "ファイル作成検証エラー".to_string(),
++            ));
++        }
++        if let Some(parent) = self.path.parent() {
++            if parent.exists() && !parent.is_dir() {
++                return Err(io_err(
++                    std::io::Error::new(
++                        std::io::ErrorKind::InvalidInput,
++                        format!("親パスがディレクトリではありません: {}", parent.display())
++                    ),
++                    "ファイル作成検証エラー".to_string(),
++                ));
++            }
++        }
++        Ok(())
++    }
+ }
+ 
+ #[derive(Debug)]
+@@ -224,4 +314,26 @@ impl FileOperation for DeleteFileOperation {
+     fn description(&self) -> String {
+         format!("ファイル削除: {}", self.path.display())
+     }
++
++    fn validate(&self) -> Result<(), Error> {
++        if !self.path.exists() {
++            return Err(io_err(
++                std::io::Error::new(
++                    std::io::ErrorKind::NotFound,
++                    format!("ファイルが存在しません: {}", self.path.display())
++                ),
++                "ファイル削除検証エラー".to_string(),
++            ));
++        }
++        if !self.path.is_file() {
++            return Err(io_err(
++                std::io::Error::new(
++                    std::io::ErrorKind::InvalidInput,
++                    format!("パスがファイルではありません: {}", self.path.display())
++                ),
++                "ファイル削除検証エラー".to_string(),
++            ));
++        }
++        Ok(())
++    }
+ } 
