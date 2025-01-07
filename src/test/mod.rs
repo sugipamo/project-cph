@@ -1,70 +1,79 @@
-use crate::error::{helpers, CphError, ErrorExt};
+use std::path::{Path, PathBuf};
+use crate::error::{helpers, Result};
 use crate::error::config::ConfigErrorKind;
 
-#[derive(Debug, Clone)]
-pub struct TestCase {
-    pub input: String,
-    pub expected: String,
-    pub path: String,
+pub fn validate_expected_file(expected_path: impl AsRef<Path>) -> Result<()> {
+    if !expected_path.as_ref().exists() {
+        return Err(helpers::config_error(
+            ConfigErrorKind::NotFound,
+            format!("期待値ファイルが見つかりません: {:?}", expected_path.as_ref())
+        ));
+    }
+    Ok(())
 }
 
-pub fn read_test_cases(test_dir: &str) -> Result<Vec<TestCase>, CphError> {
+pub fn find_test_files(test_dir: impl AsRef<Path>) -> Result<Vec<PathBuf>> {
+    let test_dir = test_dir.as_ref();
+    if !test_dir.exists() {
+        return Err(helpers::config_error(
+            ConfigErrorKind::NotFound,
+            format!("テストディレクトリが見つかりません: {}", test_dir.display())
+        ));
+    }
+
     let entries = std::fs::read_dir(test_dir)
         .map_err(|e| helpers::config_error(
-            ConfigErrorKind::NotFound,
-            "テストディレクトリの読み取り",
-            format!("ディレクトリ: {}, エラー: {}", test_dir, e)
+            ConfigErrorKind::IO,
+            format!("テストディレクトリの読み取りに失敗しました: {}", e)
         ))?;
 
-    let mut test_cases = Vec::new();
+    let mut test_files = Vec::new();
     for entry in entries {
         let entry = entry
             .map_err(|e| helpers::config_error(
-                ConfigErrorKind::NotFound,
-                "テストファイルの読み取り",
-                format!("エラー: {}", e)
+                ConfigErrorKind::IO,
+                format!("テストファイルの読み取りに失敗しました: {}", e)
             ))?;
 
         let path = entry.path();
-        if path.extension().map_or(false, |ext| ext == "in") {
+        if path.is_file() {
             let expected_path = path.with_extension("out");
             if !expected_path.exists() {
                 return Err(helpers::config_error(
                     ConfigErrorKind::NotFound,
-                    "期待値ファイルの確認",
-                    format!("ファイル: {:?}", expected_path)
-                ).with_hint("テストケースには.inファイルと対応する.outファイルが必要です。"));
+                    format!("期待値ファイルが見つかりません: {:?}", expected_path)
+                ));
             }
 
-            let input = std::fs::read_to_string(&path)
+            let _input = std::fs::read_to_string(&path)
                 .map_err(|e| helpers::config_error(
-                    ConfigErrorKind::NotFound,
-                    "入力ファイルの読み取り",
-                    format!("ファイル: {:?}, エラー: {}", path, e)
+                    ConfigErrorKind::IO,
+                    format!("入力ファイルの読み取りに失敗しました: {:?}, {}", path, e)
                 ))?;
 
-            let expected = std::fs::read_to_string(&expected_path)
+            let _expected = std::fs::read_to_string(&expected_path)
                 .map_err(|e| helpers::config_error(
-                    ConfigErrorKind::NotFound,
-                    "期待値ファイルの読み取り",
-                    format!("ファイル: {:?}, エラー: {}", expected_path, e)
+                    ConfigErrorKind::IO,
+                    format!("期待値ファイルの読み取りに失敗しました: {:?}, {}", expected_path, e)
                 ))?;
 
-            test_cases.push(TestCase {
-                input,
-                expected,
-                path: path.to_string_lossy().into_owned(),
-            });
+            test_files.push(path);
         }
     }
 
-    Ok(test_cases)
+    Ok(test_files)
 }
 
-pub fn not_found_err(path: String) -> CphError {
-    helpers::config_error(ConfigErrorKind::NotFound, "ファイル検索", path)
+pub fn not_found_err(path: impl Into<String>) -> crate::error::Error {
+    helpers::config_error(
+        ConfigErrorKind::NotFound,
+        format!("ファイルが見つかりません: {}", path.into())
+    )
 }
 
-pub fn not_found_err_with_hint(path: String, hint: String) -> CphError {
-    helpers::config_error(ConfigErrorKind::NotFound, "ファイル検索", path).with_hint(hint)
-} 
+pub fn not_found_err_with_hint(path: impl Into<String>, hint: &'static str) -> crate::error::Error {
+    helpers::config_error(
+        ConfigErrorKind::NotFound,
+        format!("ファイルが見つかりません: {}", path.into())
+    ).with_hint(hint)
+}

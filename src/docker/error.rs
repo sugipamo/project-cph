@@ -1,36 +1,39 @@
-use crate::error::{CphError, helpers, ErrorExt};
+use crate::error::Error;
 use crate::error::docker::DockerErrorKind;
 
-pub fn docker_err(msg: String) -> CphError {
-    helpers::docker_error(DockerErrorKind::ExecutionFailed, "Docker操作", msg)
+pub type DockerResult<T> = Result<T, Error>;
+
+pub fn docker_err(error: impl Into<String>, message: impl Into<String>) -> Error {
+    Error::docker(
+        DockerErrorKind::Other(error.into()),
+        message
+    )
 }
 
-pub fn container_err(msg: String) -> CphError {
-    helpers::docker_error(DockerErrorKind::ExecutionFailed, "コンテナ操作", msg)
+pub fn execution_err(_: impl Into<String>, message: impl Into<String>) -> Error {
+    Error::docker(
+        DockerErrorKind::ExecutionError,
+        message
+    )
 }
 
-pub fn compilation_err(msg: String) -> CphError {
-    helpers::docker_error(DockerErrorKind::BuildFailed, "コンパイル", msg)
+pub fn compilation_err(_: impl Into<String>, message: impl Into<String>) -> Error {
+    Error::docker(
+        DockerErrorKind::CompilationError,
+        message
+    )
 }
 
-pub fn command_err(msg: String) -> CphError {
-    helpers::docker_error(DockerErrorKind::ExecutionFailed, "コマンド実行", msg)
+pub fn container_err(_: impl Into<String>, message: impl Into<String>) -> Error {
+    Error::docker(
+        DockerErrorKind::ContainerNotFound,
+        message
+    )
 }
 
-pub fn state_err(msg: String) -> CphError {
-    helpers::docker_error(DockerErrorKind::StateFailed, "状態管理", msg)
-}
-
-pub fn build_err(image: String, context: String) -> CphError {
-    helpers::docker_error(DockerErrorKind::BuildFailed, "イメージビルド", &image)
-        .with_hint(format!("コンテキスト: {}", context))
-}
-
-pub fn build_err_with_hint(image: String, context: String, hint: String) -> CphError {
-    helpers::docker_error(DockerErrorKind::BuildFailed, "イメージビルド", &image)
-        .with_hint(format!("コンテキスト: {}, ヒント: {}", context, hint))
-}
-
-pub fn connection_err() -> CphError {
-    helpers::docker_error(DockerErrorKind::ConnectionFailed, "Docker接続", "接続に失敗しました")
+pub fn state_err(_: impl Into<String>, message: impl Into<String>) -> Error {
+    Error::docker(
+        DockerErrorKind::ValidationError,
+        message
+    )
 } 

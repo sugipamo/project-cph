@@ -12,4 +12,4 @@ pub mod error;
 
 pub use config::Config;
 pub use contest::ContestService;
-pub use error::{CphError, Result};
+pub use error::{Error, Result};

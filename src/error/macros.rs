@@ -1,5 +1,7 @@
+/// エラーを作成するための共通マクロ
 #[macro_export]
-macro_rules! cph_error {
+macro_rules! create_error {
+    // 基本形: 種類、操作、場所
     ($kind:expr, $op:expr, $loc:expr) => {{
         use $crate::error::{CphError, ErrorContext};
         CphError::$kind {
@@ -7,6 +9,7 @@ macro_rules! cph_error {
             kind: $kind,
         }
     }};
+    // ヒント付き
     ($kind:expr, $op:expr, $loc:expr, $hint:expr) => {{
         use $crate::error::{CphError, ErrorContext};
         CphError::$kind {
@@ -14,6 +17,7 @@ macro_rules! cph_error {
             kind: $kind,
         }
     }};
+    // ヒントと重大度付き
     ($kind:expr, $op:expr, $loc:expr, $hint:expr, $severity:expr) => {{
         use $crate::error::{CphError, ErrorContext, ErrorSeverity};
         CphError::$kind {
@@ -23,99 +27,76 @@ macro_rules! cph_error {
             kind: $kind,
         }
     }};
+    // ソース付き
+    ($kind:expr, $op:expr, $loc:expr, $hint:expr, $source:expr) => {{
+        use $crate::error::{CphError, ErrorContext};
+        CphError::$kind {
+            context: ErrorContext::new($op, $loc)
+                .with_hint($hint)
+                .with_source($source),
+            kind: $kind,
+        }
+    }};
+    // 全指定
+    ($kind:expr, $op:expr, $loc:expr, $hint:expr, $source:expr, $severity:expr) => {{
+        use $crate::error::{CphError, ErrorContext, ErrorSeverity};
+        CphError::$kind {
+            context: ErrorContext::new($op, $loc)
+                .with_hint($hint)
+                .with_source($source)
+                .with_severity($severity),
+            kind: $kind,
+        }
+    }};
 }
 
+/// ファイルシステムエラーを作成するマクロ
 #[macro_export]
 macro_rules! fs_error {
-    ($op:expr, $loc:expr, $kind:expr) => {{
-        use $crate::error::{CphError, ErrorContext, fs::FileSystemErrorKind};
-        CphError::FileSystem {
-            context: ErrorContext::new($op, $loc),
-            kind: $kind,
-        }
-    }};
-    ($op:expr, $loc:expr, $kind:expr, $hint:expr) => {{
-        use $crate::error::{CphError, ErrorContext, fs::FileSystemErrorKind};
-        CphError::FileSystem {
-            context: ErrorContext::new($op, $loc).with_hint($hint),
-            kind: $kind,
-        }
-    }};
+    ($kind:expr, $message:expr) => {
+        crate::error::Error::fs($kind, $message)
+    };
+}
+
+/// コンテストエラーを作成するマクロ
+#[macro_export]
+macro_rules! contest_error {
+    ($op:expr, $loc:expr, $kind:expr) => {
+        create_error!(Contest, $op, $loc, $kind)
+    };
+    ($op:expr, $loc:expr, $kind:expr, $hint:expr) => {
+        create_error!(Contest, $op, $loc, $hint, $kind)
+    };
+    ($op:expr, $loc:expr, $kind:expr, $hint:expr, $source:expr) => {
+        create_error!(Contest, $op, $loc, $hint, $source, $kind)
+    };
+}
+
+/// 設定エラーを作成するマクロ
+#[macro_export]
+macro_rules! config_error {
+    ($kind:expr, $message:expr) => {
+        crate::error::Error::config($kind, $message)
+    };
+}
+
+/// その他のエラーを作成するマクロ
+#[macro_export]
+macro_rules! other_error {
+    ($op:expr, $loc:expr) => {
+        create_error!(Other, $op, $loc)
+    };
+    ($op:expr, $loc:expr, $hint:expr) => {
+        create_error!(Other, $op, $loc, $hint)
+    };
+    ($op:expr, $loc:expr, $hint:expr, $severity:expr) => {
+        create_error!(Other, $op, $loc, $hint, $severity)
+    };
 }
 
 #[macro_export]
 macro_rules! docker_error {
-    ($op:expr, $loc:expr, $kind:expr) => {{
-        use $crate::error::{CphError, ErrorContext, docker::DockerErrorKind};
-        CphError::Docker {
-            context: ErrorContext::new($op, $loc),
-            kind: $kind,
-        }
-    }};
-    ($op:expr, $loc:expr, $kind:expr, $hint:expr) => {{
-        use $crate::error::{CphError, ErrorContext, docker::DockerErrorKind};
-        CphError::Docker {
-            context: ErrorContext::new($op, $loc).with_hint($hint),
-            kind: $kind,
-        }
-    }};
-}
-
-#[macro_export]
-macro_rules! contest_error {
-    ($op:expr, $loc:expr, $kind:expr) => {{
-        use $crate::error::{CphError, ErrorContext, contest::ContestErrorKind};
-        CphError::Contest {
-            context: ErrorContext::new($op, $loc),
-            kind: $kind,
-        }
-    }};
-    ($op:expr, $loc:expr, $kind:expr, $hint:expr) => {{
-        use $crate::error::{CphError, ErrorContext, contest::ContestErrorKind};
-        CphError::Contest {
-            context: ErrorContext::new($op, $loc).with_hint($hint),
-            kind: $kind,
-        }
-    }};
-}
-
-#[macro_export]
-macro_rules! config_error {
-    ($op:expr, $loc:expr, $kind:expr) => {{
-        use $crate::error::{CphError, ErrorContext, config::ConfigErrorKind};
-        CphError::Config {
-            context: ErrorContext::new($op, $loc),
-            kind: $kind,
-        }
-    }};
-    ($op:expr, $loc:expr, $kind:expr, $hint:expr) => {{
-        use $crate::error::{CphError, ErrorContext, config::ConfigErrorKind};
-        CphError::Config {
-            context: ErrorContext::new($op, $loc).with_hint($hint),
-            kind: $kind,
-        }
-    }};
-}
-
-/// エラー変換用のヘルパーマクロ
-#[macro_export]
-macro_rules! try_with_context {
-    ($expr:expr, $op:expr, $loc:expr) => {
-        match $expr {
-            Ok(val) => Ok(val),
-            Err(e) => Err($crate::error::CphError::Other {
-                context: $crate::error::ErrorContext::new($op, $loc).with_source(e),
-            }),
-        }
-    };
-    ($expr:expr, $op:expr, $loc:expr, $hint:expr) => {
-        match $expr {
-            Ok(val) => Ok(val),
-            Err(e) => Err($crate::error::CphError::Other {
-                context: $crate::error::ErrorContext::new($op, $loc)
-                    .with_source(e)
-                    .with_hint($hint),
-            }),
-        }
+    ($kind:expr, $message:expr) => {
+        crate::error::Error::docker($kind, $message)
     };
 } 

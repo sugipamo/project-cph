@@ -1,43 +1,85 @@
 use std::path::PathBuf;
 use crate::error::Result;
-use crate::contest::error::config_err;
+use crate::error::contest::ContestErrorKind;
+use crate::contest::error::contest_error;
 
 #[derive(Debug, Clone)]
 pub struct ContestState {
-    pub site: String,
-    pub contest_id: String,
-    pub problem_id: String,
-    pub language: String,
-    pub source_path: PathBuf,
+    pub site: Option<String>,
+    pub contest_id: Option<String>,
+    pub problem_id: Option<String>,
+    pub language: Option<String>,
+    pub source_path: Option<PathBuf>,
 }
 
 impl ContestState {
-    pub fn new(
-        site: String,
-        contest_id: String,
-        problem_id: String,
-        language: String,
-        source_path: PathBuf,
-    ) -> Result<Self> {
-        if site.is_empty() {
-            return Err(config_err("サイトが指定されていません".to_string()));
+    pub fn new() -> Self {
+        Self {
+            site: None,
+            contest_id: None,
+            problem_id: None,
+            language: None,
+            source_path: None,
         }
-        if contest_id.is_empty() {
-            return Err(config_err("コンテストIDが指定されていません".to_string()));
-        }
-        if problem_id.is_empty() {
-            return Err(config_err("問題IDが指定されていません".to_string()));
-        }
-        if language.is_empty() {
-            return Err(config_err("言語が指定されていません".to_string()));
-        }
+    }
 
-        Ok(Self {
-            site,
-            contest_id,
-            problem_id,
-            language,
-            source_path,
-        })
+    pub fn validate_site(&self) -> Result<()> {
+        if self.site.is_none() {
+            return Err(contest_error(
+                ContestErrorKind::NotFound,
+                "サイトが指定されていません"
+            ));
+        }
+        Ok(())
+    }
+
+    pub fn validate_contest_id(&self) -> Result<()> {
+        if self.contest_id.is_none() {
+            return Err(contest_error(
+                ContestErrorKind::NotFound,
+                "コンテストIDが指定されていません"
+            ));
+        }
+        Ok(())
+    }
+
+    pub fn validate_problem_id(&self) -> Result<()> {
+        if self.problem_id.is_none() {
+            return Err(contest_error(
+                ContestErrorKind::NotFound,
+                "問題IDが指定されていません"
+            ));
+        }
+        Ok(())
+    }
+
+    pub fn validate_language(&self) -> Result<()> {
+        if self.language.is_none() {
+            return Err(contest_error(
+                ContestErrorKind::NotFound,
+                "言語が指定されていません"
+            ));
+        }
+        Ok(())
+    }
+
+    pub fn with_site(mut self, site: impl Into<String>) -> Self {
+        self.site = Some(site.into());
+        self
+    }
+
+    pub fn with_contest_id(mut self, contest_id: impl Into<String>) -> Self {
+        self.contest_id = Some(contest_id.into());
+        self
+    }
+
+    pub fn with_problem_id(mut self, problem_id: impl Into<String>) -> Self {
+        self.problem_id = Some(problem_id.into());
+        self
+    }
+
+    pub fn with_language(mut self, language: impl Into<String>) -> Self {
+        self.language = Some(language.into());
+        self
     }
 } 

@@ -1,7 +1,6 @@
 以下のコマンドを行う
 date +%Y%m%d%H%M%S
-
-txtname = agent/.feature/yyyymmddhhmm.txt
+txtname = agent/.fix-errors/yyyymmddhhmm.txt
 tree . >> txtname
 cargo check >> txtname
 git diff develop >> txtname
