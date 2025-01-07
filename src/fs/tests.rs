@@ -84,4 +84,13 @@ mod tests {
         
         Ok(())
     }
+
+    #[test]
+    fn test_file_operations() -> Result<()> {
+        let test_dir = TempDir::new()?;
+        let _file_path = test_dir.create_file("test.txt", "Hello, World!")?;
+        let _dir_path = test_dir.create_dir("test_dir")?;
+        let _nested_file = test_dir.create_file("test_dir/nested.txt", "Nested content")?;
+        Ok(())
+    }
 } 

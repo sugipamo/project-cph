@@ -2,7 +2,7 @@
 date +%Y%m%d%H%M%S
 tree -I 'agent|target' ./ >> agent/.review/yyyymmddhhmm_tree.txt
 git diff develop >> agent/.review/yyyymmddhhmm_diff.txt
-cargo check
+cargo test
 
 txtnameを確認し、エラーを修正する
 

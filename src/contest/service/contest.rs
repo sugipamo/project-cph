@@ -11,6 +11,7 @@ pub struct ContestService {
     language: Option<String>,
     url: Option<String>,
     file_manager: Option<FileManager>,
+    #[allow(dead_code)]
     config: Config,
 }
 

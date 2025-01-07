@@ -1,39 +1,43 @@
-use std::path::{Path, PathBuf};
-use anyhow::Result;
 use crate::fs::error::{invalid_path_error, ErrorExt};
+use anyhow::Result;
+use std::path::Path;
 
-/// ディレクトリの存在を確認し、存在しない場合は作成します
-pub fn ensure_directory<P: AsRef<Path>>(path: P) -> Result<PathBuf> {
+pub fn create_dir(path: impl AsRef<Path>) -> Result<()> {
     let path = path.as_ref();
-    if !path.exists() {
-        std::fs::create_dir_all(path)
-            .with_context_io(format!("ディレクトリの作成に失敗: {}", path.display()))?;
-    } else if !path.is_dir() {
-        return Err(invalid_path_error(path));
-    }
-    Ok(path.to_path_buf())
-}
-
-/// ファイルの存在を確認し、存在しない場合は作成します
-pub fn ensure_file<P: AsRef<Path>>(path: P) -> Result<PathBuf> {
-    let path = path.as_ref();
-    if !path.exists() {
-        if let Some(parent) = path.parent() {
-            ensure_directory(parent)?;
+    if path.exists() {
+        if path.is_dir() {
+            return Ok(());
         }
-        std::fs::write(path, "")
-            .with_context_io(format!("ファイルの作成に失敗: {}", path.display()))?;
-    } else if !path.is_file() {
         return Err(invalid_path_error(path));
     }
-    Ok(path.to_path_buf())
+    std::fs::create_dir_all(path)
+        .with_context_io(format!("ディレクトリの作成に失敗: {}", path.display()))?;
+    Ok(())
 }
 
-/// ファイルに書き込みます
-pub fn write_file<P: AsRef<Path>>(path: P, content: impl AsRef<[u8]>) -> Result<()> {
+pub fn create_file(path: impl AsRef<Path>) -> Result<()> {
     let path = path.as_ref();
+    if path.exists() {
+        if path.is_file() {
+            return Ok(());
+        }
+        return Err(invalid_path_error(path));
+    }
     if let Some(parent) = path.parent() {
-        ensure_directory(parent)?;
+        create_dir(parent)?;
+    }
+    std::fs::write(path, "")
+        .with_context_io(format!("ファイルの作成に失敗: {}", path.display()))?;
+    Ok(())
+}
+
+pub fn write_file(path: impl AsRef<Path>, content: impl AsRef<[u8]>) -> Result<()> {
+    let path = path.as_ref();
+    if path.exists() && !path.is_file() {
+        return Err(invalid_path_error(path));
+    }
+    if let Some(parent) = path.parent() {
+        create_dir(parent)?;
     }
     std::fs::write(path, content)
         .with_context_io(format!("ファイルの書き込みに失敗: {}", path.display()))

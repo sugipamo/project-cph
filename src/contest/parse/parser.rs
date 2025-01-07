@@ -1,20 +1,15 @@
 use anyhow::Result;
-use crate::config::Config as GlobalConfig;
-use crate::contest::model::CommandContext;
-use super::resolver::CommandResolver;
+use crate::contest::parse::config::CommandContext;
 
-pub struct CommandParser {
-    resolver: CommandResolver,
-}
+pub struct Parser;
 
-impl CommandParser {
-    pub fn new(config: &GlobalConfig) -> Result<Self> {
-        let resolver = CommandResolver::new(config.clone());
-        Ok(Self { resolver })
+impl Parser {
+    pub fn new() -> Self {
+        Self
     }
 
-    pub fn parse(&self, input: &str) -> Result<CommandContext> {
-        // TODO: 実際のパース処理を実装
-        unimplemented!("parse method is not implemented yet")
+    pub fn parse(&self, _input: &str) -> Result<CommandContext> {
+        // TODO: 実装
+        unimplemented!()
     }
 } 

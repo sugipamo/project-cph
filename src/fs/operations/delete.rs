@@ -1,9 +1,9 @@
-use std::path::Path;
-use anyhow::Result;
 use crate::fs::error::{invalid_path_error, ErrorExt};
+use anyhow::Result;
+use std::path::Path;
 
 /// ファイルを削除します
-pub fn delete_file<P: AsRef<Path>>(path: P) -> Result<()> {
+pub fn delete_file(path: impl AsRef<Path>) -> Result<()> {
     let path = path.as_ref();
     if !path.exists() {
         return Ok(());
@@ -16,7 +16,7 @@ pub fn delete_file<P: AsRef<Path>>(path: P) -> Result<()> {
 }
 
 /// ディレクトリを削除します
-pub fn delete_directory<P: AsRef<Path>>(path: P) -> Result<()> {
+pub fn delete_dir(path: impl AsRef<Path>) -> Result<()> {
     let path = path.as_ref();
     if !path.exists() {
         return Ok(());
@@ -48,7 +48,7 @@ mod tests {
         assert!(exists(&dir_path));
         
         delete_file(&file_path)?;
-        delete_directory(&dir_path)?;
+        delete_dir(&dir_path)?;
         
         assert!(!exists(&file_path));
         assert!(!exists(&dir_path));

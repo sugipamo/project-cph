@@ -3,6 +3,7 @@ use crate::config::Config;
 use crate::contest::model::Contest;
 
 pub struct TestService {
+    #[allow(dead_code)]
     config: Config,
 }
 

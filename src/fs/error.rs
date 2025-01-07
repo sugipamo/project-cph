@@ -1,5 +1,6 @@
 use std::path::Path;
 use anyhow::{Result, Context, anyhow};
+use std::error::Error as StdError;
 
 /// エラーメッセージを生成するマクロ
 #[macro_export]
@@ -52,10 +53,7 @@ pub trait ErrorExt<T> {
     fn with_context_io(self, message: impl Into<String>) -> Result<T>;
 }
 
-impl<T, E> ErrorExt<T> for std::result::Result<T, E>
-where
-    E: std::error::Error + Send + Sync + 'static,
-{
+impl<T> ErrorExt<T> for Result<T> {
     fn with_context_path(self, path: impl AsRef<Path>) -> Result<T> {
         self.with_context(|| format!("パス操作エラー: {}", path.as_ref().display()))
     }
