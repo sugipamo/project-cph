@@ -1,0 +1,11 @@
+[target.'cfg(all())']
+rustflags = [
+    "-D", "warnings",
+    "-W", "clippy::all",
+    "-W", "clippy::pedantic",
+    "-W", "clippy::nursery",
+    "-W", "clippy::disallowed_types"
+]
+
+[alias]
+check-all = "check --all-features --all-targets" 

@@ -1,13 +1,14 @@
-use std::fs;
 use std::fs::File;
 use std::io::Write;
 use anyhow::Result;
 use tempfile::TempDir;
 
+#[allow(dead_code)]
 pub struct TestHelper {
     temp_dir: TempDir,
 }
 
+#[allow(dead_code)]
 impl TestHelper {
     pub fn new() -> Result<Self> {
         let temp_dir = TempDir::new()?;
