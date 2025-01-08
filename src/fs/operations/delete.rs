@@ -1,7 +1,7 @@
 use std::path::Path;
 use anyhow::{Result, anyhow};
 use crate::message::fs;
-use super::validate::{validate_is_file, validate_is_dir};
+use super::validate::{is_file, is_dir};
 
 /// ファイルを削除します。
 /// 
@@ -14,7 +14,7 @@ use super::validate::{validate_is_file, validate_is_dir};
 /// - ファイルの削除に失敗した場合
 pub fn remove_file(path: impl AsRef<Path>) -> Result<()> {
     let path = path.as_ref();
-    validate_is_file(path)?;
+    is_file(path)?;
     std::fs::remove_file(path)
         .map_err(|e| anyhow!(fs::error("delete_error", e)))
 }
@@ -30,7 +30,7 @@ pub fn remove_file(path: impl AsRef<Path>) -> Result<()> {
 /// - ディレクトリの削除に失敗した場合
 pub fn remove_dir(path: impl AsRef<Path>) -> Result<()> {
     let path = path.as_ref();
-    validate_is_dir(path)?;
+    is_dir(path)?;
     std::fs::remove_dir_all(path)
         .map_err(|e| anyhow!(fs::error("delete_error", e)))
 } 

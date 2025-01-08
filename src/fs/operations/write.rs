@@ -1,7 +1,7 @@
 use std::path::Path;
 use anyhow::{Result, anyhow};
 use crate::message::fs;
-use super::validate::validate_parent_exists;
+use super::validate::parent_exists;
 
 /// ディレクトリが存在することを確認し、存在しない場合は作成します。
 /// 
@@ -30,7 +30,7 @@ pub fn ensure_directory(path: impl AsRef<Path>) -> Result<()> {
 pub fn ensure_file(path: impl AsRef<Path>) -> Result<()> {
     let path = path.as_ref();
     if !path.exists() {
-        validate_parent_exists(path)?;
+        parent_exists(path)?;
         std::fs::File::create(path)
             .map_err(|e| anyhow!(fs::error("write_error", e)))?;
     }

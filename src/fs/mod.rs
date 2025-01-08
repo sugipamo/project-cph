@@ -6,16 +6,10 @@ pub mod transaction;
 
 // Re-export commonly used operations
 pub use operations::{
-    load_file_as_string as read_file,
-    save_to_file as write_file,
-    ensure_directory,
-    ensure_file,
-    remove_file as delete_file,
-    remove_dir as delete_dir,
-    exists,
-    is_file,
-    is_directory,
-    verify_basic_permissions as check_permissions,
+    check_exists as exists,
+    check_is_file as is_file,
+    check_is_directory as is_directory,
+    validate::parent_exists as check_permissions,
 };
 
 // Re-export path operations
