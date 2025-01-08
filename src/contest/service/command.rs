@@ -29,9 +29,12 @@ impl Service {
                 println!("ログイン処理を実行します");
                 Ok(())
             }
-            Command::Open { site, contest_id, problem_id } => {
-                println!("問題を開きます: site={site}, contest={contest_id:?}, problem={problem_id:?}");
-                self.contest_service.open(&site, &contest_id, &problem_id)
+            Command::Open { site, contest_id, problem_id, language: _ } => {
+                println!("問題を開きます: site={site:?}, contest={contest_id:?}, problem={problem_id:?}");
+                site.map_or_else(
+                    || Err(anyhow::anyhow!(contest::error("invalid_command", "サイトが指定されていません"))),
+                    |site_str| self.contest_service.open(&site_str, &contest_id, &problem_id)
+                )
             }
             Command::Test { test_number } => {
                 context.contest.map_or_else(

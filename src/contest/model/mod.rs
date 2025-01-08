@@ -156,9 +156,10 @@ impl TestCase {
 pub enum Command {
     Login,
     Open {
-        site: String,
+        site: Option<String>,
         contest_id: Option<String>,
         problem_id: Option<String>,
+        language: Option<String>,
     },
     Test {
         test_number: Option<usize>,
