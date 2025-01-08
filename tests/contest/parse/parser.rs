@@ -15,7 +15,7 @@ fn test_basic_parsing() -> Result<()> {
     let context = parser.parse("abc123 a")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: None,
             contest_id: Some("abc123".to_string()),
             problem_id: Some("a".to_string()),
@@ -27,7 +27,7 @@ fn test_basic_parsing() -> Result<()> {
     let context = parser.parse("atcoder abc123")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: Some("atcoder".to_string()),
             contest_id: Some("abc123".to_string()),
             problem_id: None,
@@ -39,7 +39,7 @@ fn test_basic_parsing() -> Result<()> {
     let context = parser.parse("atcoder abc123 a rust")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: Some("atcoder".to_string()),
             contest_id: Some("abc123".to_string()),
             problem_id: Some("a".to_string()),
@@ -58,7 +58,7 @@ fn test_alias_resolution() -> Result<()> {
     let context = parser.parse("at abc123")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: Some("atcoder".to_string()),
             contest_id: Some("abc123".to_string()),
             problem_id: None,
@@ -70,7 +70,7 @@ fn test_alias_resolution() -> Result<()> {
     let context = parser.parse("abc123 a rs")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: None,
             contest_id: Some("abc123".to_string()),
             problem_id: Some("a".to_string()),
@@ -89,7 +89,7 @@ fn test_complex_patterns() -> Result<()> {
     let context = parser.parse("abc123 a b c")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: None,
             contest_id: Some("abc123".to_string()),
             problem_id: Some("a".to_string()),  // 最初の値を問題IDとして解釈
@@ -101,7 +101,7 @@ fn test_complex_patterns() -> Result<()> {
     let context = parser.parse("rs abc123 atcoder a")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: Some("atcoder".to_string()),
             contest_id: Some("abc123".to_string()),
             problem_id: Some("a".to_string()),
@@ -120,7 +120,7 @@ fn test_edge_cases() -> Result<()> {
     let context = parser.parse("abc123")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: None,
             contest_id: Some("abc123".to_string()),
             problem_id: None,
@@ -132,7 +132,7 @@ fn test_edge_cases() -> Result<()> {
     let context = parser.parse("atcoder")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: Some("atcoder".to_string()),
             contest_id: None,
             problem_id: None,
@@ -155,7 +155,7 @@ fn test_error_cases() -> Result<()> {
     let context = parser.parse("  abc123   a  ")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: None,
             contest_id: Some("abc123".to_string()),
             problem_id: Some("a".to_string()),
@@ -170,11 +170,11 @@ fn test_error_cases() -> Result<()> {
 fn test_priority_handling() -> Result<()> {
     let parser = create_test_parser();
 
-    // イトと1つのトークン
+    // サイトと1つのトークン
     let context = parser.parse("atcoder abc123")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: Some("atcoder".to_string()),
             contest_id: Some("abc123".to_string()),
             problem_id: None,
@@ -214,7 +214,7 @@ fn test_special_characters() -> Result<()> {
     let context = parser.parse("at-test abc123")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: Some("atcoder-test".to_string()),
             contest_id: Some("abc123".to_string()),
             problem_id: None,
@@ -226,7 +226,7 @@ fn test_special_characters() -> Result<()> {
     let context = parser.parse("at test abc123")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: None,
             contest_id: Some("at".to_string()),
             problem_id: Some("test".to_string()),
@@ -238,7 +238,7 @@ fn test_special_characters() -> Result<()> {
     let context = parser.parse("ユ abc123")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: Some("ユーコーダー".to_string()),
             contest_id: Some("abc123".to_string()),
             problem_id: None,
@@ -258,7 +258,7 @@ fn test_performance() -> Result<()> {
     let context = parser.parse(&long_input)?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: Some("atcoder".to_string()),
             contest_id: Some("abc123".to_string()),
             problem_id: Some("a".to_string()),
@@ -271,7 +271,7 @@ fn test_performance() -> Result<()> {
     let context = parser.parse(&many_tokens)?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: None,
             contest_id: Some("abc123".to_string()),
             problem_id: Some("a".to_string()),
@@ -290,7 +290,7 @@ fn test_whitespace_handling() -> Result<()> {
     let context = parser.parse("atcoder\tabc123\ta\trust")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: Some("atcoder".to_string()),
             contest_id: Some("abc123".to_string()),
             problem_id: Some("a".to_string()),
@@ -302,7 +302,7 @@ fn test_whitespace_handling() -> Result<()> {
     let context = parser.parse("atcoder    abc123  a    rust")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: Some("atcoder".to_string()),
             contest_id: Some("abc123".to_string()),
             problem_id: Some("a".to_string()),
@@ -314,7 +314,7 @@ fn test_whitespace_handling() -> Result<()> {
     let context = parser.parse("   atcoder abc123 a rust   ")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: Some("atcoder".to_string()),
             contest_id: Some("abc123".to_string()),
             problem_id: Some("a".to_string()),
@@ -333,7 +333,7 @@ fn test_problem_id_priority() -> Result<()> {
     let context = parser.parse("at a")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: Some("atcoder".to_string()),
             contest_id: Some("a".to_string()),
             problem_id: None,
@@ -352,7 +352,7 @@ fn test_token_interpretation() -> Result<()> {
     let context = parser.parse("aaa")?;
     assert_eq!(
         context.command,
-        Command::Open {
+        Command::Config {
             site: None,
             contest_id: Some("aaa".to_string()),
             problem_id: None,

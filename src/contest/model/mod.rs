@@ -155,12 +155,13 @@ impl TestCase {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
     Login,
-    Open {
+    Config {
         site: Option<String>,
         contest_id: Option<String>,
         problem_id: Option<String>,
         language: Option<String>,
     },
+    Open,
     Test {
         test_number: Option<usize>,
     },

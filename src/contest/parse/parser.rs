@@ -166,7 +166,7 @@ impl Parser {
             problem_id,
         );
 
-        let command = Command::Open {
+        let command = Command::Config {
             site,
             contest_id,
             problem_id,
