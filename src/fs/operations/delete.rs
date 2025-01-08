@@ -1,6 +1,6 @@
 use std::path::Path;
-use anyhow::{Result, Context};
-use crate::error::fs::*;
+use anyhow::Result;
+use crate::fs_err;
 
 /// ファイルを削除します
 pub fn delete_file(path: impl AsRef<Path>) -> Result<()> {
@@ -9,10 +9,10 @@ pub fn delete_file(path: impl AsRef<Path>) -> Result<()> {
         return Ok(());
     }
     if !path.is_file() {
-        return Err(invalid_path_error(path));
+        return Err(fs_err!("無効なパス: {}", path.display()));
     }
     std::fs::remove_file(path)
-        .context(format!("ファイルの削除に失敗: {}", path.display()))
+        .map_err(|e| fs_err!("ファイルの削除に失敗: {}: {}", path.display(), e))
 }
 
 /// ディレクトリを削除します
@@ -22,8 +22,8 @@ pub fn delete_dir(path: impl AsRef<Path>) -> Result<()> {
         return Ok(());
     }
     if !path.is_dir() {
-        return Err(invalid_path_error(path));
+        return Err(fs_err!("無効なパス: {}", path.display()));
     }
     std::fs::remove_dir_all(path)
-        .context(format!("ディレクトリの削除に失敗: {}", path.display()))
+        .map_err(|e| fs_err!("ディレクトリの削除に失敗: {}: {}", path.display(), e))
 } 

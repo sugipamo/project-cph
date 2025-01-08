@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use anyhow::{Result, anyhow, Context};
+use anyhow::{Result, anyhow, Context, Error};
 use crate::fs::ensure_path_exists;
 
 /// ファイル操作のトレイト
@@ -332,4 +332,10 @@ impl FileOperation for DeleteFileOperation {
         }
         Ok(())
     }
+}
+
+#[derive(Debug)]
+pub struct TransactionError {
+    operation: Arc<dyn FileOperation>,
+    error: Arc<Error>,
 } 

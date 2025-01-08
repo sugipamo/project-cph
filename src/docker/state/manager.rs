@@ -1,8 +1,7 @@
 use std::sync::Arc;
 use std::time::{SystemTime, Duration};
-use crate::error::Result;
+use anyhow::{Result, anyhow};
 use super::ContainerState;
-use crate::docker::error::state_err;
 use super::types::{StateInfo, StateType};
 
 #[derive(Debug, Clone)]
@@ -70,50 +69,32 @@ impl ContainerStateManager {
         match transition {
             StateTransition::Create(_) => {
                 if !matches!(*self.state, ContainerState::Initial) {
-                    return Err(state_err(
-                        "状態遷移",
-                        "コンテナの作成は初期状態からのみ可能です"
-                    ));
+                    return Err(anyhow!("状態遷移エラー: コンテナの作成は初期状態からのみ可能です"));
                 }
             }
             StateTransition::Start => {
                 if !matches!(*self.state, ContainerState::Created { .. }) {
-                    return Err(state_err(
-                        "状態遷移",
-                        "コンテナの開始は作成済み状態からのみ可能です"
-                    ));
+                    return Err(anyhow!("状態遷移エラー: コンテナの開始は作成済み状態からのみ可能です"));
                 }
             }
             StateTransition::Execute(_) => {
                 if !matches!(*self.state, ContainerState::Running { .. }) {
-                    return Err(state_err(
-                        "状態遷移",
-                        "コマンドの実行は実行中状態からのみ可能です"
-                    ));
+                    return Err(anyhow!("状態遷移エラー: コマンドの実行は実行中状態からのみ可能です"));
                 }
             }
             StateTransition::Stop => {
                 if !matches!(*self.state, ContainerState::Running { .. } | ContainerState::Executing { .. }) {
-                    return Err(state_err(
-                        "状態遷移",
-                        "コンテナの停止は実行中または実行中（コマンド）状態からのみ可能です"
-                    ));
+                    return Err(anyhow!("状態遷移エラー: コンテナの停止は実行中または実行中（コマンド）状態からのみ可能です"));
                 }
             }
             StateTransition::Fail(_) => {
                 if matches!(*self.state, ContainerState::Failed { .. } | ContainerState::Stopped { .. }) {
-                    return Err(state_err(
-                        "状態遷移",
-                        "既に失敗または停止状態のコンテナは失敗状態に遷移できません"
-                    ));
+                    return Err(anyhow!("状態遷移エラー: 既に失敗または停止状態のコンテナは失敗状態に遷移できません"));
                 }
             }
             StateTransition::Regenerate => {
                 if !self.state.can_regenerate() {
-                    return Err(state_err(
-                        "状態遷移",
-                        "現在の状態からは再生成できません"
-                    ));
+                    return Err(anyhow!("状態遷移エラー: 現在の状態からは再生成できません"));
                 }
             }
             StateTransition::Restore(_) => {
@@ -144,38 +125,23 @@ impl ContainerStateManager {
             },
             StateTransition::Start => {
                 self.state.start()
-                    .ok_or_else(|| state_err(
-                        "状態遷移",
-                        format!("開始遷移の失敗: {}", self.state)
-                    ))?
+                    .ok_or_else(|| anyhow!("状態遷移エラー: 開始遷移の失敗: {}", self.state))?
             },
             StateTransition::Execute(command) => {
                 self.state.execute(command)
-                    .ok_or_else(|| state_err(
-                        "状態遷移",
-                        format!("コマンド実行遷移の失敗: {}", self.state)
-                    ))?
+                    .ok_or_else(|| anyhow!("状態遷移エラー: コマンド実行遷移の失敗: {}", self.state))?
             },
             StateTransition::Stop => {
                 self.state.stop()
-                    .ok_or_else(|| state_err(
-                        "状態遷移",
-                        format!("停止遷移の失敗: {}", self.state)
-                    ))?
+                    .ok_or_else(|| anyhow!("状態遷移エラー: 停止遷移の失敗: {}", self.state))?
             },
             StateTransition::Fail(error) => {
                 self.state.fail(error)
-                    .ok_or_else(|| state_err(
-                        "状態遷移",
-                        format!("失敗遷移の失敗: {}", self.state)
-                    ))?
+                    .ok_or_else(|| anyhow!("状態遷移エラー: 失敗遷移の失敗: {}", self.state))?
             },
             StateTransition::Regenerate => {
                 self.state.regenerate()
-                    .ok_or_else(|| state_err(
-                        "状態遷移",
-                        format!("再生成遷移の失敗: {}", self.state)
-                    ))?
+                    .ok_or_else(|| anyhow!("状態遷移エラー: 再生成遷移の失敗: {}", self.state))?
             },
             StateTransition::Restore(state_info) => {
                 match state_info.state_type {

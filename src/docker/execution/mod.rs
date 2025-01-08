@@ -6,7 +6,7 @@ pub use command::DockerCommand;
 pub use compilation::CompilationManager;
 pub use container::DockerContainer;
 
-use crate::error::Result;
+use anyhow::Result;
 use std::process::Output;
 
 pub struct CommandOutput {

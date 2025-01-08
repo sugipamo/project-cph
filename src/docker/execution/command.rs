@@ -1,7 +1,6 @@
 use std::process::Command;
 use std::borrow::Cow;
-use crate::error::Result;
-use crate::docker::error::execution_err;
+use anyhow::{Result, anyhow};
 
 #[derive(Clone)]
 pub struct DockerCommand {
@@ -46,17 +45,14 @@ impl DockerCommand {
 
         let output = command
             .output()
-            .map_err(|e| execution_err("コマンド実行", e.to_string()))?;
+            .map_err(|e| anyhow!("コマンド実行エラー: {}", e))?;
 
         if !output.status.success() {
             let error = String::from_utf8_lossy(&output.stderr);
-            return Err(execution_err(
-                "コマンド実行",
-                format!("コマンドの実行に失敗: {}", error)
-            ));
+            return Err(anyhow!("コマンド実行エラー: コマンドの実行に失敗: {}", error));
         }
 
         String::from_utf8(output.stdout)
-            .map_err(|e| execution_err("コマンド実行", e.to_string()))
+            .map_err(|e| anyhow!("コマンド実行エラー: {}", e))
     }
 } 
