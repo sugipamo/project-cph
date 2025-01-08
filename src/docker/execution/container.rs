@@ -6,12 +6,14 @@ pub struct DockerContainer {
 }
 
 impl DockerContainer {
+    #[must_use = "この関数は新しいDockerContainerインスタンスを返します"]
     pub fn new() -> Self {
         Self {
             container_id: None,
         }
     }
 
+    #[must_use = "この関数はコンテナの作成結果を返します"]
     pub fn create(&mut self, image: &str) -> Result<()> {
         if self.container_id.is_some() {
             return Err(anyhow!("コンテナエラー: コンテナは既に作成されています"));
@@ -36,6 +38,7 @@ impl DockerContainer {
         Ok(())
     }
 
+    #[must_use = "この関数はコンテナの起動結果を返します"]
     pub fn start(&mut self) -> Result<()> {
         let _container_id = self.container_id
             .as_ref()
@@ -54,6 +57,7 @@ impl DockerContainer {
         Ok(())
     }
 
+    #[must_use = "この関数はコンテナの停止結果を返します"]
     pub fn stop(&mut self) -> Result<()> {
         let _container_id = self.container_id
             .as_ref()
@@ -72,6 +76,7 @@ impl DockerContainer {
         Ok(())
     }
 
+    #[must_use = "この関数はコンテナの�了コードを返します"]
     pub fn wait(&mut self) -> Result<i32> {
         let _container_id = self.container_id
             .as_ref()
@@ -96,6 +101,7 @@ impl DockerContainer {
         Ok(exit_code)
     }
 
+    #[must_use = "この関数はイメージの確認結果を返します"]
     pub fn ensure_image(&self, image: &str) -> Result<()> {
         let output = Command::new("docker")
             .args(["images", "-q", image])

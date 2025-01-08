@@ -6,12 +6,14 @@ pub struct CompilationManager {
 }
 
 impl CompilationManager {
+    #[must_use = "この関数は新しいCompilationManagerインスタンスを返します"]
     pub fn new() -> Self {
         Self {
             container_id: None,
         }
     }
 
+    #[must_use = "この関数はコンパイルの結果を返します"]
     pub fn compile(&mut self, command: &[String]) -> Result<()> {
         if self.container_id.is_some() {
             return Err(anyhow!(
@@ -42,12 +44,14 @@ impl CompilationManager {
         Ok(())
     }
 
+    #[must_use = "この関数はコンパ閆ナIDを返します"]
     pub fn get_container_id(&self) -> Result<String> {
         self.container_id
             .clone()
             .ok_or_else(|| anyhow!("コンパイルエラー: コンテナIDが取得できませんでした。"))
     }
 
+    #[must_use = "この関数はコンパイル出力を返します"]
     pub fn get_output(&self) -> Result<String> {
         let container_id = self.container_id
             .as_ref()

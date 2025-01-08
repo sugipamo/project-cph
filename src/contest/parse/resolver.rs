@@ -6,6 +6,7 @@ pub struct CommandResolver {
 }
 
 impl CommandResolver {
+    #[must_use = "この関数は新しいCommandResolverインスタンスを返します"]
     pub fn new(config: GlobalConfig) -> Self {
         Self { config }
     }

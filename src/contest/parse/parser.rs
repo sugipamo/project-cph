@@ -4,6 +4,7 @@ use crate::contest::model::CommandContext;
 pub struct Parser;
 
 impl Parser {
+    #[must_use = "この関数は新しいParserインスタンスを返します"]
     pub fn new() -> Self {
         Self
     }

@@ -9,6 +9,7 @@ pub struct DockerCommand {
 }
 
 impl DockerCommand {
+    #[must_use = "この関数は新しいDockerCommandインスタンスを返します"]
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -16,6 +17,7 @@ impl DockerCommand {
         }
     }
 
+    #[must_use = "この関数は新しいDockerCommandインスタンスを返します"]
     pub fn arg<'a, S: Into<Cow<'a, str>>>(self, arg: S) -> Self {
         let mut args = self.args;
         args.push(arg.into().into_owned());
@@ -25,6 +27,7 @@ impl DockerCommand {
         }
     }
 
+    #[must_use = "この関数は新しいDockerCommandインスタンスを返します"]
     pub fn args<I, S>(self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -38,6 +41,7 @@ impl DockerCommand {
         }
     }
 
+    #[must_use = "この関数はコマンドの実行結果を返します"]
     pub fn execute(self) -> Result<String> {
         let mut command = Command::new("docker");
         command.arg(&self.name);

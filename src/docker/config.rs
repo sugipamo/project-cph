@@ -10,6 +10,7 @@ pub struct ContainerConfig {
 }
 
 impl ContainerConfig {
+    #[must_use = "この関数は新しいContainerConfigインスタンスを返します"]
     pub fn new(
         image: String,
         memory_limit: u64,
@@ -25,11 +26,13 @@ impl ContainerConfig {
         }
     }
 
+    #[must_use = "この関数は新しいContainerConfigインスタンスを返します"]
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
+    #[must_use = "この関数はコンテナ作成用の引数を返します"]
     pub fn into_create_args(self) -> Vec<String> {
         vec![
             "create".to_string(),

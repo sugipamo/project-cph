@@ -1,11 +1,11 @@
-pub mod contest;
-pub mod path;
-pub mod test;
-pub mod url;
-pub mod command;
+mod contest;
+mod path;
+mod test;
+mod url;
+mod command;
 
-pub use contest::ContestService;
-pub use path::PathService;
-pub use test::TestService;
-pub use url::UrlService;
-pub use command::CommandService; 
+pub use contest::Service as ContestService;
+pub use path::Service as PathService;
+pub use test::Service as TestService;
+pub use url::Service as UrlService;
+pub use command::Service as CommandService; 

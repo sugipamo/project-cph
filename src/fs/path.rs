@@ -3,39 +3,45 @@ use anyhow::{Result, anyhow};
 
 /// パスの検証レベルを定義する列挙型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PathValidationLevel {
+pub enum ValidationLevel {
     /// 基本的な検証のみ（絶対パスとパストラバーサルのチェック）
     Basic,
     /// 厳格な検証（Basic + 特殊文字、非ASCII文字、長さ制限など）
     Strict,
 }
 
-/// パス操作に関する共通機能を提供するモジュール
+/// パス操作に関する共通機能を提供する構造体
 #[derive(Debug)]
-pub struct PathValidator {
+pub struct Validator {
     /// パスの検証レベル
-    validation_level: PathValidationLevel,
+    validation_level: ValidationLevel,
     /// パス長の最大値（バイト単位）
     max_path_length: usize,
     /// ファイル名の最大長（バイト単位）
     max_filename_length: usize,
 }
 
-impl Default for PathValidator {
+impl Default for Validator {
+    #[must_use = "この関数は新しいValidatorインスタンスを返します"]
     fn default() -> Self {
         Self {
-            validation_level: PathValidationLevel::Basic,
+            validation_level: ValidationLevel::Basic,
             max_path_length: 4096,
             max_filename_length: 255,
         }
     }
 }
 
-impl PathValidator {
-    /// 新しいPathValidatorを作成
-    #[must_use]
+impl Validator {
+    /// 新しいパスバリデータを作成します。
+    /// 
+    /// # Arguments
+    /// * `validation_level` - パスの検証レベル
+    /// * `max_path_length` - パス長の最大値（バイト単位）
+    /// * `max_filename_length` - ファイル名の最大長（バイト単位）
+    #[must_use = "この関数は新しいValidatorを返します"]
     pub const fn new(
-        validation_level: PathValidationLevel,
+        validation_level: ValidationLevel,
         max_path_length: usize,
         max_filename_length: usize,
     ) -> Self {
@@ -46,7 +52,17 @@ impl PathValidator {
         }
     }
 
-    /// パスを検証
+    /// パスを検証します。
+    /// 
+    /// # Arguments
+    /// * `path` - 検証するパス
+    /// 
+    /// # Errors
+    /// - パスが絶対パスの場合
+    /// - パスが長すぎる場合
+    /// - パストラバーサルが含まれる場合
+    /// - ファイル名が長すぎる場合
+    /// - 厳格モードで無効な文字が含まれる場合
     pub fn validate(&self, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
 
@@ -57,7 +73,7 @@ impl PathValidator {
 
         let path_str = path.to_string_lossy();
         if path_str.len() > self.max_path_length {
-            return Err(anyhow!("無効なパスです: パスが長すぎます（最大{}バイト）", self.max_path_length));
+            return Err(anyhow!("無効なパスです: パスが長すぎます（最大{0}バイト）", self.max_path_length));
         }
 
         // パスコンポーネントの検証
@@ -73,12 +89,12 @@ impl PathValidator {
                     let name_str = name.to_string_lossy();
                     if name_str.len() > self.max_filename_length {
                         return Err(anyhow!(
-                            "無効なパスです: ファイル名が長すぎます（最大{}バイト）",
+                            "無効なパスです: ファイル名が長すぎます（最大{0}バイト）",
                             self.max_filename_length
                         ));
                     }
 
-                    if self.validation_level == PathValidationLevel::Strict {
+                    if self.validation_level == ValidationLevel::Strict {
                         // 特殊文字のチェック
                         if name_str.contains(|c: char| {
                             c.is_control() || c == '<' || c == '>' || c == ':' || c == '"' ||
@@ -100,8 +116,16 @@ impl PathValidator {
         Ok(())
     }
 
-    /// パスを正規化
-    #[must_use]
+    /// パスを正規化します。
+    /// 
+    /// # Arguments
+    /// * `root` - ルートディレクトリのパス
+    /// * `path` - 正規化するパス
+    /// 
+    /// # Errors
+    /// - パスの検証に失敗した場合
+    /// - パスの正規化に失敗した場合
+    #[must_use = "この関数は正規化されたパスを返します"]
     pub fn normalize(&self, root: impl AsRef<Path>, path: impl AsRef<Path>) -> Result<PathBuf> {
         let root = root.as_ref();
         let path = path.as_ref();
@@ -115,25 +139,48 @@ impl PathValidator {
     }
 }
 
-/// パスを正規化する
-#[must_use]
-pub fn normalize_path(root: impl AsRef<Path>, path: impl AsRef<Path>) -> Result<PathBuf> {
-    PathValidator::default().normalize(root, path)
+/// パスを正規化します。
+/// 
+/// # Arguments
+/// * `root` - ルートディレクトリのパス
+/// * `path` - 正規化するパス
+/// 
+/// # Errors
+/// - パスの検証に失敗した場合
+/// - パスの正規化に失敗した場合
+#[must_use = "この関数は正規化されたパスを返します"]
+pub fn normalize<P: AsRef<Path>>(root: P, path: P) -> Result<PathBuf> {
+    Validator::default().normalize(root, path)
 }
 
-/// パスを検証する
-#[must_use]
-pub fn validate_path(path: impl AsRef<Path>) -> Result<()> {
-    PathValidator::default().validate(path)
+/// パスを検証します。
+/// 
+/// # Arguments
+/// * `path` - 検証するパス
+/// 
+/// # Errors
+/// - パスが絶対パスの場合
+/// - パスが長すぎる場合
+/// - パストラバーサルが含まれる場合
+/// - ファイル名が長すぎる場合
+/// - 厳格モードで無効な文字が含まれる場合
+#[must_use = "この関数はパスの検証結果を返します"]
+pub fn validate<P: AsRef<Path>>(path: P) -> Result<()> {
+    Validator::default().validate(path)
 }
 
-/// パスが存在することを確認し、存在しない場合はディレクトリを作成する
-#[must_use]
+/// パスが存在することを確認し、存在しない場合はディレクトリを作成します。
+/// 
+/// # Arguments
+/// * `path` - 確認または作成するパス
+/// 
+/// # Errors
+/// - ディレクトリの作成に失敗した場合
 pub fn ensure_path_exists(path: impl AsRef<Path>) -> Result<()> {
     let path = path.as_ref();
     if !path.exists() {
         std::fs::create_dir_all(path)
-            .map_err(|e| anyhow!("ディレクトリの作成に失敗: {}: {}", path.display(), e))?;
+            .map_err(|e| anyhow!("ディレクトリの作成に失敗しました: {e}"))?;
     }
     Ok(())
 } 

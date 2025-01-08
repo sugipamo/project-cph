@@ -24,6 +24,6 @@ pub trait TestContainerManager: Send + Sync {
 #[automock]
 #[async_trait]
 pub trait TestCompilationManager: Send + Sync {
-    async fn compile(&mut self, source_code: &str, compile_cmd: Option<Vec<String>>, env_vars: Vec<String>) -> Result<()>;
+    async fn compile(&mut self, source_code: &str, compile_cmd: Option<&[String]>, env_vars: &[String]) -> Result<()>;
     async fn get_compilation_output(&self) -> Result<(String, String)>;
 } 

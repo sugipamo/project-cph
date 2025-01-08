@@ -19,7 +19,7 @@ pub struct StateInfo {
 }
 
 #[derive(Debug, Clone)]
-pub enum ContainerState {
+pub enum State {
     Initial,
     Created {
         container_id: Arc<String>,
@@ -46,11 +46,14 @@ pub enum ContainerState {
     },
 }
 
-impl ContainerState {
-    pub fn new() -> Self {
+impl State {
+    #[must_use = "この関数は新しいContainerStateインスタンスを返します"]
+    pub const fn new() -> Self {
         Self::Initial
     }
 
+    #[must_use = "この関数は新しいContainerStateインスタンスを返します"]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn create(container_id: String) -> Self {
         Self::Created {
             container_id: Arc::new(container_id),
@@ -58,6 +61,8 @@ impl ContainerState {
         }
     }
 
+    #[must_use = "この関数は新しいContainerStateインスタンスを返します"]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn start(&self) -> Option<Self> {
         match self {
             Self::Created { container_id, .. } => Some(Self::Running {
@@ -68,6 +73,8 @@ impl ContainerState {
         }
     }
 
+    #[must_use = "この関数は新しいContainerStateインスタンスを返します"]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn execute(&self, command: String) -> Option<Self> {
         match self {
             Self::Running { container_id, started_at } => Some(Self::Executing {
@@ -79,6 +86,8 @@ impl ContainerState {
         }
     }
 
+    #[must_use = "この関数は新しいContainerStateインスタンスを返します"]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn stop(&self) -> Option<Self> {
         match self {
             Self::Running { container_id, .. } |
@@ -91,6 +100,8 @@ impl ContainerState {
         }
     }
 
+    #[must_use = "この関数は新しいContainerStateインスタンスを返します"]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn fail(&self, error: String) -> Option<Self> {
         match self {
             Self::Created { container_id, .. } |
@@ -104,6 +115,8 @@ impl ContainerState {
         }
     }
 
+    #[must_use = "この関数はコンテナIDを返します"]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn container_id(&self) -> Option<&str> {
         match self {
             ContainerState::Initial => None,
@@ -115,6 +128,8 @@ impl ContainerState {
         }
     }
 
+    #[must_use = "この関数は開始からの経過時間を返します"]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn duration_since_start(&self) -> Option<Duration> {
         match self {
             ContainerState::Running { started_at, .. } |
@@ -125,6 +140,8 @@ impl ContainerState {
         }
     }
 
+    #[must_use = "この関数は新しいContainerStateインスタンスを返します"]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn regenerate(&self) -> Option<Self> {
         self.get_container_id_for_regeneration()
             .map(|container_id| Self::Created {
@@ -133,6 +150,8 @@ impl ContainerState {
             })
     }
 
+    #[must_use = "この関数は再生成用のコンテナIDを返します"]
+    #[allow(clippy::missing_const_for_fn)]
     fn get_container_id_for_regeneration(&self) -> Option<&Arc<String>> {
         match self {
             Self::Running { container_id, .. } |
@@ -143,34 +162,40 @@ impl ContainerState {
         }
     }
 
+    #[must_use = "この関数は再生成可能かどうかを返します"]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn can_regenerate(&self) -> bool {
         self.get_container_id_for_regeneration().is_some()
     }
 
+    #[must_use = "この関数は状態情報を返します"]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn get_state_info(&self) -> Option<StateInfo> {
         self.create_state_info()
     }
 
+    #[must_use = "この関数は状態情報を返します"]
+    #[allow(clippy::missing_const_for_fn)]
     fn create_state_info(&self) -> Option<StateInfo> {
         match self {
             Self::Running { container_id, started_at } => Some(StateInfo {
                 container_id: Arc::clone(container_id),
-                state_type: StateType::Running,
+                state_type: ContainerStateType::Running,
                 timestamp: Arc::clone(started_at),
             }),
             Self::Executing { container_id, started_at, command } => Some(StateInfo {
                 container_id: Arc::clone(container_id),
-                state_type: StateType::Executing(Arc::clone(command)),
+                state_type: ContainerStateType::Executing(Arc::clone(command)),
                 timestamp: Arc::clone(started_at),
             }),
             Self::Stopped { container_id, stopped_at, .. } => Some(StateInfo {
                 container_id: Arc::clone(container_id),
-                state_type: StateType::Stopped,
+                state_type: ContainerStateType::Stopped,
                 timestamp: Arc::clone(stopped_at),
             }),
             Self::Failed { container_id, occurred_at, error } => Some(StateInfo {
                 container_id: Arc::clone(container_id),
-                state_type: StateType::Failed(Arc::clone(error)),
+                state_type: ContainerStateType::Failed(Arc::clone(error)),
                 timestamp: Arc::clone(occurred_at),
             }),
             _ => None,
@@ -178,7 +203,7 @@ impl ContainerState {
     }
 }
 
-impl fmt::Display for ContainerState {
+impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ContainerState::Initial => write!(f, "初期状態"),
@@ -195,7 +220,7 @@ impl fmt::Display for ContainerState {
                 write!(f, "停止済み(ID: {})", container_id)
             }
             ContainerState::Failed { container_id, error, .. } => {
-                write!(f, "失敗(ID: {}, エラー: {})", container_id, error)
+                write!(f, "失敗(ID: {container_id}, エラー: {error})")
             }
         }
     }

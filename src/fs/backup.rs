@@ -13,14 +13,26 @@ pub struct BackupManager {
 }
 
 impl BackupManager {
-    /// 新しいバックアップマネージャーを作成
+    /// 新しいバックアップインスタンスを作成します。
+    /// 
+    /// # Errors
+    /// - バックアップインスタンスの作成に失敗した場合
+    #[must_use = "この関数は新しいBackupManagerインスタンスを返します"]
     pub fn new() -> Result<Self> {
         Ok(Self {
             backup_dir: None,
         })
     }
 
-    /// バックアップを作成し、新しいインスタンスを返す
+    /// バックアップを作成し、新しいインスタンスを返します。
+    /// 
+    /// # Arguments
+    /// * `target_dir` - バックアップ対象のディレクトリ
+    /// 
+    /// # Errors
+    /// - バックアップディレクトリの作成に失敗した場合
+    /// - バックアップの作成に失敗した場合
+    #[must_use = "この関数は新しいBackupインスタンスを返します"]
     pub fn create<P: AsRef<Path>>(self, target_dir: P) -> Result<Self> {
         if self.backup_dir.is_some() {
             return Ok(self);
@@ -39,7 +51,7 @@ impl BackupManager {
                 &backup_path,
                 &fs_extra::dir::CopyOptions::new(),
             )
-            .map_err(|e| anyhow!("バックアップの作成に失敗しました: {}", e))?;
+            .map_err(|e| anyhow!("バックアップの作成に失敗しました: {e}"))?;
         }
 
         Ok(Self {
@@ -47,20 +59,28 @@ impl BackupManager {
         })
     }
 
-    /// バックアップから復元
+    /// バックアップから復元します。
+    /// 
+    /// # Errors
+    /// - バックアップからの復元に失敗した場合
+    #[must_use = "この関数は新しいBackupインスタンスを返します"]
     pub fn restore(self) -> Result<Self> {
         if let Some(backup_dir) = &self.backup_dir {
             if backup_dir.exists() {
                 let options = fs_extra::dir::CopyOptions::new();
                 fs_extra::dir::copy(&**backup_dir, "..", &options)
-                    .map_err(|e| anyhow!("バックアップからの復元に失敗しました: {}", e))?;
+                    .map_err(|e| anyhow!("バックアップからの復元に失敗しました: {e}"))?;
             }
         }
 
         Ok(self)
     }
 
-    /// バックアップをクリーンアップし、新しいインスタンスを返す
+    /// バックアップをクリーンアップし、新しいインスタンスを返します。
+    /// 
+    /// # Errors
+    /// - バックアップのクリーンアップに失敗した場合
+    #[must_use = "この関数は新しいBackupインスタンスを返します"]
     pub fn cleanup(self) -> Result<Self> {
         if let Some(backup_dir) = &self.backup_dir {
             if backup_dir.exists() {
@@ -74,7 +94,8 @@ impl BackupManager {
         })
     }
 
-    /// バックアップディレクトリのパスを取得
+    /// バックアップディレクトリのパスを取得します。
+    #[must_use = "この関数はバックアップディレクトリのパスを返します"]
     pub fn backup_path(&self) -> Option<&Path> {
         self.backup_dir.as_ref().map(|p| p.as_path())
     }

@@ -4,7 +4,7 @@ use crate::contest::model::{Contest, TestCase};
 use crate::fs::manager::Manager;
 
 #[derive(Clone)]
-pub struct ContestService {
+pub struct Service {
     site: Option<String>,
     contest_id: Option<String>,
     problem_id: Option<String>,
@@ -26,8 +26,8 @@ pub enum ServiceTransition {
     SetFileManager(Manager),
 }
 
-impl ContestService {
-    /// Creates a new ContestService instance
+impl Service {
+    /// Creates a new Service instance
     /// 
     /// # Errors
     /// 

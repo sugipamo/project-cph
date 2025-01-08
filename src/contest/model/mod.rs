@@ -108,6 +108,7 @@ pub struct TestCase {
 }
 
 impl TestCase {
+    #[must_use = "この関数は新しいTestCaseインスタンスを返します"]
     pub fn new(input: String, expected: String) -> Self {
         Self {
             input,
@@ -138,6 +139,7 @@ pub struct CommandContext {
 }
 
 impl CommandContext {
+    #[must_use = "この関数は新しいCommandContextインスタンスを返します"]
     pub fn new(command: Command) -> Self {
         Self {
             command,
@@ -145,6 +147,7 @@ impl CommandContext {
         }
     }
 
+    #[must_use = "この関数は新しいCommandContextインスタンスを返します"]
     pub fn with_contest(command: Command, contest: Contest) -> Self {
         Self {
             command,

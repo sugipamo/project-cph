@@ -7,12 +7,12 @@ pub mod transaction;
 
 // Re-export commonly used operations
 pub use operations::{
-    read_file,
-    write_file,
+    load_file_as_string as read_file,
+    save_to_file as write_file,
     ensure_directory,
     ensure_file,
-    delete_file,
-    delete_dir,
+    remove_file as delete_file,
+    remove_dir as delete_dir,
     exists,
     is_file,
     is_directory,
@@ -22,7 +22,7 @@ pub use operations::{
 // Re-export path operations
 pub use path::{
     PathValidator,
-    PathValidationLevel,
+    ValidationLevel as PathValidationLevel,
     normalize_path,
     validate_path,
     ensure_path_exists,

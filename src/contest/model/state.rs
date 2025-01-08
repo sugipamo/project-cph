@@ -20,7 +20,7 @@ use std::sync::Arc;
 use anyhow::{Result, anyhow};
 
 #[derive(Debug, Clone)]
-pub struct ContestState {
+pub struct State {
     site: Option<Arc<String>>,
     contest_id: Option<Arc<String>>,
     problem_id: Option<Arc<String>>,
@@ -29,7 +29,7 @@ pub struct ContestState {
 }
 
 #[derive(Debug, Clone)]
-pub struct ValidatedState {
+pub struct Validated {
     pub(crate) site: Arc<String>,
     pub(crate) contest_id: Arc<String>,
     pub(crate) problem_id: Arc<String>,
@@ -39,7 +39,7 @@ pub struct ValidatedState {
 
 // 状態遷移の型安全性を向上させるための新しい型
 #[derive(Debug, Clone)]
-pub enum StateTransition {
+pub enum Transition {
     SetSite(String),
     SetContestId(String),
     SetProblemId(String),
@@ -47,7 +47,8 @@ pub enum StateTransition {
     SetSourcePath(PathBuf),
 }
 
-impl ContestState {
+impl State {
+    #[must_use = "この関数は新しいContestStateインスタンスを返します"]
     pub fn new() -> Self {
         Self {
             site: None,
@@ -78,17 +79,17 @@ impl ContestState {
         self.source_path.as_ref().map(|p| p.as_ref())
     }
 
-    pub fn apply_transition(self, transition: StateTransition) -> Self {
+    pub fn apply_transition(self, transition: Transition) -> Self {
         match transition {
-            StateTransition::SetSite(site) => self.with_site(site),
-            StateTransition::SetContestId(id) => self.with_contest_id(id),
-            StateTransition::SetProblemId(id) => self.with_problem_id(id),
-            StateTransition::SetLanguage(lang) => self.with_language(lang),
-            StateTransition::SetSourcePath(path) => self.with_source_path(path),
+            Transition::SetSite(site) => self.with_site(site),
+            Transition::SetContestId(id) => self.with_contest_id(id),
+            Transition::SetProblemId(id) => self.with_problem_id(id),
+            Transition::SetLanguage(lang) => self.with_language(lang),
+            Transition::SetSourcePath(path) => self.with_source_path(path),
         }
     }
 
-    pub fn validate(&self) -> Result<ValidatedState> {
+    pub fn validate(&self) -> Result<Validated> {
         let site = self.site.clone()
             .ok_or_else(|| anyhow!("サイトが指定されていません"))?;
         
@@ -126,7 +127,7 @@ impl ContestState {
             return Err(anyhow!("指定されたソースパスはファイルではありません"));
         }
 
-        Ok(ValidatedState {
+        Ok(Validated {
             site,
             contest_id,
             problem_id,
@@ -135,6 +136,7 @@ impl ContestState {
         })
     }
 
+    #[must_use = "この関数は新しいContestStateインスタンスを返します"]
     pub fn with_site<T: Into<String>>(self, site: T) -> Self {
         Self {
             site: Some(Arc::new(site.into())),
@@ -145,6 +147,7 @@ impl ContestState {
         }
     }
 
+    #[must_use = "この関数は新しいContestStateインスタンスを返します"]
     pub fn with_contest_id<T: Into<String>>(self, contest_id: T) -> Self {
         Self {
             site: self.site,
@@ -155,6 +158,7 @@ impl ContestState {
         }
     }
 
+    #[must_use = "この関数は新しいContestStateインスタンスを返します"]
     pub fn with_problem_id<T: Into<String>>(self, problem_id: T) -> Self {
         Self {
             site: self.site,
@@ -165,6 +169,7 @@ impl ContestState {
         }
     }
 
+    #[must_use = "この関数は新しいContestStateインスタンスを返します"]
     pub fn with_language<T: Into<String>>(self, language: T) -> Self {
         Self {
             site: self.site,
@@ -175,6 +180,7 @@ impl ContestState {
         }
     }
 
+    #[must_use = "この関数は新しいContestStateインスタンスを返します"]
     pub fn with_source_path<T: Into<PathBuf>>(self, source_path: T) -> Self {
         Self {
             site: self.site,
@@ -186,7 +192,7 @@ impl ContestState {
     }
 }
 
-impl ValidatedState {
+impl Validated {
     pub fn site(&self) -> &str {
         &self.site
     }
@@ -207,8 +213,8 @@ impl ValidatedState {
         &self.source_path
     }
 
-    pub fn try_update(&self, transition: StateTransition) -> Result<ValidatedState> {
-        let mut new_state = ContestState::new()
+    pub fn try_update(&self, transition: Transition) -> Result<Validated> {
+        let mut new_state = State::new()
             .with_site(self.site.as_ref().clone())
             .with_contest_id(self.contest_id.as_ref().clone())
             .with_problem_id(self.problem_id.as_ref().clone())
@@ -220,7 +226,7 @@ impl ValidatedState {
     }
 }
 
-impl PartialEq for ValidatedState {
+impl PartialEq for Validated {
     fn eq(&self, other: &Self) -> bool {
         self.site == other.site &&
         self.contest_id == other.contest_id &&
@@ -230,4 +236,4 @@ impl PartialEq for ValidatedState {
     }
 }
 
-impl Eq for ValidatedState {} 
+impl Eq for Validated {} 

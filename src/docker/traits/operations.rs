@@ -5,7 +5,7 @@ use crate::docker::config::ContainerConfig;
 
 /// Docker操作の基本機能を提供するトレイト
 #[async_trait]
-pub trait DockerOperations: Send + Sync {
+pub trait Operations: Send + Sync {
     /// コンテナを作成し、初期化する
     async fn initialize(&mut self, config: ContainerConfig) -> Result<()>;
 
