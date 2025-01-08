@@ -1,23 +1,21 @@
-use anyhow::Error;
-
-pub type DockerResult<T> = Result<T, Error>;
-
-pub fn docker_err(error: impl Into<String>, message: impl Into<String>) -> Error {
-    Error::msg(error.into()).context(message.into())
-}
-
-pub fn execution_err(error: impl Into<String>, message: impl Into<String>) -> Error {
-    Error::msg("実行エラー").context(format!("{}: {}", message.into(), error.into()))
-}
-
-pub fn compilation_err(error: impl Into<String>, message: impl Into<String>) -> Error {
-    Error::msg("コンパイルエラー").context(format!("{}: {}", message.into(), error.into()))
-}
-
-pub fn container_err(error: impl Into<String>, message: impl Into<String>) -> Error {
-    Error::msg("コンテナエラー").context(format!("{}: {}", message.into(), error.into()))
-}
-
-pub fn state_err(error: impl Into<String>, message: impl Into<String>) -> Error {
-    Error::msg("状態エラー").context(format!("{}: {}", message.into(), error.into()))
-} 
+// このファイルは削除します。代わりにanyhow::Errorを直接使用します。
+// エラーは以下のように作成します：
+//
+// ```rust
+// use anyhow::{Error, Result, Context};
+//
+// // Dockerエラーの場合
+// Err(anyhow!("Dockerエラー: {}", message))
+//
+// // 実行エラーの場合
+// Err(anyhow!("実行エラー: {}", message))
+//
+// // コンパイルエラーの場合
+// Err(anyhow!("コンパイルエラー: {}", message))
+//
+// // コンテナエラーの場合
+// Err(anyhow!("コンテナエラー: {}", message))
+//
+// // 状態エラーの場合
+// Err(anyhow!("状態エラー: {}", message))
+// ``` 

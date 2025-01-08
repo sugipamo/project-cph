@@ -1,3 +1,4 @@
+# 必ずanyhow::Errorのみを使用する
 disallowed-types = [
     "std::error::Error",
     "std::io::Error",

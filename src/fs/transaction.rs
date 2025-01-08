@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use anyhow::{Error, Result, Context};
-use crate::error::fs::*;
+use anyhow::{Result, anyhow, Context};
 use crate::fs::ensure_path_exists;
 
 /// ファイル操作のトレイト
@@ -118,29 +117,31 @@ impl FileTransaction {
     /// 状態遷移を適用
     pub fn apply_transition(self, transition: TransactionTransition) -> Result<Self> {
         match (&self.state, transition) {
-            (TransactionState::Pending { .. }, TransactionTransition::AddOperation(op)) => {
-                let mut operations = (*self.operations).clone();
-                operations.push(op);
-                Ok(self.with_operations(operations))
-            }
-            (TransactionState::Pending { .. }, TransactionTransition::Execute) => {
-                // 全ての操作を検証
-                for op in self.operations.iter() {
-                    op.validate().map_err(|e| {
-                        transaction_error(format!("操作の検証に失敗: {}", e))
-                    })?;
+            (TransactionState::Pending { .. }, TransactionTransition::AddOperation(operation)) => {
+                // 操作の検証
+                if let Err(e) = operation.validate() {
+                    return Err(anyhow!("操作の検証に失敗: {}", e));
                 }
 
+                let mut operations = (*self.operations).clone();
+                operations.push(operation);
+
+                Ok(Self {
+                    operations: Arc::new(operations),
+                    state: self.state,
+                })
+            }
+            (TransactionState::Pending { .. }, TransactionTransition::Execute) => {
                 // 全ての操作を実行
                 for op in self.operations.iter() {
                     if let Err(e) = op.execute() {
                         // エラーが発生した場合、実行済みの操作をロールバック
                         for prev_op in self.operations.iter().rev() {
                             if let Err(rollback_err) = prev_op.rollback() {
-                                return Err(transaction_error(format!(
+                                return Err(anyhow!(
                                     "ロールバックに失敗: {}（元のエラー: {}）",
                                     rollback_err, e
-                                )));
+                                ));
                             }
                         }
                         return Ok(self.with_state(TransactionState::Failed {
@@ -154,12 +155,12 @@ impl FileTransaction {
                     executed_at: TransactionState::now(),
                 }))
             }
-            (TransactionState::Executed { .. }, TransactionTransition::Rollback) => {
-                // 全ての操作を逆順でロールバック
+            (TransactionState::Pending { .. }, TransactionTransition::Rollback) => {
+                // 全ての操作をロールバック
                 for op in self.operations.iter().rev() {
-                    op.rollback().map_err(|e| {
-                        transaction_error(format!("ロールバックに失敗: {}", e))
-                    })?;
+                    if let Err(e) = op.rollback() {
+                        return Err(anyhow!("ロールバックに失敗: {}", e));
+                    }
                 }
 
                 Ok(self.with_state(TransactionState::RolledBack {
@@ -167,10 +168,10 @@ impl FileTransaction {
                 }))
             }
             (state, transition) => {
-                Err(transaction_error(format!(
+                Err(anyhow!(
                     "無効な状態遷移です: {:?} -> {:?}",
                     state, transition
-                )))
+                ))
             }
         }
     }
@@ -228,7 +229,7 @@ impl FileTransaction {
                 })
             }
             _ => {
-                Err(transaction_error("トランザクションの結合は保留状態でのみ可能です"))
+                Err(anyhow!("トランザクションの結合は保留状態でのみ可能です"))
             }
         }
     }
@@ -273,7 +274,7 @@ impl FileOperation for CreateFileOperation {
 
     fn validate(&self) -> Result<()> {
         if self.path.exists() {
-            return Err(validation_error(format!("ファイルが既に存在します: {}", self.path.display())));
+            return Err(anyhow!("ファイルが既に存在します: {}", self.path.display()));
         }
         Ok(())
     }
@@ -327,7 +328,7 @@ impl FileOperation for DeleteFileOperation {
 
     fn validate(&self) -> Result<()> {
         if !self.path.exists() {
-            return Err(validation_error(format!("ファイルが存在しません: {}", self.path.display())));
+            return Err(anyhow!("ファイルが存在しません: {}", self.path.display()));
         }
         Ok(())
     }

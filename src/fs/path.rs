@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
-use anyhow::{Result, Context};
-use crate::error::fs::*;
+use anyhow::{Result, anyhow, Context};
 
 /// パスの検証レベルを定義する列挙型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,28 +50,29 @@ impl PathValidator {
 
         // 基本的な検証
         if path.is_absolute() {
-            return Err(invalid_path_error(path));
+            return Err(anyhow!("無効なパスです: 絶対パスは許可されていません"));
         }
 
         let path_str = path.to_string_lossy();
         if path_str.len() > self.max_path_length {
-            return Err(invalid_path_error(format!("パスが長すぎます（最大{}バイト）", self.max_path_length)));
+            return Err(anyhow!("無効なパスです: パスが長すぎます（最大{}バイト）", self.max_path_length));
         }
 
         // パスコンポーネントの検証
         for component in path.components() {
             match component {
                 std::path::Component::ParentDir => {
-                    return Err(invalid_path_error("パストラバーサルは許可されていません"));
+                    return Err(anyhow!("無効なパスです: パストラバーサルは許可されていません"));
                 }
                 std::path::Component::RootDir => {
-                    return Err(invalid_path_error("絶対パスは許可されていません"));
+                    return Err(anyhow!("無効なパスです: 絶対パスは許可されていません"));
                 }
                 std::path::Component::Normal(name) => {
                     let name_str = name.to_string_lossy();
                     if name_str.len() > self.max_filename_length {
-                        return Err(invalid_path_error(
-                            format!("ファイル名が長すぎます（最大{}バイト）", self.max_filename_length)
+                        return Err(anyhow!(
+                            "無効なパスです: ファイル名が長すぎます（最大{}バイト）",
+                            self.max_filename_length
                         ));
                     }
 
@@ -82,12 +82,12 @@ impl PathValidator {
                             c.is_control() || c == '<' || c == '>' || c == ':' || c == '"' ||
                             c == '/' || c == '\\' || c == '|' || c == '?' || c == '*'
                         }) {
-                            return Err(invalid_path_error("ファイル名に無効な文字が含まれています"));
+                            return Err(anyhow!("無効なパスです: ファイル名に無効な文字が含まれています"));
                         }
 
                         // 非ASCII文字のチェック（必要に応じて）
                         if !name_str.chars().all(|c| c.is_ascii()) {
-                            return Err(invalid_path_error("ファイル名に非ASCII文字が含まれています"));
+                            return Err(anyhow!("無効なパスです: ファイル名に非ASCII文字が含まれています"));
                         }
                     }
                 }

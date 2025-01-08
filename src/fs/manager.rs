@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use anyhow::{Result, Context};
+use anyhow::{Result, anyhow, Context};
 use crate::error::fs::*;
 use crate::fs::path::normalize_path;
 use crate::fs::{FileOperation, FileTransaction, CreateFileOperation, DeleteFileOperation};
@@ -65,7 +65,7 @@ impl FileManager {
                 })
             },
             (state, transition) => {
-                Err(transaction_error(format!("無効な状態遷移: {:?} -> {:?}", state, transition)))
+                Err(anyhow!("無効な状態遷移: {:?} -> {:?}", state, transition))
             }
         }
     }
@@ -86,7 +86,7 @@ impl FileManager {
     pub fn read_file(&self, path: impl AsRef<Path>) -> Result<String> {
         let path = normalize_path(&*self.root, path)?;
         if !path.exists() {
-            return Err(not_found_error(&path));
+            return Err(anyhow!("ファイルが見つかりません: {}", path.display()));
         }
         std::fs::read_to_string(&path)
             .context(format!("ファイルの読み込みに失敗: {}", path.display()))

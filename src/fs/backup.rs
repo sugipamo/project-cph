@@ -2,8 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::TempDir;
-use anyhow::{Result, Context};
-use crate::error::fs::*;
+use anyhow::{Result, anyhow, Context};
 use crate::fs::ensure_path_exists;
 
 /// バックアップを管理する構造体
@@ -40,7 +39,7 @@ impl BackupManager {
                 &backup_path,
                 &fs_extra::dir::CopyOptions::new(),
             )
-            .map_err(|e| backup_error(format!("バックアップの作成に失敗しました: {}", e)))?;
+            .map_err(|e| anyhow!("バックアップの作成に失敗しました: {}", e))?;
         }
 
         Ok(Self {
@@ -54,7 +53,7 @@ impl BackupManager {
             if backup_dir.exists() {
                 let options = fs_extra::dir::CopyOptions::new();
                 fs_extra::dir::copy(&**backup_dir, "..", &options)
-                    .map_err(|e| backup_error(format!("バックアップからの復元に失敗しました: {}", e)))?;
+                    .map_err(|e| anyhow!("バックアップからの復元に失敗しました: {}", e))?;
             }
         }
 
