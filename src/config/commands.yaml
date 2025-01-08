@@ -10,9 +10,9 @@ commands:
       aliases: ["s", "sub"]
   settings:
     contest:
-      priority: 2
-    problem:
       priority: 1
+    problem:
+      priority: 2
     language:
       rust:
         aliases: ["rs", "Rust", "RUST"]

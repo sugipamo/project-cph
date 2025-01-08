@@ -36,9 +36,16 @@ impl Config {
         Self::from_file("src/config/commands.yaml").unwrap_or_else(|_| Self::default_config())
     }
 
+    /// ファイルからConfigを読み込みます
+    /// 
+    /// # Errors
+    /// 
+    /// - ファイルが存在しない場合
+    /// - ファイルの読み込みに失敗した場合
+    /// - YAMLのパースに失敗した場合
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let contents = fs::read_to_string(path)?;
-        let mut config: Config = serde_yaml::from_str(&contents)?;
+        let mut config: Self = serde_yaml::from_str(&contents)?;
         config.build_alias_map();
         Ok(config)
     }
@@ -75,21 +82,32 @@ impl Config {
         self.alias_map.clear();
         for (category, subcmds) in &self.commands {
             for (original, value) in subcmds {
-                if let CommandValue::Command { aliases } = value {
-                    for alias in aliases {
-                        self.alias_map.insert(
-                            alias.clone(),
-                            AliasInfo {
-                                original: original.clone(),
-                                category: category.clone(),
-                            },
-                        );
+                match value {
+                    CommandValue::Command { aliases } => {
+                        for alias in aliases {
+                            if !alias.contains(char::is_whitespace) {
+                                self.alias_map.insert(
+                                    alias.clone(),
+                                    AliasInfo {
+                                        original: original.clone(),
+                                        category: category.clone(),
+                                    },
+                                );
+                            }
+                        }
+                    }
+                    CommandValue::Setting { priority: _ } => {
+                        // priorityの設定は無視
                     }
                 }
             }
         }
     }
 
+    /// トークンに対応するエイリアスを解決します
+    /// 
+    /// 返り値は (コマンドタイプ, 実際の値) のタプルです
+    #[must_use]
     pub fn resolve_alias(&self, token: &str) -> Option<(String, String)> {
         self.alias_map.get(token).map(|info| {
             (info.category.clone(), info.original.clone())

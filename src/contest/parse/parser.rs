@@ -33,24 +33,36 @@ impl Parser {
         }
     }
 
-    #[must_use = "この関数は新しいParserインスタンスを返します"]
-    pub fn with_config(config: crate::contest::parse::config::Config) -> Self {
+    /// 新しいParserインスタンスを設定で初期化します
+    #[must_use]
+    pub const fn with_config(config: crate::contest::parse::config::Config) -> Self {
         Self { config }
     }
 
+    /// `入力文字列`をパースして`CommandContext`を生成します
+    /// 
+    /// # Errors
+    /// 
+    /// - 入力文字列のパースに失敗した場合
+    /// - コマンドの解釈に失敗した場合
     pub fn parse(&self, input: &str) -> Result<CommandContext> {
-        let tokens: Vec<&str> = input.split_whitespace().collect();
-        if tokens.is_empty() {
+        let input = input.trim();
+        if input.is_empty() {
             return Err(anyhow!("入力が空です"));
         }
 
+        let tokens: Vec<&str> = input.split_whitespace().collect();
+        Ok(self.parse_tokens(&tokens))
+    }
+
+    fn parse_tokens(&self, tokens: &[&str]) -> CommandContext {
         let mut interpretations = Vec::new();
         for token in tokens {
-            let token_interp = self.interpret_token(token)?;
+            let token_interp = self.interpret_token(token);
             interpretations.push(token_interp);
         }
 
-        Ok(Self::build_command(&interpretations))
+        Self::build_command(&interpretations)
     }
 
     fn get_token_type(token: &str) -> Option<TokenType> {
@@ -63,34 +75,35 @@ impl Parser {
         }
     }
 
-    fn interpret_token(&self, token: &str) -> Result<TokenInterpretation> {
+    /// トークンを解釈し、可能な解釈のリストを返します
+    fn interpret_token(&self, token: &str) -> TokenInterpretation {
         let mut interpretations = Vec::new();
-
-        // エテゴリ直接マッチを試みる
-        if let Some(token_type) = Self::get_token_type(token) {
-            interpretations.push((token_type, token.to_string()));
-            return Ok(TokenInterpretation {
-                token: token.to_string(),
-                interpretations,
-            });
-        }
 
         // エイリアス解決を試みる
         if let Some((category, original)) = self.config.resolve_alias(token) {
             if let Some(token_type) = Self::get_token_type(&category) {
                 interpretations.push((token_type, original));
-                return Ok(TokenInterpretation {
+                return TokenInterpretation {
                     token: token.to_string(),
                     interpretations,
-                });
+                };
             }
         }
 
+        // カテゴリ直接マッチを試みる
+        if let Some(token_type) = Self::get_token_type(token) {
+            interpretations.push((token_type, token.to_string()));
+            return TokenInterpretation {
+                token: token.to_string(),
+                interpretations,
+            };
+        }
+
         // 解釈できなかった場合は空の解釈リストを返す
-        Ok(TokenInterpretation {
+        TokenInterpretation {
             token: token.to_string(),
             interpretations,
-        })
+        }
     }
 
     fn assign_interpreted_tokens(
@@ -124,22 +137,21 @@ impl Parser {
         let mut problem_id = problem_id;
         
         // エイリアスとして解釈できなかったトークンを収集
-        let mut tokens = interpretations
+        let uninterpreted_tokens: Vec<_> = interpretations
             .iter()
-            .filter(|i| i.interpretations.is_empty());
+            .filter(|i| i.interpretations.is_empty())
+            .map(|i| i.token.clone())
+            .collect();
 
-        // contest_idが未設定の場合、最初の未解釈トークンをcontest_idとして使用
-        if contest_id.is_none() {
-            if let Some(token) = tokens.next() {
-                contest_id = Some(token.token.clone());
+        // 未解釈トークンがある場合、priorityの高い順に割り当てる
+        if !uninterpreted_tokens.is_empty() {
+            // priority=2のcontest_idを先に割り当て
+            if contest_id.is_none() && !uninterpreted_tokens.is_empty() {
+                contest_id = Some(uninterpreted_tokens[0].clone());
             }
-        }
-
-        // problem_idが未設定で、まだ未解釈トークンが残っている場合
-        // 次の未解釈トークンをproblem_idとして使用
-        if problem_id.is_none() {
-            if let Some(token) = tokens.next() {
-                problem_id = Some(token.token.clone());
+            // priority=1のproblem_idを次に割り当て
+            if problem_id.is_none() && uninterpreted_tokens.len() > 1 {
+                problem_id = Some(uninterpreted_tokens[1].clone());
             }
         }
 
