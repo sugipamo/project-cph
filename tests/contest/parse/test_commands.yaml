@@ -1,0 +1,12 @@
+commands:
+  site:
+    atcoder:
+      aliases: ["at"]
+  language:
+    rust:
+      aliases: ["rs"]
+  settings:
+    contest:
+      priority: 2
+    problem:
+      priority: 1 

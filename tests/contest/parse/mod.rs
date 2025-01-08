@@ -1,5 +1,4 @@
-mod config;
-mod parser;
-
 #[cfg(test)]
-mod tests {} 
+mod config;
+#[cfg(test)]
+mod parser; 
