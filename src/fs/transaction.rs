@@ -163,6 +163,17 @@ impl Transaction {
             (State::Pending { .. }, Transition::Execute) => {
                 // 全ての操作を実行
                 for op in self.operations.iter() {
+                    // 検証を実行
+                    if let Err(e) = op.validate() {
+                        return Ok(self.with_state(State::Failed {
+                            error: e.to_string(),
+                            failed_at: State::now(),
+                        }));
+                    }
+                }
+
+                // 全ての操作を実行
+                for op in self.operations.iter() {
                     if let Err(e) = op.execute() {
                         // エラーが発生した場合、実行済みの操作をロールバック
                         for prev_op in self.operations.iter().rev() {
@@ -300,9 +311,6 @@ impl CreateFileOperation {
 
 impl FileOperation for CreateFileOperation {
     fn execute(&self) -> Result<()> {
-        if let Err(e) = self.validate() {
-            return Err(anyhow!("ファイル作成の検証に失敗しました: {}", e));
-        }
         if let Some(parent) = self.path.parent() {
             ensure_path_exists(parent)?;
         }
@@ -311,9 +319,6 @@ impl FileOperation for CreateFileOperation {
     }
 
     fn rollback(&self) -> Result<()> {
-        if let Err(e) = self.validate() {
-            return Err(anyhow!("ファイル作成のロールバックの検証に失敗しました: {}", e));
-        }
         if self.path.exists() {
             std::fs::remove_file(&*self.path)
                 .map_err(|e| anyhow!("ファイルの削除に失敗: {}: {}", self.path.display(), e))?;

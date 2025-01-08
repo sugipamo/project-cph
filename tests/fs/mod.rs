@@ -1,6 +1,5 @@
-mod operations;
-mod path;
-mod backup;
-// 他のモジュールは後で追加します
-// mod manager;
-// mod transaction; 
+pub mod backup;
+pub mod operations;
+pub mod manager;
+pub mod path;
+pub mod transaction; 
