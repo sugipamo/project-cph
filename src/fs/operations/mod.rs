@@ -2,6 +2,7 @@ pub mod check;
 pub mod delete;
 pub mod read;
 pub mod write;
+mod validate;
 
 pub use check::*;
 pub use delete::*;
@@ -12,5 +13,4 @@ pub use write::*;
 pub use std::path::PathBuf;
 pub use std::fs::{Metadata as FileMetadata, Permissions as FilePermissions};
 
-pub use anyhow::Result;
-pub use crate::fs_err; 
+pub use anyhow::{Result, Context}; 

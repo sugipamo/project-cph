@@ -1,5 +1,6 @@
 use std::path::Path;
 use anyhow::{Result, anyhow};
+use super::validate::validate_parent_exists;
 
 /// ディレクトリが存在することを確認し、存在しない場合は作成します。
 /// 
@@ -28,9 +29,7 @@ pub fn ensure_directory(path: impl AsRef<Path>) -> Result<()> {
 pub fn ensure_file(path: impl AsRef<Path>) -> Result<()> {
     let path = path.as_ref();
     if !path.exists() {
-        if let Some(parent) = path.parent() {
-            ensure_directory(parent)?;
-        }
+        validate_parent_exists(path)?;
         std::fs::File::create(path)
             .map_err(|e| anyhow!("ファイルの作成に失敗しました: {}", e))?;
     }
@@ -45,13 +44,12 @@ pub fn ensure_file(path: impl AsRef<Path>) -> Result<()> {
 /// 
 /// # Errors
 /// - ファイルの作成に失敗した場合
-/// - ファイルへの書き込みに失敗した場合
-/// - パスの親ディレクトリの作成に失敗した場合
+/// - ファイルの書き込みに失敗した場合
 pub fn save_to_file(path: impl AsRef<Path>, content: impl AsRef<[u8]>) -> Result<()> {
     let path = path.as_ref();
     if let Some(parent) = path.parent() {
         ensure_directory(parent)?;
     }
     std::fs::write(path, content)
-        .map_err(|e| anyhow!("ファイルへの書き込みに失敗しました: {}", e))
+        .map_err(|e| anyhow!("ファイルの書き込みに失敗しました: {}", e))
 } 

@@ -1,5 +1,6 @@
 use std::path::Path;
 use anyhow::{Result, anyhow};
+use super::validate::validate_is_file;
 
 /// ファイルの内容を文字列として読み込みます。
 /// 
@@ -14,12 +15,7 @@ use anyhow::{Result, anyhow};
 #[must_use = "この関数はファイルの内容を返します"]
 pub fn load_file_as_string(path: impl AsRef<Path>) -> Result<String> {
     let path = path.as_ref();
-    if !path.exists() {
-        return Err(anyhow!("パスが存在しません: {}", path.display()));
-    }
-    if !path.is_file() {
-        return Err(anyhow!("パスがファイルではありません: {}", path.display()));
-    }
+    validate_is_file(path)?;
     std::fs::read_to_string(path)
         .map_err(|e| anyhow!("ファイルの読み込みに失敗しました: {}", e))
 }
@@ -36,12 +32,7 @@ pub fn load_file_as_string(path: impl AsRef<Path>) -> Result<String> {
 #[must_use = "この関数はファイルの内容をバイト列として返します"]
 pub fn load_file_as_bytes(path: impl AsRef<Path>) -> Result<Vec<u8>> {
     let path = path.as_ref();
-    if !path.exists() {
-        return Err(anyhow!("パスが存在しません: {}", path.display()));
-    }
-    if !path.is_file() {
-        return Err(anyhow!("パスがファイルではありません: {}", path.display()));
-    }
+    validate_is_file(path)?;
     std::fs::read(path)
         .map_err(|e| anyhow!("ファイルの読み込みに失敗しました: {}", e))
 }
@@ -57,9 +48,7 @@ pub fn load_file_as_bytes(path: impl AsRef<Path>) -> Result<Vec<u8>> {
 #[must_use = "この関数はファイルのメタデータを返します"]
 pub fn get_metadata(path: impl AsRef<Path>) -> Result<std::fs::Metadata> {
     let path = path.as_ref();
-    if !path.exists() {
-        return Err(anyhow!("パスが存在しません: {}", path.display()));
-    }
+    validate_is_file(path)?;
     path.metadata()
         .map_err(|e| anyhow!("メタデータの取得に失敗しました: {}", e))
 } 
