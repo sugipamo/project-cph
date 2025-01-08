@@ -54,12 +54,12 @@ impl Service {
     }
 
     #[must_use = "この関数は新しいCommandContextインスタンスを返します"]
-    pub fn with_contest(&self, command: Command, contest: Contest) -> CommandContext {
+    pub const fn with_contest(&self, command: Command, contest: Contest) -> CommandContext {
         CommandContext::with_contest(command, contest)
     }
 
     #[must_use = "この関数は新しいCommandContextインスタンスを返します"]
-    pub fn without_contest(&self, command: Command) -> CommandContext {
+    pub const fn without_contest(&self, command: Command) -> CommandContext {
         CommandContext::new(command)
     }
 } 

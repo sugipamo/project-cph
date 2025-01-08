@@ -2,7 +2,7 @@ pub use anyhow::{Error, Result, Context as _};
 
 // マクロのみを残す
 #[macro_export]
-macro_rules! define_error {
+macro_rules! define_error_type {
     ($name:ident, $($variant:ident => $message:expr),* $(,)?) => {
         #[derive(Debug, thiserror::Error)]
         pub enum $name {
@@ -14,7 +14,7 @@ macro_rules! define_error {
     };
 }
 
-// 基本的なエラマクロ
+// 基本的なエラーマクロ
 #[macro_export]
 macro_rules! fs_err {
     ($msg:expr) => {

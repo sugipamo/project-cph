@@ -18,8 +18,8 @@ use anyhow::{Error, Result, Context as _, anyhow};
 // 基本的な設定ノード
 #[derive(Clone, PartialEq, Eq)]
 pub struct Node {
-    value: Arc<Value>,
-    metadata: Arc<Metadata>,
+    value: Value,
+    metadata: Metadata,
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -30,10 +30,10 @@ pub struct Metadata {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Schema {
+pub struct SchemaMetadata {
     description: Option<String>,
     required: bool,
-    children: HashMap<String, Schema>,
+    children: HashMap<String, SchemaMetadata>,
     schema_type: SchemaType,
 }
 
@@ -57,45 +57,6 @@ pub trait SchemaValidator: Send + Sync + std::fmt::Debug {
 }
 
 pub trait Access {
-    /// パスに対応する設定値を取得します
-    /// # Errors
-    /// - パスが見つからない場合
-    /// - 値の型が一致しない場合
-    fn get(&self, path: &str) -> Result<Node>;
-
-    /// パターンに一致する全ての設定値を取得します
-    /// # Errors
-    /// - パターンが無効な場合
-    /// - 値の型が一致しない場合
-    fn get_all(&self, pattern: &str) -> Result<Vec<Node>>;
-}
-
-// スキーマ定義
-#[derive(Clone, Debug)]
-pub enum ConfigSchema {
-    Primitive(PrimitiveType),
-    Array(Box<ConfigSchema>),
-    Object(HashMap<String, ConfigSchema>),
-    Union(Vec<ConfigSchema>),
-    Custom(Arc<dyn CustomSchema>),
-}
-
-#[derive(Clone, Debug)]
-pub enum PrimitiveType {
-    String,
-    Number,
-    Boolean,
-    Null,
-}
-
-// カスタムスキーマのトレイト
-pub trait CustomSchema: Send + Sync + std::fmt::Debug {
-    fn validate(&self, value: &Value) -> Result<()>;
-    fn describe(&self) -> String;
-}
-
-// 設定アクセスのトレイト
-pub trait ConfigAccess {
     /// 指定されたパスの設定値を取得します。
     /// 
     /// # Errors
@@ -109,7 +70,52 @@ pub trait ConfigAccess {
     /// - パターンが無効な正規表現の場合にエラーを返します。
     /// - パスの形式が無効な場合にエラーを返します。
     fn get_all(&self, pattern: &str) -> Result<Vec<Arc<Node>>>;
+
+    /// 指定されたパスの設定値が存在するかどうかを確認します。
+    ///
+    /// # Returns
+    /// * `bool` - 設定値が存在する場合はtrue
+    fn exists(&self, path: &str) -> bool;
 }
+
+// スキーマ定義
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Schema {
+    Primitive(PrimitiveType),
+    Array(Box<Schema>),
+    Object(HashMap<String, Schema>),
+    Union(Vec<Schema>),
+    Custom(Arc<dyn CustomSchema>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PrimitiveType {
+    String,
+    Number,
+    Boolean,
+    Null,
+}
+
+// カスタムスキーマのトレイト
+pub trait CustomSchema: Send + Sync + std::fmt::Debug {
+    /// カスタムスキーマの検証を行います。
+    /// 
+    /// # Errors
+    /// 
+    /// 値がスキーマに適合しない場合にエラーを返します。
+    fn validate(&self, value: &Value) -> Result<()>;
+    
+    fn describe(&self) -> String;
+    fn eq(&self, other: &dyn CustomSchema) -> bool;
+}
+
+impl PartialEq for dyn CustomSchema {
+    fn eq(&self, other: &Self) -> bool {
+        self.eq(other)
+    }
+}
+
+impl Eq for dyn CustomSchema {}
 
 // インの設定構造体
 #[derive(Clone, PartialEq, Eq)]
@@ -118,17 +124,18 @@ pub struct Config {
 }
 
 // ConfigNodeの実装
+#[allow(dead_code)]
 impl Node {
     /// 新しい設定ノードを作成します
     #[must_use]
-    pub fn new(value: Value, path: String) -> Self {
+    pub const fn new(value: Value, path: String) -> Self {
         Self {
-            value: Arc::new(value),
-            metadata: Arc::new(Metadata {
+            value,
+            metadata: Metadata {
                 path,
-                schema: None,
                 description: None,
-            }),
+                schema: None,
+            },
         }
     }
 
@@ -136,12 +143,12 @@ impl Node {
     #[must_use]
     pub fn with_schema(self, schema: Schema) -> Self {
         Self {
-            value: self.value.clone(),
-            metadata: Arc::new(Metadata {
-                path: self.metadata.path.clone(),
+            value: self.value,
+            metadata: Metadata {
+                path: self.metadata.path,
                 schema: Some(schema),
-                description: self.metadata.description.clone(),
-            }),
+                description: self.metadata.description,
+            },
         }
     }
 
@@ -149,12 +156,12 @@ impl Node {
     #[must_use]
     pub fn with_description(self, description: String) -> Self {
         Self {
-            value: self.value.clone(),
-            metadata: Arc::new(Metadata {
-                path: self.metadata.path.clone(),
-                schema: self.metadata.schema.clone(),
+            value: self.value,
+            metadata: Metadata {
+                path: self.metadata.path,
+                schema: self.metadata.schema,
                 description: Some(description),
-            }),
+            },
         }
     }
 
@@ -167,36 +174,41 @@ impl Node {
         T::from_config_value(&self.value)
     }
 
+    #[must_use]
     pub fn as_str(&self) -> Option<&str> {
-        match &*self.value {
+        match &self.value {
             Value::String(s) => Some(s),
             _ => None,
         }
     }
 
+    #[must_use]
     pub fn as_i64(&self) -> Option<i64> {
-        match &*self.value {
+        match &self.value {
             Value::Number(n) => n.as_i64(),
             _ => None,
         }
     }
 
-    pub fn as_bool(&self) -> Option<bool> {
-        match &*self.value {
+    #[must_use]
+    pub const fn as_bool(&self) -> Option<bool> {
+        match &self.value {
             Value::Bool(b) => Some(*b),
             _ => None,
         }
     }
 
-    pub fn as_mapping(&self) -> Option<&serde_yaml::Mapping> {
-        match &*self.value {
+    #[must_use]
+    pub const fn as_mapping(&self) -> Option<&serde_yaml::Mapping> {
+        match &self.value {
             Value::Mapping(m) => Some(m),
             _ => None,
         }
     }
 
-    pub fn as_sequence(&self) -> Option<&Vec<Value>> {
-        match &*self.value {
+    #[must_use]
+    pub const fn as_sequence(&self) -> Option<&Vec<Value>> {
+        match &self.value {
             Value::Sequence(s) => Some(s),
             _ => None,
         }
@@ -207,12 +219,52 @@ impl Node {
     /// # Errors
     /// - キーが存在しない場合にエラーを返します。
     pub fn key(&self) -> Result<String> {
-        Ok(self.key.clone())
+        Ok(self.metadata.path.clone())
+    }
+
+    fn get_from_map(&self, parts: &[String]) -> Result<Arc<Self>> {
+        match &self.value {
+            Value::Mapping(map) => {
+                let part = parts.first().ok_or_else(|| anyhow!("無効なパス"))?;
+                let value = map.get(Value::String(part.to_string()))
+                    .ok_or_else(|| anyhow!("パスが見つかりません"))?;
+                if parts.len() == 1 {
+                    Ok(Arc::new(Self::new(value.clone(), part.clone())))
+                } else {
+                    let node = Self::new(value.clone(), part.clone());
+                    node.get_from_map(&parts[1..])
+                }
+            }
+            _ => Err(anyhow!("無効なパス")),
+        }
+    }
+
+    fn get_all_from_map(&self, pattern: &Regex, path: &str) -> Result<Vec<Arc<Self>>> {
+        match &self.value {
+            Value::Mapping(map) => {
+                let mut result = Vec::new();
+                for (key, value) in map {
+                    if let Value::String(key_str) = key {
+                        if pattern.is_match(key_str) {
+                            result.push(Arc::new(Self::new(value.clone(), key_str.clone())));
+                        }
+                        if let Value::Mapping(_) = value {
+                            let node = Self::new(value.clone(), key_str.clone());
+                            let mut sub_result = node.get_all_from_map(pattern, &format!("{path}.{key_str}"))?;
+                            result.append(&mut sub_result);
+                        }
+                    }
+                }
+                Ok(result)
+            }
+            _ => Ok(Vec::new()),
+        }
     }
 }
 
 // Configの実装
 impl Config {
+    #[must_use]
     pub fn new(root_value: Value) -> Self {
         Self {
             root: Arc::new(Node::new(root_value, String::from("root"))),
@@ -266,7 +318,7 @@ impl Config {
         self.get_node(path).and_then(|node| node.as_typed())
     }
 
-    /// 指定されたパスの設定�ードを取得します。
+    /// 指定されたパスの設定ノードを取得します。
     /// 
     /// # Errors
     /// - パスが存在しない場合にエラーを返します。
@@ -281,7 +333,7 @@ impl Config {
         for part in parts {
             match current.as_mapping() {
                 Some(map) => {
-                    let value = map.get(&Value::String(part.to_string()))
+                    let value = map.get(Value::String(part.to_string()))
                         .ok_or_else(|| anyhow!("設定項目が見つかりません: {}", path))?;
                     current = value.as_node()
                         .ok_or_else(|| anyhow!("無効な設定値です: {}", path))?;
@@ -294,11 +346,11 @@ impl Config {
 
     fn resolve_path(&self, path: &str) -> Result<Value> {
         if path == "root" {
-            return Ok((*self.root.value).clone());
+            return Ok(self.root.value.clone());
         }
 
         let parts: Vec<&str> = path.split('.').collect();
-        let mut current = &*self.root.value;
+        let mut current = &self.root.value;
 
         for part in parts {
             match current {
@@ -323,7 +375,7 @@ impl Config {
     /// 
     /// # Errors
     /// - パスが存在しない場合にエラーを返します。
-    /// - 値の�シリアライズに失敗した場合にエラーを返します。
+    /// - 値のシリアライズに失敗した場合にエラーを返します。
     pub fn get_typed<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T> {
         let value = self.resolve_path(path)?;
         serde_yaml::from_value(value).map_err(|e| anyhow::anyhow!("型変換に失敗しました: {}", e))
@@ -335,7 +387,7 @@ impl Config {
     /// - パターンが無効な正規表現の場合にエラーを返します。
     pub fn get_all(&self, pattern: &str) -> Result<Vec<Arc<Node>>> {
         let regex = Regex::new(pattern)
-            .with_context(|| format!("無効な正規表現パターン: {}", pattern))?;
+            .with_context(|| format!("無効な正規表現パターン: {pattern}"))?;
 
         Ok(self.find_matching_paths(pattern)
             .into_iter()
@@ -351,7 +403,7 @@ impl Config {
 }
 
 // ConfigAccessの実装
-impl ConfigAccess for Config {
+impl Access for Config {
     /// 指定されたパスの設定値を取得します。
     /// 
     /// # Errors
@@ -368,7 +420,7 @@ impl ConfigAccess for Config {
     /// - パスの形式が無効な場合にエラーを返します。
     fn get_all(&self, pattern: &str) -> Result<Vec<Arc<Node>>> {
         let regex = Regex::new(pattern)
-            .with_context(|| format!("無効な正規表現パターン: {}", pattern))?;
+            .with_context(|| format!("無効な正規表現パターン: {pattern}"))?;
 
         Ok(self.find_matching_paths(pattern)
             .into_iter()
@@ -420,16 +472,16 @@ impl FromConfigValue for bool {
     fn from_config_value(value: &Value) -> Result<Self> {
         match value {
             Value::Bool(b) => Ok(*b),
-            _ => Err(anyhow!("真偽値型を期待しましたが、{}型が見つかりました", value.type_str())),
+            _ => Err(anyhow!("真偽値値型を期待しましたが、{}型が見つかりました", value.type_str())),
         }
     }
 }
 
-impl FromConfigValue for HashMap<String, String> {
+impl<S: ::std::hash::BuildHasher + Default> FromConfigValue for HashMap<String, String, S> {
     fn from_config_value(value: &Value) -> Result<Self> {
         match value {
             Value::Mapping(map) => {
-                let mut result = HashMap::new();
+                let mut result = Self::default();
                 for (key, value) in map {
                     let key = match key {
                         Value::String(s) => s.clone(),
@@ -456,7 +508,7 @@ impl FromConfigValue for Value {
 
 impl FromConfigValue for Node {
     fn from_config_value(value: &Value) -> Result<Self> {
-        Ok(Node::new(value.clone(), String::new()))
+        Ok(Self::new(value.clone(), String::new()))
     }
 }
 
@@ -477,13 +529,25 @@ impl std::fmt::Display for PrimitiveType {
     }
 }
 
-impl ConfigSchema {
+impl Schema {
+    /// 値を検証します
+    /// 
+    /// # Arguments
+    /// * `value` - 検証する値
+    ///
+    /// # Returns
+    /// * `Result<()>` - 検証結果
+    ///
+    /// # Errors
+    /// - 値の型が一致しない場合
+    /// - 値が無効な場合
+    /// - スキーマの制約に違反している場合
     pub fn validate(&self, value: &Value) -> Result<()> {
         match self {
             Self::Primitive(primitive_type) => match (primitive_type, value) {
-                (PrimitiveType::String, Value::String(_)) => Ok(()),
-                (PrimitiveType::Number, Value::Number(_)) => Ok(()),
-                (PrimitiveType::Boolean, Value::Bool(_)) => Ok(()),
+                (PrimitiveType::String, Value::String(_)) |
+                (PrimitiveType::Number, Value::Number(_)) |
+                (PrimitiveType::Boolean, Value::Bool(_)) |
                 (PrimitiveType::Null, Value::Null) => Ok(()),
                 _ => Err(anyhow!("値の型が一致しません")),
             },
@@ -503,14 +567,14 @@ impl ConfigSchema {
             Self::Object(properties) => {
                 if let Value::Mapping(map) = value {
                     for (key, schema) in properties {
-                        if let Some(value) = map.get(&Value::String(key.clone())) {
+                        if let Some(value) = map.get(Value::String(key.clone())) {
                             schema.validate(value)?;
                         }
                     }
                     Ok(())
                 } else {
                     Err(Error::msg(format!(
-                        "型エラー: object型を期待しましたが、{}型が見見つかりました",
+                        "型エラー: object型を期待しましたが、{}型が見つかりました",
                         value.type_str()
                     )))
                 }
@@ -531,19 +595,19 @@ impl ConfigSchema {
 impl ValueExt for Value {
     fn type_str(&self) -> &'static str {
         match self {
-            Value::Null => "null",
-            Value::Bool(_) => "boolean",
-            Value::Number(_) => "number",
-            Value::String(_) => "string",
-            Value::Sequence(_) => "array",
-            Value::Mapping(_) => "object",
-            Value::Tagged(_) => "tagged",
+            Self::Null => "null",
+            Self::Bool(_) => "boolean",
+            Self::Number(_) => "number",
+            Self::String(_) => "string",
+            Self::Sequence(_) => "array",
+            Self::Mapping(_) => "object",
+            Self::Tagged(_) => "tagged",
         }
     }
 
     fn as_node(&self) -> Option<Arc<Node>> {
-        if let Value::Mapping(m) = self {
-            if let Some(Value::String(node_type)) = m.get(&Value::String("type".to_string())) {
+        if let Self::Mapping(m) = self {
+            if let Some(Self::String(node_type)) = m.get(Self::String("type".to_string())) {
                 if node_type == "node" {
                     return Some(Arc::new(Node::new(self.clone(), String::new())));
                 }
@@ -574,6 +638,7 @@ impl Config {
         self.collect_paths(&self.root.value)
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn collect_paths(&self, value: &Value) -> Vec<String> {
         match value {
             Value::Mapping(map) => {
@@ -595,7 +660,7 @@ impl Config {
                                 if sub_path.is_empty() {
                                     key_for_sub.clone()
                                 } else {
-                                    format!("{}.{}", key_for_sub, sub_path)
+                                    format!("{key_for_sub}.{sub_path}")
                                 }
                             });
                         std::iter::once(key_str).chain(sub_paths).collect::<Vec<_>>()
@@ -614,7 +679,7 @@ impl Config {
                                 if sub_path.is_empty() {
                                     idx_for_sub.clone()
                                 } else {
-                                    format!("{}.{}", idx_for_sub, sub_path)
+                                    format!("{idx_for_sub}.{sub_path}")
                                 }
                             });
                         std::iter::once(idx_str).chain(sub_paths).collect::<Vec<_>>()

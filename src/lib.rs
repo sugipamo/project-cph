@@ -1,9 +1,9 @@
 pub mod config;
-pub mod docker;
 pub mod contest;
-pub mod fs;
+pub mod docker;
 pub mod error;
+pub mod fs;
 
-pub use config::Config;
-pub use contest::ContestHandler;
+pub use contest::{Command, Contest, Handler, TestCase, TestRunner};
+pub use docker::Runtime;
 pub use error::{Error, Result};

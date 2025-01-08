@@ -1,13 +1,13 @@
 use crate::config::Config as GlobalConfig;
 
-pub struct CommandResolver {
+pub struct Resolver {
     #[allow(dead_code)]
     config: GlobalConfig,
 }
 
-impl CommandResolver {
-    #[must_use = "この関数は新しいCommandResolverインスタンスを返します"]
-    pub fn new(config: GlobalConfig) -> Self {
+impl Resolver {
+    #[must_use]
+    pub const fn new(config: GlobalConfig) -> Self {
         Self { config }
     }
 } 

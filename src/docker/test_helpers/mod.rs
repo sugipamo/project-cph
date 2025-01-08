@@ -1,3 +1,5 @@
+#![allow(clippy::ref_option_ref)]
+
 use crate::docker::execution::{command, CommandOutput};
 use mockall::automock;
 use async_trait::async_trait;
@@ -30,9 +32,7 @@ pub trait TestCompilationManager: Send + Sync {
 }
 
 #[automock]
-pub trait TestHelper: Send + Sync {
-    fn get_container_id(&self) -> Option<String>;
-    fn get_command(&self) -> Option<String>;
-    fn get_exit_status(&self) -> Option<i32>;
-    fn get_error(&self) -> Option<String>;
+pub trait TestHelper {
+    fn get_test_case(&self) -> Option<String>;
+    fn get_expected_output(&self) -> Option<String>;
 } 

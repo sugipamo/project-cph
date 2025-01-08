@@ -100,7 +100,7 @@ impl Contest {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TestCase {
     pub input: String,
     pub expected: String,
@@ -108,8 +108,8 @@ pub struct TestCase {
 }
 
 impl TestCase {
-    #[must_use = "この関数は新しいTestCaseインスタンスを返します"]
-    pub fn new(input: String, expected: String) -> Self {
+    #[must_use]
+    pub const fn new(input: String, expected: String) -> Self {
         Self {
             input,
             expected,
@@ -118,7 +118,7 @@ impl TestCase {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
     Login,
     Open {
@@ -139,16 +139,16 @@ pub struct CommandContext {
 }
 
 impl CommandContext {
-    #[must_use = "この関数は新しいCommandContextインスタンスを返します"]
-    pub fn new(command: Command) -> Self {
+    #[must_use]
+    pub const fn new(command: Command) -> Self {
         Self {
             command,
             contest: None,
         }
     }
 
-    #[must_use = "この関数は新しいCommandContextインスタンスを返します"]
-    pub fn with_contest(command: Command, contest: Contest) -> Self {
+    #[must_use]
+    pub const fn with_contest(command: Command, contest: Contest) -> Self {
         Self {
             command,
             contest: Some(contest),
