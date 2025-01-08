@@ -1,6 +1,7 @@
 use std::process::Command;
 use std::borrow::Cow;
 use anyhow::{Result, anyhow};
+use crate::message::docker;
 
 /// Dockerコマンドの実行を担当する構造体
 ///
@@ -83,14 +84,14 @@ impl Executor {
 
         let output = command
             .output()
-            .map_err(|e| anyhow!("コマンド実行エラー: {}", e))?;
+            .map_err(|e| anyhow!(docker::error("command_failed", e)))?;
 
         if !output.status.success() {
             let error = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow!("コマンド実行エラー: コマンドの実行に失敗: {}", error));
+            return Err(anyhow!(docker::error("command_failed", error)));
         }
 
         String::from_utf8(output.stdout)
-            .map_err(|e| anyhow!("コマンド実行エラー: {}", e))
+            .map_err(|e| anyhow!(docker::error("command_failed", e)))
     }
 } 

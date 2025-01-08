@@ -1,5 +1,6 @@
 use std::process::Command;
 use anyhow::{Result, anyhow};
+use crate::message::docker;
 
 /// Dockerコンテナのランタイム管理を担当する構造体
 ///
@@ -42,21 +43,21 @@ impl Runtime {
     #[must_use = "この関数はコンテナの作成結果を返します"]
     pub fn create(&mut self, image: &str) -> Result<()> {
         if self.container_id.is_some() {
-            return Err(anyhow!("コンテナエラー: コンテナは既に作成されています"));
+            return Err(anyhow!(docker::error("container_error", "コンテナは既に作成されています")));
         }
 
         let output = Command::new("docker")
             .args(["create", image])
             .output()
-            .map_err(|e| anyhow!("コンテナエラー: コンテナの作成に失敗しました: {}", e))?;
+            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow!("コンテナエラー: コンテナの作成に失敗しました: {}", stderr));
+            return Err(anyhow!(docker::error("container_error", stderr)));
         }
 
         let container_id = String::from_utf8(output.stdout)
-            .map_err(|e| anyhow!("コンテナエラー: コンテナIDの解析に失敗しました: {}", e))?
+            .map_err(|e| anyhow!(docker::error("container_error", format!("コンテナIDの解析に失敗: {e}"))))?
             .trim()
             .to_string();
 
@@ -76,16 +77,16 @@ impl Runtime {
     pub fn start(&mut self) -> Result<()> {
         let container_id = self.container_id
             .as_ref()
-            .ok_or_else(|| anyhow!("コンテナエラー: コンテナが作成されていません"))?;
+            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが作成されていません")))?;
 
         let output = Command::new("docker")
             .args(["start", container_id])
             .output()
-            .map_err(|e| anyhow!("コンテナエラー: コンテナの起動に失敗しました: {}", e))?;
+            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow!("コンテナエラー: コンテナの起動に失敗しました: {}", stderr));
+            return Err(anyhow!(docker::error("container_error", stderr)));
         }
 
         Ok(())
@@ -103,16 +104,16 @@ impl Runtime {
     pub fn stop(&mut self) -> Result<()> {
         let container_id = self.container_id
             .as_ref()
-            .ok_or_else(|| anyhow!("コンテナエラー: コンテナが作成されていません"))?;
+            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが作成されていません")))?;
 
         let output = Command::new("docker")
             .args(["stop", container_id])
             .output()
-            .map_err(|e| anyhow!("コンテナエラー: コンテナの停止に失敗しました: {}", e))?;
+            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow!("コンテナエラー: コンテナの停止に失敗しました: {}", stderr));
+            return Err(anyhow!(docker::error("container_error", stderr)));
         }
 
         Ok(())
@@ -130,23 +131,23 @@ impl Runtime {
     pub fn wait(&mut self) -> Result<i32> {
         let container_id = self.container_id
             .as_ref()
-            .ok_or_else(|| anyhow!("コンテナエラー: コンテナが作成されていません"))?;
+            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが作成されていません")))?;
 
         let output = Command::new("docker")
             .args(["wait", container_id])
             .output()
-            .map_err(|e| anyhow!("コンテナエラー: 終了コードの取得に失敗しました: {}", e))?;
+            .map_err(|e| anyhow!(docker::error("container_error", format!("終了コードの取得に失敗: {e}"))))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow!("コンテナエラー: 終了コードの取得に失敗しました: {}", stderr));
+            return Err(anyhow!(docker::error("container_error", format!("終了コードの取得に失敗: {stderr}"))));
         }
 
         let exit_code = String::from_utf8(output.stdout)
-            .map_err(|e| anyhow!("コンテナエラー: 終了コードの解析に失敗しました: {}", e))?
+            .map_err(|e| anyhow!(docker::error("container_error", format!("終了コードの解析に失敗: {e}"))))?
             .trim()
             .parse()
-            .map_err(|e| anyhow!("コンテナエラー: 終了コードの解析に失敗しました: {}", e))?;
+            .map_err(|e| anyhow!(docker::error("container_error", format!("終了コードの解析に失敗: {e}"))))?;
 
         Ok(exit_code)
     }
@@ -167,17 +168,17 @@ impl Runtime {
         let output = Command::new("docker")
             .args(["images", "-q", image])
             .output()
-            .map_err(|e| anyhow!("コンテナエラー: イメージの確認に失敗しました: {}", e))?;
+            .map_err(|e| anyhow!(docker::error("container_error", format!("イメージの確認に失敗: {e}"))))?;
 
         if output.stdout.is_empty() {
             let output = Command::new("docker")
                 .args(["pull", image])
                 .output()
-                .map_err(|e| anyhow!("コンテナエラー: イメージの取得に失敗しました: {}", e))?;
+                .map_err(|e| anyhow!(docker::error("container_error", format!("イメージの取得に失敗: {e}"))))?;
 
             if !output.status.success() {
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                return Err(anyhow!("コンテナエラー: イメージの取得に失敗しました: {}", stderr));
+                return Err(anyhow!(docker::error("container_error", format!("イメージの取得に失敗: {stderr}"))));
             }
         }
 

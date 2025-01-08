@@ -1,5 +1,6 @@
 use std::path::Path;
 use anyhow::{Result, anyhow};
+use crate::message::fs;
 use super::validate::validate_is_file;
 
 /// ファイルの内容を文字列として読み込みます。
@@ -17,7 +18,7 @@ pub fn load_file_as_string(path: impl AsRef<Path>) -> Result<String> {
     let path = path.as_ref();
     validate_is_file(path)?;
     std::fs::read_to_string(path)
-        .map_err(|e| anyhow!("ファイルの読み込みに失敗しました: {}", e))
+        .map_err(|e| anyhow!(fs::error("read_error", e)))
 }
 
 /// ファイルの内容をバイト列として読み込みます。
@@ -34,7 +35,7 @@ pub fn load_file_as_bytes(path: impl AsRef<Path>) -> Result<Vec<u8>> {
     let path = path.as_ref();
     validate_is_file(path)?;
     std::fs::read(path)
-        .map_err(|e| anyhow!("ファイルの読み込みに失敗しました: {}", e))
+        .map_err(|e| anyhow!(fs::error("read_error", e)))
 }
 
 /// ファイルのメタデータを取得します。
@@ -50,5 +51,5 @@ pub fn get_metadata(path: impl AsRef<Path>) -> Result<std::fs::Metadata> {
     let path = path.as_ref();
     validate_is_file(path)?;
     path.metadata()
-        .map_err(|e| anyhow!("メタデータの取得に失敗しました: {}", e))
+        .map_err(|e| anyhow!(fs::error("metadata_error", e)))
 } 

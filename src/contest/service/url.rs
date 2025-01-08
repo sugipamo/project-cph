@@ -1,4 +1,5 @@
 use anyhow::{Result, anyhow};
+use crate::message::contest;
 
 pub struct Service {
     site: Option<String>,
@@ -28,7 +29,7 @@ impl Service {
     /// - サイトが指定されていない場合
     pub fn validate_site(&self) -> Result<()> {
         if self.site.is_none() {
-            return Err(anyhow!("サイトが指定されていません"));
+            return Err(anyhow!(contest::error("resource_not_found", "サイトが指定されていません")));
         }
         Ok(())
     }
@@ -39,7 +40,7 @@ impl Service {
     /// - コンテストIDが指定されていない場合
     pub fn validate_contest_id(&self) -> Result<()> {
         if self.contest_id.is_none() {
-            return Err(anyhow!("コンテストIDが指定されていません"));
+            return Err(anyhow!(contest::error("resource_not_found", "コンテストIDが指定されていません")));
         }
         Ok(())
     }
@@ -50,7 +51,7 @@ impl Service {
     /// - 問題IDが指定されていない場合
     pub fn validate_problem_id(&self) -> Result<()> {
         if self.problem_id.is_none() {
-            return Err(anyhow!("問題IDが指定されていません"));
+            return Err(anyhow!(contest::error("resource_not_found", "問題IDが指定されていません")));
         }
         Ok(())
     }
@@ -77,7 +78,7 @@ impl Service {
             "atcoder" => Ok(format!(
                 "https://atcoder.jp/contests/{contest_id}"
             )),
-            _ => Err(anyhow!("未対応のサイトです: {site}")),
+            _ => Err(anyhow!(contest::error("invalid_url", format!("未対応のサイトです: {site}")))),
         }
     }
 
@@ -92,7 +93,7 @@ impl Service {
     /// # Panics
     /// 
     /// - `内部状態が不整合な場合（validate_site()が成功したのにsiteがNoneの場合など）`
-    #[must_use = "この関数は�題のURLを返します"]
+    #[must_use = "この関数は問題のURLを返します"]
     pub fn get_problem_url(&self) -> Result<String> {
         self.validate_site()?;
         self.validate_contest_id()?;
@@ -106,7 +107,7 @@ impl Service {
             "atcoder" => Ok(format!(
                 "https://atcoder.jp/contests/{contest_id}/tasks/{problem_id}"
             )),
-            _ => Err(anyhow!("未対応のサイトです: {site}")),
+            _ => Err(anyhow!(contest::error("invalid_url", format!("未対応のサイトです: {site}")))),
         }
     }
 

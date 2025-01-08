@@ -2,6 +2,7 @@ use anyhow::{Result, anyhow};
 use crate::config::Config;
 use crate::contest::model::{Contest, TestCase};
 use crate::fs::manager::Manager;
+use crate::message::contest;
 
 #[derive(Clone)]
 pub struct Service {
@@ -93,7 +94,7 @@ impl Service {
     /// Returns an error if site is not set
     pub fn validate_site(&self) -> Result<()> {
         self.site.as_ref()
-            .ok_or_else(|| anyhow!("サイトが指定されていません"))
+            .ok_or_else(|| anyhow!(contest::error("resource_not_found", "サイトが指定されていません")))
             .map(|_| ())
     }
 
@@ -104,7 +105,7 @@ impl Service {
     /// Returns an error if language is not set
     pub fn validate_language(&self) -> Result<()> {
         self.language.as_ref()
-            .ok_or_else(|| anyhow!("言語が指定されていません"))
+            .ok_or_else(|| anyhow!(contest::error("resource_not_found", "言語が指定されていません")))
             .map(|_| ())
     }
 
@@ -115,7 +116,7 @@ impl Service {
     /// Returns an error if `contest_id` is not set
     pub fn validate_contest_id(&self) -> Result<()> {
         self.contest_id.as_ref()
-            .ok_or_else(|| anyhow!("コンテストIDが指定されていません"))
+            .ok_or_else(|| anyhow!(contest::error("resource_not_found", "コンテストIDが指定されていません")))
             .map(|_| ())
     }
 
@@ -126,7 +127,7 @@ impl Service {
     /// Returns an error if `problem_id` is not set
     pub fn validate_problem_id(&self) -> Result<()> {
         self.problem_id.as_ref()
-            .ok_or_else(|| anyhow!("問題IDが指定されていません"))
+            .ok_or_else(|| anyhow!(contest::error("resource_not_found", "問題IDが指定されていません")))
             .map(|_| ())
     }
 
@@ -137,7 +138,7 @@ impl Service {
     /// Returns an error if url is not set
     pub fn validate_url(&self) -> Result<()> {
         self.url.as_ref()
-            .ok_or_else(|| anyhow!("URLが指定されていません"))
+            .ok_or_else(|| anyhow!(contest::error("resource_not_found", "URLが指定されていません")))
             .map(|_| ())
     }
 
@@ -148,7 +149,7 @@ impl Service {
     /// Returns an error if `file_manager` is not set
     pub fn validate_file_manager(&self) -> Result<()> {
         self.file_manager.as_ref()
-            .ok_or_else(|| anyhow!("FileManagerが設定されていません"))
+            .ok_or_else(|| anyhow!(contest::error("resource_not_found", "FileManagerが設定されていません")))
             .map(|_| ())
     }
 
@@ -233,12 +234,12 @@ impl Service {
     pub fn build(self) -> Result<(Contest, Manager)> {
         self.validate_all()?;
         
-        let site = self.site.ok_or_else(|| anyhow!("サイトが設定されていません"))?;
-        let contest_id = self.contest_id.ok_or_else(|| anyhow!("コンテストIDが設定されていません"))?;
-        let problem_id = self.problem_id.ok_or_else(|| anyhow!("問題IDが設定されていません"))?;
-        let language = self.language.ok_or_else(|| anyhow!("言語が設定されていません"))?;
-        let url = self.url.ok_or_else(|| anyhow!("URLが設定されていません"))?;
-        let file_manager = self.file_manager.ok_or_else(|| anyhow!("FileManagerが設定されていません"))?;
+        let site = self.site.ok_or_else(|| anyhow!(contest::error("resource_not_found", "サイトが設定されていません")))?;
+        let contest_id = self.contest_id.ok_or_else(|| anyhow!(contest::error("resource_not_found", "コンテストIDが設定されていません")))?;
+        let problem_id = self.problem_id.ok_or_else(|| anyhow!(contest::error("resource_not_found", "問題IDが設定されていません")))?;
+        let language = self.language.ok_or_else(|| anyhow!(contest::error("resource_not_found", "言語が設定されていません")))?;
+        let url = self.url.ok_or_else(|| anyhow!(contest::error("resource_not_found", "URLが設定されていません")))?;
+        let file_manager = self.file_manager.ok_or_else(|| anyhow!(contest::error("resource_not_found", "FileManagerが設定されていません")))?;
 
         let contest = Contest::new(
             site,
@@ -248,44 +249,6 @@ impl Service {
             url,
         );
 
-        let file_manager = contest.create_workspace(file_manager)?;
-
-        Ok((contest, file_manager))
-    }
-
-    /// テストケースを保存します
-    ///
-    /// # Arguments
-    /// * `contest` - コンテスト情報
-    /// * `file_manager` - ファイル管理インスタンス
-    /// * `test_cases` - 保存するテストケース
-    ///
-    /// # Returns
-    /// * `Result<Manager>` - 更新されたファイル管理インスタンス
-    ///
-    /// # Errors
-    /// * テストケースの保存に失敗した場合
-    fn save_test_cases(contest: &Contest, file_manager: Manager, test_cases: &[TestCase]) -> Result<Manager> {
-        test_cases.iter().enumerate().try_fold(file_manager, |manager, (index, test_case)| {
-            contest.save_test_case(manager, test_case, index)
-        })
-    }
-
-    /// コンテストのセットアップを行います
-    ///
-    /// # Arguments
-    /// * `template` - テンプレートファイル
-    /// * `test_cases` - テストケース
-    ///
-    /// # Returns
-    /// * `Result<(Contest, Manager)>` - セットアップされたコンテストとファイル管理インスタンス
-    ///
-    /// # Errors
-    /// * セットアップに失敗した場合
-    pub fn setup_contest(self, template: &str, test_cases: &[TestCase]) -> Result<(Contest, Manager)> {
-        let (contest, file_manager) = self.build()?;
-        let file_manager = contest.save_template(file_manager, template)?;
-        let file_manager = Self::save_test_cases(&contest, file_manager, test_cases)?;
         Ok((contest, file_manager))
     }
 
@@ -300,9 +263,10 @@ impl Service {
     /// - サイトが無効な場合
     /// - コンテストIDが無効な場合
     /// - 問題IDが無効な場合
-    pub fn open(&self, _site: &str, _contest_id: &Option<String>, _problem_id: &Option<String>) -> Result<()> {
+    pub fn open(&self, site: &str, contest_id: &Option<String>, problem_id: &Option<String>) -> Result<()> {
         // TODO: 実装
-        unimplemented!()
+        println!("問題を開きます: site={site}, contest={contest_id:?}, problem={problem_id:?}");
+        Ok(())
     }
 
     /// Submits a solution for the contest
@@ -311,7 +275,7 @@ impl Service {
     /// 
     /// Currently this function cannot fail, but returns Result for consistency
     pub fn submit(&self, contest: &Contest) -> Result<()> {
-        println!("提出を行います: contest={contest:?}");
+        println!("{}", contest::hint("optimize_code", format!("提出を行います: contest={contest:?}")));
         Ok(())
     }
 } 

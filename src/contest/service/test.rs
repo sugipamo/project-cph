@@ -1,6 +1,7 @@
 use anyhow::Result;
 use crate::config::Config;
 use crate::contest::model::Contest;
+use crate::message::contest;
 
 pub struct Service {
     #[allow(dead_code)]
@@ -26,8 +27,8 @@ impl Service {
     pub fn run_test(&self, _contest: &Contest, test_number: Option<usize>) -> Result<()> {
         // TODO: 実際のテスト実行処理を実装
         match test_number {
-            Some(n) => println!("テストケース {n} を実行します"),
-            None => println!("全てのテストケースを実行します"),
+            Some(n) => println!("{}", contest::hint("optimize_code", format!("テストケース {n} を実行します"))),
+            None => println!("{}", contest::hint("optimize_code", "全てのテストケースを実行します")),
         }
         Ok(())
     }

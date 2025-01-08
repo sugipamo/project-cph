@@ -1,5 +1,6 @@
 use std::process::Command;
 use anyhow::{Result, anyhow};
+use crate::message::docker;
 
 /// コンパイル処理を管理する構造体
 ///
@@ -36,29 +37,19 @@ impl Compiler {
     #[must_use = "この関数はコンパイルの結果を返します"]
     pub fn compile(&mut self, command: &[String]) -> Result<()> {
         if self.container_id.is_some() {
-            return Err(anyhow!(
-                "コンパイルエラー: コンパイルは既に実行されています。新しいコンパイルを開始する前に、現在のコンパイルを終了してください。"
-            ));
+            return Err(anyhow!(docker::error("build_error", "コンパイルは既に実行されています")));
         }
 
         let output = Command::new(&command[0])
             .args(&command[1..])
             .output()
-            .map_err(|e| anyhow!(
-                "コンパイルエラー: コンパイルの実行に失敗しました: {}。\nコマンド: {:?}",
-                e,
-                command
-            ))?;
+            .map_err(|e| anyhow!(docker::error("build_error", format!("{e}。コマンド: {command:?}"))))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let stdout = String::from_utf8_lossy(&output.stdout);
-            return Err(anyhow!(
-                "コンパイルエラー: コンパイルに失敗しました。\n標準エラー出力: {}\n標準出力: {}\n終了コード: {:?}",
-                stderr,
-                stdout,
-                output.status.code()
-            ));
+            return Err(anyhow!(docker::error("build_error", 
+                format!("標準エラー出力: {stderr}\n標準出力: {stdout}\n終了コード: {:?}", output.status.code()))));
         }
 
         Ok(())
@@ -75,7 +66,7 @@ impl Compiler {
     pub fn get_container_id(&self) -> Result<String> {
         self.container_id
             .clone()
-            .ok_or_else(|| anyhow!("コンパイルエラー: コンテナIDが取得できませんでした。"))
+            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナIDが取得できません")))
     }
 
     /// コンパイル出力を取得します
@@ -90,20 +81,15 @@ impl Compiler {
     pub fn get_output(&self) -> Result<String> {
         let container_id = self.container_id
             .as_ref()
-            .ok_or_else(|| anyhow!(
-                "コンパイルエラー: コンパイルが実行されていません。compile()メソッドを先に実行してください。"
-            ))?;
+            .ok_or_else(|| anyhow!(docker::error("build_error", "コンパイルが実行されていません")))?;
 
         let output = Command::new("docker")
             .args(["logs", container_id])
             .output()
-            .map_err(|e| anyhow!(
-                "コンパイルエラー: コンパイル出力の取得に失敗しました: {}。\nコンテナID: {}",
-                e,
-                container_id
-            ))?;
+            .map_err(|e| anyhow!(docker::error("build_error", 
+                format!("出力の取得に失敗: {e}。コンテナID: {container_id}"))))?;
 
         String::from_utf8(output.stdout)
-            .map_err(|e| anyhow!("コンパイルエラー: コンパイル出力の解析に失敗しました: {}", e))
+            .map_err(|e| anyhow!(docker::error("build_error", format!("出力の解析に失敗: {e}"))))
     }
 } 

@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::fs::metadata;
 use anyhow::{Result, anyhow};
+use crate::message::fs;
 
 /// パスが存在するかどうかを確認します
 #[must_use = "この関数はパスの存在を示すブール値を返します"]
@@ -35,7 +36,7 @@ pub fn verify_basic_permissions<P: AsRef<Path>>(path: P, write_required: bool) -
     let metadata = metadata(path)?;
     
     if !metadata.permissions().readonly() && write_required {
-        return Err(anyhow!("アクセス権限がありません: {}", path.display()));
+        return Err(anyhow!(fs::error("permission_error", path.display())));
     }
     Ok(())
 }
@@ -53,11 +54,11 @@ pub fn verify_basic_permissions<P: AsRef<Path>>(path: P, write_required: bool) -
 pub fn verify_permissions<P: AsRef<Path>>(path: P, write_required: bool) -> Result<()> {
     let path = path.as_ref();
     if !path.exists() {
-        return Err(anyhow!("パスが存在しません: {}", path.display()));
+        return Err(anyhow!(fs::error("file_not_found", path.display())));
     }
 
     let metadata = path.metadata()
-        .map_err(|e| anyhow!("メタデータの取得に失敗しました: {}", e))?;
+        .map_err(|e| anyhow!(fs::error("metadata_error", e)))?;
 
     let permissions = metadata.permissions();
 
@@ -69,11 +70,11 @@ pub fn verify_permissions<P: AsRef<Path>>(path: P, write_required: bool) -> Resu
         let can_write = mode & 0o222 != 0;
 
         if !can_read {
-            return Err(anyhow!("読み取り権限がありません: {}", path.display()));
+            return Err(anyhow!(fs::error("permission_error", path.display())));
         }
 
         if write_required && !can_write {
-            return Err(anyhow!("書き込み権限がありません: {}", path.display()));
+            return Err(anyhow!(fs::error("permission_error", path.display())));
         }
     }
 

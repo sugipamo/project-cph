@@ -1,6 +1,7 @@
 use crate::contest::model::{Command, CommandContext, Contest};
 use crate::contest::service::{ContestHandler, TestRunner};
 use anyhow::Result;
+use crate::message::contest;
 
 pub struct Service {
     contest_service: ContestHandler,
@@ -34,7 +35,7 @@ impl Service {
             }
             Command::Test { test_number } => {
                 context.contest.map_or_else(
-                    || Err(anyhow::anyhow!("コンテストが選択されていません")),
+                    || Err(anyhow::anyhow!(contest::error("invalid_command", "コンテストが選択されていません"))),
                     |contest| {
                         println!("テストを実行します: test_number={test_number:?}");
                         self.test_service.run_test(&contest, test_number)
@@ -43,7 +44,7 @@ impl Service {
             }
             Command::Submit => {
                 context.contest.map_or_else(
-                    || Err(anyhow::anyhow!("コンテストが選択されていません")),
+                    || Err(anyhow::anyhow!(contest::error("invalid_command", "コンテストが選択されていません"))),
                     |contest| {
                         println!("提出を行います");
                         self.contest_service.submit(&contest)
