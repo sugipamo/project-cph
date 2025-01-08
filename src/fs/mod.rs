@@ -34,13 +34,14 @@ pub use std::path::{Path, PathBuf};
 
 // Re-export specific types
 pub use transaction::{
-    FileTransaction,
     FileOperation,
+    Transaction,
+    State as TransactionState,
+    Transition as TransactionTransition,
     CreateFileOperation,
     DeleteFileOperation,
-    TransactionState,
-    TransactionTransition,
+    TransactionError,
 };
 
 pub use backup::BackupManager;
-pub use manager::FileManager; 
+pub use manager::Manager; 

@@ -2,7 +2,7 @@ pub mod state;
 
 use std::path::PathBuf;
 use anyhow::Result;
-use crate::fs::manager::FileManager;
+use crate::fs::manager::Manager;
 
 #[derive(Debug, Clone)]
 pub struct Contest {
@@ -16,6 +16,8 @@ pub struct Contest {
 }
 
 impl Contest {
+    /// Creates a new Contest instance
+    #[must_use]
     pub fn new(site: String, contest_id: String, problem_id: String, language: String, url: String) -> Self {
         Self {
             id: format!("{}_{}", site, problem_id),
@@ -28,7 +30,15 @@ impl Contest {
         }
     }
 
-    pub fn create_workspace(&self, manager: FileManager) -> Result<FileManager> {
+    /// Creates a workspace directory structure for the contest
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Failed to create directories
+    /// - Failed to begin or commit transaction
+    #[must_use]
+    pub fn create_workspace(&self, manager: Manager) -> Result<Manager> {
         let workspace_path = PathBuf::from(&self.id);
         
         manager.begin_transaction()?
@@ -38,7 +48,15 @@ impl Contest {
             .commit()
     }
 
-    pub fn save_template(&self, manager: FileManager, template: &str) -> Result<FileManager> {
+    /// Saves the template code to the workspace
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Failed to write template file
+    /// - Failed to begin or commit transaction
+    #[must_use]
+    pub fn save_template(&self, manager: Manager, template: &str) -> Result<Manager> {
         let source_path = PathBuf::from(&self.id).join("src").join("main.rs");
         
         manager.begin_transaction()?
@@ -46,7 +64,15 @@ impl Contest {
             .commit()
     }
 
-    pub fn save_test_case(&self, manager: FileManager, test_case: &TestCase, index: usize) -> Result<FileManager> {
+    /// Saves a test case to the workspace
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Failed to write input/expected files
+    /// - Failed to begin or commit transaction
+    #[must_use]
+    pub fn save_test_case(&self, manager: Manager, test_case: &TestCase, index: usize) -> Result<Manager> {
         let test_dir = PathBuf::from(&self.id).join("test");
         let input_path = test_dir.join(format!("input{}.txt", index));
         let expected_path = test_dir.join(format!("expected{}.txt", index));
@@ -57,7 +83,15 @@ impl Contest {
             .commit()
     }
 
-    pub fn cleanup(&self, manager: FileManager) -> Result<FileManager> {
+    /// Cleans up the workspace by deleting all files
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if:
+    /// - Failed to delete workspace directory
+    /// - Failed to begin or commit transaction
+    #[must_use]
+    pub fn cleanup(&self, manager: Manager) -> Result<Manager> {
         let workspace_path = PathBuf::from(&self.id);
         
         manager.begin_transaction()?

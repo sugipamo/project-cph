@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use anyhow::{Result, anyhow, Context};
+use anyhow::{Result, anyhow};
 
 /// パスの検証レベルを定義する列挙型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -11,6 +11,7 @@ pub enum PathValidationLevel {
 }
 
 /// パス操作に関する共通機能を提供するモジュール
+#[derive(Debug)]
 pub struct PathValidator {
     /// パスの検証レベル
     validation_level: PathValidationLevel,
@@ -32,7 +33,8 @@ impl Default for PathValidator {
 
 impl PathValidator {
     /// 新しいPathValidatorを作成
-    pub fn new(
+    #[must_use]
+    pub const fn new(
         validation_level: PathValidationLevel,
         max_path_length: usize,
         max_filename_length: usize,
@@ -86,7 +88,7 @@ impl PathValidator {
                         }
 
                         // 非ASCII文字のチェック（必要に応じて）
-                        if !name_str.chars().all(|c| c.is_ascii()) {
+                        if !name_str.is_ascii() {
                             return Err(anyhow!("無効なパスです: ファイル名に非ASCII文字が含まれています"));
                         }
                     }
@@ -99,40 +101,39 @@ impl PathValidator {
     }
 
     /// パスを正規化
+    #[must_use]
     pub fn normalize(&self, root: impl AsRef<Path>, path: impl AsRef<Path>) -> Result<PathBuf> {
+        let root = root.as_ref();
         let path = path.as_ref();
-        
+
         // パスの検証
         self.validate(path)?;
 
         // パスの正規化
-        let normalized = path.components()
-            .filter(|c| matches!(c, std::path::Component::Normal(_)))
-            .fold(PathBuf::new(), |mut result, component| {
-                result.push(component);
-                result
-            });
-
-        Ok(root.as_ref().join(normalized))
+        let normalized = path.strip_prefix(".").unwrap_or(path);
+        Ok(root.join(normalized))
     }
 }
 
-/// パスの正規化と検証を行う（デフォルトの設定を使用）
+/// パスを正規化する
+#[must_use]
 pub fn normalize_path(root: impl AsRef<Path>, path: impl AsRef<Path>) -> Result<PathBuf> {
     PathValidator::default().normalize(root, path)
 }
 
-/// パスが安全かどうかを検証する（デフォルトの設定を使用）
+/// パスを検証する
+#[must_use]
 pub fn validate_path(path: impl AsRef<Path>) -> Result<()> {
     PathValidator::default().validate(path)
 }
 
-/// パスの存在を確認する
+/// パスが存在することを確認し、存在しない場合はディレクトリを作成する
+#[must_use]
 pub fn ensure_path_exists(path: impl AsRef<Path>) -> Result<()> {
     let path = path.as_ref();
     if !path.exists() {
         std::fs::create_dir_all(path)
-            .context(format!("ディレクトリの作成に失敗: {}", path.display()))?;
+            .map_err(|e| anyhow!("ディレクトリの作成に失敗: {}: {}", path.display(), e))?;
     }
     Ok(())
 } 

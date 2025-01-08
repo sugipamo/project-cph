@@ -1,20 +1,34 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use anyhow::{Result, anyhow, Context, Error};
+use anyhow::{Result, anyhow};
 use crate::fs::ensure_path_exists;
 
 /// ファイル操作のトレイト
 pub trait FileOperation: Send + Sync + std::fmt::Debug {
+    /// ファイル操作を実行します
+    /// # Errors
+    /// - ファイル操作に失敗した場合
     fn execute(&self) -> Result<()>;
+
+    /// ファイル操作をロールバックします
+    /// # Errors
+    /// - ロールバックに失敗した場合
     fn rollback(&self) -> Result<()>;
+
+    /// ファイル操作の説明を取得します
+    #[must_use = "この関数の戻り値は操作の説明を含むため、使用する必要があります"]
     fn description(&self) -> String;
+
+    /// ファイル操作の検証を行います
+    /// # Errors
+    /// - 検証に失敗した場合
     fn validate(&self) -> Result<()>;
 }
 
 /// トランザクションの状態を表す列挙型
 #[derive(Debug, Clone)]
-pub enum TransactionState {
+pub enum State {
     /// 初期状態
     Pending {
         /// 作成時のタイムスタンプ
@@ -33,35 +47,35 @@ pub enum TransactionState {
     /// 失敗
     Failed {
         /// エラー情報
-        error: Arc<Error>,
+        error: String,
         /// 失敗時のタイムスタンプ
         failed_at: u64,
     },
 }
 
-impl TransactionState {
+impl State {
     /// 現在のUNIXタイムスタンプを取得
     fn now() -> u64 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs()
+            .map_or(0, |duration| duration.as_secs())
     }
 
     /// 状態の説明を取得
+    #[must_use = "状態の説明は重要な情報を含むため、使用する必要があります"]
     fn description(&self) -> String {
         match self {
             Self::Pending { created_at } => {
-                format!("保留中 (作成: {})", created_at)
+                format!("保留中 (作成: {created_at})")
             }
             Self::Executed { executed_at } => {
-                format!("実行済み (実行: {})", executed_at)
+                format!("実行済み (実行: {executed_at})")
             }
             Self::RolledBack { rolled_back_at } => {
-                format!("ロールバック済み (ロールバック: {})", rolled_back_at)
+                format!("ロールバック済み (ロールバック: {rolled_back_at})")
             }
             Self::Failed { error, failed_at } => {
-                format!("失敗 (時刻: {}): {}", failed_at, error)
+                format!("失敗 (時刻: {failed_at}): {error}")
             }
         }
     }
@@ -69,7 +83,7 @@ impl TransactionState {
 
 /// トランザクションの遷移を表す列挙型
 #[derive(Debug, Clone)]
-pub enum TransactionTransition {
+pub enum Transition {
     /// 操作の追加
     AddOperation(Arc<dyn FileOperation>),
     /// トランザクションの実行
@@ -80,25 +94,33 @@ pub enum TransactionTransition {
 
 /// ファイルトランザクションを表す構造体
 #[derive(Debug, Clone)]
-pub struct FileTransaction {
+pub struct Transaction {
     /// ファイル操作のリスト
     operations: Arc<Vec<Arc<dyn FileOperation>>>,
     /// トランザクションの状態
-    state: TransactionState,
+    state: State,
 }
 
-impl FileTransaction {
-    /// 新しいトランザクションを作成
+impl Default for Transaction {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Transaction {
+    /// 新しいトランザクションを作成します
+    #[must_use = "新しいトランザクションインスタンスは使用する必要があります"]
     pub fn new() -> Self {
         Self {
             operations: Arc::new(Vec::new()),
-            state: TransactionState::Pending {
-                created_at: TransactionState::now(),
+            state: State::Pending {
+                created_at: State::now(),
             },
         }
     }
 
     /// 操作を追加
+    #[must_use]
     fn with_operations(&self, operations: Vec<Arc<dyn FileOperation>>) -> Self {
         Self {
             operations: Arc::new(operations),
@@ -107,17 +129,23 @@ impl FileTransaction {
     }
 
     /// 状態を更新
-    fn with_state(&self, state: TransactionState) -> Self {
+    #[must_use]
+    fn with_state(&self, state: State) -> Self {
         Self {
             operations: Arc::clone(&self.operations),
             state,
         }
     }
 
-    /// 状態遷移を適用
-    pub fn apply_transition(self, transition: TransactionTransition) -> Result<Self> {
+    /// 状態遷移を適用します
+    /// # Errors
+    /// - 無効な状態遷移の場合
+    /// - 操作の実行に失敗した場合
+    /// - ロールバックに失敗した場合
+    #[must_use = "状態遷移の結果は新しいトランザクションインスタンスとして返されます"]
+    pub fn apply_transition(self, transition: Transition) -> Result<Self> {
         match (&self.state, transition) {
-            (TransactionState::Pending { .. }, TransactionTransition::AddOperation(operation)) => {
+            (State::Pending { .. }, Transition::AddOperation(operation)) => {
                 // 操作の検証
                 if let Err(e) = operation.validate() {
                     return Err(anyhow!("操作の検証に失敗: {}", e));
@@ -131,7 +159,7 @@ impl FileTransaction {
                     state: self.state,
                 })
             }
-            (TransactionState::Pending { .. }, TransactionTransition::Execute) => {
+            (State::Pending { .. }, Transition::Execute) => {
                 // 全ての操作を実行
                 for op in self.operations.iter() {
                     if let Err(e) = op.execute() {
@@ -144,18 +172,18 @@ impl FileTransaction {
                                 ));
                             }
                         }
-                        return Ok(self.with_state(TransactionState::Failed {
-                            error: Arc::new(e),
-                            failed_at: TransactionState::now(),
+                        return Ok(self.with_state(State::Failed {
+                            error: e.to_string(),
+                            failed_at: State::now(),
                         }));
                     }
                 }
 
-                Ok(self.with_state(TransactionState::Executed {
-                    executed_at: TransactionState::now(),
+                Ok(self.with_state(State::Executed {
+                    executed_at: State::now(),
                 }))
             }
-            (TransactionState::Pending { .. }, TransactionTransition::Rollback) => {
+            (State::Pending { .. }, Transition::Rollback) => {
                 // 全ての操作をロールバック
                 for op in self.operations.iter().rev() {
                     if let Err(e) = op.rollback() {
@@ -163,8 +191,8 @@ impl FileTransaction {
                     }
                 }
 
-                Ok(self.with_state(TransactionState::RolledBack {
-                    rolled_back_at: TransactionState::now(),
+                Ok(self.with_state(State::RolledBack {
+                    rolled_back_at: State::now(),
                 }))
             }
             (state, transition) => {
@@ -176,12 +204,14 @@ impl FileTransaction {
         }
     }
 
-    /// トランザクションの状態を取得
-    pub fn state(&self) -> &TransactionState {
+    /// トランザクションの状態を取得します
+    #[must_use = "トランザクションの状態は重要な情報を含むため、使用する必要があります"]
+    pub const fn state(&self) -> &State {
         &self.state
     }
 
-    /// トランザクションの説明を取得
+    /// トランザクションの説明を取得します
+    #[must_use = "トランザクションの説明は重要な情報を含むため、使用する必要があります"]
     pub fn description(&self) -> String {
         format!(
             "トランザクション（{}）:\n{}",
@@ -195,36 +225,50 @@ impl FileTransaction {
         )
     }
 
-    /// 操作を追加
+    /// 操作を追加します
+    /// # Errors
+    /// - 操作の検証に失敗した場合
+    #[must_use = "操作を追加した結果は新しいトランザクションインスタンスとして返されます"]
     pub fn with_operation(self, operation: Arc<dyn FileOperation>) -> Result<Self> {
-        self.apply_transition(TransactionTransition::AddOperation(operation))
+        self.apply_transition(Transition::AddOperation(operation))
     }
 
-    /// トランザクションを実行
+    /// トランザクションを実行します
+    /// # Errors
+    /// - 操作の実行に失敗した場合
+    /// - ロールバックに失敗した場合
+    #[must_use = "トランザクションの実行結果は新しいトランザクションインスタンスとして返されます"]
     pub fn execute(self) -> Result<Self> {
-        self.apply_transition(TransactionTransition::Execute)
+        self.apply_transition(Transition::Execute)
     }
 
-    /// トランザクションをロールバック
+    /// トランザクションをロールバックします
+    /// # Errors
+    /// - ロールバックに失敗した場合
+    #[must_use = "トランザクションのロールバック結果は新しいトランザクションインスタンスとして返されます"]
     pub fn rollback(self) -> Result<Self> {
-        self.apply_transition(TransactionTransition::Rollback)
+        self.apply_transition(Transition::Rollback)
     }
 
-    /// トランザクションの操作一覧を取得
+    /// トランザクションの操作一覧を取得します
+    #[must_use = "トランザクションの操作一覧は重要な情報を含むため、使用する必要があります"]
     pub fn operations(&self) -> &[Arc<dyn FileOperation>] {
         &self.operations
     }
 
-    /// トランザクションを結合
-    pub fn combine(self, other: Self) -> Result<Self> {
+    /// トランザクションを結合します
+    /// # Errors
+    /// - いずれかのトランザクションが保留状態でない場合
+    #[must_use = "トランザクションの結合結果は新しいトランザクションインスタンスとして返されます"]
+    pub fn combine(self, other: &Self) -> Result<Self> {
         match (&self.state, &other.state) {
-            (TransactionState::Pending { .. }, TransactionState::Pending { .. }) => {
+            (State::Pending { .. }, State::Pending { .. }) => {
                 let mut operations = (*self.operations).clone();
                 operations.extend(other.operations.iter().cloned());
                 Ok(Self {
                     operations: Arc::new(operations),
-                    state: TransactionState::Pending {
-                        created_at: TransactionState::now(),
+                    state: State::Pending {
+                        created_at: State::now(),
                     },
                 })
             }
@@ -243,6 +287,8 @@ pub struct CreateFileOperation {
 }
 
 impl CreateFileOperation {
+    /// 新しいファイル作成操作を作成します
+    #[must_use = "新しいファイル作成操作インスタンスは使用する必要があります"]
     pub fn new(path: PathBuf, content: String) -> Self {
         Self {
             path: Arc::new(path),
@@ -257,13 +303,13 @@ impl FileOperation for CreateFileOperation {
             ensure_path_exists(parent)?;
         }
         std::fs::write(&*self.path, &*self.content)
-            .context(format!("ファイルの書き込みに失敗: {}", self.path.display()))
+            .map_err(|e| anyhow!("ファイルの書き込みに失敗: {}: {}", self.path.display(), e))
     }
 
     fn rollback(&self) -> Result<()> {
         if self.path.exists() {
             std::fs::remove_file(&*self.path)
-                .context(format!("ファイルの削除に失敗: {}", self.path.display()))?;
+                .map_err(|e| anyhow!("ファイルの削除に失敗: {}: {}", self.path.display(), e))?;
         }
         Ok(())
     }
@@ -287,10 +333,14 @@ pub struct DeleteFileOperation {
 }
 
 impl DeleteFileOperation {
+    /// 新しいファイル削除操作を作成します
+    /// # Errors
+    /// - ァイルの読み込みに失敗した場合
+    #[must_use = "新しいファイル削除操作インスタンスは使用する必要があります"]
     pub fn new(path: PathBuf) -> Result<Self> {
         let original_content = if path.exists() {
             Some(Arc::new(std::fs::read_to_string(&path)
-                .context(format!("ファイルの読み込みに失敗: {}", path.display()))?))
+                .map_err(|e| anyhow!("ファイルの読み込みに失敗: {}: {}", path.display(), e))?))
         } else {
             None
         };
@@ -306,7 +356,7 @@ impl FileOperation for DeleteFileOperation {
     fn execute(&self) -> Result<()> {
         if self.path.exists() {
             std::fs::remove_file(&*self.path)
-                .context(format!("ファイルの削除に失敗: {}", self.path.display()))?;
+                .map_err(|e| anyhow!("ファイルの削除に失敗: {}: {}", self.path.display(), e))?;
         }
         Ok(())
     }
@@ -317,7 +367,7 @@ impl FileOperation for DeleteFileOperation {
                 ensure_path_exists(parent)?;
             }
             std::fs::write(&*self.path, &**content)
-                .context(format!("ファイルの復元に失敗: {}", self.path.display()))?;
+                .map_err(|e| anyhow!("ファイルの復元に失敗: {}: {}", self.path.display(), e))?;
         }
         Ok(())
     }
@@ -334,8 +384,11 @@ impl FileOperation for DeleteFileOperation {
     }
 }
 
+/// トランザクションの�ラーを表す構造体
 #[derive(Debug)]
 pub struct TransactionError {
-    operation: Arc<dyn FileOperation>,
-    error: Arc<Error>,
+    /// エラーが発生した操作
+    pub operation: Arc<dyn FileOperation>,
+    /// エラーの詳細
+    pub message: String,
 } 
