@@ -278,4 +278,32 @@ impl Service {
         println!("{}", contest::hint("optimize_code", format!("提出を行います: contest={contest:?}")));
         Ok(())
     }
+
+    /// 設定を使用して問�を開きます
+    /// 
+    /// # Arguments
+    /// 
+    /// * `site` - サイト名
+    /// * `contest_id` - コンテストID
+    /// * `problem_id` - 問題ID
+    /// * `template_dir` - テンプレートディレクトリ
+    /// * `active_dir` - アクティブディレクトリ
+    /// 
+    /// # Errors
+    /// 
+    /// - 問題の取得に失敗した場合
+    /// - ディレクトリの作成に失敗した場合
+    pub fn open_with_config(
+        &self,
+        _site: &str,
+        _contest_id: &Option<String>,
+        _problem_id: &Option<String>,
+        template_dir: &str,
+        active_dir: &str,
+    ) -> Result<()> {
+        // TODO: 実装
+        println!("テンプレートディレクトリ: {template_dir}");
+        println!("アクティブディレクトリ: {active_dir}");
+        Ok(())
+    }
 } 

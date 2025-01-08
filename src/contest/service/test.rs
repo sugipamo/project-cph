@@ -244,4 +244,33 @@ impl Service {
             actual,
         })
     }
+
+    /// 設定を使用してテストを実行します
+    /// 
+    /// # Arguments
+    /// 
+    /// * `contest` - コンテスト情報
+    /// * `test_number` - テスト番号（Noneの場合は全てのテストを実行）
+    /// * `test_dir` - テストディレクトリ
+    /// 
+    /// # Errors
+    /// 
+    /// - テストの実行に失敗した場合
+    pub fn run_test_with_config(
+        &self,
+        _contest: &Contest,
+        _test_number: Option<usize>,
+        test_dir: &str,
+    ) -> AnyhowResult<TestResults> {
+        // TODO: 実装
+        println!("テストディレクトリ: {test_dir}");
+        Ok(TestResults {
+            total_cases: 0,
+            successful_cases: 0,
+            failed_cases: 0,
+            error_cases: 0,
+            total_time: std::time::Duration::from_secs(0),
+            case_results: Vec::new(),
+        })
+    }
 } 
