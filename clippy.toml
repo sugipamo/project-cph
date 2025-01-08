@@ -1,1 +1,32 @@
-disallowed-types = ["std::error::Error", "std::io::Error"] 
+disallowed-types = [
+    "std::error::Error",
+    "std::io::Error",
+    "Box<dyn std::error::Error>",
+    "std::prelude",
+    "Box<dyn std::error::Error + Send + Sync>"
+]
+
+# ファイル名の制限
+disallowed-names = [
+    "types.rs",
+    "prelude.rs",
+    "constants.rs",
+    "consts.rs",
+    "utils.rs",
+    "helpers.rs",
+    "common.rs",
+    "models.rs"
+]
+
+# 複雑性の制限
+too-many-arguments-threshold = 6
+too-many-lines-threshold = 300
+
+# 命名規則
+type-complexity-threshold = 250
+
+# パフォーマンス関連
+vec-box-size-threshold = 0
+
+# その他の制限
+cognitive-complexity-threshold = 25 

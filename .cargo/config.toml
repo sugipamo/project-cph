@@ -4,7 +4,9 @@ rustflags = [
     "-W", "clippy::all",
     "-W", "clippy::pedantic",
     "-W", "clippy::nursery",
-    "-W", "clippy::disallowed_types"
+    "-W", "clippy::disallowed_types",
+    "-D", "clippy::unwrap_used",
+    "-D", "clippy::result_large_err"
 ]
 
 [alias]
