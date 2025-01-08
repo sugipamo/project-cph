@@ -3,7 +3,7 @@ use anyhow::Result;
 
 /// コンテナのライフサイクルを管理するトレイト
 #[async_trait]
-pub trait Manager: Send + Sync {
+pub trait ContainerManager: Send + Sync {
     /// コンテナを作成する
     async fn create_container(&mut self, image: &str, cmd: Vec<String>, working_dir: &str) -> Result<()>;
     

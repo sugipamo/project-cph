@@ -17,11 +17,11 @@ pub struct Contest {
 
 impl Contest {
     /// Creates a new Contest instance
-    #[must_use]
+    #[must_use = "この関数は新しいContestインスタンスを返します"]
     pub fn new(site: String, contest_id: String, problem_id: String, language: String, url: String) -> Self {
         Self {
-            id: format!("{}_{}", site, problem_id),
-            name: format!("{} - {}", contest_id, problem_id),
+            id: format!("{site}_{problem_id}"),
+            name: format!("{contest_id} - {problem_id}"),
             url,
             site,
             contest_id,
@@ -37,7 +37,7 @@ impl Contest {
     /// Returns an error if:
     /// - Failed to create directories
     /// - Failed to begin or commit transaction
-    #[must_use]
+    #[must_use = "この関数は新しいManagerインスタンスを返します"]
     pub fn create_workspace(&self, manager: Manager) -> Result<Manager> {
         let workspace_path = PathBuf::from(&self.id);
         
@@ -55,7 +55,7 @@ impl Contest {
     /// Returns an error if:
     /// - Failed to write template file
     /// - Failed to begin or commit transaction
-    #[must_use]
+    #[must_use = "この関数は新しいManagerインスタンスを返します"]
     pub fn save_template(&self, manager: Manager, template: &str) -> Result<Manager> {
         let source_path = PathBuf::from(&self.id).join("src").join("main.rs");
         
@@ -71,11 +71,11 @@ impl Contest {
     /// Returns an error if:
     /// - Failed to write input/expected files
     /// - Failed to begin or commit transaction
-    #[must_use]
+    #[must_use = "この関数は新しいManagerインスタンスを返します"]
     pub fn save_test_case(&self, manager: Manager, test_case: &TestCase, index: usize) -> Result<Manager> {
         let test_dir = PathBuf::from(&self.id).join("test");
-        let input_path = test_dir.join(format!("input{}.txt", index));
-        let expected_path = test_dir.join(format!("expected{}.txt", index));
+        let input_path = test_dir.join(format!("input{index}.txt"));
+        let expected_path = test_dir.join(format!("expected{index}.txt"));
 
         manager.begin_transaction()?
             .write_file(&input_path, &test_case.input)?
@@ -90,7 +90,7 @@ impl Contest {
     /// Returns an error if:
     /// - Failed to delete workspace directory
     /// - Failed to begin or commit transaction
-    #[must_use]
+    #[must_use = "この関数は新しいManagerインスタンスを返します"]
     pub fn cleanup(&self, manager: Manager) -> Result<Manager> {
         let workspace_path = PathBuf::from(&self.id);
         

@@ -3,7 +3,7 @@ use anyhow::Result;
 
 /// コンパイル関連操作を提供するトレイト
 #[async_trait]
-pub trait Operations: Send + Sync {
+pub trait CompilationOperations: Send + Sync {
     /// ソースコードをコンパイルする
     async fn compile(
         &mut self,

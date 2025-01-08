@@ -16,15 +16,15 @@ pub use operations::{
     exists,
     is_file,
     is_directory,
-    check_permissions,
+    verify_basic_permissions as check_permissions,
 };
 
 // Re-export path operations
 pub use path::{
-    PathValidator,
+    Validator as PathValidator,
     ValidationLevel as PathValidationLevel,
-    normalize_path,
-    validate_path,
+    normalize as normalize_path,
+    validate as validate_path,
     ensure_path_exists,
 };
 

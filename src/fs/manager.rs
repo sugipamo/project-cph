@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use anyhow::{Result, anyhow};
-use crate::fs::path::normalize_path;
+use crate::fs::path::normalize;
 use crate::fs::{FileOperation, Transaction, CreateFileOperation, DeleteFileOperation};
 
 /// ファイル管理の状態を表現する型
@@ -126,7 +126,7 @@ impl Manager {
     /// - ファイルの読み込みに失敗した場合
     #[must_use = "この関数はファイルの内容を返します"]
     pub fn read_file(&self, path: impl AsRef<Path>) -> Result<String> {
-        let path = normalize_path(&*self.root, path)?;
+        let path = normalize(&*self.root, path)?;
         if !path.exists() {
             return Err(anyhow!("ファイルが見つかりません: {}", path.display()));
         }
@@ -145,7 +145,7 @@ impl Manager {
     /// - トランザクションの操作に失敗した場合
     #[must_use = "この関数は新しいManagerインスタンスを返します"]
     pub fn write_file(self, path: impl AsRef<Path>, content: impl AsRef<str>) -> Result<Self> {
-        let path = normalize_path(&*self.root, path)?;
+        let path = normalize(&*self.root, path)?;
         let operation = Arc::new(CreateFileOperation::new(path, content.as_ref().to_string()));
         
         match self.state {
@@ -170,7 +170,7 @@ impl Manager {
     /// - トランザクションの操作に失敗した場合
     #[must_use = "この関数は新しいManagerインスタンスを返します"]
     pub fn delete_file(self, path: impl AsRef<Path>) -> Result<Self> {
-        let path = normalize_path(&*self.root, path)?;
+        let path = normalize(&*self.root, path)?;
         let operation = Arc::new(DeleteFileOperation::new(path)?);
         
         match self.state {
@@ -196,7 +196,7 @@ impl Manager {
     /// - トランザクションの操作に失敗した場合
     #[must_use = "この関数は新しいManagerインスタンスを返します"]
     pub fn create_dir(self, path: impl AsRef<Path>) -> Result<Self> {
-        let path = normalize_path(&*self.root, path)?;
+        let path = normalize(&*self.root, path)?;
         match self.state {
             State::InTransaction(_) => {
                 let operation = Arc::new(CreateFileOperation::new(path, String::new()));
@@ -219,7 +219,7 @@ impl Manager {
     /// - パスの正規化に失敗した場合
     #[must_use = "この関数はパスの存在を示すブール値を返します"]
     pub fn exists(&self, path: impl AsRef<Path>) -> Result<bool> {
-        let path = normalize_path(&*self.root, path)?;
+        let path = normalize(&*self.root, path)?;
         Ok(path.exists())
     }
 

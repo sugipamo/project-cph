@@ -119,12 +119,12 @@ impl State {
     #[allow(clippy::missing_const_for_fn)]
     pub fn container_id(&self) -> Option<&str> {
         match self {
-            ContainerState::Initial => None,
-            ContainerState::Created { container_id, .. } |
-            ContainerState::Running { container_id, .. } |
-            ContainerState::Executing { container_id, .. } |
-            ContainerState::Stopped { container_id, .. } |
-            ContainerState::Failed { container_id, .. } => Some(container_id),
+            Self::Initial => None,
+            Self::Created { container_id, .. } |
+            Self::Running { container_id, .. } |
+            Self::Executing { container_id, .. } |
+            Self::Stopped { container_id, .. } |
+            Self::Failed { container_id, .. } => Some(container_id),
         }
     }
 
@@ -132,8 +132,8 @@ impl State {
     #[allow(clippy::missing_const_for_fn)]
     pub fn duration_since_start(&self) -> Option<Duration> {
         match self {
-            ContainerState::Running { started_at, .. } |
-            ContainerState::Executing { started_at, .. } => {
+            Self::Running { started_at, .. } |
+            Self::Executing { started_at, .. } => {
                 Some(started_at.elapsed())
             }
             _ => None,
@@ -180,22 +180,22 @@ impl State {
         match self {
             Self::Running { container_id, started_at } => Some(StateInfo {
                 container_id: Arc::clone(container_id),
-                state_type: ContainerStateType::Running,
+                state_type: StateType::Running,
                 timestamp: Arc::clone(started_at),
             }),
             Self::Executing { container_id, started_at, command } => Some(StateInfo {
                 container_id: Arc::clone(container_id),
-                state_type: ContainerStateType::Executing(Arc::clone(command)),
+                state_type: StateType::Executing(Arc::clone(command)),
                 timestamp: Arc::clone(started_at),
             }),
             Self::Stopped { container_id, stopped_at, .. } => Some(StateInfo {
                 container_id: Arc::clone(container_id),
-                state_type: ContainerStateType::Stopped,
+                state_type: StateType::Stopped,
                 timestamp: Arc::clone(stopped_at),
             }),
             Self::Failed { container_id, occurred_at, error } => Some(StateInfo {
                 container_id: Arc::clone(container_id),
-                state_type: ContainerStateType::Failed(Arc::clone(error)),
+                state_type: StateType::Failed(Arc::clone(error)),
                 timestamp: Arc::clone(occurred_at),
             }),
             _ => None,
@@ -206,20 +206,20 @@ impl State {
 impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ContainerState::Initial => write!(f, "初期状態"),
-            ContainerState::Created { container_id, .. } => {
+            Self::Initial => write!(f, "初期状態"),
+            Self::Created { container_id, .. } => {
                 write!(f, "作成済み(ID: {})", container_id)
             }
-            ContainerState::Running { container_id, .. } => {
+            Self::Running { container_id, .. } => {
                 write!(f, "実行中(ID: {})", container_id)
             }
-            ContainerState::Executing { container_id, command, .. } => {
+            Self::Executing { container_id, command, .. } => {
                 write!(f, "コマンド実行中(ID: {}, コマンド: {})", container_id, command)
             }
-            ContainerState::Stopped { container_id, .. } => {
+            Self::Stopped { container_id, .. } => {
                 write!(f, "停止済み(ID: {})", container_id)
             }
-            ContainerState::Failed { container_id, error, .. } => {
+            Self::Failed { container_id, error, .. } => {
                 write!(f, "失敗(ID: {container_id}, エラー: {error})")
             }
         }

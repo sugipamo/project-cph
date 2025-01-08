@@ -13,7 +13,7 @@ pub struct Node {
 
 impl Node {
     #[must_use = "この関数は新しいNodeインスタンスを返します"]
-    pub fn new(value: String) -> Self {
+    pub const fn new(value: String) -> Self {
         Self {
             value,
             parent: None,
@@ -35,9 +35,15 @@ pub enum CommandValue {
     Setting { priority: i32 },
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Config {
     #[must_use = "この関数は新しいConfigインスタンスを返します"]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             commands: HashMap::new(),
         }
@@ -83,7 +89,7 @@ impl Config {
         nodes
     }
 
-    #[must_use = "この�数は�イリアスグラフとノードインデックスを返します"]
+    #[must_use = "この関数はエイリアスグラフとノードインデックスを返します"]
     pub fn build_alias_graph(&self) -> (DiGraph<String, ()>, HashMap<String, NodeIndex>) {
         let mut graph = DiGraph::new();
         let mut node_indices = HashMap::new();
@@ -114,7 +120,7 @@ impl Config {
         (graph, node_indices)
     }
 
-    #[must_use = "この�数は指定された名前のノードを返します"]
+    #[must_use = "この関数は指定された名前のノードを返します"]
     pub fn get_node_by_name(&self, name: &str) -> Option<Node> {
         let nodes = self.build_node_relationships();
         nodes.get(name).cloned()

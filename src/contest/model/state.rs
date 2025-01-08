@@ -209,11 +209,21 @@ impl Validated {
         &self.language
     }
 
+    #[must_use = "この関数は�ースパスを返します"]
     pub fn source_path(&self) -> &PathBuf {
         &self.source_path
     }
 
-    pub fn try_update(&self, transition: Transition) -> Result<Validated> {
+    /// 状態を更新します。
+    /// 
+    /// # Arguments
+    /// * `transition` - 適用する状態遷移
+    /// 
+    /// # Errors
+    /// - 状態遷移後の検証に失敗した場合
+    /// - 必須フィールドが未設定の場合
+    /// - パスの検証に失敗した場合
+    pub fn try_update(&self, transition: Transition) -> Result<Self> {
         let mut new_state = State::new()
             .with_site(self.site.as_ref().clone())
             .with_contest_id(self.contest_id.as_ref().clone())

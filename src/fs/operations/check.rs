@@ -20,8 +20,17 @@ pub fn is_directory<P: AsRef<Path>>(path: P) -> bool {
     path.as_ref().is_dir()
 }
 
-/// パスの権限を確認します
-pub fn check_basic_permissions<P: AsRef<Path>>(path: P, write_required: bool) -> Result<()> {
+/// パスの権限を確認します。
+/// 
+/// # Arguments
+/// * `path` - 確認するパス
+/// * `write_required` - 書き込み権限が必要かどうか
+/// 
+/// # Errors
+/// - パスが存在しない場合
+/// - メタデータの取得に失敗した場合
+/// - 書き込み権限が必要なのに書き込み権限がない場合
+pub fn verify_basic_permissions<P: AsRef<Path>>(path: P, write_required: bool) -> Result<()> {
     let path = path.as_ref();
     let metadata = metadata(path)?;
     

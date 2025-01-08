@@ -106,22 +106,22 @@ impl Service {
             .map(|_| ())
     }
 
-    /// Validates contest_id field
+    /// Validates `contest_id` field
     /// 
     /// # Errors
     /// 
-    /// Returns an error if contest_id is not set
+    /// Returns an error if `contest_id` is not set
     pub fn validate_contest_id(&self) -> Result<()> {
         self.contest_id.as_ref()
             .ok_or_else(|| anyhow!("コンテストIDが指定されていません"))
             .map(|_| ())
     }
 
-    /// Validates problem_id field
+    /// Validates `problem_id` field
     /// 
     /// # Errors
     /// 
-    /// Returns an error if problem_id is not set
+    /// Returns an error if `problem_id` is not set
     pub fn validate_problem_id(&self) -> Result<()> {
         self.problem_id.as_ref()
             .ok_or_else(|| anyhow!("問題IDが指定されていません"))
@@ -139,11 +139,11 @@ impl Service {
             .map(|_| ())
     }
 
-    /// Validates file_manager field
+    /// Validates `file_manager` field
     /// 
     /// # Errors
     /// 
-    /// Returns an error if file_manager is not set
+    /// Returns an error if `file_manager` is not set
     pub fn validate_file_manager(&self) -> Result<()> {
         self.file_manager.as_ref()
             .ok_or_else(|| anyhow!("FileManagerが設定されていません"))
@@ -214,14 +214,14 @@ impl Service {
         }
     }
 
-    /// Builds a Contest instance and returns it with the FileManager
+    /// Builds a Contest instance and returns it with the `FileManager`
     /// 
     /// # Errors
     /// 
     /// Returns an error if:
     /// - Any field validation fails
     /// - Workspace creation fails
-    #[must_use]
+    #[must_use = "この関数はContestインスタンスとManagerを返します"]
     pub fn build(self) -> Result<(Contest, Manager)> {
         self.validate_all()?;
         
@@ -273,14 +273,20 @@ impl Service {
         Ok((contest, file_manager))
     }
 
-    /// Opens a problem in the browser
+    /// コンテストを開きます。
+    /// 
+    /// # Arguments
+    /// * `site` - サイト名
+    /// * `contest_id` - コンテストID（オプション）
+    /// * `problem_id` - 問題ID（オプション）
     /// 
     /// # Errors
-    /// 
-    /// Currently this function cannot fail, but returns Result for consistency
-    pub fn open(&self, site: String, contest_id: Option<String>, problem_id: Option<String>) -> Result<()> {
-        println!("問題を開きます: site={site}, contest={contest_id:?}, problem={problem_id:?}");
-        Ok(())
+    /// - サイトが無効な場合
+    /// - コンテストIDが無効な場合
+    /// - 問題IDが無効な場合
+    pub fn open(&self, site: &str, contest_id: &Option<String>, problem_id: &Option<String>) -> Result<()> {
+        // TODO: 実装
+        unimplemented!()
     }
 
     /// Submits a solution for the contest

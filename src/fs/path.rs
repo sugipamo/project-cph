@@ -126,16 +126,13 @@ impl Validator {
     /// - パスの検証に失敗した場合
     /// - パスの正規化に失敗した場合
     #[must_use = "この関数は正規化されたパスを返します"]
-    pub fn normalize(&self, root: impl AsRef<Path>, path: impl AsRef<Path>) -> Result<PathBuf> {
-        let root = root.as_ref();
-        let path = path.as_ref();
-
+    pub fn normalize<P1: AsRef<Path>, P2: AsRef<Path>>(&self, root: P1, path: P2) -> Result<PathBuf> {
         // パスの検証
-        self.validate(path)?;
+        self.validate(path.as_ref())?;
 
         // パスの正規化
-        let normalized = path.strip_prefix(".").unwrap_or(path);
-        Ok(root.join(normalized))
+        let normalized = path.as_ref().strip_prefix(".").unwrap_or(path.as_ref());
+        Ok(root.as_ref().join(normalized))
     }
 }
 
@@ -146,10 +143,9 @@ impl Validator {
 /// * `path` - 正規化するパス
 /// 
 /// # Errors
-/// - パスの検証に失敗した場合
 /// - パスの正規化に失敗した場合
 #[must_use = "この関数は正規化されたパスを返します"]
-pub fn normalize<P: AsRef<Path>>(root: P, path: P) -> Result<PathBuf> {
+pub fn normalize<P1: AsRef<Path>, P2: AsRef<Path>>(root: P1, path: P2) -> Result<PathBuf> {
     Validator::default().normalize(root, path)
 }
 
