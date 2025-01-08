@@ -96,9 +96,19 @@ pub trait CustomSchema: Send + Sync + std::fmt::Debug {
 
 // 設定アクセスのトレイト
 pub trait ConfigAccess {
+    /// 指定されたパスの設定値を取得します。
+    /// 
+    /// # Errors
+    /// - パスが存在しない場合にエラーを返します。
+    /// - パスの形式が無効な場合にエラーを返します。
     fn get(&self, path: &str) -> Result<Arc<Node>>;
+
+    /// 指定されたパターンに一致する全ての設定値を取得します。
+    /// 
+    /// # Errors
+    /// - パターンが無効な正規表現の場合にエラーを返します。
+    /// - パスの形式が無効な場合にエラーを返します。
     fn get_all(&self, pattern: &str) -> Result<Vec<Arc<Node>>>;
-    fn exists(&self, path: &str) -> bool;
 }
 
 // インの設定構造体
@@ -148,6 +158,11 @@ impl Node {
         }
     }
 
+    /// 設定値を型付きの値として取得します。
+    /// 
+    /// # Errors
+    /// - 値の型が要求された型と一致しない場合にエラーを返します。
+    /// - 値の変換に失敗した場合にエラーを返します。
     pub fn as_typed<T: FromConfigValue>(&self) -> Result<T> {
         T::from_config_value(&self.value)
     }
@@ -187,11 +202,12 @@ impl Node {
         }
     }
 
+    /// キーを文字列として取得します。
+    /// 
+    /// # Errors
+    /// - キーが存在しない場合にエラーを返します。
     pub fn key(&self) -> Result<String> {
-        match &*self.value {
-            Value::String(s) => Ok(s.clone()),
-            _ => Err(anyhow::anyhow!("キーは文字列である必要があります")),
-        }
+        Ok(self.key.clone())
     }
 }
 
@@ -203,6 +219,15 @@ impl Config {
         }
     }
 
+    /// ファイルから設定を読み込みます。
+    /// 
+    /// # Errors
+    /// - ファイルが存在しない場合にエラーを返します。
+    /// - ファイルの形式が無効な場合にエラーを返します。
+    /// - ファイルの読み込みに失敗した場合にエラーを返します。
+    /// 
+    /// # Panics
+    /// - パスが親ディレクトリを持っていない場合にパニックします。
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let contents = fs::read_to_string(&path)
             .with_context(|| format!("設定ファイルの読み込みに失敗: {}", path.as_ref().display()))?;
@@ -232,10 +257,19 @@ impl Config {
         Ok(Self::new(value))
     }
 
+    /// 指定されたパスの設定値を型付きで取得します。
+    /// 
+    /// # Errors
+    /// - パスが存在しない場合にエラーを返します。
+    /// - 値の型が要求された型と一致しない場合にエラーを返します。
     pub fn get<T: FromConfigValue>(&self, path: &str) -> Result<T> {
         self.get_node(path).and_then(|node| node.as_typed())
     }
 
+    /// 指定されたパスの設定�ードを取得します。
+    /// 
+    /// # Errors
+    /// - パスが存在しない場合にエラーを返します。
     pub fn get_node(&self, path: &str) -> Result<Arc<Node>> {
         if path.is_empty() {
             return Ok(self.root.clone());
@@ -285,11 +319,20 @@ impl Config {
         Ok(current.clone())
     }
 
+    /// 指定されたパスの設定値を型付きで取得します。
+    /// 
+    /// # Errors
+    /// - パスが存在しない場合にエラーを返します。
+    /// - 値の�シリアライズに失敗した場合にエラーを返します。
     pub fn get_typed<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T> {
         let value = self.resolve_path(path)?;
         serde_yaml::from_value(value).map_err(|e| anyhow::anyhow!("型変換に失敗しました: {}", e))
     }
 
+    /// 指定されたパターンに一致する全ての設定値を取得します。
+    /// 
+    /// # Errors
+    /// - パターンが無効な正規表現の場合にエラーを返します。
     pub fn get_all(&self, pattern: &str) -> Result<Vec<Arc<Node>>> {
         let regex = Regex::new(pattern)
             .with_context(|| format!("無効な正規表現パターン: {}", pattern))?;
@@ -309,10 +352,20 @@ impl Config {
 
 // ConfigAccessの実装
 impl ConfigAccess for Config {
+    /// 指定されたパスの設定値を取得します。
+    /// 
+    /// # Errors
+    /// - パスが存在しない場合にエラーを返します。
+    /// - パスの形式が無効な場合にエラーを返します。
     fn get(&self, path: &str) -> Result<Arc<Node>> {
         self.get_node(path)
     }
 
+    /// 指定されたパターンに一致する全ての設定値を取得します。
+    /// 
+    /// # Errors
+    /// - パターンが無効な正規表現の場合にエラーを返します。
+    /// - パスの形式が無効な場合にエラーを返します。
     fn get_all(&self, pattern: &str) -> Result<Vec<Arc<Node>>> {
         let regex = Regex::new(pattern)
             .with_context(|| format!("無効な正規表現パターン: {}", pattern))?;
@@ -336,6 +389,11 @@ impl ConfigAccess for Config {
 
 // 型変換のトレイト
 pub trait FromConfigValue: Sized {
+    /// 設定値から型を生成します。
+    /// 
+    /// # Errors
+    /// - 値の型が要求された型と一致しない場合にエラーを返します。
+    /// - 値の変換に失敗した場合にエラーを返します。
     fn from_config_value(value: &Value) -> Result<Self>;
 }
 

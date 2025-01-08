@@ -1,5 +1,12 @@
 use std::fmt;
 
+/// コンテ�の状態を表す列挙型
+///
+/// # Variants
+/// * `Running` - コンテナが実行中
+/// * `Executing` - コンテナでコマンドを実行中（コマンド文字列を保持）
+/// * `Stopped` - コンテナが停止済み
+/// * `Failed` - コンテナが失敗（エラーメッセージを保持）
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Running,
@@ -8,6 +15,11 @@ pub enum Type {
     Failed(String),
 }
 
+/// コンテナの状態情報を保持する構造体
+///
+/// # Fields
+/// * `container_id` - コンテナのID
+/// * `state_type` - コンテナの状態
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Info {
     pub container_id: String,
@@ -15,7 +27,15 @@ pub struct Info {
 }
 
 impl Info {
-    #[must_use]
+    /// 新しい状態情報インスタンスを作成します
+    ///
+    /// # Arguments
+    /// * `container_id` - コンテナのID
+    /// * `state_type` - コンテナの状態
+    ///
+    /// # Returns
+    /// * `Self` - 新しい状態情報インスタンス
+    #[must_use = "この関数は新しい状態情報インスタンスを返します"]
     pub const fn new(container_id: String, state_type: Type) -> Self {
         Self {
             container_id,
@@ -25,6 +45,13 @@ impl Info {
 }
 
 impl fmt::Display for Info {
+    /// 状態情報を文字列として整形します
+    ///
+    /// # Arguments
+    /// * `f` - フォーマッタ
+    ///
+    /// # Returns
+    /// * `fmt::Result` - 文字列フォーマット結果
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.state_type {
             Type::Running => {
