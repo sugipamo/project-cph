@@ -6,9 +6,11 @@ use crate::message::docker;
 ///
 /// # Fields
 /// * `container_id` - 管理対象のコンテナID（オプション）
+/// * `auto_remove` - コンテナを自動的に削除するかどうか
 #[derive(Debug)]
 pub struct Runtime {
     container_id: Option<String>,
+    auto_remove: bool,
 }
 
 impl Default for Runtime {
@@ -26,13 +28,28 @@ impl Runtime {
     pub const fn new() -> Self {
         Self {
             container_id: None,
+            auto_remove: true,
         }
+    }
+
+    /// 自動削除の設定を変更します
+    ///
+    /// # Arguments
+    /// * `auto_remove` - コンテナを自動的に削除するかどうか
+    ///
+    /// # Returns
+    /// * `Self` - 設定を変更したRuntimeインスタンス
+    #[must_use = "この関数は新しいRuntimeインスタンスを返します"]
+    pub const fn with_auto_remove(mut self, auto_remove: bool) -> Self {
+        self.auto_remove = auto_remove;
+        self
     }
 
     /// コンテナを作成します
     ///
     /// # Arguments
     /// * `image` - 使用するDockerイメージ名
+    /// * `options` - 追加のDockerオプション
     ///
     /// # Returns
     /// * `Result<()>` - 作成結果
@@ -40,14 +57,20 @@ impl Runtime {
     /// # Errors
     /// * コンテナが既に作成されている場合
     /// * コンテナの作成に失敗した場合
-    #[must_use = "この関数はコンテナの作成結果を返します"]
-    pub fn create(&mut self, image: &str) -> Result<()> {
+    pub fn create(&mut self, image: &str, options: &[&str]) -> Result<()> {
         if self.container_id.is_some() {
             return Err(anyhow!(docker::error("container_error", "コンテナは既に作成されています")));
         }
 
+        let mut args = vec!["create"];
+        if self.auto_remove {
+            args.push("--rm");
+        }
+        args.extend(options);
+        args.push(image);
+
         let output = Command::new("docker")
-            .args(["create", image])
+            .args(&args)
             .output()
             .map_err(|e| anyhow!(docker::error("container_error", e)))?;
 
@@ -183,5 +206,83 @@ impl Runtime {
         }
 
         Ok(())
+    }
+
+    /// コンテナを削除します
+    ///
+    /// # Returns
+    /// * `Result<()>` - 削除結果
+    ///
+    /// # Errors
+    /// * コンテナが作成されていない場合
+    /// * コンテナの削除に失敗した場合
+    pub fn remove(&mut self) -> Result<()> {
+        let container_id = self.container_id.take()
+            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが作成されていません")))?;
+
+        let output = Command::new("docker")
+            .args(["rm", "-f", &container_id])
+            .output()
+            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(anyhow!(docker::error("container_error", stderr)));
+        }
+
+        Ok(())
+    }
+
+    /// コンテナIDを取得します
+    ///
+    /// # Returns
+    /// * `Option<&str>` - コンテナID
+    #[must_use]
+    pub fn container_id(&self) -> Option<&str> {
+        self.container_id.as_deref()
+    }
+
+    /// コンテナ内でコマンドを実行します
+    ///
+    /// # Arguments
+    /// * `command` - 実行するコマンドとその引数
+    ///
+    /// # Returns
+    /// * `Result<(String, String)>` - 標準出力と標準エラー出力のタプル
+    ///
+    /// # Errors
+    /// * コンテナが作成されていない場合
+    /// * コマンドの実行に失敗した場合
+    pub fn execute_command(&self, command: &[&str]) -> Result<(String, String)> {
+        let container_id = self.container_id
+            .as_ref()
+            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが作成されていません")))?;
+
+        let mut args = vec!["exec", container_id];
+        args.extend(command);
+
+        let output = Command::new("docker")
+            .args(&args)
+            .output()
+            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
+
+        let stdout = String::from_utf8(output.stdout)
+            .map_err(|e| anyhow!(docker::error("container_error", format!("標準出力の解析に失敗: {e}"))))?;
+        let stderr = String::from_utf8(output.stderr)
+            .map_err(|e| anyhow!(docker::error("container_error", format!("標準エラー出力の解析に失敗: {e}"))))?;
+
+        Ok((stdout, stderr))
+    }
+}
+
+impl Drop for Runtime {
+    fn drop(&mut self) {
+        if self.auto_remove {
+            if let Some(container_id) = &self.container_id {
+                let _ = Command::new("docker")
+                    .args(["rm", "-f", container_id])
+                    .output();
+            }
+        }
     }
 } 

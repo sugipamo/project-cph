@@ -1,17 +1,27 @@
-use std::process::Command;
+use std::process::{Command, Output};
 use std::borrow::Cow;
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, Context};
 use crate::message::docker;
+
+/// Dockerコマンドの実行結果を表す構造体
+#[derive(Debug)]
+pub struct ExecutionResult {
+    pub stdout: String,
+    pub stderr: String,
+    pub exit_code: i32,
+}
 
 /// Dockerコマンドの実行を担当する構造体
 ///
 /// # Fields
 /// * `name` - 実行するDockerコマンド名
 /// * `args` - コマンドの引数リスト
+/// * `capture_stderr` - 標準エラー出力をキャプチャするかどうか
 #[derive(Clone)]
 pub struct Executor {
     name: String,
     args: Vec<String>,
+    capture_stderr: bool,
 }
 
 impl Executor {
@@ -27,6 +37,22 @@ impl Executor {
         Self {
             name: name.into(),
             args: Vec::new(),
+            capture_stderr: false,
+        }
+    }
+
+    /// 標準エラー出力のキャプチャを設定します
+    ///
+    /// # Arguments
+    /// * `capture` - キャプチャするかどうか
+    ///
+    /// # Returns
+    /// * `Self` - 新しいExecutorインスタンス
+    #[must_use = "この関数は新しいExecutorインスタンスを返します"]
+    pub fn capture_stderr(self, capture: bool) -> Self {
+        Self {
+            capture_stderr: capture,
+            ..self
         }
     }
 
@@ -44,6 +70,7 @@ impl Executor {
         Self {
             name: self.name,
             args,
+            capture_stderr: self.capture_stderr,
         }
     }
 
@@ -65,33 +92,68 @@ impl Executor {
         Self {
             name: self.name,
             args: new_args,
+            capture_stderr: self.capture_stderr,
         }
+    }
+
+    /// コマンドを実行し、生の出力を返します
+    ///
+    /// # Returns
+    /// * `Result<Output>` - コマンドの実行結果
+    ///
+    /// # Errors
+    /// * コマンドの実行に失敗した場合
+    fn execute_raw(&self) -> Result<Output> {
+        Command::new("docker")
+            .arg(&self.name)
+            .args(&self.args)
+            .output()
+            .with_context(|| docker::error("command_failed", "コマンドの実行に失敗しました"))
     }
 
     /// コマンドを実行し、結果を返します
     ///
     /// # Returns
-    /// * `Result<String>` - コマンドの実行結果
+    /// * `Result<ExecutionResult>` - コマンドの実行結果
     ///
     /// # Errors
     /// * コマンドの実行に失敗した場合
     /// * 出力の文字列変換に失敗した場合
-    #[must_use = "この関数はコマンドの実行結果を返します"]
-    pub fn execute(self) -> Result<String> {
-        let mut command = Command::new("docker");
-        command.arg(&self.name);
-        command.args(&self.args);
+    pub fn execute(self) -> Result<ExecutionResult> {
+        let output = self.execute_raw()?;
 
-        let output = command
-            .output()
-            .map_err(|e| anyhow!(docker::error("command_failed", e)))?;
+        let stdout = String::from_utf8(output.stdout)
+            .with_context(|| docker::error("command_failed", "標準出力の解析に失敗しました"))?;
+        let stderr = String::from_utf8(output.stderr)
+            .with_context(|| docker::error("command_failed", "標準エラー出力の解析に失敗しました"))?;
 
         if !output.status.success() {
-            let error = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow!(docker::error("command_failed", error)));
+            if self.capture_stderr {
+                return Ok(ExecutionResult {
+                    stdout,
+                    stderr,
+                    exit_code: output.status.code().unwrap_or(-1),
+                });
+            }
+            return Err(anyhow!(docker::error("command_failed", stderr)));
         }
 
-        String::from_utf8(output.stdout)
-            .map_err(|e| anyhow!(docker::error("command_failed", e)))
+        Ok(ExecutionResult {
+            stdout,
+            stderr,
+            exit_code: 0,
+        })
+    }
+
+    /// コマンドを実行し、標準出力のみを返します
+    ///
+    /// # Returns
+    /// * `Result<String>` - コマンドの標準出力
+    ///
+    /// # Errors
+    /// * コマンドの実行に失敗した場合
+    /// * 出力の文字列変換に失敗した場合
+    pub fn execute_output(self) -> Result<String> {
+        self.execute().map(|result| result.stdout)
     }
 } 

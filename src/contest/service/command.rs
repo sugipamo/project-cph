@@ -38,7 +38,9 @@ impl Service {
                     || Err(anyhow::anyhow!(contest::error("invalid_command", "コンテストが選択されていません"))),
                     |contest| {
                         println!("テストを実行します: test_number={test_number:?}");
-                        self.test_service.run_test(&contest, test_number)
+                        let result = self.test_service.run_test(&contest, test_number)?;
+                        println!("{}", result.summary());
+                        Ok(())
                     }
                 )
             }

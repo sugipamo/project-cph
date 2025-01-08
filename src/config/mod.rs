@@ -16,13 +16,13 @@ use std::fs;
 use anyhow::{Error, Result, Context as _, anyhow};
 
 // 基本的な設定ノード
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Node {
     value: Value,
     metadata: Metadata,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Metadata {
     path: String,
     description: Option<String>,
@@ -118,7 +118,7 @@ impl PartialEq for dyn CustomSchema {
 impl Eq for dyn CustomSchema {}
 
 // インの設定構造体
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Config {
     root: Arc<Node>,
 }
