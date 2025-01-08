@@ -1,47 +1,62 @@
 use std::process::Command;
-use crate::docker::error::container_err;
-use crate::error::Result;
+use anyhow::{Result, anyhow};
 
-pub struct DockerContainer {
+/// Dockerコンテナのランタイム管理を担当する構造体
+///
+/// # Fields
+/// * `container_id` - 管理対象のコンテナID（オプション）
+#[derive(Debug)]
+pub struct Runtime {
     container_id: Option<String>,
 }
 
-impl DockerContainer {
-    pub fn new() -> Self {
+impl Default for Runtime {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Runtime {
+    /// 新しいRuntimeインスタンスを作成します
+    ///
+    /// # Returns
+    /// * `Self` - 新しいRuntimeインスタンス
+    #[must_use = "この関数は新しいRuntimeインスタンスを返します"]
+    pub const fn new() -> Self {
         Self {
             container_id: None,
         }
     }
 
+    /// コンテナを作成します
+    ///
+    /// # Arguments
+    /// * `image` - 使用するDockerイメージ名
+    ///
+    /// # Returns
+    /// * `Result<()>` - 作成結果
+    ///
+    /// # Errors
+    /// * コンテナが既に作成されている場合
+    /// * コンテナの作成に失敗した場合
+    #[must_use = "この関数はコンテナの作成結果を返します"]
     pub fn create(&mut self, image: &str) -> Result<()> {
         if self.container_id.is_some() {
-            return Err(container_err(
-                "コンテナ作成",
-                "コンテナは既に作成されています"
-            ));
+            return Err(anyhow!("コンテナエラー: コンテナは既に作成されています"));
         }
 
         let output = Command::new("docker")
             .args(["create", image])
             .output()
-            .map_err(|e| container_err(
-                "コンテナ作成",
-                format!("コンテナの作成に失敗しました: {}", e)
-            ))?;
+            .map_err(|e| anyhow!("コンテナエラー: コンテナの作成に失敗しました: {}", e))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(container_err(
-                "コンテナ作成",
-                format!("コンテナの作成に失敗しました: {}", stderr)
-            ));
+            return Err(anyhow!("コンテナエラー: コンテナの作成に失敗しました: {}", stderr));
         }
 
         let container_id = String::from_utf8(output.stdout)
-            .map_err(|e| container_err(
-                "コンテナ作成",
-                format!("コンテナIDの解析に失敗しました: {}", e)
-            ))?
+            .map_err(|e| anyhow!("コンテナエラー: コンテナIDの解析に失敗しました: {}", e))?
             .trim()
             .to_string();
 
@@ -49,131 +64,120 @@ impl DockerContainer {
         Ok(())
     }
 
+    /// コンテナを起動します
+    ///
+    /// # Returns
+    /// * `Result<()>` - 起動結果
+    ///
+    /// # Errors
+    /// * コンテナが作成されていない場合
+    /// * コンテナの起動に失敗した場合
+    #[must_use = "この関数はコンテナの起動結果を返します"]
     pub fn start(&mut self) -> Result<()> {
-        let _container_id = self.container_id
+        let container_id = self.container_id
             .as_ref()
-            .ok_or_else(|| container_err(
-                "コンテナ起動",
-                "コンテナが作成されていません"
-            ))?;
+            .ok_or_else(|| anyhow!("コンテナエラー: コンテナが作成されていません"))?;
 
         let output = Command::new("docker")
-            .args(["start", _container_id])
+            .args(["start", container_id])
             .output()
-            .map_err(|e| container_err(
-                "コンテナ起動",
-                format!("コンテナの起動に失敗しました: {}", e)
-            ))?;
+            .map_err(|e| anyhow!("コンテナエラー: コンテナの起動に失敗しました: {}", e))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(container_err(
-                "コンテナ起動",
-                format!("コンテナの起動に失敗しました: {}", stderr)
-            ));
+            return Err(anyhow!("コンテナエラー: コンテナの起動に失敗しました: {}", stderr));
         }
 
         Ok(())
     }
 
+    /// コンテナを停止します
+    ///
+    /// # Returns
+    /// * `Result<()>` - 停止結果
+    ///
+    /// # Errors
+    /// * コンテナが作成されていない場合
+    /// * コンテナの停止に失敗した場合
+    #[must_use = "この関数はコンテナの停止結果を返します"]
     pub fn stop(&mut self) -> Result<()> {
-        let _container_id = self.container_id
+        let container_id = self.container_id
             .as_ref()
-            .ok_or_else(|| container_err(
-                "コンテナ停止",
-                "コンテナが作成されていません"
-            ))?;
+            .ok_or_else(|| anyhow!("コンテナエラー: コンテナが作成されていません"))?;
 
         let output = Command::new("docker")
-            .args(["stop", _container_id])
+            .args(["stop", container_id])
             .output()
-            .map_err(|e| container_err(
-                "コンテナ停止",
-                format!("コンテナの停止に失敗しました: {}", e)
-            ))?;
+            .map_err(|e| anyhow!("コンテナエラー: コンテナの停止に失敗しました: {}", e))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(container_err(
-                "コンテナ停止",
-                format!("コンテナの停止に失敗しました: {}", stderr)
-            ));
+            return Err(anyhow!("コンテナエラー: コンテナの停止に失敗しました: {}", stderr));
         }
 
         Ok(())
     }
 
+    /// コンテナの終了を待機し、終了コードを返します
+    ///
+    /// # Returns
+    /// * `Result<i32>` - 終了コード
+    ///
+    /// # Errors
+    /// * コンテナが作成されていない場合
+    /// * 終了コードの取得に失敗した場合
+    #[must_use = "この関数はコンテナの終了コードを返します"]
     pub fn wait(&mut self) -> Result<i32> {
-        let _container_id = self.container_id
+        let container_id = self.container_id
             .as_ref()
-            .ok_or_else(|| container_err(
-                "コンテナ待機",
-                "コンテナが作成されていません"
-            ))
-            .and_then(|id| Ok(id.clone()))?;
-
-        let _container_id = self.container_id
-            .as_ref()
-            .ok_or_else(|| container_err(
-                "コンテナ待機",
-                "コンテナが作成されていません"
-            ))?;
+            .ok_or_else(|| anyhow!("コンテナエラー: コンテナが作成されていません"))?;
 
         let output = Command::new("docker")
-            .args(["wait", _container_id])
+            .args(["wait", container_id])
             .output()
-            .map_err(|e| container_err(
-                "コンテナ待機",
-                format!("終了コードの取得に失敗しました: {}", e)
-            ))?;
+            .map_err(|e| anyhow!("コンテナエラー: 終了コードの取得に失敗しました: {}", e))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(container_err(
-                "コンテナ待機",
-                format!("終了コードの取得に失敗しました: {}", stderr)
-            ));
+            return Err(anyhow!("コンテナエラー: 終了コードの取得に失敗しました: {}", stderr));
         }
 
         let exit_code = String::from_utf8(output.stdout)
-            .map_err(|e| container_err(
-                "コンテナ待機",
-                format!("終了コードの解析に失敗しました: {}", e)
-            ))?
+            .map_err(|e| anyhow!("コンテナエラー: 終了コードの解析に失敗しました: {}", e))?
             .trim()
             .parse()
-            .map_err(|e| container_err(
-                "コンテナ待機",
-                format!("終了コードの解析に失敗しました: {}", e)
-            ))?;
+            .map_err(|e| anyhow!("コンテナエラー: 終了コードの解析に失敗しました: {}", e))?;
 
         Ok(exit_code)
     }
 
+    /// イメージの存在を確認し、必要に応じてプルします
+    ///
+    /// # Arguments
+    /// * `image` - 確認するDockerイメージ名
+    ///
+    /// # Returns
+    /// * `Result<()>` - 確認結果
+    ///
+    /// # Errors
+    /// * イメージの確認に失敗した場合
+    /// * イメージのプルに失敗したた場合
+    #[must_use = "この関数はイメージの確認結果を返します"]
     pub fn ensure_image(&self, image: &str) -> Result<()> {
         let output = Command::new("docker")
             .args(["images", "-q", image])
             .output()
-            .map_err(|e| container_err(
-                "イメージ確認",
-                format!("イメージの確認に失敗しました: {}", e)
-            ))?;
+            .map_err(|e| anyhow!("コンテナエラー: イメージの確認に失敗しました: {}", e))?;
 
         if output.stdout.is_empty() {
             let output = Command::new("docker")
                 .args(["pull", image])
                 .output()
-                .map_err(|e| container_err(
-                    "イメージ取得",
-                    format!("イメージの取得に失敗しました: {}", e)
-                ))?;
+                .map_err(|e| anyhow!("コンテナエラー: イメージの取得に失敗しました: {}", e))?;
 
             if !output.status.success() {
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                return Err(container_err(
-                    "イメージ取得",
-                    format!("イメージの取得に失敗しました: {}", stderr)
-                ));
+                return Err(anyhow!("コンテナエラー: イメージの取得に失敗しました: {}", stderr));
             }
         }
 

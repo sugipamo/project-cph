@@ -1,5 +1,5 @@
-mod types;
+mod container_state;
+pub use container_state::{Info, Type};
 mod manager;
 
-pub use types::ContainerState;
-pub use manager::ContainerStateManager; 
+pub use manager::Manager as ContainerStateManager; 

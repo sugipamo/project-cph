@@ -1,20 +1,26 @@
 use crate::contest::model::{Command, CommandContext, Contest};
-use crate::contest::service::{ContestService, TestService};
+use crate::contest::service::{ContestHandler, TestRunner};
 use anyhow::Result;
 
-pub struct CommandService {
-    contest_service: ContestService,
-    test_service: TestService,
+pub struct Service {
+    contest_service: ContestHandler,
+    test_service: TestRunner,
 }
 
-impl CommandService {
-    pub fn new(contest_service: ContestService, test_service: TestService) -> Self {
+impl Service {
+    #[must_use = "この関数は新しいCommandServiceインスタンスを返します"]
+    pub const fn new(contest_service: ContestHandler, test_service: TestRunner) -> Self {
         Self {
             contest_service,
             test_service,
         }
     }
 
+    /// コマンドを実行します。
+    /// 
+    /// # Errors
+    /// - コマンドの実行に失敗した場合
+    /// - コンテストが選択されていない場合（必要な場合）
     pub fn execute(&self, context: CommandContext) -> Result<()> {
         match context.command {
             Command::Login => {
@@ -23,34 +29,37 @@ impl CommandService {
                 Ok(())
             }
             Command::Open { site, contest_id, problem_id } => {
-                println!("問題を開きます: site={}, contest={:?}, problem={:?}", 
-                    site, contest_id, problem_id);
-                self.contest_service.open(site, contest_id, problem_id)
+                println!("問題を開きます: site={site}, contest={contest_id:?}, problem={problem_id:?}");
+                self.contest_service.open(&site, &contest_id, &problem_id)
             }
             Command::Test { test_number } => {
-                if let Some(contest) = context.contest {
-                    println!("テストを実行します: test_number={:?}", test_number);
-                    self.test_service.run_test(&contest, test_number)
-                } else {
-                    Err(anyhow::anyhow!("コンテストが選択されていません"))
-                }
+                context.contest.map_or_else(
+                    || Err(anyhow::anyhow!("コンテストが選択されていません")),
+                    |contest| {
+                        println!("テストを実行します: test_number={test_number:?}");
+                        self.test_service.run_test(&contest, test_number)
+                    }
+                )
             }
             Command::Submit => {
-                if let Some(contest) = context.contest {
-                    println!("提出を行います");
-                    self.contest_service.submit(&contest)
-                } else {
-                    Err(anyhow::anyhow!("コンテストが選択されていません"))
-                }
+                context.contest.map_or_else(
+                    || Err(anyhow::anyhow!("コンテストが選択されていません")),
+                    |contest| {
+                        println!("提出を行います");
+                        self.contest_service.submit(&contest)
+                    }
+                )
             }
         }
     }
 
-    pub fn with_contest(&self, command: Command, contest: Contest) -> CommandContext {
+    #[must_use = "この関数は新しいCommandContextインスタンスを返します"]
+    pub const fn with_contest(&self, command: Command, contest: Contest) -> CommandContext {
         CommandContext::with_contest(command, contest)
     }
 
-    pub fn without_contest(&self, command: Command) -> CommandContext {
+    #[must_use = "この関数は新しいCommandContextインスタンスを返します"]
+    pub const fn without_contest(&self, command: Command) -> CommandContext {
         CommandContext::new(command)
     }
 } 

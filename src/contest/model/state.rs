@@ -20,7 +20,7 @@ use std::sync::Arc;
 use anyhow::{Result, anyhow};
 
 #[derive(Debug, Clone)]
-pub struct ContestState {
+pub struct State {
     site: Option<Arc<String>>,
     contest_id: Option<Arc<String>>,
     problem_id: Option<Arc<String>>,
@@ -29,7 +29,7 @@ pub struct ContestState {
 }
 
 #[derive(Debug, Clone)]
-pub struct ValidatedState {
+pub struct Validated {
     pub(crate) site: Arc<String>,
     pub(crate) contest_id: Arc<String>,
     pub(crate) problem_id: Arc<String>,
@@ -39,7 +39,7 @@ pub struct ValidatedState {
 
 // 状態遷移の型安全性を向上させるための新しい型
 #[derive(Debug, Clone)]
-pub enum StateTransition {
+pub enum Transition {
     SetSite(String),
     SetContestId(String),
     SetProblemId(String),
@@ -47,8 +47,15 @@ pub enum StateTransition {
     SetSourcePath(PathBuf),
 }
 
-impl ContestState {
-    pub fn new() -> Self {
+impl Default for State {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl State {
+    #[must_use = "この関数は新しいContestStateインスタンスを返します"]
+    pub const fn new() -> Self {
         Self {
             site: None,
             contest_id: None,
@@ -58,37 +65,60 @@ impl ContestState {
         }
     }
 
+    #[must_use = "この関数は状態の参照を返します"]
     pub fn site(&self) -> Option<&str> {
-        self.site.as_ref().map(|s| s.as_str())
+        self.site.as_deref().map(String::as_str)
     }
 
+    #[must_use = "この関数はコンテストIDの参照を返します"]
     pub fn contest_id(&self) -> Option<&str> {
-        self.contest_id.as_ref().map(|s| s.as_str())
+        self.contest_id.as_deref().map(String::as_str)
     }
 
+    #[must_use = "この関数は問題IDの参照を返します"]
     pub fn problem_id(&self) -> Option<&str> {
-        self.problem_id.as_ref().map(|s| s.as_str())
+        self.problem_id.as_deref().map(String::as_str)
     }
 
+    #[must_use = "この関数は言語の参照を返します"]
     pub fn language(&self) -> Option<&str> {
-        self.language.as_ref().map(|s| s.as_str())
+        self.language.as_deref().map(String::as_str)
     }
 
+    #[must_use = "この関数はソースファイルのパスの参照を返します"]
     pub fn source_path(&self) -> Option<&PathBuf> {
-        self.source_path.as_ref().map(|p| p.as_ref())
+        self.source_path.as_deref()
     }
 
-    pub fn apply_transition(self, transition: StateTransition) -> Self {
+    #[must_use = "この関数は新しい状態を返します"]
+    pub fn apply_transition(self, transition: Transition) -> Self {
         match transition {
-            StateTransition::SetSite(site) => self.with_site(site),
-            StateTransition::SetContestId(id) => self.with_contest_id(id),
-            StateTransition::SetProblemId(id) => self.with_problem_id(id),
-            StateTransition::SetLanguage(lang) => self.with_language(lang),
-            StateTransition::SetSourcePath(path) => self.with_source_path(path),
+            Transition::SetSite(site) => self.with_site(site),
+            Transition::SetContestId(id) => self.with_contest_id(id),
+            Transition::SetProblemId(id) => self.with_problem_id(id),
+            Transition::SetLanguage(lang) => self.with_language(lang),
+            Transition::SetSourcePath(path) => self.with_source_path(path),
         }
     }
 
-    pub fn validate(&self) -> Result<ValidatedState> {
+    /// 状態を検証し、�証済みの状態を返します
+    ///
+    /// # Returns
+    /// * `Result<Validated>` - 検証済みの状態
+    ///
+    /// # Errors
+    /// * サイトが指定されていない場合
+    /// * コンテストIDが指定されていない場合
+    /// * 問題IDが指定されていない場合
+    /// * 言語が指定されていない場合
+    /// * ソースパスが指定されていない場合
+    /// * サイトが空の場合
+    /// * コンテストIDが空の場合
+    /// * 問題IDが空の場合
+    /// * 言語が空の場合
+    /// * 指定されたソースパスが存在しない場合
+    /// * 指定されたソースパスがファイルではない場合
+    pub fn validate(&self) -> Result<Validated> {
         let site = self.site.clone()
             .ok_or_else(|| anyhow!("サイトが指定されていません"))?;
         
@@ -126,7 +156,7 @@ impl ContestState {
             return Err(anyhow!("指定されたソースパスはファイルではありません"));
         }
 
-        Ok(ValidatedState {
+        Ok(Validated {
             site,
             contest_id,
             problem_id,
@@ -135,6 +165,7 @@ impl ContestState {
         })
     }
 
+    #[must_use = "この関数は新しいContestStateインスタンスを返します"]
     pub fn with_site<T: Into<String>>(self, site: T) -> Self {
         Self {
             site: Some(Arc::new(site.into())),
@@ -145,6 +176,7 @@ impl ContestState {
         }
     }
 
+    #[must_use = "この関数は新しいContestStateインスタンスを返します"]
     pub fn with_contest_id<T: Into<String>>(self, contest_id: T) -> Self {
         Self {
             site: self.site,
@@ -155,6 +187,7 @@ impl ContestState {
         }
     }
 
+    #[must_use = "この関数は新しいContestStateインスタンスを返します"]
     pub fn with_problem_id<T: Into<String>>(self, problem_id: T) -> Self {
         Self {
             site: self.site,
@@ -165,6 +198,7 @@ impl ContestState {
         }
     }
 
+    #[must_use = "この関数は新しいContestStateインスタンスを返します"]
     pub fn with_language<T: Into<String>>(self, language: T) -> Self {
         Self {
             site: self.site,
@@ -175,6 +209,7 @@ impl ContestState {
         }
     }
 
+    #[must_use = "この関数は新しいContestStateインスタンスを返します"]
     pub fn with_source_path<T: Into<PathBuf>>(self, source_path: T) -> Self {
         Self {
             site: self.site,
@@ -186,29 +221,43 @@ impl ContestState {
     }
 }
 
-impl ValidatedState {
+impl Validated {
+    #[must_use = "この関数はサイト名を返します"]
     pub fn site(&self) -> &str {
         &self.site
     }
 
+    #[must_use = "この関数はコンテストIDを返します"]
     pub fn contest_id(&self) -> &str {
         &self.contest_id
     }
 
+    #[must_use = "この関数は問題IDを返します"]
     pub fn problem_id(&self) -> &str {
         &self.problem_id
     }
 
+    #[must_use = "この関数は言語を返します"]
     pub fn language(&self) -> &str {
         &self.language
     }
 
+    #[must_use = "この関数はソースファイルのパスを返します"]
     pub fn source_path(&self) -> &PathBuf {
         &self.source_path
     }
 
-    pub fn try_update(&self, transition: StateTransition) -> Result<ValidatedState> {
-        let mut new_state = ContestState::new()
+    /// 状態を更新します。
+    /// 
+    /// # Arguments
+    /// * `transition` - 適用する状態遷移
+    /// 
+    /// # Errors
+    /// - 状態遷移後の検証に失敗した場合
+    /// - 必須フィールドが未設定の場合
+    /// - パスの検証に失敗した場合
+    pub fn try_update(&self, transition: Transition) -> Result<Self> {
+        let mut new_state = State::new()
             .with_site(self.site.as_ref().clone())
             .with_contest_id(self.contest_id.as_ref().clone())
             .with_problem_id(self.problem_id.as_ref().clone())
@@ -220,7 +269,7 @@ impl ValidatedState {
     }
 }
 
-impl PartialEq for ValidatedState {
+impl PartialEq for Validated {
     fn eq(&self, other: &Self) -> bool {
         self.site == other.site &&
         self.contest_id == other.contest_id &&
@@ -230,4 +279,4 @@ impl PartialEq for ValidatedState {
     }
 }
 
-impl Eq for ValidatedState {} 
+impl Eq for Validated {} 

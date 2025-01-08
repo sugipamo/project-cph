@@ -1,3 +1,4 @@
+# 必ずanyhow::Errorのみを使用する
 disallowed-types = [
     "std::error::Error",
     "std::io::Error",
@@ -6,7 +7,7 @@ disallowed-types = [
     "Box<dyn std::error::Error + Send + Sync>"
 ]
 
-# ファイル名の制限
+# ファイルを分割することでAIが存在を認識できず、重複したコードが生成されるため禁止
 disallowed-names = [
     "types.rs",
     "prelude.rs",
@@ -15,7 +16,8 @@ disallowed-names = [
     "utils.rs",
     "helpers.rs",
     "common.rs",
-    "models.rs"
+    "models.rs",
+    "errors.rs"
 ]
 
 # 複雑性の制限

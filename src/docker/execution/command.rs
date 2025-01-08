@@ -1,15 +1,27 @@
 use std::process::Command;
 use std::borrow::Cow;
-use crate::error::Result;
-use crate::docker::error::execution_err;
+use anyhow::{Result, anyhow};
 
+/// Dockerコマンドの実行を担当する構造体
+///
+/// # Fields
+/// * `name` - 実行するDockerコマンド名
+/// * `args` - コマンドの引数リスト
 #[derive(Clone)]
-pub struct DockerCommand {
+pub struct Executor {
     name: String,
     args: Vec<String>,
 }
 
-impl DockerCommand {
+impl Executor {
+    /// 新しいExecutorインスタンスを作成します
+    ///
+    /// # Arguments
+    /// * `name` - 実行するDockerコマンド名
+    ///
+    /// # Returns
+    /// * `Self` - 新しいExecutorインスタンス
+    #[must_use = "この関数は新しいExecutorインスタンスを返します"]
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -17,6 +29,14 @@ impl DockerCommand {
         }
     }
 
+    /// コマンドに単一の引数を追加します
+    ///
+    /// # Arguments
+    /// * `arg` - 追加する引数
+    ///
+    /// # Returns
+    /// * `Self` - 新しいExecutorインスタンス
+    #[must_use = "この関数は新しいExecutorインスタンスを返します"]
     pub fn arg<'a, S: Into<Cow<'a, str>>>(self, arg: S) -> Self {
         let mut args = self.args;
         args.push(arg.into().into_owned());
@@ -26,6 +46,14 @@ impl DockerCommand {
         }
     }
 
+    /// コマンドに複数の引数を追加します
+    ///
+    /// # Arguments
+    /// * `args` - 追加する引数のイテレータ
+    ///
+    /// # Returns
+    /// * `Self` - 新しいExecutorインスタンス
+    #[must_use = "この関数は新しいExecutorインスタンスを返します"]
     pub fn args<I, S>(self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -39,6 +67,15 @@ impl DockerCommand {
         }
     }
 
+    /// コマンドを実行し、結果を返します
+    ///
+    /// # Returns
+    /// * `Result<String>` - コマンドの実行結果
+    ///
+    /// # Errors
+    /// * コマンドの実行に失敗した場合
+    /// * 出力の文字列変換に失敗した場合
+    #[must_use = "この関数はコマンドの実行結果を返します"]
     pub fn execute(self) -> Result<String> {
         let mut command = Command::new("docker");
         command.arg(&self.name);
@@ -46,17 +83,14 @@ impl DockerCommand {
 
         let output = command
             .output()
-            .map_err(|e| execution_err("コマンド実行", e.to_string()))?;
+            .map_err(|e| anyhow!("コマンド実行エラー: {}", e))?;
 
         if !output.status.success() {
             let error = String::from_utf8_lossy(&output.stderr);
-            return Err(execution_err(
-                "コマンド実行",
-                format!("コマンドの実行に失敗: {}", error)
-            ));
+            return Err(anyhow!("コマンド実行エラー: コマンドの実行に失敗: {}", error));
         }
 
         String::from_utf8(output.stdout)
-            .map_err(|e| execution_err("コマンド実行", e.to_string()))
+            .map_err(|e| anyhow!("コマンド実行エラー: {}", e))
     }
 } 

@@ -1,8 +1,7 @@
-pub mod error;
 pub mod model;
 pub mod parse;
 pub mod service;
 
-pub use error::contest_error;
-pub use model::{Contest, TestCase};
-pub use service::{ContestService, TestService};
+pub use model::{Command, CommandContext, Contest, TestCase};
+pub use parse::Resolver;
+pub use service::{ContestHandler as Handler, TestRunner};
