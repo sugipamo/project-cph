@@ -48,8 +48,8 @@ impl Service {
                         
                         self.contest_service.open_with_config(
                             &site_str,
-                            &contest_id,
-                            &problem_id,
+                            contest_id.as_ref().ok_or_else(|| anyhow::anyhow!(contest::error("invalid_command", "コンテストIDが指定されていません")))?,
+                            problem_id.as_ref().ok_or_else(|| anyhow::anyhow!(contest::error("invalid_command", "問題IDが指定されていません")))?,
                             &template_dir,
                             &active_dir,
                         )

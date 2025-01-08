@@ -1,0 +1,62 @@
+diff --git a/src/contest/service/contest.rs b/src/contest/service/contest.rs
+index fbcf158..eb90403 100644
+--- a/src/contest/service/contest.rs
++++ b/src/contest/service/contest.rs
+@@ -279,7 +279,7 @@ impl Service {
+         Ok(())
+     }
+ 
+-    /// 設定を使用して問�を開きます
++    /// 設定を使用してコンテストを開きます
+     /// 
+     /// # Arguments
+     /// 
+@@ -291,19 +291,40 @@ impl Service {
+     /// 
+     /// # Errors
+     /// 
+-    /// - 問題の取得に失敗した場合
+     /// - ディレクトリの作成に失敗した場合
++    /// - ファイルのコピーに失敗した場合
++    /// - 問題情報のダウンロードに失敗した場合
+     pub fn open_with_config(
+         &self,
+-        _site: &str,
+-        _contest_id: &Option<String>,
+-        _problem_id: &Option<String>,
++        site: &str,
++        contest_id: &str,
++        problem_id: &str,
+         template_dir: &str,
+         active_dir: &str,
+     ) -> Result<()> {
+-        // TODO: 実装
+-        println!("テンプレートディレクトリ: {template_dir}");
+-        println!("アクティブディレクトリ: {active_dir}");
++        // アクティブディレクトリのパスを構築
++        let contest_path = format!("{active_dir}/{site}/{contest_id}");
++        let problem_path = format!("{contest_path}/{problem_id}");
++
++        // ファイルマネージャーを作成
++        let mut manager = Manager::new(&problem_path);
++
++        // ディレクトリが存在しない場合は作成
++        if !manager.exists("")? {
++            manager = manager.create_dir("")?;
++        }
++
++        // テンプレートファイルをコピー
++        let template_path = format!("{template_dir}/main.rs");
++        let template_content = std::fs::read_to_string(template_path)
++            .map_err(|e| anyhow::anyhow!("テンプレートファイルの読み込みに失敗しました: {e}"))?;
++
++        // ファイルを書き込み
++        manager = manager.write_file("main.rs", template_content)?;
++
++        // TODO: 問題情報のダウンロード
++        // self.download_problem_info(site, contest_id, problem_id)?;
++
+         Ok(())
+     }
+ } 
+\ No newline at end of file
