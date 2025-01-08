@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use anyhow::{Result, anyhow};
+use crate::message::fs as fs_message;
 
 /// パスの検証レベルを定義する列挙型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -12,6 +13,7 @@ pub enum ValidationLevel {
 
 /// パス操作に関する共通機能を提供する構造体
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Validator {
     /// パスの検証レベル
     validation_level: ValidationLevel,
@@ -33,13 +35,13 @@ impl Default for Validator {
 }
 
 impl Validator {
-    /// 新しいパスバリデータを作成します。
-    /// 
+    /// 新しいValidatorインスタンスを作成します
+    ///
     /// # Arguments
     /// * `validation_level` - パスの検証レベル
     /// * `max_path_length` - パス長の最大値（バイト単位）
     /// * `max_filename_length` - ファイル名の最大長（バイト単位）
-    #[must_use = "この関数は新しいValidatorを返します"]
+    #[must_use = "この関数は新しいValidatorインスタンスを返します"]
     pub const fn new(
         validation_level: ValidationLevel,
         max_path_length: usize,
@@ -52,79 +54,53 @@ impl Validator {
         }
     }
 
-    /// パスを検証します。
-    /// 
+    /// パスを検証します
+    ///
     /// # Arguments
     /// * `path` - 検証するパス
-    /// 
+    ///
+    /// # Returns
+    /// * `Result<()>` - 検証結果
+    ///
     /// # Errors
-    /// - パスが絶対パスの場合
-    /// - パスが長すぎる場合
-    /// - パストラバーサルが含まれる場合
-    /// - ファイル名が長すぎる場合
-    /// - 厳格モードで無効な文字が含まれる場合
-    pub fn validate(&self, path: impl AsRef<Path>) -> Result<()> {
+    /// * パスが無効な場合
+    pub fn validate<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let path = path.as_ref();
-
-        // 基本的な検証
-        if path.is_absolute() {
-            return Err(anyhow!("無効なパスです: 絶対パスは許可されていません"));
-        }
-
-        let path_str = path.to_string_lossy();
-        if path_str.len() > self.max_path_length {
-            return Err(anyhow!("無効なパスです: パスが長すぎます（最大{0}バイト）", self.max_path_length));
-        }
 
         // パスコンポーネントの検証
         for component in path.components() {
             match component {
                 std::path::Component::ParentDir => {
-                    return Err(anyhow!("無効なパスです: パストラバーサルは許可されていません"));
+                    return Err(anyhow!(fs_message::error("path_traversal_error", "")));
                 }
                 std::path::Component::RootDir => {
-                    return Err(anyhow!("無効なパスです: 絶対パスは許可されていません"));
+                    return Err(anyhow!(fs_message::error("absolute_path_error", "")));
                 }
                 std::path::Component::Normal(name) => {
                     let name_str = name.to_string_lossy();
                     if name_str.len() > self.max_filename_length {
-                        return Err(anyhow!(
-                            "無効なパスです: ファイル名が長すぎます（最大{0}バイト）",
-                            self.max_filename_length
-                        ));
-                    }
-
-                    if self.validation_level == ValidationLevel::Strict {
-                        // 特殊文字のチェック
-                        if name_str.contains(|c: char| {
-                            c.is_control() || c == '<' || c == '>' || c == ':' || c == '"' ||
-                            c == '/' || c == '\\' || c == '|' || c == '?' || c == '*'
-                        }) {
-                            return Err(anyhow!("無効なパスです: ファイル名に無効な文字が含まれています"));
-                        }
-
-                        // 非ASCII文字のチェック（必要に応じて）
-                        if !name_str.is_ascii() {
-                            return Err(anyhow!("無効なパスです: ファイル名に非ASCII文字が含まれています"));
-                        }
+                        return Err(anyhow!(fs_message::error("filename_too_long", self.max_filename_length)));
                     }
                 }
-                _ => continue,
+                _ => {}
             }
         }
 
         Ok(())
     }
 
-    /// パスを正規化します。
+    /// パスを正規化します
     /// 
     /// # Arguments
     /// * `root` - ルートディレクトリのパス
     /// * `path` - 正規化するパス
     /// 
+    /// # Returns
+    /// * `Result<PathBuf>` - 正規化されたパス
+    /// 
     /// # Errors
-    /// - パスの検証に失敗した場合
-    /// - パスの正規化に失敗した場合
+    /// * パスの検証に失敗した場合
+    /// * パスの正規化に失敗した場合
     #[must_use = "この関数は正規化されたパスを返します"]
     pub fn normalize<P1: AsRef<Path>, P2: AsRef<Path>>(&self, root: P1, path: P2) -> Result<PathBuf> {
         // パスの検証
@@ -136,31 +112,32 @@ impl Validator {
     }
 }
 
-/// パスを正規化します。
+/// パスを正規化します
 /// 
 /// # Arguments
 /// * `root` - ルートディレクトリのパス
 /// * `path` - 正規化するパス
 /// 
+/// # Returns
+/// * `Result<PathBuf>` - 正規化されたパス
+/// 
 /// # Errors
-/// - パスの正規化に失敗した場合
-#[must_use = "この関数は正規化されたパスを返します"]
+/// * パスの検証に失敗した場合
+/// * パスの正規化に失敗した場合
 pub fn normalize<P1: AsRef<Path>, P2: AsRef<Path>>(root: P1, path: P2) -> Result<PathBuf> {
     Validator::default().normalize(root, path)
 }
 
-/// パスを検証します。
+/// パスを検証します
 /// 
 /// # Arguments
 /// * `path` - 検証するパス
 /// 
+/// # Returns
+/// * `Result<()>` - 検証結果
+/// 
 /// # Errors
-/// - パスが絶対パスの場合
-/// - パスが長すぎる場合
-/// - パストラバーサルが含まれる場合
-/// - ファイル名が長すぎる場合
-/// - 厳格モードで無効な文字が含まれる場合
-#[must_use = "この関数はパスの検証結果を返します"]
+/// * パスが無効な場合
 pub fn validate<P: AsRef<Path>>(path: P) -> Result<()> {
     Validator::default().validate(path)
 }

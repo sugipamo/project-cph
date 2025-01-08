@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Result, anyhow};
 use chrono::Local;
 use tokio::fs;
+use crate::message::fs as fs_message;
 
 /// バックアップファイルの管理を行う構造体
 #[derive(Debug)]
@@ -25,7 +26,7 @@ impl Manager {
         let backup_dir = backup_dir.as_ref().to_path_buf();
         if !backup_dir.exists() {
             fs::create_dir_all(&backup_dir).await
-                .map_err(|e| anyhow!("バックアップディレクトリの作成に失敗しました: {e}"))?;
+                .map_err(|e| anyhow!(fs_message::error("backup_dir_create_error", e)))?;
         }
         Ok(Self { backup_dir })
     }
@@ -48,16 +49,16 @@ impl Manager {
         }
 
         let file_name = file_path.file_name()
-            .ok_or_else(|| anyhow!("ファイル名の取得に失敗しました"))?
+            .ok_or_else(|| anyhow!(fs_message::error("filename_get_error", "")))?
             .to_str()
-            .ok_or_else(|| anyhow!("ファイル名の変換に失敗しました"))?;
+            .ok_or_else(|| anyhow!(fs_message::error("filename_convert_error", "")))?;
 
         let timestamp = Local::now().format("%Y%m%d_%H%M%S");
         let backup_file_name = format!("{file_name}.{timestamp}.bak");
         let backup_path = self.backup_dir.join(backup_file_name);
 
         fs::copy(file_path, &backup_path).await
-            .map_err(|e| anyhow!("ファイルのバックアップに失敗しました: {e}"))?;
+            .map_err(|e| anyhow!(fs_message::error("backup_error", e)))?;
 
         Ok(())
     }
@@ -77,11 +78,11 @@ impl Manager {
     pub async fn restore<P: AsRef<Path> + Send>(&self, file_path: P, backup_file_name: &str) -> Result<()> {
         let backup_path = self.backup_dir.join(backup_file_name);
         if !backup_path.exists() {
-            return Err(anyhow!("バックアップファイルが存在しません: {backup_file_name}"));
+            return Err(anyhow!(fs_message::error("backup_not_found", backup_file_name)));
         }
 
         fs::copy(&backup_path, file_path.as_ref()).await
-            .map_err(|e| anyhow!("ファイルの復元に失敗しました: {e}"))?;
+            .map_err(|e| anyhow!(fs_message::error("restore_error", e)))?;
 
         Ok(())
     }
@@ -98,25 +99,21 @@ impl Manager {
     /// * バックアップディレクトリの読み取りに失敗した場合
     pub async fn list_backups(&self, file_name: &str) -> Result<Vec<String>> {
         let mut entries = fs::read_dir(&self.backup_dir).await
-            .map_err(|e| anyhow!("バックアップディレクトリの読み取りに失敗しました: {e}"))?;
+            .map_err(|e| anyhow!(fs_message::error("backup_dir_read_error", e)))?;
 
         let mut backups = Vec::new();
         while let Some(entry) = entries.next_entry().await
-            .map_err(|e| anyhow!("バックアップファイルの読み取りに失敗しました: {e}"))? {
-            let path = entry.path();
-            if let Some(name) = path.file_name() {
-                if let Some(name_str) = name.to_str() {
-                    if name_str.starts_with(&format!("{file_name}.")) && 
-                        std::path::Path::new(name_str)
-                            .extension()
-                            .map_or(false, |ext| ext.eq_ignore_ascii_case("bak")) {
-                        backups.push(name_str.to_string());
-                    }
+            .map_err(|e| anyhow!(fs_message::error("backup_dir_read_error", e)))? {
+            if let Some(name) = entry.file_name().to_str() {
+                if name.starts_with(file_name) && 
+                    std::path::Path::new(name)
+                        .extension()
+                        .map_or(false, |ext| ext.eq_ignore_ascii_case("bak")) {
+                    backups.push(name.to_string());
                 }
             }
         }
 
-        backups.sort();
         Ok(backups)
     }
 } 

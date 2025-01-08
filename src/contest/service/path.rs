@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use anyhow::{Result, anyhow};
+use crate::message::contest;
 
 pub struct Service {
     base_dir: PathBuf,
@@ -19,9 +20,7 @@ impl Service {
     /// - ベースディレクトリが存在しない場合
     pub fn validate_base_dir(&self) -> Result<()> {
         if !self.base_dir.exists() {
-            return Err(anyhow!(
-                "コンテストディレクトリが存在しません: {:?}", self.base_dir
-            ));
+            return Err(anyhow!(contest::error("contest_dir_not_found", self.base_dir.display())));
         }
         Ok(())
     }
@@ -33,14 +32,12 @@ impl Service {
     pub fn validate_source_dir(&self, source_dir: impl AsRef<Path>) -> Result<()> {
         let source_dir = source_dir.as_ref();
         if !source_dir.exists() {
-            return Err(anyhow!(
-                "ソースディレクトリが存在しません: {:?}", source_dir
-            ));
+            return Err(anyhow!(contest::error("source_dir_not_found", source_dir.display())));
         }
         Ok(())
     }
 
-    /// ソースファイルの存在を確認します。
+    /// ソース�ァイルの存在を確認します。
     /// 
     /// # Errors
     /// - ソースファイルが存在しない場合
