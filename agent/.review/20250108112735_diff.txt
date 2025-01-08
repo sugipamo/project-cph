@@ -1,0 +1,139 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index e11d796..15e7d74 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -27,7 +27,7 @@ serde_json = "1.0"
+ tokio = { version = "1.0", features = ["full"] }
+ open = "5.0.0"
+ anyhow = "1.0"
+-once_cell = "1.18"
++once_cell = "1.19"
+ tempfile = "3.2"
+ rpassword = "7.3"
+ chrono = "0.4"
+diff --git a/clippy.toml b/clippy.toml
+index 29d5a58..a6c6519 100644
+--- a/clippy.toml
++++ b/clippy.toml
+@@ -9,15 +9,18 @@ disallowed-types = [
+ 
+ # ファイルを分割することでAIが存在を認識できず、重複したコードが生成されるため禁止
+ disallowed-names = [
++    "type.rs",
+     "types.rs",
+     "prelude.rs",
+     "constants.rs",
++    "const.rs",
+     "consts.rs",
+     "utils.rs",
+     "helpers.rs",
+     "common.rs",
+     "models.rs",
+-    "errors.rs"
++    "errors.rs",
++    "error.rs"
+ ]
+ 
+ # 複雑性の制限
+diff --git a/src/contest/error.rs b/src/contest/error.rs
+deleted file mode 100644
+index 83f1671..0000000
+--- a/src/contest/error.rs
++++ /dev/null
+@@ -1,42 +0,0 @@
+-// このファイルは削除します。代わりにanyhow::Errorを直接使用します。
+-// エラーは以下のように作成します：
+-//
+-// ```rust
+-// use anyhow::{Error, Result, Context};
+-//
+-// // コマンドエラーの場合
+-// Err(anyhow!("コマンドエラー: {}", message))
+-//
+-// // 空のコマンドエラーの場合
+-// Err(anyhow!("コマンドが空です"))
+-//
+-// // 未知のコマンドエラーの場合
+-// Err(anyhow!("未知のコマンド: {}", command))
+-//
+-// // 未知のサイトエラーの場合
+-// Err(anyhow!("未知のサイト: {}", site))
+-//
+-// // サイト指定が必要なエラーの場合
+-// Err(anyhow!("サイトの指定が必要です"))
+-//
+-// // 引数が多すぎるエラーの場合
+-// Err(anyhow!("引数が多すぎます"))
+-//
+-// // コンテストが選択されていないエラーの場合
+-// Err(anyhow!("コンテストが選択されていません"))
+-//
+-// // サポートされていない言語のエラーの場合
+-// Err(anyhow!("サポートされていない言語です: {}", language))
+-//
+-// // 無効なURLのエラーの場合
+-// Err(anyhow!("URLの形式が正しくありません: {}", url))
+-//
+-// // パースエラーの場合
+-// Err(anyhow!("パースに失敗しました: {}", message))
+-//
+-// // リソースが見つからないエラーの場合
+-// Err(anyhow!("リソースが見つかりません: {}", resource))
+-//
+-// // コンテストエラーの場合
+-// Err(anyhow!("コンテストの操作に失敗しました: {}", message))
+-// ```
+diff --git a/src/docker/error.rs b/src/docker/error.rs
+deleted file mode 100644
+index 6368466..0000000
+--- a/src/docker/error.rs
++++ /dev/null
+@@ -1,21 +0,0 @@
+-// このファイルは削除します。代わりにanyhow::Errorを直接使用します。
+-// エラーは以下のように作成します：
+-//
+-// ```rust
+-// use anyhow::{Error, Result, Context};
+-//
+-// // Dockerエラーの場合
+-// Err(anyhow!("Dockerエラー: {}", message))
+-//
+-// // 実行エラーの場合
+-// Err(anyhow!("実行エラー: {}", message))
+-//
+-// // コンパイルエラーの場合
+-// Err(anyhow!("コンパイルエラー: {}", message))
+-//
+-// // コンテナエラーの場合
+-// Err(anyhow!("コンテナエラー: {}", message))
+-//
+-// // 状態エラーの場合
+-// Err(anyhow!("状態エラー: {}", message))
+-// ``` 
+\ No newline at end of file
+diff --git a/src/docker/mod.rs b/src/docker/mod.rs
+index bbc1981..42b08c8 100644
+--- a/src/docker/mod.rs
++++ b/src/docker/mod.rs
+@@ -1,5 +1,4 @@
+ pub mod config;
+-pub mod error;
+ pub mod execution;
+ pub mod fs;
+ pub mod state;
+diff --git a/src/lib.rs b/src/lib.rs
+index e567ba7..ad7a5bf 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,8 +1,10 @@
+ pub mod config;
+ pub mod contest;
+ pub mod docker;
++pub mod message;
+ pub mod fs;
+ 
+ pub use contest::{Command, Contest, Handler, TestCase, TestRunner};
+ pub use docker::Runtime;
+-pub use anyhow::{Error, Result};
++pub use message::{Type, messages};
++pub use anyhow::{anyhow, Context, Error, Result};

@@ -9,15 +9,18 @@ disallowed-types = [
 
 # ファイルを分割することでAIが存在を認識できず、重複したコードが生成されるため禁止
 disallowed-names = [
+    "type.rs",
     "types.rs",
     "prelude.rs",
     "constants.rs",
+    "const.rs",
     "consts.rs",
     "utils.rs",
     "helpers.rs",
     "common.rs",
     "models.rs",
-    "errors.rs"
+    "errors.rs",
+    "error.rs"
 ]
 
 # 複雑性の制限
