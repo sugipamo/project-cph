@@ -131,7 +131,7 @@ impl Validator {
         self.validate(path.as_ref())?;
 
         // パスの正規化
-        let normalized = path.as_ref().strip_prefix(".").unwrap_or(path.as_ref());
+        let normalized = path.as_ref().strip_prefix(".").unwrap_or_else(|_| path.as_ref());
         Ok(root.as_ref().join(normalized))
     }
 }

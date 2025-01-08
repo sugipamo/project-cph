@@ -2,16 +2,19 @@ pub use anyhow::{Error, Result, Context as _};
 
 // マクロのみを残す
 #[macro_export]
-macro_rules! create_error {
-    ($message:expr) => {
-        anyhow::Error::msg($message)
-    };
-    ($message:expr, $context:expr) => {
-        anyhow::Error::msg($message).context($context)
+macro_rules! define_error {
+    ($name:ident, $($variant:ident => $message:expr),* $(,)?) => {
+        #[derive(Debug, thiserror::Error)]
+        pub enum $name {
+            $(
+                #[error($message)]
+                $variant,
+            )*
+        }
     };
 }
 
-// 基本的なエラーマクロ
+// 基本的なエラマクロ
 #[macro_export]
 macro_rules! fs_err {
     ($msg:expr) => {

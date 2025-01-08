@@ -3,4 +3,4 @@ pub mod parse;
 pub mod service;
 
 pub use model::Contest;
-pub use service::{ContestService, TestService};
+pub use service::{ContestHandler, TestRunner};

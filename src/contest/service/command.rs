@@ -1,15 +1,15 @@
 use crate::contest::model::{Command, CommandContext, Contest};
-use crate::contest::service::{ContestService, TestService};
+use crate::contest::service::{ContestHandler, TestRunner};
 use anyhow::Result;
 
 pub struct Service {
-    contest_service: ContestService,
-    test_service: TestService,
+    contest_service: ContestHandler,
+    test_service: TestRunner,
 }
 
 impl Service {
     #[must_use = "この関数は新しいCommandServiceインスタンスを返します"]
-    pub const fn new(contest_service: ContestService, test_service: TestService) -> Self {
+    pub const fn new(contest_service: ContestHandler, test_service: TestRunner) -> Self {
         Self {
             contest_service,
             test_service,
@@ -30,7 +30,7 @@ impl Service {
             }
             Command::Open { site, contest_id, problem_id } => {
                 println!("問題を開きます: site={site}, contest={contest_id:?}, problem={problem_id:?}");
-                self.contest_service.open(site, contest_id, problem_id)
+                self.contest_service.open(&site, &contest_id, &problem_id)
             }
             Command::Test { test_number } => {
                 context.contest.map_or_else(

@@ -18,21 +18,24 @@ pub struct Service {
 // 状態遷移を表現する型
 #[derive(Debug, Clone)]
 pub enum ServiceTransition {
-    SetSite(String),
-    SetContestId(String),
-    SetProblemId(String),
-    SetLanguage(String),
-    SetUrl(String),
-    SetFileManager(Manager),
+    Site(String),
+    ContestId(String),
+    ProblemId(String),
+    TestCase(TestCase),
+    FileManager(Manager),
 }
 
 impl Service {
-    /// Creates a new Service instance
-    /// 
+    /// 新しいサービスインスタンスを作成します
+    ///
+    /// # Arguments
+    /// * `config` - サービスの設定
+    ///
+    /// # Returns
+    /// * `Result<Self>` - 作成されたサービスインスタンス
+    ///
     /// # Errors
-    /// 
-    /// Currently this function cannot fail, but returns Result for consistency
-    #[must_use]
+    /// * 設定の読み込みに失敗した場合
     pub fn new(config: &Config) -> Result<Self> {
         Ok(Self {
             site: None,
@@ -75,12 +78,11 @@ impl Service {
     #[must_use]
     pub fn apply_transition(self, transition: ServiceTransition) -> Self {
         match transition {
-            ServiceTransition::SetSite(site) => self.with_site(site),
-            ServiceTransition::SetContestId(id) => self.with_contest_id(id),
-            ServiceTransition::SetProblemId(id) => self.with_problem_id(id),
-            ServiceTransition::SetLanguage(lang) => self.with_language(lang),
-            ServiceTransition::SetUrl(url) => self.with_url(url),
-            ServiceTransition::SetFileManager(manager) => self.with_file_manager(manager),
+            ServiceTransition::Site(site) => self.with_site(site),
+            ServiceTransition::ContestId(id) => self.with_contest_id(id),
+            ServiceTransition::ProblemId(id) => self.with_problem_id(id),
+            ServiceTransition::TestCase(test_case) => self.with_test_case(test_case),
+            ServiceTransition::FileManager(manager) => self.with_file_manager(manager),
         }
     }
 
@@ -214,6 +216,12 @@ impl Service {
         }
     }
 
+    #[must_use]
+    pub fn with_test_case(self, _test_case: TestCase) -> Self {
+        // テストケースは状態に影響を与えないため、そのまま返す
+        self
+    }
+
     /// Builds a Contest instance and returns it with the `FileManager`
     /// 
     /// # Errors
@@ -245,27 +253,35 @@ impl Service {
         Ok((contest, file_manager))
     }
 
-    /// Saves test cases to the workspace
-    /// 
+    /// テストケースを保存します
+    ///
+    /// # Arguments
+    /// * `contest` - コンテスト情報
+    /// * `file_manager` - ファイル管理インスタンス
+    /// * `test_cases` - 保存するテストケース
+    ///
+    /// # Returns
+    /// * `Result<Manager>` - 更新されたファイル管理インスタンス
+    ///
     /// # Errors
-    /// 
-    /// Returns an error if saving any test case fails
-    #[must_use]
+    /// * テストケースの保存に失敗した場合
     fn save_test_cases(contest: &Contest, file_manager: Manager, test_cases: &[TestCase]) -> Result<Manager> {
         test_cases.iter().enumerate().try_fold(file_manager, |manager, (index, test_case)| {
             contest.save_test_case(manager, test_case, index)
         })
     }
 
-    /// Sets up a contest with template and test cases
-    /// 
+    /// コンテストのセットアップを行います
+    ///
+    /// # Arguments
+    /// * `template` - テンプレートファイル
+    /// * `test_cases` - テストケース
+    ///
+    /// # Returns
+    /// * `Result<(Contest, Manager)>` - セットアップされたコンテストとファイル管理インスタンス
+    ///
     /// # Errors
-    /// 
-    /// Returns an error if:
-    /// - Building the contest fails
-    /// - Saving template fails
-    /// - Saving test cases fails
-    #[must_use]
+    /// * セットアップに失敗した場合
     pub fn setup_contest(self, template: &str, test_cases: &[TestCase]) -> Result<(Contest, Manager)> {
         let (contest, file_manager) = self.build()?;
         let file_manager = contest.save_template(file_manager, template)?;
@@ -284,7 +300,7 @@ impl Service {
     /// - サイトが無効な場合
     /// - コンテストIDが無効な場合
     /// - 問題IDが無効な場合
-    pub fn open(&self, site: &str, contest_id: &Option<String>, problem_id: &Option<String>) -> Result<()> {
+    pub fn open(&self, _site: &str, _contest_id: &Option<String>, _problem_id: &Option<String>) -> Result<()> {
         // TODO: 実装
         unimplemented!()
     }

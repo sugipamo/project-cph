@@ -1,18 +1,44 @@
 use std::process::Command;
 use anyhow::{Result, anyhow};
 
-pub struct DockerContainer {
+/// Dockerコンテナのランタイム管理を担当する構造体
+///
+/// # Fields
+/// * `container_id` - 管理対象のコンテナID（オプション）
+#[derive(Debug)]
+pub struct Runtime {
     container_id: Option<String>,
 }
 
-impl DockerContainer {
-    #[must_use = "この関数は新しいDockerContainerインスタンスを返します"]
-    pub fn new() -> Self {
+impl Default for Runtime {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Runtime {
+    /// 新しいRuntimeインスタンスを作成します
+    ///
+    /// # Returns
+    /// * `Self` - 新しいRuntimeインスタンス
+    #[must_use = "この関数は新しいRuntimeインスタンスを返します"]
+    pub const fn new() -> Self {
         Self {
             container_id: None,
         }
     }
 
+    /// コンテナを作成します
+    ///
+    /// # Arguments
+    /// * `image` - 使用するDockerイメージ名
+    ///
+    /// # Returns
+    /// * `Result<()>` - 作成結果
+    ///
+    /// # Errors
+    /// * コンテナが既に作成されている場合
+    /// * コンテナの作成に失敗した場合
     #[must_use = "この関数はコンテナの作成結果を返します"]
     pub fn create(&mut self, image: &str) -> Result<()> {
         if self.container_id.is_some() {
@@ -38,14 +64,22 @@ impl DockerContainer {
         Ok(())
     }
 
+    /// コンテナを起動します
+    ///
+    /// # Returns
+    /// * `Result<()>` - 起動結果
+    ///
+    /// # Errors
+    /// * コンテナが作成されていない場合
+    /// * コンテナの起動に失敗した場合
     #[must_use = "この関数はコンテナの起動結果を返します"]
     pub fn start(&mut self) -> Result<()> {
-        let _container_id = self.container_id
+        let container_id = self.container_id
             .as_ref()
             .ok_or_else(|| anyhow!("コンテナエラー: コンテナが作成されていません"))?;
 
         let output = Command::new("docker")
-            .args(["start", _container_id])
+            .args(["start", container_id])
             .output()
             .map_err(|e| anyhow!("コンテナエラー: コンテナの起動に失敗しました: {}", e))?;
 
@@ -57,14 +91,22 @@ impl DockerContainer {
         Ok(())
     }
 
+    /// コンテナを停止します
+    ///
+    /// # Returns
+    /// * `Result<()>` - 停止結果
+    ///
+    /// # Errors
+    /// * コンテナが作成されていない場合
+    /// * コンテナの停止に失敗した場合
     #[must_use = "この関数はコンテナの停止結果を返します"]
     pub fn stop(&mut self) -> Result<()> {
-        let _container_id = self.container_id
+        let container_id = self.container_id
             .as_ref()
             .ok_or_else(|| anyhow!("コンテナエラー: コンテナが作成されていません"))?;
 
         let output = Command::new("docker")
-            .args(["stop", _container_id])
+            .args(["stop", container_id])
             .output()
             .map_err(|e| anyhow!("コンテナエラー: コンテナの停止に失敗しました: {}", e))?;
 
@@ -76,14 +118,22 @@ impl DockerContainer {
         Ok(())
     }
 
-    #[must_use = "この関数はコンテナの�了コードを返します"]
+    /// コンテナの終了を待機し、終了コードを返します
+    ///
+    /// # Returns
+    /// * `Result<i32>` - 終了コード
+    ///
+    /// # Errors
+    /// * コンテナが作成されていない場合
+    /// * 終了コードの取得に失敗した場合
+    #[must_use = "この関数はコンテナの終了コードを返します"]
     pub fn wait(&mut self) -> Result<i32> {
-        let _container_id = self.container_id
+        let container_id = self.container_id
             .as_ref()
             .ok_or_else(|| anyhow!("コンテナエラー: コンテナが作成されていません"))?;
 
         let output = Command::new("docker")
-            .args(["wait", _container_id])
+            .args(["wait", container_id])
             .output()
             .map_err(|e| anyhow!("コンテナエラー: 終了コードの取得に失敗しました: {}", e))?;
 
@@ -101,6 +151,17 @@ impl DockerContainer {
         Ok(exit_code)
     }
 
+    /// イメージの存在を確認し、必要に応じてプルします
+    ///
+    /// # Arguments
+    /// * `image` - 確認するDockerイメージ名
+    ///
+    /// # Returns
+    /// * `Result<()>` - 確認結果
+    ///
+    /// # Errors
+    /// * イメージの確認に失敗した場合
+    /// * イメージのプルに失敗したた場合
     #[must_use = "この関数はイメージの確認結果を返します"]
     pub fn ensure_image(&self, image: &str) -> Result<()> {
         let output = Command::new("docker")

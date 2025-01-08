@@ -63,7 +63,8 @@ impl Service {
     /// - 未対応のサイトが指定された場合
     /// 
     /// # Panics
-    /// - 内部状態が不整合な場合（validate_site()が成功したのにsiteがNoneの場合など）
+    /// 
+    /// - `内部状態が不整合な場合（validate_site()が成功したのにsiteがNoneの場合など）`
     #[must_use = "この関数はコンテストのURLを返します"]
     pub fn get_contest_url(&self) -> Result<String> {
         self.validate_site()?;
@@ -89,8 +90,9 @@ impl Service {
     /// - 未対応のサイトが指定された場合
     /// 
     /// # Panics
-    /// - 内部状態が不整合な場合（validate_site()が成功したのにsiteがNoneの場合など）
-    #[must_use = "この関数は問題のURLを返します"]
+    /// 
+    /// - `内部状態が不整合な場合（validate_site()が成功したのにsiteがNoneの場合など）`
+    #[must_use = "この関数は�題のURLを返します"]
     pub fn get_problem_url(&self) -> Result<String> {
         self.validate_site()?;
         self.validate_contest_id()?;

@@ -135,7 +135,9 @@ impl Config {
             .with_context(|| "YAMLのパースに失敗しました")?;
 
         // commands.yamlを読み込む
-        let commands_path = path.as_ref().parent().unwrap().join("commands.yaml");
+        let commands_path = path.as_ref().parent()
+            .expect("パスは親ディレクトリを持っている必要があります")
+            .join("commands.yaml");
         if commands_path.exists() {
             let commands_contents = fs::read_to_string(&commands_path)
                 .with_context(|| format!("コマンド設定ファイルの読み込みに失敗: {}", commands_path.display()))?;

@@ -2,30 +2,30 @@ pub mod command;
 pub mod compilation;
 pub mod container;
 
-pub use command::DockerCommand;
-pub use compilation::CompilationManager;
-pub use container::DockerContainer;
+pub use compilation::Compiler;
+pub use container::Runtime;
 
 use anyhow::Result;
-use std::process::Output;
 
+#[derive(Debug)]
 pub struct CommandOutput {
     pub stdout: String,
     pub stderr: String,
-    pub status: i32,
+    pub exit_code: i32,
 }
 
-impl From<Output> for CommandOutput {
-    fn from(output: Output) -> Self {
+impl CommandOutput {
+    #[must_use = "この関数は新しいCommandOutputインスタンスを返します"]
+    pub const fn new(stdout: String, stderr: String, exit_code: i32) -> Self {
         Self {
-            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
-            status: output.status.code().unwrap_or(-1),
+            stdout,
+            stderr,
+            exit_code,
         }
     }
 }
 
 #[async_trait::async_trait]
 pub trait Executor {
-    async fn execute(&self, command: DockerCommand) -> Result<CommandOutput>;
+    async fn execute(&self, command: command::Executor) -> Result<CommandOutput>;
 } 

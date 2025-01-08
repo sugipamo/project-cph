@@ -1,4 +1,3 @@
-pub mod error;
 pub mod operations;
 pub mod path;
 pub mod backup;
@@ -29,7 +28,7 @@ pub use path::{
 };
 
 // Re-export commonly used types and traits
-pub use anyhow::{Result, Context, Error};
+pub use anyhow::{Result, Context};
 pub use std::path::{Path, PathBuf};
 
 // Re-export specific types
@@ -40,8 +39,7 @@ pub use transaction::{
     Transition as TransactionTransition,
     CreateFileOperation,
     DeleteFileOperation,
-    TransactionError,
 };
 
-pub use backup::BackupManager;
+pub use backup::Manager as BackupManager;
 pub use manager::Manager; 

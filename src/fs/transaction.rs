@@ -121,6 +121,7 @@ impl Transaction {
 
     /// 操作を追加
     #[must_use]
+    #[allow(dead_code)]
     fn with_operations(&self, operations: Vec<Arc<dyn FileOperation>>) -> Self {
         Self {
             operations: Arc::new(operations),
@@ -299,6 +300,9 @@ impl CreateFileOperation {
 
 impl FileOperation for CreateFileOperation {
     fn execute(&self) -> Result<()> {
+        if let Err(e) = self.validate() {
+            return Err(anyhow!("ファイル作成の検証に失敗しました: {}", e));
+        }
         if let Some(parent) = self.path.parent() {
             ensure_path_exists(parent)?;
         }
@@ -307,6 +311,9 @@ impl FileOperation for CreateFileOperation {
     }
 
     fn rollback(&self) -> Result<()> {
+        if let Err(e) = self.validate() {
+            return Err(anyhow!("ファイル作成のロールバックの検証に失敗しました: {}", e));
+        }
         if self.path.exists() {
             std::fs::remove_file(&*self.path)
                 .map_err(|e| anyhow!("ファイルの削除に失敗: {}: {}", self.path.display(), e))?;
@@ -319,6 +326,9 @@ impl FileOperation for CreateFileOperation {
     }
 
     fn validate(&self) -> Result<()> {
+        if self.path.as_os_str().is_empty() {
+            return Err(anyhow!("パスが空です"));
+        }
         if self.path.exists() {
             return Err(anyhow!("ファイルが既に存在します: {}", self.path.display()));
         }
@@ -382,13 +392,4 @@ impl FileOperation for DeleteFileOperation {
         }
         Ok(())
     }
-}
-
-/// トランザクションの�ラーを表す構造体
-#[derive(Debug)]
-pub struct TransactionError {
-    /// エラーが発生した操作
-    pub operation: Arc<dyn FileOperation>,
-    /// エラーの詳細
-    pub message: String,
 } 

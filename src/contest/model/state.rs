@@ -47,9 +47,15 @@ pub enum Transition {
     SetSourcePath(PathBuf),
 }
 
+impl Default for State {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl State {
     #[must_use = "この関数は新しいContestStateインスタンスを返します"]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             site: None,
             contest_id: None,
@@ -59,26 +65,32 @@ impl State {
         }
     }
 
+    #[must_use = "この関数は状態の参照を返します"]
     pub fn site(&self) -> Option<&str> {
-        self.site.as_ref().map(|s| s.as_str())
+        self.site.as_deref().map(String::as_str)
     }
 
+    #[must_use = "この関数はコンテストIDの参照を返します"]
     pub fn contest_id(&self) -> Option<&str> {
-        self.contest_id.as_ref().map(|s| s.as_str())
+        self.contest_id.as_deref().map(String::as_str)
     }
 
+    #[must_use = "この関数は問題IDの参照を返します"]
     pub fn problem_id(&self) -> Option<&str> {
-        self.problem_id.as_ref().map(|s| s.as_str())
+        self.problem_id.as_deref().map(String::as_str)
     }
 
+    #[must_use = "この関数は言語の参照を返します"]
     pub fn language(&self) -> Option<&str> {
-        self.language.as_ref().map(|s| s.as_str())
+        self.language.as_deref().map(String::as_str)
     }
 
+    #[must_use = "この関数はソースファイルのパスの参照を返します"]
     pub fn source_path(&self) -> Option<&PathBuf> {
-        self.source_path.as_ref().map(|p| p.as_ref())
+        self.source_path.as_deref()
     }
 
+    #[must_use = "この関数は新しい状態を返します"]
     pub fn apply_transition(self, transition: Transition) -> Self {
         match transition {
             Transition::SetSite(site) => self.with_site(site),
@@ -89,6 +101,23 @@ impl State {
         }
     }
 
+    /// 状態を検証し、�証済みの状態を返します
+    ///
+    /// # Returns
+    /// * `Result<Validated>` - 検証済みの状態
+    ///
+    /// # Errors
+    /// * サイトが指定されていない場合
+    /// * コンテストIDが指定されていない場合
+    /// * 問題IDが指定されていない場合
+    /// * 言語が指定されていない場合
+    /// * ソースパスが指定されていない場合
+    /// * サイトが空の場合
+    /// * コンテストIDが空の場合
+    /// * 問題IDが空の場合
+    /// * 言語が空の場合
+    /// * 指定されたソースパスが存在しない場合
+    /// * 指定されたソースパスがファイルではない場合
     pub fn validate(&self) -> Result<Validated> {
         let site = self.site.clone()
             .ok_or_else(|| anyhow!("サイトが指定されていません"))?;
@@ -193,23 +222,27 @@ impl State {
 }
 
 impl Validated {
+    #[must_use = "この関数はサイト名を返します"]
     pub fn site(&self) -> &str {
         &self.site
     }
 
+    #[must_use = "この関数はコンテストIDを返します"]
     pub fn contest_id(&self) -> &str {
         &self.contest_id
     }
 
+    #[must_use = "この関数は問題IDを返します"]
     pub fn problem_id(&self) -> &str {
         &self.problem_id
     }
 
+    #[must_use = "この関数は言語を返します"]
     pub fn language(&self) -> &str {
         &self.language
     }
 
-    #[must_use = "この関数は�ースパスを返します"]
+    #[must_use = "この関数はソースファイルのパスを返します"]
     pub fn source_path(&self) -> &PathBuf {
         &self.source_path
     }
