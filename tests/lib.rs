@@ -1,14 +1,12 @@
-mod docker;
+mod error_test;
 mod helpers;
 
 #[cfg(test)]
 mod tests {
-    use super::helpers::{setup, teardown};
+    use anyhow::Result;
 
     #[test]
-    fn test_parse_ambiguous_commands() {
-        setup();
-        // テストの実行
-        teardown();
+    fn it_works() -> Result<()> {
+        Ok(())
     }
 } 

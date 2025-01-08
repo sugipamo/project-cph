@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 use std::sync::Arc;
-use anyhow::{Error, Result};
-use crate::fs::error::{transaction_error, validation_error, ErrorExt};
-use crate::fs::path::ensure_path_exists;
 use std::time::{SystemTime, UNIX_EPOCH};
+use anyhow::{Error, Result, Context};
+use crate::error::fs::*;
+use crate::fs::ensure_path_exists;
 
 /// ファイル操作のトレイト
 pub trait FileOperation: Send + Sync + std::fmt::Debug {
@@ -256,13 +256,13 @@ impl FileOperation for CreateFileOperation {
             ensure_path_exists(parent)?;
         }
         std::fs::write(&*self.path, &*self.content)
-            .with_context_io(format!("ファイルの書き込みに失敗: {}", self.path.display()))
+            .context(format!("ファイルの書き込みに失敗: {}", self.path.display()))
     }
 
     fn rollback(&self) -> Result<()> {
         if self.path.exists() {
             std::fs::remove_file(&*self.path)
-                .with_context_io(format!("ファイルの削除に失敗: {}", self.path.display()))?;
+                .context(format!("ファイルの削除に失敗: {}", self.path.display()))?;
         }
         Ok(())
     }
@@ -289,7 +289,7 @@ impl DeleteFileOperation {
     pub fn new(path: PathBuf) -> Result<Self> {
         let original_content = if path.exists() {
             Some(Arc::new(std::fs::read_to_string(&path)
-                .with_context_io(format!("ファイルの読み込みに失敗: {}", path.display()))?))
+                .context(format!("ファイルの読み込みに失敗: {}", path.display()))?))
         } else {
             None
         };
@@ -305,7 +305,7 @@ impl FileOperation for DeleteFileOperation {
     fn execute(&self) -> Result<()> {
         if self.path.exists() {
             std::fs::remove_file(&*self.path)
-                .with_context_io(format!("ファイルの削除に失敗: {}", self.path.display()))?;
+                .context(format!("ファイルの削除に失敗: {}", self.path.display()))?;
         }
         Ok(())
     }
@@ -316,7 +316,7 @@ impl FileOperation for DeleteFileOperation {
                 ensure_path_exists(parent)?;
             }
             std::fs::write(&*self.path, &**content)
-                .with_context_io(format!("ファイルの復元に失敗: {}", self.path.display()))?;
+                .context(format!("ファイルの復元に失敗: {}", self.path.display()))?;
         }
         Ok(())
     }

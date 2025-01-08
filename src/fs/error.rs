@@ -1,64 +1,40 @@
 use std::path::Path;
-use anyhow::{Result, Context, anyhow};
-use std::error::Error as StdError;
-
-/// エラーメッセージを生成するマクロ
-#[macro_export]
-macro_rules! fs_error {
-    ($kind:ident, $($arg:tt)*) => {
-        anyhow!("{}: {}", stringify!($kind), format!($($arg)*))
-    };
-}
-
-/// パスに関連するエラーメッセージを生成するマクロ
-#[macro_export]
-macro_rules! fs_path_error {
-    ($kind:ident, $path:expr) => {
-        anyhow!("{}: {}", stringify!($kind), $path.as_ref().display())
-    };
-}
+use anyhow::{anyhow, Error};
 
 /// ファイルシステム操作に関連するエラーを生成する関数群
-pub fn not_found_error(path: impl AsRef<Path>) -> anyhow::Error {
-    fs_path_error!(NotFound, path)
+pub fn not_found_error(path: impl AsRef<Path>) -> Error {
+    anyhow!("ファイルが見つかりません: {}", path.as_ref().display())
 }
 
-pub fn io_error(error: std::io::Error, message: impl Into<String>) -> anyhow::Error {
-    fs_error!(IoError, "{}: {}", message.into(), error)
+pub fn io_error(error: std::io::Error, path: impl AsRef<Path>) -> Error {
+    anyhow!(error).context(format!("パス '{}' でI/O操作に失敗しました", path.as_ref().display()))
 }
 
-pub fn permission_error(path: impl AsRef<Path>) -> anyhow::Error {
-    fs_path_error!(PermissionDenied, path)
+pub fn permission_error(path: impl AsRef<Path>) -> Error {
+    anyhow!("アクセス権限がありません: {}", path.as_ref().display())
 }
 
-pub fn invalid_path_error(path: impl AsRef<Path>) -> anyhow::Error {
-    fs_path_error!(InvalidPath, path)
+pub fn invalid_path_error(path: impl AsRef<Path>) -> Error {
+    anyhow!("無効なパスです: {}", path.as_ref().display())
 }
 
-pub fn transaction_error(message: impl Into<String>) -> anyhow::Error {
-    fs_error!(TransactionError, "{}", message.into())
+pub fn transaction_error<E: std::error::Error + Send + Sync + 'static>(
+    error: E,
+    message: impl Into<String>
+) -> Error {
+    anyhow!(error).context(format!("トランザクションエラー: {}", message.into()))
 }
 
-pub fn backup_error(message: impl Into<String>) -> anyhow::Error {
-    fs_error!(BackupError, "{}", message.into())
+pub fn backup_error<E: std::error::Error + Send + Sync + 'static>(
+    error: E,
+    message: impl Into<String>
+) -> Error {
+    anyhow!(error).context(format!("バックアップエラー: {}", message.into()))
 }
 
-pub fn validation_error(message: impl Into<String>) -> anyhow::Error {
-    fs_error!(ValidationError, "{}", message.into())
-}
-
-/// エラー変換のための拡張トレイト
-pub trait ErrorExt<T> {
-    fn with_context_path(self, path: impl AsRef<Path>) -> Result<T>;
-    fn with_context_io(self, message: impl Into<String>) -> Result<T>;
-}
-
-impl<T> ErrorExt<T> for Result<T> {
-    fn with_context_path(self, path: impl AsRef<Path>) -> Result<T> {
-        self.with_context(|| format!("パス操作エラー: {}", path.as_ref().display()))
-    }
-
-    fn with_context_io(self, message: impl Into<String>) -> Result<T> {
-        self.with_context(|| format!("I/Oエラー: {}", message.into()))
-    }
+pub fn validation_error<E: std::error::Error + Send + Sync + 'static>(
+    error: E,
+    message: impl Into<String>
+) -> Error {
+    anyhow!(error).context(format!("バリデーションエラー: {}", message.into()))
 } 

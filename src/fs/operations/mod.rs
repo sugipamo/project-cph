@@ -3,11 +3,14 @@ pub mod delete;
 pub mod read;
 pub mod write;
 
-pub use check::{exists, is_file, is_directory, check_permissions};
-pub use delete::{delete_file, delete_directory};
-pub use read::{read_file, metadata};
-pub use write::{ensure_directory, ensure_file, write_file};
+pub use check::*;
+pub use delete::*;
+pub use read::*;
+pub use write::*;
 
-mod types;
+// Re-export commonly used types from std
+pub use std::path::PathBuf;
+pub use std::fs::{Metadata as FileMetadata, Permissions as FilePermissions};
 
-pub use types::*; 
+pub use anyhow::{Result, Context, Error};
+pub use crate::error::fs::*; 

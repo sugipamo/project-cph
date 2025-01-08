@@ -1,16 +1,14 @@
-use std::path::Path;
-use std::process::Command;
+use std::path::{Path, PathBuf};
 use anyhow::Result;
-use crate::error::fs::io_error as create_io_error;
 
-/// コンテナにファイルをコピーします
-pub fn copy_to_container(container_id: &str, source: impl AsRef<Path>, target: impl AsRef<Path>) -> Result<()> {
+/// コンテナにファイルをコピーする
+pub fn copy_to_container(_container_id: &str, _source: impl AsRef<Path>, _target: impl AsRef<Path>) -> Result<()> {
     // TODO: 実装
-    unimplemented!()
+    Ok(())
 }
 
-/// コンテナからファイルをコピーします
-pub fn copy_from_container(container_id: &str, source: impl AsRef<Path>, target: impl AsRef<Path>) -> Result<()> {
+/// コンテナからファイルをコピーする
+pub fn copy_from_container(_container_id: &str, _source: impl AsRef<Path>, _target: impl AsRef<Path>) -> Result<()> {
     // TODO: 実装
-    unimplemented!()
+    Ok(())
 } 

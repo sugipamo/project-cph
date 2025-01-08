@@ -1,7 +1,7 @@
 use std::path::Path;
+use std::fs::metadata;
 use anyhow::Result;
-use crate::fs::error::permission_error;
-use crate::fs::operations::read::metadata;
+use crate::error::fs::*;
 
 /// パスが存在するかどうかを確認します
 pub fn exists<P: AsRef<Path>>(path: P) -> bool {

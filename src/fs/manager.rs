@@ -1,11 +1,11 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use anyhow::Result;
-use crate::fs::error::{not_found_error, transaction_error, ErrorExt};
+use anyhow::{Result, Context};
+use crate::error::fs::*;
 use crate::fs::path::normalize_path;
-use crate::fs::transaction::{FileTransaction, FileOperation, CreateFileOperation, DeleteFileOperation};
+use crate::fs::{FileOperation, FileTransaction, CreateFileOperation, DeleteFileOperation};
 
-// ファイルマネージャーの状態を表現する型
+// ファイルマネジャーの状態を表現する型
 #[derive(Debug, Clone)]
 pub enum ManagerState {
     Idle,
@@ -89,7 +89,7 @@ impl FileManager {
             return Err(not_found_error(&path));
         }
         std::fs::read_to_string(&path)
-            .with_context_io(format!("ファイルの読み込みに失敗: {}", path.display()))
+            .context(format!("ファイルの読み込みに失敗: {}", path.display()))
     }
 
     pub fn write_file(self, path: impl AsRef<Path>, content: impl AsRef<str>) -> Result<Self> {
@@ -133,7 +133,7 @@ impl FileManager {
             },
             ManagerState::Idle => {
                 std::fs::create_dir_all(&path)
-                    .with_context_io(format!("ディレクトリの作成に失敗: {}", path.display()))?;
+                    .context(format!("ディレクトリの作成に失敗: {}", path.display()))?;
                 Ok(self)
             }
         }

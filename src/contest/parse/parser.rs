@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crate::contest::parse::config::CommandContext;
+use crate::contest::model::CommandContext;
 
 pub struct Parser;
 

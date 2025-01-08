@@ -1,0 +1,288 @@
+diff --git a/src/contest/parse/parser.rs b/src/contest/parse/parser.rs
+index fedc9ea..d67db1d 100644
+--- a/src/contest/parse/parser.rs
++++ b/src/contest/parse/parser.rs
+@@ -1,5 +1,5 @@
+ use anyhow::Result;
+-use crate::contest::parse::config::CommandContext;
++use crate::contest::model::CommandContext;
+ 
+ pub struct Parser;
+ 
+diff --git a/src/fs/backup.rs b/src/fs/backup.rs
+index 31ce084..79e6e38 100644
+--- a/src/fs/backup.rs
++++ b/src/fs/backup.rs
+@@ -3,8 +3,7 @@ use std::path::{Path, PathBuf};
+ use std::sync::Arc;
+ use tempfile::TempDir;
+ use anyhow::Result;
+-use crate::fs::error::{backup_error, ErrorExt};
+-use crate::fs::path::ensure_path_exists;
++use crate::fs::prelude::*;
+ 
+ /// バックアップを管理する構造体
+ #[derive(Debug, Clone)]
+diff --git a/src/fs/error.rs b/src/fs/error.rs
+index d05a3e4..0d7cb0e 100644
+--- a/src/fs/error.rs
++++ b/src/fs/error.rs
+@@ -61,4 +61,17 @@ impl<T> ErrorExt<T> for Result<T> {
+     fn with_context_io(self, message: impl Into<String>) -> Result<T> {
+         self.with_context(|| format!("I/Oエラー: {}", message.into()))
+     }
++}
++
++pub mod prelude {
++    pub use super::ErrorExt;
++    pub use super::{
++        not_found_error,
++        io_error,
++        permission_error,
++        invalid_path_error,
++        transaction_error,
++        backup_error,
++        validation_error,
++    };
+ } 
+\ No newline at end of file
+diff --git a/src/fs/manager.rs b/src/fs/manager.rs
+index e7d16b6..cda1015 100644
+--- a/src/fs/manager.rs
++++ b/src/fs/manager.rs
+@@ -1,9 +1,8 @@
+ use std::path::{Path, PathBuf};
+ use std::sync::Arc;
+ use anyhow::Result;
+-use crate::fs::error::{not_found_error, transaction_error, ErrorExt};
++use crate::fs::prelude::*;
+ use crate::fs::path::normalize_path;
+-use crate::fs::transaction::{FileTransaction, FileOperation, CreateFileOperation, DeleteFileOperation};
+ 
+ // ファイルマネージャーの状態を表現する型
+ #[derive(Debug, Clone)]
+diff --git a/src/fs/mod.rs b/src/fs/mod.rs
+index b963d50..7dd5ab4 100644
+--- a/src/fs/mod.rs
++++ b/src/fs/mod.rs
+@@ -4,11 +4,40 @@ pub mod path;
+ pub mod backup;
+ pub mod manager;
+ pub mod transaction;
+-pub mod tests;
+ 
+ pub use operations::*;
+ pub use path::*;
+ pub use error::*;
+ pub use backup::*;
+ pub use manager::*;
+-pub use transaction::*; 
+\ No newline at end of file
++pub use transaction::*;
++
++pub mod prelude {
++    // 基本的な操作関数
++    pub use super::operations::{
++        exists,
++        is_file,
++        is_directory,
++        check_permissions,
++        read_file,
++        write_file,
++        ensure_directory,
++        ensure_file,
++        delete_file,
++    };
++
++    // エラー関連
++    pub use super::error::prelude::*;
++
++    // パス操作
++    pub use super::path::WorkspacePath;
++
++    // トランザクション関連
++    pub use super::transaction::Transaction;
++
++    // バックアップ関連
++    pub use super::backup::BackupManager;
++
++    // ファイル管理
++    pub use super::manager::FileManager;
++} 
+\ No newline at end of file
+diff --git a/src/fs/operations/check.rs b/src/fs/operations/check.rs
+index c6ede56..a4b0c3d 100644
+--- a/src/fs/operations/check.rs
++++ b/src/fs/operations/check.rs
+@@ -1,7 +1,7 @@
+ use std::path::Path;
++use std::fs::metadata;
+ use anyhow::Result;
+-use crate::fs::error::permission_error;
+-use crate::fs::operations::read::metadata;
++use crate::fs::prelude::*;
+ 
+ /// パスが存在するかどうかを確認します
+ pub fn exists<P: AsRef<Path>>(path: P) -> bool {
+diff --git a/src/fs/operations/delete.rs b/src/fs/operations/delete.rs
+index c226866..3828863 100644
+--- a/src/fs/operations/delete.rs
++++ b/src/fs/operations/delete.rs
+@@ -1,6 +1,6 @@
+-use crate::fs::error::{invalid_path_error, ErrorExt};
+-use anyhow::Result;
+ use std::path::Path;
++use anyhow::Result;
++use crate::fs::prelude::*;
+ 
+ /// ファイルを削除します
+ pub fn delete_file(path: impl AsRef<Path>) -> Result<()> {
+diff --git a/src/fs/operations/mod.rs b/src/fs/operations/mod.rs
+index c28b63b..6e98f72 100644
+--- a/src/fs/operations/mod.rs
++++ b/src/fs/operations/mod.rs
+@@ -4,7 +4,7 @@ pub mod read;
+ pub mod write;
+ 
+ pub use check::{exists, is_file, is_directory, check_permissions};
+-pub use delete::{delete_file, delete_directory};
++pub use delete::delete_file;
+ pub use read::{read_file, metadata};
+ pub use write::{ensure_directory, ensure_file, write_file};
+ 
+diff --git a/src/fs/operations/read.rs b/src/fs/operations/read.rs
+index b366931..a49656a 100644
+--- a/src/fs/operations/read.rs
++++ b/src/fs/operations/read.rs
+@@ -1,27 +1,15 @@
+-use crate::fs::error::{not_found_error, invalid_path_error, ErrorExt};
+-use anyhow::Result;
+ use std::path::Path;
++use anyhow::Result;
++use crate::fs::prelude::*;
+ 
+-/// ファイルを読み込みます
++/// ファイルの内容を文字列として読み込みます
+ pub fn read_file(path: impl AsRef<Path>) -> Result<String> {
+-    let path = path.as_ref();
+-    if !path.exists() {
+-        return Err(not_found_error(path));
+-    }
+-    if !path.is_file() {
+-        return Err(invalid_path_error(path));
+-    }
+-    std::fs::read_to_string(path)
+-        .with_context_io(format!("ファイルの読み込みに失敗: {}", path.display()))
++    std::fs::read_to_string(path.as_ref())
++        .with_context_io(format!("ファイルの読み込みに失敗: {}", path.as_ref().display()))
+ }
+ 
+-/// パスのメタデータを取得します
+-pub fn get_metadata(path: impl AsRef<Path>) -> Result<std::fs::Metadata> {
+-    let path = path.as_ref();
+-    if !path.exists() {
+-        return Err(not_found_error(path));
+-    }
+-
+-    std::fs::metadata(path)
+-        .with_context_io(format!("メタデータの取得に失敗: {}", path.display()))
++/// ファイルのメタデータを取得します
++pub fn metadata(path: impl AsRef<Path>) -> Result<std::fs::Metadata> {
++    std::fs::metadata(path.as_ref())
++        .with_context_io(format!("メタデータの取得に失敗: {}", path.as_ref().display()))
+ } 
+\ No newline at end of file
+diff --git a/src/fs/operations/write.rs b/src/fs/operations/write.rs
+index 2ec9053..1082112 100644
+--- a/src/fs/operations/write.rs
++++ b/src/fs/operations/write.rs
+@@ -1,44 +1,25 @@
+-use crate::fs::error::{invalid_path_error, ErrorExt};
+-use anyhow::Result;
+ use std::path::Path;
++use anyhow::Result;
++use crate::fs::prelude::*;
+ 
+-pub fn create_dir(path: impl AsRef<Path>) -> Result<()> {
+-    let path = path.as_ref();
+-    if path.exists() {
+-        if path.is_dir() {
+-            return Ok(());
+-        }
+-        return Err(invalid_path_error(path));
+-    }
+-    std::fs::create_dir_all(path)
+-        .with_context_io(format!("ディレクトリの作成に失敗: {}", path.display()))?;
+-    Ok(())
++/// ディレクトリが存在することを確認し、存在しない場合は作成します
++pub fn ensure_directory(path: impl AsRef<Path>) -> Result<()> {
++    std::fs::create_dir_all(path.as_ref())
++        .with_context_io(format!("ディレクトリの作成に失敗: {}", path.as_ref().display()))
+ }
+ 
+-pub fn create_file(path: impl AsRef<Path>) -> Result<()> {
++/// ファイルが存在することを確認し、存在しない場合は作成します
++pub fn ensure_file(path: impl AsRef<Path>) -> Result<()> {
+     let path = path.as_ref();
+-    if path.exists() {
+-        if path.is_file() {
+-            return Ok(());
+-        }
+-        return Err(invalid_path_error(path));
++    if !path.exists() {
++        std::fs::write(path, "")
++            .with_context_io(format!("ファイルの作成に失敗: {}", path.display()))?;
+     }
+-    if let Some(parent) = path.parent() {
+-        create_dir(parent)?;
+-    }
+-    std::fs::write(path, "")
+-        .with_context_io(format!("ファイルの作成に失敗: {}", path.display()))?;
+     Ok(())
+ }
+ 
++/// ファイルに内容を書き込みます
+ pub fn write_file(path: impl AsRef<Path>, content: impl AsRef<[u8]>) -> Result<()> {
+-    let path = path.as_ref();
+-    if path.exists() && !path.is_file() {
+-        return Err(invalid_path_error(path));
+-    }
+-    if let Some(parent) = path.parent() {
+-        create_dir(parent)?;
+-    }
+-    std::fs::write(path, content)
+-        .with_context_io(format!("ファイルの書き込みに失敗: {}", path.display()))
++    std::fs::write(path.as_ref(), content)
++        .with_context_io(format!("ファイルの書き込みに失敗: {}", path.as_ref().display()))
+ } 
+\ No newline at end of file
+diff --git a/src/fs/path.rs b/src/fs/path.rs
+index b5ec555..1afd61b 100644
+--- a/src/fs/path.rs
++++ b/src/fs/path.rs
+@@ -1,6 +1,6 @@
+ use std::path::{Path, PathBuf};
+ use anyhow::Result;
+-use crate::fs::error::{invalid_path_error, ErrorExt};
++use crate::fs::prelude::*;
+ 
+ /// パスの検証レベルを定義する列挙型
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+diff --git a/src/fs/transaction.rs b/src/fs/transaction.rs
+index 1df5c4f..0931cff 100644
+--- a/src/fs/transaction.rs
++++ b/src/fs/transaction.rs
+@@ -1,9 +1,9 @@
+-use std::path::PathBuf;
++use std::path::{Path, PathBuf};
+ use std::sync::Arc;
+-use anyhow::{Error, Result};
+-use crate::fs::error::{transaction_error, validation_error, ErrorExt};
+-use crate::fs::path::ensure_path_exists;
+ use std::time::{SystemTime, UNIX_EPOCH};
++use anyhow::{Error, Result};
++use crate::fs::prelude::*;
++use crate::fs::ensure_path_exists;
+ 
+ /// ファイル操作のトレイト
+ pub trait FileOperation: Send + Sync + std::fmt::Debug {

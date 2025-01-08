@@ -16,6 +16,6 @@ txtnameを確認し、エラーを修正する
 
 可読性に問題はないか確認する。可読性に問題があれば、作業を中断。
 
-今回の作業結果をagent/.review/yyyymmddhhmm_review.txtに記載
+今回の作業結果をagent/.review/yyyymmddhhmm_review.mdに記載
 
-最後にコミットメッセージをテキストにはせず作成
+最後にコミットメッセージを出力

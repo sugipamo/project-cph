@@ -2,9 +2,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::TempDir;
-use anyhow::Result;
-use crate::fs::error::{backup_error, ErrorExt};
-use crate::fs::path::ensure_path_exists;
+use anyhow::{Result, Context};
+use crate::error::fs::*;
+use crate::fs::ensure_path_exists;
 
 /// バックアップを管理する構造体
 #[derive(Debug, Clone)]
@@ -28,7 +28,7 @@ impl BackupManager {
         }
 
         let temp_dir = TempDir::new()
-            .with_context_io("バックアップディレクトリの作成に失敗しました")?;
+            .context("バックアップディレクトリの作成に失敗しました")?;
 
         let backup_path = temp_dir.path().to_path_buf();
         ensure_path_exists(&backup_path)?;
@@ -66,7 +66,7 @@ impl BackupManager {
         if let Some(backup_dir) = &self.backup_dir {
             if backup_dir.exists() {
                 fs::remove_dir_all(&**backup_dir)
-                    .with_context_io("バックアップのクリーンアップに失敗しました")?;
+                    .context("バックアップのクリーンアップに失敗しました")?;
             }
         }
 

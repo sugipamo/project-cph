@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
-use anyhow::Result;
-use crate::fs::error::{invalid_path_error, ErrorExt};
+use anyhow::{Result, Context};
+use crate::error::fs::*;
 
 /// パスの検証レベルを定義する列挙型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -132,7 +132,7 @@ pub fn ensure_path_exists(path: impl AsRef<Path>) -> Result<()> {
     let path = path.as_ref();
     if !path.exists() {
         std::fs::create_dir_all(path)
-            .with_context_io(format!("ディレクトリの作成に失敗: {}", path.display()))?;
+            .context(format!("ディレクトリの作成に失敗: {}", path.display()))?;
     }
     Ok(())
 } 
