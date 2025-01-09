@@ -1,7 +1,9 @@
 mod config;
 mod container;
-mod executor;
+mod lifecycle;
+mod messaging;
+mod orchestrator;
 
 pub use config::ContainerConfig;
 pub use container::Container;
-pub use executor::ParallelExecutor; 
+pub use orchestrator::ParallelExecutor; 
