@@ -5,7 +5,7 @@ git diff develop >> agent/.review/yyyymmddhhmm_diff.txt
 cargo test
 cargo clippy
 
-txtnameを確認し、エラーを修正する
+エラーを修正する
 
 もしエラーがなければ以下を行う
 
