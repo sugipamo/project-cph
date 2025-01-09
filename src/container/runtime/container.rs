@@ -1,22 +1,20 @@
 use std::sync::Arc;
+use std::path::PathBuf;
 use anyhow::Result;
 use tokio::sync::oneshot;
+use async_trait::async_trait;
 use crate::container::{
     state::status::ContainerStatus,
     communication::{ContainerNetwork, Message},
     io::buffer::OutputBuffer,
 };
-use super::config::ContainerConfig;
+use super::{
+    config::ContainerConfig,
+    interface::runtime::ContainerRuntime,
+};
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum LifecycleEvent {
-    Create,
-    Start,
-    Stop,
-    Remove,
-}
-
+#[derive(Clone)]
 pub struct Container {
     network: Option<Arc<ContainerNetwork>>,
     buffer: Option<Arc<OutputBuffer>>,
@@ -47,63 +45,59 @@ impl Container {
         self.buffer = Some(buffer.clone());
 
         // コンテナの作成と起動
-        self.handle_lifecycle_event(LifecycleEvent::Create).await?;
-        self.handle_lifecycle_event(LifecycleEvent::Start).await?;
+        self.create(
+            &self.config.image,
+            &self.config.command,
+            &self.config.working_dir,
+            &self.config.env_vars,
+        ).await?;
 
-        // キャンセル用チャネル
-        let (cancel_tx, mut cancel_rx) = oneshot::channel();
-        self.cancel_tx = Some(cancel_tx);
-
-        // メッセージ処理ループ
-        loop {
-            if self.status.is_terminal() {
-                break;
-            }
-
-            tokio::select! {
-                _ = &mut cancel_rx => {
-                    break;
-                }
-            }
+        if let Some(container_id) = &self.container_id {
+            self.start(container_id).await?;
         }
 
-        // クリーンアップ
-        self.handle_lifecycle_event(LifecycleEvent::Stop).await?;
-        self.handle_lifecycle_event(LifecycleEvent::Remove).await?;
-        
         Ok(())
     }
 
-    pub async fn cancel(&mut self) -> Result<()> {
-        if let Some(tx) = self.cancel_tx.take() {
-            let _ = tx.send(());
+    pub async fn cleanup(&mut self) -> Result<()> {
+        if let Some(container_id) = &self.container_id {
+            self.stop(container_id).await?;
+            self.remove(container_id).await?;
         }
         Ok(())
-    }
-
-    pub async fn handle_lifecycle_event(&mut self, event: LifecycleEvent) -> Result<ContainerStatus> {
-        match event {
-            LifecycleEvent::Create => self.create().await?,
-            LifecycleEvent::Start => self.start().await?,
-            LifecycleEvent::Stop => self.stop().await?,
-            LifecycleEvent::Remove => self.remove().await?,
-        }
-        Ok(self.status.clone())
-    }
-
-    pub fn id(&self) -> Option<&str> {
-        self.container_id.as_deref()
-    }
-
-    pub fn status(&self) -> &ContainerStatus {
-        &self.status
     }
 }
 
-impl Drop for Container {
-    fn drop(&mut self) {
-        if let Some(tx) = self.cancel_tx.take() {
-            let _ = tx.send(());
-        }
+#[async_trait]
+impl ContainerRuntime for Container {
+    async fn create(
+        &self,
+        image: &str,
+        command: &[String],
+        working_dir: &PathBuf,
+        env_vars: &[String],
+    ) -> Result<String> {
+        // TODO: 実際のコンテナ作成処理を実装
+        // self.container_id = Some(created_id);
+        // self.status = ContainerStatus::Created;
+        todo!("Implement container creation")
+    }
+
+    async fn start(&self, container_id: &str) -> Result<()> {
+        // TODO: コンテナ起動処理を実装
+        // self.status = ContainerStatus::Running;
+        todo!("Implement container start")
+    }
+
+    async fn stop(&self, container_id: &str) -> Result<()> {
+        // TODO: コンテナ停止処理を実装
+        // self.status = ContainerStatus::Stopped;
+        todo!("Implement container stop")
+    }
+
+    async fn remove(&self, container_id: &str) -> Result<()> {
+        // TODO: コンテナ削除処理を実装
+        // self.status = ContainerStatus::Removed;
+        todo!("Implement container remove")
     }
 } 
