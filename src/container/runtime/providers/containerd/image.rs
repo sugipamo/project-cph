@@ -1,87 +1,67 @@
-use std::process::Command;
-use anyhow::{Result, anyhow};
 use async_trait::async_trait;
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use crate::container::runtime::interface::image::{
-    ImageManager, ImageInfo, ImageDetails, ImageConfig, LayerInfo,
-    name::ImageName,
+    ImageManager, ImageInfo, ImageDetails, ImageConfig,
 };
+use crate::container::runtime::providers::base_image_manager::BaseImageManager;
 
-/// Containerd用のイメージ管理実装
 pub struct ContainerdImageManager {
+    base: BaseImageManager,
     namespace: String,
 }
 
 impl ContainerdImageManager {
-    /// 新しいインスタンスを作成します
     pub fn new(namespace: impl Into<String>) -> Self {
         Self {
+            base: BaseImageManager::new("ctr"),
             namespace: namespace.into(),
         }
     }
 
-    /// Containerdコマンドを実行します
-    async fn execute_ctr_command(&self, args: &[&str]) -> Result<(String, String)> {
+    fn get_command_args<'a>(&'a self, args: &'a [&str]) -> Vec<&'a str> {
         let mut command_args = vec!["--namespace", &self.namespace];
         command_args.extend(args);
-
-        let output = Command::new("ctr")
-            .args(&command_args)
-            .output()
-            .map_err(|e| anyhow!("Containerdコマンドの実行に失敗: {}", e))?;
-
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-        if !output.status.success() {
-            return Err(anyhow!("Containerdコマンドがエラーを返しました: {}", stderr));
-        }
-
-        Ok((stdout, stderr))
+        command_args
     }
+}
 
-    /// イメージ情報を解析します
+impl ContainerdImageManager {
     fn parse_image_info(&self, line: &str) -> Option<ImageInfo> {
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() >= 4 {
-            let full_name = parts[0];
-            let (name, tag) = match full_name.split_once(':') {
-                Some((n, t)) => (n.to_string(), t.to_string()),
-                None => (full_name.to_string(), "latest".to_string()),
-            };
-
-            Some(ImageInfo {
-                name,
-                tag,
-                id: parts[1].to_string(),
-                size: parts[2].parse().unwrap_or(0),
-                created_at: DateTime::parse_from_rfc3339(parts[3])
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or_else(|_| Utc::now()),
-            })
-        } else {
-            None
+        let parts: Vec<&str> = line.split('\t').collect();
+        if parts.len() < 4 {
+            return None;
         }
-    }
 
-    /// イメージ名を変換します
-    fn convert_image_name(&self, name: &str) -> Result<String> {
-        ImageName::parse(name)
-            .map(|n| n.to_containerd_string())
-            .ok_or_else(|| anyhow!("無効なイメージ名: {}", name))
+        let name_parts: Vec<&str> = parts[0].split(':').collect();
+        if name_parts.len() != 2 {
+            return None;
+        }
+
+        Some(ImageInfo {
+            name: name_parts[0].to_string(),
+            tag: name_parts[1].to_string(),
+            id: parts[1].to_string(),
+            size: parts[2].parse().ok()?,
+            created_at: DateTime::parse_from_rfc3339(parts[3])
+                .ok()?
+                .with_timezone(&Utc),
+        })
     }
 }
 
 #[async_trait]
 impl ImageManager for ContainerdImageManager {
     async fn pull(&self, image_name: &str) -> Result<()> {
-        let name = self.convert_image_name(image_name)?;
-        self.execute_ctr_command(&["image", "pull", &name]).await?;
+        let name = self.base.convert_image_name(image_name)?;
+        let args = self.get_command_args(&["image", "pull", &name]);
+        self.base.execute_command(&args).await?;
         Ok(())
     }
 
     async fn list(&self) -> Result<Vec<ImageInfo>> {
-        let (stdout, _) = self.execute_ctr_command(&["image", "ls", "-q"]).await?;
+        let args = self.get_command_args(&["image", "ls", "-q"]);
+        let (stdout, _) = self.base.execute_command(&args).await?;
         
         let images = stdout
             .lines()
@@ -92,15 +72,16 @@ impl ImageManager for ContainerdImageManager {
     }
 
     async fn remove(&self, image_name: &str) -> Result<()> {
-        self.execute_ctr_command(&["image", "rm", image_name]).await?;
+        let args = self.get_command_args(&["image", "rm", image_name]);
+        self.base.execute_command(&args).await?;
         Ok(())
     }
 
     async fn inspect(&self, image_name: &str) -> Result<ImageDetails> {
-        let (stdout, _) = self.execute_ctr_command(&["image", "inspect", image_name]).await?;
+        let args = self.get_command_args(&["image", "inspect", image_name]);
+        let (stdout, _) = self.base.execute_command(&args).await?;
         
         // TODO: JSON解析を実装
-        // 現在は簡易的な実装
         Ok(ImageDetails {
             config: ImageConfig {
                 env: vec![],
@@ -115,7 +96,8 @@ impl ImageManager for ContainerdImageManager {
     }
 
     async fn exists(&self, image_name: &str) -> Result<bool> {
-        let result = self.execute_ctr_command(&["image", "inspect", image_name]).await;
+        let args = self.get_command_args(&["image", "inspect", image_name]);
+        let result = self.base.execute_command(&args).await;
         Ok(result.is_ok())
     }
 }
