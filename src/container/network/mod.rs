@@ -4,7 +4,7 @@ use tokio::sync::{mpsc, Mutex};
 use bytes::Bytes;
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
-use crate::container::{ContainerError, ContainerStatus, Result};
+use anyhow::{Result, anyhow};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Message {
@@ -25,7 +25,7 @@ pub enum ControlMessage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatusMessage {
     pub container_id: String,
-    pub status: ContainerStatus,
+    pub status: crate::container::ContainerStatus,
     pub timestamp: DateTime<Utc>,
 }
 
@@ -50,10 +50,10 @@ impl ContainerNetwork {
         let channels = self.channels.lock().await;
         if let Some(tx) = channels.get(to) {
             tx.send(message).await
-                .map_err(|e| ContainerError::Communication(e.to_string()))?;
+                .map_err(|e| anyhow!("メッセージ送信に失敗: {}", e))?;
             Ok(())
         } else {
-            Err(ContainerError::Communication(format!("送信先コンテナが見つかりません: {}", to)))
+            Err(anyhow!("送信先コンテナが見つかりません: {}", to))
         }
     }
 
@@ -62,7 +62,7 @@ impl ContainerNetwork {
         for (container_id, tx) in channels.iter() {
             if container_id != from {
                 tx.send(message.clone()).await
-                    .map_err(|e| ContainerError::Communication(e.to_string()))?;
+                    .map_err(|e| anyhow!("ブロードキャスト送信に失敗: {}", e))?;
             }
         }
         Ok(())

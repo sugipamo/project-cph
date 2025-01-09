@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use bytes::Bytes;
 use tokio::sync::Mutex;
-use crate::container::{ContainerError, Result};
+use anyhow::{Result, anyhow};
 
 pub struct OutputBuffer {
     buffers: Mutex<HashMap<String, Vec<Bytes>>>,
@@ -32,7 +32,7 @@ impl OutputBuffer {
             buffer.push(data);
             Ok(())
         } else {
-            Err(ContainerError::BufferFull(container_id.to_string()))
+            Err(anyhow!("バッファが一杯です: {}", container_id))
         }
     }
 

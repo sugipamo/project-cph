@@ -2,9 +2,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::process::Command;
+use anyhow::{Result, anyhow};
 use crate::container::{
-    ContainerError, ContainerStatus, Result,
-    network::{ContainerNetwork, Message, StatusMessage},
+    ContainerError, ContainerStatus,
+    network::{ContainerNetwork, Message, StatusMessage, ControlMessage},
     buffer::OutputBuffer,
 };
 use chrono::Utc;
@@ -36,24 +37,22 @@ impl Container {
         network: Arc<ContainerNetwork>,
         buffer: Arc<OutputBuffer>,
     ) -> Result<()> {
-        // コンテナの作成と起動
         self.create_container().await?;
+        let (tx, mut rx) = network.register(&self.config.id).await
+            .map_err(|e| anyhow!("ネットワーク登録に失敗: {}", e))?;
         
-        let (tx, mut rx) = network.register(&self.config.id).await?;
-        
-        // ステータス更新
         self.send_status(&network, ContainerStatus::Running).await?;
         
-        // メッセージ処理ループ
         while let Some(message) = rx.recv().await {
             match message {
                 Message::Data(data) => {
-                    buffer.append(&self.config.id, data).await?;
+                    buffer.append(&self.config.id, data).await
+                        .map_err(|e| anyhow!("バッファ追加に失敗: {}", e))?;
                 }
                 Message::Control(control) => {
                     self.handle_control(control).await?;
                 }
-                Message::Status(_) => {} // ステータスメッセージは無視
+                Message::Status(_) => {}
             }
         }
         
@@ -72,16 +71,17 @@ impl Container {
             .args(&self.config.command)
             .output()
             .await
-            .map_err(|e| ContainerError::Creation(e.to_string()))?;
+            .map_err(|e| anyhow!("コンテナ作成に失敗: {}", e))?;
 
         if !output.status.success() {
-            return Err(ContainerError::Creation(
-                String::from_utf8_lossy(&output.stderr).to_string()
+            return Err(anyhow!(
+                "コンテナ作成エラー: {}",
+                String::from_utf8_lossy(&output.stderr)
             ));
         }
 
         let container_id = String::from_utf8(output.stdout)
-            .map_err(|e| ContainerError::Creation(e.to_string()))?
+            .map_err(|e| anyhow!("コンテナID解析に失敗: {}", e))?
             .trim()
             .to_string();
 
@@ -96,6 +96,7 @@ impl Container {
             timestamp: Utc::now(),
         });
         network.broadcast(&self.config.id, message).await
+            .map_err(|e| anyhow!("ステータス送信に失敗: {}", e))
     }
 
     async fn handle_control(&mut self, _control: ControlMessage) -> Result<()> {
@@ -133,7 +134,7 @@ impl ParallelExecutor {
         }
 
         for handle in handles {
-            handle.await.map_err(|e| ContainerError::Internal(e.to_string()))??;
+            handle.await.map_err(|e| anyhow!("タスク実行エラー: {}", e))??;
         }
 
         Ok(())
