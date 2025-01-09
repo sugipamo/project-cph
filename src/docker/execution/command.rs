@@ -1,7 +1,11 @@
-use std::process::{Command, Output};
+use std::process::Command;
 use std::borrow::Cow;
-use anyhow::{Result, anyhow, Context};
+use std::time::Duration;
+use anyhow::{Result, anyhow};
+use async_trait::async_trait;
 use crate::message::docker;
+use crate::docker::config::Config;
+use super::Operations;
 
 /// Dockerコマンドの実行結果を表す構造体
 #[derive(Debug)]
@@ -22,13 +26,11 @@ pub struct Executor {
     name: String,
     args: Vec<String>,
     capture_stderr: bool,
+    container_id: Option<String>,
 }
 
 impl Executor {
     /// 新しいExecutorインスタンスを作成します
-    ///
-    /// # Arguments
-    /// * `name` - 実行するDockerコマンド名
     ///
     /// # Returns
     /// * `Self` - 新しいExecutorインスタンス
@@ -38,6 +40,7 @@ impl Executor {
             name: name.into(),
             args: Vec::new(),
             capture_stderr: false,
+            container_id: None,
         }
     }
 
@@ -71,6 +74,7 @@ impl Executor {
             name: self.name,
             args,
             capture_stderr: self.capture_stderr,
+            container_id: self.container_id,
         }
     }
 
@@ -93,67 +97,173 @@ impl Executor {
             name: self.name,
             args: new_args,
             capture_stderr: self.capture_stderr,
+            container_id: self.container_id,
         }
     }
+}
 
-    /// コマンドを実行し、生の出力を返します
-    ///
-    /// # Returns
-    /// * `Result<Output>` - コマンドの実行結果
-    ///
-    /// # Errors
-    /// * コマンドの実行に失敗した場合
-    fn execute_raw(&self) -> Result<Output> {
-        Command::new("docker")
-            .arg(&self.name)
-            .args(&self.args)
+#[async_trait]
+impl Operations for Executor {
+    async fn initialize(&mut self, config: Config) -> Result<()> {
+        if self.container_id.is_some() {
+            return Err(anyhow!(docker::error("container_error", "コンテナは既に初期化されています")));
+        }
+
+        let output = Command::new("docker")
+            .args(["create", "--rm"])
+            .args(["--workdir", config.working_dir.to_str().unwrap_or("/")])
+            .args(config.command)
             .output()
-            .with_context(|| docker::error("command_failed", "コマンドの実行に失敗しました"))
-    }
-
-    /// コマンドを実行し、結果を返します
-    ///
-    /// # Returns
-    /// * `Result<ExecutionResult>` - コマンドの実行結果
-    ///
-    /// # Errors
-    /// * コマンドの実行に失敗した場合
-    /// * 出力の文字列変換に失敗した場合
-    pub fn execute(self) -> Result<ExecutionResult> {
-        let output = self.execute_raw()?;
-
-        let stdout = String::from_utf8(output.stdout)
-            .with_context(|| docker::error("command_failed", "標準出力の解析に失敗しました"))?;
-        let stderr = String::from_utf8(output.stderr)
-            .with_context(|| docker::error("command_failed", "標準エラー出力の解析に失敗しました"))?;
+            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
 
         if !output.status.success() {
-            if self.capture_stderr {
-                return Ok(ExecutionResult {
-                    stdout,
-                    stderr,
-                    exit_code: output.status.code().unwrap_or(-1),
-                });
-            }
-            return Err(anyhow!(docker::error("command_failed", stderr)));
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(anyhow!(docker::error("container_error", stderr)));
         }
 
-        Ok(ExecutionResult {
-            stdout,
-            stderr,
-            exit_code: 0,
-        })
+        let container_id = String::from_utf8(output.stdout)
+            .map_err(|e| anyhow!(docker::error("container_error", format!("コンテナIDの解析に失敗: {e}"))))?
+            .trim()
+            .to_string();
+
+        self.container_id = Some(container_id);
+        Ok(())
     }
 
-    /// コマンドを実行し、標準出力のみを返します
-    ///
-    /// # Returns
-    /// * `Result<String>` - コマンドの標準出力
-    ///
-    /// # Errors
-    /// * コマンドの実行に失敗した場合
-    /// * 出力の文字列変換に失敗した場合
-    pub fn execute_output(self) -> Result<String> {
-        self.execute().map(|result| result.stdout)
+    async fn start(&mut self) -> Result<()> {
+        let container_id = self.container_id
+            .as_ref()
+            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが初期化されていません")))?;
+
+        let output = Command::new("docker")
+            .args(["start", container_id])
+            .output()
+            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(anyhow!(docker::error("container_error", stderr)));
+        }
+
+        Ok(())
+    }
+
+    async fn stop(&mut self) -> Result<()> {
+        let container_id = self.container_id
+            .as_ref()
+            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが初期化されていません")))?;
+
+        let output = Command::new("docker")
+            .args(["stop", container_id])
+            .output()
+            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(anyhow!(docker::error("container_error", stderr)));
+        }
+
+        Ok(())
+    }
+
+    async fn execute(&mut self, command: &str) -> Result<(String, String)> {
+        let container_id = self.container_id
+            .as_ref()
+            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが初期化されていません")))?;
+
+        let output = Command::new("docker")
+            .args(["exec", container_id])
+            .arg(command)
+            .output()
+            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
+
+        let stdout = String::from_utf8(output.stdout)
+            .map_err(|e| anyhow!(docker::error("container_error", format!("標準出力の解析に失敗: {e}"))))?;
+        let stderr = String::from_utf8(output.stderr)
+            .map_err(|e| anyhow!(docker::error("container_error", format!("標準エラー出力の解析に失敗: {e}"))))?;
+
+        Ok((stdout, stderr))
+    }
+
+    async fn write(&mut self, input: &str) -> Result<()> {
+        let container_id = self.container_id
+            .as_ref()
+            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが初期化されていません")))?;
+
+        let output = Command::new("docker")
+            .args(["exec", "-i", container_id])
+            .arg("sh")
+            .arg("-c")
+            .arg(format!("echo '{input}' > /tmp/input"))
+            .output()
+            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(anyhow!(docker::error("container_error", stderr)));
+        }
+
+        Ok(())
+    }
+
+    async fn read_stdout(&mut self, _timeout: Duration) -> Result<String> {
+        let container_id = self.container_id
+            .as_ref()
+            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが初期化されていません")))?;
+
+        let output = Command::new("docker")
+            .args(["logs", "--tail", "100", container_id])
+            .output()
+            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
+
+        String::from_utf8(output.stdout)
+            .map_err(|e| anyhow!(docker::error("container_error", format!("標準出力の解析に失敗: {e}"))))
+    }
+
+    async fn read_stderr(&mut self, _timeout: Duration) -> Result<String> {
+        let container_id = self.container_id
+            .as_ref()
+            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが初期化されていません")))?;
+
+        let output = Command::new("docker")
+            .args(["logs", "--tail", "100", "--stderr", container_id])
+            .output()
+            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
+
+        String::from_utf8(output.stderr)
+            .map_err(|e| anyhow!(docker::error("container_error", format!("標準エラー出力の解析に失敗: {e}"))))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_initialize() {
+        let mut executor = Executor::new("test");
+        let config = Config {
+            working_dir: "/".into(),
+            command: vec!["alpine:latest".to_string(), "sh".to_string()],
+            env_vars: vec![],
+            image: "alpine:latest".to_string(),
+        };
+        let result = executor.initialize(config).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_execute() {
+        let mut executor = Executor::new("test");
+        let config = Config {
+            working_dir: "/".into(),
+            command: vec!["alpine:latest".to_string(), "sh".to_string()],
+            env_vars: vec![],
+            image: "alpine:latest".to_string(),
+        };
+        executor.initialize(config).await.unwrap();
+        executor.start().await.unwrap();
+        let result = executor.execute("echo hello").await;
+        assert!(result.is_ok());
     }
 } 

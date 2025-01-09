@@ -1,6 +1,8 @@
 use std::process::Command;
 use anyhow::{Result, anyhow};
+use async_trait::async_trait;
 use crate::message::docker;
+use super::CompilerOperations;
 
 /// コンパイル処理を管理する構造体
 ///
@@ -9,6 +11,7 @@ use crate::message::docker;
 #[derive(Debug, Default)]
 pub struct Compiler {
     container_id: Option<String>,
+    last_output: Option<(String, String)>,
 }
 
 impl Compiler {
@@ -20,34 +23,38 @@ impl Compiler {
     pub const fn new() -> Self {
         Self {
             container_id: None,
+            last_output: None,
         }
     }
+}
 
-    /// コマンドを実行してコンパイルを行います
-    ///
-    /// # Arguments
-    /// * `command` - コンパイルコマンドとその引数
-    ///
-    /// # Returns
-    /// * `Result<()>` - コンパイル結果
-    ///
-    /// # Errors
-    /// * コンパイルが既に実行されている場合
-    /// * コンパイルの実行に失敗した場合
-    #[must_use = "この関数はコンパイルの結果を返します"]
-    pub fn compile(&mut self, command: &[String]) -> Result<()> {
+#[async_trait]
+impl CompilerOperations for Compiler {
+    async fn compile(
+        &mut self,
+        _source_code: &str,
+        compile_cmd: Option<Vec<String>>,
+        env_vars: Vec<String>,
+    ) -> Result<()> {
         if self.container_id.is_some() {
             return Err(anyhow!(docker::error("build_error", "コンパイルは既に実行されています")));
         }
 
+        let command = compile_cmd.unwrap_or_else(|| vec!["gcc".to_string(), "-o".to_string(), "output".to_string()]);
         let output = Command::new(&command[0])
             .args(&command[1..])
+            .envs(env_vars.iter().map(|s| {
+                let parts: Vec<&str> = s.split('=').collect();
+                (parts[0], parts[1])
+            }))
             .output()
             .map_err(|e| anyhow!(docker::error("build_error", format!("{e}。コマンド: {command:?}"))))?;
 
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        self.last_output = Some((stdout.clone(), stderr.clone()));
+
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let stdout = String::from_utf8_lossy(&output.stdout);
             return Err(anyhow!(docker::error("build_error", 
                 format!("標準エラー出力: {stderr}\n標準出力: {stdout}\n終了コード: {:?}", output.status.code()))));
         }
@@ -55,41 +62,54 @@ impl Compiler {
         Ok(())
     }
 
-    /// コンテナIDを取得します
-    ///
-    /// # Returns
-    /// * `Result<String>` - コンテナID
-    ///
-    /// # Errors
-    /// * コンテナIDが設定されていない場合
-    #[must_use = "この関数はコンテナIDを返します"]
-    pub fn get_container_id(&self) -> Result<String> {
-        self.container_id
-            .clone()
-            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナIDが取得できません")))
+    async fn get_compilation_output(&self) -> Result<(String, String)> {
+        self.last_output.clone()
+            .ok_or_else(|| anyhow!(docker::error("build_error", "コンパイル出力が利用できません")))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[tokio::test]
+    async fn test_compile_success() {
+        let mut compiler = Compiler::new();
+        let source = "int main() { return 0; }";
+        
+        // 一時ファイルにソースコードを書き込む
+        let temp_dir = std::env::temp_dir();
+        let source_path = temp_dir.join("test.c");
+        let output_path = temp_dir.join("test");
+        fs::write(&source_path, source).unwrap();
+
+        let result = compiler.compile(
+            source,
+            Some(vec![
+                "gcc".to_string(),
+                source_path.to_str().unwrap().to_string(),
+                "-o".to_string(),
+                output_path.to_str().unwrap().to_string(),
+            ]),
+            vec!["CC=gcc".to_string()],
+        ).await;
+
+        // クリーンアップ
+        let _ = fs::remove_file(source_path);
+        let _ = fs::remove_file(output_path);
+
+        assert!(result.is_ok());
     }
 
-    /// コンパイル出力を取得します
-    ///
-    /// # Returns
-    /// * `Result<String>` - コンパイル出力
-    ///
-    /// # Errors
-    /// * コンパイルが実行されていない場合
-    /// * コンパイル出力の取得に失敗した場合
-    #[must_use = "この関数はコンパイル出力を返します"]
-    pub fn get_output(&self) -> Result<String> {
-        let container_id = self.container_id
-            .as_ref()
-            .ok_or_else(|| anyhow!(docker::error("build_error", "コンパイルが実行されていません")))?;
-
-        let output = Command::new("docker")
-            .args(["logs", container_id])
-            .output()
-            .map_err(|e| anyhow!(docker::error("build_error", 
-                format!("出力の取得に失敗: {e}。コンテナID: {container_id}"))))?;
-
-        String::from_utf8(output.stdout)
-            .map_err(|e| anyhow!(docker::error("build_error", format!("出力の解析に失敗: {e}"))))
+    #[tokio::test]
+    async fn test_compile_failure() {
+        let mut compiler = Compiler::new();
+        let result = compiler.compile(
+            "invalid code",
+            None,
+            vec![],
+        ).await;
+        assert!(result.is_err());
     }
 } 

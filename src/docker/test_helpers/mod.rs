@@ -1,6 +1,6 @@
 #![allow(clippy::ref_option_ref)]
 
-use crate::docker::execution::{command, CommandOutput};
+use crate::docker::execution::{CommandOutput, Executor};
 use mockall::automock;
 use async_trait::async_trait;
 use anyhow::Result;
@@ -8,8 +8,8 @@ use anyhow::Result;
 /// テスト用のモックを生成するためのトレイト
 #[async_trait]
 #[automock]
-pub trait Executor {
-    async fn execute(&self, command: command::Executor) -> Result<CommandOutput>;
+pub trait CommandExecutor {
+    async fn execute(&self, command: Executor) -> Result<CommandOutput>;
 }
 
 #[automock]

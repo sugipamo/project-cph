@@ -1,0 +1,1063 @@
+diff --git a/clippy.toml b/clippy.toml
+index a6c6519..d19c141 100644
+--- a/clippy.toml
++++ b/clippy.toml
+@@ -20,7 +20,8 @@ disallowed-names = [
+     "common.rs",
+     "models.rs",
+     "errors.rs",
+-    "error.rs"
++    "error.rs",
++    "traits.rs"
+ ]
+ 
+ # 複雑性の制限
+diff --git a/src/docker/execution/command.rs b/src/docker/execution/command.rs
+index 25dfff2..37d7e93 100644
+--- a/src/docker/execution/command.rs
++++ b/src/docker/execution/command.rs
+@@ -1,7 +1,11 @@
+-use std::process::{Command, Output};
++use std::process::Command;
+ use std::borrow::Cow;
+-use anyhow::{Result, anyhow, Context};
++use std::time::Duration;
++use anyhow::{Result, anyhow};
++use async_trait::async_trait;
+ use crate::message::docker;
++use crate::docker::config::Config;
++use super::Operations;
+ 
+ /// Dockerコマンドの実行結果を表す構造体
+ #[derive(Debug)]
+@@ -22,14 +26,12 @@ pub struct Executor {
+     name: String,
+     args: Vec<String>,
+     capture_stderr: bool,
++    container_id: Option<String>,
+ }
+ 
+ impl Executor {
+     /// 新しいExecutorインスタンスを作成します
+     ///
+-    /// # Arguments
+-    /// * `name` - 実行するDockerコマンド名
+-    ///
+     /// # Returns
+     /// * `Self` - 新しいExecutorインスタンス
+     #[must_use = "この関数は新しいExecutorインスタンスを返します"]
+@@ -38,6 +40,7 @@ impl Executor {
+             name: name.into(),
+             args: Vec::new(),
+             capture_stderr: false,
++            container_id: None,
+         }
+     }
+ 
+@@ -71,6 +74,7 @@ impl Executor {
+             name: self.name,
+             args,
+             capture_stderr: self.capture_stderr,
++            container_id: self.container_id,
+         }
+     }
+ 
+@@ -93,67 +97,170 @@ impl Executor {
+             name: self.name,
+             args: new_args,
+             capture_stderr: self.capture_stderr,
++            container_id: self.container_id,
+         }
+     }
++}
+ 
+-    /// コマンドを実行し、生の出力を返します
+-    ///
+-    /// # Returns
+-    /// * `Result<Output>` - コマンドの実行結果
+-    ///
+-    /// # Errors
+-    /// * コマンドの実行に失敗した場合
+-    fn execute_raw(&self) -> Result<Output> {
+-        Command::new("docker")
+-            .arg(&self.name)
+-            .args(&self.args)
++#[async_trait]
++impl Operations for Executor {
++    async fn initialize(&mut self, config: Config) -> Result<()> {
++        if self.container_id.is_some() {
++            return Err(anyhow!(docker::error("container_error", "コンテナは既に初期化されています")));
++        }
++
++        let output = Command::new("docker")
++            .args(["create", "--rm"])
++            .args(["--workdir", config.working_dir.to_str().unwrap_or("/")])
++            .args(config.command)
+             .output()
+-            .with_context(|| docker::error("command_failed", "コマンドの実行に失敗しました"))
++            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
++
++        if !output.status.success() {
++            let stderr = String::from_utf8_lossy(&output.stderr);
++            return Err(anyhow!(docker::error("container_error", stderr)));
++        }
++
++        let container_id = String::from_utf8(output.stdout)
++            .map_err(|e| anyhow!(docker::error("container_error", format!("コンテナIDの解析に失敗: {e}"))))?
++            .trim()
++            .to_string();
++
++        self.container_id = Some(container_id);
++        Ok(())
+     }
+ 
+-    /// コマンドを実行し、結果を返します
+-    ///
+-    /// # Returns
+-    /// * `Result<ExecutionResult>` - コマンドの実行結果
+-    ///
+-    /// # Errors
+-    /// * コマンドの実行に失敗した場合
+-    /// * 出力の文字列変換に失敗した場合
+-    pub fn execute(self) -> Result<ExecutionResult> {
+-        let output = self.execute_raw()?;
++    async fn start(&mut self) -> Result<()> {
++        let container_id = self.container_id
++            .as_ref()
++            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが初期化されていません")))?;
++
++        let output = Command::new("docker")
++            .args(["start", container_id])
++            .output()
++            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
++
++        if !output.status.success() {
++            let stderr = String::from_utf8_lossy(&output.stderr);
++            return Err(anyhow!(docker::error("container_error", stderr)));
++        }
++
++        Ok(())
++    }
++
++    async fn stop(&mut self) -> Result<()> {
++        let container_id = self.container_id
++            .as_ref()
++            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが初期化されていません")))?;
++
++        let output = Command::new("docker")
++            .args(["stop", container_id])
++            .output()
++            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
++
++        if !output.status.success() {
++            let stderr = String::from_utf8_lossy(&output.stderr);
++            return Err(anyhow!(docker::error("container_error", stderr)));
++        }
++
++        Ok(())
++    }
++
++    async fn execute(&mut self, command: &str) -> Result<(String, String)> {
++        let container_id = self.container_id
++            .as_ref()
++            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが初期化されていません")))?;
++
++        let output = Command::new("docker")
++            .args(["exec", container_id])
++            .arg(command)
++            .output()
++            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
+ 
+         let stdout = String::from_utf8(output.stdout)
+-            .with_context(|| docker::error("command_failed", "標準出力の解析に失敗しました"))?;
++            .map_err(|e| anyhow!(docker::error("container_error", format!("標準出力の解析に失敗: {e}"))))?;
+         let stderr = String::from_utf8(output.stderr)
+-            .with_context(|| docker::error("command_failed", "標準エラー出力の解析に失敗しました"))?;
++            .map_err(|e| anyhow!(docker::error("container_error", format!("標準エラー出力の解析に失敗: {e}"))))?;
++
++        Ok((stdout, stderr))
++    }
++
++    async fn write(&mut self, input: &str) -> Result<()> {
++        let container_id = self.container_id
++            .as_ref()
++            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが初期化されていません")))?;
++
++        let output = Command::new("docker")
++            .args(["exec", "-i", container_id])
++            .arg("sh")
++            .arg("-c")
++            .arg(format!("echo '{input}' > /tmp/input"))
++            .output()
++            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
+ 
+         if !output.status.success() {
+-            if self.capture_stderr {
+-                return Ok(ExecutionResult {
+-                    stdout,
+-                    stderr,
+-                    exit_code: output.status.code().unwrap_or(-1),
+-                });
+-            }
+-            return Err(anyhow!(docker::error("command_failed", stderr)));
++            let stderr = String::from_utf8_lossy(&output.stderr);
++            return Err(anyhow!(docker::error("container_error", stderr)));
+         }
+ 
+-        Ok(ExecutionResult {
+-            stdout,
+-            stderr,
+-            exit_code: 0,
+-        })
++        Ok(())
+     }
+ 
+-    /// コマンドを実行し、標準出力のみを返します
+-    ///
+-    /// # Returns
+-    /// * `Result<String>` - コマンドの標準出力
+-    ///
+-    /// # Errors
+-    /// * コマンドの実行に失敗した場合
+-    /// * 出力の文字列変換に失敗した場合
+-    pub fn execute_output(self) -> Result<String> {
+-        self.execute().map(|result| result.stdout)
++    async fn read_stdout(&mut self, _timeout: Duration) -> Result<String> {
++        let container_id = self.container_id
++            .as_ref()
++            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが初期化されていません")))?;
++
++        let output = Command::new("docker")
++            .args(["logs", "--tail", "100", container_id])
++            .output()
++            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
++
++        String::from_utf8(output.stdout)
++            .map_err(|e| anyhow!(docker::error("container_error", format!("標準出力の解析に失敗: {e}"))))
++    }
++
++    async fn read_stderr(&mut self, _timeout: Duration) -> Result<String> {
++        let container_id = self.container_id
++            .as_ref()
++            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが初期化されていません")))?;
++
++        let output = Command::new("docker")
++            .args(["logs", "--tail", "100", "--stderr", container_id])
++            .output()
++            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
++
++        String::from_utf8(output.stderr)
++            .map_err(|e| anyhow!(docker::error("container_error", format!("標準エラー出力の解析に失敗: {e}"))))
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use std::time::Duration;
++
++    #[tokio::test]
++    async fn test_initialize() {
++        let mut executor = Executor::new("test");
++        let config = Config {
++            working_dir: "/".into(),
++            command: vec!["alpine:latest".to_string(), "sh".to_string()],
++        };
++        let result = executor.initialize(config).await;
++        assert!(result.is_ok());
++    }
++
++    #[tokio::test]
++    async fn test_execute() {
++        let mut executor = Executor::new("test");
++        let config = Config {
++            working_dir: "/".into(),
++            command: vec!["alpine:latest".to_string(), "sh".to_string()],
++        };
++        executor.initialize(config).await.unwrap();
++        executor.start().await.unwrap();
++        let result = executor.execute("echo hello").await;
++        assert!(result.is_ok());
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/docker/execution/compilation.rs b/src/docker/execution/compilation.rs
+index 1ff4c72..6865ce2 100644
+--- a/src/docker/execution/compilation.rs
++++ b/src/docker/execution/compilation.rs
+@@ -1,6 +1,8 @@
+ use std::process::Command;
+ use anyhow::{Result, anyhow};
++use async_trait::async_trait;
+ use crate::message::docker;
++use super::CompilerOperations;
+ 
+ /// コンパイル処理を管理する構造体
+ ///
+@@ -9,6 +11,7 @@ use crate::message::docker;
+ #[derive(Debug, Default)]
+ pub struct Compiler {
+     container_id: Option<String>,
++    last_output: Option<(String, String)>,
+ }
+ 
+ impl Compiler {
+@@ -20,34 +23,38 @@ impl Compiler {
+     pub const fn new() -> Self {
+         Self {
+             container_id: None,
++            last_output: None,
+         }
+     }
++}
+ 
+-    /// コマンドを実行してコンパイルを行います
+-    ///
+-    /// # Arguments
+-    /// * `command` - コンパイルコマンドとその引数
+-    ///
+-    /// # Returns
+-    /// * `Result<()>` - コンパイル結果
+-    ///
+-    /// # Errors
+-    /// * コンパイルが既に実行されている場合
+-    /// * コンパイルの実行に失敗した場合
+-    #[must_use = "この関数はコンパイルの結果を返します"]
+-    pub fn compile(&mut self, command: &[String]) -> Result<()> {
++#[async_trait]
++impl CompilerOperations for Compiler {
++    async fn compile(
++        &mut self,
++        _source_code: &str,
++        compile_cmd: Option<Vec<String>>,
++        env_vars: Vec<String>,
++    ) -> Result<()> {
+         if self.container_id.is_some() {
+             return Err(anyhow!(docker::error("build_error", "コンパイルは既に実行されています")));
+         }
+ 
++        let command = compile_cmd.unwrap_or_else(|| vec!["gcc".to_string(), "-o".to_string(), "output".to_string()]);
+         let output = Command::new(&command[0])
+             .args(&command[1..])
++            .envs(env_vars.iter().map(|s| {
++                let parts: Vec<&str> = s.split('=').collect();
++                (parts[0], parts[1])
++            }))
+             .output()
+             .map_err(|e| anyhow!(docker::error("build_error", format!("{e}。コマンド: {command:?}"))))?;
+ 
++        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
++        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
++        self.last_output = Some((stdout.clone(), stderr.clone()));
++
+         if !output.status.success() {
+-            let stderr = String::from_utf8_lossy(&output.stderr);
+-            let stdout = String::from_utf8_lossy(&output.stdout);
+             return Err(anyhow!(docker::error("build_error", 
+                 format!("標準エラー出力: {stderr}\n標準出力: {stdout}\n終了コード: {:?}", output.status.code()))));
+         }
+@@ -55,41 +62,35 @@ impl Compiler {
+         Ok(())
+     }
+ 
+-    /// コンテナIDを取得します
+-    ///
+-    /// # Returns
+-    /// * `Result<String>` - コンテナID
+-    ///
+-    /// # Errors
+-    /// * コンテナIDが設定されていない場合
+-    #[must_use = "この関数はコンテナIDを返します"]
+-    pub fn get_container_id(&self) -> Result<String> {
+-        self.container_id
+-            .clone()
+-            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナIDが取得できません")))
++    async fn get_compilation_output(&self) -> Result<(String, String)> {
++        self.last_output.clone()
++            .ok_or_else(|| anyhow!(docker::error("build_error", "コンパイル出力が利用できません")))
+     }
++}
+ 
+-    /// コンパイル出力を取得します
+-    ///
+-    /// # Returns
+-    /// * `Result<String>` - コンパイル出力
+-    ///
+-    /// # Errors
+-    /// * コンパイルが実行されていない場合
+-    /// * コンパイル出力の取得に失敗した場合
+-    #[must_use = "この関数はコンパイル出力を返します"]
+-    pub fn get_output(&self) -> Result<String> {
+-        let container_id = self.container_id
+-            .as_ref()
+-            .ok_or_else(|| anyhow!(docker::error("build_error", "コンパイルが実行されていません")))?;
++#[cfg(test)]
++mod tests {
++    use super::*;
+ 
+-        let output = Command::new("docker")
+-            .args(["logs", container_id])
+-            .output()
+-            .map_err(|e| anyhow!(docker::error("build_error", 
+-                format!("出力の取得に失敗: {e}。コンテナID: {container_id}"))))?;
++    #[tokio::test]
++    async fn test_compile_success() {
++        let mut compiler = Compiler::new();
++        let result = compiler.compile(
++            "int main() { return 0; }",
++            None,
++            vec!["CC=gcc".to_string()],
++        ).await;
++        assert!(result.is_ok());
++    }
+ 
+-        String::from_utf8(output.stdout)
+-            .map_err(|e| anyhow!(docker::error("build_error", format!("出力の解析に失敗: {e}"))))
++    #[tokio::test]
++    async fn test_compile_failure() {
++        let mut compiler = Compiler::new();
++        let result = compiler.compile(
++            "invalid code",
++            None,
++            vec![],
++        ).await;
++        assert!(result.is_err());
+     }
+ } 
+\ No newline at end of file
+diff --git a/src/docker/execution/container.rs b/src/docker/execution/container.rs
+index dbaf207..b5524ca 100644
+--- a/src/docker/execution/container.rs
++++ b/src/docker/execution/container.rs
+@@ -1,6 +1,8 @@
+ use std::process::Command;
+ use anyhow::{Result, anyhow};
++use async_trait::async_trait;
+ use crate::message::docker;
++use super::RuntimeManager;
+ 
+ /// Dockerコンテナのランタイム管理を担当する構造体
+ ///
+@@ -88,16 +90,74 @@ impl Runtime {
+         Ok(())
+     }
+ 
+-    /// コンテナを起動します
++    /// コンテナ内でコマンドを実行します
++    ///
++    /// # Arguments
++    /// * `command` - 実行するコマンドとその引数
+     ///
+     /// # Returns
+-    /// * `Result<()>` - 起動結果
++    /// * `Result<(String, String)>` - 標準出力と標準エラー出力のタプル
+     ///
+     /// # Errors
+     /// * コンテナが作成されていない場合
+-    /// * コンテナの起動に失敗した場合
+-    #[must_use = "この関数はコンテナの起動結果を返します"]
+-    pub fn start(&mut self) -> Result<()> {
++    /// * コマンドの実行に失敗した場合
++    pub fn execute_command(&self, command: &[&str]) -> Result<(String, String)> {
++        let container_id = self.container_id
++            .as_ref()
++            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが作成されていません")))?;
++
++        let mut args = vec!["exec", container_id];
++        args.extend(command);
++
++        let output = Command::new("docker")
++            .args(&args)
++            .output()
++            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
++
++        let stdout = String::from_utf8(output.stdout)
++            .map_err(|e| anyhow!(docker::error("container_error", format!("標準出力の解析に失敗: {e}"))))?;
++        let stderr = String::from_utf8(output.stderr)
++            .map_err(|e| anyhow!(docker::error("container_error", format!("標準エラー出力の解析に失敗: {e}"))))?;
++
++        Ok((stdout, stderr))
++    }
++}
++
++#[async_trait]
++impl RuntimeManager for Runtime {
++    async fn create_container(&mut self, image: &str, cmd: Vec<String>, working_dir: &str) -> Result<()> {
++        if self.container_id.is_some() {
++            return Err(anyhow!(docker::error("container_error", "コンテナは既に作成されています")));
++        }
++
++        let mut args = vec!["create"];
++        if self.auto_remove {
++            args.push("--rm");
++        }
++        args.extend(["-w", working_dir]);
++        args.extend(cmd.iter().map(String::as_str));
++        args.push(image);
++
++        let output = Command::new("docker")
++            .args(&args)
++            .output()
++            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
++
++        if !output.status.success() {
++            let stderr = String::from_utf8_lossy(&output.stderr);
++            return Err(anyhow!(docker::error("container_error", stderr)));
++        }
++
++        let container_id = String::from_utf8(output.stdout)
++            .map_err(|e| anyhow!(docker::error("container_error", format!("コンテナIDの解析に失敗: {e}"))))?
++            .trim()
++            .to_string();
++
++        self.container_id = Some(container_id);
++        Ok(())
++    }
++
++    async fn start_container(&mut self) -> Result<()> {
+         let container_id = self.container_id
+             .as_ref()
+             .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが作成されていません")))?;
+@@ -115,16 +175,7 @@ impl Runtime {
+         Ok(())
+     }
+ 
+-    /// コンテナを停止します
+-    ///
+-    /// # Returns
+-    /// * `Result<()>` - 停止結果
+-    ///
+-    /// # Errors
+-    /// * コンテナが作成されていない場合
+-    /// * コンテナの停止に失敗した場合
+-    #[must_use = "この関数はコンテナの停止結果を返します"]
+-    pub fn stop(&mut self) -> Result<()> {
++    async fn stop_container(&mut self) -> Result<()> {
+         let container_id = self.container_id
+             .as_ref()
+             .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが作成されていません")))?;
+@@ -142,16 +193,13 @@ impl Runtime {
+         Ok(())
+     }
+ 
+-    /// コンテナの終了を待機し、終了コードを返します
+-    ///
+-    /// # Returns
+-    /// * `Result<i32>` - 終了コード
+-    ///
+-    /// # Errors
+-    /// * コンテナが作成されていない場合
+-    /// * 終了コードの取得に失敗した場合
+-    #[must_use = "この関数はコンテナの終了コードを返します"]
+-    pub fn wait(&mut self) -> Result<i32> {
++    async fn get_container_id(&self) -> Result<String> {
++        self.container_id
++            .clone()
++            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが作成されていません")))
++    }
++
++    async fn get_exit_code(&self) -> Result<i32> {
+         let container_id = self.container_id
+             .as_ref()
+             .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが作成されていません")))?;
+@@ -175,114 +223,59 @@ impl Runtime {
+         Ok(exit_code)
+     }
+ 
+-    /// イメージの存在を確認し、必要に応じてプルします
+-    ///
+-    /// # Arguments
+-    /// * `image` - 確認するDockerイメージ名
+-    ///
+-    /// # Returns
+-    /// * `Result<()>` - 確認結果
+-    ///
+-    /// # Errors
+-    /// * イメージの確認に失敗した場合
+-    /// * イメージのプルに失敗したた場合
+-    #[must_use = "この関数はイメージの確認結果を返します"]
+-    pub fn ensure_image(&self, image: &str) -> Result<()> {
++    async fn check_image(&self, image: &str) -> Result<bool> {
+         let output = Command::new("docker")
+             .args(["images", "-q", image])
+             .output()
+             .map_err(|e| anyhow!(docker::error("container_error", format!("イメージの確認に失敗: {e}"))))?;
+ 
+-        if output.stdout.is_empty() {
+-            let output = Command::new("docker")
+-                .args(["pull", image])
+-                .output()
+-                .map_err(|e| anyhow!(docker::error("container_error", format!("イメージの取得に失敗: {e}"))))?;
+-
+-            if !output.status.success() {
+-                let stderr = String::from_utf8_lossy(&output.stderr);
+-                return Err(anyhow!(docker::error("container_error", format!("イメージの取得に失敗: {stderr}"))));
+-            }
+-        }
+-
+-        Ok(())
++        Ok(!output.stdout.is_empty())
+     }
+ 
+-    /// コンテナを削除します
+-    ///
+-    /// # Returns
+-    /// * `Result<()>` - 削除結果
+-    ///
+-    /// # Errors
+-    /// * コンテナが作成されていない場合
+-    /// * コンテナの削除に失敗した場合
+-    pub fn remove(&mut self) -> Result<()> {
+-        let container_id = self.container_id.take()
+-            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが作成されていません")))?;
+-
++    async fn pull_image(&self, image: &str) -> Result<()> {
+         let output = Command::new("docker")
+-            .args(["rm", "-f", &container_id])
++            .args(["pull", image])
+             .output()
+-            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
++            .map_err(|e| anyhow!(docker::error("container_error", format!("イメージの取得に失敗: {e}"))))?;
+ 
+         if !output.status.success() {
+             let stderr = String::from_utf8_lossy(&output.stderr);
+-            return Err(anyhow!(docker::error("container_error", stderr)));
++            return Err(anyhow!(docker::error("container_error", format!("イメージの取得に失敗: {stderr}"))));
+         }
+ 
+         Ok(())
+     }
+-
+-    /// コンテナIDを取得します
+-    ///
+-    /// # Returns
+-    /// * `Option<&str>` - コンテナID
+-    #[must_use]
+-    pub fn container_id(&self) -> Option<&str> {
+-        self.container_id.as_deref()
+-    }
+-
+-    /// コンテナ内でコマンドを実行します
+-    ///
+-    /// # Arguments
+-    /// * `command` - 実行するコマンドとその引数
+-    ///
+-    /// # Returns
+-    /// * `Result<(String, String)>` - 標準出力と標準エラー出力のタプル
+-    ///
+-    /// # Errors
+-    /// * コンテナが作成されていない場合
+-    /// * コマンドの実行に失敗した場合
+-    pub fn execute_command(&self, command: &[&str]) -> Result<(String, String)> {
+-        let container_id = self.container_id
+-            .as_ref()
+-            .ok_or_else(|| anyhow!(docker::error("container_error", "コンテナが作成されていません")))?;
+-
+-        let mut args = vec!["exec", container_id];
+-        args.extend(command);
+-
+-        let output = Command::new("docker")
+-            .args(&args)
+-            .output()
+-            .map_err(|e| anyhow!(docker::error("container_error", e)))?;
+-
+-        let stdout = String::from_utf8(output.stdout)
+-            .map_err(|e| anyhow!(docker::error("container_error", format!("標準出力の解析に失敗: {e}"))))?;
+-        let stderr = String::from_utf8(output.stderr)
+-            .map_err(|e| anyhow!(docker::error("container_error", format!("標準エラー出力の解析に失敗: {e}"))))?;
+-
+-        Ok((stdout, stderr))
+-    }
+ }
+ 
+ impl Drop for Runtime {
+     fn drop(&mut self) {
+-        if self.auto_remove {
+-            if let Some(container_id) = &self.container_id {
+-                let _ = Command::new("docker")
+-                    .args(["rm", "-f", container_id])
+-                    .output();
+-            }
++        if let Some(container_id) = &self.container_id {
++            let _ = Command::new("docker")
++                .args(["rm", "-f", container_id])
++                .output();
+         }
+     }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[tokio::test]
++    async fn test_create_container() {
++        let mut runtime = Runtime::new();
++        let result = runtime.create_container(
++            "alpine:latest",
++            vec!["echo".to_string(), "hello".to_string()],
++            "/",
++        ).await;
++        assert!(result.is_ok());
++    }
++
++    #[tokio::test]
++    async fn test_check_image() {
++        let runtime = Runtime::new();
++        let result = runtime.check_image("alpine:latest").await;
++        assert!(result.is_ok());
++    }
+ } 
+\ No newline at end of file
+diff --git a/src/docker/execution/mod.rs b/src/docker/execution/mod.rs
+index 73e9b59..87d9127 100644
+--- a/src/docker/execution/mod.rs
++++ b/src/docker/execution/mod.rs
+@@ -2,10 +2,14 @@ pub mod command;
+ pub mod compilation;
+ pub mod container;
+ 
++pub use command::Executor;
+ pub use compilation::Compiler;
+ pub use container::Runtime;
+ 
+ use anyhow::Result;
++use std::time::Duration;
++use async_trait::async_trait;
++use crate::docker::config::Config;
+ 
+ #[derive(Debug)]
+ pub struct CommandOutput {
+@@ -25,7 +29,43 @@ impl CommandOutput {
+     }
+ }
+ 
+-#[async_trait::async_trait]
+-pub trait Executor {
+-    async fn execute(&self, command: command::Executor) -> Result<CommandOutput>;
++#[async_trait]
++pub trait CommandExecutor {
++    async fn execute(&self, command: Executor) -> Result<CommandOutput>;
++}
++
++/// Dockerコンテナの実行操作を提供するトレイト
++#[async_trait]
++pub trait Operations: Send + Sync {
++    async fn initialize(&mut self, config: Config) -> Result<()>;
++    async fn start(&mut self) -> Result<()>;
++    async fn stop(&mut self) -> Result<()>;
++    async fn execute(&mut self, command: &str) -> Result<(String, String)>;
++    async fn write(&mut self, input: &str) -> Result<()>;
++    async fn read_stdout(&mut self, timeout: Duration) -> Result<String>;
++    async fn read_stderr(&mut self, timeout: Duration) -> Result<String>;
++}
++
++/// コンパイル操作を提供するトレイト
++#[async_trait]
++pub trait CompilerOperations: Send + Sync {
++    async fn compile(
++        &mut self,
++        source_code: &str,
++        compile_cmd: Option<Vec<String>>,
++        env_vars: Vec<String>,
++    ) -> Result<()>;
++    async fn get_compilation_output(&self) -> Result<(String, String)>;
++}
++
++/// Dockerコンテナのランタイム管理を行うトレイト
++#[async_trait]
++pub trait RuntimeManager: Send + Sync {
++    async fn create_container(&mut self, image: &str, cmd: Vec<String>, working_dir: &str) -> Result<()>;
++    async fn start_container(&mut self) -> Result<()>;
++    async fn stop_container(&mut self) -> Result<()>;
++    async fn get_container_id(&self) -> Result<String>;
++    async fn get_exit_code(&self) -> Result<i32>;
++    async fn check_image(&self, image: &str) -> Result<bool>;
++    async fn pull_image(&self, image: &str) -> Result<()>;
+ } 
+\ No newline at end of file
+diff --git a/src/docker/mod.rs b/src/docker/mod.rs
+index 42b08c8..9c61d1b 100644
+--- a/src/docker/mod.rs
++++ b/src/docker/mod.rs
+@@ -3,6 +3,6 @@ pub mod execution;
+ pub mod fs;
+ pub mod state;
+ pub mod test_helpers;
+-pub mod traits;
+ 
+-pub use execution::container::Runtime; 
+\ No newline at end of file
++pub use config::Config;
++pub use execution::{Executor, Compiler, Runtime, Operations, CompilerOperations, RuntimeManager}; 
+\ No newline at end of file
+diff --git a/src/docker/test_helpers/mod.rs b/src/docker/test_helpers/mod.rs
+index 0c63b57..728ebc4 100644
+--- a/src/docker/test_helpers/mod.rs
++++ b/src/docker/test_helpers/mod.rs
+@@ -1,6 +1,6 @@
+ #![allow(clippy::ref_option_ref)]
+ 
+-use crate::docker::execution::{command, CommandOutput};
++use crate::docker::execution::{CommandOutput, Executor};
+ use mockall::automock;
+ use async_trait::async_trait;
+ use anyhow::Result;
+@@ -8,8 +8,8 @@ use anyhow::Result;
+ /// テスト用のモックを生成するためのトレイト
+ #[async_trait]
+ #[automock]
+-pub trait Executor {
+-    async fn execute(&self, command: command::Executor) -> Result<CommandOutput>;
++pub trait CommandExecutor {
++    async fn execute(&self, command: Executor) -> Result<CommandOutput>;
+ }
+ 
+ #[automock]
+diff --git a/src/docker/traits/compilation.rs b/src/docker/traits/compilation.rs
+deleted file mode 100644
+index 0f924e0..0000000
+--- a/src/docker/traits/compilation.rs
++++ /dev/null
+@@ -1,38 +0,0 @@
+-use async_trait::async_trait;
+-use anyhow::Result;
+-
+-/// コンパイル操作を提供するトレイト
+-///
+-/// このトレイトは、ソースコードのコンパイルに関連する
+-/// 基本的な操作を定義します。
+-#[async_trait]
+-pub trait CompilerOperations: Send + Sync {
+-    /// ソースコードをコンパイルします
+-    ///
+-    /// # Arguments
+-    /// * `source_code` - コンパイル対象のソースコード
+-    /// * `compile_cmd` - コンパイルコマンドとその引数（オプション）
+-    /// * `env_vars` - コンパイル時に設定する環境変数
+-    ///
+-    /// # Returns
+-    /// * `Result<()>` - コンパイル結果
+-    ///
+-    /// # Errors
+-    /// * コンパイルに失敗した場合
+-    /// * コンパイラの実行に失敗した場合
+-    async fn compile(
+-        &mut self,
+-        source_code: &str,
+-        compile_cmd: Option<Vec<String>>,
+-        env_vars: Vec<String>,
+-    ) -> Result<()>;
+-
+-    /// コンパイル結果を取得します
+-    ///
+-    /// # Returns
+-    /// * `Result<(String, String)>` - (標準出力, 標準エラー出力)
+-    ///
+-    /// # Errors
+-    /// * コンパイル結果の取得に失敗した場合
+-    async fn get_compilation_output(&self) -> Result<(String, String)>;
+-} 
+\ No newline at end of file
+diff --git a/src/docker/traits/container.rs b/src/docker/traits/container.rs
+deleted file mode 100644
+index 1517e29..0000000
+--- a/src/docker/traits/container.rs
++++ /dev/null
+@@ -1,83 +0,0 @@
+-use async_trait::async_trait;
+-use anyhow::Result;
+-
+-/// Dockerコンテナのランタイム管理を行うトレイト
+-///
+-/// このトレイトは、Dockerコンテナのライフサイクル管理に必要な
+-/// 基本的な操作を定義します。
+-#[async_trait]
+-pub trait RuntimeManager: Send + Sync {
+-    /// コンテナを作成します
+-    ///
+-    /// # Arguments
+-    /// * `image` - 使用するDockerイメージ名
+-    /// * `cmd` - コンテナで実行するコマンドとその引数
+-    /// * `working_dir` - コンテナ内の作業ディレクトリ
+-    ///
+-    /// # Returns
+-    /// * `Result<()>` - 作成結果
+-    ///
+-    /// # Errors
+-    /// * コンテナの作成に失敗した場合
+-    async fn create_container(&mut self, image: &str, cmd: Vec<String>, working_dir: &str) -> Result<()>;
+-    
+-    /// コンテナを起動します
+-    ///
+-    /// # Returns
+-    /// * `Result<()>` - 起動結果
+-    ///
+-    /// # Errors
+-    /// * コンテナの起動に失敗した場合
+-    async fn start_container(&mut self) -> Result<()>;
+-    
+-    /// コンテナを停止します
+-    ///
+-    /// # Returns
+-    /// * `Result<()>` - 停止結果
+-    ///
+-    /// # Errors
+-    /// * コンテナの停止に失敗した場合
+-    async fn stop_container(&mut self) -> Result<()>;
+-    
+-    /// コンテナIDを取得します
+-    ///
+-    /// # Returns
+-    /// * `Result<String>` - コンテナID
+-    ///
+-    /// # Errors
+-    /// * コンテナIDの取得に失敗した場合
+-    async fn get_container_id(&self) -> Result<String>;
+-    
+-    /// コンテナの終了コードを取得します
+-    ///
+-    /// # Returns
+-    /// * `Result<i32>` - 終了コード
+-    ///
+-    /// # Errors
+-    /// * 終了コードの取得に失敗した場合
+-    async fn get_exit_code(&self) -> Result<i32>;
+-    
+-    /// イメージの存在を確認します
+-    ///
+-    /// # Arguments
+-    /// * `image` - 確認するDockerイメージ名
+-    ///
+-    /// # Returns
+-    /// * `Result<bool>` - イメージが存在する場合はtrue
+-    ///
+-    /// # Errors
+-    /// * イメージの確認に失敗した場合
+-    async fn check_image(&self, image: &str) -> Result<bool>;
+-    
+-    /// イメージをプルします
+-    ///
+-    /// # Arguments
+-    /// * `image` - プルするDockerイメージ名
+-    ///
+-    /// # Returns
+-    /// * `Result<()>` - プル結果
+-    ///
+-    /// # Errors
+-    /// * イメージのプルに失敗した場合
+-    async fn pull_image(&self, image: &str) -> Result<()>;
+-} 
+\ No newline at end of file
+diff --git a/src/docker/traits/mod.rs b/src/docker/traits/mod.rs
+deleted file mode 100644
+index 063ffb0..0000000
+--- a/src/docker/traits/mod.rs
++++ /dev/null
+@@ -1,7 +0,0 @@
+-pub mod container;
+-pub mod operations;
+-pub mod compilation;
+-
+-pub use container::RuntimeManager;
+-pub use operations::Operations;
+-pub use compilation::CompilerOperations; 
+\ No newline at end of file
+diff --git a/src/docker/traits/operations.rs b/src/docker/traits/operations.rs
+deleted file mode 100644
+index 2f531e2..0000000
+--- a/src/docker/traits/operations.rs
++++ /dev/null
+@@ -1,91 +0,0 @@
+-use async_trait::async_trait;
+-use std::time::Duration;
+-use anyhow::Result;
+-use crate::docker::config::Config;
+-
+-/// Dockerコンテナの実行操作を提供するトレイト
+-///
+-/// このトレイトは、Dockerコンテナの実行に関連する
+-/// 基本的な操作を定義します。
+-#[async_trait]
+-pub trait Operations: Send + Sync {
+-    /// コンテナを作成し、初期化します
+-    ///
+-    /// # Arguments
+-    /// * `config` - コンテナの実行設定
+-    ///
+-    /// # Returns
+-    /// * `Result<()>` - 初期化結果
+-    ///
+-    /// # Errors
+-    /// * コンテナの作成または初期化に失敗した場合
+-    async fn initialize(&mut self, config: Config) -> Result<()>;
+-
+-    /// コンテナを起動します
+-    ///
+-    /// # Returns
+-    /// * `Result<()>` - 起動結果
+-    ///
+-    /// # Errors
+-    /// * コンテナの起動に失敗した場合
+-    async fn start(&mut self) -> Result<()>;
+-
+-    /// コンテナを停止します
+-    ///
+-    /// # Returns
+-    /// * `Result<()>` - 停止結果
+-    ///
+-    /// # Errors
+-    /// * コンテナの停止に失敗した場合
+-    async fn stop(&mut self) -> Result<()>;
+-
+-    /// コンテナでコマンドを実行します
+-    ///
+-    /// # Arguments
+-    /// * `command` - 実行するコマンド
+-    ///
+-    /// # Returns
+-    /// * `Result<(String, String)>` - (標準出力, 標準エラー出力)
+-    ///
+-    /// # Errors
+-    /// * コマンドの実行に失敗した場合
+-    async fn execute(&mut self, command: &str) -> Result<(String, String)>;
+-
+-    /// コンテナの標準入力にデータを書き込みます
+-    ///
+-    /// # Arguments
+-    /// * `input` - 書き込むデータ
+-    ///
+-    /// # Returns
+-    /// * `Result<()>` - 書き込み結果
+-    ///
+-    /// # Errors
+-    /// * データの書き込みに失敗した場合
+-    async fn write(&mut self, input: &str) -> Result<()>;
+-
+-    /// コンテナの標準出力からデータを読み取ります
+-    ///
+-    /// # Arguments
+-    /// * `timeout` - 読み取りのタイムアウト時間
+-    ///
+-    /// # Returns
+-    /// * `Result<String>` - 読み取ったデータ
+-    ///
+-    /// # Errors
+-    /// * データの読み取りに失敗した場合
+-    /// * タイムアウトが発生した場合
+-    async fn read_stdout(&mut self, timeout: Duration) -> Result<String>;
+-
+-    /// コンテナの標準エラー出力からデータを読み取ります
+-    ///
+-    /// # Arguments
+-    /// * `timeout` - 読み取りのタイムアウト時間
+-    ///
+-    /// # Returns
+-    /// * `Result<String>` - 読み取ったデータ
+-    ///
+-    /// # Errors
+-    /// * データの読み取りに失敗した場合
+-    /// * タイムアウトが発生した場合
+-    async fn read_stderr(&mut self, timeout: Duration) -> Result<String>;
+-} 
+\ No newline at end of file

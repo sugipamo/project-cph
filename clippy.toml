@@ -20,7 +20,8 @@ disallowed-names = [
     "common.rs",
     "models.rs",
     "errors.rs",
-    "error.rs"
+    "error.rs",
+    "traits.rs"
 ]
 
 # 複雑性の制限
