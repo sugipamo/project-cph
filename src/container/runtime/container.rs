@@ -3,26 +3,38 @@ use anyhow::Result;
 use tokio::sync::oneshot;
 use crate::container::{
     state::status::ContainerStatus,
-    lifecycle::{LifecycleManager, LifecycleEvent},
     communication::{ContainerNetwork, Message},
     io::buffer::OutputBuffer,
 };
 use super::config::ContainerConfig;
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LifecycleEvent {
+    Create,
+    Start,
+    Stop,
+    Remove,
+}
 
 pub struct Container {
-    lifecycle: LifecycleManager,
     network: Option<Arc<ContainerNetwork>>,
     buffer: Option<Arc<OutputBuffer>>,
     cancel_tx: Option<oneshot::Sender<()>>,
+    config: ContainerConfig,
+    container_id: Option<String>,
+    status: ContainerStatus,
 }
 
 impl Container {
     pub fn new(config: ContainerConfig) -> Self {
         Self {
-            lifecycle: LifecycleManager::new(config),
             network: None,
             buffer: None,
             cancel_tx: None,
+            config,
+            container_id: None,
+            status: ContainerStatus::Created,
         }
     }
 
@@ -35,8 +47,8 @@ impl Container {
         self.buffer = Some(buffer.clone());
 
         // コンテナの作成と起動
-        self.lifecycle.handle_event(LifecycleEvent::Create).await?;
-        self.lifecycle.handle_event(LifecycleEvent::Start).await?;
+        self.handle_lifecycle_event(LifecycleEvent::Create).await?;
+        self.handle_lifecycle_event(LifecycleEvent::Start).await?;
 
         // キャンセル用チャネル
         let (cancel_tx, mut cancel_rx) = oneshot::channel();
@@ -44,7 +56,7 @@ impl Container {
 
         // メッセージ処理ループ
         loop {
-            if self.lifecycle.status().is_terminal() {
+            if self.status.is_terminal() {
                 break;
             }
 
@@ -56,8 +68,8 @@ impl Container {
         }
 
         // クリーンアップ
-        self.lifecycle.handle_event(LifecycleEvent::Stop).await?;
-        self.lifecycle.handle_event(LifecycleEvent::Remove).await?;
+        self.handle_lifecycle_event(LifecycleEvent::Stop).await?;
+        self.handle_lifecycle_event(LifecycleEvent::Remove).await?;
         
         Ok(())
     }
@@ -67,6 +79,24 @@ impl Container {
             let _ = tx.send(());
         }
         Ok(())
+    }
+
+    pub async fn handle_lifecycle_event(&mut self, event: LifecycleEvent) -> Result<ContainerStatus> {
+        match event {
+            LifecycleEvent::Create => self.create().await?,
+            LifecycleEvent::Start => self.start().await?,
+            LifecycleEvent::Stop => self.stop().await?,
+            LifecycleEvent::Remove => self.remove().await?,
+        }
+        Ok(self.status.clone())
+    }
+
+    pub fn id(&self) -> Option<&str> {
+        self.container_id.as_deref()
+    }
+
+    pub fn status(&self) -> &ContainerStatus {
+        &self.status
     }
 }
 
