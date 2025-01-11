@@ -76,7 +76,7 @@ impl Container {
         if let Some(tx) = &self.cancel_tx {
             if Arc::strong_count(tx) == 1 {
                 if let Ok(tx) = Arc::try_unwrap(tx.clone()) {
-                    tx.send(()).map_err(|_| anyhow!("キャンセルチャネルが閉じられています"))?;
+                    tx.send(()).map_err(|()| anyhow!("キャンセルチャネルが閉じられています"))?;
                 }
             }
         }

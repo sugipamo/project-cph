@@ -62,7 +62,7 @@ impl Builder {
         source_file: &str,
         args: Vec<String>
     ) -> Result<Container> {
-        println!("ContainerBuilder: build_for_language開始 (language={}, source={})", language, source_file);
+        println!("ContainerBuilder: build_for_language開始 (language={language}, source={source_file})");
         self.config.args = args;
         self.config.working_dir = PathBuf::from(source_file);
 
@@ -87,7 +87,11 @@ impl Builder {
         Ok(self.build())
     }
 
-    #[must_use]
+    /// コンテナをビルドします。
+    /// 
+    /// # Panics
+    /// 
+    /// - ランタイムが設定されていない場合にパニックします。
     pub fn build(self) -> Container {
         println!("ContainerBuilder: build開始");
         let runtime = self.runtime.expect("ランタイムが設定されていません");

@@ -36,6 +36,12 @@ impl MockRuntime {
     }
 }
 
+impl Default for MockRuntime {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl Runtime for MockRuntime {
     async fn run(&self, _config: &Config) -> Result<()> {

@@ -15,6 +15,11 @@ impl Network {
         }
     }
 
+    /// メッセージを指定された宛先に送信します。
+    /// 
+    /// # Errors
+    /// 
+    /// - メッセージの送信に失敗した場合にエラーを返します。
     pub async fn send(&self, _from: &str, to: &str, message: Message) -> Result<()> {
         let mut buffers = self.buffers.lock().await;
         buffers.entry(to.to_string())
@@ -23,6 +28,11 @@ impl Network {
         Ok(())
     }
 
+    /// メッセージを全ての宛先（送信者以外）にブロードキャストします。
+    /// 
+    /// # Errors
+    /// 
+    /// - メッセージの送信に失敗した場合にエラーを返します。
     pub async fn broadcast(&self, from: &str, message: Message) -> Result<()> {
         let mut buffers = self.buffers.lock().await;
         let recipients: Vec<String> = buffers.keys()
@@ -40,11 +50,7 @@ impl Network {
 
     pub async fn receive(&self, id: &str) -> Option<Message> {
         let mut buffers = self.buffers.lock().await;
-        if let Some(messages) = buffers.get_mut(id) {
-            messages.pop()
-        } else {
-            None
-        }
+        buffers.get_mut(id).and_then(|messages| messages.pop())
     }
 }
 
