@@ -265,18 +265,61 @@ impl Config {
             }
             current_path.push_str(part);
 
-            match current_value {
-                Value::Mapping(map) => {
-                    current_value = map.get(Value::String(part.to_string()))
-                        .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
+            // 配列アクセスの処理
+            if let Some((array_path, index)) = Self::parse_array_access(part) {
+                // 配列パスの部分を処理
+                if !array_path.is_empty() {
+                    match current_value {
+                        Value::Mapping(map) => {
+                            current_value = map.get(Value::String(array_path.to_string()))
+                                .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
+                        }
+                        _ => {
+                            return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
+                        }
+                    }
                 }
-                _ => {
-                    return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
+
+                // 配列のインデックスアクセス
+                match current_value {
+                    Value::Sequence(array) => {
+                        current_value = array.get(index)
+                            .ok_or_else(|| anyhow!("配列のインデックス {} が範囲外です（パス: '{}'）", index, current_path))?;
+                    }
+                    _ => {
+                        return Err(anyhow!("パス '{}' は配列ではありません", current_path));
+                    }
+                }
+            } else {
+                // 通常のパスアクセス
+                match current_value {
+                    Value::Mapping(map) => {
+                        current_value = map.get(Value::String(part.to_string()))
+                            .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
+                    }
+                    _ => {
+                        return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
+                    }
                 }
             }
         }
 
         Self::convert_value(current_value, path)
+    }
+
+    /// 配列アクセスのパターンを解析します
+    /// 例: "array[0]" -> ("array", 0)
+    fn parse_array_access(part: &str) -> Option<(&str, usize)> {
+        if let Some(bracket_pos) = part.find('[') {
+            if part.ends_with(']') {
+                let array_path = &part[..bracket_pos];
+                let index_str = &part[bracket_pos + 1..part.len() - 1];
+                if let Ok(index) = index_str.parse::<usize>() {
+                    return Some((array_path, index));
+                }
+            }
+        }
+        None
     }
 
     /// 設定値を型変換します
@@ -297,18 +340,59 @@ impl Config {
     where
         T: serde::de::DeserializeOwned,
     {
+        // 直接の変換を試みる
+        if let Ok(converted) = serde_yaml::from_value(value.clone()) {
+            return Ok(converted);
+        }
+
+        // 文字列からの変換を試みる
+        if let Value::String(s) = value {
+            // 数値への変換
+            if std::any::type_name::<T>() == std::any::type_name::<i64>() {
+                if let Ok(num) = s.parse::<i64>() {
+                    if let Ok(converted) = serde_yaml::from_value(Value::Number(serde_yaml::Number::from(num))) {
+                        return Ok(converted);
+                    }
+                }
+            }
+            // 浮動小数点数への変換
+            if std::any::type_name::<T>() == std::any::type_name::<f64>() {
+                if let Ok(num) = s.parse::<f64>() {
+                    #[allow(clippy::cast_possible_truncation)]
+                    let value = Value::Number(serde_yaml::Number::from(num as i64));
+                    if let Ok(converted) = serde_yaml::from_value(value) {
+                        return Ok(converted);
+                    }
+                }
+            }
+            // ブール値への変換
+            if std::any::type_name::<T>() == std::any::type_name::<bool>() {
+                let lower = s.to_lowercase();
+                if lower == "true" || lower == "yes" || lower == "1" {
+                    if let Ok(converted) = serde_yaml::from_value(Value::Bool(true)) {
+                        return Ok(converted);
+                    }
+                } else if lower == "false" || lower == "no" || lower == "0" {
+                    if let Ok(converted) = serde_yaml::from_value(Value::Bool(false)) {
+                        return Ok(converted);
+                    }
+                }
+            }
+        }
+
         // 数値型の特別な処理
-        let value = match (&value, std::any::type_name::<T>()) {
-            (Value::Number(num), "i64") if num.is_f64() => {
+        if let Value::Number(num) = value {
+            if std::any::type_name::<T>() == std::any::type_name::<i64>() && num.is_f64() {
                 #[allow(clippy::cast_possible_truncation)]
                 let value = Value::Number(serde_yaml::Number::from(num.as_f64()
                     .expect("数値が浮動小数点数として解釈できません") as i64));
-                value
+                if let Ok(converted) = serde_yaml::from_value(value) {
+                    return Ok(converted);
+                }
             }
-            _ => value.clone(),
-        };
+        }
 
-        serde_yaml::from_value(value)
-            .with_context(|| format!("設定値 '{path}' の型変換に失敗しました"))
+        // 変換に失敗した場合
+        Err(anyhow!("設定値 '{path}' の型変換に失敗しました"))
     }
 }
