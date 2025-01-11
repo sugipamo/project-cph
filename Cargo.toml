@@ -17,7 +17,6 @@ path = "src/bin/cph.rs"
 [features]
 default = []
 testing = []
-docker_test = []
 
 [dependencies]
 clap = { version = "4.4.6", features = ["derive"] }
@@ -46,6 +45,7 @@ libc = "0.2"
 nix = { version = "0.27", features = ["user", "fs"] }
 mockall = "0.12.1"
 petgraph = "0.6"
+containerd-client = "0.7.0"
 
 [dev-dependencies]
 assert_cmd = "2.0"

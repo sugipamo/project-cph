@@ -31,7 +31,7 @@ impl ParallelExecutor {
             let containers = Arc::clone(&self.containers);
             
             let handle = tokio::spawn(async move {
-                let mut container = Container::new(config);
+                let mut container = Container::new(config).await?;
                 {
                     let mut containers = containers.lock().await;
                     containers.push(container.clone());
