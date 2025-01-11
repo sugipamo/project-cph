@@ -39,10 +39,10 @@ impl Container {
 
         let result = self.runtime.run(&self.config).await;
         
-        let mut state = self.state.lock().await;
-        match result {
-            Ok(_) => *state = ContainerState::Completed,
-            Err(e) => *state = ContainerState::Failed(e.to_string()),
+        if let Err(e) = result {
+            let mut state = self.state.lock().await;
+            *state = ContainerState::Failed(e.to_string());
+            return Err(e);
         }
         
         Ok(())

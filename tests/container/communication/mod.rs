@@ -27,6 +27,14 @@ async fn test_message_sending() -> Result<()> {
 async fn test_message_broadcasting() -> Result<()> {
     let network = Arc::new(Network::new());
     
+    // 受信者のバッファを事前に作成
+    network.send("sender", "receiver1", Message::normal("init", "sender", "receiver1")).await?;
+    network.send("sender", "receiver2", Message::normal("init", "sender", "receiver2")).await?;
+    
+    // 初期化メッセージを消費
+    let _ = network.receive("receiver1").await;
+    let _ = network.receive("receiver2").await;
+    
     let message = Message::system(
         "ブロードキャストメッセージ",
         "sender",

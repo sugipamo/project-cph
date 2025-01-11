@@ -24,21 +24,24 @@ impl Network {
     }
 
     pub async fn broadcast(&self, from: &str, message: Message) -> Result<()> {
-        let buffers = self.buffers.lock().await;
-        for (id, _) in buffers.iter() {
-            if id != from {
-                let mut message = message.clone();
-                message.to = id.clone();
-                self.send(from, id, message).await?;
-            }
+        let mut buffers = self.buffers.lock().await;
+        let recipients: Vec<String> = buffers.keys()
+            .filter(|id| *id != from)
+            .cloned()
+            .collect();
+        
+        for id in recipients {
+            buffers.entry(id)
+                .or_insert_with(Vec::new)
+                .push(message.clone());
         }
         Ok(())
     }
 
     pub async fn receive(&self, id: &str) -> Option<Message> {
         let mut buffers = self.buffers.lock().await;
-        if let Some(buffer) = buffers.get_mut(id) {
-            buffer.pop()
+        if let Some(messages) = buffers.get_mut(id) {
+            messages.pop()
         } else {
             None
         }
