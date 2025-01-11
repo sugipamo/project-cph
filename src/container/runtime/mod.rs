@@ -8,7 +8,7 @@ pub mod container;
 pub use container::Container;
 
 #[async_trait]
-pub trait ContainerRuntime {
+pub trait ContainerRuntime: Clone {
     async fn create(
         &self,
         image: &str,

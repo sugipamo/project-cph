@@ -48,7 +48,8 @@ petgraph = "0.6"
 containerd-client = "0.7.0"
 yaml-rust = "0.4"
 bytes = { version = "1.5", features = ["serde"] }
-tonic = { version = "0.10", features = ["transport"] }
+tonic = { version = "0.12", features = ["transport"] }
+serde_bytes = "0.11"
 
 [dev-dependencies]
 assert_cmd = "2.0"

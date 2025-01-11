@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 use anyhow::{Result, anyhow};
-use super::message::Message;
+use super::protocol::Message;
 
 pub struct ContainerNetwork {
     channels: Arc<Mutex<HashMap<String, mpsc::Sender<Message>>>>,
@@ -21,7 +21,7 @@ impl ContainerNetwork {
         Ok((tx, rx))
     }
 
-    pub async fn send(&self, from: &str, to: &str, message: Message) -> Result<()> {
+    pub async fn send(&self, _from: &str, to: &str, message: Message) -> Result<()> {
         let channels = self.channels.lock().await;
         if let Some(tx) = channels.get(to) {
             tx.send(message).await
