@@ -1,4 +1,4 @@
-use crate::contest::model::{Command, CommandContext, Contest};
+use crate::contest::model::{Command, CommandContext};
 use crate::contest::service::{ContestHandler, TestRunner};
 use anyhow::Result;
 use crate::message::contest;
@@ -46,8 +46,8 @@ impl Service {
                     || Err(anyhow::anyhow!(contest::error("invalid_command", "サイトが指定されていません"))),
                     |site_str| {
                         // 設定からテンプレートディレクトリを取得
-                        let template_dir = Config::get_default("contest.template_dir")?;
-                        let active_dir = Config::get_default("contest.active_dir")?;
+                        let template_dir: String = Config::get_default("languages.rust.contest_dir.template")?;
+                        let active_dir: String = Config::get_default("languages.rust.contest_dir.active")?;
                         
                         self.contest_service.open_with_config(
                             &site_str,
@@ -69,7 +69,7 @@ impl Service {
                     |contest| {
                         println!("テストを実行します: test_number={test_number:?}");
                         // 設定からテストディレクトリを取得
-                        let test_dir: String = Config::get_default("contest.test_dir")?;
+                        let test_dir: String = Config::get_default("languages.rust.test.dir")?;
                         let result = self.test_service.run_test_with_config(&contest, test_number, &test_dir)?;
                         println!("{}", result.summary());
                         Ok(())
