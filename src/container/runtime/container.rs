@@ -244,6 +244,12 @@ impl Container {
     pub fn id(&self) -> String {
         self.config.id.clone()
     }
+
+    /// バッファの内容を取得します
+    #[must_use]
+    pub fn buffer(&self) -> Arc<Buffer> {
+        self.buffer.clone()
+    }
 }
 
 impl Clone for Container {
