@@ -8,6 +8,6 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    let _config = Config::load()?;
+    let _config = Config::from_file("src/config/config.yaml")?;
     Ok(())
 }

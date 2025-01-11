@@ -21,6 +21,7 @@ static ENV_VAR_PATTERN: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\$\{([^}]+)}").expect("正規表現パターンが不正です")
 });
 
+#[derive(Debug, Clone)]
 pub struct Config {
     data: Value,
 }
@@ -35,10 +36,10 @@ impl Config {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path_str = path.as_ref().display().to_string();
         let content = fs::read_to_string(&path)
-            .with_context(|| format!("設定ファイル '{}' の読み込みに失敗しました", path_str))?;
+            .with_context(|| format!("設定ファイル '{path_str}' の読み込みに失敗しました"))?;
         
-        Self::from_str(&content)
-            .with_context(|| format!("設定ファイル '{}' のパースに失敗しました", path_str))
+        Self::parse_str(&content)
+            .with_context(|| format!("設定ファイル '{path_str}' のパースに失敗しました"))
     }
 
     /// 文字列から設定を作成します
@@ -46,11 +47,11 @@ impl Config {
     /// # Errors
     ///
     /// - YAML形式が不正な場合
-    pub fn from_str(content: &str) -> Result<Self> {
+    pub fn parse_str(content: &str) -> Result<Self> {
         let expanded_content = Self::expand_env_vars(content);
         
         // YAML継承を有効にしてパース
-        let data = serde_yaml::from_str(&expanded_content)
+        let data: Value = serde_yaml::from_str(&expanded_content)
             .context("不正なYAML形式です")?;
 
         if !data.is_mapping() {
@@ -74,6 +75,24 @@ impl Config {
         }).to_string()
     }
 
+    /// 設定値を取得します
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - ドット区切りの設定パス（例: "system.browser"）
+    ///
+    /// # Returns
+    ///
+    /// * `Result<T>` - 設定値
+    ///
+    /// # Errors
+    ///
+    /// - 設定パスが存在しない場合
+    /// - 設定値の型変換に失敗した場合
+    ///
+    /// # Panics
+    ///
+    /// - デフォルト設定ファイルの読み込みに失敗した場合
     pub fn get<T>(path: &str) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
@@ -105,15 +124,8 @@ impl Config {
 
         serde_yaml::from_value(current.clone()).with_context(|| {
             format!(
-                "設定値の型変換に失敗しました: パス '{}' の値 '{}'",
-                path,
-                current
+                "設定値の型変換に失敗しました: パス '{path}' の値 '{current:?}'"
             )
         })
-    }
-
-    fn load() -> Result<Self> {
-        Self::from_file("src/config/config.yaml")
-            .context("デフォルト設定ファイルの読み込みに失敗しました")
     }
 }
