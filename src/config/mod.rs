@@ -149,4 +149,51 @@ impl Config {
     pub fn contest_storage_dir(&self) -> String {
         self.languages.base.contest_dir.storage.clone()
     }
+
+    /// 指定された言語の設定を取得します
+    pub fn get_language_config(&self, language: &str) -> Result<&LanguageConfig> {
+        self.languages.get(language)
+            .ok_or_else(|| anyhow::anyhow!("言語の設定が見つかりません: {}", language))
+    }
+
+    /// 指定された言語のDockerイメージを取得します
+    pub fn get_language_image(&self, language: &str) -> Result<String> {
+        let lang_config = self.get_language_config(language)?;
+        Ok(lang_config.runner.image.clone())
+    }
+
+    /// 指定された言語のコンパイルコマンドを取得します
+    pub fn get_language_compile_command(&self, language: &str) -> Result<Vec<String>> {
+        let lang_config = self.get_language_config(language)?;
+        Ok(lang_config.compile.clone())
+    }
+
+    /// 指定された言語の実行コマンドを取得します
+    pub fn get_language_run_command(&self, language: &str) -> Result<Vec<String>> {
+        let lang_config = self.get_language_config(language)?;
+        Ok(lang_config.run.clone())
+    }
+
+    /// 指定された言語の環境変数を取得します
+    pub fn get_language_env_vars(&self, language: &str) -> Result<Vec<String>> {
+        let lang_config = self.get_language_config(language)?;
+        Ok(lang_config.runner.env_vars.clone())
+    }
+
+    /// 指定された言語のDocker設定を取得します
+    pub fn get_language_docker_config(&self, language: &str) -> Result<&DockerConfig> {
+        let lang_config = self.get_language_config(language)?;
+        Ok(&lang_config.runner.docker)
+    }
+}
+
+// 言語固有の設定を表す構造体を追加
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LanguageConfig {
+    pub extension: String,
+    pub runner: RunnerConfig,
+    pub compile: Vec<String>,
+    pub run: Vec<String>,
+    #[serde(default)]
+    pub site_ids: HashMap<String, String>,
 } 
