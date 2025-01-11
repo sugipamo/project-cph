@@ -1,11 +1,9 @@
 use std::path::{Path, PathBuf};
-use anyhow::{Result as AnyhowResult, anyhow};
-use crate::config::Config;
+use anyhow::Result as AnyhowResult;
 use crate::contest::model::Contest;
 use crate::message::contest;
-use crate::docker::execution::Runtime;
 
-/// テスト結果の状態を表す列挙型
+/// テストの実行結果を表す列挙型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
     Success,
@@ -13,8 +11,8 @@ pub enum Status {
     Error,
 }
 
-/// テストケースの結果を表す構造体
-#[derive(Debug)]
+/// テストケースの実行結果を表す構造体
+#[derive(Debug, Clone)]
 pub struct CaseResult {
     pub case_number: usize,
     pub status: Status,
@@ -25,8 +23,8 @@ pub struct CaseResult {
     pub actual: String,
 }
 
-/// テスト実行の結果を表す構造体
-#[derive(Debug)]
+/// テスト全体の実行結果を表す構造体
+#[derive(Debug, Clone)]
 #[allow(clippy::module_name_repetitions)]
 pub struct TestResults {
     pub total_cases: usize,
@@ -38,11 +36,11 @@ pub struct TestResults {
 }
 
 impl TestResults {
-    /// テスト結果の概要を文字列として取得します
+    /// テスト結果のサマリーを文字列で返します
     #[must_use]
     pub fn summary(&self) -> String {
         format!(
-            "テスト結果: {} テスト中 {} 成功, {} 失敗, {} エラー (合計時間: {:.2}秒)",
+            "テスト結果: {}件中 成功={}, 失敗={}, エラー={} (実行時間: {:.2}秒)",
             self.total_cases,
             self.successful_cases,
             self.failed_cases,
@@ -53,175 +51,143 @@ impl TestResults {
 }
 
 /// テスト実行サービスを提供する構造体
-#[derive(Debug)]
-pub struct Service {
-    #[allow(dead_code)]
-    config: Config,
-    #[allow(dead_code)]
-    runtime: Runtime,
-}
+#[derive(Debug, Default)]
+pub struct Service {}
 
 impl Service {
     /// 新しいテストサービスを作成します
-    /// 
-    /// # Arguments
-    /// * `config` - 設定情報
-    /// 
+    ///
     /// # Returns
-    /// * `AnyhowResult<Self>` - 新しいテストサービスインスタンス
-    /// 
+    /// * `Result<Self>` - 作成されたテストサービスインスタンス
+    ///
     /// # Errors
     /// - 設定の読み込みに失敗した場合
     #[must_use = "この関数は新しいTestServiceインスタンスを返します"]
-    pub fn new(config: &Config) -> AnyhowResult<Self> {
-        Ok(Self {
-            config: config.clone(),
-            runtime: Runtime::new(),
-        })
+    pub fn new() -> AnyhowResult<Self> {
+        Ok(Self::default())
     }
 
     /// テストを実行します
-    /// 
+    ///
     /// # Arguments
+    ///
     /// * `contest` - コンテスト情報
-    /// * `test_number` - 実行するテストケース番号（Noneの場合は全テストを実行）
-    /// 
+    /// * `test_number` - テスト番号（Noneの場合は全てのテストを実行）
+    ///
     /// # Returns
-    /// * `AnyhowResult<TestResults>` - テスト実行結果
-    /// 
+    ///
+    /// * `Result<TestResults>` - テスト結果
+    ///
     /// # Errors
+    ///
     /// - テストの実行に失敗した場合
-    pub fn run_test(&self, contest: &Contest, test_number: Option<usize>) -> AnyhowResult<TestResults> {
-        let test_dir = contest.get_test_dir()?;
-        let source_file = contest.get_source_file()?;
+    pub fn run_test(&self, _contest: &Contest, test_number: Option<usize>) -> AnyhowResult<TestResults> {
+        let start_time = std::time::Instant::now();
+        let source_file = Path::new("main.rs");
+        let test_dir = Path::new("tests");
 
         // テストケースの一覧を取得
-        let test_cases = Self::get_test_cases(&test_dir, test_number)?;
+        let test_cases = Self::get_test_cases(test_dir, test_number)?;
         if test_cases.is_empty() {
-            return Err(anyhow!(contest::error("test_failed", "テストケースが見つかりません")));
+            return Ok(TestResults {
+                total_cases: 0,
+                successful_cases: 0,
+                failed_cases: 0,
+                error_cases: 0,
+                total_time: std::time::Duration::from_secs(0),
+                case_results: Vec::new(),
+            });
         }
 
-        let start_time = std::time::Instant::now();
         let mut results = Vec::new();
         let mut successful_cases = 0;
         let mut failed_cases = 0;
         let mut error_cases = 0;
-        let total_cases = test_cases.len();
 
-        // 各テストケースを実行
         for (case_number, (input_file, expected_file)) in test_cases {
-            match Self::run_test_case(case_number, &source_file, &input_file, &expected_file) {
-                Ok(result) => {
-                    match result.status {
-                        Status::Success => successful_cases += 1,
-                        Status::Failure => failed_cases += 1,
-                        Status::Error => error_cases += 1,
-                    }
-                    results.push(result);
-                }
-                Err(e) => {
-                    error_cases += 1;
-                    results.push(CaseResult {
-                        case_number,
-                        status: Status::Error,
-                        execution_time: std::time::Duration::from_secs(0),
-                        stdout: String::new(),
-                        stderr: e.to_string(),
-                        expected: String::new(),
-                        actual: String::new(),
-                    });
-                }
+            let result = Self::run_test_case(case_number, source_file, &input_file, &expected_file)?;
+            
+            match result.status {
+                Status::Success => successful_cases += 1,
+                Status::Failure => failed_cases += 1,
+                Status::Error => error_cases += 1,
             }
+            
+            results.push(result);
         }
 
+        let total_time = start_time.elapsed();
+
         Ok(TestResults {
-            total_cases,
+            total_cases: results.len(),
             successful_cases,
             failed_cases,
             error_cases,
-            total_time: start_time.elapsed(),
+            total_time,
             case_results: results,
         })
     }
 
     /// テストケースの一覧を取得します
-    /// 
-    /// # Arguments
-    /// * `test_dir` - テストディレクトリ
-    /// * `test_number` - 取得するテストケース番号（Noneの場合は全テスト）
-    /// 
-    /// # Returns
-    /// * `AnyhowResult<Vec<(usize, (PathBuf, PathBuf))>>` - テストケース番号とテストファイルのペアのリスト
-    /// 
-    /// # Errors
-    /// - テストケースの読み取りに失敗した場合
     fn get_test_cases(
         test_dir: &Path,
         test_number: Option<usize>,
     ) -> AnyhowResult<Vec<(usize, (PathBuf, PathBuf))>> {
-        let mut cases = Vec::new();
+        let mut test_cases = Vec::new();
         
-        if let Some(n) = test_number {
-            let input = test_dir.join(format!("{n}.in"));
-            let expected = test_dir.join(format!("{n}.out"));
-            if input.exists() && expected.exists() {
-                cases.push((n, (input, expected)));
-            }
-        } else {
-            for entry in std::fs::read_dir(test_dir)? {
-                let entry = entry?;
-                let path = entry.path();
-                if let Some(ext) = path.extension() {
-                    if ext == "in" {
-                        if let Some(stem) = path.file_stem() {
-                            if let Ok(n) = stem.to_string_lossy().parse::<usize>() {
-                                let expected = test_dir.join(format!("{n}.out"));
-                                if expected.exists() {
-                                    cases.push((n, (path, expected)));
-                                }
+        if !test_dir.exists() {
+            return Ok(test_cases);
+        }
+
+        let entries = std::fs::read_dir(test_dir)?;
+        
+        for entry in entries {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.is_file() {
+                if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                    if let Some(case_number) = Self::parse_test_case_number(file_name) {
+                        if let Some(test_num) = test_number {
+                            if case_number != test_num {
+                                continue;
                             }
+                        }
+                        
+                        let input_file = test_dir.join(format!("{case_number}.in"));
+                        let expected_file = test_dir.join(format!("{case_number}.out"));
+                        
+                        if input_file.exists() && expected_file.exists() {
+                            test_cases.push((case_number, (input_file, expected_file)));
                         }
                     }
                 }
             }
-            cases.sort_by_key(|(n, _)| *n);
         }
 
-        Ok(cases)
+        test_cases.sort_by_key(|(num, _)| *num);
+        Ok(test_cases)
     }
 
-    /// 単一のテストケースを実行します
-    /// 
-    /// # Arguments
-    /// * `case_number` - テストケース番号
-    /// * `source_file` - ソースファイル
-    /// * `input_file` - 入力ファイル
-    /// * `expected_file` - 期待される出力ファイル
-    /// 
-    /// # Returns
-    /// * `AnyhowResult<CaseResult>` - テストケースの実実行結果
-    /// 
-    /// # Errors
-    /// - テストケースの実行に失敗した場合
+    /// テストケース番号をパースします
+    fn parse_test_case_number(file_name: &str) -> Option<usize> {
+        file_name.split('.').next().and_then(|base_name| base_name.parse().ok())
+    }
+
+    /// テストケースを実行します
     fn run_test_case(
         case_number: usize,
-        source_file: &Path,
-        input_file: &Path,
+        _source_file: &Path,
+        _input_file: &Path,
         expected_file: &Path,
     ) -> AnyhowResult<CaseResult> {
         let start_time = std::time::Instant::now();
 
-        // コンテナを作成して実行
-        let mut runtime = Runtime::new().with_auto_remove(true);
-        runtime.create("rust:latest", &[])?;
-        let (stdout, stderr) = runtime.execute_command(&[
-            "exec",
-            source_file.to_string_lossy().as_ref(),
-            "<",
-            input_file.to_string_lossy().as_ref(),
-        ])?;
+        // TODO: 実際のテスト実行を実装
+        let stdout = String::new();
+        let stderr = String::new();
 
-        // 期待される出力を読み込み
+        // 期待される出力を読み込む
         let expected = std::fs::read_to_string(expected_file)?;
         let actual = stdout.trim().to_string();
 
@@ -250,27 +216,67 @@ impl Service {
     /// # Arguments
     /// 
     /// * `contest` - コンテスト情報
-    /// * `test_number` - テスト番号（Noneの場合は全てのテストを実行）
+    /// * `test_number` - テスト番号（オプション）
     /// * `test_dir` - テストディレクトリ
+    /// 
+    /// # Returns
+    /// 
+    /// * `AnyhowResult<TestResults>` - テスト結果
     /// 
     /// # Errors
     /// 
     /// - テストの実行に失敗した場合
     pub fn run_test_with_config(
         &self,
-        _contest: &Contest,
-        _test_number: Option<usize>,
+        contest: &Contest,
+        test_number: Option<usize>,
         test_dir: &str,
     ) -> AnyhowResult<TestResults> {
-        // TODO: 実装
-        println!("テストディレクトリ: {test_dir}");
+        let source_file = Path::new("main.rs");
+        let test_dir = Path::new(test_dir);
+
+        // テストケースの一覧を取得
+        let test_cases = Self::get_test_cases(test_dir, test_number)?;
+        if test_cases.is_empty() {
+            return Ok(TestResults {
+                total_cases: 0,
+                successful_cases: 0,
+                failed_cases: 0,
+                error_cases: 0,
+                total_time: std::time::Duration::from_secs(0),
+                case_results: Vec::new(),
+            });
+        }
+
+        let mut results = Vec::new();
+        let mut successful_cases = 0;
+        let mut failed_cases = 0;
+        let mut error_cases = 0;
+        let start_time = std::time::Instant::now();
+
+        for (case_number, (input_file, expected_file)) in test_cases {
+            let result = Self::run_test_case(case_number, source_file, &input_file, &expected_file)?;
+            
+            match result.status {
+                Status::Success => successful_cases += 1,
+                Status::Failure => failed_cases += 1,
+                Status::Error => error_cases += 1,
+            }
+            
+            results.push(result);
+        }
+
+        let total_time = start_time.elapsed();
+
+        println!("{}", contest::hint("test_result", format!("テスト実行中: contest={contest:?}")));
+
         Ok(TestResults {
-            total_cases: 0,
-            successful_cases: 0,
-            failed_cases: 0,
-            error_cases: 0,
-            total_time: std::time::Duration::from_secs(0),
-            case_results: Vec::new(),
+            total_cases: results.len(),
+            successful_cases,
+            failed_cases,
+            error_cases,
+            total_time,
+            case_results: results,
         })
     }
 } 

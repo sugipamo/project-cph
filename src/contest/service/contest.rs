@@ -1,10 +1,9 @@
-use anyhow::{Result, anyhow};
-use crate::config::Config;
+use anyhow::{Result as AnyhowResult, anyhow};
 use crate::contest::model::{Contest, TestCase};
 use crate::fs::manager::Manager;
 use crate::message::contest;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Service {
     site: Option<String>,
     contest_id: Option<String>,
@@ -12,8 +11,6 @@ pub struct Service {
     language: Option<String>,
     url: Option<String>,
     file_manager: Option<Manager>,
-    #[allow(dead_code)]
-    config: Config,
 }
 
 // 状態遷移を表現する型
@@ -29,24 +26,13 @@ pub enum ServiceTransition {
 impl Service {
     /// 新しいサービスインスタンスを作成します
     ///
-    /// # Arguments
-    /// * `config` - サービスの設定
-    ///
     /// # Returns
     /// * `Result<Self>` - 作成されたサービスインスタンス
     ///
     /// # Errors
     /// * 設定の読み込みに失敗した場合
-    pub fn new(config: &Config) -> Result<Self> {
-        Ok(Self {
-            site: None,
-            contest_id: None,
-            problem_id: None,
-            language: None,
-            url: None,
-            file_manager: None,
-            config: config.clone(),
-        })
+    pub fn new() -> AnyhowResult<Self> {
+        Ok(Self::default())
     }
 
     // アクセサメソッド
@@ -92,7 +78,7 @@ impl Service {
     /// # Errors
     /// 
     /// Returns an error if site is not set
-    pub fn validate_site(&self) -> Result<()> {
+    pub fn validate_site(&self) -> AnyhowResult<()> {
         self.site.as_ref()
             .ok_or_else(|| anyhow!(contest::error("resource_not_found", "サイトが指定されていません")))
             .map(|_| ())
@@ -103,7 +89,7 @@ impl Service {
     /// # Errors
     /// 
     /// Returns an error if language is not set
-    pub fn validate_language(&self) -> Result<()> {
+    pub fn validate_language(&self) -> AnyhowResult<()> {
         self.language.as_ref()
             .ok_or_else(|| anyhow!(contest::error("resource_not_found", "言語が指定されていません")))
             .map(|_| ())
@@ -114,7 +100,7 @@ impl Service {
     /// # Errors
     /// 
     /// Returns an error if `contest_id` is not set
-    pub fn validate_contest_id(&self) -> Result<()> {
+    pub fn validate_contest_id(&self) -> AnyhowResult<()> {
         self.contest_id.as_ref()
             .ok_or_else(|| anyhow!(contest::error("resource_not_found", "コンテストIDが指定されていません")))
             .map(|_| ())
@@ -125,7 +111,7 @@ impl Service {
     /// # Errors
     /// 
     /// Returns an error if `problem_id` is not set
-    pub fn validate_problem_id(&self) -> Result<()> {
+    pub fn validate_problem_id(&self) -> AnyhowResult<()> {
         self.problem_id.as_ref()
             .ok_or_else(|| anyhow!(contest::error("resource_not_found", "問題IDが指定されていません")))
             .map(|_| ())
@@ -136,7 +122,7 @@ impl Service {
     /// # Errors
     /// 
     /// Returns an error if url is not set
-    pub fn validate_url(&self) -> Result<()> {
+    pub fn validate_url(&self) -> AnyhowResult<()> {
         self.url.as_ref()
             .ok_or_else(|| anyhow!(contest::error("resource_not_found", "URLが指定されていません")))
             .map(|_| ())
@@ -147,7 +133,7 @@ impl Service {
     /// # Errors
     /// 
     /// Returns an error if `file_manager` is not set
-    pub fn validate_file_manager(&self) -> Result<()> {
+    pub fn validate_file_manager(&self) -> AnyhowResult<()> {
         self.file_manager.as_ref()
             .ok_or_else(|| anyhow!(contest::error("resource_not_found", "FileManagerが設定されていません")))
             .map(|_| ())
@@ -158,7 +144,7 @@ impl Service {
     /// # Errors
     /// 
     /// Returns an error if any field validation fails
-    pub fn validate_all(&self) -> Result<()> {
+    pub fn validate_all(&self) -> AnyhowResult<()> {
         self.validate_site()?;
         self.validate_contest_id()?;
         self.validate_problem_id()?;
@@ -231,7 +217,7 @@ impl Service {
     /// - Any field validation fails
     /// - Workspace creation fails
     #[must_use = "この関数はContestインスタンスとManagerを返します"]
-    pub fn build(self) -> Result<(Contest, Manager)> {
+    pub fn build(self) -> AnyhowResult<(Contest, Manager)> {
         self.validate_all()?;
         
         let site = self.site.ok_or_else(|| anyhow!(contest::error("resource_not_found", "サイトが設定されていません")))?;
@@ -252,37 +238,9 @@ impl Service {
         Ok((contest, file_manager))
     }
 
-    /// コンテストを開きます。
+    /// コンテストを開きます
     /// 
     /// # Arguments
-    /// * `site` - サイト名
-    /// * `contest_id` - コンテストID（オプション）
-    /// * `problem_id` - 問題ID（オプション）
-    /// 
-    /// # Errors
-    /// - サイトが無効な場合
-    /// - コンテストIDが無効な場合
-    /// - 問題IDが無効な場合
-    pub fn open(&self, site: &str, contest_id: &Option<String>, problem_id: &Option<String>) -> Result<()> {
-        // TODO: 実装
-        println!("問題を開きます: site={site}, contest={contest_id:?}, problem={problem_id:?}");
-        Ok(())
-    }
-
-    /// Submits a solution for the contest
-    /// 
-    /// # Errors
-    /// 
-    /// Currently this function cannot fail, but returns Result for consistency
-    pub fn submit(&self, contest: &Contest) -> Result<()> {
-        println!("{}", contest::hint("optimize_code", format!("提出を行います: contest={contest:?}")));
-        Ok(())
-    }
-
-    /// 設定を使用してコンテストを開きます
-    /// 
-    /// # Arguments
-    /// 
     /// * `site` - サイト名
     /// * `contest_id` - コンテストID
     /// * `problem_id` - 問題ID
@@ -301,7 +259,7 @@ impl Service {
         problem_id: &str,
         template_dir: &str,
         active_dir: &str,
-    ) -> Result<()> {
+    ) -> AnyhowResult<()> {
         // アクティブディレクトリのパスを構築
         let contest_path = format!("{active_dir}/{site}/{contest_id}");
         let problem_path = format!("{contest_path}/{problem_id}");
@@ -322,9 +280,20 @@ impl Service {
         // ファイルを書き込み
         manager.write_file("main.rs", template_content)?;
 
-        // TODO: 問題情報のダウンロード
-        // self.download_problem_info(site, contest_id, problem_id)?;
+        Ok(())
+    }
 
+    /// 提出を行います
+    /// 
+    /// # Arguments
+    /// 
+    /// * `contest` - コンテスト情報
+    /// 
+    /// # Errors
+    /// 
+    /// - 提出に失敗した場合
+    pub fn submit(&self, contest: &Contest) -> AnyhowResult<()> {
+        println!("{}", contest::hint("optimize_code", format!("提出を行います: contest={contest:?}")));
         Ok(())
     }
 } 
