@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::path::PathBuf;
 use anyhow::Result;
 use tokio::sync::{oneshot, Mutex};
 use crate::container::{
@@ -207,6 +208,18 @@ impl Container {
             ContainerState::Completed { .. } => Status::Stopped,
             ContainerState::Failed { .. } => Status::Failed("コンテナの実行に失敗しました".to_string()),
         }
+    }
+
+    /// 作業ディレクトリのパスを取得します
+    #[must_use]
+    pub fn working_dir(&self) -> PathBuf {
+        self.config.working_dir.clone()
+    }
+
+    /// コンテナIDを取得します
+    #[must_use]
+    pub fn id(&self) -> String {
+        self.config.id.clone()
     }
 }
 
