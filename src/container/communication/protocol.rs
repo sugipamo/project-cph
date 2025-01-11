@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use crate::container::state::lifecycle::Status;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

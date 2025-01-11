@@ -50,6 +50,7 @@ enum ContainerState {
     Completed {
         runtime: RuntimeState,
     },
+    #[allow(dead_code)]
     Failed {
         error: String,
         runtime: Option<RuntimeState>,
@@ -64,7 +65,9 @@ impl Default for ContainerState {
 
 #[derive(Clone)]
 pub struct Container {
+    #[allow(dead_code)]
     network: Arc<Network>,
+    #[allow(dead_code)]
     buffer: Arc<Buffer>,
     config: Config,
     clients: ContainerdClients,
@@ -129,27 +132,36 @@ impl Container {
                 self.cleanup().await?;
                 Ok(())
             }
-            _ = self._monitor_container(&container_id) => {
+            _ = self.monitor_container(&container_id) => {
                 Ok(())
             }
         }
     }
 
-    async fn _monitor_container(&self, _container_id: &str) -> Result<()> {
-        let mut state = self.state.lock().await;
-        if let ContainerState::Running { runtime, .. } = &mut *state {
-            // コンテナの状態を監視し、エラーが発生した場合はFailedに遷移
-            if let Err(e) = self._check_container_health(runtime).await {
-                *state = ContainerState::Failed {
-                    error: e.to_string(),
-                    runtime: Some(runtime.clone()),
-                };
+    #[allow(clippy::used_underscore_items)]
+    async fn monitor_container(&self, _container_id: &str) -> Result<()> {
+        let runtime = {
+            let state = self.state.lock().await;
+            if let ContainerState::Running { runtime, .. } = &*state {
+                runtime.clone()
+            } else {
+                return Ok(());
             }
+        };
+
+        // コンテナの状態を監視し、エラーが発生した場合はFailedに遷移
+        if let Err(e) = self.check_container_health(&runtime).await {
+            let mut state = self.state.lock().await;
+            *state = ContainerState::Failed {
+                error: e.to_string(),
+                runtime: Some(runtime),
+            };
         }
         Ok(())
     }
 
-    async fn _check_container_health(&self, runtime: &RuntimeState) -> Result<()> {
+    #[allow(clippy::used_underscore_items)]
+    async fn check_container_health(&self, runtime: &RuntimeState) -> Result<()> {
         let response = self.clients.tasks.lock().await
             .get(containerd::services::v1::GetRequest {
                 container_id: runtime.container_id.clone(),
@@ -195,7 +207,7 @@ impl Container {
     /// コンテナをキャンセルします。
     ///
     /// # Panics
-    /// - Arc::try_unwrapが失敗した場合（通常は発生しません）
+    /// - `Arc::try_unwrap`が失敗した場合（通常は発生しません）
     pub async fn cancel(&self) {
         let mut state = self.state.lock().await;
         if let ContainerState::Running { cancel_tx: Some(tx), .. } = std::mem::replace(&mut *state, ContainerState::Initial) {
@@ -238,70 +250,59 @@ impl Runtime for Container {
         env_vars: &[String],
     ) -> Result<String> {
         let container_id = uuid::Uuid::new_v4().to_string();
-        let container = {
-            let mut client = self.clients.containers.lock().await;
-            let response = client
-                .create(containerd::services::v1::CreateContainerRequest {
-                    container: Some(ContainerdContainer {
-                        id: container_id.clone(),
-                        image: image.to_string(),
-                        runtime: Some(containerd::services::v1::container::Runtime {
-                            name: "io.containerd.runc.v2".to_string(),
-                            options: None,
-                        }),
-                        spec: Some(Any {
-                            type_url: "types.containerd.io/opencontainers/runtime-spec/1/Spec".to_string(),
-                            value: serde_json::to_vec(&serde_json::json!({
-                                "ociVersion": "1.0.2",
-                                "process": {
-                                    "args": command,
-                                    "cwd": working_dir.to_str().expect("作業ディレクトリのパスが無効です"),
-                                    "env": env_vars,
-                                    "terminal": false,
-                                    "user": {
-                                        "uid": 0,
-                                        "gid": 0
-                                    }
-                                },
-                                "root": {
-                                    "path": "rootfs"
-                                },
-                                "linux": {
-                                    "namespaces": [
-                                        { "type": "pid" },
-                                        { "type": "ipc" },
-                                        { "type": "uts" },
-                                        { "type": "mount" },
-                                        { "type": "network" }
-                                    ]
-                                }
-                            }))?,
-                        }),
-                        ..Default::default()
-                    }),
-                })
-                .await?;
-
-            response.into_inner().container
-                .ok_or_else(|| anyhow!("コンテナの作成に失敗しました"))?
+        let request = containerd::services::v1::CreateContainerRequest {
+            container: Some(ContainerdContainer {
+                id: container_id.clone(),
+                image: image.to_string(),
+                runtime: Some(containerd::services::v1::container::Runtime {
+                    name: "io.containerd.runc.v2".to_string(),
+                    options: None,
+                }),
+                spec: Some(Any {
+                    type_url: "types.containerd.io/opencontainers/runtime-spec/1/Spec".to_string(),
+                    value: serde_json::to_vec(&serde_json::json!({
+                        "ociVersion": "1.0.2",
+                        "process": {
+                            "args": command,
+                            "cwd": working_dir.to_str().expect("作業ディレクトリのパスが無効です"),
+                            "env": env_vars,
+                            "terminal": false,
+                            "user": {
+                                "uid": 0,
+                                "gid": 0
+                            }
+                        },
+                        "root": {
+                            "path": "rootfs"
+                        },
+                        "linux": {
+                            "namespaces": [
+                                { "type": "pid" },
+                                { "type": "ipc" },
+                                { "type": "uts" },
+                                { "type": "mount" },
+                                { "type": "network" }
+                            ]
+                        }
+                    }))?,
+                }),
+                ..Default::default()
+            }),
         };
 
-        {
-            let mut client = self.clients.tasks.lock().await;
-            client
-                .create(containerd::services::v1::CreateTaskRequest {
-                    container_id: container.id.clone(),
-                    ..Default::default()
-                })
-                .await?;
-            drop(client);
-        }
+        let container = {
+            let mut client = self.clients.containers.lock().await;
+            client.create(request).await?
+                .into_inner()
+                .container
+                .ok_or_else(|| anyhow!("コンテナの作成に失敗しました"))?
+        };
 
         Ok(container.id)
     }
 
     async fn start(&self, container_id: &str) -> Result<()> {
-        let response = self.clients.tasks.lock().await
+        self.clients.tasks.lock().await
             .start(containerd::services::v1::StartRequest {
                 container_id: container_id.to_string(),
                 exec_id: String::new(),
@@ -311,7 +312,7 @@ impl Runtime for Container {
     }
 
     async fn stop(&self, container_id: &str) -> Result<()> {
-        let response = self.clients.tasks.lock().await
+        self.clients.tasks.lock().await
             .kill(containerd::services::v1::KillRequest {
                 container_id: container_id.to_string(),
                 exec_id: String::new(),
@@ -323,7 +324,7 @@ impl Runtime for Container {
     }
 
     async fn remove(&self, container_id: &str) -> Result<()> {
-        let response = self.clients.containers.lock().await
+        self.clients.containers.lock().await
             .delete(containerd::services::v1::DeleteContainerRequest {
                 id: container_id.to_string(),
             })

@@ -27,6 +27,10 @@ impl Network {
         Ok((tx, rx))
     }
 
+    /// メッセージを特定のコンテナに送信します。
+    ///
+    /// # Errors
+    /// - メッセージの送信に失敗した場合
     pub async fn send(&self, _from: &str, to: &str, message: Message) -> Result<()> {
         let channels = self.channels.lock().await;
         if let Some(tx) = channels.get(to) {
@@ -38,13 +42,22 @@ impl Network {
         }
     }
 
+    /// メッセージを全てのコンテナにブロードキャストします。
+    ///
+    /// # Errors
+    /// - メッセージの送信に失敗した場合
     pub async fn broadcast(&self, from: &str, message: Message) -> Result<()> {
-        let channels = self.channels.lock().await;
-        for (container_id, tx) in channels.iter() {
-            if container_id != from {
-                tx.send(message.clone()).await
-                    .map_err(|e| anyhow!("ブロードキャスト送信に失敗: {}", e))?;
-            }
+        let channels = {
+            let lock = self.channels.lock().await;
+            lock.iter()
+                .filter(|(id, _)| *id != from)
+                .map(|(_, tx)| tx.clone())
+                .collect::<Vec<_>>()
+        };
+
+        for tx in channels {
+            tx.send(message.clone()).await
+                .map_err(|e| anyhow!("ブロードキャスト送信に失敗: {}", e))?;
         }
         Ok(())
     }

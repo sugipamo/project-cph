@@ -15,7 +15,8 @@ pub struct Config {
 
 impl Config {
     /// 新しい設定を作成します
-    pub fn new(id: String, image: String, working_dir: PathBuf, args: Vec<String>) -> Self {
+    #[must_use]
+    pub const fn new(id: String, image: String, working_dir: PathBuf, args: Vec<String>) -> Self {
         Self {
             id,
             image,
