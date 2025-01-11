@@ -7,10 +7,10 @@ pub mod orchestrator;
 mod tests {
     use cph::container::{
         runtime::{
-            ContainerBuilder,
+            Builder,
             mock::MockRuntime,
         },
-        ContainerState,
+        State,
     };
     use std::sync::Arc;
     use anyhow::Result;
@@ -18,20 +18,20 @@ mod tests {
     #[tokio::test]
     async fn test_container_creation() -> Result<()> {
         let runtime = Arc::new(MockRuntime::new());
-        let container = ContainerBuilder::new()
+        let container = Builder::new()
             .with_id("test-container")
             .with_image("test-image")
             .with_runtime(runtime)
             .build();
 
-        assert_eq!(container.status().await, ContainerState::Created);
+        assert_eq!(container.status().await, State::Created);
         Ok(())
     }
 
     #[tokio::test]
     async fn test_container_execution() -> Result<()> {
         let runtime = Arc::new(MockRuntime::new());
-        let container = ContainerBuilder::new()
+        let container = Builder::new()
             .with_id("test-container")
             .with_image("test-image")
             .with_runtime(runtime)
@@ -45,10 +45,10 @@ mod tests {
         });
 
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        assert_eq!(container.status().await, ContainerState::Running);
+        assert_eq!(container.status().await, State::Running);
         
         container.cancel().await?;
-        assert_eq!(container.status().await, ContainerState::Completed);
+        assert_eq!(container.status().await, State::Completed);
         
         handle.abort();
         Ok(())

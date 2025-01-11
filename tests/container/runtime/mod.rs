@@ -1,23 +1,23 @@
 use anyhow::Result;
 use cph::container::{
     runtime::{
-        ContainerBuilder,
+        Builder,
         mock::MockRuntime,
     },
-    ContainerState,
+    State,
 };
 use std::sync::Arc;
 
 #[tokio::test]
 async fn test_container_lifecycle() -> Result<()> {
     let runtime = Arc::new(MockRuntime::new());
-    let container = ContainerBuilder::new()
+    let container = Builder::new()
         .with_id("test-container")
         .with_image("test-image")
         .with_runtime(runtime)
         .build();
 
-    assert_eq!(container.status().await, ContainerState::Created);
+    assert_eq!(container.status().await, State::Created);
     
     let handle = tokio::spawn({
         let container = container.clone();
@@ -27,10 +27,10 @@ async fn test_container_lifecycle() -> Result<()> {
     });
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    assert_eq!(container.status().await, ContainerState::Running);
+    assert_eq!(container.status().await, State::Running);
     
     container.cancel().await?;
-    assert_eq!(container.status().await, ContainerState::Completed);
+    assert_eq!(container.status().await, State::Completed);
     
     handle.abort();
     Ok(())
@@ -40,29 +40,20 @@ async fn test_container_lifecycle() -> Result<()> {
 async fn test_error_handling() -> Result<()> {
     let runtime = Arc::new(MockRuntime::with_failure());
     
-    let container = ContainerBuilder::new()
+    let container = Builder::new()
         .with_id("test-container")
         .with_image("test-image")
         .with_runtime(runtime)
         .build();
 
-    let handle = tokio::spawn({
-        let container = container.clone();
-        async move {
-            let result = container.run().await;
-            assert!(result.is_err());
-            result
-        }
-    });
+    let result = container.run().await;
+    assert!(result.is_err());
 
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    
     match container.status().await {
-        ContainerState::Failed(_) => (),
+        State::Failed(_) => (),
         state => panic!("Expected Failed state, got {:?}", state),
     }
     
-    handle.abort();
     Ok(())
 }
 
@@ -70,7 +61,7 @@ async fn test_error_handling() -> Result<()> {
 async fn test_python_execution() -> Result<()> {
     let runtime = Arc::new(MockRuntime::new());
     
-    let container = ContainerBuilder::new()
+    let container = Builder::new()
         .with_id("test-python")
         .with_image("python:3.9")
         .with_args(vec!["python".to_string(), "test.py".to_string()])
@@ -78,7 +69,7 @@ async fn test_python_execution() -> Result<()> {
         .with_runtime(runtime)
         .build();
 
-    assert_eq!(container.status().await, ContainerState::Created);
+    assert_eq!(container.status().await, State::Created);
     
     let handle = tokio::spawn({
         let container = container.clone();
@@ -88,10 +79,10 @@ async fn test_python_execution() -> Result<()> {
     });
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    assert_eq!(container.status().await, ContainerState::Running);
+    assert_eq!(container.status().await, State::Running);
     
     container.cancel().await?;
-    assert_eq!(container.status().await, ContainerState::Completed);
+    assert_eq!(container.status().await, State::Completed);
     
     handle.abort();
     Ok(())
@@ -101,7 +92,7 @@ async fn test_python_execution() -> Result<()> {
 async fn test_rust_execution() -> Result<()> {
     let runtime = Arc::new(MockRuntime::new());
     
-    let container = ContainerBuilder::new()
+    let container = Builder::new()
         .with_id("test-rust")
         .with_image("rust:1.70")
         .with_args(vec!["cargo".to_string(), "run".to_string()])
@@ -109,7 +100,7 @@ async fn test_rust_execution() -> Result<()> {
         .with_runtime(runtime)
         .build();
 
-    assert_eq!(container.status().await, ContainerState::Created);
+    assert_eq!(container.status().await, State::Created);
     
     let handle = tokio::spawn({
         let container = container.clone();
@@ -119,10 +110,10 @@ async fn test_rust_execution() -> Result<()> {
     });
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    assert_eq!(container.status().await, ContainerState::Running);
+    assert_eq!(container.status().await, State::Running);
     
     container.cancel().await?;
-    assert_eq!(container.status().await, ContainerState::Completed);
+    assert_eq!(container.status().await, State::Completed);
     
     handle.abort();
     Ok(())

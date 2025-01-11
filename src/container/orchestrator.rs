@@ -3,14 +3,14 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::Duration;
 use crate::container::runtime::Container;
-use crate::container::runtime::builder::ContainerBuilder;
-use crate::container::runtime::container::ContainerState;
+use crate::container::runtime::Builder;
+use crate::container::runtime::State;
 use crate::container::communication::transport::Network;
 use crate::container::communication::protocol::{Message, MessageKind};
 use anyhow::Result;
 
 #[derive(Clone)]
-pub struct ContainerOrchestrator {
+pub struct Orchestrator {
     containers: Arc<Mutex<HashMap<String, Container>>>,
     links: Arc<Mutex<HashMap<String, HashSet<String>>>>,
     network: Arc<Network>,
@@ -19,7 +19,8 @@ pub struct ContainerOrchestrator {
     message_counts: Arc<Mutex<HashMap<MessageKind, usize>>>,
 }
 
-impl ContainerOrchestrator {
+impl Orchestrator {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             containers: Arc::new(Mutex::new(HashMap::new())),
@@ -31,14 +32,23 @@ impl ContainerOrchestrator {
         }
     }
 
+    /// コンテナを追加します
+    /// 
+    /// # Errors
+    /// - コンテナの作成に失敗した場合
+    /// - コンテナの登録に失敗した場合
     pub async fn add_container(&self, language: &str, source_file: &str, args: Vec<String>) -> Result<Container> {
-        let container = ContainerBuilder::new()
+        let container = Builder::new()
             .build_for_language(language, source_file, args)?;
         let mut containers = self.containers.lock().await;
         containers.insert(container.id().to_string(), container.clone());
         Ok(container)
     }
 
+    /// コンテナ間のリンクを作成します
+    /// 
+    /// # Errors
+    /// - リンクの作成に失敗した場合
     pub async fn link(&self, from: &str, to: &str) -> Result<&Self> {
         println!("Orchestrator: リンク作成 {from} -> {to}");
         self.links.lock().await
@@ -48,6 +58,11 @@ impl ContainerOrchestrator {
         Ok(self)
     }
 
+    /// メッセージを送信します
+    /// 
+    /// # Errors
+    /// - メッセージの送信に失敗した場合
+    /// - 履歴の更新に失敗した場合
     pub async fn send_message(&self, message: Message) -> Result<()> {
         println!("Orchestrator: メッセージ送信 ({message:?})");
         
@@ -77,6 +92,11 @@ impl ContainerOrchestrator {
         Ok(())
     }
 
+    /// メッセージをブロードキャストします
+    /// 
+    /// # Errors
+    /// - メッセージの送信に失敗した場合
+    /// - 履歴の更新に失敗した場合
     pub async fn broadcast(&self, message: Message) -> Result<()> {
         self.network.broadcast(&message.from, message.clone()).await?;
         
@@ -90,6 +110,11 @@ impl ContainerOrchestrator {
         Ok(())
     }
 
+    /// すべてのコンテナを実行します
+    /// 
+    /// # Errors
+    /// - コンテナの実行に失敗した場合
+    /// - タイムアウトが発生した場合
     pub async fn run_all(&self) -> Result<()> {
         println!("run_all: 開始");
         let container_ids: Vec<String> = {
@@ -124,7 +149,7 @@ impl ContainerOrchestrator {
                 match handle.await {
                     Ok(result) => (id, result),
                     Err(e) => {
-                        println!("run_all: コンテナ {} でパニック発生: {}", id, e);
+                        println!("run_all: コンテナ {id} でパニック発生: {e}");
                         (id, Err(anyhow::anyhow!("タスクのパニック: {}", e)))
                     }
                 }
@@ -138,8 +163,8 @@ impl ContainerOrchestrator {
             .into_iter()
             .filter_map(|(id, result)| {
                 result.err().map(|e| {
-                    let msg = format!("コンテナ {} の実行に失敗: {}", id, e);
-                    println!("run_all: {}", msg);
+                    let msg = format!("コンテナ {id} の実行に失敗: {e}");
+                    println!("run_all: {msg}");
                     msg
                 })
             })
@@ -154,12 +179,17 @@ impl ContainerOrchestrator {
         Ok(())
     }
 
+    /// すべてのコンテナの完了を待機します
+    /// 
+    /// # Errors
+    /// - コンテナの待機に失敗した場合
+    /// - タイムアウトが発生した場合
     pub async fn wait_all(&self) -> Result<()> {
         println!("wait_all: 開始");
         let container_ids: Vec<String> = {
             let containers = self.containers.lock().await;
             let ids = containers.keys().cloned().collect();
-            println!("wait_all: コンテナID一覧: {:?}", ids);
+            println!("wait_all: コンテナID一覧: {ids:?}");
             ids
         };
 
@@ -169,19 +199,19 @@ impl ContainerOrchestrator {
         let wait_futures = container_ids.iter().map(|id| {
             let id = id.clone();
             async move {
-                println!("wait_all: コンテナ {} の待機開始", id);
+                println!("wait_all: コンテナ {id} の待機開始");
                 loop {
                     if let Some(container) = self.get_container(&id).await {
                         let status = container.status().await;
-                        println!("wait_all: コンテナ {} の状態: {:?}", id, status);
-                        if status == ContainerState::Completed {
-                            println!("wait_all: コンテナ {} が完了", id);
+                        println!("wait_all: コンテナ {id} の状態: {status:?}");
+                        if status == State::Completed {
+                            println!("wait_all: コンテナ {id} が完了");
                             return Ok(());
                         }
                     }
 
                     if start_time.elapsed() > timeout {
-                        println!("wait_all: コンテナ {} がタイムアウト", id);
+                        println!("wait_all: コンテナ {id} がタイムアウト");
                         return Err(anyhow::anyhow!("コンテナの待機がタイムアウトしました: {}", id));
                     }
 
@@ -197,7 +227,7 @@ impl ContainerOrchestrator {
             .into_iter()
             .filter_map(|r| r.err().map(|e| {
                 let msg = e.to_string();
-                println!("wait_all: エラー: {}", msg);
+                println!("wait_all: エラー: {msg}");
                 msg
             }))
             .collect();
@@ -241,7 +271,7 @@ impl ContainerOrchestrator {
         
         // 孤立コンテナの数を先に取得
         let isolated_count = self.get_isolated_containers().await.len();
-        println!("Orchestrator: 孤立コンテナ数 = {}", isolated_count);
+        println!("Orchestrator: 孤立コンテナ数 = {isolated_count}");
 
         // 他の情報を取得
         let containers = self.containers.lock().await;
@@ -257,13 +287,13 @@ impl ContainerOrchestrator {
             total_messages: history.len(),
             message_counts: counts.clone(),
         };
-        println!("Orchestrator: ステータスサマリー = {:?}", status);
+        println!("Orchestrator: ステータスサマリー = {status:?}");
         status
     }
 
     pub async fn add_container_with_builder(
         &self,
-        mut builder: ContainerBuilder,
+        mut builder: Builder,
         language: &str,
         source_file: &str,
         args: Vec<String>
@@ -286,6 +316,12 @@ impl ContainerOrchestrator {
         containers.insert(container_name, container.clone());
         println!("Orchestrator: コンテナ追加完了 (id={})", container.id());
         Ok(container)
+    }
+}
+
+impl Default for Orchestrator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

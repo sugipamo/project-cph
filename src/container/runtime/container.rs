@@ -1,11 +1,11 @@
 use std::sync::Arc;
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use tokio::sync::{oneshot, Mutex};
 use super::Runtime;
 use super::config::Config;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ContainerState {
+pub enum State {
     Created,
     Running,
     Completed,
@@ -15,7 +15,7 @@ pub enum ContainerState {
 pub struct Container {
     config: Config,
     runtime: Arc<dyn Runtime>,
-    state: Arc<Mutex<ContainerState>>,
+    state: Arc<Mutex<State>>,
     cancel_tx: Option<Arc<oneshot::Sender<()>>>,
     #[allow(dead_code)]
     cancel_rx: Option<oneshot::Receiver<()>>,
@@ -26,7 +26,7 @@ impl Container {
         Self {
             runtime,
             config,
-            state: Arc::new(Mutex::new(ContainerState::Created)),
+            state: Arc::new(Mutex::new(State::Created)),
             cancel_tx: None,
             cancel_rx: None,
         }
@@ -39,24 +39,30 @@ impl Container {
     /// - 状態の更新に失敗した場合
     pub async fn run(&self) -> Result<()> {
         println!("Container({}): 実行開始", self.id());
-        let mut state = self.state.lock().await;
-        *state = ContainerState::Running;
-        println!("Container({}): 状態を Running に変更", self.id());
-        drop(state);
+        {
+            let mut state = self.state.lock().await;
+            *state = State::Running;
+            drop(state);
+        }
 
         let result = self.runtime.run(&self.config).await;
-        
+
         if let Err(e) = result {
             println!("Container({}): エラー発生: {}", self.id(), e);
-            let mut state = self.state.lock().await;
-            *state = ContainerState::Failed(e.to_string());
+            {
+                let mut state = self.state.lock().await;
+                *state = State::Failed(e.to_string());
+                drop(state);
+            }
             return Err(e);
         }
-        
-        let mut state = self.state.lock().await;
-        *state = ContainerState::Completed;
-        println!("Container({}): 状態を Completed に変更", self.id());
-        
+
+        {
+            let mut state = self.state.lock().await;
+            *state = State::Completed;
+            drop(state);
+        }
+
         println!("Container({}): 実行完了", self.id());
         Ok(())
     }
@@ -70,25 +76,29 @@ impl Container {
         if let Some(tx) = &self.cancel_tx {
             if Arc::strong_count(tx) == 1 {
                 if let Ok(tx) = Arc::try_unwrap(tx.clone()) {
-                    let _ = tx.send(());
+                    tx.send(()).map_err(|_| anyhow!("キャンセルチャネルが閉じられています"))?;
                 }
             }
         }
-        
-        let mut state = self.state.lock().await;
-        *state = ContainerState::Completed;
+
+        {
+            let mut state = self.state.lock().await;
+            *state = State::Completed;
+            drop(state);
+        }
         Ok(())
     }
 
-    pub async fn status(&self) -> ContainerState {
+    pub async fn status(&self) -> State {
         self.state.lock().await.clone()
     }
 
+    #[must_use]
     pub fn id(&self) -> &str {
         &self.config.id
     }
 
-    pub async fn state(&self) -> ContainerState {
+    pub async fn state(&self) -> State {
         self.state.lock().await.clone()
     }
 
@@ -96,7 +106,7 @@ impl Container {
     /// 
     /// # Errors
     /// - 状態のロックの取得に失敗した場合
-    pub async fn set_state(&self, new_state: ContainerState) -> Result<()> {
+    pub async fn set_state(&self, new_state: State) -> Result<()> {
         *self.state.lock().await = new_state;
         Ok(())
     }

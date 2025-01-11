@@ -4,12 +4,13 @@ use std::sync::Arc;
 use std::path::PathBuf;
 use anyhow::Result;
 
-pub struct ContainerBuilder {
+pub struct Builder {
     config: Config,
     runtime: Option<Arc<dyn Runtime>>,
 }
 
-impl ContainerBuilder {
+impl Builder {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: Config::default(),
@@ -17,32 +18,44 @@ impl ContainerBuilder {
         }
     }
 
+    #[must_use]
     pub fn with_id(mut self, id: impl Into<String>) -> Self {
         self.config.id = id.into();
         self
     }
 
+    #[must_use]
     pub fn with_image(mut self, image: impl Into<String>) -> Self {
         self.config.image = image.into();
         self
     }
 
+    #[must_use]
     pub fn with_runtime(mut self, runtime: Arc<dyn Runtime>) -> Self {
         self.runtime = Some(runtime);
         self
     }
 
+    #[must_use]
     pub fn with_args(mut self, args: Vec<String>) -> Self {
         self.config.args = args;
         self
     }
 
+    #[must_use]
     pub fn with_working_dir(mut self, working_dir: impl Into<PathBuf>) -> Self {
         self.config.working_dir = working_dir.into();
         self
     }
 
     /// 指定された言語用のコンテナをビルドします
+    /// 
+    /// # Errors
+    /// 
+    /// 以下の場合にエラーを返します：
+    /// - ランタイムの初期化に失敗した場合
+    /// - コンテナの構築に失敗した場合
+    /// - 言語がサポートされていない場合
     pub fn build_for_language(
         mut self,
         language: &str,
@@ -74,16 +87,15 @@ impl ContainerBuilder {
         Ok(self.build())
     }
 
+    #[must_use]
     pub fn build(self) -> Container {
-        println!("ContainerBuilder: ランタイムでコンテナを構築");
+        println!("ContainerBuilder: build開始");
         let runtime = self.runtime.expect("ランタイムが設定されていません");
-        let container = Container::new(runtime, self.config);
-        println!("ContainerBuilder: コンテナ構築完了 (id={})", container.id());
-        container
+        Container::new(runtime, self.config)
     }
 }
 
-impl Default for ContainerBuilder {
+impl Default for Builder {
     fn default() -> Self {
         Self::new()
     }

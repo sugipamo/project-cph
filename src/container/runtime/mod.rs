@@ -5,7 +5,8 @@ pub mod containerd;
 pub mod mock;
 
 pub use container::Container;
-pub use builder::ContainerBuilder;
+pub use builder::Builder;
+pub use container::State;
 
 use async_trait::async_trait;
 use anyhow::Result;
