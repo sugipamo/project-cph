@@ -191,4 +191,79 @@ defaults:
     assert_eq!(config.get::<String>("defaults.value2")?, "prefix_middle_suffix");
     
     Ok(())
+}
+
+#[test]
+fn test_array_access_errors() -> Result<()> {
+    let yaml = r#"
+arrays:
+  simple: [1, 2, 3]
+  nested:
+    - name: "item1"
+      value: 1
+"#;
+    
+    let config = Config::parse_str(yaml)?;
+    
+    // 不正な配列インデックス構文
+    assert!(config.get::<i64>("arrays.simple[]").is_err());
+    assert!(config.get::<i64>("arrays.simple[").is_err());
+    assert!(config.get::<i64>("arrays.simple[]]").is_err());
+    assert!(config.get::<i64>("arrays.simple[a]").is_err());
+    
+    // 範囲外のインデックス
+    assert!(config.get::<i64>("arrays.simple[10]").is_err());
+    assert!(config.get::<String>("arrays.nested[5].name").is_err());
+    
+    // 配列でない値へのインデックスアクセス
+    assert!(config.get::<i64>("arrays.simple[0].invalid").is_err());
+    assert!(config.get::<String>("arrays.nested[0].name[0]").is_err());
+    
+    Ok(())
+}
+
+#[test]
+fn test_invalid_path_errors() -> Result<()> {
+    let yaml = r#"
+nested:
+  key: "value"
+  array: [1, 2, 3]
+"#;
+    
+    let config = Config::parse_str(yaml)?;
+    
+    // 存在しないパス
+    assert!(config.get::<String>("nonexistent").is_err());
+    assert!(config.get::<String>("nested.nonexistent").is_err());
+    assert!(config.get::<String>("nested.key.nonexistent").is_err());
+    
+    // 不正なパス形式
+    assert!(config.get::<String>(".").is_err());
+    assert!(config.get::<String>("..").is_err());
+    assert!(config.get::<String>("nested..key").is_err());
+    
+    Ok(())
+}
+
+#[test]
+fn test_type_conversion_errors() -> Result<()> {
+    let yaml = r#"
+values:
+  string: "not_a_number"
+  array: [1, 2, 3]
+  object: { key: "value" }
+"#;
+    
+    let config = Config::parse_str(yaml)?;
+    
+    // 不正な型変換
+    assert!(config.get::<i64>("values.string").is_err());
+    assert!(config.get::<f64>("values.string").is_err());
+    assert!(config.get::<bool>("values.string").is_err());
+    
+    // 配列やオブジェクトへの不正な変換
+    assert!(config.get::<String>("values.array").is_err());
+    assert!(config.get::<i64>("values.object").is_err());
+    
+    Ok(())
 } 
