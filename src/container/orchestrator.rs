@@ -183,10 +183,9 @@ impl Orchestrator {
         println!("wait_all: 開始");
         let container_ids: Vec<String> = {
             let containers = self.containers.lock().await;
-            let ids = containers.keys().cloned().collect();
-            println!("wait_all: コンテナID一覧: {ids:?}");
-            ids
+            containers.keys().cloned().collect()
         };
+        println!("wait_all: コンテナID一覧: {container_ids:?}");
 
         let timeout = Duration::from_secs(5);
         let start_time = std::time::Instant::now();
@@ -264,7 +263,7 @@ impl Orchestrator {
     }
 
     /// オーケストレーターのステータスサマリーを取得します。
-    pub async fn get_status_summary(&self) -> OrchestratorStatus {
+    pub async fn get_status_summary(&self) -> Status {
         println!("Orchestrator: ステータスサマリー取得開始");
         
         // 孤立コンテナの数を先に取得
@@ -275,7 +274,7 @@ impl Orchestrator {
         let history = self.message_history.lock().await;
         let counts = self.message_counts.lock().await;
         
-        let status = OrchestratorStatus {
+        let status = Status {
             total_containers: containers.len(),
             running_containers: containers.len(),
             isolated_containers: isolated_count,
@@ -322,7 +321,7 @@ impl Default for Orchestrator {
 }
 
 #[derive(Debug, Clone)]
-pub struct OrchestratorStatus {
+pub struct Status {
     pub total_containers: usize,
     pub running_containers: usize,
     pub isolated_containers: usize,

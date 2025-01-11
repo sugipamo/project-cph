@@ -1,5 +1,5 @@
 use cph::container::Orchestrator;
-use cph::container::runtime::mock::MockRuntime;
+use cph::container::runtime::mock::Mock;
 use cph::container::runtime::Builder;
 use cph::container::{Message, MessageKind};
 use std::sync::Arc;
@@ -7,7 +7,7 @@ use anyhow::Result;
 
 #[tokio::test]
 async fn test_container_creation() -> Result<()> {
-    let runtime = Arc::new(MockRuntime::new());
+    let runtime = Arc::new(Mock::new());
     let orchestrator = Orchestrator::new();
     
     let container = orchestrator.add_container_with_builder(
@@ -42,7 +42,7 @@ async fn test_container_creation() -> Result<()> {
 
 #[tokio::test]
 async fn test_container_execution() -> Result<()> {
-    let runtime = Arc::new(MockRuntime::new());
+    let runtime = Arc::new(Mock::new());
     let orchestrator = Orchestrator::new();
     
     let _container = orchestrator.add_container_with_builder(
@@ -67,7 +67,7 @@ async fn test_container_execution() -> Result<()> {
 
 #[tokio::test]
 async fn test_message_handling() -> Result<()> {
-    let runtime = Arc::new(MockRuntime::new());
+    let runtime = Arc::new(Mock::new());
     let orchestrator = Orchestrator::new();
     
     let container = orchestrator.add_container_with_builder(

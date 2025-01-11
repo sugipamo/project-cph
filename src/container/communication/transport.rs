@@ -9,6 +9,7 @@ pub struct Network {
 }
 
 impl Network {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             buffers: Arc::new(Mutex::new(HashMap::new())),
@@ -21,8 +22,8 @@ impl Network {
     /// 
     /// - メッセージの送信に失敗した場合にエラーを返します。
     pub async fn send(&self, _from: &str, to: &str, message: Message) -> Result<()> {
-        let mut buffers = self.buffers.lock().await;
-        buffers.entry(to.to_string())
+        self.buffers.lock().await
+            .entry(to.to_string())
             .or_insert_with(Vec::new)
             .push(message);
         Ok(())
@@ -45,12 +46,13 @@ impl Network {
                 .or_insert_with(Vec::new)
                 .push(message.clone());
         }
+        drop(buffers);
         Ok(())
     }
 
     pub async fn receive(&self, id: &str) -> Option<Message> {
         let mut buffers = self.buffers.lock().await;
-        buffers.get_mut(id).and_then(|messages| messages.pop())
+        buffers.get_mut(id).and_then(Vec::pop)
     }
 }
 

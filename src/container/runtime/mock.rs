@@ -8,12 +8,12 @@ use async_trait::async_trait;
 use anyhow::Result;
 
 #[derive(Clone)]
-pub struct MockRuntime {
+pub struct Mock {
     should_fail: bool,
     state: Arc<Mutex<State>>,
 }
 
-impl MockRuntime {
+impl Mock {
     #[must_use]
     pub fn new() -> Self {
         println!("MockRuntime: 新規作成");
@@ -36,14 +36,14 @@ impl MockRuntime {
     }
 }
 
-impl Default for MockRuntime {
+impl Default for Mock {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[async_trait]
-impl Runtime for MockRuntime {
+impl Runtime for Mock {
     async fn run(&self, _config: &Config) -> Result<()> {
         println!("MockRuntime: 実行開始");
         {

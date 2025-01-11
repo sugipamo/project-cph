@@ -92,6 +92,7 @@ impl Builder {
     /// # Panics
     /// 
     /// - ランタイムが設定されていない場合にパニックします。
+    #[must_use]
     pub fn build(self) -> Container {
         println!("ContainerBuilder: build開始");
         let runtime = self.runtime.expect("ランタイムが設定されていません");
