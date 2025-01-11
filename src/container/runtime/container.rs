@@ -98,12 +98,22 @@ impl Container {
         let (cancel_tx, cancel_rx) = oneshot::channel();
         
         // コンテナの作成と起動
-        let container_id = self.runtime.create(
+        let container_id = match self.runtime.create(
             &self.config.image,
             &self.config.args,
             &self.config.working_dir,
             &[], // env_varsは現在未使用
-        ).await?;
+        ).await {
+            Ok(id) => id,
+            Err(e) => {
+                let mut state = self.state.lock().await;
+                *state = ContainerState::Failed {
+                    error: e.to_string(),
+                    runtime: None,
+                };
+                return Err(e);
+            }
+        };
 
         {
             let mut state = self.state.lock().await;
@@ -116,7 +126,17 @@ impl Container {
             };
         }
 
-        self.runtime.start(&container_id).await?;
+        if let Err(e) = self.runtime.start(&container_id).await {
+            let mut state = self.state.lock().await;
+            *state = ContainerState::Failed {
+                error: e.to_string(),
+                runtime: Some(RuntimeState {
+                    container_id,
+                    status: Status::Failed(e.to_string()),
+                }),
+            };
+            return Err(e);
+        }
 
         // キャンセルシグナルを待つ
         tokio::select! {
@@ -191,10 +211,13 @@ impl Container {
     /// - `Arc::try_unwrap`が失敗した場合（通常は発生しません）
     pub async fn cancel(&self) {
         let mut state = self.state.lock().await;
-        if let ContainerState::Running { cancel_tx: Some(tx), .. } = std::mem::replace(&mut *state, ContainerState::Initial) {
+        if let ContainerState::Running { cancel_tx: Some(tx), runtime } = std::mem::replace(&mut *state, ContainerState::Initial) {
             if Arc::strong_count(&tx) == 1 {
                 if let Ok(tx) = Arc::try_unwrap(tx) {
                     let _ = tx.send(());
+                    *state = ContainerState::Completed {
+                        runtime,
+                    };
                 }
             }
         }
