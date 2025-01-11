@@ -9,158 +9,94 @@
 
 use std::path::Path;
 use std::fs;
-use std::collections::HashMap;
-use anyhow::{Result, Context};
-use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
+use anyhow::{Result, Context, anyhow, bail};
+use serde_yaml::Value;
 
-#[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug)]
+pub struct ConfigError {
+    path: String,
+    message: String,
+}
+
+static CONFIG: OnceLock<Config> = OnceLock::new();
+
 pub struct Config {
-    pub system: SystemConfig,
-    pub languages: LanguagesConfig,
-}
-
-#[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SystemConfig {
-    pub browser: String,
-    pub editors: Vec<String>,
-    pub docker: DockerConfig,
-}
-
-#[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DockerConfig {
-    pub timeout_seconds: u32,
-    pub memory_limit_mb: u32,
-    pub mount_point: String,
-}
-
-#[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LanguagesConfig {
-    pub default: String,
-    #[serde(rename = "_base")]
-    pub base: LanguageBaseConfig,
-}
-
-#[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LanguageBaseConfig {
-    pub compile: Vec<String>,
-    pub run: Vec<String>,
-    pub runner: RunnerConfig,
-    pub templates: TemplatesConfig,
-    pub contest_dir: ContestDirConfig,
-    pub active_contest_yaml: String,
-    pub test: TestConfig,
-}
-
-#[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RunnerConfig {
-    pub compile_dir: String,
-    pub require_files: Vec<String>,
-    pub env_vars: Vec<String>,
-    pub docker: DockerConfig,
-}
-
-#[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TemplatesConfig {
-    pub patterns: HashMap<String, String>,
-    pub directory: String,
-}
-
-#[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ContestDirConfig {
-    pub active: String,
-    pub storage: String,
-    pub template: String,
-}
-
-#[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TestConfig {
-    pub dir: String,
+    data: Value,
 }
 
 impl Config {
-    /// 設定ファイルから設定を読み込みます
-    /// 
+    /// 指定されたパスから設定を読み込みます
+    ///
     /// # Errors
-    /// 
+    ///
     /// - 設定ファイルが存在しない場合
     /// - 設定ファイルの形式が不正な場合
-    pub fn load() -> Result<Self> {
-        let config_path = Path::new("src/config/config.yaml");
-        let config_str = fs::read_to_string(config_path)
-            .with_context(|| format!("設定ファイルの読み込みに失敗: {}", config_path.display()))?;
-        let config: Self = serde_yaml::from_str(&config_str)
-            .with_context(|| "設定ファイルのパースに失敗")?;
-        Ok(config)
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let path_str = path.as_ref().display().to_string();
+        let content = fs::read_to_string(&path)
+            .with_context(|| format!("設定ファイル '{}' の読み込みに失敗しました", path_str))?;
+        
+        Self::from_str(&content)
+            .with_context(|| format!("設定ファイル '{}' のパースに失敗しました", path_str))
     }
 
-    /// ブラウザの設定を取得します
-    #[must_use]
-    pub fn browser(&self) -> &str {
-        &self.system.browser
+    /// 文字列から設定を作成します
+    ///
+    /// # Errors
+    ///
+    /// - YAML形式が不正な場合
+    pub fn from_str(content: &str) -> Result<Self> {
+        let data: Value = serde_yaml::from_str(content)
+            .context("不正なYAML形式です")?;
+
+        if !data.is_mapping() {
+            bail!("YAMLのルート要素はマッピング（オブジェクト）である必要があります");
+        }
+
+        Ok(Self { data })
     }
 
-    /// エディタの設定を取得します
-    #[must_use]
-    pub fn editors(&self) -> &[String] {
-        &self.system.editors
+    pub fn get<T>(path: &str) -> Result<T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let config = CONFIG.get_or_init(|| {
+            Self::from_file("src/config/config.yaml")
+                .expect("デフォルト設定ファイルの読み込みに失敗しました")
+        });
+        config.get_value(path)
     }
 
-    /// Dockerの設定を取得します
-    #[must_use]
-    pub const fn docker(&self) -> &DockerConfig {
-        &self.system.docker
+    fn get_value<T>(&self, path: &str) -> Result<T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let parts: Vec<&str> = path.split('.').collect();
+        let mut current = &self.data;
+
+        for (i, &part) in parts.iter().enumerate() {
+            current = current.get(part).ok_or_else(|| {
+                let failed_path = parts[..=i].join(".");
+                anyhow!(
+                    "設定パス '{}' が見つかりません（'{}'まで到達できました）",
+                    path,
+                    failed_path
+                )
+            })?;
+        }
+
+        serde_yaml::from_value(current.clone()).with_context(|| {
+            format!(
+                "設定値の型変換に失敗しました: パス '{}' の値 '{}'",
+                path,
+                current
+            )
+        })
     }
 
-    /// デフォルトの言語を取得します
-    #[must_use]
-    pub fn default_language(&self) -> &str {
-        &self.languages.default
-    }
-
-    /// テストディレクトリを取得します
-    #[must_use]
-    pub fn test_dir(&self) -> String {
-        self.languages.base.test.dir.clone()
-    }
-
-    /// アクティブなコンテストのディレクトリを取得します
-    #[must_use]
-    pub fn active_contest_dir(&self) -> String {
-        self.languages.base.contest_dir.active.clone()
-    }
-
-    /// コンテストのテンプレートディレクトリを取得します
-    #[must_use]
-    pub fn contest_template_dir(&self) -> String {
-        self.languages.base.contest_dir.template.clone()
-    }
-
-    /// コンテストのストレージディレクトリを取得します
-    #[must_use]
-    pub fn contest_storage_dir(&self) -> String {
-        self.languages.base.contest_dir.storage.clone()
+    fn load() -> Result<Self> {
+        Self::from_file("src/config/config.yaml")
+            .context("デフォルト設定ファイルの読み込みに失敗しました")
     }
 }
-
-// 一時的にLanguageConfigの定義を削除
-/*
-// 言語固有の設定を表す構造体
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LanguageConfig {
-    pub extension: String,
-    pub runner: RunnerConfig,
-    pub compile: Vec<String>,
-    pub run: Vec<String>,
-    #[serde(default)]
-    pub site_ids: HashMap<String, String>,
-}
-*/ 
