@@ -48,7 +48,9 @@ impl Config {
     /// - YAML形式が不正な場合
     pub fn from_str(content: &str) -> Result<Self> {
         let expanded_content = Self::expand_env_vars(content);
-        let data: Value = serde_yaml::from_str(&expanded_content)
+        
+        // YAML継承を有効にしてパース
+        let data = serde_yaml::from_str(&expanded_content)
             .context("不正なYAML形式です")?;
 
         if !data.is_mapping() {
@@ -113,5 +115,54 @@ impl Config {
     fn load() -> Result<Self> {
         Self::from_file("src/config/config.yaml")
             .context("デフォルト設定ファイルの読み込みに失敗しました")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_yaml_merge() -> Result<()> {
+        let yaml = r#"
+base: &base
+  name: "base"
+  value: 1
+  nested:
+    key: "original"
+
+extended:
+  <<: *base
+  value: 2
+  nested:
+    key: "override"
+"#;
+        
+        let config = Config::from_str(yaml)?;
+        
+        assert_eq!(config.get::<String>("extended.name")?, "base");
+        assert_eq!(config.get::<i64>("extended.value")?, 2);
+        assert_eq!(config.get::<String>("extended.nested.key")?, "override");
+        
+        Ok(())
+    }
+
+    #[test]
+    fn test_env_var_expansion() -> Result<()> {
+        env::set_var("TEST_VAR", "env_value");
+        
+        let yaml = r#"
+test:
+  value1: "${TEST_VAR-default}"
+  value2: "${NONEXISTENT-default}"
+"#;
+        
+        let config = Config::from_str(yaml)?;
+        
+        assert_eq!(config.get::<String>("test.value1")?, "env_value");
+        assert_eq!(config.get::<String>("test.value2")?, "default");
+        
+        env::remove_var("TEST_VAR");
+        Ok(())
     }
 }
