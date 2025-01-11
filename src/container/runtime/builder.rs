@@ -48,29 +48,37 @@ impl ContainerBuilder {
         source_file: &str,
         args: Vec<String>,
     ) -> Result<Container> {
+        println!("ContainerBuilder: build_for_language開始 (language={}, source={})", language, source_file);
         self.config.args = args;
         self.config.working_dir = PathBuf::from(source_file);
 
         match language {
             "python" => {
                 self.config.image = "python:3.9".to_string();
+                println!("ContainerBuilder: Pythonイメージを設定");
             }
             "rust" => {
                 self.config.image = "rust:1.70".to_string();
+                println!("ContainerBuilder: Rustイメージを設定");
             }
             _ => return Err(anyhow::anyhow!("サポートされていない言語です: {}", language)),
         }
 
         if self.config.id.is_empty() {
             self.config.id = uuid::Uuid::new_v4().to_string();
+            println!("ContainerBuilder: 新しいID生成: {}", self.config.id);
         }
 
+        println!("ContainerBuilder: コンテナをビルド");
         Ok(self.build())
     }
 
     pub fn build(self) -> Container {
+        println!("ContainerBuilder: ランタイムでコンテナを構築");
         let runtime = self.runtime.expect("ランタイムが設定されていません");
-        Container::new(runtime, self.config)
+        let container = Container::new(runtime, self.config);
+        println!("ContainerBuilder: コンテナ構築完了 (id={})", container.id());
+        container
     }
 }
 

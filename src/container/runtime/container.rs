@@ -33,18 +33,26 @@ impl Container {
     }
 
     pub async fn run(&self) -> Result<()> {
+        println!("Container({}): 実行開始", self.id());
         let mut state = self.state.lock().await;
         *state = ContainerState::Running;
+        println!("Container({}): 状態を Running に変更", self.id());
         drop(state);
 
         let result = self.runtime.run(&self.config).await;
         
         if let Err(e) = result {
+            println!("Container({}): エラー発生: {}", self.id(), e);
             let mut state = self.state.lock().await;
             *state = ContainerState::Failed(e.to_string());
             return Err(e);
         }
         
+        let mut state = self.state.lock().await;
+        *state = ContainerState::Completed;
+        println!("Container({}): 状態を Completed に変更", self.id());
+        
+        println!("Container({}): 実行完了", self.id());
         Ok(())
     }
 
