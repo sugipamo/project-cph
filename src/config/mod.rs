@@ -75,7 +75,7 @@ impl Config {
         }).to_string()
     }
 
-    /// 設定値を取得します
+    /// デフォルト設定ファイルから設定値を取得します
     ///
     /// # Arguments
     ///
@@ -93,7 +93,7 @@ impl Config {
     /// # Panics
     ///
     /// - デフォルト設定ファイルの読み込みに失敗した場合
-    pub fn get<T>(path: &str) -> Result<T>
+    pub fn get_default<T>(path: &str) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
@@ -101,10 +101,24 @@ impl Config {
             Self::from_file("src/config/config.yaml")
                 .expect("デフォルト設定ファイルの読み込みに失敗しました")
         });
-        config.get_value(path)
+        config.get(path)
     }
 
-    fn get_value<T>(&self, path: &str) -> Result<T>
+    /// 設定値を取得します
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - ドット区切りの設定パス（例: "system.browser"）
+    ///
+    /// # Returns
+    ///
+    /// * `Result<T>` - 設定値
+    ///
+    /// # Errors
+    ///
+    /// - 設定パスが存在しない場合
+    /// - 設定値の型変換に失敗した場合
+    pub fn get<T>(&self, path: &str) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
