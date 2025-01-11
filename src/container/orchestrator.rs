@@ -72,27 +72,68 @@ impl ContainerOrchestrator {
     }
 
     pub async fn run_all(&self) -> Result<()> {
-        let containers = self.containers.lock().await;
+        let container_ids: Vec<String> = {
+            let containers = self.containers.lock().await;
+            containers.keys().cloned().collect()
+        };
+
         let mut handles = Vec::new();
         
-        for container in containers.values() {
-            let container = container.clone();
-            let handle = tokio::spawn(async move {
-                container.run().await
-            });
-            handles.push(handle);
+        // 各コンテナを個別に取得して実行
+        for id in container_ids {
+            if let Some(container) = self.get_container(&id).await {
+                let handle = tokio::spawn(async move {
+                    container.run().await
+                });
+                handles.push((id, handle));
+            }
         }
         
-        for handle in handles {
-            handle.await??;
+        // タイムアウト付きで実行結果を待機
+        let timeout = Duration::from_secs(10);
+        let mut errors = Vec::new();
+        
+        for (id, handle) in handles {
+            match tokio::time::timeout(timeout, handle).await {
+                Ok(result) => {
+                    if let Err(e) = result? {
+                        errors.push(format!("コンテナ {} の実行に失敗: {}", id, e));
+                    }
+                }
+                Err(_) => {
+                    errors.push(format!("コンテナ {} の実行がタイムアウトしました", id));
+                }
+            }
         }
+        
+        if !errors.is_empty() {
+            return Err(anyhow::anyhow!("コンテナの実行に失敗:\n{}", errors.join("\n")));
+        }
+        
         Ok(())
     }
 
     pub async fn wait_all(&self) -> Result<()> {
-        let containers = self.containers.lock().await;
-        for container in containers.values() {
-            while container.status().await != ContainerState::Completed {
+        let container_ids: Vec<String> = {
+            let containers = self.containers.lock().await;
+            containers.keys().cloned().collect()
+        };
+
+        let timeout = Duration::from_secs(30); // 30秒のタイムアウト
+        let start_time = std::time::Instant::now();
+
+        for id in container_ids {
+            loop {
+                if let Some(container) = self.get_container(&id).await {
+                    if container.status().await == ContainerState::Completed {
+                        break;
+                    }
+                }
+
+                if start_time.elapsed() > timeout {
+                    return Err(anyhow::anyhow!("コンテナの待機がタイムアウトしました: {}", id));
+                }
+
                 tokio::time::sleep(Duration::from_millis(100)).await;
             }
         }
