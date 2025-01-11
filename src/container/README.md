@@ -1,4 +1,72 @@
-# Container Module Requirements
+# Container Module
+
+## 使用例
+
+### 基本的なコンテナの作成と実行
+```rust
+let container = ContainerBuilder::new()
+    .with_buffer(Arc::new(Buffer::new()))
+    .build_for_language("python", "script.py", vec!["python", "script.py"])
+    .await?;
+
+container.run().await?;
+```
+
+### コンテナ間のメッセージング
+```rust
+// 共有ネットワークの作成
+let network = Arc::new(Network::new());
+
+// 送信側コンテナ
+let sender = ContainerBuilder::new()
+    .with_network(network.clone())
+    .with_buffer(Arc::new(Buffer::new()))
+    .build_for_language("python", "sender.py", vec!["python", "sender.py"])
+    .await?;
+
+// 受信側コンテナ
+let receiver = ContainerBuilder::new()
+    .with_network(network.clone())
+    .with_buffer(Arc::new(Buffer::new()))
+    .build_for_language("python", "receiver.py", vec!["python", "receiver.py"])
+    .await?;
+
+// メッセージの送信
+network.send(&sender.id(), &receiver.id(), "Hello!").await?;
+
+// ブロードキャストメッセージ
+network.broadcast(&sender.id(), "Broadcast message").await?;
+```
+
+### 並列実行
+```rust
+let containers = vec![
+    ContainerBuilder::new()
+        .with_network(network.clone())
+        .with_buffer(Arc::new(Buffer::new()))
+        .build_for_language("python", "node1.py", vec!["python", "node1.py"])
+        .await?,
+    ContainerBuilder::new()
+        .with_network(network.clone())
+        .with_buffer(Arc::new(Buffer::new()))
+        .build_for_language("python", "node2.py", vec!["python", "node2.py"])
+        .await?,
+];
+
+// 並列実行
+let handles: Vec<_> = containers.iter()
+    .map(|container| {
+        tokio::spawn(container.run())
+    })
+    .collect();
+
+// 全てのコンテナの完了を待機
+for handle in handles {
+    handle.await??;
+}
+```
+
+## 要件
 
 このモジュールは以下の要件を必ず満たす必要があります：
 
