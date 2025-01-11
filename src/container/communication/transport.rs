@@ -4,17 +4,23 @@ use tokio::sync::{mpsc, Mutex};
 use anyhow::{Result, anyhow};
 use super::protocol::Message;
 
-pub struct ContainerNetwork {
+/// コンテナ間の通信を管理するネットワーク
+#[derive(Default)]
+pub struct Network {
     channels: Arc<Mutex<HashMap<String, mpsc::Sender<Message>>>>,
 }
 
-impl ContainerNetwork {
+impl Network {
+    /// 新しいネットワークを作成します
+    #[must_use]
     pub fn new() -> Self {
-        Self {
-            channels: Arc::new(Mutex::new(HashMap::new())),
-        }
+        Self::default()
     }
 
+    /// コンテナをネットワークに登録します
+    ///
+    /// # Errors
+    /// - チャンネルの作成に失敗した場合
     pub async fn register(&self, container_id: &str) -> Result<(mpsc::Sender<Message>, mpsc::Receiver<Message>)> {
         let (tx, rx) = mpsc::channel(100);
         self.channels.lock().await.insert(container_id.to_string(), tx.clone());

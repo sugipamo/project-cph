@@ -1,57 +1,81 @@
-use serde::{Serialize, Deserialize};
-use anyhow::{Result, anyhow};
+use std::fmt;
+use anyhow::Result;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// コンテナの状態を表す列挙型
+#[derive(Debug, Clone, PartialEq)]
 pub enum ContainerStatus {
+    /// 作成済み
     Created,
+    /// 起動中
     Starting,
+    /// 実行中
     Running,
+    /// 停止中
     Stopping,
+    /// 停止済み
     Stopped,
+    /// エラーで失敗
     Failed(String),
 }
 
-impl std::fmt::Display for ContainerStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Default for ContainerStatus {
+    fn default() -> Self {
+        Self::Created
+    }
+}
+
+impl fmt::Display for ContainerStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Created => write!(f, "Created"),
             Self::Starting => write!(f, "Starting"),
             Self::Running => write!(f, "Running"),
             Self::Stopping => write!(f, "Stopping"),
             Self::Stopped => write!(f, "Stopped"),
-            Self::Failed(reason) => write!(f, "Failed: {}", reason),
+            Self::Failed(reason) => write!(f, "Failed: {reason}"),
         }
     }
 }
 
 impl ContainerStatus {
-    pub fn is_terminal(&self) -> bool {
+    /// 状態が終了状態かどうかを返します
+    #[must_use]
+    pub const fn is_terminal(&self) -> bool {
         matches!(self, Self::Stopped | Self::Failed(_))
     }
 
-    pub fn is_running(&self) -> bool {
+    /// 状態が実行中かどうかを返します
+    #[must_use]
+    pub const fn is_running(&self) -> bool {
         matches!(self, Self::Running)
     }
 
-    pub fn transition_to(&self, target: ContainerStatus) -> Result<ContainerStatus> {
+    /// 指定された状態に遷移できるかどうかを確認し、遷移します
+    ///
+    /// # Errors
+    /// - 無効な状態遷移が要求された場合
+    pub fn transition_to(&self, target: Self) -> Result<Self> {
         if self.can_transition_to(&target) {
             Ok(target)
         } else {
-            Err(anyhow!("不正な状態遷移です: {} -> {}", self, target))
+            Err(anyhow::anyhow!(
+                "無効な状態遷移です: {} -> {}",
+                self,
+                target
+            ))
         }
     }
 
-    fn can_transition_to(&self, target: &ContainerStatus) -> bool {
-        use ContainerStatus::*;
+    const fn can_transition_to(&self, target: &Self) -> bool {
+        use ContainerStatus::{Created, Failed, Running, Starting, Stopped, Stopping};
         match (self, target) {
             // 正常な状態遷移パス
-            (Created, Starting) => true,
-            (Starting, Running) => true,
-            (Running, Stopping) => true,
+            (Created | Starting | Running | Stopping, Failed(_)) |
+            (Created, Starting) |
+            (Starting, Running) |
+            (Running, Stopping) |
             (Stopping, Stopped) => true,
-            // 異常系への遷移は常に許可
-            (_, Failed(_)) => true,
-            // その他の遷移は不許可
+            // その他の遷移は無効
             _ => false,
         }
     }

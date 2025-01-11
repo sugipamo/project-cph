@@ -3,29 +3,34 @@ use bytes::Bytes;
 use tokio::sync::Mutex;
 use anyhow::{Result, anyhow};
 
-pub struct OutputBuffer {
+/// コンテナの出力を保持するバッファ
+#[derive(Default)]
+pub struct Buffer {
     buffers: Mutex<HashMap<String, Vec<Bytes>>>,
     max_buffer_size: usize,
     total_memory_usage: Mutex<usize>,
 }
 
-impl OutputBuffer {
+impl Buffer {
+    /// 新しいバッファを作成します
+    #[must_use]
     pub fn new() -> Self {
-        Self {
-            buffers: Mutex::new(HashMap::new()),
-            max_buffer_size: 1024 * 1024, // 1MB default
-            total_memory_usage: Mutex::new(0),
-        }
+        Self::default()
     }
 
+    /// 指定したサイズ制限でバッファを作成します
+    #[must_use]
     pub fn with_max_size(max_size: usize) -> Self {
         Self {
-            buffers: Mutex::new(HashMap::new()),
             max_buffer_size: max_size,
-            total_memory_usage: Mutex::new(0),
+            ..Default::default()
         }
     }
 
+    /// データをバッファに追加します
+    ///
+    /// # Errors
+    /// - バッファのサイズ制限を超えた場合
     pub async fn append(&self, container_id: &str, data: Bytes) -> Result<()> {
         let mut total_usage = self.total_memory_usage.lock().await;
         let data_len = data.len();
