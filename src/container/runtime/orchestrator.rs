@@ -22,21 +22,30 @@ impl ParallelExecutor {
         }
     }
 
+    async fn add_container(&self, container: Container) -> Result<()> {
+        let mut containers = self.containers.lock().await;
+        containers.push(container);
+        Ok(())
+    }
+
     pub async fn execute(&self, configs: Vec<ContainerConfig>) -> Result<()> {
         let mut handles = vec![];
         
         for config in configs {
             let network = Arc::clone(&self.network);
             let buffer = Arc::clone(&self.buffer);
-            let containers = Arc::clone(&self.containers);
+            let containers_ref = Arc::clone(&self.containers);
             
             let handle = tokio::spawn(async move {
-                let mut container = Container::new(config).await?;
+                let container = Container::new(config, network, buffer).await?;
+                
+                // コンテナの追加は最小限のロック時間で行う
                 {
-                    let mut containers = containers.lock().await;
+                    let mut containers = containers_ref.lock().await;
                     containers.push(container.clone());
                 }
-                container.run(network, buffer).await
+                
+                container.run().await
             });
             
             handles.push(handle);
@@ -50,11 +59,15 @@ impl ParallelExecutor {
     }
 
     pub async fn cleanup(&self) -> Result<()> {
-        let mut containers = self.containers.lock().await;
-        for container in containers.iter_mut() {
+        let containers = {
+            let mut containers = self.containers.lock().await;
+            std::mem::take(&mut *containers)
+        };
+
+        for mut container in containers {
             container.cleanup().await?;
         }
-        containers.clear();
+        
         Ok(())
     }
 } 

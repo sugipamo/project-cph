@@ -20,8 +20,8 @@ use super::{
 
 #[derive(Clone)]
 pub struct Container {
-    network: Option<Arc<ContainerNetwork>>,
-    buffer: Option<Arc<OutputBuffer>>,
+    network: Arc<ContainerNetwork>,
+    buffer: Arc<OutputBuffer>,
     cancel_tx: Option<oneshot::Sender<()>>,
     config: ContainerConfig,
     container_id: Option<String>,
@@ -31,14 +31,18 @@ pub struct Container {
 }
 
 impl Container {
-    pub async fn new(config: ContainerConfig) -> Result<Self> {
+    pub async fn new(
+        config: ContainerConfig,
+        network: Arc<ContainerNetwork>,
+        buffer: Arc<OutputBuffer>,
+    ) -> Result<Self> {
         let channel = containerd::connect("/run/containerd/containerd.sock").await?;
         let containers_client = ContainersClient::new(channel.clone());
         let tasks_client = TasksClient::new(channel);
 
         Ok(Self {
-            network: None,
-            buffer: None,
+            network,
+            buffer,
             cancel_tx: None,
             config,
             container_id: None,
@@ -48,14 +52,7 @@ impl Container {
         })
     }
 
-    pub async fn run(
-        &mut self,
-        network: Arc<ContainerNetwork>,
-        buffer: Arc<OutputBuffer>,
-    ) -> Result<()> {
-        self.network = Some(network.clone());
-        self.buffer = Some(buffer.clone());
-
+    pub async fn run(&mut self) -> Result<()> {
         // コンテナの作成と起動
         let container_id = self.create(
             &self.config.image,
