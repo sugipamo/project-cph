@@ -24,4 +24,21 @@ impl Config {
             args,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct ResourceLimits {
+    pub memory_mb: u64,
+    pub cpu_count: u32,
+    pub timeout_sec: u32,
+}
+
+impl Default for ResourceLimits {
+    fn default() -> Self {
+        Self {
+            memory_mb: 512,
+            cpu_count: 1,
+            timeout_sec: 30,
+        }
+    }
 } 

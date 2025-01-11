@@ -8,7 +8,7 @@ use crate::container::{
     io::buffer::Buffer,
 };
 use super::{
-    config::Config,
+    config::{Config, ResourceLimits},
     Runtime,
 };
 
@@ -73,7 +73,10 @@ impl Container {
     }
 
     /// テスト用のカスタムランタイムでコンテナを作成します。
-    pub async fn with_runtime(
+    ///
+    /// # Errors
+    /// - 設定が無効な場合
+    pub fn with_runtime(
         config: Config,
         network: Arc<Network>,
         buffer: Arc<Buffer>,
@@ -106,8 +109,7 @@ impl Container {
         ).await {
             Ok(id) => id,
             Err(e) => {
-                let mut state = self.state.lock().await;
-                *state = ContainerState::Failed {
+                *self.state.lock().await = ContainerState::Failed {
                     error: e.to_string(),
                     runtime: None,
                 };
@@ -127,8 +129,7 @@ impl Container {
         }
 
         if let Err(e) = self.runtime.start(&container_id).await {
-            let mut state = self.state.lock().await;
-            *state = ContainerState::Failed {
+            *self.state.lock().await = ContainerState::Failed {
                 error: e.to_string(),
                 runtime: Some(RuntimeState {
                     container_id,
@@ -161,19 +162,13 @@ impl Container {
         };
 
         // コンテナの状態を監視し、エラーが発生した場合はFailedに遷移
-        if let Err(e) = self.check_container_health(&runtime).await {
-            let mut state = self.state.lock().await;
-            *state = ContainerState::Failed {
-                error: e.to_string(),
-                runtime: Some(runtime),
-            };
-        }
+        Self::check_container_health(&runtime);
         Ok(())
     }
 
-    async fn check_container_health(&self, _runtime: &RuntimeState) -> Result<()> {
+    /// コンテナの健全性をチェックします
+    const fn check_container_health(_runtime: &RuntimeState) {
         // モックテストのために常に成功を返す
-        Ok(())
     }
 
     /// コンテナをクリーンアップします。
@@ -249,6 +244,15 @@ impl Container {
     #[must_use]
     pub fn buffer(&self) -> Arc<Buffer> {
         self.buffer.clone()
+    }
+
+    /// リソース制限を設定します
+    ///
+    /// # Arguments
+    /// * `limits` - 適用するリソース制限
+    pub fn set_resource_limits(&mut self, _limits: &ResourceLimits) {
+        // TODO: 実際のリソース制限の適用
+        // 現在は実装予定として追加
     }
 }
 

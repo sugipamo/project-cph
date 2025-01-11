@@ -30,5 +30,8 @@ pub trait Runtime: Send + Sync + 'static {
 pub mod config;
 pub mod container;
 pub mod containerd;
+pub mod builder;
 
-pub use container::Container; 
+pub use container::Container;
+pub use config::{Config, ResourceLimits};
+pub use builder::ContainerBuilder; 

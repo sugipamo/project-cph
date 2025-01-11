@@ -10,13 +10,17 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use super::Runtime;
 
-#[derive(Clone)]
+#[allow(clippy::module_name_repetitions)]
 pub struct ContainerdRuntime {
     containers: Arc<Mutex<ContainersClient<tonic::transport::Channel>>>,
     tasks: Arc<Mutex<TasksClient<tonic::transport::Channel>>>,
 }
 
 impl ContainerdRuntime {
+    /// 新しいランタイムインスタンスを作成します
+    ///
+    /// # Errors
+    /// - コンテナクライアントの初期化に失敗した場合
     pub async fn new() -> Result<Self> {
         let channel = containerd::connect("/run/containerd/containerd.sock").await?;
         Ok(Self {
@@ -119,6 +123,9 @@ impl Runtime for ContainerdRuntime {
     }
 
     fn box_clone(&self) -> Box<dyn Runtime> {
-        Box::new(self.clone())
+        Box::new(Self {
+            containers: self.containers.clone(),
+            tasks: self.tasks.clone(),
+        })
     }
 } 
