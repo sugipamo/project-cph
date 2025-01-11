@@ -89,8 +89,8 @@ impl ContainerOrchestrator {
             }
         }
         
-        // タイムアウト付きで実行結果を待機
-        let timeout = Duration::from_secs(10);
+        // タイムアウト付きで実行結果を待機（5秒）
+        let timeout = Duration::from_secs(5);
         let mut errors = Vec::new();
         
         for (id, handle) in handles {
@@ -119,7 +119,7 @@ impl ContainerOrchestrator {
             containers.keys().cloned().collect()
         };
 
-        let timeout = Duration::from_secs(30); // 30秒のタイムアウト
+        let timeout = Duration::from_secs(5); // 5秒のタイムアウト
         let start_time = std::time::Instant::now();
 
         for id in container_ids {
