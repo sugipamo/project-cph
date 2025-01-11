@@ -6,16 +6,16 @@ use async_trait::async_trait;
 use containerd_client as containerd;
 use containerd_client::services::v1::containers_client::ContainersClient;
 use containerd_client::services::v1::tasks_client::TasksClient;
-use containerd_client::services::v1::{Container as ContainerdContainer, Task};
-use containerd_client::with_namespace;
+use containerd_client::services::v1::Container as ContainerdContainer;
+use containerd_client::services::v1::container::{Process, Spec};
 use crate::container::{
-    state::status::ContainerStatus,
-    communication::{ContainerNetwork, Message},
+    state::ContainerStatus,
+    communication::ContainerNetwork,
     io::buffer::OutputBuffer,
 };
 use super::{
     config::ContainerConfig,
-    interface::runtime::ContainerRuntime,
+    ContainerRuntime,
 };
 
 #[derive(Clone)]
@@ -26,8 +26,8 @@ pub struct Container {
     config: ContainerConfig,
     container_id: Option<String>,
     status: ContainerStatus,
-    containers_client: ContainersClient,
-    tasks_client: TasksClient,
+    containers_client: ContainersClient<tonic::transport::Channel>,
+    tasks_client: TasksClient<tonic::transport::Channel>,
     cleanup_status: Arc<Mutex<bool>>,
 }
 
@@ -81,7 +81,7 @@ impl Container {
         }
     }
 
-    async fn _monitor_container(&self, container_id: &str) -> Result<()> {
+    async fn _monitor_container(&self, _container_id: &str) -> Result<()> {
         // コンテナの状態を監視し、必要に応じて対応する
         loop {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
@@ -131,19 +131,21 @@ impl ContainerRuntime for Container {
         working_dir: &PathBuf,
         env_vars: &[String],
     ) -> Result<String> {
-        let container = self.containers_client
-            .create(with_namespace::default(containerd::services::v1::CreateContainerRequest {
+        let container_id = uuid::Uuid::new_v4().to_string();
+        let container = self
+            .containers_client
+            .create(containerd::with_namespace::default(containerd::services::v1::CreateContainerRequest {
                 container: Some(ContainerdContainer {
-                    id: uuid::Uuid::new_v4().to_string(),
+                    id: container_id.clone(),
                     image: image.to_string(),
                     runtime: Some(containerd::services::v1::container::Runtime {
                         name: "io.containerd.runc.v2".to_string(),
                         options: None,
                     }),
-                    spec: Some(containerd::services::v1::container::Spec {
-                        process: Some(containerd::services::v1::container::Process {
-                            args: command.to_vec(),
-                            cwd: working_dir.to_string_lossy().to_string(),
+                    spec: Some(Spec {
+                        process: Some(Process {
+                            args: command.iter().map(|s| s.to_string()).collect(),
+                            cwd: working_dir.to_str().unwrap().to_string(),
                             env: env_vars.to_vec(),
                             ..Default::default()
                         }),
@@ -155,21 +157,36 @@ impl ContainerRuntime for Container {
             .await?
             .into_inner()
             .container
-            .ok_or_else(|| anyhow::anyhow!("コンテナの作成に失敗しました"))?;
+            .unwrap();
+
+        let task = self
+            .tasks_client
+            .create(containerd::with_namespace::default(containerd::services::v1::CreateTaskRequest {
+                container_id: container.id.clone(),
+                ..Default::default()
+            }))
+            .await?;
+
+        self.tasks_client
+            .start(containerd::with_namespace::default(containerd::services::v1::StartRequest {
+                container_id: container.id.clone(),
+                ..Default::default()
+            }))
+            .await?;
 
         Ok(container.id)
     }
 
     async fn start(&self, container_id: &str) -> Result<()> {
         self.tasks_client
-            .create(with_namespace::default(containerd::services::v1::CreateTaskRequest {
+            .create(containerd::with_namespace::default(containerd::services::v1::CreateTaskRequest {
                 container_id: container_id.to_string(),
                 ..Default::default()
             }))
             .await?;
 
         self.tasks_client
-            .start(with_namespace::default(containerd::services::v1::StartTaskRequest {
+            .start(containerd::with_namespace::default(containerd::services::v1::StartRequest {
                 container_id: container_id.to_string(),
                 ..Default::default()
             }))
@@ -180,7 +197,7 @@ impl ContainerRuntime for Container {
 
     async fn stop(&self, container_id: &str) -> Result<()> {
         self.tasks_client
-            .kill(with_namespace::default(containerd::services::v1::KillTaskRequest {
+            .kill(containerd::with_namespace::default(containerd::services::v1::KillRequest {
                 container_id: container_id.to_string(),
                 signal: 15, // SIGTERM
                 ..Default::default()
@@ -188,7 +205,7 @@ impl ContainerRuntime for Container {
             .await?;
 
         self.tasks_client
-            .delete(with_namespace::default(containerd::services::v1::DeleteTaskRequest {
+            .delete(containerd::with_namespace::default(containerd::services::v1::DeleteTaskRequest {
                 container_id: container_id.to_string(),
                 ..Default::default()
             }))
@@ -199,9 +216,8 @@ impl ContainerRuntime for Container {
 
     async fn remove(&self, container_id: &str) -> Result<()> {
         self.containers_client
-            .delete(with_namespace::default(containerd::services::v1::DeleteContainerRequest {
+            .delete(containerd::with_namespace::default(containerd::services::v1::DeleteContainerRequest {
                 id: container_id.to_string(),
-                ..Default::default()
             }))
             .await?;
 
