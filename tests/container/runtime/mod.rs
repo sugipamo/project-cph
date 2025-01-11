@@ -35,15 +35,23 @@ mod tests {
         assert_eq!(container.status().await, Status::Created);
 
         // コンテナの実行
-        let handle = tokio::spawn(async move {
-            container.run().await
+        let handle = tokio::spawn({
+            let container = container.clone();
+            async move {
+                container.run().await
+            }
         });
 
         // 少し待ってステータスを確認
         sleep(Duration::from_millis(100)).await;
+        assert_eq!(container.status().await, Status::Running);
+        
+        // クリーンアップ
+        container.cleanup().await?;
+        assert_eq!(container.status().await, Status::Stopped);
         
         // 実行完了を待つ
-        handle.await??;
+        handle.abort();
         
         Ok(())
     }
@@ -52,11 +60,24 @@ mod tests {
     async fn test_container_cleanup() -> Result<()> {
         let container = setup_test_container().await?;
         
-        // クリーンアップの実行
-        container.cleanup().await?;
+        // コンテナを実行状態にする
+        let handle = tokio::spawn({
+            let container = container.clone();
+            async move {
+                container.run().await
+            }
+        });
+
+        // 少し待ってからクリーンアップ
+        sleep(Duration::from_millis(100)).await;
+        assert_eq!(container.status().await, Status::Running);
         
-        // クリーンアップ後のステータス確認
+        // クリーンアップを実行
+        container.cleanup().await?;
         assert_eq!(container.status().await, Status::Stopped);
+        
+        // 実行完了を待つ
+        handle.abort();
         
         Ok(())
     }
@@ -66,15 +87,20 @@ mod tests {
         let container = setup_test_container().await?;
         
         // コンテナの実行
-        let handle = tokio::spawn(async move {
-            container.run().await
+        let handle = tokio::spawn({
+            let container = container.clone();
+            async move {
+                container.run().await
+            }
         });
 
         // 少し待ってからキャンセル
         sleep(Duration::from_millis(100)).await;
+        assert_eq!(container.status().await, Status::Running);
         
         // キャンセルの実行
         handle.abort();
+        sleep(Duration::from_millis(100)).await;
         
         Ok(())
     }

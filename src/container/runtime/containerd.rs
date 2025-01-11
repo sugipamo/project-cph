@@ -117,4 +117,8 @@ impl Runtime for ContainerdRuntime {
             .await?;
         Ok(())
     }
+
+    fn box_clone(&self) -> Box<dyn Runtime> {
+        Box::new(self.clone())
+    }
 } 

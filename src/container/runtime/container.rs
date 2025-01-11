@@ -1,8 +1,6 @@
 use std::sync::Arc;
-use std::path::Path;
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use tokio::sync::{oneshot, Mutex};
-use async_trait::async_trait;
 use crate::container::{
     state::lifecycle::Status,
     communication::transport::Network,
@@ -42,12 +40,11 @@ impl Default for ContainerState {
     }
 }
 
-#[derive(Clone)]
 pub struct Container {
     network: Arc<Network>,
     buffer: Arc<Buffer>,
     config: Config,
-    runtime: Arc<dyn Runtime>,
+    runtime: Box<dyn Runtime>,
     state: Arc<Mutex<ContainerState>>,
 }
 
@@ -63,13 +60,13 @@ impl Container {
         buffer: Arc<Buffer>,
     ) -> Result<Self> {
         use super::containerd::ContainerdRuntime;
-        let runtime = Arc::new(ContainerdRuntime::new().await?);
+        let runtime = ContainerdRuntime::new().await?;
         
         Ok(Self {
             network,
             buffer,
             config,
-            runtime,
+            runtime: Box::new(runtime),
             state: Arc::new(Mutex::new(ContainerState::default())),
         })
     }
@@ -79,13 +76,13 @@ impl Container {
         config: Config,
         network: Arc<Network>,
         buffer: Arc<Buffer>,
-        runtime: impl Runtime + 'static,
+        runtime: impl Runtime,
     ) -> Result<Self> {
         Ok(Self {
             network,
             buffer,
             config,
-            runtime: Arc::new(runtime),
+            runtime: Box::new(runtime),
             state: Arc::new(Mutex::new(ContainerState::default())),
         })
     }
@@ -132,7 +129,7 @@ impl Container {
         }
     }
 
-    async fn monitor_container(&self, container_id: &str) -> Result<()> {
+    async fn monitor_container(&self, _container_id: &str) -> Result<()> {
         let runtime = {
             let state = self.state.lock().await;
             if let ContainerState::Running { runtime, .. } = &*state {
@@ -213,12 +210,22 @@ impl Container {
     }
 }
 
+impl Clone for Container {
+    fn clone(&self) -> Self {
+        Self {
+            network: self.network.clone(),
+            buffer: self.buffer.clone(),
+            config: self.config.clone(),
+            runtime: self.runtime.box_clone(),
+            state: self.state.clone(),
+        }
+    }
+}
+
 impl Drop for Container {
     fn drop(&mut self) {
-        if let Ok(rt) = tokio::runtime::Handle::try_current() {
-            rt.block_on(async {
-                let _ = self.cleanup().await;
-            });
-        }
+        // 非同期クリーンアップは同期的なdropでは安全に実行できないため、
+        // エラーをログに記録するだけにします
+        eprintln!("コンテナがドロップされました。クリーンアップは非同期で実行する必要があります。");
     }
 } 

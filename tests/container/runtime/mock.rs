@@ -37,4 +37,8 @@ impl Runtime for MockRuntime {
     async fn remove(&self, _container_id: &str) -> Result<()> {
         Ok(())
     }
+
+    fn box_clone(&self) -> Box<dyn Runtime> {
+        Box::new(self.clone())
+    }
 } 

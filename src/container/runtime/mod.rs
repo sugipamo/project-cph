@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 /// コンテナランタイムの基本的な操作を定義するトレイト
 #[async_trait]
-pub trait Runtime: Clone + Send + Sync + 'static {
+pub trait Runtime: Send + Sync + 'static {
     /// コンテナを作成します
     async fn create(
         &self,
@@ -22,6 +22,9 @@ pub trait Runtime: Clone + Send + Sync + 'static {
 
     /// コンテナを削除します
     async fn remove(&self, container_id: &str) -> Result<()>;
+
+    /// ランタイムのクローンを作成します
+    fn box_clone(&self) -> Box<dyn Runtime>;
 }
 
 pub mod config;
