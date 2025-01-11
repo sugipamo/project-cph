@@ -93,10 +93,34 @@ impl Config {
                     }
                 }
                 
-                // 上書き
+                // 上書きと深いマージ
                 for (key, value) in hash {
                     if key != &Yaml::String("<<".to_string()) {
-                        result.insert(key.clone(), Self::process_yaml(value)?);
+                        match (&result.get(key), value) {
+                            // 両方がハッシュの場合は再帰的にマージ
+                            (Some(&Yaml::Hash(ref existing)), &Yaml::Hash(ref new)) => {
+                                let mut merged = existing.clone();
+                                for (k, v) in new {
+                                    match (merged.get(k), v) {
+                                        (Some(&Yaml::Hash(ref e)), &Yaml::Hash(ref n)) => {
+                                            let mut deep_merged = e.clone();
+                                            for (dk, dv) in n {
+                                                deep_merged.insert(dk.clone(), Self::process_yaml(dv)?);
+                                            }
+                                            merged.insert(k.clone(), Yaml::Hash(deep_merged));
+                                        }
+                                        _ => {
+                                            merged.insert(k.clone(), Self::process_yaml(v)?);
+                                        }
+                                    }
+                                }
+                                result.insert(key.clone(), Yaml::Hash(merged));
+                            }
+                            // それ以外の場合は単純に上書き
+                            _ => {
+                                result.insert(key.clone(), Self::process_yaml(value)?);
+                            }
+                        }
                     }
                 }
                 
@@ -154,15 +178,35 @@ impl Config {
     /// 環境変数を展開します
     /// ${VAR-default} の形式で指定された環境変数を展開します
     /// VAR が設定されていない場合は default が使用されます
+    /// ネストされた環境変数（${VAR1-${VAR2-default}}）もサポート
     fn expand_env_vars(content: &str) -> String {
-        ENV_VAR_PATTERN.replace_all(content, |caps: &regex::Captures| {
-            let var_spec = &caps[1];
-            if let Some((var_name, default)) = var_spec.split_once('-') {
-                env::var(var_name).unwrap_or_else(|_| default.to_string())
+        let mut result = content.to_string();
+        let mut prev_result = String::new();
+        
+        // 環境変数が完全に展開されるまで繰り返す
+        while result != prev_result {
+            prev_result = result.clone();
+            result = ENV_VAR_PATTERN.replace_all(&prev_result, |caps: &regex::Captures| {
+                let var_spec = &caps[1];
+                Self::expand_var_spec(var_spec)
+            }).to_string();
+        }
+        
+        result
+    }
+
+    /// 環境変数指定を展開します
+    fn expand_var_spec(var_spec: &str) -> String {
+        if let Some((var_name, default)) = var_spec.split_once('-') {
+            // デフォルト値に環境変数が含まれている場合は再帰的に展開
+            if default.contains("${") {
+                env::var(var_name).unwrap_or_else(|_| Self::expand_env_vars(default))
             } else {
-                env::var(var_spec).unwrap_or_default()
+                env::var(var_name).unwrap_or_else(|_| default.to_string())
             }
-        }).to_string()
+        } else {
+            env::var(var_spec).unwrap_or_default()
+        }
     }
 
     /// デフォルト設定ファイルから設定値を取得します
