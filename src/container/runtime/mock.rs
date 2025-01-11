@@ -1,6 +1,7 @@
-use anyhow::{Result, anyhow};
+use super::Runtime;
+use super::config::Config;
+use anyhow::Result;
 use async_trait::async_trait;
-use cph::container::runtime::{Runtime, Config};
 
 #[derive(Clone)]
 pub struct MockRuntime {
@@ -14,6 +15,7 @@ impl MockRuntime {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_failure() -> Self {
         Self {
             should_fail: true,
@@ -25,7 +27,7 @@ impl MockRuntime {
 impl Runtime for MockRuntime {
     async fn run(&self, _config: &Config) -> Result<()> {
         if self.should_fail {
-            Err(anyhow!("モックエラー: コンテナの実行に失敗しました"))
+            Err(anyhow::anyhow!("Mock runtime failure"))
         } else {
             Ok(())
         }

@@ -5,25 +5,43 @@ pub mod io;
 #[cfg(test)]
 mod tests {
     use cph::container::{
-        runtime::Container,
-        runtime::config::Config,
-        communication::Network,
-        io::Buffer,
+        runtime::{
+            ContainerBuilder,
+            mock::MockRuntime,
+        },
+        ContainerState,
     };
-    use std::path::PathBuf;
+    use std::sync::Arc;
     use anyhow::Result;
 
-    #[allow(dead_code)]
-    async fn setup_test_container() -> Result<(Container, Config)> {
-        let config = Config::new(
-            "test-container".to_string(),
-            "rust:latest".to_string(),
-            PathBuf::from("/workspace"),
-            vec!["sleep".to_string(), "1".to_string()],
-        );
-        let network = std::sync::Arc::new(Network::new());
-        let buffer = std::sync::Arc::new(Buffer::new());
-        let container = Container::new(config.clone(), network, buffer).await?;
-        Ok((container, config))
+    #[tokio::test]
+    async fn test_container_creation() -> Result<()> {
+        let runtime = Arc::new(MockRuntime::new());
+        let container = ContainerBuilder::new()
+            .with_id("test-container")
+            .with_image("test-image")
+            .with_runtime(runtime)
+            .build();
+
+        assert_eq!(container.status().await, ContainerState::Created);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_container_execution() -> Result<()> {
+        let runtime = Arc::new(MockRuntime::new());
+        let container = ContainerBuilder::new()
+            .with_id("test-container")
+            .with_image("test-image")
+            .with_runtime(runtime)
+            .build();
+
+        container.run().await?;
+        assert_eq!(container.status().await, ContainerState::Running);
+        
+        container.cancel().await?;
+        assert_eq!(container.status().await, ContainerState::Completed);
+        
+        Ok(())
     }
 } 

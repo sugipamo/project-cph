@@ -1,68 +1,52 @@
+use super::protocol::Message;
+use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{mpsc, Mutex};
-use anyhow::{Result, anyhow};
-use super::protocol::Message;
+use tokio::sync::Mutex;
 
-/// コンテナ間の通信を管理するネットワーク
-#[derive(Default)]
 pub struct Network {
-    channels: Arc<Mutex<HashMap<String, mpsc::Sender<Message>>>>,
+    buffers: Arc<Mutex<HashMap<String, Vec<Message>>>>,
 }
 
 impl Network {
-    /// 新しいネットワークを作成します
-    #[must_use]
     pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// コンテナをネットワークに登録します
-    ///
-    /// # Errors
-    /// - チャンネルの作成に失敗した場合
-    pub async fn register(&self, container_id: &str) -> Result<(mpsc::Sender<Message>, mpsc::Receiver<Message>)> {
-        let (tx, rx) = mpsc::channel(100);
-        self.channels.lock().await.insert(container_id.to_string(), tx.clone());
-        Ok((tx, rx))
-    }
-
-    /// メッセージを特定のコンテナに送信します。
-    ///
-    /// # Errors
-    /// - メッセージの送信に失敗した場合
-    pub async fn send(&self, _from: &str, to: &str, message: Message) -> Result<()> {
-        let channels = self.channels.lock().await;
-        if let Some(tx) = channels.get(to) {
-            tx.send(message).await
-                .map_err(|e| anyhow!("メッセージ送信に失敗: {}", e))?;
-            Ok(())
-        } else {
-            Err(anyhow!("送信先コンテナが見つかりません: {}", to))
+        Self {
+            buffers: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
-    /// メッセージを全てのコンテナにブロードキャストします。
-    ///
-    /// # Errors
-    /// - メッセージの送信に失敗した場合
-    pub async fn broadcast(&self, from: &str, message: Message) -> Result<()> {
-        let channels = {
-            let lock = self.channels.lock().await;
-            lock.iter()
-                .filter(|(id, _)| *id != from)
-                .map(|(_, tx)| tx.clone())
-                .collect::<Vec<_>>()
-        };
+    pub async fn send(&self, _from: &str, to: &str, message: Message) -> Result<()> {
+        let mut buffers = self.buffers.lock().await;
+        buffers.entry(to.to_string())
+            .or_insert_with(Vec::new)
+            .push(message);
+        Ok(())
+    }
 
-        for tx in channels {
-            tx.send(message.clone()).await
-                .map_err(|e| anyhow!("ブロードキャスト送信に失敗: {}", e))?;
+    pub async fn broadcast(&self, from: &str, message: Message) -> Result<()> {
+        let buffers = self.buffers.lock().await;
+        for (id, _) in buffers.iter() {
+            if id != from {
+                let mut message = message.clone();
+                message.to = id.clone();
+                self.send(from, id, message).await?;
+            }
         }
         Ok(())
     }
 
-    pub async fn deregister(&self, container_id: &str) {
-        self.channels.lock().await.remove(container_id);
+    pub async fn receive(&self, id: &str) -> Option<Message> {
+        let mut buffers = self.buffers.lock().await;
+        if let Some(buffer) = buffers.get_mut(id) {
+            buffer.pop()
+        } else {
+            None
+        }
+    }
+}
+
+impl Default for Network {
+    fn default() -> Self {
+        Self::new()
     }
 } 

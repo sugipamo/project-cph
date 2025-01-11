@@ -1,26 +1,20 @@
 use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
 
-/// コンテナの設定を保持する構造体
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
-    /// コンテナのID
     pub id: String,
-    /// 使用するイメージ
     pub image: String,
-    /// 作業ディレクトリ
     pub working_dir: PathBuf,
-    /// コマンド引数
     pub args: Vec<String>,
 }
 
 impl Config {
-    /// 新しい設定を作成します
-    #[must_use]
-    pub const fn new(id: String, image: String, working_dir: PathBuf, args: Vec<String>) -> Self {
+    pub fn new(id: impl Into<String>, image: impl Into<String>, working_dir: impl Into<PathBuf>, args: Vec<String>) -> Self {
         Self {
-            id,
-            image,
-            working_dir,
+            id: id.into(),
+            image: image.into(),
+            working_dir: working_dir.into(),
             args,
         }
     }
