@@ -25,7 +25,7 @@ mod tests {
         let network = Arc::new(Network::new());
         let buffer = Arc::new(Buffer::new());
         let runtime = MockRuntime::new("test-container".to_string());
-        Container::with_runtime(config, network, buffer, runtime).await
+        Container::with_runtime(config, network, buffer, runtime)
     }
 
     async fn setup_language_container(
@@ -42,7 +42,7 @@ mod tests {
         let network = Arc::new(Network::new());
         let buffer = Arc::new(Buffer::new());
         let runtime = MockRuntime::new(format!("test-{}-container", language));
-        Container::with_runtime(config, network, buffer, runtime).await
+        Container::with_runtime(config, network, buffer, runtime)
     }
 
     #[tokio::test]
@@ -410,7 +410,7 @@ mod tests {
             network,
             buffer.clone(),
             runtime
-        ).await?;
+        )?;
 
         // 出力のシミュレーション
         buffer.append(&container.id(), Bytes::from("Line 1\n")).await?;
