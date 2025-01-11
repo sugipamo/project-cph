@@ -1,47 +1,73 @@
-use cphelper::container::io::buffer::OutputBuffer;
-use bytes::Bytes;
-use anyhow::Result;
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use cph::container::io::Buffer;
+    use bytes::Bytes;
+    use anyhow::Result;
 
     #[tokio::test]
-    async fn test_output_buffer_write() -> Result<()> {
-        let buffer = OutputBuffer::new();
-        let container_id = "test_container";
-        let test_data = Bytes::from("Hello, World!\n");
+    async fn test_buffer_append() -> Result<()> {
+        let buffer = Buffer::with_max_size(1024);
+        let container_id = "test-container";
+        let data = Bytes::from("test data");
         
-        buffer.append(container_id, test_data.clone()).await?;
-        let output = buffer.get_output(container_id).await;
-        assert!(output.is_some());
-        assert_eq!(output.unwrap()[0], test_data);
+        // データの追加
+        buffer.append(container_id, data.clone()).await?;
+        
+        // 追加したデータの確認
+        let output = buffer.get_output(container_id).await.unwrap();
+        assert_eq!(output[0], data);
+        
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_output_buffer_clear() -> Result<()> {
-        let buffer = OutputBuffer::new();
-        let container_id = "test_container";
-        let test_data = Bytes::from("Test Message\n");
+    async fn test_buffer_size_limit() -> Result<()> {
+        let buffer = Buffer::with_max_size(10);
+        let container_id = "test-container";
+        let data = Bytes::from("test data that exceeds limit");
         
-        buffer.append(container_id, test_data).await?;
+        // サイズ制限を超えるデータの追加
+        let result = buffer.append(container_id, data).await;
+        assert!(result.is_err());
+        
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_buffer_cleanup() -> Result<()> {
+        let buffer = Buffer::with_max_size(1024);
+        let container_id = "test-container";
+        
+        // データの追加
+        for i in 0..5 {
+            let data = Bytes::from(format!("test data {}", i));
+            buffer.append(container_id, data).await?;
+        }
+        
+        // 古いデータのクリーンアップ
+        buffer.cleanup_old_data(container_id, 2).await?;
+        
+        // 残りのデータ確認
+        let output = buffer.get_output(container_id).await.unwrap();
+        assert_eq!(output.len(), 2);
+        
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_buffer_clear() -> Result<()> {
+        let buffer = Buffer::with_max_size(1024);
+        let container_id = "test-container";
+        
+        // データの追加
+        buffer.append(container_id, Bytes::from("test data")).await?;
+        
+        // バッファのクリア
         buffer.clear(container_id).await;
         
-        let size = buffer.get_size(container_id).await;
-        assert_eq!(size, 0);
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_buffer_memory_usage() -> Result<()> {
-        let buffer = OutputBuffer::new();
-        let container_id = "test_container";
-        let test_data = Bytes::from("Test Data");
+        // クリア後のサイズ確認
+        assert_eq!(buffer.get_size(container_id).await, 0);
         
-        buffer.append(container_id, test_data).await?;
-        let usage = buffer.get_total_memory_usage().await;
-        assert!(usage > 0);
         Ok(())
     }
 } 

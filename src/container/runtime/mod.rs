@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 /// コンテナランタイムの基本的な操作を定義するトレイト
 #[async_trait]
-pub trait Runtime: Clone {
+pub trait Runtime: Clone + Send + Sync + 'static {
     /// コンテナを作成します
     async fn create(
         &self,
@@ -26,5 +26,6 @@ pub trait Runtime: Clone {
 
 pub mod config;
 pub mod container;
+pub mod containerd;
 
 pub use container::Container; 
