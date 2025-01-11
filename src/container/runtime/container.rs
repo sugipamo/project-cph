@@ -4,7 +4,7 @@ use tokio::sync::{oneshot, Mutex};
 use super::Runtime;
 use super::config::Config;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContainerState {
     Created,
     Running,
@@ -32,6 +32,11 @@ impl Container {
         }
     }
 
+    /// コンテナを実行します
+    /// 
+    /// # Errors
+    /// - ランタイムの実行に失敗した場合
+    /// - 状態の更新に失敗した場合
     pub async fn run(&self) -> Result<()> {
         println!("Container({}): 実行開始", self.id());
         let mut state = self.state.lock().await;

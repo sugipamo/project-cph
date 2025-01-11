@@ -40,9 +40,9 @@ impl ContainerOrchestrator {
     }
 
     pub async fn link(&self, from: &str, to: &str) -> Result<&Self> {
-        println!("Orchestrator: リンク作成 {} -> {}", from, to);
-        let mut links = self.links.lock().await;
-        links.entry(from.to_string())
+        println!("Orchestrator: リンク作成 {from} -> {to}");
+        self.links.lock().await
+            .entry(from.to_string())
             .or_insert_with(HashSet::new)
             .insert(to.to_string());
         Ok(self)
@@ -66,9 +66,10 @@ impl ContainerOrchestrator {
 
             // メッセージカウントを更新
             {
-                let mut counts = self.message_counts.lock().await;
-                *counts.entry(message.kind).or_insert(0) += 1;
-                println!("Orchestrator: メッセージカウント更新 ({counts:?})");
+                *self.message_counts.lock().await
+                    .entry(message.kind)
+                    .or_insert(0) += 1;
+                println!("Orchestrator: メッセージカウント更新");
             }
         } else {
             println!("Orchestrator: 宛先コンテナが見つかりません: {}", message.to);
@@ -92,17 +93,18 @@ impl ContainerOrchestrator {
     pub async fn run_all(&self) -> Result<()> {
         println!("run_all: 開始");
         let container_ids: Vec<String> = {
-            let containers = self.containers.lock().await;
-            let ids = containers.keys().cloned().collect();
-            println!("run_all: コンテナID一覧: {:?}", ids);
+            let ids = self.containers.lock().await
+                .keys()
+                .cloned()
+                .collect();
+            println!("run_all: コンテナID一覧: {ids:?}");
             ids
         };
 
         let mut handles = Vec::new();
         
-        // 各コンテナを個別に取得して実行
         for id in &container_ids {
-            println!("run_all: コンテナ {} の実行準備", id);
+            println!("run_all: コンテナ {id} の実行準備");
             if let Some(container) = self.get_container(id).await {
                 let handle = tokio::spawn(async move {
                     println!("run_all: コンテナ {} の実行開始", container.id());

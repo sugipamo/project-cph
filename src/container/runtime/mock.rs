@@ -32,7 +32,7 @@ impl MockRuntime {
 
     pub async fn status(&self) -> ContainerState {
         let state = self.state.lock().await.clone();
-        println!("MockRuntime: 状態取得 = {:?}", state);
+        println!("MockRuntime: 状態取得 = {state:?}");
         state
     }
 }
@@ -40,32 +40,22 @@ impl MockRuntime {
 #[async_trait]
 impl Runtime for MockRuntime {
     async fn run(&self, _config: &Config) -> Result<()> {
-        println!("MockRuntime: run開始");
         if self.should_fail {
-            println!("MockRuntime: 失敗モードのため、エラーを返します");
-            *self.state.lock().await = ContainerState::Failed("Mock runtime failure".to_string());
-            return Err(anyhow::anyhow!("Mock runtime failure"));
+            return Err(anyhow::anyhow!("モックランタイムの実行に失敗"));
         }
 
-        // コンテナの状態遷移をシミュレート
         {
-            let mut state = self.state.lock().await;
-            *state = ContainerState::Running;
+            *self.state.lock().await = ContainerState::Running;
             println!("MockRuntime: 状態を Running に変更");
         }
 
-        // テストが状態を確認できるように十分な時間待機
-        println!("MockRuntime: Running状態を維持（500ms）");
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        tokio::time::sleep(Duration::from_millis(100)).await;
 
-        // 正常終了
         {
-            let mut state = self.state.lock().await;
-            *state = ContainerState::Completed;
+            *self.state.lock().await = ContainerState::Completed;
             println!("MockRuntime: 状態を Completed に変更");
         }
 
-        println!("MockRuntime: run正常終了");
         Ok(())
     }
 
