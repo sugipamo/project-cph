@@ -2,68 +2,67 @@
 
 ## 使用例
 
-### 基本的なコンテナの作成と実行
+### コンテナオーケストレーターを使用した制御
 ```rust
-let container = ContainerBuilder::new()
-    .with_buffer(Arc::new(Buffer::new()))
-    .build_for_language("python", "script.py", vec!["python", "script.py"])
+// オーケストレーターの作成
+let orchestrator = ContainerOrchestrator::new();
+
+// コンテナの追加
+let container1 = orchestrator
+    .add_container("python", "node1.py", vec!["python", "node1.py"])
+    .await?;
+let container2 = orchestrator
+    .add_container("python", "node2.py", vec!["python", "node2.py"])
+    .await?;
+let container3 = orchestrator
+    .add_container("python", "node3.py", vec!["python", "node3.py"])
     .await?;
 
-container.run().await?;
+// コンテナ間の通信リンクを設定
+orchestrator
+    .link(container1.id(), container2.id())
+    .link(container2.id(), container3.id())
+    .link(container3.id(), container1.id());
+
+// 全コンテナを実行
+orchestrator.run_all().await?;
+
+// メッセージの送信（標準化されたフォーマット）
+let message = Message::normal(
+    container1.id().to_string(),
+    container2.id().to_string(),
+    "Hello from 1 to 2!".to_string(),
+);
+orchestrator.send_message(&message).await?;
+
+// システムメッセージのブロードキャスト
+let system_msg = Message::system(
+    container1.id().to_string(),
+    "System update".to_string(),
+);
+orchestrator.broadcast(&system_msg).await?;
+
+// 全コンテナの終了を待機
+// この間もメッセージの送受信は可能
+orchestrator.wait_all().await?;
 ```
 
-### コンテナ間のメッセージング
+### メッセージの種類
 ```rust
-// 共有ネットワークの作成
-let network = Arc::new(Network::new());
+// 通常のメッセージ
+Message::normal(from, to, content)
 
-// 送信側コンテナ
-let sender = ContainerBuilder::new()
-    .with_network(network.clone())
-    .with_buffer(Arc::new(Buffer::new()))
-    .build_for_language("python", "sender.py", vec!["python", "sender.py"])
-    .await?;
+// システムメッセージ（優先度: High）
+Message::system(from, content)
 
-// 受信側コンテナ
-let receiver = ContainerBuilder::new()
-    .with_network(network.clone())
-    .with_buffer(Arc::new(Buffer::new()))
-    .build_for_language("python", "receiver.py", vec!["python", "receiver.py"])
-    .await?;
+// エラーメッセージ（優先度: Critical）
+Message::error(from, content)
 
-// メッセージの送信
-network.send(&sender.id(), &receiver.id(), "Hello!").await?;
+// デバッグメッセージ（優先度: Low）
+Message::debug(from, content)
 
 // ブロードキャストメッセージ
-network.broadcast(&sender.id(), "Broadcast message").await?;
-```
-
-### 並列実行
-```rust
-let containers = vec![
-    ContainerBuilder::new()
-        .with_network(network.clone())
-        .with_buffer(Arc::new(Buffer::new()))
-        .build_for_language("python", "node1.py", vec!["python", "node1.py"])
-        .await?,
-    ContainerBuilder::new()
-        .with_network(network.clone())
-        .with_buffer(Arc::new(Buffer::new()))
-        .build_for_language("python", "node2.py", vec!["python", "node2.py"])
-        .await?,
-];
-
-// 並列実行
-let handles: Vec<_> = containers.iter()
-    .map(|container| {
-        tokio::spawn(container.run())
-    })
-    .collect();
-
-// 全てのコンテナの完了を待機
-for handle in handles {
-    handle.await??;
-}
+Message::broadcast(from, content)
 ```
 
 ## 要件
