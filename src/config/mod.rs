@@ -7,14 +7,16 @@
 // - カスタムスキーマによるバリデーション
 // - 柔軟な型変換システム
 
-use std::path::Path;
+use anyhow::{anyhow, bail, Context, Result};
+use serde_yaml::Value;
 use std::fs;
+use std::path::Path;
 use std::sync::OnceLock;
 use std::env;
-use anyhow::{Result, Context, anyhow, bail};
-use serde_yaml::Value;
 use regex::Regex;
 use once_cell::sync::Lazy;
+use yaml_rust::{YamlLoader, Yaml};
+use yaml_rust::yaml::Hash;
 
 static CONFIG: OnceLock<Config> = OnceLock::new();
 static ENV_VAR_PATTERN: Lazy<Regex> = Lazy::new(|| {
@@ -50,15 +52,103 @@ impl Config {
     pub fn parse_str(content: &str) -> Result<Self> {
         let expanded_content = Self::expand_env_vars(content);
         
-        // YAML継承を有効にしてパース
-        let data: Value = serde_yaml::from_str(&expanded_content)
+        // yaml-rustでパース
+        let docs = YamlLoader::load_from_str(&expanded_content)
             .context("不正なYAML形式です")?;
+        
+        if docs.is_empty() {
+            bail!("YAMLドキュメントが空です");
+        }
+
+        let yaml = &docs[0];
+        let processed = Self::process_yaml(yaml)?;
+        
+        // YAMLを文字列に変換してからserde_yamlでパース
+        let yaml_str = Self::yaml_to_string(&processed)?;
+        let data: Value = serde_yaml::from_str(&yaml_str)
+            .context("YAMLの変換に失敗しました")?;
 
         if !data.is_mapping() {
             bail!("YAMLのルート要素はマッピング（オブジェクト）である必要があります");
         }
 
         Ok(Self { data })
+    }
+
+    fn process_yaml(yaml: &Yaml) -> Result<Yaml> {
+        match yaml {
+            Yaml::Hash(hash) => {
+                let mut result = Hash::new();
+                
+                // アンカーの処理
+                let mut base = None;
+                if let Some(Yaml::Hash(base_hash)) = hash.get(&Yaml::String("<<".to_string())) {
+                    base = Some(base_hash.clone());
+                }
+                
+                // ベースの値をコピー
+                if let Some(base_hash) = base {
+                    for (key, value) in base_hash {
+                        result.insert(key.clone(), Self::process_yaml(&value)?);
+                    }
+                }
+                
+                // 上書き
+                for (key, value) in hash {
+                    if key != &Yaml::String("<<".to_string()) {
+                        result.insert(key.clone(), Self::process_yaml(value)?);
+                    }
+                }
+                
+                Ok(Yaml::Hash(result))
+            }
+            Yaml::Array(array) => {
+                let mut result = Vec::new();
+                for item in array {
+                    result.push(Self::process_yaml(item)?);
+                }
+                Ok(Yaml::Array(result))
+            }
+            _ => Ok(yaml.clone()),
+        }
+    }
+
+    fn yaml_to_string(yaml: &Yaml) -> Result<String> {
+        match yaml {
+            Yaml::Hash(hash) => {
+                let mut result = String::from("{");
+                let mut first = true;
+                for (key, value) in hash {
+                    if !first {
+                        result.push_str(", ");
+                    }
+                    first = false;
+                    result.push_str(&format!("{}: {}", Self::yaml_to_string(key)?, Self::yaml_to_string(value)?));
+                }
+                result.push('}');
+                Ok(result)
+            }
+            Yaml::Array(array) => {
+                let mut result = String::from("[");
+                let mut first = true;
+                for item in array {
+                    if !first {
+                        result.push_str(", ");
+                    }
+                    first = false;
+                    result.push_str(&Self::yaml_to_string(item)?);
+                }
+                result.push(']');
+                Ok(result)
+            }
+            Yaml::String(s) => Ok(format!("\"{}\"", s.replace('\"', "\\\""))),
+            Yaml::Integer(i) => Ok(i.to_string()),
+            Yaml::Real(r) => Ok(r.to_string()),
+            Yaml::Boolean(b) => Ok(b.to_string()),
+            Yaml::Null => Ok("null".to_string()),
+            Yaml::Alias(_) => bail!("YAMLエイリアスはサポートされていません"),
+            Yaml::BadValue => bail!("不正なYAML値です"),
+        }
     }
 
     /// 環境変数を展開します
