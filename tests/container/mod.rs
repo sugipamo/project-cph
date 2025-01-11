@@ -1,6 +1,7 @@
 pub mod runtime;
 pub mod communication;
 pub mod io;
+pub mod orchestrator;
 
 #[cfg(test)]
 mod tests {
