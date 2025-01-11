@@ -1,9 +1,10 @@
 use std::fmt;
 use anyhow::Result;
+use serde::{Serialize, Deserialize};
 
 /// コンテナの状態を表す列挙型
-#[derive(Debug, Clone, PartialEq)]
-pub enum ContainerStatus {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Status {
     /// 作成済み
     Created,
     /// 起動中
@@ -18,13 +19,13 @@ pub enum ContainerStatus {
     Failed(String),
 }
 
-impl Default for ContainerStatus {
+impl Default for Status {
     fn default() -> Self {
         Self::Created
     }
 }
 
-impl fmt::Display for ContainerStatus {
+impl fmt::Display for Status {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Created => write!(f, "Created"),
@@ -37,7 +38,7 @@ impl fmt::Display for ContainerStatus {
     }
 }
 
-impl ContainerStatus {
+impl Status {
     /// 状態が終了状態かどうかを返します
     #[must_use]
     pub const fn is_terminal(&self) -> bool {
@@ -67,7 +68,7 @@ impl ContainerStatus {
     }
 
     const fn can_transition_to(&self, target: &Self) -> bool {
-        use ContainerStatus::{Created, Failed, Running, Starting, Stopped, Stopping};
+        use Status::{Created, Failed, Running, Starting, Stopped, Stopping};
         match (self, target) {
             // 正常な状態遷移パス
             (Created | Starting | Running | Stopping, Failed(_)) |

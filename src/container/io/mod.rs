@@ -1,3 +1,3 @@
 pub mod buffer;
 
-pub use buffer::OutputBuffer; 
+pub use buffer::Buffer; 

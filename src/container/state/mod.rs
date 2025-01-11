@@ -1,3 +1,3 @@
 pub mod lifecycle;
 
-pub use lifecycle::ContainerStatus; 
+pub use lifecycle::Status; 

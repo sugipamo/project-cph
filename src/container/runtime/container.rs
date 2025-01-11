@@ -1,6 +1,6 @@
 use std::sync::Arc;
-use std::path::PathBuf;
-use anyhow::Result;
+use std::path::Path;
+use anyhow::{Result, anyhow};
 use tokio::sync::{oneshot, Mutex};
 use async_trait::async_trait;
 use containerd_client as containerd;
@@ -9,13 +9,13 @@ use containerd_client::services::v1::tasks_client::TasksClient;
 use containerd_client::services::v1::Container as ContainerdContainer;
 use prost_types::Any;
 use crate::container::{
-    state::ContainerStatus,
-    communication::ContainerNetwork,
-    io::buffer::OutputBuffer,
+    state::lifecycle::Status,
+    communication::transport::Network,
+    io::buffer::Buffer,
 };
 use super::{
-    config::ContainerConfig,
-    ContainerRuntime,
+    config::Config,
+    Runtime,
 };
 
 #[derive(Clone)]
@@ -37,7 +37,7 @@ impl ContainerdClients {
 #[derive(Clone)]
 struct RuntimeState {
     container_id: String,
-    status: ContainerStatus,
+    status: Status,
 }
 
 #[derive(Clone)]
@@ -45,7 +45,7 @@ enum ContainerState {
     Initial,
     Running {
         runtime: RuntimeState,
-        cancel_tx: Option<oneshot::Sender<()>>,
+        cancel_tx: Option<Arc<oneshot::Sender<()>>>,
     },
     Completed {
         runtime: RuntimeState,
@@ -64,9 +64,9 @@ impl Default for ContainerState {
 
 #[derive(Clone)]
 pub struct Container {
-    network: Arc<ContainerNetwork>,
-    buffer: Arc<OutputBuffer>,
-    config: ContainerConfig,
+    network: Arc<Network>,
+    buffer: Arc<Buffer>,
+    config: Config,
     clients: ContainerdClients,
     state: Arc<Mutex<ContainerState>>,
 }
@@ -78,9 +78,9 @@ impl Container {
     /// - コンテナクライアントの初期化に失敗した場合
     /// - 設定が無効な場合
     pub async fn new(
-        config: ContainerConfig,
-        network: Arc<ContainerNetwork>,
-        buffer: Arc<OutputBuffer>,
+        config: Config,
+        network: Arc<Network>,
+        buffer: Arc<Buffer>,
     ) -> Result<Self> {
         let clients = ContainerdClients::new("/run/containerd/containerd.sock").await?;
 
@@ -105,9 +105,9 @@ impl Container {
         // コンテナの作成と起動
         let container_id = self.create(
             &self.config.image,
-            &self.config.command,
+            &self.config.args,
             &self.config.working_dir,
-            &self.config.env_vars,
+            &[], // env_varsは現在未使用
         ).await?;
 
         {
@@ -115,9 +115,9 @@ impl Container {
             *state = ContainerState::Running {
                 runtime: RuntimeState {
                     container_id: container_id.clone(),
-                    status: ContainerStatus::Running,
+                    status: Status::Running,
                 },
-                cancel_tx: Some(cancel_tx),
+                cancel_tx: Some(Arc::new(cancel_tx)),
             };
         }
 
@@ -137,30 +137,27 @@ impl Container {
 
     async fn _monitor_container(&self, _container_id: &str) -> Result<()> {
         let mut state = self.state.lock().await;
-        match state.deref_mut() {
-            ContainerState::Running { runtime, .. } => {
-                // コンテナの状態を監視し、エラーが発生した場合はFailedに遷移
-                if let Err(e) = self._check_container_health(&runtime).await {
-                    *state = ContainerState::Failed {
-                        error: e.to_string(),
-                        runtime: Some(runtime.clone()),
-                    };
-                }
+        if let ContainerState::Running { runtime, .. } = &mut *state {
+            // コンテナの状態を監視し、エラーが発生した場合はFailedに遷移
+            if let Err(e) = self._check_container_health(runtime).await {
+                *state = ContainerState::Failed {
+                    error: e.to_string(),
+                    runtime: Some(runtime.clone()),
+                };
             }
-            _ => {}
         }
         Ok(())
     }
 
     async fn _check_container_health(&self, runtime: &RuntimeState) -> Result<()> {
-        let client = self.clients.tasks.lock().await;
-        let response = client
-            .get(containerd::services::v1::GetTaskRequest {
+        let response = self.clients.tasks.lock().await
+            .get(containerd::services::v1::GetRequest {
                 container_id: runtime.container_id.clone(),
+                exec_id: String::new(),
             })
             .await?;
         
-        if response.task.is_none() {
+        if response.get_ref().process.is_none() {
             return Err(anyhow!("タスクが見つかりません"));
         }
         Ok(())
@@ -175,8 +172,7 @@ impl Container {
         let container_id = {
             let state = self.state.lock().await;
             match &*state {
-                ContainerState::Running { runtime, .. } => Some(runtime.container_id.clone()),
-                ContainerState::Completed { runtime } => Some(runtime.container_id.clone()),
+                ContainerState::Running { runtime, .. } | ContainerState::Completed { runtime } => Some(runtime.container_id.clone()),
                 _ => None,
             }
         };
@@ -196,20 +192,28 @@ impl Container {
         Ok(())
     }
 
+    /// コンテナをキャンセルします。
+    ///
+    /// # Panics
+    /// - Arc::try_unwrapが失敗した場合（通常は発生しません）
     pub async fn cancel(&self) {
         let mut state = self.state.lock().await;
-        if let ContainerState::Running { cancel_tx, .. } = std::mem::replace(&mut *state, ContainerState::Initial) {
-            let _ = cancel_tx.send(());
+        if let ContainerState::Running { cancel_tx: Some(tx), .. } = std::mem::replace(&mut *state, ContainerState::Initial) {
+            if Arc::strong_count(&tx) == 1 {
+                if let Ok(tx) = Arc::try_unwrap(tx) {
+                    let _ = tx.send(());
+                }
+            }
         }
     }
 
-    pub async fn status(&self) -> ContainerStatus {
+    pub async fn status(&self) -> Status {
         let state = self.state.lock().await;
         match &*state {
-            ContainerState::Initial => ContainerStatus::Created,
+            ContainerState::Initial => Status::Created,
             ContainerState::Running { runtime, .. } => runtime.status.clone(),
-            ContainerState::Completed { .. } => ContainerStatus::Stopped,
-            ContainerState::Failed { .. } => ContainerStatus::Failed("コンテナの実行に失敗しました".to_string()),
+            ContainerState::Completed { .. } => Status::Stopped,
+            ContainerState::Failed { .. } => Status::Failed("コンテナの実行に失敗しました".to_string()),
         }
     }
 }
@@ -225,18 +229,18 @@ impl Drop for Container {
 }
 
 #[async_trait]
-impl ContainerRuntime for Container {
+impl Runtime for Container {
     async fn create(
         &self,
         image: &str,
         command: &[String],
-        working_dir: &PathBuf,
+        working_dir: &Path,
         env_vars: &[String],
     ) -> Result<String> {
         let container_id = uuid::Uuid::new_v4().to_string();
         let container = {
             let mut client = self.clients.containers.lock().await;
-            client
+            let response = client
                 .create(containerd::services::v1::CreateContainerRequest {
                     container: Some(ContainerdContainer {
                         id: container_id.clone(),
@@ -276,10 +280,10 @@ impl ContainerRuntime for Container {
                         ..Default::default()
                     }),
                 })
-                .await?
-                .into_inner()
-                .container
-                .unwrap()
+                .await?;
+
+            response.into_inner().container
+                .ok_or_else(|| anyhow!("コンテナの作成に失敗しました"))?
         };
 
         {
@@ -290,77 +294,40 @@ impl ContainerRuntime for Container {
                     ..Default::default()
                 })
                 .await?;
-
-            client
-                .start(containerd::services::v1::StartRequest {
-                    container_id: container.id.clone(),
-                    ..Default::default()
-                })
-                .await?;
+            drop(client);
         }
 
         Ok(container.id)
     }
 
     async fn start(&self, container_id: &str) -> Result<()> {
-        {
-            let mut client = self.clients.tasks.lock().await;
-            let response = client
-                .create(containerd::services::v1::CreateTaskRequest {
-                    container_id: container_id.to_string(),
-                    ..Default::default()
-                })
-                .await?;
-            drop(client); // 早期解放
-        }
-
-        {
-            let mut client = self.clients.tasks.lock().await;
-            client
-                .start(containerd::services::v1::StartTaskRequest {
-                    container_id: container_id.to_string(),
-                    ..Default::default()
-                })
-                .await?;
-            drop(client); // 早期解放
-        }
+        let response = self.clients.tasks.lock().await
+            .start(containerd::services::v1::StartRequest {
+                container_id: container_id.to_string(),
+                exec_id: String::new(),
+            })
+            .await?;
         Ok(())
     }
 
     async fn stop(&self, container_id: &str) -> Result<()> {
-        {
-            let mut client = self.clients.tasks.lock().await;
-            client
-                .kill(containerd::services::v1::KillTaskRequest {
-                    container_id: container_id.to_string(),
-                    signal: 15, // SIGTERM
-                    ..Default::default()
-                })
-                .await?;
-            drop(client); // 早期解放
-        }
-
-        {
-            let mut client = self.clients.tasks.lock().await;
-            client
-                .delete(containerd::services::v1::DeleteTaskRequest {
-                    container_id: container_id.to_string(),
-                    ..Default::default()
-                })
-                .await?;
-            drop(client); // 早期解放
-        }
+        let response = self.clients.tasks.lock().await
+            .kill(containerd::services::v1::KillRequest {
+                container_id: container_id.to_string(),
+                exec_id: String::new(),
+                signal: 15, // SIGTERM
+                all: false,
+            })
+            .await?;
         Ok(())
     }
 
     async fn remove(&self, container_id: &str) -> Result<()> {
-        let mut client = self.clients.containers.lock().await;
-        client
+        let response = self.clients.containers.lock().await
             .delete(containerd::services::v1::DeleteContainerRequest {
                 id: container_id.to_string(),
             })
             .await?;
-        drop(client); // 早期解放
         Ok(())
     }
 } 

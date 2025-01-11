@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 
 /// コンテナの設定を保持する構造体
 #[derive(Clone, Debug)]

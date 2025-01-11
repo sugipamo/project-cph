@@ -1,5 +1,5 @@
 pub mod protocol;
 pub mod transport;
 
-pub use protocol::{Message, ControlMessage, StatusMessage};
-pub use transport::ContainerNetwork; 
+pub use transport::Network;
+pub use protocol::{Message, ControlMessage, StatusMessage}; 
