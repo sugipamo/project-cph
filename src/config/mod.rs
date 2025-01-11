@@ -10,16 +10,16 @@
 use std::path::Path;
 use std::fs;
 use std::sync::OnceLock;
+use std::env;
 use anyhow::{Result, Context, anyhow, bail};
 use serde_yaml::Value;
-
-#[derive(Debug)]
-pub struct ConfigError {
-    path: String,
-    message: String,
-}
+use regex::Regex;
+use once_cell::sync::Lazy;
 
 static CONFIG: OnceLock<Config> = OnceLock::new();
+static ENV_VAR_PATTERN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\$\{([^}]+)}").expect("正規表現パターンが不正です")
+});
 
 pub struct Config {
     data: Value,
@@ -47,7 +47,8 @@ impl Config {
     ///
     /// - YAML形式が不正な場合
     pub fn from_str(content: &str) -> Result<Self> {
-        let data: Value = serde_yaml::from_str(content)
+        let expanded_content = Self::expand_env_vars(content);
+        let data: Value = serde_yaml::from_str(&expanded_content)
             .context("不正なYAML形式です")?;
 
         if !data.is_mapping() {
@@ -55,6 +56,20 @@ impl Config {
         }
 
         Ok(Self { data })
+    }
+
+    /// 環境変数を展開します
+    /// ${VAR-default} の形式で指定された環境変数を展開します
+    /// VAR が設定されていない場合は default が使用されます
+    fn expand_env_vars(content: &str) -> String {
+        ENV_VAR_PATTERN.replace_all(content, |caps: &regex::Captures| {
+            let var_spec = &caps[1];
+            if let Some((var_name, default)) = var_spec.split_once('-') {
+                env::var(var_name).unwrap_or_else(|_| default.to_string())
+            } else {
+                env::var(var_spec).unwrap_or_default()
+            }
+        }).to_string()
     }
 
     pub fn get<T>(path: &str) -> Result<T>
