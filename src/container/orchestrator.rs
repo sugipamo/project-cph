@@ -33,8 +33,7 @@ impl ContainerOrchestrator {
 
     pub async fn add_container(&self, language: &str, source_file: &str, args: Vec<String>) -> Result<Container> {
         let container = ContainerBuilder::new()
-            .build_for_language(language, source_file, args)
-            .await?;
+            .build_for_language(language, source_file, args)?;
         let mut containers = self.containers.lock().await;
         containers.insert(container.id().to_string(), container.clone());
         Ok(container)
@@ -50,22 +49,27 @@ impl ContainerOrchestrator {
     }
 
     pub async fn send_message(&self, message: Message) -> Result<()> {
-        println!("Orchestrator: メッセージ送信 ({:?})", message);
-        let containers = self.containers.lock().await;
-        if let Some(_) = containers.get(&message.to) {
+        println!("Orchestrator: メッセージ送信 ({message:?})");
+        
+        let container_exists = self.containers.lock().await.get(&message.to).is_some();
+        if container_exists {
             self.network.send(&message.from, &message.to, message.clone()).await?;
             
-            let mut history = self.message_history.lock().await;
-            if history.len() >= self.max_history_size {
-                history.pop_front();
+            {
+                let mut history = self.message_history.lock().await;
+                if history.len() >= self.max_history_size {
+                    history.pop_front();
+                }
+                history.push_back(message.clone());
             }
-            history.push_back(message.clone());
-            println!("Orchestrator: メッセージ履歴に追加 (total={})", history.len());
+            println!("Orchestrator: メッセージ履歴に追加");
 
             // メッセージカウントを更新
-            let mut counts = self.message_counts.lock().await;
-            *counts.entry(message.kind).or_insert(0) += 1;
-            println!("Orchestrator: メッセージカウント更新 ({:?})", counts);
+            {
+                let mut counts = self.message_counts.lock().await;
+                *counts.entry(message.kind).or_insert(0) += 1;
+                println!("Orchestrator: メッセージカウント更新 ({counts:?})");
+            }
         } else {
             println!("Orchestrator: 宛先コンテナが見つかりません: {}", message.to);
         }
@@ -75,11 +79,13 @@ impl ContainerOrchestrator {
     pub async fn broadcast(&self, message: Message) -> Result<()> {
         self.network.broadcast(&message.from, message.clone()).await?;
         
-        let mut history = self.message_history.lock().await;
-        if history.len() >= self.max_history_size {
-            history.pop_front();
+        {
+            let mut history = self.message_history.lock().await;
+            if history.len() >= self.max_history_size {
+                history.pop_front();
+            }
+            history.push_back(message);
         }
-        history.push_back(message);
         Ok(())
     }
 
@@ -260,7 +266,7 @@ impl ContainerOrchestrator {
         source_file: &str,
         args: Vec<String>
     ) -> Result<Container> {
-        println!("Orchestrator: コンテナ追加開始 (language={}, source={})", language, source_file);
+        println!("Orchestrator: コンテナ追加開始 (language={language}, source={source_file})");
         
         // ソースファイル名からコンテナ名を抽出（拡張子を除く）
         let container_name = std::path::Path::new(source_file)
@@ -273,8 +279,7 @@ impl ContainerOrchestrator {
         builder = builder.with_id(&container_name);
         
         let container = builder
-            .build_for_language(language, source_file, args)
-            .await?;
+            .build_for_language(language, source_file, args)?;
         let mut containers = self.containers.lock().await;
         containers.insert(container_name, container.clone());
         println!("Orchestrator: コンテナ追加完了 (id={})", container.id());

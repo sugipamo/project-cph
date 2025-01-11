@@ -56,6 +56,11 @@ impl Container {
         Ok(())
     }
 
+    /// コンテナをキャンセルします
+    /// 
+    /// # Errors
+    /// - キャンセル用のチャネルが既に閉じられている場合
+    /// - 状態の更新に失敗した場合
     pub async fn cancel(&self) -> Result<()> {
         if let Some(tx) = &self.cancel_tx {
             if Arc::strong_count(tx) == 1 {
@@ -82,6 +87,10 @@ impl Container {
         self.state.lock().await.clone()
     }
 
+    /// コンテナの状態を設定します
+    /// 
+    /// # Errors
+    /// - 状態のロックの取得に失敗した場合
     pub async fn set_state(&self, new_state: ContainerState) -> Result<()> {
         *self.state.lock().await = new_state;
         Ok(())

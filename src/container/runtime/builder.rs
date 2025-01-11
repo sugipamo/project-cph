@@ -42,11 +42,12 @@ impl ContainerBuilder {
         self
     }
 
-    pub async fn build_for_language(
+    /// 指定された言語用のコンテナをビルドします
+    pub fn build_for_language(
         mut self,
         language: &str,
         source_file: &str,
-        args: Vec<String>,
+        args: Vec<String>
     ) -> Result<Container> {
         println!("ContainerBuilder: build_for_language開始 (language={}, source={})", language, source_file);
         self.config.args = args;
