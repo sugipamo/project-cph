@@ -25,6 +25,7 @@ pub struct CaseResult {
 
 /// テスト全体の実行結果を表す構造体
 #[derive(Debug, Clone)]
+#[allow(clippy::module_name_repetitions)]
 pub struct TestResults {
     pub total_cases: usize,
     pub successful_cases: usize,

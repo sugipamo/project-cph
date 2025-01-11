@@ -21,7 +21,7 @@ impl Service {
     /// # Errors
     /// 
     /// - 設定ファイルの読み込みに失敗した場合
-    pub fn new(contest_service: ContestHandler, test_service: TestRunner) -> Result<Self> {
+    pub const fn new(contest_service: ContestHandler, test_service: TestRunner) -> Result<Self> {
         Ok(Self {
             contest_service,
             test_service,
@@ -40,7 +40,7 @@ impl Service {
     /// - コマンドの実行に失敗した場合
     pub fn execute(&self, command: Command, context: CommandContext) -> Result<()> {
         match command {
-            Command::Config { site, contest_id, problem_id, language } => {
+            Command::Config { site, contest_id, problem_id, language: _ } => {
                 println!("問題を開きます: site={site:?}, contest={contest_id:?}, problem={problem_id:?}");
                 site.as_ref().map_or_else(
                     || Err(anyhow::anyhow!(contest::error("invalid_command", "サイトが指定されていません"))),

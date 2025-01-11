@@ -96,13 +96,13 @@ impl Config {
                 // 上書きと深いマージ
                 for (key, value) in hash {
                     if key != &Yaml::String("<<".to_string()) {
-                        match (&result.get(key), value) {
+                        match (result.get(key), value) {
                             // 両方がハッシュの場合は再帰的にマージ
-                            (Some(&Yaml::Hash(ref existing)), &Yaml::Hash(ref new)) => {
+                            (Some(Yaml::Hash(existing)), Yaml::Hash(new)) => {
                                 let mut merged = existing.clone();
                                 for (k, v) in new {
                                     match (merged.get(k), v) {
-                                        (Some(&Yaml::Hash(ref e)), &Yaml::Hash(ref n)) => {
+                                        (Some(Yaml::Hash(e)), Yaml::Hash(n)) => {
                                             let mut deep_merged = e.clone();
                                             for (dk, dv) in n {
                                                 deep_merged.insert(dk.clone(), Self::process_yaml(dv)?);
@@ -185,7 +185,7 @@ impl Config {
         
         // 環境変数が完全に展開されるまで繰り返す
         while result != prev_result {
-            prev_result = result.clone();
+            prev_result.clone_from(&result);
             result = ENV_VAR_PATTERN.replace_all(&prev_result, |caps: &regex::Captures| {
                 let var_spec = &caps[1];
                 Self::expand_var_spec(var_spec)
@@ -256,123 +256,59 @@ impl Config {
     where
         T: serde::de::DeserializeOwned,
     {
-        let mut current = &self.data;
+        let mut current_value = &self.data;
         let mut current_path = String::new();
 
-        // パスの各部分を処理
         for part in path.split('.') {
-            if current_path.is_empty() {
-                current_path = part.to_string();
-            } else {
-                current_path = format!("{}.{}", current_path, part);
+            if !current_path.is_empty() {
+                current_path.push('.');
             }
+            current_path.push_str(part);
 
-            // 配列アクセスの処理
-            if let Some((array_path, index)) = Self::parse_array_access(part) {
-                // 配列パスの部分を処理
-                if !array_path.is_empty() {
-                    current = current.get(array_path).ok_or_else(|| {
-                        anyhow!(
-                            "設定パス '{}' が見つかりません（'{}'まで到達できました）",
-                            path,
-                            current_path
-                        )
-                    })?;
+            match current_value {
+                Value::Mapping(map) => {
+                    current_value = map.get(Value::String(part.to_string()))
+                        .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
                 }
-
-                // 配列のインデックスアクセス
-                if let Some(array) = current.as_sequence() {
-                    current = array.get(index).ok_or_else(|| {
-                        anyhow!(
-                            "配列のインデックス {} が範囲外です（パス: '{}'）",
-                            index,
-                            current_path
-                        )
-                    })?;
-                } else {
-                    return Err(anyhow!(
-                        "パス '{}' は配列ではありません",
-                        current_path
-                    ));
-                }
-            } else {
-                // 通常のパスアクセス
-                current = current.get(part).ok_or_else(|| {
-                    anyhow!(
-                        "設定パス '{}' が見つかりません（'{}'まで到達できました）",
-                        path,
-                        current_path
-                    )
-                })?;
-            }
-        }
-
-        // 型変換を試みる
-        Self::convert_value(current.clone(), path)
-    }
-
-    /// 配列アクセスのパターンを解析します
-    /// 例: "array[0]" -> ("array", 0)
-    fn parse_array_access(part: &str) -> Option<(&str, usize)> {
-        if let Some(bracket_pos) = part.find('[') {
-            if part.ends_with(']') {
-                let array_path = &part[..bracket_pos];
-                let index_str = &part[bracket_pos + 1..part.len() - 1];
-                if let Ok(index) = index_str.parse::<usize>() {
-                    return Some((array_path, index));
+                _ => {
+                    return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
                 }
             }
         }
-        None
+
+        Self::convert_value(current_value, path)
     }
 
-    /// 値を指定された型に変換します
-    fn convert_value<T>(value: Value, path: &str) -> Result<T>
+    /// 設定値を型変換します
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - 変換する値
+    /// * `path` - 設定パス（エラーメッセージ用）
+    ///
+    /// # Returns
+    ///
+    /// * `Result<T>` - 変換された値
+    ///
+    /// # Errors
+    ///
+    /// - 型変換に失敗した場合
+    fn convert_value<T>(value: &Value, path: &str) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
-        // 直接の変換を試みる
-        if let Ok(converted) = serde_yaml::from_value(value.clone()) {
-            return Ok(converted);
-        }
+        // 数値型の特別な処理
+        let value = match (&value, std::any::type_name::<T>()) {
+            (Value::Number(num), "i64") if num.is_f64() => {
+                #[allow(clippy::cast_possible_truncation)]
+                let value = Value::Number(serde_yaml::Number::from(num.as_f64()
+                    .expect("数値が浮動小数点数として解釈できません") as i64));
+                value
+            }
+            _ => value.clone(),
+        };
 
-        // 文字列からの変換を試みる
-        if let Value::String(s) = &value {
-            // 数値への変換
-            if std::any::type_name::<T>() == std::any::type_name::<i64>() {
-                if let Ok(num) = s.parse::<i64>() {
-                    if let Ok(converted) = serde_yaml::from_value(Value::Number(serde_yaml::Number::from(num))) {
-                        return Ok(converted);
-                    }
-                }
-            }
-            // 浮動小数点数への変換
-            if std::any::type_name::<T>() == std::any::type_name::<f64>() {
-                if let Ok(num) = s.parse::<f64>() {
-                    let value = Value::Number(serde_yaml::Number::from(num as i64));
-                    if let Ok(converted) = serde_yaml::from_value(value) {
-                        return Ok(converted);
-                    }
-                }
-            }
-            // ブール値への変換
-            if std::any::type_name::<T>() == std::any::type_name::<bool>() {
-                let lower = s.to_lowercase();
-                if lower == "true" || lower == "yes" || lower == "1" {
-                    if let Ok(converted) = serde_yaml::from_value(Value::Bool(true)) {
-                        return Ok(converted);
-                    }
-                } else if lower == "false" || lower == "no" || lower == "0" {
-                    if let Ok(converted) = serde_yaml::from_value(Value::Bool(false)) {
-                        return Ok(converted);
-                    }
-                }
-            }
-        }
-
-        // 変換に失敗した場合
-        Err(anyhow!(
-            "設定値の型変換に失敗しました: パス '{path}' の値 '{value:?}'"
-        ))
+        serde_yaml::from_value(value)
+            .with_context(|| format!("設定値 '{path}' の型変換に失敗しました"))
     }
 }
