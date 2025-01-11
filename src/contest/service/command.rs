@@ -40,9 +40,9 @@ impl Service {
     /// - コマンドの実行に失敗した場合
     pub fn execute(&self, command: Command, context: CommandContext) -> Result<()> {
         match command {
-            Command::Open { site, contest_id, problem_id } => {
+            Command::Config { site, contest_id, problem_id, language } => {
                 println!("問題を開きます: site={site:?}, contest={contest_id:?}, problem={problem_id:?}");
-                site.map_or_else(
+                site.as_ref().map_or_else(
                     || Err(anyhow::anyhow!(contest::error("invalid_command", "サイトが指定されていません"))),
                     |site_str| {
                         // 設定からテンプレートディレクトリを取得
@@ -50,7 +50,7 @@ impl Service {
                         let active_dir: String = Config::get_default("languages.rust.contest_dir.active")?;
                         
                         self.contest_service.open_with_config(
-                            &site_str,
+                            site_str,
                             contest_id.as_ref().ok_or_else(|| anyhow::anyhow!(contest::error("invalid_command", "コンテストIDが指定されていません")))?,
                             problem_id.as_ref().ok_or_else(|| anyhow::anyhow!(contest::error("invalid_command", "問題IDが指定されていません")))?,
                             &template_dir,
@@ -59,8 +59,12 @@ impl Service {
                     }
                 )
             }
-            Command::List => {
-                println!("問題一覧を表示します");
+            Command::Login => {
+                println!("ログイン処理を実行します");
+                Ok(())
+            }
+            Command::Open => {
+                println!("問題を開きます");
                 Ok(())
             }
             Command::Test { test_number } => {

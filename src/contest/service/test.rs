@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use anyhow::{Result as AnyhowResult, anyhow};
+use anyhow::Result as AnyhowResult;
 use crate::contest::model::Contest;
 use crate::message::contest;
 
@@ -80,7 +80,7 @@ impl Service {
     /// # Errors
     ///
     /// - テストの実行に失敗した場合
-    pub fn run_test(&self, contest: &Contest, test_number: Option<usize>) -> AnyhowResult<TestResults> {
+    pub fn run_test(&self, _contest: &Contest, test_number: Option<usize>) -> AnyhowResult<TestResults> {
         let start_time = std::time::Instant::now();
         let source_file = Path::new("main.rs");
         let test_dir = Path::new("tests");
@@ -104,7 +104,7 @@ impl Service {
         let mut error_cases = 0;
 
         for (case_number, (input_file, expected_file)) in test_cases {
-            let result = Self::run_test_case(case_number, &source_file, &input_file, &expected_file)?;
+            let result = Self::run_test_case(case_number, source_file, &input_file, &expected_file)?;
             
             match result.status {
                 Status::Success => successful_cases += 1,
@@ -176,8 +176,8 @@ impl Service {
     /// テストケースを実行します
     fn run_test_case(
         case_number: usize,
-        source_file: &Path,
-        input_file: &Path,
+        _source_file: &Path,
+        _input_file: &Path,
         expected_file: &Path,
     ) -> AnyhowResult<CaseResult> {
         let start_time = std::time::Instant::now();
