@@ -3,7 +3,6 @@ use anyhow::{Result as AnyhowResult, anyhow};
 use crate::config::Config;
 use crate::contest::model::Contest;
 use crate::message::contest;
-use crate::docker::execution::Runtime;
 
 /// テスト結果の状態を表す列挙型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,8 +56,6 @@ impl TestResults {
 pub struct Service {
     #[allow(dead_code)]
     config: Config,
-    #[allow(dead_code)]
-    runtime: Runtime,
 }
 
 impl Service {
@@ -76,7 +73,6 @@ impl Service {
     pub fn new(config: &Config) -> AnyhowResult<Self> {
         Ok(Self {
             config: config.clone(),
-            runtime: Runtime::new(),
         })
     }
 
@@ -205,21 +201,15 @@ impl Service {
     /// - テストケースの実行に失敗した場合
     fn run_test_case(
         case_number: usize,
-        source_file: &Path,
-        input_file: &Path,
+        _source_file: &Path,
+        _input_file: &Path,
         expected_file: &Path,
     ) -> AnyhowResult<CaseResult> {
         let start_time = std::time::Instant::now();
 
-        // コンテナを作成して実行
-        let mut runtime = Runtime::new().with_auto_remove(true);
-        runtime.create("rust:latest", &[])?;
-        let (stdout, stderr) = runtime.execute_command(&[
-            "exec",
-            source_file.to_string_lossy().as_ref(),
-            "<",
-            input_file.to_string_lossy().as_ref(),
-        ])?;
+        // TODO: 実際のテスト実行ロジックを実装
+        let stdout = String::new();
+        let stderr = String::new();
 
         // 期待される出力を読み込み
         let expected = std::fs::read_to_string(expected_file)?;
