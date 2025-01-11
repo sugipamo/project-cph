@@ -1,4 +1,5 @@
-use super::{Container, Config, Runtime};
+use super::{Container, Runtime};
+use super::config::Config;
 use std::sync::Arc;
 use std::path::PathBuf;
 use anyhow::Result;

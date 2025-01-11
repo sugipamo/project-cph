@@ -2,7 +2,8 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::Duration;
-use crate::container::runtime::{Container, ContainerBuilder};
+use crate::container::runtime::Container;
+use crate::container::runtime::builder::ContainerBuilder;
 use crate::container::runtime::container::ContainerState;
 use crate::container::communication::transport::Network;
 use crate::container::communication::protocol::{Message, MessageKind};
@@ -135,6 +136,21 @@ impl ContainerOrchestrator {
             total_messages: history.len(),
             message_counts,
         }
+    }
+
+    pub async fn add_container_with_builder(
+        &self,
+        builder: ContainerBuilder,
+        language: &str,
+        source_file: &str,
+        args: Vec<String>
+    ) -> Result<Container> {
+        let container = builder
+            .build_for_language(language, source_file, args)
+            .await?;
+        let mut containers = self.containers.lock().await;
+        containers.insert(container.id().to_string(), container.clone());
+        Ok(container)
     }
 }
 

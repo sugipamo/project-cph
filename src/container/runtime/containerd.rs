@@ -9,6 +9,7 @@ use prost_types::Any;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use super::Runtime;
+use super::config;
 
 #[allow(clippy::module_name_repetitions)]
 pub struct ContainerdRuntime {
@@ -119,6 +120,17 @@ impl Runtime for ContainerdRuntime {
                 id: container_id.to_string(),
             })
             .await?;
+        Ok(())
+    }
+
+    async fn run(&self, config: &config::Config) -> Result<()> {
+        let container_id = self.create(
+            &config.image,
+            &config.args,
+            &config.working_dir,
+            &[]  // 空の環境変数リスト
+        ).await?;
+        self.start(&container_id).await?;
         Ok(())
     }
 

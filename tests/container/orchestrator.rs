@@ -1,14 +1,19 @@
 use cph::container::orchestrator::ContainerOrchestrator;
 use cph::container::communication::protocol::{Message, MessageKind};
+use cph::container::runtime::mock::MockRuntime;
+use cph::container::runtime::builder::ContainerBuilder;
+use std::sync::Arc;
 use anyhow::Result;
 
 #[tokio::test]
 async fn test_multi_container_orchestration() -> Result<()> {
+    let runtime = Arc::new(MockRuntime::new());
     let orchestrator = ContainerOrchestrator::new();
     
-    orchestrator.add_container("python", "test/script1.py", vec!["arg1".to_string()]).await?;
-    orchestrator.add_container("python", "test/script2.py", vec!["arg2".to_string()]).await?;
-    orchestrator.add_container("python", "test/script3.py", vec!["arg3".to_string()]).await?;
+    let builder = ContainerBuilder::new().with_runtime(runtime.clone());
+    orchestrator.add_container_with_builder(builder, "python", "test/script1.py", vec!["arg1".to_string()]).await?;
+    orchestrator.add_container_with_builder(builder, "python", "test/script2.py", vec!["arg2".to_string()]).await?;
+    orchestrator.add_container_with_builder(builder, "python", "test/script3.py", vec!["arg3".to_string()]).await?;
 
     orchestrator.link("script1", "script2").await?;
     orchestrator.run_all().await?;
@@ -24,10 +29,12 @@ async fn test_multi_container_orchestration() -> Result<()> {
 
 #[tokio::test]
 async fn test_message_priority_and_routing() -> Result<()> {
+    let runtime = Arc::new(MockRuntime::new());
     let orchestrator = ContainerOrchestrator::new();
     
-    orchestrator.add_container("python", "test/sender.py", vec![]).await?;
-    orchestrator.add_container("python", "test/receiver.py", vec![]).await?;
+    let builder = ContainerBuilder::new().with_runtime(runtime.clone());
+    orchestrator.add_container_with_builder(builder, "python", "test/sender.py", vec![]).await?;
+    orchestrator.add_container_with_builder(builder, "python", "test/receiver.py", vec![]).await?;
 
     orchestrator.link("sender", "receiver").await?;
     orchestrator.run_all().await?;
@@ -47,11 +54,13 @@ async fn test_message_priority_and_routing() -> Result<()> {
 
 #[tokio::test]
 async fn test_network_topology_changes() -> Result<()> {
+    let runtime = Arc::new(MockRuntime::new());
     let orchestrator = ContainerOrchestrator::new();
     
-    orchestrator.add_container("python", "test/node1.py", vec![]).await?;
-    orchestrator.add_container("python", "test/node2.py", vec![]).await?;
-    orchestrator.add_container("python", "test/node3.py", vec![]).await?;
+    let builder = ContainerBuilder::new().with_runtime(runtime.clone());
+    orchestrator.add_container_with_builder(builder, "python", "test/node1.py", vec![]).await?;
+    orchestrator.add_container_with_builder(builder, "python", "test/node2.py", vec![]).await?;
+    orchestrator.add_container_with_builder(builder, "python", "test/node3.py", vec![]).await?;
 
     orchestrator.link("node1", "node2").await?;
     orchestrator.link("node2", "node3").await?;
