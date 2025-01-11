@@ -18,10 +18,21 @@ async fn test_container_lifecycle() -> Result<()> {
         .build();
 
     assert_eq!(container.status().await, ContainerState::Created);
-    container.run().await?;
+    
+    let handle = tokio::spawn({
+        let container = container.clone();
+        async move {
+            container.run().await
+        }
+    });
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     assert_eq!(container.status().await, ContainerState::Running);
+    
     container.cancel().await?;
     assert_eq!(container.status().await, ContainerState::Completed);
+    
+    handle.abort();
     Ok(())
 }
 

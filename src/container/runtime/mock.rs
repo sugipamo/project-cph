@@ -55,8 +55,8 @@ impl Runtime for MockRuntime {
         }
 
         // テストが状態を確認できるように十分な時間待機
-        println!("MockRuntime: Running状態を維持（200ms）");
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        println!("MockRuntime: Running状態を維持（500ms）");
+        tokio::time::sleep(Duration::from_millis(500)).await;
 
         // 正常終了
         {
