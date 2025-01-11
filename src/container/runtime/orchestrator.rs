@@ -45,14 +45,27 @@ impl ParallelExecutor {
                     containers.push(container.clone());
                 }
                 
-                container.run().await
+                // コンテナの実行中にエラーが発生した場合、適切なエラーメッセージを返す
+                container.run().await.map_err(|e| {
+                    anyhow!("コンテナの実行中にエラーが発生しました: {}", e)
+                })?;
+
+                Ok::<_, anyhow::Error>(())
             });
             
             handles.push(handle);
         }
 
+        // 全てのタスクの完了を待ち、エラーがあれば適切に処理する
         for handle in handles {
-            handle.await.map_err(|e| anyhow!("タスク実行エラー: {}", e))??;
+            match handle.await {
+                Ok(result) => {
+                    result.map_err(|e| anyhow!("コンテナの実行に失敗しました: {}", e))?;
+                }
+                Err(e) => {
+                    return Err(anyhow!("タスクの実行に失敗しました: {}", e));
+                }
+            }
         }
 
         Ok(())
@@ -64,10 +77,17 @@ impl ParallelExecutor {
             std::mem::take(&mut *containers)
         };
 
+        let mut cleanup_errors = Vec::new();
         for mut container in containers {
-            container.cleanup().await?;
+            if let Err(e) = container.cleanup().await {
+                cleanup_errors.push(format!("コンテナのクリーンアップに失敗: {}", e));
+            }
         }
-        
-        Ok(())
+
+        if cleanup_errors.is_empty() {
+            Ok(())
+        } else {
+            Err(anyhow!("クリーンアップエラー: {}", cleanup_errors.join(", ")))
+        }
     }
 } 

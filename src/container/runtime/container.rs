@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::path::PathBuf;
 use anyhow::Result;
-use tokio::sync::oneshot;
+use tokio::sync::{oneshot, Mutex};
 use async_trait::async_trait;
 use containerd_client as containerd;
 use containerd_client::services::v1::containers_client::ContainersClient;
@@ -28,6 +28,7 @@ pub struct Container {
     status: ContainerStatus,
     containers_client: ContainersClient,
     tasks_client: TasksClient,
+    cleanup_status: Arc<Mutex<bool>>,
 }
 
 impl Container {
@@ -49,10 +50,14 @@ impl Container {
             status: ContainerStatus::Created,
             containers_client,
             tasks_client,
+            cleanup_status: Arc::new(Mutex::new(false)),
         })
     }
 
     pub async fn run(&mut self) -> Result<()> {
+        let (cancel_tx, cancel_rx) = oneshot::channel();
+        self.cancel_tx = Some(cancel_tx);
+
         // コンテナの作成と起動
         let container_id = self.create(
             &self.config.image,
@@ -61,17 +66,59 @@ impl Container {
             &self.config.env_vars,
         ).await?;
 
+        self.container_id = Some(container_id.clone());
         self.start(&container_id).await?;
 
-        Ok(())
+        // キャンセルシグナルを待つ
+        tokio::select! {
+            _ = cancel_rx => {
+                self.cleanup().await?;
+                Ok(())
+            }
+            _ = self._monitor_container(&container_id) => {
+                Ok(())
+            }
+        }
+    }
+
+    async fn _monitor_container(&self, container_id: &str) -> Result<()> {
+        // コンテナの状態を監視し、必要に応じて対応する
+        loop {
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            // 状態チェックなどの実装
+        }
     }
 
     pub async fn cleanup(&mut self) -> Result<()> {
+        let mut cleanup_done = self.cleanup_status.lock().await;
+        if *cleanup_done {
+            return Ok(());
+        }
+
         if let Some(container_id) = &self.container_id {
             self.stop(container_id).await?;
             self.remove(container_id).await?;
         }
+
+        *cleanup_done = true;
         Ok(())
+    }
+
+    pub fn cancel(&mut self) {
+        if let Some(tx) = self.cancel_tx.take() {
+            let _ = tx.send(());
+        }
+    }
+}
+
+impl Drop for Container {
+    fn drop(&mut self) {
+        // 非同期クリーンアップをブロッキングコンテキストで実行
+        if let Ok(rt) = tokio::runtime::Handle::try_current() {
+            rt.block_on(async {
+                let _ = self.cleanup().await;
+            });
+        }
     }
 }
 
