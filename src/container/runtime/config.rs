@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
 use crate::config::Config as GlobalConfig;
-use crate::container::image_builder::BuilderConfig;
+use crate::container::registry::BuilderConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImageSpec {
@@ -41,7 +41,8 @@ impl ImageSpec {
     /// * イメージのプルに失敗した場合
     pub async fn prepare_image(&self, tag: &str) -> Result<String> {
         let builder_config = self.to_builder_config();
-        if let Some(builder) = builder_config.create_builder() {
+        let config = GlobalConfig::get_default_config()?;
+        if let Some(builder) = builder_config.create_builder(config).await {
             builder.build_image(tag).await?;
             Ok(tag.to_string())
         } else {
