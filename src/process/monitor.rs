@@ -64,7 +64,7 @@ impl ProcessMonitor {
 
     pub async fn wait_with_timeout<F, Fut>(&self, timeout: Duration, kill_fn: F) -> ProcessStatus
     where
-        F: FnOnce() -> Fut,
+        F: FnOnce() -> Fut + Clone,
         Fut: std::future::Future<Output = anyhow::Result<()>>,
     {
         let memory_check = async {
@@ -73,25 +73,26 @@ impl ProcessMonitor {
             }
         };
 
-        match time::timeout(timeout, tokio::select! {
-            result = self.wait() => Ok(result?),
+        let kill_fn2 = kill_fn.clone();
+        let result = tokio::select! {
+            result = self.wait() => result,
             _ = memory_check => {
                 let _ = kill_fn().await;
                 Ok(ExitStatus::from_raw(137)) // OOM killer signal
             }
-        }).await {
-            Ok(result) => match result {
-                Ok(status) => ProcessStatus {
-                    exit_status: status,
-                    memory_exceeded: status.code() == Some(137),
-                },
-                Err(_) => ProcessStatus {
-                    exit_status: ExitStatus::from_raw(1),
-                    memory_exceeded: false,
-                },
+        };
+
+        match time::timeout(timeout, async { result }).await {
+            Ok(Ok(status)) => ProcessStatus {
+                exit_status: status,
+                memory_exceeded: status.code() == Some(137),
+            },
+            Ok(Err(_)) => ProcessStatus {
+                exit_status: ExitStatus::from_raw(1),
+                memory_exceeded: false,
             },
             Err(_) => {
-                let _ = kill_fn().await;
+                let _ = kill_fn2().await;
                 ProcessStatus {
                     exit_status: ExitStatus::from_raw(124),
                     memory_exceeded: false,
