@@ -124,10 +124,11 @@ impl Runtime for ContainerdRuntime {
     }
 
     async fn run(&self, config: &config::Config) -> Result<()> {
+        let prepared_config = config.prepare_image().await?;
         let container_id = self.create(
-            &config.image,
-            &config.args,
-            &config.working_dir,
+            &prepared_config.image,
+            &prepared_config.args,
+            &prepared_config.working_dir,
             &[]  // 空の環境変数リスト
         ).await?;
         self.start(&container_id).await?;

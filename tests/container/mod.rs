@@ -8,7 +8,7 @@ mod tests {
     use cph::container::{
         runtime::{
             Builder,
-            mock::Mock,
+            mock::TestRuntime,
         },
         State,
     };
@@ -17,7 +17,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_container_creation() -> Result<()> {
-        let runtime = Arc::new(Mock::new());
+        let runtime = Arc::new(TestRuntime::new());
         let container = Builder::new()
             .with_id("test-container")
             .with_image("test-image")
@@ -30,7 +30,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_container_execution() -> Result<()> {
-        let runtime = Arc::new(Mock::new());
+        let runtime = Arc::new(TestRuntime::new());
         let container = Builder::new()
             .with_id("test-container")
             .with_image("test-image")

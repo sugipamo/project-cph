@@ -1,0 +1,315 @@
+diff --git a/src/container/mod.rs b/src/container/mod.rs
+index e0180cb..fc4b260 100644
+--- a/src/container/mod.rs
++++ b/src/container/mod.rs
+@@ -1,13 +1,8 @@
+ pub mod communication;
+ pub mod io;
+ pub mod runtime;
+-pub mod state;
+-pub mod orchestrator;
++pub mod image_builder;
+ 
+ pub use runtime::Runtime;
+-pub use runtime::config::Config;
+-pub use io::buffer::Buffer;
+ pub use runtime::container::Container;
+-pub use runtime::container::State;
+-pub use communication::protocol::{Message, MessageKind};
+-pub use orchestrator::Orchestrator; 
+\ No newline at end of file
++pub use runtime::container::State; 
+\ No newline at end of file
+diff --git a/src/container/runtime/config.rs b/src/container/runtime/config.rs
+index 6a9a20e..cf61581 100644
+--- a/src/container/runtime/config.rs
++++ b/src/container/runtime/config.rs
+@@ -2,6 +2,36 @@ use std::path::PathBuf;
+ use serde::{Deserialize, Serialize};
+ use anyhow::Result;
+ use crate::config::Config as GlobalConfig;
++use crate::container::image_builder::{BuilderConfig, ImageBuilder};
++
++#[derive(Debug, Clone, Serialize, Deserialize)]
++pub struct ImageConfig {
++    pub image_type: String,
++    pub source: String,
++}
++
++impl ImageConfig {
++    pub fn new(image_type: impl Into<String>, source: impl Into<String>) -> Self {
++        Self {
++            image_type: image_type.into(),
++            source: source.into(),
++        }
++    }
++
++    pub fn to_builder_config(&self) -> BuilderConfig {
++        BuilderConfig::new(self.image_type.clone(), self.source.clone())
++    }
++
++    pub async fn prepare_image(&self, tag: &str) -> Result<String> {
++        let builder_config = self.to_builder_config();
++        if let Some(builder) = builder_config.create_builder() {
++            builder.build_image(tag).await?;
++            Ok(tag.to_string())
++        } else {
++            Ok(self.source.clone())
++        }
++    }
++}
+ 
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+ pub struct Config {
+@@ -9,6 +39,7 @@ pub struct Config {
+     pub image: String,
+     pub working_dir: PathBuf,
+     pub args: Vec<String>,
++    pub image_config: Option<ImageConfig>,
+ }
+ 
+ impl Default for Config {
+@@ -21,6 +52,7 @@ impl Default for Config {
+                     image: String::new(),
+                     working_dir: PathBuf::from(mount_point),
+                     args: Vec::new(),
++                    image_config: None,
+                 };
+             }
+         }
+@@ -31,19 +63,45 @@ impl Default for Config {
+             image: String::new(),
+             working_dir: PathBuf::from("/compile"),
+             args: Vec::new(),
++            image_config: None,
+         }
+     }
+ }
+ 
+ impl Config {
+-    pub fn new(id: impl Into<String>, image: impl Into<String>, working_dir: impl Into<PathBuf>, args: Vec<String>) -> Self {
++    pub fn new(
++        id: impl Into<String>,
++        image: impl Into<String>,
++        working_dir: impl Into<PathBuf>,
++        args: Vec<String>,
++        image_config: Option<ImageConfig>,
++    ) -> Self {
+         Self {
+             id: id.into(),
+             image: image.into(),
+             working_dir: working_dir.into(),
+             args,
++            image_config,
+         }
+     }
++
++    /// イメージを準備し、準備されたイメージ名を含む新しい設定を返します
++    pub async fn prepare_image(&self) -> Result<Self> {
++        let image = if let Some(image_config) = &self.image_config {
++            let tag = format!("cph-{}", self.id);
++            image_config.prepare_image(&tag).await?
++        } else {
++            self.image.clone()
++        };
++
++        Ok(Self {
++            id: self.id.clone(),
++            image,
++            working_dir: self.working_dir.clone(),
++            args: self.args.clone(),
++            image_config: self.image_config.clone(),
++        })
++    }
+ }
+ 
+ #[derive(Clone, Debug)]
+diff --git a/src/container/runtime/containerd.rs b/src/container/runtime/containerd.rs
+index 9e26c92..9844c4c 100644
+--- a/src/container/runtime/containerd.rs
++++ b/src/container/runtime/containerd.rs
+@@ -124,10 +124,11 @@ impl Runtime for ContainerdRuntime {
+     }
+ 
+     async fn run(&self, config: &config::Config) -> Result<()> {
++        let prepared_config = config.prepare_image().await?;
+         let container_id = self.create(
+-            &config.image,
+-            &config.args,
+-            &config.working_dir,
++            &prepared_config.image,
++            &prepared_config.args,
++            &prepared_config.working_dir,
+             &[]  // 空の環境変数リスト
+         ).await?;
+         self.start(&container_id).await?;
+diff --git a/src/container/runtime/mock.rs b/src/container/runtime/mock.rs
+index 8fc60d3..6170108 100644
+--- a/src/container/runtime/mock.rs
++++ b/src/container/runtime/mock.rs
+@@ -1,70 +1,61 @@
+-use std::sync::Arc;
+-use tokio::sync::Mutex;
+-use tokio::time::Duration;
+-use super::container::State;
+-use super::Runtime;
+-use super::config::Config;
+-use async_trait::async_trait;
++use std::path::Path;
+ use anyhow::Result;
++use async_trait::async_trait;
++use super::Runtime;
++use super::config;
+ 
+ #[derive(Clone)]
+-pub struct Mock {
+-    should_fail: bool,
+-    state: Arc<Mutex<State>>,
+-}
++pub struct MockRuntime;
+ 
+-impl Mock {
++impl MockRuntime {
+     #[must_use]
+     pub fn new() -> Self {
+-        println!("MockRuntime: 新規作成");
+-        Self {
+-            should_fail: false,
+-            state: Arc::new(Mutex::new(State::Created)),
+-        }
++        Self
+     }
++}
+ 
+-    #[must_use]
+-    pub fn with_failure() -> Self {
+-        Self {
+-            should_fail: true,
+-            state: Arc::new(Mutex::new(State::Created)),
+-        }
++#[async_trait]
++impl Runtime for MockRuntime {
++    async fn create(
++        &self,
++        image: &str,
++        command: &[String],
++        working_dir: &Path,
++        env_vars: &[String],
++    ) -> Result<String> {
++        println!("Mock: Creating container with image: {}, command: {:?}, working_dir: {:?}, env_vars: {:?}",
++            image, command, working_dir, env_vars);
++        Ok("mock-container-id".to_string())
+     }
+ 
+-    pub async fn status(&self) -> State {
+-        self.state.lock().await.clone()
++    async fn start(&self, container_id: &str) -> Result<()> {
++        println!("Mock: Starting container: {}", container_id);
++        Ok(())
+     }
+-}
+ 
+-impl Default for Mock {
+-    fn default() -> Self {
+-        Self::new()
++    async fn stop(&self, container_id: &str) -> Result<()> {
++        println!("Mock: Stopping container: {}", container_id);
++        Ok(())
+     }
+-}
+-
+-#[async_trait]
+-impl Runtime for Mock {
+-    async fn run(&self, _config: &Config) -> Result<()> {
+-        println!("MockRuntime: 実行開始");
+-        {
+-            let mut state = self.state.lock().await;
+-            *state = State::Running;
+-        }
+-
+-        tokio::time::sleep(Duration::from_millis(100)).await;
+ 
+-        if self.should_fail {
+-            return Err(anyhow::anyhow!("モックエラー"));
+-        }
++    async fn remove(&self, container_id: &str) -> Result<()> {
++        println!("Mock: Removing container: {}", container_id);
++        Ok(())
++    }
+ 
+-        {
+-            let mut state = self.state.lock().await;
+-            *state = State::Completed;
+-        }
++    async fn run(&self, config: &config::Config) -> Result<()> {
++        let prepared_config = config.prepare_image().await?;
++        println!("Mock: Running container with config: {:?}", prepared_config);
+         Ok(())
+     }
+ 
+     fn box_clone(&self) -> Box<dyn Runtime> {
+         Box::new(self.clone())
+     }
++}
++
++impl Default for MockRuntime {
++    fn default() -> Self {
++        Self::new()
++    }
+ } 
+\ No newline at end of file
+diff --git a/src/container/runtime/mod.rs b/src/container/runtime/mod.rs
+index 4058603..286df0d 100644
+--- a/src/container/runtime/mod.rs
++++ b/src/container/runtime/mod.rs
+@@ -3,6 +3,7 @@ pub mod config;
+ pub mod container;
+ pub mod containerd;
+ pub mod mock;
++pub mod orchestrator;
+ 
+ pub use container::Container;
+ pub use builder::Builder;
+@@ -14,34 +15,19 @@ use std::path::Path;
+ 
+ #[async_trait]
+ pub trait Runtime: Send + Sync {
+-    async fn run(&self, config: &self::config::Config) -> Result<()>;
+-    
+     async fn create(
+         &self,
+         image: &str,
+         command: &[String],
+         working_dir: &Path,
+-        env_vars: &[String]
+-    ) -> Result<String> {
+-        let _ = (image, command, working_dir, env_vars);
+-        unimplemented!("create is not implemented for this runtime")
+-    }
+-    
+-    async fn start(&self, container_id: &str) -> Result<()> {
+-        let _ = container_id;
+-        unimplemented!("start is not implemented for this runtime")
+-    }
+-    
+-    async fn stop(&self, container_id: &str) -> Result<()> {
+-        let _ = container_id;
+-        unimplemented!("stop is not implemented for this runtime")
+-    }
+-    
+-    async fn remove(&self, container_id: &str) -> Result<()> {
+-        let _ = container_id;
+-        unimplemented!("remove is not implemented for this runtime")
+-    }
+-    
++        env_vars: &[String],
++    ) -> Result<String>;
++
++    async fn start(&self, container_id: &str) -> Result<()>;
++    async fn stop(&self, container_id: &str) -> Result<()>;
++    async fn remove(&self, container_id: &str) -> Result<()>;
++    async fn run(&self, config: &config::Config) -> Result<()>;
++
+     fn box_clone(&self) -> Box<dyn Runtime>;
+ }
+ 

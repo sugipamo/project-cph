@@ -1,100 +1,55 @@
-use cph::container::Orchestrator;
-use cph::container::runtime::mock::Mock;
-use cph::container::runtime::Builder;
-use cph::container::{Message, MessageKind};
+use cph::container::runtime::orchestrator::ParallelExecutor;
+use cph::container::runtime::config::Config;
+use cph::container::runtime::mock::TestRuntime;
 use std::sync::Arc;
 use anyhow::Result;
+use std::path::PathBuf;
 
 #[tokio::test]
 async fn test_container_creation() -> Result<()> {
-    let runtime = Arc::new(Mock::new());
-    let orchestrator = Orchestrator::new();
+    let runtime = Arc::new(TestRuntime::new());
+    let executor = ParallelExecutor::with_runtime(runtime)?;
     
-    let container = orchestrator.add_container_with_builder(
-        Builder::new().with_runtime(runtime.clone()),
-        "python",
-        "test.py",
-        vec!["python".to_string(), "test.py".to_string()]
-    ).await?;
+    let configs = vec![
+        Config::new(
+            "test-python",
+            "python:3.9",
+            PathBuf::from("/workspace/test"),
+            vec!["python".to_string(), "test.py".to_string()],
+            None,
+        ),
+        Config::new(
+            "test-rust",
+            "rust:1.70",
+            PathBuf::from("/workspace/src"),
+            vec!["cargo".to_string(), "run".to_string()],
+            None,
+        ),
+    ];
 
-    let container2 = orchestrator.add_container_with_builder(
-        Builder::new().with_runtime(runtime.clone()),
-        "rust",
-        "main.rs",
-        vec!["cargo".to_string(), "run".to_string()]
-    ).await?;
-
-    let container3 = orchestrator.add_container_with_builder(
-        Builder::new().with_runtime(runtime.clone()),
-        "python",
-        "test2.py",
-        vec!["python".to_string(), "test2.py".to_string()]
-    ).await?;
-
-    orchestrator.link(&container.id(), &container2.id()).await?;
-    orchestrator.link(&container2.id(), &container3.id()).await?;
-
-    let isolated = orchestrator.get_isolated_containers().await;
-    assert_eq!(isolated.len(), 0);
+    executor.execute(configs).await?;
+    executor.cleanup().await?;
 
     Ok(())
 }
 
 #[tokio::test]
-async fn test_container_execution() -> Result<()> {
-    let runtime = Arc::new(Mock::new());
-    let orchestrator = Orchestrator::new();
+async fn test_error_handling() -> Result<()> {
+    let runtime = Arc::new(TestRuntime::with_failure());
+    let executor = ParallelExecutor::with_runtime(runtime)?;
     
-    let _container = orchestrator.add_container_with_builder(
-        Builder::new().with_runtime(runtime.clone()),
-        "python",
-        "test.py",
-        vec!["python".to_string(), "test.py".to_string()]
-    ).await?;
+    let configs = vec![
+        Config::new(
+            "test-error",
+            "invalid-image",
+            PathBuf::from("/workspace/test"),
+            vec!["invalid".to_string(), "command".to_string()],
+            None,
+        ),
+    ];
 
-    let _container2 = orchestrator.add_container_with_builder(
-        Builder::new().with_runtime(runtime.clone()),
-        "rust",
-        "main.rs",
-        vec!["cargo".to_string(), "run".to_string()]
-    ).await?;
-
-    orchestrator.run_all().await?;
-    orchestrator.wait_all().await?;
-
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_message_handling() -> Result<()> {
-    let runtime = Arc::new(Mock::new());
-    let orchestrator = Orchestrator::new();
-    
-    let container = orchestrator.add_container_with_builder(
-        Builder::new().with_runtime(runtime.clone()),
-        "python",
-        "test.py",
-        vec!["python".to_string(), "test.py".to_string()]
-    ).await?;
-
-    let container2 = orchestrator.add_container_with_builder(
-        Builder::new().with_runtime(runtime.clone()),
-        "rust",
-        "main.rs",
-        vec!["cargo".to_string(), "run".to_string()]
-    ).await?;
-
-    orchestrator.link(container.id(), container2.id()).await?;
-
-    orchestrator.send_message(Message::normal("通常メッセージ", container.id(), container2.id())).await?;
-    orchestrator.send_message(Message::system("システムメッセージ", container.id(), container2.id())).await?;
-    orchestrator.send_message(Message::error("エラーメッセージ", container.id(), container2.id())).await?;
-
-    let status = orchestrator.get_status_summary().await;
-    
-    assert_eq!(status.message_counts.get(&MessageKind::Normal).unwrap(), &1);
-    assert_eq!(status.message_counts.get(&MessageKind::System).unwrap(), &1);
-    assert_eq!(status.message_counts.get(&MessageKind::Error).unwrap(), &1);
+    let result = executor.execute(configs).await;
+    assert!(result.is_err());
 
     Ok(())
 } 

@@ -2,7 +2,7 @@ use anyhow::Result;
 use cph::container::{
     runtime::{
         Builder,
-        mock::Mock,
+        mock::TestRuntime,
     },
     State,
 };
@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 #[tokio::test]
 async fn test_container_lifecycle() -> Result<()> {
-    let runtime = Arc::new(Mock::new());
+    let runtime = Arc::new(TestRuntime::new());
     let container = Builder::new()
         .with_id("test-container")
         .with_image("test-image")
@@ -38,7 +38,7 @@ async fn test_container_lifecycle() -> Result<()> {
 
 #[tokio::test]
 async fn test_error_handling() -> Result<()> {
-    let runtime = Arc::new(Mock::with_failure());
+    let runtime = Arc::new(TestRuntime::with_failure());
     
     let container = Builder::new()
         .with_id("test-container")
@@ -59,7 +59,7 @@ async fn test_error_handling() -> Result<()> {
 
 #[tokio::test]
 async fn test_python_execution() -> Result<()> {
-    let runtime = Arc::new(Mock::new());
+    let runtime = Arc::new(TestRuntime::new());
     
     let container = Builder::new()
         .with_id("test-python")
@@ -90,7 +90,7 @@ async fn test_python_execution() -> Result<()> {
 
 #[tokio::test]
 async fn test_rust_execution() -> Result<()> {
-    let runtime = Arc::new(Mock::new());
+    let runtime = Arc::new(TestRuntime::new());
     
     let container = Builder::new()
         .with_id("test-rust")

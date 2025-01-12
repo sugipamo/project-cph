@@ -1,70 +1,93 @@
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use tokio::time::Duration;
-use super::container::State;
-use super::Runtime;
-use super::config::Config;
+use std::path::Path;
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
-use anyhow::Result;
+use tokio::time::sleep;
+use tokio::time::Duration;
+use super::Runtime;
+use super::config;
 
-#[derive(Clone)]
-pub struct Mock {
+#[derive(Debug, Clone)]
+pub struct TestRuntime {
     should_fail: bool,
-    state: Arc<Mutex<State>>,
 }
 
-impl Mock {
+impl TestRuntime {
     #[must_use]
-    pub fn new() -> Self {
-        println!("MockRuntime: 新規作成");
+    pub const fn new() -> Self {
         Self {
             should_fail: false,
-            state: Arc::new(Mutex::new(State::Created)),
         }
     }
 
     #[must_use]
-    pub fn with_failure() -> Self {
+    pub const fn with_failure() -> Self {
         Self {
             should_fail: true,
-            state: Arc::new(Mutex::new(State::Created)),
         }
-    }
-
-    pub async fn status(&self) -> State {
-        self.state.lock().await.clone()
-    }
-}
-
-impl Default for Mock {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
 #[async_trait]
-impl Runtime for Mock {
-    async fn run(&self, _config: &Config) -> Result<()> {
-        println!("MockRuntime: 実行開始");
-        {
-            let mut state = self.state.lock().await;
-            *state = State::Running;
-        }
-
-        tokio::time::sleep(Duration::from_millis(100)).await;
-
+impl Runtime for TestRuntime {
+    async fn create(
+        &self,
+        image: &str,
+        command: &[String],
+        working_dir: &Path,
+        env_vars: &[String],
+    ) -> Result<String> {
         if self.should_fail {
-            return Err(anyhow::anyhow!("モックエラー"));
+            return Err(anyhow!("モックエラー: コンテナの作成に失敗しました"));
         }
+        println!("Mock: Creating container with image: {}, command: {:?}, working_dir: {:?}, env_vars: {:?}",
+            image, command, working_dir, env_vars);
+        Ok("mock-container-id".to_string())
+    }
 
-        {
-            let mut state = self.state.lock().await;
-            *state = State::Completed;
+    async fn start(&self, container_id: &str) -> Result<()> {
+        if self.should_fail {
+            return Err(anyhow!("モックエラー: コンテナの起動に失敗しました"));
         }
+        println!("Mock: Starting container: {}", container_id);
+        Ok(())
+    }
+
+    async fn stop(&self, container_id: &str) -> Result<()> {
+        if self.should_fail {
+            return Err(anyhow!("モックエラー: コンテナの停止に失敗しました"));
+        }
+        println!("Mock: Stopping container: {}", container_id);
+        Ok(())
+    }
+
+    async fn remove(&self, container_id: &str) -> Result<()> {
+        if self.should_fail {
+            return Err(anyhow!("モックエラー: コンテナの削除に失敗しました"));
+        }
+        println!("Mock: Removing container: {}", container_id);
+        Ok(())
+    }
+
+    async fn run(&self, config: &config::Config) -> Result<()> {
+        if self.should_fail {
+            return Err(anyhow!("モックエラー: コンテナの実行に失敗しました"));
+        }
+        let prepared_config = config.prepare_image().await?;
+        println!("Mock: Running container with config: {:?}", prepared_config);
+
+        // 実行中の状態をシミュレート
+        sleep(Duration::from_millis(200)).await;
+
         Ok(())
     }
 
     fn box_clone(&self) -> Box<dyn Runtime> {
         Box::new(self.clone())
+    }
+}
+
+impl Default for TestRuntime {
+    fn default() -> Self {
+        Self::new()
     }
 } 
