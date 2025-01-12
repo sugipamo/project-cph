@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use cph::process::{
-        executor::ProcessExecutor,
+        executor::Executor,
         io::Buffer,
     };
     use std::{sync::Arc, time::Duration};
@@ -10,7 +10,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_basic_process_execution() -> anyhow::Result<()> {
-        let mut executor = ProcessExecutor::new();
+        let mut executor = Executor::new();
         let mut command = Command::new("python3");
         command.args(&["-c", "print(1 + 2)"]);
         
@@ -27,7 +27,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_timeout() -> anyhow::Result<()> {
-        let mut executor = ProcessExecutor::new();
+        let mut executor = Executor::new();
         let mut command = Command::new("python3");
         command.args(&["-c", "while True: pass"]);
         
@@ -44,7 +44,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_memory_limit() -> anyhow::Result<()> {
-        let mut executor = ProcessExecutor::new();
+        let mut executor = Executor::new();
         let mut command = Command::new("python3");
         command.args(&["-c", "x = [0] * 1000000000"]);
         
