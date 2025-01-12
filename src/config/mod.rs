@@ -8,27 +8,181 @@
 // - 柔軟な型変換システム
 
 use anyhow::{anyhow, bail, Context, Result};
-use serde_yaml::Value;
 use std::fs;
 use std::path::Path;
-use std::sync::OnceLock;
 use std::env;
 use regex::Regex;
 use once_cell::sync::Lazy;
 use yaml_rust::{YamlLoader, Yaml};
 use yaml_rust::yaml::Hash;
 
-static CONFIG: OnceLock<Config> = OnceLock::new();
 static ENV_VAR_PATTERN: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\$\{([^}]+)}").expect("正規表現パターンが不正です")
 });
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    data: Value,
+    data: serde_yaml::Value,
+}
+
+#[allow(clippy::module_name_repetitions)]
+#[derive(Debug, Clone)]
+pub struct ConfigSection {
+    data: serde_yaml::Value,
+}
+
+impl ConfigSection {
+    const fn new(data: serde_yaml::Value) -> Self {
+        Self { data }
+    }
+
+    /// 設定値を取得します
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - ドット区切りの設定パス
+    ///
+    /// # Returns
+    ///
+    /// * `Result<T>` - 設定値
+    ///
+    /// # Errors
+    ///
+    /// - 設定パスが存在しない場合
+    /// - 設定値の型変換に失敗した場合
+    pub fn get<T>(&self, path: &str) -> Result<T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let mut current_value = &self.data;
+        let mut current_path = String::new();
+
+        for part in path.split('.') {
+            if !current_path.is_empty() {
+                current_path.push('.');
+            }
+            current_path.push_str(part);
+
+            if let Some((array_path, index)) = Config::parse_array_access(part) {
+                if !array_path.is_empty() {
+                    match current_value {
+                        serde_yaml::Value::Mapping(map) => {
+                            current_value = map.get(serde_yaml::Value::String(array_path.to_string()))
+                                .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
+                        }
+                        _ => {
+                            return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
+                        }
+                    }
+                }
+
+                match current_value {
+                    serde_yaml::Value::Sequence(array) => {
+                        current_value = array.get(index)
+                            .ok_or_else(|| anyhow!("配列のインデックス {} が範囲外です（パス: '{}'）", index, current_path))?;
+                    }
+                    _ => {
+                        return Err(anyhow!("パス '{}' は配列ではありません", current_path));
+                    }
+                }
+            } else {
+                match current_value {
+                    serde_yaml::Value::Mapping(map) => {
+                        current_value = map.get(serde_yaml::Value::String(part.to_string()))
+                            .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
+                    }
+                    _ => {
+                        return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
+                    }
+                }
+            }
+        }
+
+        Config::convert_value(current_value, path)
+    }
+
+    /// 設定のセクションを取得します
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - ドット区切りの設定パス
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self>` - 設定のセクション
+    ///
+    /// # Errors
+    ///
+    /// - 設定パスが存在しない場合
+    /// - パスがマッピングを指していない場合
+    pub fn get_section(&self, path: &str) -> Result<Self> {
+        let mut current_value = &self.data;
+        let mut current_path = String::new();
+
+        for part in path.split('.') {
+            if !current_path.is_empty() {
+                current_path.push('.');
+            }
+            current_path.push_str(part);
+
+            if let Some((array_path, index)) = Config::parse_array_access(part) {
+                if !array_path.is_empty() {
+                    match current_value {
+                        serde_yaml::Value::Mapping(map) => {
+                            current_value = map.get(serde_yaml::Value::String(array_path.to_string()))
+                                .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
+                        }
+                        _ => {
+                            return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
+                        }
+                    }
+                }
+
+                match current_value {
+                    serde_yaml::Value::Sequence(array) => {
+                        current_value = array.get(index)
+                            .ok_or_else(|| anyhow!("配列のインデックス {} が範囲外です（パス: '{}'）", index, current_path))?;
+                    }
+                    _ => {
+                        return Err(anyhow!("パス '{}' は配列ではありません", current_path));
+                    }
+                }
+            } else {
+                match current_value {
+                    serde_yaml::Value::Mapping(map) => {
+                        current_value = map.get(serde_yaml::Value::String(part.to_string()))
+                            .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
+                    }
+                    _ => {
+                        return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
+                    }
+                }
+            }
+        }
+
+        // 最終的な値がマッピングであることを確認
+        match current_value {
+            serde_yaml::Value::Mapping(_) => Ok(Self::new(current_value.clone())),
+            _ => Err(anyhow!("パス '{}' はセクションではありません", path)),
+        }
+    }
 }
 
 impl Config {
+    /// デフォルトの設定ファイルから設定を読み込みます
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self>` - 読み込まれた設定
+    ///
+    /// # Errors
+    ///
+    /// - 設定ファイルが存在しない場合
+    /// - 設定ファイルの形式が不正な場合
+    pub fn get_default_config() -> Result<Self> {
+        Self::from_file("src/config/config.yaml")
+    }
+
     /// 指定されたパスから設定を読み込みます
     ///
     /// # Errors
@@ -65,7 +219,7 @@ impl Config {
         
         // YAMLを文字列に変換してからserde_yamlでパース
         let yaml_str = Self::yaml_to_string(&processed)?;
-        let data: Value = serde_yaml::from_str(&yaml_str)
+        let data: serde_yaml::Value = serde_yaml::from_str(&yaml_str)
             .context("YAMLの変換に失敗しました")?;
 
         if !data.is_mapping() {
@@ -223,18 +377,11 @@ impl Config {
     ///
     /// - 設定パスが存在しない場合
     /// - 設定値の型変換に失敗した場合
-    ///
-    /// # Panics
-    ///
-    /// - デフォルト設定ファイルの読み込みに失敗した場合
     pub fn get_default<T>(path: &str) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
-        let config = CONFIG.get_or_init(|| {
-            Self::from_file("src/config/config.yaml")
-                .expect("デフォルト設定ファイルの読み込みに失敗しました")
-        });
+        let config = Self::get_default_config()?;
         config.get(path)
     }
 
@@ -270,8 +417,8 @@ impl Config {
                 // 配列パスの部分を処理
                 if !array_path.is_empty() {
                     match current_value {
-                        Value::Mapping(map) => {
-                            current_value = map.get(Value::String(array_path.to_string()))
+                        serde_yaml::Value::Mapping(map) => {
+                            current_value = map.get(serde_yaml::Value::String(array_path.to_string()))
                                 .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
                         }
                         _ => {
@@ -282,7 +429,7 @@ impl Config {
 
                 // 配列のインデックスアクセス
                 match current_value {
-                    Value::Sequence(array) => {
+                    serde_yaml::Value::Sequence(array) => {
                         current_value = array.get(index)
                             .ok_or_else(|| anyhow!("配列のインデックス {} が範囲外です（パス: '{}'）", index, current_path))?;
                     }
@@ -293,8 +440,8 @@ impl Config {
             } else {
                 // 通常のパスアクセス
                 match current_value {
-                    Value::Mapping(map) => {
-                        current_value = map.get(Value::String(part.to_string()))
+                    serde_yaml::Value::Mapping(map) => {
+                        current_value = map.get(serde_yaml::Value::String(part.to_string()))
                             .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
                     }
                     _ => {
@@ -336,7 +483,7 @@ impl Config {
     /// # Errors
     ///
     /// - 型変換に失敗した場合
-    fn convert_value<T>(value: &Value, path: &str) -> Result<T>
+    fn convert_value<T>(value: &serde_yaml::Value, path: &str) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
@@ -346,11 +493,11 @@ impl Config {
         }
 
         // 文字列からの変換を試みる
-        if let Value::String(s) = value {
+        if let serde_yaml::Value::String(s) = value {
             // 数値への変換
             if std::any::type_name::<T>() == std::any::type_name::<i64>() {
                 if let Ok(num) = s.parse::<i64>() {
-                    if let Ok(converted) = serde_yaml::from_value(Value::Number(serde_yaml::Number::from(num))) {
+                    if let Ok(converted) = serde_yaml::from_value(serde_yaml::Value::Number(serde_yaml::Number::from(num))) {
                         return Ok(converted);
                     }
                 }
@@ -359,7 +506,7 @@ impl Config {
             if std::any::type_name::<T>() == std::any::type_name::<f64>() {
                 if let Ok(num) = s.parse::<f64>() {
                     #[allow(clippy::cast_possible_truncation)]
-                    let value = Value::Number(serde_yaml::Number::from(num as i64));
+                    let value = serde_yaml::Value::Number(serde_yaml::Number::from(num as i64));
                     if let Ok(converted) = serde_yaml::from_value(value) {
                         return Ok(converted);
                     }
@@ -369,11 +516,11 @@ impl Config {
             if std::any::type_name::<T>() == std::any::type_name::<bool>() {
                 let lower = s.to_lowercase();
                 if lower == "true" || lower == "yes" || lower == "1" {
-                    if let Ok(converted) = serde_yaml::from_value(Value::Bool(true)) {
+                    if let Ok(converted) = serde_yaml::from_value(serde_yaml::Value::Bool(true)) {
                         return Ok(converted);
                     }
                 } else if lower == "false" || lower == "no" || lower == "0" {
-                    if let Ok(converted) = serde_yaml::from_value(Value::Bool(false)) {
+                    if let Ok(converted) = serde_yaml::from_value(serde_yaml::Value::Bool(false)) {
                         return Ok(converted);
                     }
                 }
@@ -381,10 +528,10 @@ impl Config {
         }
 
         // 数値型の特別な処理
-        if let Value::Number(num) = value {
+        if let serde_yaml::Value::Number(num) = value {
             if std::any::type_name::<T>() == std::any::type_name::<i64>() && num.is_f64() {
                 #[allow(clippy::cast_possible_truncation)]
-                let value = Value::Number(serde_yaml::Number::from(num.as_f64()
+                let value = serde_yaml::Value::Number(serde_yaml::Number::from(num.as_f64()
                     .expect("数値が浮動小数点数として解釈できません") as i64));
                 if let Ok(converted) = serde_yaml::from_value(value) {
                     return Ok(converted);
@@ -394,5 +541,77 @@ impl Config {
 
         // 変換に失敗した場合
         Err(anyhow!("設定値 '{path}' の型変換に失敗しました"))
+    }
+
+    /// 設定のセクションを取得します
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - ドット区切りの設定パス
+    ///
+    /// # Returns
+    ///
+    /// * `Result<ConfigSection>` - 設定のセクション
+    ///
+    /// # Errors
+    ///
+    /// - 設定パスが存在しない場合
+    /// - パスがマッピングを指していない場合
+    pub fn get_section(&self, path: &str) -> Result<ConfigSection> {
+        let mut current_value = &self.data;
+        let mut current_path = String::new();
+
+        for part in path.split('.') {
+            if !current_path.is_empty() {
+                current_path.push('.');
+            }
+            current_path.push_str(part);
+
+            if let Some((array_path, index)) = Self::parse_array_access(part) {
+                if !array_path.is_empty() {
+                    match current_value {
+                        serde_yaml::Value::Mapping(map) => {
+                            current_value = map.get(serde_yaml::Value::String(array_path.to_string()))
+                                .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
+                        }
+                        _ => {
+                            return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
+                        }
+                    }
+                }
+
+                match current_value {
+                    serde_yaml::Value::Sequence(array) => {
+                        current_value = array.get(index)
+                            .ok_or_else(|| anyhow!("配列のインデックス {} が範囲外です（パス: '{}'）", index, current_path))?;
+                    }
+                    _ => {
+                        return Err(anyhow!("パス '{}' は配列ではありません", current_path));
+                    }
+                }
+            } else {
+                match current_value {
+                    serde_yaml::Value::Mapping(map) => {
+                        current_value = map.get(serde_yaml::Value::String(part.to_string()))
+                            .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
+                    }
+                    _ => {
+                        return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
+                    }
+                }
+            }
+        }
+
+        // 最終的な値がマッピングであることを確認
+        match current_value {
+            serde_yaml::Value::Mapping(_) => Ok(ConfigSection::new(current_value.clone())),
+            _ => Err(anyhow!("パス '{}' はセクションではありません", path)),
+        }
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self::get_default_config().expect("デフォルト設定の読み込みに失敗しました")
     }
 }

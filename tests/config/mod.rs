@@ -266,4 +266,137 @@ values:
     assert!(config.get::<i64>("values.object").is_err());
     
     Ok(())
+}
+
+#[test]
+fn test_get_section() -> Result<()> {
+    let yaml = r#"
+languages:
+  rust:
+    extension: "rs"
+    runner:
+      image: "rust:latest"
+      compile: ["rustc", "main.rs"]
+      run: ["./main"]
+    site_ids:
+      atcoder: "5054"
+"#;
+    
+    let config = Config::parse_str(yaml)?;
+    
+    // セクション全体を取得
+    let rust_config = config.get_section("languages.rust")?;
+    assert_eq!(rust_config.get::<String>("extension")?, "rs");
+    
+    // ネストしたセクションを取得
+    let runner = rust_config.get_section("runner")?;
+    assert_eq!(runner.get::<String>("image")?, "rust:latest");
+    assert_eq!(runner.get::<Vec<String>>("compile")?, vec!["rustc", "main.rs"]);
+    
+    // さらにネストしたセクションを取得
+    let site_ids = rust_config.get_section("site_ids")?;
+    assert_eq!(site_ids.get::<String>("atcoder")?, "5054");
+    
+    Ok(())
+}
+
+#[test]
+fn test_get_section_array() -> Result<()> {
+    let yaml = r#"
+editors:
+  - name: "vscode"
+    extensions: ["rust", "yaml"]
+  - name: "cursor"
+    extensions: ["rust"]
+"#;
+    
+    let config = Config::parse_str(yaml)?;
+    
+    // 配列要素のセクションを取得
+    let editor = config.get_section("editors[0]")?;
+    assert_eq!(editor.get::<String>("name")?, "vscode");
+    assert_eq!(editor.get::<Vec<String>>("extensions")?, vec!["rust", "yaml"]);
+    
+    Ok(())
+}
+
+#[test]
+fn test_get_section_errors() -> Result<()> {
+    let yaml = r#"
+value: 42
+array: [1, 2, 3]
+"#;
+    
+    let config = Config::parse_str(yaml)?;
+    
+    // 存在しないパス
+    assert!(config.get_section("nonexistent").is_err());
+    
+    // スカラー値に対するセクション取得
+    assert!(config.get_section("value").is_err());
+    
+    // 配列に対するセクション取得（インデックスなし）
+    assert!(config.get_section("array").is_err());
+    
+    Ok(())
+}
+
+#[test]
+fn test_section_type_conversion() -> Result<()> {
+    let yaml = r#"
+section:
+  string_num: "123"
+  bool_string: "true"
+  nested:
+    value: 42
+"#;
+    
+    let config = Config::parse_str(yaml)?;
+    let section = config.get_section("section")?;
+    
+    // 文字列から数値への変換
+    assert_eq!(section.get::<i64>("string_num")?, 123);
+    
+    // 文字列からブール値への変換
+    assert_eq!(section.get::<bool>("bool_string")?, true);
+    
+    // ネストした値の取得
+    let nested = section.get_section("nested")?;
+    assert_eq!(nested.get::<i64>("value")?, 42);
+    
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::NamedTempFile;
+    use std::io::Write;
+
+    #[test]
+    fn test_default_config() -> Result<()> {
+        let config = Config::default();
+        assert!(config.get::<String>("version").is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn test_from_file() -> Result<()> {
+        let mut temp_file = NamedTempFile::new()?;
+        writeln!(temp_file, "test:\n  value: 42")?;
+
+        let config = Config::from_file(temp_file.path())?;
+        let value: i32 = config.get("test.value")?;
+        assert_eq!(value, 42);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_invalid_path() {
+        let result = Config::from_file("nonexistent.yaml");
+        assert!(result.is_err());
+    }
+
+    // ... existing code ...
 } 
