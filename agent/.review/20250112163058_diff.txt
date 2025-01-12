@@ -1,0 +1,4389 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index acf220e..081407a 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -53,6 +53,8 @@ serde_bytes = "0.11"
+ prost-types = "0.13"
+ tracing = "0.1"
+ tracing-subscriber = "0.3"
++rlimit = "0.10"
++config = "0.13"
+ 
+ [dev-dependencies]
+ assert_cmd = "2.0"
+diff --git a/src/container/README.md b/src/container/README.md
+deleted file mode 100644
+index 4d163fe..0000000
+--- a/src/container/README.md
++++ /dev/null
+@@ -1,89 +0,0 @@
+-# Container Module
+-
+-## 使用例
+-
+-### コンテナオーケストレーターを使用した制御
+-```rust
+-// オーケストレーターの作成
+-let orchestrator = ContainerOrchestrator::new();
+-
+-// コンテナの追加
+-let container1 = orchestrator
+-    .add_container("python", "node1.py", vec!["python", "node1.py"])
+-    .await?;
+-let container2 = orchestrator
+-    .add_container("python", "node2.py", vec!["python", "node2.py"])
+-    .await?;
+-let container3 = orchestrator
+-    .add_container("python", "node3.py", vec!["python", "node3.py"])
+-    .await?;
+-
+-// コンテナ間の通信リンクを設定
+-orchestrator
+-    .link(container1.id(), container2.id())
+-    .link(container2.id(), container3.id())
+-    .link(container3.id(), container1.id());
+-
+-// 全コンテナを実行
+-orchestrator.run_all().await?;
+-
+-// メッセージの送信（標準化されたフォーマット）
+-let message = Message::normal(
+-    container1.id().to_string(),
+-    container2.id().to_string(),
+-    "Hello from 1 to 2!".to_string(),
+-);
+-orchestrator.send_message(&message).await?;
+-
+-// システムメッセージのブロードキャスト
+-let system_msg = Message::system(
+-    container1.id().to_string(),
+-    "System update".to_string(),
+-);
+-orchestrator.broadcast(&system_msg).await?;
+-
+-// 全コンテナの終了を待機
+-// この間もメッセージの送受信は可能
+-orchestrator.wait_all().await?;
+-```
+-
+-### メッセージの種類
+-```rust
+-// 通常のメッセージ
+-Message::normal(from, to, content)
+-
+-// システムメッセージ（優先度: High）
+-Message::system(from, content)
+-
+-// エラーメッセージ（優先度: Critical）
+-Message::error(from, content)
+-
+-// デバッグメッセージ（優先度: Low）
+-Message::debug(from, content)
+-
+-// ブロードキャストメッセージ
+-Message::broadcast(from, content)
+-```
+-
+-## 要件
+-
+-このモジュールは以下の要件を必ず満たす必要があります：
+-
+-1. **並列実行**
+-   - 複数のコンテナを同時に実行可能であること
+-   - 各コンテナは独立して動作すること
+-   - 設定ファイル（src/config/config.yaml）に基づいたリソース制限の適用
+-
+-2. **コンテナ間通信**
+-   - 実行中のコンテナ同士が相互に通信可能であること
+-   - メッセージベースの通信を提供すること
+-   - 非同期メッセージングによる効率的な通信
+-
+-3. **出力バッファリング**
+-   - 各コンテナの出力は適切にバッファリングされること
+-   - バッファされた出力は指定された受け渡し先に確実に送信されること
+-
+-4. **実行環境**
+-   - 各言語に対応したDockerイメージの使用
+-   - コンパイルと実行の分離
+-   - 安全なサンドボックス環境の提供 
+\ No newline at end of file
+diff --git a/src/container/communication/message.rs b/src/container/communication/message.rs
+deleted file mode 100644
+index a149d57..0000000
+--- a/src/container/communication/message.rs
++++ /dev/null
+@@ -1,158 +0,0 @@
+-use serde::{Deserialize, Serialize};
+-use std::time::SystemTime;
+-
+-/// コンテナ間で送受信されるメッセージの標準フォーマット
+-#[derive(Debug, Clone, Serialize, Deserialize)]
+-pub struct Message {
+-    /// メッセージID
+-    pub id: String,
+-    /// 送信元コンテナID
+-    pub from: String,
+-    /// 宛先コンテナID（ブロードキャストの場合はNone）
+-    pub to: Option<String>,
+-    /// メッセージの種類
+-    pub kind: MessageKind,
+-    /// メッセージの内容
+-    pub content: String,
+-    /// タイムスタンプ
+-    pub timestamp: SystemTime,
+-    /// メッセージの優先度
+-    pub priority: Priority,
+-}
+-
+-/// メッセージの種類
+-#[derive(Debug, Clone, Serialize, Deserialize)]
+-pub enum MessageKind {
+-    /// 通常のメッセージ
+-    Normal,
+-    /// システムメッセージ（コンテナの状態変更など）
+-    System,
+-    /// エラーメッセージ
+-    Error,
+-    /// デバッグメッセージ
+-    Debug,
+-}
+-
+-/// メッセージの優先度
+-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+-pub enum Priority {
+-    Low,
+-    Normal,
+-    High,
+-    Critical,
+-}
+-
+-impl Message {
+-    /// 新しいメッセージを作成
+-    pub fn new(
+-        from: String,
+-        to: Option<String>,
+-        content: String,
+-        kind: MessageKind,
+-        priority: Priority,
+-    ) -> Self {
+-        Self {
+-            id: uuid::Uuid::new_v4().to_string(),
+-            from,
+-            to,
+-            kind,
+-            content,
+-            timestamp: SystemTime::now(),
+-            priority,
+-        }
+-    }
+-
+-    /// 通常メッセージを作成
+-    pub fn normal(from: String, to: String, content: String) -> Self {
+-        Self::new(
+-            from,
+-            Some(to),
+-            content,
+-            MessageKind::Normal,
+-            Priority::Normal,
+-        )
+-    }
+-
+-    /// システムメッセージを作成
+-    pub fn system(from: String, content: String) -> Self {
+-        Self::new(
+-            from,
+-            None,
+-            content,
+-            MessageKind::System,
+-            Priority::High,
+-        )
+-    }
+-
+-    /// エラーメッセージを作成
+-    pub fn error(from: String, content: String) -> Self {
+-        Self::new(
+-            from,
+-            None,
+-            content,
+-            MessageKind::Error,
+-            Priority::Critical,
+-        )
+-    }
+-
+-    /// デバッグメッセージを作成
+-    pub fn debug(from: String, content: String) -> Self {
+-        Self::new(
+-            from,
+-            None,
+-            content,
+-            MessageKind::Debug,
+-            Priority::Low,
+-        )
+-    }
+-
+-    /// ブロードキャストメッセージを作成
+-    pub fn broadcast(from: String, content: String) -> Self {
+-        Self::new(
+-            from,
+-            None,
+-            content,
+-            MessageKind::Normal,
+-            Priority::Normal,
+-        )
+-    }
+-}
+-
+-#[cfg(test)]
+-mod tests {
+-    use super::*;
+-
+-    #[test]
+-    fn test_message_creation() {
+-        let msg = Message::normal(
+-            "container1".to_string(),
+-            "container2".to_string(),
+-            "Hello".to_string(),
+-        );
+-        assert_eq!(msg.kind, MessageKind::Normal);
+-        assert_eq!(msg.priority, Priority::Normal);
+-        assert_eq!(msg.from, "container1");
+-        assert_eq!(msg.to, Some("container2".to_string()));
+-    }
+-
+-    #[test]
+-    fn test_system_message() {
+-        let msg = Message::system(
+-            "container1".to_string(),
+-            "Started".to_string(),
+-        );
+-        assert_eq!(msg.kind, MessageKind::System);
+-        assert_eq!(msg.priority, Priority::High);
+-        assert_eq!(msg.to, None);
+-    }
+-
+-    #[test]
+-    fn test_broadcast_message() {
+-        let msg = Message::broadcast(
+-            "container1".to_string(),
+-            "Broadcast message".to_string(),
+-        );
+-        assert_eq!(msg.kind, MessageKind::Normal);
+-        assert_eq!(msg.to, None);
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/container/communication/mod.rs b/src/container/communication/mod.rs
+deleted file mode 100644
+index a57eeee..0000000
+--- a/src/container/communication/mod.rs
++++ /dev/null
+@@ -1,6 +0,0 @@
+-pub mod protocol;
+-pub mod transport;
+-
+-pub use protocol::Message;
+-pub use protocol::MessageKind;
+-pub use transport::Network; 
+\ No newline at end of file
+diff --git a/src/container/communication/protocol.rs b/src/container/communication/protocol.rs
+deleted file mode 100644
+index 4602fd0..0000000
+--- a/src/container/communication/protocol.rs
++++ /dev/null
+@@ -1,48 +0,0 @@
+-use std::time::SystemTime;
+-
+-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+-pub enum MessageKind {
+-    Normal,
+-    System,
+-    Error,
+-    Debug,
+-}
+-
+-#[derive(Debug, Clone, PartialEq, Eq)]
+-pub struct Message {
+-    pub id: String,
+-    pub from: String,
+-    pub to: String,
+-    pub kind: MessageKind,
+-    pub content: String,
+-    pub timestamp: SystemTime,
+-}
+-
+-impl Message {
+-    pub fn new(content: impl Into<String>, from: impl Into<String>, to: impl Into<String>, kind: MessageKind) -> Self {
+-        Self {
+-            id: uuid::Uuid::new_v4().to_string(),
+-            from: from.into(),
+-            to: to.into(),
+-            kind,
+-            content: content.into(),
+-            timestamp: SystemTime::now(),
+-        }
+-    }
+-
+-    pub fn normal(content: impl Into<String>, from: impl Into<String>, to: impl Into<String>) -> Self {
+-        Self::new(content, from, to, MessageKind::Normal)
+-    }
+-
+-    pub fn system(content: impl Into<String>, from: impl Into<String>, to: impl Into<String>) -> Self {
+-        Self::new(content, from, to, MessageKind::System)
+-    }
+-
+-    pub fn error(content: impl Into<String>, from: impl Into<String>, to: impl Into<String>) -> Self {
+-        Self::new(content, from, to, MessageKind::Error)
+-    }
+-
+-    pub fn debug(content: impl Into<String>, from: impl Into<String>, to: impl Into<String>) -> Self {
+-        Self::new(content, from, to, MessageKind::Debug)
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/container/communication/transport.rs b/src/container/communication/transport.rs
+deleted file mode 100644
+index d9beb79..0000000
+--- a/src/container/communication/transport.rs
++++ /dev/null
+@@ -1,63 +0,0 @@
+-use super::protocol::Message;
+-use anyhow::Result;
+-use std::collections::HashMap;
+-use std::sync::Arc;
+-use tokio::sync::Mutex;
+-
+-pub struct Network {
+-    buffers: Arc<Mutex<HashMap<String, Vec<Message>>>>,
+-}
+-
+-impl Network {
+-    #[must_use]
+-    pub fn new() -> Self {
+-        Self {
+-            buffers: Arc::new(Mutex::new(HashMap::new())),
+-        }
+-    }
+-
+-    /// メッセージを指定された宛先に送信します。
+-    /// 
+-    /// # Errors
+-    /// 
+-    /// - メッセージの送信に失敗した場合にエラーを返します。
+-    pub async fn send(&self, _from: &str, to: &str, message: Message) -> Result<()> {
+-        self.buffers.lock().await
+-            .entry(to.to_string())
+-            .or_insert_with(Vec::new)
+-            .push(message);
+-        Ok(())
+-    }
+-
+-    /// メッセージを全ての宛先（送信者以外）にブロードキャストします。
+-    /// 
+-    /// # Errors
+-    /// 
+-    /// - メッセージの送信に失敗した場合にエラーを返します。
+-    pub async fn broadcast(&self, from: &str, message: Message) -> Result<()> {
+-        let mut buffers = self.buffers.lock().await;
+-        let recipients: Vec<String> = buffers.keys()
+-            .filter(|id| *id != from)
+-            .cloned()
+-            .collect();
+-        
+-        for id in recipients {
+-            buffers.entry(id)
+-                .or_insert_with(Vec::new)
+-                .push(message.clone());
+-        }
+-        drop(buffers);
+-        Ok(())
+-    }
+-
+-    pub async fn receive(&self, id: &str) -> Option<Message> {
+-        let mut buffers = self.buffers.lock().await;
+-        buffers.get_mut(id).and_then(Vec::pop)
+-    }
+-}
+-
+-impl Default for Network {
+-    fn default() -> Self {
+-        Self::new()
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/container/io/buffer.rs b/src/container/io/buffer.rs
+deleted file mode 100644
+index 6f38467..0000000
+--- a/src/container/io/buffer.rs
++++ /dev/null
+@@ -1,128 +0,0 @@
+-use std::collections::HashMap;
+-use bytes::Bytes;
+-use tokio::sync::Mutex;
+-use anyhow::{Result, anyhow};
+-
+-/// コンテナの出力を保持するバッファ
+-#[derive(Default)]
+-pub struct Buffer {
+-    buffers: Mutex<HashMap<String, Vec<Bytes>>>,
+-    max_buffer_size: usize,
+-    total_memory_usage: Mutex<usize>,
+-}
+-
+-impl Buffer {
+-    /// 新しいバッファを作成します
+-    #[must_use]
+-    pub fn new() -> Self {
+-        Self::default()
+-    }
+-
+-    /// 指定したサイズ制限でバッファを作成します
+-    #[must_use]
+-    pub fn with_max_size(max_size: usize) -> Self {
+-        Self {
+-            max_buffer_size: max_size,
+-            ..Default::default()
+-        }
+-    }
+-
+-    /// データをバッファに追加します
+-    ///
+-    /// # Errors
+-    /// - バッファのサイズ制限を超えた場合
+-    pub async fn append(&self, container_id: &str, data: Bytes) -> Result<()> {
+-        let data_len = data.len();
+-
+-        // 全体のメモリ使用量をチェック
+-        {
+-            let total_usage = self.total_memory_usage.lock().await;
+-            if *total_usage + data_len > self.max_buffer_size * 10 {
+-                return Err(anyhow!("バッファの総メモリ使用量が制限を超えています"));
+-            }
+-        }
+-
+-        let buffer_result = {
+-            let mut buffers = self.buffers.lock().await;
+-            let buffer = buffers.entry(container_id.to_string()).or_default();
+-            let current_size: usize = buffer.iter().map(Bytes::len).sum();
+-            
+-            if current_size + data_len <= self.max_buffer_size {
+-                buffer.push(data);
+-                drop(buffers);  // 早期にロックを解放
+-                Ok(data_len)
+-            } else {
+-                drop(buffers);  // 早期にロックを解放
+-                Err(anyhow!("コンテナのバッファが一杯です: {}", container_id))
+-            }
+-        };
+-
+-        if let Ok(added_size) = buffer_result {
+-            let mut total_usage = self.total_memory_usage.lock().await;
+-            *total_usage += added_size;
+-        }
+-
+-        buffer_result.map(|_| ())
+-    }
+-
+-    pub async fn get_output(&self, container_id: &str) -> Option<Vec<Bytes>> {
+-        self.buffers.lock().await
+-            .get(container_id)
+-            .cloned()
+-    }
+-
+-    pub async fn clear(&self, container_id: &str) {
+-        let buffer_size = {
+-            let buffers = self.buffers.lock().await;
+-            buffers.get(container_id)
+-                .map_or(0, |buffer| buffer.iter().map(Bytes::len).sum())
+-        };
+-
+-        if buffer_size > 0 {
+-            let mut total_usage = self.total_memory_usage.lock().await;
+-            *total_usage = total_usage.saturating_sub(buffer_size);
+-            drop(total_usage);
+-
+-            let mut buffers = self.buffers.lock().await;
+-            if let Some(buffer) = buffers.get_mut(container_id) {
+-                buffer.clear();
+-            }
+-        }
+-    }
+-
+-    pub async fn get_size(&self, container_id: &str) -> usize {
+-        self.buffers.lock().await
+-            .get(container_id)
+-            .map_or(0, |buffer| buffer.iter().map(Bytes::len).sum())
+-    }
+-
+-    pub async fn get_total_memory_usage(&self) -> usize {
+-        *self.total_memory_usage.lock().await
+-    }
+-
+-    /// 古いデータをクリーンアップします。
+-    ///
+-    /// # Errors
+-    /// - バッファの操作に失敗した場合
+-    pub async fn cleanup_old_data(&self, container_id: &str, max_entries: usize) -> Result<()> {
+-        let removed_size = {
+-            let mut buffers = self.buffers.lock().await;
+-            buffers.get_mut(container_id).map_or(0, |buffer| {
+-                if buffer.len() > max_entries {
+-                    buffer.drain(..buffer.len() - max_entries)
+-                        .map(|b| b.len())
+-                        .sum()
+-                } else {
+-                    0
+-                }
+-            })
+-        };
+-
+-        if removed_size > 0 {
+-            let mut total_usage = self.total_memory_usage.lock().await;
+-            *total_usage = total_usage.saturating_sub(removed_size);
+-        }
+-
+-        Ok(())
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/container/io/mod.rs b/src/container/io/mod.rs
+deleted file mode 100644
+index 0da9000..0000000
+--- a/src/container/io/mod.rs
++++ /dev/null
+@@ -1,3 +0,0 @@
+-pub mod buffer;
+-
+-pub use buffer::Buffer; 
+\ No newline at end of file
+diff --git a/src/container/mod.rs b/src/container/mod.rs
+deleted file mode 100644
+index 8c3a75d..0000000
+--- a/src/container/mod.rs
++++ /dev/null
+@@ -1,14 +0,0 @@
+-pub mod registry;
+-pub mod runtime;
+-pub mod communication;
+-pub mod io;
+-
+-pub use registry::{
+-    ImageBuilder,
+-    ContainerdBuilder,
+-    BuilderConfig,
+-    BufferConfig,
+-    CommandOutput,
+-};
+-
+-pub use runtime::container::State; 
+\ No newline at end of file
+diff --git a/src/container/orchestrator.rs b/src/container/orchestrator.rs
+deleted file mode 100644
+index 6fd728a..0000000
+--- a/src/container/orchestrator.rs
++++ /dev/null
+@@ -1,331 +0,0 @@
+-use std::collections::{HashMap, HashSet, VecDeque};
+-use std::sync::Arc;
+-use tokio::sync::Mutex;
+-use tokio::time::Duration;
+-use crate::container::runtime::Container;
+-use crate::container::runtime::Builder;
+-use crate::container::runtime::State;
+-use crate::container::communication::transport::Network;
+-use crate::container::communication::protocol::{Message, MessageKind};
+-use anyhow::Result;
+-
+-#[derive(Clone)]
+-pub struct Orchestrator {
+-    containers: Arc<Mutex<HashMap<String, Container>>>,
+-    links: Arc<Mutex<HashMap<String, HashSet<String>>>>,
+-    network: Arc<Network>,
+-    message_history: Arc<Mutex<VecDeque<Message>>>,
+-    max_history_size: usize,
+-    message_counts: Arc<Mutex<HashMap<MessageKind, usize>>>,
+-}
+-
+-impl Orchestrator {
+-    #[must_use]
+-    pub fn new() -> Self {
+-        Self {
+-            containers: Arc::new(Mutex::new(HashMap::new())),
+-            links: Arc::new(Mutex::new(HashMap::new())),
+-            network: Arc::new(Network::new()),
+-            message_history: Arc::new(Mutex::new(VecDeque::new())),
+-            max_history_size: 1000,
+-            message_counts: Arc::new(Mutex::new(HashMap::new())),
+-        }
+-    }
+-
+-    /// 新しいコンテナを追加します。
+-    /// 
+-    /// # Errors
+-    /// 
+-    /// - コンテナの作成に失敗した場合にエラーを返します。
+-    pub async fn add_container(&self, language: &str, source_file: &str, args: Vec<String>) -> Result<Container> {
+-        let container = Builder::new()
+-            .build_for_language(language, source_file, args)?;
+-        self.containers.lock().await
+-            .insert(container.id().to_string(), container.clone());
+-        Ok(container)
+-    }
+-
+-    /// コンテナ間のリンクを作成します
+-    /// 
+-    /// # Errors
+-    /// - リンクの作成に失敗した場合
+-    pub async fn link(&self, from: &str, to: &str) -> Result<&Self> {
+-        println!("Orchestrator: リンク作成 {from} -> {to}");
+-        self.links.lock().await
+-            .entry(from.to_string())
+-            .or_insert_with(HashSet::new)
+-            .insert(to.to_string());
+-        Ok(self)
+-    }
+-
+-    /// メッセージを送信します
+-    /// 
+-    /// # Errors
+-    /// - メッセージの送信に失敗した場合
+-    /// - 履歴の更新に失敗した場合
+-    pub async fn send_message(&self, message: Message) -> Result<()> {
+-        println!("Orchestrator: メッセージ送信 ({message:?})");
+-        
+-        // メッセージを送信
+-        self.network.send(&message.from, &message.to, message.clone()).await?;
+-        
+-        // 履歴に追加
+-        {
+-            let mut history = self.message_history.lock().await;
+-            if history.len() >= self.max_history_size {
+-                history.pop_front();
+-            }
+-            history.push_back(message.clone());
+-        }
+-        
+-        // メッセージカウントを更新
+-        {
+-            let mut counts = self.message_counts.lock().await;
+-            *counts.entry(message.kind).or_insert(0) += 1;
+-        }
+-        
+-        Ok(())
+-    }
+-
+-    /// メッセージをブロードキャストします
+-    /// 
+-    /// # Errors
+-    /// - メッセージの送信に失敗した場合
+-    /// - 履歴の更新に失敗した場合
+-    pub async fn broadcast(&self, message: Message) -> Result<()> {
+-        self.network.broadcast(&message.from, message.clone()).await?;
+-        
+-        {
+-            let mut history = self.message_history.lock().await;
+-            if history.len() >= self.max_history_size {
+-                history.pop_front();
+-            }
+-            history.push_back(message);
+-        }
+-        Ok(())
+-    }
+-
+-    /// すべてのコンテナを実行します
+-    /// 
+-    /// # Errors
+-    /// - コンテナの実行に失敗した場合
+-    /// - タイムアウトが発生した場合
+-    pub async fn run_all(&self) -> Result<()> {
+-        println!("run_all: 開始");
+-        let container_ids: Vec<String> = {
+-            let ids = self.containers.lock().await
+-                .keys()
+-                .cloned()
+-                .collect();
+-            println!("run_all: コンテナID一覧: {ids:?}");
+-            ids
+-        };
+-
+-        let mut handles = Vec::new();
+-        
+-        for id in &container_ids {
+-            println!("run_all: コンテナ {id} の実行準備");
+-            if let Some(container) = self.get_container(id).await {
+-                let handle = tokio::spawn(async move {
+-                    println!("run_all: コンテナ {} の実行開始", container.id());
+-                    let result = container.run().await;
+-                    println!("run_all: コンテナ {} の実行完了: {:?}", container.id(), result.is_ok());
+-                    result
+-                });
+-                handles.push((id.clone(), handle));
+-            }
+-        }
+-        
+-        println!("run_all: 全コンテナの実行待機開始");
+-        let timeout = Duration::from_secs(5);
+-        let results = tokio::time::timeout(
+-            timeout,
+-            futures::future::join_all(handles.into_iter().map(|(id, handle)| async move {
+-                match handle.await {
+-                    Ok(result) => (id, result),
+-                    Err(e) => {
+-                        println!("run_all: コンテナ {id} でパニック発生: {e}");
+-                        (id, Err(anyhow::anyhow!("タスクのパニック: {}", e)))
+-                    }
+-                }
+-            }))
+-        ).await.map_err(|_| {
+-            println!("run_all: タイムアウト発生");
+-            anyhow::anyhow!("コンテナの実行がタイムアウトしました")
+-        })?;
+-
+-        let errors: Vec<_> = results
+-            .into_iter()
+-            .filter_map(|(id, result)| {
+-                result.err().map(|e| {
+-                    let msg = format!("コンテナ {id} の実行に失敗: {e}");
+-                    println!("run_all: {msg}");
+-                    msg
+-                })
+-            })
+-            .collect();
+-
+-        if !errors.is_empty() {
+-            println!("run_all: エラーあり");
+-            return Err(anyhow::anyhow!("コンテナの実行に失敗:\n{}", errors.join("\n")));
+-        }
+-
+-        println!("run_all: 正常終了");
+-        Ok(())
+-    }
+-
+-    /// すべてのコンテナの完了を待機します
+-    /// 
+-    /// # Errors
+-    /// - コンテナの待機に失敗した場合
+-    /// - タイムアウトが発生した場合
+-    pub async fn wait_all(&self) -> Result<()> {
+-        println!("wait_all: 開始");
+-        let container_ids: Vec<String> = {
+-            let containers = self.containers.lock().await;
+-            containers.keys().cloned().collect()
+-        };
+-        println!("wait_all: コンテナID一覧: {container_ids:?}");
+-
+-        let timeout = Duration::from_secs(5);
+-        let start_time = std::time::Instant::now();
+-
+-        let wait_futures = container_ids.iter().map(|id| {
+-            let id = id.clone();
+-            async move {
+-                println!("wait_all: コンテナ {id} の待機開始");
+-                loop {
+-                    if let Some(container) = self.get_container(&id).await {
+-                        let status = container.status().await;
+-                        println!("wait_all: コンテナ {id} の状態: {status:?}");
+-                        if status == State::Completed {
+-                            println!("wait_all: コンテナ {id} が完了");
+-                            return Ok(());
+-                        }
+-                    }
+-
+-                    if start_time.elapsed() > timeout {
+-                        println!("wait_all: コンテナ {id} がタイムアウト");
+-                        return Err(anyhow::anyhow!("コンテナの待機がタイムアウトしました: {}", id));
+-                    }
+-
+-                    tokio::time::sleep(Duration::from_millis(100)).await;
+-                }
+-            }
+-        });
+-
+-        println!("wait_all: 全コンテナの完了待機開始");
+-        let results = futures::future::join_all(wait_futures).await;
+-        
+-        let error_messages: Vec<_> = results
+-            .into_iter()
+-            .filter_map(|r| r.err().map(|e| {
+-                let msg = e.to_string();
+-                println!("wait_all: エラー: {msg}");
+-                msg
+-            }))
+-            .collect();
+-
+-        if !error_messages.is_empty() {
+-            println!("wait_all: エラーあり");
+-            return Err(anyhow::anyhow!("コンテナの待機に失敗:\n{}", error_messages.join("\n")));
+-        }
+-
+-        println!("wait_all: 正常終了");
+-        Ok(())
+-    }
+-
+-    pub async fn get_container(&self, id: &str) -> Option<Container> {
+-        let containers = self.containers.lock().await;
+-        containers.get(id).cloned()
+-    }
+-
+-    /// 孤立したコンテナのIDリストを取得します。
+-    pub async fn get_isolated_containers(&self) -> Vec<String> {
+-        println!("Orchestrator: 孤立コンテナの検索開始");
+-        let containers = self.containers.lock().await;
+-        let links = self.links.lock().await;
+-        
+-        let isolated = containers
+-            .keys()
+-            .filter(|id| {
+-                let is_isolated = !links.contains_key(*id) && 
+-                    !links.values().any(|targets| targets.contains(*id));
+-                println!("Orchestrator: コンテナ {} は孤立{}", id, if is_isolated { "しています" } else { "していません" });
+-                is_isolated
+-            })
+-            .cloned()
+-            .collect();
+-        
+-        drop(containers);
+-        drop(links);
+-        isolated
+-    }
+-
+-    /// オーケストレーターのステータスサマリーを取得します。
+-    pub async fn get_status_summary(&self) -> Status {
+-        println!("Orchestrator: ステータスサマリー取得開始");
+-        
+-        // 孤立コンテナの数を先に取得
+-        let isolated_count = self.get_isolated_containers().await.len();
+-        
+-        let containers = self.containers.lock().await;
+-        let links = self.links.lock().await;
+-        let history = self.message_history.lock().await;
+-        let counts = self.message_counts.lock().await;
+-        
+-        let status = Status {
+-            total_containers: containers.len(),
+-            running_containers: containers.len(),
+-            isolated_containers: isolated_count,
+-            total_links: links.values().map(HashSet::len).sum(),
+-            total_messages: history.len(),
+-            message_counts: counts.clone(),
+-        };
+-        
+-        drop(containers);
+-        drop(links);
+-        drop(history);
+-        drop(counts);
+-        
+-        status
+-    }
+-
+-    /// ビルダーを使用して新しいコンテナを追加します。
+-    /// 
+-    /// # Errors
+-    /// 
+-    /// - コンテナの作成に失敗した場合にエラーを返します。
+-    pub async fn add_container_with_builder(
+-        &self,
+-        builder: Builder,
+-        language: &str,
+-        source_file: &str,
+-        args: Vec<String>
+-    ) -> Result<Container> {
+-        println!("Orchestrator: コンテナ追加開始 (language={language}, source={source_file})");
+-        
+-        let container = builder
+-            .build_for_language(language, source_file, args)?;
+-
+-        self.containers.lock().await
+-            .insert(container.id().to_string(), container.clone());
+-        Ok(container)
+-    }
+-}
+-
+-impl Default for Orchestrator {
+-    fn default() -> Self {
+-        Self::new()
+-    }
+-}
+-
+-#[derive(Debug, Clone)]
+-pub struct Status {
+-    pub total_containers: usize,
+-    pub running_containers: usize,
+-    pub isolated_containers: usize,
+-    pub total_links: usize,
+-    pub total_messages: usize,
+-    pub message_counts: HashMap<MessageKind, usize>,
+-} 
+\ No newline at end of file
+diff --git a/src/container/registry/command.rs b/src/container/registry/command.rs
+deleted file mode 100644
+index cc44660..0000000
+--- a/src/container/registry/command.rs
++++ /dev/null
+@@ -1,191 +0,0 @@
+-use anyhow::Result;
+-use tokio::io::AsyncReadExt;
+-use std::sync::Arc;
+-use tokio::sync::Mutex;
+-use containerd_client::services::v1::WaitRequest;
+-use tracing;
+-use nix::unistd::pipe;
+-
+-use super::image::ContainerdBuilder;
+-
+-/// コマンド実行時のバッファ設定
+-#[derive(Debug, Clone, Copy)]
+-pub struct BufferConfig {
+-    /// バッファサイズ（バイト）
+-    pub buffer_size: usize,
+-    /// 出力をリアルタイムでログに記録するかどうか
+-    pub stream_output: bool,
+-}
+-
+-impl Default for BufferConfig {
+-    fn default() -> Self {
+-        Self {
+-            buffer_size: 1024 * 64, // 64KB
+-            stream_output: true,
+-        }
+-    }
+-}
+-
+-/// コマンド実行の出力を格納する構造体
+-#[derive(Debug, Clone)]
+-pub struct CommandOutput {
+-    pub stdout: String,
+-    pub stderr: String,
+-    pub exit_code: i32,
+-}
+-
+-impl ContainerdBuilder {
+-    pub async fn execute_command(&self, container_id: &str, command: &[String]) -> Result<CommandOutput> {
+-        let mut tasks = self.tasks.lock().await;
+-        let exec_id = uuid::Uuid::new_v4().to_string();
+-        let buffer_config = BufferConfig::default();
+-
+-        // 環境変数の取得
+-        let default_lang: String = self.config.get("languages.default")?;
+-        let env_vars: Vec<String> = self.config.get(&format!("languages.{}.container.env_vars", default_lang))
+-            .unwrap_or_default();
+-
+-        // 出力バッファの準備
+-        let stdout_buf = Arc::new(Mutex::new(Vec::new()));
+-        let stderr_buf = Arc::new(Mutex::new(Vec::new()));
+-
+-        // プロセス仕様の作成
+-        let process_spec = serde_json::json!({
+-            "terminal": false,
+-            "args": command,
+-            "env": env_vars,
+-            "cwd": "/",
+-            "capabilities": {
+-                "bounding": [
+-                    "CAP_AUDIT_WRITE",
+-                    "CAP_KILL",
+-                    "CAP_NET_BIND_SERVICE"
+-                ],
+-                "effective": [
+-                    "CAP_AUDIT_WRITE",
+-                    "CAP_KILL",
+-                    "CAP_NET_BIND_SERVICE"
+-                ],
+-                "inheritable": [
+-                    "CAP_AUDIT_WRITE",
+-                    "CAP_KILL",
+-                    "CAP_NET_BIND_SERVICE"
+-                ],
+-                "permitted": [
+-                    "CAP_AUDIT_WRITE",
+-                    "CAP_KILL",
+-                    "CAP_NET_BIND_SERVICE"
+-                ],
+-                "ambient": [
+-                    "CAP_AUDIT_WRITE",
+-                    "CAP_KILL",
+-                    "CAP_NET_BIND_SERVICE"
+-                ]
+-            },
+-            "rlimits": [
+-                {
+-                    "type": "RLIMIT_NOFILE",
+-                    "hard": 1024,
+-                    "soft": 1024
+-                }
+-            ],
+-            "noNewPrivileges": true
+-        });
+-
+-        // 標準出力と標準エラー出力のパイプを作成
+-        let (stdout_reader, _) = tokio::io::duplex(buffer_config.buffer_size);
+-        let (stderr_reader, _) = tokio::io::duplex(buffer_config.buffer_size);
+-
+-        // パイプの作成
+-        let (_, stdout_write_fd) = pipe()?;
+-        let (_, stderr_write_fd) = pipe()?;
+-
+-        // Execの作成と実行
+-        let _exec = tasks.exec(containerd_client::services::v1::ExecProcessRequest {
+-            container_id: container_id.to_string(),
+-            exec_id: exec_id.clone(),
+-            terminal: false,
+-            stdin: String::new(),
+-            stdout: stdout_write_fd.to_string(),
+-            stderr: stderr_write_fd.to_string(),
+-            spec: Some(prost_types::Any {
+-                type_url: "types.containerd.io/opencontainers/runtime-spec/1/Process".to_string(),
+-                value: serde_json::to_vec(&process_spec)?,
+-            }),
+-        })
+-        .await?;
+-
+-        // 出力の読み取り処理
+-        let stdout_buf_clone = Arc::clone(&stdout_buf);
+-        let stderr_buf_clone = Arc::clone(&stderr_buf);
+-        let stream_output = buffer_config.stream_output;
+-        let cmd_str = Arc::new(command.join(" "));
+-
+-        let stdout_handle = {
+-            let cmd_str = Arc::clone(&cmd_str);
+-            tokio::spawn(async move {
+-                let mut reader = tokio::io::BufReader::new(stdout_reader);
+-                let mut buffer = vec![0u8; buffer_config.buffer_size];
+-                while let Ok(n) = reader.read(&mut buffer).await {
+-                    if n == 0 {
+-                        break;
+-                    }
+-                    if stream_output {
+-                        let output = String::from_utf8_lossy(&buffer[..n]).to_string();
+-                        tracing::debug!("[{}] stdout: {}", cmd_str, output);
+-                    }
+-                    stdout_buf_clone.lock().await.extend_from_slice(&buffer[..n]);
+-                }
+-            })
+-        };
+-
+-        let stderr_handle = {
+-            let cmd_str = Arc::clone(&cmd_str);
+-            tokio::spawn(async move {
+-                let mut reader = tokio::io::BufReader::new(stderr_reader);
+-                let mut buffer = vec![0u8; buffer_config.buffer_size];
+-                while let Ok(n) = reader.read(&mut buffer).await {
+-                    if n == 0 {
+-                        break;
+-                    }
+-                    if stream_output {
+-                        let output = String::from_utf8_lossy(&buffer[..n]).to_string();
+-                        tracing::debug!("[{}] stderr: {}", cmd_str, output);
+-                    }
+-                    stderr_buf_clone.lock().await.extend_from_slice(&buffer[..n]);
+-                }
+-            })
+-        };
+-
+-        // 実行結果の待機
+-        let status = tasks.wait(WaitRequest {
+-            container_id: container_id.to_string(),
+-            exec_id: exec_id.clone(),
+-        })
+-        .await?
+-        .into_inner()
+-        .exit_status;
+-
+-        // 出力の読み取り完了を待機
+-        tokio::try_join!(stdout_handle, stderr_handle)?;
+-
+-        // 出力の取得
+-        let stdout = String::from_utf8(stdout_buf.lock().await.clone())?;
+-        let stderr = String::from_utf8(stderr_buf.lock().await.clone())?;
+-
+-        if status != 0 {
+-            return Err(anyhow::anyhow!(
+-                "コマンドの実行に失敗しました: {:?} (exit code: {})\nstderr: {}",
+-                command,
+-                status,
+-                stderr
+-            ));
+-        }
+-
+-        Ok(CommandOutput {
+-            stdout,
+-            stderr,
+-            exit_code: status as i32,
+-        })
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/container/registry/image.rs b/src/container/registry/image.rs
+deleted file mode 100644
+index d6a0522..0000000
+--- a/src/container/registry/image.rs
++++ /dev/null
+@@ -1,159 +0,0 @@
+-use std::sync::Arc;
+-use anyhow::{Result, anyhow};
+-use async_trait::async_trait;
+-use containerd_client as containerd;
+-use containerd_client::services::v1::images_client::ImagesClient;
+-use containerd_client::services::v1::containers_client::ContainersClient;
+-use containerd_client::services::v1::snapshots::snapshots_client::SnapshotsClient;
+-use containerd_client::services::v1::tasks_client::TasksClient;
+-use containerd_client::services::v1::{StartRequest, KillRequest};
+-use tokio::sync::Mutex;
+-use crate::config;
+-use tracing;
+-
+-#[async_trait]
+-pub trait ImageBuilder: Send + Sync {
+-    async fn build_image(&self, tag: &str) -> Result<()>;
+-}
+-
+-pub struct ContainerdBuilder {
+-    pub(crate) images: Arc<Mutex<ImagesClient<tonic::transport::Channel>>>,
+-    pub(crate) containers: Arc<Mutex<ContainersClient<tonic::transport::Channel>>>,
+-    pub(crate) snapshots: Arc<Mutex<SnapshotsClient<tonic::transport::Channel>>>,
+-    pub(crate) tasks: Arc<Mutex<TasksClient<tonic::transport::Channel>>>,
+-    pub(crate) config: config::Config,
+-}
+-
+-impl ContainerdBuilder {
+-    pub async fn new(config: config::Config) -> Result<Self> {
+-        let socket: String = config.get("system.container.runtime.containerd.socket")?;
+-        let channel = containerd::connect(&socket).await?;
+-        Ok(Self {
+-            images: Arc::new(Mutex::new(ImagesClient::new(channel.clone()))),
+-            containers: Arc::new(Mutex::new(ContainersClient::new(channel.clone()))),
+-            snapshots: Arc::new(Mutex::new(SnapshotsClient::new(channel.clone()))),
+-            tasks: Arc::new(Mutex::new(TasksClient::new(channel))),
+-            config,
+-        })
+-    }
+-
+-    pub async fn create_container(&self, image: &str) -> Result<String> {
+-        let container_id = uuid::Uuid::new_v4().to_string();
+-        let mut client = self.containers.lock().await;
+-        let container = client.create(containerd::services::v1::CreateContainerRequest {
+-            container: Some(containerd::services::v1::Container {
+-                id: container_id.clone(),
+-                image: image.to_string(),
+-                runtime: Some(containerd::services::v1::container::Runtime {
+-                    name: "io.containerd.runc.v2".to_string(),
+-                    options: None,
+-                }),
+-                ..Default::default()
+-            }),
+-        })
+-        .await?
+-        .into_inner()
+-        .container
+-        .ok_or_else(|| anyhow!("コンテナの作成に失敗しました"))?;
+-
+-        Ok(container.id)
+-    }
+-
+-    pub async fn start_container(&self, container_id: &str) -> Result<()> {
+-        let mut tasks = self.tasks.lock().await;
+-        tasks.create(containerd::services::v1::CreateTaskRequest {
+-            container_id: container_id.to_string(),
+-            rootfs: vec![],
+-            ..Default::default()
+-        })
+-        .await?;
+-
+-        tasks.start(StartRequest {
+-            container_id: container_id.to_string(),
+-            ..Default::default()
+-        })
+-        .await?;
+-
+-        Ok(())
+-    }
+-
+-    pub async fn stop_container(&self, container_id: &str) -> Result<()> {
+-        let mut tasks = self.tasks.lock().await;
+-        tasks.kill(KillRequest {
+-            container_id: container_id.to_string(),
+-            signal: 15, // SIGTERM
+-            ..Default::default()
+-        })
+-        .await?;
+-
+-        tasks.delete(containerd::services::v1::DeleteTaskRequest {
+-            container_id: container_id.to_string(),
+-            ..Default::default()
+-        })
+-        .await?;
+-
+-        Ok(())
+-    }
+-
+-    pub async fn cleanup(&self, container_id: &str) -> Result<()> {
+-        // コンテナの停止と削除
+-        self.stop_container(container_id).await?;
+-        let mut containers = self.containers.lock().await;
+-        containers
+-            .delete(containerd::services::v1::DeleteContainerRequest {
+-                id: container_id.to_string(),
+-            })
+-            .await?;
+-        Ok(())
+-    }
+-}
+-
+-#[async_trait]
+-impl ImageBuilder for ContainerdBuilder {
+-    async fn build_image(&self, tag: &str) -> Result<()> {
+-        // 1. ベースイメージの取得
+-        let default_lang: String = self.config.get("languages.default")?;
+-        let image: String = self.config.get(&format!("languages.{}.container.image", default_lang))?;
+-
+-        // 2. コンテナの作成と起動
+-        let container_id = self.create_container(&image).await?;
+-        self.start_container(&container_id).await?;
+-
+-        // 3. セットアップコマンドの実行
+-        if let Ok(setup_commands) = self.config.get::<Vec<Vec<String>>>(&format!("languages.{}.container.setup", default_lang)) {
+-            for cmd in setup_commands {
+-                let output = self.execute_command(&container_id, &cmd).await?;
+-                tracing::info!("Setup command executed: {:?}\nOutput: {}", cmd, output.stdout);
+-            }
+-        }
+-
+-        // 4. スナップショットの作成
+-        let snapshot_name = format!("{}-snapshot", tag);
+-        self.create_snapshot(&container_id, &snapshot_name).await?;
+-
+-        // 5. スナップショットからイメージを作成
+-        self.commit_snapshot(&snapshot_name, tag).await?;
+-
+-        // 6. クリーンアップ
+-        self.cleanup(&container_id).await?;
+-
+-        Ok(())
+-    }
+-}
+-
+-pub struct BuilderConfig {
+-    pub image_type: String,
+-    pub source: String,
+-}
+-
+-impl BuilderConfig {
+-    #[must_use]
+-    pub const fn new(image_type: String, source: String) -> Self {
+-        Self { image_type, source }
+-    }
+-
+-    #[must_use]
+-    pub async fn create_builder(&self, config: config::Config) -> Option<Box<dyn ImageBuilder>> {
+-        Some(Box::new(ContainerdBuilder::new(config).await.ok()?))
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/container/registry/mod.rs b/src/container/registry/mod.rs
+deleted file mode 100644
+index a223af9..0000000
+--- a/src/container/registry/mod.rs
++++ /dev/null
+@@ -1,6 +0,0 @@
+-mod command;
+-mod image;
+-mod snapshot;
+-
+-pub use command::{BufferConfig, CommandOutput};
+-pub use image::{ImageBuilder, ContainerdBuilder, BuilderConfig}; 
+\ No newline at end of file
+diff --git a/src/container/registry/snapshot.rs b/src/container/registry/snapshot.rs
+deleted file mode 100644
+index b9266f3..0000000
+--- a/src/container/registry/snapshot.rs
++++ /dev/null
+@@ -1,44 +0,0 @@
+-use anyhow::Result;
+-use super::image::ContainerdBuilder;
+-use containerd_client::services::v1::snapshots::PrepareSnapshotRequest;
+-use containerd_client::services::v1::CreateImageRequest;
+-use containerd_client::types::Descriptor;
+-use std::time::SystemTime;
+-
+-impl ContainerdBuilder {
+-    pub async fn create_snapshot(&self, container_id: &str, snapshot_name: &str) -> Result<()> {
+-        let mut snapshots = self.snapshots.lock().await;
+-        snapshots
+-            .prepare(PrepareSnapshotRequest {
+-                snapshotter: "overlayfs".to_string(),
+-                key: snapshot_name.to_string(),
+-                parent: container_id.to_string(),
+-                labels: Default::default(),
+-            })
+-            .await?;
+-        Ok(())
+-    }
+-
+-    pub async fn commit_snapshot(&self, snapshot_name: &str, tag: &str) -> Result<()> {
+-        let mut images = self.images.lock().await;
+-        let now = SystemTime::now();
+-        images
+-            .create(CreateImageRequest {
+-                image: Some(containerd_client::services::v1::Image {
+-                    name: tag.to_string(),
+-                    target: Some(Descriptor {
+-                        media_type: "application/vnd.oci.image.manifest.v1+json".to_string(),
+-                        digest: format!("sha256:{}", snapshot_name),
+-                        size: 0,
+-                        annotations: Default::default(),
+-                    }),
+-                    created_at: Some(prost_types::Timestamp::from(now)),
+-                    updated_at: Some(prost_types::Timestamp::from(now)),
+-                    labels: Default::default(),
+-                }),
+-                source_date_epoch: Some(prost_types::Timestamp::from(now)),
+-            })
+-            .await?;
+-        Ok(())
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/container/runtime/builder.rs b/src/container/runtime/builder.rs
+deleted file mode 100644
+index 8fd05c4..0000000
+--- a/src/container/runtime/builder.rs
++++ /dev/null
+@@ -1,113 +0,0 @@
+-use super::{Container, Runtime};
+-use super::config::Config;
+-use std::sync::Arc;
+-use std::path::PathBuf;
+-use anyhow::{Result, anyhow};
+-use crate::config::Config as GlobalConfig;
+-
+-pub struct Builder {
+-    config: Config,
+-    runtime: Option<Arc<dyn Runtime>>,
+-}
+-
+-impl Builder {
+-    #[must_use]
+-    pub fn new() -> Self {
+-        Self {
+-            config: Config::default(),
+-            runtime: None,
+-        }
+-    }
+-
+-    #[must_use]
+-    pub fn with_id(mut self, id: impl Into<String>) -> Self {
+-        self.config.id = id.into();
+-        self
+-    }
+-
+-    #[must_use]
+-    pub fn with_image(mut self, image: impl Into<String>) -> Self {
+-        self.config.image = image.into();
+-        self
+-    }
+-
+-    #[must_use]
+-    pub fn with_runtime(mut self, runtime: Arc<dyn Runtime>) -> Self {
+-        self.runtime = Some(runtime);
+-        self
+-    }
+-
+-    #[must_use]
+-    pub fn with_args(mut self, args: Vec<String>) -> Self {
+-        self.config.args = args;
+-        self
+-    }
+-
+-    #[must_use]
+-    pub fn with_working_dir(mut self, working_dir: impl Into<PathBuf>) -> Self {
+-        self.config.working_dir = working_dir.into();
+-        self
+-    }
+-
+-    /// 指定された言語用のコンテナをビルドします
+-    /// 
+-    /// # Errors
+-    /// 
+-    /// 以下の場合にエラーを返します：
+-    /// - ランタイムの初期化に失敗した場合
+-    /// - コンテナの構築に失敗した場合
+-    /// - 言語がサポートされていない場合
+-    pub fn build_for_language(
+-        mut self,
+-        language: &str,
+-        source_file: &str,
+-        args: Vec<String>
+-    ) -> Result<Container> {
+-        println!("ContainerBuilder: build_for_language開始 (language={language}, source={source_file})");
+-        self.config.args = args;
+-        self.config.working_dir = PathBuf::from(source_file);
+-
+-        // グローバル設定から言語固有の設定を取得
+-        let global_config = GlobalConfig::get_default_config()?;
+-        
+-        match language {
+-            "python" => {
+-                let image = global_config.get::<String>("languages.python.runner.image")?;
+-                self.config.image = image;
+-                println!("ContainerBuilder: Pythonイメージを設定: {}", self.config.image);
+-            }
+-            "rust" => {
+-                let image = global_config.get::<String>("languages.rust.runner.image")?;
+-                self.config.image = image;
+-                println!("ContainerBuilder: Rustイメージを設定: {}", self.config.image);
+-            }
+-            _ => return Err(anyhow!("サポートされていない言語です: {}", language)),
+-        }
+-
+-        if self.config.id.is_empty() {
+-            self.config.id = uuid::Uuid::new_v4().to_string();
+-            println!("ContainerBuilder: 新しいID生成: {}", self.config.id);
+-        }
+-
+-        println!("ContainerBuilder: コンテナをビルド");
+-        Ok(self.build())
+-    }
+-
+-    /// コンテナをビルドします。
+-    /// 
+-    /// # Panics
+-    /// 
+-    /// - ランタイムが設定されていない場合にパニックします。
+-    #[must_use]
+-    pub fn build(self) -> Container {
+-        println!("ContainerBuilder: build開始");
+-        let runtime = self.runtime.expect("ランタイムが設定されていません");
+-        Container::new(runtime, self.config)
+-    }
+-}
+-
+-impl Default for Builder {
+-    fn default() -> Self {
+-        Self::new()
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/container/runtime/config.rs b/src/container/runtime/config.rs
+deleted file mode 100644
+index 49fe34a..0000000
+--- a/src/container/runtime/config.rs
++++ /dev/null
+@@ -1,168 +0,0 @@
+-use std::path::PathBuf;
+-use serde::{Deserialize, Serialize};
+-use anyhow::Result;
+-use crate::config::Config as GlobalConfig;
+-use crate::container::registry::BuilderConfig;
+-
+-#[derive(Debug, Clone, Serialize, Deserialize)]
+-pub struct ImageSpec {
+-    pub image_type: String,
+-    pub source: String,
+-}
+-
+-impl ImageSpec {
+-    pub fn new(image_type: impl Into<String>, source: impl Into<String>) -> Self {
+-        Self {
+-            image_type: image_type.into(),
+-            source: source.into(),
+-        }
+-    }
+-
+-    /// コンテナビルダーの設定に変換します。
+-    ///
+-    /// # Returns
+-    /// `BuilderConfig` - ビルダーの設定
+-    #[must_use]
+-    pub fn to_builder_config(&self) -> BuilderConfig {
+-        BuilderConfig::new(self.image_type.clone(), self.source.clone())
+-    }
+-
+-    /// イメージを準備します。
+-    ///
+-    /// # Arguments
+-    /// * `tag` - イメージのタグ
+-    ///
+-    /// # Returns
+-    /// * `Ok(String)` - 準備されたイメージのID
+-    /// * `Err(_)` - イメージの準備に失敗した場合
+-    ///
+-    /// # Errors
+-    /// * イメージのビルドに失敗した場合
+-    /// * イメージのプルに失敗した場合
+-    pub async fn prepare_image(&self, tag: &str) -> Result<String> {
+-        let builder_config = self.to_builder_config();
+-        let config = GlobalConfig::get_default_config()?;
+-        if let Some(builder) = builder_config.create_builder(config).await {
+-            builder.build_image(tag).await?;
+-            Ok(tag.to_string())
+-        } else {
+-            Ok(self.source.clone())
+-        }
+-    }
+-}
+-
+-#[derive(Debug, Clone)]
+-pub struct Config {
+-    pub id: String,
+-    pub image: String,
+-    pub working_dir: PathBuf,
+-    pub args: Vec<String>,
+-    pub image_config: Option<ImageSpec>,
+-}
+-
+-impl Default for Config {
+-    fn default() -> Self {
+-        Self {
+-            id: String::new(),
+-            image: String::new(),
+-            working_dir: PathBuf::from("/compile"),
+-            args: Vec::new(),
+-            image_config: None,
+-        }
+-    }
+-}
+-
+-impl Config {
+-    pub fn new(
+-        id: impl Into<String>,
+-        image: impl Into<String>,
+-        working_dir: impl Into<PathBuf>,
+-        args: Vec<String>,
+-        image_config: Option<ImageSpec>,
+-    ) -> Self {
+-        Self {
+-            id: id.into(),
+-            image: image.into(),
+-            working_dir: working_dir.into(),
+-            args,
+-            image_config,
+-        }
+-    }
+-
+-    /// イメージを準備し、準備されたイメージ名を含む新しい設定を返します。
+-    ///
+-    /// # Returns
+-    /// * `Ok(Self)` - 準備されたイメージを含む新しい設定
+-    /// * `Err(_)` - イメージの準備に失敗した場合
+-    ///
+-    /// # Errors
+-    /// * イメージのビルドに失敗した場合
+-    /// * イメージのプルに失敗した場合
+-    pub async fn prepare_image(&self) -> Result<Self> {
+-        let image = if let Some(image_config) = &self.image_config {
+-            let tag = format!("cph-{}", self.id);
+-            image_config.prepare_image(&tag).await?
+-        } else {
+-            self.image.clone()
+-        };
+-
+-        Ok(Self {
+-            id: self.id.clone(),
+-            image,
+-            working_dir: self.working_dir.clone(),
+-            args: self.args.clone(),
+-            image_config: self.image_config.clone(),
+-        })
+-    }
+-}
+-
+-#[derive(Clone, Debug)]
+-pub struct ResourceLimits {
+-    pub memory_mb: u64,
+-    pub cpu_count: u32,
+-    pub timeout_sec: u32,
+-}
+-
+-impl Default for ResourceLimits {
+-    fn default() -> Self {
+-        // グローバル設定から値を取得
+-        if let Ok(config) = GlobalConfig::get_default_config() {
+-            if let Ok(memory) = config.get::<u64>("system.container.memory_limit_mb") {
+-                if let Ok(timeout) = config.get::<u32>("system.container.timeout_seconds") {
+-                    return Self {
+-                        memory_mb: memory,
+-                        cpu_count: 1,
+-                        timeout_sec: timeout,
+-                    };
+-                }
+-            }
+-        }
+-
+-        // フォールバック値
+-        Self {
+-            memory_mb: 512,
+-            cpu_count: 1,
+-            timeout_sec: 30,
+-        }
+-    }
+-}
+-
+-/// containerdの設定を取得します
+-/// 
+-/// # Returns
+-/// 
+-/// * `Result<(String, String)>` - (ソケットパス, ネームスペース)のタプル
+-/// 
+-/// # Errors
+-/// 
+-/// 以下の場合にエラーを返します：
+-/// - 設定ファイルの読み込みに失敗した場合
+-/// - 必要な設定値が見つからない場合
+-/// - 設定値の型変換に失敗した場合
+-#[allow(clippy::module_name_repetitions)]
+-pub fn get_runtime_config() -> Result<(String, String)> {
+-    let config = GlobalConfig::get_default_config()?;
+-    let socket = config.get::<String>("system.container.runtime.containerd.socket")?;
+-    let namespace = config.get::<String>("system.container.runtime.containerd.namespace")?;
+-    Ok((socket, namespace))
+-} 
+\ No newline at end of file
+diff --git a/src/container/runtime/container.rs b/src/container/runtime/container.rs
+deleted file mode 100644
+index 53774dd..0000000
+--- a/src/container/runtime/container.rs
++++ /dev/null
+@@ -1,126 +0,0 @@
+-use std::sync::Arc;
+-use anyhow::{Result, anyhow};
+-use tokio::sync::{oneshot, Mutex};
+-use super::Runtime;
+-use super::config::Config;
+-
+-#[derive(Debug, Clone, PartialEq, Eq)]
+-pub enum State {
+-    Created,
+-    Running,
+-    Completed,
+-    Failed(String),
+-}
+-
+-pub struct Container {
+-    config: Config,
+-    runtime: Arc<dyn Runtime>,
+-    state: Arc<Mutex<State>>,
+-    cancel_tx: Option<Arc<oneshot::Sender<()>>>,
+-    #[allow(dead_code)]
+-    cancel_rx: Option<oneshot::Receiver<()>>,
+-}
+-
+-impl Container {
+-    pub fn new(runtime: Arc<dyn Runtime>, config: Config) -> Self {
+-        Self {
+-            runtime,
+-            config,
+-            state: Arc::new(Mutex::new(State::Created)),
+-            cancel_tx: None,
+-            cancel_rx: None,
+-        }
+-    }
+-
+-    /// コンテナを実行します
+-    /// 
+-    /// # Errors
+-    /// - ランタイムの実行に失敗した場合
+-    /// - 状態の更新に失敗した場合
+-    pub async fn run(&self) -> Result<()> {
+-        println!("Container({}): 実行開始", self.id());
+-        {
+-            let mut state = self.state.lock().await;
+-            *state = State::Running;
+-            drop(state);
+-        }
+-
+-        let result = self.runtime.run(&self.config).await;
+-
+-        if let Err(e) = result {
+-            println!("Container({}): エラー発生: {}", self.id(), e);
+-            {
+-                let mut state = self.state.lock().await;
+-                *state = State::Failed(e.to_string());
+-                drop(state);
+-            }
+-            return Err(e);
+-        }
+-
+-        {
+-            let mut state = self.state.lock().await;
+-            *state = State::Completed;
+-            drop(state);
+-        }
+-
+-        println!("Container({}): 実行完了", self.id());
+-        Ok(())
+-    }
+-
+-    /// コンテナをキャンセルします
+-    /// 
+-    /// # Errors
+-    /// - キャンセル用のチャネルが既に閉じられている場合
+-    /// - 状態の更新に失敗した場合
+-    pub async fn cancel(&self) -> Result<()> {
+-        if let Some(tx) = &self.cancel_tx {
+-            if Arc::strong_count(tx) == 1 {
+-                if let Ok(tx) = Arc::try_unwrap(tx.clone()) {
+-                    tx.send(()).map_err(|()| anyhow!("キャンセルチャネルが閉じられています"))?;
+-                }
+-            }
+-        }
+-
+-        {
+-            let mut state = self.state.lock().await;
+-            *state = State::Completed;
+-            drop(state);
+-        }
+-        Ok(())
+-    }
+-
+-    pub async fn status(&self) -> State {
+-        self.state.lock().await.clone()
+-    }
+-
+-    #[must_use]
+-    pub fn id(&self) -> &str {
+-        &self.config.id
+-    }
+-
+-    pub async fn state(&self) -> State {
+-        self.state.lock().await.clone()
+-    }
+-
+-    /// コンテナの状態を設定します
+-    /// 
+-    /// # Errors
+-    /// - 状態のロックの取得に失敗した場合
+-    pub async fn set_state(&self, new_state: State) -> Result<()> {
+-        *self.state.lock().await = new_state;
+-        Ok(())
+-    }
+-}
+-
+-impl Clone for Container {
+-    fn clone(&self) -> Self {
+-        let (tx, rx) = oneshot::channel();
+-        Self {
+-            config: self.config.clone(),
+-            runtime: self.runtime.clone(),
+-            state: self.state.clone(),
+-            cancel_tx: Some(Arc::new(tx)),
+-            cancel_rx: Some(rx),
+-        }
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/container/runtime/containerd.rs b/src/container/runtime/containerd.rs
+deleted file mode 100644
+index 9844c4c..0000000
+--- a/src/container/runtime/containerd.rs
++++ /dev/null
+@@ -1,144 +0,0 @@
+-use std::path::Path;
+-use anyhow::{Result, anyhow};
+-use async_trait::async_trait;
+-use containerd_client as containerd;
+-use containerd_client::services::v1::containers_client::ContainersClient;
+-use containerd_client::services::v1::tasks_client::TasksClient;
+-use containerd_client::services::v1::Container as ContainerdContainer;
+-use prost_types::Any;
+-use std::sync::Arc;
+-use tokio::sync::Mutex;
+-use super::Runtime;
+-use super::config;
+-
+-#[allow(clippy::module_name_repetitions)]
+-pub struct ContainerdRuntime {
+-    containers: Arc<Mutex<ContainersClient<tonic::transport::Channel>>>,
+-    tasks: Arc<Mutex<TasksClient<tonic::transport::Channel>>>,
+-}
+-
+-impl ContainerdRuntime {
+-    /// 新しいランタイムインスタンスを作成します
+-    ///
+-    /// # Errors
+-    /// - コンテナクライアントの初期化に失敗した場合
+-    pub async fn new() -> Result<Self> {
+-        let channel = containerd::connect("/run/containerd/containerd.sock").await?;
+-        Ok(Self {
+-            containers: Arc::new(Mutex::new(ContainersClient::new(channel.clone()))),
+-            tasks: Arc::new(Mutex::new(TasksClient::new(channel))),
+-        })
+-    }
+-}
+-
+-#[async_trait]
+-impl Runtime for ContainerdRuntime {
+-    async fn create(
+-        &self,
+-        image: &str,
+-        command: &[String],
+-        working_dir: &Path,
+-        env_vars: &[String],
+-    ) -> Result<String> {
+-        let container_id = uuid::Uuid::new_v4().to_string();
+-        let request = containerd::services::v1::CreateContainerRequest {
+-            container: Some(ContainerdContainer {
+-                id: container_id.clone(),
+-                image: image.to_string(),
+-                runtime: Some(containerd::services::v1::container::Runtime {
+-                    name: "io.containerd.runc.v2".to_string(),
+-                    options: None,
+-                }),
+-                spec: Some(Any {
+-                    type_url: "types.containerd.io/opencontainers/runtime-spec/1/Spec".to_string(),
+-                    value: serde_json::to_vec(&serde_json::json!({
+-                        "ociVersion": "1.0.2",
+-                        "process": {
+-                            "args": command,
+-                            "cwd": working_dir.to_str().expect("作業ディレクトリのパスが無効です"),
+-                            "env": env_vars,
+-                            "terminal": false,
+-                            "user": {
+-                                "uid": 0,
+-                                "gid": 0
+-                            }
+-                        },
+-                        "root": {
+-                            "path": "rootfs"
+-                        },
+-                        "linux": {
+-                            "namespaces": [
+-                                { "type": "pid" },
+-                                { "type": "ipc" },
+-                                { "type": "uts" },
+-                                { "type": "mount" },
+-                                { "type": "network" }
+-                            ]
+-                        }
+-                    }))?,
+-                }),
+-                ..Default::default()
+-            }),
+-        };
+-
+-        let container = {
+-            let mut client = self.containers.lock().await;
+-            client.create(request).await?
+-                .into_inner()
+-                .container
+-                .ok_or_else(|| anyhow!("コンテナの作成に失敗しました"))?
+-        };
+-
+-        Ok(container.id)
+-    }
+-
+-    async fn start(&self, container_id: &str) -> Result<()> {
+-        self.tasks.lock().await
+-            .start(containerd::services::v1::StartRequest {
+-                container_id: container_id.to_string(),
+-                exec_id: String::new(),
+-            })
+-            .await?;
+-        Ok(())
+-    }
+-
+-    async fn stop(&self, container_id: &str) -> Result<()> {
+-        self.tasks.lock().await
+-            .kill(containerd::services::v1::KillRequest {
+-                container_id: container_id.to_string(),
+-                exec_id: String::new(),
+-                signal: 15, // SIGTERM
+-                all: false,
+-            })
+-            .await?;
+-        Ok(())
+-    }
+-
+-    async fn remove(&self, container_id: &str) -> Result<()> {
+-        self.containers.lock().await
+-            .delete(containerd::services::v1::DeleteContainerRequest {
+-                id: container_id.to_string(),
+-            })
+-            .await?;
+-        Ok(())
+-    }
+-
+-    async fn run(&self, config: &config::Config) -> Result<()> {
+-        let prepared_config = config.prepare_image().await?;
+-        let container_id = self.create(
+-            &prepared_config.image,
+-            &prepared_config.args,
+-            &prepared_config.working_dir,
+-            &[]  // 空の環境変数リスト
+-        ).await?;
+-        self.start(&container_id).await?;
+-        Ok(())
+-    }
+-
+-    fn box_clone(&self) -> Box<dyn Runtime> {
+-        Box::new(Self {
+-            containers: self.containers.clone(),
+-            tasks: self.tasks.clone(),
+-        })
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/container/runtime/mock.rs b/src/container/runtime/mock.rs
+deleted file mode 100644
+index c2064d2..0000000
+--- a/src/container/runtime/mock.rs
++++ /dev/null
+@@ -1,93 +0,0 @@
+-use std::path::Path;
+-use anyhow::{Result, anyhow};
+-use async_trait::async_trait;
+-use tokio::time::sleep;
+-use tokio::time::Duration;
+-use super::Runtime;
+-use super::config;
+-
+-#[derive(Debug, Clone)]
+-pub struct TestRuntime {
+-    should_fail: bool,
+-}
+-
+-impl TestRuntime {
+-    #[must_use]
+-    pub const fn new() -> Self {
+-        Self {
+-            should_fail: false,
+-        }
+-    }
+-
+-    #[must_use]
+-    pub const fn with_failure() -> Self {
+-        Self {
+-            should_fail: true,
+-        }
+-    }
+-}
+-
+-#[async_trait]
+-impl Runtime for TestRuntime {
+-    async fn create(
+-        &self,
+-        image: &str,
+-        command: &[String],
+-        working_dir: &Path,
+-        env_vars: &[String],
+-    ) -> Result<String> {
+-        if self.should_fail {
+-            return Err(anyhow!("モックエラー: コンテナの作成に失敗しました"));
+-        }
+-        println!("Mock: Creating container with image: {}, command: {:?}, working_dir: {:?}, env_vars: {:?}",
+-            image, command, working_dir, env_vars);
+-        Ok("mock-container-id".to_string())
+-    }
+-
+-    async fn start(&self, container_id: &str) -> Result<()> {
+-        if self.should_fail {
+-            return Err(anyhow!("モックエラー: コンテナの起動に失敗しました"));
+-        }
+-        println!("Mock: Starting container: {}", container_id);
+-        Ok(())
+-    }
+-
+-    async fn stop(&self, container_id: &str) -> Result<()> {
+-        if self.should_fail {
+-            return Err(anyhow!("モックエラー: コンテナの停止に失敗しました"));
+-        }
+-        println!("Mock: Stopping container: {}", container_id);
+-        Ok(())
+-    }
+-
+-    async fn remove(&self, container_id: &str) -> Result<()> {
+-        if self.should_fail {
+-            return Err(anyhow!("モックエラー: コンテナの削除に失敗しました"));
+-        }
+-        println!("Mock: Removing container: {}", container_id);
+-        Ok(())
+-    }
+-
+-    async fn run(&self, config: &config::Config) -> Result<()> {
+-        if self.should_fail {
+-            return Err(anyhow!("モックエラー: コンテナの実行に失敗しました"));
+-        }
+-        let prepared_config = config.prepare_image().await?;
+-        println!("Mock: Running container with config: {:?}", prepared_config);
+-
+-        // 実行中の状態をシミュレート
+-        sleep(Duration::from_millis(200)).await;
+-
+-        Ok(())
+-    }
+-
+-    fn box_clone(&self) -> Box<dyn Runtime> {
+-        Box::new(self.clone())
+-    }
+-}
+-
+-impl Default for TestRuntime {
+-    fn default() -> Self {
+-        Self::new()
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/container/runtime/mod.rs b/src/container/runtime/mod.rs
+deleted file mode 100644
+index 286df0d..0000000
+--- a/src/container/runtime/mod.rs
++++ /dev/null
+@@ -1,38 +0,0 @@
+-pub mod builder;
+-pub mod config;
+-pub mod container;
+-pub mod containerd;
+-pub mod mock;
+-pub mod orchestrator;
+-
+-pub use container::Container;
+-pub use builder::Builder;
+-pub use container::State;
+-
+-use async_trait::async_trait;
+-use anyhow::Result;
+-use std::path::Path;
+-
+-#[async_trait]
+-pub trait Runtime: Send + Sync {
+-    async fn create(
+-        &self,
+-        image: &str,
+-        command: &[String],
+-        working_dir: &Path,
+-        env_vars: &[String],
+-    ) -> Result<String>;
+-
+-    async fn start(&self, container_id: &str) -> Result<()>;
+-    async fn stop(&self, container_id: &str) -> Result<()>;
+-    async fn remove(&self, container_id: &str) -> Result<()>;
+-    async fn run(&self, config: &config::Config) -> Result<()>;
+-
+-    fn box_clone(&self) -> Box<dyn Runtime>;
+-}
+-
+-impl Clone for Box<dyn Runtime> {
+-    fn clone(&self) -> Self {
+-        self.box_clone()
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/container/runtime/orchestrator.rs b/src/container/runtime/orchestrator.rs
+deleted file mode 100644
+index 4d91ad6..0000000
+--- a/src/container/runtime/orchestrator.rs
++++ /dev/null
+@@ -1,136 +0,0 @@
+-use std::sync::Arc;
+-use anyhow::{Result, anyhow};
+-use tokio::sync::Mutex;
+-use crate::container::{
+-    communication::transport::Network,
+-    io::buffer::Buffer,
+-};
+-use super::{container::Container, config::Config, containerd::ContainerdRuntime, Runtime};
+-
+-pub struct ParallelExecutor {
+-    runtime: Arc<dyn Runtime>,
+-    #[allow(dead_code)]
+-    network: Arc<Network>,
+-    #[allow(dead_code)]
+-    buffer: Arc<Buffer>,
+-    containers: Arc<Mutex<Vec<Container>>>,
+-}
+-
+-impl ParallelExecutor {
+-    /// 新しいオーケストレーターを作成します。
+-    ///
+-    /// # Returns
+-    /// * `Ok(Self)` - オーケストレーターの作成に成功
+-    /// * `Err(_)` - オーケストレーターの作成に失敗
+-    ///
+-    /// # Errors
+-    /// * ランタイムの初期化に失敗した場合
+-    pub async fn new() -> Result<Self> {
+-        let runtime = Arc::new(ContainerdRuntime::new().await?);
+-        Self::with_runtime(runtime)
+-    }
+-
+-    /// 指定されたランタイムでオーケストレーターを作成します。
+-    ///
+-    /// # Arguments
+-    /// * `runtime` - コンテナランタイム
+-    ///
+-    /// # Returns
+-    /// * `Ok(Self)` - オーケストレーターの作成に成功
+-    /// * `Err(_)` - オーケストレーターの作成に失敗
+-    ///
+-    /// # Errors
+-    /// * ネットワークの初期化に失敗した場合
+-    pub fn with_runtime(runtime: Arc<dyn Runtime>) -> Result<Self> {
+-        Ok(Self {
+-            runtime,
+-            network: Arc::new(Network::new()),
+-            buffer: Arc::new(Buffer::new()),
+-            containers: Arc::new(Mutex::new(Vec::new())),
+-        })
+-    }
+-
+-    /// コンテナを実行します。
+-    ///
+-    /// # Arguments
+-    /// * `configs` - コンテナの設定のリスト
+-    ///
+-    /// # Returns
+-    /// * `Ok(())` - すべてのコンテナの実行に成功
+-    /// * `Err(_)` - いずれかのコンテナの実行に失敗
+-    ///
+-    /// # Errors
+-    /// * コンテナの作成に失敗した場合
+-    /// * コンテナの起動に失敗した場合
+-    /// * コンテナの実行中にエラーが発生した場合
+-    pub async fn execute(&self, configs: Vec<Config>) -> Result<()> {
+-        let mut handles = vec![];
+-        
+-        for config in configs {
+-            let runtime = Arc::clone(&self.runtime);
+-            let containers_ref = Arc::clone(&self.containers);
+-            
+-            let handle = tokio::spawn(async move {
+-                let container = Container::new(runtime, config);
+-                
+-                // コンテナの追加は最小限のロック時間で行う
+-                {
+-                    let mut containers = containers_ref.lock().await;
+-                    containers.push(container.clone());
+-                }
+-                
+-                // コンテナの実行中にエラーが発生した場合、適切なエラーメッセージを返す
+-                container.run().await.map_err(|e| {
+-                    anyhow!("コンテナの実行中にエラーが発生しました: {}", e)
+-                })?;
+-
+-                Ok::<_, anyhow::Error>(())
+-            });
+-            
+-            handles.push(handle);
+-        }
+-
+-        // 全てのタスクの完了を待ち、エラーがあれば適切に処理する
+-        for handle in handles {
+-            match handle.await {
+-                Ok(result) => {
+-                    result.map_err(|e| anyhow!("コンテナの実行に失敗しました: {}", e))?;
+-                }
+-                Err(e) => {
+-                    return Err(anyhow!("タスクの実行に失敗しました: {}", e));
+-                }
+-            }
+-        }
+-
+-        Ok(())
+-    }
+-
+-    /// コンテナをクリーンアップします。
+-    ///
+-    /// # Returns
+-    /// * `Ok(())` - すべてのコンテナのクリーンアップに成功
+-    /// * `Err(_)` - いずれかのコンテナのクリーンアップに失敗
+-    ///
+-    /// # Errors
+-    /// * コンテナの停止に失敗した場合
+-    /// * コンテナの削除に失敗した場合
+-    pub async fn cleanup(&self) -> Result<()> {
+-        let containers = {
+-            let mut containers = self.containers.lock().await;
+-            std::mem::take(&mut *containers)
+-        };
+-
+-        let mut cleanup_errors = Vec::new();
+-        for container in containers {
+-            if let Err(e) = container.cancel().await {
+-                cleanup_errors.push(format!("コンテナのクリーンアップに失敗: {e}"));
+-            }
+-        }
+-
+-        if cleanup_errors.is_empty() {
+-            Ok(())
+-        } else {
+-            Err(anyhow!("クリーンアップエラー: {}", cleanup_errors.join(", ")))
+-        }
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/container/state/lifecycle.rs b/src/container/state/lifecycle.rs
+deleted file mode 100644
+index 146500f..0000000
+--- a/src/container/state/lifecycle.rs
++++ /dev/null
+@@ -1,83 +0,0 @@
+-use std::fmt;
+-use anyhow::Result;
+-use serde::{Serialize, Deserialize};
+-
+-/// コンテナの状態を表す列挙型
+-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+-pub enum Status {
+-    /// 作成済み
+-    Created,
+-    /// 起動中
+-    Starting,
+-    /// 実行中
+-    Running,
+-    /// 停止中
+-    Stopping,
+-    /// 停止済み
+-    Stopped,
+-    /// エラーで失敗
+-    Failed(String),
+-}
+-
+-impl Default for Status {
+-    fn default() -> Self {
+-        Self::Created
+-    }
+-}
+-
+-impl fmt::Display for Status {
+-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+-        match self {
+-            Self::Created => write!(f, "Created"),
+-            Self::Starting => write!(f, "Starting"),
+-            Self::Running => write!(f, "Running"),
+-            Self::Stopping => write!(f, "Stopping"),
+-            Self::Stopped => write!(f, "Stopped"),
+-            Self::Failed(reason) => write!(f, "Failed: {reason}"),
+-        }
+-    }
+-}
+-
+-impl Status {
+-    /// 状態が終了状態かどうかを返します
+-    #[must_use]
+-    pub const fn is_terminal(&self) -> bool {
+-        matches!(self, Self::Stopped | Self::Failed(_))
+-    }
+-
+-    /// 状態が実行中かどうかを返します
+-    #[must_use]
+-    pub const fn is_running(&self) -> bool {
+-        matches!(self, Self::Running)
+-    }
+-
+-    /// 指定された状態に遷移できるかどうかを確認し、遷移します
+-    ///
+-    /// # Errors
+-    /// - 無効な状態遷移が要求された場合
+-    pub fn transition_to(&self, target: Self) -> Result<Self> {
+-        if self.can_transition_to(&target) {
+-            Ok(target)
+-        } else {
+-            Err(anyhow::anyhow!(
+-                "無効な状態遷移です: {} -> {}",
+-                self,
+-                target
+-            ))
+-        }
+-    }
+-
+-    const fn can_transition_to(&self, target: &Self) -> bool {
+-        use Status::{Created, Failed, Running, Starting, Stopped, Stopping};
+-        match (self, target) {
+-            // 正常な状態遷移パス
+-            (Created | Starting | Running | Stopping, Failed(_)) |
+-            (Created, Starting) |
+-            (Starting, Running) |
+-            (Running, Stopping) |
+-            (Stopping, Stopped) => true,
+-            // その他の遷移は無効
+-            _ => false,
+-        }
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/container/state/mod.rs b/src/container/state/mod.rs
+deleted file mode 100644
+index a92d437..0000000
+--- a/src/container/state/mod.rs
++++ /dev/null
+@@ -1,3 +0,0 @@
+-pub mod lifecycle;
+-
+-pub use lifecycle::Status; 
+\ No newline at end of file
+diff --git a/src/container/state/status.rs b/src/container/state/status.rs
+deleted file mode 100644
+index eaa6911..0000000
+--- a/src/container/state/status.rs
++++ /dev/null
+@@ -1,58 +0,0 @@
+-use serde::{Serialize, Deserialize};
+-use anyhow::{Result, anyhow};
+-
+-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+-pub enum ContainerStatus {
+-    Created,
+-    Starting,
+-    Running,
+-    Stopping,
+-    Stopped,
+-    Failed(String),
+-}
+-
+-impl std::fmt::Display for ContainerStatus {
+-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+-        match self {
+-            Self::Created => write!(f, "Created"),
+-            Self::Starting => write!(f, "Starting"),
+-            Self::Running => write!(f, "Running"),
+-            Self::Stopping => write!(f, "Stopping"),
+-            Self::Stopped => write!(f, "Stopped"),
+-            Self::Failed(reason) => write!(f, "Failed: {}", reason),
+-        }
+-    }
+-}
+-
+-impl ContainerStatus {
+-    pub fn is_terminal(&self) -> bool {
+-        matches!(self, Self::Stopped | Self::Failed(_))
+-    }
+-
+-    pub fn is_running(&self) -> bool {
+-        matches!(self, Self::Running)
+-    }
+-
+-    pub fn transition_to(&self, target: ContainerStatus) -> Result<ContainerStatus> {
+-        if self.can_transition_to(&target) {
+-            Ok(target)
+-        } else {
+-            Err(anyhow!("不正な状態遷移です: {} -> {}", self, target))
+-        }
+-    }
+-
+-    fn can_transition_to(&self, target: &ContainerStatus) -> bool {
+-        use ContainerStatus::*;
+-        match (self, target) {
+-            // 正常な状態遷移パス
+-            (Created, Starting) => true,
+-            (Starting, Running) => true,
+-            (Running, Stopping) => true,
+-            (Stopping, Stopped) => true,
+-            // 異常系への遷移は常に許可
+-            (_, Failed(_)) => true,
+-            // その他の遷移は不許可
+-            _ => false,
+-        }
+-    }
+-} 
+\ No newline at end of file
+diff --git a/src/lib.rs b/src/lib.rs
+index c4a1bc3..1dc6e54 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -3,6 +3,7 @@ pub mod contest;
+ pub mod message;
+ pub mod fs;
+ pub mod container;
++pub mod process;
+ 
+ pub use contest::{Command, Contest, Handler, TestCase, TestRunner};
+ pub use message::{Type, messages};
+diff --git a/src/oj/Dockerfile b/src/oj/Dockerfile
+deleted file mode 100644
+index 7f2bacd..0000000
+--- a/src/oj/Dockerfile
++++ /dev/null
+@@ -1,13 +0,0 @@
+-FROM python:3.11-slim
+-
+-RUN pip install --no-cache-dir online-judge-tools
+-
+-RUN useradd -m -u 1000 oj-user && \
+-    mkdir -p /home/oj-user/.local/share/online-judge-tools && \
+-    echo "#LWP-Cookies-2.0" > /home/oj-user/.local/share/online-judge-tools/cookie.jar && \
+-    chown -R oj-user:oj-user /home/oj-user && \
+-    chmod 600 /home/oj-user/.local/share/online-judge-tools/cookie.jar
+-
+-WORKDIR /workspace
+-
+-USER oj-user
+\ No newline at end of file
+diff --git a/src/process/error.rs b/src/process/error.rs
+new file mode 100644
+index 0000000..5461e5a
+--- /dev/null
++++ b/src/process/error.rs
+@@ -0,0 +1,63 @@
++use std::path::PathBuf;
++use thiserror::Error;
++
++#[derive(Debug, Error)]
++pub enum ProcessError {
++    #[error("プロセスの起動に失敗しました: {0}")]
++    Spawn(String),
++
++    #[error("プロセスがタイムアウトしました（{timeout_secs}秒）")]
++    Timeout {
++        timeout_secs: u64,
++        output: Vec<u8>,
++    },
++
++    #[error("メモリ制限（{limit_mb}MB）を超過しました")]
++    MemoryLimitExceeded {
++        limit_mb: u64,
++        usage_mb: u64,
++    },
++
++    #[error("プロセスが異常終了しました（終了コード: {code}）")]
++    Failure {
++        code: i32,
++        output: Vec<u8>,
++    },
++
++    #[error("プロセスの強制終了に失敗しました: {0}")]
++    Kill(String),
++
++    #[error("標準入出力の操作に失敗しました: {0}")]
++    Io(String),
++
++    #[error("設定エラー: {0}")]
++    Config(String),
++
++    #[error("実行ファイルが見つかりません: {path}")]
++    ExecutableNotFound {
++        path: PathBuf,
++    },
++
++    #[error("プロセスが見つかりません: {id}")]
++    ProcessNotFound {
++        id: String,
++    },
++
++    #[error("バッファ操作に失敗しました: {0}")]
++    Buffer(String),
++
++    #[error("その他のエラー: {0}")]
++    Other(String),
++}
++
++impl From<std::io::Error> for ProcessError {
++    fn from(err: std::io::Error) -> Self {
++        ProcessError::Io(err.to_string())
++    }
++}
++
++impl From<anyhow::Error> for ProcessError {
++    fn from(err: anyhow::Error) -> Self {
++        ProcessError::Other(err.to_string())
++    }
++} 
+\ No newline at end of file
+diff --git a/src/process/executor.rs b/src/process/executor.rs
+new file mode 100644
+index 0000000..5eb7f69
+--- /dev/null
++++ b/src/process/executor.rs
+@@ -0,0 +1,181 @@
++use std::collections::HashMap;
++use std::sync::Arc;
++use std::time::Duration;
++use tokio::process::{Child, Command};
++use tokio::sync::Mutex;
++use anyhow::{Result, bail};
++use crate::process::io::Buffer;
++use crate::process::monitor::{Monitor, Status};
++
++/// 単一のプロセスを表す構造体
++#[derive(Debug, Clone)]
++pub struct Process {
++    child: Arc<Mutex<Child>>,
++    #[allow(dead_code)]
++    buffer: Arc<Buffer>,
++    monitor: Monitor,
++}
++
++impl Process {
++    /// 新しいプロセスを作成する
++    /// 
++    /// # Arguments
++    /// 
++    /// * `child` - 子プロセス
++    /// * `buffer` - 入出力バッファ
++    /// * `memory_limit_mb` - メモリ制限（MB単位）
++    #[must_use]
++    pub fn new(child: Child, buffer: Arc<Buffer>, memory_limit_mb: Option<u64>) -> Self {
++        let child = Arc::new(Mutex::new(child));
++        let monitor = Monitor::new(memory_limit_mb, child.clone());
++        Self { child, buffer, monitor }
++    }
++
++    /// プロセスを強制終了する
++    /// 
++    /// # Errors
++    /// 
++    /// * プロセスの終了に失敗した場合
++    pub async fn kill(&mut self) -> Result<()> {
++        self.child.lock().await.kill().await?;
++        Ok(())
++    }
++
++    /// タイムアウト付きでプロセスの終了を待機する
++    /// 
++    /// # Arguments
++    /// 
++    /// * `timeout` - タイムアウト時間
++    /// 
++    /// # Errors
++    /// 
++    /// * プロセスの終了待機に失敗した場合
++    /// * タイムアウトが発生した場合
++    pub async fn wait_with_timeout(&mut self, timeout: Duration) -> Result<Status> {
++        let mut this = self.clone();
++        let kill_fn = move || async move { this.kill().await };
++        Ok(self.monitor.wait_with_timeout(timeout, kill_fn).await)
++    }
++
++    /// プロセスの標準入力にデータを書き込む
++    /// 
++    /// # Arguments
++    /// 
++    /// * `input` - 書き込むデータ
++    /// 
++    /// # Errors
++    /// 
++    /// * 書き込みに失敗した場合
++    pub async fn write_stdin(&mut self, input: &[u8]) -> Result<()> {
++        let mut child = self.child.lock().await;
++        if let Some(stdin) = child.stdin.as_mut() {
++            use tokio::io::AsyncWriteExt;
++            stdin.write_all(input).await?;
++            stdin.flush().await?;
++        }
++        drop(child);
++        Ok(())
++    }
++}
++
++/// プロセスの実行と管理を行う構造体
++#[derive(Debug)]
++pub struct Executor {
++    processes: Arc<Mutex<HashMap<String, Process>>>,
++}
++
++#[allow(clippy::new_without_default)]
++impl Executor {
++    /// 新しいエグゼキューターを作成する
++    #[must_use]
++    pub fn new() -> Self {
++        Self {
++            processes: Arc::new(Mutex::new(HashMap::new())),
++        }
++    }
++
++    /// 新しいプロセスを生成する
++    /// 
++    /// # Arguments
++    /// 
++    /// * `id` - プロセスID
++    /// * `command` - 実行するコマンド
++    /// * `buffer` - 入出力バッファ
++    /// * `memory_limit_mb` - メモリ制限（MB単位）
++    /// 
++    /// # Errors
++    /// 
++    /// * プロセスの生成に失敗した場合
++    pub async fn spawn(&mut self, id: String, mut command: Command, buffer: Arc<Buffer>, memory_limit_mb: Option<u64>) -> Result<Process> {
++        let child = command
++            .kill_on_drop(true)
++            .stdout(std::process::Stdio::piped())
++            .stderr(std::process::Stdio::piped())
++            .stdin(std::process::Stdio::piped())
++            .spawn()?;
++
++        let process = Process::new(child, buffer, memory_limit_mb);
++        self.processes.lock().await.insert(id, process.clone());
++        Ok(process)
++    }
++
++    /// プロセスを強制終了する
++    /// 
++    /// # Arguments
++    /// 
++    /// * `id` - プロセスID
++    /// 
++    /// # Errors
++    /// 
++    /// * プロセスの終了に失敗した場合
++    pub async fn kill(&mut self, id: &str) -> Result<()> {
++        let mut processes = self.processes.lock().await;
++        let process = processes.get_mut(id);
++        if let Some(process) = process {
++            process.kill().await?;
++        }
++        drop(processes);
++        Ok(())
++    }
++
++    /// プロセスの標準入力にデータを書き込む
++    /// 
++    /// # Arguments
++    /// 
++    /// * `id` - プロセスID
++    /// * `input` - 書き込むデータ
++    /// 
++    /// # Errors
++    /// 
++    /// * プロセスが見つからない場合
++    /// * 書き込みに失敗した場合
++    pub async fn write_stdin(&mut self, id: &str, input: &[u8]) -> Result<()> {
++        let mut processes = self.processes.lock().await;
++        if let Some(process) = processes.get_mut(id) {
++            process.write_stdin(input).await
++        } else {
++            bail!("プロセスが見つかりません: {id}")
++        }
++    }
++
++    /// タイムアウト付きでプロセスの終了を待機する
++    /// 
++    /// # Arguments
++    /// 
++    /// * `id` - プロセスID
++    /// * `timeout` - タイムアウト時間
++    /// 
++    /// # Errors
++    /// 
++    /// * プロセスが見つからない場合
++    /// * プロセスの終了待機に失敗した場合
++    pub async fn wait_with_timeout(&mut self, id: &str, timeout: Duration) -> Result<Status> {
++        let mut processes = self.processes.lock().await;
++        if let Some(process) = processes.get_mut(id) {
++            let status = process.wait_with_timeout(timeout).await?;
++            Ok(status)
++        } else {
++            bail!("プロセスが見つかりません: {id}")
++        }
++    }
++} 
+\ No newline at end of file
+diff --git a/src/process/io.rs b/src/process/io.rs
+new file mode 100644
+index 0000000..665fed8
+--- /dev/null
++++ b/src/process/io.rs
+@@ -0,0 +1,114 @@
++use std::sync::Arc;
++use tokio::process::Child;
++use tokio::sync::Mutex;
++use bytes::Bytes;
++use anyhow::Result;
++
++/// 入出力バッファを管理する構造体
++#[derive(Debug)]
++pub struct Buffer {
++    data: Mutex<Vec<u8>>,
++    max_size: usize,
++}
++
++impl Buffer {
++    /// 新しいバッファを作成する
++    /// 
++    /// # Arguments
++    /// 
++    /// * `max_size` - バッファの最大サイズ（バイト単位）
++    #[must_use]
++    pub fn new(max_size: usize) -> Self {
++        Self {
++            data: Mutex::new(Vec::new()),
++            max_size,
++        }
++    }
++
++    /// バッファにデータを追加する
++    /// 
++    /// # Arguments
++    /// 
++    /// * `bytes` - 追加するデータ
++    /// 
++    /// # Errors
++    /// 
++    /// * バッファサイズの制限を超えた場合
++    pub async fn append(&self, bytes: &[u8]) -> Result<()> {
++        let mut data = self.data.lock().await;
++        if data.len() + bytes.len() > self.max_size {
++            anyhow::bail!("バッファサイズの制限を超えました");
++        }
++        data.extend_from_slice(bytes);
++        drop(data);
++        Ok(())
++    }
++
++    /// バッファの内容を取得する
++    /// 
++    /// # Errors
++    /// 
++    /// * バッファのロックに失敗した場合
++    pub async fn get_contents(&self) -> Result<Bytes> {
++        Ok(Bytes::from(self.data.lock().await.clone()))
++    }
++
++    /// バッファをクリアする
++    /// 
++    /// # Errors
++    /// 
++    /// * バッファのロックに失敗した場合
++    pub async fn clear(&self) -> Result<()> {
++        self.data.lock().await.clear();
++        Ok(())
++    }
++}
++
++/// 入出力を処理するハンドラ
++#[derive(Debug)]
++pub struct Handler {
++    buffer: Arc<Buffer>,
++}
++
++impl Handler {
++    /// 新しいハンドラを作成する
++    /// 
++    /// # Arguments
++    /// 
++    /// * `buffer` - 使用するバッファ
++    #[must_use]
++    pub const fn new(buffer: Arc<Buffer>) -> Self {
++        Self { buffer }
++    }
++
++    /// 標準入力にデータを書き込む
++    /// 
++    /// # Arguments
++    /// 
++    /// * `child` - 子プロセス
++    /// * `input` - 書き込むデータ
++    /// 
++    /// # Errors
++    /// 
++    /// * 書き込みに失敗した場合
++    pub async fn write_stdin(child: &mut Child, input: &[u8]) -> Result<()> {
++        if let Some(stdin) = child.stdin.as_mut() {
++            use tokio::io::AsyncWriteExt;
++            stdin.write_all(input).await?;
++            stdin.flush().await?;
++        }
++        Ok(())
++    }
++
++    /// バッファを取得する
++    #[must_use]
++    pub fn get_buffer(&self) -> &Buffer {
++        &self.buffer
++    }
++
++    /// バッファの最大サイズを取得する
++    #[must_use]
++    pub fn get_max_size(&self) -> usize {
++        self.buffer.max_size
++    }
++} 
+\ No newline at end of file
+diff --git a/src/process/io/buffer.rs b/src/process/io/buffer.rs
+new file mode 100644
+index 0000000..98c9f13
+--- /dev/null
++++ b/src/process/io/buffer.rs
+@@ -0,0 +1,84 @@
++use std::collections::HashMap;
++use bytes::Bytes;
++use tokio::sync::Mutex;
++use anyhow::{Result, anyhow};
++
++/// プロセスの出力を保持するバッファ
++#[derive(Default)]
++pub struct Buffer {
++    buffers: Mutex<HashMap<String, Vec<Bytes>>>,
++    max_buffer_size: usize,
++    total_memory_usage: Mutex<usize>,
++}
++
++impl Buffer {
++    /// 新しいバッファを作成します
++    #[must_use]
++    pub fn new() -> Self {
++        Self::default()
++    }
++
++    /// 指定したサイズ制限でバッファを作成します
++    #[must_use]
++    pub fn with_max_size(max_size: usize) -> Self {
++        Self {
++            max_buffer_size: max_size,
++            ..Default::default()
++        }
++    }
++
++    /// データをバッファに追加します
++    ///
++    /// # Errors
++    /// - バッファのサイズ制限を超えた場合
++    pub async fn append(&self, process_id: &str, data: Bytes) -> Result<()> {
++        let data_len = data.len();
++
++        // 全体のメモリ使用量をチェック
++        {
++            let total_usage = self.total_memory_usage.lock().await;
++            if *total_usage + data_len > self.max_buffer_size * 10 {
++                return Err(anyhow!("バッファの総メモリ使用量が制限を超えています"));
++            }
++        }
++
++        let buffer_result = {
++            let mut buffers = self.buffers.lock().await;
++            let buffer = buffers.entry(process_id.to_string()).or_default();
++            let current_size: usize = buffer.iter().map(Bytes::len).sum();
++            
++            if current_size + data_len <= self.max_buffer_size {
++                buffer.push(data);
++                Ok(())
++            } else {
++                Err(anyhow!("バッファサイズが制限を超えています"))
++            }
++        };
++
++        // メモリ使用量を更新
++        if buffer_result.is_ok() {
++            let mut total_usage = self.total_memory_usage.lock().await;
++            *total_usage += data_len;
++        }
++
++        buffer_result
++    }
++
++    /// バッファの内容を取得します
++    pub async fn get(&self, process_id: &str) -> Option<Vec<Bytes>> {
++        self.buffers.lock().await
++            .get(process_id)
++            .cloned()
++    }
++
++    /// バッファをクリアします
++    pub async fn clear(&self, process_id: &str) {
++        let mut buffers = self.buffers.lock().await;
++        if let Some(buffer) = buffers.get_mut(process_id) {
++            let freed_memory: usize = buffer.iter().map(Bytes::len).sum();
++            buffer.clear();
++            let mut total_usage = self.total_memory_usage.lock().await;
++            *total_usage = total_usage.saturating_sub(freed_memory);
++        }
++    }
++} 
+\ No newline at end of file
+diff --git a/src/process/io/handler.rs b/src/process/io/handler.rs
+new file mode 100644
+index 0000000..652ced6
+--- /dev/null
++++ b/src/process/io/handler.rs
+@@ -0,0 +1,71 @@
++use tokio::io::{BufReader, AsyncBufReadExt, AsyncWriteExt};
++use tokio::process::Child;
++use bytes::Bytes;
++use anyhow::{Result, bail};
++use crate::process::io::Buffer;
++use std::sync::Arc;
++
++pub struct IoHandler {
++    buffer: Arc<Buffer>,
++}
++
++impl IoHandler {
++    pub fn new(buffer: Arc<Buffer>) -> Self {
++        Self { buffer }
++    }
++
++    pub async fn setup_io(&self, child: &mut Child, process_id: &str) {
++        if let Some(stdout) = child.stdout.take() {
++            let buffer = self.buffer.clone();
++            let process_id = process_id.to_string();
++            tokio::spawn(async move {
++                Self::handle_output(stdout, buffer.clone(), &process_id, "stdout").await;
++                buffer.clear(&process_id).await;
++            });
++        }
++
++        if let Some(stderr) = child.stderr.take() {
++            let buffer = self.buffer.clone();
++            let process_id = process_id.to_string();
++            tokio::spawn(async move {
++                Self::handle_output(stderr, buffer.clone(), &process_id, "stderr").await;
++                buffer.clear(&process_id).await;
++            });
++        }
++    }
++
++    async fn handle_output<T: tokio::io::AsyncRead + Unpin>(
++        output: T,
++        buffer: Arc<Buffer>,
++        process_id: &str,
++        stream_name: &str,
++    ) {
++        let mut reader = BufReader::new(output);
++        let mut line = String::new();
++        while let Ok(n) = reader.read_line(&mut line).await {
++            if n == 0 { break; }
++            if let Err(e) = buffer.append(process_id, Bytes::from(line.clone())).await {
++                eprintln!("{} バッファリングエラー: {}", stream_name, e);
++            }
++            line.clear();
++        }
++    }
++
++    pub async fn write_stdin(child: &mut Child, input: &str) -> Result<()> {
++        if let Some(stdin) = child.stdin.as_mut() {
++            stdin.write_all(input.as_bytes()).await?;
++            stdin.flush().await?;
++            Ok(())
++        } else {
++            bail!("プロセスの標準入力が利用できません");
++        }
++    }
++
++    pub async fn read_output(&self, process_id: &str) -> Option<Vec<Bytes>> {
++        self.buffer.get(process_id).await
++    }
++
++    pub async fn cleanup(&self, process_id: &str) {
++        self.buffer.clear(process_id).await;
++    }
++} 
+\ No newline at end of file
+diff --git a/src/process/limits.rs b/src/process/limits.rs
+new file mode 100644
+index 0000000..4c4f8ee
+--- /dev/null
++++ b/src/process/limits.rs
+@@ -0,0 +1,87 @@
++use anyhow::{Result, anyhow};
++use rlimit::{setrlimit, Resource};
++use std::fs::File;
++use std::io::Read;
++
++/// プロセスのリソース制限を管理するトレイト
++pub trait Limits {
++    /// メモリ制限を設定する
++    /// 
++    /// # Errors
++    /// 
++    /// * リソース制限の設定に失敗した場合
++    fn set_memory_limit(&self, limit_bytes: u64) -> Result<()>;
++
++    /// スタックサイズ制限を設定する
++    /// 
++    /// # Errors
++    /// 
++    /// * リソース制限の設定に失敗した場合
++    fn set_stack_limit(&self, limit_bytes: u64) -> Result<()>;
++}
++
++impl Limits for std::process::Command {
++    fn set_memory_limit(&self, limit_bytes: u64) -> Result<()> {
++        setrlimit(
++            Resource::AS,
++            limit_bytes,
++            limit_bytes,
++        ).map_err(|e| anyhow!(
++            "メモリ制限の設定に失敗しました: {e}"
++        ))
++    }
++
++    fn set_stack_limit(&self, limit_bytes: u64) -> Result<()> {
++        setrlimit(
++            Resource::STACK,
++            limit_bytes,
++            limit_bytes,
++        ).map_err(|e| anyhow!(
++            "スタックサイズ制限の設定に失敗しました: {e}"
++        ))
++    }
++}
++
++/// メモリ制限を管理する構造体
++#[derive(Debug, Clone, Copy)]
++pub struct Memory {
++    limit_bytes: u64,
++}
++
++impl Memory {
++    /// 新しいメモリ制限を作成する
++    /// 
++    /// # Arguments
++    /// 
++    /// * `limit_mb` - メモリ制限（MB単位）
++    #[must_use]
++    pub const fn new(limit_mb: u64) -> Self {
++        Self {
++            limit_bytes: limit_mb * 1024 * 1024,
++        }
++    }
++
++    /// メモリ制限を超過しているかチェックする
++    /// 
++    /// # Errors
++    /// 
++    /// * メモリ使用量の取得に失敗した場合
++    pub fn is_exceeded(&self) -> Result<bool> {
++        let mut status = String::new();
++        File::open("/proc/self/status")?.read_to_string(&mut status)?;
++
++        let rss = status.lines()
++            .find(|line| line.starts_with("VmRSS:"))
++            .and_then(|line| line.split_whitespace().nth(1))
++            .and_then(|kb| kb.parse::<u64>().ok())
++            .unwrap_or(0) * 1024;
++
++        Ok(rss > self.limit_bytes)
++    }
++}
++
++/// プロセスの状態を表す構造体
++#[derive(Debug, Clone)]
++pub struct Status {
++    pub memory_exceeded: bool,
++} 
+\ No newline at end of file
+diff --git a/src/process/mod.rs b/src/process/mod.rs
+new file mode 100644
+index 0000000..4f91a71
+--- /dev/null
++++ b/src/process/mod.rs
+@@ -0,0 +1,13 @@
++pub mod executor;
++pub mod io;
++pub mod limits;
++pub mod monitor;
++pub mod test;
++
++pub use executor::{Process, Executor};
++pub use io::Buffer;
++pub use limits::Limits;
++pub use monitor::{Monitor, Status};
++pub use test::{Case, Outcome, Suite, Runner};
++
++pub type Result<T> = anyhow::Result<T>; 
+\ No newline at end of file
+diff --git a/src/process/monitor.rs b/src/process/monitor.rs
+new file mode 100644
+index 0000000..48a58dc
+--- /dev/null
++++ b/src/process/monitor.rs
+@@ -0,0 +1,149 @@
++use std::os::unix::process::ExitStatusExt;
++use std::process::ExitStatus;
++use std::time::Duration;
++use tokio::time;
++use tokio::process::Child;
++use std::sync::Arc;
++use tokio::sync::Mutex;
++use std::fs::File;
++use std::io::Read;
++use anyhow::Context;
++
++/// プロセスの終了状態を表す構造体
++#[derive(Debug, Clone)]
++pub struct Status {
++    pub exit_status: ExitStatus,
++    pub memory_exceeded: bool,
++}
++
++/// プロセスの監視を行う構造体
++#[derive(Debug, Clone)]
++pub struct Monitor {
++    memory_limit_mb: Option<u64>,
++    child: Arc<Mutex<Child>>,
++}
++
++impl Monitor {
++    /// 新しいモニターを作成する
++    /// 
++    /// # Arguments
++    /// 
++    /// * `memory_limit_mb` - メモリ制限（MB単位）。Noneの場合は制限なし
++    /// * `child` - 監視対象の子プロセス
++    #[must_use]
++    pub const fn new(memory_limit_mb: Option<u64>, child: Arc<Mutex<Child>>) -> Self {
++        Self { memory_limit_mb, child }
++    }
++
++    /// プロセスのメモリ使用量を取得する（KB単位）
++    /// 
++    /// # Errors
++    /// 
++    /// * プロセスIDの取得に失敗した場合
++    /// * プロセスの状態ファイルの読み取りに失敗した場合
++    /// * メモリ使用量の解析に失敗した場合
++    async fn get_memory_usage_kb(&self) -> anyhow::Result<u64> {
++        let pid = {
++            let child = self.child.lock().await;
++            child.id().context("Failed to get process ID")?
++        };
++        let status_file = format!("/proc/{pid}/status");
++        let mut content = String::new();
++        File::open(status_file)?.read_to_string(&mut content)?;
++
++        // VmRSSとVmSwapの値を取得
++        let vm_rss = Self::parse_memory_value(&content, "VmRSS:")?;
++        let vm_swap = Self::parse_memory_value(&content, "VmSwap:").unwrap_or(0);
++
++        Ok(vm_rss + vm_swap)
++    }
++
++    /// プロセスの状態ファイルからメモリ値を解析する
++    /// 
++    /// # Errors
++    /// 
++    /// * 指定された値が見つからない場合
++    /// * 値の解析に失敗した場合
++    fn parse_memory_value(content: &str, prefix: &str) -> anyhow::Result<u64> {
++        let line = content.lines()
++            .find(|line| line.starts_with(prefix))
++            .context(format!("Failed to find {prefix} in status file"))?;
++        
++        let value = line.split_whitespace()
++            .nth(1)
++            .context(format!("Failed to parse {prefix} value"))?
++            .parse::<u64>()?;
++        
++        Ok(value)
++    }
++
++    /// メモリ制限を超過しているかどうかを確認する
++    async fn check_memory_limit(&self) -> bool {
++        if let Some(limit_mb) = self.memory_limit_mb {
++            if let Ok(usage_kb) = self.get_memory_usage_kb().await {
++                return usage_kb > limit_mb * 1024;
++            }
++        }
++        false
++    }
++
++    /// タイムアウト付きでプロセスの終了を待機する
++    /// 
++    /// # Arguments
++    /// 
++    /// * `timeout` - タイムアウト時間
++    /// * `kill_fn` - プロセスを強制終了するための関数
++    /// 
++    /// # Errors
++    /// 
++    /// * プロセスの終了待機に失敗した場合
++    /// * プロセスの強制終了に失敗した場合
++    pub async fn wait_with_timeout<F, Fut>(&self, timeout: Duration, kill_fn: F) -> Status
++    where
++        F: FnOnce() -> Fut + Clone + Send + 'static,
++        Fut: std::future::Future<Output = anyhow::Result<()>> + Send,
++    {
++        let memory_check = async {
++            while !self.check_memory_limit().await {
++                time::sleep(Duration::from_millis(100)).await;
++            }
++        };
++
++        let kill_fn2 = kill_fn.clone();
++        let result = tokio::select! {
++            result = self.wait() => result,
++            () = memory_check => {
++                let _ = kill_fn().await;
++                Ok(ExitStatus::from_raw(137)) // OOM killer signal
++            }
++        };
++
++        match time::timeout(timeout, async { result }).await {
++            Ok(Ok(status)) => Status {
++                exit_status: status,
++                memory_exceeded: status.code() == Some(137),
++            },
++            Ok(Err(_)) => Status {
++                exit_status: ExitStatus::from_raw(1),
++                memory_exceeded: false,
++            },
++            Err(_) => {
++                let _ = kill_fn2().await;
++                Status {
++                    exit_status: ExitStatus::from_raw(124),
++                    memory_exceeded: false,
++                }
++            }
++        }
++    }
++
++    /// プロセスの終了を待機する
++    /// 
++    /// # Errors
++    /// 
++    /// * プロセスの終了待機に失敗した場合
++    async fn wait(&self) -> anyhow::Result<ExitStatus> {
++        let mut child = self.child.lock().await;
++        Ok(child.wait().await?)
++    }
++} 
+\ No newline at end of file
+diff --git a/src/process/runtime/compiler.rs b/src/process/runtime/compiler.rs
+new file mode 100644
+index 0000000..40eaf5e
+--- /dev/null
++++ b/src/process/runtime/compiler.rs
+@@ -0,0 +1,76 @@
++use std::path::{Path, PathBuf};
++use anyhow::{Result, Context};
++use crate::config::Config;
++use crate::process::ProcessExecutor;
++use crate::process::ProcessConfig;
++use std::collections::HashMap;
++
++pub struct Compiler {
++    executor: ProcessExecutor,
++    config: Config,
++}
++
++impl Compiler {
++    pub fn new(config: Config) -> Self {
++        Self {
++            executor: ProcessExecutor::new(config.clone()),
++            config,
++        }
++    }
++
++    /// ソースコードをコンパイルします
++    ///
++    /// # Arguments
++    ///
++    /// * `language` - プログラミング言語
++    /// * `source_path` - ソースファイルのパス
++    /// * `output_dir` - 出力ディレクトリ
++    ///
++    /// # Returns
++    ///
++    /// コンパイル結果のパス
++    pub async fn compile(&self, language: &str, source_path: &Path, output_dir: &Path) -> Result<PathBuf> {
++        let language_config = self.config.get_section(&format!("languages.{}", language))
++            .context("言語設定の取得に失敗しました")?;
++
++        // コンパイルが必要ない言語の場合はソースをそのまま返す
++        let compile_command: Vec<String> = language_config.get("compile")
++            .unwrap_or_default();
++        if compile_command.is_empty() {
++            return Ok(source_path.to_path_buf());
++        }
++
++        // 出力ファイル名を生成
++        let output_file = output_dir.join(
++            source_path.file_stem()
++                .ok_or_else(|| anyhow::anyhow!("ソースファイル名が不正です"))?
++        );
++
++        // コンパイルコマンドを構築
++        let mut args = compile_command[1..].to_vec();
++        args.push(source_path.to_string_lossy().to_string());
++        args.push("-o".to_string());
++        args.push(output_file.to_string_lossy().to_string());
++
++        let config = ProcessConfig {
++            language: language.to_string(),
++            command: compile_command[0].clone(),
++            args,
++            env_vars: HashMap::new(),
++            working_dir: Some(output_dir.to_string_lossy().to_string()),
++        };
++
++        // コンパイル実行
++        let process_id = self.executor.spawn(config).await?;
++        let status = self.executor.wait(&process_id).await?;
++
++        if !status.success() {
++            let error_output = self.executor.read_output(&process_id).await
++                .unwrap_or_default();
++            let error_message = String::from_utf8_lossy(&error_output.concat());
++            anyhow::bail!("コンパイルに失敗しました: {}", error_message);
++        }
++
++        Ok(output_file)
++    }
++} 
+\ No newline at end of file
+diff --git a/src/process/runtime/executor.rs b/src/process/runtime/executor.rs
+new file mode 100644
+index 0000000..ba07340
+--- /dev/null
++++ b/src/process/runtime/executor.rs
+@@ -0,0 +1,104 @@
++use std::path::Path;
++use anyhow::{Result, Context};
++use crate::config::Config;
++use crate::process::{ProcessExecutor, ProcessConfig};
++use std::collections::HashMap;
++use bytes::Bytes;
++
++pub struct RuntimeExecutor {
++    executor: ProcessExecutor,
++    config: Config,
++}
++
++#[derive(Debug)]
++pub struct ExecutionResult {
++    pub exit_status: Option<std::process::ExitStatus>,
++    pub output: Vec<Bytes>,
++    pub timed_out: bool,
++    pub memory_exceeded: bool,
++}
++
++impl RuntimeExecutor {
++    pub fn new(config: Config) -> Self {
++        Self {
++            executor: ProcessExecutor::new(config.clone()),
++            config,
++        }
++    }
++
++    /// コンパイル済みのプログラムを実行し、結果を待ちます
++    ///
++    /// # Arguments
++    ///
++    /// * `language` - プログラミング言語
++    /// * `executable_path` - 実行ファイルのパス
++    /// * `args` - コマンドライン引数
++    ///
++    /// # Returns
++    ///
++    /// 実行結果
++    pub async fn run_and_wait(&self, language: &str, executable_path: &Path, args: Vec<String>) -> Result<ExecutionResult> {
++        let language_config = self.config.get_section(&format!("languages.{}", language))
++            .context("言語設定の取得に失敗しました")?;
++
++        let timeout_seconds: u64 = language_config.get("timeout_seconds")
++            .unwrap_or(10);
++
++        let mut run_command: Vec<String> = language_config.get("run")
++            .context("実行コマンドの取得に失敗しました")?;
++
++        // 実行コマンドを構築
++        if run_command.len() == 1 {
++            run_command.push(executable_path.to_string_lossy().to_string());
++        }
++        run_command.extend(args);
++
++        let config = ProcessConfig {
++            language: language.to_string(),
++            command: run_command[0].clone(),
++            args: run_command[1..].to_vec(),
++            env_vars: HashMap::new(),
++            working_dir: Some(executable_path.parent()
++                .unwrap_or_else(|| Path::new("."))
++                .to_string_lossy()
++                .to_string()),
++        };
++
++        let process_id = self.executor.spawn(config).await?;
++
++        // タイムアウト付きで実行結果を待つ
++        let wait_result = self.executor.wait_with_timeout(&process_id, timeout_seconds).await;
++        let output = self.executor.read_output(&process_id).await.unwrap_or_default();
++
++        match wait_result {
++            Ok(status) => Ok(ExecutionResult {
++                exit_status: status.exit_status,
++                output,
++                timed_out: false,
++                memory_exceeded: status.memory_exceeded,
++            }),
++            Err(e) if e.to_string().contains("タイムアウト") => Ok(ExecutionResult {
++                exit_status: None,
++                output,
++                timed_out: true,
++                memory_exceeded: false,
++            }),
++            Err(e) => Err(e),
++        }
++    }
++
++    /// プロセスに入力を送信します
++    pub async fn send_input(&self, process_id: &str, input: &str) -> Result<()> {
++        self.executor.write_stdin(process_id, input).await
++    }
++
++    /// プロセスの出力を取得します
++    pub async fn get_output(&self, process_id: &str) -> Option<Vec<Bytes>> {
++        self.executor.read_output(process_id).await
++    }
++
++    /// プロセスを強制終了します
++    pub async fn kill(&self, process_id: &str) -> Result<()> {
++        self.executor.kill(process_id).await
++    }
++} 
+\ No newline at end of file
+diff --git a/src/process/runtime/mod.rs b/src/process/runtime/mod.rs
+new file mode 100644
+index 0000000..4009aac
+--- /dev/null
++++ b/src/process/runtime/mod.rs
+@@ -0,0 +1,5 @@
++pub mod compiler;
++pub mod executor;
++
++pub use compiler::Compiler;
++pub use executor::RuntimeExecutor; 
+\ No newline at end of file
+diff --git a/src/process/test/mod.rs b/src/process/test/mod.rs
+new file mode 100644
+index 0000000..2e67c56
+--- /dev/null
++++ b/src/process/test/mod.rs
+@@ -0,0 +1,66 @@
++mod runner;
++
++pub use runner::Runner;
++
++/// テストケースを表す構造体
++#[derive(Debug, Clone)]
++pub struct Case {
++    pub input: String,
++    pub expected_output: String,
++    pub timeout_secs: Option<u64>,
++    pub memory_limit_mb: Option<u64>,
++}
++
++impl Case {
++    /// 新しいテストケースを作成する
++    /// 
++    /// # Arguments
++    /// 
++    /// * `input` - テストの入力データ
++    /// * `expected_output` - 期待される出力
++    #[must_use]
++    pub const fn new(input: String, expected_output: String) -> Self {
++        Self {
++            input,
++            expected_output,
++            timeout_secs: None,
++            memory_limit_mb: None,
++        }
++    }
++
++    /// 制限付きのテストケースを作成する
++    /// 
++    /// # Arguments
++    /// 
++    /// * `input` - テストの入力データ
++    /// * `expected_output` - 期待される出力
++    /// * `timeout_secs` - タイムアウト時間（秒）
++    /// * `memory_limit_mb` - メモリ制限（MB単位）
++    #[must_use]
++    pub const fn with_limits(
++        input: String,
++        expected_output: String,
++        timeout_secs: u64,
++        memory_limit_mb: u64,
++    ) -> Self {
++        Self {
++            input,
++            expected_output,
++            timeout_secs: Some(timeout_secs),
++            memory_limit_mb: Some(memory_limit_mb),
++        }
++    }
++}
++
++/// テストスイートを表す構造体
++#[derive(Debug, Clone)]
++pub struct Suite {
++    pub cases: Vec<Case>,
++}
++
++/// テスト結果を表す構造体
++#[derive(Debug, Clone)]
++pub struct Outcome {
++    pub passed: bool,
++    pub message: String,
++} 
+\ No newline at end of file
+diff --git a/src/process/test/runner.rs b/src/process/test/runner.rs
+new file mode 100644
+index 0000000..0e9ea1f
+--- /dev/null
++++ b/src/process/test/runner.rs
+@@ -0,0 +1,65 @@
++use std::sync::Arc;
++use tokio::process::Command;
++use anyhow::Result;
++use crate::process::executor::Executor;
++use crate::process::io::Buffer;
++use std::time::Duration;
++
++/// テストの実行を管理する構造体
++#[derive(Debug)]
++pub struct Runner {
++    executor: Executor,
++}
++
++impl Default for Runner {
++    fn default() -> Self {
++        Self::new()
++    }
++}
++
++impl Runner {
++    /// 新しいテストランナーを作成する
++    #[must_use]
++    pub fn new() -> Self {
++        Self {
++            executor: Executor::new(),
++        }
++    }
++
++    /// テストを実行する
++    /// 
++    /// # Arguments
++    /// 
++    /// * `source_file` - テスト対象のソースファイル
++    /// * `input` - テストの入力データ
++    /// * `timeout_secs` - タイムアウト時間（秒）
++    /// * `memory_limit_mb` - メモリ制限（MB単位）
++    /// 
++    /// # Errors
++    /// 
++    /// * プロセスの実行に失敗した場合
++    /// * タイムアウトが発生した場合
++    /// * メモリ制限を超過した場合
++    /// 
++    /// # Panics
++    /// 
++    /// * タイムアウトテストでプロセスが正常終了した場合
++    pub async fn run_test(&mut self, source_file: &str, input: &str, timeout_secs: u64, memory_limit_mb: Option<u64>) -> Result<String> {
++        let buffer = Buffer::new(1024 * 1024); // 1MB buffer
++        let command = Command::new(source_file);
++        
++        let mut process = self.executor.spawn(
++            "test".to_string(),
++            command,
++            Arc::new(buffer),
++            memory_limit_mb,
++        ).await?;
++
++        process.write_stdin(input.as_bytes()).await?;
++        let status = process.wait_with_timeout(Duration::from_secs(timeout_secs)).await?;
++
++        assert!(!status.exit_status.success(), "プロセスはタイムアウトで終了するはずです");
++        
++        Ok("テスト成功".to_string())
++    }
++} 
+\ No newline at end of file
+diff --git a/tests/container/communication/mod.rs b/tests/container/communication/mod.rs
+deleted file mode 100644
+index ddce825..0000000
+--- a/tests/container/communication/mod.rs
++++ /dev/null
+@@ -1,53 +0,0 @@
+-use std::sync::Arc;
+-use anyhow::{Result, anyhow};
+-use cph::container::communication::{
+-    transport::Network,
+-    protocol::Message,
+-};
+-
+-#[tokio::test]
+-async fn test_message_sending() -> Result<()> {
+-    let network = Arc::new(Network::new());
+-    
+-    let message = Message::normal(
+-        "テストメッセージ",
+-        "sender",
+-        "receiver",
+-    );
+-    
+-    network.send("sender", "receiver", message.clone()).await?;
+-    
+-    let received = network.receive("receiver").await.ok_or_else(|| anyhow!("メッセージが受信できませんでした"))?;
+-    assert_eq!(received, message);
+-    
+-    Ok(())
+-}
+-
+-#[tokio::test]
+-async fn test_message_broadcasting() -> Result<()> {
+-    let network = Arc::new(Network::new());
+-    
+-    // 受信者のバッファを事前に作成
+-    network.send("sender", "receiver1", Message::normal("init", "sender", "receiver1")).await?;
+-    network.send("sender", "receiver2", Message::normal("init", "sender", "receiver2")).await?;
+-    
+-    // 初期化メッセージを消費
+-    let _ = network.receive("receiver1").await;
+-    let _ = network.receive("receiver2").await;
+-    
+-    let message = Message::system(
+-        "ブロードキャストメッセージ",
+-        "sender",
+-        "all",
+-    );
+-    
+-    network.broadcast("sender", message.clone()).await?;
+-    
+-    let received1 = network.receive("receiver1").await.ok_or_else(|| anyhow!("メッセージが受信できませんでした"))?;
+-    let received2 = network.receive("receiver2").await.ok_or_else(|| anyhow!("メッセージが受信できませんでした"))?;
+-    
+-    assert_eq!(received1, message);
+-    assert_eq!(received2, message);
+-    
+-    Ok(())
+-} 
+\ No newline at end of file
+diff --git a/tests/container/io/mod.rs b/tests/container/io/mod.rs
+deleted file mode 100644
+index 43bceb1..0000000
+--- a/tests/container/io/mod.rs
++++ /dev/null
+@@ -1,119 +0,0 @@
+-#[cfg(test)]
+-mod tests {
+-    use cph::container::io::Buffer;
+-    use bytes::Bytes;
+-    use anyhow::Result;
+-
+-    #[tokio::test]
+-    async fn test_buffer_append() -> Result<()> {
+-        let buffer = Buffer::with_max_size(1024);
+-        let container_id = "test-container";
+-        let data = Bytes::from("test data");
+-        
+-        // データの追加
+-        buffer.append(container_id, data.clone()).await?;
+-        
+-        // 追加したデータの確認
+-        let output = buffer.get_output(container_id).await.unwrap();
+-        assert_eq!(output[0], data);
+-        
+-        Ok(())
+-    }
+-
+-    #[tokio::test]
+-    async fn test_buffer_size_limit() -> Result<()> {
+-        let buffer = Buffer::with_max_size(10);
+-        let container_id = "test-container";
+-        let data = Bytes::from("test data that exceeds limit");
+-        
+-        // サイズ制限を超えるデータの追加
+-        let result = buffer.append(container_id, data).await;
+-        assert!(result.is_err());
+-        
+-        Ok(())
+-    }
+-
+-    #[tokio::test]
+-    async fn test_buffer_cleanup() -> Result<()> {
+-        let buffer = Buffer::with_max_size(1024);
+-        let container_id = "test-container";
+-        
+-        // データの追加
+-        for i in 0..5 {
+-            let data = Bytes::from(format!("test data {}", i));
+-            buffer.append(container_id, data).await?;
+-        }
+-        
+-        // 古いデータのクリーンアップ
+-        buffer.cleanup_old_data(container_id, 2).await?;
+-        
+-        // 残りのデータ確認
+-        let output = buffer.get_output(container_id).await.unwrap();
+-        assert_eq!(output.len(), 2);
+-        
+-        Ok(())
+-    }
+-
+-    #[tokio::test]
+-    async fn test_buffer_clear() -> Result<()> {
+-        let buffer = Buffer::with_max_size(1024);
+-        let container_id = "test-container";
+-        
+-        // データの追加
+-        buffer.append(container_id, Bytes::from("test data")).await?;
+-        
+-        // バッファのクリア
+-        buffer.clear(container_id).await;
+-        
+-        // クリア後のサイズ確認
+-        assert_eq!(buffer.get_size(container_id).await, 0);
+-        
+-        Ok(())
+-    }
+-
+-    #[tokio::test]
+-    async fn test_program_output_buffering() -> Result<()> {
+-        let buffer = Buffer::with_max_size(1024);
+-        let container_id = "test-program";
+-        
+-        // プログラム出力のシミュレーション
+-        let outputs = vec![
+-            "Compiling...\n",
+-            "Running tests...\n",
+-            "Test 1 passed\n",
+-            "Test 2 passed\n",
+-            "All tests passed!\n"
+-        ];
+-        
+-        // 出力の追加
+-        for output in outputs.iter() {
+-            buffer.append(container_id, Bytes::from(output.to_string())).await?;
+-        }
+-        
+-        // バッファの取得と検証
+-        let stored_output = buffer.get_output(container_id).await.unwrap();
+-        let combined_output: String = stored_output.iter()
+-            .map(|bytes| String::from_utf8_lossy(bytes).to_string())
+-            .collect();
+-        
+-        assert!(combined_output.contains("Compiling..."));
+-        assert!(combined_output.contains("All tests passed!"));
+-        
+-        Ok(())
+-    }
+-
+-    #[tokio::test]
+-    async fn test_large_output_handling() -> Result<()> {
+-        let buffer = Buffer::with_max_size(100); // 小さいバッファサイズ
+-        let container_id = "test-large-output";
+-        
+-        // 大きな出力のシミュレーション
+-        let large_output = "X".repeat(200);
+-        
+-        // バッファサイズを超える出力を追加
+-        let result = buffer.append(container_id, Bytes::from(large_output)).await;
+-        assert!(result.is_err()); // バッファオーバーフローのエラーを確認
+-        
+-        Ok(())
+-    }
+-} 
+\ No newline at end of file
+diff --git a/tests/container/mod.rs b/tests/container/mod.rs
+deleted file mode 100644
+index 58a7b98..0000000
+--- a/tests/container/mod.rs
++++ /dev/null
+@@ -1,57 +0,0 @@
+-pub mod registry;
+-pub mod runtime;
+-pub mod communication;
+-pub mod io;
+-pub mod orchestrator;
+-
+-#[cfg(test)]
+-mod tests {
+-    use cph::container::{
+-        runtime::{
+-            Builder,
+-            mock::TestRuntime,
+-        },
+-        State,
+-    };
+-    use std::sync::Arc;
+-    use anyhow::Result;
+-
+-    #[tokio::test]
+-    async fn test_container_creation() -> Result<()> {
+-        let runtime = Arc::new(TestRuntime::new());
+-        let container = Builder::new()
+-            .with_id("test-container")
+-            .with_image("test-image")
+-            .with_runtime(runtime)
+-            .build();
+-
+-        assert_eq!(container.status().await, State::Created);
+-        Ok(())
+-    }
+-
+-    #[tokio::test]
+-    async fn test_container_execution() -> Result<()> {
+-        let runtime = Arc::new(TestRuntime::new());
+-        let container = Builder::new()
+-            .with_id("test-container")
+-            .with_image("test-image")
+-            .with_runtime(runtime)
+-            .build();
+-
+-        let handle = tokio::spawn({
+-            let container = container.clone();
+-            async move {
+-                container.run().await
+-            }
+-        });
+-
+-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+-        assert_eq!(container.status().await, State::Running);
+-        
+-        container.cancel().await?;
+-        assert_eq!(container.status().await, State::Completed);
+-        
+-        handle.abort();
+-        Ok(())
+-    }
+-} 
+\ No newline at end of file
+diff --git a/tests/container/orchestrator.rs b/tests/container/orchestrator.rs
+deleted file mode 100644
+index d73ce25..0000000
+--- a/tests/container/orchestrator.rs
++++ /dev/null
+@@ -1,55 +0,0 @@
+-use cph::container::runtime::orchestrator::ParallelExecutor;
+-use cph::container::runtime::config::Config;
+-use cph::container::runtime::mock::TestRuntime;
+-use std::sync::Arc;
+-use anyhow::Result;
+-use std::path::PathBuf;
+-
+-#[tokio::test]
+-async fn test_container_creation() -> Result<()> {
+-    let runtime = Arc::new(TestRuntime::new());
+-    let executor = ParallelExecutor::with_runtime(runtime)?;
+-    
+-    let configs = vec![
+-        Config::new(
+-            "test-python",
+-            "python:3.9",
+-            PathBuf::from("/workspace/test"),
+-            vec!["python".to_string(), "test.py".to_string()],
+-            None,
+-        ),
+-        Config::new(
+-            "test-rust",
+-            "rust:1.70",
+-            PathBuf::from("/workspace/src"),
+-            vec!["cargo".to_string(), "run".to_string()],
+-            None,
+-        ),
+-    ];
+-
+-    executor.execute(configs).await?;
+-    executor.cleanup().await?;
+-
+-    Ok(())
+-}
+-
+-#[tokio::test]
+-async fn test_error_handling() -> Result<()> {
+-    let runtime = Arc::new(TestRuntime::with_failure());
+-    let executor = ParallelExecutor::with_runtime(runtime)?;
+-    
+-    let configs = vec![
+-        Config::new(
+-            "test-error",
+-            "invalid-image",
+-            PathBuf::from("/workspace/test"),
+-            vec!["invalid".to_string(), "command".to_string()],
+-            None,
+-        ),
+-    ];
+-
+-    let result = executor.execute(configs).await;
+-    assert!(result.is_err());
+-
+-    Ok(())
+-} 
+\ No newline at end of file
+diff --git a/tests/container/registry/command.rs b/tests/container/registry/command.rs
+deleted file mode 100644
+index ec52b5a..0000000
+--- a/tests/container/registry/command.rs
++++ /dev/null
+@@ -1,71 +0,0 @@
+-use anyhow::Result;
+-use crate::cphelper::config::Config;
+-use cph::container::registry::ContainerdBuilder;
+-
+-#[tokio::test]
+-async fn test_execute_command() -> Result<()> {
+-    let config = Config::get_default_config()?;
+-    let builder = ContainerdBuilder::new(config).await?;
+-    let image = "rust:latest";
+-    
+-    // コンテナの作成と起動
+-    let container_id = builder.create_container(image).await?;
+-    builder.start_container(&container_id).await?;
+-
+-    // コマンドの実行
+-    let command = vec!["rustc".to_string(), "--version".to_string()];
+-    let output = builder.execute_command(&container_id, &command).await?;
+-    
+-    // 出力の検証
+-    assert!(!output.stdout.is_empty());
+-    assert_eq!(output.exit_code, 0);
+-
+-    // クリーンアップ
+-    builder.cleanup(&container_id).await?;
+-    Ok(())
+-}
+-
+-#[tokio::test]
+-async fn test_command_with_env_vars() -> Result<()> {
+-    let config = Config::get_default_config()?;
+-    let builder = ContainerdBuilder::new(config).await?;
+-    let image = "rust:latest";
+-    
+-    // コンテナの作成と起動
+-    let container_id = builder.create_container(image).await?;
+-    builder.start_container(&container_id).await?;
+-
+-    // 環境変数を使用するコマンドの実行
+-    let command = vec!["sh".to_string(), "-c".to_string(), "echo $RUST_BACKTRACE".to_string()];
+-    let output = builder.execute_command(&container_id, &command).await?;
+-    
+-    // 出力の検証
+-    assert!(!output.stdout.is_empty());
+-    assert_eq!(output.exit_code, 0);
+-
+-    // クリーンアップ
+-    builder.cleanup(&container_id).await?;
+-    Ok(())
+-}
+-
+-#[tokio::test]
+-async fn test_command_with_error() -> Result<()> {
+-    let config = Config::get_default_config()?;
+-    let builder = ContainerdBuilder::new(config).await?;
+-    let image = "rust:latest";
+-    
+-    // コンテナの作成と起動
+-    let container_id = builder.create_container(image).await?;
+-    builder.start_container(&container_id).await?;
+-
+-    // 存在しないコマンドの実行
+-    let command = vec!["nonexistent_command".to_string()];
+-    let result = builder.execute_command(&container_id, &command).await;
+-    
+-    // エラーの検証
+-    assert!(result.is_err());
+-
+-    // クリーンアップ
+-    builder.cleanup(&container_id).await?;
+-    Ok(())
+-} 
+\ No newline at end of file
+diff --git a/tests/container/registry/image.rs b/tests/container/registry/image.rs
+deleted file mode 100644
+index 17e10a4..0000000
+--- a/tests/container/registry/image.rs
++++ /dev/null
+@@ -1,52 +0,0 @@
+-use anyhow::Result;
+-use crate::cphelper::config::Config;
+-use cph::container::registry::{ContainerdBuilder, ImageBuilder};
+-
+-#[tokio::test]
+-async fn test_builder_creation() -> Result<()> {
+-    let config = Config::get_default_config()?;
+-    let builder = ContainerdBuilder::new(config).await?;
+-    assert!(builder.create_container("rust:latest").await.is_ok());
+-    Ok(())
+-}
+-
+-#[tokio::test]
+-async fn test_build_image() -> Result<()> {
+-    let config = Config::get_default_config()?;
+-    let builder = ContainerdBuilder::new(config).await?;
+-    let tag = "test-image:latest";
+-    builder.build_image(tag).await?;
+-    Ok(())
+-}
+-
+-#[tokio::test]
+-async fn test_create_container() -> Result<()> {
+-    let config = Config::get_default_config()?;
+-    let builder = ContainerdBuilder::new(config).await?;
+-    let image = "rust:latest";
+-    let container_id = builder.create_container(image).await?;
+-    assert!(!container_id.is_empty());
+-    builder.cleanup(&container_id).await?;
+-    Ok(())
+-}
+-
+-#[tokio::test]
+-async fn test_container_lifecycle() -> Result<()> {
+-    let config = Config::get_default_config()?;
+-    let builder = ContainerdBuilder::new(config).await?;
+-    let image = "rust:latest";
+-
+-    // コンテナの作成
+-    let container_id = builder.create_container(image).await?;
+-    assert!(!container_id.is_empty());
+-
+-    // コンテナの起動
+-    builder.start_container(&container_id).await?;
+-
+-    // コンテナの停止
+-    builder.stop_container(&container_id).await?;
+-
+-    // クリーンアップ
+-    builder.cleanup(&container_id).await?;
+-    Ok(())
+-} 
+\ No newline at end of file
+diff --git a/tests/container/registry/mod.rs b/tests/container/registry/mod.rs
+deleted file mode 100644
+index b89ba53..0000000
+--- a/tests/container/registry/mod.rs
++++ /dev/null
+@@ -1,3 +0,0 @@
+-mod command;
+-mod image;
+-mod snapshot; 
+\ No newline at end of file
+diff --git a/tests/container/registry/snapshot.rs b/tests/container/registry/snapshot.rs
+deleted file mode 100644
+index 87e22e6..0000000
+--- a/tests/container/registry/snapshot.rs
++++ /dev/null
+@@ -1,76 +0,0 @@
+-use anyhow::Result;
+-use crate::cphelper::config::Config;
+-use cph::container::registry::ContainerdBuilder;
+-use uuid::Uuid;
+-
+-#[tokio::test]
+-async fn test_create_snapshot() -> Result<()> {
+-    let config = Config::get_default_config()?;
+-    let builder = ContainerdBuilder::new(config).await?;
+-    let image = "rust:latest";
+-    
+-    // コンテナの作成と起動
+-    let container_id = builder.create_container(image).await?;
+-    builder.start_container(&container_id).await?;
+-
+-    // スナップショットの作成
+-    let snapshot_name = format!("test-snapshot-{}", Uuid::new_v4());
+-    builder.create_snapshot(&container_id, &snapshot_name).await?;
+-
+-    // クリーンアップ
+-    builder.cleanup(&container_id).await?;
+-    Ok(())
+-}
+-
+-#[tokio::test]
+-async fn test_commit_snapshot() -> Result<()> {
+-    let config = Config::get_default_config()?;
+-    let builder = ContainerdBuilder::new(config).await?;
+-    let image = "rust:latest";
+-    
+-    // コンテナの作成と起動
+-    let container_id = builder.create_container(image).await?;
+-    builder.start_container(&container_id).await?;
+-
+-    // スナップショットの作成とコミット
+-    let snapshot_name = format!("test-snapshot-{}", Uuid::new_v4());
+-    let tag = format!("test-image-{}", Uuid::new_v4());
+-    
+-    builder.create_snapshot(&container_id, &snapshot_name).await?;
+-    builder.commit_snapshot(&snapshot_name, &tag).await?;
+-
+-    // クリーンアップ
+-    builder.cleanup(&container_id).await?;
+-    Ok(())
+-}
+-
+-#[tokio::test]
+-async fn test_snapshot_workflow() -> Result<()> {
+-    let config = Config::get_default_config()?;
+-    let builder = ContainerdBuilder::new(config).await?;
+-    let image = "rust:latest";
+-    
+-    // コンテナの作成と起動
+-    let container_id = builder.create_container(image).await?;
+-    builder.start_container(&container_id).await?;
+-
+-    // コマンドの実行
+-    let command = vec!["rustc".to_string(), "--version".to_string()];
+-    builder.execute_command(&container_id, &command).await?;
+-
+-    // スナップショットの作成とコミット
+-    let snapshot_name = format!("test-snapshot-{}", Uuid::new_v4());
+-    let tag = format!("test-image-{}", Uuid::new_v4());
+-    
+-    builder.create_snapshot(&container_id, &snapshot_name).await?;
+-    builder.commit_snapshot(&snapshot_name, &tag).await?;
+-
+-    // 新しいコンテナの作成と検証
+-    let new_container_id = builder.create_container(&tag).await?;
+-    builder.start_container(&new_container_id).await?;
+-
+-    // クリーンアップ
+-    builder.cleanup(&container_id).await?;
+-    builder.cleanup(&new_container_id).await?;
+-    Ok(())
+-} 
+\ No newline at end of file
+diff --git a/tests/container/runtime/mock.rs b/tests/container/runtime/mock.rs
+deleted file mode 100644
+index 7be9879..0000000
+--- a/tests/container/runtime/mock.rs
++++ /dev/null
+@@ -1,55 +0,0 @@
+-use cph::container::runtime::Runtime;
+-use cph::container::runtime::config::Config;
+-use anyhow::{Result, anyhow};
+-use async_trait::async_trait;
+-use std::sync::Arc;
+-use tokio::sync::Mutex;
+-
+-pub struct MockRuntime {
+-    should_fail: bool,
+-    is_running: Arc<Mutex<bool>>,
+-}
+-
+-impl MockRuntime {
+-    pub fn new() -> Self {
+-        Self {
+-            should_fail: false,
+-            is_running: Arc::new(Mutex::new(false)),
+-        }
+-    }
+-
+-    pub fn with_failure() -> Self {
+-        Self {
+-            should_fail: true,
+-            is_running: Arc::new(Mutex::new(false)),
+-        }
+-    }
+-
+-    pub async fn is_running(&self) -> bool {
+-        *self.is_running.lock().await
+-    }
+-}
+-
+-#[async_trait]
+-impl Runtime for MockRuntime {
+-    async fn run(&self, _config: &Config) -> Result<()> {
+-        if self.should_fail {
+-            return Err(anyhow!("モックエラー: コンテナの実行に失敗しました"));
+-        }
+-        
+-        // 実行状態を設定
+-        let mut is_running = self.is_running.lock().await;
+-        *is_running = true;
+-        
+-        // 実行を模擬するために待機
+-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+-        Ok(())
+-    }
+-
+-    fn box_clone(&self) -> Box<dyn Runtime> {
+-        Box::new(Self {
+-            should_fail: self.should_fail,
+-            is_running: self.is_running.clone(),
+-        })
+-    }
+-} 
+\ No newline at end of file
+diff --git a/tests/container/runtime/mod.rs b/tests/container/runtime/mod.rs
+deleted file mode 100644
+index 0cdf89e..0000000
+--- a/tests/container/runtime/mod.rs
++++ /dev/null
+@@ -1,120 +0,0 @@
+-use anyhow::Result;
+-use cph::container::{
+-    runtime::{
+-        Builder,
+-        mock::TestRuntime,
+-    },
+-    State,
+-};
+-use std::sync::Arc;
+-
+-#[tokio::test]
+-async fn test_container_lifecycle() -> Result<()> {
+-    let runtime = Arc::new(TestRuntime::new());
+-    let container = Builder::new()
+-        .with_id("test-container")
+-        .with_image("test-image")
+-        .with_runtime(runtime)
+-        .build();
+-
+-    assert_eq!(container.status().await, State::Created);
+-    
+-    let handle = tokio::spawn({
+-        let container = container.clone();
+-        async move {
+-            container.run().await
+-        }
+-    });
+-
+-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+-    assert_eq!(container.status().await, State::Running);
+-    
+-    container.cancel().await?;
+-    assert_eq!(container.status().await, State::Completed);
+-    
+-    handle.abort();
+-    Ok(())
+-}
+-
+-#[tokio::test]
+-async fn test_error_handling() -> Result<()> {
+-    let runtime = Arc::new(TestRuntime::with_failure());
+-    
+-    let container = Builder::new()
+-        .with_id("test-container")
+-        .with_image("test-image")
+-        .with_runtime(runtime)
+-        .build();
+-
+-    let result = container.run().await;
+-    assert!(result.is_err());
+-
+-    match container.status().await {
+-        State::Failed(_) => (),
+-        state => panic!("Expected Failed state, got {:?}", state),
+-    }
+-    
+-    Ok(())
+-}
+-
+-#[tokio::test]
+-async fn test_python_execution() -> Result<()> {
+-    let runtime = Arc::new(TestRuntime::new());
+-    
+-    let container = Builder::new()
+-        .with_id("test-python")
+-        .with_image("python:3.9")
+-        .with_args(vec!["python".to_string(), "test.py".to_string()])
+-        .with_working_dir("/workspace/test")
+-        .with_runtime(runtime)
+-        .build();
+-
+-    assert_eq!(container.status().await, State::Created);
+-    
+-    let handle = tokio::spawn({
+-        let container = container.clone();
+-        async move {
+-            container.run().await
+-        }
+-    });
+-
+-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+-    assert_eq!(container.status().await, State::Running);
+-    
+-    container.cancel().await?;
+-    assert_eq!(container.status().await, State::Completed);
+-    
+-    handle.abort();
+-    Ok(())
+-}
+-
+-#[tokio::test]
+-async fn test_rust_execution() -> Result<()> {
+-    let runtime = Arc::new(TestRuntime::new());
+-    
+-    let container = Builder::new()
+-        .with_id("test-rust")
+-        .with_image("rust:1.70")
+-        .with_args(vec!["cargo".to_string(), "run".to_string()])
+-        .with_working_dir("/workspace/src")
+-        .with_runtime(runtime)
+-        .build();
+-
+-    assert_eq!(container.status().await, State::Created);
+-    
+-    let handle = tokio::spawn({
+-        let container = container.clone();
+-        async move {
+-            container.run().await
+-        }
+-    });
+-
+-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+-    assert_eq!(container.status().await, State::Running);
+-    
+-    container.cancel().await?;
+-    assert_eq!(container.status().await, State::Completed);
+-    
+-    handle.abort();
+-    Ok(())
+-} 
+\ No newline at end of file
+diff --git a/tests/lib.rs b/tests/lib.rs
+index ff90ef0..8e3003a 100644
+--- a/tests/lib.rs
++++ b/tests/lib.rs
+@@ -2,5 +2,4 @@ extern crate cph as cphelper;
+ 
+ mod config;
+ mod contest;
+-mod fs;
+-mod container; 
+\ No newline at end of file
++mod fs;
+\ No newline at end of file
+diff --git a/tests/process_test.rs b/tests/process_test.rs
+new file mode 100644
+index 0000000..bb66cd3
+--- /dev/null
++++ b/tests/process_test.rs
+@@ -0,0 +1,61 @@
++#[cfg(test)]
++mod tests {
++    use cph::process::{
++        executor::Executor,
++        io::Buffer,
++    };
++    use std::{sync::Arc, time::Duration};
++    use tokio::process::Command;
++    use uuid::Uuid;
++
++    #[tokio::test]
++    async fn test_basic_process_execution() -> anyhow::Result<()> {
++        let mut executor = Executor::new();
++        let mut command = Command::new("python3");
++        command.args(&["-c", "print(1 + 2)"]);
++        
++        let buffer = Arc::new(Buffer::new(1024 * 1024)); // 1MB buffer
++        let id = Uuid::new_v4().to_string();
++        let mut process = executor.spawn(id, command, buffer, Some(32)).await?;
++        let status = process.wait_with_timeout(Duration::from_secs(1)).await?;
++        
++        assert!(!status.memory_exceeded);
++        assert!(status.exit_status.success());
++        
++        Ok(())
++    }
++
++    #[tokio::test]
++    async fn test_timeout() -> anyhow::Result<()> {
++        let mut executor = Executor::new();
++        let mut command = Command::new("python3");
++        command.args(&["-c", "while True: pass"]);
++        
++        let buffer = Arc::new(Buffer::new(1024 * 1024)); // 1MB buffer
++        let id = Uuid::new_v4().to_string();
++        let mut process = executor.spawn(id, command, buffer, Some(32)).await?;
++        let status = process.wait_with_timeout(Duration::from_secs(1)).await?;
++        
++        assert!(!status.memory_exceeded);
++        assert!(!status.exit_status.success());
++        
++        Ok(())
++    }
++
++    #[tokio::test]
++    async fn test_memory_limit() -> anyhow::Result<()> {
++        let mut executor = Executor::new();
++        let mut command = Command::new("python3");
++        command.args(&["-c", "x = [0] * 1000000000"]);
++        
++        let buffer = Arc::new(Buffer::new(1024 * 1024)); // 1MB buffer
++        let id = Uuid::new_v4().to_string();
++        let mut process = executor.spawn(id, command, buffer, Some(32)).await?;
++        let status = process.wait_with_timeout(Duration::from_secs(1)).await?;
++        
++        assert!(status.memory_exceeded);
++        assert!(!status.exit_status.success());
++        
++        Ok(())
++    }
++} 
+\ No newline at end of file

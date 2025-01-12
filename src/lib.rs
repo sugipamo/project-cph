@@ -2,7 +2,6 @@ pub mod config;
 pub mod contest;
 pub mod message;
 pub mod fs;
-pub mod container;
 pub mod process;
 
 pub use contest::{Command, Contest, Handler, TestCase, TestRunner};
