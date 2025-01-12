@@ -4,10 +4,12 @@ use async_trait::async_trait;
 use containerd_client as containerd;
 use containerd_client::services::v1::images_client::ImagesClient;
 use containerd_client::services::v1::containers_client::ContainersClient;
-use containerd_client::services::v1::snapshots_client::SnapshotsClient;
+use containerd_client::services::v1::snapshots::snapshots_client::SnapshotsClient;
 use containerd_client::services::v1::tasks_client::TasksClient;
+use containerd_client::services::v1::{StartRequest, KillRequest};
 use tokio::sync::Mutex;
 use crate::config;
+use tracing;
 
 #[async_trait]
 pub trait ImageBuilder: Send + Sync {
@@ -66,7 +68,7 @@ impl ContainerdBuilder {
         })
         .await?;
 
-        tasks.start(containerd::services::v1::StartTaskRequest {
+        tasks.start(StartRequest {
             container_id: container_id.to_string(),
             ..Default::default()
         })
@@ -77,7 +79,7 @@ impl ContainerdBuilder {
 
     async fn stop_container(&self, container_id: &str) -> Result<()> {
         let mut tasks = self.tasks.lock().await;
-        tasks.kill(containerd::services::v1::KillTaskRequest {
+        tasks.kill(KillRequest {
             container_id: container_id.to_string(),
             signal: 15, // SIGTERM
             ..Default::default()

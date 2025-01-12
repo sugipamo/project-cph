@@ -2,6 +2,9 @@ use anyhow::Result;
 use tokio::io::AsyncReadExt;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use containerd_client::services::v1::WaitRequest;
+use tracing;
+use nix::unistd::pipe;
 
 use super::image::ContainerdBuilder;
 
@@ -90,17 +93,21 @@ impl ContainerdBuilder {
         });
 
         // 標準出力と標準エラー出力のパイプを作成
-        let (stdout_reader, stdout_writer) = tokio::io::duplex(buffer_config.buffer_size);
-        let (stderr_reader, stderr_writer) = tokio::io::duplex(buffer_config.buffer_size);
+        let (stdout_reader, _) = tokio::io::duplex(buffer_config.buffer_size);
+        let (stderr_reader, _) = tokio::io::duplex(buffer_config.buffer_size);
+
+        // パイプの作成
+        let (_, stdout_write_fd) = pipe()?;
+        let (_, stderr_write_fd) = pipe()?;
 
         // Execの作成と実行
-        let exec = tasks.exec(containerd_client::services::v1::ExecProcessRequest {
+        let _exec = tasks.exec(containerd_client::services::v1::ExecProcessRequest {
             container_id: container_id.to_string(),
             exec_id: exec_id.clone(),
             terminal: false,
-            stdin: vec![],
-            stdout: vec![stdout_writer.try_into_std()?.into_raw_fd()],
-            stderr: vec![stderr_writer.try_into_std()?.into_raw_fd()],
+            stdin: String::new(),
+            stdout: stdout_write_fd.to_string(),
+            stderr: stderr_write_fd.to_string(),
             spec: Some(prost_types::Any {
                 type_url: "types.containerd.io/opencontainers/runtime-spec/1/Process".to_string(),
                 value: serde_json::to_vec(&process_spec)?,
@@ -112,42 +119,46 @@ impl ContainerdBuilder {
         let stdout_buf_clone = Arc::clone(&stdout_buf);
         let stderr_buf_clone = Arc::clone(&stderr_buf);
         let stream_output = buffer_config.stream_output;
-        let cmd_str = command.join(" ");
+        let cmd_str = Arc::new(command.join(" "));
 
-        let stdout_handle = tokio::spawn(async move {
-            let mut reader = tokio::io::BufReader::new(stdout_reader);
-            let mut buffer = vec![0u8; buffer_config.buffer_size];
-            while let Ok(n) = reader.read(&mut buffer).await {
-                if n == 0 {
-                    break;
-                }
-                if stream_output {
-                    if let Ok(output) = String::from_utf8_lossy(&buffer[..n]).to_string().parse() {
+        let stdout_handle = {
+            let cmd_str = Arc::clone(&cmd_str);
+            tokio::spawn(async move {
+                let mut reader = tokio::io::BufReader::new(stdout_reader);
+                let mut buffer = vec![0u8; buffer_config.buffer_size];
+                while let Ok(n) = reader.read(&mut buffer).await {
+                    if n == 0 {
+                        break;
+                    }
+                    if stream_output {
+                        let output = String::from_utf8_lossy(&buffer[..n]).to_string();
                         tracing::debug!("[{}] stdout: {}", cmd_str, output);
                     }
+                    stdout_buf_clone.lock().await.extend_from_slice(&buffer[..n]);
                 }
-                stdout_buf_clone.lock().await.extend_from_slice(&buffer[..n]);
-            }
-        });
+            })
+        };
 
-        let stderr_handle = tokio::spawn(async move {
-            let mut reader = tokio::io::BufReader::new(stderr_reader);
-            let mut buffer = vec![0u8; buffer_config.buffer_size];
-            while let Ok(n) = reader.read(&mut buffer).await {
-                if n == 0 {
-                    break;
-                }
-                if stream_output {
-                    if let Ok(output) = String::from_utf8_lossy(&buffer[..n]).to_string().parse() {
+        let stderr_handle = {
+            let cmd_str = Arc::clone(&cmd_str);
+            tokio::spawn(async move {
+                let mut reader = tokio::io::BufReader::new(stderr_reader);
+                let mut buffer = vec![0u8; buffer_config.buffer_size];
+                while let Ok(n) = reader.read(&mut buffer).await {
+                    if n == 0 {
+                        break;
+                    }
+                    if stream_output {
+                        let output = String::from_utf8_lossy(&buffer[..n]).to_string();
                         tracing::debug!("[{}] stderr: {}", cmd_str, output);
                     }
+                    stderr_buf_clone.lock().await.extend_from_slice(&buffer[..n]);
                 }
-                stderr_buf_clone.lock().await.extend_from_slice(&buffer[..n]);
-            }
-        });
+            })
+        };
 
         // 実行結果の待機
-        let status = tasks.wait(containerd_client::services::v1::WaitTaskRequest {
+        let status = tasks.wait(WaitRequest {
             container_id: container_id.to_string(),
             exec_id: exec_id.clone(),
         })
@@ -174,7 +185,7 @@ impl ContainerdBuilder {
         Ok(CommandOutput {
             stdout,
             stderr,
-            exit_code: status,
+            exit_code: status as i32,
         })
     }
 } 

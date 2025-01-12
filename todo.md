@@ -19,3 +19,19 @@
    - メモリ制限
    - CPU制限
    - ディスク使用量制限 
+
+## 類似した名前や機能を持つファイルの整理
+
+### 状態管理関連
+- src/container/state/status.rs (ContainerStatus)
+- src/container/runtime/container.rs (State)
+
+### オーケストレーション関連
+- src/container/orchestrator.rs (高レベルオーケストレーション)
+- src/container/runtime/orchestrator.rs (ランタイムレベルオーケストレーション)
+
+### Containerd関連
+- src/container/runtime/containerd.rs (ランタイム実装)
+- src/container/registry/image.rs (イメージ管理)
+
+これらのファイルは異なる責務を持っていますが、名前や機能が似ているため、コードベースを理解する際に注意が必要です。 
