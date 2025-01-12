@@ -54,7 +54,51 @@ impl ConfigValue {
     where
         T: serde::de::DeserializeOwned,
     {
-        Config::convert_value(&self.data, path)
+        let mut current_value = &self.data;
+        let mut current_path = String::new();
+
+        for part in path.split('.') {
+            if !current_path.is_empty() {
+                current_path.push('.');
+            }
+            current_path.push_str(part);
+
+            if let Some((array_path, index)) = Config::parse_array_access(part) {
+                if !array_path.is_empty() {
+                    match current_value {
+                        Value::Mapping(map) => {
+                            current_value = map.get(Value::String(array_path.to_string()))
+                                .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
+                        }
+                        _ => {
+                            return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
+                        }
+                    }
+                }
+
+                match current_value {
+                    Value::Sequence(array) => {
+                        current_value = array.get(index)
+                            .ok_or_else(|| anyhow!("配列のインデックス {} が範囲外です（パス: '{}'）", index, current_path))?;
+                    }
+                    _ => {
+                        return Err(anyhow!("パス '{}' は配列ではありません", current_path));
+                    }
+                }
+            } else {
+                match current_value {
+                    Value::Mapping(map) => {
+                        current_value = map.get(Value::String(part.to_string()))
+                            .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
+                    }
+                    _ => {
+                        return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
+                    }
+                }
+            }
+        }
+
+        Config::convert_value(current_value, path)
     }
 
     /// 設定のセクションを取得します
@@ -70,6 +114,7 @@ impl ConfigValue {
     /// # Errors
     ///
     /// - 設定パスが存在しない場合
+    /// - パスがマッピングを指していない場合
     pub fn get_section(&self, path: &str) -> Result<ConfigValue> {
         let mut current_value = &self.data;
         let mut current_path = String::new();
@@ -115,7 +160,11 @@ impl ConfigValue {
             }
         }
 
-        Ok(ConfigValue::new(current_value.clone()))
+        // 最終的な値がマッピングであることを確認
+        match current_value {
+            Value::Mapping(_) => Ok(ConfigValue::new(current_value.clone())),
+            _ => Err(anyhow!("パス '{}' はセクションではありません", path)),
+        }
     }
 }
 
@@ -364,7 +413,7 @@ impl Config {
             current_path.push_str(part);
 
             // 配列アクセスの処理
-            if let Some((array_path, index)) = Self::parse_array_access(part) {
+            if let Some((array_path, index)) = Config::parse_array_access(part) {
                 // 配列パスの部分を処理
                 if !array_path.is_empty() {
                     match current_value {
@@ -507,6 +556,7 @@ impl Config {
     /// # Errors
     ///
     /// - 設定パスが存在しない場合
+    /// - パスがマッピングを指していない場合
     pub fn get_section(&self, path: &str) -> Result<ConfigValue> {
         let mut current_value = &self.data;
         let mut current_path = String::new();
@@ -517,7 +567,7 @@ impl Config {
             }
             current_path.push_str(part);
 
-            if let Some((array_path, index)) = Self::parse_array_access(part) {
+            if let Some((array_path, index)) = Config::parse_array_access(part) {
                 if !array_path.is_empty() {
                     match current_value {
                         Value::Mapping(map) => {
@@ -552,6 +602,10 @@ impl Config {
             }
         }
 
-        Ok(ConfigValue::new(current_value.clone()))
+        // 最終的な値がマッピングであることを確認
+        match current_value {
+            Value::Mapping(_) => Ok(ConfigValue::new(current_value.clone())),
+            _ => Err(anyhow!("パス '{}' はセクションではありません", path)),
+        }
     }
 }

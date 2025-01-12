@@ -1,0 +1,344 @@
+diff --git a/src/config/mod.rs b/src/config/mod.rs
+index 14debbf..5a1a093 100644
+--- a/src/config/mod.rs
++++ b/src/config/mod.rs
+@@ -26,6 +26,148 @@ pub struct Config {
+     data: Value,
+ }
+ 
++#[derive(Debug, Clone)]
++pub struct ConfigValue {
++    data: Value,
++}
++
++impl ConfigValue {
++    fn new(data: Value) -> Self {
++        Self { data }
++    }
++
++    /// 設定値を取得します
++    ///
++    /// # Arguments
++    ///
++    /// * `path` - ドット区切りの設定パス
++    ///
++    /// # Returns
++    ///
++    /// * `Result<T>` - 設定値
++    ///
++    /// # Errors
++    ///
++    /// - 設定パスが存在しない場合
++    /// - 設定値の型変換に失敗した場合
++    pub fn get<T>(&self, path: &str) -> Result<T>
++    where
++        T: serde::de::DeserializeOwned,
++    {
++        let mut current_value = &self.data;
++        let mut current_path = String::new();
++
++        for part in path.split('.') {
++            if !current_path.is_empty() {
++                current_path.push('.');
++            }
++            current_path.push_str(part);
++
++            if let Some((array_path, index)) = Config::parse_array_access(part) {
++                if !array_path.is_empty() {
++                    match current_value {
++                        Value::Mapping(map) => {
++                            current_value = map.get(Value::String(array_path.to_string()))
++                                .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
++                        }
++                        _ => {
++                            return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
++                        }
++                    }
++                }
++
++                match current_value {
++                    Value::Sequence(array) => {
++                        current_value = array.get(index)
++                            .ok_or_else(|| anyhow!("配列のインデックス {} が範囲外です（パス: '{}'）", index, current_path))?;
++                    }
++                    _ => {
++                        return Err(anyhow!("パス '{}' は配列ではありません", current_path));
++                    }
++                }
++            } else {
++                match current_value {
++                    Value::Mapping(map) => {
++                        current_value = map.get(Value::String(part.to_string()))
++                            .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
++                    }
++                    _ => {
++                        return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
++                    }
++                }
++            }
++        }
++
++        Config::convert_value(current_value, path)
++    }
++
++    /// 設定のセクションを取得します
++    ///
++    /// # Arguments
++    ///
++    /// * `path` - ドット区切りの設定パス
++    ///
++    /// # Returns
++    ///
++    /// * `Result<ConfigValue>` - 設定のセクション
++    ///
++    /// # Errors
++    ///
++    /// - 設定パスが存在しない場合
++    /// - パスがマッピングを指していない場合
++    pub fn get_section(&self, path: &str) -> Result<ConfigValue> {
++        let mut current_value = &self.data;
++        let mut current_path = String::new();
++
++        for part in path.split('.') {
++            if !current_path.is_empty() {
++                current_path.push('.');
++            }
++            current_path.push_str(part);
++
++            if let Some((array_path, index)) = Config::parse_array_access(part) {
++                if !array_path.is_empty() {
++                    match current_value {
++                        Value::Mapping(map) => {
++                            current_value = map.get(Value::String(array_path.to_string()))
++                                .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
++                        }
++                        _ => {
++                            return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
++                        }
++                    }
++                }
++
++                match current_value {
++                    Value::Sequence(array) => {
++                        current_value = array.get(index)
++                            .ok_or_else(|| anyhow!("配列のインデックス {} が範囲外です（パス: '{}'）", index, current_path))?;
++                    }
++                    _ => {
++                        return Err(anyhow!("パス '{}' は配列ではありません", current_path));
++                    }
++                }
++            } else {
++                match current_value {
++                    Value::Mapping(map) => {
++                        current_value = map.get(Value::String(part.to_string()))
++                            .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
++                    }
++                    _ => {
++                        return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
++                    }
++                }
++            }
++        }
++
++        // 最終的な値がマッピングであることを確認
++        match current_value {
++            Value::Mapping(_) => Ok(ConfigValue::new(current_value.clone())),
++            _ => Err(anyhow!("パス '{}' はセクションではありません", path)),
++        }
++    }
++}
++
+ impl Config {
+     /// デフォルトの設定ファイルから設定を読み込みます
+     ///
+@@ -271,7 +413,7 @@ impl Config {
+             current_path.push_str(part);
+ 
+             // 配列アクセスの処理
+-            if let Some((array_path, index)) = Self::parse_array_access(part) {
++            if let Some((array_path, index)) = Config::parse_array_access(part) {
+                 // 配列パスの部分を処理
+                 if !array_path.is_empty() {
+                     match current_value {
+@@ -400,4 +542,70 @@ impl Config {
+         // 変換に失敗した場合
+         Err(anyhow!("設定値 '{path}' の型変換に失敗しました"))
+     }
++
++    /// 設定のセクションを取得します
++    ///
++    /// # Arguments
++    ///
++    /// * `path` - ドット区切りの設定パス
++    ///
++    /// # Returns
++    ///
++    /// * `Result<ConfigValue>` - 設定のセクション
++    ///
++    /// # Errors
++    ///
++    /// - 設定パスが存在しない場合
++    /// - パスがマッピングを指していない場合
++    pub fn get_section(&self, path: &str) -> Result<ConfigValue> {
++        let mut current_value = &self.data;
++        let mut current_path = String::new();
++
++        for part in path.split('.') {
++            if !current_path.is_empty() {
++                current_path.push('.');
++            }
++            current_path.push_str(part);
++
++            if let Some((array_path, index)) = Config::parse_array_access(part) {
++                if !array_path.is_empty() {
++                    match current_value {
++                        Value::Mapping(map) => {
++                            current_value = map.get(Value::String(array_path.to_string()))
++                                .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
++                        }
++                        _ => {
++                            return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
++                        }
++                    }
++                }
++
++                match current_value {
++                    Value::Sequence(array) => {
++                        current_value = array.get(index)
++                            .ok_or_else(|| anyhow!("配列のインデックス {} が範囲外です（パス: '{}'）", index, current_path))?;
++                    }
++                    _ => {
++                        return Err(anyhow!("パス '{}' は配列ではありません", current_path));
++                    }
++                }
++            } else {
++                match current_value {
++                    Value::Mapping(map) => {
++                        current_value = map.get(Value::String(part.to_string()))
++                            .ok_or_else(|| anyhow!("設定パス '{}' が見つかりません", current_path))?;
++                    }
++                    _ => {
++                        return Err(anyhow!("設定パス '{}' が見つかりません", current_path));
++                    }
++                }
++            }
++        }
++
++        // 最終的な値がマッピングであることを確認
++        match current_value {
++            Value::Mapping(_) => Ok(ConfigValue::new(current_value.clone())),
++            _ => Err(anyhow!("パス '{}' はセクションではありません", path)),
++        }
++    }
+ }
+\ No newline at end of file
+diff --git a/tests/config/mod.rs b/tests/config/mod.rs
+index 6097ef7..7826a40 100644
+--- a/tests/config/mod.rs
++++ b/tests/config/mod.rs
+@@ -268,6 +268,105 @@ values:
+     Ok(())
+ }
+ 
++#[test]
++fn test_get_section() -> Result<()> {
++    let yaml = r#"
++languages:
++  rust:
++    extension: "rs"
++    runner:
++      image: "rust:latest"
++      compile: ["rustc", "main.rs"]
++      run: ["./main"]
++    site_ids:
++      atcoder: "5054"
++"#;
++    
++    let config = Config::parse_str(yaml)?;
++    
++    // セクション全体を取得
++    let rust_config = config.get_section("languages.rust")?;
++    assert_eq!(rust_config.get::<String>("extension")?, "rs");
++    
++    // ネストしたセクションを取得
++    let runner = rust_config.get_section("runner")?;
++    assert_eq!(runner.get::<String>("image")?, "rust:latest");
++    assert_eq!(runner.get::<Vec<String>>("compile")?, vec!["rustc", "main.rs"]);
++    
++    // さらにネストしたセクションを取得
++    let site_ids = rust_config.get_section("site_ids")?;
++    assert_eq!(site_ids.get::<String>("atcoder")?, "5054");
++    
++    Ok(())
++}
++
++#[test]
++fn test_get_section_array() -> Result<()> {
++    let yaml = r#"
++editors:
++  - name: "vscode"
++    extensions: ["rust", "yaml"]
++  - name: "cursor"
++    extensions: ["rust"]
++"#;
++    
++    let config = Config::parse_str(yaml)?;
++    
++    // 配列要素のセクションを取得
++    let editor = config.get_section("editors[0]")?;
++    assert_eq!(editor.get::<String>("name")?, "vscode");
++    assert_eq!(editor.get::<Vec<String>>("extensions")?, vec!["rust", "yaml"]);
++    
++    Ok(())
++}
++
++#[test]
++fn test_get_section_errors() -> Result<()> {
++    let yaml = r#"
++value: 42
++array: [1, 2, 3]
++"#;
++    
++    let config = Config::parse_str(yaml)?;
++    
++    // 存在しないパス
++    assert!(config.get_section("nonexistent").is_err());
++    
++    // スカラー値に対するセクション取得
++    assert!(config.get_section("value").is_err());
++    
++    // 配列に対するセクション取得（インデックスなし）
++    assert!(config.get_section("array").is_err());
++    
++    Ok(())
++}
++
++#[test]
++fn test_section_type_conversion() -> Result<()> {
++    let yaml = r#"
++section:
++  string_num: "123"
++  bool_string: "true"
++  nested:
++    value: 42
++"#;
++    
++    let config = Config::parse_str(yaml)?;
++    let section = config.get_section("section")?;
++    
++    // 文字列から数値への変換
++    assert_eq!(section.get::<i64>("string_num")?, 123);
++    
++    // 文字列からブール値への変換
++    assert_eq!(section.get::<bool>("bool_string")?, true);
++    
++    // ネストした値の取得
++    let nested = section.get_section("nested")?;
++    assert_eq!(nested.get::<i64>("value")?, 42);
++    
++    Ok(())
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
