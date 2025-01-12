@@ -35,7 +35,7 @@ pub struct CommandOutput {
 }
 
 impl ContainerdBuilder {
-    pub(crate) async fn execute_command(&self, container_id: &str, command: &[String]) -> Result<CommandOutput> {
+    pub async fn execute_command(&self, container_id: &str, command: &[String]) -> Result<CommandOutput> {
         let mut tasks = self.tasks.lock().await;
         let exec_id = uuid::Uuid::new_v4().to_string();
         let buffer_config = BufferConfig::default();

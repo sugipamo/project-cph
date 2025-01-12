@@ -1,6 +1,6 @@
 use anyhow::Result;
-use cph::config::Config;
-use cph::container::registry::{ContainerdBuilder, BufferConfig, CommandOutput};
+use crate::cphelper::config::Config;
+use cph::container::registry::ContainerdBuilder;
 
 #[tokio::test]
 async fn test_execute_command() -> Result<()> {

@@ -6,7 +6,7 @@ use containerd_client::types::Descriptor;
 use std::time::SystemTime;
 
 impl ContainerdBuilder {
-    pub(crate) async fn create_snapshot(&self, container_id: &str, snapshot_name: &str) -> Result<()> {
+    pub async fn create_snapshot(&self, container_id: &str, snapshot_name: &str) -> Result<()> {
         let mut snapshots = self.snapshots.lock().await;
         snapshots
             .prepare(PrepareSnapshotRequest {
@@ -19,7 +19,7 @@ impl ContainerdBuilder {
         Ok(())
     }
 
-    pub(crate) async fn commit_snapshot(&self, snapshot_name: &str, tag: &str) -> Result<()> {
+    pub async fn commit_snapshot(&self, snapshot_name: &str, tag: &str) -> Result<()> {
         let mut images = self.images.lock().await;
         let now = SystemTime::now();
         images

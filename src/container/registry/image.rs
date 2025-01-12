@@ -37,7 +37,7 @@ impl ContainerdBuilder {
         })
     }
 
-    async fn create_container(&self, image: &str) -> Result<String> {
+    pub async fn create_container(&self, image: &str) -> Result<String> {
         let container_id = uuid::Uuid::new_v4().to_string();
         let mut client = self.containers.lock().await;
         let container = client.create(containerd::services::v1::CreateContainerRequest {
@@ -59,7 +59,7 @@ impl ContainerdBuilder {
         Ok(container.id)
     }
 
-    async fn start_container(&self, container_id: &str) -> Result<()> {
+    pub async fn start_container(&self, container_id: &str) -> Result<()> {
         let mut tasks = self.tasks.lock().await;
         tasks.create(containerd::services::v1::CreateTaskRequest {
             container_id: container_id.to_string(),
@@ -77,7 +77,7 @@ impl ContainerdBuilder {
         Ok(())
     }
 
-    async fn stop_container(&self, container_id: &str) -> Result<()> {
+    pub async fn stop_container(&self, container_id: &str) -> Result<()> {
         let mut tasks = self.tasks.lock().await;
         tasks.kill(KillRequest {
             container_id: container_id.to_string(),
@@ -95,7 +95,7 @@ impl ContainerdBuilder {
         Ok(())
     }
 
-    async fn cleanup(&self, container_id: &str) -> Result<()> {
+    pub async fn cleanup(&self, container_id: &str) -> Result<()> {
         // コンテナの停止と削除
         self.stop_container(container_id).await?;
         let mut containers = self.containers.lock().await;

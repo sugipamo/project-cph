@@ -1,11 +1,12 @@
 use anyhow::Result;
-use cph::config::Config;
+use crate::cphelper::config::Config;
 use cph::container::registry::{ContainerdBuilder, ImageBuilder};
 
 #[tokio::test]
-async fn test_create_containerd_builder() -> Result<()> {
+async fn test_builder_creation() -> Result<()> {
     let config = Config::get_default_config()?;
     let builder = ContainerdBuilder::new(config).await?;
+    assert!(builder.create_container("rust:latest").await.is_ok());
     Ok(())
 }
 
@@ -25,6 +26,7 @@ async fn test_create_container() -> Result<()> {
     let image = "rust:latest";
     let container_id = builder.create_container(image).await?;
     assert!(!container_id.is_empty());
+    builder.cleanup(&container_id).await?;
     Ok(())
 }
 
@@ -33,7 +35,7 @@ async fn test_container_lifecycle() -> Result<()> {
     let config = Config::get_default_config()?;
     let builder = ContainerdBuilder::new(config).await?;
     let image = "rust:latest";
-    
+
     // コンテナの作成
     let container_id = builder.create_container(image).await?;
     assert!(!container_id.is_empty());
@@ -41,7 +43,10 @@ async fn test_container_lifecycle() -> Result<()> {
     // コンテナの起動
     builder.start_container(&container_id).await?;
 
-    // コンテナの停止とクリーンアップ
+    // コンテナの停止
+    builder.stop_container(&container_id).await?;
+
+    // クリーンアップ
     builder.cleanup(&container_id).await?;
     Ok(())
 } 
