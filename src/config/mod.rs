@@ -11,14 +11,12 @@ use anyhow::{anyhow, bail, Context, Result};
 use serde_yaml::Value;
 use std::fs;
 use std::path::Path;
-use std::sync::OnceLock;
 use std::env;
 use regex::Regex;
 use once_cell::sync::Lazy;
 use yaml_rust::{YamlLoader, Yaml};
 use yaml_rust::yaml::Hash;
 
-static CONFIG: OnceLock<Config> = OnceLock::new();
 static ENV_VAR_PATTERN: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\$\{([^}]+)}").expect("正規表現パターンが不正です")
 });
@@ -29,6 +27,20 @@ pub struct Config {
 }
 
 impl Config {
+    /// デフォルトの設定ファイルから設定を読み込みます
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self>` - 読み込まれた設定
+    ///
+    /// # Errors
+    ///
+    /// - 設定ファイルが存在しない場合
+    /// - 設定ファイルの形式が不正な場合
+    pub fn default() -> Result<Self> {
+        Self::from_file("src/config/config.yaml")
+    }
+
     /// 指定されたパスから設定を読み込みます
     ///
     /// # Errors
@@ -223,18 +235,11 @@ impl Config {
     ///
     /// - 設定パスが存在しない場合
     /// - 設定値の型変換に失敗した場合
-    ///
-    /// # Panics
-    ///
-    /// - デフォルト設定ファイルの読み込みに失敗した場合
     pub fn get_default<T>(path: &str) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
-        let config = CONFIG.get_or_init(|| {
-            Self::from_file("src/config/config.yaml")
-                .expect("デフォルト設定ファイルの読み込みに失敗しました")
-        });
+        let config = Self::default()?;
         config.get(path)
     }
 

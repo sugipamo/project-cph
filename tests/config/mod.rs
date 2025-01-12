@@ -266,4 +266,38 @@ values:
     assert!(config.get::<i64>("values.object").is_err());
     
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::NamedTempFile;
+    use std::io::Write;
+
+    #[test]
+    fn test_default_config() -> Result<()> {
+        let config = Config::default()?;
+        assert!(config.get::<String>("version").is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn test_from_file() -> Result<()> {
+        let mut temp_file = NamedTempFile::new()?;
+        writeln!(temp_file, "test:\n  value: 42")?;
+
+        let config = Config::from_file(temp_file.path())?;
+        let value: i32 = config.get("test.value")?;
+        assert_eq!(value, 42);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_invalid_path() {
+        let result = Config::from_file("nonexistent.yaml");
+        assert!(result.is_err());
+    }
+
+    // ... existing code ...
 } 
