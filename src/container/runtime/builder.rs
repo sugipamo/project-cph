@@ -2,7 +2,8 @@ use super::{Container, Runtime};
 use super::config::Config;
 use std::sync::Arc;
 use std::path::PathBuf;
-use anyhow::Result;
+use anyhow::{Result, anyhow};
+use crate::config::Config as GlobalConfig;
 
 pub struct Builder {
     config: Config,
@@ -66,16 +67,21 @@ impl Builder {
         self.config.args = args;
         self.config.working_dir = PathBuf::from(source_file);
 
+        // グローバル設定から言語固有の設定を取得
+        let global_config = GlobalConfig::get_default_config()?;
+        
         match language {
             "python" => {
-                self.config.image = "python:3.9".to_string();
-                println!("ContainerBuilder: Pythonイメージを設定");
+                let image = global_config.get::<String>("languages.python.runner.image")?;
+                self.config.image = image;
+                println!("ContainerBuilder: Pythonイメージを設定: {}", self.config.image);
             }
             "rust" => {
-                self.config.image = "rust:1.70".to_string();
-                println!("ContainerBuilder: Rustイメージを設定");
+                let image = global_config.get::<String>("languages.rust.runner.image")?;
+                self.config.image = image;
+                println!("ContainerBuilder: Rustイメージを設定: {}", self.config.image);
             }
-            _ => return Err(anyhow::anyhow!("サポートされていない言語です: {}", language)),
+            _ => return Err(anyhow!("サポートされていない言語です: {}", language)),
         }
 
         if self.config.id.is_empty() {

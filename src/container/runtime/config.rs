@@ -77,7 +77,20 @@ impl Default for ResourceLimits {
     }
 }
 
-pub fn get_containerd_config() -> Result<(String, String)> {
+/// containerdの設定を取得します
+/// 
+/// # Returns
+/// 
+/// * `Result<(String, String)>` - (ソケットパス, ネームスペース)のタプル
+/// 
+/// # Errors
+/// 
+/// 以下の場合にエラーを返します：
+/// - 設定ファイルの読み込みに失敗した場合
+/// - 必要な設定値が見つからない場合
+/// - 設定値の型変換に失敗した場合
+#[allow(clippy::module_name_repetitions)]
+pub fn get_runtime_config() -> Result<(String, String)> {
     let config = GlobalConfig::get_default_config()?;
     let socket = config.get::<String>("system.container.runtime.containerd.socket")?;
     let namespace = config.get::<String>("system.container.runtime.containerd.namespace")?;
