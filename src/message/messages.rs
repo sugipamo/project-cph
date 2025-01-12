@@ -1,130 +1,135 @@
-use serde::Deserialize;
 use std::collections::HashMap;
-use once_cell::sync::Lazy;
-use super::Type;
+use lazy_static::lazy_static;
+use colored::*;
 
-#[derive(Debug, Deserialize)]
-struct MessageCategory {
-    error: HashMap<String, String>,
-    warning: HashMap<String, String>,
-    hint: HashMap<String, String>,
+#[derive(Debug, Clone, Copy)]
+pub enum Type {
+    Error,
+    Warning,
+    Hint,
 }
 
-#[derive(Debug, Deserialize)]
-struct Messages {
-    messages: HashMap<String, MessageCategory>,
-}
+lazy_static! {
+    static ref MESSAGES: HashMap<&'static str, HashMap<&'static str, &'static str>> = {
+        let mut m = HashMap::new();
+        
+        // ファイルシステム関連のメッセージ
+        let mut fs = HashMap::new();
+        fs.insert("file_not_found", "ファイルが見つかりません: {}");
+        fs.insert("dir_not_found", "ディレクトリが見つかりません: {}");
+        fs.insert("permission_denied", "アクセス権限がありません: {}");
+        m.insert("fs", fs);
 
-static MESSAGES: Lazy<Messages> = Lazy::new(|| {
-    let yaml = include_str!("messages.yaml");
-    serde_yaml::from_str(yaml).expect("メッセージ定義の読み込みに失敗しました")
-});
+        // コンテナ関連のメッセージ
+        let mut container = HashMap::new();
+        container.insert("image_not_found", "イメージが見つかりません: {}");
+        container.insert("container_error", "コンテナの操作に失敗しました: {}");
+        container.insert("runtime_error", "ランタイムエラーが発生しました: {}");
+        m.insert("container", container);
 
-/// メッセージを取得します。
-/// 
-/// # Arguments
-/// * `category` - メッセージのカテゴリ（"fs", "docker", "contest", "common"）
-/// * `msg_type` - メッセージの種類（Error, Warning, Hint）
-/// * `key` - メッセージのキー
-/// 
-/// # Returns
-/// * `Option<&'static str>` - メッセージのテンプレート
-#[must_use]
-pub fn get(category: &str, msg_type: Type, key: &str) -> Option<&'static str> {
-    MESSAGES.messages.get(category).and_then(|cat| {
-        match msg_type {
-            Type::Error => cat.error.get(key),
-            Type::Warning => cat.warning.get(key),
-            Type::Hint => cat.hint.get(key),
-        }
-    }).map(String::as_str)
+        // コンテスト関連のメッセージ
+        let mut contest = HashMap::new();
+        contest.insert("not_found", "コンテストが見つかりません: {}");
+        contest.insert("invalid_format", "コンテスト形式が無効です: {}");
+        m.insert("contest", contest);
+
+        // 共通メッセージ
+        let mut common = HashMap::new();
+        common.insert("unknown_error", "不明なエラーが発生しました: {}");
+        common.insert("invalid_argument", "無効な引数です: {}");
+        m.insert("common", common);
+
+        m
+    };
 }
 
 /// メッセージをフォーマットします。
-/// 
+///
 /// # Arguments
-/// * `category` - メッセージのカテゴリ
-/// * `msg_type` - メッセージの種類
+/// * `category` - メッセージのカテゴリ（"fs", "container", "contest", "common"）
+/// * `type_` - メッセージの種類
 /// * `key` - メッセージのキー
 /// * `args` - フォーマット引数
-/// 
+///
 /// # Returns
-/// * `String` - フォーマットされたメッセージ
-/// 
-/// # Panics
-/// * メッセージが見つからない場合
-pub fn format<D: std::fmt::Display>(
-    category: &str,
-    msg_type: Type,
-    key: &str,
-    args: D,
-) -> String {
-    let template = get(category, msg_type, key)
-        .unwrap_or_else(|| panic!("メッセージが見つかりません: {category}/{msg_type:?}/{key}"));
-    template.replace("{}", &args.to_string())
+/// フォーマットされたメッセージ
+fn format(category: &str, type_: Type, key: &str, args: &[&str]) -> String {
+    let messages = MESSAGES.get(category).unwrap_or_else(|| MESSAGES.get("common").unwrap());
+    let template = messages.get(key).unwrap_or_else(|| messages.get("unknown_error").unwrap());
+    
+    let formatted = if args.is_empty() {
+        template.to_string()
+    } else {
+        template.replace("{}", args[0])
+    };
+
+    match type_ {
+        Type::Error => formatted.red().to_string(),
+        Type::Warning => formatted.yellow().to_string(),
+        Type::Hint => formatted.cyan().to_string(),
+    }
 }
 
-// 利便性のために各カテゴリのモジュールを提供
 pub mod fs {
-    use super::{Type, format};
+    use super::{format, Type};
 
-    pub fn error<D: std::fmt::Display>(key: &str, args: D) -> String {
+    pub fn error(key: &str, args: &[&str]) -> String {
         format("fs", Type::Error, key, args)
     }
 
-    pub fn warning<D: std::fmt::Display>(key: &str, args: D) -> String {
+    pub fn warning(key: &str, args: &[&str]) -> String {
         format("fs", Type::Warning, key, args)
     }
 
-    pub fn hint<D: std::fmt::Display>(key: &str, args: D) -> String {
+    pub fn hint(key: &str, args: &[&str]) -> String {
         format("fs", Type::Hint, key, args)
     }
 }
 
-pub mod docker {
-    use super::{Type, format};
+pub mod container {
+    use super::{format, Type};
 
-    pub fn error<D: std::fmt::Display>(key: &str, args: D) -> String {
-        format("docker", Type::Error, key, args)
+    pub fn error(key: &str, args: &[&str]) -> String {
+        format("container", Type::Error, key, args)
     }
 
-    pub fn warning<D: std::fmt::Display>(key: &str, args: D) -> String {
-        format("docker", Type::Warning, key, args)
+    pub fn warning(key: &str, args: &[&str]) -> String {
+        format("container", Type::Warning, key, args)
     }
 
-    pub fn hint<D: std::fmt::Display>(key: &str, args: D) -> String {
-        format("docker", Type::Hint, key, args)
+    pub fn hint(key: &str, args: &[&str]) -> String {
+        format("container", Type::Hint, key, args)
     }
 }
 
 pub mod contest {
-    use super::{Type, format};
+    use super::{format, Type};
 
-    pub fn error<D: std::fmt::Display>(key: &str, args: D) -> String {
+    pub fn error(key: &str, args: &[&str]) -> String {
         format("contest", Type::Error, key, args)
     }
 
-    pub fn warning<D: std::fmt::Display>(key: &str, args: D) -> String {
+    pub fn warning(key: &str, args: &[&str]) -> String {
         format("contest", Type::Warning, key, args)
     }
 
-    pub fn hint<D: std::fmt::Display>(key: &str, args: D) -> String {
+    pub fn hint(key: &str, args: &[&str]) -> String {
         format("contest", Type::Hint, key, args)
     }
 }
 
 pub mod common {
-    use super::{Type, format};
+    use super::{format, Type};
 
-    pub fn error<D: std::fmt::Display>(key: &str, args: D) -> String {
+    pub fn error(key: &str, args: &[&str]) -> String {
         format("common", Type::Error, key, args)
     }
 
-    pub fn warning<D: std::fmt::Display>(key: &str, args: D) -> String {
+    pub fn warning(key: &str, args: &[&str]) -> String {
         format("common", Type::Warning, key, args)
     }
 
-    pub fn hint<D: std::fmt::Display>(key: &str, args: D) -> String {
+    pub fn hint(key: &str, args: &[&str]) -> String {
         format("common", Type::Hint, key, args)
     }
 } 

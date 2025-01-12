@@ -7,8 +7,8 @@ system:
     - "code"
     - "cursor"
   container:
-    timeout_seconds: ${CPH_DOCKER_TIMEOUT-10}
-    memory_limit_mb: ${CPH_DOCKER_MEMORY-256}
+    timeout_seconds: ${CPH_CONTAINER_TIMEOUT-10}
+    memory_limit_mb: ${CPH_CONTAINER_MEMORY-256}
     mount_point: "/compile"
     runtime:
       containerd:
@@ -27,8 +27,8 @@ languages:
       require_files: []
       env_vars: []
       container:
-        timeout_seconds: ${CPH_DOCKER_TIMEOUT-10}
-        memory_limit_mb: ${CPH_DOCKER_MEMORY-256}
+        timeout_seconds: ${CPH_CONTAINER_TIMEOUT-10}
+        memory_limit_mb: ${CPH_CONTAINER_MEMORY-256}
         mount_point: "/compile"
       image:
         type: "official"
@@ -56,8 +56,8 @@ languages:
     extension: "rs"
     runner:
       image:
-        type: "custom"
-        source: "${CPH_RUST_DOCKERFILE-src/config/dockerfile/rust.dockerfile}"
+        type: "official"
+        source: "rust:1.70.0"
       compile_dir: "${CPH_COMPILE_DIR-compile/rust}"
       compile: ["rustc", "main.rs"]
       run: ["./main"]
@@ -77,8 +77,8 @@ languages:
     extension: "py"
     runner:
       image:
-        type: "custom"
-        source: "${CPH_PYTHON_DOCKERFILE-src/config/dockerfile/python.dockerfile}"
+        type: "official"
+        source: "python:3.11.4"
       compile_dir: "${CPH_COMPILE_DIR-compile/python}"
       run: ["python", "main.py"]
       container:
@@ -94,8 +94,8 @@ languages:
     extension: "cpp"
     runner:
       image:
-        type: "custom"
-        source: "${CPH_CPP_DOCKERFILE-src/config/dockerfile/cpp.dockerfile}"
+        type: "official"
+        source: "gcc:9.2.1"
       compile_dir: "${CPH_COMPILE_DIR-compile/cpp}"
       compile: ["g++", "-std=c++17", "-O2", "main.cpp"]
       run: ["./a.out"]
@@ -114,8 +114,8 @@ languages:
     extension: "py"
     runner:
       image:
-        type: "custom"
-        source: "${CPH_PYPY_DOCKERFILE-src/config/dockerfile/pypy.dockerfile}"
+        type: "official"
+        source: "pypy:3.9"
       compile_dir: "${CPH_COMPILE_DIR-compile/pypy}"
       run: ["pypy3", "main.py"]
       container:

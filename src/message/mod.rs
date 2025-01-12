@@ -9,4 +9,4 @@ pub enum Type {
 }
 
 pub use messages::{get, format};
-pub use messages::{fs, docker, contest, common}; 
+pub use messages::{fs, container, contest, common}; 
