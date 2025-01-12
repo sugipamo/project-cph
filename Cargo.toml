@@ -51,6 +51,7 @@ bytes = { version = "1.5", features = ["serde"] }
 tonic = { version = "0.12", features = ["transport"] }
 serde_bytes = "0.11"
 prost-types = "0.13"
+lazy_static = "1.4.0"
 
 [dev-dependencies]
 assert_cmd = "2.0"

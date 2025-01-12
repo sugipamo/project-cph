@@ -1,36 +1,28 @@
 use std::path::Path;
+use std::fs;
 use anyhow::{Result, anyhow};
-use crate::message::fs;
-use super::validate::{is_file, is_dir};
+use crate::message::fs as fs_message;
 
-/// ファイルを削除します。
-/// 
-/// # Arguments
-/// * `path` - 削除するファイルのパス
-/// 
+/// ファイルを削除します
+///
 /// # Errors
-/// - パスが存在しない場合
-/// - パスがファイルでない場合
+///
+/// 以下の場合にエラーを返します：
+/// - ファイルが存在しない場合
 /// - ファイルの削除に失敗した場合
-pub fn remove_file(path: impl AsRef<Path>) -> Result<()> {
-    let path = path.as_ref();
-    is_file(path)?;
-    std::fs::remove_file(path)
-        .map_err(|e| anyhow!(fs::error("delete_error", e)))
+pub fn delete_file(path: impl AsRef<Path>) -> Result<()> {
+    fs::remove_file(path.as_ref())
+        .map_err(|e| anyhow!(fs_message::error("delete_error", e)))
 }
 
-/// ディレクトリを削除します。
-/// 
-/// # Arguments
-/// * `path` - 削除するディレクトリのパス
-/// 
+/// ディレクトリを再帰的に削除します
+///
 /// # Errors
-/// - パスが存在しない場合
-/// - パスがディレクトリでない場合
+///
+/// 以下の場合にエラーを返します：
+/// - ディレクトリが存在しない場合
 /// - ディレクトリの削除に失敗した場合
-pub fn remove_dir(path: impl AsRef<Path>) -> Result<()> {
-    let path = path.as_ref();
-    is_dir(path)?;
-    std::fs::remove_dir_all(path)
-        .map_err(|e| anyhow!(fs::error("delete_error", e)))
+pub fn delete_dir_recursive(path: impl AsRef<Path>) -> Result<()> {
+    fs::remove_dir_all(path.as_ref())
+        .map_err(|e| anyhow!(fs_message::error("delete_error", e)))
 } 

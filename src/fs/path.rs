@@ -56,33 +56,29 @@ impl Validator {
 
     /// パスを検証します
     ///
-    /// # Arguments
-    /// * `path` - 検証するパス
-    ///
-    /// # Returns
-    /// * `Result<()>` - 検証結果
-    ///
     /// # Errors
-    /// * パスが無効な場合
-    pub fn validate<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+    ///
+    /// 以下の場合にエラーを返します：
+    /// - パストラバーサルが検出された場合
+    /// - 絶対パスが使用された場合
+    /// - ファイル名が長すぎる場合
+    pub fn validate(&self, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
 
-        // パスコンポーネントの検証
-        for component in path.components() {
-            match component {
-                std::path::Component::ParentDir => {
-                    return Err(anyhow!(fs_message::error("path_traversal_error", "")));
-                }
-                std::path::Component::RootDir => {
-                    return Err(anyhow!(fs_message::error("absolute_path_error", "")));
-                }
-                std::path::Component::Normal(name) => {
-                    let name_str = name.to_string_lossy();
-                    if name_str.len() > self.max_filename_length {
-                        return Err(anyhow!(fs_message::error("filename_too_long", self.max_filename_length)));
-                    }
-                }
-                _ => {}
+        // パストラバーサルのチェック
+        if path.components().any(|c| c.as_os_str() == "..") {
+            return Err(anyhow!(fs_message::error("path_traversal_error", "パストラバーサルは許可されていません")));
+        }
+
+        // 絶対パスのチェック
+        if path.is_absolute() {
+            return Err(anyhow!(fs_message::error("absolute_path_error", "絶対パスは許可されていません")));
+        }
+
+        // ファイル名の長さチェック
+        if let Some(filename) = path.file_name() {
+            if filename.len() > self.max_filename_length {
+                return Err(anyhow!(fs_message::error("filename_too_long", format!("ファイル名が長すぎます（最大{}バイト）", self.max_filename_length))));
             }
         }
 
