@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::sync::Arc;
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use containerd_client as containerd;
@@ -6,10 +6,8 @@ use containerd_client::services::v1::images_client::ImagesClient;
 use containerd_client::services::v1::containers_client::ContainersClient;
 use containerd_client::services::v1::snapshots_client::SnapshotsClient;
 use containerd_client::services::v1::tasks_client::TasksClient;
-use std::sync::Arc;
 use tokio::sync::Mutex;
 use crate::config;
-use prost_types::Any;
 
 #[async_trait]
 pub trait ImageBuilder: Send + Sync {
@@ -17,11 +15,11 @@ pub trait ImageBuilder: Send + Sync {
 }
 
 pub struct ContainerdBuilder {
-    images: Arc<Mutex<ImagesClient<tonic::transport::Channel>>>,
-    containers: Arc<Mutex<ContainersClient<tonic::transport::Channel>>>,
-    snapshots: Arc<Mutex<SnapshotsClient<tonic::transport::Channel>>>,
-    tasks: Arc<Mutex<TasksClient<tonic::transport::Channel>>>,
-    config: config::Config,
+    pub(crate) images: Arc<Mutex<ImagesClient<tonic::transport::Channel>>>,
+    pub(crate) containers: Arc<Mutex<ContainersClient<tonic::transport::Channel>>>,
+    pub(crate) snapshots: Arc<Mutex<SnapshotsClient<tonic::transport::Channel>>>,
+    pub(crate) tasks: Arc<Mutex<TasksClient<tonic::transport::Channel>>>,
+    pub(crate) config: config::Config,
 }
 
 impl ContainerdBuilder {
@@ -95,126 +93,6 @@ impl ContainerdBuilder {
         Ok(())
     }
 
-    async fn execute_command(&self, container_id: &str, command: &[String]) -> Result<()> {
-        let mut tasks = self.tasks.lock().await;
-        let exec_id = uuid::Uuid::new_v4().to_string();
-
-        // 環境変数の取得
-        let default_lang: String = self.config.get("languages.default")?;
-        let env_vars: Vec<String> = self.config.get(&format!("languages.{}.container.env_vars", default_lang))
-            .unwrap_or_default();
-
-        // プロセス仕様の作成
-        let process_spec = serde_json::json!({
-            "terminal": false,
-            "args": command,
-            "env": env_vars,  // 設定ファイルからの環境変数を使用
-            "cwd": "/",
-            "capabilities": {
-                "bounding": [
-                    "CAP_AUDIT_WRITE",
-                    "CAP_KILL",
-                    "CAP_NET_BIND_SERVICE"
-                ],
-                "effective": [
-                    "CAP_AUDIT_WRITE",
-                    "CAP_KILL",
-                    "CAP_NET_BIND_SERVICE"
-                ],
-                "inheritable": [
-                    "CAP_AUDIT_WRITE",
-                    "CAP_KILL",
-                    "CAP_NET_BIND_SERVICE"
-                ],
-                "permitted": [
-                    "CAP_AUDIT_WRITE",
-                    "CAP_KILL",
-                    "CAP_NET_BIND_SERVICE"
-                ],
-                "ambient": [
-                    "CAP_AUDIT_WRITE",
-                    "CAP_KILL",
-                    "CAP_NET_BIND_SERVICE"
-                ]
-            },
-            "rlimits": [
-                {
-                    "type": "RLIMIT_NOFILE",
-                    "hard": 1024,
-                    "soft": 1024
-                }
-            ],
-            "noNewPrivileges": true
-        });
-
-        // Execの作成と実行
-        let exec = tasks.exec(containerd::services::v1::ExecProcessRequest {
-            container_id: container_id.to_string(),
-            exec_id: exec_id.clone(),
-            terminal: false,
-            stdin: vec![],
-            stdout: vec![],
-            stderr: vec![],
-            spec: Some(Any {
-                type_url: "types.containerd.io/opencontainers/runtime-spec/1/Process".to_string(),
-                value: serde_json::to_vec(&process_spec)?,
-            }),
-        })
-        .await?;
-
-        // 実行結果の待機
-        let status = tasks.wait(containerd::services::v1::WaitTaskRequest {
-            container_id: container_id.to_string(),
-            exec_id: exec_id.clone(),
-        })
-        .await?
-        .into_inner()
-        .exit_status;
-
-        if status != 0 {
-            return Err(anyhow!("コマンドの実行に失敗しました: {:?} (exit code: {})", command, status));
-        }
-
-        Ok(())
-    }
-
-    async fn create_snapshot(&self, container_id: &str, snapshot_name: &str) -> Result<()> {
-        let mut snapshots = self.snapshots.lock().await;
-        snapshots
-            .prepare(containerd::services::v1::PrepareSnapshotRequest {
-                snapshotter: "overlayfs".to_string(),
-                key: snapshot_name.to_string(),
-                parent: container_id.to_string(),
-                labels: Default::default(),
-            })
-            .await?;
-        Ok(())
-    }
-
-    async fn commit_snapshot(&self, snapshot_name: &str, tag: &str) -> Result<()> {
-        let mut images = self.images.lock().await;
-        images
-            .create(containerd::services::v1::CreateImageRequest {
-                image: Some(containerd::services::v1::Image {
-                    name: tag.to_string(),
-                    labels: {
-                        let mut labels = std::collections::HashMap::new();
-                        labels.insert("containerd.io/snapshot/overlayfs".to_string(), snapshot_name.to_string());
-                        labels
-                    },
-                    target: Some(containerd::types::Descriptor {
-                        media_type: "application/vnd.oci.image.layer.v1.tar+gzip".to_string(),
-                        digest: format!("sha256:{}", snapshot_name),
-                        size: 0,
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                }),
-            })
-            .await?;
-        Ok(())
-    }
-
     async fn cleanup(&self, container_id: &str) -> Result<()> {
         // コンテナの停止と削除
         self.stop_container(container_id).await?;
@@ -242,7 +120,8 @@ impl ImageBuilder for ContainerdBuilder {
         // 3. セットアップコマンドの実行
         if let Ok(setup_commands) = self.config.get::<Vec<Vec<String>>>(&format!("languages.{}.container.setup", default_lang)) {
             for cmd in setup_commands {
-                self.execute_command(&container_id, &cmd).await?;
+                let output = self.execute_command(&container_id, &cmd).await?;
+                tracing::info!("Setup command executed: {:?}\nOutput: {}", cmd, output.stdout);
             }
         }
 
