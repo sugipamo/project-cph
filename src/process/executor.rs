@@ -1,23 +1,39 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::process::{Child, Command};
-use tokio::io::{BufReader, AsyncBufReadExt, AsyncWriteExt};
-use tokio::time::timeout;
 use anyhow::{Result, Context};
 use crate::config::Config;
 use uuid::Uuid;
 use bytes::Bytes;
-use crate::process::io::Buffer;
+use crate::process::io::{Buffer, IoHandler};
 use crate::process::limits::{ProcessLimits, MemoryMonitor};
+use crate::process::monitor::{ProcessMonitor, ProcessStatus};
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct Process {
     pub id: String,
     pub child: Child,
     pub config: ProcessConfig,
-    pub memory_monitor: Option<MemoryMonitor>,
+    pub monitor: ProcessMonitor,
+    temp_files: Vec<PathBuf>,
+}
+
+impl Drop for Process {
+    fn drop(&mut self) {
+        // プロセスが実行中なら強制終了
+        if let Ok(None) = self.child.try_wait() {
+            let _ = self.child.start_kill();
+        }
+
+        // 一時ファイルの削除
+        for path in &self.temp_files {
+            if let Err(e) = std::fs::remove_file(path) {
+                eprintln!("一時ファイルの削除に失敗しました: {} ({})", path.display(), e);
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -31,21 +47,29 @@ pub struct ProcessConfig {
 
 pub struct ProcessExecutor {
     processes: Arc<Mutex<HashMap<String, Process>>>,
-    buffer: Arc<Buffer>,
+    io_handler: IoHandler,
     config: Config,
 }
 
-#[derive(Debug)]
-pub struct ProcessStatus {
-    pub exit_status: Option<std::process::ExitStatus>,
-    pub memory_exceeded: bool,
+impl Drop for ProcessExecutor {
+    fn drop(&mut self) {
+        // 非同期コンテキストでの終了処理をブロッキングで実行
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let mut processes = self.processes.lock().await;
+            for (id, _) in processes.drain() {
+                self.io_handler.cleanup(&id).await;
+            }
+        });
+    }
 }
 
 impl ProcessExecutor {
     pub fn new(config: Config) -> Self {
+        let buffer = Arc::new(Buffer::new());
         Self {
             processes: Arc::new(Mutex::new(HashMap::new())),
-            buffer: Arc::new(Buffer::new()),
+            io_handler: IoHandler::new(buffer),
             config,
         }
     }
@@ -71,18 +95,7 @@ impl ProcessExecutor {
             command.current_dir(dir);
         }
 
-        // 環境変数の設定
-        if let Ok(env_vars) = language_config.get::<Vec<String>>("env_vars") {
-            for env_var in env_vars {
-                if let Some((key, value)) = env_var.split_once('=') {
-                    command.env(key, value);
-                }
-            }
-        }
-
-        for (key, value) in &config.env_vars {
-            command.env(key, value);
-        }
+        self.setup_env_vars(&mut command, &language_config, &config)?;
 
         let mut child = command.spawn()
             .context("プロセスの起動に失敗しました")?;
@@ -96,139 +109,103 @@ impl ProcessExecutor {
             None
         };
 
-        // 標準出力の非同期処理を設定
-        if let Some(stdout) = child.stdout.take() {
-            let buffer = self.buffer.clone();
-            let process_id = id.clone();
-            tokio::spawn(async move {
-                let mut reader = BufReader::new(stdout);
-                let mut line = String::new();
-                while let Ok(n) = reader.read_line(&mut line).await {
-                    if n == 0 { break; }
-                    if let Err(e) = buffer.append(&process_id, Bytes::from(line.clone())).await {
-                        eprintln!("stdout バッファリングエラー: {}", e);
-                    }
-                    line.clear();
-                }
-            });
-        }
-
-        // 標準エラー出力の非同期処理を設定
-        if let Some(stderr) = child.stderr.take() {
-            let buffer = self.buffer.clone();
-            let process_id = id.clone();
-            tokio::spawn(async move {
-                let mut reader = BufReader::new(stderr);
-                let mut line = String::new();
-                while let Ok(n) = reader.read_line(&mut line).await {
-                    if n == 0 { break; }
-                    if let Err(e) = buffer.append(&process_id, Bytes::from(line.clone())).await {
-                        eprintln!("stderr バッファリングエラー: {}", e);
-                    }
-                    line.clear();
-                }
-            });
-        }
+        // I/O処理の設定
+        self.io_handler.setup_io(&mut child, &id).await;
 
         let process = Process {
             id: id.clone(),
             child,
             config,
-            memory_monitor,
+            monitor: ProcessMonitor::new(memory_monitor),
+            temp_files: Vec::new(),
         };
 
         self.processes.lock().await.insert(id.clone(), process);
         Ok(id)
     }
 
-    /// プロセスの状態を確認します
-    async fn check_process_status(&self, id: &str) -> Result<ProcessStatus> {
-        let processes = self.processes.lock().await;
-        let process = processes.get(id)
-            .ok_or_else(|| anyhow::anyhow!("指定されたIDのプロセスが見つかりません: {}", id))?;
+    // 一時ファイルを追加
+    pub async fn add_temp_file(&self, id: &str, path: PathBuf) -> Result<()> {
+        let mut processes = self.processes.lock().await;
+        let process = processes.get_mut(id)
+            .context("指定されたIDのプロセスが見つかりません")?;
+        process.temp_files.push(path);
+        Ok(())
+    }
 
-        // メモリ使用量をチェック
-        if let Some(monitor) = &process.memory_monitor {
-            if monitor.is_exceeded()? {
-                return Ok(ProcessStatus {
-                    exit_status: None,
-                    memory_exceeded: true,
-                });
+    fn setup_env_vars(
+        &self,
+        command: &mut Command,
+        language_config: &Config,
+        process_config: &ProcessConfig,
+    ) -> Result<()> {
+        if let Ok(env_vars) = language_config.get::<Vec<String>>("env_vars") {
+            for env_var in env_vars {
+                if let Some((key, value)) = env_var.split_once('=') {
+                    command.env(key, value);
+                }
             }
         }
 
-        Ok(ProcessStatus {
-            exit_status: None,
-            memory_exceeded: false,
-        })
+        for (key, value) in &process_config.env_vars {
+            command.env(key, value);
+        }
+
+        Ok(())
     }
 
-    /// タイムアウト付きでプロセスの終了を待ちます
     pub async fn wait_with_timeout(&self, id: &str, timeout_secs: u64) -> Result<ProcessStatus> {
-        let timeout_duration = Duration::from_secs(timeout_secs);
-        
-        let wait_future = async {
-            let mut interval = tokio::time::interval(Duration::from_millis(100));
-            loop {
-                interval.tick().await;
-                
-                // プロセスの状態をチェック
-                let status = self.check_process_status(id).await?;
-                if status.memory_exceeded {
-                    self.kill(id).await?;
-                    return Ok(status);
-                }
+        let mut processes = self.processes.lock().await;
+        let process = processes.get_mut(id)
+            .context("指定されたIDのプロセスが見つかりません")?;
 
-                // プロセスの終了を確認
-                if let Some(process) = self.processes.lock().await.get_mut(id) {
-                    if let Ok(exit_status) = process.child.try_wait()? {
-                        if let Some(status) = exit_status {
-                            return Ok(ProcessStatus {
-                                exit_status: Some(status),
-                                memory_exceeded: false,
-                            });
-                        }
-                    }
-                }
-            }
-        };
-
-        match timeout(timeout_duration, wait_future).await {
-            Ok(result) => result,
-            Err(_) => {
-                self.kill(id).await?;
-                anyhow::bail!("プロセスがタイムアウトしました（{}秒）", timeout_secs)
-            }
-        }
+        let kill_fn = || self.kill(id);
+        process.monitor.wait_with_timeout(&mut process.child, timeout_secs, kill_fn).await
     }
 
-    /// プロセスに入力を送信します
     pub async fn write_stdin(&self, id: &str, input: &str) -> Result<()> {
         let mut processes = self.processes.lock().await;
-        if let Some(process) = processes.get_mut(id) {
-            if let Some(stdin) = process.child.stdin.as_mut() {
-                stdin.write_all(input.as_bytes()).await
-                    .context("標準入力の書き込みに失敗しました")?;
-                stdin.flush().await
-                    .context("標準入力のフラッシュに失敗しました")?;
-                Ok(())
-            } else {
-                anyhow::bail!("プロセスの標準入力が利用できません")
-            }
-        } else {
-            anyhow::bail!("指定されたIDのプロセスが見つかりません: {}", id)
-        }
+        let process = processes.get_mut(id)
+            .context("指定されたIDのプロセスが見つかりません")?;
+
+        IoHandler::write_stdin(&mut process.child, input).await
     }
 
-    /// プロセスの出力を取得します
     pub async fn read_output(&self, id: &str) -> Option<Vec<Bytes>> {
-        self.buffer.get(id).await
+        self.io_handler.read_output(id).await
     }
 
     pub async fn kill(&self, id: &str) -> Result<()> {
         if let Some(process) = self.processes.lock().await.get_mut(id) {
             process.child.kill().await
                 .context("プロセスの強制終了に失敗しました")?;
+        }
+        Ok(())
+    }
+
+    /// プロセスを終了し、関連リソースをクリーンアップします
+    pub async fn cleanup(&self, id: &str) -> Result<()> {
+        // プロセスを強制終了
+        self.kill(id).await?;
+
+        // I/Oバッファをクリーンアップ
+        self.io_handler.cleanup(id).await;
+
+        // プロセスをマップから削除（Dropトレイトが呼ばれ、一時ファイルが削除される）
+        let mut processes = self.processes.lock().await;
+        processes.remove(id);
+
+        Ok(())
+    }
+
+    /// すべてのプロセスを終了し、リソースをクリーンアップします
+    pub async fn cleanup_all(&self) -> Result<()> {
+        let mut processes = self.processes.lock().await;
+        let ids: Vec<String> = processes.keys().cloned().collect();
+        drop(processes); // ロックを解放
+
+        for id in ids {
+            self.cleanup(&id).await?;
         }
         Ok(())
     }
