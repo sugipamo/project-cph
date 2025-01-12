@@ -375,7 +375,7 @@ mod tests {
 
     #[test]
     fn test_default_config() -> Result<()> {
-        let config = Config::default()?;
+        let config = Config::default();
         assert!(config.get::<String>("version").is_ok());
         Ok(())
     }
