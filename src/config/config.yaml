@@ -1,15 +1,19 @@
 version: "0.1.0"
 
-# グステム全体の設定
+# システム全体の設定
 system:
   browser: "${BROWSER-chrome}"
   editors:
     - "code"
     - "cursor"
-  docker:
+  container:
     timeout_seconds: ${CPH_DOCKER_TIMEOUT-10}
     memory_limit_mb: ${CPH_DOCKER_MEMORY-256}
     mount_point: "/compile"
+    runtime:
+      containerd:
+        socket: "${CONTAINERD_SOCKET-/run/containerd/containerd.sock}"
+        namespace: "${CONTAINERD_NAMESPACE-default}"
 
 # 言語設定
 languages:
@@ -22,7 +26,7 @@ languages:
       compile_dir: "${CPH_COMPILE_DIR-compile/{name}}"
       require_files: []
       env_vars: []
-      docker:
+      container:
         timeout_seconds: ${CPH_DOCKER_TIMEOUT-10}
         memory_limit_mb: ${CPH_DOCKER_MEMORY-256}
         mount_point: "/compile"
@@ -55,7 +59,7 @@ languages:
       require_files: ["Cargo.toml"]
       env_vars:
         - "RUST_BACKTRACE=1"
-      docker:
+      container:
         timeout_seconds: ${CPH_RUST_TIMEOUT-15}
         memory_limit_mb: ${CPH_RUST_MEMORY-512}
     site_ids:
@@ -70,7 +74,7 @@ languages:
       image: "${CPH_PYTHON_IMAGE-python:3.11-slim}"
       compile_dir: "${CPH_COMPILE_DIR-compile/python}"
       run: ["python", "main.py"]
-      docker:
+      container:
         timeout_seconds: ${CPH_PYTHON_TIMEOUT-10}
         memory_limit_mb: ${CPH_PYTHON_MEMORY-256}
     site_ids:
@@ -88,7 +92,7 @@ languages:
       run: ["./a.out"]
       env_vars:
         - "CPLUS_INCLUDE_PATH=/usr/include/c++/9"
-      docker:
+      container:
         timeout_seconds: ${CPH_CPP_TIMEOUT-10}
         memory_limit_mb: ${CPH_CPP_MEMORY-512}
     site_ids:
@@ -103,7 +107,7 @@ languages:
       image: "${CPH_PYPY_IMAGE-pypy:latest}"
       compile_dir: "${CPH_COMPILE_DIR-compile/pypy}"
       run: ["pypy3", "main.py"]
-      docker:
+      container:
         timeout_seconds: ${CPH_PYPY_TIMEOUT-10}
         memory_limit_mb: ${CPH_PYPY_MEMORY-256}
     site_ids:
