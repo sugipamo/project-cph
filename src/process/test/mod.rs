@@ -60,7 +60,7 @@ pub struct Suite {
 
 /// テスト結果を表す構造体
 #[derive(Debug, Clone)]
-pub struct TestResult {
+pub struct Outcome {
     pub passed: bool,
     pub message: String,
 } 

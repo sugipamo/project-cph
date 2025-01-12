@@ -37,8 +37,7 @@ impl Process {
     /// 
     /// * プロセスの終了に失敗した場合
     pub async fn kill(&mut self) -> Result<()> {
-        let mut child = self.child.lock().await;
-        child.kill().await?;
+        self.child.lock().await.kill().await?;
         Ok(())
     }
 
@@ -74,6 +73,7 @@ impl Process {
             stdin.write_all(input).await?;
             stdin.flush().await?;
         }
+        drop(child);
         Ok(())
     }
 }
@@ -129,9 +129,12 @@ impl Executor {
     /// 
     /// * プロセスの終了に失敗した場合
     pub async fn kill(&mut self, id: &str) -> Result<()> {
-        if let Some(mut process) = self.processes.lock().await.remove(id) {
+        let mut processes = self.processes.lock().await;
+        let process = processes.get_mut(id);
+        if let Some(process) = process {
             process.kill().await?;
         }
+        drop(processes);
         Ok(())
     }
 

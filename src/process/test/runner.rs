@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use tokio::process::Command;
 use anyhow::Result;
-use uuid::Uuid;
 use crate::process::executor::Executor;
 use crate::process::io::Buffer;
 use std::time::Duration;
@@ -10,6 +9,12 @@ use std::time::Duration;
 #[derive(Debug)]
 pub struct Runner {
     executor: Executor,
+}
+
+impl Default for Runner {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Runner {
@@ -41,9 +46,9 @@ impl Runner {
     /// * タイムアウトテストでプロセスが正常終了した場合
     pub async fn run_test(&mut self, source_file: &str, input: &str, timeout_secs: u64, memory_limit_mb: Option<u64>) -> Result<String> {
         let buffer = Buffer::new(1024 * 1024); // 1MB buffer
-        let mut command = Command::new(source_file);
+        let command = Command::new(source_file);
         
-        let process = self.executor.spawn(
+        let mut process = self.executor.spawn(
             "test".to_string(),
             command,
             Arc::new(buffer),
