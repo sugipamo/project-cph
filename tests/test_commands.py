@@ -54,18 +54,18 @@ def test_parse_with_pypy_alias():
     }
 
 def test_login():
-    # TODO: loginコマンドのテスト実装
-    pass
+    with pytest.raises(NotImplementedError):
+        commands.login()
 
 def test_open_problem():
-    # TODO: open_problemコマンドのテスト実装
-    pass
+    with pytest.raises(NotImplementedError):
+        commands.open_problem("abc300", "a", "python")
 
 def test_test_problem():
-    # TODO: test_problemコマンドのテスト実装
-    pass
+    with pytest.raises(NotImplementedError):
+        commands.test_problem("abc300", "a", "python")
 
 def test_submit_problem():
-    # TODO: submit_problemコマンドのテスト実装
-    pass 
+    with pytest.raises(NotImplementedError):
+        commands.submit_problem("abc300", "a", "python") 
     

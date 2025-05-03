@@ -43,19 +43,19 @@ def parse_args():
 # --- コマンド実装の骨組み ---
 def login():
     """online-judge-toolsでログインする"""
-    pass
+    raise NotImplementedError("loginコマンドの実装が必要です")
 
 def open_problem(contest_name, problem_name, language_name):
     """問題データ取得・contest_stocksから移動/contest_templateからコピー"""
-    pass
+    raise NotImplementedError("open_problemコマンドの実装が必要です")
 
 def test_problem(contest_name, problem_name, language_name):
     """独自実装でテストを行う"""
-    pass
+    raise NotImplementedError("test_problemコマンドの実装が必要です")
 
 def submit_problem(contest_name, problem_name, language_name):
     """online-judge-toolsで提出する"""
-    pass
+    raise NotImplementedError("submit_problemコマンドの実装が必要です")
 
 # --- メイン処理 ---
 def main():
