@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import asyncio
+import sys
 
 class PodmanOperator(ABC):
     @abstractmethod
@@ -14,9 +15,17 @@ class PodmanOperator(ABC):
     async def exec(self, container: str, command: list):
         pass
 
+    async def run_oj(self, oj_args: list, volumes: dict, workdir: str, interactive: bool = False):
+        """ojtコマンドをpodman経由で実行する。interactive=Trueなら端末接続・標準入力も渡す"""
+        image = "python-oj-image"  # 必要に応じて外部から指定可能に
+        cmd = ["oj"] + oj_args
+        return await self.run(image, cmd, volumes, workdir, interactive=interactive)
+
 class LocalPodmanOperator(PodmanOperator):
-    async def run(self, image: str, command: list, volumes: dict = None, workdir: str = None):
+    async def run(self, image: str, command: list, volumes: dict = None, workdir: str = None, interactive: bool = False):
         cmd = ["podman", "run", "--rm", "-i"]
+        if interactive:
+            cmd.append("-t")  # 擬似端末割り当て
         if volumes:
             for host, cont in volumes.items():
                 cmd += ["-v", f"{host}:{cont}"]
@@ -24,13 +33,24 @@ class LocalPodmanOperator(PodmanOperator):
             cmd += ["-w", workdir]
         cmd.append(image)
         cmd += command
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await proc.communicate()
-        return proc.returncode, stdout.decode(), stderr.decode()
+        if interactive:
+            # 標準入出力を端末に接続
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdin=sys.stdin,
+                stdout=sys.stdout,
+                stderr=sys.stderr,
+            )
+            await proc.wait()
+            return proc.returncode, None, None
+        else:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+            return proc.returncode, stdout.decode(), stderr.decode()
 
     async def build(self, dockerfile: str, tag: str):
         cmd = ["podman", "build", "-f", dockerfile, "-t", tag, "."]
@@ -52,12 +72,17 @@ class LocalPodmanOperator(PodmanOperator):
         stdout, stderr = await proc.communicate()
         return proc.returncode, stdout.decode(), stderr.decode()
 
+    async def run_oj(self, oj_args: list, volumes: dict, workdir: str, interactive: bool = False):
+        image = "python-oj-image"
+        cmd = ["oj"] + oj_args
+        return await self.run(image, cmd, volumes, workdir, interactive=interactive)
+
 class MockPodmanOperator(PodmanOperator):
     def __init__(self):
         self.calls = []
 
-    async def run(self, image: str, command: list, volumes: dict = None, workdir: str = None):
-        self.calls.append(('run', image, command, volumes, workdir))
+    async def run(self, image: str, command: list, volumes: dict = None, workdir: str = None, interactive: bool = False):
+        self.calls.append(('run', image, command, volumes, workdir, interactive))
         return 0, 'mock-stdout', 'mock-stderr'
 
     async def build(self, dockerfile: str, tag: str):
@@ -66,4 +91,8 @@ class MockPodmanOperator(PodmanOperator):
 
     async def exec(self, container: str, command: list):
         self.calls.append(('exec', container, command))
+        return 0, 'mock-stdout', 'mock-stderr'
+
+    async def run_oj(self, oj_args: list, volumes: dict, workdir: str, interactive: bool = False):
+        self.calls.append(('run_oj', oj_args, volumes, workdir, interactive))
         return 0, 'mock-stdout', 'mock-stderr' 

@@ -5,8 +5,8 @@ from src.podman_operator import PodmanOperator, LocalPodmanOperator, MockPodmanO
 class DummyLocalPodmanOperator(LocalPodmanOperator):
     def __init__(self):
         self.calls = []
-    async def run(self, image, command, volumes=None, workdir=None):
-        self.calls.append(('run', image, command, volumes, workdir))
+    async def run(self, image, command, volumes=None, workdir=None, interactive=False):
+        self.calls.append(('run', image, command, volumes, workdir, interactive))
         return 0, 'dummy-stdout', 'dummy-stderr'
     async def build(self, dockerfile, tag):
         self.calls.append(('build', dockerfile, tag))
@@ -22,7 +22,7 @@ async def test_mock_podman_operator():
     rc2, out2, err2 = await op.build('Dockerfile', 'img:tag')
     rc3, out3, err3 = await op.exec('cont_id', ['ls', '/'])
     assert op.calls == [
-        ('run', 'img', ['echo', 'hi'], {'/host': '/cont'}, '/cont'),
+        ('run', 'img', ['echo', 'hi'], {'/host': '/cont'}, '/cont', False),
         ('build', 'Dockerfile', 'img:tag'),
         ('exec', 'cont_id', ['ls', '/'])
     ]
@@ -37,7 +37,7 @@ async def test_local_podman_operator_interface():
     rc2, out2, err2 = await op.build('Dockerfile', 'img:tag')
     rc3, out3, err3 = await op.exec('cont_id', ['ls', '/'])
     assert op.calls == [
-        ('run', 'img', ['echo', 'hi'], {'/host': '/cont'}, '/cont'),
+        ('run', 'img', ['echo', 'hi'], {'/host': '/cont'}, '/cont', False),
         ('build', 'Dockerfile', 'img:tag'),
         ('exec', 'cont_id', ['ls', '/'])
     ]

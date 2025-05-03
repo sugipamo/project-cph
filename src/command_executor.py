@@ -1,14 +1,35 @@
+from podman_operator import PodmanOperator, LocalPodmanOperator
+
 class CommandExecutor:
+    def __init__(self, podman_operator: PodmanOperator = None):
+        self.podman_operator = podman_operator or LocalPodmanOperator()
+
     async def login(self, *args, **kwargs):
-        """online-judge-toolsでログインする（ojtラッパー）"""
-        raise NotImplementedError("loginコマンドの実装が必要です")
+        """
+        online-judge-toolsでログインする（ojtラッパー）
+        ※このメソッドのテストは手動で行うことを推奨（対話が必要なため）
+        """
+        import os
+        home = os.path.expanduser("~")
+        oj_cache_host = os.path.join(home, ".cache/online-judge-tools")
+        oj_cache_cont = "/root/.cache/online-judge-tools"
+        volumes = {oj_cache_host: oj_cache_cont}
+        workdir = "/workspace"  # 必要に応じて調整
+        # 対話的にoj loginを実行
+        return await self.podman_operator.run_oj(["login"], volumes, workdir, interactive=True)
 
     async def open(self, contest_name, problem_name, language_name):
-        """online-judge-toolsで問題データ取得（ojtラッパー）"""
+        """
+        online-judge-toolsで問題データ取得（ojtラッパー）
+        ※このメソッドのテストは手動で行うことを推奨（対話が必要な場合があるため）
+        """
         raise NotImplementedError("openコマンドの実装が必要です")
 
     async def submit(self, contest_name, problem_name, language_name):
-        """online-judge-toolsで提出（ojtラッパー）"""
+        """
+        online-judge-toolsで提出（ojtラッパー）
+        ※このメソッドのテストは手動で行うことを推奨（対話が必要な場合があるため）
+        """
         raise NotImplementedError("submitコマンドの実装が必要です")
 
     async def test(self, contest_name, problem_name, language_name):
