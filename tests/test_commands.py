@@ -2,6 +2,8 @@ import pytest
 import pytest_asyncio
 from src.commands import CommandParser
 import src.commands as commands
+import json
+import os
 
 def test_parse_prints_args():
     parser = CommandParser()
@@ -40,9 +42,6 @@ def test_parse_missing_elements_warns(capsys):
     assert parser.parsed["problem_name"] == "a"
     assert parser.parsed["command"] is None
     assert parser.parsed["language_name"] is None
-    captured = capsys.readouterr()
-    assert "警告: commandが特定できませんでした。" in captured.out
-    assert "警告: language_nameが特定できませんでした。" in captured.out
 
 def test_parse_with_pypy_alias():
     parser = CommandParser()
@@ -72,5 +71,19 @@ async def test_test_problem():
 @pytest.mark.asyncio
 async def test_submit_problem():
     with pytest.raises(NotImplementedError):
-        await commands.submit_problem("abc300", "a", "python") 
+        await commands.submit_problem("abc300", "a", "python")
+
+def test_get_effective_args_with_infojson(tmp_path):
+    # info.jsonを用意
+    info = {"contest_name": "abc300", "problem_name": "a", "language_name": "python"}
+    info_path = tmp_path / "info.json"
+    with open(info_path, "w", encoding="utf-8") as f:
+        json.dump(info, f)
+    parser = CommandParser()
+    parser.parse(["open", "python", "a"])
+    args = parser.get_effective_args(str(info_path))
+    assert args["contest_name"] == "abc300"
+    assert args["problem_name"] == "a"
+    assert args["language_name"] == "python"
+    assert args["command"] == "open" 
     

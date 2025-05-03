@@ -1,10 +1,25 @@
 from podman_operator import PodmanOperator, LocalPodmanOperator
 from contest_file_manager import ContestFileManager
+import subprocess
+
+class EditorOpener:
+    def open(self, path: str):
+        # VSCodeとCursorでmain.pyのみを同じウィンドウで開く
+        main_file = f"{path}/main.py"
+        try:
+            subprocess.Popen(["code", "--reuse-window", main_file])
+        except Exception as e:
+            print(f"[警告] VSCode起動失敗: {e}")
+        try:
+            subprocess.Popen(["cursor", "--reuse-window", main_file])
+        except Exception as e:
+            print(f"[警告] Cursor起動失敗: {e}")
 
 class CommandExecutor:
-    def __init__(self, podman_operator: PodmanOperator = None, file_manager: ContestFileManager = None):
+    def __init__(self, podman_operator: PodmanOperator = None, file_manager: ContestFileManager = None, editor_opener: EditorOpener = None):
         self.podman_operator = podman_operator or LocalPodmanOperator()
         self.file_manager = file_manager
+        self.editor_opener = editor_opener or EditorOpener()
 
     async def login(self, *args, **kwargs):
         """
@@ -21,13 +36,15 @@ class CommandExecutor:
 
     async def open(self, contest_name, problem_name, language_name):
         """
-        online-judge-toolsで問題データ取得（ojtラッパー）
-        ※このメソッドのテストは手動で行うことを推奨（対話が必要な場合があるため）
+        問題ファイルを準備し、VSCodeとCursorでディレクトリを開く
         """
         # 1. ファイル操作（テンプレート展開やcontest_stocksからの移動など）
         if self.file_manager:
             self.file_manager.prepare_problem_files(contest_name, problem_name, language_name)
-        # 2. oj download（テスト時はMockPodmanOperatorでスキップ可能）
+        # 2. エディタでディレクトリを開く
+        path = f"contest_current/{language_name}/{problem_name}"
+        self.editor_opener.open(path)
+        # 3. oj download（テスト時はMockPodmanOperatorでスキップ可能）
         url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
         import os
         home = os.path.expanduser("~")
@@ -59,4 +76,11 @@ class CommandExecutor:
         elif command == "test":
             return await self.test(contest_name, problem_name, language_name)
         else:
-            raise ValueError(f"未対応のコマンドです: {command}") 
+            raise ValueError(f"未対応のコマンドです: {command}")
+
+class MockEditorOpener(EditorOpener):
+    def __init__(self):
+        self.opened_paths = []
+    def open(self, path: str):
+        main_file = f"{path}/main.py"
+        self.opened_paths.append(main_file) 
