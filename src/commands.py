@@ -10,7 +10,7 @@
 """
 
 # 定数
-CONTEST_NAMES = ["abc300", "arc100", "agc001", "ahc100"]
+CONTEST_NAMES = ["abc", "arc", "agc", "ahc"]
 COMMANDS = {
     "login": {"aliases": []},
     "open": {"aliases": ["o"]},
@@ -29,6 +29,7 @@ import argparse
 import sys
 from pathlib import Path
 import asyncio
+import json
 
 # --- 定数 ---
 CONTEST_STOCKS_DIR = Path("../contest_stocks")
@@ -58,16 +59,6 @@ async def submit_problem(contest_name, problem_name, language_name):
     """online-judge-toolsで提出する"""
     raise NotImplementedError("submit_problemコマンドの実装が必要です")
 
-# --- メイン処理 ---
-async def main():
-    args = parse_args().args
-    # TODO: 正規表現でコマンド一致条件を設定し、引数をパース
-    # TODO: コマンド分岐し、各関数をawaitで呼び出す
-    pass
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
 class CommandParser:
     @property
     def default_parsed(self):
@@ -92,11 +83,15 @@ class CommandParser:
                 self.parsed["problem_name"] = arg
                 used.add(len(args)-1-i)
                 continue
-            # contest_name
-            if self.parsed["contest_name"] is None and arg in CONTEST_NAMES:
-                self.parsed["contest_name"] = arg
-                used.add(len(args)-1-i)
-                continue
+            # contest_name（CONTEST_NAMESのどれかにstartswithで反応すればOK）
+            if self.parsed["contest_name"] is None:
+                for cname in CONTEST_NAMES:
+                    if arg.startswith(cname) or cname.startswith(arg):
+                        self.parsed["contest_name"] = arg
+                        used.add(len(args)-1-i)
+                        break
+                if self.parsed["contest_name"] is not None:
+                    continue
             # language_name
             for lang, v in LANGUAGES.items():
                 if self.parsed["language_name"] is None and (arg == lang or arg in v["aliases"]):
@@ -114,3 +109,19 @@ class CommandParser:
         for k, v in self.parsed.items():
             if v is None:
                 print(f"警告: {k}が特定できませんでした。") 
+
+    def get_effective_args(self, info_json_path="contest_current/info.json"):
+        """
+        info.jsonの値も考慮して最終的な値（contest_name, problem_name, language_name, command）を返す
+        """
+        effective = self.parsed.copy()
+        # info.jsonがあれば補完
+        try:
+            with open(info_json_path, "r", encoding="utf-8") as f:
+                info = json.load(f)
+            for k in ["contest_name", "problem_name", "language_name"]:
+                if effective[k] is None:
+                    effective[k] = info.get(k)
+        except Exception:
+            pass
+        return effective 
