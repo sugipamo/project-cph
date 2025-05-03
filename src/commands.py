@@ -105,21 +105,26 @@ class CommandParser:
                     used.add(len(args)-1-i)
                     break
         print(f"パース結果: {self.parsed}")
-        # 未特定の要素があれば警告
-        for k, v in self.parsed.items():
-            if v is None:
-                print(f"警告: {k}が特定できませんでした。") 
+        # 未特定の要素があれば警告（出力しないように変更）
+        # for k, v in self.parsed.items():
+        #     if v is None:
+        #         print(f"警告: {k}が特定できませんでした。") 
 
     def get_effective_args(self, info_json_path="contest_current/info.json"):
         """
-        info.jsonの値も考慮して最終的な値（contest_name, problem_name, language_name, command）を返す
+        info.jsonの値も考慮して最終的な値（contest_name, problem_name, language_name, command）を返す。
+        特にcommandがopenの場合はcontest_nameがNoneでもinfo.jsonから必ず補完する。
         """
         effective = self.parsed.copy()
         # info.jsonがあれば補完
         try:
             with open(info_json_path, "r", encoding="utf-8") as f:
                 info = json.load(f)
-            for k in ["contest_name", "problem_name", "language_name"]:
+            # openコマンド時はcontest_nameがNoneでも必ず補完
+            if effective["command"] == "open":
+                if effective["contest_name"] is None:
+                    effective["contest_name"] = info.get("contest_name")
+            for k in ["problem_name", "language_name"]:
                 if effective[k] is None:
                     effective[k] = info.get(k)
         except Exception:

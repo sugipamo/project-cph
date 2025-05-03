@@ -10,13 +10,14 @@ from commands import CommandParser
 def main():
     parser = CommandParser()
     parser.parse(sys.argv[1:])
-    command = parser.parsed["command"]
-    contest_name = parser.parsed["contest_name"]
-    problem_name = parser.parsed["problem_name"]
-    language_name = parser.parsed["language_name"]
+    args = parser.get_effective_args()
+    command = args["command"]
+    contest_name = args["contest_name"]
+    problem_name = args["problem_name"]
+    language_name = args["language_name"]
 
     # 不足要素があればエラー内容をprintして終了
-    missing = [k for k, v in parser.parsed.items() if v is None]
+    missing = [k for k in ["contest_name", "command", "problem_name", "language_name"] if args[k] is None]
     if missing:
         print(f"エラー: 以下の要素が不足しています: {', '.join(missing)}")
         return
