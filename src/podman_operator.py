@@ -33,6 +33,7 @@ class LocalPodmanOperator(PodmanOperator):
             cmd += ["-w", workdir]
         cmd.append(image)
         cmd += command
+        print("[DEBUG] 実行コマンド:", cmd)  # デバッグ出力
         if interactive:
             # 標準入出力を端末に接続
             proc = await asyncio.create_subprocess_exec(

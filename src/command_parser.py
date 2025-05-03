@@ -31,33 +31,11 @@ from pathlib import Path
 import asyncio
 import json
 
-# --- 定数 ---
-CONTEST_STOCKS_DIR = Path("../contest_stocks")
-CONTEST_CURRENT_DIR = Path("../contest_current")
-CONTEST_TEMPLATE_DIR = Path("../contest_template")
-
 # --- CLIコマンドパース用関数 ---
 def parse_args():
     parser = argparse.ArgumentParser(description="競技プログラミング支援ツール CLI")
     parser.add_argument("args", nargs=argparse.REMAINDER)
     return parser.parse_args()
-
-# --- コマンド実装の骨組み ---
-async def login():
-    """online-judge-toolsでログインする"""
-    raise NotImplementedError("loginコマンドの実装が必要です")
-
-async def open_problem(contest_name, problem_name, language_name):
-    """問題データ取得・contest_stocksから移動/contest_templateからコピー"""
-    raise NotImplementedError("open_problemコマンドの実装が必要です")
-
-async def test_problem(contest_name, problem_name, language_name):
-    """独自実装でテストを行う"""
-    raise NotImplementedError("test_problemコマンドの実装が必要です")
-
-async def submit_problem(contest_name, problem_name, language_name):
-    """online-judge-toolsで提出する"""
-    raise NotImplementedError("submit_problemコマンドの実装が必要です")
 
 class CommandParser:
     @property
@@ -129,4 +107,4 @@ class CommandParser:
                     effective[k] = info.get(k)
         except Exception:
             pass
-        return effective 
+        return effective

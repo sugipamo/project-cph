@@ -1,9 +1,9 @@
 import pytest
 import pytest_asyncio
-from src.commands import CommandParser
-import src.commands as commands
+from src.command_parser import CommandParser
 import json
 import os
+import io
 
 def test_parse_prints_args():
     parser = CommandParser()
@@ -52,26 +52,6 @@ def test_parse_with_pypy_alias():
         "problem_name": "ex",
         "language_name": "pypy"
     }
-
-@pytest.mark.asyncio
-async def test_login():
-    with pytest.raises(NotImplementedError):
-        await commands.login()
-
-@pytest.mark.asyncio
-async def test_open_problem():
-    with pytest.raises(NotImplementedError):
-        await commands.open_problem("abc300", "a", "python")
-
-@pytest.mark.asyncio
-async def test_test_problem():
-    with pytest.raises(NotImplementedError):
-        await commands.test_problem("abc300", "a", "python")
-
-@pytest.mark.asyncio
-async def test_submit_problem():
-    with pytest.raises(NotImplementedError):
-        await commands.submit_problem("abc300", "a", "python")
 
 def test_get_effective_args_with_infojson(tmp_path):
     # info.jsonを用意

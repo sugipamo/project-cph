@@ -3,7 +3,7 @@ from command_executor import CommandExecutor
 from podman_operator import LocalPodmanOperator
 from contest_file_manager import ContestFileManager
 from file_operator import LocalFileOperator
-from commands import CommandParser
+from command_parser import CommandParser
 
 # コマンドライン引数: main.py {contest_name} {command} {problem_name} {language_name}
 
@@ -17,7 +17,10 @@ def main():
     language_name = args["language_name"]
 
     # 不足要素があればエラー内容をprintして終了
-    missing = [k for k in ["contest_name", "command", "problem_name", "language_name"] if args[k] is None]
+    if command == "login":
+        missing = [k for k in ["command"] if args[k] is None]
+    else:
+        missing = [k for k in ["contest_name", "command", "problem_name", "language_name"] if args[k] is None]
     if missing:
         print(f"エラー: 以下の要素が不足しています: {', '.join(missing)}")
         return

@@ -108,3 +108,16 @@ def test_open_calls_editor_and_file_manager():
     assert dummy_file_manager.called == ("abc300", "a", "python")
     assert mock_editor.opened_paths == ["contest_current/python/a/main.py"]
     assert dummy_podman.called 
+
+@pytest.mark.asyncio
+async def test_open_with_none_dependencies():
+    # file_manager=None, editor_opener=None でも例外が発生しないか
+    executor = CommandExecutor(podman_operator=MockPodmanOperator(), file_manager=None, editor_opener=None)
+    # 問題ディレクトリが存在しない場合でも例外が発生しないことを確認
+    await executor.open("abc999", "z", "python")
+    # editor_openerがNoneでもエラーにならない（デフォルトが使われる）
+    executor2 = CommandExecutor(podman_operator=MockPodmanOperator(), file_manager=MockContestFileManager(), editor_opener=None)
+    await executor2.open("abc300", "a", "python")
+    # file_managerがNoneでもエラーにならない（何も起きない）
+    executor3 = CommandExecutor(podman_operator=MockPodmanOperator(), file_manager=None, editor_opener=MockEditorOpener())
+    await executor3.open("abc300", "a", "python") 

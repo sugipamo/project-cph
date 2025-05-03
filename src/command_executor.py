@@ -1,6 +1,7 @@
 from podman_operator import PodmanOperator, LocalPodmanOperator
 from contest_file_manager import ContestFileManager
 import subprocess
+from command_parser import CommandParser
 
 class EditorOpener:
     def open(self, path: str):
@@ -32,7 +33,8 @@ class CommandExecutor:
         oj_cache_cont = "/root/.cache/online-judge-tools"
         volumes = {oj_cache_host: oj_cache_cont}
         workdir = "/workspace"
-        return await self.podman_operator.run_oj(["login"], volumes, workdir, interactive=True)
+        # atcoder用URLを明示的に指定
+        return await self.podman_operator.run_oj(["login", "https://atcoder.jp/"], volumes, workdir, interactive=True)
 
     async def open(self, contest_name, problem_name, language_name):
         """
@@ -42,28 +44,27 @@ class CommandExecutor:
         if self.file_manager:
             self.file_manager.prepare_problem_files(contest_name, problem_name, language_name)
         # 2. エディタでディレクトリを開く
-        path = f"contest_current/{language_name}/{problem_name}"
-        self.editor_opener.open(path)
+        if self.editor_opener:
+            path = f"contest_current/{language_name}/{problem_name}"
+            self.editor_opener.open(path)
         # 3. oj download（テスト時はMockPodmanOperatorでスキップ可能）
-        url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
-        import os
-        home = os.path.expanduser("~")
-        oj_cache_host = os.path.join(home, ".cache/online-judge-tools")
-        oj_cache_cont = "/root/.cache/online-judge-tools"
-        volumes = {oj_cache_host: oj_cache_cont}
-        workdir = "/workspace"
-        await self.podman_operator.run_oj(["download", url], volumes, workdir, interactive=False)
-
-    async def submit(self, contest_name, problem_name, language_name):
-        """
-        online-judge-toolsで提出（ojtラッパー）
-        ※このメソッドのテストは手動で行うことを推奨（対話が必要な場合があるため）
-        """
-        raise NotImplementedError("submitコマンドの実装が必要です")
+        if self.podman_operator:
+            url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
+            import os
+            home = os.path.expanduser("~")
+            oj_cache_host = os.path.join(home, ".cache/online-judge-tools")
+            oj_cache_cont = "/root/.cache/online-judge-tools"
+            volumes = {oj_cache_host: oj_cache_cont}
+            workdir = "/workspace"
+            await self.podman_operator.run_oj(["download", url], volumes, workdir, interactive=False)
 
     async def test(self, contest_name, problem_name, language_name):
         """独自実装でテストを行う"""
         raise NotImplementedError("testコマンドの実装が必要です")
+
+    async def submit(self, contest_name, problem_name, language_name):
+        """online-judge-toolsで提出する"""
+        raise NotImplementedError("submitコマンドの実装が必要です")
 
     async def execute(self, command, contest_name=None, problem_name=None, language_name=None):
         """コマンド名に応じて各メソッドを呼び出す"""
