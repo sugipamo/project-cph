@@ -1,5 +1,6 @@
 import pytest
 from src.commands import CommandParser
+from src import commands
 
 def test_parse_prints_args():
     parser = CommandParser()
@@ -50,5 +51,21 @@ def test_parse_with_pypy_alias():
         "command": "submit",
         "problem_name": "ex",
         "language_name": "pypy"
-    } 
+    }
+
+def test_login():
+    # TODO: loginコマンドのテスト実装
+    pass
+
+def test_open_problem():
+    # TODO: open_problemコマンドのテスト実装
+    pass
+
+def test_test_problem():
+    # TODO: test_problemコマンドのテスト実装
+    pass
+
+def test_submit_problem():
+    # TODO: submit_problemコマンドのテスト実装
+    pass 
     

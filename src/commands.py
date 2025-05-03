@@ -25,6 +25,47 @@ LANGUAGES = {
 }
 
 import re
+import argparse
+import sys
+from pathlib import Path
+
+# --- 定数 ---
+CONTEST_STOCKS_DIR = Path("../contest_stocks")
+CONTEST_CURRENT_DIR = Path("../contest_current")
+CONTEST_TEMPLATE_DIR = Path("../contest_template")
+
+# --- CLIコマンドパース用関数 ---
+def parse_args():
+    parser = argparse.ArgumentParser(description="競技プログラミング支援ツール CLI")
+    parser.add_argument("args", nargs=argparse.REMAINDER)
+    return parser.parse_args()
+
+# --- コマンド実装の骨組み ---
+def login():
+    """online-judge-toolsでログインする"""
+    pass
+
+def open_problem(contest_name, problem_name, language_name):
+    """問題データ取得・contest_stocksから移動/contest_templateからコピー"""
+    pass
+
+def test_problem(contest_name, problem_name, language_name):
+    """独自実装でテストを行う"""
+    pass
+
+def submit_problem(contest_name, problem_name, language_name):
+    """online-judge-toolsで提出する"""
+    pass
+
+# --- メイン処理 ---
+def main():
+    args = parse_args().args
+    # TODO: 正規表現でコマンド一致条件を設定し、引数をパース
+    # TODO: コマンド分岐し、各関数を呼び出す
+    pass
+
+if __name__ == "__main__":
+    main()
 
 class CommandParser:
     @property

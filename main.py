@@ -1,5 +1,5 @@
 import sys
-from src.commands import CommandParser
+from src.commands import main
 
 def main():
     args = sys.argv[1:]
