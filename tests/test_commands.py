@@ -1,6 +1,7 @@
 import pytest
+import pytest_asyncio
 from src.commands import CommandParser
-from src import commands
+import src.commands as commands
 
 def test_parse_prints_args():
     parser = CommandParser()
@@ -53,19 +54,23 @@ def test_parse_with_pypy_alias():
         "language_name": "pypy"
     }
 
-def test_login():
+@pytest.mark.asyncio
+async def test_login():
     with pytest.raises(NotImplementedError):
-        commands.login()
+        await commands.login()
 
-def test_open_problem():
+@pytest.mark.asyncio
+async def test_open_problem():
     with pytest.raises(NotImplementedError):
-        commands.open_problem("abc300", "a", "python")
+        await commands.open_problem("abc300", "a", "python")
 
-def test_test_problem():
+@pytest.mark.asyncio
+async def test_test_problem():
     with pytest.raises(NotImplementedError):
-        commands.test_problem("abc300", "a", "python")
+        await commands.test_problem("abc300", "a", "python")
 
-def test_submit_problem():
+@pytest.mark.asyncio
+async def test_submit_problem():
     with pytest.raises(NotImplementedError):
-        commands.submit_problem("abc300", "a", "python") 
+        await commands.submit_problem("abc300", "a", "python") 
     

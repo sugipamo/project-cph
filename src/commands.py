@@ -28,6 +28,7 @@ import re
 import argparse
 import sys
 from pathlib import Path
+import asyncio
 
 # --- 定数 ---
 CONTEST_STOCKS_DIR = Path("../contest_stocks")
@@ -41,31 +42,31 @@ def parse_args():
     return parser.parse_args()
 
 # --- コマンド実装の骨組み ---
-def login():
+async def login():
     """online-judge-toolsでログインする"""
     raise NotImplementedError("loginコマンドの実装が必要です")
 
-def open_problem(contest_name, problem_name, language_name):
+async def open_problem(contest_name, problem_name, language_name):
     """問題データ取得・contest_stocksから移動/contest_templateからコピー"""
     raise NotImplementedError("open_problemコマンドの実装が必要です")
 
-def test_problem(contest_name, problem_name, language_name):
+async def test_problem(contest_name, problem_name, language_name):
     """独自実装でテストを行う"""
     raise NotImplementedError("test_problemコマンドの実装が必要です")
 
-def submit_problem(contest_name, problem_name, language_name):
+async def submit_problem(contest_name, problem_name, language_name):
     """online-judge-toolsで提出する"""
     raise NotImplementedError("submit_problemコマンドの実装が必要です")
 
 # --- メイン処理 ---
-def main():
+async def main():
     args = parse_args().args
     # TODO: 正規表現でコマンド一致条件を設定し、引数をパース
-    # TODO: コマンド分岐し、各関数を呼び出す
+    # TODO: コマンド分岐し、各関数をawaitで呼び出す
     pass
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
 
 class CommandParser:
     @property
