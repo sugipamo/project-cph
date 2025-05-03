@@ -2,6 +2,9 @@ from podman_operator import PodmanOperator, LocalPodmanOperator
 from contest_file_manager import ContestFileManager
 import subprocess
 from command_parser import CommandParser
+import shutil
+import glob
+import os
 
 class EditorOpener:
     def open(self, path: str):
@@ -31,7 +34,8 @@ class CommandExecutor:
         home = os.path.expanduser("~")
         oj_cache_host = os.path.join(home, ".cache/online-judge-tools")
         oj_cache_cont = "/root/.cache/online-judge-tools"
-        volumes = {oj_cache_host: oj_cache_cont}
+        project_root = os.path.abspath(".")
+        volumes = {oj_cache_host: oj_cache_cont, project_root: "/workspace"}
         workdir = "/workspace"
         # atcoder用URLを明示的に指定
         return await self.podman_operator.run_oj(["login", "https://atcoder.jp/"], volumes, workdir, interactive=True)
@@ -40,23 +44,40 @@ class CommandExecutor:
         """
         問題ファイルを準備し、VSCodeとCursorでディレクトリを開く
         """
+        import shutil
+        import glob
+        import os
         # 1. ファイル操作（テンプレート展開やcontest_stocksからの移動など）
         if self.file_manager:
             self.file_manager.prepare_problem_files(contest_name, problem_name, language_name)
         # 2. エディタでディレクトリを開く
         if self.editor_opener:
-            path = f"contest_current/{language_name}/{problem_name}"
+            path = f"contest_current/{language_name}"
             self.editor_opener.open(path)
         # 3. oj download（テスト時はMockPodmanOperatorでスキップ可能）
         if self.podman_operator:
             url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
-            import os
             home = os.path.expanduser("~")
             oj_cache_host = os.path.join(home, ".cache/online-judge-tools")
             oj_cache_cont = "/root/.cache/online-judge-tools"
-            volumes = {oj_cache_host: oj_cache_cont}
-            workdir = "/workspace"
+            project_root = os.path.abspath(".")
+            volumes = {oj_cache_host: oj_cache_cont, project_root: "/workspace"}
+            temp_dir = os.path.join(project_root, ".temp")
+            workdir = "/workspace/.temp"
+            os.makedirs(temp_dir, exist_ok=True)
             await self.podman_operator.run_oj(["download", url], volumes, workdir, interactive=False)
+            # 既存のテストケースをcontest_stocksに退避
+            dest_dir = os.path.join(project_root, f"contest_current/test")
+            tests_root = dest_dir
+            if self.file_manager:
+                self.file_manager.move_tests_to_stocks(contest_name, problem_name, tests_root)
+            os.makedirs(dest_dir, exist_ok=True)
+            src_test_dir = os.path.join(temp_dir, "test")
+            if os.path.isdir(src_test_dir):
+                for file in glob.glob(os.path.join(src_test_dir, "*")):
+                    shutil.move(file, dest_dir)
+                os.rmdir(src_test_dir)
+            shutil.rmtree(temp_dir)
 
     async def test(self, contest_name, problem_name, language_name):
         """独自実装でテストを行う"""

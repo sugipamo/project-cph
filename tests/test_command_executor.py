@@ -106,8 +106,8 @@ def test_open_calls_editor_and_file_manager():
     )
     asyncio.run(executor.open("abc300", "a", "python"))
     assert dummy_file_manager.called == ("abc300", "a", "python")
-    assert mock_editor.opened_paths == ["contest_current/python/a/main.py"]
-    assert dummy_podman.called 
+    assert mock_editor.opened_paths == ["contest_current/python/main.py"]
+    assert dummy_podman.called
 
 @pytest.mark.asyncio
 async def test_open_with_none_dependencies():

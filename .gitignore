@@ -1,2 +1,5 @@
 
 .env
+
+contest_stocks/
+contest_current/

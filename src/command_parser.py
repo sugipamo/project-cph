@@ -82,7 +82,9 @@ class CommandParser:
                     self.parsed["command"] = cmd
                     used.add(len(args)-1-i)
                     break
-        print(f"パース結果: {self.parsed}")
+        # Noneでない要素のみ表示
+        filtered = {k: v for k, v in self.parsed.items() if v is not None}
+        print(f"[DEBUG] パース結果: {filtered}")
         # 未特定の要素があれば警告（出力しないように変更）
         # for k, v in self.parsed.items():
         #     if v is None:

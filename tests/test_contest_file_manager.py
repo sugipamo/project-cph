@@ -35,7 +35,7 @@ def test_prepare_problem_files_template_copy(temp_dirs):
     manager = ContestFileManager(DummyFileOperator())
     manager.prepare_problem_files("abc100", "a", "python")
     # main.pyがコピーされているか
-    assert Path("contest_current/python/a/main.py").exists()
+    assert Path("contest_current/python/main.py").exists()
     # info.jsonが正しく生成されているか
     info = json.loads(Path("contest_current/info.json").read_text())
     assert info["contest_name"] == "abc100"
@@ -44,13 +44,13 @@ def test_prepare_problem_files_template_copy(temp_dirs):
 
 def test_prepare_problem_files_stocks_move(temp_dirs):
     # ストックにmain.pyを用意
-    stocks = Path("contest_stocks/abc200/python/b")
+    stocks = Path("contest_stocks/abc200/python")
     stocks.mkdir(parents=True)
     (stocks / "main.py").write_text("print('from stocks')\n")
     manager = ContestFileManager(DummyFileOperator())
     manager.prepare_problem_files("abc200", "b", "python")
     # main.pyがcontest_currentに移動されているか
-    assert Path("contest_current/python/b/main.py").exists()
+    assert Path("contest_current/python/main.py").exists()
     # ストック側は空になっているか
     assert not stocks.exists() or not any(stocks.iterdir())
     # info.jsonが正しく生成されているか
@@ -67,8 +67,8 @@ def test_prepare_problem_files_not_found(temp_dirs):
         manager.prepare_problem_files("abc999", "z", "python")
 
 def test_move_current_to_stocks_basic(temp_dirs):
-    # contest_current/python/c に main.py を用意
-    current = Path("contest_current/python/c")
+    # contest_current/python に main.py を用意
+    current = Path("contest_current/python")
     current.mkdir(parents=True)
     (current / "main.py").write_text("print('move test')\n")
     # info.json, config.json を contest_current/ に用意
@@ -78,22 +78,22 @@ def test_move_current_to_stocks_basic(temp_dirs):
     manager = ContestFileManager(DummyFileOperator())
     manager.move_current_to_stocks("c", "python")
     # main.pyがcontest_stocksに移動されているか
-    stocks = Path("contest_stocks/abc300/python/c/main.py")
+    stocks = Path("contest_stocks/abc300/python/main.py")
     assert stocks.exists()
-    # contest_current/python/c は削除されているか
+    # contest_current/python は削除されているか
     assert not current.exists()
     # info.json, config.json は contest_current/ に残るか
     assert Path("contest_current/info.json").exists()
     assert Path("contest_current/config.json").exists()
 
 def test_copy_from_template_to_current_basic(temp_dirs):
-    # contest_template/python/d に main.py を用意
+    # contest_template/python に main.py を用意
     template = Path("contest_template/python")
     (template / "main.py").write_text("print('copy test')\n")
     manager = ContestFileManager(DummyFileOperator())
     manager.copy_from_template_to_current("abc400", "d", "python")
     # main.pyがcontest_currentにコピーされているか
-    assert Path("contest_current/python/d/main.py").exists()
+    assert Path("contest_current/python/main.py").exists()
     # info.json, config.json が contest_current/ に生成されているか
     assert Path("contest_current/info.json").exists()
     assert Path("contest_current/config.json").exists()
@@ -106,7 +106,7 @@ def test_copy_from_template_to_current_basic(temp_dirs):
 def test_problem_exists_in_stocks_and_current(temp_dirs):
     manager = ContestFileManager(DummyFileOperator())
     # stocksにmain.pyがある場合
-    stocks = Path("contest_stocks/abc500/python/e")
+    stocks = Path("contest_stocks/abc500/python")
     stocks.mkdir(parents=True)
     (stocks / "main.py").write_text("print('exists')\n")
     assert manager.problem_exists_in_stocks("abc500", "e", "python") is True
@@ -114,7 +114,7 @@ def test_problem_exists_in_stocks_and_current(temp_dirs):
     (stocks / "main.py").unlink()
     assert manager.problem_exists_in_stocks("abc500", "e", "python") is False
     # currentにmain.pyがある場合
-    current = Path("contest_current/python/e")
+    current = Path("contest_current/python")
     current.mkdir(parents=True)
     (current / "main.py").write_text("print('exists')\n")
     assert manager.problem_exists_in_current("abc500", "e", "python") is True
