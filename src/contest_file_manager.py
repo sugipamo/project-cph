@@ -1,31 +1,56 @@
 from pathlib import Path
 from file_operator import FileOperator
+import shutil
+import os
 
 class ContestFileManager:
     def __init__(self, file_operator: FileOperator):
         self.file_operator = file_operator
 
     def move_from_stocks_to_current(self, contest_name, problem_name, language_name):
-        """contest_stocksからcontest_currentへ該当問題ファイルを移動する"""
-        src = Path(f"../contest_stocks/{contest_name}/{language_name}/{problem_name}/main.py")
-        dst = Path(f"../contest_current/{language_name}/{problem_name}/main.py")
-        self.file_operator.move(src, dst)
+        """
+        contest_stocks/{contest_name}/{language}/配下をディレクトリごとcontest_current/{language}/に移動する
+        """
+        src_dir = Path(f"contest_stocks/{contest_name}/{language_name}")
+        dst_dir = Path(f"contest_current/{language_name}")
+        if not src_dir.exists():
+            raise FileNotFoundError(f"{src_dir}が存在しません")
+        # ディレクトリごと移動
+        for item in src_dir.iterdir():
+            if item.is_file():
+                dst_file = dst_dir / item.name
+                dst_file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(item), str(dst_file))
+            elif item.is_dir():
+                shutil.move(str(item), str(dst_dir / item.name))
+        # 元ディレクトリを削除
+        if not any(src_dir.iterdir()):
+            src_dir.rmdir()
 
     def copy_from_template_to_current(self, contest_name, problem_name, language_name):
-        """contest_templateからcontest_currentへ該当問題ファイルをコピーする"""
-        src = Path(f"../contest_template/{language_name}/main.py")
-        dst = Path(f"../contest_current/{language_name}/{problem_name}/main.py")
-        self.file_operator.copy(src, dst)
+        """
+        contest_template/{language}/配下をcontest_current/{language}/にコピーする
+        """
+        src_dir = Path(f"contest_template/{language_name}")
+        dst_dir = Path(f"contest_current/{language_name}")
+        if not src_dir.exists():
+            raise FileNotFoundError(f"{src_dir}が存在しません")
+        # ディレクトリごとコピー
+        for item in src_dir.iterdir():
+            if item.is_file():
+                dst_file = dst_dir / item.name
+                dst_file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(str(item), str(dst_file))
+            elif item.is_dir():
+                shutil.copytree(str(item), str(dst_dir / item.name), dirs_exist_ok=True)
 
     def problem_exists_in_stocks(self, contest_name, problem_name, language_name):
-        """contest_stocksに該当問題ファイルが存在するか確認する"""
-        src = Path(f"../contest_stocks/{contest_name}/{language_name}/{problem_name}/main.py")
-        return self.file_operator.exists(src)
+        src_dir = Path(f"contest_stocks/{contest_name}/{language_name}")
+        return src_dir.exists() and any(src_dir.iterdir())
 
     def problem_exists_in_current(self, contest_name, problem_name, language_name):
-        """contest_currentに該当問題ファイルが存在するか確認する"""
-        dst = Path(f"../contest_current/{language_name}/{problem_name}/main.py")
-        return self.file_operator.exists(dst)
+        dst_dir = Path(f"contest_current/{language_name}")
+        return dst_dir.exists() and any(dst_dir.iterdir())
 
     def prepare_problem_files(self, contest_name, problem_name, language_name):
         """
@@ -36,7 +61,7 @@ class ContestFileManager:
         """
         if self.problem_exists_in_stocks(contest_name, problem_name, language_name):
             self.move_from_stocks_to_current(contest_name, problem_name, language_name)
-        elif self.file_operator.exists(Path(f"../contest_template/{language_name}/main.py")):
+        elif Path(f"contest_template/{language_name}").exists():
             self.copy_from_template_to_current(contest_name, problem_name, language_name)
         else:
             raise FileNotFoundError("問題ファイルがcontest_stocksにもtemplateにも存在しません") 
