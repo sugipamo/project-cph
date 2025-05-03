@@ -5,6 +5,7 @@ from src.contest_file_manager import ContestFileManager
 import asyncio
 from command_executor import MockEditorOpener
 from podman_operator import LocalPodmanOperator
+import io
 
 class MockFileOperator:
     def __init__(self):
@@ -52,8 +53,9 @@ async def test_open():
 @pytest.mark.asyncio
 async def test_submit():
     executor = CommandExecutor()
-    with pytest.raises(NotImplementedError):
-        await executor.submit("abc300", "a", "python")
+    # 警告return仕様に合わせて、戻り値がNoneであることを確認
+    result = await executor.submit("abc300", "a", "python")
+    assert result is None
 
 @pytest.mark.asyncio
 async def test_test():
@@ -80,8 +82,9 @@ async def test_execute_open():
 @pytest.mark.asyncio
 async def test_execute_submit():
     executor = CommandExecutor()
-    with pytest.raises(NotImplementedError):
-        await executor.execute("submit", "abc300", "a", "python")
+    # 警告return仕様に合わせて、戻り値がNoneであることを確認
+    result = await executor.execute("submit", "abc300", "a", "python")
+    assert result is None
 
 @pytest.mark.asyncio
 async def test_execute_test():

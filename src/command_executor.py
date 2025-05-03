@@ -5,6 +5,7 @@ from command_parser import CommandParser
 import shutil
 import glob
 import os
+import json
 
 class EditorOpener:
     def open(self, path: str):
@@ -85,7 +86,27 @@ class CommandExecutor:
 
     async def submit(self, contest_name, problem_name, language_name):
         """online-judge-toolsで提出する"""
-        raise NotImplementedError("submitコマンドの実装が必要です")
+        info_path = os.path.join("contest_current", "info.json")
+        if os.path.exists(info_path):
+            with open(info_path, "r", encoding="utf-8") as f:
+                info = json.load(f)
+            current_problem = info.get("problem_name")
+            if current_problem and current_problem != problem_name:
+                print(f"[警告] contest_current/info.jsonのproblem_name（{current_problem}）と指定されたproblem_name（{problem_name}）が異なります。提出を中止します。")
+                return
+        home = os.path.expanduser("~")
+        oj_cache_host = os.path.join(home, ".cache/online-judge-tools")
+        oj_cache_cont = "/root/.cache/online-judge-tools"
+        project_root = os.path.abspath(".")
+        volumes = {oj_cache_host: oj_cache_cont, project_root: "/workspace"}
+        workdir = "/workspace"
+        # 提出ファイルパス
+        file_path = f"contest_current/{language_name}/main.py"
+        # 問題URL
+        url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
+        # oj submitコマンド
+        args = ["submit", url, file_path, "--yes"]
+        return await self.podman_operator.run_oj(args, volumes, workdir, interactive=True)
 
     async def execute(self, command, contest_name=None, problem_name=None, language_name=None):
         """コマンド名に応じて各メソッドを呼び出す"""

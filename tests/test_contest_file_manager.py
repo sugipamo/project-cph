@@ -44,7 +44,7 @@ def test_prepare_problem_files_template_copy(temp_dirs):
 
 def test_prepare_problem_files_stocks_move(temp_dirs):
     # ストックにmain.pyを用意
-    stocks = Path("contest_stocks/abc200/python")
+    stocks = Path("contest_stocks/abc200/b")
     stocks.mkdir(parents=True)
     (stocks / "main.py").write_text("print('from stocks')\n")
     manager = ContestFileManager(DummyFileOperator())
@@ -78,7 +78,7 @@ def test_move_current_to_stocks_basic(temp_dirs):
     manager = ContestFileManager(DummyFileOperator())
     manager.move_current_to_stocks("c", "python")
     # main.pyがcontest_stocksに移動されているか
-    stocks = Path("contest_stocks/abc300/python/main.py")
+    stocks = Path("contest_stocks/abc300/c/main.py")
     assert stocks.exists()
     # contest_current/python は削除されているか
     assert not current.exists()
@@ -106,7 +106,7 @@ def test_copy_from_template_to_current_basic(temp_dirs):
 def test_problem_exists_in_stocks_and_current(temp_dirs):
     manager = ContestFileManager(DummyFileOperator())
     # stocksにmain.pyがある場合
-    stocks = Path("contest_stocks/abc500/python")
+    stocks = Path("contest_stocks/abc500/e")
     stocks.mkdir(parents=True)
     (stocks / "main.py").write_text("print('exists')\n")
     assert manager.problem_exists_in_stocks("abc500", "e", "python") is True

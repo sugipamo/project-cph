@@ -15,11 +15,21 @@ class ContestFileManager:
         return Path("contest_current/config.json")
 
     def get_exclude_files(self, config_path):
+        """
+        config.jsonのmoveignore（正規表現リスト）を返す
+        """
         if config_path.exists():
             with open(config_path, "r", encoding="utf-8") as f:
                 config = json.load(f)
-            return config.get("exclude_files", [])
+            return config.get("moveignore", [])
         return []
+
+    def _is_ignored(self, name, ignore_patterns):
+        import re
+        for pat in ignore_patterns:
+            if re.fullmatch(pat, name):
+                return True
+        return False
 
     def _remove_empty_parents(self, path, stop_at):
         """
@@ -32,8 +42,8 @@ class ContestFileManager:
 
     def move_current_to_stocks(self, problem_name, language_name):
         """
-        contest_current/{language}/{problem_name}配下のファイルを、info.jsonのcontest_nameを参照してcontest_stocks/{contest_name}/{language}/{problem_name}/に移動する
-        config.jsonのexclude_filesに含まれるファイルは移動しない
+        contest_current/{language}/配下のファイルを、info.jsonのcontest_nameとproblem_nameを参照してcontest_stocks/{contest_name}/{problem_name}/に移動する
+        config.jsonのmoveignoreに含まれるファイルは移動しない
         info.json, config.jsonはcontest_current/に残す
         """
         src_dir = Path(f"contest_current/{language_name}")
@@ -44,34 +54,35 @@ class ContestFileManager:
         with open(info_path, "r", encoding="utf-8") as f:
             info = json.load(f)
         old_contest_name = info.get("contest_name")
-        if not old_contest_name:
+        old_problem_name = info.get("problem_name")
+        if not old_contest_name or not old_problem_name:
             return
-        dst_dir = Path(f"contest_stocks/{old_contest_name}/{language_name}")
+        dst_dir = Path(f"contest_stocks/{old_contest_name}/{old_problem_name}")
         dst_dir.mkdir(parents=True, exist_ok=True)
-        exclude_files = self.get_exclude_files(config_path)
+        ignore_patterns = self.get_exclude_files(config_path)
         for item in src_dir.iterdir():
-            if item.name in exclude_files:
+            if self._is_ignored(item.name, ignore_patterns):
                 continue
             shutil.move(str(item), str(dst_dir / item.name))
-        if not any(x for x in src_dir.iterdir() if x.name not in exclude_files):
+        if not any(x for x in src_dir.iterdir() if not self._is_ignored(x.name, ignore_patterns)):
             src_dir.rmdir()
         self._remove_empty_parents(src_dir.parent, Path(f"contest_stocks/{old_contest_name}"))
         self._remove_empty_parents(src_dir.parent.parent, Path("contest_stocks"))
 
     def move_from_stocks_to_current(self, contest_name, problem_name, language_name):
         """
-        contest_stocks/{contest_name}/{language}/{problem_name}/配下をディレクトリごとcontest_current/{language}/{problem_name}/に移動する
+        contest_stocks/{contest_name}/{problem_name}/配下をディレクトリごとcontest_current/{language_name}/に移動する
         移動後、空になったディレクトリは削除する
         info.json, config.jsonはcontest_current/に作成
         """
-        src_dir = Path(f"contest_stocks/{contest_name}/{language_name}")
+        src_dir = Path(f"contest_stocks/{contest_name}/{problem_name}")
         dst_dir = Path(f"contest_current/{language_name}")
         if not src_dir.exists():
             raise FileNotFoundError(f"{src_dir}が存在しません")
         config_path = self.get_current_config_path()
-        exclude_files = self.get_exclude_files(config_path)
+        ignore_patterns = self.get_exclude_files(config_path)
         for item in src_dir.iterdir():
-            if item.name in exclude_files:
+            if self._is_ignored(item.name, ignore_patterns):
                 continue
             if item.is_file():
                 dst_file = dst_dir / item.name
@@ -84,7 +95,8 @@ class ContestFileManager:
             json.dump({"contest_name": contest_name, "problem_name": problem_name, "language_name": language_name}, f, ensure_ascii=False, indent=2)
         if not config_path.exists():
             with open(config_path, "w", encoding="utf-8") as f:
-                json.dump({"exclude_files": []}, f, ensure_ascii=False, indent=2)
+                json.dump({"moveignore": []}, f, ensure_ascii=False, indent=2)
+            self._generate_moveignore_readme()
         if not any(src_dir.iterdir()):
             src_dir.rmdir()
             self._remove_empty_parents(src_dir.parent, Path(f"contest_stocks/{contest_name}"))
@@ -100,9 +112,9 @@ class ContestFileManager:
         if not src_dir.exists():
             raise FileNotFoundError(f"{src_dir}が存在しません")
         config_path = self.get_current_config_path()
-        exclude_files = self.get_exclude_files(config_path)
+        ignore_patterns = self.get_exclude_files(config_path)
         for item in src_dir.iterdir():
-            if item.name in exclude_files:
+            if self._is_ignored(item.name, ignore_patterns):
                 continue
             if item.is_file():
                 dst_file = dst_dir / item.name
@@ -115,10 +127,27 @@ class ContestFileManager:
             json.dump({"contest_name": contest_name, "problem_name": problem_name, "language_name": language_name}, f, ensure_ascii=False, indent=2)
         if not config_path.exists():
             with open(config_path, "w", encoding="utf-8") as f:
-                json.dump({"exclude_files": []}, f, ensure_ascii=False, indent=2)
+                json.dump({"moveignore": []}, f, ensure_ascii=False, indent=2)
+            self._generate_moveignore_readme()
+
+    def _generate_moveignore_readme(self):
+        readme_path = Path("contest_current/README.md")
+        content = (
+            "# contest_current/config.json の moveignore 設定例\n"
+            "\n"
+            "- `moveignore` は移動時に無視するファイル名の正規表現リストです。\n"
+            "- 例: `['^.*\\\.log$', '^debug.*']`\n"
+            "\n"
+            "## 設定例\n"
+            "```json\n"
+            "{\n    \"moveignore\": [\n        \"^.*\\\\.log$\",\n        \"^debug.*\"\n    ]\n}\n"
+            "```\n"
+        )
+        with open(readme_path, "w", encoding="utf-8") as f:
+            f.write(content)
 
     def problem_exists_in_stocks(self, contest_name, problem_name, language_name):
-        src_dir = Path(f"contest_stocks/{contest_name}/{language_name}")
+        src_dir = Path(f"contest_stocks/{contest_name}/{problem_name}")
         return src_dir.exists() and any(src_dir.iterdir())
 
     def problem_exists_in_current(self, contest_name, problem_name, language_name):
