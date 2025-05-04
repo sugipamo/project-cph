@@ -39,6 +39,10 @@ class DockerOperator(ABC):
             # 2. cookie送信（存在すれば）
             cookie_cont = "/root/.local/share/online-judge-tools/cookie.jar"
             if cookie_host and os.path.exists(cookie_host):
+                # ディレクトリ作成を追加
+                subprocess.run([
+                    "docker", "exec", temp_container, "mkdir", "-p", "/root/.local/share/online-judge-tools"
+                ], check=True)
                 subprocess.run(["docker", "cp", cookie_host, f"{temp_container}:{cookie_cont}"], check=True)
             # 3. .tempディレクトリ作成
             subprocess.run([
@@ -86,6 +90,10 @@ class DockerOperator(ABC):
             # 2. cookie送信（存在すれば）
             cookie_cont = "/root/.local/share/online-judge-tools/cookie.jar"
             if cookie_host and os.path.exists(cookie_host):
+                # ディレクトリ作成を追加
+                subprocess.run([
+                    "docker", "exec", temp_container, "mkdir", "-p", "/root/.local/share/online-judge-tools"
+                ], check=True)
                 subprocess.run(["docker", "cp", cookie_host, f"{temp_container}:{cookie_cont}"], check=True)
             # 3. oj login実行（-itで端末接続）
             subprocess.run([
@@ -113,6 +121,10 @@ class DockerOperator(ABC):
             # 2. cookie送信（存在すれば）
             cookie_cont = "/root/.local/share/online-judge-tools/cookie.jar"
             if cookie_host and os.path.exists(cookie_host):
+                # ディレクトリ作成を追加
+                subprocess.run([
+                    "docker", "exec", temp_container, "mkdir", "-p", "/root/.local/share/online-judge-tools"
+                ], check=True)
                 subprocess.run(["docker", "cp", cookie_host, f"{temp_container}:{cookie_cont}"], check=True)
             # 3. 提出ファイル送信
             submit_cont = f"/workspace/{os.path.basename(file_path)}"
