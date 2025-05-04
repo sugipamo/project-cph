@@ -158,20 +158,15 @@ class CommandExecutor:
         import shutil
         file_operator = self.file_manager.file_operator if self.file_manager else None
         source_path = f"contest_current/{language_name}/main.py"
-        temp_dir = "work_temp"
-        # クリーンアップ処理
-        if os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
-        os.makedirs(temp_dir, exist_ok=True)
         test_dir = "contest_current/test"
         if language_name == "python":
-            runner = PythonRunner(source_path, temp_dir, self.docker_operator)
+            runner = PythonRunner(source_path, None, self.docker_operator)
         elif language_name == "pypy":
-            runner = PypyRunner(source_path, temp_dir, self.docker_operator)
+            runner = PypyRunner(source_path, None, self.docker_operator)
         elif language_name == "rust":
             # rustはmain.rsを使う
             source_path = f"contest_current/{language_name}/main.rs"
-            runner = RustRunner(source_path, temp_dir, self.docker_operator)
+            runner = RustRunner(source_path, None, self.docker_operator)
         else:
             print(f"未対応の言語です: {language_name}")
             return

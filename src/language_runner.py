@@ -21,36 +21,25 @@ class LanguageRunner(ABC):
 
 class PythonRunner(LanguageRunner):
     async def build(self):
-        os.makedirs(self.temp_dir, exist_ok=True)
-        self.temp_source = os.path.join(self.temp_dir, "main.py")
+        # self.temp_dirは使わず、ソースファイルの存在確認のみ
         if not os.path.exists(self.source_path):
             print(f"[エラー] ソースファイルが存在しません: {self.source_path}")
             return False
-        try:
-            shutil.copy2(self.source_path, self.temp_source)
-        except Exception as e:
-            print(f"[エラー] main.pyのコピーに失敗しました: {e}")
-            return False
-        if not os.path.exists(self.temp_source):
-            print(f"[エラー] コピー後に {self.temp_source} が存在しません")
-            return False
+        self.temp_source = self.source_path  # 直接使う
         return True
 
     async def run(self, input_path=None):
         temp_container = f"py-tmp-{os.getpid()}"
-        # 1. 一時コンテナ起動
         subprocess.run([
             "docker", "run", "-d", "--name", temp_container, self.docker_image(), "sleep", "300"
         ], check=True)
         try:
-            # 2. main.py送信
-            subprocess.run(["docker", "cp", self.temp_source, f"{temp_container}:/workspace/main.py"], check=True)
-            # 3. inputファイル送信（あれば）
+            # main.py送信
+            subprocess.run(["docker", "cp", self.source_path, f"{temp_container}:/workspace/main.py"], check=True)
             input_cont = None
             if input_path:
                 input_cont = "/workspace/input.txt"
                 subprocess.run(["docker", "cp", input_path, f"{temp_container}:{input_cont}"], check=True)
-            # 4. 実行
             cmd = [self.run_cmd(), "/workspace/main.py"]
             if input_cont:
                 exec_cmd = f"{cmd[0]} {cmd[1]} < {input_cont}"
@@ -77,27 +66,51 @@ class PypyRunner(PythonRunner):
 
 class RustRunner(LanguageRunner):
     async def build(self):
-        os.makedirs(self.temp_dir, exist_ok=True)
-        output_path = os.path.join(self.temp_dir, "a.out")
-        cmd = ["rustc", self.source_path, "-o", "a.out"]
-        image = "rust"
-        volumes = {
-            os.path.abspath(self.temp_dir): "/workspace/work_temp"
-        }
-        workdir = "/workspace/work_temp"
-        result = await self.docker_operator.run(
-            image, cmd, volumes=volumes, workdir=workdir
-        )
-        self.binary_path = output_path
-        return result[0] == 0
+        # self.temp_dirは使わず、ビルドはコンテナ内で完結
+        temp_container = f"rust-tmp-{os.getpid()}"
+        subprocess.run([
+            "docker", "run", "-d", "--name", temp_container, "rust", "sleep", "300"
+        ], check=True)
+        try:
+            # main.rs送信
+            subprocess.run(["docker", "cp", self.source_path, f"{temp_container}:/workspace/main.rs"], check=True)
+            # rustcでビルド
+            result = subprocess.run([
+                "docker", "exec", temp_container, "rustc", "/workspace/main.rs", "-o", "/workspace/a.out"
+            ], capture_output=True)
+            if result.returncode != 0:
+                print(f"[エラー] rustcビルド失敗: {result.stderr.decode()}")
+                return False
+            self.binary_path = "/workspace/a.out"
+            # a.outをホストにコピーしたい場合はここでdocker cp可能
+            return True
+        finally:
+            subprocess.run(["docker", "rm", "-f", temp_container], check=False)
 
     async def run(self, input_path=None):
-        cmd = ["./a.out"]
-        image = "rust"
-        volumes = {
-            os.path.abspath(self.temp_dir): "/workspace/work_temp"
-        }
-        workdir = "/workspace/work_temp"
-        return await self.docker_operator.run(
-            image, cmd, volumes=volumes, workdir=workdir, input_path=input_path
-        ) 
+        temp_container = f"rust-tmp-{os.getpid()}"
+        subprocess.run([
+            "docker", "run", "-d", "--name", temp_container, "rust", "sleep", "300"
+        ], check=True)
+        try:
+            # a.out送信
+            subprocess.run(["docker", "cp", self.source_path, f"{temp_container}:/workspace/main.rs"], check=True)
+            subprocess.run([
+                "docker", "exec", temp_container, "rustc", "/workspace/main.rs", "-o", "/workspace/a.out"
+            ], check=True)
+            input_cont = None
+            if input_path:
+                input_cont = "/workspace/input.txt"
+                subprocess.run(["docker", "cp", input_path, f"{temp_container}:{input_cont}"], check=True)
+            cmd = ["/workspace/a.out"]
+            if input_cont:
+                exec_cmd = f"{cmd[0]} < {input_cont}"
+                result = subprocess.run([
+                    "docker", "exec", temp_container, "sh", "-c", exec_cmd
+                ], capture_output=True)
+            else:
+                result = subprocess.run([
+                    "docker", "exec", temp_container, cmd[0]], capture_output=True)
+            return result.returncode, result.stdout.decode(), result.stderr.decode()
+        finally:
+            subprocess.run(["docker", "rm", "-f", temp_container], check=False) 
