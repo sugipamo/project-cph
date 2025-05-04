@@ -42,7 +42,6 @@ class TestResultFormatter:
     def format(self):
         parts = [
             self._format_header(),
-            self._format_header_bar(),
             self._format_input(),
             self._format_input_error_bar(),
             self._format_error(),
@@ -64,9 +63,6 @@ class TestResultFormatter:
         else:
             verdict_colored = self.color_text("WA", "red")
         return f"{name}  {verdict_colored}  {time_sec:.3f}秒"
-
-    def _format_header_bar(self):
-        return "=" * 17
 
     def _format_input(self):
         r = self.result
@@ -194,19 +190,31 @@ class CommandExecutor:
         runner._host_temp_dir = str(temp_dir.resolve())
         async def run_one(in_file):
             import time
-            start = time.monotonic()
             result = await runner.run(input_path=in_file)
-            elapsed = time.monotonic() - start
+            if result is False:
+                # エラー時は0秒
+                return {
+                    "name": os.path.basename(str(in_file)),
+                    "result": (1, "", "runner error"),
+                    "time": 0.0,
+                    "expected": "",
+                    "in_file": in_file,
+                }
+            if len(result) == 4:
+                returncode, stdout, stderr, elapsed = result
+            else:
+                returncode, stdout, stderr = result
+                elapsed = 0.0
             out_file = str(in_file)[:-3] + ".out"
             expected = ""
             if os.path.exists(out_file):
                 with open(out_file, "r", encoding="utf-8") as f:
                     expected = f.read()
-            if result[0] != 0:
-                print(f"[エラー] テストケース {os.path.basename(str(in_file))} 実行失敗 (returncode={result[0]})\n{result[2]}")
+            if returncode != 0:
+                print(f"[エラー] テストケース {os.path.basename(str(in_file))} 実行失敗 (returncode={returncode})\n{stderr}")
             return {
                 "name": os.path.basename(str(in_file)),
-                "result": result,
+                "result": (returncode, stdout, stderr),
                 "time": elapsed,
                 "expected": expected,
                 "in_file": in_file,
@@ -215,6 +223,8 @@ class CommandExecutor:
         import asyncio
         results = await asyncio.gather(*tasks)
         for idx, r in enumerate(results):
+            if idx > 0:
+                print("")  # サンプル間に空行を挿入
             print(TestResultFormatter(r).format())
 
     # 言語ごとの提出ファイル名

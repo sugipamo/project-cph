@@ -228,6 +228,6 @@ def test_testresultformatter_with_input_and_error(tmp_path):
     assert "0.456" in output
     assert "1 2 3" in output and "4 5 6" in output  # input内容
     assert "error occurred" in output
-    # 区切り線の位置
-    assert output.count("=") >= 1  # header下のみ
+    # 区切り線の位置（=は出力されなくなったので不要）
+    # assert output.count("=") >= 1  # header下のみ
     assert output.count("-") >= 1  # error下 

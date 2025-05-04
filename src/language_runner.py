@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 import pathlib
+import time
 
 class LanguageRunner(ABC):
     def __init__(self, source_path, temp_dir, docker_operator):
@@ -31,6 +32,7 @@ class PythonRunner(LanguageRunner):
 
     async def run(self, input_path=None):
         import pathlib
+        import time
         host_temp_dir = getattr(self, '_host_temp_dir', None)
         file_name = os.path.basename(self.source_path)
         temp_container = f"py-tmp-{os.getpid()}"
@@ -54,6 +56,7 @@ class PythonRunner(LanguageRunner):
                 input_file_name = os.path.basename(input_path)
                 input_cont = f"/workspace/.temp/test/{input_file_name}" if "/test/" in input_path else f"/workspace/.temp/{input_file_name}"
             cmd = [self.run_cmd(), main_path]
+            start = time.monotonic()
             if input_cont:
                 exec_cmd = f"{cmd[0]} {cmd[1]} < {input_cont}"
                 result = subprocess.run([
@@ -62,7 +65,8 @@ class PythonRunner(LanguageRunner):
             else:
                 result = subprocess.run([
                     "docker", "exec", temp_container, cmd[0], cmd[1]], capture_output=True)
-            return result.returncode, result.stdout.decode(), result.stderr.decode()
+            elapsed = time.monotonic() - start
+            return result.returncode, result.stdout.decode(), result.stderr.decode(), elapsed
         finally:
             subprocess.run(["docker", "rm", "-f", temp_container], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -111,6 +115,7 @@ class RustRunner(LanguageRunner):
 
     async def run(self, input_path=None):
         import pathlib
+        import time
         host_temp_dir = getattr(self, '_host_temp_dir', None)
         file_name = os.path.basename(self.source_path)
         temp_container = f"rust-tmp-{os.getpid()}"
@@ -137,6 +142,7 @@ class RustRunner(LanguageRunner):
                 input_file_name = os.path.basename(input_path)
                 input_cont = f"/workspace/.temp/test/{input_file_name}" if "/test/" in input_path else f"/workspace/.temp/{input_file_name}"
             cmd = ["/workspace/a.out"]
+            start = time.monotonic()
             if input_cont:
                 exec_cmd = f"{cmd[0]} < {input_cont}"
                 result = subprocess.run([
@@ -145,6 +151,7 @@ class RustRunner(LanguageRunner):
             else:
                 result = subprocess.run([
                     "docker", "exec", temp_container, cmd[0]], capture_output=True)
-            return result.returncode, result.stdout.decode(), result.stderr.decode()
+            elapsed = time.monotonic() - start
+            return result.returncode, result.stdout.decode(), result.stderr.decode(), elapsed
         finally:
             subprocess.run(["docker", "rm", "-f", temp_container], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
