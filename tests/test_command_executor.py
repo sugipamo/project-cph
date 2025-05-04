@@ -1,11 +1,11 @@
 import pytest
 from src.command_executor import CommandExecutor
-from src.podman_operator import MockPodmanOperator
+from src.podman_operator import MockDockerOperator
 from src.contest_file_manager import ContestFileManager
 from src.file_operator import MockFileOperator
 import asyncio
 from command_executor import MockEditorOpener
-from podman_operator import LocalPodmanOperator
+from podman_operator import LocalDockerOperator
 import os
 import json
 
@@ -25,19 +25,19 @@ async def test_open(tmp_path):
     old_cwd = os.getcwd()
     os.chdir(tmp_path)
     try:
-        mock_podman = MockPodmanOperator()
+        mock_docker = MockDockerOperator()
         mock_file_operator = MockFileOperator(base_dir=tmp_path)
         mock_file_manager = ContestFileManager(mock_file_operator)
-        executor = CommandExecutor(podman_operator=mock_podman, file_manager=mock_file_manager)
+        executor = CommandExecutor(docker_operator=mock_docker, file_manager=mock_file_manager)
         await executor.open("abc300", "a", "python")
-        assert mock_podman.calls[0][0] == "run_oj"
+        assert mock_docker.calls[0][0] == "run_oj"
     finally:
         os.chdir(old_cwd)
 
 @pytest.mark.asyncio
 async def test_submit():
-    from src.podman_operator import MockPodmanOperator
-    executor = CommandExecutor(podman_operator=MockPodmanOperator())
+    from src.podman_operator import MockDockerOperator
+    executor = CommandExecutor(docker_operator=MockDockerOperator())
     result = await executor.submit("abc300", "a", "python")
     assert result == (0, 'mock-stdout', 'mock-stderr')
 
@@ -63,19 +63,19 @@ async def test_execute_open(tmp_path):
     old_cwd = os.getcwd()
     os.chdir(tmp_path)
     try:
-        mock_podman = MockPodmanOperator()
+        mock_docker = MockDockerOperator()
         mock_file_operator = MockFileOperator(base_dir=tmp_path)
         mock_file_manager = ContestFileManager(mock_file_operator)
-        executor = CommandExecutor(podman_operator=mock_podman, file_manager=mock_file_manager)
+        executor = CommandExecutor(docker_operator=mock_docker, file_manager=mock_file_manager)
         await executor.execute("open", "abc300", "a", "python")
-        assert mock_podman.calls[0][0] == "run_oj"
+        assert mock_docker.calls[0][0] == "run_oj"
     finally:
         os.chdir(old_cwd)
 
 @pytest.mark.asyncio
 async def test_execute_submit():
-    from src.podman_operator import MockPodmanOperator
-    executor = CommandExecutor(podman_operator=MockPodmanOperator())
+    from src.podman_operator import MockDockerOperator
+    executor = CommandExecutor(docker_operator=MockDockerOperator())
     result = await executor.execute("submit", "abc300", "a", "python")
     assert result == (0, 'mock-stdout', 'mock-stderr')
 
@@ -99,12 +99,12 @@ def test_open_calls_editor_and_file_manager(tmp_path):
     mock_editor = MockEditorOpener()
     mock_file_operator = MockFileOperator(base_dir=tmp_path)
     file_manager = ContestFileManager(mock_file_operator)
-    dummy_podman = LocalPodmanOperator()
+    mock_docker = LocalDockerOperator()
     old_cwd = os.getcwd()
     os.chdir(tmp_path)
     try:
         executor = CommandExecutor(
-            podman_operator=dummy_podman,
+            docker_operator=mock_docker,
             file_manager=file_manager,
             editor_opener=mock_editor
         )
@@ -120,18 +120,18 @@ async def test_open_with_none_dependencies(tmp_path):
     template_dir.mkdir(parents=True, exist_ok=True)
     (template_dir / "main.py").write_text("print('hello')\n")
     # file_manager=None, editor_opener=None でも例外が発生しないか
-    executor = CommandExecutor(podman_operator=MockPodmanOperator(), file_manager=None, editor_opener=None)
+    executor = CommandExecutor(docker_operator=MockDockerOperator(), file_manager=None, editor_opener=None)
     # 問題ディレクトリが存在しない場合でも例外が発生しないことを確認
     await executor.open("abc999", "z", "python")
     # editor_openerがNoneでもエラーにならない（デフォルトが使われる）
     executor2 = CommandExecutor(
-        podman_operator=MockPodmanOperator(),
+        docker_operator=MockDockerOperator(),
         file_manager=ContestFileManager(MockFileOperator(base_dir=tmp_path)),
         editor_opener=None
     )
     await executor2.open("abc300", "a", "python")
     # file_managerがNoneでもエラーにならない（何も起きない）
-    executor3 = CommandExecutor(podman_operator=MockPodmanOperator(), file_manager=None, editor_opener=MockEditorOpener())
+    executor3 = CommandExecutor(docker_operator=MockDockerOperator(), file_manager=None, editor_opener=MockEditorOpener())
     await executor3.open("abc300", "a", "python")
 
 def test_submit_contest_name_mismatch(tmp_path, capfd):

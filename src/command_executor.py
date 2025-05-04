@@ -1,4 +1,4 @@
-from podman_operator import PodmanOperator, LocalPodmanOperator
+from podman_operator import DockerOperator, LocalDockerOperator
 from contest_file_manager import ContestFileManager
 import subprocess
 from command_parser import CommandParser
@@ -108,8 +108,8 @@ class TestResultFormatter:
         return "\n".join(lines)
 
 class CommandExecutor:
-    def __init__(self, podman_operator: PodmanOperator = None, file_manager: ContestFileManager = None, editor_opener: EditorOpener = None):
-        self.podman_operator = podman_operator or LocalPodmanOperator()
+    def __init__(self, docker_operator: DockerOperator = None, file_manager: ContestFileManager = None, editor_opener: EditorOpener = None):
+        self.docker_operator = docker_operator or LocalDockerOperator()
         self.file_manager = file_manager
         self.editor_opener = editor_opener or EditorOpener()
 
@@ -131,7 +131,7 @@ class CommandExecutor:
         }
         workdir = "/workspace"
         # atcoder用URLを明示的に指定
-        return await self.podman_operator.run_oj(["login", "https://atcoder.jp/"], volumes, workdir, interactive=True)
+        return await self.docker_operator.run_oj(["login", "https://atcoder.jp/"], volumes, workdir, interactive=True)
 
     async def open(self, contest_name, problem_name, language_name):
         """
@@ -144,8 +144,8 @@ class CommandExecutor:
         if self.editor_opener:
             path = f"contest_current/{language_name}"
             self.editor_opener.open(path)
-        # 3. oj download（テスト時はMockPodmanOperatorでスキップ可能）
-        if self.podman_operator:
+        # 3. oj download（テスト時はMockDockerOperatorでスキップ可能）
+        if self.docker_operator:
             url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
             project_root = os.path.abspath(".")
             oj_cache_host = os.path.join(project_root, ".oj/.cache/online-judge-tools")
@@ -162,7 +162,7 @@ class CommandExecutor:
                 oj_local_host: oj_local_cont,
                 str(file_operator.base_dir): "/workspace"
             } if file_operator else {}
-            rc, stdout, stderr = await self.podman_operator.run_oj(["download", url], volumes, workdir, interactive=False)
+            rc, stdout, stderr = await self.docker_operator.run_oj(["download", url], volumes, workdir, interactive=False)
             if rc != 0:
                 print(f"[エラー] oj download失敗 (returncode={rc})\n{stderr}")
                 return
@@ -186,13 +186,13 @@ class CommandExecutor:
         source_path = f"contest_current/{language_name}/main.py"
         temp_dir = ".temp"
         if language_name == "python":
-            runner = PythonRunner(source_path, temp_dir, self.podman_operator)
+            runner = PythonRunner(source_path, temp_dir, self.docker_operator)
         elif language_name == "pypy":
-            runner = PypyRunner(source_path, temp_dir, self.podman_operator)
+            runner = PypyRunner(source_path, temp_dir, self.docker_operator)
         elif language_name == "rust":
             # rustはmain.rsを使う
             source_path = f"contest_current/{language_name}/main.rs"
-            runner = RustRunner(source_path, temp_dir, self.podman_operator)
+            runner = RustRunner(source_path, temp_dir, self.docker_operator)
         else:
             print(f"未対応の言語です: {language_name}")
             return
@@ -283,7 +283,7 @@ class CommandExecutor:
         url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
         # oj submitコマンド
         args = ["submit", url, file_path, "--yes"]
-        rc, stdout, stderr = await self.podman_operator.run_oj(args, volumes, workdir, interactive=True)
+        rc, stdout, stderr = await self.docker_operator.run_oj(args, volumes, workdir, interactive=True)
         if rc != 0:
             print(f"[エラー] oj submit失敗 (returncode={rc})\n{stderr}")
         return rc, stdout, stderr

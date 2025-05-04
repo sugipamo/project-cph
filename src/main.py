@@ -1,6 +1,6 @@
 import sys
 from command_executor import CommandExecutor
-from podman_operator import LocalPodmanOperator
+from podman_operator import LocalDockerOperator
 from contest_file_manager import ContestFileManager
 from file_operator import LocalFileOperator
 from command_parser import CommandParser
@@ -52,7 +52,7 @@ def main():
         return
 
     executor = CommandExecutor(
-        podman_operator=LocalPodmanOperator(),
+        docker_operator=LocalDockerOperator(),
         file_manager=ContestFileManager(LocalFileOperator())
     )
     import asyncio

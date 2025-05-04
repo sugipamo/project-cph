@@ -3,7 +3,7 @@ import asyncio
 import sys
 import os
 
-class PodmanOperator(ABC):
+class DockerOperator(ABC):
     @abstractmethod
     async def run(self, image: str, command: list, volumes: dict = None, workdir: str = None, input_path: str = None, interactive: bool = False):
         pass
@@ -17,12 +17,12 @@ class PodmanOperator(ABC):
         pass
 
     async def run_oj(self, oj_args: list, volumes: dict, workdir: str, interactive: bool = False):
-        """ojtコマンドをpodman経由で実行する。interactive=Trueなら端末接続・標準入力も渡す"""
+        """ojtコマンドをdocker経由で実行する。interactive=Trueなら端末接続・標準入力も渡す"""
         image = "python-oj-image"  # 必要に応じて外部から指定可能に
         cmd = ["oj"] + oj_args
         return await self.run(image, cmd, volumes, workdir, interactive=interactive)
 
-class LocalPodmanOperator(PodmanOperator):
+class LocalDockerOperator(DockerOperator):
     async def run(self, image: str, command: list, volumes: dict = None, workdir: str = None, input_path: str = None, interactive: bool = False):
         cmd = ["docker", "run", "--rm", "-i"]
         cmd += ["--user", f"{os.getuid()}:{os.getgid()}"]
@@ -90,7 +90,7 @@ class LocalPodmanOperator(PodmanOperator):
         cmd = ["oj"] + oj_args
         return await self.run(image, cmd, volumes, workdir, interactive=interactive)
 
-class MockPodmanOperator(PodmanOperator):
+class MockDockerOperator(DockerOperator):
     def __init__(self):
         self.calls = []
 

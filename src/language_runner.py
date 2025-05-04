@@ -3,10 +3,10 @@ import os
 import shutil
 
 class LanguageRunner(ABC):
-    def __init__(self, source_path, temp_dir, podman_operator):
+    def __init__(self, source_path, temp_dir, docker_operator):
         self.source_path = source_path
         self.temp_dir = temp_dir
-        self.podman_operator = podman_operator
+        self.docker_operator = docker_operator
 
     @abstractmethod
     async def build(self):
@@ -32,7 +32,7 @@ class PythonRunner(LanguageRunner):
             os.path.abspath(self.temp_dir): "/workspace/.temp"
         }
         workdir = "/workspace/.temp"
-        return await self.podman_operator.run(
+        return await self.docker_operator.run(
             image, cmd, volumes=volumes, workdir=workdir, input_path=input_path
         )
 
@@ -44,7 +44,7 @@ class PypyRunner(PythonRunner):
             os.path.abspath(self.temp_dir): "/workspace/.temp"
         }
         workdir = "/workspace/.temp"
-        return await self.podman_operator.run(
+        return await self.docker_operator.run(
             image, cmd, volumes=volumes, workdir=workdir, input_path=input_path
         )
 
@@ -58,7 +58,7 @@ class RustRunner(LanguageRunner):
             os.path.abspath(self.temp_dir): "/workspace/.temp"
         }
         workdir = "/workspace/.temp"
-        result = await self.podman_operator.run(
+        result = await self.docker_operator.run(
             image, cmd, volumes=volumes, workdir=workdir
         )
         self.binary_path = output_path
@@ -71,6 +71,6 @@ class RustRunner(LanguageRunner):
             os.path.abspath(self.temp_dir): "/workspace/.temp"
         }
         workdir = "/workspace/.temp"
-        return await self.podman_operator.run(
+        return await self.docker_operator.run(
             image, cmd, volumes=volumes, workdir=workdir, input_path=input_path
         ) 
