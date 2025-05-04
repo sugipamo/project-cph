@@ -155,9 +155,15 @@ class CommandExecutor:
 
     async def run_test(self, contest_name, problem_name, language_name):
         """ビルド→実行を言語ごとに抽象化してテストする（合否判定・レイアウト付き）"""
+        import shutil
         file_operator = self.file_manager.file_operator if self.file_manager else None
         source_path = f"contest_current/{language_name}/main.py"
-        temp_dir = ".temp"
+        temp_dir = "work_temp"
+        # クリーンアップ処理
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+        os.makedirs(temp_dir, exist_ok=True)
+        test_dir = "contest_current/test"
         if language_name == "python":
             runner = PythonRunner(source_path, temp_dir, self.docker_operator)
         elif language_name == "pypy":
@@ -173,7 +179,6 @@ class CommandExecutor:
         if not build_ok:
             print("ビルド失敗")
             return
-        test_dir = "contest_current/test"
         if file_operator:
             in_files = sorted(file_operator.glob(f"{test_dir}/*.in"))
         else:
