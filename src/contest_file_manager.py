@@ -161,6 +161,7 @@ class ContestFileManager:
         引数がNoneの場合はinfo.jsonの値を使う。
         """
         info_path = self.get_current_info_path()
+        config_path = self.get_current_config_path()
         if info_path.exists():
             with open(info_path, "r", encoding="utf-8") as f:
                 info = json.load(f)
@@ -170,6 +171,22 @@ class ContestFileManager:
                 problem_name = info.get("problem_name")
             if language_name is None:
                 language_name = info.get("language_name")
+        # config.jsonにlanguage_idがなければ初期値を追加
+        if config_path.exists():
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+        else:
+            config = {}
+        if "language_id" not in config:
+            config["language_id"] = {
+                "python": "5082",
+                "pypy": "5078",
+                "rust": "5054"
+            }
+            # 親ディレクトリを作成
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
         self.move_current_to_stocks(problem_name, language_name)
         if self.problem_exists_in_stocks(contest_name, problem_name, language_name):
             self.move_from_stocks_to_current(contest_name, problem_name, language_name)

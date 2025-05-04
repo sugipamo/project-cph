@@ -238,7 +238,15 @@ class CommandExecutor:
         """online-judge-toolsで提出する"""
         file_operator = self.file_manager.file_operator if self.file_manager else None
         info_path = os.path.join("contest_current", "info.json")
+        config_path = os.path.join("contest_current", "config.json")
         info_exists = file_operator.exists(info_path) if file_operator else os.path.exists(info_path)
+        # config.jsonからlanguage_idを取得
+        language_id = None
+        if os.path.exists(config_path):
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+            language_id_dict = config.get("language_id", {})
+            language_id = language_id_dict.get(language_name)
         if info_exists:
             if file_operator:
                 with file_operator.open(info_path, "r", encoding="utf-8") as f:
@@ -267,11 +275,19 @@ class CommandExecutor:
         workdir = "/workspace"
         # 提出ファイルパス（言語ごとに切り替え）
         submit_file = self.SUBMIT_FILES.get(language_name, "main.py")
-        file_path = f"contest_current/{language_name}/{submit_file}"
+        temp_file_path = f".temp/{submit_file}"
+        # .temp配下のファイルが存在すればそれを使い、なければcontest_currentを使う
+        if os.path.exists(temp_file_path):
+            file_path = temp_file_path
+        else:
+            file_path = f"contest_current/{language_name}/{submit_file}"
         # 問題URL
         url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
         # oj submitコマンド
         args = ["submit", url, file_path, "--yes"]
+        if language_id:
+            args += ["--language", language_id]
+        args += ["--wait=0"]
         rc, stdout, stderr = await self.docker_operator.run_oj(args, volumes, workdir, interactive=True)
         if rc != 0:
             print(f"[エラー] oj submit失敗 (returncode={rc})\n{stderr}")

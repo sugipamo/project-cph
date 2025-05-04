@@ -20,6 +20,26 @@ class DockerOperator(ABC):
     async def run_oj(self, oj_args: list, volumes: dict, workdir: str, interactive: bool = False):
         """ojtコマンドをdocker経由で実行する。interactive=Trueなら端末接続・標準入力も渡す"""
         image = "oj"  # 必要に応じて外部から指定可能に
+        # まずlsコマンドで.tempディレクトリの中身を表示
+        ls_cmd = ["ls", "-l", ".temp"]
+        ls_full_cmd = ["docker", "run", "--rm", "-i"]
+        ls_full_cmd += ["--user", f"{os.getuid()}:{os.getgid()}"]
+        ls_full_cmd += ["-e", "HOME=/workspace"]
+        if interactive:
+            ls_full_cmd.append("-t")
+        if workdir:
+            ls_full_cmd += ["-w", workdir]
+        ls_full_cmd.append(image)
+        ls_full_cmd += ls_cmd
+        print("[DEBUG] lsコマンド:", ls_full_cmd)
+        proc_ls = await asyncio.create_subprocess_exec(
+            *ls_full_cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout_ls, stderr_ls = await proc_ls.communicate()
+        print("[DEBUG] .tempディレクトリ内容:\n", stdout_ls.decode(), stderr_ls.decode())
+        # その後ojコマンド
         cmd = ["oj"] + oj_args
         return await self.run(image, cmd, volumes, workdir, interactive=interactive)
 
@@ -152,6 +172,10 @@ class LocalDockerOperator(DockerOperator):
         cmd = ["docker", "run", "--rm", "-i"]
         cmd += ["--user", f"{os.getuid()}:{os.getgid()}"]
         cmd += ["-e", "HOME=/workspace"]
+        # volumesをマウント
+        if volumes:
+            for host_path, cont_path in volumes.items():
+                cmd += ["-v", f"{os.path.abspath(host_path)}:{cont_path}"]
         if interactive:
             cmd.append("-t")  # 擬似端末割り当て
         if workdir:
@@ -209,6 +233,26 @@ class LocalDockerOperator(DockerOperator):
 
     async def run_oj(self, oj_args: list, volumes: dict, workdir: str, interactive: bool = False):
         image = "oj"
+        # まずlsコマンドで.tempディレクトリの中身を表示
+        ls_cmd = ["ls", "-l", ".temp"]
+        ls_full_cmd = ["docker", "run", "--rm", "-i"]
+        ls_full_cmd += ["--user", f"{os.getuid()}:{os.getgid()}"]
+        ls_full_cmd += ["-e", "HOME=/workspace"]
+        if interactive:
+            ls_full_cmd.append("-t")
+        if workdir:
+            ls_full_cmd += ["-w", workdir]
+        ls_full_cmd.append(image)
+        ls_full_cmd += ls_cmd
+        print("[DEBUG] lsコマンド:", ls_full_cmd)
+        proc_ls = await asyncio.create_subprocess_exec(
+            *ls_full_cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout_ls, stderr_ls = await proc_ls.communicate()
+        print("[DEBUG] .tempディレクトリ内容:\n", stdout_ls.decode(), stderr_ls.decode())
+        # その後ojコマンド
         cmd = ["oj"] + oj_args
         return await self.run(image, cmd, volumes, workdir, interactive=interactive)
 
