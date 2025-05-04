@@ -19,9 +19,9 @@ COMMANDS = {
 }
 PROBLEM_NAMES = ["a", "b", "c", "d", "e", "f", "g", "ex"]
 LANGUAGES = {
-    "python": {"aliases": []},
-    "pypy": {"aliases": ["py"]},
-    "rust": {"aliases": ["rs"]},
+    "python": {"aliases": ["py", "python3"]},
+    "pypy": {"aliases": ["pypy3"]},
+    "rust": {"aliases": ["rs", "rustc"]},
 }
 
 import re

@@ -6,7 +6,7 @@ import shutil
 import glob
 import os
 import json
-from language_runner import PythonRunner, RustRunner
+from language_runner import PythonRunner, RustRunner, PypyRunner
 import asyncio
 import time
 
@@ -150,7 +150,10 @@ class CommandExecutor:
             workdir = "/workspace/.temp"
             if file_operator:
                 file_operator.makedirs(temp_dir, exist_ok=True)
-            await self.podman_operator.run_oj(["download", url], {oj_cache_host: oj_cache_cont, str(file_operator.base_dir): "/workspace"} if file_operator else {}, workdir, interactive=False)
+            rc, stdout, stderr = await self.podman_operator.run_oj(["download", url], {oj_cache_host: oj_cache_cont, str(file_operator.base_dir): "/workspace"} if file_operator else {}, workdir, interactive=False)
+            if rc != 0:
+                print(f"[エラー] oj download失敗 (returncode={rc})\n{stderr}")
+                return
             # 既存のテストケースをcontest_stocksに退避
             dest_dir = "contest_current/test"
             tests_root = dest_dir
@@ -172,7 +175,11 @@ class CommandExecutor:
         temp_dir = ".temp"
         if language_name == "python":
             runner = PythonRunner(source_path, temp_dir, self.podman_operator)
+        elif language_name == "pypy":
+            runner = PypyRunner(source_path, temp_dir, self.podman_operator)
         elif language_name == "rust":
+            # rustはmain.rsを使う
+            source_path = f"contest_current/{language_name}/main.rs"
             runner = RustRunner(source_path, temp_dir, self.podman_operator)
         else:
             print(f"未対応の言語です: {language_name}")
@@ -201,6 +208,9 @@ class CommandExecutor:
             elif not file_operator and os.path.exists(out_file):
                 with open(out_file, "r", encoding="utf-8") as f:
                     expected = f.read()
+            # 実行失敗時のエラー出力
+            if result[0] != 0:
+                print(f"[エラー] テストケース {os.path.basename(str(in_file))} 実行失敗 (returncode={result[0]})\n{result[2]}")
             return {
                 "name": os.path.basename(str(in_file)),
                 "result": result,
@@ -215,6 +225,13 @@ class CommandExecutor:
 
         for idx, r in enumerate(results):
             print(TestResultFormatter(r).format())
+
+    # 言語ごとの提出ファイル名
+    SUBMIT_FILES = {
+        "python": "main.py",
+        "pypy": "main.py",
+        "rust": "main.rs",
+    }
 
     async def submit(self, contest_name, problem_name, language_name):
         """online-judge-toolsで提出する"""
@@ -242,13 +259,17 @@ class CommandExecutor:
         project_root = os.path.abspath(".")
         volumes = {oj_cache_host: oj_cache_cont, project_root: "/workspace"}
         workdir = "/workspace"
-        # 提出ファイルパス
-        file_path = f"contest_current/{language_name}/main.py"
+        # 提出ファイルパス（言語ごとに切り替え）
+        submit_file = self.SUBMIT_FILES.get(language_name, "main.py")
+        file_path = f"contest_current/{language_name}/{submit_file}"
         # 問題URL
         url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
         # oj submitコマンド
         args = ["submit", url, file_path, "--yes"]
-        return await self.podman_operator.run_oj(args, volumes, workdir, interactive=True)
+        rc, stdout, stderr = await self.podman_operator.run_oj(args, volumes, workdir, interactive=True)
+        if rc != 0:
+            print(f"[エラー] oj submit失敗 (returncode={rc})\n{stderr}")
+            return
 
     async def execute(self, command, contest_name=None, problem_name=None, language_name=None):
         """コマンド名に応じて各メソッドを呼び出す"""

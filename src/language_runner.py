@@ -36,12 +36,24 @@ class PythonRunner(LanguageRunner):
             image, cmd, volumes=volumes, workdir=workdir, input_path=input_path
         )
 
+class PypyRunner(PythonRunner):
+    async def run(self, input_path=None):
+        cmd = ["pypy3", "main.py"]
+        image = "pypy-oj-image"
+        volumes = {
+            os.path.abspath(self.temp_dir): "/workspace/.temp"
+        }
+        workdir = "/workspace/.temp"
+        return await self.podman_operator.run(
+            image, cmd, volumes=volumes, workdir=workdir, input_path=input_path
+        )
+
 class RustRunner(LanguageRunner):
     async def build(self):
         os.makedirs(self.temp_dir, exist_ok=True)
         output_path = os.path.join(self.temp_dir, "a.out")
         cmd = ["rustc", self.source_path, "-o", "a.out"]
-        image = "python-oj-image"  # Rust用イメージがあれば適宜変更
+        image = "rust-oj-image"
         volumes = {
             os.path.abspath(self.temp_dir): "/workspace/.temp"
         }
@@ -54,7 +66,7 @@ class RustRunner(LanguageRunner):
 
     async def run(self, input_path=None):
         cmd = ["./a.out"]
-        image = "python-oj-image"  # Rust用イメージがあれば適宜変更
+        image = "rust-oj-image"
         volumes = {
             os.path.abspath(self.temp_dir): "/workspace/.temp"
         }
