@@ -43,6 +43,7 @@ class TestResultFormatter:
         parts = [
             self._format_header(),
             self._format_input(),
+            " ",
             self._format_input_error_bar(),
             self._format_error(),
             self._format_table()
@@ -220,12 +221,79 @@ class CommandExecutor:
                 "in_file": in_file,
             }
         tasks = [run_one(in_file) for in_file in temp_in_files]
-        import asyncio
         results = await asyncio.gather(*tasks)
         for idx, r in enumerate(results):
-            if idx > 0:
-                print("")  # サンプル間に空行を挿入
             print(TestResultFormatter(r).format())
+
+    async def run_test_return_results(self, contest_name, problem_name, language_name):
+        """run_testのロジックを流用し、テスト結果リストを返す"""
+        import shutil
+        import pathlib
+        file_operator = self.file_manager.file_operator if self.file_manager else None
+        source_path = f"contest_current/{language_name}/main.py"
+        test_dir = "contest_current/test"
+        if language_name == "rust":
+            source_path = f"contest_current/{language_name}/main.rs"
+        if not os.path.exists(source_path):
+            print(f"[エラー] ソースファイルが存在しません: {source_path}")
+            return []
+        temp_dir = pathlib.Path(".temp")
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, temp_dir / pathlib.Path(source_path).name)
+        if not pathlib.Path(test_dir).exists():
+            pathlib.Path(test_dir).mkdir(parents=True, exist_ok=True)
+        shutil.copytree(test_dir, temp_dir / "test", dirs_exist_ok=True)
+        if file_operator:
+            in_files = sorted(file_operator.glob(f"{test_dir}/*.in"))
+        else:
+            import glob
+            in_files = sorted(glob.glob(os.path.join(test_dir, "*.in")))
+        temp_source_path = str(temp_dir / pathlib.Path(source_path).name)
+        if language_name == "python":
+            runner = PythonRunner(temp_source_path, None, self.docker_operator)
+        elif language_name == "pypy":
+            runner = PypyRunner(temp_source_path, None, self.docker_operator)
+        elif language_name == "rust":
+            runner = RustRunner(temp_source_path, None, self.docker_operator)
+        else:
+            print(f"未対応の言語です: {language_name}")
+            return []
+        temp_in_files = [str(temp_dir / "test" / pathlib.Path(f).name) for f in in_files]
+        runner._host_temp_dir = str(temp_dir.resolve())
+        async def run_one(in_file):
+            import time
+            result = await runner.run(input_path=in_file)
+            if result is False:
+                return {
+                    "name": os.path.basename(str(in_file)),
+                    "result": (1, "", "runner error"),
+                    "time": 0.0,
+                    "expected": "",
+                    "in_file": in_file,
+                }
+            if len(result) == 4:
+                returncode, stdout, stderr, elapsed = result
+            else:
+                returncode, stdout, stderr = result
+                elapsed = 0.0
+            out_file = str(in_file)[:-3] + ".out"
+            expected = ""
+            if os.path.exists(out_file):
+                with open(out_file, "r", encoding="utf-8") as f:
+                    expected = f.read()
+            return {
+                "name": os.path.basename(str(in_file)),
+                "result": (returncode, stdout, stderr),
+                "time": elapsed,
+                "expected": expected,
+                "in_file": in_file,
+            }
+        import asyncio
+        tasks = [run_one(in_file) for in_file in temp_in_files]
+        results = await asyncio.gather(*tasks)
+        return results
 
     # 言語ごとの提出ファイル名
     SUBMIT_FILES = {
@@ -235,7 +303,24 @@ class CommandExecutor:
     }
 
     async def submit(self, contest_name, problem_name, language_name):
-        """online-judge-toolsで提出する"""
+        """online-judge-toolsで提出する（事前にテストし、AC以外があれば確認）"""
+        # 1. テスト実行
+        results = await self.run_test_return_results(contest_name, problem_name, language_name)
+        all_ac = True
+        for r in results:
+            returncode, stdout, stderr = r["result"]
+            if returncode != 0 or stdout.strip() != r["expected"].strip():
+                all_ac = False
+        # テスト結果を表示
+        for idx, r in enumerate(results):
+            print(TestResultFormatter(r).format())
+            print("")  # inputとresultの間に空行を追加
+        if not all_ac:
+            ans = input("AC以外のケースがあります。提出してよいですか？ (y/N): ")
+            if ans.lower() not in ("y", "yes"): 
+                print("提出を中止しました。")
+                return
+        # 2. ここから従来のsubmit処理
         file_operator = self.file_manager.file_operator if self.file_manager else None
         info_path = os.path.join("contest_current", "info.json")
         config_path = os.path.join("contest_current", "config.json")

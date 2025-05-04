@@ -40,6 +40,9 @@ async def test_submit(tmp_path):
     # 一時ディレクトリにcontest_current/info.jsonを作成
     contest_current = tmp_path / "contest_current"
     contest_current.mkdir()
+    # main.pyも作成
+    (contest_current / "python").mkdir()
+    (contest_current / "python" / "main.py").write_text("print('hello')\n", encoding="utf-8")
     info = {"contest_name": "abc300", "problem_name": "a", "language_name": "python"}
     (contest_current / "info.json").write_text(json.dumps(info), encoding="utf-8")
     old_cwd = os.getcwd()
@@ -88,6 +91,9 @@ async def test_execute_submit(tmp_path):
     # 一時ディレクトリにcontest_current/info.jsonを作成
     contest_current = tmp_path / "contest_current"
     contest_current.mkdir()
+    # main.pyも作成
+    (contest_current / "python").mkdir()
+    (contest_current / "python" / "main.py").write_text("print('hello')\n", encoding="utf-8")
     info = {"contest_name": "abc300", "problem_name": "a", "language_name": "python"}
     (contest_current / "info.json").write_text(json.dumps(info), encoding="utf-8")
     old_cwd = os.getcwd()
@@ -158,6 +164,9 @@ def test_submit_contest_name_mismatch(tmp_path, capfd):
     # info.jsonをcontest_currentに作成
     contest_current = tmp_path / "contest_current"
     contest_current.mkdir()
+    # main.pyも作成
+    (contest_current / "python").mkdir()
+    (contest_current / "python" / "main.py").write_text("print('hello')\n", encoding="utf-8")
     info = {"contest_name": "abc999", "problem_name": "a", "language_name": "python"}
     (contest_current / "info.json").write_text(json.dumps(info), encoding="utf-8")
     # カレントディレクトリを一時ディレクトリに
@@ -176,6 +185,9 @@ def test_submit_problem_name_mismatch(tmp_path, capfd):
     # info.jsonをcontest_currentに作成
     contest_current = tmp_path / "contest_current"
     contest_current.mkdir()
+    # main.pyも作成
+    (contest_current / "python").mkdir()
+    (contest_current / "python" / "main.py").write_text("print('hello')\n", encoding="utf-8")
     info = {"contest_name": "abc300", "problem_name": "b", "language_name": "python"}
     (contest_current / "info.json").write_text(json.dumps(info), encoding="utf-8")
     # カレントディレクトリを一時ディレクトリに
