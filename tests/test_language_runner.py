@@ -116,4 +116,45 @@ async def test_rustrunner_build_and_run(monkeypatch, tmp_path):
     monkeypatch.setattr(runner, "build", dummy_build)
     assert await runner.build() is True
     rc, out, err, _ = await runner.run()
+    assert rc == 0 and out == "ok"
+
+@pytest.mark.asyncio
+async def test_language_runner_run_common(monkeypatch, tmp_path):
+    # PythonRunner, PypyRunner, RustRunnerでrunの共通部分が正しく動作するかを確認
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    # Python
+    src_py = src_dir / "main.py"
+    src_py.write_text("print('hello')")
+    runner_py = PythonRunner(str(src_py), None, None)
+    await runner_py.build()
+    class DummyResult:
+        returncode = 0
+        stdout = b'ok'
+        stderr = b''
+    monkeypatch.setattr("subprocess.run", lambda *a, **k: DummyResult())
+    rc, out, err, _ = await runner_py.run()
+    assert rc == 0 and out == "ok"
+    # Pypy
+    runner_pypy = PypyRunner(str(src_py), None, None)
+    await runner_pypy.build()
+    rc, out, err, _ = await runner_pypy.run()
+    assert rc == 0 and out == "ok"
+    # Rust
+    src_rs = src_dir / "main.rs"
+    src_rs.write_text("fn main() { println(\"hello\"); }")
+    class DummyDockerOperator:
+        async def run(self, image, cmd, volumes=None, workdir=None, input_path=None):
+            return 0, "ok", ""
+    runner_rs = RustRunner(str(src_rs), None, DummyDockerOperator())
+    class DummyResult:
+        returncode = 0
+        stdout = b'ok'
+        stderr = b''
+    monkeypatch.setattr("subprocess.run", lambda *a, **k: DummyResult())
+    async def dummy_build():
+        return True
+    monkeypatch.setattr(runner_rs, "build", dummy_build)
+    await runner_rs.build()
+    rc, out, err, _ = await runner_rs.run()
     assert rc == 0 and out == "ok" 
