@@ -217,9 +217,8 @@ def test_testresultformatter_basic():
     assert "sample-1.in" in output
     assert "AC" in output
     assert "0.123" in output
-    assert "2 | 2" in output or "2|2" in output
-    # 区切り線や余計な見出しがないこと
-    assert "Sample" not in output and "Output" not in output
+    assert "Expected | Output" in output
+    assert "2        | 2" in output
 
 def test_testresultformatter_with_input_and_error(tmp_path):
     from src.command_executor import TestResultFormatter

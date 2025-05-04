@@ -14,7 +14,8 @@ def test_ac_format():
     assert "AC" in out
     assert "sample-1.in" in out
     assert "0.123" in out
-    assert "2 | 2" in out or "2|2" in out
+    assert "Expected | Output" in out
+    assert "2        | 2" in out
 
 def test_wa_format():
     result = {
@@ -27,7 +28,8 @@ def test_wa_format():
     fmt = TestResultFormatter(result)
     out = fmt.format()
     assert "WA" in out
-    assert "2 | 3" in out or "2|3" in out
+    assert "Expected | Output" in out
+    assert "2        | 3" in out
 
 def test_re_format():
     result = {

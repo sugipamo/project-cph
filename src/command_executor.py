@@ -42,10 +42,11 @@ class TestResultFormatter:
     def format(self):
         parts = [
             self._format_header(),
+            "-" * 17,
             self._format_input(),
-            " ",
             self._format_input_error_bar(),
             self._format_error(),
+            "-" * 17,
             self._format_table()
         ]
         return "\n".join([p for p in parts if p])
@@ -94,12 +95,14 @@ class TestResultFormatter:
         stdout = r["result"][1]
         exp_lines = expected.strip().splitlines()
         out_lines = stdout.strip().splitlines()
-        max_exp = max([len(s) for s in exp_lines]) if exp_lines else 0
-        max_out = max([len(s) for s in out_lines]) if out_lines else 0
+        max_exp = max([len(s) for s in exp_lines] + [8]) if exp_lines else 8  # 'Expected'の長さ
+        max_out = max([len(s) for s in out_lines] + [6]) if out_lines else 6  # 'Output'の長さ
         max_len = max(len(exp_lines), len(out_lines))
         if max_len == 0:
             return ""
         lines = []
+        # カラム名を追加
+        lines.append(f"{'Expected':<{max_exp}} | {'Output':<{max_out}}")
         for i in range(max_len):
             exp = exp_lines[i] if i < len(exp_lines) else ""
             out = out_lines[i] if i < len(out_lines) else ""
@@ -212,7 +215,7 @@ class CommandExecutor:
                 with open(out_file, "r", encoding="utf-8") as f:
                     expected = f.read()
             if returncode != 0:
-                print(f"[エラー] テストケース {os.path.basename(str(in_file))} 実行失敗 (returncode={returncode})\n{stderr}")
+                pass  # test時はエラー詳細を表示しない
             return {
                 "name": os.path.basename(str(in_file)),
                 "result": (returncode, stdout, stderr),
@@ -223,7 +226,9 @@ class CommandExecutor:
         tasks = [run_one(in_file) for in_file in temp_in_files]
         results = await asyncio.gather(*tasks)
         for idx, r in enumerate(results):
+            # エラー詳細は表示しない
             print(TestResultFormatter(r).format())
+            print("")
 
     async def run_test_return_results(self, contest_name, problem_name, language_name):
         """run_testのロジックを流用し、テスト結果リストを返す"""
