@@ -9,6 +9,8 @@ import json
 from language_runner import PythonRunner, RustRunner, PypyRunner
 import asyncio
 import time
+import tempfile
+import pathlib
 
 class EditorOpener:
     def open(self, path: str):
@@ -156,30 +158,40 @@ class CommandExecutor:
     async def run_test(self, contest_name, problem_name, language_name):
         """ビルド→実行を言語ごとに抽象化してテストする（合否判定・レイアウト付き）"""
         import shutil
+        import pathlib
         file_operator = self.file_manager.file_operator if self.file_manager else None
         source_path = f"contest_current/{language_name}/main.py"
         test_dir = "contest_current/test"
-        if language_name == "python":
-            runner = PythonRunner(source_path, None, self.docker_operator)
-        elif language_name == "pypy":
-            runner = PypyRunner(source_path, None, self.docker_operator)
-        elif language_name == "rust":
-            # rustはmain.rsを使う
+        if language_name == "rust":
             source_path = f"contest_current/{language_name}/main.rs"
-            runner = RustRunner(source_path, None, self.docker_operator)
-        else:
-            print(f"未対応の言語です: {language_name}")
-            return
-        build_ok = await runner.build()
-        if not build_ok:
-            print("ビルド失敗")
-            return
+        # .tempディレクトリをプロジェクト直下に常設
+        temp_dir = pathlib.Path(".temp")
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        # main.pyまたはmain.rsをコピー
+        shutil.copy2(source_path, temp_dir / pathlib.Path(source_path).name)
+        # test/配下を再帰コピー（空でもOK）
+        if not pathlib.Path(test_dir).exists():
+            pathlib.Path(test_dir).mkdir(parents=True, exist_ok=True)
+        shutil.copytree(test_dir, temp_dir / "test", dirs_exist_ok=True)
         if file_operator:
             in_files = sorted(file_operator.glob(f"{test_dir}/*.in"))
         else:
             import glob
             in_files = sorted(glob.glob(os.path.join(test_dir, "*.in")))
-
+        temp_source_path = str(temp_dir / pathlib.Path(source_path).name)
+        if language_name == "python":
+            runner = PythonRunner(temp_source_path, None, self.docker_operator)
+        elif language_name == "pypy":
+            runner = PypyRunner(temp_source_path, None, self.docker_operator)
+        elif language_name == "rust":
+            runner = RustRunner(temp_source_path, None, self.docker_operator)
+        else:
+            print(f"未対応の言語です: {language_name}")
+            return
+        temp_in_files = [str(temp_dir / "test" / pathlib.Path(f).name) for f in in_files]
+        runner._host_temp_dir = str(temp_dir.resolve())
         async def run_one(in_file):
             import time
             start = time.monotonic()
@@ -187,13 +199,9 @@ class CommandExecutor:
             elapsed = time.monotonic() - start
             out_file = str(in_file)[:-3] + ".out"
             expected = ""
-            if file_operator and file_operator.exists(out_file):
-                with file_operator.open(out_file, "r", encoding="utf-8") as f:
-                    expected = f.read()
-            elif not file_operator and os.path.exists(out_file):
+            if os.path.exists(out_file):
                 with open(out_file, "r", encoding="utf-8") as f:
                     expected = f.read()
-            # 実行失敗時のエラー出力
             if result[0] != 0:
                 print(f"[エラー] テストケース {os.path.basename(str(in_file))} 実行失敗 (returncode={result[0]})\n{result[2]}")
             return {
@@ -203,11 +211,9 @@ class CommandExecutor:
                 "expected": expected,
                 "in_file": in_file,
             }
-
-        tasks = [run_one(in_file) for in_file in in_files]
+        tasks = [run_one(in_file) for in_file in temp_in_files]
         import asyncio
         results = await asyncio.gather(*tasks)
-
         for idx, r in enumerate(results):
             print(TestResultFormatter(r).format())
 

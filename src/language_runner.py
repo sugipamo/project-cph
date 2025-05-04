@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import os
 import shutil
 import subprocess
+import pathlib
 
 class LanguageRunner(ABC):
     def __init__(self, source_path, temp_dir, docker_operator):
@@ -21,7 +22,7 @@ class LanguageRunner(ABC):
 
 class PythonRunner(LanguageRunner):
     async def build(self):
-        # self.temp_dirは使わず、ソースファイルの存在確認のみ
+        # ソースファイルの存在確認のみ
         if not os.path.exists(self.source_path):
             print(f"[エラー] ソースファイルが存在しません: {self.source_path}")
             return False
@@ -29,18 +30,30 @@ class PythonRunner(LanguageRunner):
         return True
 
     async def run(self, input_path=None):
+        import pathlib
+        host_temp_dir = getattr(self, '_host_temp_dir', None)
+        file_name = os.path.basename(self.source_path)
         temp_container = f"py-tmp-{os.getpid()}"
-        subprocess.run([
-            "docker", "run", "-d", "--name", temp_container, self.docker_image(), "sleep", "300"
-        ], check=True)
+        docker_run_cmd = [
+            "docker", "run", "-d", "--name", temp_container
+        ]
+        if host_temp_dir:
+            docker_run_cmd += ["-v", f"{host_temp_dir}:/workspace/.temp:ro"]
+        docker_run_cmd += [self.docker_image(), "sleep", "300"]
+        # docker runの出力を抑制し、エラー時はメッセージを出して停止
         try:
-            # main.py送信
-            subprocess.run(["docker", "cp", self.source_path, f"{temp_container}:/workspace/main.py"], check=True)
+            result = subprocess.run(docker_run_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError as e:
+            print(f"[エラー] docker run失敗: {e.stderr.decode().strip()}")
+            return False
+        try:
+            # .temp配下を直接参照して実行
+            main_path = f"/workspace/.temp/{file_name}"
             input_cont = None
             if input_path:
-                input_cont = "/workspace/input.txt"
-                subprocess.run(["docker", "cp", input_path, f"{temp_container}:{input_cont}"], check=True)
-            cmd = [self.run_cmd(), "/workspace/main.py"]
+                input_file_name = os.path.basename(input_path)
+                input_cont = f"/workspace/.temp/test/{input_file_name}" if "/test/" in input_path else f"/workspace/.temp/{input_file_name}"
+            cmd = [self.run_cmd(), main_path]
             if input_cont:
                 exec_cmd = f"{cmd[0]} {cmd[1]} < {input_cont}"
                 result = subprocess.run([
@@ -51,7 +64,7 @@ class PythonRunner(LanguageRunner):
                     "docker", "exec", temp_container, cmd[0], cmd[1]], capture_output=True)
             return result.returncode, result.stdout.decode(), result.stderr.decode()
         finally:
-            subprocess.run(["docker", "rm", "-f", temp_container], check=False)
+            subprocess.run(["docker", "rm", "-f", temp_container], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     def docker_image(self):
         return "python"
@@ -66,42 +79,63 @@ class PypyRunner(PythonRunner):
 
 class RustRunner(LanguageRunner):
     async def build(self):
-        # self.temp_dirは使わず、ビルドはコンテナ内で完結
+        import pathlib
+        host_temp_dir = getattr(self, '_host_temp_dir', None)
+        file_name = os.path.basename(self.source_path)
         temp_container = f"rust-tmp-{os.getpid()}"
-        subprocess.run([
-            "docker", "run", "-d", "--name", temp_container, "rust", "sleep", "300"
-        ], check=True)
+        docker_run_cmd = [
+            "docker", "run", "-d", "--name", temp_container
+        ]
+        if host_temp_dir:
+            docker_run_cmd += ["-v", f"{host_temp_dir}:/workspace/.temp:ro"]
+        docker_run_cmd += ["rust", "sleep", "300"]
+        # docker runの出力を抑制し、エラー時はメッセージを出して停止
         try:
-            # main.rs送信
-            subprocess.run(["docker", "cp", self.source_path, f"{temp_container}:/workspace/main.rs"], check=True)
-            # rustcでビルド
+            result = subprocess.run(docker_run_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError as e:
+            print(f"[エラー] docker run失敗: {e.stderr.decode().strip()}")
+            return False
+        try:
+            # .temp配下を直接参照してビルド
+            main_path = f"/workspace/.temp/{file_name}"
             result = subprocess.run([
-                "docker", "exec", temp_container, "rustc", "/workspace/main.rs", "-o", "/workspace/a.out"
+                "docker", "exec", temp_container, "rustc", main_path, "-o", "/workspace/a.out"
             ], capture_output=True)
             if result.returncode != 0:
                 print(f"[エラー] rustcビルド失敗: {result.stderr.decode()}")
                 return False
             self.binary_path = "/workspace/a.out"
-            # a.outをホストにコピーしたい場合はここでdocker cp可能
             return True
         finally:
-            subprocess.run(["docker", "rm", "-f", temp_container], check=False)
+            subprocess.run(["docker", "rm", "-f", temp_container], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     async def run(self, input_path=None):
+        import pathlib
+        host_temp_dir = getattr(self, '_host_temp_dir', None)
+        file_name = os.path.basename(self.source_path)
         temp_container = f"rust-tmp-{os.getpid()}"
-        subprocess.run([
-            "docker", "run", "-d", "--name", temp_container, "rust", "sleep", "300"
-        ], check=True)
+        docker_run_cmd = [
+            "docker", "run", "-d", "--name", temp_container
+        ]
+        if host_temp_dir:
+            docker_run_cmd += ["-v", f"{host_temp_dir}:/workspace/.temp:ro"]
+        docker_run_cmd += ["rust", "sleep", "300"]
+        # docker runの出力を抑制し、エラー時はメッセージを出して停止
         try:
-            # a.out送信
-            subprocess.run(["docker", "cp", self.source_path, f"{temp_container}:/workspace/main.rs"], check=True)
+            result = subprocess.run(docker_run_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError as e:
+            print(f"[エラー] docker run失敗: {e.stderr.decode().strip()}")
+            return False
+        try:
+            # .temp配下を直接参照してビルド・実行
+            main_path = f"/workspace/.temp/{file_name}"
             subprocess.run([
-                "docker", "exec", temp_container, "rustc", "/workspace/main.rs", "-o", "/workspace/a.out"
+                "docker", "exec", temp_container, "rustc", main_path, "-o", "/workspace/a.out"
             ], check=True)
             input_cont = None
             if input_path:
-                input_cont = "/workspace/input.txt"
-                subprocess.run(["docker", "cp", input_path, f"{temp_container}:{input_cont}"], check=True)
+                input_file_name = os.path.basename(input_path)
+                input_cont = f"/workspace/.temp/test/{input_file_name}" if "/test/" in input_path else f"/workspace/.temp/{input_file_name}"
             cmd = ["/workspace/a.out"]
             if input_cont:
                 exec_cmd = f"{cmd[0]} < {input_cont}"
@@ -113,4 +147,4 @@ class RustRunner(LanguageRunner):
                     "docker", "exec", temp_container, cmd[0]], capture_output=True)
             return result.returncode, result.stdout.decode(), result.stderr.decode()
         finally:
-            subprocess.run(["docker", "rm", "-f", temp_container], check=False) 
+            subprocess.run(["docker", "rm", "-f", temp_container], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
