@@ -1,6 +1,6 @@
 import sys
 from command_executor import CommandExecutor
-from podman_operator import LocalDockerOperator
+from docker_operator import LocalDockerOperator
 from contest_file_manager import ContestFileManager
 from file_operator import LocalFileOperator
 from command_parser import CommandParser

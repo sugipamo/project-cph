@@ -1,11 +1,11 @@
 import pytest
 from src.command_executor import CommandExecutor
-from src.podman_operator import MockDockerOperator
+from src.docker_operator import MockDockerOperator
 from src.contest_file_manager import ContestFileManager
 from src.file_operator import MockFileOperator
 import asyncio
 from command_executor import MockEditorOpener
-from podman_operator import LocalDockerOperator
+from docker_operator import LocalDockerOperator
 import os
 import json
 
@@ -36,7 +36,7 @@ async def test_open(tmp_path):
 
 @pytest.mark.asyncio
 async def test_submit():
-    from src.podman_operator import MockDockerOperator
+    from src.docker_operator import MockDockerOperator
     executor = CommandExecutor(docker_operator=MockDockerOperator())
     result = await executor.submit("abc300", "a", "python")
     assert result == (0, 'mock-stdout', 'mock-stderr')
@@ -74,7 +74,7 @@ async def test_execute_open(tmp_path):
 
 @pytest.mark.asyncio
 async def test_execute_submit():
-    from src.podman_operator import MockDockerOperator
+    from src.docker_operator import MockDockerOperator
     executor = CommandExecutor(docker_operator=MockDockerOperator())
     result = await executor.execute("submit", "abc300", "a", "python")
     assert result == (0, 'mock-stdout', 'mock-stderr')

@@ -1,4 +1,4 @@
-from podman_operator import DockerOperator, LocalDockerOperator
+from docker_operator import DockerOperator, LocalDockerOperator
 from contest_file_manager import ContestFileManager
 import subprocess
 from command_parser import CommandParser
