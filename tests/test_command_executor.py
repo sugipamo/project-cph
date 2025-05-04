@@ -4,7 +4,7 @@ from src.docker_operator import MockDockerOperator
 from src.contest_file_manager import ContestFileManager
 from src.file_operator import MockFileOperator
 import asyncio
-from command_executor import MockEditorOpener
+from command_executor import MockOpener
 from docker_operator import LocalDockerOperator
 import os
 import json
@@ -122,7 +122,7 @@ def test_open_calls_editor_and_file_manager(tmp_path):
     template_dir = tmp_path / "contest_template" / "python"
     template_dir.mkdir(parents=True, exist_ok=True)
     (template_dir / "main.py").write_text("print('hello')\n")
-    mock_editor = MockEditorOpener()
+    mock_editor = MockOpener()
     mock_file_operator = MockFileOperator(base_dir=tmp_path)
     file_manager = ContestFileManager(mock_file_operator)
     mock_docker = LocalDockerOperator()
@@ -132,7 +132,7 @@ def test_open_calls_editor_and_file_manager(tmp_path):
         executor = CommandExecutor(
             docker_operator=mock_docker,
             file_manager=file_manager,
-            editor_opener=mock_editor
+            opener=mock_editor
         )
         asyncio.run(executor.open("abc300", "a", "python"))
         assert mock_editor.opened_paths == ["contest_current/python/main.py"]
@@ -146,18 +146,18 @@ async def test_open_with_none_dependencies(tmp_path):
     template_dir.mkdir(parents=True, exist_ok=True)
     (template_dir / "main.py").write_text("print('hello')\n")
     # file_manager=None, editor_opener=None でも例外が発生しないか
-    executor = CommandExecutor(docker_operator=MockDockerOperator(), file_manager=None, editor_opener=None)
+    executor = CommandExecutor(docker_operator=MockDockerOperator(), file_manager=None, opener=None)
     # 問題ディレクトリが存在しない場合でも例外が発生しないことを確認
     await executor.open("abc999", "z", "python")
     # editor_openerがNoneでもエラーにならない（デフォルトが使われる）
     executor2 = CommandExecutor(
         docker_operator=MockDockerOperator(),
         file_manager=ContestFileManager(MockFileOperator(base_dir=tmp_path)),
-        editor_opener=None
+        opener=None
     )
     await executor2.open("abc300", "a", "python")
     # file_managerがNoneでもエラーにならない（何も起きない）
-    executor3 = CommandExecutor(docker_operator=MockDockerOperator(), file_manager=None, editor_opener=MockEditorOpener())
+    executor3 = CommandExecutor(docker_operator=MockDockerOperator(), file_manager=None, opener=MockOpener())
     await executor3.open("abc300", "a", "python")
 
 def test_submit_contest_name_mismatch(tmp_path, capfd):

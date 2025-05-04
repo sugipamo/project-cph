@@ -11,9 +11,10 @@ import asyncio
 import time
 import tempfile
 import pathlib
+import webbrowser
 
-class EditorOpener:
-    def open(self, path: str):
+class Opener:
+    def open_editor(self, path: str):
         # VSCodeとCursorでmain.pyのみを同じウィンドウで開く
         main_file = f"{path}/main.py"
         try:
@@ -24,6 +25,11 @@ class EditorOpener:
             subprocess.Popen(["cursor", "--reuse-window", main_file])
         except Exception as e:
             print(f"[警告] Cursor起動失敗: {e}")
+    def open_browser(self, url: str):
+        try:
+            webbrowser.open(url)
+        except Exception as e:
+            print(f"[警告] ブラウザでページを開けませんでした: {e}")
 
 class TestResultFormatter:
     def __init__(self, result):
@@ -110,10 +116,10 @@ class TestResultFormatter:
         return "\n".join(lines)
 
 class CommandExecutor:
-    def __init__(self, docker_operator: DockerOperator = None, file_manager: ContestFileManager = None, editor_opener: EditorOpener = None):
+    def __init__(self, docker_operator: DockerOperator = None, file_manager: ContestFileManager = None, opener: Opener = None):
         self.docker_operator = docker_operator or LocalDockerOperator()
         self.file_manager = file_manager
-        self.editor_opener = editor_opener or EditorOpener()
+        self.opener = opener or Opener()
 
     async def login(self, *args, **kwargs):
         """
@@ -143,11 +149,14 @@ class CommandExecutor:
         if self.file_manager:
             self.file_manager.prepare_problem_files(contest_name, problem_name, language_name)
         # 2. エディタでディレクトリを開く
-        if self.editor_opener:
+        if self.opener:
             path = f"contest_current/{language_name}"
-            self.editor_opener.open(path)
-        # 3. oj download（docker_operator経由で成果物を回収）
+            self.opener.open_editor(path)
+        # 3. 問題ページをブラウザで開く
         url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
+        if self.opener:
+            self.opener.open_browser(url)
+        # 4. oj download（docker_operator経由で成果物を回収）
         cookie_host = ".oj/.local/share/online-judge-tools/cookie.jar"
         test_dir_host = f"contest_current/test"
         ok = self.docker_operator.run_oj_download(url, cookie_host, test_dir_host)
@@ -396,9 +405,12 @@ class CommandExecutor:
         else:
             raise ValueError(f"未対応のコマンドです: {command}")
 
-class MockEditorOpener(EditorOpener):
+class MockOpener(Opener):
     def __init__(self):
         self.opened_paths = []
-    def open(self, path: str):
+        self.opened_urls = []
+    def open_editor(self, path: str):
         main_file = f"{path}/main.py"
-        self.opened_paths.append(main_file) 
+        self.opened_paths.append(main_file)
+    def open_browser(self, url: str):
+        self.opened_urls.append(url) 
