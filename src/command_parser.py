@@ -19,8 +19,8 @@ COMMANDS = {
 }
 PROBLEM_NAMES = ["a", "b", "c", "d", "e", "f", "g", "ex"]
 LANGUAGES = {
-    "python": {"aliases": ["py", "python3"]},
-    "pypy": {"aliases": ["pypy3"]},
+    "python": {"aliases": ["python3"]},
+    "pypy": {"aliases": ["pypy3", "py"]},
     "rust": {"aliases": ["rs", "rustc"]},
 }
 

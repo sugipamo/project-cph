@@ -249,10 +249,10 @@ class CommandExecutor:
             current_problem = info.get("problem_name")
             if current_contest and current_contest != contest_name:
                 print(f"[警告] contest_current/info.jsonのcontest_name（{current_contest}）と指定されたcontest_name（{contest_name}）が異なります。提出を中止します。")
-                return
+                return None
             if current_problem and current_problem != problem_name:
                 print(f"[警告] contest_current/info.jsonのproblem_name（{current_problem}）と指定されたproblem_name（{problem_name}）が異なります。提出を中止します。")
-                return
+                return None
         home = os.path.expanduser("~")
         oj_cache_host = os.path.join(home, ".cache/online-judge-tools")
         oj_cache_cont = "/root/.cache/online-judge-tools"
@@ -269,7 +269,7 @@ class CommandExecutor:
         rc, stdout, stderr = await self.podman_operator.run_oj(args, volumes, workdir, interactive=True)
         if rc != 0:
             print(f"[エラー] oj submit失敗 (returncode={rc})\n{stderr}")
-            return
+        return rc, stdout, stderr
 
     async def execute(self, command, contest_name=None, problem_name=None, language_name=None):
         """コマンド名に応じて各メソッドを呼び出す"""
