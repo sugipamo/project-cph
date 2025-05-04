@@ -30,7 +30,7 @@ async def test_open(tmp_path):
         mock_file_manager = ContestFileManager(mock_file_operator)
         executor = CommandExecutor(docker_operator=mock_docker, file_manager=mock_file_manager)
         await executor.open("abc300", "a", "python")
-        assert mock_docker.calls[0][0] == "run_oj"
+        assert mock_docker.calls[0][0] == "run_oj_download"
     finally:
         os.chdir(old_cwd)
 
@@ -68,7 +68,7 @@ async def test_execute_open(tmp_path):
         mock_file_manager = ContestFileManager(mock_file_operator)
         executor = CommandExecutor(docker_operator=mock_docker, file_manager=mock_file_manager)
         await executor.execute("open", "abc300", "a", "python")
-        assert mock_docker.calls[0][0] == "run_oj"
+        assert mock_docker.calls[0][0] == "run_oj_download"
     finally:
         os.chdir(old_cwd)
 

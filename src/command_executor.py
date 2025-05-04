@@ -144,41 +144,14 @@ class CommandExecutor:
         if self.editor_opener:
             path = f"contest_current/{language_name}"
             self.editor_opener.open(path)
-        # 3. oj download（テスト時はMockDockerOperatorでスキップ可能）
-        if self.docker_operator:
-            url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
-            project_root = os.path.abspath(".")
-            oj_cache_host = os.path.join(project_root, ".oj/.cache/online-judge-tools")
-            oj_cache_cont = "/workspace/.cache/online-judge-tools"
-            oj_local_host = os.path.join(project_root, ".oj/.local/share/online-judge-tools")
-            oj_local_cont = "/workspace/.local/share/online-judge-tools"
-            file_operator = self.file_manager.file_operator if self.file_manager else None
-            temp_dir = ".temp"
-            workdir = "/workspace/.temp"
-            if file_operator:
-                file_operator.makedirs(temp_dir, exist_ok=True)
-            volumes = {
-                oj_cache_host: oj_cache_cont,
-                oj_local_host: oj_local_cont,
-                str(file_operator.base_dir): "/workspace"
-            } if file_operator else {}
-            rc, stdout, stderr = await self.docker_operator.run_oj(["download", url], volumes, workdir, interactive=False)
-            if rc != 0:
-                print(f"[エラー] oj download失敗 (returncode={rc})\n{stderr}")
-                return
-            # 既存のテストケースをcontest_stocksに退避
-            dest_dir = "contest_current/test"
-            tests_root = dest_dir
-            if self.file_manager:
-                self.file_manager.move_tests_to_stocks(contest_name, problem_name, tests_root)
-            if file_operator:
-                file_operator.makedirs(dest_dir, exist_ok=True)
-                src_test_dir = os.path.join(temp_dir, "test")
-                if file_operator.isdir(src_test_dir):
-                    for file in file_operator.glob(f"{src_test_dir}/*"):
-                        file_operator.move(file, os.path.join(dest_dir, os.path.basename(file)))
-                    file_operator.rmtree(src_test_dir)
-                file_operator.rmtree(temp_dir)
+        # 3. oj download（docker_operator経由で成果物を回収）
+        url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
+        cookie_host = ".oj/.local/share/online-judge-tools/cookie.jar"
+        test_dir_host = f"contest_current/test"
+        ok = self.docker_operator.run_oj_download(url, cookie_host, test_dir_host)
+        if not ok:
+            print(f"[エラー] oj download失敗: {url}")
+            return
 
     async def run_test(self, contest_name, problem_name, language_name):
         """ビルド→実行を言語ごとに抽象化してテストする（合否判定・レイアウト付き）"""

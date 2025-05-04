@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import asyncio
 import sys
 import os
+import subprocess
 
 class DockerOperator(ABC):
     @abstractmethod
@@ -21,6 +22,52 @@ class DockerOperator(ABC):
         image = "python-oj-image"  # 必要に応じて外部から指定可能に
         cmd = ["oj"] + oj_args
         return await self.run(image, cmd, volumes, workdir, interactive=interactive)
+
+    def run_oj_download(self, url, cookie_host, test_dir_host):
+        """
+        oj downloadをdockerコンテナで実行し、成果物（テストケース）とcookieをdocker cpでやりとりする
+        url: 問題URL
+        cookie_host: ホスト側cookieファイルパス
+        test_dir_host: ホスト側テストケース保存ディレクトリ
+        """
+        temp_container = f"oj-tmp-{os.getpid()}"
+        # 1. 一時コンテナ起動
+        subprocess.run([
+            "docker", "run", "-d", "--name", temp_container, "python-oj-image", "sleep", "300"
+        ], check=True)
+        try:
+            # 2. cookie送信（存在すれば）
+            cookie_cont = "/root/.local/share/online-judge-tools/cookie.jar"
+            if cookie_host and os.path.exists(cookie_host):
+                subprocess.run(["docker", "cp", cookie_host, f"{temp_container}:{cookie_cont}"], check=True)
+            # 3. oj download実行
+            try:
+                subprocess.run([
+                    "docker", "exec", temp_container, "oj", "download", url
+                ], check=True)
+            except subprocess.CalledProcessError as e:
+                print(f"[エラー] oj download失敗: {e}")
+                return False
+            # 4. テストケース回収
+            test_dir_cont = "/workspace/.temp/test"
+            os.makedirs(test_dir_host, exist_ok=True)
+            result = subprocess.run(["docker", "exec", temp_container, "test", "-d", test_dir_cont])
+            if result.returncode == 0:
+                try:
+                    subprocess.run(["docker", "cp", f"{temp_container}:{test_dir_cont}", test_dir_host], check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"[エラー] docker cp失敗: {e}")
+            else:
+                print(f"[警告] テストケースディレクトリが見つかりません: {test_dir_cont}")
+            # 5. cookie回収
+            if cookie_host and os.path.exists(cookie_host):
+                try:
+                    subprocess.run(["docker", "cp", f"{temp_container}:{cookie_cont}", cookie_host], check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"[エラー] cookie回収失敗: {e}")
+            return True
+        finally:
+            subprocess.run(["docker", "rm", "-f", temp_container], check=False)
 
 class LocalDockerOperator(DockerOperator):
     async def run(self, image: str, command: list, volumes: dict = None, workdir: str = None, input_path: str = None, interactive: bool = False):
@@ -108,4 +155,8 @@ class MockDockerOperator(DockerOperator):
 
     async def run_oj(self, oj_args: list, volumes: dict, workdir: str, interactive: bool = False):
         self.calls.append(('run_oj', oj_args, volumes, workdir, interactive))
-        return 0, 'mock-stdout', 'mock-stderr' 
+        return 0, 'mock-stdout', 'mock-stderr'
+
+    def run_oj_download(self, url, cookie_host, test_dir_host):
+        self.calls.append(('run_oj_download', url, cookie_host, test_dir_host))
+        return True 
