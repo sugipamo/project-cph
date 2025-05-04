@@ -4,6 +4,8 @@ import shutil
 import subprocess
 import pathlib
 import time
+import asyncio
+import uuid
 
 class LanguageRunner(ABC):
     def __init__(self, source_path, temp_dir, docker_operator):
@@ -33,20 +35,25 @@ class PythonRunner(LanguageRunner):
     async def run(self, input_path=None):
         import pathlib
         import time
+        import asyncio
         host_temp_dir = getattr(self, '_host_temp_dir', None)
         file_name = os.path.basename(self.source_path)
-        temp_container = f"py-tmp-{os.getpid()}"
+        temp_container = f"py-tmp-{os.getpid()}-{uuid.uuid4().hex[:8]}"
         docker_run_cmd = [
             "docker", "run", "-d", "--name", temp_container
         ]
         if host_temp_dir:
             docker_run_cmd += ["-v", f"{host_temp_dir}:/workspace/.temp:ro"]
         docker_run_cmd += [self.docker_image(), "sleep", "300"]
-        # docker runの出力を抑制し、エラー時はメッセージを出して停止
+        # docker runの出力を抑制し、エラー時はメッセージを出して停止（非同期化）
         try:
-            result = subprocess.run(docker_run_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        except subprocess.CalledProcessError as e:
-            print(f"[エラー] docker run失敗: {e.stderr.decode().strip()}")
+            proc = await asyncio.create_subprocess_exec(*docker_run_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+            stdout, stderr = await proc.communicate()
+            if proc.returncode != 0:
+                print(f"[エラー] docker run失敗: {stderr.decode().strip()}")
+                return False
+        except Exception as e:
+            print(f"[エラー] docker run失敗: {e}")
             return False
         try:
             # .temp配下を直接参照して実行
@@ -86,7 +93,7 @@ class RustRunner(LanguageRunner):
         import pathlib
         host_temp_dir = getattr(self, '_host_temp_dir', None)
         file_name = os.path.basename(self.source_path)
-        temp_container = f"rust-tmp-{os.getpid()}"
+        temp_container = f"rust-tmp-{os.getpid()}-{uuid.uuid4().hex[:8]}"
         docker_run_cmd = [
             "docker", "run", "-d", "--name", temp_container
         ]
@@ -116,20 +123,25 @@ class RustRunner(LanguageRunner):
     async def run(self, input_path=None):
         import pathlib
         import time
+        import asyncio
         host_temp_dir = getattr(self, '_host_temp_dir', None)
         file_name = os.path.basename(self.source_path)
-        temp_container = f"rust-tmp-{os.getpid()}"
+        temp_container = f"rust-tmp-{os.getpid()}-{uuid.uuid4().hex[:8]}"
         docker_run_cmd = [
             "docker", "run", "-d", "--name", temp_container
         ]
         if host_temp_dir:
             docker_run_cmd += ["-v", f"{host_temp_dir}:/workspace/.temp:ro"]
         docker_run_cmd += ["rust", "sleep", "300"]
-        # docker runの出力を抑制し、エラー時はメッセージを出して停止
+        # docker runの出力を抑制し、エラー時はメッセージを出して停止（非同期化）
         try:
-            result = subprocess.run(docker_run_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        except subprocess.CalledProcessError as e:
-            print(f"[エラー] docker run失敗: {e.stderr.decode().strip()}")
+            proc = await asyncio.create_subprocess_exec(*docker_run_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+            stdout, stderr = await proc.communicate()
+            if proc.returncode != 0:
+                print(f"[エラー] docker run失敗: {stderr.decode().strip()}")
+                return False
+        except Exception as e:
+            print(f"[エラー] docker run失敗: {e}")
             return False
         try:
             # .temp配下を直接参照してビルド・実行
