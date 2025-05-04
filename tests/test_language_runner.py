@@ -58,7 +58,7 @@ async def test_pythonrunner_run(monkeypatch, tmp_path):
         stdout = b'ok'
         stderr = b''
     monkeypatch.setattr("subprocess.run", lambda *a, **k: DummyResult())
-    rc, out, err = await runner.run()
+    rc, out, err, _ = await runner.run()
     assert rc == 0 and out == "ok"
 
 @pytest.mark.asyncio
@@ -76,7 +76,7 @@ async def test_pythonrunner_run_with_input(monkeypatch, tmp_path):
         stdout = b'42\n'
         stderr = b''
     monkeypatch.setattr("subprocess.run", lambda *a, **k: DummyResult())
-    rc, out, err = await runner.run(input_path=str(inp))
+    rc, out, err, _ = await runner.run(input_path=str(inp))
     assert rc == 0 and out == "42\n"
 
 @pytest.mark.asyncio
@@ -92,7 +92,7 @@ async def test_pypy_runner_run(monkeypatch, tmp_path):
         stdout = b'ok'
         stderr = b''
     monkeypatch.setattr("subprocess.run", lambda *a, **k: DummyResult())
-    rc, out, err = await runner.run()
+    rc, out, err, _ = await runner.run()
     assert rc == 0 and out == "ok"
 
 @pytest.mark.asyncio
@@ -115,5 +115,5 @@ async def test_rustrunner_build_and_run(monkeypatch, tmp_path):
         return True
     monkeypatch.setattr(runner, "build", dummy_build)
     assert await runner.build() is True
-    rc, out, err = await runner.run()
+    rc, out, err, _ = await runner.run()
     assert rc == 0 and out == "ok" 
