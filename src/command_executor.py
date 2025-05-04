@@ -44,10 +44,10 @@ class TestResultFormatter:
             self._format_header(),
             "-" * 17,
             self._format_input(),
+            "-" * 17,
+            self._format_table(),
             self._format_input_error_bar(),
             self._format_error(),
-            "-" * 17,
-            self._format_table()
         ]
         return "\n".join([p for p in parts if p])
 
