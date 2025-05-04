@@ -35,11 +35,21 @@ async def test_open(tmp_path):
         os.chdir(old_cwd)
 
 @pytest.mark.asyncio
-async def test_submit():
+async def test_submit(tmp_path):
     from src.docker_operator import MockDockerOperator
-    executor = CommandExecutor(docker_operator=MockDockerOperator())
-    result = await executor.submit("abc300", "a", "python")
-    assert result == (0, 'mock-stdout', 'mock-stderr')
+    # 一時ディレクトリにcontest_current/info.jsonを作成
+    contest_current = tmp_path / "contest_current"
+    contest_current.mkdir()
+    info = {"contest_name": "abc300", "problem_name": "a", "language_name": "python"}
+    (contest_current / "info.json").write_text(json.dumps(info), encoding="utf-8")
+    old_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        executor = CommandExecutor(docker_operator=MockDockerOperator())
+        result = await executor.submit("abc300", "a", "python")
+        assert result == (0, 'mock-stdout', 'mock-stderr')
+    finally:
+        os.chdir(old_cwd)
 
 # @pytest.mark.asyncio
 # async def test_test():
@@ -73,11 +83,21 @@ async def test_execute_open(tmp_path):
         os.chdir(old_cwd)
 
 @pytest.mark.asyncio
-async def test_execute_submit():
+async def test_execute_submit(tmp_path):
     from src.docker_operator import MockDockerOperator
-    executor = CommandExecutor(docker_operator=MockDockerOperator())
-    result = await executor.execute("submit", "abc300", "a", "python")
-    assert result == (0, 'mock-stdout', 'mock-stderr')
+    # 一時ディレクトリにcontest_current/info.jsonを作成
+    contest_current = tmp_path / "contest_current"
+    contest_current.mkdir()
+    info = {"contest_name": "abc300", "problem_name": "a", "language_name": "python"}
+    (contest_current / "info.json").write_text(json.dumps(info), encoding="utf-8")
+    old_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        executor = CommandExecutor(docker_operator=MockDockerOperator())
+        result = await executor.execute("submit", "abc300", "a", "python")
+        assert result == (0, 'mock-stdout', 'mock-stderr')
+    finally:
+        os.chdir(old_cwd)
 
 # @pytest.mark.asyncio
 # async def test_execute_test():
