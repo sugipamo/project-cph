@@ -19,7 +19,7 @@ class DockerOperator(ABC):
 
     async def run_oj(self, oj_args: list, volumes: dict, workdir: str, interactive: bool = False):
         """ojtコマンドをdocker経由で実行する。interactive=Trueなら端末接続・標準入力も渡す"""
-        image = "python-oj-image"  # 必要に応じて外部から指定可能に
+        image = "oj"  # 必要に応じて外部から指定可能に
         cmd = ["oj"] + oj_args
         return await self.run(image, cmd, volumes, workdir, interactive=interactive)
 
@@ -33,34 +33,100 @@ class DockerOperator(ABC):
         temp_container = f"oj-tmp-{os.getpid()}"
         # 1. 一時コンテナ起動
         subprocess.run([
-            "docker", "run", "-d", "--name", temp_container, "python-oj-image", "sleep", "300"
+            "docker", "run", "-d", "--name", temp_container, "oj", "sleep", "300"
         ], check=True)
         try:
             # 2. cookie送信（存在すれば）
             cookie_cont = "/root/.local/share/online-judge-tools/cookie.jar"
             if cookie_host and os.path.exists(cookie_host):
                 subprocess.run(["docker", "cp", cookie_host, f"{temp_container}:{cookie_cont}"], check=True)
-            # 3. oj download実行
+            # 3. .tempディレクトリ作成
+            subprocess.run([
+                "docker", "exec", temp_container, "mkdir", "-p", "/workspace/.temp"
+            ], check=True)
+            # 4. oj download実行（.tempで）
             try:
                 subprocess.run([
-                    "docker", "exec", temp_container, "oj", "download", url
+                    "docker", "exec", temp_container, "sh", "-c", f"cd /workspace/.temp && oj download {url}"
                 ], check=True)
             except subprocess.CalledProcessError as e:
                 print(f"[エラー] oj download失敗: {e}")
                 return False
-            # 4. テストケース回収
+            # 5. テストケース回収
             test_dir_cont = "/workspace/.temp/test"
             os.makedirs(test_dir_host, exist_ok=True)
             result = subprocess.run(["docker", "exec", temp_container, "test", "-d", test_dir_cont])
             if result.returncode == 0:
                 try:
-                    subprocess.run(["docker", "cp", f"{temp_container}:{test_dir_cont}", test_dir_host], check=True)
+                    # testディレクトリの中身だけをコピー
+                    subprocess.run(["docker", "cp", f"{temp_container}:{test_dir_cont}/.", test_dir_host], check=True)
                 except subprocess.CalledProcessError as e:
                     print(f"[エラー] docker cp失敗: {e}")
             else:
                 print(f"[警告] テストケースディレクトリが見つかりません: {test_dir_cont}")
-            # 5. cookie回収
+            # 6. cookie回収
             if cookie_host and os.path.exists(cookie_host):
+                try:
+                    subprocess.run(["docker", "cp", f"{temp_container}:{cookie_cont}", cookie_host], check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"[エラー] cookie回収失敗: {e}")
+            return True
+        finally:
+            subprocess.run(["docker", "rm", "-f", temp_container], check=False)
+
+    def run_oj_login(self, login_url, cookie_host):
+        import subprocess
+        import os
+        temp_container = f"oj-login-{os.getpid()}"
+        # 1. 一時コンテナ起動（-itで対話型）
+        subprocess.run([
+            "docker", "run", "-d", "--name", temp_container, "oj", "sleep", "300"
+        ], check=True)
+        try:
+            # 2. cookie送信（存在すれば）
+            cookie_cont = "/root/.local/share/online-judge-tools/cookie.jar"
+            if cookie_host and os.path.exists(cookie_host):
+                subprocess.run(["docker", "cp", cookie_host, f"{temp_container}:{cookie_cont}"], check=True)
+            # 3. oj login実行（-itで端末接続）
+            subprocess.run([
+                "docker", "exec", "-it", temp_container, "oj", "login", login_url
+            ])
+            # 4. cookie回収
+            if cookie_host:
+                try:
+                    subprocess.run(["docker", "cp", f"{temp_container}:{cookie_cont}", cookie_host], check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"[エラー] cookie回収失敗: {e}")
+            return True
+        finally:
+            subprocess.run(["docker", "rm", "-f", temp_container], check=False)
+
+    def run_oj_submit(self, url, file_path, cookie_host):
+        import subprocess
+        import os
+        temp_container = f"oj-submit-{os.getpid()}"
+        # 1. 一時コンテナ起動
+        subprocess.run([
+            "docker", "run", "-d", "--name", temp_container, "oj", "sleep", "300"
+        ], check=True)
+        try:
+            # 2. cookie送信（存在すれば）
+            cookie_cont = "/root/.local/share/online-judge-tools/cookie.jar"
+            if cookie_host and os.path.exists(cookie_host):
+                subprocess.run(["docker", "cp", cookie_host, f"{temp_container}:{cookie_cont}"], check=True)
+            # 3. 提出ファイル送信
+            submit_cont = f"/workspace/{os.path.basename(file_path)}"
+            subprocess.run(["docker", "cp", file_path, f"{temp_container}:{submit_cont}"], check=True)
+            # 4. oj submit実行
+            try:
+                subprocess.run([
+                    "docker", "exec", temp_container, "oj", "submit", url, submit_cont, "--yes"
+                ], check=True)
+            except subprocess.CalledProcessError as e:
+                print(f"[エラー] oj submit失敗: {e}")
+                return False
+            # 5. cookie回収
+            if cookie_host:
                 try:
                     subprocess.run(["docker", "cp", f"{temp_container}:{cookie_cont}", cookie_host], check=True)
                 except subprocess.CalledProcessError as e:
@@ -76,9 +142,6 @@ class LocalDockerOperator(DockerOperator):
         cmd += ["-e", "HOME=/workspace"]
         if interactive:
             cmd.append("-t")  # 擬似端末割り当て
-        if volumes:
-            for host, cont in volumes.items():
-                cmd += ["-v", f"{host}:{cont}"]
         if workdir:
             cmd += ["-w", workdir]
         cmd.append(image)
@@ -133,7 +196,7 @@ class LocalDockerOperator(DockerOperator):
         return proc.returncode, stdout.decode(), stderr.decode()
 
     async def run_oj(self, oj_args: list, volumes: dict, workdir: str, interactive: bool = False):
-        image = "python-oj-image"
+        image = "oj"
         cmd = ["oj"] + oj_args
         return await self.run(image, cmd, volumes, workdir, interactive=interactive)
 

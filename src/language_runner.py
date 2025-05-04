@@ -27,7 +27,7 @@ class PythonRunner(LanguageRunner):
 
     async def run(self, input_path=None):
         cmd = ["python3", "main.py"]
-        image = "python-oj-image"
+        image = "python"
         volumes = {
             os.path.abspath(self.temp_dir): "/workspace/.temp"
         }
@@ -39,7 +39,7 @@ class PythonRunner(LanguageRunner):
 class PypyRunner(PythonRunner):
     async def run(self, input_path=None):
         cmd = ["pypy3", "main.py"]
-        image = "pypy-oj-image"
+        image = "pypy"
         volumes = {
             os.path.abspath(self.temp_dir): "/workspace/.temp"
         }
@@ -53,7 +53,7 @@ class RustRunner(LanguageRunner):
         os.makedirs(self.temp_dir, exist_ok=True)
         output_path = os.path.join(self.temp_dir, "a.out")
         cmd = ["rustc", self.source_path, "-o", "a.out"]
-        image = "rust-oj-image"
+        image = "rust"
         volumes = {
             os.path.abspath(self.temp_dir): "/workspace/.temp"
         }
@@ -66,7 +66,7 @@ class RustRunner(LanguageRunner):
 
     async def run(self, input_path=None):
         cmd = ["./a.out"]
-        image = "rust-oj-image"
+        image = "rust"
         volumes = {
             os.path.abspath(self.temp_dir): "/workspace/.temp"
         }
