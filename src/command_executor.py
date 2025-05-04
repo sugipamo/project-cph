@@ -119,11 +119,16 @@ class CommandExecutor:
         ※このメソッドのテストは手動で行うことを推奨（対話が必要なため）
         """
         import os
-        home = os.path.expanduser("~")
-        oj_cache_host = os.path.join(home, ".cache/online-judge-tools")
-        oj_cache_cont = "/root/.cache/online-judge-tools"
         project_root = os.path.abspath(".")
-        volumes = {oj_cache_host: oj_cache_cont, project_root: "/workspace"}
+        oj_cache_host = os.path.join(project_root, ".oj/.cache/online-judge-tools")
+        oj_cache_cont = "/workspace/.cache/online-judge-tools"
+        oj_local_host = os.path.join(project_root, ".oj/.local/share/online-judge-tools")
+        oj_local_cont = "/workspace/.local/share/online-judge-tools"
+        volumes = {
+            oj_cache_host: oj_cache_cont,
+            oj_local_host: oj_local_cont,
+            project_root: "/workspace"
+        }
         workdir = "/workspace"
         # atcoder用URLを明示的に指定
         return await self.podman_operator.run_oj(["login", "https://atcoder.jp/"], volumes, workdir, interactive=True)
@@ -142,15 +147,22 @@ class CommandExecutor:
         # 3. oj download（テスト時はMockPodmanOperatorでスキップ可能）
         if self.podman_operator:
             url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
-            home = os.path.expanduser("~")
-            oj_cache_host = os.path.join(home, ".cache/online-judge-tools")
-            oj_cache_cont = "/root/.cache/online-judge-tools"
+            project_root = os.path.abspath(".")
+            oj_cache_host = os.path.join(project_root, ".oj/.cache/online-judge-tools")
+            oj_cache_cont = "/workspace/.cache/online-judge-tools"
+            oj_local_host = os.path.join(project_root, ".oj/.local/share/online-judge-tools")
+            oj_local_cont = "/workspace/.local/share/online-judge-tools"
             file_operator = self.file_manager.file_operator if self.file_manager else None
             temp_dir = ".temp"
             workdir = "/workspace/.temp"
             if file_operator:
                 file_operator.makedirs(temp_dir, exist_ok=True)
-            rc, stdout, stderr = await self.podman_operator.run_oj(["download", url], {oj_cache_host: oj_cache_cont, str(file_operator.base_dir): "/workspace"} if file_operator else {}, workdir, interactive=False)
+            volumes = {
+                oj_cache_host: oj_cache_cont,
+                oj_local_host: oj_local_cont,
+                str(file_operator.base_dir): "/workspace"
+            } if file_operator else {}
+            rc, stdout, stderr = await self.podman_operator.run_oj(["download", url], volumes, workdir, interactive=False)
             if rc != 0:
                 print(f"[エラー] oj download失敗 (returncode={rc})\n{stderr}")
                 return
@@ -253,11 +265,16 @@ class CommandExecutor:
             if current_problem and current_problem != problem_name:
                 print(f"[警告] contest_current/info.jsonのproblem_name（{current_problem}）と指定されたproblem_name（{problem_name}）が異なります。提出を中止します。")
                 return None
-        home = os.path.expanduser("~")
-        oj_cache_host = os.path.join(home, ".cache/online-judge-tools")
-        oj_cache_cont = "/root/.cache/online-judge-tools"
         project_root = os.path.abspath(".")
-        volumes = {oj_cache_host: oj_cache_cont, project_root: "/workspace"}
+        oj_cache_host = os.path.join(project_root, ".oj/.cache/online-judge-tools")
+        oj_cache_cont = "/workspace/.cache/online-judge-tools"
+        oj_local_host = os.path.join(project_root, ".oj/.local/share/online-judge-tools")
+        oj_local_cont = "/workspace/.local/share/online-judge-tools"
+        volumes = {
+            oj_cache_host: oj_cache_cont,
+            oj_local_host: oj_local_cont,
+            project_root: "/workspace"
+        }
         workdir = "/workspace"
         # 提出ファイルパス（言語ごとに切り替え）
         submit_file = self.SUBMIT_FILES.get(language_name, "main.py")

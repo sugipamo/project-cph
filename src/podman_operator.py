@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import asyncio
 import sys
+import os
 
 class PodmanOperator(ABC):
     @abstractmethod
@@ -23,7 +24,9 @@ class PodmanOperator(ABC):
 
 class LocalPodmanOperator(PodmanOperator):
     async def run(self, image: str, command: list, volumes: dict = None, workdir: str = None, input_path: str = None, interactive: bool = False):
-        cmd = ["podman", "run", "--rm", "-i"]
+        cmd = ["docker", "run", "--rm", "-i"]
+        cmd += ["--user", f"{os.getuid()}:{os.getgid()}"]
+        cmd += ["-e", "HOME=/workspace"]
         if interactive:
             cmd.append("-t")  # 擬似端末割り当て
         if volumes:
@@ -63,7 +66,7 @@ class LocalPodmanOperator(PodmanOperator):
             return proc.returncode, stdout.decode(), stderr.decode()
 
     async def build(self, dockerfile: str, tag: str):
-        cmd = ["podman", "build", "-f", dockerfile, "-t", tag, "."]
+        cmd = ["docker", "build", "-f", dockerfile, "-t", tag, "."]
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
@@ -73,7 +76,7 @@ class LocalPodmanOperator(PodmanOperator):
         return proc.returncode, stdout.decode(), stderr.decode()
 
     async def exec(self, container: str, command: list):
-        cmd = ["podman", "exec", container] + command
+        cmd = ["docker", "exec", container] + command
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
