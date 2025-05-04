@@ -6,6 +6,9 @@ import shutil
 import glob
 import os
 import json
+from language_runner import PythonRunner, RustRunner
+import asyncio
+import time
 
 class EditorOpener:
     def open(self, path: str):
@@ -19,6 +22,90 @@ class EditorOpener:
             subprocess.Popen(["cursor", "--reuse-window", main_file])
         except Exception as e:
             print(f"[警告] Cursor起動失敗: {e}")
+
+class TestResultFormatter:
+    def __init__(self, result):
+        self.result = result
+
+    @staticmethod
+    def color_text(text, color):
+        colors = {
+            "red": "\033[31m",
+            "green": "\033[32m",
+            "yellow": "\033[33m",
+            "reset": "\033[0m"
+        }
+        return f"{colors.get(color, '')}{text}{colors['reset']}"
+
+    def format(self):
+        parts = [
+            self._format_header(),
+            self._format_header_bar(),
+            self._format_input(),
+            self._format_input_error_bar(),
+            self._format_error(),
+            self._format_table()
+        ]
+        return "\n".join([p for p in parts if p])
+
+    def _format_header(self):
+        r = self.result
+        name = r["name"]
+        returncode, _, _ = r["result"]
+        time_sec = r["time"]
+        expected = r["expected"]
+        stdout = r["result"][1]
+        if returncode != 0:
+            verdict_colored = self.color_text("RE", "yellow")
+        elif stdout.strip() == expected.strip():
+            verdict_colored = self.color_text("AC", "green")
+        else:
+            verdict_colored = self.color_text("WA", "red")
+        return f"{name}  {verdict_colored}  {time_sec:.3f}秒"
+
+    def _format_header_bar(self):
+        return "=" * 17
+
+    def _format_input(self):
+        r = self.result
+        in_file = r.get("in_file") if "in_file" in r else None
+        if in_file and os.path.exists(in_file):
+            with open(in_file, "r", encoding="utf-8") as f:
+                input_content = f.read().rstrip()
+            return input_content
+        return ""
+
+    def _format_input_error_bar(self):
+        r = self.result
+        stderr = r["result"][2]
+        if stderr:
+            return "-" * 17
+        return ""
+
+    def _format_error(self):
+        r = self.result
+        stderr = r["result"][2]
+        if stderr:
+            return f"{stderr.strip()}"
+        return ""
+
+    def _format_table(self):
+        r = self.result
+        expected = r["expected"]
+        stdout = r["result"][1]
+        exp_lines = expected.strip().splitlines()
+        out_lines = stdout.strip().splitlines()
+        max_exp = max([len(s) for s in exp_lines]) if exp_lines else 0
+        max_out = max([len(s) for s in out_lines]) if out_lines else 0
+        max_len = max(len(exp_lines), len(out_lines))
+        if max_len == 0:
+            return ""
+        lines = []
+        for i in range(max_len):
+            exp = exp_lines[i] if i < len(exp_lines) else ""
+            out = out_lines[i] if i < len(out_lines) else ""
+            lines.append(f"{exp:<{max_exp}} | {out:<{max_out}}")
+        return "\n".join(lines)
 
 class CommandExecutor:
     def __init__(self, podman_operator: PodmanOperator = None, file_manager: ContestFileManager = None, editor_opener: EditorOpener = None):
@@ -45,9 +132,6 @@ class CommandExecutor:
         """
         問題ファイルを準備し、VSCodeとCursorでディレクトリを開く
         """
-        import shutil
-        import glob
-        import os
         # 1. ファイル操作（テンプレート展開やcontest_stocksからの移動など）
         if self.file_manager:
             self.file_manager.prepare_problem_files(contest_name, problem_name, language_name)
@@ -61,36 +145,94 @@ class CommandExecutor:
             home = os.path.expanduser("~")
             oj_cache_host = os.path.join(home, ".cache/online-judge-tools")
             oj_cache_cont = "/root/.cache/online-judge-tools"
-            project_root = os.path.abspath(".")
-            volumes = {oj_cache_host: oj_cache_cont, project_root: "/workspace"}
-            temp_dir = os.path.join(project_root, ".temp")
+            file_operator = self.file_manager.file_operator if self.file_manager else None
+            temp_dir = ".temp"
             workdir = "/workspace/.temp"
-            os.makedirs(temp_dir, exist_ok=True)
-            await self.podman_operator.run_oj(["download", url], volumes, workdir, interactive=False)
+            if file_operator:
+                file_operator.makedirs(temp_dir, exist_ok=True)
+            await self.podman_operator.run_oj(["download", url], {oj_cache_host: oj_cache_cont, str(file_operator.base_dir): "/workspace"} if file_operator else {}, workdir, interactive=False)
             # 既存のテストケースをcontest_stocksに退避
-            dest_dir = os.path.join(project_root, f"contest_current/test")
+            dest_dir = "contest_current/test"
             tests_root = dest_dir
             if self.file_manager:
                 self.file_manager.move_tests_to_stocks(contest_name, problem_name, tests_root)
-            os.makedirs(dest_dir, exist_ok=True)
-            src_test_dir = os.path.join(temp_dir, "test")
-            if os.path.isdir(src_test_dir):
-                for file in glob.glob(os.path.join(src_test_dir, "*")):
-                    shutil.move(file, dest_dir)
-                os.rmdir(src_test_dir)
-            shutil.rmtree(temp_dir)
+            if file_operator:
+                file_operator.makedirs(dest_dir, exist_ok=True)
+                src_test_dir = os.path.join(temp_dir, "test")
+                if file_operator.isdir(src_test_dir):
+                    for file in file_operator.glob(f"{src_test_dir}/*"):
+                        file_operator.move(file, os.path.join(dest_dir, os.path.basename(file)))
+                    file_operator.rmtree(src_test_dir)
+                file_operator.rmtree(temp_dir)
 
-    async def test(self, contest_name, problem_name, language_name):
-        """独自実装でテストを行う"""
-        raise NotImplementedError("testコマンドの実装が必要です")
+    async def run_test(self, contest_name, problem_name, language_name):
+        """ビルド→実行を言語ごとに抽象化してテストする（合否判定・レイアウト付き）"""
+        file_operator = self.file_manager.file_operator if self.file_manager else None
+        source_path = f"contest_current/{language_name}/main.py"
+        temp_dir = ".temp"
+        if language_name == "python":
+            runner = PythonRunner(source_path, temp_dir, self.podman_operator)
+        elif language_name == "rust":
+            runner = RustRunner(source_path, temp_dir, self.podman_operator)
+        else:
+            print(f"未対応の言語です: {language_name}")
+            return
+        build_ok = await runner.build()
+        if not build_ok:
+            print("ビルド失敗")
+            return
+        test_dir = "contest_current/test"
+        if file_operator:
+            in_files = sorted(file_operator.glob(f"{test_dir}/*.in"))
+        else:
+            import glob
+            in_files = sorted(glob.glob(os.path.join(test_dir, "*.in")))
+
+        async def run_one(in_file):
+            import time
+            start = time.monotonic()
+            result = await runner.run(input_path=in_file)
+            elapsed = time.monotonic() - start
+            out_file = str(in_file)[:-3] + ".out"
+            expected = ""
+            if file_operator and file_operator.exists(out_file):
+                with file_operator.open(out_file, "r", encoding="utf-8") as f:
+                    expected = f.read()
+            elif not file_operator and os.path.exists(out_file):
+                with open(out_file, "r", encoding="utf-8") as f:
+                    expected = f.read()
+            return {
+                "name": os.path.basename(str(in_file)),
+                "result": result,
+                "time": elapsed,
+                "expected": expected,
+                "in_file": in_file,
+            }
+
+        tasks = [run_one(in_file) for in_file in in_files]
+        import asyncio
+        results = await asyncio.gather(*tasks)
+
+        for idx, r in enumerate(results):
+            print(TestResultFormatter(r).format())
 
     async def submit(self, contest_name, problem_name, language_name):
         """online-judge-toolsで提出する"""
+        file_operator = self.file_manager.file_operator if self.file_manager else None
         info_path = os.path.join("contest_current", "info.json")
-        if os.path.exists(info_path):
-            with open(info_path, "r", encoding="utf-8") as f:
-                info = json.load(f)
+        info_exists = file_operator.exists(info_path) if file_operator else os.path.exists(info_path)
+        if info_exists:
+            if file_operator:
+                with file_operator.open(info_path, "r", encoding="utf-8") as f:
+                    info = json.load(f)
+            else:
+                with open(info_path, "r", encoding="utf-8") as f:
+                    info = json.load(f)
+            current_contest = info.get("contest_name")
             current_problem = info.get("problem_name")
+            if current_contest and current_contest != contest_name:
+                print(f"[警告] contest_current/info.jsonのcontest_name（{current_contest}）と指定されたcontest_name（{contest_name}）が異なります。提出を中止します。")
+                return
             if current_problem and current_problem != problem_name:
                 print(f"[警告] contest_current/info.jsonのproblem_name（{current_problem}）と指定されたproblem_name（{problem_name}）が異なります。提出を中止します。")
                 return
@@ -117,7 +259,7 @@ class CommandExecutor:
         elif command == "submit":
             return await self.submit(contest_name, problem_name, language_name)
         elif command == "test":
-            return await self.test(contest_name, problem_name, language_name)
+            return await self.run_test(contest_name, problem_name, language_name)
         else:
             raise ValueError(f"未対応のコマンドです: {command}")
 

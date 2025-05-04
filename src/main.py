@@ -37,7 +37,7 @@ def main():
     elif command == "submit":
         asyncio.run(executor.submit(contest_name, problem_name, language_name))
     elif command == "test":
-        asyncio.run(executor.test(contest_name, problem_name, language_name))
+        asyncio.run(executor.run_test(contest_name, problem_name, language_name))
     else:
         print("未対応のコマンドです")
 

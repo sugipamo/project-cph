@@ -9,10 +9,10 @@ class ContestFileManager:
         self.file_operator = file_operator
 
     def get_current_info_path(self):
-        return Path("contest_current/info.json")
+        return self.file_operator.resolve_path("contest_current/info.json")
 
     def get_current_config_path(self):
-        return Path("contest_current/config.json")
+        return self.file_operator.resolve_path("contest_current/config.json")
 
     def get_exclude_files(self, config_path):
         """
@@ -46,7 +46,7 @@ class ContestFileManager:
         config.jsonのmoveignoreに含まれるファイルは移動しない
         info.json, config.jsonはcontest_current/に残す
         """
-        src_dir = Path(f"contest_current/{language_name}")
+        src_dir = self.file_operator.resolve_path(f"contest_current/{language_name}")
         info_path = self.get_current_info_path()
         config_path = self.get_current_config_path()
         if not src_dir.exists() or not info_path.exists():
@@ -57,7 +57,7 @@ class ContestFileManager:
         old_problem_name = info.get("problem_name")
         if not old_contest_name or not old_problem_name:
             return
-        dst_dir = Path(f"contest_stocks/{old_contest_name}/{old_problem_name}")
+        dst_dir = self.file_operator.resolve_path(f"contest_stocks/{old_contest_name}/{old_problem_name}")
         dst_dir.mkdir(parents=True, exist_ok=True)
         ignore_patterns = self.get_exclude_files(config_path)
         for item in src_dir.iterdir():
@@ -66,8 +66,8 @@ class ContestFileManager:
             shutil.move(str(item), str(dst_dir / item.name))
         if not any(x for x in src_dir.iterdir() if not self._is_ignored(x.name, ignore_patterns)):
             src_dir.rmdir()
-        self._remove_empty_parents(src_dir.parent, Path(f"contest_stocks/{old_contest_name}"))
-        self._remove_empty_parents(src_dir.parent.parent, Path("contest_stocks"))
+        self._remove_empty_parents(src_dir.parent, self.file_operator.resolve_path(f"contest_stocks/{old_contest_name}"))
+        self._remove_empty_parents(src_dir.parent.parent, self.file_operator.resolve_path("contest_stocks"))
 
     def move_from_stocks_to_current(self, contest_name, problem_name, language_name):
         """
@@ -75,8 +75,8 @@ class ContestFileManager:
         移動後、空になったディレクトリは削除する
         info.json, config.jsonはcontest_current/に作成
         """
-        src_dir = Path(f"contest_stocks/{contest_name}/{problem_name}")
-        dst_dir = Path(f"contest_current/{language_name}")
+        src_dir = self.file_operator.resolve_path(f"contest_stocks/{contest_name}/{problem_name}")
+        dst_dir = self.file_operator.resolve_path(f"contest_current/{language_name}")
         if not src_dir.exists():
             raise FileNotFoundError(f"{src_dir}が存在しません")
         config_path = self.get_current_config_path()
@@ -99,16 +99,16 @@ class ContestFileManager:
             self._generate_moveignore_readme()
         if not any(src_dir.iterdir()):
             src_dir.rmdir()
-            self._remove_empty_parents(src_dir.parent, Path(f"contest_stocks/{contest_name}"))
-            self._remove_empty_parents(src_dir.parent.parent, Path("contest_stocks"))
+            self._remove_empty_parents(src_dir.parent, self.file_operator.resolve_path(f"contest_stocks/{contest_name}"))
+            self._remove_empty_parents(src_dir.parent.parent, self.file_operator.resolve_path("contest_stocks"))
 
     def copy_from_template_to_current(self, contest_name, problem_name, language_name):
         """
         contest_template/{language}/ 配下のファイルを contest_current/{language}/{problem_name}/ にコピーする
         info.json, config.jsonはcontest_current/に作成
         """
-        src_dir = Path(f"contest_template/{language_name}")
-        dst_dir = Path(f"contest_current/{language_name}")
+        src_dir = self.file_operator.resolve_path(f"contest_template/{language_name}")
+        dst_dir = self.file_operator.resolve_path(f"contest_current/{language_name}")
         if not src_dir.exists():
             raise FileNotFoundError(f"{src_dir}が存在しません")
         config_path = self.get_current_config_path()
@@ -131,12 +131,12 @@ class ContestFileManager:
             self._generate_moveignore_readme()
 
     def _generate_moveignore_readme(self):
-        readme_path = Path("contest_current/README.md")
+        readme_path = self.file_operator.resolve_path("contest_current/README.md")
         content = (
             "# contest_current/config.json の moveignore 設定例\n"
             "\n"
             "- `moveignore` は移動時に無視するファイル名の正規表現リストです。\n"
-            "- 例: `['^.*\\\.log$', '^debug.*']`\n"
+            "- 例: `['^.*\\.log$', '^debug.*']`\n"
             "\n"
             "## 設定例\n"
             "```json\n"
@@ -147,11 +147,11 @@ class ContestFileManager:
             f.write(content)
 
     def problem_exists_in_stocks(self, contest_name, problem_name, language_name):
-        src_dir = Path(f"contest_stocks/{contest_name}/{problem_name}")
+        src_dir = self.file_operator.resolve_path(f"contest_stocks/{contest_name}/{problem_name}")
         return src_dir.exists() and any(src_dir.iterdir())
 
     def problem_exists_in_current(self, contest_name, problem_name, language_name):
-        dst_dir = Path(f"contest_current/{language_name}")
+        dst_dir = self.file_operator.resolve_path(f"contest_current/{language_name}")
         return dst_dir.exists() and any(dst_dir.iterdir())
 
     def prepare_problem_files(self, contest_name=None, problem_name=None, language_name=None):
@@ -173,7 +173,7 @@ class ContestFileManager:
         self.move_current_to_stocks(problem_name, language_name)
         if self.problem_exists_in_stocks(contest_name, problem_name, language_name):
             self.move_from_stocks_to_current(contest_name, problem_name, language_name)
-        elif Path(f"contest_template/{language_name}").exists():
+        elif self.file_operator.resolve_path(f"contest_template/{language_name}").exists():
             self.copy_from_template_to_current(contest_name, problem_name, language_name)
         else:
             raise FileNotFoundError("問題ファイルがcontest_stocksにもtemplateにも存在しません")
@@ -186,8 +186,8 @@ class ContestFileManager:
         import shutil
         import os
         from pathlib import Path
-        tests_root = Path(tests_root)
-        stocks_tests_root = Path(f"contest_stocks/{contest_name}/test")
+        tests_root = self.file_operator.resolve_path(tests_root)
+        stocks_tests_root = self.file_operator.resolve_path(f"contest_stocks/{contest_name}/test")
         if not tests_root.exists():
             return
         for item in tests_root.iterdir():

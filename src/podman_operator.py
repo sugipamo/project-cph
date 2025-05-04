@@ -4,7 +4,7 @@ import sys
 
 class PodmanOperator(ABC):
     @abstractmethod
-    async def run(self, image: str, command: list, volumes: dict = None, workdir: str = None):
+    async def run(self, image: str, command: list, volumes: dict = None, workdir: str = None, input_path: str = None, interactive: bool = False):
         pass
 
     @abstractmethod
@@ -22,7 +22,7 @@ class PodmanOperator(ABC):
         return await self.run(image, cmd, volumes, workdir, interactive=interactive)
 
 class LocalPodmanOperator(PodmanOperator):
-    async def run(self, image: str, command: list, volumes: dict = None, workdir: str = None, interactive: bool = False):
+    async def run(self, image: str, command: list, volumes: dict = None, workdir: str = None, input_path: str = None, interactive: bool = False):
         cmd = ["podman", "run", "--rm", "-i"]
         if interactive:
             cmd.append("-t")  # 擬似端末割り当て
@@ -35,7 +35,6 @@ class LocalPodmanOperator(PodmanOperator):
         cmd += command
         print("[DEBUG] 実行コマンド:", cmd)  # デバッグ出力
         if interactive:
-            # 標準入出力を端末に接続
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdin=sys.stdin,
@@ -45,12 +44,22 @@ class LocalPodmanOperator(PodmanOperator):
             await proc.wait()
             return proc.returncode, None, None
         else:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, stderr = await proc.communicate()
+            if input_path:
+                with open(input_path, "rb") as f:
+                    proc = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdin=f,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    stdout, stderr = await proc.communicate()
+            else:
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, stderr = await proc.communicate()
             return proc.returncode, stdout.decode(), stderr.decode()
 
     async def build(self, dockerfile: str, tag: str):
@@ -82,8 +91,8 @@ class MockPodmanOperator(PodmanOperator):
     def __init__(self):
         self.calls = []
 
-    async def run(self, image: str, command: list, volumes: dict = None, workdir: str = None, interactive: bool = False):
-        self.calls.append(('run', image, command, volumes, workdir, interactive))
+    async def run(self, image: str, command: list, volumes: dict = None, workdir: str = None, input_path: str = None, interactive: bool = False):
+        self.calls.append(('run', image, command, volumes, workdir, input_path, interactive))
         return 0, 'mock-stdout', 'mock-stderr'
 
     async def build(self, dockerfile: str, tag: str):

@@ -31,11 +31,11 @@ class DummyProc:
 @pytest.mark.asyncio
 async def test_mock_podman_operator():
     op = MockPodmanOperator()
-    rc1, out1, err1 = await op.run('img', ['echo', 'hi'], {'/host': '/cont'}, '/cont')
+    rc1, out1, err1 = await op.run('img', ['echo', 'hi'], {'/host': '/cont'}, '/cont', None)
     rc2, out2, err2 = await op.build('Dockerfile', 'img:tag')
     rc3, out3, err3 = await op.exec('cont_id', ['ls', '/'])
     assert op.calls == [
-        ('run', 'img', ['echo', 'hi'], {'/host': '/cont'}, '/cont', False),
+        ('run', 'img', ['echo', 'hi'], {'/host': '/cont'}, '/cont', None, False),
         ('build', 'Dockerfile', 'img:tag'),
         ('exec', 'cont_id', ['ls', '/'])
     ]
@@ -98,7 +98,6 @@ async def test_mockpodmanoperator_run_oj():
     assert err == 'mock-stderr'
     assert op.calls[0][0] == 'run_oj'
 
-@pytest.mark.asyncio
 def test_localpodmanoperator_run(monkeypatch):
     async def dummy_create_subprocess_exec(*args, **kwargs):
         if kwargs.get('stdin') == sys.stdin:
@@ -107,16 +106,15 @@ def test_localpodmanoperator_run(monkeypatch):
     monkeypatch.setattr(asyncio, 'create_subprocess_exec', dummy_create_subprocess_exec)
     op = LocalPodmanOperator()
     # 非対話モード
-    rc, out, err = asyncio.run(op.run('img', ['ls'], {'/h': '/c'}, '/w', interactive=False))
+    rc, out, err = asyncio.run(op.run('img', ['ls'], {'/h': '/c'}, '/w', None, interactive=False))
     assert rc == 0
     assert out == 'out'
     assert err == 'err'
     # 対話モード
-    rc2, out2, err2 = asyncio.run(op.run('img', ['ls'], {'/h': '/c'}, '/w', interactive=True))
+    rc2, out2, err2 = asyncio.run(op.run('img', ['ls'], {'/h': '/c'}, '/w', None, interactive=True))
     assert rc2 == 123
     assert out2 is None and err2 is None
 
-@pytest.mark.asyncio
 def test_localpodmanoperator_build(monkeypatch):
     async def dummy_create_subprocess_exec(*args, **kwargs):
         return DummyProc(returncode=0, stdout=b'build-out', stderr=b'build-err')
@@ -127,7 +125,6 @@ def test_localpodmanoperator_build(monkeypatch):
     assert out == 'build-out'
     assert err == 'build-err'
 
-@pytest.mark.asyncio
 def test_localpodmanoperator_exec(monkeypatch):
     async def dummy_create_subprocess_exec(*args, **kwargs):
         return DummyProc(returncode=0, stdout=b'exec-out', stderr=b'exec-err')
@@ -138,7 +135,6 @@ def test_localpodmanoperator_exec(monkeypatch):
     assert out == 'exec-out'
     assert err == 'exec-err'
 
-@pytest.mark.asyncio
 def test_localpodmanoperator_run_oj(monkeypatch):
     async def dummy_create_subprocess_exec(*args, **kwargs):
         return DummyProc(returncode=0, stdout=b'oj-out', stderr=b'oj-err')
