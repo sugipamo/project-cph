@@ -1,10 +1,10 @@
 from docker_operator import DockerOperator, LocalDockerOperator
 from contest_file_manager import ContestFileManager
-from command_login import CommandLogin
-from command_open import CommandOpen
-from command_test import CommandTest
-from command_submit import CommandSubmit
-from opener import Opener
+from commands.command_login import CommandLogin
+from commands.command_open import CommandOpen
+from commands.command_test import CommandTest
+from commands.command_submit import CommandSubmit
+from commands.opener import Opener
 import subprocess
 from command_parser import CommandParser
 import shutil

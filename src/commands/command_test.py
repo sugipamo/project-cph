@@ -1,5 +1,4 @@
-from test_result_formatter import TestResultFormatter
-from submit_file_constants import SUBMIT_FILES
+from src.commands.test_result_formatter import TestResultFormatter
 
 class CommandTest:
     def __init__(self, docker_operator, file_manager):
