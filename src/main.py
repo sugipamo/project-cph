@@ -59,7 +59,7 @@ def main():
     if command == "open":
         asyncio.run(executor.open(contest_name, problem_name, language_name))
     elif command == "login":
-        asyncio.run(executor.login())
+        asyncio.run(executor.execute(command, contest_name, problem_name, language_name))
     elif command == "submit":
         asyncio.run(executor.submit(contest_name, problem_name, language_name))
     elif command == "test":

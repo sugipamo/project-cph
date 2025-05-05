@@ -7,17 +7,8 @@ class CommandLogin:
         online-judge-toolsでログインする（ojtラッパー）
         ※このメソッドのテストは手動で行うことを推奨（対話が必要なため）
         """
-        import os
-        project_root = os.path.abspath(".")
-        oj_cache_host = os.path.join(project_root, ".oj/.cache/online-judge-tools")
-        oj_cache_cont = "/workspace/.cache/online-judge-tools"
-        oj_local_host = os.path.join(project_root, ".oj/.local/share/online-judge-tools")
-        oj_local_cont = "/workspace/.local/share/online-judge-tools"
-        volumes = {
-            oj_cache_host: oj_cache_cont,
-            oj_local_host: oj_local_cont,
-            project_root: "/workspace"
-        }
+        from commands.common import get_project_root_volumes
+        volumes = get_project_root_volumes()
         workdir = "/workspace"
         # atcoder用URLを明示的に指定
         return await self.docker_operator.run_oj(["login", "https://atcoder.jp/"], volumes, workdir, interactive=True) 

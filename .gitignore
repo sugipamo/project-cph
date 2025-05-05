@@ -1,6 +1,6 @@
 
 .env
-.oj/
+.local/
 
 contest_stocks/
 contest_current/

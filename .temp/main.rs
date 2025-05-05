@@ -15,3 +15,4 @@ fn main() {
     println!("{}", pos);
     println!("1");
 }
+

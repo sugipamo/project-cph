@@ -5,6 +5,7 @@ SUBMIT_FILES = {
 }
 
 from commands.command_test import CommandTest
+from commands.common import get_project_root_volumes
 
 class CommandSubmit:
     def __init__(self, docker_operator, file_manager):
@@ -84,16 +85,7 @@ class CommandSubmit:
         if info is None:
             return None
         language_id = self.get_language_id_from_config(config_path, language_name, file_operator)
-        project_root = os.path.abspath(".")
-        oj_cache_host = os.path.join(project_root, ".oj/.cache/online-judge-tools")
-        oj_cache_cont = "/workspace/.cache/online-judge-tools"
-        oj_local_host = os.path.join(project_root, ".oj/.local/share/online-judge-tools")
-        oj_local_cont = "/workspace/.local/share/online-judge-tools"
-        volumes = {
-            oj_cache_host: oj_cache_cont,
-            oj_local_host: oj_local_cont,
-            project_root: "/workspace"
-        }
+        volumes = get_project_root_volumes()
         workdir = "/workspace"
         submit_file = SUBMIT_FILES.get(language_name, "main.py")
         temp_file_path = f".temp/{submit_file}"
