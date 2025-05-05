@@ -1,3 +1,7 @@
+from commands.info_json_manager import InfoJsonManager
+from docker.pool import DockerPool
+from docker.ctl import DockerCtl
+
 class CommandOpen:
     def __init__(self, file_manager, opener):
         self.file_manager = file_manager
@@ -10,9 +14,6 @@ class CommandOpen:
         """
         import os
         import subprocess
-        from commands.info_json_manager import InfoJsonManager
-        from docker.pool import DockerPool
-        from docker.ctl import DockerCtl
         
         # 1. 問題ファイル準備（info.jsonもここで更新される）
         if self.file_manager:
@@ -53,7 +54,7 @@ class CommandOpen:
         test_dir_host = "contest_current/test"
         os.makedirs(test_dir_host, exist_ok=True)
         if not ctl.is_container_running(ojtools_name):
-            ctl.start_container(ojtools_name, "oj")
+            ctl.start_container(ojtools_name, "oj", {})
         # testディレクトリをクリーンアップ＆作成＆oj download
         ctl.exec_in_container(ojtools_name, ["rm", "-rf", f"/workspace/{test_dir_host}"])
         ctl.exec_in_container(ojtools_name, ["mkdir", "-p", f"/workspace/{test_dir_host}"])

@@ -59,4 +59,70 @@ def test_list_cph_containers(monkeypatch):
     monkeypatch.setattr('subprocess.run', fake_run)
     ctl = DockerCtl()
     result = ctl.list_cph_containers()
-    assert result == ['cph_foo'] 
+    assert result == ['cph_foo']
+
+def test_list_cph_containers_timeout(monkeypatch, capsys):
+    import subprocess
+    def fake_run(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(cmd, 1)
+    monkeypatch.setattr('subprocess.run', fake_run)
+    ctl = DockerCtl()
+    result = ctl.list_cph_containers()
+    out = capsys.readouterr().out
+    assert result == []
+    assert "docker ps timed out" in out
+
+def test_start_container_timeout(monkeypatch, capsys):
+    import subprocess
+    def fake_run(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(cmd, 1)
+    monkeypatch.setattr('subprocess.run', fake_run)
+    ctl = DockerCtl()
+    ok = ctl.start_container('foo', 'img')
+    out = capsys.readouterr().out
+    assert not ok
+    assert "docker run timed out" in out
+
+def test_remove_container_timeout(monkeypatch, capsys):
+    import subprocess
+    def fake_run(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(cmd, 1)
+    monkeypatch.setattr('subprocess.run', fake_run)
+    ctl = DockerCtl()
+    ok = ctl.remove_container('foo')
+    out = capsys.readouterr().out
+    assert not ok
+    assert "docker rm timed out" in out
+
+def test_exec_in_container_timeout(monkeypatch, capsys):
+    import subprocess
+    def fake_run(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(cmd, 1)
+    monkeypatch.setattr('subprocess.run', fake_run)
+    ctl = DockerCtl()
+    ok, out, err = ctl.exec_in_container('foo', ['ls'])
+    outmsg = capsys.readouterr().out
+    assert not ok and err == "timeout"
+    assert "docker exec timed out" in outmsg
+
+def test_is_container_running_timeout(monkeypatch, capsys):
+    import subprocess
+    def fake_run(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(cmd, 1)
+    monkeypatch.setattr('subprocess.run', fake_run)
+    ctl = DockerCtl()
+    ok = ctl.is_container_running('foo')
+    out = capsys.readouterr().out
+    assert not ok
+    assert "docker inspect timed out" in out
+
+def test_cp_from_container_timeout(monkeypatch, capsys):
+    import subprocess
+    def fake_run(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(cmd, 1)
+    monkeypatch.setattr('subprocess.run', fake_run)
+    ctl = DockerCtl()
+    ok = ctl.cp_from_container('foo', '/a', '/b')
+    out = capsys.readouterr().out
+    assert not ok
+    assert "docker cp timed out" in out 

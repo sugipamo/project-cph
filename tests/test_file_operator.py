@@ -133,4 +133,72 @@ def test_remove_and_rmtree(tmp_path):
     op.remove(f)
     assert not f.exists()
     op.rmtree(d)
-    assert not d.exists() 
+    assert not d.exists()
+
+def test_localfileoperator_remove_oserror(tmp_path, monkeypatch):
+    op = LocalFileOperator(tmp_path)
+    f = tmp_path / "f.txt"
+    f.write_text("x")
+    def raise_perm(self, *a, **k):
+        raise PermissionError("denied")
+    monkeypatch.setattr("pathlib.Path.unlink", raise_perm)
+    with pytest.raises(PermissionError):
+        op.remove(f)
+
+def test_localfileoperator_rmtree_oserror(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    d = tmp_path / "d"
+    d.mkdir()
+    import shutil as orig_shutil
+    orig_rmtree = orig_shutil.rmtree
+    def raise_oserr(*a, **k):
+        raise OSError("fail")
+    orig_shutil.rmtree = raise_oserr
+    with pytest.raises(OSError):
+        op.rmtree(d)
+    orig_shutil.rmtree = orig_rmtree
+
+def test_localfileoperator_copytree_oserror(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    src = tmp_path / "src"
+    dst = tmp_path / "dst"
+    src.mkdir()
+    import shutil as orig_shutil
+    orig_copytree = orig_shutil.copytree
+    def raise_oserr(*a, **k):
+        raise OSError("fail")
+    orig_shutil.copytree = raise_oserr
+    with pytest.raises(OSError):
+        op.copytree(src, dst)
+    orig_shutil.copytree = orig_copytree
+
+def test_localfileoperator_open_notfound(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    f = tmp_path / "no.txt"
+    with pytest.raises(FileNotFoundError):
+        with op.open(f, "r"): pass
+
+def test_localfileoperator_makedirs_permission(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    d = tmp_path / "d"
+    import pathlib
+    orig_mkdir = pathlib.Path.mkdir
+    def raise_perm(*a, **k):
+        raise PermissionError("denied")
+    pathlib.Path.mkdir = raise_perm
+    with pytest.raises(PermissionError):
+        op.makedirs(d)
+    pathlib.Path.mkdir = orig_mkdir
+
+def test_localfileoperator_isdir_and_glob(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    d = tmp_path / "d"
+    d.mkdir()
+    f = d / "a.txt"
+    f.write_text("x")
+    assert op.isdir(d)
+    assert not op.isdir(tmp_path / "no")
+    # globで一致しないパターン
+    assert op.glob("no.txt") == []
+    # globで一致するパターン
+    assert op.glob("d/*.txt") == [f] 

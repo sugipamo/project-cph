@@ -27,16 +27,23 @@ class DockerCtl:
             print("[ERROR] docker ps timed out")
             return []
 
-    def start_container(self, name, image):
+    def start_container(self, name, image, volumes=None):
         try:
             # 既存コンテナ（停止中含む）があれば削除
             subprocess.run([
                 "docker", "rm", "-f", name
             ], capture_output=True, text=True, timeout=self.timeout)
             # 新規起動
-            result = subprocess.run([
-                "docker", "run", "-d", "--name", name, image, "tail", "-f", "/dev/null"
-            ], capture_output=True, text=True, timeout=self.timeout)
+            cmd = [
+                "docker", "run", "-d", "--name", name
+            ]
+            if volumes:
+                print(f"[DEBUG] volumes: {volumes}")
+                for host_path, cont_path in volumes.items():
+                    cmd += ["-v", f"{host_path}:{cont_path}"]
+            cmd += [image, "tail", "-f", "/dev/null"]
+            print(f"[DEBUG] docker run cmd: {' '.join(cmd)}")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
             if result.returncode != 0:
                 print(f"[ERROR] docker run failed: {result.stderr}")
                 return False

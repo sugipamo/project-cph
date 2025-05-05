@@ -1,11 +1,13 @@
+from commands.command_test import CommandTest
+from commands.common import get_project_root_volumes
+from commands.info_json_manager import InfoJsonManager
+from docker.ctl import DockerCtl
+
 SUBMIT_FILES = {
     "python": "main.py",
     "pypy": "main.py",
     "rust": "src/main.rs",
 }
-
-from commands.command_test import CommandTest
-from commands.common import get_project_root_volumes
 
 class CommandSubmit:
     def __init__(self, file_manager):
@@ -17,7 +19,6 @@ class CommandSubmit:
         return ans.lower() in ("y", "yes")
 
     def validate_info_file(self, info_path, contest_name, problem_name, file_operator=None):
-        from commands.info_json_manager import InfoJsonManager
         manager = InfoJsonManager(info_path)
         info = manager.data
         current_contest = info.get("contest_name")
@@ -55,7 +56,6 @@ class CommandSubmit:
         return args, url
 
     def get_ojtools_container_from_info(self):
-        from commands.info_json_manager import InfoJsonManager
         info_path = "contest_current/info.json"
         manager = InfoJsonManager(info_path)
         for c in manager.get_containers(type="ojtools"):
@@ -63,12 +63,11 @@ class CommandSubmit:
         raise RuntimeError("ojtools用コンテナがinfo.jsonにありません")
 
     async def run_submit_command(self, args, volumes, workdir):
-        from docker.ctl import DockerCtl
         ojtools_name = self.get_ojtools_container_from_info()
         ctl = DockerCtl()
         # コンテナが存在しなければ自動再起動
         if not ctl.is_container_running(ojtools_name):
-            ctl.start_container(ojtools_name, "oj")
+            ctl.start_container(ojtools_name, "oj", {})
         # 最大3回までリトライ
         for attempt in range(3):
             ok, stdout, stderr = ctl.exec_in_container(ojtools_name, ["oj"] + args)
@@ -77,7 +76,7 @@ class CommandSubmit:
             else:
                 print(f"[WARN] exec失敗: {ojtools_name} (attempt {attempt+1})")
                 ctl.remove_container(ojtools_name)
-                ctl.start_container(ojtools_name, "oj")
+                ctl.start_container(ojtools_name, "oj", {})
         if not ok:
             print(f"[エラー] oj submit失敗\n{stderr}")
         return ok, stdout, stderr

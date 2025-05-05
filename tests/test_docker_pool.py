@@ -13,17 +13,20 @@ def test_generate_container_name(purpose, language, index, expected):
 # DockerPool.adjustのテスト
 class DummyCtl:
     def __init__(self):
-        self._existing = set()
-        self.removed = []
         self.started = []
-    def list_cph_containers(self):
-        return list(self._existing)
+        self.execs = []
+        self.removed = []
+    def is_container_running(self, name):
+        return False
+    def start_container(self, name, typ, volumes):
+        self.started.append((name, typ, volumes))
+    def exec_in_container(self, name, cmd):
+        self.execs.append((name, cmd))
+        return True, "ok", ""
     def remove_container(self, name):
         self.removed.append(name)
-        self._existing.discard(name)
-    def start_container(self, name, image):
-        self.started.append((name, image))
-        self._existing.add(name)
+    def list_cph_containers(self):
+        return list(self._existing)
 
 
 def test_dockerpool_adjust_removes_and_starts():
@@ -59,7 +62,7 @@ def test_dockerpool_adjust_starts_missing():
     containers = pool.adjust(requirements)
     # 3つ新規起動
     assert len(ctl.started) == 3
-    started_names = [n for n, _ in ctl.started]
+    started_names = [n for n, _, _ in ctl.started]
     assert "cph_test_python_1" in started_names
     assert "cph_test_python_2" in started_names
     assert "cph_ojtools_1" in started_names

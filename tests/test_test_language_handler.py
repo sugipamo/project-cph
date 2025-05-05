@@ -36,4 +36,40 @@ def test_rust_handler_build_and_run():
 def test_handlers_mapping():
     assert isinstance(HANDLERS['python'], PythonTestHandler)
     assert isinstance(HANDLERS['pypy'], PypyTestHandler)
-    assert isinstance(HANDLERS['rust'], RustTestHandler) 
+    assert isinstance(HANDLERS['rust'], RustTestHandler)
+
+def test_base_handler_run_notimplemented():
+    from src.commands.test_language_handler import TestLanguageHandler
+    handler = TestLanguageHandler()
+    import pytest
+    with pytest.raises(NotImplementedError):
+        handler.run(None, None, None, None)
+
+def test_python_handler_run_exception():
+    from src.commands.test_language_handler import PythonTestHandler
+    class DummyCtl:
+        def exec_in_container(self, container, cmd):
+            raise RuntimeError("fail")
+    handler = PythonTestHandler()
+    with pytest.raises(RuntimeError):
+        handler.run(DummyCtl(), 'cont', 'input.txt', 'main.py')
+
+def test_pypy_handler_run_exception():
+    from src.commands.test_language_handler import PypyTestHandler
+    class DummyCtl:
+        def exec_in_container(self, container, cmd):
+            raise RuntimeError("fail")
+    handler = PypyTestHandler()
+    with pytest.raises(RuntimeError):
+        handler.run(DummyCtl(), 'cont', 'input.txt', 'main.py')
+
+def test_rust_handler_build_and_run_exception():
+    from src.commands.test_language_handler import RustTestHandler
+    class DummyCtl:
+        def exec_in_container(self, container, cmd):
+            raise RuntimeError("fail")
+    handler = RustTestHandler()
+    with pytest.raises(RuntimeError):
+        handler.build(DummyCtl(), 'cont', 'main.rs')
+    with pytest.raises(RuntimeError):
+        handler.run(DummyCtl(), 'cont', 'input.txt', 'main.rs') 

@@ -122,4 +122,80 @@ def test_problem_exists_in_stocks_and_current(temp_dirs):
     assert manager.problem_exists_in_current("abc500", "e", "python") is True
     # currentが空の場合
     (current / "main.py").unlink()
-    assert manager.problem_exists_in_current("abc500", "e", "python") is False 
+    assert manager.problem_exists_in_current("abc500", "e", "python") is False
+
+def test_get_exclude_files_missing(tmp_path):
+    from src.contest_file_manager import ContestFileManager
+    op = DummyFileOperator(tmp_path)
+    manager = ContestFileManager(op)
+    # config.jsonが存在しない場合
+    config_path = tmp_path / "no_config.json"
+    assert manager.get_exclude_files(config_path) == []
+    # moveignoreキーがない場合
+    config_path.write_text(json.dumps({}))
+    assert manager.get_exclude_files(config_path) == []
+    # moveignoreキーがある場合
+    config_path.write_text(json.dumps({"moveignore": ["^foo$"]}))
+    assert manager.get_exclude_files(config_path) == ["^foo$"]
+
+def test_is_ignored_regex():
+    from src.contest_file_manager import ContestFileManager
+    op = DummyFileOperator()
+    manager = ContestFileManager(op)
+    # パターン一致
+    assert manager._is_ignored("foo.log", [r"^foo\.log$"])
+    # パターン不一致
+    assert not manager._is_ignored("bar.txt", [r"^foo\.log$"])
+
+def test_remove_empty_parents(tmp_path):
+    from src.contest_file_manager import ContestFileManager
+    op = DummyFileOperator(tmp_path)
+    manager = ContestFileManager(op)
+    base = tmp_path / "a" / "b" / "c"
+    base.mkdir(parents=True)
+    stop_at = tmp_path / "a"
+    # c, bは空なので削除される
+    manager._remove_empty_parents(base, stop_at)
+    assert not (tmp_path / "a" / "b").exists()
+    assert stop_at.exists()
+
+def test_move_from_stocks_to_current_notfound(tmp_path):
+    from src.contest_file_manager import ContestFileManager
+    op = DummyFileOperator(tmp_path)
+    manager = ContestFileManager(op)
+    with pytest.raises(FileNotFoundError):
+        manager.move_from_stocks_to_current("abc", "nope", "python")
+
+def test_generate_moveignore_readme(tmp_path):
+    from src.contest_file_manager import ContestFileManager
+    op = DummyFileOperator(tmp_path)
+    manager = ContestFileManager(op)
+    # contest_currentディレクトリを作成
+    (tmp_path / "contest_current").mkdir(parents=True, exist_ok=True)
+    manager._generate_moveignore_readme()
+    readme = tmp_path / "contest_current/README.md"
+    assert readme.exists()
+    assert "moveignore" in readme.read_text()
+
+def test_prepare_problem_files_config_has_language_id(tmp_path):
+    from src.contest_file_manager import ContestFileManager
+    op = DummyFileOperator(tmp_path)
+    manager = ContestFileManager(op)
+    info = tmp_path / "contest_current/info.json"
+    info.parent.mkdir(parents=True, exist_ok=True)
+    info.write_text(json.dumps({"contest_name": "abc", "problem_name": "a", "language_name": "python"}))
+    config = tmp_path / "contest_current/config.json"
+    config.write_text(json.dumps({"language_id": {"python": "9999"}}))
+    # テンプレートも用意
+    tdir = tmp_path / "contest_template/python"
+    tdir.mkdir(parents=True)
+    (tdir / "main.py").write_text("print('x')\n")
+    # カレントディレクトリを一時的に変更
+    import os
+    old_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    manager.prepare_problem_files("abc", "a", "python")
+    os.chdir(old_cwd)
+    # config.jsonのlanguage_idが上書きされていない
+    data = json.loads(config.read_text())
+    assert data["language_id"]["python"] == "9999" 

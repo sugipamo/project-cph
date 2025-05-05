@@ -3,7 +3,7 @@ import json
 import pytest
 from src.command_parser import CommandParser
 
-def test_parse_basic():
+def test_parse_args_basic():
     parser = CommandParser()
     parser.parse(["abc300", "open", "a", "python"])
     args = parser.get_effective_args()
@@ -12,12 +12,35 @@ def test_parse_basic():
     assert args["problem_name"] == "a"
     assert args["language_name"] == "python"
 
-def test_parse_alias():
+def test_parse_args_aliases():
     parser = CommandParser()
-    parser.parse(["abc300", "o", "b", "pypy3"])
+    parser.parse(["abc300", "o", "b", "py"])
     args = parser.get_effective_args()
     assert args["command"] == "open"
     assert args["language_name"] == "pypy"
+
+def test_parse_args_order_independent():
+    parser = CommandParser()
+    parser.parse(["python", "a", "open", "abc300"])
+    args = parser.get_effective_args()
+    assert args["contest_name"] == "abc300"
+    assert args["command"] == "open"
+    assert args["problem_name"] == "a"
+    assert args["language_name"] == "python"
+
+def test_parse_args_missing(tmp_path):
+    parser = CommandParser()
+    parser.parse(["abc300", "open"])
+    # 存在しないinfo.jsonを指定して補完を無効化
+    args = parser.get_effective_args(info_json_path=str(tmp_path / "noinfo.json"))
+    assert args["problem_name"] is None
+    assert args["language_name"] is None
+
+def test_parse_args_invalid():
+    parser = CommandParser()
+    parser.parse(["abc300", "invalidcmd", "a", "python"])
+    args = parser.get_effective_args()
+    assert args["command"] is None
 
 def test_parse_partial(monkeypatch, tmp_path):
     # CONTEST_NAMESとLANGUAGESをテスト用に限定
