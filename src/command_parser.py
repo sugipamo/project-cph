@@ -30,6 +30,7 @@ import sys
 from pathlib import Path
 import asyncio
 import json
+from .commands.info_json_manager import InfoJsonManager
 
 # --- CLIコマンドパース用関数 ---
 def parse_args():
@@ -95,7 +96,6 @@ class CommandParser:
         info.jsonの値も考慮して最終的な値（contest_name, problem_name, language_name, command）を返す。
         contest_name, problem_name, language_nameのいずれかがNoneならinfo.jsonから補完する。
         """
-        from commands.info_json_manager import InfoJsonManager
         effective = self.parsed.copy()
         # info.jsonがあれば補完
         try:

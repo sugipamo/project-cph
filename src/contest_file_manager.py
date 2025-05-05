@@ -1,9 +1,9 @@
 import json
 from pathlib import Path
-from file_operator import FileOperator
+from .file_operator import FileOperator
 import shutil
 import os
-from commands.info_json_manager import InfoJsonManager
+from .commands.info_json_manager import InfoJsonManager
 
 class ContestFileManager:
     def __init__(self, file_operator: FileOperator):
@@ -200,16 +200,13 @@ class ContestFileManager:
         elif self.file_operator.resolve_path(f"contest_template/{language_name}").exists():
             self.copy_from_template_to_current(contest_name, problem_name, language_name)
         else:
-            raise FileNotFoundError("問題ファイルがcontest_stocksにもtemplateにも存在しません")
+            raise FileNotFoundError(f"問題ファイルがcontest_stocksにもtemplateにも存在しません")
 
     def move_tests_to_stocks(self, contest_name, problem_name, tests_root):
         """
         contest_current/tests配下の既存テストケースをcontest_stocksに退避する。
         指定problem_name以外のディレクトリやファイルをcontest_stocks/{contest_name}/test/{problem_name}/に移動。
         """
-        import shutil
-        import os
-        from pathlib import Path
         tests_root = self.file_operator.resolve_path(tests_root)
         stocks_tests_root = self.file_operator.resolve_path(f"contest_stocks/{contest_name}/test")
         if not tests_root.exists():

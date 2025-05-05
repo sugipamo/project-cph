@@ -5,6 +5,7 @@ import json
 import os
 import io
 import builtins
+from src.file_operator import LocalFileOperator
 
 def test_parse_prints_args(capfd):
     parser = CommandParser()
@@ -711,7 +712,7 @@ def test_prepare_test_environment_creates_temp_files(monkeypatch, tmp_path):
     # testディレクトリがコピーされている
     assert any("test" in dst for src, dst in fm.file_operator.copiedtree)
 
-def test_requirements_volumes(monkeypatch):
+def test_requirements_volumes(monkeypatch, tmp_path):
     from src.commands.command_test import CommandTest
     import os
     class DummyFileManager:
@@ -729,6 +730,8 @@ def test_requirements_volumes(monkeypatch):
             return [{"name": "test1", "type": "test"}]
     monkeypatch.setattr("src.commands.command_test.DockerPool", DummyPool)
     import asyncio
+    # contest_current/python/main.pyがtmp_path配下にあることを前提にbase_dirを指定
+    cmd.file_manager.file_operator = LocalFileOperator(base_dir=tmp_path)
     asyncio.run(cmd.run_test("abc", "a", "python"))
     # requirementsのvolumesが正しいか
     assert "volumes" in captured["requirements"][0]

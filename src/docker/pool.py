@@ -1,4 +1,4 @@
-from docker.ctl import DockerCtl
+from .ctl import DockerCtl
 from concurrent.futures import ThreadPoolExecutor
 
 CONTAINER_PREFIX = "cph"

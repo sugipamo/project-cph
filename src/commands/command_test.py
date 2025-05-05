@@ -3,11 +3,11 @@ import os
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
 
-from commands.test_result_formatter import TestResultFormatter
-from commands.test_language_handler import HANDLERS
-from commands.info_json_manager import InfoJsonManager
-from docker.ctl import DockerCtl
-from docker.pool import DockerPool
+from .test_result_formatter import TestResultFormatter
+from .test_language_handler import HANDLERS
+from .info_json_manager import InfoJsonManager
+from ..docker.pool import DockerPool
+from ..docker.ctl import DockerCtl
 
 class CommandTest:
     def __init__(self, file_manager):

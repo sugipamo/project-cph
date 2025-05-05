@@ -25,7 +25,7 @@ def temp_dirs(tmp_path):
     template.mkdir(parents=True)
     (template / "main.py").write_text("print('hello')\n")
     current = tmp_path / "contest_current"
-    current.mkdir()
+    current.mkdir(exist_ok=True)
     # 作業ディレクトリを一時ディレクトリに変更
     old_cwd = os.getcwd()
     os.chdir(tmp_path)
@@ -71,7 +71,7 @@ def test_prepare_problem_files_not_found(temp_dirs):
 def test_move_current_to_stocks_basic(temp_dirs):
     # contest_current/python に main.py を用意
     current = Path("contest_current/python")
-    current.mkdir(parents=True)
+    current.mkdir(parents=True, exist_ok=True)
     (current / "main.py").write_text("print('move test')\n")
     # info.json, config.json を contest_current/ に用意
     info = {"contest_name": "abc300", "problem_name": "c", "language_name": "python"}
@@ -117,7 +117,7 @@ def test_problem_exists_in_stocks_and_current(temp_dirs):
     assert manager.problem_exists_in_stocks("abc500", "e", "python") is False
     # currentにmain.pyがある場合
     current = Path("contest_current/python")
-    current.mkdir(parents=True)
+    current.mkdir(parents=True, exist_ok=True)
     (current / "main.py").write_text("print('exists')\n")
     assert manager.problem_exists_in_current("abc500", "e", "python") is True
     # currentが空の場合

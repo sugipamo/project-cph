@@ -1,6 +1,6 @@
-from commands.info_json_manager import InfoJsonManager
-from docker.pool import DockerPool
-from docker.ctl import DockerCtl
+from .info_json_manager import InfoJsonManager
+from ..docker.pool import DockerPool
+from ..docker.ctl import DockerCtl
 
 class CommandOpen:
     def __init__(self, file_manager, opener):

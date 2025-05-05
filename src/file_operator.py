@@ -121,4 +121,7 @@ class LocalFileOperator(FileOperator):
     def copytree(self, src, dst):
         src_path = self.resolve_path(src)
         dst_path = self.resolve_path(dst)
+        # srcとdstが同じ場合は何もしない
+        if src_path.resolve() == dst_path.resolve():
+            return
         shutil.copytree(src_path, dst_path, dirs_exist_ok=True) 

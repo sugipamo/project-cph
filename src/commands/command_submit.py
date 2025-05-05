@@ -1,7 +1,8 @@
-from commands.command_test import CommandTest
-from commands.common import get_project_root_volumes
-from commands.info_json_manager import InfoJsonManager
-from docker.ctl import DockerCtl
+from .command_test import CommandTest
+from .common import get_project_root_volumes
+from .info_json_manager import InfoJsonManager
+from ..docker.pool import DockerPool
+from ..docker.ctl import DockerCtl
 
 SUBMIT_FILES = {
     "python": "main.py",

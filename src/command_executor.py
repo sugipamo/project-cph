@@ -1,11 +1,11 @@
-from contest_file_manager import ContestFileManager
-from commands.command_login import CommandLogin
-from commands.command_open import CommandOpen
-from commands.command_test import CommandTest
-from commands.command_submit import CommandSubmit
-from commands.opener import Opener
+from .contest_file_manager import ContestFileManager
+from .commands.command_login import CommandLogin
+from .commands.command_open import CommandOpen
+from .commands.command_test import CommandTest
+from .commands.command_submit import CommandSubmit
+from .commands.opener import Opener
 import subprocess
-from command_parser import CommandParser
+from .command_parser import CommandParser
 import shutil
 import glob
 import os
