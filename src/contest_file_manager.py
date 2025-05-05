@@ -3,6 +3,7 @@ from pathlib import Path
 from file_operator import FileOperator
 import shutil
 import os
+from commands.info_json_manager import InfoJsonManager
 
 class ContestFileManager:
     def __init__(self, file_operator: FileOperator):
@@ -51,8 +52,8 @@ class ContestFileManager:
         config_path = self.get_current_config_path()
         if not src_dir.exists() or not info_path.exists():
             return
-        with open(info_path, "r", encoding="utf-8") as f:
-            info = json.load(f)
+        manager = InfoJsonManager(info_path)
+        info = manager.data
         old_contest_name = info.get("contest_name")
         old_problem_name = info.get("problem_name")
         if not old_contest_name or not old_problem_name:
@@ -91,8 +92,11 @@ class ContestFileManager:
             elif item.is_dir():
                 shutil.move(str(item), str(dst_dir / item.name))
         info_path = self.get_current_info_path()
-        with open(info_path, "w", encoding="utf-8") as f:
-            json.dump({"contest_name": contest_name, "problem_name": problem_name, "language_name": language_name}, f, ensure_ascii=False, indent=2)
+        manager = InfoJsonManager(info_path)
+        manager.data["contest_name"] = contest_name
+        manager.data["problem_name"] = problem_name
+        manager.data["language_name"] = language_name
+        manager.save()
         if not config_path.exists():
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump({"moveignore": []}, f, ensure_ascii=False, indent=2)
@@ -123,8 +127,11 @@ class ContestFileManager:
             elif item.is_dir():
                 shutil.copytree(str(item), str(dst_dir / item.name), dirs_exist_ok=True)
         info_path = self.get_current_info_path()
-        with open(info_path, "w", encoding="utf-8") as f:
-            json.dump({"contest_name": contest_name, "problem_name": problem_name, "language_name": language_name}, f, ensure_ascii=False, indent=2)
+        manager = InfoJsonManager(info_path)
+        manager.data["contest_name"] = contest_name
+        manager.data["problem_name"] = problem_name
+        manager.data["language_name"] = language_name
+        manager.save()
         if not config_path.exists():
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump({"moveignore": []}, f, ensure_ascii=False, indent=2)
@@ -163,8 +170,8 @@ class ContestFileManager:
         info_path = self.get_current_info_path()
         config_path = self.get_current_config_path()
         if info_path.exists():
-            with open(info_path, "r", encoding="utf-8") as f:
-                info = json.load(f)
+            manager = InfoJsonManager(info_path)
+            info = manager.data
             if contest_name is None:
                 contest_name = info.get("contest_name")
             if problem_name is None:

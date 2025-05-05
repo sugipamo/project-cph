@@ -1,5 +1,30 @@
 {
   "contest_name": "abc300",
   "problem_name": "a",
-  "language_name": "rust"
+  "language_name": "python",
+  "containers": [
+    {
+      "type": "test",
+      "index": 1,
+      "language": "python",
+      "name": "cph_test_python_1"
+    },
+    {
+      "type": "test",
+      "index": 2,
+      "language": "python",
+      "name": "cph_test_python_2"
+    },
+    {
+      "type": "test",
+      "index": 3,
+      "language": "python",
+      "name": "cph_test_python_3"
+    },
+    {
+      "type": "ojtools",
+      "index": 1,
+      "name": "cph_ojtools_1"
+    }
+  ]
 }

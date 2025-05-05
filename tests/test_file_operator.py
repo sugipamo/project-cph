@@ -3,6 +3,7 @@ from src.file_operator import MockFileOperator
 from src.file_operator import LocalFileOperator
 import os
 import pytest
+import shutil
 
 def test_mockfileoperator_create_and_exists():
     op = MockFileOperator()
@@ -89,4 +90,47 @@ def test_localfileoperator_create_overwrite(tmp_path):
     op.create(p, "first")
     assert p.read_text() == "first"
     op.create(p, "second")
-    assert p.read_text() == "second" 
+    assert p.read_text() == "second"
+
+def test_move_and_copy(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    src = tmp_path / "a.txt"
+    dst = tmp_path / "b.txt"
+    src.write_text("hello")
+    op.move(src, dst)
+    assert dst.exists() and not src.exists()
+    # copy
+    dst2 = tmp_path / "c.txt"
+    op.copy(dst, dst2)
+    assert dst2.exists() and dst2.read_text() == "hello"
+
+def test_exists_and_create(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    f = tmp_path / "f.txt"
+    assert not op.exists(f)
+    op.create(f, "abc")
+    assert op.exists(f)
+    assert f.read_text() == "abc"
+
+def test_copytree(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    src_dir = tmp_path / "src"
+    dst_dir = tmp_path / "dst"
+    src_dir.mkdir()
+    (src_dir / "a.txt").write_text("x")
+    op.copytree(src_dir, dst_dir)
+    assert (dst_dir / "a.txt").exists()
+    # dirs_exist_ok=Trueなので再実行もOK
+    op.copytree(src_dir, dst_dir)
+
+def test_remove_and_rmtree(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    f = tmp_path / "f.txt"
+    d = tmp_path / "d"
+    f.write_text("x")
+    d.mkdir()
+    (d / "a").write_text("y")
+    op.remove(f)
+    assert not f.exists()
+    op.rmtree(d)
+    assert not d.exists() 

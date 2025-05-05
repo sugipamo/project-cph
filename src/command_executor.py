@@ -1,4 +1,3 @@
-from docker_operator import DockerOperator, LocalDockerOperator
 from contest_file_manager import ContestFileManager
 from commands.command_login import CommandLogin
 from commands.command_open import CommandOpen
@@ -11,7 +10,6 @@ import shutil
 import glob
 import os
 import json
-from language_runner import PythonRunner, RustRunner, PypyRunner
 import asyncio
 import time
 import tempfile
@@ -19,14 +17,13 @@ import pathlib
 import webbrowser
 
 class CommandExecutor:
-    def __init__(self, docker_operator: DockerOperator = None, file_manager: ContestFileManager = None, opener: Opener = None):
-        self.docker_operator = docker_operator or LocalDockerOperator()
+    def __init__(self, file_manager: ContestFileManager = None, opener: Opener = None):
         self.file_manager = file_manager
         self.opener = opener or Opener()
-        self.login_handler = CommandLogin(self.docker_operator)
-        self.open_handler = CommandOpen(self.docker_operator, self.file_manager, self.opener)
-        self.test_handler = CommandTest(self.docker_operator, self.file_manager)
-        self.submit_handler = CommandSubmit(self.docker_operator, self.file_manager)
+        self.login_handler = CommandLogin()
+        self.open_handler = CommandOpen(self.file_manager, self.opener)
+        self.test_handler = CommandTest(self.file_manager)
+        self.submit_handler = CommandSubmit(self.file_manager)
 
     async def execute(self, command, contest_name=None, problem_name=None, language_name=None):
         """コマンド名に応じて各メソッドを呼び出す"""

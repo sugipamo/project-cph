@@ -1,8 +1,8 @@
 from commands.test_result_formatter import TestResultFormatter
+from commands.test_language_handler import HANDLERS
 
 class CommandTest:
-    def __init__(self, docker_operator, file_manager):
-        self.docker_operator = docker_operator
+    def __init__(self, file_manager):
         self.file_manager = file_manager
 
     def prepare_test_environment(self, contest_name, problem_name, language_name):
@@ -43,56 +43,42 @@ class CommandTest:
         temp_in_files = [str(temp_dir / "test" / pathlib.Path(f).name) for f in in_files]
         return temp_in_files, in_files
 
+    def get_test_containers_from_info(self):
+        from commands.info_json_manager import InfoJsonManager
+        info_path = "contest_current/info.json"
+        manager = InfoJsonManager(info_path)
+        return [c["name"] for c in manager.get_containers(type="test")]
+
     async def run_test_cases(self, temp_source_path, temp_in_files, language_name):
-        from language_runner import PythonRunner, RustRunner, PypyRunner
-        if language_name == "python":
-            runner = PythonRunner(temp_source_path, None, self.docker_operator)
-        elif language_name == "pypy":
-            runner = PypyRunner(temp_source_path, None, self.docker_operator)
-        elif language_name == "rust":
-            runner = RustRunner(temp_source_path, None, self.docker_operator)
-        else:
-            print(f"未対応の言語です: {language_name}")
+        from docker.ctl import DockerCtl
+        test_containers = self.get_test_containers_from_info()
+        ctl = DockerCtl()
+        handler = HANDLERS[language_name]
+        # --- ビルド工程 ---
+        build_container = test_containers[0]
+        ok, stdout, stderr = handler.build(ctl, build_container, temp_source_path)
+        if not ok:
+            print(f"[エラー] ビルド失敗\n{stderr}")
             return []
-        import pathlib
-        runner._host_temp_dir = str(pathlib.Path(temp_source_path).parent.resolve())
-        async def run_one(in_file):
-            import os
-            file_operator = self.file_manager.file_operator if self.file_manager else None
-            result = await runner.run(input_path=in_file)
-            if result is False:
-                return {
-                    "name": os.path.basename(str(in_file)),
-                    "result": (1, "", "runner error"),
-                    "time": 0.0,
-                    "expected": "",
-                    "in_file": in_file,
-                }
-            if len(result) == 4:
-                returncode, stdout, stderr, elapsed = result
+        # --- テスト実行 ---
+        results = []
+        for i, in_file in enumerate(temp_in_files):
+            if i < len(test_containers):
+                container = test_containers[i]
             else:
-                returncode, stdout, stderr = result
-                elapsed = 0.0
-            out_file = str(in_file)[:-3] + ".out"
-            expected = ""
-            if file_operator:
-                if file_operator.exists(out_file):
-                    with file_operator.open(out_file, "r", encoding="utf-8") as f:
-                        expected = f.read()
-            else:
-                if os.path.exists(out_file):
-                    with open(out_file, "r", encoding="utf-8") as f:
-                        expected = f.read()
-            return {
-                "name": os.path.basename(str(in_file)),
-                "result": (returncode, stdout, stderr),
-                "time": elapsed,
-                "expected": expected,
-                "in_file": in_file,
-            }
-        import asyncio
-        tasks = [run_one(in_file) for in_file in temp_in_files]
-        results = await asyncio.gather(*tasks)
+                container = test_containers[-1]
+            if not ctl.is_container_running(container):
+                image = "oj" if container.startswith("cph_ojtools") else language_name
+                ctl.start_container(container, image)
+            for attempt in range(3):
+                ok, stdout, stderr = handler.run(ctl, container, in_file, temp_source_path)
+                if ok:
+                    break
+                else:
+                    print(f"[WARN] exec失敗: {container} (attempt {attempt+1})")
+                    ctl.remove_container(container)
+                    ctl.start_container(container, image)
+            results.append((ok, stdout, stderr))
         return results
 
     def print_test_results(self, results):
@@ -102,11 +88,30 @@ class CommandTest:
 
     async def run_test(self, contest_name, problem_name, language_name):
         import pathlib
+        import os
+        from docker.pool import DockerPool
+        from commands.info_json_manager import InfoJsonManager
         file_operator = self.file_manager.file_operator if self.file_manager else None
         temp_dir, source_path = self.prepare_test_environment(contest_name, problem_name, language_name)
         test_dir = "contest_current/test"
         temp_source_path = str(temp_dir / pathlib.Path(source_path).name)
         temp_in_files, _ = self.collect_test_cases(temp_dir, test_dir, file_operator)
+        # --- 必要なコンテナ数を調整し、info.jsonを最新化 ---
+        test_case_count = len(temp_in_files)
+        requirements = [
+            {"type": "test", "language": language_name, "count": test_case_count},
+            {"type": "ojtools", "count": 1}
+        ]
+        pool = DockerPool()
+        containers = pool.adjust(requirements)
+        info_path = "contest_current/info.json"
+        manager = InfoJsonManager(info_path)
+        manager.data["contest_name"] = contest_name
+        manager.data["problem_name"] = problem_name
+        manager.data["language_name"] = language_name
+        manager.data["containers"] = containers
+        manager.save()
+        # --- テスト実行 ---
         results = await self.run_test_cases(temp_source_path, temp_in_files, language_name)
         self.print_test_results(results)
 

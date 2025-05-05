@@ -95,11 +95,12 @@ class CommandParser:
         info.jsonの値も考慮して最終的な値（contest_name, problem_name, language_name, command）を返す。
         contest_name, problem_name, language_nameのいずれかがNoneならinfo.jsonから補完する。
         """
+        from commands.info_json_manager import InfoJsonManager
         effective = self.parsed.copy()
         # info.jsonがあれば補完
         try:
-            with open(info_json_path, "r", encoding="utf-8") as f:
-                info = json.load(f)
+            manager = InfoJsonManager(info_json_path)
+            info = manager.data
             for k in ["contest_name", "problem_name", "language_name"]:
                 if effective[k] is None:
                     effective[k] = info.get(k)

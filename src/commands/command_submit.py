@@ -8,28 +8,18 @@ from commands.command_test import CommandTest
 from commands.common import get_project_root_volumes
 
 class CommandSubmit:
-    def __init__(self, docker_operator, file_manager):
-        self.docker_operator = docker_operator
+    def __init__(self, file_manager):
         self.file_manager = file_manager
-        self.command_test = CommandTest(docker_operator, file_manager)
+        self.command_test = CommandTest(file_manager)
 
     def confirm_submit_with_wa(self):
         ans = input("AC以外のケースがあります。提出してよいですか？ (y/N): ")
         return ans.lower() in ("y", "yes")
 
     def validate_info_file(self, info_path, contest_name, problem_name, file_operator=None):
-        import os
-        import json
-        if file_operator:
-            if not file_operator.exists(info_path):
-                return None
-            with file_operator.open(info_path, "r", encoding="utf-8") as f:
-                info = json.load(f)
-        else:
-            if not os.path.exists(info_path):
-                return None
-            with open(info_path, "r", encoding="utf-8") as f:
-                info = json.load(f)
+        from commands.info_json_manager import InfoJsonManager
+        manager = InfoJsonManager(info_path)
+        info = manager.data
         current_contest = info.get("contest_name")
         current_problem = info.get("problem_name")
         if current_contest and current_contest != contest_name:
@@ -64,11 +54,33 @@ class CommandSubmit:
         args += ["--wait=0"]
         return args, url
 
+    def get_ojtools_container_from_info(self):
+        from commands.info_json_manager import InfoJsonManager
+        info_path = "contest_current/info.json"
+        manager = InfoJsonManager(info_path)
+        for c in manager.get_containers(type="ojtools"):
+            return c["name"]
+        raise RuntimeError("ojtools用コンテナがinfo.jsonにありません")
+
     async def run_submit_command(self, args, volumes, workdir):
-        rc, stdout, stderr = await self.docker_operator.run_oj(args, volumes, workdir, interactive=True)
-        if rc != 0:
-            print(f"[エラー] oj submit失敗 (returncode={rc})\n{stderr}")
-        return rc, stdout, stderr
+        from docker.ctl import DockerCtl
+        ojtools_name = self.get_ojtools_container_from_info()
+        ctl = DockerCtl()
+        # コンテナが存在しなければ自動再起動
+        if not ctl.is_container_running(ojtools_name):
+            ctl.start_container(ojtools_name, "oj")
+        # 最大3回までリトライ
+        for attempt in range(3):
+            ok, stdout, stderr = ctl.exec_in_container(ojtools_name, ["oj"] + args)
+            if ok:
+                break
+            else:
+                print(f"[WARN] exec失敗: {ojtools_name} (attempt {attempt+1})")
+                ctl.remove_container(ojtools_name)
+                ctl.start_container(ojtools_name, "oj")
+        if not ok:
+            print(f"[エラー] oj submit失敗\n{stderr}")
+        return ok, stdout, stderr
 
     async def submit(self, contest_name, problem_name, language_name):
         results = await self.command_test.run_test_return_results(contest_name, problem_name, language_name)
