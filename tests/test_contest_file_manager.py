@@ -15,6 +15,8 @@ class DummyFileOperator(FileOperator):
         return False
     def move(self, src, dst):
         pass
+    def copytree(self, src, dst):
+        pass
 
 @pytest.fixture
 def temp_dirs(tmp_path):

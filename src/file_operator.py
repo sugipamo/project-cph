@@ -48,6 +48,10 @@ class FileOperator(ABC):
     def create(self, path: Path, content: str = ""):
         pass
 
+    @abstractmethod
+    def copytree(self, src: Path, dst: Path):
+        pass
+
 class MockFileOperator(FileOperator):
     def __init__(self, base_dir=Path(".")):
         super().__init__(base_dir)
@@ -82,6 +86,12 @@ class MockFileOperator(FileOperator):
         self.files.add(path)
         self.contents[path] = content
 
+    def copytree(self, src: Path, dst: Path):
+        src_path = self.resolve_path(src)
+        dst_path = self.resolve_path(dst)
+        self.operations.append(("copytree", src_path, dst_path))
+        # モックなので、ディレクトリ構造の再現は省略
+
 class LocalFileOperator(FileOperator):
     def __init__(self, base_dir=Path(".")):
         super().__init__(base_dir)
@@ -106,4 +116,9 @@ class LocalFileOperator(FileOperator):
         path = self.resolve_path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
-            f.write(content) 
+            f.write(content)
+
+    def copytree(self, src, dst):
+        src_path = self.resolve_path(src)
+        dst_path = self.resolve_path(dst)
+        shutil.copytree(src_path, dst_path, dirs_exist_ok=True) 
