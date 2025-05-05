@@ -4,7 +4,7 @@ SUBMIT_FILES = {
     "rust": "main.rs",
 }
 
-from src.commands.command_test import CommandTest
+from commands.command_test import CommandTest
 
 class CommandSubmit:
     def __init__(self, docker_operator, file_manager):

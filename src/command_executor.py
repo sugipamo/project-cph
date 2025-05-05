@@ -47,6 +47,9 @@ class CommandExecutor:
     async def submit(self, contest_name, problem_name, language_name):
         return await self.submit_handler.submit(contest_name, problem_name, language_name)
 
+    async def run_test(self, contest_name, problem_name, language_name):
+        return await self.test_handler.run_test(contest_name, problem_name, language_name)
+
 class MockOpener(Opener):
     def __init__(self):
         self.opened_paths = []

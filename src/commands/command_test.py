@@ -1,4 +1,4 @@
-from src.commands.test_result_formatter import TestResultFormatter
+from commands.test_result_formatter import TestResultFormatter
 
 class CommandTest:
     def __init__(self, docker_operator, file_manager):
@@ -101,6 +101,7 @@ class CommandTest:
             print("")
 
     async def run_test(self, contest_name, problem_name, language_name):
+        import pathlib
         file_operator = self.file_manager.file_operator if self.file_manager else None
         temp_dir, source_path = self.prepare_test_environment(contest_name, problem_name, language_name)
         test_dir = "contest_current/test"
