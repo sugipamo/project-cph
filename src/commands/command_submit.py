@@ -1,7 +1,7 @@
 SUBMIT_FILES = {
     "python": "main.py",
     "pypy": "main.py",
-    "rust": "main.rs",
+    "rust": "src/main.rs",
 }
 
 from commands.command_test import CommandTest

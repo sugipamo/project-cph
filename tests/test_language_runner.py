@@ -99,7 +99,8 @@ async def test_pypy_runner_run(monkeypatch, tmp_path):
 async def test_rustrunner_build_and_run(monkeypatch, tmp_path):
     src_dir = tmp_path / "src"
     src_dir.mkdir()
-    src = src_dir / "main.rs"
+    (src_dir / "src").mkdir(parents=True, exist_ok=True)
+    src = src_dir / "src/main.rs"
     src.write_text("fn main() { println(\"hello\"); }")
     class DummyDockerOperator:
         async def run(self, image, cmd, volumes=None, workdir=None, input_path=None):
@@ -141,7 +142,8 @@ async def test_language_runner_run_common(monkeypatch, tmp_path):
     rc, out, err, _ = await runner_pypy.run()
     assert rc == 0 and out == "ok"
     # Rust
-    src_rs = src_dir / "main.rs"
+    (src_dir / "src").mkdir(parents=True, exist_ok=True)
+    src_rs = src_dir / "src/main.rs"
     src_rs.write_text("fn main() { println(\"hello\"); }")
     class DummyDockerOperator:
         async def run(self, image, cmd, volumes=None, workdir=None, input_path=None):

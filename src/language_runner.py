@@ -36,6 +36,7 @@ class LanguageRunner(ABC):
         return "lang-tmp-"
 
     async def run(self, input_path=None):
+        await self.build()
         import asyncio, time, uuid, os
         host_temp_dir = getattr(self, '_host_temp_dir', None)
         file_name = os.path.basename(self.source_path)
@@ -50,10 +51,8 @@ class LanguageRunner(ABC):
             proc = await asyncio.create_subprocess_exec(*docker_run_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
             stdout, stderr = await proc.communicate()
             if proc.returncode != 0:
-                print(f"[エラー] docker run失敗: {stderr.decode().strip()}")
                 return False
         except Exception as e:
-            print(f"[エラー] docker run失敗: {e}")
             return False
         try:
             main_path = f"/workspace/.temp/{file_name}"
@@ -61,16 +60,19 @@ class LanguageRunner(ABC):
             if input_path:
                 input_file_name = os.path.basename(input_path)
                 input_cont = f"/workspace/.temp/test/{input_file_name}" if "/test/" in input_path else f"/workspace/.temp/{input_file_name}"
-            cmd = [self.run_cmd(), main_path]
+            if isinstance(self, RustRunner):
+                cmd = [self.run_cmd()]
+            else:
+                cmd = [self.run_cmd(), main_path]
             start = time.monotonic()
             if input_cont:
-                exec_cmd = f"{cmd[0]} {cmd[1]} < {input_cont}"
+                exec_cmd = f"{' '.join(cmd)} < {input_cont}"
                 result = subprocess.run([
                     "docker", "exec", temp_container, "sh", "-c", exec_cmd
                 ], capture_output=True)
             else:
                 result = subprocess.run([
-                    "docker", "exec", temp_container, cmd[0], cmd[1]], capture_output=True)
+                    "docker", "exec", temp_container] + cmd, capture_output=True)
             elapsed = time.monotonic() - start
             return result.returncode, result.stdout.decode(), result.stderr.decode(), elapsed
         finally:
@@ -104,6 +106,10 @@ class PypyRunner(PythonRunner):
 class RustRunner(LanguageRunner):
     async def build(self):
         import pathlib
+        import shutil
+        import subprocess
+        import os
+        import uuid
         host_temp_dir = getattr(self, '_host_temp_dir', None)
         file_name = os.path.basename(self.source_path)
         temp_container = f"rust-tmp-{os.getpid()}-{uuid.uuid4().hex[:8]}"
@@ -113,29 +119,31 @@ class RustRunner(LanguageRunner):
         if host_temp_dir:
             docker_run_cmd += ["-v", f"{host_temp_dir}:/workspace/.temp:ro"]
         docker_run_cmd += ["rust", "sleep", "300"]
-        # docker runの出力を抑制し、エラー時はメッセージを出して停止
         try:
             result = subprocess.run(docker_run_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except subprocess.CalledProcessError as e:
-            print(f"[エラー] docker run失敗: {e.stderr.decode().strip()}")
             return False
         try:
-            # .temp配下を直接参照してビルド
             main_path = f"/workspace/.temp/{file_name}"
             result = subprocess.run([
                 "docker", "exec", temp_container, "rustc", main_path, "-o", "/workspace/a.out"
             ], capture_output=True)
             if result.returncode != 0:
-                print(f"[エラー] rustcビルド失敗: {result.stderr.decode()}")
                 return False
-            self.binary_path = "/workspace/a.out"
+            host_aout = os.path.join(host_temp_dir, "a.out") if host_temp_dir else ".temp/a.out"
+            cp_result = subprocess.run([
+                "docker", "cp", f"{temp_container}:/workspace/a.out", host_aout
+            ], capture_output=True)
+            if cp_result.returncode != 0:
+                return False
+            self.binary_path = host_aout
             return True
         finally:
             subprocess.run(["docker", "rm", "-f", temp_container], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     def docker_image(self):
         return "rust"
     def run_cmd(self):
-        return "/workspace/a.out"
+        return "/workspace/.temp/a.out"
     @property
     def container_prefix(self):
         return "rust-tmp-" 

@@ -11,7 +11,7 @@ class CommandTest:
         source_path = f"contest_current/{language_name}/main.py"
         test_dir = "contest_current/test"
         if language_name == "rust":
-            source_path = f"contest_current/{language_name}/main.rs"
+            source_path = f"contest_current/{language_name}/src/main.rs"
         temp_dir = pathlib.Path(".temp")
         if file_operator:
             if file_operator.exists(temp_dir):
