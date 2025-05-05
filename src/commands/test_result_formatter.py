@@ -1,3 +1,5 @@
+import os
+
 class TestResultFormatter:
     def __init__(self, result):
         self.result = result

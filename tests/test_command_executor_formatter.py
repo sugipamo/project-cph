@@ -1,5 +1,5 @@
 import pytest
-from src.command_executor import TestResultFormatter
+from src.commands.test_result_formatter import TestResultFormatter
 
 def test_ac_format():
     result = {

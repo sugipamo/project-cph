@@ -8,6 +8,7 @@ from command_executor import MockOpener
 from docker_operator import LocalDockerOperator
 import os
 import json
+from src.commands.test_result_formatter import TestResultFormatter
 
 @pytest.mark.skip(reason="対話が必要なため自動テストから除外")
 @pytest.mark.asyncio
@@ -203,7 +204,7 @@ def test_submit_problem_name_mismatch(tmp_path, capfd):
         os.chdir(old_cwd)
 
 def test_testresultformatter_basic():
-    from src.command_executor import TestResultFormatter
+    from src.commands.test_result_formatter import TestResultFormatter
     # サンプルデータ
     result = {
         "name": "sample-1.in",
@@ -221,7 +222,7 @@ def test_testresultformatter_basic():
     assert "2        | 2" in output
 
 def test_testresultformatter_with_input_and_error(tmp_path):
-    from src.command_executor import TestResultFormatter
+    from src.commands.test_result_formatter import TestResultFormatter
     # テスト用入力ファイル作成
     in_file = tmp_path / "sample-2.in"
     in_file.write_text("1 2 3\n4 5 6\n")
