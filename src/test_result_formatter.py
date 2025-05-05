@@ -1,23 +1,3 @@
-from docker_operator import DockerOperator, LocalDockerOperator
-from contest_file_manager import ContestFileManager
-from command_login import CommandLogin
-from command_open import CommandOpen
-from command_test import CommandTest
-from command_submit import CommandSubmit
-from opener import Opener
-import subprocess
-from command_parser import CommandParser
-import shutil
-import glob
-import os
-import json
-from language_runner import PythonRunner, RustRunner, PypyRunner
-import asyncio
-import time
-import tempfile
-import pathlib
-import webbrowser
-
 class TestResultFormatter:
     def __init__(self, result):
         self.result = result
@@ -100,43 +80,4 @@ class TestResultFormatter:
             exp = exp_lines[i] if i < len(exp_lines) else ""
             out = out_lines[i] if i < len(out_lines) else ""
             lines.append(f"{exp:<{max_exp}} | {out:<{max_out}}")
-        return "\n".join(lines)
-
-class CommandExecutor:
-    def __init__(self, docker_operator: DockerOperator = None, file_manager: ContestFileManager = None, opener: Opener = None):
-        self.docker_operator = docker_operator or LocalDockerOperator()
-        self.file_manager = file_manager
-        self.opener = opener or Opener()
-        self.login_handler = CommandLogin(self.docker_operator)
-        self.open_handler = CommandOpen(self.docker_operator, self.file_manager, self.opener)
-        self.test_handler = CommandTest(self.docker_operator, self.file_manager)
-        self.submit_handler = CommandSubmit(self.docker_operator, self.file_manager)
-
-    async def execute(self, command, contest_name=None, problem_name=None, language_name=None):
-        """コマンド名に応じて各メソッドを呼び出す"""
-        if command == "login":
-            return await self.login_handler.login()
-        elif command == "open":
-            return await self.open_handler.open(contest_name, problem_name, language_name)
-        elif command == "submit":
-            return await self.submit_handler.submit(contest_name, problem_name, language_name)
-        elif command == "test":
-            return await self.test_handler.run_test(contest_name, problem_name, language_name)
-        else:
-            raise ValueError(f"未対応のコマンドです: {command}")
-
-    async def open(self, contest_name, problem_name, language_name):
-        return await self.open_handler.open(contest_name, problem_name, language_name)
-
-    async def submit(self, contest_name, problem_name, language_name):
-        return await self.submit_handler.submit(contest_name, problem_name, language_name)
-
-class MockOpener(Opener):
-    def __init__(self):
-        self.opened_paths = []
-        self.opened_urls = []
-    def open_editor(self, path: str):
-        main_file = f"{path}/main.py"
-        self.opened_paths.append(main_file)
-    def open_browser(self, url: str):
-        self.opened_urls.append(url) 
+        return "\n".join(lines) 
