@@ -242,4 +242,16 @@ def test_testresultformatter_with_input_and_error(tmp_path):
     assert "error occurred" in output
     # 区切り線の位置（=は出力されなくなったので不要）
     # assert output.count("=") >= 1  # header下のみ
-    assert output.count("-") >= 1  # error下 
+    assert output.count("-") >= 1  # error下
+
+class DummyOpener:
+    def __init__(self):
+        self.called = False
+        self.called_path = None
+        self.called_language = None
+    def open_editor(self, path, language=None):
+        self.called = True
+        self.called_path = path
+        self.called_language = language
+    def open_browser(self, url):
+        pass 

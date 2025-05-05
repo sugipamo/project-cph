@@ -1,7 +1,10 @@
 class Opener:
-    def open_editor(self, path: str):
-        # VSCodeとCursorでmain.pyのみを同じウィンドウで開く
-        main_file = f"{path}/main.py"
+    def open_editor(self, path: str, language: str = None):
+        # 言語によって開くファイルを切り替え
+        if language == "rust":
+            main_file = f"{path}/src/main.rs"
+        else:
+            main_file = f"{path}/main.py"
         try:
             import subprocess
             subprocess.Popen(["code", "--reuse-window", main_file])
@@ -23,8 +26,11 @@ class MockOpener(Opener):
     def __init__(self):
         self.opened_paths = []
         self.opened_urls = []
-    def open_editor(self, path: str):
-        main_file = f"{path}/main.py"
+    def open_editor(self, path: str, language: str = None):
+        if language == "rust":
+            main_file = f"{path}/src/main.rs"
+        else:
+            main_file = f"{path}/main.py"
         self.opened_paths.append(main_file)
     def open_browser(self, url: str):
         self.opened_urls.append(url) 

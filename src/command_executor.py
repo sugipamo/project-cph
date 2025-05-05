@@ -54,7 +54,7 @@ class MockOpener(Opener):
     def __init__(self):
         self.opened_paths = []
         self.opened_urls = []
-    def open_editor(self, path: str):
+    def open_editor(self, path: str, language: str = None):
         main_file = f"{path}/main.py"
         self.opened_paths.append(main_file)
     def open_browser(self, url: str):

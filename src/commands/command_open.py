@@ -14,7 +14,7 @@ class CommandOpen:
         # 2. エディタでディレクトリを開く
         if self.opener:
             path = f"contest_current/{language_name}"
-            self.opener.open_editor(path)
+            self.opener.open_editor(path, language_name)
         # 3. 問題ページをブラウザで開く
         url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
         if self.opener:
