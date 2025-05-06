@@ -26,7 +26,7 @@ def unique_container_name():
 def test_docker_container_lifecycle():
     ctl = DockerCtl(timeout=10)
     name = unique_container_name()
-    image = DockerImageManager().ensure_image("oj")  # DockerImageManager経由でojイメージ名を取得
+    image = DockerImageManager().ensure_image("ojtools")  # DockerImageManager経由でojtoolsイメージ名を取得
 
     # 1. コンテナが存在しない状態から開始
     ctl.remove_container(name)  # 念のため削除
@@ -51,7 +51,7 @@ def test_docker_container_lifecycle():
 def test_docker_volume_mount():
     ctl = DockerCtl(timeout=10)
     name = unique_container_name()
-    image = DockerImageManager().ensure_image("oj")
+    image = DockerImageManager().ensure_image("ojtools")
     # 一時ファイル作成
     with tempfile.TemporaryDirectory() as tmpdir:
         host_file = os.path.join(tmpdir, "test.txt")

@@ -10,7 +10,7 @@ DEFAULT_DOCKERFILE_MAP = {
     "python": "contest_env/python.Dockerfile",
     "pypy": "contest_env/pypy.Dockerfile",
     "rust": "contest_env/rust.Dockerfile",
-    "oj": "contest_env/oj.Dockerfile",
+    "ojtools": "contest_env/oj.Dockerfile",
 }
 
 def generate_container_name(purpose, language=None, index=None):
@@ -123,7 +123,7 @@ class DockerPool:
                             to_start.append(c)
                             break
         def start_c(c):
-            language = "oj" if c["type"] == "ojtools" else c.get("language", "python")
+            language = "ojtools" if c["type"] == "ojtools" else c.get("language", "python")
             image = self.image_manager.ensure_image(language)
             self.ctl.start_container(c["name"], image, volumes=c.get("volumes"))
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:

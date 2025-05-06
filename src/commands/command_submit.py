@@ -3,6 +3,7 @@ from .common import get_project_root_volumes
 from src.info_json_manager import InfoJsonManager
 from ..docker.pool import DockerPool
 from ..docker.ctl import DockerCtl
+from src.docker.pool import DockerImageManager
 
 SUBMIT_FILES = {
     "python": "main.py",
@@ -68,7 +69,7 @@ class CommandSubmit:
         ctl = DockerCtl()
         # コンテナが存在しなければ自動再起動
         if not ctl.is_container_running(ojtools_name):
-            ctl.start_container(ojtools_name, "oj", {})
+            ctl.start_container(ojtools_name, DockerImageManager().ensure_image("ojtools"), {})
         # 最大1回までリトライ
         for attempt in range(1):
             ok, stdout, stderr = ctl.exec_in_container(ojtools_name, ["oj"] + args)
@@ -77,7 +78,7 @@ class CommandSubmit:
             else:
                 print(f"[WARN] exec失敗: {ojtools_name} (attempt {attempt+1})")
                 ctl.remove_container(ojtools_name)
-                ctl.start_container(ojtools_name, "oj", {})
+                ctl.start_container(ojtools_name, DockerImageManager().ensure_image("ojtools"), {})
         if not ok:
             print(f"[エラー] oj submit失敗\n{stderr}")
         return ok, stdout, stderr

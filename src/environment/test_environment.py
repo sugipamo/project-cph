@@ -117,7 +117,7 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
 
     def run_test_case(self, language_name, container, in_file, source_path, retry=3):
         handler = self.handlers[language_name]
-        image = DockerImageManager().ensure_image("oj") if container.startswith("cph_ojtools") else language_name
+        image = DockerImageManager().ensure_image("ojtools") if container.startswith("cph_ojtools") else language_name
         ctl = self.ctl
         stdout = stderr = ""
         for attempt in range(retry):

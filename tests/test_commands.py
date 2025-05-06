@@ -115,6 +115,11 @@ def test_command_open(monkeypatch, tmp_path):
     monkeypatch.setattr("src.commands.command_open.DockerPool", DummyPool)
     monkeypatch.setattr("src.commands.command_open.InfoJsonManager", DummyManager)
     monkeypatch.setattr("src.commands.command_open.DockerCtl", DummyCtl)
+    # DockerImageManagerのモック
+    class DummyDockerImageManager:
+        def ensure_image(self, lang):
+            return "dummy_image"
+    monkeypatch.setattr("src.commands.command_open.DockerImageManager", DummyDockerImageManager)
     # os, subprocess
     monkeypatch.setattr(os, "makedirs", lambda *a, **k: None)
     monkeypatch.setattr(os.path, "exists", lambda path: True)
@@ -181,6 +186,11 @@ def test_command_submit(monkeypatch, tmp_path):
     # monkeypatch import
     monkeypatch.setattr("src.commands.command_submit.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_submit.DockerCtl", DummyCtl)
+    # DockerImageManagerのモック
+    class DummyDockerImageManager:
+        def ensure_image(self, lang):
+            return "dummy_image"
+    monkeypatch.setattr("src.commands.command_submit.DockerImageManager", DummyDockerImageManager)
     # os, print, input
     monkeypatch.setattr(os.path, "exists", lambda path: True)
     monkeypatch.setattr(os, "path", os.path)
