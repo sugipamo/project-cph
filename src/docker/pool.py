@@ -3,8 +3,15 @@ from concurrent.futures import ThreadPoolExecutor
 import subprocess, json
 from .path_mapper import DockerPathMapper
 import os
+import hashlib
 
 CONTAINER_PREFIX = "cph"
+DEFAULT_DOCKERFILE_MAP = {
+    "python": "contest_env/python.Dockerfile",
+    "pypy": "contest_env/pypy.Dockerfile",
+    "rust": "contest_env/rust.Dockerfile",
+    "oj": "contest_env/oj.Dockerfile",
+}
 
 def generate_container_name(purpose, language=None, index=None):
     parts = [CONTAINER_PREFIX, purpose]
@@ -14,12 +21,46 @@ def generate_container_name(purpose, language=None, index=None):
         parts.append(str(index))
     return "_".join(parts)
 
+class DockerImageManager:
+    def __init__(self, dockerfile_map=None):
+        self.dockerfile_map = dockerfile_map or DEFAULT_DOCKERFILE_MAP
+    def get_dockerfile_hash(self, dockerfile_path):
+        with open(dockerfile_path, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()[:12]
+    def get_image_name(self, language):
+        dockerfile = self.dockerfile_map.get(language, None)
+        if not dockerfile or not os.path.exists(dockerfile):
+            return language  # fallback
+        hashval = self.get_dockerfile_hash(dockerfile)
+        return f"cph_image_{language}_{hashval}"
+    def ensure_image(self, language):
+        image = self.get_image_name(language)
+        images = subprocess.run(["docker", "images", "--format", "{{.Repository}}"], capture_output=True, text=True)
+        image_names = images.stdout.splitlines()
+        if image not in image_names:
+            dockerfile = self.dockerfile_map.get(language, None)
+            if dockerfile and os.path.exists(dockerfile):
+                subprocess.run(["docker", "build", "-f", dockerfile, "-t", image, "."], check=True)
+        return image
+
 class DockerPool:
-    def __init__(self, max_workers=8):
+    def __init__(self, max_workers=8, dockerfile_map=None):
         self.ctl = DockerCtl()
         self.max_workers = max_workers
-        # パスマッパーを用意（将来の拡張用）
         self.path_mapper = DockerPathMapper(os.path.abspath("."), "/workspace")
+        self.image_manager = DockerImageManager(dockerfile_map)
+
+    def get_dockerfile_hash(self, dockerfile_path):
+        with open(dockerfile_path, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()[:12]
+
+    def get_image_name(self, language):
+        # 言語ごとにDockerfileパスを決め打ち
+        dockerfile = DEFAULT_DOCKERFILE_MAP.get(language, None)
+        if not dockerfile or not os.path.exists(dockerfile):
+            return language  # fallback
+        hashval = self.get_dockerfile_hash(dockerfile)
+        return f"cph_image_{language}_{hashval}"
 
     def adjust(self, requirements):
         """
@@ -73,7 +114,8 @@ class DockerPool:
                             to_start.append(c)
                             break
         def start_c(c):
-            image = "oj" if c["type"] == "ojtools" else c.get("language", "python")
+            language = "oj" if c["type"] == "ojtools" else c.get("language", "python")
+            image = self.image_manager.ensure_image(language)
             self.ctl.start_container(c["name"], image, volumes=c.get("volumes"))
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             list(executor.map(start_c, to_start))
