@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from src.contest_file_manager import ContestFileManager
 from src.file_operator import FileOperator
+from src.file_operator import LocalFileOperator
 
 class DummyFileOperator(FileOperator):
     def copy(self, src, dst):
@@ -49,7 +50,7 @@ def test_prepare_problem_files_stocks_move(temp_dirs):
     stocks = Path("contest_stocks/abc200/b")
     stocks.mkdir(parents=True)
     (stocks / "main.py").write_text("print('from stocks')\n")
-    manager = ContestFileManager(DummyFileOperator())
+    manager = ContestFileManager(LocalFileOperator())
     manager.prepare_problem_files("abc200", "b", "python")
     # main.pyがcontest_currentに移動されているか
     assert Path("contest_current/python/main.py").exists()
@@ -77,7 +78,7 @@ def test_move_current_to_stocks_basic(temp_dirs):
     info = {"contest_name": "abc300", "problem_name": "c", "language_name": "python"}
     Path("contest_current/info.json").write_text(json.dumps(info))
     Path("contest_current/config.json").write_text(json.dumps({"exclude_files": []}))
-    manager = ContestFileManager(DummyFileOperator())
+    manager = ContestFileManager(LocalFileOperator())
     manager.move_current_to_stocks("c", "python")
     # main.pyがcontest_stocksに移動されているか
     stocks = Path("contest_stocks/abc300/c/main.py")

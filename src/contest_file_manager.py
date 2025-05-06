@@ -38,7 +38,7 @@ class ContestFileManager:
         stop_at: これ以上は削除しないディレクトリ（Pathオブジェクト）
         """
         while path != stop_at and path.exists() and path.is_dir() and not any(path.iterdir()):
-            path.rmdir()
+            self.file_operator.rmtree(path)
             path = path.parent
 
     def move_current_to_stocks(self, problem_name, language_name):
@@ -64,9 +64,9 @@ class ContestFileManager:
         for item in src_dir.iterdir():
             if self._is_ignored(item.name, ignore_patterns):
                 continue
-            shutil.move(str(item), str(dst_dir / item.name))
+            self.file_operator.move(item, dst_dir / item.name)
         if not any(x for x in src_dir.iterdir() if not self._is_ignored(x.name, ignore_patterns)):
-            src_dir.rmdir()
+            self.file_operator.rmtree(src_dir)
         self._remove_empty_parents(src_dir.parent, self.file_operator.resolve_path(f"contest_stocks/{old_contest_name}"))
         self._remove_empty_parents(src_dir.parent.parent, self.file_operator.resolve_path("contest_stocks"))
 
@@ -88,9 +88,9 @@ class ContestFileManager:
             if item.is_file():
                 dst_file = dst_dir / item.name
                 dst_file.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(item), str(dst_file))
+                self.file_operator.move(item, dst_file)
             elif item.is_dir():
-                shutil.move(str(item), str(dst_dir / item.name))
+                self.file_operator.move(item, dst_dir / item.name)
         info_path = self.get_current_info_path()
         manager = InfoJsonManager(info_path)
         manager.data["contest_name"] = contest_name
@@ -123,9 +123,9 @@ class ContestFileManager:
             if item.is_file():
                 dst_file = dst_dir / item.name
                 dst_file.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(str(item), str(dst_file))
+                self.file_operator.copy(item, dst_file)
             elif item.is_dir():
-                shutil.copytree(str(item), str(dst_dir / item.name), dirs_exist_ok=True)
+                self.file_operator.copytree(item, dst_dir / item.name)
         info_path = self.get_current_info_path()
         manager = InfoJsonManager(info_path)
         manager.data["contest_name"] = contest_name
@@ -216,4 +216,4 @@ class ContestFileManager:
             if item.name != problem_name:
                 dst = stocks_tests_root / item.name
                 dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(item), str(dst)) 
+                self.file_operator.move(item, dst) 

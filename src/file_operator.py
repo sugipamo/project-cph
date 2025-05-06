@@ -17,7 +17,8 @@ class FileOperator(ABC):
         self.resolve_path(path).mkdir(parents=True, exist_ok=exist_ok)
 
     def isdir(self, path):
-        return self.resolve_path(path).is_dir()
+        path = self.resolve_path(path)
+        return path.is_dir()
 
     def glob(self, pattern):
         # patternはbase_dirからの相対パターン
@@ -27,7 +28,11 @@ class FileOperator(ABC):
         self.resolve_path(path).unlink()
 
     def rmtree(self, path):
-        shutil.rmtree(self.resolve_path(path))
+        p = self.resolve_path(path)
+        if p.is_dir():
+            shutil.rmtree(p)
+        elif p.exists():
+            p.unlink()
 
     def open(self, path, mode="r", encoding=None):
         return open(self.resolve_path(path), mode, encoding=encoding)
@@ -95,6 +100,9 @@ class MockFileOperator(FileOperator):
 class LocalFileOperator(FileOperator):
     def __init__(self, base_dir=Path(".")):
         super().__init__(base_dir)
+        self.operations = []
+        self.files = set()
+        self.contents = dict()
 
     def move(self, src, dst):
         src_path = self.resolve_path(src)
@@ -124,4 +132,62 @@ class LocalFileOperator(FileOperator):
         # srcとdstが同じ場合は何もしない
         if src_path.resolve() == dst_path.resolve():
             return
-        shutil.copytree(src_path, dst_path, dirs_exist_ok=True) 
+        shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
+
+    def rmtree(self, path):
+        p = self.resolve_path(path)
+        if p.is_dir():
+            shutil.rmtree(p)
+        elif p.exists():
+            p.unlink()
+
+class DummyFileOperator(FileOperator):
+    def __init__(self, base_dir=Path(".")):
+        super().__init__(base_dir)
+        self.operations = []
+        self.files = set()
+        self.contents = dict()
+
+    def move(self, src: Path, dst: Path):
+        src_path = self.resolve_path(src)
+        dst_path = self.resolve_path(dst)
+        self.operations.append(("move", src_path, dst_path))
+        if src_path in self.files:
+            self.files.remove(src_path)
+            self.files.add(dst_path)
+            self.contents[dst_path] = self.contents.pop(src_path, "")
+
+    def copy(self, src: Path, dst: Path):
+        src_path = self.resolve_path(src)
+        dst_path = self.resolve_path(dst)
+        self.operations.append(("copy", src_path, dst_path))
+        if src_path in self.files:
+            self.files.add(dst_path)
+            self.contents[dst_path] = self.contents.get(src_path, "")
+
+    def exists(self, path: Path) -> bool:
+        path = self.resolve_path(path)
+        return path in self.files
+
+    def create(self, path: Path, content: str = ""):
+        path = self.resolve_path(path)
+        self.operations.append(("create", path, content))
+        self.files.add(path)
+        self.contents[path] = content
+
+    def copytree(self, src: Path, dst: Path):
+        src_path = self.resolve_path(src)
+        dst_path = self.resolve_path(dst)
+        self.operations.append(("copytree", src_path, dst_path))
+
+    def rmtree(self, path):
+        path = self.resolve_path(path)
+        self.operations.append(("rmtree", path))
+        if path in self.files:
+            self.files.remove(path)
+            self.contents.pop(path, None)
+
+    def isdir(self, path):
+        path = self.resolve_path(path)
+        # テスト用: ディレクトリは"/"で終わるパスと仮定
+        return str(path).endswith("/") 
