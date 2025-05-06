@@ -4,17 +4,6 @@ from .commands.command_open import CommandOpen
 from .commands.command_test import CommandTest
 from .commands.command_submit import CommandSubmit
 from .commands.opener import Opener
-import subprocess
-from .command_parser import CommandParser
-import shutil
-import glob
-import os
-import json
-import asyncio
-import time
-import tempfile
-import pathlib
-import webbrowser
 
 class CommandExecutor:
     def __init__(self, file_manager: ContestFileManager = None, opener: Opener = None):

@@ -24,12 +24,7 @@ LANGUAGES = {
     "rust": {"aliases": ["rs", "rustc"]},
 }
 
-import re
 import argparse
-import sys
-from pathlib import Path
-import asyncio
-import json
 from src.info_json_manager import InfoJsonManager
 
 # --- CLIコマンドパース用関数 ---

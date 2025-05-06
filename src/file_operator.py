@@ -1,7 +1,6 @@
 from pathlib import Path
 from abc import ABC, abstractmethod
 from shutil import copy2
-import glob as pyglob
 import shutil
 
 class FileOperator(ABC):

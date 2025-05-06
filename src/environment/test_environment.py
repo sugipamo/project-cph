@@ -1,9 +1,6 @@
 from abc import ABC, abstractmethod
 import os
 import shutil
-from src.environment.test_language_handler import HANDLERS
-from src.info_json_manager import InfoJsonManager
-from src.commands.test_result_formatter import TestResultFormatter
 from src.docker.ctl import DockerCtl
 from src.docker.pool import DockerPool
 from src.docker.path_mapper import DockerPathMapper

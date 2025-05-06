@@ -1,5 +1,4 @@
 import subprocess
-import json
 
 class DockerCtl:
     def __init__(self, timeout=30):
