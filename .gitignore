@@ -4,5 +4,8 @@
 
 .temp/
 
+.coverage/
+.pytest_cache/
+.cache/
 contest_stocks/
 contest_current/
