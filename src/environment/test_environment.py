@@ -76,6 +76,18 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
                     os.makedirs(dst_dir, exist_ok=True)
                 shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
             return dst_dir
+        elif language_name in ("python", "pypy"):
+            src = f"contest_current/{language_name}/main.py"
+            dst_dir = os.path.join(temp_dir, language_name)
+            dst = os.path.join(dst_dir, "main.py")
+            if self.file_operator:
+                if not self.file_operator.exists(dst_dir):
+                    self.file_operator.makedirs(dst_dir)
+                self.file_operator.copy(src, dst)
+            else:
+                os.makedirs(dst_dir, exist_ok=True)
+                shutil.copy(src, dst)
+            return dst
         else:
             src = f"contest_current/{language_name}/main.py"
             dst = os.path.join(temp_dir, "main.py")

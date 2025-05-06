@@ -15,7 +15,7 @@ class PythonTestHandler(TestLanguageHandler):
     def build(self, ctl, container, temp_source_path):
         return True, "", ""
     def run(self, ctl, container, in_file, temp_source_path):
-        main_py = path_mapper.to_container_path('.temp/main.py')
+        main_py = path_mapper.to_container_path(temp_source_path)
         cmd = ["sh", "-c", f"python3 {main_py} < {in_file}"]
         return ctl.exec_in_container(container, cmd)
 
@@ -23,7 +23,7 @@ class PypyTestHandler(TestLanguageHandler):
     def build(self, ctl, container, temp_source_path):
         return True, "", ""
     def run(self, ctl, container, in_file, temp_source_path):
-        main_py = path_mapper.to_container_path('.temp/main.py')
+        main_py = path_mapper.to_container_path(temp_source_path)
         cmd = ["sh", "-c", f"pypy3 {main_py} < {in_file}"]
         return ctl.exec_in_container(container, cmd)
 
