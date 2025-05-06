@@ -31,10 +31,12 @@ class TestExecutionEnvironment(ABC):
         pass
 
 class DockerTestExecutionEnvironment(TestExecutionEnvironment):
-    def __init__(self, file_manager):
+    def __init__(self, file_manager, handlers=None):
         self.file_manager = file_manager
         self.file_operator = file_manager.file_operator if file_manager and hasattr(file_manager, 'file_operator') else None
         self.ctl = DockerCtl()
+        from src.commands.test_language_handler import HANDLERS as DEFAULT_HANDLERS
+        self.handlers = handlers if handlers is not None else DEFAULT_HANDLERS
 
     def prepare_source_code(self, contest_name, problem_name, language_name):
         temp_dir = ".temp"
@@ -68,7 +70,7 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
         return str(container_path).replace(CONTAINER_WORKSPACE, HOST_PROJECT_ROOT, 1)
 
     def run_test_case(self, language_name, container, in_file, source_path, retry=3):
-        handler = HANDLERS[language_name]
+        handler = self.handlers[language_name]
         image = "oj" if container.startswith("cph_ojtools") else language_name
         ctl = self.ctl
         stdout = stderr = ""
