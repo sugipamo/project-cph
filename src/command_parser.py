@@ -30,7 +30,7 @@ import sys
 from pathlib import Path
 import asyncio
 import json
-from src.environment.info_json_manager import InfoJsonManager
+from src.info_json_manager import InfoJsonManager
 
 # --- CLIコマンドパース用関数 ---
 def parse_args():

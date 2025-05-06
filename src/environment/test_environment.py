@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import os
 import shutil
 from src.environment.test_language_handler import HANDLERS
-from src.environment.info_json_manager import InfoJsonManager
+from src.info_json_manager import InfoJsonManager
 from src.commands.test_result_formatter import TestResultFormatter
 from src.docker.ctl import DockerCtl
 from src.docker.pool import DockerPool
@@ -91,7 +91,7 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
         containers = self.pool.adjust(requirements)
         # info.jsonの更新もここで行う
         if contest_name and problem_name and language_name:
-            from src.environment.info_json_manager import InfoJsonManager
+            from src.info_json_manager import InfoJsonManager
             info_path = "contest_current/info.json"
             manager = InfoJsonManager(info_path)
             manager.data["contest_name"] = contest_name

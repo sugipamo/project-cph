@@ -5,7 +5,7 @@ CONTAINER_WORKSPACE = "/workspace"
 
 from .test_result_formatter import TestResultFormatter
 from src.environment.test_language_handler import HANDLERS
-from src.environment.info_json_manager import InfoJsonManager
+from src.info_json_manager import InfoJsonManager
 from ..docker.pool import DockerPool
 from ..docker.ctl import DockerCtl
 from src.environment.test_environment import DockerTestExecutionEnvironment
