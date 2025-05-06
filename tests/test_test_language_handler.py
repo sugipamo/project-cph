@@ -1,5 +1,6 @@
 import pytest
 from src.environment.test_language_handler import PythonTestHandler, PypyTestHandler, RustTestHandler, HANDLERS
+import os
 
 class DummyCtl:
     def __init__(self):
@@ -23,13 +24,22 @@ def test_pypy_handler_run():
     assert ok and out == 'ok'
     assert 'pypy3' in ctl.calls[0][1][-1]
 
-def test_rust_handler_build_and_run():
+def test_rust_handler_build_and_run(tmp_path):
+    from src.environment import test_language_handler
     ctl = DummyCtl()
     handler = RustTestHandler()
-    ok, out, err = handler.build(ctl, 'cont', 'main.rs')
+    # テスト用path_mapperを差し替え
+    handler.path_mapper = test_language_handler.DockerPathMapper(str(tmp_path), '/workspace')
+    test_language_handler.path_mapper = handler.path_mapper
+    # .temp/a.outをtmp_path配下に作成
+    abs_out = os.path.join(tmp_path, '.temp/a.out')
+    os.makedirs(os.path.dirname(abs_out), exist_ok=True)
+    with open(abs_out, 'w') as f:
+        f.write('dummy')
+    ok, out, err = handler.build(ctl, 'cont', os.path.join(tmp_path, 'main.rs'))
     assert ok and out == 'ok'
     assert 'rustc' in ctl.calls[0][1]
-    ok, out, err = handler.run(ctl, 'cont', 'input.txt', 'main.rs')
+    ok, out, err = handler.run(ctl, 'cont', '/workspace/input.txt', os.path.join(tmp_path, 'main.rs'))
     assert ok and out == 'ok'
     assert '/workspace/.temp/a.out' in ctl.calls[-1][1][-1]
 

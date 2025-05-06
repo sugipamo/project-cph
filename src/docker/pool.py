@@ -1,6 +1,8 @@
 from .ctl import DockerCtl
 from concurrent.futures import ThreadPoolExecutor
 import subprocess, json
+from .path_mapper import DockerPathMapper
+import os
 
 CONTAINER_PREFIX = "cph"
 
@@ -16,6 +18,8 @@ class DockerPool:
     def __init__(self, max_workers=8):
         self.ctl = DockerCtl()
         self.max_workers = max_workers
+        # パスマッパーを用意（将来の拡張用）
+        self.path_mapper = DockerPathMapper(os.path.abspath("."), "/workspace")
 
     def adjust(self, requirements):
         """

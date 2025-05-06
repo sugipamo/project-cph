@@ -6,6 +6,7 @@ from src.info_json_manager import InfoJsonManager
 from src.commands.test_result_formatter import TestResultFormatter
 from src.docker.ctl import DockerCtl
 from src.docker.pool import DockerPool
+from src.docker.path_mapper import DockerPathMapper
 
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
@@ -39,6 +40,7 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
         from src.environment.test_language_handler import HANDLERS as DEFAULT_HANDLERS
         self.handlers = handlers if handlers is not None else DEFAULT_HANDLERS
         self.pool = DockerPool()
+        self.path_mapper = DockerPathMapper(HOST_PROJECT_ROOT, "/workspace")
 
     def prepare_source_code(self, contest_name, problem_name, language_name):
         temp_dir = ".temp"
@@ -66,10 +68,10 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
         return temp_test_dir
 
     def to_container_path(self, host_path: str) -> str:
-        return str(host_path).replace(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, 1)
+        return self.path_mapper.to_container_path(host_path)
 
     def to_host_path(self, container_path: str) -> str:
-        return str(container_path).replace(CONTAINER_WORKSPACE, HOST_PROJECT_ROOT, 1)
+        return self.path_mapper.to_host_path(container_path)
 
     def run_test_case(self, language_name, container, in_file, source_path, retry=3):
         handler = self.handlers[language_name]
