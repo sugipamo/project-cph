@@ -283,11 +283,11 @@ def test_command_test(monkeypatch, tmp_path):
         def run(self, ctl, container, in_file, src):
             return (True, "out", "")
     # HANDLERS, TestResultFormatter, InfoJsonManager, DockerCtl
-    monkeypatch.setitem(__import__("src.commands.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
+    monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.TestResultFormatter", lambda r: type("F", (), {"format": lambda self: "F"})())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("commands.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
+    monkeypatch.setattr("src.environment.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
     # os, print
     monkeypatch.setattr(os.path, "exists", lambda path: True)
@@ -477,10 +477,10 @@ def test_command_test_build_fail(monkeypatch):
             return (False, "", "build error!")
         def run(self, ctl, container, in_file, src):
             return (True, "out", "")
-    monkeypatch.setitem(__import__("src.commands.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
+    monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("commands.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
+    monkeypatch.setattr("src.environment.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
     fm = DummyFileManager()
     cmd = CommandTest(fm)
@@ -523,10 +523,10 @@ def test_command_test_run_fail_and_retry(monkeypatch):
             # 1回目で成功するよう修正
             return (True, "out", "")
     handler = DummyHandler()
-    monkeypatch.setitem(__import__("src.commands.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", handler)
+    monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", handler)
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", handler)
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("commands.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
+    monkeypatch.setattr("src.environment.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
     fm = DummyFileManager()
     cmd = CommandTest(fm)
@@ -571,10 +571,10 @@ def test_command_test_multiple_cases_and_containers(monkeypatch):
             return (True, "", "")
         def run(self, ctl, container, in_file, src):
             return (True, f"out-{container}", "")
-    monkeypatch.setitem(__import__("src.commands.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
+    monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("commands.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
+    monkeypatch.setattr("src.environment.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
     # open, existsのモック
     import builtins, os
@@ -655,10 +655,10 @@ def test_command_test_outfile_not_exists(monkeypatch):
             return (True, "", "")
         def run(self, ctl, container, in_file, src):
             return (True, "out", "")
-    monkeypatch.setitem(__import__("src.commands.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
+    monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("commands.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
+    monkeypatch.setattr("src.environment.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
     # open, existsのモック
     import builtins, os
@@ -769,10 +769,10 @@ def test_run_test_cases_infile_path(monkeypatch):
             pass
         def cp_from_container(self, name, src, dst):
             pass
-    monkeypatch.setitem(__import__("src.commands.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
+    monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("commands.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
+    monkeypatch.setattr("src.environment.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
     fm = DummyFileManager()
     cmd = CommandTest(fm)
@@ -812,10 +812,10 @@ def test_run_test_cases_infile_not_exist(monkeypatch):
             pass
         def cp_from_container(self, name, src, dst):
             pass
-    monkeypatch.setitem(__import__("src.commands.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
+    monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("commands.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
+    monkeypatch.setattr("src.environment.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
     fm = DummyFileManager()
     cmd = CommandTest(fm)
@@ -923,7 +923,7 @@ def test_run_single_test_case_retry_integration():
 
 def test_run_test_cases_integration():
     from src.commands.command_test import CommandTest
-    from src.commands.test_language_handler import PythonTestHandler, HANDLERS
+    from src.environment.test_language_handler import PythonTestHandler, HANDLERS
     class DummyCtl:
         def __init__(self):
             self.running = set()
@@ -986,7 +986,7 @@ def test_run_test_cases_integration():
 
 def test_run_test_cases_build_fail():
     from src.commands.command_test import CommandTest
-    from src.commands.test_language_handler import HANDLERS
+    from src.environment.test_language_handler import HANDLERS
     class DummyCtl:
         pass
     class DummyHandler:
@@ -1024,7 +1024,7 @@ def test_run_test_cases_build_fail():
 
 def test_run_test_cases_run_all_fail():
     from src.commands.command_test import CommandTest
-    from src.commands.test_language_handler import HANDLERS
+    from src.environment.test_language_handler import HANDLERS
     class DummyCtl:
         def __init__(self):
             self.running = set()
@@ -1070,7 +1070,7 @@ def test_run_test_cases_run_all_fail():
 
 def test_run_test_cases_empty():
     from src.commands.command_test import CommandTest
-    from src.commands.test_language_handler import HANDLERS
+    from src.environment.test_language_handler import HANDLERS
     class DummyCtl:
         pass
     class DummyHandler:

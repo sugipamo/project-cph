@@ -1,4 +1,4 @@
-from .info_json_manager import InfoJsonManager
+from src.environment.info_json_manager import InfoJsonManager
 from ..docker.pool import DockerPool
 from ..docker.ctl import DockerCtl
 
