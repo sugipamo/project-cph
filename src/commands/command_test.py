@@ -8,6 +8,7 @@ from src.environment.test_language_handler import HANDLERS
 from src.info_json_manager import InfoJsonManager
 from ..docker.ctl import DockerCtl
 from src.environment.test_environment import DockerTestExecutionEnvironment
+from src.docker.pool import DockerImageManager
 
 class CommandTest:
     def __init__(self, file_manager):
@@ -88,7 +89,7 @@ class CommandTest:
         results = []
         for i, in_file in enumerate(temp_in_files):
             container = self.select_container_for_case(test_containers, i)
-            image = "oj" if container.startswith("cph_ojtools") else language_name
+            image = DockerImageManager().ensure_image("oj") if container.startswith("cph_ojtools") else language_name
             self.ensure_container_running(ctl, container, image)
             abs_in_file = os.path.abspath(in_file)
             cont_in_file = self.to_container_path(abs_in_file)

@@ -33,6 +33,14 @@ class DockerImageManager:
             return language  # fallback
         hashval = self.get_dockerfile_hash(dockerfile)
         return f"cph_image_{language}_{hashval}"
+    def cleanup_old_images(self, language):
+        prefix = f"cph_image_{language}_"
+        current = self.get_image_name(language)
+        images = subprocess.run(["docker", "images", "--format", "{{.Repository}}"], capture_output=True, text=True)
+        image_names = images.stdout.splitlines()
+        for img in image_names:
+            if img.startswith(prefix) and img != current:
+                subprocess.run(["docker", "rmi", img], capture_output=True)
     def ensure_image(self, language):
         image = self.get_image_name(language)
         images = subprocess.run(["docker", "images", "--format", "{{.Repository}}"], capture_output=True, text=True)
@@ -41,6 +49,7 @@ class DockerImageManager:
             dockerfile = self.dockerfile_map.get(language, None)
             if dockerfile and os.path.exists(dockerfile):
                 subprocess.run(["docker", "build", "-f", dockerfile, "-t", image, "."], check=True)
+                self.cleanup_old_images(language)
         return image
 
 class DockerPool:

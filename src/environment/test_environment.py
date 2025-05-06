@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import os
 import shutil
 from src.docker.ctl import DockerCtl
-from src.docker.pool import DockerPool
+from src.docker.pool import DockerPool, DockerImageManager
 from src.docker.path_mapper import DockerPathMapper
 
 HOST_PROJECT_ROOT = os.path.abspath(".")
@@ -117,7 +117,7 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
 
     def run_test_case(self, language_name, container, in_file, source_path, retry=3):
         handler = self.handlers[language_name]
-        image = "oj" if container.startswith("cph_ojtools") else language_name
+        image = DockerImageManager().ensure_image("oj") if container.startswith("cph_ojtools") else language_name
         ctl = self.ctl
         stdout = stderr = ""
         for attempt in range(retry):
