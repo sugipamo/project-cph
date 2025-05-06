@@ -44,16 +44,49 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
 
     def prepare_source_code(self, contest_name, problem_name, language_name):
         temp_dir = ".temp"
-        src = f"contest_current/{language_name}/main.py"
-        dst = os.path.join(temp_dir, "main.py")
-        if self.file_operator:
-            if not self.file_operator.exists(temp_dir):
-                self.file_operator.makedirs(temp_dir)
-            self.file_operator.copy(src, dst)
+        if language_name == "rust":
+            import glob
+            src_dir = f"contest_current/rust"
+            dst_dir = os.path.join(temp_dir, "rust")
+            if self.file_operator:
+                if not self.file_operator.exists(temp_dir):
+                    self.file_operator.makedirs(temp_dir)
+                # .temp/rustが存在する場合、target以外を削除
+                if self.file_operator.exists(dst_dir):
+                    for item in self.file_operator.resolve_path(dst_dir).iterdir():
+                        if item.name != "target":
+                            if item.is_dir():
+                                self.file_operator.rmtree(item)
+                            else:
+                                item.unlink()
+                else:
+                    self.file_operator.makedirs(dst_dir)
+                self.file_operator.copytree(src_dir, dst_dir)
+            else:
+                os.makedirs(temp_dir, exist_ok=True)
+                # .temp/rustが存在する場合、target以外を削除
+                if os.path.exists(dst_dir):
+                    for item in glob.glob(os.path.join(dst_dir, "*")):
+                        if os.path.basename(item) != "target":
+                            if os.path.isdir(item):
+                                shutil.rmtree(item)
+                            else:
+                                os.remove(item)
+                else:
+                    os.makedirs(dst_dir, exist_ok=True)
+                shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
+            return dst_dir
         else:
-            os.makedirs(temp_dir, exist_ok=True)
-            shutil.copy(src, dst)
-        return dst
+            src = f"contest_current/{language_name}/main.py"
+            dst = os.path.join(temp_dir, "main.py")
+            if self.file_operator:
+                if not self.file_operator.exists(temp_dir):
+                    self.file_operator.makedirs(temp_dir)
+                self.file_operator.copy(src, dst)
+            else:
+                os.makedirs(temp_dir, exist_ok=True)
+                shutil.copy(src, dst)
+            return dst
 
     def prepare_test_cases(self, contest_name, problem_name):
         temp_dir = ".temp"

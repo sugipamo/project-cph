@@ -29,18 +29,19 @@ class PypyTestHandler(TestLanguageHandler):
 
 class RustTestHandler(TestLanguageHandler):
     def build(self, ctl, container, temp_source_path):
-        main_rs = path_mapper.to_container_path(os.path.abspath('.temp/main.rs'))
-        out_path = path_mapper.to_container_path(os.path.abspath('.temp/a.out'))
-        cmd = ["rustc", main_rs, "-o", out_path]
-        result = ctl.exec_in_container(container, cmd)
+        # temp_source_pathは.temp/rustディレクトリ
+        cargo_dir = path_mapper.to_container_path(os.path.abspath(temp_source_path))
+        cmd = ["sh", "-c", f"cd {cargo_dir} && cargo build --release"]
+        result = ctl.exec_in_container(container, cmd, realtime=True)
         if isinstance(result, tuple) and len(result) == 3:
             return result
         else:
             return result, "", ""
     def run(self, ctl, container, in_file, temp_source_path):
-        out_path = path_mapper.to_container_path(os.path.abspath('.temp/a.out'))
+        cargo_dir = path_mapper.to_container_path(os.path.abspath(temp_source_path))
+        bin_path = os.path.join(cargo_dir, "target/release/rust")
         in_file = path_mapper.to_container_path(in_file)
-        cmd = ["sh", "-c", f"{out_path} < {in_file}"]
+        cmd = ["sh", "-c", f"{bin_path} < {in_file}"]
         return ctl.exec_in_container(container, cmd)
 
 HANDLERS = {

@@ -61,15 +61,31 @@ class DockerCtl:
             print("[ERROR] docker rm timed out")
             return False
 
-    def exec_in_container(self, name, cmd):
+    def exec_in_container(self, name, cmd, realtime=False):
         try:
-            result = subprocess.run([
-                "docker", "exec", name
-            ] + cmd, capture_output=True, text=True, timeout=self.timeout)
-            if result.returncode != 0:
-                print(f"[ERROR] docker exec failed: {result.stderr}")
-                return False, result.stdout, result.stderr
-            return True, result.stdout, result.stderr
+            if not realtime:
+                result = subprocess.run([
+                    "docker", "exec", name
+                ] + cmd, capture_output=True, text=True, timeout=self.timeout)
+                if result.returncode != 0:
+                    print(f"[ERROR] docker exec failed: {result.stderr}")
+                    return False, result.stdout, result.stderr
+                return True, result.stdout, result.stderr
+            else:
+                proc = subprocess.Popen([
+                    "docker", "exec", name
+                ] + cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                output = ""
+                try:
+                    for line in proc.stdout:
+                        print(line, end="")
+                        output += line
+                except Exception as e:
+                    print(f"[ERROR] reading output: {e}")
+                proc.wait()
+                if proc.returncode != 0:
+                    return False, output, output
+                return True, output, ""
         except subprocess.TimeoutExpired:
             print("[ERROR] docker exec timed out")
             return False, "", "timeout"

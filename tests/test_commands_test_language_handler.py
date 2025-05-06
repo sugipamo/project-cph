@@ -1,8 +1,12 @@
 import pytest
 from src.environment.test_language_handler import RustTestHandler
 
+class DummyCtl:
+    def exec_in_container(self, container, cmd, realtime=False):
+        return True, 'ok', ''
+
 class DummyCtlFail:
-    def exec_in_container(self, container, cmd):
+    def exec_in_container(self, container, cmd, realtime=False):
         return False, '', 'error'
 
 def test_rust_handler_build_fail():

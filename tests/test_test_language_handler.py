@@ -5,9 +5,13 @@ import os
 class DummyCtl:
     def __init__(self):
         self.calls = []
-    def exec_in_container(self, container, cmd):
+    def exec_in_container(self, container, cmd, realtime=False):
         self.calls.append((container, cmd))
         return True, 'ok', ''
+
+class DummyCtlFail:
+    def exec_in_container(self, container, cmd, realtime=False):
+        return False, '', 'error'
 
 def test_python_handler_run():
     ctl = DummyCtl()
@@ -36,12 +40,14 @@ def test_rust_handler_build_and_run(tmp_path):
     os.makedirs(os.path.dirname(abs_out), exist_ok=True)
     with open(abs_out, 'w') as f:
         f.write('dummy')
-    ok, out, err = handler.build(ctl, 'cont', os.path.join(tmp_path, 'main.rs'))
+    rust_dir = tmp_path / "rust"
+    rust_dir.mkdir()
+    ok, out, err = handler.build(ctl, 'cont', str(rust_dir))
     assert ok and out == 'ok'
-    assert 'rustc' in ctl.calls[0][1]
-    ok, out, err = handler.run(ctl, 'cont', '/workspace/input.txt', os.path.join(tmp_path, 'main.rs'))
+    assert any('cargo build' in s for s in ctl.calls[0][1])
+    ok, out, err = handler.run(ctl, 'cont', '/workspace/input.txt', str(rust_dir))
     assert ok and out == 'ok'
-    assert '/workspace/.temp/a.out' in ctl.calls[-1][1][-1]
+    assert any('target/release/rust' in s for s in ctl.calls[-1][1])
 
 def test_handlers_mapping():
     assert isinstance(HANDLERS['python'], PythonTestHandler)
@@ -58,7 +64,7 @@ def test_base_handler_run_notimplemented():
 def test_python_handler_run_exception():
     from src.environment.test_language_handler import PythonTestHandler
     class DummyCtl:
-        def exec_in_container(self, container, cmd):
+        def exec_in_container(self, container, cmd, realtime=False):
             raise RuntimeError("fail")
     handler = PythonTestHandler()
     with pytest.raises(RuntimeError):
@@ -67,7 +73,7 @@ def test_python_handler_run_exception():
 def test_pypy_handler_run_exception():
     from src.environment.test_language_handler import PypyTestHandler
     class DummyCtl:
-        def exec_in_container(self, container, cmd):
+        def exec_in_container(self, container, cmd, realtime=False):
             raise RuntimeError("fail")
     handler = PypyTestHandler()
     with pytest.raises(RuntimeError):
@@ -76,7 +82,7 @@ def test_pypy_handler_run_exception():
 def test_rust_handler_build_and_run_exception():
     from src.environment.test_language_handler import RustTestHandler
     class DummyCtl:
-        def exec_in_container(self, container, cmd):
+        def exec_in_container(self, container, cmd, realtime=False):
             raise RuntimeError("fail")
     handler = RustTestHandler()
     with pytest.raises(RuntimeError):

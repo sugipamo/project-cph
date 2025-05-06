@@ -2,5 +2,7 @@
 .env
 .local/
 
+.temp/
+
 contest_stocks/
 contest_current/
