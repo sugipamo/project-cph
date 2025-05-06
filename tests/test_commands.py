@@ -7,6 +7,8 @@ import io
 import builtins
 from src.file_operator import LocalFileOperator
 from src.environment.test_environment import DockerTestExecutionEnvironment
+import tempfile
+import subprocess
 
 def test_parse_prints_args():
     parser = CommandParser()
@@ -283,6 +285,7 @@ def test_command_test(monkeypatch, tmp_path):
     monkeypatch.setattr(os, "makedirs", lambda *a, **k: None)
     monkeypatch.setattr("builtins.print", lambda *a, **k: None)
     # open, existsのモック
+    import builtins
     orig_open = builtins.open
     orig_exists = os.path.exists
     def fake_open(path, mode="r", encoding=None):
@@ -296,9 +299,19 @@ def test_command_test(monkeypatch, tmp_path):
         return orig_exists(path)
     monkeypatch.setattr(builtins, "open", fake_open)
     monkeypatch.setattr(os.path, "exists", fake_exists)
-    # テスト本体
+    # テスト用Dockerfileを作成し、dockerfile_mapを注入
+    with tempfile.NamedTemporaryFile("w+b", delete=False) as f:
+        f.write(b"FROM python:3.8\n")
+        f.flush()
+        dockerfile_path = f.name
+    dockerfile_map = {"python": dockerfile_path}
+    # DockerPoolにDI
+    from src.docker.pool import DockerPool
     fm = DummyFileManager()
     cmd = CommandTest(fm)
+    cmd.env.pool = DockerPool(dockerfile_map=dockerfile_map)
+    # subprocess.runをモック（docker build等が失敗しないように）
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: type("Dummy", (), {"stdout": "", "returncode": 0})())
     # prepare_test_environment, collect_test_cases
     temp_source_path, temp_test_dir = cmd.prepare_test_environment("abc", "a", "python")
     temp_in_files, out_files = cmd.collect_test_cases(temp_test_dir, fm.file_operator)
@@ -313,6 +326,7 @@ def test_command_test(monkeypatch, tmp_path):
     cmd.print_test_results([(True, "out", "")])
     # run_test_return_results
     res = asyncio.run(cmd.run_test_return_results("abc", "a", "python"))
+    os.remove(dockerfile_path)
     assert isinstance(res, list)
     for r in res:
         assert "result" in r
