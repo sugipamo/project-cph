@@ -69,8 +69,8 @@ class CommandSubmit:
         # コンテナが存在しなければ自動再起動
         if not ctl.is_container_running(ojtools_name):
             ctl.start_container(ojtools_name, "oj", {})
-        # 最大3回までリトライ
-        for attempt in range(3):
+        # 最大1回までリトライ
+        for attempt in range(1):
             ok, stdout, stderr = ctl.exec_in_container(ojtools_name, ["oj"] + args)
             if ok:
                 break

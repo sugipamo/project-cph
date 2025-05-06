@@ -1,6 +1,4 @@
-# a.py
-# 問題: a
-# 言語: python
+N, A, B = map(int, input().split())
+C = list(map(int, input().split()))
 
-if __name__ == "__main__":
-    pass 
+print(C.index(A + B) + 1)
