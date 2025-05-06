@@ -12,17 +12,11 @@ def patch_opener(monkeypatch):
 @pytest.fixture(autouse=True)
 def prepare_contest_current(tmp_path, monkeypatch):
     """
-    contest_currentディレクトリと必要なファイル・ディレクトリを一時ディレクトリにコピー・生成し、
+    contest_currentディレクトリと必要なファイル・ディレクトリを一時ディレクトリに新規生成し、
     カレントディレクトリを一時ディレクトリに切り替えるfixture。
     """
-    # contest_currentのテンプレートパス
-    src_dir = pathlib.Path("contest_current")
     dst_dir = tmp_path / "contest_current"
-    if src_dir.exists():
-        shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
-    else:
-        # contest_current自体がなければ作成
-        dst_dir.mkdir(parents=True, exist_ok=True)
+    dst_dir.mkdir(parents=True, exist_ok=True)
     # python/main.py
     py_dir = dst_dir / "python"
     py_dir.mkdir(exist_ok=True)
