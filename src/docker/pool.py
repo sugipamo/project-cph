@@ -1,5 +1,6 @@
 from .ctl import DockerCtl
 from concurrent.futures import ThreadPoolExecutor
+import subprocess, json
 
 CONTAINER_PREFIX = "cph"
 
@@ -51,11 +52,38 @@ class DockerPool:
             list(executor.map(self.ctl.remove_container, to_remove))
         # 4. 足りないコンテナを並列で起動
         to_start = [c for c in required_containers if c["name"] not in existing]
-        print(f"[DEBUG] required_containers: {required_containers}")
-        print(f"[DEBUG] to_start: {to_start}")
+        # 追加: 既存コンテナのボリューム構成が異なる場合は削除して再作成
+        for c in required_containers:
+            expected_vols = c.get("volumes")
+            if expected_vols and c["name"] in existing:
+                result = subprocess.run([
+                    "docker", "inspect", "-f", "{{json .Mounts}}", c["name"]
+                ], capture_output=True, text=True)
+                if result.returncode == 0:
+                    mounts = json.loads(result.stdout)
+                    for host_path, cont_path in expected_vols.items():
+                        found = any(m.get("Source") == host_path and m.get("Destination") == cont_path for m in mounts)
+                        if not found:
+                            # ボリュームが違う場合はremove→start
+                            self.ctl.remove_container(c["name"])
+                            to_start.append(c)
+                            break
         def start_c(c):
             image = "oj" if c["type"] == "ojtools" else c.get("language", "python")
             self.ctl.start_container(c["name"], image, volumes=c.get("volumes"))
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             list(executor.map(start_c, to_start))
+        # --- ボリュームマウントの検証 ---
+        for c in required_containers:
+            expected_vols = c.get("volumes")
+            if expected_vols:
+                result = subprocess.run([
+                    "docker", "inspect", "-f", "{{json .Mounts}}", c["name"]
+                ], capture_output=True, text=True)
+                if result.returncode == 0:
+                    mounts = json.loads(result.stdout)
+                    for host_path, cont_path in expected_vols.items():
+                        found = any(m.get("Source") == host_path and m.get("Destination") == cont_path for m in mounts)
+                        assert found, f"{c['name']}に{host_path}:{cont_path}がマウントされていません: {mounts}"
+        # ---
         return required_containers 

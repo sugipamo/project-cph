@@ -310,8 +310,8 @@ def test_command_test(monkeypatch, tmp_path):
     fm = DummyFileManager()
     cmd = CommandTest(fm)
     # prepare_test_environment, collect_test_cases
-    temp_dir, src_path = cmd.prepare_test_environment("abc", "a", "python")
-    temp_in_files, in_files = cmd.collect_test_cases(temp_dir, "contest_current/test", fm.file_operator)
+    temp_source_path, temp_test_dir = cmd.prepare_test_environment("abc", "a", "python")
+    temp_in_files, out_files = cmd.collect_test_cases(temp_test_dir, fm.file_operator)
     assert len(temp_in_files) == 2
     # get_test_containers_from_info
     assert cmd.get_test_containers_from_info() == ["test1"]

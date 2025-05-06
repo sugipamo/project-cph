@@ -8,45 +8,26 @@ from .test_language_handler import HANDLERS
 from .info_json_manager import InfoJsonManager
 from ..docker.pool import DockerPool
 from ..docker.ctl import DockerCtl
+from src.test_environment import DockerTestExecutionEnvironment
 
 class CommandTest:
     def __init__(self, file_manager):
         self.file_manager = file_manager
+        self.env = DockerTestExecutionEnvironment(file_manager)
 
     def prepare_test_environment(self, contest_name, problem_name, language_name):
-        import os
-        import pathlib
-        file_operator = self.file_manager.file_operator if self.file_manager and hasattr(self.file_manager, 'file_operator') else None
-        temp_dir = pathlib.Path(".temp")
-        if file_operator:
-            if not file_operator.exists(str(temp_dir)):
-                file_operator.makedirs(str(temp_dir))
-        else:
-            os.makedirs(temp_dir, exist_ok=True)
-        source_path = f"contest_current/{language_name}/main.py"
-        temp_source_path = temp_dir / "main.py"
-        if file_operator:
-            file_operator.copy(source_path, str(temp_source_path))
-        else:
-            import shutil
-            shutil.copy(source_path, temp_source_path)
-        test_dir = "contest_current/test"
-        temp_test_dir = temp_dir / "test"
-        if file_operator:
-            if not file_operator.exists(str(temp_test_dir)):
-                file_operator.copytree(test_dir, str(temp_test_dir))
-        else:
-            if os.path.exists(test_dir):
-                shutil.copytree(test_dir, temp_test_dir, dirs_exist_ok=True)
-        return temp_dir, source_path
+        # DockerTestExecutionEnvironmentに移譲
+        temp_source_path = self.env.prepare_source_code(contest_name, problem_name, language_name)
+        temp_test_dir = self.env.prepare_test_cases(contest_name, problem_name)
+        return temp_source_path, temp_test_dir
 
-    def collect_test_cases(self, temp_dir, test_dir, file_operator=None):
+    def collect_test_cases(self, temp_test_dir, file_operator=None):
         import glob
         import os
         if file_operator:
-            in_files = sorted(file_operator.glob(f"{test_dir}/*.in"))
+            in_files = sorted(file_operator.glob(f"{temp_test_dir}/*.in"))
         else:
-            in_files = sorted(glob.glob(f"{test_dir}/*.in"))
+            in_files = sorted(glob.glob(f"{temp_test_dir}/*.in"))
         out_files = [str(f).replace('.in', '.out') for f in in_files]
         return in_files, out_files
 
@@ -57,7 +38,7 @@ class CommandTest:
         return [c["name"] for c in manager.get_containers(type="test")]
 
     def to_container_path(self, host_path):
-        return str(host_path).replace(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, 1)
+        return self.env.to_container_path(host_path)
 
     def build_in_container(self, ctl, handler, container, source_path):
         return handler.build(ctl, container, source_path)
@@ -69,7 +50,7 @@ class CommandTest:
         if not ctl.is_container_running(container):
             ctl.start_container(container, image, {})
 
-    def run_single_test_case(self, ctl, handler, container, in_file, source_path, image, retry=2):
+    def run_single_test_case(self, ctl, handler, container, in_file, source_path, image, retry=3):
         for attempt in range(retry):
             ok, stdout, stderr = handler.run(ctl, container, in_file, source_path)
             if ok:
@@ -112,7 +93,7 @@ class CommandTest:
             self.ensure_container_running(ctl, container, image)
             abs_in_file = os.path.abspath(in_file)
             cont_in_file = self.to_container_path(abs_in_file)
-            ok, stdout, stderr, attempt = self.run_single_test_case(ctl, handler, container, cont_in_file, cont_temp_source_path, image, retry=2)
+            ok, stdout, stderr, attempt = self.env.run_test_case(language_name, container, cont_in_file, cont_temp_source_path, retry=3)
             out_file = str(in_file).replace('.in', '.out')
             expected = ""
             file_operator = self.file_manager.file_operator if self.file_manager else None
@@ -138,10 +119,8 @@ class CommandTest:
         # from docker.pool import DockerPool
         # from commands.info_json_manager import InfoJsonManager
         file_operator = self.file_manager.file_operator if self.file_manager else None
-        temp_dir, source_path = self.prepare_test_environment(contest_name, problem_name, language_name)
-        test_dir = "contest_current/test"
-        temp_source_path = str(temp_dir / pathlib.Path(source_path).name)
-        temp_in_files, _ = self.collect_test_cases(temp_dir, test_dir, file_operator)
+        temp_source_path, temp_test_dir = self.prepare_test_environment(contest_name, problem_name, language_name)
+        temp_in_files, _ = self.collect_test_cases(temp_test_dir, file_operator)
         # --- 必要なコンテナ数を調整し、info.jsonを最新化 ---
         test_case_count = len(temp_in_files)
         requirements = [
@@ -168,10 +147,8 @@ class CommandTest:
     async def run_test_return_results(self, contest_name, problem_name, language_name):
         import pathlib
         file_operator = self.file_manager.file_operator if self.file_manager else None
-        temp_dir, source_path = self.prepare_test_environment(contest_name, problem_name, language_name)
-        test_dir = "contest_current/test"
-        temp_source_path = str(temp_dir / pathlib.Path(source_path).name)
-        temp_in_files, _ = self.collect_test_cases(temp_dir, test_dir, file_operator)
+        temp_source_path, temp_test_dir = self.prepare_test_environment(contest_name, problem_name, language_name)
+        temp_in_files, _ = self.collect_test_cases(temp_test_dir, file_operator)
         # --- 必要なコンテナ数を調整し、info.jsonを最新化 ---
         test_case_count = len(temp_in_files)
         requirements = [

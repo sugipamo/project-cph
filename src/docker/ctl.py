@@ -1,4 +1,5 @@
 import subprocess
+import json
 
 class DockerCtl:
     def __init__(self, timeout=30):
@@ -29,11 +30,7 @@ class DockerCtl:
 
     def start_container(self, name, image, volumes=None):
         try:
-            # 既存コンテナ（停止中含む）があれば削除
-            subprocess.run([
-                "docker", "rm", "-f", name
-            ], capture_output=True, text=True, timeout=self.timeout)
-            # 新規起動
+            # 新規起動のみ（既存コンテナの削除は行わない）
             cmd = [
                 "docker", "run", "-d", "--name", name
             ]
