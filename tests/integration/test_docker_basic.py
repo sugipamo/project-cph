@@ -207,11 +207,10 @@ def test_run_main_py_in_container():
     print(f"[DEBUG] temp_main: {temp_main}")
     print(f"[DEBUG] .temp dir contents: {list(temp_test_dir.parent.iterdir())}")
     if not temp_main.exists():
-        print(f"[ERROR] temp_test_dir.parent/main.py not found! contents: {list(temp_test_dir.parent.iterdir())}")
+        pass
     assert temp_main.exists(), f"temp_test_dir.parent/main.pyが存在しません: {temp_main}"
     with open(temp_main, "r") as f:
         main_py_content = f.read()
-    print("[DEBUG] temp_test_dir.parent/main.py content after prepare_test_environment:\n", main_py_content)
     temp_in_files, in_files = tester.collect_test_cases(str(temp_test_dir), file_operator)
     temp_in_files = [Path(f) for f in temp_in_files]
     in_files = [Path(f) for f in in_files]
@@ -222,11 +221,6 @@ def test_run_main_py_in_container():
             input_data = f.read()
         with open(orig_out, "r") as f:
             expected = f.read().strip()
-        print(f"[DEBUG] input_data for {temp_in}:\n", repr(input_data))
-        print(f"[DEBUG] ローカルls -l {temp_test_dir.parent}:")
-        sp.run(["ls", "-l", str(temp_test_dir.parent)], check=False)
-        print(f"[DEBUG] ローカルls -lR {temp_test_dir.parent}:")
-        sp.run(["ls", "-lR", str(temp_test_dir.parent)], check=False)
         # docker runでテストケースを実行
         cmd = [
             "docker", "run", "--rm", "-i",
@@ -277,15 +271,12 @@ def test_command_open_e2e(tmp_path):
     test_dir = work_dir / "contest_current/test"
     if test_dir.exists():
         shutil.rmtree(test_dir)
-    import asyncio
     try:
         asyncio.run(command_open.open(contest_name, problem_name, language_name))
     except Exception as e:
-        print("[DEBUG] openコマンド例外:", e)
+        pass
     assert test_dir.exists()
     in_files = [f for f in os.listdir(test_dir) if f.endswith('.in')]
-    if len(in_files) == 0:
-        print("[DEBUG] test_dir contents:", os.listdir(test_dir))
     assert len(in_files) > 0, "テストケースがダウンロードされていない"
     with open(work_dir / "contest_current/info.json", "r", encoding="utf-8") as f:
         info = json.load(f)

@@ -35,11 +35,9 @@ class DockerCtl:
                 "docker", "run", "-d", "--name", name
             ]
             if volumes:
-                print(f"[DEBUG] volumes: {volumes}")
                 for host_path, cont_path in volumes.items():
                     cmd += ["-v", f"{host_path}:{cont_path}"]
             cmd += [image, "tail", "-f", "/dev/null"]
-            print(f"[DEBUG] docker run cmd: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
             if result.returncode != 0:
                 print(f"[ERROR] docker run failed: {result.stderr}")
@@ -78,10 +76,9 @@ class DockerCtl:
                 output = ""
                 try:
                     for line in proc.stdout:
-                        print(line, end="")
                         output += line
-                except Exception as e:
-                    print(f"[ERROR] reading output: {e}")
+                except Exception:
+                    pass
                 proc.wait()
                 if proc.returncode != 0:
                     return False, output, output

@@ -85,7 +85,6 @@ class CommandParser:
                     break
         # Noneでない要素のみ表示
         filtered = {k: v for k, v in self.parsed.items() if v is not None}
-        print(f"[DEBUG] パース結果: {filtered}")
         # 未特定の要素があれば警告（出力しないように変更）
         # for k, v in self.parsed.items():
         #     if v is None:
