@@ -14,42 +14,41 @@ class CommandTest:
         self.file_manager = file_manager
 
     def prepare_test_environment(self, contest_name, problem_name, language_name):
+        import os
         import pathlib
-        file_operator = self.file_manager.file_operator if self.file_manager else None
-        source_path = f"contest_current/{language_name}/main.py"
-        test_dir = "contest_current/test"
-        if language_name == "rust":
-            source_path = f"contest_current/{language_name}/src/main.rs"
+        file_operator = self.file_manager.file_operator if self.file_manager and hasattr(self.file_manager, 'file_operator') else None
         temp_dir = pathlib.Path(".temp")
         if file_operator:
-            if file_operator.exists(temp_dir):
-                file_operator.rmtree(temp_dir)
-            file_operator.makedirs(temp_dir)
-            file_operator.copy(source_path, temp_dir / pathlib.Path(source_path).name)
-            if not file_operator.exists(test_dir):
-                file_operator.makedirs(test_dir)
-            file_operator.copytree(test_dir, temp_dir / "test")
+            if not file_operator.exists(str(temp_dir)):
+                file_operator.makedirs(str(temp_dir))
+        else:
+            os.makedirs(temp_dir, exist_ok=True)
+        source_path = f"contest_current/{language_name}/main.py"
+        temp_source_path = temp_dir / "main.py"
+        if file_operator:
+            file_operator.copy(source_path, str(temp_source_path))
         else:
             import shutil
-            if temp_dir.exists():
-                shutil.rmtree(temp_dir)
-            temp_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source_path, temp_dir / pathlib.Path(source_path).name)
-            if not pathlib.Path(test_dir).exists():
-                pathlib.Path(test_dir).mkdir(parents=True, exist_ok=True)
-            shutil.copytree(test_dir, temp_dir / "test", dirs_exist_ok=True)
+            shutil.copy(source_path, temp_source_path)
+        test_dir = "contest_current/test"
+        temp_test_dir = temp_dir / "test"
+        if file_operator:
+            if not file_operator.exists(str(temp_test_dir)):
+                file_operator.copytree(test_dir, str(temp_test_dir))
+        else:
+            if os.path.exists(test_dir):
+                shutil.copytree(test_dir, temp_test_dir, dirs_exist_ok=True)
         return temp_dir, source_path
 
     def collect_test_cases(self, temp_dir, test_dir, file_operator=None):
+        import glob
         import os
-        import pathlib
         if file_operator:
             in_files = sorted(file_operator.glob(f"{test_dir}/*.in"))
         else:
-            import glob
-            in_files = sorted(glob.glob(os.path.join(test_dir, "*.in")))
-        temp_in_files = [str(temp_dir / "test" / pathlib.Path(f).name) for f in in_files]
-        return temp_in_files, in_files
+            in_files = sorted(glob.glob(f"{test_dir}/*.in"))
+        out_files = [str(f).replace('.in', '.out') for f in in_files]
+        return in_files, out_files
 
     def get_test_containers_from_info(self):
         # from commands.info_json_manager import InfoJsonManager
@@ -58,7 +57,7 @@ class CommandTest:
         return [c["name"] for c in manager.get_containers(type="test")]
 
     def to_container_path(self, host_path):
-        return host_path.replace(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, 1)
+        return str(host_path).replace(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, 1)
 
     def build_in_container(self, ctl, handler, container, source_path):
         return handler.build(ctl, container, source_path)
@@ -114,11 +113,17 @@ class CommandTest:
             abs_in_file = os.path.abspath(in_file)
             cont_in_file = self.to_container_path(abs_in_file)
             ok, stdout, stderr, attempt = self.run_single_test_case(ctl, handler, container, cont_in_file, cont_temp_source_path, image, retry=2)
-            out_file = in_file.replace('.in', '.out')
+            out_file = str(in_file).replace('.in', '.out')
             expected = ""
-            if os.path.exists(out_file):
-                with open(out_file, "r", encoding="utf-8") as f:
-                    expected = f.read()
+            file_operator = self.file_manager.file_operator if self.file_manager else None
+            if file_operator:
+                if file_operator.exists(out_file):
+                    with file_operator.open(out_file, "r", encoding="utf-8") as f:
+                        expected = f.read()
+            else:
+                if os.path.exists(out_file):
+                    with open(out_file, "r", encoding="utf-8") as f:
+                        expected = f.read()
             result = self.collect_test_result(ok, stdout, stderr, expected, in_file, container, attempt)
             results.append(result)
         return results

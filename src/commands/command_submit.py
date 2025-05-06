@@ -89,7 +89,7 @@ class CommandSubmit:
             if not self.confirm_submit_with_wa():
                 print("提出を中止しました。")
                 return
-        file_operator = self.file_manager.file_operator if self.file_manager else None
+        file_operator = self.file_manager.file_operator if self.file_manager and hasattr(self.file_manager, 'file_operator') else None
         import os
         info_path = os.path.join("contest_current", "info.json")
         config_path = os.path.join("contest_current", "config.json")

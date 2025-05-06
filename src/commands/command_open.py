@@ -14,7 +14,7 @@ class CommandOpen:
         """
         import os
         import subprocess
-        
+        file_operator = self.file_manager.file_operator if self.file_manager and hasattr(self.file_manager, 'file_operator') else None
         # 1. 問題ファイル準備（info.jsonもここで更新される）
         if self.file_manager:
             self.file_manager.prepare_problem_files(contest_name, problem_name, language_name)
@@ -26,7 +26,10 @@ class CommandOpen:
         
         # 3. テストケース数カウント
         test_dir = "contest_current/test"
-        test_case_count = len([f for f in os.listdir(test_dir) if f.endswith('.in')]) if os.path.exists(test_dir) else 0
+        if file_operator:
+            test_case_count = len(list(file_operator.glob(f"{test_dir}/*.in")))
+        else:
+            test_case_count = len([f for f in os.listdir(test_dir) if f.endswith('.in')]) if os.path.exists(test_dir) else 0
         
         # 4. DockerPoolで必要なコンテナを調整
         requirements = [
@@ -52,7 +55,11 @@ class CommandOpen:
         ojtools_name = ojtools_list[0]["name"]
         ctl = DockerCtl()
         test_dir_host = "contest_current/test"
-        os.makedirs(test_dir_host, exist_ok=True)
+        if file_operator:
+            if not file_operator.exists(test_dir_host):
+                file_operator.makedirs(test_dir_host)
+        else:
+            os.makedirs(test_dir_host, exist_ok=True)
         if not ctl.is_container_running(ojtools_name):
             ctl.start_container(ojtools_name, "oj", {})
         # testディレクトリをクリーンアップ＆作成＆oj download
@@ -60,4 +67,25 @@ class CommandOpen:
         ctl.exec_in_container(ojtools_name, ["mkdir", "-p", f"/workspace/{test_dir_host}"])
         ctl.exec_in_container(ojtools_name, ["oj", "download", url, "-d", f"/workspace/{test_dir_host}"])
         # docker cpでホストにテストケースをコピー（test/testにならないようcontest_current/にコピー）
-        ctl.cp_from_container(ojtools_name, f"/workspace/{test_dir_host}", "contest_current/") 
+        ctl.cp_from_container(ojtools_name, f"/workspace/{test_dir_host}", "contest_current/")
+
+    def prepare_problem_files(self, contest_name, problem_name, language_name):
+        import os
+        import shutil
+        file_operator = self.file_operator if hasattr(self, 'file_operator') else None
+        # contest_currentディレクトリ作成
+        if file_operator:
+            if not file_operator.exists("contest_current"):
+                file_operator.makedirs("contest_current")
+        else:
+            os.makedirs("contest_current", exist_ok=True)
+        # main.pyのコピー
+        src = f"templates/{language_name}/main.py"
+        dst = f"contest_current/{language_name}/main.py"
+        if file_operator:
+            if not file_operator.exists(f"contest_current/{language_name}"):
+                file_operator.makedirs(f"contest_current/{language_name}")
+            file_operator.copy(src, dst)
+        else:
+            os.makedirs(f"contest_current/{language_name}", exist_ok=True)
+            shutil.copy(src, dst) 
