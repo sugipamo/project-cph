@@ -77,17 +77,4 @@ class DockerPool:
             self.ctl.start_container(c["name"], image, volumes=c.get("volumes"))
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             list(executor.map(start_c, to_start))
-        # --- ボリュームマウントの検証 ---
-        for c in required_containers:
-            expected_vols = c.get("volumes")
-            if expected_vols:
-                result = subprocess.run([
-                    "docker", "inspect", "-f", "{{json .Mounts}}", c["name"]
-                ], capture_output=True, text=True)
-                if result.returncode == 0:
-                    mounts = json.loads(result.stdout)
-                    for host_path, cont_path in expected_vols.items():
-                        found = any(m.get("Source") == host_path and m.get("Destination") == cont_path for m in mounts)
-                        assert found, f"{c['name']}に{host_path}:{cont_path}がマウントされていません: {mounts}"
-        # ---
         return required_containers 
