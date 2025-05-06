@@ -4,6 +4,8 @@ from .file_operator import FileOperator
 import shutil
 import os
 from src.info_json_manager import InfoJsonManager
+from src.config_json_manager import ConfigJsonManager
+from src.moveignore_manager import MoveIgnoreManager
 
 class ContestFileManager:
     def __init__(self, file_operator: FileOperator):
@@ -19,18 +21,10 @@ class ContestFileManager:
         """
         config.jsonのmoveignore（正規表現リスト）を返す
         """
-        if config_path.exists():
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
-            return config.get("moveignore", [])
-        return []
+        return MoveIgnoreManager(str(config_path)).moveignore
 
     def _is_ignored(self, name, ignore_patterns):
-        import re
-        for pat in ignore_patterns:
-            if re.fullmatch(pat, name):
-                return True
-        return False
+        return MoveIgnoreManager.is_ignored_with_patterns(name, ignore_patterns)
 
     def _remove_empty_parents(self, path, stop_at):
         """
@@ -98,8 +92,9 @@ class ContestFileManager:
         manager.data["language_name"] = language_name
         manager.save()
         if not config_path.exists():
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump({"moveignore": []}, f, ensure_ascii=False, indent=2)
+            manager = ConfigJsonManager(str(config_path))
+            manager.data["moveignore"] = []
+            manager.save()
             self._generate_moveignore_readme()
         if not any(src_dir.iterdir()):
             src_dir.rmdir()
@@ -133,25 +128,14 @@ class ContestFileManager:
         manager.data["language_name"] = language_name
         manager.save()
         if not config_path.exists():
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump({"moveignore": []}, f, ensure_ascii=False, indent=2)
+            manager = ConfigJsonManager(str(config_path))
+            manager.data["moveignore"] = []
+            manager.save()
             self._generate_moveignore_readme()
 
     def _generate_moveignore_readme(self):
         readme_path = self.file_operator.resolve_path("contest_current/README.md")
-        content = (
-            "# contest_current/config.json の moveignore 設定例\n"
-            "\n"
-            "- `moveignore` は移動時に無視するファイル名の正規表現リストです。\n"
-            "- 例: `['^.*\\.log$', '^debug.*']`\n"
-            "\n"
-            "## 設定例\n"
-            "```json\n"
-            "{\n    \"moveignore\": [\n        \"^.*\\\\.log$\",\n        \"^debug.*\"\n    ]\n}\n"
-            "```\n"
-        )
-        with open(readme_path, "w", encoding="utf-8") as f:
-            f.write(content)
+        MoveIgnoreManager.generate_readme(str(readme_path))
 
     def problem_exists_in_stocks(self, contest_name, problem_name, language_name):
         src_dir = self.file_operator.resolve_path(f"contest_stocks/{contest_name}/{problem_name}")
@@ -178,22 +162,12 @@ class ContestFileManager:
                 problem_name = info.get("problem_name")
             if language_name is None:
                 language_name = info.get("language_name")
-        # config.jsonにlanguage_idがなければ初期値を追加
-        if config_path.exists():
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
-        else:
-            config = {}
-        if "language_id" not in config:
-            config["language_id"] = {
-                "python": "5082",
-                "pypy": "5078",
-                "rust": "5054"
-            }
-            # 親ディレクトリを作成
-            config_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(config, f, ensure_ascii=False, indent=2)
+        manager = ConfigJsonManager(str(config_path))
+        manager.ensure_language_id({
+            "python": "5082",
+            "pypy": "5078",
+            "rust": "5054"
+        })
         self.move_current_to_stocks(problem_name, language_name)
         if self.problem_exists_in_stocks(contest_name, problem_name, language_name):
             self.move_from_stocks_to_current(contest_name, problem_name, language_name)
