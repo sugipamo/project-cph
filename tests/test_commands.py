@@ -890,3 +890,216 @@ def test_run_single_test_case():
     assert ok is True
     assert stdout == "ok"
     assert attempt == 2 
+
+def test_run_single_test_case_retry_integration():
+    from src.commands.command_test import CommandTest
+    class DummyCtl:
+        def __init__(self):
+            self.calls = []
+        def remove_container(self, name):
+            self.calls.append(f"remove:{name}")
+        def start_container(self, name, image, volumes):
+            self.calls.append(f"start:{name}:{image}")
+    class DummyHandler:
+        def __init__(self):
+            self.calls = 0
+        def run(self, ctl, container, in_file, source_path):
+            self.calls += 1
+            if self.calls == 1:
+                return False, "", "err"
+            return True, "ok", ""
+    cmd = CommandTest(None)
+    ctl = DummyCtl()
+    handler = DummyHandler()
+    ok, stdout, stderr, attempt = cmd.run_single_test_case(ctl, handler, "cont", "in", "src", "img")
+    assert ok is True
+    assert stdout == "ok"
+    assert attempt == 2
+    # 1回目失敗時にremove/startが呼ばれていること
+    assert ctl.calls[0].startswith("remove:")
+    assert ctl.calls[1].startswith("start:") 
+
+def test_run_test_cases_integration():
+    from src.commands.command_test import CommandTest
+    from src.commands.test_language_handler import PythonTestHandler, HANDLERS
+    class DummyCtl:
+        def __init__(self):
+            self.running = set()
+            self.started = []
+            self.removed = []
+        def is_container_running(self, name):
+            return name in self.running
+        def start_container(self, name, image, volumes):
+            self.running.add(name)
+            self.started.append((name, image))
+        def remove_container(self, name):
+            self.running.discard(name)
+            self.removed.append(name)
+    class DummyHandler:
+        def __init__(self):
+            self.build_called = False
+            self.run_calls = []
+        def build(self, ctl, container, source_path):
+            self.build_called = True
+            return True, "buildok", ""
+        def run(self, ctl, container, in_file, source_path):
+            self.run_calls.append((container, in_file, source_path))
+            return True, "output", ""
+    class DummyFileManager:
+        def __init__(self):
+            self.file_operator = None
+    class DummyInfoJsonManager:
+        def __init__(self, path):
+            self.data = {"contest_name": "abc", "problem_name": "a", "containers": [
+                {"name": "cont1", "type": "test"},
+                {"name": "cont2", "type": "test"}
+            ]}
+        def get_containers(self, type=None):
+            return self.data["containers"]
+        def save(self):
+            pass
+    import builtins
+    import types
+    # patch HANDLERS, InfoJsonManager, DockerCtl
+    from src.commands import command_test
+    orig_handler = HANDLERS["python"]
+    command_test.HANDLERS["python"] = DummyHandler()
+    command_test.InfoJsonManager = DummyInfoJsonManager
+    command_test.DockerCtl = DummyCtl
+    fm = DummyFileManager()
+    cmd = CommandTest(fm)
+    # テストケース2件
+    temp_source_path = "src/main.py"
+    temp_in_files = ["test1.in", "test2.in"]
+    try:
+        results = builtins.__import__("asyncio").run(cmd.run_test_cases(temp_source_path, temp_in_files, "python"))
+        # build, run, container起動、パス変換、結果収集がすべて呼ばれていること
+        handler = command_test.HANDLERS["python"]
+        assert handler.build_called is True
+        assert len(handler.run_calls) == 2
+        assert results[0]["result"][1] == "output"
+        assert results[1]["result"][1] == "output"
+    finally:
+        HANDLERS["python"] = orig_handler 
+
+def test_run_test_cases_build_fail():
+    from src.commands.command_test import CommandTest
+    from src.commands.test_language_handler import HANDLERS
+    class DummyCtl:
+        pass
+    class DummyHandler:
+        def build(self, ctl, container, source_path):
+            return False, "", "build error!"
+        def run(self, ctl, container, in_file, source_path):
+            raise AssertionError("run should not be called if build fails")
+    class DummyFileManager:
+        def __init__(self):
+            self.file_operator = None
+    class DummyInfoJsonManager:
+        def __init__(self, path):
+            self.data = {"contest_name": "abc", "problem_name": "a", "containers": [
+                {"name": "cont1", "type": "test"}
+            ]}
+        def get_containers(self, type=None):
+            return self.data["containers"]
+        def save(self):
+            pass
+    import builtins
+    from src.commands import command_test
+    orig_handler = HANDLERS["python"]
+    command_test.HANDLERS["python"] = DummyHandler()
+    command_test.InfoJsonManager = DummyInfoJsonManager
+    command_test.DockerCtl = DummyCtl
+    fm = DummyFileManager()
+    cmd = CommandTest(fm)
+    temp_source_path = "src/main.py"
+    temp_in_files = ["test1.in"]
+    try:
+        results = builtins.__import__("asyncio").run(cmd.run_test_cases(temp_source_path, temp_in_files, "python"))
+        assert results == []
+    finally:
+        HANDLERS["python"] = orig_handler
+
+def test_run_test_cases_run_all_fail():
+    from src.commands.command_test import CommandTest
+    from src.commands.test_language_handler import HANDLERS
+    class DummyCtl:
+        def __init__(self):
+            self.running = set()
+        def is_container_running(self, name):
+            return True
+        def start_container(self, name, image, volumes):
+            self.running.add(name)
+        def remove_container(self, name):
+            pass
+    class DummyHandler:
+        def build(self, ctl, container, source_path):
+            return True, "buildok", ""
+        def run(self, ctl, container, in_file, source_path):
+            return False, "", "exec error!"
+    class DummyFileManager:
+        def __init__(self):
+            self.file_operator = None
+    class DummyInfoJsonManager:
+        def __init__(self, path):
+            self.data = {"contest_name": "abc", "problem_name": "a", "containers": [
+                {"name": "cont1", "type": "test"}
+            ]}
+        def get_containers(self, type=None):
+            return self.data["containers"]
+        def save(self):
+            pass
+    import builtins
+    from src.commands import command_test
+    orig_handler = HANDLERS["python"]
+    command_test.HANDLERS["python"] = DummyHandler()
+    command_test.InfoJsonManager = DummyInfoJsonManager
+    command_test.DockerCtl = DummyCtl
+    fm = DummyFileManager()
+    cmd = CommandTest(fm)
+    temp_source_path = "src/main.py"
+    temp_in_files = ["test1.in"]
+    try:
+        results = builtins.__import__("asyncio").run(cmd.run_test_cases(temp_source_path, temp_in_files, "python"))
+        assert results[0]["result"][0] == 1
+        assert "exec error!" in results[0]["result"][2]
+    finally:
+        HANDLERS["python"] = orig_handler
+
+def test_run_test_cases_empty():
+    from src.commands.command_test import CommandTest
+    from src.commands.test_language_handler import HANDLERS
+    class DummyCtl:
+        pass
+    class DummyHandler:
+        def build(self, ctl, container, source_path):
+            return True, "buildok", ""
+        def run(self, ctl, container, in_file, source_path):
+            raise AssertionError("run should not be called if no test cases")
+    class DummyFileManager:
+        def __init__(self):
+            self.file_operator = None
+    class DummyInfoJsonManager:
+        def __init__(self, path):
+            self.data = {"contest_name": "abc", "problem_name": "a", "containers": [
+                {"name": "cont1", "type": "test"}
+            ]}
+        def get_containers(self, type=None):
+            return self.data["containers"]
+        def save(self):
+            pass
+    import builtins
+    from src.commands import command_test
+    orig_handler = HANDLERS["python"]
+    command_test.HANDLERS["python"] = DummyHandler()
+    command_test.InfoJsonManager = DummyInfoJsonManager
+    command_test.DockerCtl = DummyCtl
+    fm = DummyFileManager()
+    cmd = CommandTest(fm)
+    temp_source_path = "src/main.py"
+    temp_in_files = []
+    try:
+        results = builtins.__import__("asyncio").run(cmd.run_test_cases(temp_source_path, temp_in_files, "python"))
+        assert results == []
+    finally:
+        HANDLERS["python"] = orig_handler 
