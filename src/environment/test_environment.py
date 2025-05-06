@@ -5,6 +5,7 @@ from src.commands.test_language_handler import HANDLERS
 from src.commands.info_json_manager import InfoJsonManager
 from src.commands.test_result_formatter import TestResultFormatter
 from src.docker.ctl import DockerCtl
+from src.docker.pool import DockerPool
 
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
@@ -37,6 +38,7 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
         self.ctl = DockerCtl()
         from src.commands.test_language_handler import HANDLERS as DEFAULT_HANDLERS
         self.handlers = handlers if handlers is not None else DEFAULT_HANDLERS
+        self.pool = DockerPool()
 
     def prepare_source_code(self, contest_name, problem_name, language_name):
         temp_dir = ".temp"
@@ -82,4 +84,19 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
                 print(f"[WARN] exec失敗: {container} (attempt {attempt+1})")
                 ctl.remove_container(container)
                 ctl.start_container(container, image, {})
-        return ok, stdout, stderr, attempt+1 
+        return ok, stdout, stderr, attempt+1
+
+    def adjust_containers(self, requirements, contest_name=None, problem_name=None, language_name=None):
+        """必要なコンテナ数・ボリュームを調整し、info.jsonも更新する。"""
+        containers = self.pool.adjust(requirements)
+        # info.jsonの更新もここで行う
+        if contest_name and problem_name and language_name:
+            from src.commands.info_json_manager import InfoJsonManager
+            info_path = "contest_current/info.json"
+            manager = InfoJsonManager(info_path)
+            manager.data["contest_name"] = contest_name
+            manager.data["problem_name"] = problem_name
+            manager.data["language_name"] = language_name
+            manager.data["containers"] = containers
+            manager.save()
+        return containers 

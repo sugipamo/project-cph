@@ -6,6 +6,7 @@ import os
 import io
 import builtins
 from src.file_operator import LocalFileOperator
+from src.environment.test_environment import DockerTestExecutionEnvironment
 
 def test_parse_prints_args(capfd):
     parser = CommandParser()
@@ -711,6 +712,7 @@ def test_prepare_test_environment_creates_temp_files(monkeypatch, tmp_path):
 
 def test_requirements_volumes(monkeypatch, tmp_path):
     from src.commands.command_test import CommandTest
+    from src.environment.test_environment import DockerTestExecutionEnvironment
     import os
     class DummyFileManager:
         def __init__(self):
@@ -719,13 +721,13 @@ def test_requirements_volumes(monkeypatch, tmp_path):
     cmd = CommandTest(fm)
     # collect_test_casesで2件返すように
     monkeypatch.setattr(cmd, "collect_test_cases", lambda temp_dir, test_dir, file_operator=None: (["a.in", "b.in"], ["a.in", "b.in"]))
-    # DockerPool.adjustをモックしてrequirementsをキャプチャ
+    # DockerTestExecutionEnvironment.pool.adjustをモックしてrequirementsをキャプチャ
     captured = {}
     class DummyPool:
         def adjust(self, requirements):
             captured["requirements"] = requirements
             return [{"name": "test1", "type": "test"}]
-    monkeypatch.setattr("src.commands.command_test.DockerPool", DummyPool)
+    cmd.env.pool = DummyPool()
     import asyncio
     # contest_current/python/main.pyがtmp_path配下にあることを前提にbase_dirを指定
     cmd.file_manager.file_operator = LocalFileOperator(base_dir=tmp_path)

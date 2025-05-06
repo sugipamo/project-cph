@@ -8,7 +8,7 @@ from .test_language_handler import HANDLERS
 from .info_json_manager import InfoJsonManager
 from ..docker.pool import DockerPool
 from ..docker.ctl import DockerCtl
-from src.test_environment import DockerTestExecutionEnvironment
+from src.environment.test_environment import DockerTestExecutionEnvironment
 
 class CommandTest:
     def __init__(self, file_manager):
@@ -116,8 +116,6 @@ class CommandTest:
 
     async def run_test(self, contest_name, problem_name, language_name):
         import pathlib
-        # from docker.pool import DockerPool
-        # from commands.info_json_manager import InfoJsonManager
         file_operator = self.file_manager.file_operator if self.file_manager else None
         temp_source_path, temp_test_dir = self.prepare_test_environment(contest_name, problem_name, language_name)
         temp_in_files, _ = self.collect_test_cases(temp_test_dir, file_operator)
@@ -129,17 +127,7 @@ class CommandTest:
             }},
             {"type": "ojtools", "count": 1}
         ]
-        print(f"[DEBUG] requirements: {requirements}")
-        pool = DockerPool()
-        containers = pool.adjust(requirements)
-        print(f"[DEBUG] containers: {containers}")
-        info_path = "contest_current/info.json"
-        manager = InfoJsonManager(info_path)
-        manager.data["contest_name"] = contest_name
-        manager.data["problem_name"] = problem_name
-        manager.data["language_name"] = language_name
-        manager.data["containers"] = containers
-        manager.save()
+        containers = self.env.adjust_containers(requirements, contest_name, problem_name, language_name)
         # --- テスト実行 ---
         results = await self.run_test_cases(temp_source_path, temp_in_files, language_name)
         self.print_test_results(results)
@@ -157,15 +145,7 @@ class CommandTest:
             }},
             {"type": "ojtools", "count": 1}
         ]
-        pool = DockerPool()
-        containers = pool.adjust(requirements)
-        info_path = "contest_current/info.json"
-        manager = InfoJsonManager(info_path)
-        manager.data["contest_name"] = contest_name
-        manager.data["problem_name"] = problem_name
-        manager.data["language_name"] = language_name
-        manager.data["containers"] = containers
-        manager.save()
+        containers = self.env.adjust_containers(requirements, contest_name, problem_name, language_name)
         results = await self.run_test_cases(temp_source_path, temp_in_files, language_name)
         return results
 

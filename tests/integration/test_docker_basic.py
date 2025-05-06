@@ -17,6 +17,7 @@ import json
 import shutil
 import subprocess as sp
 from pathlib import Path
+from src.environment.test_environment import DockerTestExecutionEnvironment
 
 def unique_container_name():
     return f"cph_test_integration_{uuid.uuid4().hex[:8]}"
