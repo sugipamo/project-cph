@@ -10,3 +10,4 @@
 contest_stocks/
 contest_current/
 **/__pycache__/**
+target/

@@ -105,23 +105,30 @@ class DockerPool:
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             list(executor.map(self.ctl.remove_container, to_remove))
         # 4. 足りないコンテナを並列で起動
-        to_start = [c for c in required_containers if c["name"] not in existing]
-        # 追加: 既存コンテナのボリューム構成が異なる場合は削除して再作成
+        to_start = []
+        # 追加: 既存コンテナのボリューム構成が異なる場合、または停止している場合は削除して再作成
         for c in required_containers:
             expected_vols = c.get("volumes")
-            if expected_vols and c["name"] in existing:
-                result = subprocess.run([
-                    "docker", "inspect", "-f", "{{json .Mounts}}", c["name"]
-                ], capture_output=True, text=True)
-                if result.returncode == 0:
-                    mounts = json.loads(result.stdout)
-                    for host_path, cont_path in expected_vols.items():
-                        found = any(m.get("Source") == host_path and m.get("Destination") == cont_path for m in mounts)
-                        if not found:
-                            # ボリュームが違う場合はremove→start
-                            self.ctl.remove_container(c["name"])
-                            to_start.append(c)
-                            break
+            if c["name"] in existing:
+                needs_restart = False
+                # コンテナが停止しているかチェック
+                if not self.ctl.is_container_running(c["name"]):
+                    needs_restart = True
+                # ボリューム構成のチェック
+                elif expected_vols:
+                    result = self.ctl.exec_in_container(c["name"], ["docker", "inspect", "-f", "{{json .Mounts}}", c["name"]])
+                    if result[0]:  # コマンドが成功した場合
+                        mounts = json.loads(result[1])
+                        for host_path, cont_path in expected_vols.items():
+                            found = any(m.get("Source") == host_path and m.get("Destination") == cont_path for m in mounts)
+                            if not found:
+                                needs_restart = True
+                                break
+                if needs_restart:
+                    self.ctl.remove_container(c["name"])
+                    to_start.append(c)
+            else:
+                to_start.append(c)
         def start_c(c):
             language = "ojtools" if c["type"] == "ojtools" else c.get("language", "python")
             image = self.image_manager.ensure_image(language)

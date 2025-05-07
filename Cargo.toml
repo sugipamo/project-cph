@@ -1,0 +1,4 @@
+[workspace]
+members = [
+    "contest_current/rust"
+]
