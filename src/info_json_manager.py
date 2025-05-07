@@ -1,8 +1,12 @@
 import json
 import os
+from src.path_manager.unified_path_manager import UnifiedPathManager
 
 class InfoJsonManager:
-    def __init__(self, path="contest_current/info.json"):
+    def __init__(self, path=None):
+        if path is None:
+            upm = UnifiedPathManager()
+            path = upm.info_json()
         self.path = path
         self.data = self.load()
 

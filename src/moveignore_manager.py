@@ -1,9 +1,13 @@
 import re
 import json
 import os
+from src.path_manager.unified_path_manager import UnifiedPathManager
 
 class MoveIgnoreManager:
-    def __init__(self, config_path="contest_current/config.json"):
+    def __init__(self, config_path=None):
+        if config_path is None:
+            upm = UnifiedPathManager()
+            config_path = upm.config_json()
         self.config_path = config_path
         self.moveignore = self._load_moveignore()
 
@@ -28,7 +32,10 @@ class MoveIgnoreManager:
         return False
 
     @staticmethod
-    def generate_readme(path="contest_current/README.md"):
+    def generate_readme(path=None):
+        if path is None:
+            upm = UnifiedPathManager()
+            path = upm.readme_md()
         content = (
             "# contest_current/config.json の moveignore 設定例\n"
             "\n"

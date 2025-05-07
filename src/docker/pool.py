@@ -6,11 +6,12 @@ import os
 import hashlib
 
 CONTAINER_PREFIX = "cph"
+upm = UnifiedPathManager(project_root=os.path.abspath("."), container_root="/workspace")
 DEFAULT_DOCKERFILE_MAP = {
-    "python": "contest_env/python.Dockerfile",
-    "pypy": "contest_env/pypy.Dockerfile",
-    "rust": "contest_env/rust.Dockerfile",
-    "ojtools": "contest_env/oj.Dockerfile",
+    "python": upm.contest_env("python.Dockerfile"),
+    "pypy": upm.contest_env("pypy.Dockerfile"),
+    "rust": upm.contest_env("rust.Dockerfile"),
+    "ojtools": upm.contest_env("oj.Dockerfile"),
 }
 
 def generate_container_name(purpose, language=None, index=None):

@@ -1,8 +1,12 @@
 import json
 import os
+from src.path_manager.unified_path_manager import UnifiedPathManager
 
 class ConfigJsonManager:
-    def __init__(self, path="contest_current/config.json"):
+    def __init__(self, path=None):
+        if path is None:
+            upm = UnifiedPathManager()
+            path = upm.config_json()
         self.path = path
         self.data = self.load()
 
