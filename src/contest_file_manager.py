@@ -273,4 +273,16 @@ class ContestFileManager:
             if item.name != problem_name:
                 dst = stocks_tests_root / item.name
                 dst.parent.mkdir(parents=True, exist_ok=True)
-                self.file_operator.move(item, dst) 
+                self.file_operator.move(item, dst)
+
+    def get_problem_files(self, contest_name, problem_name, language_name):
+        """
+        問題回答用のファイルのパスを取得する。
+        contest_current/{language_name}/とcontest_current/test/のパスを返す。
+        
+        Returns:
+            tuple: (問題ファイルのディレクトリパス, テストファイルのディレクトリパス)
+        """
+        problem_dir = self.file_operator.resolve_path(f"contest_current/{language_name}")
+        test_dir = self.file_operator.resolve_path("contest_current/test")
+        return problem_dir, test_dir 

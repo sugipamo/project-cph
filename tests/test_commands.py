@@ -78,9 +78,14 @@ def test_command_open(monkeypatch, tmp_path):
     class DummyFileManager:
         def prepare_problem_files(self, c, p, l):
             self.called = (c, p, l)
+        def get_problem_files(self, c, p, l):
+            return f"contest_current/{l}", "contest_current/test"
     class DummyOpener:
         def open_browser(self, url):
             self.url = url
+        def open_editor(self, path, language=None):
+            self.path = path
+            self.language = language
     class DummyPool:
         def adjust(self, requirements):
             self.requirements = requirements

@@ -19,16 +19,20 @@ class CommandOpen:
         # 1. 問題ファイル準備（info.jsonもここで更新される）
         if self.file_manager:
             self.file_manager.prepare_problem_files(contest_name, problem_name, language_name)
+            problem_dir, test_dir = self.file_manager.get_problem_files(contest_name, problem_name, language_name)
+        else:
+            problem_dir = f"contest_current/{language_name}"
+            test_dir = "contest_current/test"
         
         # 2. 問題ページをブラウザで開く
         url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
         if self.opener:
             self.opener.open_browser(url)
+            self.opener.open_editor(str(problem_dir), language_name)
         
         # 3. テストケース数カウント
-        test_dir = "contest_current/test"
         if file_operator:
-            test_case_count = len(list(file_operator.glob(f"{test_dir}/*.in")))
+            test_case_count = len(list(file_operator.glob("contest_current/test/*.in")))
         else:
             test_case_count = len([f for f in os.listdir(test_dir) if f.endswith('.in')]) if os.path.exists(test_dir) else 0
         

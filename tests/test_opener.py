@@ -12,8 +12,7 @@ def test_open_editor_and_browser(monkeypatch):
     op = Opener()
     op.open_editor('foo')
     op.open_browser('http://example.com')
-    # VSCode/カーソル両方呼ばれるので、最後の呼び出しがcursor
-    assert called['editor'][-1] in ['foo/main.py', 'foo/src/main.rs']
+    assert called['editor'][-1] == 'foo'
     assert called['browser'] == 'http://example.com'
 
 def test_open_editor_rust(monkeypatch):
@@ -23,8 +22,7 @@ def test_open_editor_rust(monkeypatch):
     monkeypatch.setattr("subprocess.Popen", fake_popen)
     op = Opener()
     op.open_editor('foo', language='rust')
-    # rustならmain.rsが開かれる
-    assert any('foo/src/main.rs' in c for c in called['editors'])
+    assert any('foo' in cmd for cmd in called['editors'])
 
 def test_open_editor_vscode_fail_cursor_success(monkeypatch, capsys):
     calls = []

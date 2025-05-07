@@ -274,7 +274,8 @@ def test_command_open_e2e(tmp_path):
     try:
         asyncio.run(command_open.open(contest_name, problem_name, language_name))
     except Exception as e:
-        pass
+        print(f"Error in test_command_open_e2e: {e}")
+        raise e
     assert test_dir.exists()
     in_files = [f for f in os.listdir(test_dir) if f.endswith('.in')]
     assert len(in_files) > 0, "テストケースがダウンロードされていない"
