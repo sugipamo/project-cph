@@ -38,4 +38,16 @@ class ConfigJsonManager:
 
     def validate(self):
         # 必要に応じてバリデーションを追加
-        pass 
+        pass
+
+    def get_entry_file(self, language_name=None):
+        entry = self.data.get("entry_file", {})
+        if language_name is None:
+            return entry
+        return entry.get(language_name)
+
+    def set_entry_file(self, language_name, path):
+        if "entry_file" not in self.data or not isinstance(self.data["entry_file"], dict):
+            self.data["entry_file"] = {}
+        self.data["entry_file"][language_name] = path
+        self.save() 

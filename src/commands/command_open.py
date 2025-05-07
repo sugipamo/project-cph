@@ -4,6 +4,7 @@ from ..docker.ctl import DockerCtl
 from src.docker.pool import DockerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.path_manager.file_operator import FileOperator
+from src.config_json_manager import ConfigJsonManager
 
 class CommandOpen:
     def __init__(self, file_manager, opener):
@@ -28,7 +29,15 @@ class CommandOpen:
         url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
         if self.opener:
             self.opener.open_browser(url)
-            self.opener.open_editor(str(problem_dir), language_name)
+            # entry_file（config.json）を参照して開く
+            config_path = self.upm.config_json()
+            config_manager = ConfigJsonManager(config_path)
+            entry_file = config_manager.get_entry_file(language_name)
+            if entry_file:
+                entry_path = self.upm.contest_current(language_name, entry_file)
+                self.opener.open_editor(str(entry_path), language_name)
+            else:
+                self.opener.open_editor(str(problem_dir), language_name)
         
         # 3. テストケース数カウント
         if file_operator:
