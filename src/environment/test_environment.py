@@ -4,6 +4,7 @@ import shutil
 from src.docker.ctl import DockerCtl
 from src.docker.pool import DockerPool, DockerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
+from src.path_manager.file_operator import FileOperator
 
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"

@@ -5,6 +5,7 @@ from ..docker.pool import DockerPool
 from ..docker.ctl import DockerCtl
 from src.docker.pool import DockerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
+from src.path_manager.file_operator import FileOperator
 
 SUBMIT_FILES = {
     "python": "main.py",
