@@ -1,4 +1,4 @@
-from src.unified_path_manager import UnifiedPathManager
+from src.path_manager.unified_path_manager import UnifiedPathManager
 import os
 HOST_PROJECT_ROOT = __import__('os').path.abspath('.')
 CONTAINER_WORKSPACE = '/workspace'

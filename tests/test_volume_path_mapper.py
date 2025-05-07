@@ -1,5 +1,5 @@
 from pathlib import Path
-from src.volume_path_mapper import VolumePathMapper
+from src.path_manager.volume_path_mapper import VolumePathMapper
 import os
 
 def test_single_mount():

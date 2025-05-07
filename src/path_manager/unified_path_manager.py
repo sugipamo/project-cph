@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List, Tuple, Optional
-from src.project_path_manager import ProjectPathManager
-from src.volume_path_mapper import VolumePathMapper
+from src.path_manager.project_path_manager import ProjectPathManager
+from src.path_manager.volume_path_mapper import VolumePathMapper
 
 class UnifiedPathManager:
     """
@@ -60,4 +60,56 @@ class UnifiedPathManager:
     def test_dir_in_container(self):
         return self.to_container_path(Path(self.test_dir()))
     def readme_md_in_container(self):
-        return self.to_container_path(Path(self.readme_md())) 
+        return self.to_container_path(Path(self.readme_md()))
+
+    # --- 追加: パスのバリデーション ---
+    @staticmethod
+    def is_valid_path(path, must_exist=True, must_be_file=None, must_be_dir=None):
+        """
+        パスが存在するか、ファイル/ディレクトリ種別が正しいかをチェック。
+        must_exist: 存在チェック
+        must_be_file: ファイルであることを要求（Noneなら無視）
+        must_be_dir: ディレクトリであることを要求（Noneなら無視）
+        """
+        from pathlib import Path as _Path
+        p = _Path(path)
+        if must_exist and not p.exists():
+            return False
+        if must_be_file is True and not p.is_file():
+            return False
+        if must_be_dir is True and not p.is_dir():
+            return False
+        return True
+
+    @staticmethod
+    def ensure_exists(path, create_if_missing=False, is_dir=False):
+        """
+        パスが存在しない場合、create_if_missing=Trueなら作成する。
+        is_dir: ディレクトリとして作成するかどうか。
+        """
+        from pathlib import Path as _Path
+        p = _Path(path)
+        if not p.exists() and create_if_missing:
+            if is_dir:
+                p.mkdir(parents=True, exist_ok=True)
+            else:
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.touch()
+        return p.exists()
+
+    # --- 追加: パスの正規化・解決 ---
+    @staticmethod
+    def normalize_path(path):
+        """
+        パスを絶対パスに正規化する。
+        """
+        from pathlib import Path as _Path
+        return str(_Path(path).resolve())
+
+    @staticmethod
+    def resolve_symlink(path):
+        """
+        シンボリックリンクを解決した実体パスを返す。
+        """
+        from pathlib import Path as _Path
+        return str(_Path(path).resolve(strict=False)) 

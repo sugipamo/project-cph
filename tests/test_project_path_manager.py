@@ -1,6 +1,6 @@
 import os
 import pytest
-from src.project_path_manager import ProjectPathManager
+from src.path_manager.project_path_manager import ProjectPathManager
 
 def test_contest_current():
     pm = ProjectPathManager("/tmp/proj")

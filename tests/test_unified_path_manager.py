@@ -1,5 +1,5 @@
 from pathlib import Path
-from src.unified_path_manager import UnifiedPathManager
+from src.path_manager.unified_path_manager import UnifiedPathManager
 import os
 
 def make_upm(tmp_path):
@@ -46,4 +46,35 @@ def test_container_shortcuts(tmp_path):
     assert upm.info_json_in_container() == Path("/workspace/contest_current/info.json")
     assert upm.config_json_in_container() == Path("/workspace/contest_current/config.json")
     assert upm.test_dir_in_container() == Path("/workspace/contest_current/test")
-    assert upm.readme_md_in_container() == Path("/workspace/contest_current/README.md") 
+    assert upm.readme_md_in_container() == Path("/workspace/contest_current/README.md")
+
+def test_path_validation_and_normalize(tmp_path):
+    file_path = tmp_path / "file.txt"
+    dir_path = tmp_path / "dir"
+    file_path.write_text("abc")
+    dir_path.mkdir()
+    # is_valid_path
+    assert UnifiedPathManager.is_valid_path(file_path, must_exist=True, must_be_file=True)
+    assert UnifiedPathManager.is_valid_path(dir_path, must_exist=True, must_be_dir=True)
+    assert not UnifiedPathManager.is_valid_path(file_path, must_be_dir=True)
+    assert not UnifiedPathManager.is_valid_path(dir_path, must_be_file=True)
+    # ensure_exists
+    new_file = tmp_path / "new.txt"
+    assert not new_file.exists()
+    UnifiedPathManager.ensure_exists(new_file, create_if_missing=True)
+    assert new_file.exists()
+    new_dir = tmp_path / "newdir"
+    UnifiedPathManager.ensure_exists(new_dir, create_if_missing=True, is_dir=True)
+    assert new_dir.exists() and new_dir.is_dir()
+    # normalize_path
+    rel = "./foo/bar.txt"
+    abs_path = UnifiedPathManager.normalize_path(rel)
+    from pathlib import Path
+    assert Path(abs_path).is_absolute()
+    # resolve_symlink
+    target = tmp_path / "target.txt"
+    target.write_text("x")
+    link = tmp_path / "link.txt"
+    link.symlink_to(target)
+    resolved = UnifiedPathManager.resolve_symlink(link)
+    assert Path(resolved).resolve() == target.resolve() 

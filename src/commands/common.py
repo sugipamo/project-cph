@@ -1,6 +1,6 @@
 # ここには他の共通関数のみを残す
 
-from src.unified_path_manager import UnifiedPathManager
+from src.path_manager.unified_path_manager import UnifiedPathManager
 import os
 
 def get_project_root_volumes():

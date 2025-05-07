@@ -1,7 +1,7 @@
 from .ctl import DockerCtl
 from concurrent.futures import ThreadPoolExecutor
 import subprocess, json
-from src.unified_path_manager import UnifiedPathManager
+from src.path_manager.unified_path_manager import UnifiedPathManager
 import os
 import hashlib
 

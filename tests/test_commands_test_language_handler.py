@@ -1,6 +1,6 @@
 import pytest
 from src.environment.test_language_handler import RustTestHandler
-from src.unified_path_manager import UnifiedPathManager
+from src.path_manager.unified_path_manager import UnifiedPathManager
 import os
 
 class DummyCtl:
