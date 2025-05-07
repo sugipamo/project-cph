@@ -12,7 +12,9 @@ def test_load_and_save(tmp_path):
     manager.save()
     # 再ロード
     manager2 = InfoJsonManager(str(path))
-    assert manager2.data == {"foo": 1}
+    assert manager2.data["foo"] == 1
+    assert "__comment" in manager2.data
+    assert manager2.data["__comment"].startswith("通常、このファイルを編集する必要はありません")
 
 def test_get_and_update_containers(tmp_path):
     path = tmp_path / "system_info.json"
