@@ -38,12 +38,13 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
         self.handlers = handlers if handlers is not None else DEFAULT_HANDLERS
         self.pool = DockerPool()
         self.unified_path_manager = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE)
+        self.upm = UnifiedPathManager()
 
     def prepare_source_code(self, contest_name, problem_name, language_name):
         temp_dir = ".temp"
         if language_name == "rust":
             import glob
-            src_dir = f"contest_current/rust"
+            src_dir = self.upm.contest_current("rust")
             dst_dir = os.path.join(temp_dir, "rust")
             if self.file_operator:
                 if not self.file_operator.exists(temp_dir):
@@ -74,7 +75,7 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
                 shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
             return dst_dir
         elif language_name in ("python", "pypy"):
-            src = f"contest_current/{language_name}/main.py"
+            src = self.upm.contest_current(language_name, "main.py")
             dst_dir = os.path.join(temp_dir, language_name)
             dst = os.path.join(dst_dir, "main.py")
             if self.file_operator:
@@ -86,7 +87,7 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
                 shutil.copy(src, dst)
             return dst
         else:
-            src = f"contest_current/{language_name}/main.py"
+            src = self.upm.contest_current(language_name, "main.py")
             dst = os.path.join(temp_dir, "main.py")
             if self.file_operator:
                 if not self.file_operator.exists(temp_dir):
@@ -99,7 +100,7 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
 
     def prepare_test_cases(self, contest_name, problem_name):
         temp_dir = ".temp"
-        test_dir = "contest_current/test"
+        test_dir = self.upm.contest_current("test")
         temp_test_dir = os.path.join(temp_dir, "test")
         if self.file_operator:
             if not self.file_operator.exists(temp_test_dir):
@@ -136,7 +137,7 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
         # info.jsonの更新もここで行う
         if contest_name and problem_name and language_name:
             from src.info_json_manager import InfoJsonManager
-            info_path = "contest_current/info.json"
+            info_path = self.upm.info_json()
             manager = InfoJsonManager(info_path)
             manager.data["contest_name"] = contest_name
             manager.data["problem_name"] = problem_name

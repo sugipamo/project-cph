@@ -4,6 +4,7 @@ from src.info_json_manager import InfoJsonManager
 from ..docker.pool import DockerPool
 from ..docker.ctl import DockerCtl
 from src.docker.pool import DockerImageManager
+from src.path_manager.unified_path_manager import UnifiedPathManager
 
 SUBMIT_FILES = {
     "python": "main.py",
@@ -15,6 +16,7 @@ class CommandSubmit:
     def __init__(self, file_manager):
         self.file_manager = file_manager
         self.command_test = CommandTest(file_manager)
+        self.upm = UnifiedPathManager()
 
     def confirm_submit_with_wa(self):
         ans = input("AC以外のケースがあります。提出してよいですか？ (y/N): ")
@@ -58,7 +60,7 @@ class CommandSubmit:
         return args, url
 
     def get_ojtools_container_from_info(self):
-        info_path = "contest_current/info.json"
+        info_path = self.upm.info_json()
         manager = InfoJsonManager(info_path)
         for c in manager.get_containers(type="ojtools"):
             return c["name"]
@@ -92,8 +94,8 @@ class CommandSubmit:
                 return
         file_operator = self.file_manager.file_operator if self.file_manager and hasattr(self.file_manager, 'file_operator') else None
         import os
-        info_path = os.path.join("contest_current", "info.json")
-        config_path = os.path.join("contest_current", "config.json")
+        info_path = self.upm.info_json()
+        config_path = self.upm.config_json()
         info = self.validate_info_file(info_path, contest_name, problem_name, file_operator)
         if info is None:
             return None
@@ -109,6 +111,6 @@ class CommandSubmit:
         if temp_file_exists:
             file_path = temp_file_path
         else:
-            file_path = f"contest_current/{language_name}/{submit_file}"
+            file_path = self.upm.contest_current(language_name, submit_file)
         args, url = self.build_submit_command(contest_name, problem_name, language_name, file_path, language_id)
         return await self.run_submit_command(args, volumes, workdir) 

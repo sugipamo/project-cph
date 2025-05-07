@@ -26,6 +26,7 @@ LANGUAGES = {
 
 import argparse
 from src.info_json_manager import InfoJsonManager
+from src.path_manager.unified_path_manager import UnifiedPathManager
 
 # --- CLIコマンドパース用関数 ---
 def parse_args():
@@ -45,6 +46,7 @@ class CommandParser:
 
     def __init__(self):
         self.parsed = self.default_parsed.copy()
+        self.upm = UnifiedPathManager()
 
     def parse(self, args):
         # 引数を順不同でパースし、各要素を特定
@@ -85,7 +87,7 @@ class CommandParser:
         #     if v is None:
         #         print(f"警告: {k}が特定できませんでした。") 
 
-    def get_effective_args(self, info_json_path="contest_current/info.json"):
+    def get_effective_args(self, info_json_path=None):
         """
         info.jsonの値も考慮して最終的な値（contest_name, problem_name, language_name, command）を返す。
         contest_name, problem_name, language_nameのいずれかがNoneならinfo.jsonから補完する。
@@ -93,6 +95,8 @@ class CommandParser:
         effective = self.parsed.copy()
         # info.jsonがあれば補完
         try:
+            if info_json_path is None:
+                info_json_path = self.upm.info_json()
             manager = InfoJsonManager(info_json_path)
             info = manager.data
             for k in ["contest_name", "problem_name", "language_name"]:

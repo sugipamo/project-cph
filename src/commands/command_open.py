@@ -2,11 +2,13 @@ from src.info_json_manager import InfoJsonManager
 from ..docker.pool import DockerPool
 from ..docker.ctl import DockerCtl
 from src.docker.pool import DockerImageManager
+from src.path_manager.unified_path_manager import UnifiedPathManager
 
 class CommandOpen:
     def __init__(self, file_manager, opener):
         self.file_manager = file_manager
         self.opener = opener
+        self.upm = UnifiedPathManager()
 
     async def open(self, contest_name, problem_name, language_name):
         """
@@ -29,7 +31,10 @@ class CommandOpen:
         
         # 3. テストケース数カウント
         if file_operator:
-            test_case_count = len(list(file_operator.glob("contest_current/test/*.in")))
+            # base_dirからの相対パス＋パターンでglobする
+            test_dir_rel = os.path.relpath(self.upm.contest_current("test"), file_operator.base_dir)
+            pattern = os.path.join(test_dir_rel, "*.in")
+            test_case_count = len(list(file_operator.glob(pattern)))
         else:
             test_case_count = len([f for f in os.listdir(test_dir) if f.endswith('.in')]) if os.path.exists(test_dir) else 0
         
@@ -42,7 +47,7 @@ class CommandOpen:
         containers = pool.adjust(requirements)
         
         # 5. info.jsonの更新
-        info_path = "contest_current/info.json"
+        info_path = self.upm.info_json()
         manager = InfoJsonManager(info_path)
         manager.data["contest_name"] = contest_name
         manager.data["problem_name"] = problem_name
@@ -56,7 +61,7 @@ class CommandOpen:
             raise RuntimeError("ojtools用コンテナがinfo.jsonにありません")
         ojtools_name = ojtools_list[0]["name"]
         ctl = DockerCtl()
-        test_dir_host = "contest_current/test"
+        test_dir_host = self.upm.contest_current("test")
         if file_operator:
             if not file_operator.exists(test_dir_host):
                 file_operator.makedirs(test_dir_host)
@@ -69,4 +74,4 @@ class CommandOpen:
         ctl.exec_in_container(ojtools_name, ["mkdir", "-p", f"/workspace/{test_dir_host}"])
         ctl.exec_in_container(ojtools_name, ["oj", "download", url, "-d", f"/workspace/{test_dir_host}"])
         # docker cpでホストにテストケースをコピー（test/testにならないようcontest_current/にコピー）
-        ctl.cp_from_container(ojtools_name, f"/workspace/{test_dir_host}", "contest_current/")
+        ctl.cp_from_container(ojtools_name, f"/workspace/{test_dir_host}", self.upm.contest_current())

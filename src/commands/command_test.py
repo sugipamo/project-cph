@@ -1,4 +1,5 @@
 import os
+from src.path_manager.unified_path_manager import UnifiedPathManager
 # === 定数定義 ===
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
@@ -14,6 +15,7 @@ class CommandTest:
     def __init__(self, file_manager):
         self.file_manager = file_manager
         self.env = DockerTestExecutionEnvironment(file_manager)
+        self.upm = UnifiedPathManager()
 
     def prepare_test_environment(self, contest_name, problem_name, language_name):
         # DockerTestExecutionEnvironmentに移譲
@@ -32,8 +34,7 @@ class CommandTest:
         return in_files, out_files
 
     def get_test_containers_from_info(self):
-        # from commands.info_json_manager import InfoJsonManager
-        info_path = "contest_current/info.json"
+        info_path = self.upm.info_json()
         manager = InfoJsonManager(info_path)
         return [c["name"] for c in manager.get_containers(type="test")]
 
