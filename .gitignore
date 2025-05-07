@@ -1,26 +1,13 @@
-# Rust関連
-/target/
-**/target/
-**/*.rs.bk
-Cargo.lock
 
-# コンパイル環境
-/compile/rust/target/
-/compile/rust/Cargo.lock
-/compile/rust/src/main.rs
-/compile/rust/test
-/compile/pypy/main.py
+.env
+.local/
 
-# コンテスト
-contests
-active_contest
+.temp/
 
-# エディタ/OS関連
-.vscode/
-.idea/
-*.swp
-.DS_Store
-
-# テストワークスペース
-/tests/test_workspace/
-.DS_Store
+.coverage
+.pytest_cache/
+.cache/
+contest_stocks/
+contest_current/
+**/__pycache__/**
+target/

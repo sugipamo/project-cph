@@ -1,0 +1,115 @@
+from pathlib import Path
+from typing import List, Tuple, Optional
+from src.path_manager.project_path_manager import ProjectPathManager
+from src.path_manager.volume_path_mapper import VolumePathMapper
+
+class UnifiedPathManager:
+    """
+    ProjectPathManagerとVolumePathMapperをラップし、
+    プロジェクト内の論理パス管理・ホスト⇔コンテナ変換・マウント管理を一元化するクラス。
+    """
+    def __init__(self, project_root=None, container_root="/workspace", mounts: Optional[List[Tuple[Path, Path]]] = None):
+        self.project_path = ProjectPathManager(project_root)
+        if mounts is None:
+            # デフォルトはproject_root→container_rootの1ペア
+            host_root = Path(project_root).resolve() if project_root else Path.cwd().resolve()
+            mounts = [(host_root, Path(container_root))]
+        self.volume_mapper = VolumePathMapper(mounts)
+
+    # ProjectPathManagerのラップ
+    def contest_current(self, *paths):
+        return self.project_path.contest_current(*paths)
+    def contest_stocks(self, *args, **kwargs):
+        return self.project_path.contest_stocks(*args, **kwargs)
+    def contest_env(self, filename):
+        return self.project_path.contest_env(filename)
+    def contest_template(self, *args, **kwargs):
+        return self.project_path.contest_template(*args, **kwargs)
+    def info_json(self):
+        return self.project_path.info_json()
+    def config_json(self):
+        return self.project_path.config_json()
+    def test_dir(self):
+        return self.project_path.test_dir()
+    def readme_md(self):
+        return self.project_path.readme_md()
+
+    # VolumePathMapperのラップ
+    def to_container_path(self, host_path: Path) -> Optional[Path]:
+        return self.volume_mapper.to_container_path(host_path)
+    def to_host_path(self, container_path: Path) -> Optional[Path]:
+        return self.volume_mapper.to_host_path(container_path)
+    def get_mounts(self) -> List[Tuple[Path, Path]]:
+        return self.volume_mapper.get_mounts()
+    def add_mount(self, host_path: Path, container_path: Path):
+        self.volume_mapper.add_mount(host_path, container_path)
+
+    # 論理パス→コンテナパスのショートカット
+    def contest_current_in_container(self, *paths):
+        return self.to_container_path(Path(self.contest_current(*paths)))
+    def contest_stocks_in_container(self, *args, **kwargs):
+        return self.to_container_path(Path(self.contest_stocks(*args, **kwargs)))
+    def contest_env_in_container(self, filename):
+        return self.to_container_path(Path(self.contest_env(filename)))
+    def contest_template_in_container(self, *args, **kwargs):
+        return self.to_container_path(Path(self.contest_template(*args, **kwargs)))
+    def info_json_in_container(self):
+        return self.to_container_path(Path(self.info_json()))
+    def config_json_in_container(self):
+        return self.to_container_path(Path(self.config_json()))
+    def test_dir_in_container(self):
+        return self.to_container_path(Path(self.test_dir()))
+    def readme_md_in_container(self):
+        return self.to_container_path(Path(self.readme_md()))
+
+    # --- 追加: パスのバリデーション ---
+    @staticmethod
+    def is_valid_path(path, must_exist=True, must_be_file=None, must_be_dir=None):
+        """
+        パスが存在するか、ファイル/ディレクトリ種別が正しいかをチェック。
+        must_exist: 存在チェック
+        must_be_file: ファイルであることを要求（Noneなら無視）
+        must_be_dir: ディレクトリであることを要求（Noneなら無視）
+        """
+        from pathlib import Path as _Path
+        p = _Path(path)
+        if must_exist and not p.exists():
+            return False
+        if must_be_file is True and not p.is_file():
+            return False
+        if must_be_dir is True and not p.is_dir():
+            return False
+        return True
+
+    @staticmethod
+    def ensure_exists(path, create_if_missing=False, is_dir=False):
+        """
+        パスが存在しない場合、create_if_missing=Trueなら作成する。
+        is_dir: ディレクトリとして作成するかどうか。
+        """
+        from pathlib import Path as _Path
+        p = _Path(path)
+        if not p.exists() and create_if_missing:
+            if is_dir:
+                p.mkdir(parents=True, exist_ok=True)
+            else:
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.touch()
+        return p.exists()
+
+    # --- 追加: パスの正規化・解決 ---
+    @staticmethod
+    def normalize_path(path):
+        """
+        パスを絶対パスに正規化する。
+        """
+        from pathlib import Path as _Path
+        return str(_Path(path).resolve())
+
+    @staticmethod
+    def resolve_symlink(path):
+        """
+        シンボリックリンクを解決した実体パスを返す。
+        """
+        from pathlib import Path as _Path
+        return str(_Path(path).resolve(strict=False)) 

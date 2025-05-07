@@ -1,0 +1,1 @@
+PYTHONPATH=src pytest --cov=src tests
