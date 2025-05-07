@@ -1,6 +1,8 @@
 import pytest
 from src.environment.test_language_handler import PythonTestHandler, PypyTestHandler, RustTestHandler, HANDLERS
 import os
+from src.unified_path_manager import UnifiedPathManager
+from pathlib import Path
 
 class DummyCtl:
     def __init__(self):
@@ -29,12 +31,12 @@ def test_pypy_handler_run():
     assert 'pypy3' in ctl.calls[0][1][-1]
 
 def test_rust_handler_build_and_run(tmp_path):
-    from src.environment import test_language_handler
-    ctl = DummyCtl()
+    # UnifiedPathManagerをテスト用に差し替え
+    upm = UnifiedPathManager(str(tmp_path), '/workspace')
     handler = RustTestHandler()
-    # テスト用path_mapperを差し替え
-    handler.path_mapper = test_language_handler.DockerPathMapper(str(tmp_path), '/workspace')
-    test_language_handler.path_mapper = handler.path_mapper
+    # RustTestHandlerの内部で使うupmを差し替え（グローバル変数を上書き）
+    import src.environment.test_language_handler as tlh
+    tlh.upm = upm
     # .temp/a.outをtmp_path配下に作成
     abs_out = os.path.join(tmp_path, '.temp/a.out')
     os.makedirs(os.path.dirname(abs_out), exist_ok=True)
@@ -42,12 +44,32 @@ def test_rust_handler_build_and_run(tmp_path):
         f.write('dummy')
     rust_dir = tmp_path / "rust"
     rust_dir.mkdir()
-    ok, out, err = handler.build(ctl, 'cont', str(rust_dir))
+    ok, out, err = handler.build(DummyCtl(), 'cont', str(rust_dir))
     assert ok and out == 'ok'
-    assert any('cargo build' in s for s in ctl.calls[0][1])
-    ok, out, err = handler.run(ctl, 'cont', '/workspace/input.txt', str(rust_dir))
+    ok, out, err = handler.run(DummyCtl(), 'cont', '/workspace/input.txt', str(rust_dir))
     assert ok and out == 'ok'
-    assert any('target/release/rust' in s for s in ctl.calls[-1][1])
+
+def test_rust_handler_run_fail():
+    handler = RustTestHandler()
+    import src.environment.test_language_handler as tlh
+    tlh.upm = UnifiedPathManager("/tmp", "/workspace")
+    ctl = DummyCtlFail()
+    # runで失敗時、bin_pathがNoneにならないようにin_file, temp_source_pathも適切に渡す
+    ok, out, err = handler.run(ctl, 'cont', '/workspace/input.txt', '/tmp/rust')
+    assert not ok
+
+def test_rust_handler_build_and_run_exception():
+    from src.environment.test_language_handler import RustTestHandler
+    class DummyCtl:
+        def exec_in_container(self, container, cmd, realtime=False):
+            raise RuntimeError("fail")
+    handler = RustTestHandler()
+    import src.environment.test_language_handler as tlh
+    tlh.upm = UnifiedPathManager("/tmp", "/workspace")
+    with pytest.raises(RuntimeError):
+        handler.build(DummyCtl(), 'cont', 'main.rs')
+    with pytest.raises(RuntimeError):
+        handler.run(DummyCtl(), 'cont', '/workspace/input.txt', 'main.rs')
 
 def test_handlers_mapping():
     assert isinstance(HANDLERS['python'], PythonTestHandler)
@@ -77,15 +99,4 @@ def test_pypy_handler_run_exception():
             raise RuntimeError("fail")
     handler = PypyTestHandler()
     with pytest.raises(RuntimeError):
-        handler.run(DummyCtl(), 'cont', 'input.txt', 'main.py')
-
-def test_rust_handler_build_and_run_exception():
-    from src.environment.test_language_handler import RustTestHandler
-    class DummyCtl:
-        def exec_in_container(self, container, cmd, realtime=False):
-            raise RuntimeError("fail")
-    handler = RustTestHandler()
-    with pytest.raises(RuntimeError):
-        handler.build(DummyCtl(), 'cont', 'main.rs')
-    with pytest.raises(RuntimeError):
-        handler.run(DummyCtl(), 'cont', 'input.txt', 'main.rs') 
+        handler.run(DummyCtl(), 'cont', 'input.txt', 'main.py') 

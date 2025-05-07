@@ -1,7 +1,7 @@
 from .ctl import DockerCtl
 from concurrent.futures import ThreadPoolExecutor
 import subprocess, json
-from .path_mapper import DockerPathMapper
+from src.unified_path_manager import UnifiedPathManager
 import os
 import hashlib
 
@@ -56,7 +56,7 @@ class DockerPool:
     def __init__(self, max_workers=8, dockerfile_map=None):
         self.ctl = DockerCtl()
         self.max_workers = max_workers
-        self.path_mapper = DockerPathMapper(os.path.abspath("."), "/workspace")
+        self.unified_path_manager = UnifiedPathManager(project_root=os.path.abspath("."), container_root="/workspace")
         self.image_manager = DockerImageManager(dockerfile_map)
 
     def get_dockerfile_hash(self, dockerfile_path):

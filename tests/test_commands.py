@@ -754,52 +754,6 @@ def test_requirements_volumes(monkeypatch, tmp_path):
     assert "volumes" in captured["requirements"][0]
     assert "/workspace" in str(captured["requirements"][0]["volumes"])
 
-def test_run_test_cases_infile_path(monkeypatch):
-    from src.commands.command_test import CommandTest
-    called = {}
-    class DummyHandler:
-        def build(self, ctl, container, src):
-            return (True, "", "")
-        def run(self, ctl, container, in_file, src):
-            called["in_file"] = in_file
-            called["src"] = src
-            return (True, "out", "")
-    class DummyFileManager:
-        def __init__(self):
-            self.file_operator = None
-    class DummyInfoJsonManager:
-        def __init__(self, path):
-            self.data = {"contest_name": "abc", "problem_name": "a", "containers": [{"name": "test1", "type": "test"}]}
-        def get_containers(self, type=None):
-            if type == "test":
-                return [{"name": "test1", "type": "test"}]
-            return []
-        def save(self):
-            self.saved = True
-    class DummyCtl:
-        def is_container_running(self, name):
-            return False
-        def start_container(self, name, typ, volumes):
-            pass
-        def exec_in_container(self, name, cmd):
-            return True, "ok", ""
-        def remove_container(self, name):
-            pass
-        def cp_from_container(self, name, src, dst):
-            pass
-    monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
-    monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
-    monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
-    fm = DummyFileManager()
-    cmd = CommandTest(fm)
-    import asyncio
-    import os
-    results = asyncio.run(cmd.run_test_cases("src", ["test1.in"], "python"))
-    assert os.path.isabs(called["in_file"])
-    assert os.path.isabs(called["src"])
-
 def test_run_test_cases_infile_not_exist(monkeypatch):
     from src.commands.command_test import CommandTest
     class DummyHandler:

@@ -3,7 +3,7 @@ import os
 import shutil
 from src.docker.ctl import DockerCtl
 from src.docker.pool import DockerPool, DockerImageManager
-from src.docker.path_mapper import DockerPathMapper
+from src.unified_path_manager import UnifiedPathManager
 
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
@@ -37,7 +37,7 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
         from src.environment.test_language_handler import HANDLERS as DEFAULT_HANDLERS
         self.handlers = handlers if handlers is not None else DEFAULT_HANDLERS
         self.pool = DockerPool()
-        self.path_mapper = DockerPathMapper(HOST_PROJECT_ROOT, "/workspace")
+        self.unified_path_manager = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE)
 
     def prepare_source_code(self, contest_name, problem_name, language_name):
         temp_dir = ".temp"
@@ -110,10 +110,10 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
         return temp_test_dir
 
     def to_container_path(self, host_path: str) -> str:
-        return self.path_mapper.to_container_path(host_path)
+        return str(self.unified_path_manager.to_container_path(os.path.abspath(host_path)))
 
     def to_host_path(self, container_path: str) -> str:
-        return self.path_mapper.to_host_path(container_path)
+        return str(self.unified_path_manager.to_host_path(container_path))
 
     def run_test_case(self, language_name, container, in_file, source_path, retry=3):
         handler = self.handlers[language_name]
