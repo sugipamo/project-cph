@@ -1,13 +1,16 @@
+import os
+
 class Opener:
     def open_editor(self, path: str, language: str = None):
         try:
             import subprocess
-            subprocess.Popen(["code", "--reuse-window", path])
+            print(path)
+            subprocess.call(["code", path], env=os.environ.copy())
         except Exception as e:
             print(f"[警告] VSCode起動失敗: {e}")
         try:
             import subprocess
-            subprocess.Popen(["cursor", "--reuse-window", path])
+            subprocess.call(["cursor", path], env=os.environ.copy())
         except Exception as e:
             print(f"[警告] Cursor起動失敗: {e}")
     def open_browser(self, url: str):

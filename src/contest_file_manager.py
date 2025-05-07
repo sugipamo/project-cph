@@ -283,6 +283,6 @@ class ContestFileManager:
         Returns:
             tuple: (問題ファイルのディレクトリパス, テストファイルのディレクトリパス)
         """
-        problem_dir = self.file_operator.resolve_path(f"contest_current/{language_name}")
+        problem_dir = self.file_operator.resolve_path(f"contest_current/{language_name}/")
         test_dir = self.file_operator.resolve_path("contest_current/test")
         return problem_dir, test_dir 
