@@ -39,9 +39,9 @@ class ProjectPathManager:
             parts.extend(paths)
         return os.path.join(self.root, *parts)
 
-    # 例: info.json, config.json, testディレクトリなどのショートカット
+    # 例: system_info.json, config.json, testディレクトリなどのショートカット
     def info_json(self) -> str:
-        return self.contest_current("info.json")
+        return self.contest_current("system_info.json")
 
     def config_json(self) -> str:
         return self.contest_current("config.json")

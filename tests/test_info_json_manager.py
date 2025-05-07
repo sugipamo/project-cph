@@ -5,7 +5,7 @@ import pytest
 from src.info_json_manager import InfoJsonManager
 
 def test_load_and_save(tmp_path):
-    path = tmp_path / "info.json"
+    path = tmp_path / "system_info.json"
     # 保存
     manager = InfoJsonManager(str(path))
     manager.data = {"foo": 1}
@@ -15,7 +15,7 @@ def test_load_and_save(tmp_path):
     assert manager2.data == {"foo": 1}
 
 def test_get_and_update_containers(tmp_path):
-    path = tmp_path / "info.json"
+    path = tmp_path / "system_info.json"
     manager = InfoJsonManager(str(path))
     containers = [
         {"name": "c1", "type": "test", "language": "python"},
@@ -33,7 +33,7 @@ def test_get_and_update_containers(tmp_path):
     assert manager.get_containers(type="test", language="rust")[0]["name"] == "c3"
 
 def test_validate_warns_on_duplicate_names(tmp_path, capsys):
-    path = tmp_path / "info.json"
+    path = tmp_path / "system_info.json"
     manager = InfoJsonManager(str(path))
     containers = [
         {"name": "dup", "type": "test"},

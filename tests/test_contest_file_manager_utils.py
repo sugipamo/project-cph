@@ -55,5 +55,5 @@ def test_get_current_info_and_config_path(tmp_path, monkeypatch):
     op = MockFileOperator()
     manager = ContestFileManager(op)
     monkeypatch.setattr(manager.file_operator, "resolve_path", lambda x=None: tmp_path / (x or ""))
-    assert str(manager.get_current_info_path()).endswith("contest_current/info.json")
+    assert str(manager.get_current_info_path()).endswith("contest_current/system_info.json")
     assert str(manager.get_current_config_path()).endswith("contest_current/config.json") 

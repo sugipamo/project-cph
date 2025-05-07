@@ -133,9 +133,9 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
         return ok, stdout, stderr, attempt+1
 
     def adjust_containers(self, requirements, contest_name=None, problem_name=None, language_name=None):
-        """必要なコンテナ数・ボリュームを調整し、info.jsonも更新する。"""
+        """必要なコンテナ数・ボリュームを調整し、system_info.jsonも更新する。"""
         containers = self.pool.adjust(requirements)
-        # info.jsonの更新もここで行う
+        # system_info.jsonの更新もここで行う
         if contest_name and problem_name and language_name:
             from src.info_json_manager import InfoJsonManager
             info_path = self.upm.info_json()

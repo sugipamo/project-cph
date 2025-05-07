@@ -228,9 +228,9 @@ class ContestFileManager:
 
     def prepare_problem_files(self, contest_name=None, problem_name=None, language_name=None):
         """
-        info.jsonに contest_name, problem_name, language_name をすべて保存し、
+        system_info.jsonに contest_name, problem_name, language_name をすべて保存し、
         次回実行時の初期値として利用できるようにする。
-        引数がNoneの場合はinfo.jsonの値を使う。
+        引数がNoneの場合はsystem_info.jsonの値を使う。
         """
         info_path = self.get_current_info_path()
         config_path = self.get_current_config_path()

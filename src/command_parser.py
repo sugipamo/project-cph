@@ -89,11 +89,11 @@ class CommandParser:
 
     def get_effective_args(self, info_json_path=None):
         """
-        info.jsonの値も考慮して最終的な値（contest_name, problem_name, language_name, command）を返す。
-        contest_name, problem_name, language_nameのいずれかがNoneならinfo.jsonから補完する。
+        system_info.jsonの値も考慮して最終的な値（contest_name, problem_name, language_name, command）を返す。
+        contest_name, problem_name, language_nameのいずれかがNoneならsystem_info.jsonから補完する。
         """
         effective = self.parsed.copy()
-        # info.jsonがあれば補完
+        # system_info.jsonがあれば補完
         try:
             if info_json_path is None:
                 info_json_path = self.upm.info_json()

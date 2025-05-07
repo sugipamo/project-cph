@@ -38,7 +38,7 @@ def temp_dirs(tmp_path):
 
 def test_prepare_problem_files_template_copy(temp_dirs):
     tmp_path = temp_dirs
-    Path(tmp_path / "contest_current/info.json").write_text(json.dumps({
+    Path(tmp_path / "contest_current/system_info.json").write_text(json.dumps({
         "contest_name": "abc100",
         "problem_name": "a",
         "language_name": "python"
@@ -46,14 +46,14 @@ def test_prepare_problem_files_template_copy(temp_dirs):
     manager = ContestFileManager(DummyFileOperator(base_dir=tmp_path))
     manager.prepare_problem_files("abc100", "a", "python")
     assert (tmp_path / "contest_current/python/main.py").exists()
-    info = json.loads((tmp_path / "contest_current/info.json").read_text())
+    info = json.loads((tmp_path / "contest_current/system_info.json").read_text())
     assert info["contest_name"] == "abc100"
     assert info["problem_name"] == "a"
     assert info["language_name"] == "python"
 
 def test_prepare_problem_files_stocks_move(temp_dirs):
     tmp_path = temp_dirs
-    Path(tmp_path / "contest_current/info.json").write_text(json.dumps({
+    Path(tmp_path / "contest_current/system_info.json").write_text(json.dumps({
         "contest_name": "abc200",
         "problem_name": "b",
         "language_name": "python"
@@ -64,7 +64,7 @@ def test_prepare_problem_files_stocks_move(temp_dirs):
     manager = ContestFileManager(LocalFileOperator(base_dir=tmp_path))
     manager.prepare_problem_files("abc200", "b", "python")
     assert (tmp_path / "contest_current/python/main.py").exists()
-    info = json.loads((tmp_path / "contest_current/info.json").read_text())
+    info = json.loads((tmp_path / "contest_current/system_info.json").read_text())
     assert info["contest_name"] == "abc200"
     assert info["problem_name"] == "b"
     assert info["language_name"] == "python"
@@ -92,9 +92,9 @@ def test_move_current_to_stocks_basic(temp_dirs):
     current = Path("contest_current/python")
     current.mkdir(parents=True, exist_ok=True)
     (current / "main.py").write_text("print('move test')\n")
-    # info.json, config.json を contest_current/ に用意
+    # system_info.json, config.json を contest_current/ に用意
     info = {"contest_name": "abc300", "problem_name": "c", "language_name": "python"}
-    Path("contest_current/info.json").write_text(json.dumps(info))
+    Path("contest_current/system_info.json").write_text(json.dumps(info))
     Path("contest_current/config.json").write_text(json.dumps({"exclude_files": []}))
     manager = ContestFileManager(LocalFileOperator())
     manager.move_current_to_stocks("c", "python")
@@ -103,8 +103,8 @@ def test_move_current_to_stocks_basic(temp_dirs):
     assert stocks.exists()
     # contest_current/python は削除されているか
     assert not current.exists()
-    # info.json, config.json は contest_current/ に残るか
-    assert Path("contest_current/info.json").exists()
+    # system_info.json, config.json は contest_current/ に残るか
+    assert Path("contest_current/system_info.json").exists()
     assert Path("contest_current/config.json").exists()
 
 def test_copy_from_template_to_current_basic(temp_dirs):
@@ -115,11 +115,11 @@ def test_copy_from_template_to_current_basic(temp_dirs):
     manager.copy_from_template_to_current("abc400", "d", "python")
     # main.pyがcontest_currentにコピーされているか
     assert Path("contest_current/python/main.py").exists()
-    # info.json, config.json が contest_current/ に生成されているか
-    assert Path("contest_current/info.json").exists()
+    # system_info.json, config.json が contest_current/ に生成されているか
+    assert Path("contest_current/system_info.json").exists()
     assert Path("contest_current/config.json").exists()
-    # info.jsonの内容確認
-    info = json.loads(Path("contest_current/info.json").read_text())
+    # system_info.jsonの内容確認
+    info = json.loads(Path("contest_current/system_info.json").read_text())
     assert info["contest_name"] == "abc400"
     assert info["problem_name"] == "d"
     assert info["language_name"] == "python"
@@ -127,7 +127,7 @@ def test_copy_from_template_to_current_basic(temp_dirs):
 def test_problem_exists_in_stocks_and_current(temp_dirs):
     tmp_path = temp_dirs
     os.chdir(tmp_path)
-    Path(tmp_path / "contest_current/info.json").write_text(json.dumps({
+    Path(tmp_path / "contest_current/system_info.json").write_text(json.dumps({
         "contest_name": "abc500",
         "problem_name": "e",
         "language_name": "python"
@@ -204,7 +204,7 @@ def test_prepare_problem_files_config_has_language_id(tmp_path):
     from src.contest_file_manager import ContestFileManager
     op = DummyFileOperator(tmp_path)
     manager = ContestFileManager(op)
-    info = tmp_path / "contest_current/info.json"
+    info = tmp_path / "contest_current/system_info.json"
     info.parent.mkdir(parents=True, exist_ok=True)
     info.write_text(json.dumps({"contest_name": "abc", "problem_name": "a", "language_name": "python"}))
     config = tmp_path / "contest_current/config.json"

@@ -15,12 +15,12 @@ class CommandOpen:
     async def open(self, contest_name, problem_name, language_name):
         """
         問題ファイルを準備し、VSCodeとCursorでディレクトリを開く
-        必要なコンテナを事前に起動し、info.jsonで管理する
+        必要なコンテナを事前に起動し、system_info.jsonで管理する
         """
         import os
         import subprocess
         file_operator = self.file_manager.file_operator if self.file_manager and hasattr(self.file_manager, 'file_operator') else None
-        # 1. 問題ファイル準備（info.jsonもここで更新される）
+        # 1. 問題ファイル準備（system_info.jsonもここで更新される）
         if self.file_manager:
             self.file_manager.prepare_problem_files(contest_name, problem_name, language_name)
             problem_dir, test_dir = self.file_manager.get_problem_files(contest_name, problem_name, language_name)
@@ -56,7 +56,7 @@ class CommandOpen:
         pool = DockerPool()
         containers = pool.adjust(requirements)
         
-        # 5. info.jsonの更新
+        # 5. system_info.jsonの更新
         info_path = self.upm.info_json()
         manager = InfoJsonManager(info_path)
         manager.data["contest_name"] = contest_name
@@ -68,7 +68,7 @@ class CommandOpen:
         # 6. テストケースダウンロード（ojtoolsコンテナでoj download）
         ojtools_list = manager.get_containers(type="ojtools")
         if not ojtools_list:
-            raise RuntimeError("ojtools用コンテナがinfo.jsonにありません")
+            raise RuntimeError("ojtools用コンテナがsystem_info.jsonにありません")
         ojtools_name = ojtools_list[0]["name"]
         ctl = DockerCtl()
         test_dir_host = self.upm.contest_current("test")

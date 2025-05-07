@@ -29,10 +29,10 @@ class CommandSubmit:
         current_contest = info.get("contest_name")
         current_problem = info.get("problem_name")
         if current_contest and current_contest != contest_name:
-            print(f"[警告] contest_current/info.jsonのcontest_name（{current_contest}）と指定されたcontest_name（{contest_name}）が異なります。提出を中止します。")
+            print(f"[警告] contest_current/system_info.jsonのcontest_name（{current_contest}）と指定されたcontest_name（{contest_name}）が異なります。提出を中止します。")
             return None
         if current_problem and current_problem != problem_name:
-            print(f"[警告] contest_current/info.jsonのproblem_name（{current_problem}）と指定されたproblem_name（{problem_name}）が異なります。提出を中止します。")
+            print(f"[警告] contest_current/system_info.jsonのproblem_name（{current_problem}）と指定されたproblem_name（{problem_name}）が異なります。提出を中止します。")
             return None
         return info
 
@@ -65,7 +65,7 @@ class CommandSubmit:
         manager = InfoJsonManager(info_path)
         for c in manager.get_containers(type="ojtools"):
             return c["name"]
-        raise RuntimeError("ojtools用コンテナがinfo.jsonにありません")
+        raise RuntimeError("ojtools用コンテナがsystem_info.jsonにありません")
 
     async def run_submit_command(self, args, volumes, workdir):
         ojtools_name = self.get_ojtools_container_from_info()

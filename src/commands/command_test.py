@@ -121,7 +121,7 @@ class CommandTest:
         file_operator = self.file_manager.file_operator if self.file_manager else None
         temp_source_path, temp_test_dir = self.prepare_test_environment(contest_name, problem_name, language_name)
         temp_in_files, _ = self.collect_test_cases(temp_test_dir, file_operator)
-        # --- 必要なコンテナ数を調整し、info.jsonを最新化 ---
+        # --- 必要なコンテナ数を調整し、system_info.jsonを最新化 ---
         test_case_count = len(temp_in_files)
         requirements = [
             {"type": "test", "language": language_name, "count": test_case_count, "volumes": {
@@ -139,7 +139,7 @@ class CommandTest:
         file_operator = self.file_manager.file_operator if self.file_manager else None
         temp_source_path, temp_test_dir = self.prepare_test_environment(contest_name, problem_name, language_name)
         temp_in_files, _ = self.collect_test_cases(temp_test_dir, file_operator)
-        # --- 必要なコンテナ数を調整し、info.jsonを最新化 ---
+        # --- 必要なコンテナ数を調整し、system_info.jsonを最新化 ---
         test_case_count = len(temp_in_files)
         requirements = [
             {"type": "test", "language": language_name, "count": test_case_count, "volumes": {

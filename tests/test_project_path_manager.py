@@ -5,7 +5,7 @@ from src.path_manager.project_path_manager import ProjectPathManager
 def test_contest_current():
     pm = ProjectPathManager("/tmp/proj")
     assert pm.contest_current() == os.path.join("/tmp/proj", "contest_current")
-    assert pm.contest_current("info.json") == os.path.join("/tmp/proj", "contest_current", "info.json")
+    assert pm.contest_current("system_info.json") == os.path.join("/tmp/proj", "contest_current", "system_info.json")
 
 def test_contest_stocks():
     pm = ProjectPathManager("/tmp/proj")
@@ -27,7 +27,7 @@ def test_contest_template():
 
 def test_shortcuts():
     pm = ProjectPathManager("/tmp/proj")
-    assert pm.info_json() == os.path.join("/tmp/proj", "contest_current", "info.json")
+    assert pm.info_json() == os.path.join("/tmp/proj", "contest_current", "system_info.json")
     assert pm.config_json() == os.path.join("/tmp/proj", "contest_current", "config.json")
     assert pm.test_dir() == os.path.join("/tmp/proj", "contest_current", "test")
     assert pm.readme_md() == os.path.join("/tmp/proj", "contest_current", "README.md") 

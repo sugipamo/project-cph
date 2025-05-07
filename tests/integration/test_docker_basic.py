@@ -279,7 +279,7 @@ def test_command_open_e2e(tmp_path):
     assert test_dir.exists()
     in_files = [f for f in os.listdir(test_dir) if f.endswith('.in')]
     assert len(in_files) > 0, "テストケースがダウンロードされていない"
-    with open(work_dir / "contest_current/info.json", "r", encoding="utf-8") as f:
+    with open(work_dir / "contest_current/system_info.json", "r", encoding="utf-8") as f:
         info = json.load(f)
     assert info["contest_name"] == contest_name
     assert info["problem_name"] == problem_name

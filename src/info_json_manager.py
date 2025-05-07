@@ -17,6 +17,8 @@ class InfoJsonManager:
             return json.load(f)
 
     def save(self):
+        # __commentを必ず付与
+        self.data["__comment"] = "通常、このファイルを編集する必要はありません"
         with open(self.path, "w", encoding="utf-8") as f:
             json.dump(self.data, f, ensure_ascii=False, indent=2)
 

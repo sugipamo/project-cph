@@ -31,8 +31,8 @@ def test_parse_args_order_independent():
 def test_parse_args_missing(tmp_path):
     parser = CommandParser()
     parser.parse(["abc300", "open"])
-    # 存在しないinfo.jsonを指定して補完を無効化
-    args = parser.get_effective_args(info_json_path=str(tmp_path / "noinfo.json"))
+    # 存在しないsystem_info.jsonを指定して補完を無効化
+    args = parser.get_effective_args(info_json_path=str(tmp_path / "nosystem_info.json"))
     assert args["problem_name"] is None
     assert args["language_name"] is None
 
@@ -48,17 +48,17 @@ def test_parse_partial(monkeypatch, tmp_path):
     monkeypatch.setattr("src.command_parser.LANGUAGES", {"python": {"aliases": ["python3"]}})
     parser = CommandParser()
     parser.parse(["zzz999", "a"])
-    # 存在しないinfo.jsonを指定して補完を無効化
-    args = parser.get_effective_args(info_json_path=str(tmp_path / "noinfo.json"))
+    # 存在しないsystem_info.jsonを指定して補完を無効化
+    args = parser.get_effective_args(info_json_path=str(tmp_path / "nosystem_info.json"))
     assert args["contest_name"] is None
     assert args["problem_name"] == "a"
     assert args["command"] is None
     assert args["language_name"] is None
 
 def test_get_effective_args_infojson(tmp_path):
-    # info.jsonを用意
+    # system_info.jsonを用意
     info = {"contest_name": "abc999", "problem_name": "b", "language_name": "rust"}
-    info_path = tmp_path / "info.json"
+    info_path = tmp_path / "system_info.json"
     info_path.write_text(json.dumps(info), encoding="utf-8")
     parser = CommandParser()
     parser.parse(["open"])
@@ -71,7 +71,8 @@ def test_get_effective_args_infojson(tmp_path):
 def test_get_effective_args_infojson_missing(tmp_path):
     parser = CommandParser()
     parser.parse(["open"])
-    args = parser.get_effective_args(info_json_path=str(tmp_path / "noinfo.json"))
+    # 存在しないsystem_info.jsonを指定して補完を無効化
+    args = parser.get_effective_args(info_json_path=str(tmp_path / "nosystem_info.json"))
     assert args["contest_name"] is None
     assert args["problem_name"] is None
     assert args["language_name"] is None
@@ -82,7 +83,7 @@ def test_parse_invalid(monkeypatch, tmp_path):
     monkeypatch.setattr("src.command_parser.LANGUAGES", {"python": {"aliases": ["python3"]}})
     parser = CommandParser()
     parser.parse(["foo", "bar"])
-    args = parser.get_effective_args(info_json_path=str(tmp_path / "noinfo.json"))
+    args = parser.get_effective_args(info_json_path=str(tmp_path / "nosystem_info.json"))
     assert args["contest_name"] is None
     assert args["problem_name"] is None
     assert args["language_name"] is None
