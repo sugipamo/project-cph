@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from src.container.client import ContainerClient
+from execution_client.container.client import ContainerClient, AbstractContainerClient
 import json
 
 def make_inspect_result(obj):
@@ -77,4 +77,55 @@ def test_image_exists(mock_run):
     mock_run.return_value.stdout = "img1\nimg2\n"
     client = ContainerClient()
     assert client.image_exists("img2")
-    assert not client.image_exists("notfound") 
+    assert not client.image_exists("notfound")
+
+@patch("subprocess.run")
+def test_copy_to_container(mock_run):
+    mock_run.return_value.returncode = 0
+    client = ContainerClient()
+    assert client.copy_to_container("test", "/host/file", "/cont/file")
+    mock_run.return_value.returncode = 1
+    assert not client.copy_to_container("test", "/host/file", "/cont/file")
+
+@patch("subprocess.run")
+def test_copy_from_container(mock_run):
+    mock_run.return_value.returncode = 0
+    client = ContainerClient()
+    assert client.copy_from_container("test", "/cont/file", "/host/file")
+    mock_run.return_value.returncode = 1
+    assert not client.copy_from_container("test", "/cont/file", "/host/file")
+
+@patch("subprocess.run")
+def test_exec_in_container(mock_run):
+    mock_run.return_value.returncode = 0
+    mock_run.return_value.stdout = "output"
+    client = ContainerClient()
+    result = client.exec_in_container("test", ["echo", "hello"])
+    assert result.returncode == 0
+    assert result.stdout == "output"
+    # エラー時
+    mock_run.return_value.returncode = 1
+    mock_run.return_value.stderr = "error"
+    result = client.exec_in_container("test", ["false"])
+    assert result.returncode == 1
+
+@patch("subprocess.run")
+def test_list_containers(mock_run):
+    mock_run.return_value.returncode = 0
+    mock_run.return_value.stdout = "cph_test1\ncph_test2\nother\n"
+    client = ContainerClient()
+    all_names = client.list_containers()
+    assert "cph_test1" in all_names and "cph_test2" in all_names and "other" in all_names
+    filtered = client.list_containers(prefix="cph_")
+    assert set(filtered) == {"cph_test1", "cph_test2"}
+
+@patch("subprocess.run")
+def test_is_container_running(mock_run):
+    mock_run.return_value.returncode = 0
+    mock_run.return_value.stdout = "true"
+    client = ContainerClient()
+    assert client.is_container_running("test")
+    mock_run.return_value.stdout = "false"
+    assert not client.is_container_running("test")
+    mock_run.return_value.returncode = 1
+    assert not client.is_container_running("test") 

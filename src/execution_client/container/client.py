@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 import subprocess
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 import json
+from execution_client.abstract_client import AbstractExecutionClient
 
 class AbstractContainerClient(ABC):
     @abstractmethod
@@ -28,7 +29,7 @@ class AbstractContainerClient(ABC):
     def copy_from_container(self, name: str, src_path: str, dst_path: str) -> bool:
         pass
 
-class ContainerClient(AbstractContainerClient):
+class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
@@ -237,4 +238,22 @@ class ContainerClient(AbstractContainerClient):
             return image_name in images
         except subprocess.TimeoutExpired:
             print("[ERROR] docker images timed out")
-            return False 
+            return False
+
+    def run(self, name: str, image: Optional[str] = None, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, detach: bool = True, **kwargs) -> Any:
+        return self.run_container(name, image, command, volumes, detach)
+
+    def stop(self, name: str) -> bool:
+        return self.stop_container(name)
+
+    def remove(self, name: str) -> bool:
+        return self.remove_container(name)
+
+    def exec_in(self, name: str, cmd: List[str], **kwargs) -> subprocess.CompletedProcess:
+        return self.exec_in_container(name, cmd, **kwargs)
+
+    def is_running(self, name: str) -> bool:
+        return self.is_container_running(name)
+
+    def list(self, all: bool = True, prefix: Optional[str] = None) -> List[str]:
+        return self.list_containers(all=all, prefix=prefix) 
