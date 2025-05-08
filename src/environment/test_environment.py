@@ -9,38 +9,7 @@ from src.path_manager.file_operator import FileOperator
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
 
-class TestExecutionEnvironment(ABC):
-    @abstractmethod
-    def prepare_source_code(self, contest_name, problem_name, language_name):
-        pass
-
-    @abstractmethod
-    def prepare_test_cases(self, contest_name, problem_name):
-        pass
-
-    @abstractmethod
-    def to_container_path(self, host_path: str) -> str:
-        pass
-
-    @abstractmethod
-    def to_host_path(self, container_path: str) -> str:
-        pass
-
-    @abstractmethod
-    def run_test_case(self, language_name, container, in_file, source_path, retry=2):
-        pass
-
-class DockerTestExecutionEnvironment(TestExecutionEnvironment):
-    def __init__(self, file_manager, handlers=None):
-        self.file_manager = file_manager
-        self.file_operator = file_manager.file_operator if file_manager and hasattr(file_manager, 'file_operator') else None
-        self.ctl = DockerCtl()
-        from src.environment.test_language_handler import HANDLERS as DEFAULT_HANDLERS
-        self.handlers = handlers if handlers is not None else DEFAULT_HANDLERS
-        self.pool = DockerPool()
-        self.unified_path_manager = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE)
-        self.upm = UnifiedPathManager()
-
+class TestEnvFileOpsMixin:
     def prepare_source_code(self, contest_name, problem_name, language_name):
         temp_dir = ".temp"
         if language_name == "rust":
@@ -50,7 +19,6 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
             if self.file_operator:
                 if not self.file_operator.exists(temp_dir):
                     self.file_operator.makedirs(temp_dir)
-                # .temp/rustが存在する場合、target以外を削除
                 if self.file_operator.exists(dst_dir):
                     for item in self.file_operator.resolve_path(dst_dir).iterdir():
                         if item.name != "target":
@@ -63,7 +31,6 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
                 self.file_operator.copytree(src_dir, dst_dir)
             else:
                 os.makedirs(temp_dir, exist_ok=True)
-                # .temp/rustが存在する場合、target以外を削除
                 if os.path.exists(dst_dir):
                     for item in glob.glob(os.path.join(dst_dir, "*")):
                         if os.path.basename(item) != "target":
@@ -110,6 +77,38 @@ class DockerTestExecutionEnvironment(TestExecutionEnvironment):
             if os.path.exists(test_dir):
                 shutil.copytree(test_dir, temp_test_dir, dirs_exist_ok=True)
         return temp_test_dir
+
+class TestExecutionEnvironment(ABC):
+    @abstractmethod
+    def prepare_source_code(self, contest_name, problem_name, language_name):
+        pass
+
+    @abstractmethod
+    def prepare_test_cases(self, contest_name, problem_name):
+        pass
+
+    @abstractmethod
+    def to_container_path(self, host_path: str) -> str:
+        pass
+
+    @abstractmethod
+    def to_host_path(self, container_path: str) -> str:
+        pass
+
+    @abstractmethod
+    def run_test_case(self, language_name, container, in_file, source_path, retry=2):
+        pass
+
+class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironment):
+    def __init__(self, file_manager, handlers=None):
+        self.file_manager = file_manager
+        self.file_operator = file_manager.file_operator if file_manager and hasattr(file_manager, 'file_operator') else None
+        self.ctl = DockerCtl()
+        from src.environment.test_language_handler import HANDLERS as DEFAULT_HANDLERS
+        self.handlers = handlers if handlers is not None else DEFAULT_HANDLERS
+        self.pool = DockerPool()
+        self.unified_path_manager = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE)
+        self.upm = UnifiedPathManager()
 
     def to_container_path(self, host_path: str) -> str:
         return str(self.unified_path_manager.to_container_path(os.path.abspath(host_path)))

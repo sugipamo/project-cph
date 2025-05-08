@@ -14,14 +14,21 @@ class LocalAsyncClient(AbstractExecutionClient):
     def run(self, name: str, image: Optional[str] = None, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, detach: bool = True, realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, **kwargs) -> ExecutionResult:
         if not command:
             raise ValueError("command must be specified for local execution")
+        input_data = kwargs.get("input", None)
+        cwd = kwargs.get("cwd", None)
         with self._lock:
             if name in self._processes:
                 raise RuntimeError(f"Process with name {name} already running")
             if not realtime:
-                proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                self._processes[name] = proc
+                if not detach:
+                    # subprocess.runで即時実行
+                    result = subprocess.run(command, input=input_data, text=True, capture_output=True, cwd=cwd)
+                    return ExecutionResult(returncode=result.returncode, stdout=result.stdout, stderr=result.stderr)
+                else:
+                    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=cwd)
+                    self._processes[name] = proc
             else:
-                proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+                proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1, cwd=cwd)
                 self._processes[name] = proc
                 def reader(stream, callback):
                     for line in iter(stream.readline, ''):
@@ -34,10 +41,7 @@ class LocalAsyncClient(AbstractExecutionClient):
                 t_out.start()
                 t_err.start()
         if detach or realtime:
-            return ExecutionResult(returncode=None, stdout=None, stderr=None, extra={"popen": proc})
-        else:
-            stdout, stderr = proc.communicate()
-            return ExecutionResult(returncode=proc.returncode, stdout=stdout, stderr=stderr)
+            return ExecutionResult(returncode=None, stdout=None, stderr=None, extra={"popen": proc, "input": input_data})
 
     def stop(self, name: str) -> bool:
         with self._lock:
