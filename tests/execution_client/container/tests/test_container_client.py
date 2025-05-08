@@ -1,5 +1,7 @@
 import pytest
 from execution_client.container.client import ContainerClient
+import threading
+import shutil
 
 def test_run_not_implemented():
     client = ContainerClient()
@@ -16,3 +18,20 @@ def test_run_delegation():
     except Exception:
         # docker環境がない場合は例外でOK
         pass 
+
+def test_run_realtime_stdout():
+    if not shutil.which("docker"):
+        pytest.skip("docker not available")
+    client = ContainerClient()
+    output_lines = []
+    event = threading.Event()
+    def on_stdout(line):
+        output_lines.append(line)
+        event.set()
+    # 実際のdocker runでecho
+    result = client.run("test4", image="alpine", command=["echo", "realtime"], realtime=True, on_stdout=on_stdout)
+    proc = result.extra["popen"]
+    proc.wait()
+    event.wait(timeout=5)
+    assert any("realtime" in l for l in output_lines)
+    client.stop("test4") 

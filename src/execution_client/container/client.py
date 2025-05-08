@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 import subprocess
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Callable
 import json
 from execution_client.abstract_client import AbstractExecutionClient
+from execution_client.types import ExecutionResult
+import threading
 
 class AbstractContainerClient(ABC):
     @abstractmethod
@@ -240,8 +242,31 @@ class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
             print("[ERROR] docker images timed out")
             return False
 
-    def run(self, name: str, image: Optional[str] = None, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, detach: bool = True, **kwargs) -> Any:
-        return self.run_container(name, image, command, volumes, detach)
+    def run(self, name: str, image: Optional[str] = None, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, detach: bool = True, realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, **kwargs) -> Any:
+        if not realtime:
+            result = self.run_container(name, image, command, volumes, detach)
+            return ExecutionResult(returncode=None, stdout=None, stderr=None, extra={"popen": None, "docker_result": result})
+        else:
+            # docker runのリアルタイム出力取得
+            cmd = ["docker", "run", "--rm", "--name", name]
+            if volumes:
+                for host_path, cont_path in volumes.items():
+                    cmd += ["-v", f"{host_path}:{cont_path}"]
+            cmd.append(image)
+            if command:
+                cmd += command
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+            def reader(stream, callback):
+                for line in iter(stream.readline, ''):
+                    if callback:
+                        callback(line)
+            t_out = threading.Thread(target=reader, args=(proc.stdout, on_stdout))
+            t_err = threading.Thread(target=reader, args=(proc.stderr, on_stderr))
+            t_out.daemon = True
+            t_err.daemon = True
+            t_out.start()
+            t_err.start()
+            return ExecutionResult(returncode=None, stdout=None, stderr=None, extra={"popen": proc})
 
     def stop(self, name: str) -> bool:
         return self.stop_container(name)
@@ -249,8 +274,24 @@ class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
     def remove(self, name: str) -> bool:
         return self.remove_container(name)
 
-    def exec_in(self, name: str, cmd: List[str], **kwargs) -> subprocess.CompletedProcess:
-        return self.exec_in_container(name, cmd, **kwargs)
+    def exec_in(self, name: str, cmd: List[str], realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, **kwargs) -> subprocess.CompletedProcess:
+        if not realtime:
+            return self.exec_in_container(name, cmd, **kwargs)
+        else:
+            # docker execのリアルタイム出力取得
+            full_cmd = ["docker", "exec", name] + cmd
+            proc = subprocess.Popen(full_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+            def reader(stream, callback):
+                for line in iter(stream.readline, ''):
+                    if callback:
+                        callback(line)
+            t_out = threading.Thread(target=reader, args=(proc.stdout, on_stdout))
+            t_err = threading.Thread(target=reader, args=(proc.stderr, on_stderr))
+            t_out.daemon = True
+            t_err.daemon = True
+            t_out.start()
+            t_err.start()
+            return ExecutionResult(returncode=None, stdout=None, stderr=None, extra={"popen": proc})
 
     def is_running(self, name: str) -> bool:
         return self.is_container_running(name)
