@@ -5,7 +5,7 @@ from src.path_manager.file_operator import FileOperator
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
 
-from .test_result_formatter import TestResultFormatter
+from .test_result_formatter import ResultFormatter
 from src.environment.test_language_handler import HANDLERS
 from src.info_json_manager import InfoJsonManager
 from ..docker.ctl import DockerCtl
@@ -113,7 +113,7 @@ class CommandTest:
 
     def print_test_results(self, results):
         for r in results:
-            print(TestResultFormatter(r).format())
+            print(ResultFormatter(r).format())
             print("")
 
     async def run_test(self, contest_name, problem_name, language_name):

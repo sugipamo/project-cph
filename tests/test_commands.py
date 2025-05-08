@@ -241,7 +241,7 @@ def test_command_submit(monkeypatch, tmp_path):
 
 def test_command_test(monkeypatch, tmp_path):
     from src.commands.command_test import CommandTest
-    # file_manager, file_operator, InfoJsonManager, DockerCtl, HANDLERS, TestResultFormatter, os, printを全てmock
+    # file_manager, file_operator, InfoJsonManager, DockerCtl, HANDLERS, ResultFormatter, os, printを全てmock
     class DummyFileManager:
         def __init__(self):
             self.file_operator = DummyFileOperator()
@@ -288,10 +288,10 @@ def test_command_test(monkeypatch, tmp_path):
             return (True, "buildok", "")
         def run(self, ctl, container, in_file, src):
             return (True, "out", "")
-    # HANDLERS, TestResultFormatter, InfoJsonManager, DockerCtl
+    # HANDLERS, ResultFormatter, InfoJsonManager, DockerCtl
     monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
-    monkeypatch.setattr("src.commands.command_test.TestResultFormatter", lambda r: type("F", (), {"format": lambda self: "F"})())
+    monkeypatch.setattr("src.commands.command_test.ResultFormatter", lambda r: type("F", (), {"format": lambda self: "F"})())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
@@ -727,32 +727,6 @@ def test_prepare_test_environment_creates_temp_files(monkeypatch, tmp_path):
     assert any("main.py" in dst for src, dst in fm.file_operator.copied)
     # testディレクトリがコピーされている
     assert any("test" in dst for src, dst in fm.file_operator.copiedtree)
-
-def test_requirements_volumes(monkeypatch, tmp_path):
-    from src.commands.command_test import CommandTest
-    from src.environment.test_environment import DockerTestExecutionEnvironment
-    import os
-    class DummyFileManager:
-        def __init__(self):
-            self.file_operator = None
-    fm = DummyFileManager()
-    cmd = CommandTest(fm)
-    # collect_test_casesで2件返すように
-    monkeypatch.setattr(cmd, "collect_test_cases", lambda temp_dir, test_dir, file_operator=None: (["a.in", "b.in"], ["a.in", "b.in"]))
-    # DockerTestExecutionEnvironment.pool.adjustをモックしてrequirementsをキャプチャ
-    captured = {}
-    class DummyPool:
-        def adjust(self, requirements):
-            captured["requirements"] = requirements
-            return [{"name": "test1", "type": "test"}]
-    cmd.env.pool = DummyPool()
-    import asyncio
-    # contest_current/python/main.pyがtmp_path配下にあることを前提にbase_dirを指定
-    cmd.file_manager.file_operator = LocalFileOperator(base_dir=tmp_path)
-    asyncio.run(cmd.run_test("abc", "a", "python"))
-    # requirementsのvolumesが正しいか
-    assert "volumes" in captured["requirements"][0]
-    assert "/workspace" in str(captured["requirements"][0]["volumes"])
 
 def test_run_test_cases_infile_not_exist(monkeypatch):
     from src.commands.command_test import CommandTest

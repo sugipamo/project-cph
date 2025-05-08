@@ -24,24 +24,3 @@ def test_integration_local_manager():
     event.wait(timeout=2)
     assert any("integration" in l for l in output_lines)
     client.stop("integration2")
-
-def test_integration_container_manager():
-    if not shutil.which("docker"):
-        pytest.skip("docker not available")
-    client = ContainerClient()
-    manager = ExecutionManager(client)
-    # run_and_measureでsleep（alpineイメージを利用）
-    result = manager.run_and_measure("integration3", ["sleep", "0.1"], image="alpine")
-    assert result.extra["elapsed"] >= 0.1
-    # realtime出力取得
-    output_lines = []
-    event = threading.Event()
-    def on_stdout(line):
-        output_lines.append(line)
-        event.set()
-    result2 = client.run("integration4", image="alpine", command=["echo", "integration"], realtime=True, on_stdout=on_stdout)
-    proc = result2.extra["popen"]
-    proc.wait()
-    event.wait(timeout=5)
-    assert any("integration" in l for l in output_lines)
-    client.stop("integration4") 

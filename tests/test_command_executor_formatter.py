@@ -1,5 +1,5 @@
 import pytest
-from src.commands.test_result_formatter import TestResultFormatter
+from src.commands.test_result_formatter import ResultFormatter
 
 def test_ac_format():
     result = {
@@ -9,7 +9,7 @@ def test_ac_format():
         "expected": "2\n",
         "in_file": None,
     }
-    fmt = TestResultFormatter(result)
+    fmt = ResultFormatter(result)
     out = fmt.format()
     assert "AC" in out
     assert "sample-1.in" in out
@@ -25,7 +25,7 @@ def test_wa_format():
         "expected": "2\n",
         "in_file": None,
     }
-    fmt = TestResultFormatter(result)
+    fmt = ResultFormatter(result)
     out = fmt.format()
     assert "WA" in out
     assert "Expected | Output" in out
@@ -39,7 +39,7 @@ def test_re_format():
         "expected": "",
         "in_file": None,
     }
-    fmt = TestResultFormatter(result)
+    fmt = ResultFormatter(result)
     out = fmt.format()
     assert "RE" in out
     assert "error occurred" in out
@@ -55,7 +55,7 @@ def test_input_and_error(tmp_path):
         "expected": "",
         "in_file": str(in_file),
     }
-    fmt = TestResultFormatter(result)
+    fmt = ResultFormatter(result)
     out = fmt.format()
     assert "1 2 3" in out and "4 5 6" in out
     assert "error!" in out
@@ -69,7 +69,7 @@ def test_table_empty():
         "expected": "",
         "in_file": None,
     }
-    fmt = TestResultFormatter(result)
+    fmt = ResultFormatter(result)
     out = fmt.format()
     # テーブルが空でもエラーにならない
     assert isinstance(out, str) 

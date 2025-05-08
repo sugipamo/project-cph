@@ -1,0 +1,37 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.3.5, pluggy-1.5.0 -- /usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/cphelper/project-cph
+configfile: pytest.ini
+plugins: asyncio-0.26.0, cov-6.1.1
+asyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 172 items / 1 error
+
+==================================== ERRORS ====================================
+________________ ERROR collecting src/commands/command_test.py _________________
+ImportError while importing test module '/home/cphelper/project-cph/src/commands/command_test.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+src/commands/command_test.py:8: in <module>
+    from .test_result_formatter import TestResultFormatter
+E   ImportError: attempted relative import with no known parent package
+=============================== warnings summary ===============================
+src/commands/test_result_formatter.py:3
+  /home/cphelper/project-cph/src/commands/test_result_formatter.py:3: PytestCollectionWarning: cannot collect test class 'TestResultFormatter' because it has a __init__ constructor (from: src/commands/test_result_formatter.py)
+    class TestResultFormatter:
+
+src/commands/test_result_formatter.py:3
+  /home/cphelper/project-cph/src/commands/test_result_formatter.py:3: PytestCollectionWarning: cannot collect test class 'TestResultFormatter' because it has a __init__ constructor (from: tests/test_command_executor_formatter.py)
+    class TestResultFormatter:
+
+src/commands/test_result_formatter.py:3
+  /home/cphelper/project-cph/src/commands/test_result_formatter.py:3: PytestCollectionWarning: cannot collect test class 'TestResultFormatter' because it has a __init__ constructor (from: tests/test_test_result_formatter.py)
+    class TestResultFormatter:
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR src/commands/command_test.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+========================= 3 warnings, 1 error in 0.16s =========================
