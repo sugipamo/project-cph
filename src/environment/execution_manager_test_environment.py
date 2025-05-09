@@ -53,6 +53,8 @@ class ExecutionManagerTestEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironm
             # 例: /workspace/contest_current/python → ./contest_current/python
             workdir = "." + workdir[len("/workspace"):]
         cookie_path = "/home/cphelper/.local/share/online-judge-tools/cookie.jar"
+        if not args:
+            args = []
         if args and args[0] == "submit":
             cmd = ["oj", "--cookie", cookie_path, "submit"] + args[1:]
         else:
