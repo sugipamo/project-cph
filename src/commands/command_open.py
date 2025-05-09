@@ -1,15 +1,17 @@
 from src.info_json_manager import InfoJsonManager
-from ..docker.pool import DockerPool
-from ..docker.ctl import DockerCtl
-from src.docker.pool import DockerImageManager
+from src.execution_client.container.pool import ContainerPool
+from src.execution_client.container.client import ContainerClient
+from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.path_manager.file_operator import FileOperator
 from src.config_json_manager import ConfigJsonManager
+from src.environment.test_environment import DockerTestExecutionEnvironment
 
 class CommandOpen:
-    def __init__(self, file_manager, opener):
+    def __init__(self, file_manager, opener, test_env):
         self.file_manager = file_manager
         self.opener = opener
+        self.test_env = test_env
         self.upm = UnifiedPathManager()
 
     async def open(self, contest_name, problem_name, language_name):
@@ -48,40 +50,16 @@ class CommandOpen:
         else:
             test_case_count = len([f for f in os.listdir(test_dir) if f.endswith('.in')]) if os.path.exists(test_dir) else 0
         
-        # 4. DockerPoolで必要なコンテナを調整
+        # 4. 必要なコンテナ・環境を調整
         requirements = [
             {"type": "test", "language": language_name, "count": test_case_count},
-            {"type": "ojtools", "count": 1}
+            {"type": "ojtools", "count": 1, "volumes": {
+                "/home/cphelper/.local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
+            }}
         ]
-        pool = DockerPool()
-        containers = pool.adjust(requirements)
-        
-        # 5. system_info.jsonの更新
+        containers = self.test_env.adjust_containers(requirements, contest_name, problem_name, language_name)
+        # 5. system_info.jsonの更新はadjust_containersで一括実施済み
         info_path = self.upm.info_json()
         manager = InfoJsonManager(info_path)
-        manager.data["contest_name"] = contest_name
-        manager.data["problem_name"] = problem_name
-        manager.data["language_name"] = language_name
-        manager.data["containers"] = containers
-        manager.save()
-        
-        # 6. テストケースダウンロード（ojtoolsコンテナでoj download）
-        ojtools_list = manager.get_containers(type="ojtools")
-        if not ojtools_list:
-            raise RuntimeError("ojtools用コンテナがsystem_info.jsonにありません")
-        ojtools_name = ojtools_list[0]["name"]
-        ctl = DockerCtl()
-        test_dir_host = self.upm.contest_current("test")
-        if file_operator:
-            if not file_operator.exists(test_dir_host):
-                file_operator.makedirs(test_dir_host)
-        else:
-            os.makedirs(test_dir_host, exist_ok=True)
-        if not ctl.is_container_running(ojtools_name):
-            ctl.start_container(ojtools_name, DockerImageManager().ensure_image("ojtools"), {})
-        # testディレクトリをクリーンアップ＆作成＆oj download
-        ctl.exec_in_container(ojtools_name, ["rm", "-rf", f"/workspace/{test_dir_host}"])
-        ctl.exec_in_container(ojtools_name, ["mkdir", "-p", f"/workspace/{test_dir_host}"])
-        ctl.exec_in_container(ojtools_name, ["oj", "download", url, "-d", f"/workspace/{test_dir_host}"])
-        # docker cpでホストにテストケースをコピー（test/testにならないようcontest_current/にコピー）
-        ctl.cp_from_container(ojtools_name, f"/workspace/{test_dir_host}", self.upm.contest_current())
+        # 6. テストケースダウンロード（oj download）
+        self.test_env.download_testcases(url, self.upm.contest_current("test"))

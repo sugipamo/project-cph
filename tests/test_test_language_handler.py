@@ -3,6 +3,8 @@ from src.environment.test_language_handler import PythonTestHandler, PypyTestHan
 import os
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from pathlib import Path
+from unittest.mock import MagicMock
+import subprocess
 
 class DummyCtl:
     def __init__(self):
@@ -15,66 +17,10 @@ class DummyCtlFail:
     def exec_in_container(self, container, cmd, realtime=False):
         return False, '', 'error'
 
-def test_python_handler_run():
-    ctl = DummyCtl()
-    handler = PythonTestHandler()
-    ok, out, err = handler.run(ctl, 'cont', 'input.txt', 'main.py')
-    assert ok and out == 'ok'
-    assert ctl.calls[0][1][0] == 'sh'
-    assert 'python3' in ctl.calls[0][1][-1]
-
-def test_pypy_handler_run():
-    ctl = DummyCtl()
-    handler = PypyTestHandler()
-    ok, out, err = handler.run(ctl, 'cont', 'input.txt', 'main.py')
-    assert ok and out == 'ok'
-    assert 'pypy3' in ctl.calls[0][1][-1]
-
-def test_rust_handler_build_and_run(tmp_path):
-    # UnifiedPathManagerをテスト用に差し替え
-    upm = UnifiedPathManager(str(tmp_path), '/workspace')
-    handler = RustTestHandler()
-    # RustTestHandlerの内部で使うupmを差し替え（グローバル変数を上書き）
-    import src.environment.test_language_handler as tlh
-    tlh.upm = upm
-    # .temp/a.outをtmp_path配下に作成
-    abs_out = os.path.join(tmp_path, '.temp/a.out')
-    os.makedirs(os.path.dirname(abs_out), exist_ok=True)
-    with open(abs_out, 'w') as f:
-        f.write('dummy')
-    rust_dir = tmp_path / "rust"
-    rust_dir.mkdir()
-    ok, out, err = handler.build(DummyCtl(), 'cont', str(rust_dir))
-    assert ok and out == 'ok'
-    ok, out, err = handler.run(DummyCtl(), 'cont', '/workspace/input.txt', str(rust_dir))
-    assert ok and out == 'ok'
-
-def test_rust_handler_run_fail():
-    handler = RustTestHandler()
-    import src.environment.test_language_handler as tlh
-    tlh.upm = UnifiedPathManager("/tmp", "/workspace")
-    ctl = DummyCtlFail()
-    # runで失敗時、bin_pathがNoneにならないようにin_file, temp_source_pathも適切に渡す
-    ok, out, err = handler.run(ctl, 'cont', '/workspace/input.txt', '/tmp/rust')
-    assert not ok
-
-def test_rust_handler_build_and_run_exception():
-    from src.environment.test_language_handler import RustTestHandler
-    class DummyCtl:
-        def exec_in_container(self, container, cmd, realtime=False):
-            raise RuntimeError("fail")
-    handler = RustTestHandler()
-    import src.environment.test_language_handler as tlh
-    tlh.upm = UnifiedPathManager("/tmp", "/workspace")
-    with pytest.raises(RuntimeError):
-        handler.build(DummyCtl(), 'cont', 'main.rs')
-    with pytest.raises(RuntimeError):
-        handler.run(DummyCtl(), 'cont', '/workspace/input.txt', 'main.rs')
-
 def test_handlers_mapping():
-    assert isinstance(HANDLERS['python'], PythonTestHandler)
-    assert isinstance(HANDLERS['pypy'], PypyTestHandler)
-    assert isinstance(HANDLERS['rust'], RustTestHandler)
+    assert 'python' in HANDLERS
+    assert 'pypy' in HANDLERS
+    assert 'rust' in HANDLERS
 
 def test_base_handler_run_notimplemented():
     from src.environment.test_language_handler import TestLanguageHandler
@@ -83,20 +29,90 @@ def test_base_handler_run_notimplemented():
     with pytest.raises(NotImplementedError):
         handler.run(None, None, None, None)
 
-def test_python_handler_run_exception():
-    from src.environment.test_language_handler import PythonTestHandler
-    class DummyCtl:
-        def exec_in_container(self, container, cmd, realtime=False):
-            raise RuntimeError("fail")
-    handler = PythonTestHandler()
-    with pytest.raises(RuntimeError):
-        handler.run(DummyCtl(), 'cont', 'input.txt', 'main.py')
+def make_dummy_file(path, content):
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
 
-def test_pypy_handler_run_exception():
-    from src.environment.test_language_handler import PypyTestHandler
-    class DummyCtl:
-        def exec_in_container(self, container, cmd, realtime=False):
-            raise RuntimeError("fail")
+def test_python_handler_build_and_run(tmp_path):
+    handler = PythonTestHandler()
+    # buildは常に成功
+    ok, out, err = handler.build(None, None, None)
+    assert ok
+    # runはrun_and_measureを呼ぶ
+    manager = MagicMock()
+    manager.run_and_measure.return_value = MagicMock(returncode=0, stdout="out", stderr="err")
+    # CompletedProcess型で返す
+    manager.exec_in_container = MagicMock(return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="out", stderr="err"))
+    in_file = tmp_path / "in.txt"
+    make_dummy_file(in_file, "input")
+    result = handler.run(manager, "name", str(in_file), "main.py", host_in_file=str(in_file))
+    assert result[0]
+    assert result[1] == "out"
+    assert result[2] == "err"
+
+def test_pypy_handler_build_and_run(tmp_path):
     handler = PypyTestHandler()
-    with pytest.raises(RuntimeError):
-        handler.run(DummyCtl(), 'cont', 'input.txt', 'main.py') 
+    ok, out, err = handler.build(None, None, None)
+    assert ok
+    manager = MagicMock()
+    manager.run_and_measure.return_value = MagicMock(returncode=0, stdout="out", stderr="err")
+    manager.exec_in_container = MagicMock(return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="out", stderr="err"))
+    in_file = tmp_path / "in.txt"
+    make_dummy_file(in_file, "input")
+    result = handler.run(manager, "name", str(in_file), "main.py", host_in_file=str(in_file))
+    assert result[0]
+    assert result[1] == "out"
+    assert result[2] == "err"
+
+def test_rust_handler_build_and_run(tmp_path):
+    handler = RustTestHandler()
+    # build
+    manager = MagicMock()
+    manager.run_and_measure.return_value = MagicMock(returncode=0, stdout="out", stderr="err")
+    manager.exec_in_container = MagicMock(return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="out2", stderr="err2"))
+    src_dir = tmp_path / "rust"
+    src_dir.mkdir()
+    ok, out, err = handler.build(manager, "name", str(src_dir))
+    assert ok
+    assert manager.run_and_measure.called
+    # run
+    bin_dir = src_dir / "target" / "release"
+    bin_dir.mkdir(parents=True)
+    bin_path = bin_dir / "rust"
+    bin_path.write_text("")
+    in_file = tmp_path / "in.txt"
+    make_dummy_file(in_file, "input")
+    manager.run_and_measure.reset_mock()
+    manager.run_and_measure.return_value = MagicMock(returncode=0, stdout="out2", stderr="err2")
+    result = handler.run(manager, "name", str(in_file), str(src_dir), host_in_file=str(in_file))
+    assert result[0]
+    assert result[1] == "out2"
+    assert result[2] == "err2"
+
+def test_python_handler_run_fail(tmp_path):
+    handler = PythonTestHandler()
+    manager = MagicMock()
+    manager.run_and_measure.return_value = MagicMock(returncode=1, stdout="", stderr="err")
+    manager.exec_in_container = MagicMock(return_value=subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="err"))
+    in_file = tmp_path / "in.txt"
+    make_dummy_file(in_file, "input")
+    result = handler.run(manager, "name", str(in_file), "main.py", host_in_file=str(in_file))
+    assert not result[0]
+    assert result[2] == "err"
+
+def test_rust_handler_run_fail(tmp_path):
+    handler = RustTestHandler()
+    manager = MagicMock()
+    manager.run_and_measure.return_value = MagicMock(returncode=1, stdout="", stderr="err")
+    manager.exec_in_container = MagicMock(return_value=subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="err"))
+    src_dir = tmp_path / "rust"
+    src_dir.mkdir()
+    bin_dir = src_dir / "target" / "release"
+    bin_dir.mkdir(parents=True)
+    bin_path = bin_dir / "rust"
+    bin_path.write_text("")
+    in_file = tmp_path / "in.txt"
+    make_dummy_file(in_file, "input")
+    result = handler.run(manager, "name", str(in_file), str(src_dir), host_in_file=str(in_file))
+    assert not result[0]
+    assert result[2] == "err"

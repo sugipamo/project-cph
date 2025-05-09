@@ -8,14 +8,14 @@ def make_upm(tmp_path):
 
 def test_path_service_shortcuts(tmp_path):
     upm = make_upm(tmp_path)
-    assert upm.contest_current("main.py").endswith(os.path.join("contest_current", "main.py"))
-    assert upm.contest_stocks("abc", "a", "python").endswith(os.path.join("contest_stocks", "abc", "a", "python"))
-    assert upm.contest_env("python.Dockerfile").endswith(os.path.join("contest_env", "python.Dockerfile"))
-    assert upm.contest_template("python", "main.py").endswith(os.path.join("contest_template", "python", "main.py"))
-    assert upm.info_json().endswith(os.path.join("contest_current", "system_info.json"))
-    assert upm.config_json().endswith(os.path.join("contest_current", "config.json"))
-    assert upm.test_dir().endswith(os.path.join("contest_current", "test"))
-    assert upm.readme_md().endswith(os.path.join("contest_current", "README.md"))
+    assert upm.contest_current("main.py") == tmp_path / "contest_current" / "main.py"
+    assert upm.contest_stocks("abc", "a", "python") == tmp_path / "contest_stocks" / "abc" / "a" / "python"
+    assert upm.contest_env("python.Dockerfile") == tmp_path / "contest_env" / "python.Dockerfile"
+    assert upm.contest_template("python", "main.py") == tmp_path / "contest_template" / "python" / "main.py"
+    assert upm.info_json() == tmp_path / "contest_current" / "system_info.json"
+    assert upm.config_json() == tmp_path / "contest_current" / "config.json"
+    assert upm.test_dir() == tmp_path / "contest_current" / "test"
+    assert upm.readme_md() == tmp_path / "contest_current" / "README.md"
 
 def test_to_container_path_and_back(tmp_path):
     upm = make_upm(tmp_path)
@@ -70,11 +70,11 @@ def test_path_validation_and_normalize(tmp_path):
     rel = "./foo/bar.txt"
     abs_path = UnifiedPathManager.normalize_path(rel)
     from pathlib import Path
-    assert Path(abs_path).is_absolute()
+    assert abs_path.is_absolute()
     # resolve_symlink
     target = tmp_path / "target.txt"
     target.write_text("x")
     link = tmp_path / "link.txt"
     link.symlink_to(target)
     resolved = UnifiedPathManager.resolve_symlink(link)
-    assert Path(resolved).resolve() == target.resolve() 
+    assert resolved.resolve() == target.resolve() 

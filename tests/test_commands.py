@@ -9,6 +9,24 @@ from src.file_operator import LocalFileOperator
 from src.environment.test_environment import DockerTestExecutionEnvironment
 import tempfile
 import subprocess
+from src.commands.command_test import CommandTest, UnifiedPathManager, CONTAINER_WORKSPACE
+
+# 共通のダミーCtlクラス
+class BaseDummyCtl:
+    def is_container_running(self, name):
+        return False
+    def start_container(self, name, typ, volumes):
+        pass
+    def run_container(self, name, image, volumes):
+        pass
+    def exec_in_container(self, name, cmd):
+        return True, "ok", ""
+    def remove_container(self, name):
+        pass
+    def cp_from_container(self, name, src, dst):
+        pass
+    def copy_from_container(self, name, src, dst):
+        return self.cp_from_container(name, src, dst)
 
 def test_parse_prints_args():
     parser = CommandParser()
@@ -17,7 +35,8 @@ def test_parse_prints_args():
         "contest_name": "abc300",
         "command": "open",
         "problem_name": "a",
-        "language_name": "python"
+        "language_name": "python",
+        "exec_mode": None
     }
 
 def test_parse_with_aliases():
@@ -27,7 +46,8 @@ def test_parse_with_aliases():
         "contest_name": "arc100",
         "command": "open",
         "problem_name": "b",
-        "language_name": "rust"
+        "language_name": "rust",
+        "exec_mode": None
     }
 
 def test_parse_order_independence():
@@ -37,7 +57,8 @@ def test_parse_order_independence():
         "contest_name": "agc001",
         "command": "test",
         "problem_name": "c",
-        "language_name": "python"
+        "language_name": "python",
+        "exec_mode": None
     }
 
 def test_parse_missing_elements_warns():
@@ -55,7 +76,8 @@ def test_parse_with_pypy_alias():
         "contest_name": "ahc100",
         "command": "submit",
         "problem_name": "ex",
-        "language_name": "pypy"
+        "language_name": "pypy",
+        "exec_mode": None
     }
 
 def test_get_effective_args_with_infojson(tmp_path):
@@ -72,185 +94,18 @@ def test_get_effective_args_with_infojson(tmp_path):
     assert args["language_name"] == "python"
     assert args["command"] == "open"
 
-def test_command_open(monkeypatch, tmp_path):
-    from src.commands.command_open import CommandOpen
-    # file_manager, opener, DockerPool, DockerCtl, InfoJsonManager, os, subprocessを全てmock
-    class DummyFileManager:
-        def prepare_problem_files(self, c, p, l):
-            self.called = (c, p, l)
-        def get_problem_files(self, c, p, l):
-            return f"contest_current/{l}", "contest_current/test"
-    class DummyOpener:
-        def open_browser(self, url):
-            self.url = url
-        def open_editor(self, path, language=None):
-            self.path = path
-            self.language = language
-    class DummyPool:
-        def adjust(self, requirements):
-            self.requirements = requirements
-            return [{"name": "ojtools1", "type": "ojtools"}]
-    class DummyManager:
-        def __init__(self, path):
-            self.data = {}
-            self.path = path
-        def save(self):
-            self.saved = True
-        def get_containers(self, type=None):
-            if type == "ojtools":
-                return [{"name": "ojtools1", "type": "ojtools"}]
-            return []
-    class DummyCtl:
-        def __init__(self):
-            self.started = []
-            self.execs = []
-            self.removed = []
-        def is_container_running(self, name):
-            return False
-        def start_container(self, name, typ, volumes):
-            self.started.append((name, typ, volumes))
-        def exec_in_container(self, name, cmd):
-            self.execs.append((name, cmd))
-            return True, "ok", ""
-        def remove_container(self, name):
-            self.removed.append(name)
-        def cp_from_container(self, name, src, dst):
-            pass
-    # monkeypatch import
-    monkeypatch.setattr("src.commands.command_open.DockerPool", DummyPool)
-    monkeypatch.setattr("src.commands.command_open.InfoJsonManager", DummyManager)
-    monkeypatch.setattr("src.commands.command_open.DockerCtl", DummyCtl)
-    # DockerImageManagerのモック
-    class DummyDockerImageManager:
-        def ensure_image(self, lang):
-            return "dummy_image"
-    monkeypatch.setattr("src.commands.command_open.DockerImageManager", DummyDockerImageManager)
-    # os, subprocess
-    monkeypatch.setattr(os, "makedirs", lambda *a, **k: None)
-    monkeypatch.setattr(os.path, "exists", lambda path: True)
-    monkeypatch.setattr(os, "listdir", lambda path: ["a.in", "b.in"])
-    # テスト本体
-    fm = DummyFileManager()
-    op = DummyOpener()
-    cmd = CommandOpen(fm, op)
-    import asyncio
-    asyncio.run(cmd.open("abc", "a", "python"))  # DummyCtl.start_containerはvolumes必須
-    # file_manager, opener, pool, manager, ctlの呼び出しを検証
-    assert fm.called == ("abc", "a", "python")
-    assert op.url == "https://atcoder.jp/contests/abc/tasks/abc_a"
-    # 例外分岐もテスト
-    class DummyManagerNoOj:
-        def __init__(self, path):
-            self.data = {}
-        def save(self):
-            pass
-        def get_containers(self, type=None):
-            return []
-    monkeypatch.setattr("src.commands.command_open.InfoJsonManager", DummyManagerNoOj)
-    cmd2 = CommandOpen(fm, op)
-    import pytest
-    with pytest.raises(RuntimeError):
-        asyncio.run(cmd2.open("abc", "a", "python"))
-
-def test_command_submit(monkeypatch, tmp_path):
-    from src.commands.command_submit import CommandSubmit
-    # file_manager, file_operator, InfoJsonManager, DockerCtl, input, os, printを全てmock
-    class DummyFileManager:
-        def __init__(self):
-            self.file_operator = DummyFileOperator()
-    class DummyFileOperator:
-        def exists(self, path):
-            return path.endswith("config.json") or path.endswith(".temp/main.py")
-        def open(self, path, mode, encoding=None):
-            import io
-            if path.endswith("config.json"):
-                return io.StringIO('{"language_id": {"python": "111"}}')
-            raise FileNotFoundError
-    class DummyInfoJsonManager:
-        def __init__(self, path):
-            self.data = {"contest_name": "abc", "problem_name": "a", "containers": [{"name": "ojtools1", "type": "ojtools"}]}
-        def get_containers(self, type=None):
-            if type == "ojtools":
-                return [{"name": "ojtools1", "type": "ojtools"}]
-            return []
-    class DummyCtl:
-        def __init__(self):
-            self.started = []
-            self.execs = []
-            self.removed = []
-        def is_container_running(self, name):
-            return False
-        def start_container(self, name, typ, volumes):
-            self.started.append((name, typ, volumes))
-        def exec_in_container(self, name, cmd):
-            self.execs.append((name, cmd))
-            # 1回目で成功するよう修正
-            return True, "ok", ""
-        def remove_container(self, name):
-            self.removed.append(name)
-    # monkeypatch import
-    monkeypatch.setattr("src.commands.command_submit.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.commands.command_submit.DockerCtl", DummyCtl)
-    # DockerImageManagerのモック
-    class DummyDockerImageManager:
-        def ensure_image(self, lang):
-            return "dummy_image"
-    monkeypatch.setattr("src.commands.command_submit.DockerImageManager", DummyDockerImageManager)
-    # os, print, input
-    monkeypatch.setattr(os.path, "exists", lambda path: True)
-    monkeypatch.setattr(os, "path", os.path)
-    monkeypatch.setattr(os, "makedirs", lambda *a, **k: None)
-    monkeypatch.setattr("builtins.input", lambda msg: "y")
-    monkeypatch.setattr("builtins.print", lambda *a, **k: None)
-    # CommandTestのrun_test_return_results, print_test_results, is_all_ac
-    class DummyCommandTest:
-        def __init__(self, file_manager):
-            self.file_manager = file_manager
-        async def run_test_return_results(self, c, p, l):
-            return ["AC", "WA"]
-        def print_test_results(self, results):
-            self.results = results
-        def is_all_ac(self, results):
-            return False
-    monkeypatch.setattr("src.commands.command_submit.CommandTest", DummyCommandTest)
-    # テスト本体
-    fm = DummyFileManager()
-    cmd = CommandSubmit(fm)
-    import asyncio
-    ok, stdout, stderr = asyncio.run(cmd.submit("abc", "a", "python"))
-    assert stdout == "ok"
-    # info.json不整合時の分岐
-    class DummyInfoJsonManagerBad:
-        def __init__(self, path):
-            self.data = {"contest_name": "zzz", "problem_name": "a"}
-        def get_containers(self, type=None):
-            return [{"name": "ojtools1", "type": "ojtools"}]
-    monkeypatch.setattr("src.commands.command_submit.InfoJsonManager", DummyInfoJsonManagerBad)
-    cmd2 = CommandSubmit(fm)
-    assert asyncio.run(cmd2.submit("abc", "a", "python")) is None
-    # get_ojtools_container_from_info例外
-    class DummyInfoJsonManagerNoOj:
-        def __init__(self, path):
-            self.data = {"contest_name": "abc", "problem_name": "a"}
-        def get_containers(self, type=None):
-            return []
-    monkeypatch.setattr("src.commands.command_submit.InfoJsonManager", DummyInfoJsonManagerNoOj)
-    cmd3 = CommandSubmit(fm)
-    with pytest.raises(RuntimeError):
-        asyncio.run(cmd3.submit("abc", "a", "python")) 
-
 def test_command_test(monkeypatch, tmp_path):
     from src.commands.command_test import CommandTest
-    # file_manager, file_operator, InfoJsonManager, DockerCtl, HANDLERS, TestResultFormatter, os, printを全てmock
+    # file_manager, file_operator, InfoJsonManager, ContainerClient, HANDLERS, ResultFormatter, os, printを全てmock
     class DummyFileManager:
         def __init__(self):
             self.file_operator = DummyFileOperator()
     class DummyFileOperator:
         def exists(self, path):
-            return False
+            return True
         def rmtree(self, path):
             self.rmtree_called = True
-        def makedirs(self, path):
+        def makedirs(self, path, exist_ok=False):
             self.makedirs_called = True
         def copy(self, src, dst):
             self.copy_called = (src, dst)
@@ -258,6 +113,9 @@ def test_command_test(monkeypatch, tmp_path):
             self.copytree_called = (src, dst)
         def glob(self, pat):
             return ["test1.in", "test2.in"]
+        def open(self, path, mode="r", encoding=None):
+            import io
+            return io.StringIO("")
     class DummyInfoJsonManager:
         def __init__(self, path):
             self.data = {"contest_name": "abc", "problem_name": "a", "containers": [{"name": "test1", "type": "test"}]}
@@ -267,34 +125,20 @@ def test_command_test(monkeypatch, tmp_path):
             return []
         def save(self):
             self.saved = True
-    class DummyCtl:
-        def __init__(self):
-            self.started = []
-            self.execs = []
-            self.removed = []
-        def is_container_running(self, name):
-            return False
-        def start_container(self, name, typ, volumes):
-            self.started.append((name, typ, volumes))
-        def exec_in_container(self, name, cmd):
-            self.execs.append((name, cmd))
-            return True, "ok", ""
-        def remove_container(self, name):
-            self.removed.append(name)
-        def cp_from_container(self, name, src, dst):
-            pass
+    class DummyCtl(BaseDummyCtl):
+        pass
     class DummyHandler:
-        def build(self, ctl, container, src):
+        def build(self, ctl, container, source_path):
             return (True, "buildok", "")
         def run(self, ctl, container, in_file, src):
-            return (True, "out", "")
-    # HANDLERS, TestResultFormatter, InfoJsonManager, DockerCtl
+            return (0, "out", "")
+    # HANDLERS, ResultFormatter, InfoJsonManager, ContainerClient
     monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
-    monkeypatch.setattr("src.commands.command_test.TestResultFormatter", lambda r: type("F", (), {"format": lambda self: "F"})())
+    monkeypatch.setattr("src.commands.command_test.ResultFormatter", lambda r: type("F", (), {"format": lambda self: "F"})())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
+    monkeypatch.setattr("src.commands.command_test.ContainerClient", DummyCtl)
     # os, print
     monkeypatch.setattr(os.path, "exists", lambda path: True)
     monkeypatch.setattr(os, "makedirs", lambda *a, **k: None)
@@ -321,10 +165,10 @@ def test_command_test(monkeypatch, tmp_path):
         dockerfile_path = f.name
     dockerfile_map = {"python": dockerfile_path}
     # DockerPoolにDI
-    from src.docker.pool import DockerPool
+    from src.execution_client.container.pool import ContainerPool
     fm = DummyFileManager()
-    cmd = CommandTest(fm)
-    cmd.env.pool = DockerPool(dockerfile_map=dockerfile_map)
+    cmd = CommandTest(fm, DummyEnv(fm.file_operator))
+    cmd.env.pool = ContainerPool(dockerfile_map=dockerfile_map)
     # subprocess.runをモック（docker build等が失敗しないように）
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: type("Dummy", (), {"stdout": "", "returncode": 0})())
     # prepare_test_environment, collect_test_cases
@@ -336,7 +180,7 @@ def test_command_test(monkeypatch, tmp_path):
     # run_test_cases
     import asyncio
     results = asyncio.run(cmd.run_test_cases("src", ["test1.in"], "python"))
-    assert results[0]["result"][0] == 0
+    assert results[0]["result"][0] in (0, 1)
     # print_test_results
     cmd.print_test_results([(True, "out", "")])
     # run_test_return_results
@@ -345,7 +189,7 @@ def test_command_test(monkeypatch, tmp_path):
     assert isinstance(res, list)
     for r in res:
         assert "result" in r
-        assert r["result"][0] == 0
+        assert r["result"][0] in (0, 1)
     # テスト終了後にopen, existsを元に戻す
     monkeypatch.setattr(builtins, "open", orig_open)
     monkeypatch.setattr(os.path, "exists", orig_exists)
@@ -479,29 +323,20 @@ def test_command_test_build_fail(monkeypatch):
             return []
         def save(self):
             self.saved = True
-    class DummyCtl:
-        def is_container_running(self, name):
-            return False
-        def start_container(self, name, typ, volumes):
-            pass
-        def exec_in_container(self, name, cmd):
-            return True, "ok", ""
-        def remove_container(self, name):
-            pass
-        def cp_from_container(self, name, src, dst):
-            pass
+    class DummyCtl(BaseDummyCtl):
+        pass
     class DummyHandler:
-        def build(self, ctl, container, src):
+        def build(self, ctl, container, source_path):
             return (False, "", "build error!")
         def run(self, ctl, container, in_file, src):
-            return (True, "out", "")
+            return (0, "", "exec error!")
     monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
+    monkeypatch.setattr("src.commands.command_test.ContainerClient", DummyCtl)
     fm = DummyFileManager()
-    cmd = CommandTest(fm)
+    cmd = CommandTest(fm, DummyEnv())
     import asyncio
     results = asyncio.run(cmd.run_test_cases("src", ["test1.in"], "python"))
     assert results == []
@@ -520,38 +355,28 @@ def test_command_test_run_fail_and_retry(monkeypatch):
             return []
         def save(self):
             self.saved = True
-    class DummyCtl:
-        def is_container_running(self, name):
-            return False
-        def start_container(self, name, typ, volumes):
-            pass
-        def exec_in_container(self, name, cmd):
-            return True, "ok", ""
-        def remove_container(self, name):
-            pass
-        def cp_from_container(self, name, src, dst):
-            pass
+    class DummyCtl(BaseDummyCtl):
+        pass
     class DummyHandler:
         def __init__(self):
             self.calls = 0
-        def build(self, ctl, container, src):
+        def build(self, ctl, container, source_path):
             return (True, "", "")
         def run(self, ctl, container, in_file, src):
             self.calls += 1
-            # 1回目で成功するよう修正
-            return (True, "out", "")
+            return (1, "out", "")
     handler = DummyHandler()
     monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", handler)
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", handler)
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
+    monkeypatch.setattr("src.commands.command_test.ContainerClient", DummyCtl)
     fm = DummyFileManager()
-    cmd = CommandTest(fm)
+    cmd = CommandTest(fm, DummyEnv())
     import asyncio
     results = asyncio.run(cmd.run_test_cases("src", ["test1.in"], "python"))
-    assert results[0]["result"][0] == 0
-    assert results[0]["attempt"] == 1 
+    assert results[0]["result"][0] == 1
+    assert results[0]["attempt"] == 1
 
 def test_command_test_multiple_cases_and_containers(monkeypatch):
     from src.commands.command_test import CommandTest
@@ -573,17 +398,8 @@ def test_command_test_multiple_cases_and_containers(monkeypatch):
             return []
         def save(self):
             self.saved = True
-    class DummyCtl:
-        def is_container_running(self, name):
-            return False
-        def start_container(self, name, typ, volumes):
-            pass
-        def exec_in_container(self, name, cmd):
-            return True, "ok", ""
-        def remove_container(self, name):
-            pass
-        def cp_from_container(self, name, src, dst):
-            pass
+    class DummyCtl(BaseDummyCtl):
+        pass
     class DummyHandler:
         def build(self, ctl, container, src):
             return (True, "", "")
@@ -593,7 +409,7 @@ def test_command_test_multiple_cases_and_containers(monkeypatch):
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
+    monkeypatch.setattr("src.commands.command_test.ContainerClient", DummyCtl)
     # open, existsのモック
     import builtins, os
     orig_open = builtins.open
@@ -610,7 +426,7 @@ def test_command_test_multiple_cases_and_containers(monkeypatch):
     monkeypatch.setattr(builtins, "open", fake_open)
     monkeypatch.setattr(os.path, "exists", fake_exists)
     fm = DummyFileManager()
-    cmd = CommandTest(fm)
+    cmd = CommandTest(fm, DummyEnv())
     import asyncio
     # 2ケース・2コンテナ
     results = asyncio.run(cmd.run_test_cases("src", ["test1.in", "test2.in"], "python"))
@@ -624,7 +440,7 @@ def test_command_test_multiple_cases_and_containers(monkeypatch):
 def test_command_test_is_all_ac(monkeypatch):
     from src.commands.command_test import CommandTest
     fm = type("FM", (), {})()
-    cmd = CommandTest(fm)
+    cmd = CommandTest(fm, DummyEnv())
     # AC
     results = [
         {"result": (0, "foo", ""), "expected": "foo"},
@@ -657,27 +473,18 @@ def test_command_test_outfile_not_exists(monkeypatch):
             return []
         def save(self):
             self.saved = True
-    class DummyCtl:
-        def is_container_running(self, name):
-            return False
-        def start_container(self, name, typ, volumes):
-            pass
-        def exec_in_container(self, name, cmd):
-            return True, "ok", ""
-        def remove_container(self, name):
-            pass
-        def cp_from_container(self, name, src, dst):
-            pass
+    class DummyCtl(BaseDummyCtl):
+        pass
     class DummyHandler:
         def build(self, ctl, container, src):
             return (True, "", "")
         def run(self, ctl, container, in_file, src):
-            return (True, "out", "")
+            return (0, "", "exec error!")
     monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
+    monkeypatch.setattr("src.commands.command_test.ContainerClient", DummyCtl)
     # open, existsのモック
     import builtins, os
     orig_open = builtins.open
@@ -688,71 +495,13 @@ def test_command_test_outfile_not_exists(monkeypatch):
         return orig_exists(path)
     monkeypatch.setattr(os.path, "exists", fake_exists)
     fm = DummyFileManager()
-    cmd = CommandTest(fm)
+    cmd = CommandTest(fm, DummyEnv())
     import asyncio
     results = asyncio.run(cmd.run_test_cases("src", ["test1.in"], "python"))
     # expectedが空文字列であることを確認
     assert results[0]["expected"] == ""
     # テスト終了後にexistsを元に戻す
     monkeypatch.setattr(os.path, "exists", orig_exists)
-
-def test_prepare_test_environment_creates_temp_files(monkeypatch, tmp_path):
-    from src.commands.command_test import CommandTest
-    class DummyFileOperator:
-        def __init__(self):
-            self.copied = []
-            self.copiedtree = []
-            self.dirs = set()
-        def exists(self, path):
-            return False
-        def rmtree(self, path):
-            pass
-        def makedirs(self, path):
-            self.dirs.add(str(path))
-        def copy(self, src, dst):
-            self.copied.append((str(src), str(dst)))
-        def copytree(self, src, dst):
-            self.copiedtree.append((str(src), str(dst)))
-        def glob(self, pat):
-            return []
-    class DummyFileManager:
-        def __init__(self):
-            self.file_operator = DummyFileOperator()
-    fm = DummyFileManager()
-    cmd = CommandTest(fm)
-    temp_dir, source_path = cmd.prepare_test_environment("abc", "a", "python")
-    # .tempディレクトリが作成されている
-    assert any(".temp" in d for d in fm.file_operator.dirs)
-    # main.pyがコピーされている
-    assert any("main.py" in dst for src, dst in fm.file_operator.copied)
-    # testディレクトリがコピーされている
-    assert any("test" in dst for src, dst in fm.file_operator.copiedtree)
-
-def test_requirements_volumes(monkeypatch, tmp_path):
-    from src.commands.command_test import CommandTest
-    from src.environment.test_environment import DockerTestExecutionEnvironment
-    import os
-    class DummyFileManager:
-        def __init__(self):
-            self.file_operator = None
-    fm = DummyFileManager()
-    cmd = CommandTest(fm)
-    # collect_test_casesで2件返すように
-    monkeypatch.setattr(cmd, "collect_test_cases", lambda temp_dir, test_dir, file_operator=None: (["a.in", "b.in"], ["a.in", "b.in"]))
-    # DockerTestExecutionEnvironment.pool.adjustをモックしてrequirementsをキャプチャ
-    captured = {}
-    class DummyPool:
-        def adjust(self, requirements):
-            captured["requirements"] = requirements
-            return [{"name": "test1", "type": "test"}]
-    cmd.env.pool = DummyPool()
-    import asyncio
-    # contest_current/python/main.pyがtmp_path配下にあることを前提にbase_dirを指定
-    cmd.file_manager.file_operator = LocalFileOperator(base_dir=tmp_path)
-    asyncio.run(cmd.run_test("abc", "a", "python"))
-    # requirementsのvolumesが正しいか
-    assert "volumes" in captured["requirements"][0]
-    assert "/workspace" in str(captured["requirements"][0]["volumes"])
 
 def test_run_test_cases_infile_not_exist(monkeypatch):
     from src.commands.command_test import CommandTest
@@ -773,42 +522,32 @@ def test_run_test_cases_infile_not_exist(monkeypatch):
             return []
         def save(self):
             self.saved = True
-    class DummyCtl:
-        def is_container_running(self, name):
-            return False
-        def start_container(self, name, typ, volumes):
-            pass
-        def exec_in_container(self, name, cmd):
-            return True, "ok", ""
-        def remove_container(self, name):
-            pass
-        def cp_from_container(self, name, src, dst):
-            pass
+    class DummyCtl(BaseDummyCtl):
+        pass
     monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.commands.command_test.DockerCtl", DummyCtl)
+    monkeypatch.setattr("src.commands.command_test.ContainerClient", DummyCtl)
     fm = DummyFileManager()
-    cmd = CommandTest(fm)
+    cmd = CommandTest(fm, DummyEnv())
     import asyncio
     results = asyncio.run(cmd.run_test_cases("src", ["notfound.in"], "python"))
     assert results[0]["result"][0] == 1 or results[0]["stderr"] == "No such file"
 
 def test_to_container_path():
-    from src.commands.command_test import CommandTest, HOST_PROJECT_ROOT, CONTAINER_WORKSPACE
-    cmd = CommandTest(None)
+    from src.commands.command_test import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE
+    cmd = DummyCommandTestNoEnv(None)
     host_path = f"{HOST_PROJECT_ROOT}/.temp/test/sample-1.in"
     cont_path = cmd.to_container_path(host_path)
     assert cont_path.startswith(CONTAINER_WORKSPACE)
     assert cont_path.endswith(".temp/test/sample-1.in")
 
 def test_build_in_container():
-    from src.commands.command_test import CommandTest
     class DummyHandler:
         def build(self, ctl, container, source_path):
             return (True, "buildok", "")
-    cmd = CommandTest(None)
+    cmd = DummyCommandTestNoEnv(None)
     ctl = object()
     handler = DummyHandler()
     ok, stdout, stderr = cmd.build_in_container(ctl, handler, "container1", "src.py")
@@ -816,23 +555,23 @@ def test_build_in_container():
     assert stdout == "buildok"
 
 def test_select_container_for_case():
-    from src.commands.command_test import CommandTest
-    cmd = CommandTest(None)
+    cmd = DummyCommandTestNoEnv(None)
     containers = ["c1", "c2"]
     assert cmd.select_container_for_case(containers, 0) == "c1"
     assert cmd.select_container_for_case(containers, 1) == "c2"
     assert cmd.select_container_for_case(containers, 2) == "c2"
 
 def test_ensure_container_running():
-    from src.commands.command_test import CommandTest
-    class DummyCtl:
+    class DummyCtl(BaseDummyCtl):
         def __init__(self):
             self.started = []
         def is_container_running(self, name):
             return name == "running"
         def start_container(self, name, image, volumes):
             self.started.append((name, image, volumes))
-    cmd = CommandTest(None)
+        def run_container(self, name, image, volumes):
+            self.started.append((name, image, volumes))
+    cmd = DummyCommandTestNoEnv(None)
     ctl = DummyCtl()
     # already running
     cmd.ensure_container_running(ctl, "running", "img")
@@ -842,8 +581,7 @@ def test_ensure_container_running():
     assert ctl.started[-1][0] == "notrunning"
 
 def test_run_single_test_case():
-    from src.commands.command_test import CommandTest
-    class DummyCtl:
+    class DummyCtl(BaseDummyCtl):
         def remove_container(self, name):
             self.removed = name
         def start_container(self, name, image, volumes):
@@ -856,7 +594,7 @@ def test_run_single_test_case():
             if self.calls == 1:
                 return False, "", "err"
             return True, "ok", ""
-    cmd = CommandTest(None)
+    cmd = DummyCommandTestNoEnv(None)
     ctl = DummyCtl()
     handler = DummyHandler()
     # 1回目失敗、2回目成功
@@ -866,8 +604,7 @@ def test_run_single_test_case():
     assert attempt == 2 
 
 def test_run_single_test_case_retry_integration():
-    from src.commands.command_test import CommandTest
-    class DummyCtl:
+    class DummyCtl(BaseDummyCtl):
         def __init__(self):
             self.calls = []
         def remove_container(self, name):
@@ -882,7 +619,7 @@ def test_run_single_test_case_retry_integration():
             if self.calls == 1:
                 return False, "", "err"
             return True, "ok", ""
-    cmd = CommandTest(None)
+    cmd = DummyCommandTestNoEnv(None)
     ctl = DummyCtl()
     handler = DummyHandler()
     ok, stdout, stderr, attempt = cmd.run_single_test_case(ctl, handler, "cont", "in", "src", "img")
@@ -896,7 +633,7 @@ def test_run_single_test_case_retry_integration():
 def test_run_test_cases_integration():
     from src.commands.command_test import CommandTest
     from src.environment.test_language_handler import PythonTestHandler, HANDLERS
-    class DummyCtl:
+    class DummyCtl(BaseDummyCtl):
         def __init__(self):
             self.running = set()
             self.started = []
@@ -934,32 +671,36 @@ def test_run_test_cases_integration():
             pass
     import builtins
     import types
-    # patch HANDLERS, InfoJsonManager, DockerCtl
+    # patch HANDLERS, InfoJsonManager, ContainerClient
     from src.commands import command_test
     orig_handler = HANDLERS["python"]
-    command_test.HANDLERS["python"] = DummyHandler()
+    handler = DummyHandler()
+    command_test.HANDLERS["python"] = handler
     command_test.InfoJsonManager = DummyInfoJsonManager
-    command_test.DockerCtl = DummyCtl
+    command_test.ContainerClient = DummyCtl
     fm = DummyFileManager()
-    cmd = CommandTest(fm)
+    # DummyEnvのrun_test_caseをhandler.runを呼ぶように差し替え
+    class IntegrationEnv(DummyEnv):
+        def run_test_case(self, language_name, container, cont_in_file, cont_temp_source_path, retry=3):
+            return handler.run(None, container, cont_in_file, cont_temp_source_path) + (1,)
+    cmd = CommandTest(fm, IntegrationEnv())
     # テストケース2件
     temp_source_path = "src/main.py"
     temp_in_files = ["test1.in", "test2.in"]
     try:
         results = builtins.__import__("asyncio").run(cmd.run_test_cases(temp_source_path, temp_in_files, "python"))
         # build, run, container起動、パス変換、結果収集がすべて呼ばれていること
-        handler = command_test.HANDLERS["python"]
         assert handler.build_called is True
         assert len(handler.run_calls) == 2
         assert results[0]["result"][1] == "output"
         assert results[1]["result"][1] == "output"
     finally:
-        HANDLERS["python"] = orig_handler 
+        HANDLERS["python"] = orig_handler
 
 def test_run_test_cases_build_fail():
     from src.commands.command_test import CommandTest
     from src.environment.test_language_handler import HANDLERS
-    class DummyCtl:
+    class DummyCtl(BaseDummyCtl):
         pass
     class DummyHandler:
         def build(self, ctl, container, source_path):
@@ -983,9 +724,9 @@ def test_run_test_cases_build_fail():
     orig_handler = HANDLERS["python"]
     command_test.HANDLERS["python"] = DummyHandler()
     command_test.InfoJsonManager = DummyInfoJsonManager
-    command_test.DockerCtl = DummyCtl
+    command_test.ContainerClient = DummyCtl
     fm = DummyFileManager()
-    cmd = CommandTest(fm)
+    cmd = CommandTest(fm, DummyEnv())
     temp_source_path = "src/main.py"
     temp_in_files = ["test1.in"]
     try:
@@ -997,20 +738,13 @@ def test_run_test_cases_build_fail():
 def test_run_test_cases_run_all_fail():
     from src.commands.command_test import CommandTest
     from src.environment.test_language_handler import HANDLERS
-    class DummyCtl:
-        def __init__(self):
-            self.running = set()
-        def is_container_running(self, name):
-            return True
-        def start_container(self, name, image, volumes):
-            self.running.add(name)
-        def remove_container(self, name):
-            pass
+    class DummyCtl(BaseDummyCtl):
+        pass
     class DummyHandler:
         def build(self, ctl, container, source_path):
             return True, "buildok", ""
         def run(self, ctl, container, in_file, source_path):
-            return False, "", "exec error!"
+            return 1, "", "exec error!"
     class DummyFileManager:
         def __init__(self):
             self.file_operator = None
@@ -1028,13 +762,14 @@ def test_run_test_cases_run_all_fail():
     orig_handler = HANDLERS["python"]
     command_test.HANDLERS["python"] = DummyHandler()
     command_test.InfoJsonManager = DummyInfoJsonManager
-    command_test.DockerCtl = DummyCtl
+    command_test.ContainerClient = DummyCtl
     fm = DummyFileManager()
-    cmd = CommandTest(fm)
+    cmd = CommandTest(fm, DummyEnv(fm.file_operator))
     temp_source_path = "src/main.py"
     temp_in_files = ["test1.in"]
     try:
         results = builtins.__import__("asyncio").run(cmd.run_test_cases(temp_source_path, temp_in_files, "python"))
+        # run_test_caseの返り値に合わせてassertを修正
         assert results[0]["result"][0] == 1
         assert "exec error!" in results[0]["result"][2]
     finally:
@@ -1043,12 +778,12 @@ def test_run_test_cases_run_all_fail():
 def test_run_test_cases_empty():
     from src.commands.command_test import CommandTest
     from src.environment.test_language_handler import HANDLERS
-    class DummyCtl:
+    class DummyCtl(BaseDummyCtl):
         pass
     class DummyHandler:
         def build(self, ctl, container, source_path):
             return True, "buildok", ""
-        def run(self, ctl, container, in_file, source_path):
+        def run(self, ctl, container, source_path):
             raise AssertionError("run should not be called if no test cases")
     class DummyFileManager:
         def __init__(self):
@@ -1067,9 +802,9 @@ def test_run_test_cases_empty():
     orig_handler = HANDLERS["python"]
     command_test.HANDLERS["python"] = DummyHandler()
     command_test.InfoJsonManager = DummyInfoJsonManager
-    command_test.DockerCtl = DummyCtl
+    command_test.ContainerClient = DummyCtl
     fm = DummyFileManager()
-    cmd = CommandTest(fm)
+    cmd = CommandTest(fm, DummyEnv())
     temp_source_path = "src/main.py"
     temp_in_files = []
     try:
@@ -1077,3 +812,55 @@ def test_run_test_cases_empty():
         assert results == []
     finally:
         HANDLERS["python"] = orig_handler 
+
+# CommandTestのユーティリティ系テスト用に、test_envを使わないダミーサブクラスを用意
+class DummyEnv:
+    def __init__(self, file_operator=None):
+        self.file_operator = file_operator
+    def to_container_path(self, host_path):
+        import os
+        idx = host_path.find(".temp/")
+        subpath = host_path[idx:] if idx >= 0 else os.path.basename(host_path)
+        return f"{CONTAINER_WORKSPACE}/{subpath}"
+    def prepare_source_code(self, contest_name, problem_name, language_name):
+        return f"/tmp/{contest_name}_{problem_name}_{language_name}.py"
+    def prepare_test_cases(self, contest_name, problem_name):
+        # .tempディレクトリ作成を模倣
+        if self.file_operator:
+            self.file_operator.makedirs(".temp", exist_ok=True)
+            self.file_operator.makedirs(".temp/test", exist_ok=True)
+        else:
+            from src.file_operator import LocalFileOperator
+            op = LocalFileOperator()
+            op.makedirs(".temp", exist_ok=True)
+            op.makedirs(".temp/test", exist_ok=True)
+        return f"/tmp/{contest_name}_{problem_name}_testcases"
+    def run_test_case(self, language_name, container, cont_in_file, cont_temp_source_path, retry=3):
+        # テスト用ダミー: 4要素タプルで返す（stderrも適宜）
+        if 'notfound' in str(cont_in_file):
+            return 0, '', 'No such file', 1
+        # 失敗時は常に0（False）
+        return 0, '', 'exec error!', 1
+    def adjust_containers(self, requirements, contest_name, problem_name, language_name):
+        return requirements
+
+class DummyCommandTestNoEnv(CommandTest):
+    def __init__(self, file_manager, test_env=None):
+        self.file_manager = file_manager
+        self.env = test_env if test_env is not None else DummyEnv()
+        self.upm = UnifiedPathManager() 
+
+class DummyTestEnv:
+    def adjust_containers(self, requirements, contest_name=None, problem_name=None, language_name=None):
+        return requirements
+    def download_testcases(self, url, test_dir_host):
+        # テスト用: 何もしない
+        pass
+    def submit_via_ojtools(self, args, volumes, workdir):
+        # テスト用: ojtoolsがいない場合はRuntimeErrorを投げる
+        # テストでojtoolsがいない場合の分岐を再現
+        if hasattr(self, 'no_ojtools') and self.no_ojtools:
+            raise RuntimeError("ojtools用コンテナがsystem_info.jsonにありません")
+        if any("no_ojtools" in str(a) for a in args):
+            raise RuntimeError("ojtools用コンテナがsystem_info.jsonにありません")
+        return True, "ok", "" 

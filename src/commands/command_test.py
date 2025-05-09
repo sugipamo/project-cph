@@ -4,18 +4,19 @@ from src.path_manager.file_operator import FileOperator
 # === 定数定義 ===
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
+TEMP_DIR = os.path.abspath(".temp")
 
-from .test_result_formatter import TestResultFormatter
+from .test_result_formatter import ResultFormatter
 from src.environment.test_language_handler import HANDLERS
 from src.info_json_manager import InfoJsonManager
-from ..docker.ctl import DockerCtl
+from src.execution_client.container.client import ContainerClient
 from src.environment.test_environment import DockerTestExecutionEnvironment
-from src.docker.pool import DockerImageManager
+from src.execution_client.container.image_manager import ContainerImageManager
 
 class CommandTest:
-    def __init__(self, file_manager):
+    def __init__(self, file_manager, test_env):
         self.file_manager = file_manager
-        self.env = DockerTestExecutionEnvironment(file_manager)
+        self.env = test_env
         self.upm = UnifiedPathManager()
 
     def prepare_test_environment(self, contest_name, problem_name, language_name):
@@ -50,7 +51,7 @@ class CommandTest:
 
     def ensure_container_running(self, ctl, container, image):
         if not ctl.is_container_running(container):
-            ctl.start_container(container, image, {})
+            ctl.run_container(container, image, {})
 
     def run_single_test_case(self, ctl, handler, container, in_file, source_path, image, retry=3):
         for attempt in range(retry):
@@ -78,7 +79,7 @@ class CommandTest:
     async def run_test_cases(self, temp_source_path, temp_in_files, language_name):
         import os
         test_containers = self.get_test_containers_from_info()
-        ctl = DockerCtl()
+        ctl = ContainerClient()
         handler = HANDLERS[language_name]
         # --- ビルド工程 ---
         abs_temp_source_path = os.path.abspath(temp_source_path)
@@ -91,7 +92,7 @@ class CommandTest:
         results = []
         for i, in_file in enumerate(temp_in_files):
             container = self.select_container_for_case(test_containers, i)
-            image = DockerImageManager().ensure_image("ojtools") if container.startswith("cph_ojtools") else language_name
+            image = ContainerImageManager().ensure_image("ojtools") if container.startswith("cph_ojtools") else language_name
             self.ensure_container_running(ctl, container, image)
             abs_in_file = os.path.abspath(in_file)
             cont_in_file = self.to_container_path(abs_in_file)
@@ -113,7 +114,7 @@ class CommandTest:
 
     def print_test_results(self, results):
         for r in results:
-            print(TestResultFormatter(r).format())
+            print(ResultFormatter(r).format())
             print("")
 
     async def run_test(self, contest_name, problem_name, language_name):
@@ -125,9 +126,14 @@ class CommandTest:
         test_case_count = len(temp_in_files)
         requirements = [
             {"type": "test", "language": language_name, "count": test_case_count, "volumes": {
-                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE
+                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
+                TEMP_DIR: "/workspace/.temp"
             }},
-            {"type": "ojtools", "count": 1}
+            {"type": "ojtools", "count": 1, "volumes": {
+                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
+                TEMP_DIR: "/workspace/.temp",
+                "/home/cphelper/.local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
+            }}
         ]
         containers = self.env.adjust_containers(requirements, contest_name, problem_name, language_name)
         # --- テスト実行 ---
@@ -143,9 +149,14 @@ class CommandTest:
         test_case_count = len(temp_in_files)
         requirements = [
             {"type": "test", "language": language_name, "count": test_case_count, "volumes": {
-                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE
+                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
+                TEMP_DIR: "/workspace/.temp"
             }},
-            {"type": "ojtools", "count": 1}
+            {"type": "ojtools", "count": 1, "volumes": {
+                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
+                TEMP_DIR: "/workspace/.temp",
+                "/home/cphelper/.local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
+            }}
         ]
         containers = self.env.adjust_containers(requirements, contest_name, problem_name, language_name)
         results = await self.run_test_cases(temp_source_path, temp_in_files, language_name)

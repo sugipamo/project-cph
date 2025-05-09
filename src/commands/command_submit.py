@@ -1,9 +1,12 @@
+import os
+HOST_PROJECT_ROOT = os.path.abspath(".")
+CONTAINER_WORKSPACE = "/workspace"
+TEMP_DIR = "/workspace/.temp"
 from .command_test import CommandTest
 from .common import get_project_root_volumes
 from src.info_json_manager import InfoJsonManager
-from ..docker.pool import DockerPool
-from ..docker.ctl import DockerCtl
-from src.docker.pool import DockerImageManager
+from src.execution_client.container.client import ContainerClient
+from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.path_manager.file_operator import FileOperator
 
@@ -14,10 +17,11 @@ SUBMIT_FILES = {
 }
 
 class CommandSubmit:
-    def __init__(self, file_manager):
+    def __init__(self, file_manager, test_env):
         self.file_manager = file_manager
-        self.command_test = CommandTest(file_manager)
+        self.command_test = CommandTest(file_manager, test_env)
         self.upm = UnifiedPathManager()
+        self.test_env = test_env
 
     def confirm_submit_with_wa(self):
         ans = input("AC以外のケースがあります。提出してよいですか？ (y/N): ")
@@ -68,23 +72,8 @@ class CommandSubmit:
         raise RuntimeError("ojtools用コンテナがsystem_info.jsonにありません")
 
     async def run_submit_command(self, args, volumes, workdir):
-        ojtools_name = self.get_ojtools_container_from_info()
-        ctl = DockerCtl()
-        # コンテナが存在しなければ自動再起動
-        if not ctl.is_container_running(ojtools_name):
-            ctl.start_container(ojtools_name, DockerImageManager().ensure_image("ojtools"), {})
-        # 最大1回までリトライ
-        for attempt in range(1):
-            ok, stdout, stderr = ctl.exec_in_container(ojtools_name, ["oj"] + args)
-            if ok:
-                break
-            else:
-                print(f"[WARN] exec失敗: {ojtools_name} (attempt {attempt+1})")
-                ctl.remove_container(ojtools_name)
-                ctl.start_container(ojtools_name, DockerImageManager().ensure_image("ojtools"), {})
-        if not ok:
-            print(f"[エラー] oj submit失敗\n{stderr}")
-        return ok, stdout, stderr
+        # test_env経由で提出処理を実行
+        return self.test_env.submit_via_ojtools(args, volumes, workdir)
 
     async def submit(self, contest_name, problem_name, language_name):
         results = await self.command_test.run_test_return_results(contest_name, problem_name, language_name)
@@ -113,5 +102,20 @@ class CommandSubmit:
             file_path = temp_file_path
         else:
             file_path = self.upm.contest_current(language_name, submit_file)
-        args, url = self.build_submit_command(contest_name, problem_name, language_name, file_path, language_id)
+        # ファイルパスをコンテナ内パスに変換
+        cont_file_path = self.test_env.to_container_path(file_path)
+        args, url = self.build_submit_command(contest_name, problem_name, language_name, cont_file_path, language_id)
+        temp_source_path, temp_test_dir = self.command_test.prepare_test_environment(contest_name, problem_name, language_name)
+        temp_in_files, _ = self.command_test.collect_test_cases(temp_test_dir, file_operator)
+        test_case_count = len(temp_in_files)
+        requirements = [
+            {"type": "test", "language": language_name, "count": test_case_count, "volumes": {
+                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE
+            }},
+            {"type": "ojtools", "count": 1, "volumes": {
+                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
+                TEMP_DIR: "/workspace/.temp",
+                "/home/cphelper/.local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
+            }}
+        ]
         return await self.run_submit_command(args, volumes, workdir) 
