@@ -13,16 +13,18 @@ CONTAINER_WORKSPACE = "/workspace"
 
 class TestEnvFileOpsMixin:
     def prepare_source_code(self, contest_name, problem_name, language_name):
-        temp_dir = ".temp"
+        temp_dir = Path(".temp")
         if language_name == "rust":
             import glob
             src_dir = self.upm.contest_current("rust")
-            dst_dir = os.path.join(temp_dir, "rust")
+            dst_dir = temp_dir / "rust"
             if self.file_operator:
-                if not self.file_operator.exists(temp_dir):
-                    self.file_operator.makedirs(temp_dir)
+                if not self.file_operator.exists(dst_dir):
+                    self.file_operator.makedirs(dst_dir)
                 if self.file_operator.exists(dst_dir):
-                    for item in self.file_operator.resolve_path(dst_dir).iterdir():
+                    resolved = self.file_operator.resolve_path(dst_dir)
+                    resolved_path = Path(resolved)
+                    for item in resolved_path.iterdir():
                         if item.name != "target":
                             if item.is_dir():
                                 self.file_operator.rmtree(item)
@@ -32,53 +34,53 @@ class TestEnvFileOpsMixin:
                     self.file_operator.makedirs(dst_dir)
                 self.file_operator.copytree(src_dir, dst_dir)
             else:
-                os.makedirs(temp_dir, exist_ok=True)
-                if os.path.exists(dst_dir):
-                    for item in glob.glob(os.path.join(dst_dir, "*")):
-                        if os.path.basename(item) != "target":
-                            if os.path.isdir(item):
+                dst_dir.mkdir(parents=True, exist_ok=True)
+                if dst_dir.exists():
+                    for item in dst_dir.iterdir():
+                        if item.name != "target":
+                            if item.is_dir():
                                 shutil.rmtree(item)
                             else:
-                                os.remove(item)
+                                item.unlink()
                 else:
-                    os.makedirs(dst_dir, exist_ok=True)
+                    dst_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
-            return dst_dir
+            return str(dst_dir)
         elif language_name in ("python", "pypy"):
             src = self.upm.contest_current(language_name, "main.py")
-            dst_dir = os.path.join(temp_dir, language_name)
-            dst = os.path.join(dst_dir, "main.py")
+            dst_dir = temp_dir / language_name
+            dst = dst_dir / "main.py"
             if self.file_operator:
                 if not self.file_operator.exists(dst_dir):
                     self.file_operator.makedirs(dst_dir)
                 self.file_operator.copy(src, dst)
             else:
-                os.makedirs(dst_dir, exist_ok=True)
+                dst_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copy(src, dst)
-            return dst
+            return str(dst)
         else:
             src = self.upm.contest_current(language_name, "main.py")
-            dst = os.path.join(temp_dir, "main.py")
+            dst = temp_dir / "main.py"
             if self.file_operator:
                 if not self.file_operator.exists(temp_dir):
                     self.file_operator.makedirs(temp_dir)
                 self.file_operator.copy(src, dst)
             else:
-                os.makedirs(temp_dir, exist_ok=True)
+                temp_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copy(src, dst)
-            return dst
+            return str(dst)
 
     def prepare_test_cases(self, contest_name, problem_name):
-        temp_dir = ".temp"
+        temp_dir = Path(".temp")
         test_dir = self.upm.contest_current("test")
-        temp_test_dir = os.path.join(temp_dir, "test")
+        temp_test_dir = temp_dir / "test"
         if self.file_operator:
             if not self.file_operator.exists(temp_test_dir):
                 self.file_operator.copytree(test_dir, temp_test_dir)
         else:
-            if os.path.exists(test_dir):
+            if test_dir.exists():
                 shutil.copytree(test_dir, temp_test_dir, dirs_exist_ok=True)
-        return temp_test_dir
+        return str(temp_test_dir)
 
 class TestExecutionEnvironment(ABC):
     @abstractmethod
@@ -110,9 +112,10 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
         self.handlers = handlers if handlers is not None else DEFAULT_HANDLERS
         self.pool = ContainerPool({})
         # .tempも含めたマウントリストで初期化
+        temp_abs = Path(os.path.abspath(".temp")).resolve()
         mounts = [
-            (Path(HOST_PROJECT_ROOT), Path(CONTAINER_WORKSPACE)),
-            (Path(os.path.abspath(".temp")), Path("/workspace/.temp"))
+            (Path(HOST_PROJECT_ROOT).resolve(), Path(CONTAINER_WORKSPACE)),
+            (temp_abs, Path("/workspace/.temp"))
         ]
         self.unified_path_manager = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, mounts=mounts)
         self.upm = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, mounts=mounts)
@@ -128,10 +131,17 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
         image = ContainerImageManager().ensure_image("ojtools") if container.startswith("cph_ojtools") else language_name
         ctl = self.ctl
         stdout = stderr = ""
-        cont_in_file = self.to_container_path(in_file)
-        cont_source_path = self.to_container_path(source_path)
+        cont_in_file = in_file
+        cont_source_path = source_path
+        # upmでホスト側パスに変換
+        host_in_file = self.unified_path_manager.to_host_path(cont_in_file)
+        if host_in_file is not None:
+            host_in_file = str(host_in_file)
+        else:
+            host_in_file = cont_in_file
+        print(f"[run_test_case] cont_in_file: {cont_in_file}, host_in_file: {host_in_file}, os.path.exists(host_in_file): {os.path.exists(host_in_file)}")
         for attempt in range(retry):
-            ok, stdout, stderr = handler.run(ctl, container, cont_in_file, cont_source_path)
+            ok, stdout, stderr = handler.run(ctl, container, cont_in_file, cont_source_path, host_in_file=host_in_file)
             if ok:
                 break
             else:

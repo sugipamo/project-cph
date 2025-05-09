@@ -90,12 +90,14 @@ class CommandTest:
             return []
         # --- テスト実行 ---
         results = []
+        print("temp_in_files:", temp_in_files)
         for i, in_file in enumerate(temp_in_files):
             container = self.select_container_for_case(test_containers, i)
             image = ContainerImageManager().ensure_image("ojtools") if container.startswith("cph_ojtools") else language_name
             self.ensure_container_running(ctl, container, image)
             abs_in_file = os.path.abspath(in_file)
             cont_in_file = self.to_container_path(abs_in_file)
+            print(f"in_file: {in_file}, abs_in_file: {abs_in_file}, cont_in_file: {cont_in_file}")
             ok, stdout, stderr, attempt = self.env.run_test_case(language_name, container, cont_in_file, cont_temp_source_path, retry=3)
             out_file = str(in_file).replace('.in', '.out')
             expected = ""

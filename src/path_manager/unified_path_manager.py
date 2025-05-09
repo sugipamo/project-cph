@@ -17,21 +17,21 @@ class UnifiedPathManager:
         self.volume_mapper = VolumePathMapper(mounts)
 
     # ProjectPathManagerのラップ
-    def contest_current(self, *paths):
+    def contest_current(self, *paths) -> Path:
         return self.project_path.contest_current(*paths)
-    def contest_stocks(self, *args, **kwargs):
+    def contest_stocks(self, *args, **kwargs) -> Path:
         return self.project_path.contest_stocks(*args, **kwargs)
-    def contest_env(self, filename):
+    def contest_env(self, filename) -> Path:
         return self.project_path.contest_env(filename)
-    def contest_template(self, *args, **kwargs):
+    def contest_template(self, *args, **kwargs) -> Path:
         return self.project_path.contest_template(*args, **kwargs)
-    def info_json(self):
+    def info_json(self) -> Path:
         return self.project_path.info_json()
-    def config_json(self):
+    def config_json(self) -> Path:
         return self.project_path.config_json()
-    def test_dir(self):
+    def test_dir(self) -> Path:
         return self.project_path.test_dir()
-    def readme_md(self):
+    def readme_md(self) -> Path:
         return self.project_path.readme_md()
 
     # VolumePathMapperのラップ
@@ -45,22 +45,22 @@ class UnifiedPathManager:
         self.volume_mapper.add_mount(host_path, container_path)
 
     # 論理パス→コンテナパスのショートカット
-    def contest_current_in_container(self, *paths):
-        return self.to_container_path(Path(self.contest_current(*paths)))
-    def contest_stocks_in_container(self, *args, **kwargs):
-        return self.to_container_path(Path(self.contest_stocks(*args, **kwargs)))
-    def contest_env_in_container(self, filename):
-        return self.to_container_path(Path(self.contest_env(filename)))
-    def contest_template_in_container(self, *args, **kwargs):
-        return self.to_container_path(Path(self.contest_template(*args, **kwargs)))
-    def info_json_in_container(self):
-        return self.to_container_path(Path(self.info_json()))
-    def config_json_in_container(self):
-        return self.to_container_path(Path(self.config_json()))
-    def test_dir_in_container(self):
-        return self.to_container_path(Path(self.test_dir()))
-    def readme_md_in_container(self):
-        return self.to_container_path(Path(self.readme_md()))
+    def contest_current_in_container(self, *paths) -> Optional[Path]:
+        return self.to_container_path(self.contest_current(*paths))
+    def contest_stocks_in_container(self, *args, **kwargs) -> Optional[Path]:
+        return self.to_container_path(self.contest_stocks(*args, **kwargs))
+    def contest_env_in_container(self, filename) -> Optional[Path]:
+        return self.to_container_path(self.contest_env(filename))
+    def contest_template_in_container(self, *args, **kwargs) -> Optional[Path]:
+        return self.to_container_path(self.contest_template(*args, **kwargs))
+    def info_json_in_container(self) -> Optional[Path]:
+        return self.to_container_path(self.info_json())
+    def config_json_in_container(self) -> Optional[Path]:
+        return self.to_container_path(self.config_json())
+    def test_dir_in_container(self) -> Optional[Path]:
+        return self.to_container_path(self.test_dir())
+    def readme_md_in_container(self) -> Optional[Path]:
+        return self.to_container_path(self.readme_md())
 
     # --- 追加: パスのバリデーション ---
     @staticmethod
@@ -99,17 +99,17 @@ class UnifiedPathManager:
 
     # --- 追加: パスの正規化・解決 ---
     @staticmethod
-    def normalize_path(path):
+    def normalize_path(path) -> Path:
         """
         パスを絶対パスに正規化する。
         """
         from pathlib import Path as _Path
-        return str(_Path(path).resolve())
+        return _Path(path).resolve()
 
     @staticmethod
-    def resolve_symlink(path):
+    def resolve_symlink(path) -> Path:
         """
         シンボリックリンクを解決した実体パスを返す。
         """
         from pathlib import Path as _Path
-        return str(_Path(path).resolve(strict=False)) 
+        return _Path(path).resolve(strict=False) 

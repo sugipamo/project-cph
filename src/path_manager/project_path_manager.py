@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Optional
 
 class ProjectPathManager:
@@ -7,14 +8,14 @@ class ProjectPathManager:
     プロジェクト内パスを一元管理するクラス。
     """
     def __init__(self, root: Optional[str] = None):
-        self.root = os.path.abspath(root) if root else os.path.abspath(".")
+        self.root = Path(root).resolve() if root else Path.cwd().resolve()
 
     # contest_current
-    def contest_current(self, *paths) -> str:
-        return os.path.join(self.root, "contest_current", *paths)
+    def contest_current(self, *paths) -> Path:
+        return self.root / "contest_current" / Path(*paths) if paths else self.root / "contest_current"
 
     # contest_stocks
-    def contest_stocks(self, contest_name: Optional[str] = None, problem_name: Optional[str] = None, language_name: Optional[str] = None, *paths) -> str:
+    def contest_stocks(self, contest_name: Optional[str] = None, problem_name: Optional[str] = None, language_name: Optional[str] = None, *paths) -> Path:
         parts = ["contest_stocks"]
         if contest_name:
             parts.append(contest_name)
@@ -22,32 +23,35 @@ class ProjectPathManager:
             parts.append(problem_name)
         if language_name:
             parts.append(language_name)
+        p = self.root
+        for part in parts:
+            p = p / part
         if paths:
-            parts.extend(paths)
-        return os.path.join(self.root, *parts)
+            p = p / Path(*paths)
+        return p
 
     # contest_env
-    def contest_env(self, filename: str) -> str:
-        return os.path.join(self.root, "contest_env", filename)
+    def contest_env(self, filename: str) -> Path:
+        return self.root / "contest_env" / filename
 
     # contest_template
-    def contest_template(self, language_name: Optional[str] = None, *paths) -> str:
-        parts = ["contest_template"]
+    def contest_template(self, language_name: Optional[str] = None, *paths) -> Path:
+        p = self.root / "contest_template"
         if language_name:
-            parts.append(language_name)
+            p = p / language_name
         if paths:
-            parts.extend(paths)
-        return os.path.join(self.root, *parts)
+            p = p / Path(*paths)
+        return p
 
     # 例: system_info.json, config.json, testディレクトリなどのショートカット
-    def info_json(self) -> str:
+    def info_json(self) -> Path:
         return self.contest_current("system_info.json")
 
-    def config_json(self) -> str:
+    def config_json(self) -> Path:
         return self.contest_current("config.json")
 
-    def test_dir(self) -> str:
+    def test_dir(self) -> Path:
         return self.contest_current("test")
 
-    def readme_md(self) -> str:
+    def readme_md(self) -> Path:
         return self.contest_current("README.md") 
