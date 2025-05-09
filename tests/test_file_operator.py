@@ -216,4 +216,46 @@ def test_resolve_path_variants(tmp_path):
 
 def test_fileoperator_cannot_instantiate():
     with pytest.raises(TypeError):
-        FileOperator() 
+        FileOperator()
+
+def test_remove_nonexistent(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    f = tmp_path / 'no.txt'
+    # 存在しないファイルのremoveはFileNotFoundError
+    with pytest.raises(FileNotFoundError):
+        op.remove(f)
+
+def test_rmtree_nonexistent(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    d = tmp_path / 'no_dir'
+    # 存在しないディレクトリのrmtreeは何も起きない（例外なし）
+    op.rmtree(d)
+
+def test_open_permission_error(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    f = tmp_path / 'f.txt'
+    f.write_text('x')
+    os.chmod(f, 0o000)
+    try:
+        with pytest.raises(PermissionError):
+            with op.open(f, 'r'): pass
+    finally:
+        os.chmod(f, 0o644)
+
+def test_makedirs_already_exists(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    d = tmp_path / 'd'
+    d.mkdir()
+    # 既に存在していても例外は出ない
+    op.makedirs(d)
+
+def test_glob_subdir(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    d = tmp_path / 'd'
+    d.mkdir()
+    (d / 'a.txt').write_text('x')
+    (d / 'b.py').write_text('y')
+    # サブディレクトリ内の*.txtのみ
+    assert op.glob('d/*.txt') == [d / 'a.txt']
+    # ワイルドカードで全ファイル
+    assert set(op.glob('d/*')) == {d / 'a.txt', d / 'b.py'} 
