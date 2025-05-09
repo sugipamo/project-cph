@@ -145,4 +145,36 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
             manager.data["language_name"] = language_name
             manager.data["containers"] = containers
             manager.save()
-        return containers 
+        return containers
+
+    def download_testcases(self, url, test_dir_host):
+        # ojtoolsコンテナでoj downloadを実行し、テストケースを取得
+        info_path = self.upm.info_json()
+        from src.info_json_manager import InfoJsonManager
+        manager = InfoJsonManager(info_path)
+        ojtools_list = manager.get_containers(type="ojtools")
+        if not ojtools_list:
+            raise RuntimeError("ojtools用コンテナがsystem_info.jsonにありません")
+        ojtools_name = ojtools_list[0]["name"]
+        ctl = self.ctl
+        if not ctl.is_container_running(ojtools_name):
+            ctl.run_container(ojtools_name, ContainerImageManager().ensure_image("ojtools"), {})
+        ctl.exec_in_container(ojtools_name, ["rm", "-rf", f"/workspace/{test_dir_host}"])
+        ctl.exec_in_container(ojtools_name, ["mkdir", "-p", f"/workspace/{test_dir_host}"])
+        ctl.exec_in_container(ojtools_name, ["oj", "download", url, "-d", f"/workspace/{test_dir_host}"])
+        ctl.copy_from_container(ojtools_name, f"/workspace/{test_dir_host}", test_dir_host)
+
+    def submit_via_ojtools(self, args, volumes, workdir):
+        # ojtoolsコンテナでoj submitを実行
+        info_path = self.upm.info_json()
+        from src.info_json_manager import InfoJsonManager
+        manager = InfoJsonManager(info_path)
+        ojtools_list = manager.get_containers(type="ojtools")
+        if not ojtools_list:
+            raise RuntimeError("ojtools用コンテナがsystem_info.jsonにありません")
+        ojtools_name = ojtools_list[0]["name"]
+        ctl = self.ctl
+        if not ctl.is_container_running(ojtools_name):
+            ctl.start_container(ojtools_name, ContainerImageManager().ensure_image("ojtools"), {})
+        ok, stdout, stderr = ctl.exec_in_container(ojtools_name, ["oj"] + args)
+        return ok, stdout, stderr 

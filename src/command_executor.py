@@ -24,7 +24,7 @@ class CommandExecutor:
         else:
             # デフォルトはdocker
             test_env = DockerTestExecutionEnvironment(self.file_manager)
-        self.open_handler = CommandOpen(self.file_manager, self.opener)
+        self.open_handler = CommandOpen(self.file_manager, self.opener, test_env)
         self.test_handler = CommandTest(self.file_manager, test_env)
         self.submit_handler = CommandSubmit(self.file_manager, test_env)
 

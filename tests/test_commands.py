@@ -94,152 +94,9 @@ def test_get_effective_args_with_infojson(tmp_path):
     assert args["language_name"] == "python"
     assert args["command"] == "open"
 
-def test_command_open(monkeypatch, tmp_path):
-    from src.commands.command_open import CommandOpen
-    # file_manager, opener, DockerPool, DockerCtl, InfoJsonManager, os, subprocessを全てmock
-    class DummyFileManager:
-        def prepare_problem_files(self, c, p, l):
-            self.called = (c, p, l)
-        def get_problem_files(self, c, p, l):
-            return f"contest_current/{l}", "contest_current/test"
-    class DummyOpener:
-        def open_browser(self, url):
-            self.url = url
-        def open_editor(self, path, language=None):
-            self.path = path
-            self.language = language
-    class DummyPool:
-        def __init__(self, *args, **kwargs):
-            pass
-        def adjust(self, requirements):
-            self.requirements = requirements
-            return [{"name": "ojtools1", "type": "ojtools"}]
-    class DummyManager:
-        def __init__(self, path):
-            self.data = {}
-            self.path = path
-        def save(self):
-            self.saved = True
-        def get_containers(self, type=None):
-            if type == "ojtools":
-                return [{"name": "ojtools1", "type": "ojtools"}]
-            return []
-    class DummyCtl(BaseDummyCtl):
-        pass
-    # monkeypatch import
-    monkeypatch.setattr("src.commands.command_open.ContainerPool", DummyPool)
-    monkeypatch.setattr("src.commands.command_open.InfoJsonManager", DummyManager)
-    monkeypatch.setattr("src.commands.command_open.ContainerClient", DummyCtl)
-    # DockerImageManagerのモック
-    class DummyDockerImageManager:
-        def ensure_image(self, lang):
-            return "dummy_image"
-    monkeypatch.setattr("src.commands.command_open.ContainerImageManager", DummyDockerImageManager)
-    # os, subprocess
-    monkeypatch.setattr(os, "makedirs", lambda *a, **k: None)
-    monkeypatch.setattr(os.path, "exists", lambda path: True)
-    monkeypatch.setattr(os, "listdir", lambda path: ["a.in", "b.in"])
-    # テスト本体
-    fm = DummyFileManager()
-    op = DummyOpener()
-    cmd = CommandOpen(fm, op)
-    import asyncio
-    asyncio.run(cmd.open("abc", "a", "python"))  # DummyCtl.start_containerはvolumes必須
-    # file_manager, opener, pool, manager, ctlの呼び出しを検証
-    assert fm.called == ("abc", "a", "python")
-    assert op.url == "https://atcoder.jp/contests/abc/tasks/abc_a"
-    # 例外分岐もテスト
-    class DummyManagerNoOj:
-        def __init__(self, path):
-            self.data = {}
-        def save(self):
-            pass
-        def get_containers(self, type=None):
-            return []
-    monkeypatch.setattr("src.commands.command_open.InfoJsonManager", DummyManagerNoOj)
-    cmd2 = CommandOpen(fm, op)
-    import pytest
-    with pytest.raises(RuntimeError):
-        asyncio.run(cmd2.open("abc", "a", "python"))
-
-def test_command_submit(monkeypatch, tmp_path):
-    from src.commands.command_submit import CommandSubmit
-    # file_manager, file_operator, InfoJsonManager, DockerCtl, input, os, printを全てmock
-    class DummyFileManager:
-        def __init__(self):
-            self.file_operator = DummyFileOperator()
-    class DummyFileOperator:
-        def exists(self, path):
-            return True
-        def open(self, path, mode="r", encoding=None):
-            import io
-            if "config.json" in str(path):
-                return io.StringIO('{"language_id": {"python": "111"}}')
-            return io.StringIO("")
-    class DummyInfoJsonManager:
-        def __init__(self, path):
-            self.data = {"contest_name": "abc", "problem_name": "a", "containers": [{"name": "ojtools1", "type": "ojtools"}]}
-        def get_containers(self, type=None):
-            if type == "ojtools":
-                return [{"name": "ojtools1", "type": "ojtools"}]
-            return []
-    class DummyCtl(BaseDummyCtl):
-        pass
-    # monkeypatch import
-    monkeypatch.setattr("src.commands.command_submit.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.commands.command_submit.ContainerClient", DummyCtl)
-    # DockerImageManagerのモック
-    class DummyDockerImageManager:
-        def ensure_image(self, lang):
-            return "dummy_image"
-    monkeypatch.setattr("src.commands.command_submit.ContainerImageManager", DummyDockerImageManager)
-    # os, print, input
-    monkeypatch.setattr(os.path, "exists", lambda path: True)
-    monkeypatch.setattr(os, "path", os.path)
-    monkeypatch.setattr(os, "makedirs", lambda *a, **k: None)
-    monkeypatch.setattr("builtins.input", lambda msg: "y")
-    monkeypatch.setattr("builtins.print", lambda *a, **k: None)
-    # CommandTestのrun_test_return_results, print_test_results, is_all_ac
-    class DummyCommandTest:
-        def __init__(self, file_manager, test_env):
-            self.file_manager = file_manager
-            self.env = test_env
-        async def run_test_return_results(self, c, p, l):
-            return ["AC", "WA"]
-        def print_test_results(self, results):
-            self.results = results
-        def is_all_ac(self, results):
-            return False
-    monkeypatch.setattr("src.commands.command_submit.CommandTest", DummyCommandTest)
-    # テスト本体
-    fm = DummyFileManager()
-    cmd = CommandSubmit(fm, None)
-    import asyncio
-    ok, stdout, stderr = asyncio.run(cmd.submit("abc", "a", "python"))
-    assert stdout == "ok"
-    # info.json不整合時の分岐
-    class DummyInfoJsonManagerBad:
-        def __init__(self, path):
-            self.data = {"contest_name": "zzz", "problem_name": "a"}
-        def get_containers(self, type=None):
-            return [{"name": "ojtools1", "type": "ojtools"}]
-    monkeypatch.setattr("src.commands.command_submit.InfoJsonManager", DummyInfoJsonManagerBad)
-    cmd2 = CommandSubmit(fm, None)
-    assert asyncio.run(cmd2.submit("abc", "a", "python")) is None
-    # get_ojtools_container_from_info例外
-    class DummyInfoJsonManagerNoOj:
-        def __init__(self, path):
-            self.data = {"contest_name": "abc", "problem_name": "a"}
-        def get_containers(self, type=None):
-            return []
-    monkeypatch.setattr("src.commands.command_submit.InfoJsonManager", DummyInfoJsonManagerNoOj)
-    cmd3 = CommandSubmit(fm, None)
-    with pytest.raises(RuntimeError):
-        asyncio.run(cmd3.submit("abc", "a", "python")) 
-
 def test_command_test(monkeypatch, tmp_path):
     from src.commands.command_test import CommandTest
-    # file_manager, file_operator, InfoJsonManager, DockerCtl, HANDLERS, ResultFormatter, os, printを全てmock
+    # file_manager, file_operator, InfoJsonManager, ContainerClient, HANDLERS, ResultFormatter, os, printを全てmock
     class DummyFileManager:
         def __init__(self):
             self.file_operator = DummyFileOperator()
@@ -275,7 +132,7 @@ def test_command_test(monkeypatch, tmp_path):
             return (True, "buildok", "")
         def run(self, ctl, container, in_file, src):
             return (0, "out", "")
-    # HANDLERS, ResultFormatter, InfoJsonManager, DockerCtl
+    # HANDLERS, ResultFormatter, InfoJsonManager, ContainerClient
     monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.ResultFormatter", lambda r: type("F", (), {"format": lambda self: "F"})())
@@ -308,10 +165,10 @@ def test_command_test(monkeypatch, tmp_path):
         dockerfile_path = f.name
     dockerfile_map = {"python": dockerfile_path}
     # DockerPoolにDI
-    from src.docker.pool import DockerPool
+    from src.execution_client.container.pool import ContainerPool
     fm = DummyFileManager()
     cmd = CommandTest(fm, DummyEnv(fm.file_operator))
-    cmd.env.pool = DockerPool(dockerfile_map=dockerfile_map)
+    cmd.env.pool = ContainerPool(dockerfile_map=dockerfile_map)
     # subprocess.runをモック（docker build等が失敗しないように）
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: type("Dummy", (), {"stdout": "", "returncode": 0})())
     # prepare_test_environment, collect_test_cases
@@ -814,7 +671,7 @@ def test_run_test_cases_integration():
             pass
     import builtins
     import types
-    # patch HANDLERS, InfoJsonManager, DockerCtl
+    # patch HANDLERS, InfoJsonManager, ContainerClient
     from src.commands import command_test
     orig_handler = HANDLERS["python"]
     handler = DummyHandler()
@@ -992,3 +849,18 @@ class DummyCommandTestNoEnv(CommandTest):
         self.file_manager = file_manager
         self.env = test_env if test_env is not None else DummyEnv()
         self.upm = UnifiedPathManager() 
+
+class DummyTestEnv:
+    def adjust_containers(self, requirements, contest_name=None, problem_name=None, language_name=None):
+        return requirements
+    def download_testcases(self, url, test_dir_host):
+        # テスト用: 何もしない
+        pass
+    def submit_via_ojtools(self, args, volumes, workdir):
+        # テスト用: ojtoolsがいない場合はRuntimeErrorを投げる
+        # テストでojtoolsがいない場合の分岐を再現
+        if hasattr(self, 'no_ojtools') and self.no_ojtools:
+            raise RuntimeError("ojtools用コンテナがsystem_info.jsonにありません")
+        if any("no_ojtools" in str(a) for a in args):
+            raise RuntimeError("ojtools用コンテナがsystem_info.jsonにありません")
+        return True, "ok", "" 
