@@ -4,6 +4,7 @@ from src.file_operator import LocalFileOperator
 import os
 import pytest
 import shutil
+from src.path_manager.file_operator import FileOperator
 
 def test_mockfileoperator_create_and_exists():
     op = MockFileOperator()
@@ -201,4 +202,18 @@ def test_localfileoperator_isdir_and_glob(tmp_path):
     # globで一致しないパターン
     assert op.glob("no.txt") == []
     # globで一致するパターン
-    assert op.glob("d/*.txt") == [f] 
+    assert op.glob("d/*.txt") == [f]
+
+def test_resolve_path_variants(tmp_path):
+    op = LocalFileOperator(tmp_path)
+    # str型
+    assert op.resolve_path("foo.txt") == tmp_path / "foo.txt"
+    # Path型
+    assert op.resolve_path(Path("bar.txt")) == tmp_path / "bar.txt"
+    # すでに絶対パス
+    abs_path = tmp_path / "abs.txt"
+    assert op.resolve_path(abs_path) == abs_path
+
+def test_fileoperator_cannot_instantiate():
+    with pytest.raises(TypeError):
+        FileOperator() 
