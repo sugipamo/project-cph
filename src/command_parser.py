@@ -23,6 +23,7 @@ LANGUAGES = {
     "pypy": {"aliases": ["pypy3", "py"]},
     "rust": {"aliases": ["rs", "rustc"]},
 }
+EXEC_MODES = ["docker", "local"]
 
 import argparse
 from src.info_json_manager import InfoJsonManager
@@ -41,7 +42,8 @@ class CommandParser:
             "contest_name": None,
             "command": None,
             "problem_name": None,
-            "language_name": None
+            "language_name": None,
+            "exec_mode": None
         }
 
     def __init__(self):
@@ -54,6 +56,11 @@ class CommandParser:
         used = set()
         # 右から順に判定
         for i, arg in enumerate(reversed(args)):
+            # exec_mode
+            if self.parsed["exec_mode"] is None and arg in EXEC_MODES:
+                self.parsed["exec_mode"] = arg
+                used.add(len(args)-1-i)
+                continue
             # problem_name
             if self.parsed["problem_name"] is None and arg in PROBLEM_NAMES:
                 self.parsed["problem_name"] = arg
@@ -89,8 +96,8 @@ class CommandParser:
 
     def get_effective_args(self, info_json_path=None):
         """
-        system_info.jsonの値も考慮して最終的な値（contest_name, problem_name, language_name, command）を返す。
-        contest_name, problem_name, language_nameのいずれかがNoneならsystem_info.jsonから補完する。
+        system_info.jsonの値も考慮して最終的な値（contest_name, problem_name, language_name, command, exec_mode）を返す。
+        contest_name, problem_name, language_name, exec_modeのいずれかがNoneならsystem_info.jsonから補完する。
         """
         effective = self.parsed.copy()
         # system_info.jsonがあれば補完
@@ -99,7 +106,7 @@ class CommandParser:
                 info_json_path = self.upm.info_json()
             manager = InfoJsonManager(info_json_path)
             info = manager.data
-            for k in ["contest_name", "problem_name", "language_name"]:
+            for k in ["contest_name", "problem_name", "language_name", "exec_mode"]:
                 if effective[k] is None:
                     effective[k] = info.get(k)
         except Exception:

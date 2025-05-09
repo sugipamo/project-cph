@@ -4,15 +4,29 @@ from .commands.command_open import CommandOpen
 from .commands.command_test import CommandTest
 from .commands.command_submit import CommandSubmit
 from .commands.opener import Opener
+from src.environment.test_environment import DockerTestExecutionEnvironment
+from src.environment.execution_manager_test_environment import ExecutionManagerTestEnvironment
+from execution_client.execution_manager import ExecutionManager
+from execution_client.local.client import LocalAsyncClient
+from execution_client.container.client import ContainerClient
 
 class CommandExecutor:
-    def __init__(self, file_manager: ContestFileManager = None, opener: Opener = None):
+    def __init__(self, file_manager: ContestFileManager = None, opener: Opener = None, exec_mode: str = None):
         self.file_manager = file_manager
         self.opener = opener or Opener()
+        self.exec_mode = exec_mode or "docker"
         self.login_handler = CommandLogin()
+        # 実行環境の切り替え
+        if self.exec_mode == "local":
+            local_client = LocalAsyncClient()
+            manager = ExecutionManager(local_client)
+            test_env = ExecutionManagerTestEnvironment(self.file_manager, manager)
+        else:
+            # デフォルトはdocker
+            test_env = DockerTestExecutionEnvironment(self.file_manager)
         self.open_handler = CommandOpen(self.file_manager, self.opener)
-        self.test_handler = CommandTest(self.file_manager)
-        self.submit_handler = CommandSubmit(self.file_manager)
+        self.test_handler = CommandTest(self.file_manager, test_env)
+        self.submit_handler = CommandSubmit(self.file_manager, test_env)
 
     async def execute(self, command, contest_name=None, problem_name=None, language_name=None):
         """コマンド名に応じて各メソッドを呼び出す"""

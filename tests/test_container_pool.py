@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import MagicMock
-from src.container.pool import ContainerPool
+from src.execution_client.container.pool import ContainerPool
 from execution_client.container.client import AbstractContainerClient
-from src.container.image_manager import AbstractContainerImageManager
+from src.execution_client.container.image_manager import AbstractContainerImageManager
 
 class DummyClient(AbstractContainerClient):
     def __init__(self):
@@ -61,7 +61,7 @@ class DummyImageManager(AbstractContainerImageManager):
 @pytest.fixture
 def pool_with_dummy(monkeypatch):
     # ContainerPoolの内部client/image_managerをダミーに差し替え
-    from src.container.pool import ContainerPool
+    from src.execution_client.container.pool import ContainerPool
     pool = ContainerPool(dockerfile_map={"python": "dummy"})
     pool.client = DummyClient()
     pool.image_manager = DummyImageManager()

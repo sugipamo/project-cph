@@ -1,7 +1,7 @@
 from src.info_json_manager import InfoJsonManager
-from ..docker.pool import DockerPool
-from ..docker.ctl import DockerCtl
-from src.docker.pool import DockerImageManager
+from src.execution_client.container.pool import ContainerPool
+from src.execution_client.container.client import ContainerClient
+from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.path_manager.file_operator import FileOperator
 from src.config_json_manager import ConfigJsonManager
@@ -53,7 +53,7 @@ class CommandOpen:
             {"type": "test", "language": language_name, "count": test_case_count},
             {"type": "ojtools", "count": 1}
         ]
-        pool = DockerPool()
+        pool = ContainerPool({})
         containers = pool.adjust(requirements)
         
         # 5. system_info.jsonの更新
@@ -70,7 +70,7 @@ class CommandOpen:
         if not ojtools_list:
             raise RuntimeError("ojtools用コンテナがsystem_info.jsonにありません")
         ojtools_name = ojtools_list[0]["name"]
-        ctl = DockerCtl()
+        ctl = ContainerClient()
         test_dir_host = self.upm.contest_current("test")
         if file_operator:
             if not file_operator.exists(test_dir_host):
@@ -78,10 +78,9 @@ class CommandOpen:
         else:
             os.makedirs(test_dir_host, exist_ok=True)
         if not ctl.is_container_running(ojtools_name):
-            ctl.start_container(ojtools_name, DockerImageManager().ensure_image("ojtools"), {})
+            ctl.run_container(ojtools_name, ContainerImageManager().ensure_image("ojtools"), {})
         # testディレクトリをクリーンアップ＆作成＆oj download
         ctl.exec_in_container(ojtools_name, ["rm", "-rf", f"/workspace/{test_dir_host}"])
         ctl.exec_in_container(ojtools_name, ["mkdir", "-p", f"/workspace/{test_dir_host}"])
         ctl.exec_in_container(ojtools_name, ["oj", "download", url, "-d", f"/workspace/{test_dir_host}"])
-        # docker cpでホストにテストケースをコピー（test/testにならないようcontest_current/にコピー）
-        ctl.cp_from_container(ojtools_name, f"/workspace/{test_dir_host}", self.upm.contest_current())
+        ctl.copy_from_container(ojtools_name, f"/workspace/{test_dir_host}", self.upm.contest_current())

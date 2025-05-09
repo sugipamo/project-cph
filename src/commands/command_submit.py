@@ -2,8 +2,8 @@ from .command_test import CommandTest
 from .common import get_project_root_volumes
 from src.info_json_manager import InfoJsonManager
 from ..docker.pool import DockerPool
-from ..docker.ctl import DockerCtl
-from src.docker.pool import DockerImageManager
+from src.execution_client.container.client import ContainerClient
+from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.path_manager.file_operator import FileOperator
 
@@ -14,10 +14,11 @@ SUBMIT_FILES = {
 }
 
 class CommandSubmit:
-    def __init__(self, file_manager):
+    def __init__(self, file_manager, test_env):
         self.file_manager = file_manager
-        self.command_test = CommandTest(file_manager)
+        self.command_test = CommandTest(file_manager, test_env)
         self.upm = UnifiedPathManager()
+        self.test_env = test_env
 
     def confirm_submit_with_wa(self):
         ans = input("AC以外のケースがあります。提出してよいですか？ (y/N): ")
@@ -69,10 +70,10 @@ class CommandSubmit:
 
     async def run_submit_command(self, args, volumes, workdir):
         ojtools_name = self.get_ojtools_container_from_info()
-        ctl = DockerCtl()
+        ctl = ContainerClient()
         # コンテナが存在しなければ自動再起動
         if not ctl.is_container_running(ojtools_name):
-            ctl.start_container(ojtools_name, DockerImageManager().ensure_image("ojtools"), {})
+            ctl.start_container(ojtools_name, ContainerImageManager().ensure_image("ojtools"), {})
         # 最大1回までリトライ
         for attempt in range(1):
             ok, stdout, stderr = ctl.exec_in_container(ojtools_name, ["oj"] + args)
@@ -81,7 +82,7 @@ class CommandSubmit:
             else:
                 print(f"[WARN] exec失敗: {ojtools_name} (attempt {attempt+1})")
                 ctl.remove_container(ojtools_name)
-                ctl.start_container(ojtools_name, DockerImageManager().ensure_image("ojtools"), {})
+                ctl.start_container(ojtools_name, ContainerImageManager().ensure_image("ojtools"), {})
         if not ok:
             print(f"[エラー] oj submit失敗\n{stderr}")
         return ok, stdout, stderr

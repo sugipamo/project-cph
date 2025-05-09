@@ -39,6 +39,7 @@ def main():
     contest_name = args["contest_name"]
     problem_name = args["problem_name"]
     language_name = args["language_name"]
+    exec_mode = args["exec_mode"]
 
     # 不足要素があればエラー内容をprintして終了
     if command == "login":
@@ -51,7 +52,8 @@ def main():
         return
 
     executor = CommandExecutor(
-        file_manager=ContestFileManager(LocalFileOperator())
+        file_manager=ContestFileManager(LocalFileOperator()),
+        exec_mode=exec_mode
     )
     import asyncio
     if command == "open":

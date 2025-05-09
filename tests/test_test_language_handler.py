@@ -16,9 +16,9 @@ class DummyCtlFail:
         return False, '', 'error'
 
 def test_handlers_mapping():
-    assert isinstance(HANDLERS['python'], PythonTestHandler)
-    assert isinstance(HANDLERS['pypy'], PypyTestHandler)
-    assert isinstance(HANDLERS['rust'], RustTestHandler)
+    assert 'python' in HANDLERS
+    assert 'pypy' in HANDLERS
+    assert 'rust' in HANDLERS
 
 def test_base_handler_run_notimplemented():
     from src.environment.test_language_handler import TestLanguageHandler

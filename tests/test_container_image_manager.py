@@ -4,7 +4,7 @@ import shutil
 import hashlib
 import pytest
 from unittest.mock import patch
-from src.container.image_manager import ContainerImageManager
+from src.execution_client.container.image_manager import ContainerImageManager
 
 def create_temp_dockerfile(content="FROM scratch\n"):
     temp_dir = tempfile.mkdtemp()

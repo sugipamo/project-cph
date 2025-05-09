@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 import os
 import shutil
-from src.docker.ctl import DockerCtl
-from src.docker.pool import DockerPool, DockerImageManager
+from src.execution_client.container.client import ContainerClient
+from src.execution_client.container.pool import ContainerPool
+from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.path_manager.file_operator import FileOperator
 
@@ -103,10 +104,10 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
     def __init__(self, file_manager, handlers=None):
         self.file_manager = file_manager
         self.file_operator = file_manager.file_operator if file_manager and hasattr(file_manager, 'file_operator') else None
-        self.ctl = DockerCtl()
+        self.ctl = ContainerClient()
         from src.environment.test_language_handler import HANDLERS as DEFAULT_HANDLERS
         self.handlers = handlers if handlers is not None else DEFAULT_HANDLERS
-        self.pool = DockerPool()
+        self.pool = ContainerPool({})
         self.unified_path_manager = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE)
         self.upm = UnifiedPathManager()
 
@@ -118,7 +119,7 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
 
     def run_test_case(self, language_name, container, in_file, source_path, retry=3):
         handler = self.handlers[language_name]
-        image = DockerImageManager().ensure_image("ojtools") if container.startswith("cph_ojtools") else language_name
+        image = ContainerImageManager().ensure_image("ojtools") if container.startswith("cph_ojtools") else language_name
         ctl = self.ctl
         stdout = stderr = ""
         for attempt in range(retry):
