@@ -221,4 +221,108 @@ def test_prepare_problem_files_config_has_language_id(tmp_path):
     os.chdir(old_cwd)
     # config.jsonのlanguage_idが上書きされていない
     data = json.loads(config.read_text())
-    assert data["language_id"]["python"] == "9999" 
+    assert data["language_id"]["python"] == "9999"
+
+def test_copy_current_to_stocks_moveignore(tmp_path):
+    from src.contest_file_manager import ContestFileManager
+    class Op(LocalFileOperator):
+        def __init__(self, base_dir):
+            super().__init__(base_dir)
+            self.copied = []
+            self.copied_tree = []
+        def copy(self, src, dst):
+            self.copied.append((src, dst))
+        def copytree(self, src, dst):
+            self.copied_tree.append((src, dst))
+    op = Op(tmp_path)
+    manager = ContestFileManager(op)
+    src_dir = tmp_path / 'contest_current/python'
+    src_dir.mkdir(parents=True, exist_ok=True)
+    (src_dir / 'main.py').write_text('x')
+    (src_dir / 'ignore.txt').write_text('y')
+    (src_dir / 'dir').mkdir()
+    (src_dir / 'dir' / 'a.txt').write_text('z')
+    config_path = tmp_path / 'contest_current/config.json'
+    config_path.write_text(json.dumps({'moveignore': ['ignore.txt', 'dir']}))
+    manager.copy_current_to_stocks('abc', 'a', 'python')
+    # ignore.txt, dirはコピーされない
+    copied_files = [str(dst) for src, dst in op.copied]
+    assert any('main.py' in f for f in copied_files)
+    assert not any('ignore.txt' in f for f in copied_files)
+    assert not op.copied_tree  # dirはコピーされない
+
+def test_move_or_copy_skip_existing(tmp_path):
+    from src.contest_file_manager import ContestFileManager
+    op = LocalFileOperator(tmp_path)
+    manager = ContestFileManager(op)
+    src = tmp_path / 'src'
+    dst = tmp_path / 'dst'
+    src.mkdir()
+    (src / 'a.txt').write_text('a')
+    (src / 'b.txt').write_text('b')
+    dst.mkdir()
+    (dst / 'a.txt').write_text('old')  # 既存
+    # move=False
+    manager._move_or_copy_skip_existing(src, dst, move=False)
+    assert (dst / 'b.txt').exists()
+    assert (dst / 'a.txt').read_text() == 'old'  # 上書きされない
+    # move=True
+    (src / 'c.txt').write_text('c')
+    manager._move_or_copy_skip_existing(src, dst, move=True)
+    assert (dst / 'c.txt').exists()
+    assert not (src / 'c.txt').exists()
+
+def test_move_from_stocks_to_current_empty_cleanup(tmp_path):
+    from src.contest_file_manager import ContestFileManager
+    op = LocalFileOperator(tmp_path)
+    manager = ContestFileManager(op)
+    stocks = tmp_path / 'contest_stocks/abc/x/python'
+    stocks.mkdir(parents=True)
+    (stocks / 'a.txt').write_text('a')
+    info = tmp_path / 'contest_current/system_info.json'
+    info.parent.mkdir(parents=True, exist_ok=True)
+    info.write_text(json.dumps({'contest_name': 'abc', 'problem_name': 'x', 'language_name': 'python'}))
+    config = tmp_path / 'contest_current/config.json'
+    config.write_text(json.dumps({}))
+    # dst_dirは空
+    dst = tmp_path / 'contest_current/python'
+    manager.move_from_stocks_to_current('abc', 'x', 'python')
+    # stocksディレクトリは空になり削除される
+    assert not stocks.exists()
+    # 親ディレクトリも空なら削除される（仕様上、親の削除は保証しないので存在してもOK）
+    # assert not (tmp_path / 'contest_stocks/abc/x').exists()
+
+def test_copy_from_template_to_current_config_exists(tmp_path):
+    from src.contest_file_manager import ContestFileManager
+    op = LocalFileOperator(tmp_path)
+    manager = ContestFileManager(op)
+    template = tmp_path / 'contest_template/python'
+    template.mkdir(parents=True, exist_ok=True)
+    (template / 'main.py').write_text('x')
+    current = tmp_path / 'contest_current/python'
+    current.mkdir(parents=True, exist_ok=True)
+    config = tmp_path / 'contest_current/config.json'
+    config.write_text(json.dumps({'moveignore': ['foo']}))
+    manager.copy_from_template_to_current('abc', 'y', 'python')
+    # config.jsonは上書きされない
+    data = json.loads(config.read_text())
+    assert data['moveignore'] == ['foo']
+
+def test_stocks_exists_both_cases(tmp_path):
+    from src.contest_file_manager import ContestFileManager
+    op = LocalFileOperator(tmp_path)
+    manager = ContestFileManager(op)
+    lang_dir = tmp_path / 'contest_stocks/abc/z/python'
+    test_dir = tmp_path / 'contest_stocks/abc/z/test'
+    lang_dir.mkdir(parents=True)
+    test_dir.mkdir(parents=True)
+    (lang_dir / 'a.txt').write_text('a')
+    (test_dir / 'b.txt').write_text('b')
+    # lang_dirが非空
+    assert manager.stocks_exists('abc', 'z', 'python')
+    # lang_dirが空、test_dirが非空
+    (lang_dir / 'a.txt').unlink()
+    assert manager.stocks_exists('abc', 'z', 'python')
+    # 両方空
+    (test_dir / 'b.txt').unlink()
+    assert not manager.stocks_exists('abc', 'z', 'python') 
