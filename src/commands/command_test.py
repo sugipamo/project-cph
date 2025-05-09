@@ -130,6 +130,8 @@ class CommandTest:
                 TEMP_DIR: "/workspace/.temp"
             }},
             {"type": "ojtools", "count": 1, "volumes": {
+                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
+                TEMP_DIR: "/workspace/.temp",
                 "/home/cphelper/.local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
             }}
         ]
@@ -151,6 +153,8 @@ class CommandTest:
                 TEMP_DIR: "/workspace/.temp"
             }},
             {"type": "ojtools", "count": 1, "volumes": {
+                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
+                TEMP_DIR: "/workspace/.temp",
                 "/home/cphelper/.local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
             }}
         ]

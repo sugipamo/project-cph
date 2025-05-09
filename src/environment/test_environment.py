@@ -189,5 +189,13 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
         ctl = self.ctl
         if not ctl.is_container_running(ojtools_name):
             ctl.start_container(ojtools_name, ContainerImageManager().ensure_image("ojtools"), {})
-        ok, stdout, stderr = ctl.exec_in_container(ojtools_name, ["oj"] + args)
+        cmd = ["oj"] + args
+        print(f"[DEBUG] docker exec {ojtools_name} {' '.join(map(str, cmd))}")
+        result = ctl.exec_in_container(ojtools_name, cmd)
+        print(f"[DEBUG] returncode: {result.returncode}")
+        print(f"[DEBUG] stdout: {result.stdout}")
+        print(f"[DEBUG] stderr: {result.stderr}")
+        ok = result.returncode == 0
+        stdout = result.stdout
+        stderr = result.stderr
         return ok, stdout, stderr 

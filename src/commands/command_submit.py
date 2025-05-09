@@ -1,6 +1,7 @@
 import os
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
+TEMP_DIR = "/workspace/.temp"
 from .command_test import CommandTest
 from .common import get_project_root_volumes
 from src.info_json_manager import InfoJsonManager
@@ -101,7 +102,9 @@ class CommandSubmit:
             file_path = temp_file_path
         else:
             file_path = self.upm.contest_current(language_name, submit_file)
-        args, url = self.build_submit_command(contest_name, problem_name, language_name, file_path, language_id)
+        # ファイルパスをコンテナ内パスに変換
+        cont_file_path = self.test_env.to_container_path(file_path)
+        args, url = self.build_submit_command(contest_name, problem_name, language_name, cont_file_path, language_id)
         temp_source_path, temp_test_dir = self.command_test.prepare_test_environment(contest_name, problem_name, language_name)
         temp_in_files, _ = self.command_test.collect_test_cases(temp_test_dir, file_operator)
         test_case_count = len(temp_in_files)
@@ -110,6 +113,8 @@ class CommandSubmit:
                 HOST_PROJECT_ROOT: CONTAINER_WORKSPACE
             }},
             {"type": "ojtools", "count": 1, "volumes": {
+                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
+                TEMP_DIR: "/workspace/.temp",
                 "/home/cphelper/.local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
             }}
         ]

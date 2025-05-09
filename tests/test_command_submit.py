@@ -20,6 +20,8 @@ class DummyFileManager:
 class DummyTestEnv:
     def submit_via_ojtools(self, args, volumes, workdir):
         return 'ok', 'stdout', 'stderr'
+    def to_container_path(self, host_path):
+        return host_path
 
 class DummyCommandTest:
     def __init__(self, ac=True):
