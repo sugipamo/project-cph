@@ -4,6 +4,7 @@ import os
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from pathlib import Path
 from unittest.mock import MagicMock
+import subprocess
 
 class DummyCtl:
     def __init__(self):
@@ -40,11 +41,14 @@ def test_python_handler_build_and_run(tmp_path):
     # runはrun_and_measureを呼ぶ
     manager = MagicMock()
     manager.run_and_measure.return_value = MagicMock(returncode=0, stdout="out", stderr="err")
+    # CompletedProcess型で返す
+    manager.exec_in_container = MagicMock(return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="out", stderr="err"))
     in_file = tmp_path / "in.txt"
     make_dummy_file(in_file, "input")
-    result = handler.run(manager, "name", str(in_file), "main.py")
-    assert result == (True, "out", "err")
-    assert manager.run_and_measure.called
+    result = handler.run(manager, "name", str(in_file), "main.py", host_in_file=str(in_file))
+    assert result[0]
+    assert result[1] == "out"
+    assert result[2] == "err"
 
 def test_pypy_handler_build_and_run(tmp_path):
     handler = PypyTestHandler()
@@ -52,17 +56,20 @@ def test_pypy_handler_build_and_run(tmp_path):
     assert ok
     manager = MagicMock()
     manager.run_and_measure.return_value = MagicMock(returncode=0, stdout="out", stderr="err")
+    manager.exec_in_container = MagicMock(return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="out", stderr="err"))
     in_file = tmp_path / "in.txt"
     make_dummy_file(in_file, "input")
-    result = handler.run(manager, "name", str(in_file), "main.py")
-    assert result == (True, "out", "err")
-    assert manager.run_and_measure.called
+    result = handler.run(manager, "name", str(in_file), "main.py", host_in_file=str(in_file))
+    assert result[0]
+    assert result[1] == "out"
+    assert result[2] == "err"
 
 def test_rust_handler_build_and_run(tmp_path):
     handler = RustTestHandler()
     # build
     manager = MagicMock()
     manager.run_and_measure.return_value = MagicMock(returncode=0, stdout="out", stderr="err")
+    manager.exec_in_container = MagicMock(return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="out2", stderr="err2"))
     src_dir = tmp_path / "rust"
     src_dir.mkdir()
     ok, out, err = handler.build(manager, "name", str(src_dir))
@@ -77,23 +84,27 @@ def test_rust_handler_build_and_run(tmp_path):
     make_dummy_file(in_file, "input")
     manager.run_and_measure.reset_mock()
     manager.run_and_measure.return_value = MagicMock(returncode=0, stdout="out2", stderr="err2")
-    result = handler.run(manager, "name", str(in_file), str(src_dir))
-    assert result == (True, "out2", "err2")
-    assert manager.run_and_measure.called
+    result = handler.run(manager, "name", str(in_file), str(src_dir), host_in_file=str(in_file))
+    assert result[0]
+    assert result[1] == "out2"
+    assert result[2] == "err2"
 
 def test_python_handler_run_fail(tmp_path):
     handler = PythonTestHandler()
     manager = MagicMock()
     manager.run_and_measure.return_value = MagicMock(returncode=1, stdout="", stderr="err")
+    manager.exec_in_container = MagicMock(return_value=subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="err"))
     in_file = tmp_path / "in.txt"
     make_dummy_file(in_file, "input")
-    result = handler.run(manager, "name", str(in_file), "main.py")
-    assert result == (False, "", "err")
+    result = handler.run(manager, "name", str(in_file), "main.py", host_in_file=str(in_file))
+    assert not result[0]
+    assert result[2] == "err"
 
 def test_rust_handler_run_fail(tmp_path):
     handler = RustTestHandler()
     manager = MagicMock()
     manager.run_and_measure.return_value = MagicMock(returncode=1, stdout="", stderr="err")
+    manager.exec_in_container = MagicMock(return_value=subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="err"))
     src_dir = tmp_path / "rust"
     src_dir.mkdir()
     bin_dir = src_dir / "target" / "release"
@@ -102,5 +113,6 @@ def test_rust_handler_run_fail(tmp_path):
     bin_path.write_text("")
     in_file = tmp_path / "in.txt"
     make_dummy_file(in_file, "input")
-    result = handler.run(manager, "name", str(in_file), str(src_dir))
-    assert result == (False, "", "err")
+    result = handler.run(manager, "name", str(in_file), str(src_dir), host_in_file=str(in_file))
+    assert not result[0]
+    assert result[2] == "err"

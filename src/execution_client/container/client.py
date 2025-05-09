@@ -95,11 +95,11 @@ class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
             print("[ERROR] docker rm timed out")
             return False
 
-    def exec_in_container(self, name: str, cmd_list: List[str], realtime: bool = False) -> subprocess.CompletedProcess:
-        cmd = ["docker", "exec", name] + cmd_list
+    def exec_in_container(self, name: str, cmd_list: List[str], realtime: bool = False, stdin: str = None) -> subprocess.CompletedProcess:
+        cmd = ["docker", "exec", "-i", name] + cmd_list
         if not realtime:
             try:
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout, input=stdin)
                 if result.returncode != 0:
                     print(f"[ERROR] docker exec failed: {result.stderr}")
                 return result
@@ -108,8 +108,11 @@ class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
                 return subprocess.CompletedProcess(cmd, 1, '', 'timeout')
         else:
             try:
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, stdin=subprocess.PIPE)
                 output = ""
+                if stdin is not None:
+                    proc.stdin.write(stdin)
+                    proc.stdin.close()
                 try:
                     for line in proc.stdout:
                         output += line
@@ -297,4 +300,13 @@ class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
         return self.is_container_running(name)
 
     def list(self, all: bool = True, prefix: Optional[str] = None) -> List[str]:
-        return self.list_containers(all=all, prefix=prefix) 
+        return self.list_containers(all=all, prefix=prefix)
+
+    def start_container(self, name: str, image: str = None, opts: dict = None) -> bool:
+        cmd = ["docker", "start", name]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
+            return result.returncode == 0
+        except subprocess.TimeoutExpired:
+            print("[ERROR] docker start timed out")
+            return False 

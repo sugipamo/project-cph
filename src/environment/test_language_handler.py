@@ -23,7 +23,10 @@ class PythonTestHandler(TestLanguageHandler):
             with open(host_in_file, "r", encoding="utf-8") as f:
                 input_data = f.read()
             cmd = ["python3", temp_source_path]
-            ok, stdout, stderr = manager.exec_in_container(name, cmd, stdin=input_data)
+            result = manager.exec_in_container(name, cmd, stdin=input_data)
+            ok = result.returncode == 0
+            stdout = result.stdout
+            stderr = result.stderr
             return ok, stdout, stderr
         else:
             # ローカル実行用: main.pyにinputを渡して実行
@@ -44,7 +47,10 @@ class PypyTestHandler(TestLanguageHandler):
             with open(host_in_file, "r", encoding="utf-8") as f:
                 input_data = f.read()
             cmd = ["pypy3", temp_source_path]
-            ok, stdout, stderr = manager.exec_in_container(name, cmd, stdin=input_data)
+            result = manager.exec_in_container(name, cmd, stdin=input_data)
+            ok = result.returncode == 0
+            stdout = result.stdout
+            stderr = result.stderr
             return ok, stdout, stderr
         else:
             cmd = ["pypy3", temp_source_path]
@@ -71,7 +77,10 @@ class RustTestHandler(TestLanguageHandler):
             with open(host_in_file, "r", encoding="utf-8") as f:
                 input_data = f.read()
             cmd = [bin_path]
-            ok, stdout, stderr = manager.exec_in_container(name, cmd, stdin=input_data)
+            result = manager.exec_in_container(name, cmd, stdin=input_data)
+            ok = result.returncode == 0
+            stdout = result.stdout
+            stderr = result.stderr
             return ok, stdout, stderr
         else:
             cmd = [bin_path]

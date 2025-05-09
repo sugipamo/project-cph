@@ -139,15 +139,12 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
             host_in_file = str(host_in_file)
         else:
             host_in_file = cont_in_file
-        print(f"[run_test_case] cont_in_file: {cont_in_file}, host_in_file: {host_in_file}, os.path.exists(host_in_file): {os.path.exists(host_in_file)}")
         for attempt in range(retry):
             ok, stdout, stderr = handler.run(ctl, container, cont_in_file, cont_source_path, host_in_file=host_in_file)
             if ok:
                 break
             else:
                 print(f"[WARN] exec失敗: {container} (attempt {attempt+1})")
-                ctl.remove_container(container)
-                ctl.start_container(container, image, {})
         return ok, stdout, stderr, attempt+1
 
     def adjust_containers(self, requirements, contest_name=None, problem_name=None, language_name=None):
