@@ -4,6 +4,7 @@ from src.path_manager.file_operator import FileOperator
 # === 定数定義 ===
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
+TEMP_DIR = os.path.abspath(".temp")
 
 from .test_result_formatter import ResultFormatter
 from src.environment.test_language_handler import HANDLERS
@@ -125,9 +126,12 @@ class CommandTest:
         test_case_count = len(temp_in_files)
         requirements = [
             {"type": "test", "language": language_name, "count": test_case_count, "volumes": {
-                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE
+                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
+                TEMP_DIR: "/workspace/.temp"
             }},
-            {"type": "ojtools", "count": 1}
+            {"type": "ojtools", "count": 1, "volumes": {
+                "/home/cphelper/.local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
+            }}
         ]
         containers = self.env.adjust_containers(requirements, contest_name, problem_name, language_name)
         # --- テスト実行 ---
@@ -143,9 +147,12 @@ class CommandTest:
         test_case_count = len(temp_in_files)
         requirements = [
             {"type": "test", "language": language_name, "count": test_case_count, "volumes": {
-                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE
+                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
+                TEMP_DIR: "/workspace/.temp"
             }},
-            {"type": "ojtools", "count": 1}
+            {"type": "ojtools", "count": 1, "volumes": {
+                "/home/cphelper/.local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
+            }}
         ]
         containers = self.env.adjust_containers(requirements, contest_name, problem_name, language_name)
         results = await self.run_test_cases(temp_source_path, temp_in_files, language_name)

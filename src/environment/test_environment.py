@@ -6,6 +6,7 @@ from src.execution_client.container.pool import ContainerPool
 from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.path_manager.file_operator import FileOperator
+from pathlib import Path
 
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
@@ -108,8 +109,13 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
         from src.environment.test_language_handler import HANDLERS as DEFAULT_HANDLERS
         self.handlers = handlers if handlers is not None else DEFAULT_HANDLERS
         self.pool = ContainerPool({})
-        self.unified_path_manager = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE)
-        self.upm = UnifiedPathManager()
+        # .tempも含めたマウントリストで初期化
+        mounts = [
+            (Path(HOST_PROJECT_ROOT), Path(CONTAINER_WORKSPACE)),
+            (Path(os.path.abspath(".temp")), Path("/workspace/.temp"))
+        ]
+        self.unified_path_manager = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, mounts=mounts)
+        self.upm = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, mounts=mounts)
 
     def to_container_path(self, host_path: str) -> str:
         return str(self.unified_path_manager.to_container_path(os.path.abspath(host_path)))
@@ -122,8 +128,10 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
         image = ContainerImageManager().ensure_image("ojtools") if container.startswith("cph_ojtools") else language_name
         ctl = self.ctl
         stdout = stderr = ""
+        cont_in_file = self.to_container_path(in_file)
+        cont_source_path = self.to_container_path(source_path)
         for attempt in range(retry):
-            ok, stdout, stderr = handler.run(ctl, container, in_file, source_path)
+            ok, stdout, stderr = handler.run(ctl, container, cont_in_file, cont_source_path)
             if ok:
                 break
             else:
@@ -159,10 +167,8 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
         ctl = self.ctl
         if not ctl.is_container_running(ojtools_name):
             ctl.run_container(ojtools_name, ContainerImageManager().ensure_image("ojtools"), {})
-        ctl.exec_in_container(ojtools_name, ["rm", "-rf", f"/workspace/{test_dir_host}"])
-        ctl.exec_in_container(ojtools_name, ["mkdir", "-p", f"/workspace/{test_dir_host}"])
-        ctl.exec_in_container(ojtools_name, ["oj", "download", url, "-d", f"/workspace/{test_dir_host}"])
-        ctl.copy_from_container(ojtools_name, f"/workspace/{test_dir_host}", test_dir_host)
+        # test_dir_hostの親ディレクトリを取得
+        self.unified_path_manager.to_container_path(test_dir_host)
 
     def submit_via_ojtools(self, args, volumes, workdir):
         # ojtoolsコンテナでoj submitを実行

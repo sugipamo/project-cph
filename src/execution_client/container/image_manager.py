@@ -65,10 +65,9 @@ class ContainerImageManager(AbstractContainerImageManager):
             return hashlib.sha256(f.read()).hexdigest()[:12]
 
     def get_image_name(self, key: str) -> str:
-        """
-        key: 言語名や用途名（例: python, rust, ojtools など）
-        dockerfile_mapからDockerfileパスを取得し、ハッシュ付きイメージ名を返す。
-        """
+        # ojtoolsだけはハッシュなしの固定名
+        if key == "ojtools":
+            return "cph_image_ojtools"
         dockerfile = self.dockerfile_map.get(key, None)
         if not dockerfile or not os.path.exists(dockerfile):
             return key  # fallback
@@ -89,16 +88,14 @@ class ContainerImageManager(AbstractContainerImageManager):
                 self.remove_image(img)
 
     def ensure_image(self, key: str, context_dir: str = ".") -> str:
-        """
-        key: 言語名や用途名
-        必要なイメージがなければビルドし、古いイメージをクリーンアップ
-        """
         image = self.get_image_name(key)
         images = subprocess.run(["docker", "images", "--format", "{{.Repository}}"], capture_output=True, text=True)
         image_names = images.stdout.splitlines()
         if image not in image_names:
             dockerfile = self.dockerfile_map.get(key, None)
             if dockerfile and os.path.exists(dockerfile):
+                # ojtoolsだけはハッシュなしでビルド
                 self.build_image(dockerfile, image, context_dir)
-                self.cleanup_old_images(key)
+                if key != "ojtools":
+                    self.cleanup_old_images(key)
         return image 
