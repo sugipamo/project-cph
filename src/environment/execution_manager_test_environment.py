@@ -29,7 +29,7 @@ class ExecutionManagerTestEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironm
         handler = self.handlers[language_name]
         # ビルドコマンドを取得
         build_cmd = handler.build_command(source_path)
-        if build_cmd:
+        if build_cmd and isinstance(build_cmd, (list, tuple)) and all(x is not None for x in build_cmd):
             build_proc = subprocess.run(build_cmd, capture_output=True, text=True)
             if build_proc.returncode != 0:
                 return False, build_proc.stdout, build_proc.stderr, 1
