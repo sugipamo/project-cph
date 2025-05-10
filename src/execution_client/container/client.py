@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 import subprocess
 from typing import Optional, List, Dict, Any, Callable
 import json
-from execution_client.abstract_client import AbstractExecutionClient
-from execution_client.types import ExecutionResult
+from src.execution_client.abstract_client import AbstractExecutionClient
+from src.execution_client.types import ExecutionResult
 import threading
 
 class AbstractContainerClient(ABC):

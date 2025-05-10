@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock
 from src.execution_client.container.pool import ContainerPool
-from execution_client.container.client import AbstractContainerClient
+from src.execution_client.container.client import AbstractContainerClient
 from src.execution_client.container.image_manager import AbstractContainerImageManager
 
 class DummyClient(AbstractContainerClient):

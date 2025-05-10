@@ -6,9 +6,8 @@ from .commands.command_submit import CommandSubmit
 from .commands.opener import Opener
 from src.environment.test_environment import DockerTestExecutionEnvironment
 from src.environment.execution_manager_test_environment import ExecutionManagerTestEnvironment
-from execution_client.execution_manager import ExecutionManager
-from src.execution_client.local import LocalAsyncClient
-from execution_client.container.client import ContainerClient
+from src.execution_client.execution_manager import ExecutionManager
+from src.execution_client.container.client import ContainerClient
 
 class CommandExecutor:
     def __init__(self, file_manager: ContestFileManager = None, opener: Opener = None, exec_mode: str = None):

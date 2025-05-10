@@ -1,5 +1,5 @@
 from src.environment.test_environment import TestExecutionEnvironment, TestEnvFileOpsMixin
-from execution_client.execution_manager import ExecutionManager
+from src.execution_client.execution_manager import ExecutionManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 import os
 import shutil

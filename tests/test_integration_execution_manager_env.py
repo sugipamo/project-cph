@@ -3,7 +3,7 @@ import tempfile
 import shutil
 import pytest
 from src.environment.execution_manager_test_environment import ExecutionManagerTestEnvironment
-from execution_client.execution_manager import ExecutionManager
+from src.execution_client.execution_manager import ExecutionManager
 from src.execution_client.local import LocalAsyncClient
 
 class PythonHandler:

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from execution_client.container.client import ContainerClient, AbstractContainerClient
+from src.execution_client.container.client import ContainerClient, AbstractContainerClient
 import json
 
 def make_inspect_result(obj):
