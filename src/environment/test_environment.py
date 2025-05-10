@@ -5,7 +5,7 @@ from src.execution_client.container.client import ContainerClient
 from src.execution_client.container.pool import ContainerPool
 from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
-from src.path_manager.file_operator import FileOperator
+from src.file.file_operator import FileOperator
 from pathlib import Path
 from src.file.info_json_manager import InfoJsonManager
 

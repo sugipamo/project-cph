@@ -1,6 +1,6 @@
 import os
 from src.path_manager.unified_path_manager import UnifiedPathManager
-from src.path_manager.file_operator import FileOperator
+from src.file.file_operator import FileOperator
 # === 定数定義 ===
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
