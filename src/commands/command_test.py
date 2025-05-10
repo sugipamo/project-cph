@@ -1,10 +1,8 @@
 import os
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.file.file_operator import FileOperator
+from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, TEMP_DIR, OJTOOLS_COOKIE_HOST, OJTOOLS_COOKIE_CONT
 # === 定数定義 ===
-HOST_PROJECT_ROOT = os.path.abspath(".")
-CONTAINER_WORKSPACE = "/workspace"
-TEMP_DIR = os.path.abspath(".temp")
 
 from .test_result_formatter import ResultFormatter
 from src.environment.test_language_handler import HANDLERS
@@ -95,7 +93,7 @@ class CommandTest:
             {"type": "ojtools", "count": 1, "volumes": {
                 HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
                 TEMP_DIR: "/workspace/.temp",
-                ".local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
+                OJTOOLS_COOKIE_HOST: OJTOOLS_COOKIE_CONT
             }}
         ]
         containers = self.env.adjust_containers(requirements, contest_name, problem_name, language_name)
@@ -118,7 +116,7 @@ class CommandTest:
             {"type": "ojtools", "count": 1, "volumes": {
                 HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
                 TEMP_DIR: "/workspace/.temp",
-                ".local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
+                OJTOOLS_COOKIE_HOST: OJTOOLS_COOKIE_CONT
             }}
         ]
         containers = self.env.adjust_containers(requirements, contest_name, problem_name, language_name)
