@@ -28,6 +28,7 @@ class ContainerPool(AbstractContainerPool):
         existing = set(self._get_existing_container_names())
         required_names = set(c["name"] for c in required_containers)
         self._remove_unneeded_containers(existing, required_names)
+        existing = set(self._get_existing_container_names())
         to_start = self._get_containers_to_start(existing, required_containers)
         self._start_containers(to_start)
         return required_containers
@@ -67,17 +68,28 @@ class ContainerPool(AbstractContainerPool):
             expected_vols = c.get("volumes")
             if c["name"] in existing:
                 needs_restart = False
-                if not self.client.is_container_running(c["name"]):
-                    needs_restart = True
-                elif expected_vols:
-                    inspect = self.client.inspect_container(c["name"])
-                    if inspect:
-                        mounts = inspect.get("Mounts", [])
-                        for host_path, cont_path in expected_vols.items():
-                            found = any(m.get("Source") == host_path and m.get("Destination") == cont_path for m in mounts)
-                            if not found:
-                                needs_restart = True
-                                break
+                inspect = self.client.inspect_container(c["name"])
+                status = None
+                if inspect and "State" in inspect:
+                    status = inspect["State"].get("Status")
+                if status == "running":
+                    continue  # 既に起動中
+                elif status in ("exited", "stopped"):
+                    c["_reuse"] = True
+                    to_start.append(c)
+                    continue
+                else:
+                    # created, dead, paused, 他はremoveしてrun
+                    self.client.remove_container(c["name"])
+                    to_start.append(c)
+                    continue
+                if expected_vols and inspect:
+                    mounts = inspect.get("Mounts", [])
+                    for host_path, cont_path in expected_vols.items():
+                        found = any(m.get("Source") == host_path and m.get("Destination") == cont_path for m in mounts)
+                        if not found:
+                            needs_restart = True
+                            break
                 if needs_restart:
                     self.client.remove_container(c["name"])
                     to_start.append(c)
@@ -89,11 +101,18 @@ class ContainerPool(AbstractContainerPool):
         def start_c(c):
             language = "ojtools" if c["type"] == "ojtools" else c.get("language", "python")
             image = self.image_manager.ensure_image(language)
-            self.client.run_container(
-                name=c["name"],
-                image=image,
-                volumes=c.get("volumes"),
-                detach=True
-            )
+            if c.get("_reuse"):
+                self.client.start_container(c["name"], image=image)
+            else:
+                # 既存名があれば必ずremove
+                existing_names = self.client.list_containers(prefix="cph_")
+                if c["name"] in existing_names:
+                    self.client.remove_container(c["name"])
+                self.client.run_container(
+                    name=c["name"],
+                    image=image,
+                    volumes=c.get("volumes"),
+                    detach=True
+                )
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             list(executor.map(start_c, to_start)) 

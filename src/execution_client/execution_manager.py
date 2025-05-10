@@ -16,14 +16,26 @@ class ExecutionManager(AbstractExecutionManager):
         # 例: 入力ファイルの配置、環境変数セットなど
 
         input_data = kwargs.pop("input", None)
+        # 既存のコンテナがrunningならexecでコマンド実行
+        if hasattr(self.client, "is_container_running") and self.client.is_container_running(name):
+            # docker execでコマンド実行
+            result = self.client.exec_in(name, command, stdin=input_data)
+            elapsed = None  # 必要なら計測
+            return ExecutionResult(
+                returncode=result.returncode,
+                stdout=result.stdout if result.stdout is not None else "",
+                stderr=result.stderr if result.stderr is not None else "",
+                extra={"elapsed": elapsed, "timeout": False}
+            )
+        # それ以外は従来通りrun
         if input_data is not None:
             # detach=Falseで直接実行し、inputを渡す
             result = self.client.run(name, command=command, detach=False, input=input_data, **kwargs)
             elapsed = None  # 必要なら計測
             return ExecutionResult(
                 returncode=result.returncode,
-                stdout=result.stdout,
-                stderr=result.stderr,
+                stdout=result.stdout if result.stdout is not None else "",
+                stderr=result.stderr if result.stderr is not None else "",
                 extra={"elapsed": elapsed, "timeout": False}
             )
         # プロセス起動（detach=TrueでPopenを取得）
@@ -45,8 +57,8 @@ class ExecutionManager(AbstractExecutionManager):
             self.client.remove(name)
             return ExecutionResult(
                 returncode=proc.returncode,
-                stdout=stdout,
-                stderr=stderr,
+                stdout=stdout if stdout is not None else "",
+                stderr=stderr if stderr is not None else "",
                 extra={"elapsed": elapsed, "timeout": timeout_flag}
             )
         else:
@@ -66,7 +78,7 @@ class ExecutionManager(AbstractExecutionManager):
             self.client.remove(name)
             return ExecutionResult(
                 returncode=None,
-                stdout=None,
-                stderr=None,
+                stdout="",
+                stderr="",
                 extra={"elapsed": elapsed, "timeout": timeout_flag}
             ) 

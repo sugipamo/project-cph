@@ -22,7 +22,7 @@ class CommandExecutor:
             test_env = ExecutionManagerTestEnvironment(self.file_manager, manager)
         else:
             # デフォルトはdocker
-            test_env = DockerTestExecutionEnvironment(self.file_manager)
+            test_env = DockerTestExecutionEnvironment(self.file_manager, env_type="docker")
         self.open_handler = CommandOpen(self.file_manager, self.opener, test_env)
         self.test_handler = CommandTest(self.file_manager, test_env)
         self.submit_handler = CommandSubmit(self.file_manager, test_env)
