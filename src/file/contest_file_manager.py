@@ -3,6 +3,7 @@ from src.file.info_json_manager import InfoJsonManager
 from src.file.config_json_manager import ConfigJsonManager
 from src.file.moveignore_manager import MoveIgnoreManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
+from src.language_env.language_config import LANGUAGE_CONFIGS
 
 class ContestFileManager:
     def __init__(self, file_operator: FileOperator, project_root=None, container_root="/workspace"):
@@ -41,8 +42,7 @@ class ContestFileManager:
         """
         src_dir = self.file_operator.resolve_path(self.upm.contest_current(language_name))
         config_path = self.get_current_config_path()
-        if not src_dir.exists():
-            return
+
         
         info_path = self.get_current_info_path()
         if info_path.exists():
@@ -50,18 +50,21 @@ class ContestFileManager:
             info = manager.data
             old_contest_name = info.get("contest_name")
             old_problem_name = info.get("problem_name")
-            old_language_name = info.get("language_name")
         
-            dst_dir = self.file_operator.resolve_path(self.upm.contest_stocks(old_contest_name, old_problem_name, old_language_name))
-            dst_dir.mkdir(parents=True, exist_ok=True)
             ignore_patterns = self.get_exclude_files(config_path)
-            for item in src_dir.iterdir():
-                if self._is_ignored(item.name, ignore_patterns):
+            for language in LANGUAGE_CONFIGS:
+                src_dir = self.file_operator.resolve_path(self.upm.contest_current(language))
+                if not src_dir.exists():
                     continue
-                if item.is_file():
-                    self.file_operator.copy(item, dst_dir / item.name)
-                elif item.is_dir():
-                    self.file_operator.copytree(item, dst_dir / item.name)
+                dst_dir = self.file_operator.resolve_path(self.upm.contest_stocks(old_contest_name, old_problem_name, language))
+                dst_dir.mkdir(parents=True, exist_ok=True)
+                for item in src_dir.iterdir():
+                    if self._is_ignored(item.name, ignore_patterns):
+                        continue
+                    if item.is_file():
+                        self.file_operator.copy(item, dst_dir / item.name)
+                    elif item.is_dir():
+                        self.file_operator.copytree(item, dst_dir / item.name)
 
     def _move_or_copy_skip_existing(self, src_dir, dst_dir, move=False):
         """
@@ -224,8 +227,13 @@ class ContestFileManager:
         """
         contest_current/test 配下を contest_stocks/{contest_name}/{problem_name}/test にコピーする
         """
+        info_path = self.get_current_info_path()
+        manager = InfoJsonManager(info_path)
+        info = manager.data
+        old_contest_name = info.get("contest_name")
+        old_problem_name = info.get("problem_name")
         src_dir = self.file_operator.resolve_path(self.upm.contest_current("test"))
-        dst_dir = self.file_operator.resolve_path(self.upm.contest_stocks(contest_name, problem_name, "test"))
+        dst_dir = self.file_operator.resolve_path(self.upm.contest_stocks(old_contest_name, old_problem_name, "test"))
         if not src_dir.exists():
             return
         dst_dir.mkdir(parents=True, exist_ok=True)
