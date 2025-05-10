@@ -5,7 +5,7 @@ import json
 import os
 import io
 import builtins
-from src.file_operator import LocalFileOperator
+from src.file.file_operator import LocalFileOperator
 from src.environment.test_environment import DockerTestExecutionEnvironment
 import tempfile
 import subprocess
@@ -137,7 +137,7 @@ def test_command_test(monkeypatch, tmp_path):
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.ResultFormatter", lambda r: type("F", (), {"format": lambda self: "F"})())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
+    monkeypatch.setattr("src.file.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_test.ContainerClient", DummyCtl)
     # os, print
     monkeypatch.setattr(os.path, "exists", lambda path: True)
@@ -333,7 +333,7 @@ def test_command_test_build_fail(monkeypatch):
     monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
+    monkeypatch.setattr("src.file.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_test.ContainerClient", DummyCtl)
     fm = DummyFileManager()
     cmd = CommandTest(fm, DummyEnv())
@@ -369,7 +369,7 @@ def test_command_test_run_fail_and_retry(monkeypatch):
     monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", handler)
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", handler)
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
+    monkeypatch.setattr("src.file.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_test.ContainerClient", DummyCtl)
     fm = DummyFileManager()
     cmd = CommandTest(fm, DummyEnv())
@@ -408,7 +408,7 @@ def test_command_test_multiple_cases_and_containers(monkeypatch):
     monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
+    monkeypatch.setattr("src.file.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_test.ContainerClient", DummyCtl)
     # open, existsのモック
     import builtins, os
@@ -483,7 +483,7 @@ def test_command_test_outfile_not_exists(monkeypatch):
     monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
+    monkeypatch.setattr("src.file.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_test.ContainerClient", DummyCtl)
     # open, existsのモック
     import builtins, os
@@ -527,7 +527,7 @@ def test_run_test_cases_infile_not_exist(monkeypatch):
     monkeypatch.setitem(__import__("src.environment.test_language_handler", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setitem(__import__("src.commands.command_test", fromlist=["HANDLERS"]).HANDLERS, "python", DummyHandler())
     monkeypatch.setattr("src.commands.command_test.InfoJsonManager", DummyInfoJsonManager)
-    monkeypatch.setattr("src.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
+    monkeypatch.setattr("src.file.info_json_manager.InfoJsonManager", DummyInfoJsonManager)
     monkeypatch.setattr("src.commands.command_test.ContainerClient", DummyCtl)
     fm = DummyFileManager()
     cmd = CommandTest(fm, DummyEnv())
@@ -830,7 +830,7 @@ class DummyEnv:
             self.file_operator.makedirs(".temp", exist_ok=True)
             self.file_operator.makedirs(".temp/test", exist_ok=True)
         else:
-            from src.file_operator import LocalFileOperator
+            from src.file.file_operator import LocalFileOperator
             op = LocalFileOperator()
             op.makedirs(".temp", exist_ok=True)
             op.makedirs(".temp/test", exist_ok=True)

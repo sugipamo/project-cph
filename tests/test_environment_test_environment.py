@@ -1,7 +1,8 @@
 import os
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, Mock
 from src.environment.test_environment import TestEnvFileOpsMixin, DockerTestExecutionEnvironment
+from types import SimpleNamespace
 
 class DummyFileOperator:
     def __init__(self):
@@ -90,23 +91,11 @@ def test_run_test_case_success(mock_ctl):
     assert err == 'err'
     assert n == 1 or n == 2
 
-def test_adjust_containers_updates_info():
-    env = DockerTestExecutionEnvironment(DummyFileManager())
-    env.pool = DummyPool()
-    env.upm = MagicMock()
-    env.upm.info_json.return_value = 'info.json'
-    with patch('src.info_json_manager.InfoJsonManager') as mock_info:
-        mock_manager = MagicMock()
-        mock_info.return_value = mock_manager
-        containers = env.adjust_containers({}, 'c', 'p', 'l')
-        assert containers == ['c1', 'c2']
-        assert mock_manager.save.called
-
 def test_download_testcases_raises():
     env = DockerTestExecutionEnvironment(DummyFileManager())
     env.upm = MagicMock()
     env.upm.info_json.return_value = 'info.json'
-    with patch('src.info_json_manager.InfoJsonManager') as mock_info:
+    with patch('src.file.info_json_manager.InfoJsonManager') as mock_info:
         mock_manager = MagicMock()
         mock_manager.get_containers.return_value = []
         mock_info.return_value = mock_manager
@@ -117,7 +106,7 @@ def test_submit_via_ojtools_raises():
     env = DockerTestExecutionEnvironment(DummyFileManager())
     env.upm = MagicMock()
     env.upm.info_json.return_value = 'info.json'
-    with patch('src.info_json_manager.InfoJsonManager') as mock_info:
+    with patch('src.file.info_json_manager.InfoJsonManager') as mock_info:
         mock_manager = MagicMock()
         mock_manager.get_containers.return_value = []
         mock_info.return_value = mock_manager

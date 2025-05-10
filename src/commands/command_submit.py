@@ -4,7 +4,7 @@ CONTAINER_WORKSPACE = "/workspace"
 TEMP_DIR = "/workspace/.temp"
 from .command_test import CommandTest
 from .common import get_project_root_volumes
-from src.info_json_manager import InfoJsonManager
+from src.file.info_json_manager import InfoJsonManager
 from src.execution_client.container.client import ContainerClient
 from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager

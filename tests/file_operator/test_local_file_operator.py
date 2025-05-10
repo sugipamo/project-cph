@@ -4,7 +4,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 import shutil
 from pathlib import Path as PPath
 import pytest
-from file_operator import LocalFileOperator
+from src.file.file_operator import LocalFileOperator
 
 tmp_dir = PPath("tests/file_operator/tmp")
 

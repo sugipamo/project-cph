@@ -1,7 +1,7 @@
 from src.path_manager.file_operator import FileOperator
-from src.info_json_manager import InfoJsonManager
-from src.config_json_manager import ConfigJsonManager
-from src.moveignore_manager import MoveIgnoreManager
+from src.file.info_json_manager import InfoJsonManager
+from src.file.config_json_manager import ConfigJsonManager
+from src.file.moveignore_manager import MoveIgnoreManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 
 class ContestFileManager:

@@ -3,9 +3,9 @@ import shutil
 import json
 from pathlib import Path
 import pytest
-from src.contest_file_manager import ContestFileManager
-from src.file_operator import FileOperator
-from src.file_operator import LocalFileOperator
+from src.file.contest_file_manager import ContestFileManager
+from src.file.file_operator import FileOperator
+from src.file.file_operator import LocalFileOperator
 
 class DummyFileOperator(FileOperator):
     def __init__(self, base_dir):
@@ -148,7 +148,7 @@ def test_problem_exists_in_stocks_and_current(temp_dirs):
     assert manager.problem_exists_in_current("abc500", "e", "python") is False
 
 def test_get_exclude_files_missing(tmp_path):
-    from src.contest_file_manager import ContestFileManager
+    from src.file.contest_file_manager import ContestFileManager
     op = DummyFileOperator(tmp_path)
     manager = ContestFileManager(op)
     # config.jsonが存在しない場合
@@ -162,7 +162,7 @@ def test_get_exclude_files_missing(tmp_path):
     assert manager.get_exclude_files(config_path) == ["^foo$"]
 
 def test_is_ignored_regex(tmp_path):
-    from src.contest_file_manager import ContestFileManager
+    from src.file.contest_file_manager import ContestFileManager
     op = DummyFileOperator(base_dir=tmp_path)
     manager = ContestFileManager(op)
     # パターン一致
@@ -171,7 +171,7 @@ def test_is_ignored_regex(tmp_path):
     assert not manager._is_ignored("bar.txt", [r"^foo\.log$"])
 
 def test_remove_empty_parents(tmp_path):
-    from src.contest_file_manager import ContestFileManager
+    from src.file.contest_file_manager import ContestFileManager
     op = DummyFileOperator(tmp_path)
     manager = ContestFileManager(op)
     base = tmp_path / "a" / "b" / "c"
@@ -183,14 +183,14 @@ def test_remove_empty_parents(tmp_path):
     assert stop_at.exists()
 
 def test_move_from_stocks_to_current_notfound(tmp_path):
-    from src.contest_file_manager import ContestFileManager
+    from src.file.contest_file_manager import ContestFileManager
     op = DummyFileOperator(tmp_path)
     manager = ContestFileManager(op)
     with pytest.raises(FileNotFoundError):
         manager.move_from_stocks_to_current("abc", "nope", "python")
 
 def test_generate_moveignore_readme(tmp_path):
-    from src.contest_file_manager import ContestFileManager
+    from src.file.contest_file_manager import ContestFileManager
     op = DummyFileOperator(tmp_path)
     manager = ContestFileManager(op)
     # contest_currentディレクトリを作成
@@ -201,7 +201,7 @@ def test_generate_moveignore_readme(tmp_path):
     assert "moveignore" in readme.read_text()
 
 def test_prepare_problem_files_config_has_language_id(tmp_path):
-    from src.contest_file_manager import ContestFileManager
+    from src.file.contest_file_manager import ContestFileManager
     op = DummyFileOperator(tmp_path)
     manager = ContestFileManager(op)
     info = tmp_path / "contest_current/system_info.json"
@@ -224,7 +224,7 @@ def test_prepare_problem_files_config_has_language_id(tmp_path):
     assert data["language_id"]["python"] == "9999"
 
 def test_copy_current_to_stocks_moveignore(tmp_path):
-    from src.contest_file_manager import ContestFileManager
+    from src.file.contest_file_manager import ContestFileManager
     class Op(LocalFileOperator):
         def __init__(self, base_dir):
             super().__init__(base_dir)
@@ -252,7 +252,7 @@ def test_copy_current_to_stocks_moveignore(tmp_path):
     assert not op.copied_tree  # dirはコピーされない
 
 def test_move_or_copy_skip_existing(tmp_path):
-    from src.contest_file_manager import ContestFileManager
+    from src.file.contest_file_manager import ContestFileManager
     op = LocalFileOperator(tmp_path)
     manager = ContestFileManager(op)
     src = tmp_path / 'src'
@@ -273,7 +273,7 @@ def test_move_or_copy_skip_existing(tmp_path):
     assert not (src / 'c.txt').exists()
 
 def test_move_from_stocks_to_current_empty_cleanup(tmp_path):
-    from src.contest_file_manager import ContestFileManager
+    from src.file.contest_file_manager import ContestFileManager
     op = LocalFileOperator(tmp_path)
     manager = ContestFileManager(op)
     stocks = tmp_path / 'contest_stocks/abc/x/python'
@@ -293,7 +293,7 @@ def test_move_from_stocks_to_current_empty_cleanup(tmp_path):
     # assert not (tmp_path / 'contest_stocks/abc/x').exists()
 
 def test_copy_from_template_to_current_config_exists(tmp_path):
-    from src.contest_file_manager import ContestFileManager
+    from src.file.contest_file_manager import ContestFileManager
     op = LocalFileOperator(tmp_path)
     manager = ContestFileManager(op)
     template = tmp_path / 'contest_template/python'
@@ -309,7 +309,7 @@ def test_copy_from_template_to_current_config_exists(tmp_path):
     assert data['moveignore'] == ['foo']
 
 def test_stocks_exists_both_cases(tmp_path):
-    from src.contest_file_manager import ContestFileManager
+    from src.file.contest_file_manager import ContestFileManager
     op = LocalFileOperator(tmp_path)
     manager = ContestFileManager(op)
     lang_dir = tmp_path / 'contest_stocks/abc/z/python'

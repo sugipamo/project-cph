@@ -1,4 +1,4 @@
-from .contest_file_manager import ContestFileManager
+from src.file.contest_file_manager import ContestFileManager
 from .commands.command_login import CommandLogin
 from .commands.command_open import CommandOpen
 from .commands.command_test import CommandTest

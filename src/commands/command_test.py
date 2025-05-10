@@ -8,7 +8,7 @@ TEMP_DIR = os.path.abspath(".temp")
 
 from .test_result_formatter import ResultFormatter
 from src.environment.test_language_handler import HANDLERS
-from src.info_json_manager import InfoJsonManager
+from src.file.info_json_manager import InfoJsonManager
 from src.execution_client.container.client import ContainerClient
 from src.environment.test_environment import DockerTestExecutionEnvironment
 from src.execution_client.container.image_manager import ContainerImageManager

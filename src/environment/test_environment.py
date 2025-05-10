@@ -7,6 +7,7 @@ from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.path_manager.file_operator import FileOperator
 from pathlib import Path
+from src.file.info_json_manager import InfoJsonManager
 
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
@@ -152,7 +153,6 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
         containers = self.pool.adjust(requirements)
         # system_info.jsonの更新もここで行う
         if contest_name and problem_name and language_name:
-            from src.info_json_manager import InfoJsonManager
             info_path = self.upm.info_json()
             manager = InfoJsonManager(info_path)
             manager.data["contest_name"] = contest_name
@@ -165,7 +165,6 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
     def download_testcases(self, url, test_dir_host):
         # ojtoolsコンテナでoj downloadを実行し、テストケースを取得
         info_path = self.upm.info_json()
-        from src.info_json_manager import InfoJsonManager
         manager = InfoJsonManager(info_path)
         ojtools_list = manager.get_containers(type="ojtools")
         if not ojtools_list:
@@ -180,7 +179,6 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
     def submit_via_ojtools(self, args, volumes, workdir):
         # ojtoolsコンテナでoj submitを実行
         info_path = self.upm.info_json()
-        from src.info_json_manager import InfoJsonManager
         manager = InfoJsonManager(info_path)
         ojtools_list = manager.get_containers(type="ojtools")
         if not ojtools_list:

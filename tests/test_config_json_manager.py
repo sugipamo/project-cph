@@ -2,7 +2,7 @@ import os
 import tempfile
 import json
 import pytest
-from src.config_json_manager import ConfigJsonManager
+from src.file.config_json_manager import ConfigJsonManager
 
 def test_load_and_save():
     with tempfile.TemporaryDirectory() as tmpdir:

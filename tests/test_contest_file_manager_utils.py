@@ -3,8 +3,8 @@ import shutil
 import tempfile
 import json
 from pathlib import Path
-from src.contest_file_manager import ContestFileManager
-from src.file_operator import MockFileOperator
+from src.file.contest_file_manager import ContestFileManager
+from src.file.file_operator import MockFileOperator
 import pytest
 
 def test_get_exclude_files(tmp_path):

@@ -1,10 +1,10 @@
 from pathlib import Path
-from src.file_operator import MockFileOperator
-from src.file_operator import LocalFileOperator
+from src.file.file_operator import MockFileOperator
+from src.file.file_operator import LocalFileOperator
 import os
 import pytest
 import shutil
-from src.path_manager.file_operator import FileOperator
+from src.file.file_operator import FileOperator
 
 def test_mockfileoperator_create_and_exists():
     op = MockFileOperator()
