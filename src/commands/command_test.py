@@ -114,8 +114,9 @@ class CommandTest:
             cont_in_file = self.to_container_path(abs_in_file)
             # artifact_pathをホストパスに変換
             host_artifact_path = self.upm.to_host_path(artifact_path) or artifact_path
-            # 実行コマンド生成
-            run_cmd = handler.run_command(cont_temp_source_path, host_artifact_path)
+            # temp_source_pathもホストパスに変換
+            host_temp_source_path = self.upm.to_host_path(cont_temp_source_path) or cont_temp_source_path
+            run_cmd = handler.run_command(host_temp_source_path, host_artifact_path)
             # 入力データ取得
             with open(in_file, "r", encoding="utf-8") as f:
                 input_data = f.read()
