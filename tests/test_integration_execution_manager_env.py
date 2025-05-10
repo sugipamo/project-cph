@@ -7,6 +7,11 @@ from src.execution_client.execution_manager import ExecutionManager
 from src.execution_client.local import LocalAsyncClient
 
 class PythonHandler:
+    def build_command(self, source_path):
+        return None, source_path
+    def run_command(self, source_path, artifact_path):
+        import os
+        return ["python3", os.path.basename(source_path)]
     def build(self, manager, name, temp_source_path):
         return True, '', ''
     def run(self, manager, name, in_file, temp_source_path):

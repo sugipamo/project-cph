@@ -29,6 +29,10 @@ class DummyManager:
         return Result()
 
 class DummyHandler:
+    def build_command(self, source_path):
+        return None, source_path
+    def run_command(self, source_path, artifact_path):
+        return ["echo", "dummy"]
     def run(self, manager, name, in_file, source_path):
         result = manager.run_and_measure(name, ['dummy'], input='input')
         ok = result.returncode == 0
@@ -41,17 +45,23 @@ def temp_dir():
     shutil.rmtree(d)
 
 def test_run_test_case_success(temp_dir):
+    in_path = os.path.join(temp_dir, "in.txt")
+    with open(in_path, "w", encoding="utf-8") as f:
+        f.write("input")
     manager = DummyManager(returncode=0, stdout='ok', stderr='')
     env = ExecutionManagerTestEnvironment(file_manager=None, manager=manager, handlers={'dummy': DummyHandler()})
-    ok, stdout, stderr, attempt = env.run_test_case('dummy', 'testcase1', 'in.txt', 'src.txt', retry=2)
+    ok, stdout, stderr, attempt = env.run_test_case('dummy', 'testcase1', in_path, 'src.txt', retry=2)
     assert ok
     assert stdout == 'ok'
     assert attempt == 1
 
 def test_run_test_case_retry(temp_dir):
+    in_path = os.path.join(temp_dir, "in.txt")
+    with open(in_path, "w", encoding="utf-8") as f:
+        f.write("input")
     manager = DummyManager(returncode=0, stdout='ok', stderr='', fail_times=1)
     env = ExecutionManagerTestEnvironment(file_manager=None, manager=manager, handlers={'dummy': DummyHandler()})
-    ok, stdout, stderr, attempt = env.run_test_case('dummy', 'testcase1', 'in.txt', 'src.txt', retry=3)
+    ok, stdout, stderr, attempt = env.run_test_case('dummy', 'testcase1', in_path, 'src.txt', retry=3)
     assert ok
     assert attempt == 2
     assert manager.counter == 1
@@ -133,13 +143,20 @@ def test_submit_via_ojtools_fail(mock_run, temp_dir):
 
 # run_test_case: 全て失敗する場合
 class AlwaysFailHandler:
+    def build_command(self, source_path):
+        return None, source_path
+    def run_command(self, source_path, artifact_path):
+        return ["false"]
     def run(self, manager, name, in_file, source_path):
         return False, '', 'fail'
 
 def test_run_test_case_all_fail(temp_dir):
+    in_path = os.path.join(temp_dir, "in.txt")
+    with open(in_path, "w", encoding="utf-8") as f:
+        f.write("input")
     manager = DummyManager(returncode=1, stdout='', stderr='fail')
     env = ExecutionManagerTestEnvironment(file_manager=None, manager=manager, handlers={'dummy': AlwaysFailHandler()})
-    ok, stdout, stderr, attempt = env.run_test_case('dummy', 'testcase1', 'in.txt', 'src.txt', retry=3)
+    ok, stdout, stderr, attempt = env.run_test_case('dummy', 'testcase1', in_path, 'src.txt', retry=3)
     assert not ok
     assert attempt == 3
     assert stderr == 'fail'
