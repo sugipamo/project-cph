@@ -1,7 +1,7 @@
 import os
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.file.file_operator import FileOperator
-from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, TEMP_DIR, OJTOOLS_COOKIE_HOST, OJTOOLS_COOKIE_CONT
+from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, TEMP_DIR, CONTAINER_TEMP_DIR, OJTOOLS_COOKIE_HOST, OJTOOLS_COOKIE_CONT
 # === 定数定義 ===
 
 from .test_result_formatter import ResultFormatter
@@ -88,11 +88,11 @@ class CommandTest:
         requirements = [
             {"type": "test", "language": language_name, "count": test_case_count, "volumes": {
                 HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
-                TEMP_DIR: "/workspace/.temp"
+                TEMP_DIR: CONTAINER_TEMP_DIR
             }},
             {"type": "ojtools", "count": 1, "volumes": {
                 HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
-                TEMP_DIR: "/workspace/.temp",
+                TEMP_DIR: CONTAINER_TEMP_DIR,
                 OJTOOLS_COOKIE_HOST: OJTOOLS_COOKIE_CONT
             }}
         ]
@@ -111,11 +111,11 @@ class CommandTest:
         requirements = [
             {"type": "test", "language": language_name, "count": test_case_count, "volumes": {
                 HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
-                TEMP_DIR: "/workspace/.temp"
+                TEMP_DIR: CONTAINER_TEMP_DIR
             }},
             {"type": "ojtools", "count": 1, "volumes": {
                 HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
-                TEMP_DIR: "/workspace/.temp",
+                TEMP_DIR: CONTAINER_TEMP_DIR,
                 OJTOOLS_COOKIE_HOST: OJTOOLS_COOKIE_CONT
             }}
         ]
