@@ -1,97 +1,42 @@
 from src.path_manager.unified_path_manager import UnifiedPathManager
+from src.language_env.profiles import get_profile
 import os
 HOST_PROJECT_ROOT = __import__('os').path.abspath('.')
 CONTAINER_WORKSPACE = '/workspace'
 upm = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE)
 
-class TestLanguageHandler:
-    def build(self, manager, name, temp_source_path):
-        # Python, Pypyはビルド不要なので常に成功扱い
-        return True, "", ""
-    def run(self, manager, name, in_file, temp_source_path, host_in_file=None):
-        raise NotImplementedError
+class GenericTestHandler:
+    def __init__(self, language, env_type):
+        self.profile = get_profile(language, env_type)
+        self.config = self.profile.language_config
 
-class PythonTestHandler(TestLanguageHandler):
     def build(self, manager, name, temp_source_path):
-        return True, "", ""
-    def run(self, manager, name, in_file, temp_source_path, host_in_file=None):
-        # managerがContainerClientならコンテナ内で実行
-        if hasattr(manager, 'exec_in_container'):
-            # host_in_fileから内容を読む
-            if host_in_file is None:
-                raise ValueError("host_in_file must be provided for container execution")
-            with open(host_in_file, "r", encoding="utf-8") as f:
-                input_data = f.read()
-            cmd = ["python3", temp_source_path]
-            result = manager.exec_in_container(name, cmd, stdin=input_data)
-            ok = result.returncode == 0
-            stdout = result.stdout
-            stderr = result.stderr
-            return ok, stdout, stderr
-        else:
-            # ローカル実行用: main.pyにinputを渡して実行
-            cmd = ["python3", temp_source_path]
-            with open(in_file, "r", encoding="utf-8") as f:
-                input_data = f.read()
-            result = manager.run_and_measure(name, cmd, timeout=None, input=input_data)
+        if self.config.build_cmd:
+            # build_cmd内のテンプレート展開
+            cmd = [c.replace("{source}", temp_source_path) for c in self.config.build_cmd]
+            result = manager.run_and_measure(name, cmd, timeout=None, cwd=os.path.dirname(temp_source_path))
             ok = result.returncode == 0
             return ok, result.stdout, result.stderr
-
-class PypyTestHandler(TestLanguageHandler):
-    def build(self, manager, name, temp_source_path):
-        return True, "", ""
-    def run(self, manager, name, in_file, temp_source_path, host_in_file=None):
-        if hasattr(manager, 'exec_in_container'):
-            if host_in_file is None:
-                raise ValueError("host_in_file must be provided for container execution")
-            with open(host_in_file, "r", encoding="utf-8") as f:
-                input_data = f.read()
-            cmd = ["pypy3", temp_source_path]
-            result = manager.exec_in_container(name, cmd, stdin=input_data)
-            ok = result.returncode == 0
-            stdout = result.stdout
-            stderr = result.stderr
-            return ok, stdout, stderr
         else:
-            cmd = ["pypy3", temp_source_path]
-            with open(in_file, "r", encoding="utf-8") as f:
-                input_data = f.read()
-            result = manager.run_and_measure(name, cmd, timeout=None, input=input_data)
-            ok = result.returncode == 0
-            return ok, result.stdout, result.stderr
+            return True, "", ""
 
-class RustTestHandler(TestLanguageHandler):
-    def build(self, manager, name, temp_source_path):
-        # temp_source_pathは.temp/rustディレクトリ
-        cargo_dir = os.path.abspath(temp_source_path)
-        cmd = ["cargo", "build", "--release"]
-        result = manager.run_and_measure(name, cmd, timeout=None, cwd=cargo_dir)
+    def run(self, manager, name, in_file, temp_source_path, host_in_file=None):
+        # コマンドテンプレートを展開
+        bin_path = self.config.bin_path
+        cmd = [c.replace("{source}", temp_source_path).replace("{bin_path}", bin_path or "") for c in self.config.run_cmd]
+        input_path = host_in_file if host_in_file is not None else in_file
+        with open(input_path, "r", encoding="utf-8") as f:
+            input_data = f.read()
+        if hasattr(manager, 'exec_in_container'):
+            result = manager.exec_in_container(name, cmd, stdin=input_data)
+        else:
+            result = manager.run_and_measure(name, cmd, timeout=None, input=input_data)
         ok = result.returncode == 0
         return ok, result.stdout, result.stderr
-    def run(self, manager, name, in_file, temp_source_path, host_in_file=None):
-        cargo_dir = os.path.abspath(temp_source_path)
-        bin_path = os.path.join(cargo_dir, "target/release/rust")
-        if hasattr(manager, 'exec_in_container'):
-            if host_in_file is None:
-                raise ValueError("host_in_file must be provided for container execution")
-            with open(host_in_file, "r", encoding="utf-8") as f:
-                input_data = f.read()
-            cmd = [bin_path]
-            result = manager.exec_in_container(name, cmd, stdin=input_data)
-            ok = result.returncode == 0
-            stdout = result.stdout
-            stderr = result.stderr
-            return ok, stdout, stderr
-        else:
-            cmd = [bin_path]
-            with open(in_file, "r", encoding="utf-8") as f:
-                input_data = f.read()
-            result = manager.run_and_measure(name, cmd, timeout=None, input=input_data)
-            ok = result.returncode == 0
-            return ok, result.stdout, result.stderr
 
+# HANDLERSの生成例（local環境用）
 HANDLERS = {
-    "python": PythonTestHandler(),
-    "pypy": PypyTestHandler(),
-    "rust": RustTestHandler(),
+    "python": GenericTestHandler("python", "local"),
+    "pypy": GenericTestHandler("pypy", "local"),
+    "rust": GenericTestHandler("rust", "local"),
 } 

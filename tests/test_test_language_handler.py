@@ -1,5 +1,5 @@
 import pytest
-from src.environment.test_language_handler import PythonTestHandler, PypyTestHandler, RustTestHandler, HANDLERS
+from src.environment.test_language_handler import HANDLERS
 import os
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from pathlib import Path
@@ -22,19 +22,16 @@ def test_handlers_mapping():
     assert 'pypy' in HANDLERS
     assert 'rust' in HANDLERS
 
+@pytest.mark.skip(reason="TestLanguageHandlerは廃止されたためスキップ")
 def test_base_handler_run_notimplemented():
-    from src.environment.test_language_handler import TestLanguageHandler
-    handler = TestLanguageHandler()
-    import pytest
-    with pytest.raises(NotImplementedError):
-        handler.run(None, None, None, None)
+    pass
 
 def make_dummy_file(path, content):
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
 
 def test_python_handler_build_and_run(tmp_path):
-    handler = PythonTestHandler()
+    handler = HANDLERS["python"]
     # buildは常に成功
     ok, out, err = handler.build(None, None, None)
     assert ok
@@ -51,7 +48,7 @@ def test_python_handler_build_and_run(tmp_path):
     assert result[2] == "err"
 
 def test_pypy_handler_build_and_run(tmp_path):
-    handler = PypyTestHandler()
+    handler = HANDLERS["pypy"]
     ok, out, err = handler.build(None, None, None)
     assert ok
     manager = MagicMock()
@@ -65,7 +62,7 @@ def test_pypy_handler_build_and_run(tmp_path):
     assert result[2] == "err"
 
 def test_rust_handler_build_and_run(tmp_path):
-    handler = RustTestHandler()
+    handler = HANDLERS["rust"]
     # build
     manager = MagicMock()
     manager.run_and_measure.return_value = MagicMock(returncode=0, stdout="out", stderr="err")
@@ -90,7 +87,7 @@ def test_rust_handler_build_and_run(tmp_path):
     assert result[2] == "err2"
 
 def test_python_handler_run_fail(tmp_path):
-    handler = PythonTestHandler()
+    handler = HANDLERS["python"]
     manager = MagicMock()
     manager.run_and_measure.return_value = MagicMock(returncode=1, stdout="", stderr="err")
     manager.exec_in_container = MagicMock(return_value=subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="err"))
@@ -101,7 +98,7 @@ def test_python_handler_run_fail(tmp_path):
     assert result[2] == "err"
 
 def test_rust_handler_run_fail(tmp_path):
-    handler = RustTestHandler()
+    handler = HANDLERS["rust"]
     manager = MagicMock()
     manager.run_and_measure.return_value = MagicMock(returncode=1, stdout="", stderr="err")
     manager.exec_in_container = MagicMock(return_value=subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="err"))

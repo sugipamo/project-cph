@@ -5,25 +5,39 @@ from .language_env_profile import LanguageEnvProfile
 # Python（Docker）
 PYTHON_DOCKER_PROFILE = LanguageEnvProfile(
     LANGUAGE_CONFIGS["python"],
-    ExecutionEnvConfig(type="docker", key="python")
+    ExecutionEnvConfig(type="docker")
 )
 
 # Python（ローカル）
 PYTHON_LOCAL_PROFILE = LanguageEnvProfile(
     LANGUAGE_CONFIGS["python"],
-    ExecutionEnvConfig(type="local", key="python")
+    ExecutionEnvConfig(type="local")
+)
+
+# Pypy（ローカル）
+PYPY_LOCAL_PROFILE = LanguageEnvProfile(
+    LANGUAGE_CONFIGS["pypy"],
+    ExecutionEnvConfig(type="local")
 )
 
 # Rust（Docker）
 RUST_DOCKER_PROFILE = LanguageEnvProfile(
     LANGUAGE_CONFIGS["rust"],
-    ExecutionEnvConfig(type="docker", key="rust")
+    ExecutionEnvConfig(type="docker")
+)
+
+# Rust（ローカル）
+RUST_LOCAL_PROFILE = LanguageEnvProfile(
+    LANGUAGE_CONFIGS["rust"],
+    ExecutionEnvConfig(type="local")
 )
 
 PROFILES = {
     ("python", "docker"): PYTHON_DOCKER_PROFILE,
     ("python", "local"): PYTHON_LOCAL_PROFILE,
+    ("pypy", "local"): PYPY_LOCAL_PROFILE,
     ("rust", "docker"): RUST_DOCKER_PROFILE,
+    ("rust", "local"): RUST_LOCAL_PROFILE,
 }
 
 def get_profile(language, env_type):

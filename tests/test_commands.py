@@ -10,6 +10,7 @@ from src.environment.test_environment import DockerTestExecutionEnvironment
 import tempfile
 import subprocess
 from src.commands.command_test import CommandTest, UnifiedPathManager, CONTAINER_WORKSPACE
+from src.environment.test_language_handler import HANDLERS
 
 # 共通のダミーCtlクラス
 class BaseDummyCtl:
@@ -632,7 +633,7 @@ def test_run_single_test_case_retry_integration():
 
 def test_run_test_cases_integration():
     from src.commands.command_test import CommandTest
-    from src.environment.test_language_handler import PythonTestHandler, HANDLERS
+    from src.environment.test_language_handler import HANDLERS
     class DummyCtl(BaseDummyCtl):
         def __init__(self):
             self.running = set()
