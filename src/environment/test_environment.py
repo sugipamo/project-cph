@@ -109,10 +109,10 @@ class TestExecutionEnvironment(ABC):
         pass
 
 class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironment):
-    def __init__(self, file_manager, handlers=None, env_type='local'):
+    def __init__(self, file_manager, handlers=None, env_type='local', ctl=None, exec_manager=None):
         self.file_manager = file_manager
         self.file_operator = file_manager.file_operator if file_manager and hasattr(file_manager, 'file_operator') else None
-        self.ctl = ContainerClient()
+        self.ctl = ctl if ctl is not None else ContainerClient()
         from src.environment.test_language_handler import HANDLERS as DEFAULT_HANDLERS
         self.handlers = handlers if handlers is not None else DEFAULT_HANDLERS
         self.pool = ContainerPool({})
@@ -125,8 +125,10 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
         self.unified_path_manager = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, mounts=mounts)
         self.upm = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, mounts=mounts)
         self.env_type = env_type
-        if env_type == 'docker':
-            self.exec_manager = ExecutionManager(ContainerClient())
+        if exec_manager is not None:
+            self.exec_manager = exec_manager
+        elif env_type == 'docker':
+            self.exec_manager = ExecutionManager(self.ctl)
         else:
             self.exec_manager = ExecutionManager(LocalAsyncClient())
 
@@ -282,4 +284,30 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
                 "attempt": attempt,
             }
             results.append(result_obj)
+        return results
+
+    async def run_test_all_cases(self, contest_name, problem_name, language_name):
+        # 1. テスト用ソース・テストケース準備
+        temp_source_path = self.prepare_source_code(contest_name, problem_name, language_name)
+        temp_test_dir = self.prepare_test_cases(contest_name, problem_name)
+        file_operator = self.file_manager.file_operator if self.file_manager else None
+        temp_in_files, _ = self.collect_test_cases(temp_test_dir, file_operator)
+        # 2. requirements生成・コンテナ調整
+        test_case_count = len(temp_in_files)
+        requirements = [
+            {"type": "test", "language": language_name, "count": test_case_count, "volumes": {
+                str(self.upm.project_root): str(self.upm.container_root),
+                str(self.upm.project_root + "/.temp"): str(self.upm.container_root + "/.temp")
+            }},
+            {"type": "ojtools", "count": 1, "volumes": {
+                str(self.upm.project_root): str(self.upm.container_root),
+                str(self.upm.project_root + "/.temp"): str(self.upm.container_root + "/.temp"),
+                "/home/cphelper/.local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
+            }}
+        ]
+        self.adjust_containers(requirements, contest_name, problem_name, language_name)
+        # 3. テスト実行
+        from src.environment.test_language_handler import HANDLERS
+        handler = HANDLERS[language_name]
+        results = self.run_test_cases(temp_source_path, temp_in_files, language_name, handler)
         return results 

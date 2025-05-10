@@ -8,6 +8,7 @@ from src.environment.test_environment import DockerTestExecutionEnvironment
 from src.environment.execution_manager_test_environment import ExecutionManagerTestEnvironment
 from src.execution_client.execution_manager import ExecutionManager
 from src.execution_client.local import LocalAsyncClient
+from src.execution_client.container.client import ContainerClient
 
 class CommandExecutor:
     def __init__(self, file_manager: ContestFileManager = None, opener: Opener = None, exec_mode: str = None):
@@ -21,8 +22,9 @@ class CommandExecutor:
             manager = ExecutionManager(local_client)
             test_env = ExecutionManagerTestEnvironment(self.file_manager, manager)
         else:
-            # デフォルトはdocker
-            test_env = DockerTestExecutionEnvironment(self.file_manager, env_type="docker")
+            container_client = ContainerClient()
+            exec_manager = ExecutionManager(container_client)
+            test_env = DockerTestExecutionEnvironment(self.file_manager, env_type="docker", ctl=container_client, exec_manager=exec_manager)
         self.open_handler = CommandOpen(self.file_manager, self.opener, test_env)
         self.test_handler = CommandTest(self.file_manager, test_env)
         self.submit_handler = CommandSubmit(self.file_manager, test_env)

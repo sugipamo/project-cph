@@ -10,6 +10,8 @@ class UnifiedPathManager:
     プロジェクト内の論理パス管理・ホスト⇔コンテナ変換・マウント管理を一元化するクラス。
     """
     def __init__(self, project_root=None, container_root="/workspace", mounts: Optional[List[Tuple[Path, Path]]] = None):
+        self.project_root = str(project_root) if project_root else str(Path.cwd().resolve())
+        self.container_root = str(container_root)
         self.project_path = ProjectPathManager(project_root)
         if mounts is None:
             # デフォルトはproject_root→container_rootの1ペア

@@ -79,48 +79,11 @@ class CommandTest:
             print("")
 
     async def run_test(self, contest_name, problem_name, language_name):
-        import pathlib
-        file_operator = self.file_manager.file_operator if self.file_manager else None
-        temp_source_path, temp_test_dir = self.prepare_test_environment(contest_name, problem_name, language_name)
-        temp_in_files, _ = self.collect_test_cases(temp_test_dir, file_operator)
-        # --- 必要なコンテナ数を調整し、system_info.jsonを最新化 ---
-        test_case_count = len(temp_in_files)
-        requirements = [
-            {"type": "test", "language": language_name, "count": test_case_count, "volumes": {
-                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
-                TEMP_DIR: CONTAINER_TEMP_DIR
-            }},
-            {"type": "ojtools", "count": 1, "volumes": {
-                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
-                TEMP_DIR: CONTAINER_TEMP_DIR,
-                OJTOOLS_COOKIE_HOST: OJTOOLS_COOKIE_CONT
-            }}
-        ]
-        containers = self.env.adjust_containers(requirements, contest_name, problem_name, language_name)
-        # --- テスト実行 ---
-        results = await self.run_test_cases(temp_source_path, temp_in_files, language_name)
+        results = await self.env.run_test_all_cases(contest_name, problem_name, language_name)
         self.print_test_results(results)
 
     async def run_test_return_results(self, contest_name, problem_name, language_name):
-        import pathlib
-        file_operator = self.file_manager.file_operator if self.file_manager else None
-        temp_source_path, temp_test_dir = self.prepare_test_environment(contest_name, problem_name, language_name)
-        temp_in_files, _ = self.collect_test_cases(temp_test_dir, file_operator)
-        # --- 必要なコンテナ数を調整し、system_info.jsonを最新化 ---
-        test_case_count = len(temp_in_files)
-        requirements = [
-            {"type": "test", "language": language_name, "count": test_case_count, "volumes": {
-                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
-                TEMP_DIR: CONTAINER_TEMP_DIR
-            }},
-            {"type": "ojtools", "count": 1, "volumes": {
-                HOST_PROJECT_ROOT: CONTAINER_WORKSPACE,
-                TEMP_DIR: CONTAINER_TEMP_DIR,
-                OJTOOLS_COOKIE_HOST: OJTOOLS_COOKIE_CONT
-            }}
-        ]
-        containers = self.env.adjust_containers(requirements, contest_name, problem_name, language_name)
-        results = await self.run_test_cases(temp_source_path, temp_in_files, language_name)
+        results = await self.env.run_test_all_cases(contest_name, problem_name, language_name)
         return results
 
     def is_all_ac(self, results):
