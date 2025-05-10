@@ -1,5 +1,5 @@
 import pytest
-from execution_client.dummy.client import DummyExecutionClient
+from src.execution_client.dummy import DummyExecutionClient
 
 def test_run_not_implemented():
     client = DummyExecutionClient()

@@ -7,7 +7,7 @@ from .commands.opener import Opener
 from src.environment.test_environment import DockerTestExecutionEnvironment
 from src.environment.execution_manager_test_environment import ExecutionManagerTestEnvironment
 from execution_client.execution_manager import ExecutionManager
-from execution_client.local.client import LocalAsyncClient
+from src.execution_client.local import LocalAsyncClient
 from execution_client.container.client import ContainerClient
 
 class CommandExecutor:
