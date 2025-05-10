@@ -8,13 +8,15 @@ from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.file.file_operator import FileOperator
 from pathlib import Path
 from src.file.info_json_manager import InfoJsonManager
+from src.language_env.profiles import get_profile
 
 HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
 
 class TestEnvFileOpsMixin:
     def prepare_source_code(self, contest_name, problem_name, language_name):
-        temp_dir = Path(".temp")
+        profile = get_profile(language_name, 'local')
+        temp_dir = Path(profile.env_config.temp_dir)
         if language_name == "rust":
             import glob
             src_dir = self.upm.contest_current("rust")
@@ -72,7 +74,8 @@ class TestEnvFileOpsMixin:
             return str(dst)
 
     def prepare_test_cases(self, contest_name, problem_name):
-        temp_dir = Path(".temp")
+        profile = get_profile("python", 'local')  # テストケースは言語依存しない場合はpythonでOK
+        temp_dir = Path(profile.env_config.temp_dir)
         test_dir = self.upm.contest_current("test")
         temp_test_dir = temp_dir / "test"
         if self.file_operator:
