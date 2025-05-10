@@ -9,26 +9,29 @@ class GenericTestHandler:
 
     def build_command(self, temp_source_path):
         """
-        ビルドコマンドと成果物パスを返す（実行は外部に委譲）
+        ビルドコマンドを返す（実行は外部に委譲）
         """
-        artifact_path = None
         if self.config.build_cmd:
             cmd = [c.format(source=str(temp_source_path)) for c in self.config.build_cmd]
-            if self.config.name == "rust":
-                artifact_path = os.path.join(temp_source_path, "target/release/rust")
-            elif self.config.name in ("python", "pypy"):
-                artifact_path = temp_source_path
-            return cmd, artifact_path
+            return cmd
         else:
-            if self.config.name in ("python", "pypy"):
-                artifact_path = temp_source_path
-            return None, artifact_path
+            return None
 
-    def run_command(self, temp_source_path, artifact_path):
+    def get_bin_path(self, temp_source_path):
+        if self.config.name == "rust":
+            return os.path.join(temp_source_path, "target/release/rust")
+        elif self.config.name in ("python", "pypy"):
+            return temp_source_path
+        elif self.config.bin_path:
+            return os.path.join(temp_source_path, self.config.bin_path)
+        else:
+            return temp_source_path
+
+    def run_command(self, temp_source_path):
         """
         実行コマンドを返す（実行は外部に委譲）
         """
-        bin_path = str(artifact_path) if artifact_path else str(self.config.bin_path or "")
+        bin_path = self.get_bin_path(temp_source_path)
         cmd = [c.format(source=str(temp_source_path), bin_path=bin_path) for c in self.config.run_cmd]
         return cmd
 

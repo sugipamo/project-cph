@@ -27,13 +27,13 @@ class ExecutionManagerTestEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironm
 
     def run_test_case(self, language_name, name, in_file, source_path, retry=3):
         handler = self.handlers[language_name]
-        # ビルドコマンドと成果物パスを取得
-        build_cmd, artifact_path = handler.build_command(source_path)
+        # ビルドコマンドを取得
+        build_cmd = handler.build_command(source_path)
         if build_cmd:
             build_proc = subprocess.run(build_cmd, capture_output=True, text=True)
             if build_proc.returncode != 0:
                 return False, build_proc.stdout, build_proc.stderr, 1
-        run_cmd = handler.run_command(source_path, artifact_path)
+        run_cmd = handler.run_command(source_path)
         with open(in_file, "r", encoding="utf-8") as f:
             input_data = f.read()
         for attempt in range(retry):
