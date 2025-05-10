@@ -198,4 +198,87 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
         ok = result.returncode == 0
         stdout = result.stdout
         stderr = result.stderr
-        return ok, stdout, stderr 
+        return ok, stdout, stderr
+
+    def collect_test_cases(self, temp_test_dir, file_operator=None):
+        import glob
+        import os
+        if file_operator:
+            in_files = sorted(file_operator.glob(f"{temp_test_dir}/*.in"))
+        else:
+            in_files = sorted(glob.glob(f"{temp_test_dir}/*.in"))
+        out_files = [str(f).replace('.in', '.out') for f in in_files]
+        return in_files, out_files
+
+    def get_test_containers_from_info(self):
+        info_path = self.upm.info_json()
+        manager = InfoJsonManager(info_path)
+        return [c["name"] for c in manager.get_containers(type="test")]
+
+    def build_in_container(self, handler, container, source_path):
+        cmd, artifact_path = handler.build_command(source_path)
+        if cmd is None:
+            return True, '', '', artifact_path
+        abs_source_path = self.upm.to_host_path(source_path) or source_path
+        host_cwd = abs_source_path if handler.config.name == "rust" else os.path.dirname(abs_source_path)
+        import subprocess
+        process = subprocess.Popen(cmd, cwd=host_cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        stdout = ''
+        for line in process.stdout:
+            print(line, end='')
+            stdout += line
+        process.wait()
+        ok = process.returncode == 0
+        return ok, stdout, '', artifact_path
+
+    def run_test_cases(self, temp_source_path, temp_in_files, language_name, handler):
+        import os
+        test_containers = self.get_test_containers_from_info()
+        # --- ビルド工程 ---
+        abs_temp_source_path = os.path.abspath(temp_source_path)
+        cont_temp_source_path = self.to_container_path(abs_temp_source_path)
+        ok, stdout, stderr, artifact_path = self.build_in_container(handler, test_containers[0], cont_temp_source_path)
+        if not ok:
+            print(f"[エラー] ビルド失敗\n{stderr}")
+            return []
+        # --- テスト実行 ---
+        results = []
+        for i, in_file in enumerate(temp_in_files):
+            container = test_containers[i] if i < len(test_containers) else test_containers[-1]
+            abs_in_file = os.path.abspath(in_file)
+            cont_in_file = self.to_container_path(abs_in_file)
+            host_artifact_path = self.upm.to_host_path(artifact_path) or artifact_path
+            host_temp_source_path = self.upm.to_host_path(cont_temp_source_path) or cont_temp_source_path
+            run_cmd = handler.run_command(host_temp_source_path, host_artifact_path)
+            with open(in_file, "r", encoding="utf-8") as f:
+                input_data = f.read()
+            abs_run_cwd = self.upm.to_host_path(cont_temp_source_path) or cont_temp_source_path
+            run_cwd = abs_run_cwd if handler.config.name == "rust" else os.path.dirname(abs_run_cwd)
+            import subprocess
+            process = subprocess.Popen(run_cmd, cwd=run_cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, stdin=subprocess.PIPE)
+            stdout, _ = process.communicate(input=input_data)
+            ok = process.returncode == 0
+            stderr = ''
+            attempt = 1
+            out_file = str(in_file).replace('.in', '.out')
+            expected = ""
+            file_operator = self.file_manager.file_operator if self.file_manager else None
+            if file_operator:
+                if file_operator.exists(out_file):
+                    with file_operator.open(out_file, "r", encoding="utf-8") as f:
+                        expected = f.read()
+            else:
+                if os.path.exists(out_file):
+                    with open(out_file, "r", encoding="utf-8") as f:
+                        expected = f.read()
+            result_obj = {
+                "result": (0 if ok else 1, stdout, stderr),
+                "expected": expected,
+                "time": 0.0,
+                "name": os.path.basename(in_file),
+                "in_file": in_file,
+                "container": container,
+                "attempt": attempt,
+            }
+            results.append(result_obj)
+        return results 
