@@ -43,16 +43,25 @@ class ContestFileManager:
         config_path = self.get_current_config_path()
         if not src_dir.exists():
             return
-        dst_dir = self.file_operator.resolve_path(self.upm.contest_stocks(contest_name, problem_name, language_name))
-        dst_dir.mkdir(parents=True, exist_ok=True)
-        ignore_patterns = self.get_exclude_files(config_path)
-        for item in src_dir.iterdir():
-            if self._is_ignored(item.name, ignore_patterns):
-                continue
-            if item.is_file():
-                self.file_operator.copy(item, dst_dir / item.name)
-            elif item.is_dir():
-                self.file_operator.copytree(item, dst_dir / item.name)
+        
+        info_path = self.get_current_info_path()
+        if info_path.exists():
+            manager = InfoJsonManager(info_path)
+            info = manager.data
+            old_contest_name = info.get("contest_name")
+            old_problem_name = info.get("problem_name")
+            old_language_name = info.get("language_name")
+        
+            dst_dir = self.file_operator.resolve_path(self.upm.contest_stocks(old_contest_name, old_problem_name, old_language_name))
+            dst_dir.mkdir(parents=True, exist_ok=True)
+            ignore_patterns = self.get_exclude_files(config_path)
+            for item in src_dir.iterdir():
+                if self._is_ignored(item.name, ignore_patterns):
+                    continue
+                if item.is_file():
+                    self.file_operator.copy(item, dst_dir / item.name)
+                elif item.is_dir():
+                    self.file_operator.copytree(item, dst_dir / item.name)
 
     def _move_or_copy_skip_existing(self, src_dir, dst_dir, move=False):
         """
@@ -232,6 +241,9 @@ class ContestFileManager:
         次回実行時の初期値として利用できるようにする。
         引数がNoneの場合はsystem_info.jsonの値を使う。
         """
+
+        self.copy_current_to_stocks(contest_name, problem_name, language_name)
+        self.copy_test_to_stocks(contest_name, problem_name)
         info_path = self.get_current_info_path()
         config_path = self.get_current_config_path()
         if info_path.exists():
@@ -250,11 +262,7 @@ class ContestFileManager:
             "pypy": "5078",
             "rust": "5054"
         })
-        # stocksにコピー
-        self.copy_current_to_stocks(contest_name, problem_name, language_name)
-        self.copy_test_to_stocks(contest_name, problem_name)
-        if self.stocks_exists(contest_name, problem_name, language_name):
-            self.copy_from_stocks_to_current(contest_name, problem_name, language_name)
+        self.copy_from_stocks_to_current(contest_name, problem_name, language_name)
         if not self.file_operator.resolve_path(self.upm.contest_current(language_name)).exists():
             if self.file_operator.resolve_path(self.upm.contest_template(language_name)).exists():
                 self.copy_from_template_to_current(contest_name, problem_name, language_name)

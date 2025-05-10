@@ -244,6 +244,9 @@ def test_copy_current_to_stocks_moveignore(tmp_path):
     (src_dir / 'dir' / 'a.txt').write_text('z')
     config_path = tmp_path / 'contest_current/config.json'
     config_path.write_text(json.dumps({'moveignore': ['ignore.txt', 'dir']}))
+    # info.json を作成
+    info_path = tmp_path / 'contest_current/system_info.json'
+    info_path.write_text(json.dumps({'contest_name': 'abc', 'problem_name': 'a', 'language_name': 'python'}))
     manager.copy_current_to_stocks('abc', 'a', 'python')
     # ignore.txt, dirはコピーされない
     copied_files = [str(dst) for src, dst in op.copied]
