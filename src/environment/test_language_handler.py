@@ -1,9 +1,6 @@
-from src.path_manager.unified_path_manager import UnifiedPathManager
+from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, upm
 from src.language_env.profiles import get_profile
 import os
-HOST_PROJECT_ROOT = __import__('os').path.abspath('.')
-CONTAINER_WORKSPACE = '/workspace'
-upm = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE)
 
 class GenericTestHandler:
     def __init__(self, language, env_type):

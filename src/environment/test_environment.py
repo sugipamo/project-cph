@@ -9,9 +9,7 @@ from src.file.file_operator import FileOperator
 from pathlib import Path
 from src.file.info_json_manager import InfoJsonManager
 from src.language_env.profiles import get_profile
-
-HOST_PROJECT_ROOT = os.path.abspath(".")
-CONTAINER_WORKSPACE = "/workspace"
+from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE
 
 class TestEnvFileOpsMixin:
     def prepare_source_code(self, contest_name, problem_name, language_name):

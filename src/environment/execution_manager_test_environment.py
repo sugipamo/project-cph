@@ -1,6 +1,7 @@
 from src.environment.test_environment import TestExecutionEnvironment, TestEnvFileOpsMixin
 from src.execution_client.execution_manager import ExecutionManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
+from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, upm
 import os
 import shutil
 import subprocess
@@ -48,10 +49,12 @@ class ExecutionManagerTestEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironm
         print(result.stdout)
 
     def submit_via_ojtools(self, args, volumes, workdir):
-        # workdirが/workspaceで始まる場合はローカルパスに変換
-        if workdir.startswith("/workspace"):
-            # 例: /workspace/contest_current/python → ./contest_current/python
-            workdir = "." + workdir[len("/workspace"):]
+        host_workdir = upm.to_host_path(workdir)
+        if host_workdir is not None:
+            # プロジェクトルートからの相対パスに変換
+            workdir = os.path.relpath(str(host_workdir), HOST_PROJECT_ROOT)
+            if not workdir.startswith('.'):
+                workdir = './' + workdir
         cookie_path = "/home/cphelper/.local/share/online-judge-tools/cookie.jar"
         if not args:
             args = []
