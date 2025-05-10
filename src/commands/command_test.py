@@ -12,6 +12,8 @@ from src.file.info_json_manager import InfoJsonManager
 from src.execution_client.container.client import ContainerClient
 from src.environment.test_environment import DockerTestExecutionEnvironment
 from src.execution_client.container.image_manager import ContainerImageManager
+from src.execution_client.execution_manager import ExecutionManager
+from src.execution_client.local import LocalAsyncClient
 
 class CommandTest:
     def __init__(self, file_manager, test_env):
@@ -44,7 +46,21 @@ class CommandTest:
         return self.env.to_container_path(host_path)
 
     def build_in_container(self, ctl, handler, container, source_path):
-        return handler.build(ctl, container, source_path)
+        cmd, artifact_path = handler.build_command(source_path)
+        if cmd is None:
+            return True, '', '', artifact_path
+        # Rustはビルドディレクトリで実行
+        abs_source_path = self.upm.to_host_path(source_path) or source_path
+        host_cwd = abs_source_path if handler.config.name == "rust" else os.path.dirname(abs_source_path)
+        import subprocess
+        process = subprocess.Popen(cmd, cwd=host_cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        stdout = ''
+        for line in process.stdout:
+            print(line, end='')
+            stdout += line
+        process.wait()
+        ok = process.returncode == 0
+        return ok, stdout, '', artifact_path
 
     def select_container_for_case(self, test_containers, i):
         return test_containers[i] if i < len(test_containers) else test_containers[-1]
@@ -84,7 +100,7 @@ class CommandTest:
         # --- ビルド工程 ---
         abs_temp_source_path = os.path.abspath(temp_source_path)
         cont_temp_source_path = self.to_container_path(abs_temp_source_path)
-        ok, stdout, stderr = self.build_in_container(ctl, handler, test_containers[0], cont_temp_source_path)
+        ok, stdout, stderr, artifact_path = self.build_in_container(ctl, handler, test_containers[0], cont_temp_source_path)
         if not ok:
             print(f"[エラー] ビルド失敗\n{stderr}")
             return []
@@ -96,7 +112,23 @@ class CommandTest:
             self.ensure_container_running(ctl, container, image)
             abs_in_file = os.path.abspath(in_file)
             cont_in_file = self.to_container_path(abs_in_file)
-            ok, stdout, stderr, attempt = self.env.run_test_case(language_name, container, cont_in_file, cont_temp_source_path, retry=3)
+            # artifact_pathをホストパスに変換
+            host_artifact_path = self.upm.to_host_path(artifact_path) or artifact_path
+            # 実行コマンド生成
+            run_cmd = handler.run_command(cont_temp_source_path, host_artifact_path)
+            # 入力データ取得
+            with open(in_file, "r", encoding="utf-8") as f:
+                input_data = f.read()
+            # 実行クライアントを選択（ここではローカル例）
+            exec_manager = ExecutionManager(LocalAsyncClient())
+            # 実行時cwdもホストパスに変換
+            abs_run_cwd = self.upm.to_host_path(cont_temp_source_path) or cont_temp_source_path
+            run_cwd = abs_run_cwd if handler.config.name == "rust" else os.path.dirname(abs_run_cwd)
+            result = exec_manager.run_and_measure(container, run_cmd, input=input_data, cwd=run_cwd)
+            ok = result.returncode == 0
+            stdout = result.stdout
+            stderr = result.stderr
+            attempt = 1  # リトライ未対応
             out_file = str(in_file).replace('.in', '.out')
             expected = ""
             file_operator = self.file_manager.file_operator if self.file_manager else None
@@ -108,8 +140,8 @@ class CommandTest:
                 if os.path.exists(out_file):
                     with open(out_file, "r", encoding="utf-8") as f:
                         expected = f.read()
-            result = self.collect_test_result(ok, stdout, stderr, expected, in_file, container, attempt)
-            results.append(result)
+            result_obj = self.collect_test_result(ok, stdout, stderr, expected, in_file, container, attempt)
+            results.append(result_obj)
         return results
 
     def print_test_results(self, results):

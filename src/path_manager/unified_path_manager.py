@@ -122,4 +122,25 @@ class UnifiedPathManager:
         シンボリックリンクを解決した実体パスを返す。
         """
         from pathlib import Path as _Path
-        return _Path(path).resolve(strict=False) 
+        return _Path(path).resolve(strict=False)
+
+    def is_host_path(self, path: str) -> bool:
+        """
+        指定パスがホスト側のパスかどうかを判定
+        """
+        import os
+        abs_path = os.path.abspath(str(path))
+        for host_root, _ in self.get_mounts():
+            if abs_path.startswith(str(host_root)):
+                return True
+        return False
+
+    def is_container_path(self, path: str) -> bool:
+        """
+        指定パスがコンテナ側のパスかどうかを判定
+        """
+        path_str = str(path)
+        for _, cont_root in self.get_mounts():
+            if path_str.startswith(str(cont_root)):
+                return True
+        return False 

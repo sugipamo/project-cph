@@ -7,29 +7,30 @@ class GenericTestHandler:
         self.profile = get_profile(language, env_type)
         self.config = self.profile.language_config
 
-    def build(self, manager, name, temp_source_path):
+    def build_command(self, temp_source_path):
+        """
+        ビルドコマンドと成果物パスを返す（実行は外部に委譲）
+        """
+        artifact_path = None
         if self.config.build_cmd:
-            # build_cmd内のテンプレート展開
-            cmd = [c.replace("{source}", temp_source_path) for c in self.config.build_cmd]
-            result = manager.run_and_measure(name, cmd, timeout=None, cwd=os.path.dirname(temp_source_path))
-            ok = result.returncode == 0
-            return ok, result.stdout, result.stderr
+            cmd = [c.format(source=str(temp_source_path)) for c in self.config.build_cmd]
+            if self.config.name == "rust":
+                artifact_path = os.path.join(temp_source_path, "target/release/rust")
+            elif self.config.name in ("python", "pypy"):
+                artifact_path = temp_source_path
+            return cmd, artifact_path
         else:
-            return True, "", ""
+            if self.config.name in ("python", "pypy"):
+                artifact_path = temp_source_path
+            return None, artifact_path
 
-    def run(self, manager, name, in_file, temp_source_path, host_in_file=None):
-        # コマンドテンプレートを展開
-        bin_path = self.config.bin_path
-        cmd = [c.replace("{source}", temp_source_path).replace("{bin_path}", bin_path or "") for c in self.config.run_cmd]
-        input_path = host_in_file if host_in_file is not None else in_file
-        with open(input_path, "r", encoding="utf-8") as f:
-            input_data = f.read()
-        if hasattr(manager, 'exec_in_container'):
-            result = manager.exec_in_container(name, cmd, stdin=input_data)
-        else:
-            result = manager.run_and_measure(name, cmd, timeout=None, input=input_data)
-        ok = result.returncode == 0
-        return ok, result.stdout, result.stderr
+    def run_command(self, temp_source_path, artifact_path):
+        """
+        実行コマンドを返す（実行は外部に委譲）
+        """
+        bin_path = str(artifact_path) if artifact_path else str(self.config.bin_path or "")
+        cmd = [c.format(source=str(temp_source_path), bin_path=bin_path) for c in self.config.run_cmd]
+        return cmd
 
 # HANDLERSの生成例（local環境用）
 HANDLERS = {

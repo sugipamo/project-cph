@@ -55,7 +55,7 @@ class ExecutionManagerTestEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironm
             workdir = os.path.relpath(str(host_workdir), HOST_PROJECT_ROOT)
             if not workdir.startswith('.'):
                 workdir = './' + workdir
-        cookie_path = "/home/cphelper/.local/share/online-judge-tools/cookie.jar"
+        cookie_path = ".local/share/online-judge-tools/cookie.jar"
         if not args:
             args = []
         if args and args[0] == "submit":

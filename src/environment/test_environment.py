@@ -9,7 +9,8 @@ from src.file.file_operator import FileOperator
 from pathlib import Path
 from src.file.info_json_manager import InfoJsonManager
 from src.language_env.profiles import get_profile
-from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE
+from src.language_env.constants import CONTAINER_WORKSPACE
+from src.path_manager.common_paths import HOST_PROJECT_ROOT
 
 class TestEnvFileOpsMixin:
     def prepare_source_code(self, contest_name, problem_name, language_name):
@@ -114,10 +115,11 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
         self.handlers = handlers if handlers is not None else DEFAULT_HANDLERS
         self.pool = ContainerPool({})
         # .tempも含めたマウントリストで初期化
-        temp_abs = Path(os.path.abspath(".temp")).resolve()
+        temp_dir = get_profile("python", "local").env_config.temp_dir  # 例: ".temp"
+        temp_abs = Path(os.path.abspath(temp_dir)).resolve()
         mounts = [
             (Path(HOST_PROJECT_ROOT).resolve(), Path(CONTAINER_WORKSPACE)),
-            (temp_abs, Path("/workspace/.temp"))
+            (temp_abs, Path(CONTAINER_WORKSPACE) / ".temp")
         ]
         self.unified_path_manager = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, mounts=mounts)
         self.upm = UnifiedPathManager(HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, mounts=mounts)
@@ -128,7 +130,7 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
     def to_host_path(self, container_path: str) -> str:
         return str(self.unified_path_manager.to_host_path(container_path))
 
-    def run_test_case(self, language_name, container, in_file, source_path, retry=3):
+    def run_test_case(self, language_name, container, in_file, source_path, artifact_path=None, retry=3):
         handler = self.handlers[language_name]
         image = ContainerImageManager().ensure_image("ojtools") if container.startswith("cph_ojtools") else language_name
         ctl = self.ctl
@@ -142,7 +144,7 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
         else:
             host_in_file = cont_in_file
         for attempt in range(retry):
-            ok, stdout, stderr = handler.run(ctl, container, cont_in_file, cont_source_path, host_in_file=host_in_file)
+            ok, stdout, stderr = handler.run(ctl, container, cont_in_file, cont_source_path, artifact_path, host_in_file=host_in_file)
             if ok:
                 break
             else:
@@ -189,7 +191,6 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
         if not ctl.is_container_running(ojtools_name):
             ctl.start_container(ojtools_name, ContainerImageManager().ensure_image("ojtools"), {})
         cmd = ["oj"] + args
-        print(f"[DEBUG] docker exec {ojtools_name} {' '.join(map(str, cmd))}")
         result = ctl.exec_in_container(ojtools_name, cmd)
         print(f"[DEBUG] returncode: {result.returncode}")
         print(f"[DEBUG] stdout: {result.stdout}")
