@@ -13,8 +13,8 @@ class AbstractContainerPool(ABC):
         pass
 
 class ContainerPool(AbstractContainerPool):
-    def __init__(self, dockerfile_map: Dict[str, str], project_root: Optional[str] = None, container_root: str = "/workspace", max_workers: int = 8, timeout: int = 30):
-        self.client = ContainerClient(timeout=timeout)
+    def __init__(self, dockerfile_map: Dict[str, str], project_root: Optional[str] = None, container_root: str = "/workspace", max_workers: int = 8, timeout: int = 30, client=None):
+        self.client = client if client is not None else ContainerClient(timeout=timeout)
         self.image_manager = ContainerImageManager(dockerfile_map)
         self.max_workers = max_workers
         self.dockerfile_map = dockerfile_map

@@ -5,6 +5,7 @@ from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE
 import os
 import shutil
 import subprocess
+from pathlib import Path
 
 class ExecutionManagerTestEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironment):
     def __init__(self, file_manager, manager, handlers=None):
@@ -26,11 +27,21 @@ class ExecutionManagerTestEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironm
 
     def run_test_case(self, language_name, name, in_file, source_path, retry=3):
         handler = self.handlers[language_name]
+        # ビルドコマンドと成果物パスを取得
+        build_cmd, artifact_path = handler.build_command(source_path)
+        if build_cmd:
+            build_proc = subprocess.run(build_cmd, capture_output=True, text=True)
+            if build_proc.returncode != 0:
+                return False, build_proc.stdout, build_proc.stderr, 1
+        run_cmd = handler.run_command(source_path, artifact_path)
+        with open(in_file, "r", encoding="utf-8") as f:
+            input_data = f.read()
         for attempt in range(retry):
-            ok, stdout, stderr = handler.run(self.manager, name, in_file, source_path)
+            proc = subprocess.run(run_cmd, input=input_data, capture_output=True, text=True)
+            ok = proc.returncode == 0
             if ok:
                 break
-        return ok, stdout, stderr, attempt+1
+        return ok, proc.stdout, proc.stderr, attempt+1
 
     def adjust_containers(self, requirements, contest_name=None, problem_name=None, language_name=None):
         # ローカル実行では特に何もしないが、インターフェース維持のためダミー返却
@@ -67,4 +78,47 @@ class ExecutionManagerTestEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironm
         if not ok:
             print(f"[ERROR] oj submit failed: {result.stderr}")
             print(f"[ERROR] oj submit stdout: {result.stdout}")
-        return ok, result.stdout, result.stderr 
+        return ok, result.stdout, result.stderr
+
+    async def run_test_all_cases(self, contest_name, problem_name, language_name):
+        temp_source_path = self.prepare_source_code(contest_name, problem_name, language_name)
+        temp_test_dir = self.prepare_test_cases(contest_name, problem_name)
+        file_operator = self.file_manager.file_operator if self.file_manager else None
+        temp_in_files, _ = self.collect_test_cases(temp_test_dir, file_operator)
+        handler = self.handlers[language_name]
+        results = []
+        for i, in_file in enumerate(temp_in_files):
+            name = f"local_test_{i+1}"
+            ok, stdout, stderr, attempt = self.run_test_case(language_name, name, in_file, temp_source_path)
+            out_file = str(in_file).replace('.in', '.out')
+            expected = ""
+            if file_operator:
+                if file_operator.exists(out_file):
+                    with file_operator.open(out_file, "r", encoding="utf-8") as f:
+                        expected = f.read()
+            else:
+                import os
+                if os.path.exists(out_file):
+                    with open(out_file, "r", encoding="utf-8") as f:
+                        expected = f.read()
+            result_obj = {
+                "result": (0 if ok else 1, stdout, stderr),
+                "expected": expected,
+                "time": 0.0,
+                "name": Path(in_file).name,
+                "in_file": in_file,
+                "container": name,
+                "attempt": attempt,
+            }
+            results.append(result_obj)
+        return results
+
+    def collect_test_cases(self, temp_test_dir, file_operator=None):
+        import glob
+        import os
+        if file_operator:
+            in_files = sorted(file_operator.glob(f"{temp_test_dir}/*.in"))
+        else:
+            in_files = sorted(glob.glob(f"{temp_test_dir}/*.in"))
+        out_files = [str(f).replace('.in', '.out') for f in in_files]
+        return in_files, out_files 
