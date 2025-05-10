@@ -225,21 +225,25 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
 
     def build_in_container(self, handler, container, source_path):
         cmd, artifact_path = handler.build_command(source_path)
+        print(f"[DEBUG] build_in_container: container={container}, source_path={source_path}, cmd={cmd}, artifact_path={artifact_path}")
         if cmd is None:
             return True, '', '', artifact_path
         abs_source_path = self.upm.to_host_path(source_path) or source_path
         host_cwd = abs_source_path if handler.config.name == "rust" else os.path.dirname(abs_source_path)
+        container_cwd = self.to_container_path(host_cwd)
+        print(f"[DEBUG] build_in_container: abs_source_path={abs_source_path}, host_cwd={host_cwd}, container_cwd={container_cwd}")
         image = ContainerImageManager().ensure_image(handler.config.name)
-        result = self.exec_manager.run_and_measure(container, cmd, cwd=host_cwd, image=image)
+        result = self.exec_manager.run_and_measure(container, cmd, cwd=container_cwd, image=image)
+        print(f"[DEBUG] build_in_container: result.returncode={result.returncode}, result.stdout={result.stdout}, result.stderr={result.stderr}")
         ok = result.returncode == 0
         return ok, result.stdout, result.stderr, artifact_path
 
     def run_test_cases(self, temp_source_path, temp_in_files, language_name, handler):
-        # print(f"[DEBUG] run_test_cases: env_type={self.env_type}, exec_manager.client={type(self.exec_manager.client)}")
         import os
         test_containers = self.get_test_containers_from_info()
         abs_temp_source_path = os.path.abspath(temp_source_path)
         cont_temp_source_path = self.to_container_path(abs_temp_source_path)
+        print(f"[DEBUG] run_test_cases: temp_source_path={temp_source_path}, abs_temp_source_path={abs_temp_source_path}, cont_temp_source_path={cont_temp_source_path}")
         ok, stdout, stderr, artifact_path = self.build_in_container(handler, test_containers[0], cont_temp_source_path)
         if not ok:
             print(f"[エラー] ビルド失敗\n{stderr}")
@@ -249,7 +253,6 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
             container = test_containers[i] if i < len(test_containers) else test_containers[-1]
             abs_in_file = os.path.abspath(in_file)
             cont_in_file = self.to_container_path(abs_in_file)
-            # artifact_path, temp_source_pathもコンテナ内パスに変換
             cont_artifact_path = self.to_container_path(artifact_path) if artifact_path else artifact_path
             cont_temp_source_path = self.to_container_path(abs_temp_source_path)
             run_cmd = handler.run_command(cont_temp_source_path, cont_artifact_path)
@@ -257,6 +260,7 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
                 input_data = f.read()
             abs_run_cwd = self.upm.to_host_path(cont_temp_source_path) or cont_temp_source_path
             run_cwd = abs_run_cwd if handler.config.name == "rust" else os.path.dirname(abs_run_cwd)
+            print(f"[DEBUG] run_test_cases: container={container}, in_file={in_file}, abs_in_file={abs_in_file}, cont_in_file={cont_in_file}, run_cmd={run_cmd}, run_cwd={run_cwd}")
             image = ContainerImageManager().ensure_image(language_name)
             result = self.exec_manager.run_and_measure(container, run_cmd, cwd=run_cwd, input=input_data, image=image)
             stdout = result.stdout

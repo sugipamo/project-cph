@@ -35,7 +35,7 @@ class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
-    def run_container(self, name: str, image: str, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, detach: bool = True, env: Optional[Dict[str, str]] = None, ports: Optional[Dict[int, int]] = None, cpus: Optional[float] = None, memory: Optional[str] = None) -> str:
+    def run_container(self, name: str, image: str, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, detach: bool = True, env: Optional[Dict[str, str]] = None, ports: Optional[Dict[int, int]] = None, cpus: Optional[float] = None, memory: Optional[str] = None, cwd: Optional[str] = None) -> str:
         cmd = ["docker", "run"]
         if detach:
             cmd.append("-d")
@@ -53,6 +53,8 @@ class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
             cmd += ["--cpus", str(cpus)]
         if memory:
             cmd += ["--memory", memory]
+        if cwd:
+            cmd += ["-w", cwd]
         cmd.append(image)
         if command:
             cmd += command
@@ -95,8 +97,12 @@ class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
             print("[ERROR] docker rm timed out")
             return False
 
-    def exec_in_container(self, name: str, cmd_list: List[str], realtime: bool = False, stdin: str = None) -> subprocess.CompletedProcess:
-        cmd = ["docker", "exec", "-i", name] + cmd_list
+    def exec_in_container(self, name: str, cmd_list: List[str], realtime: bool = False, stdin: str = None, cwd: str = None) -> subprocess.CompletedProcess:
+        cmd = ["docker", "exec", "-i"]
+        if cwd:
+            cmd += ["-w", cwd]
+        cmd.append(name)
+        cmd += cmd_list
         if not realtime:
             try:
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout, input=stdin)
@@ -245,9 +251,9 @@ class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
             print("[ERROR] docker images timed out")
             return False
 
-    def run(self, name: str, image: Optional[str] = None, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, detach: bool = True, realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, **kwargs) -> Any:
+    def run(self, name: str, image: Optional[str] = None, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, detach: bool = True, realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, cwd: Optional[str] = None, **kwargs) -> Any:
         if not realtime:
-            result = self.run_container(name, image, command, volumes, detach)
+            result = self.run_container(name, image, command, volumes, detach, cwd=cwd)
             return ExecutionResult(returncode=None, stdout=None, stderr=None, extra={"popen": None, "docker_result": result})
         else:
             # docker runのリアルタイム出力取得
@@ -255,6 +261,8 @@ class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
             if volumes:
                 for host_path, cont_path in volumes.items():
                     cmd += ["-v", f"{host_path}:{cont_path}"]
+            if cwd:
+                cmd += ["-w", cwd]
             cmd.append(image)
             if command:
                 cmd += command

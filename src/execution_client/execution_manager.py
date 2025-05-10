@@ -16,10 +16,11 @@ class ExecutionManager(AbstractExecutionManager):
         # 例: 入力ファイルの配置、環境変数セットなど
 
         input_data = kwargs.pop("input", None)
+        cwd = kwargs.pop("cwd", None)
         # 既存のコンテナがrunningならexecでコマンド実行
         if hasattr(self.client, "is_container_running") and self.client.is_container_running(name):
             # docker execでコマンド実行
-            result = self.client.exec_in(name, command, stdin=input_data)
+            result = self.client.exec_in(name, command, stdin=input_data, cwd=cwd)
             elapsed = None  # 必要なら計測
             return ExecutionResult(
                 returncode=result.returncode,
@@ -30,7 +31,7 @@ class ExecutionManager(AbstractExecutionManager):
         # それ以外は従来通りrun
         if input_data is not None:
             # detach=Falseで直接実行し、inputを渡す
-            result = self.client.run(name, command=command, detach=False, input=input_data, **kwargs)
+            result = self.client.run(name, command=command, detach=False, input=input_data, cwd=cwd, **kwargs)
             elapsed = None  # 必要なら計測
             return ExecutionResult(
                 returncode=result.returncode,
@@ -39,7 +40,7 @@ class ExecutionManager(AbstractExecutionManager):
                 extra={"elapsed": elapsed, "timeout": False}
             )
         # プロセス起動（detach=TrueでPopenを取得）
-        result = self.client.run(name, command=command, detach=True, **kwargs)
+        result = self.client.run(name, command=command, detach=True, cwd=cwd, **kwargs)
         proc = result.extra.get("popen")
         # docker run等の場合はpopenがNone
         start = time.perf_counter()
