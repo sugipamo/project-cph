@@ -26,7 +26,7 @@ LANGUAGES = {
 EXEC_MODES = ["docker", "local"]
 
 import argparse
-from src.file.info_json_manager import InfoJsonManager
+from src.language_env.info_json_manager import InfoJsonManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 
 # --- CLIコマンドパース用関数 ---

@@ -6,7 +6,7 @@ from src.execution_client.container.pool import ContainerPool
 from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from pathlib import Path
-from src.file.info_json_manager import InfoJsonManager
+from src.language_env.info_json_manager import InfoJsonManager
 from src.language_env.profiles import get_profile
 from src.language_env.constants import CONTAINER_WORKSPACE
 from src.path_manager.common_paths import HOST_PROJECT_ROOT

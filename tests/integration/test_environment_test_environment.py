@@ -95,7 +95,7 @@ def test_download_testcases_raises():
     env = DockerTestExecutionEnvironment(DummyFileManager())
     env.upm = MagicMock()
     env.upm.info_json.return_value = 'info.json'
-    with patch('src.file.info_json_manager.InfoJsonManager') as mock_info:
+    with patch('src.language_env.info_json_manager.InfoJsonManager') as mock_info:
         mock_manager = MagicMock()
         mock_manager.get_containers.return_value = []
         mock_info.return_value = mock_manager
@@ -106,7 +106,7 @@ def test_submit_via_ojtools_raises():
     env = DockerTestExecutionEnvironment(DummyFileManager())
     env.upm = MagicMock()
     env.upm.info_json.return_value = 'info.json'
-    with patch('src.file.info_json_manager.InfoJsonManager') as mock_info:
+    with patch('src.language_env.info_json_manager.InfoJsonManager') as mock_info:
         mock_manager = MagicMock()
         mock_manager.get_containers.return_value = []
         mock_info.return_value = mock_manager

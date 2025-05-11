@@ -2,7 +2,7 @@ import os
 import tempfile
 import json
 import pytest
-from src.file.info_json_manager import InfoJsonManager
+from src.language_env.info_json_manager import InfoJsonManager
 
 def test_load_and_save(tmp_path):
     path = tmp_path / "system_info.json"

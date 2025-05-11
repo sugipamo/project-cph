@@ -1,4 +1,4 @@
-from src.file.info_json_manager import InfoJsonManager
+from src.language_env.info_json_manager import InfoJsonManager
 from src.execution_client.container.pool import ContainerPool
 from src.execution_client.client.container import ContainerClient
 from src.execution_client.container.image_manager import ContainerImageManager
