@@ -1,6 +1,6 @@
 import pytest
 import sys
-from src.execution_client.local import LocalAsyncClient
+from src.execution_client.client.local import LocalAsyncClient
 from src.execution_client.execution_manager import ExecutionManager, AbstractExecutionManager
 
 @pytest.mark.parametrize("sleep_sec", [0.5, 1.0])

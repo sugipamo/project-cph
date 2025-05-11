@@ -2,8 +2,8 @@ import pytest
 import sys
 import threading
 import shutil
-from src.execution_client.local import LocalAsyncClient
-from src.execution_client.container.client import ContainerClient
+from src.execution_client.client.local import LocalAsyncClient
+from src.execution_client.client.container import ContainerClient
 from src.execution_client.execution_manager import ExecutionManager
 
 def test_integration_local_manager():

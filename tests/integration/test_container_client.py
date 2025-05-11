@@ -1,5 +1,5 @@
 import pytest
-from src.execution_client.container.client import ContainerClient
+from src.execution_client.client.container import ContainerClient
 import threading
 import shutil
 

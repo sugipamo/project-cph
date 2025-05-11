@@ -7,11 +7,11 @@ from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE
 from .test_result_formatter import ResultFormatter
 from src.environment.test_language_handler import HANDLERS
 from src.file.info_json_manager import InfoJsonManager
-from src.execution_client.container.client import ContainerClient
+from src.execution_client.client.container import ContainerClient
 from src.environment.test_environment import DockerTestExecutionEnvironment
 from src.execution_client.container.image_manager import ContainerImageManager
 from src.execution_client.execution_manager import ExecutionManager
-from src.execution_client.local import LocalAsyncClient
+from src.execution_client.client.local import LocalAsyncClient
 
 class CommandTest:
     def __init__(self, file_manager, test_env):

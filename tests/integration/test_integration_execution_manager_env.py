@@ -4,7 +4,7 @@ import shutil
 import pytest
 from src.environment.execution_manager_test_environment import ExecutionManagerTestEnvironment
 from src.execution_client.execution_manager import ExecutionManager
-from src.execution_client.local import LocalAsyncClient
+from src.execution_client.client.local import LocalAsyncClient
 
 class PythonHandler:
     def build_command(self, source_path):

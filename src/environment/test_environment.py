@@ -1,18 +1,17 @@
 from abc import ABC, abstractmethod
 import os
 import shutil
-from src.execution_client.container.client import ContainerClient
+from src.execution_client.client.container import ContainerClient
 from src.execution_client.container.pool import ContainerPool
 from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
-from src.file.file_operator import FileOperator
 from pathlib import Path
 from src.file.info_json_manager import InfoJsonManager
 from src.language_env.profiles import get_profile
 from src.language_env.constants import CONTAINER_WORKSPACE
 from src.path_manager.common_paths import HOST_PROJECT_ROOT
 from src.execution_client.execution_manager import ExecutionManager
-from src.execution_client.local import LocalAsyncClient
+from src.execution_client.client.local import LocalAsyncClient
 
 class TestEnvFileOpsMixin:
     def prepare_source_code(self, contest_name, problem_name, language_name):

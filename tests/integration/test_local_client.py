@@ -1,5 +1,5 @@
 import pytest
-from src.execution_client.local import LocalAsyncClient
+from src.execution_client.client.local import LocalAsyncClient
 
 def test_run_detach_false_input(tmp_path):
     client = LocalAsyncClient()
