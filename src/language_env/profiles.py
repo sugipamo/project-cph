@@ -32,12 +32,24 @@ RUST_LOCAL_PROFILE = LanguageEnvProfile(
     ExecutionEnvConfig(type="local")
 )
 
+# テストケース用（言語非依存、共通temp_dir）
+TESTCASE_PROFILE_LOCAL = LanguageEnvProfile(
+    None,  # 言語設定不要
+    ExecutionEnvConfig(type="local", temp_dir=".temp")
+)
+TESTCASE_PROFILE_DOCKER = LanguageEnvProfile(
+    None,
+    ExecutionEnvConfig(type="docker", temp_dir=".temp")
+)
+
 PROFILES = {
     ("python", "docker"): PYTHON_DOCKER_PROFILE,
     ("python", "local"): PYTHON_LOCAL_PROFILE,
     ("pypy", "local"): PYPY_LOCAL_PROFILE,
     ("rust", "docker"): RUST_DOCKER_PROFILE,
     ("rust", "local"): RUST_LOCAL_PROFILE,
+    ("testcase", "local"): TESTCASE_PROFILE_LOCAL,
+    ("testcase", "docker"): TESTCASE_PROFILE_DOCKER,
 }
 
 def get_profile(language, env_type):
