@@ -1,16 +1,16 @@
-import os
-from pathlib import Path
 from src.language_env.handlers import get_handler
 from src.language_env.file_ops import LocalFileOps, DockerFileOps
 from src.language_env.execution_resource_manager import LocalResourceManager, DockerResourceManager
 from src.execution_client.client.container import ContainerClient
+import os
 
-class RunTestExecutor:
-    def __init__(self, exec_manager, upm, file_operator=None, env_type='local', file_ops=None, resource_manager=None, ctl=None):
-        self.exec_manager = exec_manager
+class RunTestExecutionEnvironment:
+    def __init__(self, upm, exec_manager, env_type='local', file_operator=None, file_ops=None, resource_manager=None, ctl=None):
         self.upm = upm
-        self.file_operator = file_operator
+        self.exec_manager = exec_manager
         self.env_type = env_type
+        self.file_operator = file_operator
+        # 柔軟な差し替えに対応
         if resource_manager is not None:
             self.resource_manager = resource_manager
         elif env_type == 'docker':
@@ -20,15 +20,26 @@ class RunTestExecutor:
         if file_ops is not None:
             self.file_ops = file_ops
         elif env_type == 'docker':
-            if ctl is None:
-                ctl = ContainerClient()
-            self.file_ops = DockerFileOps(ctl, self.resource_manager)
+            self.file_ops = DockerFileOps(ctl or ContainerClient(), self.resource_manager)
         else:
             self.file_ops = LocalFileOps()
 
     def build(self, language_name, container, source_path):
         handler = get_handler(language_name, self.env_type)
         return handler.build(self.exec_manager, container, source_path)
+
+    def prepare_source_code(self, contest_name, problem_name, language_name):
+        handler = get_handler(language_name, self.env_type)
+        return self.file_ops.prepare_source_code(
+            contest_name, problem_name, language_name, self.upm, handler.config, handler.env_config
+        )
+
+    def prepare_test_cases(self, contest_name, problem_name):
+        # テストケースは言語非依存
+        handler = get_handler("python", self.env_type)
+        return self.file_ops.prepare_test_cases(
+            contest_name, problem_name, self.upm, handler.env_config
+        )
 
     def run_test_case(self, language_name, container, in_file, source_path, artifact_path=None, retry=3):
         handler = get_handler(language_name, self.env_type)
@@ -38,8 +49,6 @@ class RunTestExecutor:
             )
             if ok:
                 break
-            else:
-                print(f"[WARN] exec失敗: {container} (attempt {attempt+1})")
         return ok, stdout, stderr, attempt+1
 
     def run_test_cases(self, temp_source_path, temp_in_files, language_name):
@@ -56,10 +65,9 @@ class RunTestExecutor:
             )
             out_file = str(in_file).replace('.in', '.out')
             expected = ""
-            if self.file_operator:
-                if self.file_operator.exists(out_file):
-                    with self.file_operator.open(out_file, "r", encoding="utf-8") as f:
-                        expected = f.read()
+            if self.file_operator and self.file_operator.exists(out_file):
+                with self.file_operator.open(out_file, "r", encoding="utf-8") as f:
+                    expected = f.read()
             else:
                 if os.path.exists(out_file):
                     with open(out_file, "r", encoding="utf-8") as f:
@@ -78,19 +86,13 @@ class RunTestExecutor:
 
     def run_test_all_cases(self, contest_name, problem_name, language_name):
         handler = get_handler(language_name, self.env_type)
-        language_config = handler.config
-        env_config = handler.env_config
-        # 1. テスト用ソース・テストケース準備
-        temp_source_path = self.file_ops.prepare_source_code(contest_name, problem_name, language_name, self.upm, language_config, env_config)
-        temp_test_dir = self.file_ops.prepare_test_cases(contest_name, problem_name, self.upm, env_config)
-        # 2. テストケース収集
+        temp_source_path = self.prepare_source_code(contest_name, problem_name, language_name)
+        temp_test_dir = self.prepare_test_cases(contest_name, problem_name)
         temp_in_files, _ = self.file_ops.collect_test_cases(temp_test_dir)
-        # 3. リソース調整（コンテナ/ローカル/クラウド等）
         requirements = [{
             "type": "test",
             "language": language_name,
             "count": len(temp_in_files)
         }]
         self.resource_manager.adjust_resources(requirements, contest_name, problem_name, language_name)
-        # 4. テスト実行
         return self.run_test_cases(temp_source_path, temp_in_files, language_name) 
