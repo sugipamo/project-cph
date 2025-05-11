@@ -29,12 +29,19 @@ class LocalResourceManager(ExecutionResourceManager):
 
 class DockerResourceManager(ExecutionResourceManager):
     def __init__(self, upm):
-        from src.file.info_json_manager import InfoJsonManager
+        from src.language_env.info_json_manager import InfoJsonManager
+        from src.language_env.dockerfile_map import DOCKERFILE_MAP
+        from src.execution_client.container.pool import ContainerPool
+
         self.upm = upm
         self.info_manager = InfoJsonManager(self.upm.info_json())
+        self.dockerfile_map = DOCKERFILE_MAP
+        self.project_root = getattr(upm, 'project_root', None)
+        self.container_root = getattr(upm, 'container_root', '/workspace')
+        self.pool = ContainerPool(self.dockerfile_map, project_root=self.project_root, container_root=self.container_root)
+
     def adjust_resources(self, requirements, contest_name=None, problem_name=None, language_name=None):
-        # TODO: ContainerPool等で必要なコンテナを調整
-        containers = []  # 実際はContainerPool等で調整
+        containers = self.pool.adjust(requirements)
         self.info_manager.data["contest_name"] = contest_name
         self.info_manager.data["problem_name"] = problem_name
         self.info_manager.data["language_name"] = language_name

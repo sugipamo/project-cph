@@ -1,17 +1,30 @@
 import os
 from pathlib import Path
 from src.language_env.handlers import get_handler
-from src.language_env.file_ops import LocalFileOps
-from src.language_env.execution_resource_manager import LocalResourceManager
+from src.language_env.file_ops import LocalFileOps, DockerFileOps
+from src.language_env.execution_resource_manager import LocalResourceManager, DockerResourceManager
+from src.execution_client.client.container import ContainerClient
 
 class RunTestExecutor:
-    def __init__(self, exec_manager, upm, file_operator=None, env_type='local', file_ops=None, resource_manager=None):
+    def __init__(self, exec_manager, upm, file_operator=None, env_type='local', file_ops=None, resource_manager=None, ctl=None):
         self.exec_manager = exec_manager
         self.upm = upm
         self.file_operator = file_operator
         self.env_type = env_type
-        self.file_ops = file_ops if file_ops is not None else LocalFileOps()
-        self.resource_manager = resource_manager if resource_manager is not None else LocalResourceManager()
+        if resource_manager is not None:
+            self.resource_manager = resource_manager
+        elif env_type == 'docker':
+            self.resource_manager = DockerResourceManager(upm)
+        else:
+            self.resource_manager = LocalResourceManager()
+        if file_ops is not None:
+            self.file_ops = file_ops
+        elif env_type == 'docker':
+            if ctl is None:
+                ctl = ContainerClient()
+            self.file_ops = DockerFileOps(ctl, self.resource_manager)
+        else:
+            self.file_ops = LocalFileOps()
 
     def build(self, language_name, container, source_path):
         handler = get_handler(language_name, self.env_type)
