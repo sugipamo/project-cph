@@ -1,13 +1,17 @@
 import os
 from pathlib import Path
 from src.language_env.handlers import get_handler
+from src.language_env.file_ops import LocalFileOps
+from src.language_env.execution_resource_manager import LocalResourceManager
 
 class RunTestExecutor:
-    def __init__(self, exec_manager, upm, file_operator=None, env_type='local'):
+    def __init__(self, exec_manager, upm, file_operator=None, env_type='local', file_ops=None, resource_manager=None):
         self.exec_manager = exec_manager
         self.upm = upm
         self.file_operator = file_operator
         self.env_type = env_type
+        self.file_ops = file_ops if file_ops is not None else LocalFileOps()
+        self.resource_manager = resource_manager if resource_manager is not None else LocalResourceManager()
 
     def build(self, language_name, container, source_path):
         handler = get_handler(language_name, self.env_type)
@@ -57,4 +61,23 @@ class RunTestExecutor:
                 "attempt": 1,
             }
             results.append(result_obj)
-        return results 
+        return results
+
+    def run_test_all_cases(self, contest_name, problem_name, language_name):
+        handler = get_handler(language_name, self.env_type)
+        language_config = handler.config
+        env_config = handler.env_config
+        # 1. テスト用ソース・テストケース準備
+        temp_source_path = self.file_ops.prepare_source_code(contest_name, problem_name, language_name, self.upm, language_config, env_config)
+        temp_test_dir = self.file_ops.prepare_test_cases(contest_name, problem_name, self.upm, env_config)
+        # 2. テストケース収集
+        temp_in_files, _ = self.file_ops.collect_test_cases(temp_test_dir)
+        # 3. リソース調整（コンテナ/ローカル/クラウド等）
+        requirements = [{
+            "type": "test",
+            "language": language_name,
+            "count": len(temp_in_files)
+        }]
+        self.resource_manager.adjust_resources(requirements, contest_name, problem_name, language_name)
+        # 4. テスト実行
+        return self.run_test_cases(temp_source_path, temp_in_files, language_name) 

@@ -1,9 +1,13 @@
 from .profiles import get_profile
+from src.path_manager.unified_path_manager import UnifiedPathManager
+from src.language_env.constants import CONTAINER_WORKSPACE, HOST_WORKSPACE
 
 class BaseTestHandler:
     def __init__(self, language, env_type):
         self.profile = get_profile(language, env_type)
         self.config = self.profile.language_config
+        # env_configからパス変換に必要な情報を取得
+        self.env_config = self.profile.env_config
 
     def prepare_environment(self, *args, **kwargs):
         """環境ごとの前準備（必要ならオーバーライド）"""
@@ -29,37 +33,45 @@ class BaseTestHandler:
         import os
         return os.path.dirname(source_path)
 
+    def to_container_path(self, host_path):
+        # デフォルトはそのまま返す（ローカル用）
+        return host_path
+
+    def to_host_path(self, container_path):
+        # デフォルトはそのまま返す（ローカル用）
+        return container_path
+
     def run(self, exec_client, container, in_file, source_path, artifact_path=None, host_in_file=None):
         """
         テストケースを実行する共通メソッド。必要に応じて各handlerでオーバーライド。
         """
         import os
-        run_cmd = self.run_command(source_path)
+        # パス変換（常にホストパスを受け取り、必要なら変換）
+        cont_in_file = self.to_container_path(in_file)
+        cont_source_path = self.to_container_path(source_path)
+        run_cmd = self.run_command(cont_source_path)
         if not run_cmd or run_cmd == ["None"]:
             return False, "", "実行ファイルが見つかりません (run_cmdがNone)"
         # 入力データの読み込み
+        host_in_file_path = self.to_host_path(cont_in_file)
         if host_in_file and os.path.exists(host_in_file):
             with open(host_in_file, "r", encoding="utf-8") as f:
                 input_data = f.read()
-        elif os.path.exists(in_file):
-            with open(in_file, "r", encoding="utf-8") as f:
+        elif os.path.exists(host_in_file_path):
+            with open(host_in_file_path, "r", encoding="utf-8") as f:
                 input_data = f.read()
         else:
             input_data = ""
-        run_cwd = self.get_run_cwd(source_path)
-        # exec_clientはrun_and_measure互換APIを持つ想定
+        run_cwd = self.get_run_cwd(cont_source_path)
         result = exec_client.run_and_measure(container, run_cmd, cwd=run_cwd, input=input_data, image=self.profile.language)
         ok = result.returncode == 0
         return ok, result.stdout, result.stderr
 
     def build(self, exec_client, container, source_path):
-        """
-        ビルド処理を実行する共通メソッド。必要に応じて各handlerでオーバーライド。
-        """
-        cmd = self.build_command(source_path)
+        cmd = self.build_command(self.to_container_path(source_path))
         if cmd is None:
             return True, '', ''
-        build_cwd = self.get_build_cwd(source_path)
+        build_cwd = self.get_build_cwd(self.to_container_path(source_path))
         image = self.profile.language
         result = exec_client.run_and_measure(container, cmd, cwd=build_cwd, image=image)
         ok = result.returncode == 0
@@ -70,7 +82,23 @@ class LocalTestHandler(BaseTestHandler):
     pass
 
 class ContainerTestHandler(BaseTestHandler):
-    pass
+    def __init__(self, language, env_type):
+        super().__init__(language, env_type)
+        # UnifiedPathManagerの初期化
+        project_root = getattr(self.env_config, 'host_project_root', None)
+        container_root = getattr(self.env_config, 'workspace_dir', CONTAINER_WORKSPACE)
+        mounts = getattr(self.env_config, 'mounts', None)
+        self.upm = UnifiedPathManager(project_root, container_root, mounts=mounts)
+
+    def to_container_path(self, host_path):
+        import os
+        abs_host_path = os.path.abspath(str(host_path))
+        cont_path = self.upm.to_container_path(abs_host_path)
+        return str(cont_path) if cont_path is not None else host_path
+
+    def to_host_path(self, container_path):
+        host_path = self.upm.to_host_path(container_path)
+        return str(host_path) if host_path is not None else container_path
 
 # --- 言語ごとのハンドラ ---
 class PythonLocalTestHandler(LocalTestHandler):
