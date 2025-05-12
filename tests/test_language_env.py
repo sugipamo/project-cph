@@ -4,6 +4,10 @@ from src.language_env.execution_env_config import ExecutionEnvConfig
 from src.language_env.language_env_profile import LanguageEnvProfile
 from src.language_env.dockerfile_map import DOCKERFILE_MAP
 from src.language_env.constants import CONTAINER_WORKSPACE, HOST_WORKSPACE
+from contest_env.python_config import PYTHON_CONFIGS
+from contest_env.rust_config import RUST_CONFIGS
+from contest_env.pypy_config import PYPY_CONFIGS
+from contest_env.ojtools_config import OJTOOLS_CONFIGS
 
 
 def test_language_configs():
@@ -30,9 +34,9 @@ def test_language_env_profile():
 
 
 def test_dockerfile_map():
-    assert DOCKERFILE_MAP["python"].endswith("python.Dockerfile")
-    assert DOCKERFILE_MAP["rust"].endswith("rust.Dockerfile")
-    assert DOCKERFILE_MAP["ojtools"].endswith("oj.Dockerfile")
+    assert PYTHON_CONFIGS["3.8"]["dockerfile_path"].endswith("python.Dockerfile")
+    assert RUST_CONFIGS["1.70"]["dockerfile_path"].endswith("rust.Dockerfile")
+    assert OJTOOLS_CONFIGS["default"]["dockerfile_path"].endswith("oj.Dockerfile")
 
 
 def test_constants():

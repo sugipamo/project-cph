@@ -60,9 +60,8 @@ class DummyImageManager(AbstractContainerImageManager):
 
 @pytest.fixture
 def pool_with_dummy(monkeypatch):
-    # ContainerPoolの内部client/image_managerをダミーに差し替え
     from src.execution_client.container.pool import ContainerPool
-    pool = ContainerPool(dockerfile_map={"python": "dummy"})
+    pool = ContainerPool(dockerfile_map={("python", "3.8"): "dummy"})
     pool.client = DummyClient()
     pool.image_manager = DummyImageManager()
     return pool

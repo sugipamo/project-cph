@@ -1,145 +1,17 @@
-from .profiles import get_profile
-from src.path_manager.unified_path_manager import UnifiedPathManager
-from src.language_env.constants import CONTAINER_WORKSPACE, HOST_WORKSPACE
-from src.language_env.execution_command_builder import ExecutionCommandBuilder
-from src.input_data_loader import InputDataLoader
-from src.test_result_parser import TestResultParser
-
-class BaseTestHandler:
-    def __init__(self, language, env_type):
-        self.profile = get_profile(language, env_type)
-        self.config = self.profile.language_config
-        # env_configからパス変換に必要な情報を取得
-        self.env_config = self.profile.env_config
-        self.command_builder = ExecutionCommandBuilder(self.config)
-
-    def prepare_environment(self, *args, **kwargs):
-        """環境ごとの前準備（必要ならオーバーライド）"""
-        pass
-
-    def build_command(self, temp_source_path):
-        return self.command_builder.build_command(temp_source_path)
-
-    def get_bin_path(self, temp_source_path):
-        return temp_source_path
-
-    def run_command(self, temp_source_path):
-        bin_path = self.get_bin_path(temp_source_path)
-        return self.command_builder.run_command(temp_source_path, bin_path=bin_path)
-
-    def get_build_cwd(self, source_path):
-        import os
-        return os.path.dirname(source_path)
-
-    def get_run_cwd(self, source_path):
-        import os
-        return os.path.dirname(source_path)
-
-    def to_container_path(self, host_path):
-        # デフォルトはそのまま返す（ローカル用）
-        return host_path
-
-    def to_host_path(self, container_path):
-        # デフォルトはそのまま返す（ローカル用）
-        return container_path
-
-    def run(self, exec_client, container, in_file, source_path, artifact_path=None, host_in_file=None, file_operator=None):
-        """
-        テストケースを実行する共通メソッド。必要に応じて各handlerでオーバーライド。
-        """
-        # パス変換（常にホストパスを受け取り、必要なら変換）
-        cont_in_file = self.to_container_path(in_file)
-        cont_source_path = self.to_container_path(source_path)
-        run_cmd = self.run_command(cont_source_path)
-        if not run_cmd or run_cmd == ["None"]:
-            return False, "", "実行ファイルが見つかりません (run_cmdがNone)"
-        host_in_file_path = self.to_host_path(cont_in_file)
-        input_data = InputDataLoader.load(file_operator, host_in_file, host_in_file_path)
-        run_cwd = self.get_run_cwd(cont_source_path)
-        result = exec_client.run_and_measure(container, run_cmd, cwd=run_cwd, input=input_data, image=self.profile.language)
-        return TestResultParser.parse(result)
-
-    def build(self, exec_client, container, source_path):
-        cmd = self.build_command(self.to_container_path(source_path))
-        if cmd is None:
-            return True, '', ''
-        build_cwd = self.get_build_cwd(self.to_container_path(source_path))
-        image = self.profile.language
-        result = exec_client.run_and_measure(container, cmd, cwd=build_cwd, image=image)
-        ok = result.returncode == 0
-        return ok, result.stdout, result.stderr
-
-# --- Local/Container用の基底クラス ---
-class LocalTestHandler(BaseTestHandler):
-    pass
-
-class ContainerTestHandler(BaseTestHandler):
-    def __init__(self, language, env_type):
-        super().__init__(language, env_type)
-        # UnifiedPathManagerの初期化
-        project_root = getattr(self.env_config, 'host_project_root', None)
-        container_root = getattr(self.env_config, 'workspace_dir', CONTAINER_WORKSPACE)
-        mounts = getattr(self.env_config, 'mounts', None)
-        self.upm = UnifiedPathManager(project_root, container_root, mounts=mounts)
-
-    def run(self, exec_client, container, in_file, source_path, artifact_path=None, host_in_file=None, file_operator=None):
-        import os
-        cont_in_file = self.upm.to_container_path(os.path.abspath(str(in_file)))
-        cont_source_path = self.upm.to_container_path(os.path.abspath(str(source_path)))
-        run_cmd = self.run_command(cont_source_path)
-        if not run_cmd or run_cmd == ["None"]:
-            return False, "", "実行ファイルが見つかりません (run_cmdがNone)"
-        host_in_file_path = self.upm.to_host_path(cont_in_file)
-        input_data = InputDataLoader.load(file_operator, host_in_file, host_in_file_path)
-        run_cwd = self.get_run_cwd(cont_source_path)
-        result = exec_client.run_and_measure(container, run_cmd, cwd=run_cwd, input=input_data, image=self.profile.language)
-        return TestResultParser.parse(result)
-
-    def build(self, exec_client, container, source_path):
-        import os
-        cont_source_path = self.upm.to_container_path(os.path.abspath(str(source_path)))
-        cmd = self.build_command(cont_source_path)
-        if cmd is None:
-            return True, '', ''
-        build_cwd = self.get_build_cwd(cont_source_path)
-        image = self.profile.language
-        result = exec_client.run_and_measure(container, cmd, cwd=build_cwd, image=image)
-        ok = result.returncode == 0
-        return ok, result.stdout, result.stderr
+import importlib
+import pkgutil
+import os
 
 # --- 言語ごとのハンドラ ---
-class PythonLocalTestHandler(LocalTestHandler):
-    pass
-
-class PythonContainerTestHandler(ContainerTestHandler):
-    pass
-
-class PypyLocalTestHandler(LocalTestHandler):
-    pass
-
-class RustHandler(BaseTestHandler):
-    def get_bin_path(self, temp_source_path):
-        import os
-        return os.path.join(temp_source_path, "target/release/rust")
-    def get_build_cwd(self, source_path):
-        return source_path
-    def get_run_cwd(self, source_path):
-        return source_path
-
-class RustLocalTestHandler(RustHandler, LocalTestHandler):
-    pass
-
-class RustContainerTestHandler(RustHandler, ContainerTestHandler):
-    pass
-
-# --- HANDLERS ---
-HANDLERS = {
-    ("python", "local"): PythonLocalTestHandler("python", "local"),
-    ("python", "docker"): PythonContainerTestHandler("python", "docker"),
-    ("pypy", "local"): PypyLocalTestHandler("pypy", "local"),
-    ("rust", "local"): RustLocalTestHandler("rust", "local"),
-    ("rust", "docker"): RustContainerTestHandler("rust", "docker"),
-}
+HANDLERS = {}
+language_env_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../language_env')
+for _, module_name, _ in pkgutil.iter_modules([language_env_dir]):
+    if module_name.startswith("__"): continue
+    mod = importlib.import_module(f"src.language_env.{module_name}")
+    handler_dict = getattr(mod, "HANDLER", None)
+    if handler_dict:
+        for env_type, handler in handler_dict.items():
+            HANDLERS[(module_name, env_type)] = handler
 
 def get_handler(language, env_type):
     return HANDLERS[(language, env_type)] 

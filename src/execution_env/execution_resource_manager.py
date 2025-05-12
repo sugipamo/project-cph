@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from src.execution_env.language_env_profile import LanguageEnvProfile
 
 class ExecutionResourceManager(ABC):
     @abstractmethod
@@ -30,12 +31,20 @@ class LocalResourceManager(ExecutionResourceManager):
 class DockerResourceManager(ExecutionResourceManager):
     def __init__(self, upm):
         from src.language_env.info_json_manager import InfoJsonManager
-        from src.language_env.dockerfile_map import DOCKERFILE_MAP
         from src.execution_client.container.pool import ContainerPool
 
         self.upm = upm
         self.info_manager = InfoJsonManager(self.upm.info_json())
-        self.dockerfile_map = DOCKERFILE_MAP
+        # 言語＋バージョンごとにdockerfile_pathを集約
+        self.dockerfile_map = {
+            (lang, ver): LanguageEnvProfile(lang, ver).dockerfile_path
+            for (lang, ver) in [
+                ("python", "3.8"),
+                ("rust", "1.70"),
+                ("pypy", "7.3"),
+                ("ojtools", "default"),
+            ]
+        }
         self.project_root = getattr(upm, 'project_root', None)
         self.container_root = getattr(upm, 'container_root', '/workspace')
         self.pool = ContainerPool(self.dockerfile_map, project_root=self.project_root, container_root=self.container_root)

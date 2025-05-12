@@ -1,7 +1,7 @@
 import subprocess
 import os
 
-DOCKERFILE = "contest_env/oj.Dockerfile"
+DOCKERFILE = os.path.join(os.path.dirname(__file__), "oj.Dockerfile")
 IMAGE_NAME = "cph_image_ojtools"
 
 def build_ojtools_image():
@@ -12,7 +12,7 @@ def build_ojtools_image():
         "docker", "build",
         "-f", DOCKERFILE,
         "-t", IMAGE_NAME,
-        "."
+        os.path.dirname(__file__)
     ]
     result = subprocess.run(cmd)
     if result.returncode == 0:

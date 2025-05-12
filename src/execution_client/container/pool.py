@@ -99,12 +99,16 @@ class ContainerPool(AbstractContainerPool):
 
     def _start_containers(self, to_start: List[Dict]):
         def start_c(c):
-            language = "ojtools" if c["type"] == "ojtools" else c.get("language", "python")
-            image = self.image_manager.ensure_image(language)
+            if c["type"] == "ojtools":
+                key = ("ojtools", "default")
+            else:
+                lang = c.get("language", "python")
+                ver = c.get("version", "3.8")
+                key = (lang, ver)
+            image = self.image_manager.ensure_image(key)
             if c.get("_reuse"):
                 self.client.start_container(c["name"], image=image)
             else:
-                # 既存名があれば必ずremove
                 existing_names = self.client.list_containers(prefix="cph_")
                 if c["name"] in existing_names:
                     self.client.remove_container(c["name"])

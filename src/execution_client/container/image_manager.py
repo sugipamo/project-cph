@@ -64,15 +64,16 @@ class ContainerImageManager(AbstractContainerImageManager):
         with open(dockerfile_path, "rb") as f:
             return hashlib.sha256(f.read()).hexdigest()[:12]
 
-    def get_image_name(self, key: str) -> str:
-        # ojtoolsだけはハッシュなしの固定名
-        if key == "ojtools":
+    def get_image_name(self, key):
+        # keyは(言語,バージョン)タプル
+        lang, ver = key if isinstance(key, tuple) else (key, None)
+        if lang == "ojtools":
             return "cph_image_ojtools"
         dockerfile = self.dockerfile_map.get(key, None)
         if not dockerfile or not os.path.exists(dockerfile):
-            return key  # fallback
+            return f"{lang}_{ver}"  # fallback
         hashval = self.get_dockerfile_hash(dockerfile)
-        return f"cph_image_{key}_{hashval}"
+        return f"cph_image_{lang}_{ver}_{hashval}"
 
     def cleanup_old_images(self, key: str):
         """
@@ -87,15 +88,14 @@ class ContainerImageManager(AbstractContainerImageManager):
             if img.startswith(prefix) and img != current:
                 self.remove_image(img)
 
-    def ensure_image(self, key: str, context_dir: str = ".") -> str:
+    def ensure_image(self, key, context_dir: str = ".") -> str:
         image = self.get_image_name(key)
         images = subprocess.run(["docker", "images", "--format", "{{.Repository}}"], capture_output=True, text=True)
         image_names = images.stdout.splitlines()
         if image not in image_names:
             dockerfile = self.dockerfile_map.get(key, None)
             if dockerfile and os.path.exists(dockerfile):
-                # ojtoolsだけはハッシュなしでビルド
                 self.build_image(dockerfile, image, context_dir)
-                if key != "ojtools":
+                if key[0] != "ojtools":
                     self.cleanup_old_images(key)
         return image 
