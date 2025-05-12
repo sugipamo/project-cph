@@ -19,6 +19,9 @@ COMMANDS = {
 }
 PROBLEM_NAMES = ["a", "b", "c", "d", "e", "f", "g", "ex"]
 
+# 実行モード
+EXEC_MODES = ["local", "docker"]
+
 from src.execution_env.language_env_profile import LANGUAGE_ENVS
 
 LANGUAGE_ALIASES = {}
@@ -27,8 +30,11 @@ for lang, env_cls in LANGUAGE_ENVS.items():
     LANGUAGE_ALIASES[lang] = {"aliases": aliases}
 # 以降、LANGUAGE_ALIASESを使ってコマンドパース等を行う
 
+# テスト互換用: LANGUAGESエイリアス
+LANGUAGES = LANGUAGE_ALIASES
+
 import argparse
-from src.language_env.info_json_manager import InfoJsonManager
+from src.execution_env.info_json_manager import InfoJsonManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 
 # --- CLIコマンドパース用関数 ---

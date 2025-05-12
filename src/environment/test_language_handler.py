@@ -1,11 +1,10 @@
-from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, upm
-from src.language_env.profiles import get_profile
+from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE
+from src.execution_env.language_env_profile import LANGUAGE_ENVS
 import os
 
 class GenericTestHandler:
     def __init__(self, language, env_type):
-        self.profile = get_profile(language, env_type)
-        self.config = self.profile.language_config
+        self.config = LANGUAGE_ENVS[language]()
 
     def build_command(self, temp_source_path):
         """

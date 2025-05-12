@@ -2,6 +2,7 @@ import os
 
 CONTAINER_WORKSPACE = "/workspace"
 HOST_WORKSPACE = "./workspace"
+HOST_PROJECT_ROOT = os.path.abspath(".")
 
 TEMP_DIR = os.path.abspath('.temp')
 CONTAINER_TEMP_DIR = "/workspace/.temp"

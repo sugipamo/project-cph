@@ -1,7 +1,7 @@
 from src.environment.test_environment import TestExecutionEnvironment, TestEnvFileOpsMixin
 from src.execution_client.execution_manager import ExecutionManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
-from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, upm
+from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE
 import os
 import shutil
 import subprocess
@@ -60,7 +60,7 @@ class ExecutionManagerTestEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironm
         print(result.stdout)
 
     def submit_via_ojtools(self, args, volumes, workdir):
-        host_workdir = upm.to_host_path(workdir)
+        host_workdir = self.upm.to_host_path(workdir)
         if host_workdir is not None:
             # プロジェクトルートからの相対パスに変換
             workdir = os.path.relpath(str(host_workdir), HOST_PROJECT_ROOT)

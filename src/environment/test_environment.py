@@ -6,16 +6,17 @@ from src.execution_client.container.pool import ContainerPool
 from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from pathlib import Path
-from src.language_env.info_json_manager import InfoJsonManager
-from src.language_env.profiles import get_profile
-from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE
+from src.execution_env.info_json_manager import InfoJsonManager
+from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, TEMP_DIR
 from src.execution_client.execution_manager import ExecutionManager
 from src.execution_client.client.local import LocalAsyncClient
 
 class TestEnvFileOpsMixin:
     def prepare_source_code(self, contest_name, problem_name, language_name):
-        profile = get_profile(language_name, 'local')
-        temp_dir = Path(profile.env_config.temp_dir)
+        if hasattr(self, 'temp_dir'):
+            temp_dir = Path(self.temp_dir) / '.temp'
+        else:
+            temp_dir = Path(TEMP_DIR)
         if language_name == "rust":
             import glob
             src_dir = self.upm.contest_current("rust")
@@ -73,8 +74,10 @@ class TestEnvFileOpsMixin:
             return str(dst)
 
     def prepare_test_cases(self, contest_name, problem_name):
-        profile = get_profile("python", 'local')  # テストケースは言語依存しない場合はpythonでOK
-        temp_dir = Path(profile.env_config.temp_dir)
+        if hasattr(self, 'temp_dir'):
+            temp_dir = Path(self.temp_dir) / '.temp'
+        else:
+            temp_dir = Path(TEMP_DIR)
         test_dir = self.upm.contest_current("test")
         temp_test_dir = temp_dir / "test"
         if self.file_operator:
@@ -114,7 +117,10 @@ class DockerTestExecutionEnvironment(TestEnvFileOpsMixin, TestExecutionEnvironme
         from src.environment.test_language_handler import HANDLERS as DEFAULT_HANDLERS
         self.handlers = handlers if handlers is not None else DEFAULT_HANDLERS
         self.pool = ContainerPool({})
-        temp_dir = get_profile("python", "local").env_config.temp_dir
+        if hasattr(self, 'temp_dir'):
+            temp_dir = Path(self.temp_dir) / '.temp'
+        else:
+            temp_dir = TEMP_DIR
         temp_abs = Path(os.path.abspath(temp_dir)).resolve()
         mounts = [
             (Path(HOST_PROJECT_ROOT).resolve(), Path(CONTAINER_WORKSPACE)),

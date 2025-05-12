@@ -6,7 +6,7 @@ from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE
 
 from .test_result_formatter import ResultFormatter
 from src.environment.test_language_handler import HANDLERS
-from src.language_env.info_json_manager import InfoJsonManager
+from src.execution_env.info_json_manager import InfoJsonManager
 from src.execution_client.client.container import ContainerClient
 from src.environment.test_environment import DockerTestExecutionEnvironment
 from src.execution_client.container.image_manager import ContainerImageManager
