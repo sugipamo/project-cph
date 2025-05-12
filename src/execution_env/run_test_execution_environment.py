@@ -1,6 +1,6 @@
-from src.language_env.handlers import get_handler
+from src.execution_env.handlers import get_handler
 from src.file.testcase_file_operator import LocalTestcaseFileOperator, DockerTestcaseFileOperator
-from src.language_env.execution_resource_manager import LocalResourceManager, DockerResourceManager
+from src.execution_env.execution_resource_manager import LocalResourceManager, DockerResourceManager
 from src.execution_client.client.container import ContainerClient
 import os
 

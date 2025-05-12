@@ -12,6 +12,27 @@ from src.language_env.execution_command_builder import ExecutionCommandBuilder
 from src.input_data_loader import InputDataLoader
 from src.test_result_parser import TestResultParser
 
+class BaseLanguageEnv:
+    """
+    言語環境拡張用の基底クラスです。
+    共通値（container_workspace等）はここで一元管理できます。
+    各言語・バージョンごとにこのクラスを継承して拡張してください。
+    """
+    container_workspace = "/workspace"
+    build_cmd = None
+    run_cmd = None
+    source_file = "main.py"
+    copy_mode = "file"
+    dockerfile_path = None
+
+    def get_build_cmd(self, *args, **kwargs):
+        return self.build_cmd
+
+    def get_run_cmd(self, *args, **kwargs):
+        return self.run_cmd
+
+    # 必要に応じて他の共通メソッドも追加可能
+
 class BaseTestHandler:
     def __init__(self, language, env_type):
         self.profile = get_profile(language, env_type)
