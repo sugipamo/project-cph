@@ -5,12 +5,21 @@
 """
 # 以下、元のbase.pyの内容をそのまま移動
 import os
-from src.execution_env.profiles import get_profile
 from src.path_manager.unified_path_manager import UnifiedPathManager
-from src.language_env.constants import CONTAINER_WORKSPACE
-from src.language_env.execution_command_builder import ExecutionCommandBuilder
 from src.input_data_loader import InputDataLoader
 from src.test_result_parser import TestResultParser
+
+class ExecutionCommandBuilder:
+    def __init__(self, config):
+        self.config = config
+
+    def build_command(self, temp_source_path):
+        return self.config.build_cmd
+
+    def run_command(self, temp_source_path, bin_path=None):
+        if bin_path:
+            return [c.replace("{bin_path}", bin_path) for c in self.config.run_cmd]
+        return self.config.run_cmd
 
 class BaseLanguageEnv:
     """
@@ -94,7 +103,7 @@ class ContainerTestHandler(BaseTestHandler):
     def __init__(self, language, env_type):
         super().__init__(language, env_type)
         project_root = getattr(self.env_config, 'host_project_root', None)
-        container_root = getattr(self.env_config, 'workspace_dir', CONTAINER_WORKSPACE)
+        container_root = getattr(self.env_config, 'workspace_dir', "./workspace")
         mounts = getattr(self.env_config, 'mounts', None)
         self.upm = UnifiedPathManager(project_root, container_root, mounts=mounts)
 
