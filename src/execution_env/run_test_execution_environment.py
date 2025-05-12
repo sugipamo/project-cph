@@ -1,5 +1,5 @@
 from src.language_env.handlers import get_handler
-from src.language_env.file_ops import LocalFileOps, DockerFileOps
+from src.file.testcase_file_operator import LocalTestcaseFileOperator, DockerTestcaseFileOperator
 from src.language_env.execution_resource_manager import LocalResourceManager, DockerResourceManager
 from src.execution_client.client.container import ContainerClient
 import os
@@ -20,9 +20,9 @@ class RunTestExecutionEnvironment:
         if file_ops is not None:
             self.file_ops = file_ops
         elif env_type == 'docker':
-            self.file_ops = DockerFileOps(ctl or ContainerClient(), self.resource_manager)
+            self.file_ops = DockerTestcaseFileOperator(ctl or ContainerClient(), self.resource_manager)
         else:
-            self.file_ops = LocalFileOps()
+            self.file_ops = LocalTestcaseFileOperator()
 
     def build(self, language_name, container, source_path):
         handler = get_handler(language_name, self.env_type)

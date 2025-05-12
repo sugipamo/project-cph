@@ -3,8 +3,9 @@ from pathlib import Path
 import shutil
 import os
 import subprocess
+from src.logger import Logger
 
-class AbstractFileOps(ABC):
+class AbstractTestcaseFileOperator(ABC):
     @abstractmethod
     def prepare_source_code(self, contest_name, problem_name, language_name, upm, language_config, env_config):
         pass
@@ -36,7 +37,7 @@ class AbstractFileOps(ABC):
         else:
             return ["oj", "--cookie", cookie_path] + args
 
-class LocalFileOps(AbstractFileOps):
+class LocalTestcaseFileOperator(AbstractTestcaseFileOperator):
     def prepare_source_code(self, contest_name, problem_name, language_name, upm, language_config, env_config):
         temp_dir = Path(env_config.temp_dir)
         temp_dir.mkdir(parents=True, exist_ok=True)
@@ -97,21 +98,21 @@ class LocalFileOps(AbstractFileOps):
         os.makedirs(test_dir_host, exist_ok=True)
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            print(f"[ERROR] oj download failed: {result.stderr}")
+            Logger.error(f"oj download failed: {result.stderr}")
             raise RuntimeError("oj download failed")
-        print(result.stdout)
+        Logger.info(result.stdout)
 
     def submit_via_ojtools(self, args, workdir):
         cmd = self._build_oj_submit_cmd(args)
         result = subprocess.run(cmd, cwd=workdir, capture_output=True, text=True)
         ok = result.returncode == 0
         if not ok:
-            print(f"[ERROR] oj submit failed: {result.stderr}")
-            print(f"[ERROR] oj submit stdout: {result.stdout}")
+            Logger.error(f"oj submit failed: {result.stderr}")
+            Logger.error(f"oj submit stdout: {result.stdout}")
         return ok, result.stdout, result.stderr
 
 # 今後の拡張用
-class DockerFileOps(AbstractFileOps):
+class DockerTestcaseFileOperator(AbstractTestcaseFileOperator):
     def __init__(self, ctl, resource_manager):
         self.ctl = ctl  # ContainerClient等
         self.resource_manager = resource_manager
@@ -125,23 +126,22 @@ class DockerFileOps(AbstractFileOps):
     def download_testcases(self, url, test_dir_host):
         cmd = self._build_oj_download_cmd(url, test_dir_host)
         container = self.resource_manager.get_ojtools_container()
-        # スケルトン: ctl.exec_in_container(container, cmd) を想定
         result = self.ctl.exec_in_container(container, cmd)
         if result.returncode != 0:
-            print(f"[ERROR] oj download failed: {result.stderr}")
+            Logger.error(f"oj download failed: {result.stderr}")
             raise RuntimeError("oj download failed")
-        print(result.stdout)
+        Logger.info(result.stdout)
     def submit_via_ojtools(self, args, workdir):
         cmd = self._build_oj_submit_cmd(args)
         container = self.resource_manager.get_ojtools_container()
         result = self.ctl.exec_in_container(container, cmd, workdir=workdir)
         ok = result.returncode == 0
         if not ok:
-            print(f"[ERROR] oj submit failed: {result.stderr}")
-            print(f"[ERROR] oj submit stdout: {result.stdout}")
+            Logger.error(f"oj submit failed: {result.stderr}")
+            Logger.error(f"oj submit stdout: {result.stdout}")
         return ok, result.stdout, result.stderr
 
-class CloudFileOps(AbstractFileOps):
+class CloudTestcaseFileOperator(AbstractTestcaseFileOperator):
     def prepare_source_code(self, contest_name, problem_name, language_name, upm, language_config, env_config):
         pass
     def prepare_test_cases(self, contest_name, problem_name, upm, env_config):
