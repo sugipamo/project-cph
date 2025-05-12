@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List, Tuple, Optional
 from src.path_manager.project_path_manager import ProjectPathManager
 from src.path_manager.volume_path_mapper import VolumePathMapper
-from src.language_env.constants import CONTAINER_WORKSPACE, HOST_WORKSPACE
+from src.path_manager.common_paths import CONTAINER_WORKSPACE, HOST_WORKSPACE
 
 class UnifiedPathManager:
     """

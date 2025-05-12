@@ -3,7 +3,7 @@ from src.language_env.language_config import LANGUAGE_CONFIGS, LanguageConfig
 from src.language_env.execution_env_config import ExecutionEnvConfig
 from src.language_env.language_env_profile import LanguageEnvProfile
 from src.language_env.dockerfile_map import DOCKERFILE_MAP
-from src.language_env.constants import CONTAINER_WORKSPACE, HOST_WORKSPACE
+from src.path_manager.common_paths import CONTAINER_WORKSPACE, HOST_WORKSPACE
 from contest_env.python_config import PYTHON_CONFIGS
 from contest_env.rust_config import RUST_CONFIGS
 from contest_env.pypy_config import PYPY_CONFIGS
