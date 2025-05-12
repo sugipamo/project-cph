@@ -6,4 +6,5 @@ class RustEnv(BaseLanguageEnv):
     run_cmd = ["{bin_path}"]
     bin_path = "target/release/rust"
     copy_mode = "dir"
-    exclude_patterns = ["target"] 
+    exclude_patterns = ["target"]
+    LANGUAGE_ID = "5054"  # 例: AtCoder Rust (1.70.0) 

@@ -3,6 +3,7 @@ from src.language_env.info_json_manager import InfoJsonManager
 from src.file.config_json_manager import ConfigJsonManager
 from src.file.moveignore_manager import MoveIgnoreManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
+from src.execution_env.language_env_profile import LANGUAGE_ENVS
 
 class ContestFileManager:
     def __init__(self, file_operator: FileOperator, project_root=None, container_root="/workspace"):
@@ -51,7 +52,7 @@ class ContestFileManager:
             old_problem_name = info.get("problem_name")
         
             ignore_patterns = self.get_exclude_files(config_path)
-            for language in ["python", "pypy", "rust"]:
+            for language in LANGUAGE_ENVS.keys():
                 src_dir = self.file_operator.resolve_path(self.upm.contest_current(language))
                 if not src_dir.exists():
                     continue
@@ -264,11 +265,7 @@ class ContestFileManager:
                 language_name = info.get("language_name")
 
         manager = ConfigJsonManager(str(config_path))
-        manager.ensure_language_id({
-            "python": "5082",
-            "pypy": "5078",
-            "rust": "5054"
-        })
+        manager.ensure_language_id({lang: str(5000 + i*2) for i, lang in enumerate(LANGUAGE_ENVS.keys())})
         self.copy_from_stocks_to_current(contest_name, problem_name, language_name)
         if not self.file_operator.resolve_path(self.upm.contest_current(language_name)).exists():
             if self.file_operator.resolve_path(self.upm.contest_template(language_name)).exists():

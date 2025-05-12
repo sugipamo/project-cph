@@ -18,12 +18,14 @@ COMMANDS = {
     "submit": {"aliases": ["s"]},
 }
 PROBLEM_NAMES = ["a", "b", "c", "d", "e", "f", "g", "ex"]
-LANGUAGES = {
-    "python": {"aliases": ["python3"]},
-    "pypy": {"aliases": ["pypy3", "py"]},
-    "rust": {"aliases": ["rs", "rustc"]},
-}
-EXEC_MODES = ["docker", "local"]
+
+from src.execution_env.language_env_profile import LANGUAGE_ENVS
+
+LANGUAGE_ALIASES = {}
+for lang, env_cls in LANGUAGE_ENVS.items():
+    aliases = getattr(env_cls, 'ALIASES', [lang])
+    LANGUAGE_ALIASES[lang] = {"aliases": aliases}
+# 以降、LANGUAGE_ALIASESを使ってコマンドパース等を行う
 
 import argparse
 from src.language_env.info_json_manager import InfoJsonManager
@@ -76,7 +78,7 @@ class CommandParser:
                 if self.parsed["contest_name"] is not None:
                     continue
             # language_name
-            for lang, v in LANGUAGES.items():
+            for lang, v in LANGUAGE_ALIASES.items():
                 if self.parsed["language_name"] is None and (arg == lang or arg in v["aliases"]):
                     self.parsed["language_name"] = lang
                     used.add(len(args)-1-i)
