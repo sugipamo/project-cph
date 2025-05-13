@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import patch
 from src.execution_client.client.container import ContainerClient, AbstractContainerClient
 import json
+import subprocess
 
 def make_inspect_result(obj):
     return json.dumps([obj])
@@ -128,4 +129,70 @@ def test_is_container_running(mock_run):
     mock_run.return_value.stdout = "false"
     assert not client.is_container_running("test")
     mock_run.return_value.returncode = 1
-    assert not client.is_container_running("test") 
+    assert not client.is_container_running("test")
+
+@patch("subprocess.run")
+def test_run_container_timeout(mock_run):
+    mock_run.side_effect = subprocess.TimeoutExpired(cmd=["docker"], timeout=30)
+    client = ContainerClient()
+    result = client.run_container("test", "img")
+    assert result == ""
+
+@patch("subprocess.run")
+def test_stop_container_timeout(mock_run):
+    mock_run.side_effect = subprocess.TimeoutExpired(cmd=["docker"], timeout=30)
+    client = ContainerClient()
+    result = client.stop_container("test")
+    assert result is False
+
+@patch("subprocess.run")
+def test_remove_container_timeout(mock_run):
+    mock_run.side_effect = subprocess.TimeoutExpired(cmd=["docker"], timeout=30)
+    client = ContainerClient()
+    result = client.remove_container("test")
+    assert result is False
+
+@patch("subprocess.run")
+def test_exec_in_container_timeout(mock_run):
+    mock_run.side_effect = subprocess.TimeoutExpired(cmd=["docker"], timeout=30)
+    client = ContainerClient()
+    result = client.exec_in_container("test", ["echo", "hello"])
+    assert result.returncode == 1
+    assert result.stderr == "timeout"
+
+@patch("subprocess.run")
+def test_copy_to_container_timeout(mock_run):
+    mock_run.side_effect = subprocess.TimeoutExpired(cmd=["docker"], timeout=30)
+    client = ContainerClient()
+    result = client.copy_to_container("test", "/host/file", "/cont/file")
+    assert result is False
+
+@patch("subprocess.run")
+def test_copy_from_container_timeout(mock_run):
+    mock_run.side_effect = subprocess.TimeoutExpired(cmd=["docker"], timeout=30)
+    client = ContainerClient()
+    result = client.copy_from_container("test", "/cont/file", "/host/file")
+    assert result is False
+
+@patch("subprocess.run")
+def test_is_container_running_timeout(mock_run):
+    mock_run.side_effect = subprocess.TimeoutExpired(cmd=["docker"], timeout=30)
+    client = ContainerClient()
+    result = client.is_container_running("test")
+    assert result is False
+
+@patch("subprocess.run")
+def test_inspect_container_json_error(mock_run):
+    mock_run.return_value.returncode = 0
+    mock_run.return_value.stdout = "not a json"
+    client = ContainerClient()
+    with pytest.raises(json.JSONDecodeError):
+        client.inspect_container("test")
+
+@patch("subprocess.run")
+def test_inspect_image_json_error(mock_run):
+    mock_run.return_value.returncode = 0
+    mock_run.return_value.stdout = "not a json"
+    client = ContainerClient()
+    with pytest.raises(json.JSONDecodeError):
+        client.inspect_image("test") 
