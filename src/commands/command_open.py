@@ -38,6 +38,7 @@ class CommandOpen:
             else:
                 self.opener.open_editor(str(problem_dir), language_name)
         
+        print("[DEBUG] open: contest_name=", contest_name, "problem_name=", problem_name, "language_name=", language_name, flush=True)
         # 3. テストケース数カウント
         if file_operator:
             # base_dirからの相対パス＋パターンでglobする
@@ -47,6 +48,7 @@ class CommandOpen:
         else:
             test_case_count = len([f for f in os.listdir(test_dir) if f.endswith('.in')]) if os.path.exists(test_dir) else 0
         
+        print("[DEBUG] open: test_case_count=", test_case_count, flush=True)
         # 4. 必要なコンテナ・環境を調整
         requirements = [
             {"type": "test", "language": language_name, "count": test_case_count},
@@ -54,9 +56,12 @@ class CommandOpen:
                 "/home/cphelper/.local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
             }}
         ]
+        print("[DEBUG] open: requirements=", requirements, flush=True)
         containers = self.test_env.resource_manager.adjust_resources(requirements, contest_name, problem_name, language_name)
+        print("[DEBUG] open: containers after adjust_resources=", containers, flush=True)
         # 5. system_info.jsonの更新はadjust_resourcesで一括実施済み
         info_path = self.upm.info_json()
         manager = InfoJsonManager(info_path)
         # 6. テストケースダウンロード（oj download）
+        print("[DEBUG] open: download_testcases url=", url, flush=True)
         self.test_env.file_ops.download_testcases(url, self.upm.contest_current("test"))

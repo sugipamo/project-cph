@@ -24,7 +24,9 @@ class ContainerPool(AbstractContainerPool):
         return generate_container_name(purpose, language, index)
 
     def adjust(self, requirements: List[Dict]) -> List[Dict]:
+        print("[DEBUG] ContainerPool.adjust requirements=", requirements, flush=True)
         required_containers = self._generate_required_containers(requirements)
+        print("[DEBUG] ContainerPool.adjust required_containers=", required_containers, flush=True)
         existing = set(self._get_existing_container_names())
         required_names = set(c["name"] for c in required_containers)
         self._remove_unneeded_containers(existing, required_names)
@@ -34,6 +36,7 @@ class ContainerPool(AbstractContainerPool):
         return required_containers
 
     def _generate_required_containers(self, requirements: List[Dict]) -> List[Dict]:
+        print("[DEBUG] ContainerPool._generate_required_containers requirements=", requirements, flush=True)
         required_containers = []
         for req in requirements:
             count = req.get("count", 1)
@@ -52,12 +55,16 @@ class ContainerPool(AbstractContainerPool):
                 else:
                     c["volumes"] = {str(h): str(c) for h, c in self.unified_path_manager.get_mounts()}
                 required_containers.append(c)
+        print("[DEBUG] ContainerPool._generate_required_containers result=", required_containers, flush=True)
         return required_containers
 
     def _get_existing_container_names(self) -> List[str]:
         return self.client.list_containers(prefix="cph_")
 
     def _remove_unneeded_containers(self, existing: set, required_names: set):
+        # 既存のojtoolsコンテナ名は常にrequired_namesに含める
+        ojtools_existing = {name for name in existing if name.startswith("cph_ojtools_")}
+        required_names = required_names.union(ojtools_existing)
         to_remove = list(existing - required_names)
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             list(executor.map(self.client.remove_container, to_remove))

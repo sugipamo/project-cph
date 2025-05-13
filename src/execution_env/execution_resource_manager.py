@@ -45,6 +45,7 @@ class DockerResourceManager(ExecutionResourceManager):
         self.pool = ContainerPool(self.dockerfile_map, project_root=self.project_root, container_root=self.container_root)
 
     def adjust_resources(self, requirements, contest_name=None, problem_name=None, language_name=None):
+        print("[DEBUG] DockerResourceManager.adjust_resources requirements=", requirements, flush=True)
         containers = self.pool.adjust(requirements)
         self.info_manager.data["contest_name"] = contest_name
         self.info_manager.data["problem_name"] = problem_name

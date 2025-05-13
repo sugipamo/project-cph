@@ -106,4 +106,10 @@ class RunTestExecutionEnvironment:
             "extra_mounts": getattr(handler, "extra_mounts", None),
         }]
         self.resource_manager.adjust_resources(requirements, contest_name, problem_name, language_name)
-        return self.run_test_cases(temp_source_path, temp_in_files, language_name) 
+        return self.run_test_cases(temp_source_path, temp_in_files, language_name)
+
+    def to_container_path(self, host_path):
+        return self.upm.to_container_path(host_path)
+
+    def submit_via_ojtools(self, args, volumes, workdir):
+        return self.file_ops.submit_via_ojtools(args, workdir) 

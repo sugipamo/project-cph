@@ -78,11 +78,11 @@ class CommandTest:
             print("")
 
     async def run_test(self, contest_name, problem_name, language_name):
-        results = await self.env.run_test_all_cases(contest_name, problem_name, language_name)
+        results = self.env.run_test_all_cases(contest_name, problem_name, language_name)
         self.print_test_results(results)
 
     async def run_test_return_results(self, contest_name, problem_name, language_name):
-        results = await self.env.run_test_all_cases(contest_name, problem_name, language_name)
+        results = self.env.run_test_all_cases(contest_name, problem_name, language_name)
         return results
 
     def is_all_ac(self, results):

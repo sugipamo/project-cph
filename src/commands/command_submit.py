@@ -79,7 +79,7 @@ class CommandSubmit:
         raise RuntimeError("ojtools用コンテナがsystem_info.jsonにありません")
 
     async def run_submit_command(self, args, volumes, workdir):
-        # test_env経由で提出処理を実行
+        print("[DEBUG] run_submit_command workdir=", workdir)
         return self.test_env.submit_via_ojtools(args, volumes, workdir)
 
     async def submit(self, contest_name, problem_name, language_name):
@@ -99,6 +99,7 @@ class CommandSubmit:
         language_id = get_language_id(language_name)
         volumes = get_project_root_volumes()
         workdir = "/workspace"
+        print("[DEBUG] submit workdir=", workdir)
         submit_file = SUBMIT_FILES.get(language_name, "main.py")
         temp_file_path = f".temp/{submit_file}"
         if file_operator:
@@ -125,4 +126,6 @@ class CommandSubmit:
                 "/home/cphelper/.local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
             }}
         ]
+        print("[DEBUG] submit requirements(adjust_resources呼び出し直前)=", requirements, flush=True)
+        self.test_env.resource_manager.adjust_resources(requirements, contest_name, problem_name, language_name)
         return await self.run_submit_command(args, volumes, workdir) 
