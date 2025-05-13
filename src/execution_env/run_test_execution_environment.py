@@ -89,10 +89,16 @@ class RunTestExecutionEnvironment:
         temp_source_path = self.prepare_source_code(contest_name, problem_name, language_name)
         temp_test_dir = self.prepare_test_cases(contest_name, problem_name)
         temp_in_files, _ = self.file_ops.collect_test_cases(temp_test_dir)
+        # Handlerからリソース制限値を取得しrequirementsに追加
         requirements = [{
             "type": "test",
             "language": language_name,
-            "count": len(temp_in_files)
+            "count": len(temp_in_files),
+            "memory_limit": getattr(handler, "memory_limit", None),
+            "cpu_limit": getattr(handler, "cpu_limit", None),
+            "time_limit": getattr(handler, "time_limit", None),
+            "extra_env": getattr(handler, "extra_env", None),
+            "extra_mounts": getattr(handler, "extra_mounts", None),
         }]
         self.resource_manager.adjust_resources(requirements, contest_name, problem_name, language_name)
         return self.run_test_cases(temp_source_path, temp_in_files, language_name) 

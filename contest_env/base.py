@@ -41,6 +41,12 @@ class BaseLanguageEnv:
     source_file = "main.py"
     copy_mode = "file"
     dockerfile_path = None
+    # リソース制限系
+    memory_limit = None  # 例: "512m"
+    cpu_limit = None    # 例: "1.0"
+    time_limit = None   # 例: 秒数
+    extra_env = None    # 追加環境変数(dict)
+    extra_mounts = None # 追加マウント設定(list/dict)
 
     def get_build_cmd(self, *args, **kwargs):
         return self.build_cmd
