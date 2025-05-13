@@ -60,42 +60,27 @@ class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
             cmd += command
         else:
             cmd += ["tail", "-f", "/dev/null"]
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
-            if result.returncode == 0:
-                return result.stdout.strip()
-            else:
-                print(f"[ERROR] docker run failed: {result.stderr}")
-                return ""
-        except subprocess.TimeoutExpired:
-            print("[ERROR] docker run timed out")
-            return ""
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
+        if result.returncode == 0:
+            return result.stdout.strip()
+        else:
+            raise RuntimeError(f"docker run failed: {result.stderr}")
 
     def stop_container(self, name: str) -> bool:
         cmd = ["docker", "stop", name]
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
-            if result.returncode == 0:
-                return True
-            else:
-                print(f"[ERROR] docker stop failed: {result.stderr}")
-                return False
-        except subprocess.TimeoutExpired:
-            print("[ERROR] docker stop timed out")
-            return False
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
+        if result.returncode == 0:
+            return True
+        else:
+            raise RuntimeError(f"docker stop failed: {result.stderr}")
 
     def remove_container(self, name: str) -> bool:
         cmd = ["docker", "rm", "-f", name]
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
-            if result.returncode == 0:
-                return True
-            else:
-                print(f"[ERROR] docker rm failed: {result.stderr}")
-                return False
-        except subprocess.TimeoutExpired:
-            print("[ERROR] docker rm timed out")
-            return False
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
+        if result.returncode == 0:
+            return True
+        else:
+            raise RuntimeError(f"docker rm failed: {result.stderr}")
 
     def exec_in_container(self, name: str, cmd_list: List[str], realtime: bool = False, stdin: str = None, cwd: str = None) -> subprocess.CompletedProcess:
         cmd = ["docker", "exec", "-i"]
@@ -104,70 +89,45 @@ class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
         cmd.append(name)
         cmd += cmd_list
         if not realtime:
-            try:
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout, input=stdin)
-                if result.returncode != 0:
-                    print(f"[ERROR] docker exec failed: {result.stderr}")
-                return result
-            except subprocess.TimeoutExpired:
-                print("[ERROR] docker exec timed out")
-                return subprocess.CompletedProcess(cmd, 1, '', 'timeout')
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout, input=stdin)
+            if result.returncode != 0:
+                raise RuntimeError(f"docker exec failed: {result.stderr}")
+            return result
         else:
-            try:
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, stdin=subprocess.PIPE)
-                output = ""
-                if stdin is not None:
-                    proc.stdin.write(stdin)
-                    proc.stdin.close()
-                try:
-                    for line in proc.stdout:
-                        output += line
-                except Exception:
-                    pass
-                proc.wait(timeout=self.timeout)
-                if proc.returncode != 0:
-                    print(f"[ERROR] docker exec (realtime) failed: {output}")
-                return subprocess.CompletedProcess(cmd, proc.returncode, output, output if proc.returncode != 0 else "")
-            except subprocess.TimeoutExpired:
-                print("[ERROR] docker exec (realtime) timed out")
-                return subprocess.CompletedProcess(cmd, 1, '', 'timeout')
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, stdin=subprocess.PIPE)
+            output = ""
+            if stdin is not None:
+                proc.stdin.write(stdin)
+                proc.stdin.close()
+            for line in proc.stdout:
+                output += line
+            proc.wait(timeout=self.timeout)
+            if proc.returncode != 0:
+                raise RuntimeError(f"docker exec (realtime) failed: {output}")
+            return subprocess.CompletedProcess(cmd, proc.returncode, output, output if proc.returncode != 0 else "")
 
     def copy_to_container(self, name: str, src_path: str, dst_path: str) -> bool:
         cmd = ["docker", "cp", src_path, f"{name}:{dst_path}"]
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
-            if result.returncode == 0:
-                return True
-            else:
-                print(f"[ERROR] docker cp to container failed: {result.stderr}")
-                return False
-        except subprocess.TimeoutExpired:
-            print("[ERROR] docker cp to container timed out")
-            return False
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
+        if result.returncode == 0:
+            return True
+        else:
+            raise RuntimeError(f"docker cp to container failed: {result.stderr}")
 
     def copy_from_container(self, name: str, src_path: str, dst_path: str) -> bool:
         cmd = ["docker", "cp", f"{name}:{src_path}", dst_path]
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
-            if result.returncode == 0:
-                return True
-            else:
-                print(f"[ERROR] docker cp from container failed: {result.stderr}")
-                return False
-        except subprocess.TimeoutExpired:
-            print("[ERROR] docker cp from container timed out")
-            return False
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
+        if result.returncode == 0:
+            return True
+        else:
+            raise RuntimeError(f"docker cp from container failed: {result.stderr}")
 
     def is_container_running(self, name: str) -> bool:
         cmd = ["docker", "inspect", "-f", "{{.State.Running}}", name]
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
-            if result.returncode != 0:
-                return False
-            return result.stdout.strip() == "true"
-        except subprocess.TimeoutExpired:
-            print(f"[ERROR] docker inspect timed out for {name}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
+        if result.returncode != 0:
             return False
+        return result.stdout.strip() == "true"
 
     def list_containers(self, all: bool = True, prefix: Optional[str] = None) -> List[str]:
         cmd = ["docker", "ps", "-a" if all else "", "--format", "{{.Names}}"]
@@ -216,40 +176,27 @@ class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
         if tail is not None:
             cmd += ["--tail", str(tail)]
         cmd.append(name)
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
-            if result.returncode == 0:
-                return result.stdout
-            else:
-                print(f"[ERROR] docker logs failed: {result.stderr}")
-                return ""
-        except subprocess.TimeoutExpired:
-            print(f"[ERROR] docker logs timed out for {name}")
-            return ""
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
+        if result.returncode == 0:
+            return result.stdout
+        else:
+            raise RuntimeError(f"docker logs failed: {result.stderr}")
 
     def container_exists(self, name: str) -> bool:
         cmd = ["docker", "ps", "-a", "--format", "{{.Names}}"]
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
-            if result.returncode != 0:
-                return False
-            names = result.stdout.splitlines()
-            return name in names
-        except subprocess.TimeoutExpired:
-            print("[ERROR] docker ps timed out")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
+        if result.returncode != 0:
             return False
+        names = result.stdout.splitlines()
+        return name in names
 
     def image_exists(self, image_name: str) -> bool:
         cmd = ["docker", "images", "--format", "{{.Repository}}"]
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
-            if result.returncode != 0:
-                return False
-            images = result.stdout.splitlines()
-            return image_name in images
-        except subprocess.TimeoutExpired:
-            print("[ERROR] docker images timed out")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
+        if result.returncode != 0:
             return False
+        images = result.stdout.splitlines()
+        return image_name in images
 
     def run(self, name: str, image: Optional[str] = None, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, detach: bool = True, realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, cwd: Optional[str] = None, **kwargs) -> Any:
         if not realtime:

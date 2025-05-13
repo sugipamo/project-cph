@@ -2,23 +2,14 @@ import os
 
 class Opener:
     def open_editor(self, path: str, language: str = None):
-        try:
-            import subprocess
-            print(path)
-            subprocess.call(["code", path], env=os.environ.copy())
-        except Exception as e:
-            print(f"[警告] VSCode起動失敗: {e}")
-        try:
-            import subprocess
-            subprocess.call(["cursor", path], env=os.environ.copy())
-        except Exception as e:
-            print(f"[警告] Cursor起動失敗: {e}")
+        import subprocess
+        print(path)
+        subprocess.call(["code", path], env=os.environ.copy())
+        import subprocess
+        subprocess.call(["cursor", path], env=os.environ.copy())
     def open_browser(self, url: str):
-        try:
-            import webbrowser
-            webbrowser.open(url)
-        except Exception as e:
-            print(f"[警告] ブラウザでページを開けませんでした: {e}")
+        import webbrowser
+        webbrowser.open(url)
 
 class MockOpener(Opener):
     def __init__(self):

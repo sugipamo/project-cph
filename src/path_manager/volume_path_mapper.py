@@ -51,11 +51,18 @@ class VolumePathMapper:
     def to_host_path(self, container_path: Path) -> Optional[Path]:
         container_path = Path(container_path)
         for h_root, c_root in self.mounts:
-            try:
-                rel = container_path.relative_to(c_root)
-                return h_root / rel
-            except ValueError:
-                continue
+            # try...exceptを使わず、is_relative_toで判定
+            if hasattr(container_path, 'is_relative_to'):
+                if container_path.is_relative_to(c_root):
+                    rel = container_path.relative_to(c_root)
+                    return h_root / rel
+            else:
+                # Python<3.9互換
+                try:
+                    rel = container_path.relative_to(c_root)
+                    return h_root / rel
+                except ValueError:
+                    continue
         return None
 
     def add_mount(self, host_path: Path, container_path: Path):
