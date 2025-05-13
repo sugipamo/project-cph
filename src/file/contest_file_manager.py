@@ -3,7 +3,7 @@ from src.execution_env.info_json_manager import InfoJsonManager
 from src.file.config_json_manager import ConfigJsonManager
 from src.file.moveignore_manager import MoveIgnoreManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
-from src.execution_env.language_env_profile import LANGUAGE_ENVS
+from src.execution_env.language_env_profile import LANGUAGE_ENVS, LanguageConfigAccessor
 
 class ContestFileManager:
     def __init__(self, file_operator: FileOperator, project_root=None, container_root="/workspace"):
@@ -16,11 +16,11 @@ class ContestFileManager:
     def get_current_config_path(self):
         return self.file_operator.resolve_path(self.upm.config_json())
 
-    def get_exclude_files(self, config_path):
+    def get_exclude_files(self, language_name):
         """
-        config.jsonのmoveignore（正規表現リスト）を返す
+        指定言語のmoveignore（正規表現リスト）を返す
         """
-        return MoveIgnoreManager(str(config_path)).moveignore
+        return LanguageConfigAccessor.get_moveignore(language_name)
 
     def _is_ignored(self, name, ignore_patterns):
         return MoveIgnoreManager.is_ignored_with_patterns(name, ignore_patterns)
@@ -51,7 +51,7 @@ class ContestFileManager:
             old_contest_name = info.get("contest_name")
             old_problem_name = info.get("problem_name")
         
-            ignore_patterns = self.get_exclude_files(config_path)
+            ignore_patterns = self.get_exclude_files(language_name)
             for language in LANGUAGE_ENVS.keys():
                 src_dir = self.file_operator.resolve_path(self.upm.contest_current(language))
                 if not src_dir.exists():
@@ -105,7 +105,7 @@ class ContestFileManager:
             return
         dst_dir = self.file_operator.resolve_path(self.upm.contest_stocks(old_contest_name, old_problem_name))
         dst_dir.mkdir(parents=True, exist_ok=True)
-        ignore_patterns = self.get_exclude_files(config_path)
+        ignore_patterns = self.get_exclude_files(language_name)
         for item in src_dir.iterdir():
             if self._is_ignored(item.name, ignore_patterns):
                 continue
@@ -159,7 +159,7 @@ class ContestFileManager:
         if not src_dir.exists():
             raise FileNotFoundError(f"{src_dir}が存在しません")
         config_path = self.get_current_config_path()
-        ignore_patterns = self.get_exclude_files(config_path)
+        ignore_patterns = self.get_exclude_files(language_name)
         for item in src_dir.iterdir():
             if self._is_ignored(item.name, ignore_patterns):
                 continue

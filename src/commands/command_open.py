@@ -4,7 +4,7 @@ from src.execution_client.client.container import ContainerClient
 from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.file.file_operator import FileOperator
-from src.file.config_json_manager import ConfigJsonManager
+from src.execution_env.language_env_profile import LanguageConfigAccessor
 
 class CommandOpen:
     def __init__(self, file_manager, opener, test_env):
@@ -30,10 +30,8 @@ class CommandOpen:
         url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
         if self.opener:
             self.opener.open_browser(url)
-            # entry_file（config.json）を参照して開く
-            config_path = self.upm.config_json()
-            config_manager = ConfigJsonManager(config_path)
-            entry_file = config_manager.get_entry_file(language_name)
+            # entry_file（Configクラス）を参照して開く
+            entry_file = LanguageConfigAccessor.get_entry_file(language_name)
             if entry_file:
                 entry_path = self.upm.contest_current(language_name, entry_file)
                 self.opener.open_editor(str(entry_path), language_name)

@@ -2,6 +2,8 @@ from contest_env.base import BaseLanguageConfig, ContainerTestHandler, LocalTest
 
 class RustConfig(BaseLanguageConfig):
     LANGUAGE_ID = "5054"  # 例: AtCoder Rust (1.70.0)
+    source_file = "src/main.rs"
+    exclude_patterns = ["target"]
 
 @register_handler("rust", "container")
 class RustContainerHandler(ContainerTestHandler, RustConfig):

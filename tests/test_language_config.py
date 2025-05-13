@@ -1,4 +1,4 @@
-from src.execution_env.language_config import LanguageConfig
+from contest_env.base import LanguageConfig
 
 def test_default_values():
     config = LanguageConfig(name='python')

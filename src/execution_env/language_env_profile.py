@@ -21,3 +21,20 @@ class LanguageEnvProfile:
         self.env = self.env_class()  # インスタンス化
         self.dockerfile_path = self.env.dockerfile_path
         # 必要に応じて他のプロパティも参照可能 
+
+class LanguageConfigAccessor:
+    @staticmethod
+    def get_config(language_name):
+        return LANGUAGE_ENVS[language_name]()
+
+    @staticmethod
+    def get_moveignore(language_name):
+        return getattr(LanguageConfigAccessor.get_config(language_name), "exclude_patterns", [])
+
+    @staticmethod
+    def get_language_id(language_name):
+        return getattr(LanguageConfigAccessor.get_config(language_name), "LANGUAGE_ID", None)
+
+    @staticmethod
+    def get_entry_file(language_name):
+        return getattr(LanguageConfigAccessor.get_config(language_name), "source_file", "main.py") 

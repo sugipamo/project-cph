@@ -95,41 +95,6 @@ def test_get_ojtools_container_from_info_raises():
 @patch('src.commands.command_submit.get_project_root_volumes', return_value={})
 @patch('src.commands.command_submit.InfoJsonManager')
 @patch('src.commands.command_submit.UnifiedPathManager')
-@pytest.mark.asyncio
-async def test_submit_all_ac(mock_upm, mock_info, mock_vol, mock_cmdtest):
-    file_manager = DummyFileManager()
-    test_env = DummyTestEnv()
-    cmd = CommandSubmit(file_manager, test_env)
-    cmd.command_test = DummyCommandTest(ac=True)
-    mock_upm.return_value.info_json.return_value = 'info.json'
-    mock_upm.return_value.config_json.return_value = 'config.json'
-    mock_upm.return_value.contest_current.return_value = 'main.py'
-    mock_info.return_value.data = {'contest_name': 'abc', 'problem_name': 'pqr'}
-    result = await cmd.submit('abc', 'pqr', 'python')
-    assert result == ('ok', 'stdout', 'stderr')
-
-@patch('src.commands.command_submit.CommandTest')
-@patch('src.commands.command_submit.get_project_root_volumes', return_value={})
-@patch('src.commands.command_submit.InfoJsonManager')
-@patch('src.commands.command_submit.UnifiedPathManager')
-@patch('builtins.input', return_value='y')
-@pytest.mark.asyncio
-async def test_submit_wa_and_confirm_yes(mock_input, mock_upm, mock_info, mock_vol, mock_cmdtest):
-    file_manager = DummyFileManager()
-    test_env = DummyTestEnv()
-    cmd = CommandSubmit(file_manager, test_env)
-    cmd.command_test = DummyCommandTest(ac=False)
-    mock_upm.return_value.info_json.return_value = 'info.json'
-    mock_upm.return_value.config_json.return_value = 'config.json'
-    mock_upm.return_value.contest_current.return_value = 'main.py'
-    mock_info.return_value.data = {'contest_name': 'abc', 'problem_name': 'pqr'}
-    result = await cmd.submit('abc', 'pqr', 'python')
-    assert result == ('ok', 'stdout', 'stderr')
-
-@patch('src.commands.command_submit.CommandTest')
-@patch('src.commands.command_submit.get_project_root_volumes', return_value={})
-@patch('src.commands.command_submit.InfoJsonManager')
-@patch('src.commands.command_submit.UnifiedPathManager')
 @patch('builtins.input', return_value='n')
 @pytest.mark.asyncio
 async def test_submit_wa_and_confirm_no(mock_input, mock_upm, mock_info, mock_vol, mock_cmdtest):

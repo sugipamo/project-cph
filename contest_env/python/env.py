@@ -2,6 +2,8 @@ from contest_env.base import BaseLanguageConfig, ContainerTestHandler, LocalTest
 
 class PythonConfig(BaseLanguageConfig):
     LANGUAGE_ID = "5078"  # 例: AtCoder Python3 (3.8.2)
+    source_file = "main.py"
+    exclude_patterns = [r"^.*\\.log$", r"^debug.*"]  # moveignore相当
 
 @register_handler("python", "container")
 class PythonContainerHandler(ContainerTestHandler, PythonConfig):

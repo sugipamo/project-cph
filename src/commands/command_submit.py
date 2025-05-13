@@ -9,7 +9,7 @@ from src.execution_client.client.container import ContainerClient
 from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.file.file_operator import FileOperator
-from src.execution_env.language_env_profile import LANGUAGE_ENVS
+from src.execution_env.language_env_profile import LANGUAGE_ENVS, LanguageConfigAccessor
 
 LANGUAGE_MAIN_FILES = {lang: getattr(env_cls, 'source_file', 'main.py') for lang, env_cls in LANGUAGE_ENVS.items()}
 # 以降、LANGUAGE_MAIN_FILES[lang]でmainファイル名を参照
@@ -20,30 +20,8 @@ SUBMIT_FILES = {
     "rust": "src/main.rs",
 }
 
-LANGUAGE_IDS = {lang: getattr(env_cls, 'LANGUAGE_ID', None) for lang, env_cls in LANGUAGE_ENVS.items()}
-
-def get_language_id(language_name, config_path, file_operator=None):
-    import os
-    import json
-    # config.json優先
-    if file_operator:
-        if not file_operator.exists(config_path):
-            id_from_config = None
-        else:
-            with file_operator.open(config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
-            id_from_config = config.get("language_id", {}).get(language_name)
-    else:
-        if not os.path.exists(config_path):
-            id_from_config = None
-        else:
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
-            id_from_config = config.get("language_id", {}).get(language_name)
-    if id_from_config:
-        return id_from_config
-    # env.pyのデフォルト
-    return LANGUAGE_IDS.get(language_name)
+def get_language_id(language_name):
+    return LanguageConfigAccessor.get_language_id(language_name)
 
 class CommandSubmit:
     def __init__(self, file_manager, test_env):
@@ -118,7 +96,7 @@ class CommandSubmit:
         info = self.validate_info_file(info_path, contest_name, problem_name, file_operator)
         if info is None:
             return None
-        language_id = get_language_id(language_name, config_path, file_operator)
+        language_id = get_language_id(language_name)
         volumes = get_project_root_volumes()
         workdir = "/workspace"
         submit_file = SUBMIT_FILES.get(language_name, "main.py")

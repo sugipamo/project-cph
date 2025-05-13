@@ -7,17 +7,6 @@ from src.file.contest_file_manager import ContestFileManager
 from src.file.file_operator import MockFileOperator
 import pytest
 
-def test_get_exclude_files(tmp_path):
-    op = MockFileOperator(base_dir=tmp_path)
-    manager = ContestFileManager(op)
-    config_path = tmp_path / "config.json"
-    config_path.write_text(json.dumps({"moveignore": ["^.*\\.log$", "^debug.*"]}), encoding="utf-8")
-    patterns = manager.get_exclude_files(config_path)
-    assert patterns == ["^.*\\.log$", "^debug.*"]
-    # configがなければ空リスト
-    patterns2 = manager.get_exclude_files(tmp_path / "no_config.json")
-    assert patterns2 == []
-
 def test_is_ignored():
     op = MockFileOperator()
     manager = ContestFileManager(op)
@@ -35,14 +24,6 @@ def test_remove_empty_parents(tmp_path):
     manager._remove_empty_parents(d, tmp_path / "a")
     assert not (tmp_path / "a" / "b").exists()
     assert (tmp_path / "a").exists()
-
-def test_get_exclude_files2(tmp_path):
-    op = MockFileOperator()
-    manager = ContestFileManager(op)
-    config_path = tmp_path / "config.json"
-    config_path.write_text(json.dumps({"moveignore": [r"^debug.*"]}))
-    excludes = manager.get_exclude_files(config_path)
-    assert r"^debug.*" in excludes
 
 def test_resolve_path():
     op = MockFileOperator()
