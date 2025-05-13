@@ -112,6 +112,8 @@ class BaseTestHandler:
         return ok, result.stdout, result.stderr
 
 class LocalTestHandler(BaseTestHandler):
+    def __init__(self, language, env_type, config=None, env_config=None):
+        super().__init__(language, env_type, config=config, env_config=env_config)
     def before_build(self, *args, **kwargs):
         pass
     def after_build(self, *args, **kwargs):
@@ -126,8 +128,8 @@ class LocalTestHandler(BaseTestHandler):
         pass
 
 class ContainerTestHandler(BaseTestHandler):
-    def __init__(self, language, env_type):
-        super().__init__(language, env_type)
+    def __init__(self, language, env_type, config=None, env_config=None):
+        super().__init__(language, env_type, config=config, env_config=env_config)
         project_root = getattr(self.env_config, 'host_project_root', None)
         container_root = getattr(self.env_config, 'workspace_dir', "./workspace")
         mounts = getattr(self.env_config, 'mounts', None)
