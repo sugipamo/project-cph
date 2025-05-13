@@ -4,6 +4,7 @@ from src.file.config_json_manager import ConfigJsonManager
 from src.file.moveignore_manager import MoveIgnoreManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.execution_env.language_env_profile import LANGUAGE_ENVS, LanguageConfigAccessor
+import time
 
 class ContestFileManager:
     def __init__(self, file_operator: FileOperator, project_root=None, container_root="/workspace"):
@@ -163,8 +164,15 @@ class ContestFileManager:
         for item in src_dir.iterdir():
             if self._is_ignored(item.name, ignore_patterns):
                 continue
+            dst_file = dst_dir / item.name
+            # 既存ファイルがあれば削除
+            if dst_file.exists():
+                if dst_file.is_file():
+                    dst_file.unlink()
+                elif dst_file.is_dir():
+                    import shutil
+                    shutil.rmtree(dst_file)
             if item.is_file():
-                dst_file = dst_dir / item.name
                 dst_file.parent.mkdir(parents=True, exist_ok=True)
                 self.file_operator.copy(item, dst_file)
             elif item.is_dir():
