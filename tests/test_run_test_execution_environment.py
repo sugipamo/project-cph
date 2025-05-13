@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from src.execution_env.run_test_execution_environment import RunTestExecutionEnvironment
+from src.execution_env.handlers import HANDLERS
 
 @pytest.fixture
 def dummy_upm():
@@ -97,4 +98,14 @@ def test_run_test_all_cases(dummy_env, dummy_file_ops, dummy_handler):
     with patch('src.execution_env.run_test_execution_environment.get_handler', return_value=dummy_handler):
         results = dummy_env.run_test_all_cases("abc", "a", "python")
     assert isinstance(results, list)
-    assert results[0]["name"] == "a.in" 
+    assert results[0]["name"] == "a.in"
+
+def test_all_handlers_have_language_and_env_type():
+    seen = set()
+    for key, handler_cls in HANDLERS.items():
+        # language_name, env_typeがNoneや空でないこと
+        assert getattr(handler_cls, 'language_name', None), f"{handler_cls.__name__} に language_name がありません"
+        assert getattr(handler_cls, 'env_type', None), f"{handler_cls.__name__} に env_type がありません"
+        # 重複がないこと
+        assert key not in seen, f"HANDLERSのキー {key} が重複しています"
+        seen.add(key) 

@@ -9,6 +9,14 @@ from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.input_data_loader import InputDataLoader
 from src.test_result_parser import TestResultParser
 
+HANDLERS = {}
+
+def register_handler(language, env_type):
+    def decorator(cls):
+        HANDLERS[(language, env_type)] = cls
+        return cls
+    return decorator
+
 class ExecutionCommandBuilder:
     def __init__(self, config):
         self.config = config
