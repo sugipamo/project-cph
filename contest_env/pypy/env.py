@@ -9,14 +9,12 @@ class PypyConfig(BaseLanguageConfig):
 class PypyContainerHandler(ContainerTestHandler, PypyConfig):
     dockerfile_path = "contest_env/pypy/Dockerfile"
     run_cmd = ["pypy3", "{source}"]
-    def __init__(self, language, env_type, config=None, env_config=None):
-        config = config or PypyConfig()
-        super().__init__(language, env_type, config=config, env_config=env_config)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 @register_handler("pypy", "local")
 class PypyLocalHandler(LocalTestHandler, PypyConfig):
     dockerfile_path = None
     run_cmd = ["pypy3", "{source}"]
-    def __init__(self, language, env_type, config=None, env_config=None):
-        config = config or PypyConfig()
-        super().__init__(language, env_type, config=config, env_config=env_config) 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs) 
