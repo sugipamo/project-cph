@@ -12,8 +12,8 @@ class PythonContainerHandler(ContainerTestHandler, PythonConfig):
     default_config_class = PythonConfig
     dockerfile_path = "contest_env/python/Dockerfile"
     run_cmd = ["python3", "{source}"]
-    def __init__(self, language, env_type, config=None, env_config=None, *args, **kwargs):
-        super().__init__(language, env_type, config=config, env_config=env_config, *args, **kwargs)
+    def __init__(self, env_type, config=None, env_config=None, *args, **kwargs):
+        super().__init__(env_type, config=config, env_config=env_config, *args, **kwargs)
 
 @register_handler
 class PythonLocalHandler(LocalTestHandler, PythonConfig):
@@ -22,5 +22,5 @@ class PythonLocalHandler(LocalTestHandler, PythonConfig):
     default_config_class = PythonConfig
     dockerfile_path = None  # localはdockerfile不要
     run_cmd = ["python3", "{source}"]
-    def __init__(self, language, env_type, config=None, env_config=None, *args, **kwargs):
-        super().__init__(language, env_type, config=config, env_config=env_config, *args, **kwargs) 
+    def __init__(self, env_type, config=None, env_config=None, *args, **kwargs):
+        super().__init__(env_type, config=config, env_config=env_config, *args, **kwargs) 

@@ -32,6 +32,8 @@ for lang_name in os.listdir(contest_env_dir):
             if getattr(obj, "language_name", None) and getattr(obj, "env_type", None):
                 HANDLERS[(obj.language_name, obj.env_type)] = obj
 
-def get_handler(language, env_type, *args, **kwargs):
+def get_handler(env_type, *args, **kwargs):
+    # HANDLERSのキーは(self.language, env_type)で取得
+    language = self.language if hasattr(self, 'language') else self.language_name
     cls = HANDLERS[(language, env_type)]
     return cls(language, env_type, *args, **kwargs) 

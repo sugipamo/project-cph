@@ -1,0 +1,215 @@
+./tests/conftest.py:def patch_opener(monkeypatch):
+./tests/conftest.py:def prepare_contest_current(tmp_path, monkeypatch):
+./tests/test_project_path_manager.py:def test_contest_current():
+./tests/test_project_path_manager.py:def test_contest_stocks():
+./tests/test_project_path_manager.py:def test_contest_env():
+./tests/test_project_path_manager.py:def test_contest_template():
+./tests/test_project_path_manager.py:def test_shortcuts():
+./tests/test_command_executor_formatter.py:def test_ac_format():
+./tests/test_command_executor_formatter.py:def test_wa_format():
+./tests/test_command_executor_formatter.py:def test_re_format():
+./tests/test_command_executor_formatter.py:def test_input_and_error(tmp_path):
+./tests/test_command_executor_formatter.py:def test_table_empty():
+./tests/test_opener.py:def test_open_editor_and_browser(monkeypatch):
+./tests/test_opener.py:def test_open_editor_rust(monkeypatch):
+./tests/test_opener.py:def test_open_editor_vscode_fail_cursor_success(monkeypatch, capsys):
+./tests/test_opener.py:def test_open_editor_both_fail(monkeypatch, capsys):
+./tests/test_opener.py:def test_open_browser_success(monkeypatch):
+./tests/test_volume_path_mapper.py:def test_single_mount():
+./tests/test_volume_path_mapper.py:def test_multiple_mounts():
+./tests/test_volume_path_mapper.py:def test_add_mount():
+./tests/test_volume_path_mapper.py:def test_from_required_paths_common():
+./tests/test_volume_path_mapper.py:def test_get_mounts():
+./tests/test_execution_manager.py:def make_result(returncode=0, stdout='', stderr='', extra=None):
+./tests/test_execution_manager.py:def test_run_and_measure_is_container_running():
+./tests/test_execution_manager.py:def test_run_and_measure_input_data():
+./tests/test_execution_manager.py:def test_run_and_measure_detach_true_with_popen():
+./tests/test_execution_manager.py:def test_run_and_measure_detach_true_with_popen_timeout():
+./tests/test_execution_manager.py:def test_run_and_measure_detach_true_no_popen():
+./tests/test_command_executor.py:def test_mock_opener():
+./tests/test_execution_resource_manager.py:def test_local_resource_manager():
+./tests/test_utils.py:def test_build_command():
+./tests/test_command_test.py:def dummy_test_env():
+./tests/test_command_test.py:def dummy_file_manager():
+./tests/test_command_test.py:def test_prepare_and_collect(dummy_file_manager, dummy_test_env):
+./tests/test_command_test.py:def test_get_test_containers_from_info(dummy_file_manager, dummy_test_env):
+./tests/test_command_test.py:def test_to_container_path(dummy_file_manager, dummy_test_env):
+./tests/test_command_test.py:def test_build_in_container(dummy_file_manager, dummy_test_env):
+./tests/test_command_test.py:def test_collect_test_result(dummy_file_manager, dummy_test_env):
+./tests/test_command_test.py:def test_is_all_ac(dummy_file_manager, dummy_test_env):
+./tests/test_run_test_execution_environment.py:def dummy_upm():
+./tests/test_run_test_execution_environment.py:def dummy_exec_manager():
+./tests/test_run_test_execution_environment.py:def dummy_file_ops():
+./tests/test_run_test_execution_environment.py:def dummy_resource_manager():
+./tests/test_run_test_execution_environment.py:def dummy_handler():
+./tests/test_run_test_execution_environment.py:def dummy_env(dummy_upm, dummy_exec_manager, dummy_file_ops, dummy_resource_manager, dummy_handler):
+./tests/test_run_test_execution_environment.py:def test_build(mock_get_handler, dummy_env, dummy_handler):
+./tests/test_run_test_execution_environment.py:def test_prepare_source_code(mock_get_handler, dummy_env, dummy_file_ops, dummy_handler):
+./tests/test_run_test_execution_environment.py:def test_prepare_test_cases(mock_get_handler, dummy_env, dummy_file_ops, dummy_handler):
+./tests/test_run_test_execution_environment.py:def test_run_test_case(mock_get_handler, dummy_env, dummy_handler):
+./tests/test_run_test_execution_environment.py:def test_run_test_cases(mock_get_handler, dummy_env, dummy_handler):
+./tests/test_run_test_execution_environment.py:def test_run_test_all_cases(dummy_env, dummy_file_ops, dummy_handler):
+./tests/test_run_test_execution_environment.py:def test_all_handlers_have_language_and_env_type():
+./tests/test_container_client.py:def make_inspect_result(obj):
+./tests/test_container_client.py:def test_inspect_container(mock_run):
+./tests/test_container_client.py:def test_inspect_image(mock_run):
+./tests/test_container_client.py:def test_get_container_logs(mock_run):
+./tests/test_container_client.py:def test_get_container_logs_with_tail(mock_run):
+./tests/test_container_client.py:def test_run_container_with_options(mock_run):
+./tests/test_container_client.py:def test_container_exists(mock_run):
+./tests/test_container_client.py:def test_image_exists(mock_run):
+./tests/test_container_client.py:def test_copy_to_container(mock_run):
+./tests/test_container_client.py:def test_copy_from_container(mock_run):
+./tests/test_container_client.py:def test_exec_in_container(mock_run):
+./tests/test_container_client.py:def test_list_containers(mock_run):
+./tests/test_container_client.py:def test_is_container_running(mock_run):
+./tests/test_container_client.py:def test_run_container_timeout(mock_run):
+./tests/test_container_client.py:def test_stop_container_timeout(mock_run):
+./tests/test_container_client.py:def test_remove_container_timeout(mock_run):
+./tests/test_container_client.py:def test_exec_in_container_timeout(mock_run):
+./tests/test_container_client.py:def test_copy_to_container_timeout(mock_run):
+./tests/test_container_client.py:def test_copy_from_container_timeout(mock_run):
+./tests/test_container_client.py:def test_is_container_running_timeout(mock_run):
+./tests/test_container_client.py:def test_inspect_container_json_error(mock_run):
+./tests/test_container_client.py:def test_inspect_image_json_error(mock_run):
+./tests/test_contest_env.py:def test_python_handler_properties(HandlerCls, expected_env_type):
+./tests/test_contest_env.py:def test_python_handler_cwd_methods():
+./tests/test_execution_env_config.py:def test_default_values():
+./tests/test_execution_env_config.py:def test_custom_values():
+./tests/test_opener_exceptions.py:def test_open_editor_exceptions(monkeypatch, capsys):
+./tests/test_opener_exceptions.py:def test_open_browser_exception(monkeypatch, capsys):
+./tests/test_input_data_loader.py:def test_load_with_file_operator_and_host_in_file():
+./tests/test_input_data_loader.py:def test_load_with_file_operator_and_host_in_file_path():
+./tests/test_input_data_loader.py:def test_load_with_file_operator_not_found():
+./tests/test_input_data_loader.py:def test_load_without_file_operator_and_host_in_file(tmp_path):
+./tests/test_input_data_loader.py:def test_load_without_file_operator_and_host_in_file_path(tmp_path):
+./tests/test_input_data_loader.py:def test_load_without_file_operator_not_found():
+./tests/test_command_parser.py:def test_command_parser_parse(args, expected):
+./tests/test_command_parser.py:def test_get_effective_args_with_infojson(mock_info):
+./tests/test_command_parser.py:def test_get_effective_args_infojson_exception(mock_info):
+./tests/test_contest_file_manager.py:def temp_dirs(tmp_path):
+./tests/test_contest_file_manager.py:def test_problem_exists_in_stocks_and_current(temp_dirs):
+./tests/test_contest_file_manager.py:def test_is_ignored_regex(tmp_path):
+./tests/test_contest_file_manager.py:def test_remove_empty_parents(tmp_path):
+./tests/test_contest_file_manager.py:def test_move_from_stocks_to_current_notfound(tmp_path):
+./tests/test_contest_file_manager.py:def test_generate_moveignore_readme(tmp_path):
+./tests/test_contest_file_manager.py:def test_stocks_exists_both_cases(tmp_path):
+./tests/test_command_submit.py:def test_validate_info_file_warns_contest(mock_info):
+./tests/test_command_submit.py:def test_validate_info_file_warns_problem(mock_info):
+./tests/test_command_submit.py:def test_validate_info_file_ok(mock_info):
+./tests/test_command_submit.py:def test_get_language_id_from_config_file_operator():
+./tests/test_command_submit.py:def test_get_language_id_from_config_no_file_operator(tmp_path):
+./tests/test_command_submit.py:def test_build_submit_command():
+./tests/test_command_submit.py:def test_get_ojtools_container_from_info():
+./tests/test_command_submit.py:def test_get_ojtools_container_from_info_raises():
+./tests/test_common.py:def test_get_project_root_volumes():
+./tests/test_info_json_manager.py:def test_load_and_save(tmp_path):
+./tests/test_info_json_manager.py:def test_get_and_update_containers(tmp_path):
+./tests/test_info_json_manager.py:def test_validate_warns_on_duplicate_names(tmp_path, capsys):
+./tests/test_info_json_manager.py:def test_load_nonexistent_file(tmp_path):
+./tests/test_contest_file_manager_utils.py:def test_is_ignored():
+./tests/test_contest_file_manager_utils.py:def test_remove_empty_parents(tmp_path):
+./tests/test_contest_file_manager_utils.py:def test_resolve_path():
+./tests/test_contest_file_manager_utils.py:def test_get_current_info_and_config_path(tmp_path, monkeypatch):
+./tests/test_image_manager.py:def test_build_image_success():
+./tests/test_image_manager.py:def test_build_image_failure():
+./tests/test_image_manager.py:def test_remove_image_success():
+./tests/test_image_manager.py:def test_remove_image_failure():
+./tests/test_image_manager.py:def test_image_exists_true():
+./tests/test_image_manager.py:def test_image_exists_false():
+./tests/test_image_manager.py:def test_get_dockerfile_hash(tmp_path):
+./tests/test_image_manager.py:def test_get_image_name_ojtools():
+./tests/test_image_manager.py:def test_get_image_name_fallback():
+./tests/test_image_manager.py:def test_get_image_name_with_dockerfile(tmp_path):
+./tests/test_image_manager.py:def test_cleanup_old_images():
+./tests/test_image_manager.py:def test_ensure_image_build_and_cleanup(tmp_path):
+./tests/test_result_parser.py:def test_parse_success():
+./tests/test_result_parser.py:def test_parse_failure():
+./tests/test_result_parser.py:def test_parse_missing_attrs():
+./tests/test_test_result_formatter.py:def test_color_text():
+./tests/test_test_result_formatter.py:def make_result(name, returncode, stdout, stderr, expected, time=0.123, in_file=None):
+./tests/test_test_result_formatter.py:def test_format_ac():
+./tests/test_test_result_formatter.py:def test_format_wa():
+./tests/test_test_result_formatter.py:def test_format_re():
+./tests/test_test_result_formatter.py:def test_format_error_and_stderr():
+./tests/test_test_result_formatter.py:def test_format_input(tmp_path):
+./tests/test_language_config.py:def test_default_values():
+./tests/test_language_config.py:def test_custom_values():
+./tests/test_unified_path_manager.py:def make_upm(tmp_path):
+./tests/test_unified_path_manager.py:def test_path_service_shortcuts(tmp_path):
+./tests/test_unified_path_manager.py:def test_to_container_path_and_back(tmp_path):
+./tests/test_unified_path_manager.py:def test_get_and_add_mount(tmp_path):
+./tests/test_unified_path_manager.py:def test_container_shortcuts(tmp_path):
+./tests/test_unified_path_manager.py:def test_path_validation_and_normalize(tmp_path):
+./tests/integration/test_file_operator.py:def test_mockfileoperator_create_and_exists():
+./tests/integration/test_file_operator.py:def test_mockfileoperator_copy():
+./tests/integration/test_file_operator.py:def test_mockfileoperator_move():
+./tests/integration/test_file_operator.py:def test_mockfileoperator_move_nonexistent():
+./tests/integration/test_file_operator.py:def test_localfileoperator_create_and_exists(tmp_path):
+./tests/integration/test_file_operator.py:def test_localfileoperator_copy(tmp_path):
+./tests/integration/test_file_operator.py:def test_localfileoperator_move(tmp_path):
+./tests/integration/test_file_operator.py:def test_localfileoperator_move_nonexistent(tmp_path):
+./tests/integration/test_file_operator.py:def test_localfileoperator_copy_nonexistent(tmp_path):
+./tests/integration/test_file_operator.py:def test_localfileoperator_create_overwrite(tmp_path):
+./tests/integration/test_file_operator.py:def test_move_and_copy(tmp_path):
+./tests/integration/test_file_operator.py:def test_exists_and_create(tmp_path):
+./tests/integration/test_file_operator.py:def test_copytree(tmp_path):
+./tests/integration/test_file_operator.py:def test_remove_and_rmtree(tmp_path):
+./tests/integration/test_file_operator.py:def test_localfileoperator_remove_oserror(tmp_path, monkeypatch):
+./tests/integration/test_file_operator.py:def test_localfileoperator_rmtree_oserror(tmp_path):
+./tests/integration/test_file_operator.py:def test_localfileoperator_copytree_oserror(tmp_path):
+./tests/integration/test_file_operator.py:def test_localfileoperator_open_notfound(tmp_path):
+./tests/integration/test_file_operator.py:def test_localfileoperator_makedirs_permission(tmp_path):
+./tests/integration/test_file_operator.py:def test_localfileoperator_isdir_and_glob(tmp_path):
+./tests/integration/test_file_operator.py:def test_resolve_path_variants(tmp_path):
+./tests/integration/test_file_operator.py:def test_fileoperator_cannot_instantiate():
+./tests/integration/test_file_operator.py:def test_remove_nonexistent(tmp_path):
+./tests/integration/test_file_operator.py:def test_rmtree_nonexistent(tmp_path):
+./tests/integration/test_file_operator.py:def test_open_permission_error(tmp_path):
+./tests/integration/test_file_operator.py:def test_makedirs_already_exists(tmp_path):
+./tests/integration/test_file_operator.py:def test_glob_subdir(tmp_path):
+./tests/integration/test_integration_execution_manager_env.py:def temp_dir():
+./tests/integration/test_integration_execution_manager_env.py:def test_python_integration(tmp_path):
+./tests/integration/test_execution_manager.py:def test_run_and_measure_sleep(sleep_sec):
+./tests/integration/test_execution_manager.py:def test_run_and_measure_timeout():
+./tests/integration/test_execution_manager.py:def test_abstract_execution_manager():
+./tests/integration/test_container_client.py:def test_run_not_implemented():
+./tests/integration/test_container_client.py:def test_run_delegation():
+./tests/integration/test_container_client.py:def test_run_realtime_stdout():
+./tests/integration/test_integration_manager.py:def test_integration_local_manager():
+./tests/integration/test_container_pool.py:def pool_with_dummy(monkeypatch):
+./tests/integration/test_container_pool.py:def test_adjust_starts_and_removes(pool_with_dummy):
+./tests/integration/test_container_pool.py:def test_adjust_removes_extra(pool_with_dummy):
+./tests/integration/test_local_file_operator.py:def setup_function():
+./tests/integration/test_local_file_operator.py:def teardown_function():
+./tests/integration/test_local_file_operator.py:def test_create_file():
+./tests/integration/test_local_file_operator.py:def test_create_file_in_subdir():
+./tests/integration/test_oj_build.py:def test_build_ojtools_image_dockerfile_not_found(capsys):
+./tests/integration/test_oj_build.py:def test_build_ojtools_image_success(capsys):
+./tests/integration/test_oj_build.py:def test_build_ojtools_image_failure(capsys):
+./tests/integration/test_local_client.py:def test_run_detach_false_input(tmp_path):
+./tests/integration/test_local_client.py:def test_run_detach_true_and_remove(tmp_path):
+./tests/integration/test_local_client.py:def test_run_detach_true_input(tmp_path):
+./tests/test_local_client.py:def test_run_command_required():
+./tests/test_local_client.py:def test_run_duplicate_name():
+./tests/test_local_client.py:def test_run_subprocess_run_error():
+./tests/test_local_client.py:def test_run_subprocess_popen_error():
+./tests/test_local_client.py:def test_stop_nonexistent():
+./tests/test_local_client.py:def test_stop_kill_on_timeout():
+./tests/test_local_client.py:def test_exec_in_subprocess_run_error():
+./tests/test_local_client.py:def test_exec_in_subprocess_popen_error():
+./tests/test_local_client.py:def test_is_running_nonexistent():
+./tests/e2e/test_cph_sh.py:def test_cph_sh_basic(args):
+./tests/e2e/test_cph_sh.py:def test_cph_sh_submit(args):
+./tests/test_timer.py:def test_timer_elapsed():
+./tests/test_timer.py:def test_timer_no_label():
+./contest_env/base.py:def register_handler(cls):
+./src/commands/common.py:def get_project_root_volumes():
+./src/commands/command_submit.py:def get_language_id():
+./src/command_parser.py:def parse_args():
+./src/execution_client/container/oj_build.py:def build_ojtools_image():
+./src/execution_client/container/naming_utils.py:def generate_container_name(purpose: str, language: str = None, index: int = None, prefix: str = "cph") -> str:
+./src/execution_client/utils.py:def build_command(base: str, args: list) -> list:
+./src/execution_env/handlers.py:def get_handler(env_type, *args, **kwargs):
+./src/main.py:def print_help():
+./src/main.py:def main():

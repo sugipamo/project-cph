@@ -19,8 +19,8 @@ class CommandTest:
         self.env = test_env
         self.upm = UnifiedPathManager()
 
-    def prepare_test_environment(self, contest_name, problem_name, language_name):
-        temp_source_path = self.env.prepare_source_code(contest_name, problem_name, language_name)
+    def prepare_test_environment(self, contest_name, problem_name):
+        temp_source_path = self.env.prepare_source_code(contest_name, problem_name, self.env.language_name)
         temp_test_dir = self.env.prepare_test_cases(contest_name, problem_name)
         return temp_source_path, temp_test_dir
 
@@ -31,12 +31,11 @@ class CommandTest:
         # RunTestExecutionEnvironmentではresource_manager.get_test_containers()で取得
         return self.env.resource_manager.get_test_containers()
 
-    def to_container_path(self, host_path):
-        return self.env.upm.to_container_path(host_path)
+    def to_container_path(self):
+        return self.env.upm.to_container_path(self.env.source_path)
 
-    def build_in_container(self, ctl, handler, container, source_path):
-        # ctlは不要になったのでhandler, container, source_pathのみ渡す
-        return self.env.build(handler, container, source_path)
+    def build_in_container(self, ctl, handler, container):
+        return self.env.build(handler, container, self.env.source_path)
 
     def select_container_for_case(self, test_containers, i):
         return test_containers[i] if i < len(test_containers) else test_containers[-1]
@@ -45,9 +44,9 @@ class CommandTest:
         if not ctl.is_container_running(container):
             ctl.run_container(container, image, {})
 
-    def run_single_test_case(self, ctl, handler, container, in_file, source_path, image, retry=3):
+    def run_single_test_case(self, ctl, handler, container, in_file, image, retry=3):
         for attempt in range(retry):
-            ok, stdout, stderr = handler.run(ctl, container, in_file, source_path)
+            ok, stdout, stderr = handler.run(ctl, container, in_file, self.env.source_path)
             if ok:
                 break
             else:
@@ -68,21 +67,21 @@ class CommandTest:
             "attempt": attempt,
         }
 
-    async def run_test_cases(self, temp_source_path, temp_in_files, language_name):
-        # handler = HANDLERS[language_name]  # RunTestExecutionEnvironmentで自動取得
-        return self.env.run_test_cases(temp_source_path, temp_in_files, language_name)
+    async def run_test_cases(self, temp_source_path, temp_in_files):
+        # handler = HANDLERS[self.language_name]  # RunTestExecutionEnvironmentで自動取得
+        return self.env.run_test_cases(temp_source_path, temp_in_files, self.env.language_name)
 
     def print_test_results(self, results):
         for r in results:
             print(ResultFormatter(r).format())
             print("")
 
-    async def run_test(self, contest_name, problem_name, language_name):
-        results = self.env.run_test_all_cases(contest_name, problem_name, language_name)
+    async def run_test(self, contest_name, problem_name):
+        results = self.env.run_test_all_cases(contest_name, problem_name, self.env.language_name)
         self.print_test_results(results)
 
-    async def run_test_return_results(self, contest_name, problem_name, language_name):
-        results = self.env.run_test_all_cases(contest_name, problem_name, language_name)
+    async def run_test_return_results(self, contest_name, problem_name):
+        results = self.env.run_test_all_cases(contest_name, problem_name, self.env.language_name)
         return results
 
     def is_all_ac(self, results):

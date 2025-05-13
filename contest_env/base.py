@@ -72,13 +72,12 @@ class BaseLanguageConfig:
 
 class BaseTestHandler:
     default_config_class = None  # 各Handlerで上書きする
-    def __init__(self, language, env_type, config=None, env_config=None, *args, **kwargs):
-        if config is None and self.default_config_class is not None:
-            config = self.default_config_class()
-        self.language = language
+    def __init__(self, env_type, config=None, env_config=None, *args, **kwargs):
         self.env_type = env_type
         self.config = config
         self.env_config = env_config
+        if config is None and self.default_config_class is not None:
+            config = self.default_config_class()
         self.command_builder = ExecutionCommandBuilder(self.config)
 
     def prepare_environment(self, *args, **kwargs):
@@ -129,8 +128,8 @@ class BaseTestHandler:
         return ok, result.stdout, result.stderr
 
 class LocalTestHandler(BaseTestHandler):
-    def __init__(self, language, env_type, config=None, env_config=None):
-        super().__init__(language, env_type, config=config, env_config=env_config)
+    def __init__(self, env_type, config=None, env_config=None):
+        super().__init__(env_type, config=config, env_config=env_config)
     def before_build(self, *args, **kwargs):
         pass
     def after_build(self, *args, **kwargs):
@@ -145,8 +144,8 @@ class LocalTestHandler(BaseTestHandler):
         pass
 
 class ContainerTestHandler(BaseTestHandler):
-    def __init__(self, language, env_type, config=None, env_config=None):
-        super().__init__(language, env_type, config=config, env_config=env_config)
+    def __init__(self, env_type, config=None, env_config=None):
+        super().__init__(env_type, config=config, env_config=env_config)
         project_root = getattr(self.env_config, 'host_project_root', None)
         container_root = getattr(self.env_config, 'workspace_dir', "./workspace")
         mounts = getattr(self.env_config, 'mounts', None)

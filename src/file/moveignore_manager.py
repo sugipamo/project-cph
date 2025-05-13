@@ -32,10 +32,8 @@ class MoveIgnoreManager:
         return False
 
     @staticmethod
-    def generate_readme(path=None):
-        if path is None:
-            upm = UnifiedPathManager()
-            path = upm.readme_md()
+    def generate_readme():
+        # self.pathを参照する形に修正
         content = (
             "# contest_current/config.json の moveignore 設定例\n"
             "\n"
@@ -47,6 +45,6 @@ class MoveIgnoreManager:
             "{\n    \"moveignore\": [\n        \"^.*\\\\.log$\",\n        \"^debug.*\"\n    ]\n}\n"
             "```\n"
         )
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
+        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        with open(self.path, "w", encoding="utf-8") as f:
             f.write(content) 

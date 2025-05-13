@@ -38,26 +38,29 @@ class VolumePathMapper:
             i += 1
         return Path(*parts1[:i])
 
-    def to_container_path(self, host_path: Path) -> Optional[Path]:
-        host_path = Path(host_path).resolve()
+    def to_container_path(self):
+        host_path = self.host_path
         for h_root, c_root in self.mounts:
-            try:
-                rel = host_path.relative_to(h_root)
-                return c_root / rel
-            except ValueError:
-                continue
+            if hasattr(host_path, 'is_relative_to'):
+                if host_path.is_relative_to(h_root):
+                    rel = host_path.relative_to(h_root)
+                    return c_root / rel
+            else:
+                try:
+                    rel = host_path.relative_to(h_root)
+                    return c_root / rel
+                except ValueError:
+                    continue
         return None
 
-    def to_host_path(self, container_path: Path) -> Optional[Path]:
-        container_path = Path(container_path)
+    def to_host_path(self):
+        container_path = self.container_path
         for h_root, c_root in self.mounts:
-            # try...exceptを使わず、is_relative_toで判定
             if hasattr(container_path, 'is_relative_to'):
                 if container_path.is_relative_to(c_root):
                     rel = container_path.relative_to(c_root)
                     return h_root / rel
             else:
-                # Python<3.9互換
                 try:
                     rel = container_path.relative_to(c_root)
                     return h_root / rel
@@ -65,8 +68,8 @@ class VolumePathMapper:
                     continue
         return None
 
-    def add_mount(self, host_path: Path, container_path: Path):
-        self.mounts.append((Path(host_path).resolve(), Path(container_path)))
+    def add_mount(self):
+        self.mounts.append((self.host_path.resolve(), self.container_path))
 
     def get_mounts(self) -> List[Tuple[Path, Path]]:
         return list(self.mounts) 

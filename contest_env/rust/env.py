@@ -15,8 +15,8 @@ class RustContainerHandler(ContainerTestHandler, RustConfig):
     bin_path = "target/release/rust"
     copy_mode = "dir"
     exclude_patterns = ["target"]
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, env_type, config=None, env_config=None, *args, **kwargs):
+        super().__init__(env_type, config=config, env_config=env_config, *args, **kwargs)
 
 @register_handler
 class RustLocalHandler(LocalTestHandler, RustConfig):
@@ -28,5 +28,5 @@ class RustLocalHandler(LocalTestHandler, RustConfig):
     bin_path = "target/release/rust"
     copy_mode = "dir"
     exclude_patterns = ["target"]
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs) 
+    def __init__(self, env_type, config=None, env_config=None, *args, **kwargs):
+        super().__init__(env_type, config=config, env_config=env_config, *args, **kwargs) 

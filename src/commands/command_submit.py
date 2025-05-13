@@ -20,8 +20,8 @@ SUBMIT_FILES = {
     "rust": "src/main.rs",
 }
 
-def get_language_id(language_name):
-    return LanguageConfigAccessor.get_language_id(language_name)
+def get_language_id():
+    return LanguageConfigAccessor.get_language_id(self.language_name)
 
 class CommandSubmit:
     def __init__(self, file_manager, test_env):
@@ -47,7 +47,7 @@ class CommandSubmit:
             return None
         return info
 
-    def get_language_id_from_config(self, config_path, language_name, file_operator=None):
+    def get_language_id_from_config(self, config_path, file_operator=None):
         import os
         import json
         if file_operator:
@@ -61,13 +61,13 @@ class CommandSubmit:
             with open(config_path, "r", encoding="utf-8") as f:
                 config = json.load(f)
         language_id_dict = config.get("language_id", {})
-        return language_id_dict.get(language_name)
+        return language_id_dict.get(self.language_name)
 
-    def build_submit_command(self, contest_name, problem_name, language_name, file_path, language_id):
+    def build_submit_command(self, contest_name, problem_name, file_path):
         url = f"https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_name}"
         args = ["submit", url, file_path, "--yes"]
-        if language_id:
-            args += ["--language", language_id]
+        if self.language_id:
+            args += ["--language", self.language_id]
         args += ["--wait=0"]
         return args, url
 
@@ -82,8 +82,8 @@ class CommandSubmit:
         print("[DEBUG] run_submit_command workdir=", workdir)
         return self.test_env.submit_via_ojtools(args, volumes, workdir)
 
-    async def submit(self, contest_name, problem_name, language_name):
-        results = await self.command_test.run_test_return_results(contest_name, problem_name, language_name)
+    async def submit(self, contest_name, problem_name):
+        results = await self.command_test.run_test_return_results(contest_name, problem_name)
         self.command_test.print_test_results(results)
         if not self.command_test.is_all_ac(results):
             if not self.confirm_submit_with_wa():
@@ -96,11 +96,11 @@ class CommandSubmit:
         info = self.validate_info_file(info_path, contest_name, problem_name, file_operator)
         if info is None:
             return None
-        language_id = get_language_id(language_name)
+        language_id = get_language_id()
         volumes = get_project_root_volumes()
         workdir = "/workspace"
         print("[DEBUG] submit workdir=", workdir)
-        submit_file = SUBMIT_FILES.get(language_name, "main.py")
+        submit_file = SUBMIT_FILES.get(self.language_name, "main.py")
         temp_file_path = f".temp/{submit_file}"
         if file_operator:
             temp_file_exists = file_operator.exists(temp_file_path)
@@ -109,15 +109,14 @@ class CommandSubmit:
         if temp_file_exists:
             file_path = temp_file_path
         else:
-            file_path = self.upm.contest_current(language_name, submit_file)
-        # ファイルパスをコンテナ内パスに変換
+            file_path = self.upm.contest_current(self.language_name, submit_file)
         cont_file_path = self.test_env.to_container_path(file_path)
-        args, url = self.build_submit_command(contest_name, problem_name, language_name, cont_file_path, language_id)
-        temp_source_path, temp_test_dir = self.command_test.prepare_test_environment(contest_name, problem_name, language_name)
+        args, url = self.build_submit_command(contest_name, problem_name, cont_file_path)
+        temp_source_path, temp_test_dir = self.command_test.prepare_test_environment(contest_name, problem_name)
         temp_in_files, _ = self.command_test.collect_test_cases(temp_test_dir, file_operator)
         test_case_count = len(temp_in_files)
         requirements = [
-            {"type": "test", "language": language_name, "count": test_case_count, "volumes": {
+            {"type": "test", "language": self.language_name, "count": test_case_count, "volumes": {
                 HOST_PROJECT_ROOT: CONTAINER_WORKSPACE
             }},
             {"type": "ojtools", "count": 1, "volumes": {
@@ -126,6 +125,7 @@ class CommandSubmit:
                 "/home/cphelper/.local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
             }}
         ]
+        print("[DEBUG] submit requirements=", requirements, flush=True)
         print("[DEBUG] submit requirements(adjust_resources呼び出し直前)=", requirements, flush=True)
-        self.test_env.resource_manager.adjust_resources(requirements, contest_name, problem_name, language_name)
+        self.test_env.resource_manager.adjust_resources(requirements, contest_name, problem_name, self.language_name)
         return await self.run_submit_command(args, volumes, workdir) 

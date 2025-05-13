@@ -38,23 +38,14 @@ class UnifiedPathManager:
         return self.project_path.readme_md()
 
     # VolumePathMapperのラップ
-    def to_container_path(self, host_path: Path) -> Optional[Path]:
-        return self.volume_mapper.to_container_path(host_path)
-    def to_host_path(self, container_path: Path) -> Optional[Path]:
-        # まずVolumePathMapperで変換
-        host_path = self.volume_mapper.to_host_path(container_path)
-        if host_path is not None:
-            return host_path
-        # 変換できなければCONTAINER_WORKSPACE→HOST_WORKSPACE変換を試みる
-        container_path_str = str(container_path)
-        if container_path_str.startswith(CONTAINER_WORKSPACE):
-            # ただし、HOST_WORKSPACEが"./workspace"で、パスが未マウントならNoneを返す
-            return None
-        return None
+    def to_container_path(self):
+        return self.volume_mapper.to_container_path()
+    def to_host_path(self):
+        return self.volume_mapper.to_host_path()
     def get_mounts(self) -> List[Tuple[Path, Path]]:
         return self.volume_mapper.get_mounts()
-    def add_mount(self, host_path: Path, container_path: Path):
-        self.volume_mapper.add_mount(host_path, container_path)
+    def add_mount(self):
+        self.volume_mapper.add_mount()
 
     # 論理パス→コンテナパスのショートカット
     def contest_current_in_container(self, *paths) -> Optional[Path]:

@@ -46,8 +46,8 @@ class ConfigJsonManager:
             return entry
         return entry.get(language_name)
 
-    def set_entry_file(self, language_name, path):
+    def set_entry_file(self, language_name):
         if "entry_file" not in self.data or not isinstance(self.data["entry_file"], dict):
             self.data["entry_file"] = {}
-        self.data["entry_file"][language_name] = path
+        self.data["entry_file"][language_name] = str(self.path)
         self.save() 

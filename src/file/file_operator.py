@@ -7,53 +7,46 @@ class FileOperator(ABC):
     def __init__(self, base_dir=Path(".")):
         self.base_dir = Path(base_dir)
 
-    def resolve_path(self, path):
-        if isinstance(path, Path):
-            return self.base_dir / path
-        return self.base_dir / Path(path)
+    def resolve_path(self):
+        return self.path.resolve()
 
-    def makedirs(self, path, exist_ok=True):
-        self.resolve_path(path).mkdir(parents=True, exist_ok=exist_ok)
+    def makedirs(self, exist_ok=True):
+        self.path.mkdir(parents=True, exist_ok=exist_ok)
 
-    def isdir(self, path):
-        path = self.resolve_path(path)
-        return path.is_dir()
+    def isdir(self):
+        return self.path.is_dir()
 
     def glob(self, pattern):
         # patternはbase_dirからの相対パターン
         return list(self.base_dir.glob(pattern))
 
-    def remove(self, path):
-        self.resolve_path(path).unlink()
+    def remove(self):
+        self.path.unlink()
 
-    def rmtree(self, path):
-        p = self.resolve_path(path)
-        if p.is_dir():
-            shutil.rmtree(p)
-        elif p.exists():
-            p.unlink()
+    def rmtree(self):
+        shutil.rmtree(self.path)
 
-    def open(self, path, mode="r", encoding=None):
-        return open(self.resolve_path(path), mode, encoding=encoding)
+    def open(self, mode="r", encoding=None):
+        return self.path.open(mode=mode, encoding=encoding)
 
     @abstractmethod
-    def move(self, src: Path, dst: Path):
+    def move(self):
         pass
 
     @abstractmethod
-    def copy(self, src: Path, dst: Path):
+    def copy(self):
         pass
 
     @abstractmethod
-    def exists(self, path: Path) -> bool:
+    def exists(self):
         pass
 
     @abstractmethod
-    def create(self, path: Path, content: str = ""):
+    def create(self, content: str = ""):
         pass
 
     @abstractmethod
-    def copytree(self, src: Path, dst: Path):
+    def copytree(self):
         pass
 
 class MockFileOperator(FileOperator):
@@ -63,36 +56,36 @@ class MockFileOperator(FileOperator):
         self.files = set()
         self.contents = dict()
 
-    def move(self, src: Path, dst: Path):
-        src_path = self.resolve_path(src)
-        dst_path = self.resolve_path(dst)
+    def move(self):
+        src_path = self.resolve_path()
+        dst_path = self.resolve_path()
         self.operations.append(("move", src_path, dst_path))
         if src_path in self.files:
             self.files.remove(src_path)
             self.files.add(dst_path)
             self.contents[dst_path] = self.contents.pop(src_path, "")
 
-    def copy(self, src: Path, dst: Path):
-        src_path = self.resolve_path(src)
-        dst_path = self.resolve_path(dst)
+    def copy(self):
+        src_path = self.resolve_path()
+        dst_path = self.resolve_path()
         self.operations.append(("copy", src_path, dst_path))
         if src_path in self.files:
             self.files.add(dst_path)
             self.contents[dst_path] = self.contents.get(src_path, "")
 
-    def exists(self, path: Path) -> bool:
-        path = self.resolve_path(path)
+    def exists(self):
+        path = self.resolve_path()
         return path in self.files
 
-    def create(self, path: Path, content: str = ""):
-        path = self.resolve_path(path)
+    def create(self, content: str = ""):
+        path = self.resolve_path()
         self.operations.append(("create", path, content))
         self.files.add(path)
         self.contents[path] = content
 
-    def copytree(self, src: Path, dst: Path):
-        src_path = self.resolve_path(src)
-        dst_path = self.resolve_path(dst)
+    def copytree(self):
+        src_path = self.resolve_path()
+        dst_path = self.resolve_path()
         self.operations.append(("copytree", src_path, dst_path))
         # モックなので、ディレクトリ構造の再現は省略
 
@@ -103,38 +96,38 @@ class LocalFileOperator(FileOperator):
         self.files = set()
         self.contents = dict()
 
-    def move(self, src, dst):
-        src_path = self.resolve_path(src)
-        dst_path = self.resolve_path(dst)
+    def move(self):
+        src_path = self.resolve_path()
+        dst_path = self.resolve_path()
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         src_path.rename(dst_path)
 
-    def copy(self, src, dst):
-        src_path = self.resolve_path(src)
-        dst_path = self.resolve_path(dst)
+    def copy(self):
+        src_path = self.resolve_path()
+        dst_path = self.resolve_path()
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         copy2(src_path, dst_path)
 
-    def exists(self, path) -> bool:
-        path = self.resolve_path(path)
+    def exists(self):
+        path = self.resolve_path()
         return path.exists()
 
-    def create(self, path, content: str = ""):
-        path = self.resolve_path(path)
+    def create(self, content: str = ""):
+        path = self.resolve_path()
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
+        with path.open("w", encoding="utf-8") as f:
             f.write(content)
 
-    def copytree(self, src, dst):
-        src_path = self.resolve_path(src)
-        dst_path = self.resolve_path(dst)
+    def copytree(self):
+        src_path = self.resolve_path()
+        dst_path = self.resolve_path()
         # srcとdstが同じ場合は何もしない
         if src_path.resolve() == dst_path.resolve():
             return
         shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
 
-    def rmtree(self, path):
-        p = self.resolve_path(path)
+    def rmtree(self):
+        p = self.resolve_path()
         if p.is_dir():
             shutil.rmtree(p)
         elif p.exists():
@@ -147,46 +140,46 @@ class DummyFileOperator(FileOperator):
         self.files = set()
         self.contents = dict()
 
-    def move(self, src: Path, dst: Path):
-        src_path = self.resolve_path(src)
-        dst_path = self.resolve_path(dst)
+    def move(self):
+        src_path = self.resolve_path()
+        dst_path = self.resolve_path()
         self.operations.append(("move", src_path, dst_path))
         if src_path in self.files:
             self.files.remove(src_path)
             self.files.add(dst_path)
             self.contents[dst_path] = self.contents.pop(src_path, "")
 
-    def copy(self, src: Path, dst: Path):
-        src_path = self.resolve_path(src)
-        dst_path = self.resolve_path(dst)
+    def copy(self):
+        src_path = self.resolve_path()
+        dst_path = self.resolve_path()
         self.operations.append(("copy", src_path, dst_path))
         if src_path in self.files:
             self.files.add(dst_path)
             self.contents[dst_path] = self.contents.get(src_path, "")
 
-    def exists(self, path: Path) -> bool:
-        path = self.resolve_path(path)
+    def exists(self):
+        path = self.resolve_path()
         return path in self.files
 
-    def create(self, path: Path, content: str = ""):
-        path = self.resolve_path(path)
+    def create(self, content: str = ""):
+        path = self.resolve_path()
         self.operations.append(("create", path, content))
         self.files.add(path)
         self.contents[path] = content
 
-    def copytree(self, src: Path, dst: Path):
-        src_path = self.resolve_path(src)
-        dst_path = self.resolve_path(dst)
+    def copytree(self):
+        src_path = self.resolve_path()
+        dst_path = self.resolve_path()
         self.operations.append(("copytree", src_path, dst_path))
 
-    def rmtree(self, path):
-        path = self.resolve_path(path)
+    def rmtree(self):
+        path = self.resolve_path()
         self.operations.append(("rmtree", path))
         if path in self.files:
             self.files.remove(path)
             self.contents.pop(path, None)
 
-    def isdir(self, path):
-        path = self.resolve_path(path)
+    def isdir(self):
+        path = self.resolve_path()
         # テスト用: ディレクトリは"/"で終わるパスと仮定
         return str(path).endswith("/") 
