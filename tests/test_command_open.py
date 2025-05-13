@@ -22,18 +22,28 @@ class DummyOpener:
         self.editor_opened = True
         self.last_editor_path = path
 
+class DummyResourceManager:
+    def __init__(self, test_env):
+        self.test_env = test_env
+    def adjust_resources(self, req, contest, problem, lang):
+        self.test_env.adjusted = True
+        self.test_env.last_req = req
+        return ['c1', 'c2']
+
+class DummyFileOps:
+    def __init__(self, test_env):
+        self.test_env = test_env
+    def download_testcases(self, url, test_dir):
+        self.test_env.downloaded = True
+        self.test_env.last_url = url
+        self.test_env.last_test_dir = test_dir
+
 class DummyTestEnv:
     def __init__(self):
         self.adjusted = False
         self.downloaded = False
-    def adjust_containers(self, req, contest, problem, lang):
-        self.adjusted = True
-        self.last_req = req
-        return ['c1', 'c2']
-    def download_testcases(self, url, test_dir):
-        self.downloaded = True
-        self.last_url = url
-        self.last_test_dir = test_dir
+        self.resource_manager = DummyResourceManager(self)
+        self.file_ops = DummyFileOps(self)
 
 @patch('src.commands.command_open.ConfigJsonManager')
 @patch('src.commands.command_open.InfoJsonManager')

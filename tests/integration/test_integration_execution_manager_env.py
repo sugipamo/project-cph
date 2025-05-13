@@ -2,7 +2,7 @@ import os
 import tempfile
 import shutil
 import pytest
-from src.environment.execution_manager_test_environment import ExecutionManagerTestEnvironment
+# from src.environment.execution_manager_test_environment import ExecutionManagerTestEnvironment  # 削除
 from src.execution_client.execution_manager import ExecutionManager
 from src.execution_client.client.local import LocalAsyncClient
 
@@ -23,6 +23,29 @@ class PythonHandler:
         ok = result.returncode == 0
         return ok, result.stdout, result.stderr
 
+# 簡易テスト環境クラス（旧ExecutionManagerTestEnvironmentの代替）
+class SimpleTestEnvironment:
+    def __init__(self, file_manager, manager, handlers=None):
+        self.file_manager = file_manager
+        self.manager = manager
+        self.handlers = handlers or {"python": PythonHandler()}
+    def run_test_case(self, language_name, name, in_file, source_path, retry=3):
+        handler = self.handlers[language_name]
+        build_cmd = handler.build_command(source_path)
+        if build_cmd:
+            build_proc = os.system(' '.join(build_cmd))
+            if build_proc != 0:
+                return False, '', '', 1
+        run_cmd = handler.run_command(source_path)
+        with open(in_file, "r", encoding="utf-8") as f:
+            input_data = f.read()
+        for attempt in range(retry):
+            result = self.manager.run_and_measure(name, run_cmd, timeout=5, input=input_data, cwd=os.path.dirname(source_path))
+            ok = result.returncode == 0
+            if ok:
+                break
+        return ok, result.stdout, result.stderr, attempt+1
+
 @pytest.fixture
 def temp_dir():
     d = tempfile.mkdtemp()
@@ -41,7 +64,7 @@ def test_python_integration(tmp_path):
     # 実行環境構築
     client = LocalAsyncClient()
     manager = ExecutionManager(client)
-    env = ExecutionManagerTestEnvironment(file_manager=None, manager=manager, handlers={'python': PythonHandler()})
+    env = SimpleTestEnvironment(file_manager=None, manager=manager, handlers={'python': PythonHandler()})
     ok, stdout, stderr, attempt = env.run_test_case('python', 'testcase1', str(in_path), str(src_path), retry=2)
     if not ok:
         print('STDOUT:', stdout)

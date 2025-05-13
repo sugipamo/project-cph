@@ -5,7 +5,6 @@ from src.execution_client.container.image_manager import ContainerImageManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.file.file_operator import FileOperator
 from src.file.config_json_manager import ConfigJsonManager
-from src.environment.test_environment import DockerTestExecutionEnvironment
 
 class CommandOpen:
     def __init__(self, file_manager, opener, test_env):
@@ -57,9 +56,9 @@ class CommandOpen:
                 "/home/cphelper/.local/share/online-judge-tools/cookie.jar": "/root/.local/share/online-judge-tools/cookie.jar"
             }}
         ]
-        containers = self.test_env.adjust_containers(requirements, contest_name, problem_name, language_name)
-        # 5. system_info.jsonの更新はadjust_containersで一括実施済み
+        containers = self.test_env.resource_manager.adjust_resources(requirements, contest_name, problem_name, language_name)
+        # 5. system_info.jsonの更新はadjust_resourcesで一括実施済み
         info_path = self.upm.info_json()
         manager = InfoJsonManager(info_path)
         # 6. テストケースダウンロード（oj download）
-        self.test_env.download_testcases(url, self.upm.contest_current("test"))
+        self.test_env.file_ops.download_testcases(url, self.upm.contest_current("test"))

@@ -4,8 +4,8 @@ from .commands.command_open import CommandOpen
 from .commands.command_test import CommandTest
 from .commands.command_submit import CommandSubmit
 from .commands.opener import Opener
-from src.environment.test_environment import DockerTestExecutionEnvironment
-from src.environment.execution_manager_test_environment import ExecutionManagerTestEnvironment
+from src.path_manager.unified_path_manager import UnifiedPathManager
+from src.execution_env.run_test_execution_environment import RunTestExecutionEnvironment
 from src.execution_client.execution_manager import ExecutionManager
 from src.execution_client.client.local import LocalAsyncClient
 from src.execution_client.client.container import ContainerClient
@@ -17,14 +17,26 @@ class CommandExecutor:
         self.exec_mode = exec_mode or "docker"
         self.login_handler = CommandLogin()
         # 実行環境の切り替え
+        upm = file_manager.upm if file_manager and hasattr(file_manager, 'upm') else UnifiedPathManager()
         if self.exec_mode == "local":
             local_client = LocalAsyncClient()
-            manager = ExecutionManager(local_client)
-            test_env = ExecutionManagerTestEnvironment(self.file_manager, manager)
+            exec_manager = ExecutionManager(local_client)
+            test_env = RunTestExecutionEnvironment(
+                upm=upm,
+                exec_manager=exec_manager,
+                env_type="local",
+                file_operator=file_manager.file_operator if file_manager else None
+            )
         else:
             container_client = ContainerClient()
             exec_manager = ExecutionManager(container_client)
-            test_env = DockerTestExecutionEnvironment(self.file_manager, env_type="docker", ctl=container_client, exec_manager=exec_manager)
+            test_env = RunTestExecutionEnvironment(
+                upm=upm,
+                exec_manager=exec_manager,
+                env_type="docker",
+                file_operator=file_manager.file_operator if file_manager else None,
+                ctl=container_client
+            )
         self.open_handler = CommandOpen(self.file_manager, self.opener, test_env)
         self.test_handler = CommandTest(self.file_manager, test_env)
         self.submit_handler = CommandSubmit(self.file_manager, test_env)

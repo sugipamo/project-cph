@@ -5,10 +5,10 @@ from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE
 # === 定数定義 ===
 
 from .test_result_formatter import ResultFormatter
-from src.environment.test_language_handler import HANDLERS
+# from src.environment.test_language_handler import HANDLERS  # 削除
 from src.execution_env.info_json_manager import InfoJsonManager
 from src.execution_client.client.container import ContainerClient
-from src.environment.test_environment import DockerTestExecutionEnvironment
+# from src.environment.test_environment import DockerTestExecutionEnvironment  # 削除
 from src.execution_client.container.image_manager import ContainerImageManager
 from src.execution_client.execution_manager import ExecutionManager
 from src.execution_client.client.local import LocalAsyncClient
@@ -20,23 +20,23 @@ class CommandTest:
         self.upm = UnifiedPathManager()
 
     def prepare_test_environment(self, contest_name, problem_name, language_name):
-        # DockerTestExecutionEnvironmentに移譲
         temp_source_path = self.env.prepare_source_code(contest_name, problem_name, language_name)
         temp_test_dir = self.env.prepare_test_cases(contest_name, problem_name)
         return temp_source_path, temp_test_dir
 
     def collect_test_cases(self, temp_test_dir, file_operator=None):
-        return self.env.collect_test_cases(temp_test_dir, file_operator)
+        return self.env.file_ops.collect_test_cases(temp_test_dir)
 
     def get_test_containers_from_info(self):
-        return self.env.get_test_containers_from_info()
+        # RunTestExecutionEnvironmentではresource_manager.get_test_containers()で取得
+        return self.env.resource_manager.get_test_containers()
 
     def to_container_path(self, host_path):
-        return self.env.to_container_path(host_path)
+        return self.env.upm.to_container_path(host_path)
 
     def build_in_container(self, ctl, handler, container, source_path):
         # ctlは不要になったのでhandler, container, source_pathのみ渡す
-        return self.env.build_in_container(handler, container, source_path)
+        return self.env.build(handler, container, source_path)
 
     def select_container_for_case(self, test_containers, i):
         return test_containers[i] if i < len(test_containers) else test_containers[-1]
@@ -69,9 +69,8 @@ class CommandTest:
         }
 
     async def run_test_cases(self, temp_source_path, temp_in_files, language_name):
-        handler = HANDLERS[language_name]
-        # env側に全て委譲
-        return self.env.run_test_cases(temp_source_path, temp_in_files, language_name, handler)
+        # handler = HANDLERS[language_name]  # RunTestExecutionEnvironmentで自動取得
+        return self.env.run_test_cases(temp_source_path, temp_in_files, language_name)
 
     def print_test_results(self, results):
         for r in results:
