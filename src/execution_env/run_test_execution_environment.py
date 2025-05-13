@@ -26,7 +26,10 @@ class RunTestExecutionEnvironment:
 
     def build(self, language_name, container, source_path):
         handler = get_handler(language_name, self.env_type)
-        return handler.build(self.exec_manager, container, source_path)
+        handler.before_build(container, source_path)
+        result = handler.build(self.exec_manager, container, source_path)
+        handler.after_build(container, source_path, result)
+        return result
 
     def prepare_source_code(self, contest_name, problem_name, language_name):
         handler = get_handler(language_name, self.env_type)
@@ -44,9 +47,13 @@ class RunTestExecutionEnvironment:
     def run_test_case(self, language_name, container, in_file, source_path, artifact_path=None, retry=3):
         handler = get_handler(language_name, self.env_type)
         for attempt in range(retry):
+            handler.before_test_case(container, in_file, source_path)
+            handler.before_run(container, source_path)
             ok, stdout, stderr = handler.run(
                 self.exec_manager.client, container, in_file, source_path, artifact_path
             )
+            handler.after_run(container, source_path, ok, stdout, stderr)
+            handler.after_test_case(container, in_file, source_path, ok, stdout, stderr)
             if ok:
                 break
         return ok, stdout, stderr, attempt+1
@@ -60,9 +67,7 @@ class RunTestExecutionEnvironment:
             return []
         results = []
         for in_file in temp_in_files:
-            ok, stdout, stderr = handler.run(
-                self.exec_manager.client, container, in_file, temp_source_path
-            )
+            ok, stdout, stderr, attempt = self.run_test_case(language_name, container, in_file, temp_source_path)
             out_file = str(in_file).replace('.in', '.out')
             expected = ""
             if self.file_operator and self.file_operator.exists(out_file):
@@ -79,7 +84,7 @@ class RunTestExecutionEnvironment:
                 "name": os.path.basename(in_file),
                 "in_file": in_file,
                 "container": container,
-                "attempt": 1,
+                "attempt": attempt,
             }
             results.append(result_obj)
         return results

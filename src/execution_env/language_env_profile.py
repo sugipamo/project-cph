@@ -1,7 +1,7 @@
 import importlib
 import os
 import inspect
-from contest_env.base import BaseLanguageEnv
+from contest_env.base import BaseLanguageConfig
 
 LANGUAGE_ENVS = {}
 contest_env_dir = os.path.join(os.path.dirname(__file__), '../../contest_env')
@@ -11,7 +11,7 @@ for lang in os.listdir(contest_env_dir):
     if os.path.isdir(lang_dir) and os.path.exists(env_path):
         mod = importlib.import_module(f'contest_env.{lang}.env')
         for name, obj in inspect.getmembers(mod, inspect.isclass):
-            if issubclass(obj, BaseLanguageEnv) and obj is not BaseLanguageEnv:
+            if issubclass(obj, BaseLanguageConfig) and obj is not BaseLanguageConfig:
                 LANGUAGE_ENVS[lang] = obj
 
 class LanguageEnvProfile:

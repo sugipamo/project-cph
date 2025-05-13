@@ -29,7 +29,7 @@ class ExecutionCommandBuilder:
             return [c.replace("{bin_path}", bin_path) for c in self.config.run_cmd]
         return self.config.run_cmd
 
-class BaseLanguageEnv:
+class BaseLanguageConfig:
     """
     言語環境拡張用の基底クラスです。
     共通値（container_workspace等）はここで一元管理できます。
@@ -57,10 +57,11 @@ class BaseLanguageEnv:
     # 必要に応じて他の共通メソッドも追加可能
 
 class BaseTestHandler:
-    def __init__(self, language, env_type):
-        self.profile = get_profile(language, env_type)
-        self.config = self.profile.language_config
-        self.env_config = self.profile.env_config
+    def __init__(self, language, env_type, config=None, env_config=None):
+        self.language = language
+        self.env_type = env_type
+        self.config = config
+        self.env_config = env_config
         self.command_builder = ExecutionCommandBuilder(self.config)
 
     def prepare_environment(self, *args, **kwargs):
@@ -97,7 +98,7 @@ class BaseTestHandler:
         host_in_file_path = self.to_host_path(cont_in_file)
         input_data = InputDataLoader.load(file_operator, host_in_file, host_in_file_path)
         run_cwd = self.get_run_cwd(cont_source_path)
-        result = exec_client.run_and_measure(container, run_cmd, cwd=run_cwd, input=input_data, image=self.profile.language)
+        result = exec_client.run_and_measure(container, run_cmd, cwd=run_cwd, input=input_data, image=self.language)
         return TestResultParser.parse(result)
 
     def build(self, exec_client, container, source_path):
@@ -105,13 +106,24 @@ class BaseTestHandler:
         if cmd is None:
             return True, '', ''
         build_cwd = self.get_build_cwd(self.to_container_path(source_path))
-        image = self.profile.language
+        image = self.language
         result = exec_client.run_and_measure(container, cmd, cwd=build_cwd, image=image)
         ok = result.returncode == 0
         return ok, result.stdout, result.stderr
 
 class LocalTestHandler(BaseTestHandler):
-    pass
+    def before_build(self, *args, **kwargs):
+        pass
+    def after_build(self, *args, **kwargs):
+        pass
+    def before_run(self, *args, **kwargs):
+        pass
+    def after_run(self, *args, **kwargs):
+        pass
+    def before_test_case(self, *args, **kwargs):
+        pass
+    def after_test_case(self, *args, **kwargs):
+        pass
 
 class ContainerTestHandler(BaseTestHandler):
     def __init__(self, language, env_type):
@@ -120,6 +132,19 @@ class ContainerTestHandler(BaseTestHandler):
         container_root = getattr(self.env_config, 'workspace_dir', "./workspace")
         mounts = getattr(self.env_config, 'mounts', None)
         self.upm = UnifiedPathManager(project_root, container_root, mounts=mounts)
+
+    def before_build(self, *args, **kwargs):
+        pass
+    def after_build(self, *args, **kwargs):
+        pass
+    def before_run(self, *args, **kwargs):
+        pass
+    def after_run(self, *args, **kwargs):
+        pass
+    def before_test_case(self, *args, **kwargs):
+        pass
+    def after_test_case(self, *args, **kwargs):
+        pass
 
     def run(self, exec_client, container, in_file, source_path, artifact_path=None, host_in_file=None, file_operator=None):
         cont_in_file = self.upm.to_container_path(os.path.abspath(str(in_file)))
@@ -130,7 +155,7 @@ class ContainerTestHandler(BaseTestHandler):
         host_in_file_path = self.upm.to_host_path(cont_in_file)
         input_data = InputDataLoader.load(file_operator, host_in_file, host_in_file_path)
         run_cwd = self.get_run_cwd(cont_source_path)
-        result = exec_client.run_and_measure(container, run_cmd, cwd=run_cwd, input=input_data, image=self.profile.language)
+        result = exec_client.run_and_measure(container, run_cmd, cwd=run_cwd, input=input_data, image=self.language)
         return TestResultParser.parse(result)
 
     def build(self, exec_client, container, source_path):
@@ -139,7 +164,7 @@ class ContainerTestHandler(BaseTestHandler):
         if cmd is None:
             return True, '', ''
         build_cwd = self.get_build_cwd(cont_source_path)
-        image = self.profile.language
+        image = self.language
         result = exec_client.run_and_measure(container, cmd, cwd=build_cwd, image=image)
         ok = result.returncode == 0
         return ok, result.stdout, result.stderr 
