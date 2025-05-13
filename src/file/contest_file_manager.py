@@ -5,6 +5,7 @@ from src.file.moveignore_manager import MoveIgnoreManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.execution_env.language_env_profile import LANGUAGE_ENVS, LanguageConfigAccessor
 import time
+import json
 
 class ContestFileManager:
     def __init__(self, file_operator: FileOperator, project_root=None, container_root="/workspace"):
@@ -116,13 +117,15 @@ class ContestFileManager:
         self._remove_empty_parents(src_dir.parent, self.file_operator.resolve_path(self.upm.contest_stocks(old_contest_name)))
         self._remove_empty_parents(src_dir.parent.parent, self.file_operator.resolve_path("contest_stocks"))
 
-    def move_from_stocks_to_current(self, contest_name, problem_name, language_name):
+    def move_from_stocks_to_current(self, contest_name, problem_name, language_name=None):
         """
-        contest_stocks/{contest_name}/{problem_name}/{language_name} 配下を contest_current/{language_name} に移動する
+        contest_stocks/{contest_name}/{problem_name}/{language_name} 配下を contest_current/ に移動する
         既存ファイル・ディレクトリはスキップ
         """
+        if language_name is None:
+            language_name = self._get_current_language()
         src_dir = self.file_operator.resolve_path(self.upm.contest_stocks(contest_name, problem_name, language_name))
-        dst_dir = self.file_operator.resolve_path(self.upm.contest_current(language_name))
+        dst_dir = self.file_operator.resolve_path(self.upm.contest_current())
         if not src_dir.exists():
             raise FileNotFoundError(f"{src_dir} が存在しません")
         self._move_or_copy_skip_existing(src_dir, dst_dir, move=True)
@@ -150,13 +153,21 @@ class ContestFileManager:
         self._remove_empty_parents(src_dir.parent.parent, self.file_operator.resolve_path(self.upm.contest_stocks(contest_name)))
         self._remove_empty_parents(src_dir.parent.parent.parent, self.file_operator.resolve_path("contest_stocks"))
 
+    def _get_current_language(self):
+        # system_info.jsonから現在の言語を取得（InfoJsonManagerを活用）
+        info_path = self.file_operator.resolve_path(self.upm.info_json())
+        if info_path.exists():
+            manager = InfoJsonManager(info_path)
+            return manager.data.get("language_name")
+        return None
+
     def copy_from_template_to_current(self, contest_name, problem_name, language_name):
         """
-        contest_template/{language}/ 配下のファイルを contest_current/{language}/{problem_name}/ にコピーする
+        contest_template/{language}/ 配下のファイルを contest_current/ にコピーする
         info.json, config.jsonはcontest_current/に作成
         """
         src_dir = self.file_operator.resolve_path(self.upm.contest_template(language_name))
-        dst_dir = self.file_operator.resolve_path(self.upm.contest_current(language_name))
+        dst_dir = self.file_operator.resolve_path(self.upm.contest_current())
         if not src_dir.exists():
             raise FileNotFoundError(f"{src_dir}が存在しません")
         config_path = self.get_current_config_path()
@@ -201,19 +212,22 @@ class ContestFileManager:
         test_dir = self.file_operator.resolve_path(self.upm.contest_stocks(contest_name, problem_name, "test"))
         return (lang_dir.exists() and any(lang_dir.iterdir())) or (test_dir.exists() and any(test_dir.iterdir()))
 
-    def copy_from_stocks_to_current(self, contest_name, problem_name, language_name):
+    def copy_from_stocks_to_current(self, contest_name, problem_name, language_name=None):
         """
-        contest_stocks/{contest_name}/{problem_name}/{language_name}→contest_current/{language_name}
+        contest_stocks/{contest_name}/{problem_name}/{language_name}→contest_current/
         contest_stocks/{contest_name}/{problem_name}/test→contest_current/test
         """
+        if language_name is None:
+            language_name = self._get_current_language()
         lang_src = self.file_operator.resolve_path(self.upm.contest_stocks(contest_name, problem_name, language_name))
-        lang_dst = self.file_operator.resolve_path(self.upm.contest_current(language_name))
+        lang_dst = self.file_operator.resolve_path(self.upm.contest_current())
         if lang_src.exists():
             for item in lang_src.iterdir():
+                dst_file = lang_dst / item.name
                 if item.is_file():
-                    self.file_operator.copy(item, lang_dst / item.name)
+                    self.file_operator.copy(item, dst_file)
                 elif item.is_dir():
-                    self.file_operator.copytree(item, lang_dst / item.name)
+                    self.file_operator.copytree(item, dst_file)
         test_src = self.file_operator.resolve_path(self.upm.contest_stocks(contest_name, problem_name, "test"))
         test_dst = self.file_operator.resolve_path(self.upm.contest_current("test"))
         if test_src.exists():
@@ -227,8 +241,8 @@ class ContestFileManager:
     def problem_exists_in_stocks(self, contest_name, problem_name, language_name):
         return self.stocks_exists(contest_name, problem_name, language_name)
 
-    def problem_exists_in_current(self, contest_name, problem_name, language_name):
-        dst_dir = self.file_operator.resolve_path(self.upm.contest_current(language_name))
+    def problem_exists_in_current(self, contest_name, problem_name, language_name=None):
+        dst_dir = self.file_operator.resolve_path(self.upm.contest_current())
         return dst_dir.exists() and any(dst_dir.iterdir())
 
     def copy_test_to_stocks(self, contest_name, problem_name):
@@ -275,7 +289,7 @@ class ContestFileManager:
         manager = ConfigJsonManager(str(config_path))
         manager.ensure_language_id({lang: str(5000 + i*2) for i, lang in enumerate(LANGUAGE_ENVS.keys())})
         self.copy_from_stocks_to_current(contest_name, problem_name, language_name)
-        if not self.file_operator.resolve_path(self.upm.contest_current(language_name)).exists():
+        if not self.file_operator.resolve_path(self.upm.contest_current()).exists():
             if self.file_operator.resolve_path(self.upm.contest_template(language_name)).exists():
                 self.copy_from_template_to_current(contest_name, problem_name, language_name)
             else:
@@ -297,14 +311,12 @@ class ContestFileManager:
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 self.file_operator.move(item, dst)
 
-    def get_problem_files(self, contest_name, problem_name, language_name):
+    def get_problem_files(self, contest_name, problem_name, language_name=None):
         """
-        問題回答用のファイルのパスを取得する。
-        contest_current/{language_name}/とcontest_current/test/のパスを返す。
-        
+        contest_current/とcontest_current/test/のパスを返す。
         Returns:
             tuple: (問題ファイルのディレクトリパス, テストファイルのディレクトリパス)
         """
-        problem_dir = self.file_operator.resolve_path(self.upm.contest_current(language_name))
+        problem_dir = self.file_operator.resolve_path(self.upm.contest_current())
         test_dir = self.file_operator.resolve_path(self.upm.contest_current("test"))
         return problem_dir, test_dir 

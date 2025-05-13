@@ -25,7 +25,8 @@ class LanguageEnvProfile:
 class LanguageConfigAccessor:
     @staticmethod
     def get_config(language_name):
-        return LANGUAGE_ENVS[language_name]()
+        # クラスを返す
+        return LANGUAGE_ENVS[language_name]
 
     @staticmethod
     def get_moveignore(language_name):

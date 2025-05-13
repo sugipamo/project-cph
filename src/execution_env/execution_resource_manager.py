@@ -37,8 +37,8 @@ class DockerResourceManager(ExecutionResourceManager):
         self.info_manager = InfoJsonManager(self.upm.info_json())
         # contest_env配下の全言語＋バージョンを動的に集約
         self.dockerfile_map = {
-            (lang, ver): env_cls().dockerfile_path
-            for (lang, ver), env_cls in LANGUAGE_ENVS.items()
+            lang: getattr(env_cls, "dockerfile_path", None)
+            for lang, env_cls in LANGUAGE_ENVS.items()
         }
         self.project_root = getattr(upm, 'project_root', None)
         self.container_root = getattr(upm, 'container_root', '/workspace')
