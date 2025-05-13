@@ -122,7 +122,7 @@ class DockerTestcaseFileOperator(AbstractTestcaseFileOperator):
     def prepare_test_cases(self, contest_name, problem_name, upm, env_config):
         pass
     def collect_test_cases(self, temp_test_dir):
-        pass
+        return [], []
     def download_testcases(self, url, test_dir_host):
         cmd = self._build_oj_download_cmd(url, test_dir_host)
         container = self.resource_manager.get_ojtools_container()
@@ -147,7 +147,7 @@ class CloudTestcaseFileOperator(AbstractTestcaseFileOperator):
     def prepare_test_cases(self, contest_name, problem_name, upm, env_config):
         pass
     def collect_test_cases(self, temp_test_dir):
-        pass
+        return [], []
     def download_testcases(self, url, test_dir_host):
         pass
     def submit_via_ojtools(self, args, workdir):

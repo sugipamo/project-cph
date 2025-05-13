@@ -24,11 +24,12 @@ class LanguageConfig:
 
 HANDLERS = {}
 
-def register_handler(language, env_type):
-    def decorator(cls):
-        HANDLERS[(language, env_type)] = cls
-        return cls
-    return decorator
+def register_handler(cls):
+    key = (getattr(cls, "language_name", None), getattr(cls, "env_type", None))
+    if None in key:
+        raise ValueError(f"{cls.__name__}にlanguage_nameまたはenv_typeがありません")
+    HANDLERS[key] = cls
+    return cls
 
 class ExecutionCommandBuilder:
     def __init__(self, config):
@@ -70,7 +71,10 @@ class BaseLanguageConfig:
     # 必要に応じて他の共通メソッドも追加可能
 
 class BaseTestHandler:
-    def __init__(self, language, env_type, config=None, env_config=None):
+    default_config_class = None  # 各Handlerで上書きする
+    def __init__(self, language, env_type, config=None, env_config=None, *args, **kwargs):
+        if config is None and self.default_config_class is not None:
+            config = self.default_config_class()
         self.language = language
         self.env_type = env_type
         self.config = config
