@@ -1,14 +1,3 @@
-"""
-仕様書:
-- CLIコマンドを受け取り、パースする
-- online-judge-tools用のコマンドに変換する
-- main.py {contest_name} {command} {problem_name} {language_name} の順不同引数に対応
-- 正規表現でコマンド一致条件を設定し、一致したものを当てはめる
-- コマンドは右から順番、parse順に確認し、適用済みの要素は検証をスキップする
-- parse順: problem_name → contest_name → language_name
-- 定数はこのコメント下に記載
-"""
-
 # 定数
 CONTEST_NAMES = ["abc", "arc", "agc", "ahc"]
 COMMANDS = {
@@ -18,11 +7,6 @@ COMMANDS = {
     "submit": {"aliases": ["s"]},
 }
 PROBLEM_NAMES = ["a", "b", "c", "d", "e", "f", "g", "ex"]
-
-# 実行モード
-EXEC_MODES = ["local", "docker"]
-
-from src.execution_env.language_env_profile import LANGUAGE_ENVS
 
 LANGUAGE_ALIASES = {}
 for lang, env_cls in LANGUAGE_ENVS.items():
@@ -34,8 +18,6 @@ for lang, env_cls in LANGUAGE_ENVS.items():
 LANGUAGES = LANGUAGE_ALIASES
 
 import argparse
-from src.execution_env.info_json_manager import InfoJsonManager
-from src.path_manager.unified_path_manager import UnifiedPathManager
 
 # --- CLIコマンドパース用関数 ---
 def parse_args():
@@ -56,7 +38,6 @@ class CommandParser:
 
     def __init__(self):
         self.parsed = self.default_parsed.copy()
-        self.upm = UnifiedPathManager()
 
     def parse(self, args):
         # 引数を順不同でパースし、各要素を特定
