@@ -1,5 +1,4 @@
 import time
-from src.execution_client.types import ExecutionResult
 from abc import ABC, abstractmethod
 
 class AbstractExecutionManager(ABC):

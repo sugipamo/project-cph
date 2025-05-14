@@ -1,24 +1,24 @@
-import subprocess
-import os
+from contest_env.base import DockerTestHandler, LocalTestHandler
+from dataclasses import dataclass
 
-DOCKERFILE = os.path.join(os.path.dirname(__file__), "oj.Dockerfile")
-IMAGE_NAME = "cph_image_ojtools"
+@dataclass
+class OjDockerHandler(DockerTestHandler):
+    language_name = "oj"
+    env_type = "docker"
+    run_cmd = ["oj"]
 
-def build_ojtools_image():
-    if not os.path.exists(DOCKERFILE):
-        print(f"[ERROR] Dockerfile not found: {DOCKERFILE}")
-        exit(1)
-    cmd = [
-        "docker", "build",
-        "-f", DOCKERFILE,
-        "-t", IMAGE_NAME,
-        os.path.dirname(__file__)
-    ]
-    result = subprocess.run(cmd)
-    if result.returncode == 0:
-        print(f"[OK] Built {IMAGE_NAME}")
-    else:
-        print(f"[ERROR] Build failed")
+    def get_language_name(self):
+        return self.language_name
 
-if __name__ == "__main__":
-    build_ojtools_image() 
+@dataclass
+class OjLocalHandler(LocalTestHandler):
+    language_name = "oj"
+    env_type = "local"
+    run_cmd = ["oj"]
+
+    def get_language_name(self):
+        return self.language_name
+
+    @property
+    def dockerfile_path(self):
+        return self.contest_env_path / ".." / "src" / "execution_client" / "container" / "oj.Dockerfile"

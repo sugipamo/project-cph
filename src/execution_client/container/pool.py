@@ -2,7 +2,6 @@ from typing import List, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor
 from src.execution_client.client.container import ContainerClient
 from .image_manager import ContainerImageManager
-from src.path_manager.unified_path_manager import UnifiedPathManager
 from abc import ABC, abstractmethod
 import subprocess
 

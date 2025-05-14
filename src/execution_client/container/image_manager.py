@@ -1,7 +1,6 @@
-import subprocess
-from typing import Optional, Dict
 import hashlib
 import os
+from src.shell_process import ShellProcess, ShellProcessOptions
 
 
 class DockerImageConfig():
@@ -33,19 +32,21 @@ class DockerImageManager():
         cmd = [
             "docker", "build", "-f", self.__config.dockerfile_path, "-t", self.__config.image_name, self.__config.workspace_dir
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        
+        opts = ShellProcessOptions()
+        proc = ShellProcess.run(*cmd, options=opts)
+        return proc.returncode == 0
 
     def remove_image(self, image_name: str) -> bool:
         """
         イメージを削除する。
         """
         cmd = ["docker", "rmi", image_name]
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            return result.returncode == 0
-        except subprocess.CalledProcessError as e:
-            print(f"[ERROR] docker rmi failed: {e.stderr}")
+        opts = ShellProcessOptions()
+        proc = ShellProcess.run(*cmd, options=opts)
+        if proc.returncode == 0:
+            return True
+        else:
+            print(f"[ERROR] docker rmi failed: {proc.stderr}")
             return False
 
     def image_exists(self, image_name: str) -> bool:
@@ -53,8 +54,9 @@ class DockerImageManager():
         イメージが存在するか確認する。
         """
         cmd = ["docker", "images", "--format", "{{.Repository}}", image_name]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        images = result.stdout.splitlines()
+        opts = ShellProcessOptions()
+        proc = ShellProcess.run(*cmd, options=opts)
+        images = proc.stdout.splitlines() if proc.stdout else []
         return image_name in images
 
     def get_dockerfile_hash(self, dockerfile_path: str) -> str:
@@ -77,13 +79,15 @@ class DockerImageManager():
         """
         prefix = f"cph_image_{key}_"
         current = self.get_image_name(key)
-        images = subprocess.run(["docker", "images", "--format", "{{.Repository}}"], capture_output=True, text=True)
-        image_names = images.stdout.splitlines()
+        opts = ShellProcessOptions()
+        proc = ShellProcess.run("docker", "images", "--format", "{{.Repository}}", options=opts)
+        image_names = proc.stdout.splitlines() if proc.stdout else []
         for img in image_names:
             if img.startswith(prefix) and img != current:
                 self.remove_image(img)
 
     def ensure_image(self, key, context_dir: str = ".") -> str:
         image = self.get_image_name(key)
-        images = subprocess.run(["docker", "images", "--format", "{{.Repository}}"], capture_output=True, text=True)
+        opts = ShellProcessOptions()
+        ShellProcess.run("docker", "images", "--format", "{{.Repository}}", options=opts)
         return image 

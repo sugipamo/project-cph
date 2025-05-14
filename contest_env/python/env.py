@@ -1,4 +1,4 @@
-from contest_env.base import DockerTestHandler, LocalTestHandler, register_handler
+from contest_env.base import DockerTestHandler, LocalTestHandler
 from dataclasses import dataclass
 
 @dataclass
@@ -8,7 +8,6 @@ class PythonConfig():
     exclude_patterns = [r"^.*\\.log$", r"^debug.*"]  # moveignore相当
 
 @dataclass
-@register_handler
 class PythonDockerHandler(DockerTestHandler, PythonConfig):
     language_name = "python"
     env_type = "docker"
@@ -18,7 +17,6 @@ class PythonDockerHandler(DockerTestHandler, PythonConfig):
         return self.language_name
 
 @dataclass
-@register_handler
 class PythonLocalHandler(LocalTestHandler, PythonConfig):
     language_name = "python"
     env_type = "local"
