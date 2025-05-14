@@ -6,32 +6,7 @@ from src.execution_client.abstract_client import AbstractExecutionClient
 from src.execution_client.types import ExecutionResult
 import threading
 
-class AbstractContainerClient(ABC):
-    @abstractmethod
-    def run_container(self, name: str, image: str, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, detach: bool = True) -> str:
-        pass
-
-    @abstractmethod
-    def stop_container(self, name: str) -> bool:
-        pass
-
-    @abstractmethod
-    def remove_container(self, name: str) -> bool:
-        pass
-
-    @abstractmethod
-    def exec_in_container(self, name: str, cmd: List[str]) -> subprocess.CompletedProcess:
-        pass
-
-    @abstractmethod
-    def copy_to_container(self, name: str, src_path: str, dst_path: str) -> bool:
-        pass
-
-    @abstractmethod
-    def copy_from_container(self, name: str, src_path: str, dst_path: str) -> bool:
-        pass
-
-class ContainerClient(AbstractExecutionClient, AbstractContainerClient):
+class ContainerClient(AbstractExecutionClient):
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 

@@ -5,14 +5,17 @@ from typing import Optional, Any, Dict, Union, List, Tuple
 import logging
 import concurrent.futures
 import asyncio
+import threading
 
 class ShellProcessOptions:
-    def __init__(self, env=None, cwd=None, log_file=None, input_data=None, timeout=None, **kwargs):
+    def __init__(self, env=None, cwd=None, log_file=None, input_data=None, timeout=None, on_stdout=None, on_stderr=None, **kwargs):
         self.env = env
         self.cwd = cwd
         self.log_file = log_file
         self.input_data = input_data
         self.timeout = timeout
+        self.on_stdout = on_stdout
+        self.on_stderr = on_stderr
         self.extra = kwargs
     # ビルダーパターン用メソッド
     def set_env(self, env):
@@ -29,6 +32,12 @@ class ShellProcessOptions:
         return self
     def set_timeout(self, timeout):
         self.timeout = timeout
+        return self
+    def set_on_stdout(self, on_stdout):
+        self.on_stdout = on_stdout
+        return self
+    def set_on_stderr(self, on_stderr):
+        self.on_stderr = on_stderr
         return self
     def set_extra(self, **kwargs):
         self.extra.update(kwargs)
@@ -67,17 +76,22 @@ class ShellProcess:
         self._elapsed: Optional[float] = None
 
     @classmethod
-    def run(cls, *args, options: ShellProcessOptions = None, **kwargs):
+    def run(cls, *args, options: 'ShellProcessOptions' = None, **kwargs):
         obj = cls()
         obj.args = args
         obj.kwargs = kwargs.copy()
         obj.options = options or ShellProcessOptions()
         obj.use_popen = False
         obj._run_with_run()
+        # runは基本的に同期実行なので、on_stdout/on_stderrは出力全体を渡す
+        if obj.options.on_stdout and obj.stdout:
+            obj.options.on_stdout(obj.stdout)
+        if obj.options.on_stderr and obj.stderr:
+            obj.options.on_stderr(obj.stderr)
         return obj
 
     @classmethod
-    def popen(cls, *args, options: ShellProcessOptions = None, **kwargs):
+    def popen(cls, *args, options: 'ShellProcessOptions' = None, **kwargs):
         obj = cls()
         obj.args = args
         obj.kwargs = kwargs.copy()
@@ -130,6 +144,18 @@ class ShellProcess:
             )
             stdout, stderr = self._popen.communicate(input=self.options.input_data)
             self._result = (stdout, stderr, self._popen.returncode)
+            # コールバックが指定されていればスレッドで呼び出し
+            def call_callback(stream, callback):
+                for line in stream.splitlines(keepends=True):
+                    callback(line)
+            if self.options.on_stdout and stdout:
+                t_out = threading.Thread(target=call_callback, args=(stdout, self.options.on_stdout))
+                t_out.daemon = True
+                t_out.start()
+            if self.options.on_stderr and stderr:
+                t_err = threading.Thread(target=call_callback, args=(stderr, self.options.on_stderr))
+                t_err.daemon = True
+                t_err.start()
         except Exception as e:
             self._exception = e
             self._has_error = True

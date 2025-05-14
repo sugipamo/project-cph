@@ -1,7 +1,6 @@
 from src.execution_client.abstract_client import AbstractExecutionClient
-from src.execution_client.types import ExecutionResult
 from typing import Any, Optional, List, Dict, Callable
-import subprocess
+from src.shell_process import ShellProcess, ShellProcessOptions, ShellProcessPool
 import threading
 import time
 
@@ -11,48 +10,52 @@ class LocalAsyncClient(AbstractExecutionClient):
         self._processes = {}
         self._lock = threading.Lock()
 
-    def run(self, name: str, image: Optional[str] = None, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, detach: bool = True, realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, **kwargs) -> ExecutionResult:
+    def run(self, name: str, image: Optional[str] = None, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, detach: bool = True, realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, **kwargs) -> ShellProcess:
         if not command:
             raise ValueError("command must be specified for local execution")
         input_data = kwargs.get("input", None)
         cwd = kwargs.get("cwd", None)
+        options = ShellProcessOptions(input_data=input_data, cwd=cwd)
         with self._lock:
             if name in self._processes:
                 raise RuntimeError(f"Process with name {name} already running")
             if not realtime:
                 if not detach:
-                    # subprocess.runで即時実行
-                    result = subprocess.run(command, input=input_data, text=True, capture_output=True, cwd=cwd)
-                    return ExecutionResult(returncode=result.returncode, stdout=result.stdout, stderr=result.stderr)
+                    proc = ShellProcess.run(*command, options=options)
+                    return proc
                 else:
-                    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=cwd)
+                    proc = ShellProcess.popen(*command, options=options)
                     self._processes[name] = proc
             else:
-                proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1, cwd=cwd)
+                proc = ShellProcess.popen(*command, options=options)
                 self._processes[name] = proc
                 def reader(stream, callback):
-                    for line in iter(stream.readline, ''):
+                    for line in stream.splitlines(keepends=True):
                         if callback:
                             callback(line)
-                t_out = threading.Thread(target=reader, args=(proc.stdout, on_stdout))
-                t_err = threading.Thread(target=reader, args=(proc.stderr, on_stderr))
-                t_out.daemon = True
-                t_err.daemon = True
-                t_out.start()
-                t_err.start()
+                if on_stdout and proc.stdout:
+                    t_out = threading.Thread(target=reader, args=(proc.stdout, on_stdout))
+                    t_out.daemon = True
+                    t_out.start()
+                if on_stderr and proc.stderr:
+                    t_err = threading.Thread(target=reader, args=(proc.stderr, on_stderr))
+                    t_err.daemon = True
+                    t_err.start()
         if detach or realtime:
-            return ExecutionResult(returncode=None, stdout=None, stderr=None, extra={"popen": proc, "input": input_data})
+            return proc
 
     def stop(self, name: str) -> bool:
         with self._lock:
             proc = self._processes.get(name)
             if not proc:
                 return False
-            proc.terminate()
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                proc.kill()
+            # ShellProcess.popenの返り値はShellProcessインスタンス
+            if hasattr(proc, '_popen') and proc._popen:
+                proc._popen.terminate()
+                try:
+                    proc._popen.wait(timeout=5)
+                except Exception:
+                    proc._popen.kill()
             del self._processes[name]
         return True
 
@@ -60,34 +63,59 @@ class LocalAsyncClient(AbstractExecutionClient):
         # ローカルプロセスの場合、stopと同じ
         return self.stop(name)
 
-    def exec_in(self, name: str, cmd: List[str], realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, **kwargs) -> ExecutionResult:
+    def exec_in(self, name: str, cmd: List[str], realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, **kwargs) -> ShellProcess:
+        options = ShellProcessOptions()
         if not realtime:
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            return ExecutionResult(returncode=result.returncode, stdout=result.stdout, stderr=result.stderr)
+            proc = ShellProcess.run(*cmd, options=options)
+            return proc
         else:
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+            proc = ShellProcess.popen(*cmd, options=options)
             def reader(stream, callback):
-                for line in iter(stream.readline, ''):
+                for line in stream.splitlines(keepends=True):
                     if callback:
                         callback(line)
-            t_out = threading.Thread(target=reader, args=(proc.stdout, on_stdout))
-            t_err = threading.Thread(target=reader, args=(proc.stderr, on_stderr))
-            t_out.daemon = True
-            t_err.daemon = True
-            t_out.start()
-            t_err.start()
-            return ExecutionResult(returncode=None, stdout=None, stderr=None, extra={"popen": proc})
+            if on_stdout and proc.stdout:
+                t_out = threading.Thread(target=reader, args=(proc.stdout, on_stdout))
+                t_out.daemon = True
+                t_out.start()
+            if on_stderr and proc.stderr:
+                t_err = threading.Thread(target=reader, args=(proc.stderr, on_stderr))
+                t_err.daemon = True
+                t_err.start()
+            return proc
 
     def is_running(self, name: str) -> bool:
         with self._lock:
             proc = self._processes.get(name)
             if not proc:
                 return False
-            return proc.poll() is None
+            if hasattr(proc, '_popen') and proc._popen:
+                return proc._popen.poll() is None
+            return False
 
     def list(self, all: bool = True, prefix: Optional[str] = None) -> List[str]:
         with self._lock:
             names = list(self._processes.keys())
         if prefix:
             names = [n for n in names if n.startswith(prefix)]
-        return names 
+        return names
+
+    def run_many(self, commands: List[List[str]], options_list: Optional[List[ShellProcessOptions]] = None, max_workers: int = 4) -> List[ShellProcess]:
+        """
+        commands: List of command (list of str)
+        options_list: List of ShellProcessOptions or None
+        return: List[ExecutionResult]
+        """
+        pool = ShellProcessPool(max_workers=max_workers)
+        procs = pool.run_many(commands, options_list=options_list)
+        return procs
+
+    def exec_many(self, commands: List[List[str]], options_list: Optional[List[ShellProcessOptions]] = None, max_workers: int = 4) -> List[ShellProcess]:
+        """
+        commands: List of command (list of str)
+        options_list: List of ShellProcessOptions or None
+        return: List[ExecutionResult]
+        """
+        pool = ShellProcessPool(max_workers=max_workers)
+        procs = pool.popen_many(commands, options_list=options_list)
+        return procs 
