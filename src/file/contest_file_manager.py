@@ -1,22 +1,13 @@
 from src.file.file_operator import FileOperator
 from src.execution_env.info_json_manager import InfoJsonManager
-from src.file.config_json_manager import ConfigJsonManager
-from src.file.moveignore_manager import MoveIgnoreManager
 from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.execution_env.language_env_profile import LANGUAGE_ENVS, LanguageConfigAccessor
 import time
 import json
 
 class ContestFileManager:
-    def __init__(self, file_operator: FileOperator, project_root=None, container_root="/workspace"):
-        self.file_operator = file_operator
-        self.upm = UnifiedPathManager(project_root, container_root)
-
-    def get_current_info_path(self):
-        return self.file_operator.resolve_path(self.upm.info_json())
-
-    def get_current_config_path(self):
-        return self.file_operator.resolve_path(self.upm.config_json())
+    def __init__(self, handler):
+        self.handler = handler
 
     def get_exclude_files(self):
         """

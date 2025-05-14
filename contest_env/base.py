@@ -3,186 +3,46 @@
 独自の言語環境やバージョンを追加したい場合は、このクラスを継承して実装してください。
 例: class MyLangHandler(BaseTestHandler): ...
 """
-# 以下、元のbase.pyの内容をそのまま移動
-import os
-from src.path_manager.unified_path_manager import UnifiedPathManager
 from src.input_data_loader import InputDataLoader
-from src.test_result_parser import TestResultParser
 
-# --- 以下は旧 language_config.py 由来 ---
-class LanguageConfig:
-    def __init__(self, name, build_cmd=None, run_cmd=None, bin_path=None, source_file=None, copy_mode="file", exclude_patterns=None):
-        self.name = name
-        self.build_cmd = build_cmd  # 例: ["cargo", "build", "--release"] や None
-        self.run_cmd = run_cmd      # 例: ["python3", "{source}"] など
-        self.bin_path = bin_path    # Rustのみ: "target/release/rust" など
-        self.source_file = source_file  # 例: "main.py" など
-        self.copy_mode = copy_mode  # "file" or "dir"
-        self.exclude_patterns = exclude_patterns or []
-
-# --- ここからBaseLanguageConfig ---
-
-HANDLERS = {}
-
-def register_handler(cls):
-    key = (getattr(cls, "language_name", None), getattr(cls, "env_type", None))
-    if None in key:
-        raise ValueError(f"{cls.__name__}にlanguage_nameまたはenv_typeがありません")
-    HANDLERS[key] = cls
-    return cls
-
-class ExecutionCommandBuilder:
-    def __init__(self, config):
-        self.config = config
-
-    def build_command(self, temp_source_path):
-        return self.config.build_cmd
-
-    def run_command(self, temp_source_path, bin_path=None):
-        if bin_path:
-            return [c.replace("{bin_path}", bin_path) for c in self.config.run_cmd]
-        return self.config.run_cmd
-
+# --- 言語環境の基底クラス ---
 class BaseLanguageConfig:
-    """
-    言語環境拡張用の基底クラスです。
-    共通値（container_workspace等）はここで一元管理できます。
-    各言語・バージョンごとにこのクラスを継承して拡張してください。
-    """
-    container_workspace = "/workspace"
-    build_cmd = None
-    run_cmd = None
     source_file = "main.py"
-    copy_mode = "file"
-    dockerfile_path = None
-    # リソース制限系
-    memory_limit = None  # 例: "512m"
-    cpu_limit = None    # 例: "1.0"
-    time_limit = None   # 例: 秒数
-    extra_env = None    # 追加環境変数(dict)
-    extra_mounts = None # 追加マウント設定(list/dict)
+    memory_limit = None
+    cpu_limit = None
+    time_limit = None
+    run_cmd = None
 
-    def get_build_cmd(self, *args, **kwargs):
-        return self.build_cmd
+# --- テスト実行ハンドラの基底クラス ---
+class BaseTestHandler():
+    def __init__(self, config):
+        self.__config = config
+        self.__exec_client = None
 
-    def get_run_cmd(self, *args, **kwargs):
-        return self.run_cmd
+class LocalTestHandler(BaseTestHandler):
+    def __init__(self, config):
+        super().__init__(config)
 
-    # 必要に応じて他の共通メソッドも追加可能
-
-class BaseTestHandler:
-    default_config_class = None  # 各Handlerで上書きする
-    def __init__(self, env_type, config=None, env_config=None, *args, **kwargs):
-        self.env_type = env_type
-        self.config = config
-        self.env_config = env_config
-        if config is None and self.default_config_class is not None:
-            config = self.default_config_class()
-        self.command_builder = ExecutionCommandBuilder(self.config)
-
-    def prepare_environment(self, *args, **kwargs):
-        pass
-
-    def build_command(self, temp_source_path):
-        return self.command_builder.build_command(temp_source_path)
-
-    def get_bin_path(self, temp_source_path):
-        return temp_source_path
-
-    def run_command(self, temp_source_path):
-        bin_path = self.get_bin_path(temp_source_path)
-        return self.command_builder.run_command(temp_source_path, bin_path=bin_path)
-
-    def get_build_cwd(self, source_path):
-        return os.path.dirname(source_path)
-
-    def get_run_cwd(self, source_path):
-        return os.path.dirname(source_path)
-
-    def to_container_path(self, host_path):
-        return host_path
-
-    def to_host_path(self, container_path):
-        return container_path
-
-    def run(self, exec_client, container, in_file, source_path, artifact_path=None, host_in_file=None, file_operator=None):
-        cont_in_file = self.to_container_path(in_file)
-        cont_source_path = self.to_container_path(source_path)
-        run_cmd = self.run_command(cont_source_path)
+    def run(self):
+        run_cmd = self.run_command(self.__config.run_cmd)
         if not run_cmd or run_cmd == ["None"]:
             return False, "", "実行ファイルが見つかりません (run_cmdがNone)"
-        host_in_file_path = self.to_host_path(cont_in_file)
-        input_data = InputDataLoader.load(file_operator, host_in_file, host_in_file_path)
-        run_cwd = self.get_run_cwd(cont_source_path)
-        result = exec_client.run_and_measure(container, run_cmd, cwd=run_cwd, input=input_data, image=self.language)
+        input_data = InputDataLoader.load(file_operator, in_file, host_in_file_path)
+        run_cwd = self.run_cwd
+        result = exec_client.run_and_measure(container, run_cmd, cwd=run_cwd, input=input_data, image=self.config.name)
         return TestResultParser.parse(result)
-
-    def build(self, exec_client, container, source_path):
-        cmd = self.build_command(self.to_container_path(source_path))
+    
+    def build(self):
+        cmd = self.build_command(self.container_path)
         if cmd is None:
             return True, '', ''
-        build_cwd = self.get_build_cwd(self.to_container_path(source_path))
-        image = self.language
-        result = exec_client.run_and_measure(container, cmd, cwd=build_cwd, image=image)
+        build_cwd = self.build_cwd
+        image = self.config.name
+        result = self.exec_client.run_and_measure(container, cmd, cwd=build_cwd, image=image)
         ok = result.returncode == 0
         return ok, result.stdout, result.stderr
 
-class LocalTestHandler(BaseTestHandler):
-    def __init__(self, env_type, config=None, env_config=None):
-        super().__init__(env_type, config=config, env_config=env_config)
-    def before_build(self, *args, **kwargs):
-        pass
-    def after_build(self, *args, **kwargs):
-        pass
-    def before_run(self, *args, **kwargs):
-        pass
-    def after_run(self, *args, **kwargs):
-        pass
-    def before_test_case(self, *args, **kwargs):
-        pass
-    def after_test_case(self, *args, **kwargs):
-        pass
-
-class ContainerTestHandler(BaseTestHandler):
-    def __init__(self, env_type, config=None, env_config=None):
-        super().__init__(env_type, config=config, env_config=env_config)
-        project_root = getattr(self.env_config, 'host_project_root', None)
-        container_root = getattr(self.env_config, 'workspace_dir', "./workspace")
-        mounts = getattr(self.env_config, 'mounts', None)
-        self.upm = UnifiedPathManager(project_root, container_root, mounts=mounts)
-
-    def before_build(self, *args, **kwargs):
-        pass
-    def after_build(self, *args, **kwargs):
-        pass
-    def before_run(self, *args, **kwargs):
-        pass
-    def after_run(self, *args, **kwargs):
-        pass
-    def before_test_case(self, *args, **kwargs):
-        pass
-    def after_test_case(self, *args, **kwargs):
-        pass
-
-    def run(self, exec_client, container, in_file, source_path, artifact_path=None, host_in_file=None, file_operator=None):
-        cont_in_file = self.upm.to_container_path(os.path.abspath(str(in_file)))
-        cont_source_path = self.upm.to_container_path(os.path.abspath(str(source_path)))
-        run_cmd = self.run_command(cont_source_path)
-        if not run_cmd or run_cmd == ["None"]:
-            return False, "", "実行ファイルが見つかりません (run_cmdがNone)"
-        host_in_file_path = self.upm.to_host_path(cont_in_file)
-        input_data = InputDataLoader.load(file_operator, host_in_file, host_in_file_path)
-        run_cwd = self.get_run_cwd(cont_source_path)
-        result = exec_client.run_and_measure(container, run_cmd, cwd=run_cwd, input=input_data, image=self.language)
-        return TestResultParser.parse(result)
-
-    def build(self, exec_client, container, source_path):
-        cont_source_path = self.upm.to_container_path(os.path.abspath(str(source_path)))
-        cmd = self.build_command(cont_source_path)
-        if cmd is None:
-            return True, '', ''
-        build_cwd = self.get_build_cwd(cont_source_path)
-        image = self.language
-        result = exec_client.run_and_measure(container, cmd, cwd=build_cwd, image=image)
-        ok = result.returncode == 0
-        return ok, result.stdout, result.stderr 
+class DockerTestHandler(BaseTestHandler):
+    container_workspace = "/workspace"
+    dockerfile_path = None
+    mounts = []

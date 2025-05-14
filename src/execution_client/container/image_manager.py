@@ -1,43 +1,40 @@
-from abc import ABC, abstractmethod
 import subprocess
 from typing import Optional, Dict
 import hashlib
 import os
 
-class AbstractContainerImageManager(ABC):
-    @abstractmethod
-    def build_image(self, dockerfile_path: str, image_name: str, context_dir: str = ".") -> bool:
-        pass
 
-    @abstractmethod
-    def remove_image(self, image_name: str) -> bool:
-        pass
+class DockerImageConfig():
+    def __init__(self, contest_env):
+        self.__contest_env = contest_env
 
-    @abstractmethod
-    def image_exists(self, image_name: str) -> bool:
-        pass
+    @property
+    def dockerfile_path(self):
+        return os.path.abspath(self.__contest_env.dockerfile_path)
 
-    @abstractmethod
-    def get_image_name(self, base_name: str, tag: Optional[str] = None) -> str:
-        pass
+    @property
+    def image_name(self):
+        with open(self.dockerfile_path, "rb") as f:
+            hashval = hashlib.sha256(f.read()).hexdigest()[:12]
+        return self.__contest_env.language_name + "_" + hashval
+    
+    @property
+    def workspace_dir(self):
+        return os.path.abspath(self.__contest_env.workspace_dir)
 
-class ContainerImageManager(AbstractContainerImageManager):
-    def __init__(self, dockerfile_map: Optional[Dict[str, str]] = None):
-        self.dockerfile_map = dockerfile_map or {}
+class DockerImageManager():
+    def __init__(self, config: DockerImageConfig):
+        self.__config = config
 
-    def build_image(self, dockerfile_path: str, image_name: str, context_dir: str = ".") -> bool:
+    def build_image(self) -> bool:
         """
         Dockerfileからイメージをビルドする。
         """
         cmd = [
-            "docker", "build", "-f", dockerfile_path, "-t", image_name, context_dir
+            "docker", "build", "-f", self.__config.dockerfile_path, "-t", self.__config.image_name, self.__config.workspace_dir
         ]
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            return result.returncode == 0
-        except subprocess.CalledProcessError as e:
-            print(f"[ERROR] docker build failed: {e.stderr}")
-            return False
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        
 
     def remove_image(self, image_name: str) -> bool:
         """
@@ -67,8 +64,6 @@ class ContainerImageManager(AbstractContainerImageManager):
     def get_image_name(self, key):
         # keyは(言語,バージョン)タプル
         lang, ver = key if isinstance(key, tuple) else (key, None)
-        if lang == "ojtools":
-            return "cph_image_ojtools"
         dockerfile = self.dockerfile_map.get(key, None)
         if not dockerfile or not os.path.exists(dockerfile):
             return f"{lang}_{ver}"  # fallback
@@ -91,11 +86,4 @@ class ContainerImageManager(AbstractContainerImageManager):
     def ensure_image(self, key, context_dir: str = ".") -> str:
         image = self.get_image_name(key)
         images = subprocess.run(["docker", "images", "--format", "{{.Repository}}"], capture_output=True, text=True)
-        image_names = images.stdout.splitlines()
-        if image not in image_names:
-            dockerfile = self.dockerfile_map.get(key, None)
-            if dockerfile and os.path.exists(dockerfile):
-                self.build_image(dockerfile, image, context_dir)
-                if key[0] != "ojtools":
-                    self.cleanup_old_images(key)
         return image 
