@@ -3,8 +3,8 @@ import pkgutil
 from pathlib import Path
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from src.execution_client.client.local import LocalAsyncClient
-from src.execution_client.client.container import ContainerClient
+from execution_client.client.local import LocalAsyncClient
+from execution_client.client.container import ContainerClient
 
 BASE_DIR = "contest_env"
 

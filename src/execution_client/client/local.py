@@ -1,5 +1,5 @@
 from typing import Any, Optional, List, Dict, Callable
-from src.shell_process import ShellProcess, ShellProcessOptions, ShellProcessPool
+from shell_process import ShellProcess, ShellProcessOptions, ShellProcessPool
 import threading
 import time
 
@@ -14,19 +14,19 @@ class LocalAsyncClient():
             raise ValueError("command must be specified for local execution")
         input_data = kwargs.get("input", None)
         cwd = kwargs.get("cwd", None)
-        options = ShellProcessOptions(input_data=input_data, cwd=cwd)
+        options = ShellProcessOptions(cmd=command, input_data=input_data, cwd=cwd)
         with self._lock:
             if name in self._processes:
                 raise RuntimeError(f"Process with name {name} already running")
             if not realtime:
                 if not detach:
-                    proc = ShellProcess.run(*command, options=options)
+                    proc = ShellProcess.run(options=options)
                     return proc
                 else:
-                    proc = ShellProcess.popen(*command, options=options)
+                    proc = ShellProcess.popen(options=options, detach=True)
                     self._processes[name] = proc
             else:
-                proc = ShellProcess.popen(*command, options=options)
+                proc = ShellProcess.popen(options=options, detach=True)
                 self._processes[name] = proc
                 def reader(stream, callback):
                     for line in stream.splitlines(keepends=True):
@@ -63,12 +63,12 @@ class LocalAsyncClient():
         return self.stop(name)
 
     def exec_in(self, name: str, cmd: List[str], realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, **kwargs) -> ShellProcess:
-        options = ShellProcessOptions()
+        options = ShellProcessOptions(cmd=cmd)
         if not realtime:
-            proc = ShellProcess.run(*cmd, options=options)
+            proc = ShellProcess.run(options=options)
             return proc
         else:
-            proc = ShellProcess.popen(*cmd, options=options)
+            proc = ShellProcess.popen(options=options, detach=True)
             def reader(stream, callback):
                 for line in stream.splitlines(keepends=True):
                     if callback:
@@ -86,10 +86,14 @@ class LocalAsyncClient():
     def is_running(self, name: str) -> bool:
         with self._lock:
             proc = self._processes.get(name)
+            print(f"[DEBUG] is_running: proc={proc}")
             if not proc:
                 return False
+            print(f"[DEBUG] is_running: proc._popen={getattr(proc, '_popen', None)}")
             if hasattr(proc, '_popen') and proc._popen:
-                return proc._popen.poll() is None
+                poll_val = proc._popen.poll()
+                print(f"[DEBUG] is_running: poll={poll_val}")
+                return poll_val is None
             return False
 
     def list(self, all: bool = True, prefix: Optional[str] = None) -> List[str]:
@@ -99,9 +103,9 @@ class LocalAsyncClient():
             names = [n for n in names if n.startswith(prefix)]
         return names
 
-    def run_many(self, commands: List[List[str]], options_list: Optional[List[ShellProcessOptions]] = None, max_workers: int = 4) -> List[ShellProcess]:
+    def run_many(self, commands: List[ShellProcessOptions], options_list: Optional[List[ShellProcessOptions]] = None, max_workers: int = 4) -> List[ShellProcess]:
         """
-        commands: List of command (list of str)
+        commands: List of ShellProcessOptions
         options_list: List of ShellProcessOptions or None
         return: List[ExecutionResult]
         """
@@ -109,9 +113,9 @@ class LocalAsyncClient():
         procs = pool.run_many(commands, options_list=options_list)
         return procs
 
-    def exec_many(self, commands: List[List[str]], options_list: Optional[List[ShellProcessOptions]] = None, max_workers: int = 4) -> List[ShellProcess]:
+    def exec_many(self, commands: List[ShellProcessOptions], options_list: Optional[List[ShellProcessOptions]] = None, max_workers: int = 4) -> List[ShellProcess]:
         """
-        commands: List of command (list of str)
+        commands: List of ShellProcessOptions
         options_list: List of ShellProcessOptions or None
         return: List[ExecutionResult]
         """
@@ -125,6 +129,6 @@ class LocalAsyncClient():
             raise ValueError("build command must be specified for local execution")
         input_data = kwargs.get("input", None)
         cwd = kwargs.get("cwd", None)
-        options = ShellProcessOptions(input_data=input_data, cwd=cwd)
-        proc = ShellProcess.run(*command, options=options)
+        options = ShellProcessOptions(cmd=command, input_data=input_data, cwd=cwd)
+        proc = ShellProcess.run(options=options)
         return proc 

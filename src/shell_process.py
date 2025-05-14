@@ -61,11 +61,11 @@ class ShellProcess:
         return obj
 
     @classmethod
-    def popen(cls, options: 'ShellProcessOptions' = None):
+    def popen(cls, options: 'ShellProcessOptions' = None, detach: bool = False):
         obj = cls()
         obj.options = options or ShellProcessOptions()
         obj.use_popen = True
-        obj._run_with_popen()
+        obj._run_with_popen(detach=detach)
         return obj
 
     def _run_with_run(self):
@@ -93,7 +93,7 @@ class ShellProcess:
         self._elapsed = self._end_time - self._start_time
         self._log_result()
 
-    def _run_with_popen(self):
+    def _run_with_popen(self, detach=False):
         self._exception = None
         self._has_error = False
         self._start_time = time.perf_counter()
@@ -108,20 +108,23 @@ class ShellProcess:
                 text=True,
                 **self.options.extra
             )
-            stdout, stderr = self._popen.communicate(input=self.options.input_data)
-            self._result = (stdout, stderr, self._popen.returncode)
-            # コールバックが指定されていればスレッドで呼び出し
-            def call_callback(stream, callback):
-                for line in stream.splitlines(keepends=True):
-                    callback(line)
-            if self.options.on_stdout and stdout:
-                t_out = threading.Thread(target=call_callback, args=(stdout, self.options.on_stdout))
-                t_out.daemon = True
-                t_out.start()
-            if self.options.on_stderr and stderr:
-                t_err = threading.Thread(target=call_callback, args=(stderr, self.options.on_stderr))
-                t_err.daemon = True
-                t_err.start()
+            if not detach:
+                stdout, stderr = self._popen.communicate(input=self.options.input_data)
+                self._result = (stdout, stderr, self._popen.returncode)
+                # コールバックが指定されていればスレッドで呼び出し
+                def call_callback(stream, callback):
+                    for line in stream.splitlines(keepends=True):
+                        callback(line)
+                if self.options.on_stdout and stdout:
+                    t_out = threading.Thread(target=call_callback, args=(stdout, self.options.on_stdout))
+                    t_out.daemon = True
+                    t_out.start()
+                if self.options.on_stderr and stderr:
+                    t_err = threading.Thread(target=call_callback, args=(stderr, self.options.on_stderr))
+                    t_err.daemon = True
+                    t_err.start()
+            else:
+                self._result = (None, None, None)
         except Exception as e:
             self._exception = e
             self._has_error = True
