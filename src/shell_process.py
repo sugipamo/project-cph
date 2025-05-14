@@ -8,7 +8,8 @@ import asyncio
 import threading
 
 class ShellProcessOptions:
-    def __init__(self, env=None, cwd=None, log_file=None, input_data=None, timeout=None, on_stdout=None, on_stderr=None, **kwargs):
+    def __init__(self, cmd=None, env=None, cwd=None, log_file=None, input_data=None, timeout=None, on_stdout=None, on_stderr=None, **kwargs):
+        self.cmd = cmd
         self.env = env
         self.cwd = cwd
         self.log_file = log_file
@@ -17,35 +18,8 @@ class ShellProcessOptions:
         self.on_stdout = on_stdout
         self.on_stderr = on_stderr
         self.extra = kwargs
-    # ビルダーパターン用メソッド
-    def set_env(self, env):
-        self.env = env
-        return self
-    def set_cwd(self, cwd):
-        self.cwd = cwd
-        return self
-    def set_log_file(self, log_file):
-        self.log_file = log_file
-        return self
-    def set_input_data(self, input_data):
-        self.input_data = input_data
-        return self
-    def set_timeout(self, timeout):
-        self.timeout = timeout
-        return self
-    def set_on_stdout(self, on_stdout):
-        self.on_stdout = on_stdout
-        return self
-    def set_on_stderr(self, on_stderr):
-        self.on_stderr = on_stderr
-        return self
-    def set_extra(self, **kwargs):
-        self.extra.update(kwargs)
-        return self
-    def build(self):
-        return self
     def to_dict(self):
-        d = dict(env=self.env, cwd=self.cwd, log_file=self.log_file, input_data=self.input_data, timeout=self.timeout)
+        d = dict(cmd=self.cmd, env=self.env, cwd=self.cwd, log_file=self.log_file, input_data=self.input_data, timeout=self.timeout)
         d.update(self.extra)
         return d
     def __getitem__(self, key):
@@ -63,8 +37,6 @@ class ShellProcessOptions:
 
 class ShellProcess:
     def __init__(self):
-        self.args = None
-        self.kwargs = None
         self.options: Optional[ShellProcessOptions] = None
         self.use_popen = False
         self._result: Optional[Union[subprocess.CompletedProcess, tuple]] = None
@@ -76,10 +48,8 @@ class ShellProcess:
         self._elapsed: Optional[float] = None
 
     @classmethod
-    def run(cls, *args, options: 'ShellProcessOptions' = None, **kwargs):
+    def run(cls, options: 'ShellProcessOptions' = None):
         obj = cls()
-        obj.args = args
-        obj.kwargs = kwargs.copy()
         obj.options = options or ShellProcessOptions()
         obj.use_popen = False
         obj._run_with_run()
@@ -91,10 +61,8 @@ class ShellProcess:
         return obj
 
     @classmethod
-    def popen(cls, *args, options: 'ShellProcessOptions' = None, **kwargs):
+    def popen(cls, options: 'ShellProcessOptions' = None):
         obj = cls()
-        obj.args = args
-        obj.kwargs = kwargs.copy()
         obj.options = options or ShellProcessOptions()
         obj.use_popen = True
         obj._run_with_popen()
@@ -106,14 +74,13 @@ class ShellProcess:
         self._start_time = time.perf_counter()
         try:
             self._result = subprocess.run(
-                *self.args,
+                args=self.options.cmd,
                 input=self.options.input_data,
                 env=self.options.env,
                 cwd=self.options.cwd,
                 text=True,
                 capture_output=True,
                 timeout=self.options.timeout,
-                **self.kwargs,
                 **self.options.extra
             )
         except subprocess.TimeoutExpired as e:
@@ -132,8 +99,7 @@ class ShellProcess:
         self._start_time = time.perf_counter()
         try:
             self._popen = subprocess.Popen(
-                *self.args,
-                **self.kwargs,
+                args=self.options.cmd,
                 env=self.options.env,
                 cwd=self.options.cwd,
                 stdin=subprocess.PIPE,
@@ -217,7 +183,7 @@ class ShellProcess:
         if rc is not None and rc != 0:
             raise subprocess.CalledProcessError(
                 rc,
-                self.args,
+                self.options.cmd,
                 output=self.stdout,
                 stderr=self.stderr
             )
@@ -234,8 +200,6 @@ class ShellProcess:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            'args': self.args,
-            'kwargs': self.kwargs,
             'options': self.options.to_dict() if self.options else None,
             'use_popen': self.use_popen,
             'stdout': self.stdout,
@@ -266,32 +230,28 @@ class ShellProcessPool:
     def __init__(self, max_workers: int = None):
         self.max_workers = max_workers
 
-    def run_many(self, commands: List[Tuple], options_list: List[ShellProcessOptions] = None) -> List[ShellProcess]:
+    def run_many(self, commands: List[ShellProcessOptions], options_list: List[ShellProcessOptions] = None) -> List[ShellProcess]:
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             futures = []
-            for i, args in enumerate(commands):
-                opts = options_list[i] if options_list else None
-                futures.append(executor.submit(ShellProcess.run, *args, options=opts))
+            for i, opts in enumerate(commands):
+                futures.append(executor.submit(ShellProcess.run, opts))
             for f in futures:
                 results.append(f.result())
         return results
 
-    def popen_many(self, commands: List[Tuple], options_list: List[ShellProcessOptions] = None) -> List[ShellProcess]:
+    def popen_many(self, commands: List[ShellProcessOptions], options_list: List[ShellProcessOptions] = None) -> List[ShellProcess]:
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             futures = []
-            for i, args in enumerate(commands):
-                opts = options_list[i] if options_list else None
-                futures.append(executor.submit(ShellProcess.popen, *args, options=opts))
+            for i, opts in enumerate(commands):
+                futures.append(executor.submit(ShellProcess.popen, opts))
             for f in futures:
                 results.append(f.result())
         return results
 
 class ShellProcessAsync:
     def __init__(self):
-        self.args = None
-        self.kwargs = None
         self.options: Optional[ShellProcessOptions] = None
         self._proc: Optional[asyncio.subprocess.Process] = None
         self._exception: Optional[Exception] = None
@@ -304,10 +264,8 @@ class ShellProcessAsync:
         self.returncode: Optional[int] = None
 
     @classmethod
-    async def run(cls, *args, options: ShellProcessOptions = None, **kwargs):
+    async def run(cls, options: ShellProcessOptions = None):
         obj = cls()
-        obj.args = args
-        obj.kwargs = kwargs.copy()
         obj.options = options or ShellProcessOptions()
         await obj._run_with_asyncio()
         return obj
@@ -319,7 +277,7 @@ class ShellProcessAsync:
         try:
             async def _do():
                 proc = await asyncio.create_subprocess_exec(
-                    *self.args,
+                    *self.options.cmd,
                     stdin=asyncio.subprocess.PIPE,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
@@ -376,15 +334,13 @@ class ShellProcessAsync:
         if rc is not None and rc != 0:
             raise subprocess.CalledProcessError(
                 rc,
-                self.args,
+                self.options.cmd,
                 output=self.stdout,
                 stderr=self.stderr
             )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            'args': self.args,
-            'kwargs': self.kwargs,
             'options': self.options.to_dict() if self.options else None,
             'stdout': self.stdout,
             'stderr': self.stderr,
@@ -403,9 +359,8 @@ class ShellProcessAsyncPool:
     def __init__(self):
         pass
 
-    async def run_many(self, commands: List[Tuple], options_list: List[ShellProcessOptions] = None) -> List[ShellProcessAsync]:
+    async def run_many(self, commands: List[ShellProcessOptions], options_list: List[ShellProcessOptions] = None) -> List[ShellProcessAsync]:
         tasks = []
-        for i, args in enumerate(commands):
-            opts = options_list[i] if options_list else None
-            tasks.append(ShellProcessAsync.run(*args, options=opts))
+        for i, opts in enumerate(commands):
+            tasks.append(ShellProcessAsync.run(opts))
         return await asyncio.gather(*tasks)

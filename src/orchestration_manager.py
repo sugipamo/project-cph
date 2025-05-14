@@ -11,6 +11,9 @@ class OrchestrationManager:
         必要なrequirements_mapを自動生成し、orchestratorを初期化して環境を準備
         """
         requirements_map = self._generate_requirements_map(language_envs)
+        # docker指定が含まれていればojtoolsも追加
+        if any(getattr(env, "env_type") == "docker" for env in language_envs):
+            requirements_map[("ojtools", "default")] = "contest_env/oj.Dockerfile"
         self.orchestrator = ContainerOrchestrator(requirements_map)
         requirements = self._analyze_requirements(language_envs)
         self.orchestrator.orchestrate(requirements)
@@ -21,7 +24,7 @@ class OrchestrationManager:
         """
         requirements_map = {}
         for env in language_envs:
-            key = (getattr(env, "language_name", None), getattr(env, "version", None))
+            key = (getattr(env, "language_name"), getattr(env, "version"))
             dockerfile_path = getattr(env, "dockerfile_path", None)
             if key[0] and dockerfile_path:
                 requirements_map[key] = dockerfile_path
@@ -35,10 +38,11 @@ class OrchestrationManager:
         requirements = []
         for env in language_envs:
             req = {
-                "type": getattr(env, "env_type", None),
-                "language": getattr(env, "language_name", None),
+                "type": getattr(env, "env_type"),
+                "language": getattr(env, "language_name"),
+                "version": getattr(env, "version"),
                 "count": 1,  # 必要に応じて拡張
-                # "volumes": ...  # 必要なら追加
+                "volumes": getattr(env, "volumes"),  # 必要なら
             }
             requirements.append(req)
         return requirements 
