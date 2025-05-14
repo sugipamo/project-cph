@@ -3,28 +3,8 @@ import os
 from src.shell_process import ShellProcess, ShellProcessOptions
 
 
-class DockerImageConfig():
-    def __init__(self, contest_env):
-        self.__contest_env = contest_env
-
-    @property
-    def dockerfile_path(self):
-        return os.path.abspath(self.__contest_env.dockerfile_path)
-
-    @property
-    def image_name(self):
-        with open(self.dockerfile_path, "rb") as f:
-            hashval = hashlib.sha256(f.read()).hexdigest()[:12]
-        return self.__contest_env.language_name + "_" + hashval
-    
-    @property
-    def workspace_dir(self):
-        return os.path.abspath(self.__contest_env.workspace_dir)
 
 class DockerImageManager():
-    def __init__(self, config: DockerImageConfig):
-        self.__config = config
-
     def build_image(self) -> bool:
         """
         Dockerfileからイメージをビルドする。

@@ -1,11 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any, Callable
 import json
-from src.execution_client.abstract_client import AbstractExecutionClient
 from src.shell_process import ShellProcess, ShellProcessOptions
-import threading
 
-class ContainerClient(AbstractExecutionClient):
+class ContainerClient():
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
@@ -214,4 +212,12 @@ class ContainerClient(AbstractExecutionClient):
         cmd = ["docker", "start", name]
         opts = ShellProcessOptions(timeout=self.timeout)
         proc = ShellProcess.run(*cmd, options=opts)
-        return proc.returncode == 0 
+        return proc.returncode == 0
+
+    def build(self, name: str, image: Optional[str] = None, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, **kwargs) -> Any:
+        if not command:
+            raise ValueError("build command must be specified for container execution")
+        if not self.container_exists(name):
+            self.run_container(name, image, detach=True, volumes=volumes)
+        proc = self.exec_in_container(name, command, **kwargs)
+        return proc 

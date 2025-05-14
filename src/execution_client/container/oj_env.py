@@ -1,4 +1,4 @@
-from contest_env.base import DockerTestHandler, LocalTestHandler
+from src.execution_env.language_env_base import DockerTestHandler, LocalTestHandler
 from dataclasses import dataclass
 
 @dataclass

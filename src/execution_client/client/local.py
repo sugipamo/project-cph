@@ -1,10 +1,9 @@
-from src.execution_client.abstract_client import AbstractExecutionClient
 from typing import Any, Optional, List, Dict, Callable
 from src.shell_process import ShellProcess, ShellProcessOptions, ShellProcessPool
 import threading
 import time
 
-class LocalAsyncClient(AbstractExecutionClient):
+class LocalAsyncClient():
     def __init__(self):
         # name -> (Popen, stdout, stderr)
         self._processes = {}
@@ -118,4 +117,14 @@ class LocalAsyncClient(AbstractExecutionClient):
         """
         pool = ShellProcessPool(max_workers=max_workers)
         procs = pool.popen_many(commands, options_list=options_list)
-        return procs 
+        return procs
+
+    def build(self, name: str, image: Optional[str] = None, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, **kwargs) -> Any:
+        # 通常はビルドコマンド（例: gcc, javacなど）をcommandで指定して実行
+        if not command:
+            raise ValueError("build command must be specified for local execution")
+        input_data = kwargs.get("input", None)
+        cwd = kwargs.get("cwd", None)
+        options = ShellProcessOptions(input_data=input_data, cwd=cwd)
+        proc = ShellProcess.run(*command, options=options)
+        return proc 
