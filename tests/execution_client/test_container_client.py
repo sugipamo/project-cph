@@ -1,7 +1,7 @@
 import pytest
 import time
 import uuid
-from execution_client.client.container import ContainerClient
+from src.execution_client.client.container import ContainerClient
 
 @pytest.fixture(scope="module")
 def client():

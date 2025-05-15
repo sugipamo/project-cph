@@ -1,5 +1,5 @@
 from typing import Any, Optional, List, Dict, Callable
-from shell_process import ShellProcess, ShellProcessOptions, ShellProcessPool
+from src.shell_process import ShellProcess, ShellProcessOptions, ShellProcessPool
 import threading
 import time
 

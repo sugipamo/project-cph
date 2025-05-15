@@ -1,8 +1,7 @@
 import sys
-from .command_executor import CommandExecutor
 from src.file.contest_file_manager import ContestFileManager
 from src.file.file_operator import LocalFileOperator
-from .command_parser import CommandParser
+from src.command_parser import CommandParser
 
 # コマンドライン引数: main.py {contest_name} {command} {problem_name} {language_name}
 

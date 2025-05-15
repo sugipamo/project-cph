@@ -1,17 +1,5 @@
-import os
-from src.path_manager.unified_path_manager import UnifiedPathManager
-from src.file.file_operator import FileOperator
-from src.path_manager.common_paths import HOST_PROJECT_ROOT, CONTAINER_WORKSPACE, TEMP_DIR, CONTAINER_TEMP_DIR, OJTOOLS_COOKIE_HOST, OJTOOLS_COOKIE_CONT
-# === 定数定義 ===
 
 from .test_result_formatter import ResultFormatter
-# from src.environment.test_language_handler import HANDLERS  # 削除
-from src.execution_env.info_json_manager import InfoJsonManager
-from src.execution_client.client.container import ContainerClient
-# from src.environment.test_environment import DockerTestExecutionEnvironment  # 削除
-from src.execution_client.container.image_manager import ContainerImageManager
-from src.execution_client.execution_manager import ExecutionManager
-from src.execution_client.client.local import LocalAsyncClient
 
 class CommandTest:
     def __init__(self, file_manager, test_env):

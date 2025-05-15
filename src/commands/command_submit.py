@@ -3,13 +3,6 @@ HOST_PROJECT_ROOT = os.path.abspath(".")
 CONTAINER_WORKSPACE = "/workspace"
 TEMP_DIR = "/workspace/.temp"
 from .command_test import CommandTest
-from .common import get_project_root_volumes
-from src.execution_env.info_json_manager import InfoJsonManager
-from src.execution_client.client.container import ContainerClient
-from src.execution_client.container.image_manager import ContainerImageManager
-from src.path_manager.unified_path_manager import UnifiedPathManager
-from src.file.file_operator import FileOperator
-from src.execution_env.language_env_profile import LANGUAGE_ENVS, LanguageConfigAccessor
 
 LANGUAGE_MAIN_FILES = {lang: getattr(env_cls, 'source_file', 'main.py') for lang, env_cls in LANGUAGE_ENVS.items()}
 # 以降、LANGUAGE_MAIN_FILES[lang]でmainファイル名を参照

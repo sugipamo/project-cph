@@ -1,0 +1,13 @@
+{
+  "oj": {
+    "handlers": {
+      "docker": {
+        "run_cmd": ["oj"]
+      },
+      "local": {
+        "run_cmd": ["oj"],
+        "dockerfile_path": "src/execution_client/container/oj.Dockerfile"
+      }
+    }
+  }
+}

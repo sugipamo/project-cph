@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any, Callable
 import json
-from shell_process import ShellProcess, ShellProcessOptions
+from src.shell_process import ShellProcess, ShellProcessOptions
 
 class ContainerClient():
     def __init__(self):

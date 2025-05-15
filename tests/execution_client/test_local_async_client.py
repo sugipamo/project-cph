@@ -1,7 +1,7 @@
 import pytest
 import time
-from execution_client.client.local import LocalAsyncClient
-from shell_process import ShellProcessOptions
+from src.execution_client.client.local import LocalAsyncClient
+from src.shell_process import ShellProcessOptions
 
 @pytest.fixture
 def client():
