@@ -33,46 +33,34 @@ class BaseTestHandler(ABC):
     contest_temp_path: Path = Path("./.temp")
     source_file: Optional[str] = None
     time_limit: Optional[int] = None
-    run_cmd: Optional[List[str]] = None
-    build_cmd: Optional[List[str]] = None
     language_name: Optional[str] = None
     env_type: Optional[str] = None
     config: Optional[Dict[str, Any]] = None
 
     @abstractmethod
-    def run(self) -> str:
-        pass
-    @abstractmethod
-    def build(self) -> str:
+    def run(self, cmd: List[str]) -> str:
+        """
+        任意のコマンドを実行する
+        """
         pass
 
 @dataclass
 class LocalTestHandler(BaseTestHandler):
-    def run(self) -> str:
-        if not self.run_cmd:
-            raise ValueError("run_cmdが未設定です")
-        cmd = expand_cmd(self.run_cmd, self)
+    def run(self, cmd: List[str]) -> str:
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=self.contest_current_path)
         return result.stdout
-    def build(self) -> str:
-        if self.build_cmd:
-            cmd = expand_cmd(self.build_cmd, self)
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=self.contest_current_path)
-            return result.stdout
-        return "build-skipped"
 
 @dataclass
 class DockerTestHandler(BaseTestHandler):
     container_workspace: str = "/workspace"
     memory_limit: Optional[int] = None
-    def run(self) -> str:
-        cmd = expand_cmd(self.run_cmd, self)
-        return f"[docker] run: {' '.join(cmd)}"
-    def build(self) -> str:
-        if self.build_cmd:
-            cmd = expand_cmd(self.build_cmd, self)
-            return f"[docker] build: {' '.join(cmd)}"
-        return "build-skipped"
+    def run(self, cmd: List[str]) -> str:
+        # 実際のdocker exec等はここで実装（例示）
+        docker_cmd = [
+            "docker", "exec", self.config.get("container_name", "cph_default"),
+        ] + cmd
+        result = subprocess.run(docker_cmd, capture_output=True, text=True)
+        return result.stdout
 
 # === jsonベースのレジストリ ===
 BASE_DIR = "contest_env"
@@ -109,18 +97,11 @@ def get_test_handler(language: str, env: str, config: Optional[Dict[str, Any]] =
     handlers = data.get("handlers", {})
     if env not in handlers:
         raise ValueError(f"Handler not found for language={language}, env={env}")
-    handler_conf = handlers[env]
-    # handler種別を判定
-    if env == "docker":
-        handler_cls = DockerTestHandler
-    else:
-        handler_cls = LocalTestHandler
+    handler_cls = DockerTestHandler if env == "docker" else LocalTestHandler
     return handler_cls(
         language_name=language,
         env_type=env,
         source_file=data.get("source_file"),
-        run_cmd=handler_conf.get("run_cmd"),
-        build_cmd=handler_conf.get("build_cmd"),
         config=config,
     )
 
@@ -129,7 +110,5 @@ class EnvController:
         self.language_name = language_name
         self.env_type = env_type
         self.handler = get_test_handler(language=language_name, env=env_type, config=config)
-    def build(self) -> str:
-        return self.handler.build()
-    def run(self) -> str:
-        return self.handler.run()
+    def run(self, cmd: List[str]) -> str:
+        return self.handler.run(cmd)
