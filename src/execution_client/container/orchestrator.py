@@ -6,7 +6,6 @@ from .image_manager import ContainerImageManager
 class ContainerOrchestrator:
     def __init__(self, requirements_map: Dict[Tuple[str, str], str], max_workers: int, timeout: int, client):
         self.client = client
-        self.image_manager = ContainerImageManager(requirements_map)
         self.max_workers = max_workers
         self.requirements_map = requirements_map
         # unified_path_manager等は必要に応じて
@@ -75,7 +74,7 @@ class ContainerOrchestrator:
     def _start_containers(self, to_start: List[Dict]):
         def start_c(c):
             key = (c.get("language", "python"), c.get("version", "default"))
-            image = self.image_manager.ensure_image(key)
+            image = ContainerImageManager.ensure_image(key, self.requirements_map)
             if c["name"] in self.client.list_containers(prefix="cph_"):
                 self.client.remove_container(c["name"])
             self.client.run_container(
