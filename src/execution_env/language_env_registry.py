@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any, List
 from abc import ABC, abstractmethod
 import json
 import os
-import subprocess
+from src.shell_process import ShellProcess, ShellProcessOptions
 
 # === コマンド展開用関数 ===
 def expand_cmd(cmd_list: List[str], handler: 'BaseTestHandler') -> List[str]:
@@ -38,7 +38,7 @@ class BaseTestHandler(ABC):
     config: Optional[Dict[str, Any]] = None
 
     @abstractmethod
-    def run(self, cmd: List[str]) -> str:
+    def run(self, cmd: List[str]) -> ShellProcess:
         """
         任意のコマンドを実行する
         """
@@ -46,21 +46,20 @@ class BaseTestHandler(ABC):
 
 @dataclass
 class LocalTestHandler(BaseTestHandler):
-    def run(self, cmd: List[str]) -> str:
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=self.contest_current_path)
-        return result.stdout
+    def run(self, cmd: List[str]) -> ShellProcess:
+        options = ShellProcessOptions(cmd=cmd, cwd=self.contest_current_path)
+        return ShellProcess.run(options)
 
 @dataclass
 class DockerTestHandler(BaseTestHandler):
     container_workspace: str = "/workspace"
     memory_limit: Optional[int] = None
-    def run(self, cmd: List[str]) -> str:
-        # 実際のdocker exec等はここで実装（例示）
+    def run(self, cmd: List[str]) -> ShellProcess:
         docker_cmd = [
             "docker", "exec", self.config.get("container_name", "cph_default"),
         ] + cmd
-        result = subprocess.run(docker_cmd, capture_output=True, text=True)
-        return result.stdout
+        options = ShellProcessOptions(cmd=docker_cmd)
+        return ShellProcess.run(options)
 
 # === jsonベースのレジストリ ===
 BASE_DIR = "contest_env"
@@ -110,5 +109,5 @@ class EnvController:
         self.language_name = language_name
         self.env_type = env_type
         self.handler = get_test_handler(language=language_name, env=env_type, config=config)
-    def run(self, cmd: List[str]) -> str:
+    def run(self, cmd: List[str]) -> ShellProcess:
         return self.handler.run(cmd)

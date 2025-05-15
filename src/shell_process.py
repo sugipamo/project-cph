@@ -19,9 +19,17 @@ class ShellProcessOptions:
         self.on_stderr = on_stderr
         self.extra = kwargs
     def to_dict(self):
+        def convert(v):
+            if hasattr(v, 'as_posix'):
+                return v.as_posix()
+            if isinstance(v, dict):
+                return {k: convert(val) for k, val in v.items()}
+            if isinstance(v, (list, tuple)):
+                return [convert(x) for x in v]
+            return v
         d = dict(cmd=self.cmd, env=self.env, cwd=self.cwd, log_file=self.log_file, input_data=self.input_data, timeout=self.timeout)
         d.update(self.extra)
-        return d
+        return convert(d)
     def __getitem__(self, key):
         return self.to_dict()[key]
     def __contains__(self, key):
@@ -135,10 +143,10 @@ class ShellProcess:
     @property
     def stdout(self) -> Optional[str]:
         if self.use_popen and self._result:
-            return self._result[0]
+            return self._result[0] if self._result[0] is not None else ""
         if self._result and hasattr(self._result, 'stdout'):
-            return self._result.stdout
-        return None
+            return self._result.stdout if self._result.stdout is not None else ""
+        return ""
 
     @property
     def stderr(self) -> Optional[str]:

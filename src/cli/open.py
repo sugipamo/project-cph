@@ -1,17 +1,19 @@
 from typing import Any, Dict, List
 
 def open_problem(
-    problem_id: str,
+    contest_name: str,
+    problem_name: str,
     api_client,
     file_manager,
     *,
-    dest_dir: str = "./contest_current",
+    dest_dir: str,
     overwrite: bool = False
 ) -> Dict[str, Any]:
     """
     問題を開く（APIから取得しローカルに保存）
     Parameters:
-        problem_id: 問題ID
+        contest_name: コンテスト名（例: "abc123"）
+        problem_name: 問題名（例: "a", "b"）
         api_client: 問題情報取得用の関数またはクライアント
         file_manager: ファイル操作用の関数群
         dest_dir: 保存先ディレクトリ
@@ -26,7 +28,7 @@ def open_problem(
     """
     try:
         # 問題情報取得
-        problem = api_client.get_problem_info(problem_id)
+        problem = api_client.get_problem_info(contest_name, problem_name)
         if not problem:
             return {"success": False, "error": "問題情報が取得できません"}
         # ディレクトリ作成
