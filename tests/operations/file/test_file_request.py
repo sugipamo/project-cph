@@ -30,4 +30,41 @@ def test_file_request_fail_with_mock():
     result = req.execute()
     # モックではファイルが存在しない場合も例外は出ないが、existsはFalse
     assert result.success
-    assert result.content == "" 
+    assert result.content == ""
+
+def test_docker_cp_with_mock():
+    driver = MockFileDriver()
+    src = "host.txt"
+    dst = "container.txt"
+    container = "mycontainer"
+    # ホスト→コンテナ
+    req = FileRequest(FileOpType.DOCKER_CP, src, driver=driver, dst_path=dst, container=container, to_container=True)
+    result = req.execute()
+    assert result.success
+    assert ("docker_cp", src, dst, container, True) in driver.operations
+    # コンテナ→ホスト
+    req2 = FileRequest(FileOpType.DOCKER_CP, src, driver=driver, dst_path=dst, container=container, to_container=False)
+    result2 = req2.execute()
+    assert result2.success
+    assert ("docker_cp", src, dst, container, False) in driver.operations
+
+def test_docker_cp_request_attributes():
+    driver = MockFileDriver()
+    src = "host.txt"
+    dst = "container.txt"
+    container = "mycontainer"
+    req = FileRequest(FileOpType.DOCKER_CP, src, driver=driver, dst_path=dst, container=container, to_container=True)
+    assert req.path == src
+    assert req.dst_path == dst
+    assert req.container == container
+    assert req.to_container is True
+
+def test_docker_cp_localfiledriver_requires_docker_driver():
+    from src.operations.file.file_driver import LocalFileDriver
+    driver = LocalFileDriver()
+    src = "host.txt"
+    dst = "container.txt"
+    container = "mycontainer"
+    req = FileRequest(FileOpType.DOCKER_CP, src, driver=driver, dst_path=dst, container=container, to_container=True)
+    result = req.execute()
+    assert result.is_failure() 
