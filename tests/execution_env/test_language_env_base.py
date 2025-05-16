@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from src.execution_env.language_env_registry import BaseTestHandler, LocalTestHandler, DockerTestHandler
+from src.execution_env.execution_env_registry import BaseTestHandler, LocalTestHandler, DockerTestHandler
 
 # ダミー実装
 class DummyHandler(BaseTestHandler):

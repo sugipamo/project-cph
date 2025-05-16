@@ -6,5 +6,5 @@ class BaseFileHandler:
 class DockerFileHandler(BaseFileHandler):
     pass
 
-class LocalFileHandler:
+class LocalFileHandler(BaseFileHandler):
     pass

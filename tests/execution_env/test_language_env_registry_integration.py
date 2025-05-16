@@ -2,7 +2,7 @@ import sys
 import os
 import shutil
 import pytest
-from src.execution_env.language_env_registry import list_languages, get_test_handler, EnvController
+from src.execution_env.execution_env_registry import list_languages, get_test_handler, EnvController
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_dummy_env():

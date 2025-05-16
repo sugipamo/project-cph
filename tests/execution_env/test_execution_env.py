@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from src.execution_env.execution_env import LocalExecutionEnv, DockerExecutionEnv, ExecutionEnvType, ExecutionStatus, ExecutionEnvFactory, BaseExecutionEnv
-from src.execution_env.language_env_registry import BaseTestHandler
+from src.execution_env.execution_env_registry import BaseTestHandler
 
 # ダミーBaseTestHandler
 class DummyHandler(BaseTestHandler):

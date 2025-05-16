@@ -1,8 +1,6 @@
 from pathlib import Path
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from src.execution_client.client.local import LocalAsyncClient
-from src.execution_client.client.container import ContainerClient
 
 class EnvType(Enum):
     LOCAL = auto()
@@ -29,7 +27,6 @@ class BaseConstHandler(ABC):
 #↓仕様変更をするので、dictから読み込みするように変えたい↓
 
 class LocalConstHandler(BaseConstHandler):
-    execution_client_class = LocalAsyncClient
 
     def __init__(self, config: dict):
         super().__init__(config)
