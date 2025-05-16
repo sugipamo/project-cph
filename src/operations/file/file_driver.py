@@ -101,14 +101,14 @@ class LocalFileDriver(FileDriver):
         self.contents = dict()
 
     def move(self):
-        src_path = self.resolve_path()
-        dst_path = self.resolve_path()
+        src_path = self.path.resolve()
+        dst_path = self.dst_path.resolve()
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         src_path.rename(dst_path)
 
     def copy(self):
-        src_path = self.resolve_path()
-        dst_path = self.resolve_path()
+        src_path = self.path.resolve()
+        dst_path = self.dst_path.resolve()
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         copy2(src_path, dst_path)
 
@@ -123,9 +123,9 @@ class LocalFileDriver(FileDriver):
             f.write(content)
 
     def copytree(self):
-        src_path = self.resolve_path()
-        dst_path = self.resolve_path()
-        if src_path.resolve() == dst_path.resolve():
+        src_path = self.path.resolve()
+        dst_path = self.dst_path.resolve()
+        if src_path == dst_path:
             return
         shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
 
