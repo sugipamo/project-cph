@@ -127,6 +127,10 @@ class MockFileDriver(FileDriver):
         else:
             raise NotImplementedError(f"MockFileDriver.open: mode {mode} not supported")
 
+    def ensure_parent_dir(self, path):
+        parent = Path(path).parent
+        self.files.add(parent)
+
 class LocalFileDriver(FileDriver):
     def __init__(self, base_dir=Path(".")):
         super().__init__(base_dir)
@@ -234,4 +238,8 @@ class DummyFileDriver(FileDriver):
             def __exit__(self, exc_type, exc_val, exc_tb): pass
             def read(self): return ""
             def write(self, content): pass
-        return Dummy() 
+        return Dummy()
+
+    def ensure_parent_dir(self, path):
+        parent = Path(path).parent
+        self.files.add(parent) 
