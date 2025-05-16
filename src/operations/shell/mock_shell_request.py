@@ -37,11 +37,13 @@ class MockShellInteractiveRequest:
         self.cmd = cmd
         self.env = env
         self.timeout = timeout
-        self.stdout_lines = stdout_lines or []
-        self.stderr_lines = stderr_lines or []
+        self.stdout_lines = list(stdout_lines or [])
+        self.stderr_lines = list(stderr_lines or [])
         self.returncode = returncode
         self.input_history = []
         self._is_running = False
+        self._all_stdout_lines = list(stdout_lines or [])
+        self._all_stderr_lines = list(stderr_lines or [])
 
     def start(self):
         self._is_running = True
@@ -69,8 +71,8 @@ class MockShellInteractiveRequest:
     def wait(self):
         self._is_running = False
         return ShellResult(
-            stdout=''.join(self.stdout_lines),
-            stderr=''.join(self.stderr_lines),
+            stdout=''.join(self._all_stdout_lines),
+            stderr=''.join(self._all_stderr_lines),
             returncode=self.returncode,
             request=self
         ) 
