@@ -26,37 +26,27 @@ class BaseFileHandler(ABC):
 
 class DockerFileHandler(BaseFileHandler):
     def read(self, relative_path: str):
-        path = self.const_handler.parse(relative_path)
-        return FileRequest(FileOpType.READ, path)
+        return FileRequest(FileOpType.READ, relative_path)
 
     def write(self, relative_path: str, content: str):
-        path = self.const_handler.parse(relative_path)
-        return FileRequest(FileOpType.WRITE, path, content=content)
+        return FileRequest(FileOpType.WRITE, relative_path, content=content)
 
     def exists(self, relative_path: str):
-        path = self.const_handler.parse(relative_path)
-        return FileRequest(FileOpType.EXISTS, path)
+        return FileRequest(FileOpType.EXISTS, relative_path)
 
     def copy(self, relative_path: str, target_path: str):
-        path = self.const_handler.parse(relative_path)
-        target_path = self.const_handler.parse(target_path)
-        return FileRequest(FileOpType.COPY, path, target_path)
+        return FileRequest(FileOpType.COPY, relative_path, target_path)
 
 class LocalFileHandler(BaseFileHandler):
     def read(self, relative_path: str):
-        path = self.const_handler.parse(relative_path)
-        return FileRequest(FileOpType.READ, path)
+        return FileRequest(FileOpType.READ, relative_path)
 
     def write(self, relative_path: str, content: str):
-        path = self.const_handler.parse(relative_path)
-        return FileRequest(FileOpType.WRITE, path, content=content)
+        return FileRequest(FileOpType.WRITE, relative_path, content=content)
 
     def exists(self, relative_path: str):
-        path = self.const_handler.parse(relative_path)
-        return FileRequest(FileOpType.EXISTS, path)
+        return FileRequest(FileOpType.EXISTS, relative_path)
 
     def copy(self, relative_path: str, target_path: str):
-        path = self.const_handler.parse(relative_path)
-        target_path = self.const_handler.parse(target_path)
-        return FileRequest(FileOpType.COPY, path, target_path)
+        return FileRequest(FileOpType.COPY, relative_path, target_path)
         

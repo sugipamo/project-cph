@@ -54,6 +54,10 @@ class FileDriver(ABC):
     def copytree(self):
         pass
 
+    def ensure_parent_dir(self, path):
+        parent = Path(path).parent
+        parent.mkdir(parents=True, exist_ok=True)
+
 class MockFileDriver(FileDriver):
     def __init__(self, base_dir=Path(".")):
         super().__init__(base_dir)
@@ -64,6 +68,7 @@ class MockFileDriver(FileDriver):
     def move(self):
         src_path = self.resolve_path()
         dst_path = self.resolve_path()
+        self.ensure_parent_dir(dst_path)
         self.operations.append(("move", src_path, dst_path))
         if src_path in self.files:
             self.files.remove(src_path)
@@ -73,6 +78,7 @@ class MockFileDriver(FileDriver):
     def copy(self):
         src_path = self.resolve_path()
         dst_path = self.resolve_path()
+        self.ensure_parent_dir(dst_path)
         self.operations.append(("copy", src_path, dst_path))
         if src_path in self.files:
             self.files.add(dst_path)
@@ -84,6 +90,7 @@ class MockFileDriver(FileDriver):
 
     def create(self, content: str = ""):
         path = self.resolve_path()
+        self.ensure_parent_dir(path)
         self.operations.append(("create", path, content))
         self.files.add(path)
         self.contents[path] = content
@@ -91,6 +98,7 @@ class MockFileDriver(FileDriver):
     def copytree(self):
         src_path = self.resolve_path()
         dst_path = self.resolve_path()
+        self.ensure_parent_dir(dst_path)
         self.operations.append(("copytree", src_path, dst_path))
         # モックなので、ディレクトリ構造の再現は省略
 
@@ -129,13 +137,13 @@ class LocalFileDriver(FileDriver):
     def move(self):
         src_path = self.path.resolve()
         dst_path = self.dst_path.resolve()
-        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        self.ensure_parent_dir(dst_path)
         src_path.rename(dst_path)
 
     def copy(self):
         src_path = self.path.resolve()
         dst_path = self.dst_path.resolve()
-        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        self.ensure_parent_dir(dst_path)
         copy2(src_path, dst_path)
 
     def exists(self):
@@ -144,7 +152,7 @@ class LocalFileDriver(FileDriver):
 
     def create(self, content: str = ""):
         path = self.resolve_path()
-        path.parent.mkdir(parents=True, exist_ok=True)
+        self.ensure_parent_dir(path)
         with path.open("w", encoding="utf-8") as f:
             f.write(content)
 
@@ -153,6 +161,7 @@ class LocalFileDriver(FileDriver):
         dst_path = self.dst_path.resolve()
         if src_path == dst_path:
             return
+        self.ensure_parent_dir(dst_path)
         shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
 
     def rmtree(self):
@@ -175,6 +184,7 @@ class DummyFileDriver(FileDriver):
     def move(self):
         src_path = self.resolve_path()
         dst_path = self.resolve_path()
+        self.ensure_parent_dir(dst_path)
         self.operations.append(("move", src_path, dst_path))
         if src_path in self.files:
             self.files.remove(src_path)
@@ -184,6 +194,7 @@ class DummyFileDriver(FileDriver):
     def copy(self):
         src_path = self.resolve_path()
         dst_path = self.resolve_path()
+        self.ensure_parent_dir(dst_path)
         self.operations.append(("copy", src_path, dst_path))
         if src_path in self.files:
             self.files.add(dst_path)
@@ -195,6 +206,7 @@ class DummyFileDriver(FileDriver):
 
     def create(self, content: str = ""):
         path = self.resolve_path()
+        self.ensure_parent_dir(path)
         self.operations.append(("create", path, content))
         self.files.add(path)
         self.contents[path] = content
@@ -202,6 +214,7 @@ class DummyFileDriver(FileDriver):
     def copytree(self):
         src_path = self.resolve_path()
         dst_path = self.resolve_path()
+        self.ensure_parent_dir(dst_path)
         self.operations.append(("copytree", src_path, dst_path))
 
     def rmtree(self):
