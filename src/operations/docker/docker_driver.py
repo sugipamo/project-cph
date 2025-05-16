@@ -6,7 +6,7 @@ operations層のDockerRequest等から利用される、docker操作の実体（
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 from src.operations.shell.shell_request import ShellRequest
-from src.operations.shell.shell_result import ShellResult
+from src.operations.result import ShellResult, OperationResult
 
 class DockerDriver(ABC):
     def __init__(self):
@@ -166,21 +166,23 @@ class MockDockerDriver(DockerDriver):
 
     def run_container(self, image: str, name: str = None, options: Dict[str, Any] = None):
         self.operations.append(("run", image, name, options))
-        return f"mock_container_{name or image}"
+        return OperationResult(stdout=f"mock_container_{name or image}")
 
     def stop_container(self, name: str):
         self.operations.append(("stop", name))
+        return OperationResult(stdout=None)
 
     def remove_container(self, name: str):
         self.operations.append(("remove", name))
+        return OperationResult(stdout=None)
 
     def exec_in_container(self, name: str, command: str):
         self.operations.append(("exec", name, command))
-        return f"mock_exec_result_{name}_{command}"
+        return OperationResult(stdout=f"mock_exec_result_{name}_{command}")
 
     def get_logs(self, name: str):
         self.operations.append(("logs", name))
-        return f"mock_logs_{name}"
+        return OperationResult(stdout=f"mock_logs_{name}")
 
     def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None):
         self.operations.append(("build", path, tag, dockerfile, options))

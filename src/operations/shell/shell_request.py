@@ -1,5 +1,5 @@
 import subprocess
-from .shell_result import ShellResult
+from src.operations.result import OperationResult
 from src.operations.operation_type import OperationType
 
 class ShellRequest:
@@ -19,6 +19,8 @@ class ShellRequest:
     def execute(self):
         if self._executed:
             raise RuntimeError("This ShellRequest has already been executed.")
+        import time
+        start_time = time.time()
         try:
             completed = subprocess.run(
                 self.cmd,
@@ -29,20 +31,28 @@ class ShellRequest:
                 capture_output=True,
                 timeout=self.timeout
             )
-            self._result = ShellResult(
+            end_time = time.time()
+            self._result = OperationResult(
                 stdout=completed.stdout,
                 stderr=completed.stderr,
                 returncode=completed.returncode,
-                request=self
+                request=self,
+                cmd=self.cmd,
+                start_time=start_time,
+                end_time=end_time
             )
         except Exception as e:
-            self._result = ShellResult(
+            end_time = time.time()
+            self._result = OperationResult(
                 stdout="",
                 stderr=str(e),
                 returncode=-1,
                 request=self,
-                exception=e,
-                error_message=str(e)
+                cmd=self.cmd,
+                start_time=start_time,
+                end_time=end_time,
+                error_message=str(e),
+                exception=e
             )
         self._executed = True
         return self._result 

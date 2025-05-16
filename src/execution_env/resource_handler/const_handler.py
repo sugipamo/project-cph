@@ -1,6 +1,8 @@
 from pathlib import Path
 from abc import ABC, abstractmethod
 from enum import Enum, auto
+import hashlib
+from src.operations.file.file_driver import LocalFileDriver
 
 class EnvType(Enum):
     LOCAL = auto()
@@ -156,7 +158,18 @@ class DockerConstHandler(BaseConstHandler):
     
     @property
     def image_name(self) -> str:
-        return f"{self.config.get('language', '')}"
+        # Dockerfileの内容をハッシュ化し、languagename_hash形式で返す
+        language = self.config.get('language', '')
+        dockerfile_path = self.config.get('dockerfile_path', None)
+        if not dockerfile_path:
+            return language
+        file_driver = LocalFileDriver()
+        hash_str = file_driver.hash_file(dockerfile_path)
+        return f"{language}_{hash_str}"
+
+    @property
+    def container_name(self) -> str:
+        return f"cph_{self.image_name}"
 
     def parse(self, s: str) -> str:
         # 変数展開: {contest_current} など（Docker用パスで）

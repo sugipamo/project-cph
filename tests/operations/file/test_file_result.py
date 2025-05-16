@@ -1,10 +1,11 @@
 import pytest
-from src.operations.file.file_result import FileResult
+from src.operations.result import OperationResult
 from src.operations.file.file_request import FileRequest, FileOpType
+from src.operations.operation_type import OperationType
 
 def test_file_result_methods():
     req = FileRequest(FileOpType.READ, "foo.txt")
-    result = FileResult(success=True, content="abc", exists=True, path="foo.txt", op=FileOpType.READ, request=req)
+    result = OperationResult(success=True, content="abc", exists=True, path="foo.txt", op=FileOpType.READ, request=req)
     d = result.to_dict()
     assert d["success"] is True
     assert d["content"] == "abc"
@@ -15,7 +16,7 @@ def test_file_result_methods():
     assert not result.is_failure()
 
     # 異常系
-    result_fail = FileResult(success=False, content=None, exists=False, path="bar.txt", op=FileOpType.READ, request=req, error_message="fail")
+    result_fail = OperationResult(success=False, content=None, exists=False, path="bar.txt", op=FileOpType.READ, request=req, error_message="fail")
     assert not result_fail.is_success()
     assert result_fail.is_failure()
     with pytest.raises(RuntimeError):

@@ -1,7 +1,7 @@
 import subprocess
 import threading
 from queue import Queue, Empty
-from .shell_result import ShellResult
+from src.operations.result import OperationResult
 
 class ShellInteractiveRequest:
     def __init__(self, cmd, cwd=None, env=None, timeout=None):
@@ -95,11 +95,12 @@ class ShellInteractiveRequest:
             self._stderr_lines.extend(list(self._drain_queue(self._stderr_queue)))
             stdout = ''.join(self._stdout_lines)
             stderr = ''.join(self._stderr_lines)
-            return ShellResult(
+            return OperationResult(
                 stdout=stdout,
                 stderr=stderr,
                 returncode=self._proc.returncode,
-                request=self
+                request=self,
+                path=None
             )
 
     def _drain_queue(self, queue):

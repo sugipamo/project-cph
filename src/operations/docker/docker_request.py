@@ -1,6 +1,8 @@
 from enum import Enum, auto
 from typing import Any, Dict, Optional
 from src.operations.docker.docker_driver import DockerDriver, LocalDockerDriver
+from src.operations.result import OperationResult
+from src.operations.operation_type import OperationType
 
 class DockerOpType(Enum):
     RUN = auto()
@@ -20,6 +22,10 @@ class DockerRequest:
         self._executed = False
         self._result = None
 
+    @property
+    def operation_type(self):
+        return OperationType.DOCKER
+
     def execute(self):
         if self._executed:
             raise RuntimeError("This DockerRequest has already been executed.")
@@ -36,8 +42,8 @@ class DockerRequest:
                 result = self._driver.get_logs(self.name)
             else:
                 raise ValueError(f"Unknown DockerOpType: {self.op}")
-            self._result = result
+            self._result = OperationResult(success=True, op=self.op, stdout=result.stdout if hasattr(result, 'stdout') else None, stderr=result.stderr if hasattr(result, 'stderr') else None, returncode=result.returncode if hasattr(result, 'returncode') else None)
         except Exception as e:
-            self._result = e
+            self._result = OperationResult(success=False, op=self.op, stdout=None, stderr=str(e), returncode=None)
         self._executed = True
         return self._result 

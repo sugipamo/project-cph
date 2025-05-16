@@ -1,6 +1,7 @@
 import pytest
 from src.operations.shell.mock_shell_request import MockShellInteractiveRequest
-from src.operations.shell.shell_result import ShellResult
+from src.operations.result import OperationResult
+from src.operations.operation_type import OperationType
 
 def test_mock_interactive_multiple_inputs():
     req = MockShellInteractiveRequest(["python3", "-i"], stdout_lines=[">>> ", "foo\n", ">>> ", "bar\n", ">>> "], stderr_lines=["err\n"], returncode=0)
@@ -23,7 +24,7 @@ def test_mock_interactive_multiple_inputs():
     assert any("err" in l for l in err_lines)
     req.send_input('exit()\n')
     result = req.wait()
-    assert isinstance(result, ShellResult)
+    assert result.operation_type == OperationType.SHELL
     assert result.success or result.returncode == 0
     assert "foo" in result.stdout or "bar" in result.stdout
 

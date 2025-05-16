@@ -1,5 +1,6 @@
 from typing import List, Optional
-from src.operations.shell.shell_result import ShellResult
+from src.operations.result import OperationResult
+from src.operations.operation_type import OperationType
 
 class MockShellRequest:
     def __init__(self, cmd: List[str], stdout: str = "", stderr: str = "", returncode: int = 0, env=None, inputdata=None, timeout=None):
@@ -23,14 +24,19 @@ class MockShellRequest:
             "inputdata": self.inputdata,
             "timeout": self.timeout
         })
-        self._result = ShellResult(
+        self._result = OperationResult(
             stdout=self.mock_stdout,
             stderr=self.mock_stderr,
             returncode=self.mock_returncode,
-            request=self
+            request=self,
+            path=None
         )
         self._executed = True
         return self._result
+
+    @property
+    def operation_type(self):
+        return OperationType.SHELL
 
 class MockShellInteractiveRequest:
     def __init__(self, cmd: List[str], stdout_lines: Optional[List[str]] = None, stderr_lines: Optional[List[str]] = None, returncode: int = 0, env=None, timeout=None):
@@ -70,9 +76,14 @@ class MockShellInteractiveRequest:
 
     def wait(self):
         self._is_running = False
-        return ShellResult(
+        return OperationResult(
             stdout=''.join(self._all_stdout_lines),
             stderr=''.join(self._all_stderr_lines),
             returncode=self.returncode,
-            request=self
-        ) 
+            request=self,
+            path=None
+        )
+
+    @property
+    def operation_type(self):
+        return OperationType.SHELL 

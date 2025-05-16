@@ -1,9 +1,9 @@
 import pytest
 from src.operations.composite_request import CompositeRequest, flatten_results
 from src.operations.shell.shell_request import ShellRequest
-from src.operations.shell.shell_result import ShellResult
+from src.operations.result import OperationResult
 from src.operations.file.file_request import FileRequest, FileOpType
-from src.operations.file.file_result import FileResult
+from src.operations.operation_type import OperationType
 
 def test_composite_request_shell_and_file():
     req1 = ShellRequest(["echo", "foo"])
@@ -12,9 +12,9 @@ def test_composite_request_shell_and_file():
     composite = CompositeRequest([req1, req2, req3])
     results = composite.execute()
     assert len(results) == 3
-    assert isinstance(results[0], ShellResult)
-    assert isinstance(results[1], ShellResult)
-    assert isinstance(results[2], FileResult)
+    assert results[0].operation_type == OperationType.SHELL
+    assert results[1].operation_type == OperationType.SHELL
+    assert results[2].operation_type == OperationType.FILE
     assert "foo" in results[0].stdout or results[0].stdout == ""
     assert "bar" in results[1].stdout or results[1].stdout == ""
     assert results[2].success
@@ -28,6 +28,6 @@ def test_composite_request_nested_flatten():
     results = outer.execute()
     flat = flatten_results(results)
     assert len(flat) == 3
-    assert any(isinstance(r, ShellResult) and "foo" in r.stdout for r in flat)
-    assert any(isinstance(r, ShellResult) and "bar" in r.stdout for r in flat)
-    assert any(isinstance(r, FileResult) and r.success for r in flat) 
+    assert any(r.operation_type == OperationType.SHELL and "foo" in r.stdout for r in flat)
+    assert any(r.operation_type == OperationType.SHELL and "bar" in r.stdout for r in flat)
+    assert any(r.operation_type == OperationType.FILE and r.success for r in flat) 

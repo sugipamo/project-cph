@@ -1,11 +1,12 @@
 import pytest
 from src.operations.shell.mock_shell_request import MockShellRequest, MockShellInteractiveRequest
-from src.operations.shell.shell_result import ShellResult
+from src.operations.result import ShellResult, OperationResult
+from src.operations.operation_type import OperationType
 
 def test_mock_shell_request_echo():
     req = MockShellRequest(["echo", "hello"], stdout="hello\n", returncode=0)
     result = req.execute()
-    assert isinstance(result, ShellResult)
+    assert result.operation_type == OperationType.SHELL
     assert result.success
     assert "hello" in result.stdout
     result.raise_if_error()
@@ -29,5 +30,5 @@ def test_mock_shell_interactive_request():
     assert any("hello" in l for l in lines)
     req.send_input('exit()\n')
     result = req.wait()
-    assert isinstance(result, ShellResult)
+    assert result.operation_type == OperationType.SHELL
     assert result.success or result.returncode == 0 

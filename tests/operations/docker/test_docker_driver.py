@@ -16,15 +16,15 @@ def test_mockdockerdriver_all_methods():
     # inspect
     assert driver.inspect("myimg:latest", type_="image") == {"mock_inspect": "myimg:latest", "type": "image"}
     # run_container
-    assert driver.run_container("python:3.11", name="c1") == "mock_container_c1"
+    assert driver.run_container("python:3.11", name="c1").stdout == "mock_container_c1"
     # stop_container
-    assert driver.stop_container("c1") is None
+    assert driver.stop_container("c1").stdout is None
     # remove_container
-    assert driver.remove_container("c1") is None
+    assert driver.remove_container("c1").stdout is None
     # exec_in_container
-    assert driver.exec_in_container("c1", "ls -l") == "mock_exec_result_c1_ls -l"
+    assert driver.exec_in_container("c1", "ls -l").stdout == "mock_exec_result_c1_ls -l"
     # get_logs
-    assert driver.get_logs("c1") == "mock_logs_c1"
+    assert driver.get_logs("c1").stdout == "mock_logs_c1"
 
 # DummyDockerDriverのテスト
 

@@ -62,6 +62,17 @@ class FileDriver(ABC):
         parent = Path(path).parent
         parent.mkdir(parents=True, exist_ok=True)
 
+    def hash_file(self, path, algo='sha256'):
+        import hashlib
+        h = hashlib.new(algo)
+        with open(path, 'rb') as f:
+            while True:
+                chunk = f.read(8192)
+                if not chunk:
+                    break
+                h.update(chunk)
+        return h.hexdigest()
+
 class MockFileDriver(FileDriver):
     def __init__(self, base_dir=Path(".")):
         super().__init__(base_dir)
@@ -144,6 +155,13 @@ class MockFileDriver(FileDriver):
         self.operations.append(("docker_cp", src, dst, container, to_container))
         return f"mock_docker_cp_{src}_{dst}_{container}_{to_container}"
 
+    def hash_file(self, path, algo='sha256'):
+        import hashlib
+        h = hashlib.new(algo)
+        content = self.contents.get(Path(path), "").encode()
+        h.update(content)
+        return h.hexdigest()
+
 class LocalFileDriver(FileDriver):
     def __init__(self, base_dir=Path(".")):
         super().__init__(base_dir)
@@ -195,6 +213,17 @@ class LocalFileDriver(FileDriver):
         if docker_driver is None:
             raise ValueError("docker_driverが必要です")
         return docker_driver.cp(src, dst, container, to_container=to_container)
+
+    def hash_file(self, path, algo='sha256'):
+        import hashlib
+        h = hashlib.new(algo)
+        with open(path, 'rb') as f:
+            while True:
+                chunk = f.read(8192)
+                if not chunk:
+                    break
+                h.update(chunk)
+        return h.hexdigest()
 
 class DummyFileDriver(FileDriver):
     def __init__(self, base_dir=Path(".")):
@@ -263,4 +292,7 @@ class DummyFileDriver(FileDriver):
         self.files.add(parent)
 
     def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver=None):
-        pass 
+        pass
+
+    def hash_file(self, path, algo='sha256'):
+        return 'dummyhash' 
