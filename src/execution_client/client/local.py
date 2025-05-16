@@ -58,8 +58,11 @@ class LocalAsyncClient():
             proc = self._processes.get(name)
             if not proc:
                 return False
-            # ShellProcess.popenの返り値はShellProcessインスタンス
-            if hasattr(proc, '_popen') and proc._popen:
+            # ShellInteractiveRequest対応
+            if hasattr(proc, 'stop'):
+                proc.stop()
+            # 旧ShellProcess対応
+            elif hasattr(proc, '_popen') and proc._popen:
                 proc._popen.terminate()
                 try:
                     proc._popen.wait(timeout=5)
@@ -105,7 +108,12 @@ class LocalAsyncClient():
             print(f"[DEBUG] is_running: proc={proc}")
             if not proc:
                 return False
-            print(f"[DEBUG] is_running: proc._popen={getattr(proc, '_popen', None)}")
+            # ShellInteractiveRequest対応
+            if hasattr(proc, 'is_running'):
+                running = proc.is_running()
+                print(f"[DEBUG] is_running: ShellInteractiveRequest.is_running()={running}")
+                return running
+            # 旧ShellProcess対応
             if hasattr(proc, '_popen') and proc._popen:
                 poll_val = proc._popen.poll()
                 print(f"[DEBUG] is_running: poll={poll_val}")

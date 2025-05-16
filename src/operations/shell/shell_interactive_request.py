@@ -4,10 +4,11 @@ from queue import Queue, Empty
 from .shell_result import ShellResult
 
 class ShellInteractiveRequest:
-    def __init__(self, cmd, cwd=None, env=None):
+    def __init__(self, cmd, cwd=None, env=None, timeout=None):
         self.cmd = cmd
         self.cwd = cwd
         self.env = env
+        self.timeout = timeout
         self._proc = None
         self._stdout_queue = Queue()
         self._stderr_queue = Queue()
@@ -15,6 +16,8 @@ class ShellInteractiveRequest:
         self._stderr_thread = None
         self._stdout_lines = []
         self._stderr_lines = []
+        self._timeout_thread = None
+        self._timeout_expired = False
 
     def start(self):
         self._proc = subprocess.Popen(
@@ -33,7 +36,30 @@ class ShellInteractiveRequest:
         self._stderr_thread.daemon = True
         self._stdout_thread.start()
         self._stderr_thread.start()
+        if self.timeout is not None:
+            self._timeout_thread = threading.Thread(target=self._enforce_timeout)
+            self._timeout_thread.daemon = True
+            self._timeout_thread.start()
         return self
+
+    def _enforce_timeout(self):
+        try:
+            self._proc.wait(timeout=self.timeout)
+        except subprocess.TimeoutExpired:
+            self._timeout_expired = True
+            self.stop(force=True)
+
+    def is_running(self):
+        return self._proc is not None and self._proc.poll() is None
+
+    def stop(self, force=False):
+        if self._proc and self.is_running():
+            self._proc.terminate()
+            try:
+                self._proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                if force:
+                    self._proc.kill()
 
     def _enqueue_output(self, stream, queue):
         for line in iter(stream.readline, ''):

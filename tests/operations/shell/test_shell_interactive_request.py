@@ -1,4 +1,5 @@
 import pytest
+import time
 from src.operations.shell.shell_interactive_request import ShellInteractiveRequest
 from src.operations.shell.shell_result import ShellResult
 
@@ -26,4 +27,27 @@ def test_shell_interactive_multiple_inputs():
     assert isinstance(result, ShellResult)
     assert result.success or result.returncode == 0
     assert "foo" in result.stdout
-    assert "bar" in result.stdout 
+    assert "bar" in result.stdout
+
+def test_is_running_and_wait():
+    req = ShellInteractiveRequest(["sleep", "1"])
+    req.start()
+    assert req.is_running()
+    req.wait()
+    assert not req.is_running()
+
+def test_stop():
+    req = ShellInteractiveRequest(["sleep", "10"])
+    req.start()
+    assert req.is_running()
+    req.stop()
+    time.sleep(0.5)
+    assert not req.is_running()
+
+def test_timeout():
+    req = ShellInteractiveRequest(["sleep", "10"], timeout=1)
+    req.start()
+    time.sleep(2)
+    assert not req.is_running()
+    result = req.wait()
+    assert result.returncode != 0 or result.returncode == -9  # killed or terminated 
