@@ -68,12 +68,13 @@ class FileRequest:
                 self._driver.rmtree()
                 self._result = FileResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
             elif self.op == FileOpType.DOCKER_CP:
-                # path: src, dst_path: dst, container, to_container, docker_driver
                 self._driver.docker_cp(self.path, self.dst_path, self.container, to_container=self.to_container, docker_driver=self.docker_driver)
                 self._result = FileResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
             else:
-                self._result = FileResult(success=False, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time(), error_message="Unknown operation")
+                raise RuntimeError(f"Unknown operation: {self.op}")
         except Exception as e:
             self._result = FileResult(success=False, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time(), error_message=str(e), exception=e)
+            self._executed = True
+            raise
         self._executed = True
         return self._result 

@@ -83,6 +83,8 @@ class MockFileDriver(FileDriver):
         src_path = self.resolve_path()
         dst_path = self.resolve_path()
         self.ensure_parent_dir(dst_path)
+        if src_path not in self.files:
+            raise FileNotFoundError(f"MockFileDriver: {src_path} が存在しません")
         self.operations.append(("copy", src_path, dst_path))
         if src_path in self.files:
             self.files.add(dst_path)
@@ -136,6 +138,9 @@ class MockFileDriver(FileDriver):
         self.files.add(parent)
 
     def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver=None):
+        src_path = Path(src)
+        if src_path not in self.files:
+            raise FileNotFoundError(f"MockFileDriver: {src_path} が存在しません (docker_cp)")
         self.operations.append(("docker_cp", src, dst, container, to_container))
         return f"mock_docker_cp_{src}_{dst}_{container}_{to_container}"
 
