@@ -32,6 +32,26 @@ class DockerDriver(ABC):
     def get_logs(self, name: str):
         pass
 
+    @abstractmethod
+    def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None):
+        pass
+
+    @abstractmethod
+    def image_ls(self):
+        pass
+
+    @abstractmethod
+    def image_rm(self, image: str):
+        pass
+
+    @abstractmethod
+    def ps(self, all: bool = False):
+        pass
+
+    @abstractmethod
+    def inspect(self, target: str, type_: str = None):
+        pass
+
 class LocalDockerDriver(DockerDriver):
     def run_container(self, image: str, name: str = None, options: Dict[str, Any] = None):
         cmd = ["docker", "run", "-d"]
@@ -74,6 +94,54 @@ class LocalDockerDriver(DockerDriver):
         result = req.execute()
         return result
 
+    def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None):
+        cmd = ["docker", "build"]
+        if tag:
+            cmd += ["-t", tag]
+        if dockerfile:
+            cmd += ["-f", dockerfile]
+        if options:
+            for k, v in options.items():
+                if len(k) == 1:
+                    cmd.append(f"-{k}")
+                else:
+                    cmd.append(f"--{k.replace('_','-')}")
+                if v is not None:
+                    cmd.append(str(v))
+        cmd.append(path)
+        req = ShellRequest(cmd)
+        result = req.execute()
+        return result
+
+    def image_ls(self):
+        cmd = ["docker", "image", "ls"]
+        req = ShellRequest(cmd)
+        result = req.execute()
+        return result
+
+    def image_rm(self, image: str):
+        cmd = ["docker", "image", "rm", image]
+        req = ShellRequest(cmd)
+        result = req.execute()
+        return result
+
+    def ps(self, all: bool = False):
+        cmd = ["docker", "ps"]
+        if all:
+            cmd.append("-a")
+        req = ShellRequest(cmd)
+        result = req.execute()
+        return result
+
+    def inspect(self, target: str, type_: str = None):
+        cmd = ["docker", "inspect"]
+        if type_:
+            cmd += ["--type", type_]
+        cmd.append(target)
+        req = ShellRequest(cmd)
+        result = req.execute()
+        return result
+
 class MockDockerDriver(DockerDriver):
     def __init__(self):
         self.operations = []
@@ -96,6 +164,26 @@ class MockDockerDriver(DockerDriver):
         self.operations.append(("logs", name))
         return f"mock_logs_{name}"
 
+    def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None):
+        self.operations.append(("build", path, tag, dockerfile, options))
+        return f"mock_build_{tag or path}"
+
+    def image_ls(self):
+        self.operations.append(("image_ls",))
+        return ["mock_image1", "mock_image2"]
+
+    def image_rm(self, image: str):
+        self.operations.append(("image_rm", image))
+        return f"mock_rm_{image}"
+
+    def ps(self, all: bool = False):
+        self.operations.append(("ps", all))
+        return ["mock_container1", "mock_container2"]
+
+    def inspect(self, target: str, type_: str = None):
+        self.operations.append(("inspect", target, type_))
+        return {"mock_inspect": target, "type": type_}
+
 class DummyDockerDriver(DockerDriver):
     def run_container(self, image: str, name: str = None, options: Dict[str, Any] = None):
         return None
@@ -110,4 +198,19 @@ class DummyDockerDriver(DockerDriver):
         return None
 
     def get_logs(self, name: str):
+        return None
+
+    def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None):
+        return None
+
+    def image_ls(self):
+        return []
+
+    def image_rm(self, image: str):
+        return None
+
+    def ps(self, all: bool = False):
+        return []
+
+    def inspect(self, target: str, type_: str = None):
         return None 
