@@ -67,8 +67,8 @@ class EnvResourceController:
             self.run_handler = LocalRunHandler(env_config)
             self.file_handler = LocalFileHandler(env_config)
 
-    def run(self, cmd: List[str]) -> ShellProcess:
-        return self.run_handler.run(cmd)
+    def create_process_options(self, cmd: List[str]):
+        return self.run_handler.create_process_options(cmd)
 
     def read_file(self, relative_path: str) -> str:
         return self.file_handler.read(relative_path)
