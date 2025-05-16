@@ -3,8 +3,9 @@ from src.operations.result import OperationResult
 from src.operations.operation_type import OperationType
 
 class ShellRequest:
-    def __init__(self, cmd, cwd=None, env=None, inputdata=None, timeout=None):
+    def __init__(self, cmd, driver, cwd=None, env=None, inputdata=None, timeout=None):
         self.cmd = cmd
+        self.driver = driver
         self.cwd = cwd
         self.env = env
         self.inputdata = inputdata
@@ -22,13 +23,11 @@ class ShellRequest:
         import time
         start_time = time.time()
         try:
-            completed = subprocess.run(
+            completed = self.driver.run(
                 self.cmd,
-                input=self.inputdata,
                 cwd=self.cwd,
                 env=self.env,
-                text=True,
-                capture_output=True,
+                inputdata=self.inputdata,
                 timeout=self.timeout
             )
             end_time = time.time()
@@ -46,13 +45,11 @@ class ShellRequest:
             self._result = OperationResult(
                 stdout="",
                 stderr=str(e),
-                returncode=-1,
+                returncode=None,
                 request=self,
                 cmd=self.cmd,
                 start_time=start_time,
-                end_time=end_time,
-                error_message=str(e),
-                exception=e
+                end_time=end_time
             )
         self._executed = True
         return self._result 

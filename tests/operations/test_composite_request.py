@@ -5,10 +5,12 @@ from src.operations.result import OperationResult
 from src.operations.file.file_request import FileRequest, FileOpType
 from src.operations.operation_type import OperationType
 from src.operations.file.file_driver import MockFileDriver
+from src.operations.shell.local_shell_driver import LocalShellDriver
 
 def test_composite_request_shell_and_file():
-    req1 = ShellRequest(["echo", "foo"])
-    req2 = ShellRequest(["echo", "bar"])
+    shell_driver = LocalShellDriver()
+    req1 = ShellRequest(["echo", "foo"], driver=shell_driver)
+    req2 = ShellRequest(["echo", "bar"], driver=shell_driver)
     driver = MockFileDriver()
     req3 = FileRequest(FileOpType.WRITE, "/tmp/test_composite.txt", driver=driver, content="baz")
     composite = CompositeRequest([req1, req2, req3])
@@ -22,8 +24,9 @@ def test_composite_request_shell_and_file():
     assert results[2].success
 
 def test_composite_request_nested_flatten():
-    req1 = ShellRequest(["echo", "foo"])
-    req2 = ShellRequest(["echo", "bar"])
+    shell_driver = LocalShellDriver()
+    req1 = ShellRequest(["echo", "foo"], driver=shell_driver)
+    req2 = ShellRequest(["echo", "bar"], driver=shell_driver)
     inner = CompositeRequest([req1, req2])
     driver = MockFileDriver()
     req3 = FileRequest(FileOpType.WRITE, "/tmp/test_composite2.txt", driver=driver, content="baz")
