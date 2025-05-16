@@ -19,15 +19,28 @@ class BaseFileHandler(ABC):
     def exists(self, relative_path: str):
         pass
 
+    @abstractmethod
+    def copy(self, relative_path: str, target_path: str):
+        pass
+    
+
 class DockerFileHandler(BaseFileHandler):
     def read(self, relative_path: str):
-        raise NotImplementedError("DockerFileHandler.readは未実装です")
+        path = self.const_handler.parse(relative_path)
+        return FileRequest(FileOpType.READ, path)
 
     def write(self, relative_path: str, content: str):
-        raise NotImplementedError("DockerFileHandler.writeは未実装です")
+        path = self.const_handler.parse(relative_path)
+        return FileRequest(FileOpType.WRITE, path, content=content)
 
     def exists(self, relative_path: str):
-        raise NotImplementedError("DockerFileHandler.existsは未実装です")
+        path = self.const_handler.parse(relative_path)
+        return FileRequest(FileOpType.EXISTS, path)
+
+    def copy(self, relative_path: str, target_path: str):
+        path = self.const_handler.parse(relative_path)
+        target_path = self.const_handler.parse(target_path)
+        return FileRequest(FileOpType.COPY, path, target_path)
 
 class LocalFileHandler(BaseFileHandler):
     def read(self, relative_path: str):
@@ -41,3 +54,9 @@ class LocalFileHandler(BaseFileHandler):
     def exists(self, relative_path: str):
         path = self.const_handler.parse(relative_path)
         return FileRequest(FileOpType.EXISTS, path)
+
+    def copy(self, relative_path: str, target_path: str):
+        path = self.const_handler.parse(relative_path)
+        target_path = self.const_handler.parse(target_path)
+        return FileRequest(FileOpType.COPY, path, target_path)
+        

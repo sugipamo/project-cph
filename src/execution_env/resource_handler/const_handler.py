@@ -7,16 +7,21 @@ class EnvType(Enum):
     DOCKER = auto()
 
 class BaseConstHandler(ABC):
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, workspace: str = None):
         self.config = config
+        self._workspace = workspace
+
+    @property
+    def workspace(self) -> Path:
+        return Path(self._workspace)
 
     @property
     @abstractmethod
-    def contest_current_path(self): pass
+    def contest_current_path(self) -> Path: pass
 
     @property
     @abstractmethod
-    def source_file_path(self): pass
+    def source_file_path(self) -> Path: pass
 
     @property
     @abstractmethod
@@ -26,21 +31,28 @@ class BaseConstHandler(ABC):
     def parse(self, s: str) -> str:
         pass
 
+    @abstractmethod
+    def parse_with_workspace(self, s: str) -> str:
+        pass
+
+    @property
+    def workspace(self) -> Path:
+        return Path(self._workspace)
 
 
-#↓仕様変更をするので、dictから読み込みするように変えたい↓
 
 class LocalConstHandler(BaseConstHandler):
 
-    def __init__(self, config: dict):
-        super().__init__(config)
+    def __init__(self, config: dict, workspace: str = "/workspace"):
+        super().__init__(config, workspace)
+        self._workspace = workspace
 
     @property
-    def contest_current_path(self):
+    def contest_current_path(self) -> Path:
         return Path(self.config["contest_current_path"])
 
     @property
-    def source_file_path(self):
+    def source_file_path(self) -> Path:
         return self.contest_current_path / self.config["source_file"]
 
     @property
@@ -48,27 +60,27 @@ class LocalConstHandler(BaseConstHandler):
         return EnvType.LOCAL
 
     @property
-    def contest_env_path(self):
+    def contest_env_path(self) -> Path:
         return Path(self.config["contest_env_path"])
 
     @property
-    def contest_template_path(self):
+    def contest_template_path(self) -> Path:
         return Path(self.config["contest_template_path"])
 
     @property
-    def contest_temp_path(self):
+    def contest_temp_path(self) -> Path:
         return Path(self.config["contest_temp_path"])
 
     @property
-    def test_case_path(self):
+    def test_case_path(self) -> Path:
         return self.contest_current_path / "test"
 
     @property
-    def test_case_in_path(self):
+    def test_case_in_path(self) -> Path:
         return self.test_case_path / "in"
 
     @property
-    def test_case_out_path(self):
+    def test_case_out_path(self) -> Path:
         return self.test_case_path / "out"
 
     def parse(self, s: str) -> str:
@@ -84,23 +96,34 @@ class LocalConstHandler(BaseConstHandler):
         result = result.replace("{test_case_out}", str(self.test_case_out_path))
         return result
 
+    def parse_with_workspace(self, s: str) -> str:
+        # workspace/otherpath 形式でパースする
+        if self.workspace:
+            # すべてのパス変数をworkspace配下にする
+            result = s
+            result = result.replace("{contest_current}", str(Path(self.workspace) / Path(self.config["contest_current_path"])))
+            result = result.replace("{source_file}", str(Path(self.workspace) / (Path(self.config["contest_current_path"]) / self.config["source_file"])))
+            result = result.replace("{contest_env}", str(Path(self.workspace) / Path(self.config["contest_env_path"])))
+            result = result.replace("{contest_template}", str(Path(self.workspace) / Path(self.config["contest_template_path"])))
+            result = result.replace("{contest_temp}", str(Path(self.workspace) / Path(self.config["contest_temp_path"])))
+            result = result.replace("{test_case}", str(Path(self.workspace) / (Path(self.config["contest_current_path"]) / "test")))
+            result = result.replace("{test_case_in}", str(Path(self.workspace) / (Path(self.config["contest_current_path"]) / "test" / "in")))
+            result = result.replace("{test_case_out}", str(Path(self.workspace) / (Path(self.config["contest_current_path"]) / "test" / "out")))
+            return result
+        else:
+            return self.parse(s)
+
 class DockerConstHandler(BaseConstHandler):
-    def __init__(self, config: dict, container_workspace="/workspace"):
-        super().__init__(config)
-        self.container_workspace = container_workspace
-
-    def _to_container_path(self, path):
-        path = Path(path).resolve()
-        root = Path(".").resolve()
-        rel_path = path.relative_to(root)
-        return Path(self.container_workspace) / rel_path
+    def __init__(self, config: dict, workspace="/workspace"):
+        super().__init__(config, workspace)
+        self._workspace = workspace
 
     @property
-    def contest_current_path(self):
-        return self._to_container_path(self.config["contest_current_path"])
+    def contest_current_path(self) -> Path:
+        return Path(self.config["contest_current_path"])
 
     @property
-    def source_file_path(self):
+    def source_file_path(self) -> Path:
         return self.contest_current_path / self.config["source_file"]
 
     @property
@@ -108,27 +131,27 @@ class DockerConstHandler(BaseConstHandler):
         return EnvType.DOCKER
 
     @property
-    def contest_env_path(self):
-        return self._to_container_path(self.config["contest_env_path"])
+    def contest_env_path(self) -> Path:
+        return Path(self.config["contest_env_path"])
 
     @property
-    def contest_template_path(self):
-        return self._to_container_path(self.config["contest_template_path"])
+    def contest_template_path(self) -> Path:
+        return Path(self.config["contest_template_path"])
 
     @property
-    def contest_temp_path(self):
-        return self._to_container_path(self.config["contest_temp_path"])
+    def contest_temp_path(self) -> Path:
+        return Path(self.config["contest_temp_path"])
 
     @property
-    def test_case_path(self):
+    def test_case_path(self) -> Path:
         return self.contest_current_path / "test"
 
     @property
-    def test_case_in_path(self):
+    def test_case_in_path(self) -> Path:
         return self.test_case_path / "in"
 
     @property
-    def test_case_out_path(self):
+    def test_case_out_path(self) -> Path:
         return self.test_case_path / "out"
     
     @property
@@ -147,3 +170,21 @@ class DockerConstHandler(BaseConstHandler):
         result = result.replace("{test_case_in}", str(self.test_case_in_path))
         result = result.replace("{test_case_out}", str(self.test_case_out_path))
         return result
+    
+    def parse_with_workspace(self, s: str) -> str:
+        # workspace/otherpath 形式でパースする
+        if self.workspace:
+            # すべてのパス変数をworkspace配下にする
+            result = s
+            result = result.replace("{contest_current}", str(Path(self.workspace) / Path(self.config["contest_current_path"])))
+            result = result.replace("{source_file}", str(Path(self.workspace) / (Path(self.config["contest_current_path"]) / self.config["source_file"])))
+            result = result.replace("{contest_env}", str(Path(self.workspace) / Path(self.config["contest_env_path"])))
+            result = result.replace("{contest_template}", str(Path(self.workspace) / Path(self.config["contest_template_path"])))
+            result = result.replace("{contest_temp}", str(Path(self.workspace) / Path(self.config["contest_temp_path"])))
+            result = result.replace("{test_case}", str(Path(self.workspace) / (Path(self.config["contest_current_path"]) / "test")))
+            result = result.replace("{test_case_in}", str(Path(self.workspace) / (Path(self.config["contest_current_path"]) / "test" / "in")))
+            result = result.replace("{test_case_out}", str(Path(self.workspace) / (Path(self.config["contest_current_path"]) / "test" / "out")))
+            return result
+        else:
+            return self.parse(s)
+
