@@ -1,9 +1,9 @@
 import pytest
 from src.operations.shell.shell_result import ShellResult
-from src.operations.shell.shell_request import ShellRequest
+from src.operations.shell.mock_shell_request import MockShellRequest
 
 def test_shell_result_methods():
-    req = ShellRequest(["echo", "abc"])
+    req = MockShellRequest(["echo", "abc"], stdout="abc\n", returncode=0)
     result = ShellResult(stdout="abc\n", stderr="", returncode=0, request=req)
     d = result.to_dict()
     assert d["stdout"] == "abc\n"
