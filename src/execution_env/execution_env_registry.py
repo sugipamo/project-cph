@@ -1,7 +1,6 @@
 from src.execution_env.resource_handler.file_handler import DockerFileHandler, LocalFileHandler
 from src.execution_env.resource_handler.run_handler import LocalRunHandler, DockerRunHandler
 from src.execution_env.resource_handler.const_handler import DockerConstHandler, LocalConstHandler
-from src.shell_process import ShellProcess
 from typing import List
 import os
 import json
@@ -48,10 +47,39 @@ def load_env_json(language: str, env: str) -> EnvConfig:
 
 
 def list_languages():
-    pass
+    base_dir = BASE_DIR
+    if not os.path.exists(base_dir):
+        return []
+    langs = []
+    for name in os.listdir(base_dir):
+        lang_dir = os.path.join(base_dir, name)
+        if os.path.isdir(lang_dir) and os.path.exists(os.path.join(lang_dir, "env.json")):
+            langs.append(name)
+    return langs
 
 def list_language_envs():
-    pass
+    base_dir = BASE_DIR
+    if not os.path.exists(base_dir):
+        return []
+    result = []
+    for name in os.listdir(base_dir):
+        lang_dir = os.path.join(base_dir, name)
+        env_json_path = os.path.join(lang_dir, "env.json")
+        if os.path.isdir(lang_dir) and os.path.exists(env_json_path):
+            try:
+                with open(env_json_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                # env.jsonのトップレベルキーが言語名
+                lang_data = data.get(name)
+                if not lang_data:
+                    continue
+                handlers = lang_data.get("handlers", {})
+                for env_type in ("local", "docker"):
+                    if env_type in handlers:
+                        result.append((name, env_type))
+            except Exception:
+                continue
+    return result
 
 class EnvResourceController:
     def __init__(self, language_name, env_type):
@@ -60,12 +88,12 @@ class EnvResourceController:
         env_config = load_env_json(language_name, env_type)
         if env_config.env_type == EnvType.DOCKER:
             self.const_handler = DockerConstHandler(env_config)
-            self.run_handler = DockerRunHandler(env_config)
-            self.file_handler = DockerFileHandler(env_config)
+            self.run_handler = DockerRunHandler(env_config, self.const_handler)
+            self.file_handler = DockerFileHandler(env_config, self.const_handler)
         else:
             self.const_handler = LocalConstHandler(env_config)
-            self.run_handler = LocalRunHandler(env_config)
-            self.file_handler = LocalFileHandler(env_config)
+            self.run_handler = LocalRunHandler(env_config, self.const_handler)
+            self.file_handler = LocalFileHandler(env_config, self.const_handler)
 
     def create_process_options(self, cmd: List[str]):
         return self.run_handler.create_process_options(cmd)
