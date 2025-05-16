@@ -1,5 +1,5 @@
 import sys
-from src.file.contest_file_manager import ContestFileManager
+from old_src.contest_file_manager import ContestFileManager
 from src.operations.file.file_driver import LocalFileDriver
 from src.command_parser import CommandParser
 
