@@ -1,29 +1,26 @@
 import pytest
-from src.operations.shell.shell_request import ShellRequest
+from src.operations.shell.mock_shell_request import MockShellRequest, MockShellInteractiveRequest
 from src.operations.shell.shell_result import ShellResult
-from src.operations.shell.shell_interactive_request import ShellInteractiveRequest
 
-
-def test_shell_request_echo():
-    req = ShellRequest(["echo", "hello"])
+def test_mock_shell_request_echo():
+    req = MockShellRequest(["echo", "hello"], stdout="hello\n", returncode=0)
     result = req.execute()
     assert isinstance(result, ShellResult)
     assert result.success
     assert "hello" in result.stdout
     result.raise_if_error()
 
-def test_shell_request_fail():
-    req = ShellRequest(["false"])
+def test_mock_shell_request_fail():
+    req = MockShellRequest(["false"], stdout="", stderr="fail", returncode=1)
     result = req.execute()
     assert not result.success
     with pytest.raises(RuntimeError):
         result.raise_if_error()
 
-def test_shell_interactive_request():
-    req = ShellInteractiveRequest(["python3", "-i"])
+def test_mock_shell_interactive_request():
+    req = MockShellInteractiveRequest(["python3", "-i"], stdout_lines=[">>> ", "hello\n", ">>> "], returncode=0)
     req.start()
     req.send_input('print("hello")\n')
-    # Pythonのプロンプトや出力を複数行読む必要がある
     lines = []
     for _ in range(3):
         line = req.read_output_line(timeout=2)
