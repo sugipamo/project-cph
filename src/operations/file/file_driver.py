@@ -30,8 +30,9 @@ class FileDriver(ABC):
     def rmtree(self):
         shutil.rmtree(self.path)
 
+    @abstractmethod
     def open(self, mode="r", encoding=None):
-        return self.path.open(mode=mode, encoding=encoding)
+        pass
 
     @abstractmethod
     def move(self):
@@ -93,6 +94,31 @@ class MockFileDriver(FileDriver):
         self.operations.append(("copytree", src_path, dst_path))
         # モックなので、ディレクトリ構造の再現は省略
 
+    def open(self, mode="r", encoding=None):
+        path = self.resolve_path()
+        if mode.startswith("w"):
+            def write_func(content):
+                self.create(content)
+            class Writer:
+                def __enter__(self): return self
+                def __exit__(self, exc_type, exc_val, exc_tb): pass
+                def write(self, content): write_func(content)
+            return Writer()
+        elif mode.startswith("r"):
+            class Reader:
+                def __init__(self, content):
+                    self._content = content
+                    self._read = False
+                def __enter__(self): return self
+                def __exit__(self, exc_type, exc_val, exc_tb): pass
+                def read(self):
+                    if self._read: return ""
+                    self._read = True
+                    return self._content
+            return Reader(self.contents.get(path, ""))
+        else:
+            raise NotImplementedError(f"MockFileDriver.open: mode {mode} not supported")
+
 class LocalFileDriver(FileDriver):
     def __init__(self, base_dir=Path(".")):
         super().__init__(base_dir)
@@ -135,6 +161,9 @@ class LocalFileDriver(FileDriver):
             shutil.rmtree(p)
         elif p.exists():
             p.unlink()
+
+    def open(self, mode="r", encoding=None):
+        return self.path.open(mode=mode, encoding=encoding)
 
 class DummyFileDriver(FileDriver):
     def __init__(self, base_dir=Path(".")):
@@ -184,4 +213,12 @@ class DummyFileDriver(FileDriver):
 
     def isdir(self):
         path = self.resolve_path()
-        return str(path).endswith("/") 
+        return str(path).endswith("/")
+
+    def open(self, mode="r", encoding=None):
+        class Dummy:
+            def __enter__(self): return self
+            def __exit__(self, exc_type, exc_val, exc_tb): pass
+            def read(self): return ""
+            def write(self, content): pass
+        return Dummy() 
