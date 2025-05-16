@@ -2,6 +2,7 @@ from typing import Any, Optional, List, Dict, Callable
 from src.shell_process import ShellProcess, ShellProcessOptions, ShellProcessPool
 import threading
 import time
+from src.operations.shell.shell_request import ShellRequest
 
 class LocalAsyncClient():
     def __init__(self):
@@ -9,39 +10,48 @@ class LocalAsyncClient():
         self._processes = {}
         self._lock = threading.Lock()
 
-    def run(self, name: str, image: Optional[str] = None, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, detach: bool = True, realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, **kwargs) -> ShellProcess:
+    def run(self, name: str, image: Optional[str] = None, command: Optional[List[str]] = None, volumes: Optional[Dict[str, str]] = None, detach: bool = True, realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, **kwargs) -> ShellRequest:
         if not command:
             raise ValueError("command must be specified for local execution")
         input_data = kwargs.get("input", None)
         cwd = kwargs.get("cwd", None)
-        options = ShellProcessOptions(cmd=command, input_data=input_data, cwd=cwd)
+        options = dict(cmd=command, inputdata=input_data, cwd=cwd)
         with self._lock:
             if name in self._processes:
                 raise RuntimeError(f"Process with name {name} already running")
             if not realtime:
                 if not detach:
-                    proc = ShellProcess.run(options=options)
-                    return proc
+                    req = ShellRequest(**options)
+                    result = req.execute()
+                    return result
                 else:
-                    proc = ShellProcess.popen(options=options, detach=True)
-                    self._processes[name] = proc
+                    # detachやrealtime対応はShellInteractiveRequestで対応可能
+                    from src.operations.shell.shell_interactive_request import ShellInteractiveRequest
+                    req = ShellInteractiveRequest(command, cwd=cwd)
+                    req.start()
+                    self._processes[name] = req
             else:
-                proc = ShellProcess.popen(options=options, detach=True)
-                self._processes[name] = proc
-                def reader(stream, callback):
-                    for line in stream.splitlines(keepends=True):
+                from src.operations.shell.shell_interactive_request import ShellInteractiveRequest
+                req = ShellInteractiveRequest(command, cwd=cwd)
+                req.start()
+                self._processes[name] = req
+                def reader(get_line, callback):
+                    while True:
+                        line = get_line()
+                        if line is None:
+                            break
                         if callback:
                             callback(line)
-                if on_stdout and proc.stdout:
-                    t_out = threading.Thread(target=reader, args=(proc.stdout, on_stdout))
+                if on_stdout:
+                    t_out = threading.Thread(target=reader, args=(req.read_output_line, on_stdout))
                     t_out.daemon = True
                     t_out.start()
-                if on_stderr and proc.stderr:
-                    t_err = threading.Thread(target=reader, args=(proc.stderr, on_stderr))
+                if on_stderr:
+                    t_err = threading.Thread(target=reader, args=(req.read_error_line, on_stderr))
                     t_err.daemon = True
                     t_err.start()
         if detach or realtime:
-            return proc
+            return req
 
     def stop(self, name: str) -> bool:
         with self._lock:
@@ -62,26 +72,32 @@ class LocalAsyncClient():
         # ローカルプロセスの場合、stopと同じ
         return self.stop(name)
 
-    def exec_in(self, name: str, cmd: List[str], realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, **kwargs) -> ShellProcess:
-        options = ShellProcessOptions(cmd=cmd)
+    def exec_in(self, name: str, cmd: List[str], realtime: bool = False, on_stdout: Optional[Callable[[str], None]] = None, on_stderr: Optional[Callable[[str], None]] = None, **kwargs) -> ShellRequest:
+        options = dict(cmd=cmd)
         if not realtime:
-            proc = ShellProcess.run(options=options)
-            return proc
+            req = ShellRequest(**options)
+            result = req.execute()
+            return result
         else:
-            proc = ShellProcess.popen(options=options, detach=True)
-            def reader(stream, callback):
-                for line in stream.splitlines(keepends=True):
+            from src.operations.shell.shell_interactive_request import ShellInteractiveRequest
+            req = ShellInteractiveRequest(cmd)
+            req.start()
+            def reader(get_line, callback):
+                while True:
+                    line = get_line()
+                    if line is None:
+                        break
                     if callback:
                         callback(line)
-            if on_stdout and proc.stdout:
-                t_out = threading.Thread(target=reader, args=(proc.stdout, on_stdout))
+            if on_stdout:
+                t_out = threading.Thread(target=reader, args=(req.read_output_line, on_stdout))
                 t_out.daemon = True
                 t_out.start()
-            if on_stderr and proc.stderr:
-                t_err = threading.Thread(target=reader, args=(proc.stderr, on_stderr))
+            if on_stderr:
+                t_err = threading.Thread(target=reader, args=(req.read_error_line, on_stderr))
                 t_err.daemon = True
                 t_err.start()
-            return proc
+            return req
 
     def is_running(self, name: str) -> bool:
         with self._lock:
@@ -129,6 +145,7 @@ class LocalAsyncClient():
             raise ValueError("build command must be specified for local execution")
         input_data = kwargs.get("input", None)
         cwd = kwargs.get("cwd", None)
-        options = ShellProcessOptions(cmd=command, input_data=input_data, cwd=cwd)
-        proc = ShellProcess.run(options=options)
-        return proc 
+        options = dict(cmd=command, inputdata=input_data, cwd=cwd)
+        req = ShellRequest(**options)
+        result = req.execute()
+        return result 

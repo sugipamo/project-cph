@@ -1,6 +1,6 @@
 import hashlib
 import os
-from src.shell_process import ShellProcess, ShellProcessOptions
+from src.operations.shell.shell_request import ShellRequest
 
 
 
@@ -13,9 +13,9 @@ class ContainerImageManager:
         cmd = [
             "docker", "build", "-f", dockerfile_path, "-t", image_name, workspace_dir
         ]
-        opts = ShellProcessOptions()
-        proc = ShellProcess.run(*cmd, options=opts)
-        return proc.returncode == 0
+        req = ShellRequest(cmd)
+        result = req.execute()
+        return result.returncode == 0
 
     @staticmethod
     def remove_image(image_name: str) -> bool:
@@ -23,12 +23,12 @@ class ContainerImageManager:
         イメージを削除する。
         """
         cmd = ["docker", "rmi", image_name]
-        opts = ShellProcessOptions()
-        proc = ShellProcess.run(*cmd, options=opts)
-        if proc.returncode == 0:
+        req = ShellRequest(cmd)
+        result = req.execute()
+        if result.returncode == 0:
             return True
         else:
-            print(f"[ERROR] docker rmi failed: {proc.stderr}")
+            print(f"[ERROR] docker rmi failed: {result.stderr}")
             return False
 
     @staticmethod
@@ -37,9 +37,9 @@ class ContainerImageManager:
         イメージが存在するか確認する。
         """
         cmd = ["docker", "images", "--format", "{{.Repository}}", image_name]
-        opts = ShellProcessOptions()
-        proc = ShellProcess.run(*cmd, options=opts)
-        images = proc.stdout.splitlines() if proc.stdout else []
+        req = ShellRequest(cmd)
+        result = req.execute()
+        images = result.stdout.splitlines() if result.stdout else []
         return image_name in images
 
     @staticmethod
@@ -69,9 +69,9 @@ class ContainerImageManager:
         """
         prefix = f"cph_image_{key}_"
         current = ContainerImageManager.get_image_name(key, dockerfile_map)
-        opts = ShellProcessOptions()
-        proc = ShellProcess.run("docker", "images", "--format", "{{.Repository}}", options=opts)
-        image_names = proc.stdout.splitlines() if proc.stdout else []
+        req = ShellRequest(["docker", "images", "--format", "{{.Repository}}"])
+        result = req.execute()
+        image_names = result.stdout.splitlines() if result.stdout else []
         for img in image_names:
             if img.startswith(prefix) and img != current:
                 ContainerImageManager.remove_image(img)
@@ -79,7 +79,6 @@ class ContainerImageManager:
     @staticmethod
     def ensure_image(key, dockerfile_map, context_dir: str = ".") -> str:
         image = ContainerImageManager.get_image_name(key, dockerfile_map)
-        opts = ShellProcessOptions()
-        opts.cmd = ["docker", "images", "--format", "{{.Repository}}"]
-        ShellProcess.run(options=opts)
+        req = ShellRequest(["docker", "images", "--format", "{{.Repository}}"])
+        req.execute()
         return image 
