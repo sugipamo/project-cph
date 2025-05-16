@@ -71,4 +71,21 @@ def test_docker_cp_file_not_found_with_mock():
     req = FileRequest(FileOpType.DOCKER_CP, src, driver=driver, dst_path=dst, container=container, to_container=True)
     # ファイルがself.filesに存在しない場合、copyは何も起きないが、例外をraiseする設計ならここで確認
     with pytest.raises(Exception):
+        req.execute()
+
+def test_file_request_double_execute_raises():
+    driver = MockFileDriver()
+    path = "test_double.txt"
+    req = FileRequest(FileOpType.WRITE, path, content="abc", driver=driver)
+    req.execute()
+    with pytest.raises(RuntimeError):
+        req.execute()
+
+def test_file_request_unknown_operation():
+    driver = MockFileDriver()
+    path = "test_unknown.txt"
+    class FakeOpType:
+        pass
+    req = FileRequest(FakeOpType(), path, driver=driver)
+    with pytest.raises(RuntimeError):
         req.execute() 
