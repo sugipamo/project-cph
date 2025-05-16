@@ -4,24 +4,13 @@ from enum import Enum, auto
 from src.execution_client.client.local import LocalAsyncClient
 from src.execution_client.client.container import ContainerClient
 
-BASE_DIR = "contest_env"
-
-class ExecutionEnvType(Enum):
+class EnvType(Enum):
     LOCAL = auto()
     DOCKER = auto()
 
-class ExecutionStatus(Enum):
-    INIT = auto()
-    BUILT = auto()
-    READY = auto()
-    RUNNING = auto()
-    FINISHED = auto()
-    ERROR = auto()
-
-class BaseExecutionEnv(ABC):
-    def __init__(self, base_handler):
-        self.base = base_handler
-        self.status = ExecutionStatus.INIT
+class BaseConstHandler(ABC):
+    def __init__(self, config: dict):
+        self.config = config
 
     @property
     @abstractmethod
@@ -33,16 +22,17 @@ class BaseExecutionEnv(ABC):
 
     @property
     @abstractmethod
-    def env_type(self) -> ExecutionEnvType: pass
+    def env_type(self) -> EnvType: pass
 
-    def set_status(self, status: ExecutionStatus):
-        self.status = status
 
-    def get_status(self) -> ExecutionStatus:
-        return self.status
 
-class LocalExecutionEnv(BaseExecutionEnv):
+#↓仕様変更をするので、dictから読み込みするように変えたい↓
+
+class LocalConstHandler(BaseConstHandler):
     execution_client_class = LocalAsyncClient
+
+    def __init__(self, config: dict):
+        super().__init__(config)
 
     @property
     def contest_current_path(self):
@@ -53,8 +43,8 @@ class LocalExecutionEnv(BaseExecutionEnv):
         return self.contest_current_path / self.base.source_file
 
     @property
-    def env_type(self) -> ExecutionEnvType:
-        return ExecutionEnvType.LOCAL
+    def env_type(self) -> EnvType:
+        return EnvType.LOCAL
 
     @property
     def contest_env_path(self):
@@ -80,11 +70,9 @@ class LocalExecutionEnv(BaseExecutionEnv):
     def test_case_out_path(self):
         return self.test_case_path / "out"
 
-class DockerExecutionEnv(BaseExecutionEnv):
-    execution_client_class = ContainerClient
-
-    def __init__(self, base_handler, container_workspace="/workspace"):
-        super().__init__(base_handler)
+class DockerConstHandler(BaseConstHandler):
+    def __init__(self, config: dict, container_workspace="/workspace"):
+        super().__init__(config)
         self.container_workspace = container_workspace
 
     def _to_container_path(self, path):
@@ -95,15 +83,15 @@ class DockerExecutionEnv(BaseExecutionEnv):
 
     @property
     def contest_current_path(self):
-        return self._to_container_path(self.base.contest_current_path)
+        return self._to_container_path(self.config["contest_current_path"])
 
     @property
     def source_file_path(self):
         return self.contest_current_path / self.base.source_file
 
     @property
-    def env_type(self) -> ExecutionEnvType:
-        return ExecutionEnvType.DOCKER
+    def env_type(self) -> EnvType:
+        return EnvType.DOCKER
 
     @property
     def contest_env_path(self):
@@ -132,21 +120,3 @@ class DockerExecutionEnv(BaseExecutionEnv):
     @property
     def image_name(self) -> str:
         return f"{self.base.language}"
-
-# ファクトリパターン（predicate関数による自動判別型）
-class ExecutionEnvFactory:
-    _registry = []
-
-    @classmethod
-    def register(cls, predicate):
-        def decorator(env_cls):
-            cls._registry.append((predicate, env_cls))
-            return env_cls
-        return decorator
-
-    @classmethod
-    def create(cls, base_handler, **kwargs) -> BaseExecutionEnv:
-        for predicate, env_cls in cls._registry:
-            if predicate(base_handler):
-                return env_cls(base_handler, **kwargs)
-        raise ValueError("No suitable ExecutionEnv found")

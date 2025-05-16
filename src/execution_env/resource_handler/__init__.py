@@ -1,0 +1,1 @@
+# resource_handlerパッケージ用の初期化ファイル 
