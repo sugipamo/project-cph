@@ -5,6 +5,8 @@ operations層のDockerRequest等から利用される、docker操作の実体（
 """
 from abc import ABC, abstractmethod
 from typing import Any, Dict
+from src.operations.shell.shell_request import ShellRequest
+from src.operations.shell.shell_result import ShellResult
 
 class DockerDriver(ABC):
     def __init__(self):
@@ -32,21 +34,45 @@ class DockerDriver(ABC):
 
 class LocalDockerDriver(DockerDriver):
     def run_container(self, image: str, name: str = None, options: Dict[str, Any] = None):
-        # 実際にdockerコマンドを叩く実装（仮）
-        # 例: subprocess.run(["docker", "run", ...])
-        pass
+        cmd = ["docker", "run", "-d"]
+        if name:
+            cmd += ["--name", name]
+        if options:
+            for k, v in options.items():
+                if len(k) == 1:
+                    cmd.append(f"-{k}")
+                else:
+                    cmd.append(f"--{k.replace('_','-')}")
+                if v is not None:
+                    cmd.append(str(v))
+        cmd.append(image)
+        req = ShellRequest(cmd)
+        result = req.execute()
+        return result
 
     def stop_container(self, name: str):
-        pass
+        cmd = ["docker", "stop", name]
+        req = ShellRequest(cmd)
+        result = req.execute()
+        return result
 
     def remove_container(self, name: str):
-        pass
+        cmd = ["docker", "rm", name]
+        req = ShellRequest(cmd)
+        result = req.execute()
+        return result
 
     def exec_in_container(self, name: str, command: str):
-        pass
+        cmd = ["docker", "exec", name] + command.split()
+        req = ShellRequest(cmd)
+        result = req.execute()
+        return result
 
     def get_logs(self, name: str):
-        pass
+        cmd = ["docker", "logs", name]
+        req = ShellRequest(cmd)
+        result = req.execute()
+        return result
 
 class MockDockerDriver(DockerDriver):
     def __init__(self):
