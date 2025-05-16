@@ -11,9 +11,10 @@ class FileOpType(Enum):
     COPYTREE = auto()
     REMOVE = auto()
     RMTREE = auto()
+    DOCKER_CP = auto()
 
 class FileRequest:
-    def __init__(self, op: FileOpType, path, content=None, driver=None, dst_path=None):
+    def __init__(self, op: FileOpType, path, content=None, driver=None, dst_path=None, container=None, to_container=True, docker_driver=None):
         self.op = op  # FileOpType
         self.path = path
         self.content = content
@@ -21,6 +22,9 @@ class FileRequest:
         self._result = None
         self._driver = driver or LocalFileDriver()
         self.dst_path = dst_path  # move/copy/copytree用
+        self.container = container  # docker_cp用
+        self.to_container = to_container  # docker_cp用
+        self.docker_driver = docker_driver  # docker_cp用
 
     @property
     def operation_type(self):
@@ -62,6 +66,10 @@ class FileRequest:
                 self._result = FileResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
             elif self.op == FileOpType.RMTREE:
                 self._driver.rmtree()
+                self._result = FileResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
+            elif self.op == FileOpType.DOCKER_CP:
+                # path: src, dst_path: dst, container, to_container, docker_driver
+                self._driver.docker_cp(self.path, self.dst_path, self.container, to_container=self.to_container, docker_driver=self.docker_driver)
                 self._result = FileResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
             else:
                 self._result = FileResult(success=False, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time(), error_message="Unknown operation")

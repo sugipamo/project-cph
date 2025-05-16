@@ -52,6 +52,10 @@ class DockerDriver(ABC):
     def inspect(self, target: str, type_: str = None):
         pass
 
+    @abstractmethod
+    def cp(self, src: str, dst: str, container: str, to_container: bool = True):
+        pass
+
 class LocalDockerDriver(DockerDriver):
     def run_container(self, image: str, name: str = None, options: Dict[str, Any] = None):
         cmd = ["docker", "run", "-d"]
@@ -142,6 +146,20 @@ class LocalDockerDriver(DockerDriver):
         result = req.execute()
         return result
 
+    def cp(self, src: str, dst: str, container: str, to_container: bool = True):
+        # to_container=True: src(ホスト)→dst(コンテナ)
+        # to_container=False: src(コンテナ)→dst(ホスト)
+        if to_container:
+            cp_src = str(src)
+            cp_dst = f"{container}:{dst}"
+        else:
+            cp_src = f"{container}:{src}"
+            cp_dst = str(dst)
+        cmd = ["docker", "cp", cp_src, cp_dst]
+        req = ShellRequest(cmd)
+        result = req.execute()
+        return result
+
 class MockDockerDriver(DockerDriver):
     def __init__(self):
         self.operations = []
@@ -184,6 +202,10 @@ class MockDockerDriver(DockerDriver):
         self.operations.append(("inspect", target, type_))
         return {"mock_inspect": target, "type": type_}
 
+    def cp(self, src: str, dst: str, container: str, to_container: bool = True):
+        self.operations.append(("cp", src, dst, container, to_container))
+        return f"mock_cp_{src}_{dst}_{container}_{to_container}"
+
 class DummyDockerDriver(DockerDriver):
     def run_container(self, image: str, name: str = None, options: Dict[str, Any] = None):
         return None
@@ -213,4 +235,7 @@ class DummyDockerDriver(DockerDriver):
         return []
 
     def inspect(self, target: str, type_: str = None):
-        return None 
+        pass
+
+    def cp(self, src: str, dst: str, container: str, to_container: bool = True):
+        pass 

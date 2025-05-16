@@ -54,6 +54,10 @@ class FileDriver(ABC):
     def copytree(self):
         pass
 
+    @abstractmethod
+    def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver=None):
+        pass
+
     def ensure_parent_dir(self, path):
         parent = Path(path).parent
         parent.mkdir(parents=True, exist_ok=True)
@@ -131,6 +135,10 @@ class MockFileDriver(FileDriver):
         parent = Path(path).parent
         self.files.add(parent)
 
+    def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver=None):
+        self.operations.append(("docker_cp", src, dst, container, to_container))
+        return f"mock_docker_cp_{src}_{dst}_{container}_{to_container}"
+
 class LocalFileDriver(FileDriver):
     def __init__(self, base_dir=Path(".")):
         super().__init__(base_dir)
@@ -177,6 +185,11 @@ class LocalFileDriver(FileDriver):
 
     def open(self, mode="r", encoding=None):
         return self.path.open(mode=mode, encoding=encoding)
+
+    def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver=None):
+        if docker_driver is None:
+            raise ValueError("docker_driverが必要です")
+        return docker_driver.cp(src, dst, container, to_container=to_container)
 
 class DummyFileDriver(FileDriver):
     def __init__(self, base_dir=Path(".")):
@@ -242,4 +255,7 @@ class DummyFileDriver(FileDriver):
 
     def ensure_parent_dir(self, path):
         parent = Path(path).parent
-        self.files.add(parent) 
+        self.files.add(parent)
+
+    def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver=None):
+        pass 
