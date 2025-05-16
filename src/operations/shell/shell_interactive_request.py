@@ -13,6 +13,8 @@ class ShellInteractiveRequest:
         self._stderr_queue = Queue()
         self._stdout_thread = None
         self._stderr_thread = None
+        self._stdout_lines = []
+        self._stderr_lines = []
 
     def start(self):
         self._proc = subprocess.Popen(
@@ -45,21 +47,28 @@ class ShellInteractiveRequest:
 
     def read_output_line(self, timeout=None):
         try:
-            return self._stdout_queue.get(timeout=timeout)
+            line = self._stdout_queue.get(timeout=timeout)
+            self._stdout_lines.append(line)
+            return line
         except Empty:
             return None
 
     def read_error_line(self, timeout=None):
         try:
-            return self._stderr_queue.get(timeout=timeout)
+            line = self._stderr_queue.get(timeout=timeout)
+            self._stderr_lines.append(line)
+            return line
         except Empty:
             return None
 
     def wait(self):
         if self._proc:
             self._proc.wait()
-            stdout = ''.join(list(self._drain_queue(self._stdout_queue)))
-            stderr = ''.join(list(self._drain_queue(self._stderr_queue)))
+            # 残りのqueueもdrainしてlinesに追加
+            self._stdout_lines.extend(list(self._drain_queue(self._stdout_queue)))
+            self._stderr_lines.extend(list(self._drain_queue(self._stderr_queue)))
+            stdout = ''.join(self._stdout_lines)
+            stderr = ''.join(self._stderr_lines)
             return ShellResult(
                 stdout=stdout,
                 stderr=stderr,

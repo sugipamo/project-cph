@@ -1,4 +1,5 @@
 from enum import Enum, auto
+from src.operations.operation_type import OperationType
 
 class FileOpType(Enum):
     READ = auto()
@@ -12,6 +13,10 @@ class FileRequest:
         self.content = content
         self._executed = False
         self._result = None
+
+    @property
+    def operation_type(self):
+        return OperationType.FILE
 
     def execute(self):
         if self._executed:

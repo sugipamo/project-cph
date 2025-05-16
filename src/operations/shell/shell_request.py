@@ -1,5 +1,6 @@
 import subprocess
 from .shell_result import ShellResult
+from src.operations.operation_type import OperationType
 
 class ShellRequest:
     def __init__(self, cmd, cwd=None, env=None, inputdata=None, timeout=None):
@@ -10,6 +11,10 @@ class ShellRequest:
         self.timeout = timeout
         self._executed = False
         self._result = None
+
+    @property
+    def operation_type(self):
+        return OperationType.SHELL
 
     def execute(self):
         if self._executed:
