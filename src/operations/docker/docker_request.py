@@ -12,13 +12,13 @@ class DockerOpType(Enum):
     LOGS = auto()
 
 class DockerRequest:
-    def __init__(self, op: DockerOpType, image: str = None, name: str = None, command: str = None, options: Optional[Dict[str, Any]] = None, driver: DockerDriver = None):
+    def __init__(self, op: DockerOpType, driver, image: str = None, name: str = None, command: str = None, options: Optional[Dict[str, Any]] = None):
         self.op = op
         self.image = image
         self.name = name
         self.command = command
         self.options = options or {}
-        self._driver = driver or LocalDockerDriver()
+        self._driver = driver
         self._executed = False
         self._result = None
 

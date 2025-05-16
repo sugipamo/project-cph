@@ -2,9 +2,11 @@ import pytest
 from src.operations.result import OperationResult
 from src.operations.file.file_request import FileRequest, FileOpType
 from src.operations.operation_type import OperationType
+from src.operations.file.file_driver import MockFileDriver
 
 def test_file_result_methods():
-    req = FileRequest(FileOpType.READ, "foo.txt")
+    driver = MockFileDriver()
+    req = FileRequest(FileOpType.READ, "foo.txt", driver=driver)
     result = OperationResult(success=True, content="abc", exists=True, path="foo.txt", op=FileOpType.READ, request=req)
     d = result.to_dict()
     assert d["success"] is True

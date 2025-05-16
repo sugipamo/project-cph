@@ -14,13 +14,13 @@ class FileOpType(Enum):
     RMTREE = auto()
 
 class FileRequest:
-    def __init__(self, op: FileOpType, path, content=None, driver=None, dst_path=None, container=None, to_container=True, docker_driver=None):
+    def __init__(self, op: FileOpType, path, driver, content=None, dst_path=None, container=None, to_container=True, docker_driver=None):
         self.op = op  # FileOpType
         self.path = path
         self.content = content
         self._executed = False
         self._result = None
-        self._driver = driver or LocalFileDriver()
+        self._driver = driver
         self.dst_path = dst_path  # move/copy/copytree用
 
     @property

@@ -2,7 +2,7 @@ from src.operations.result import OperationResult
 import time
 
 class DockerFileRequest:
-    def __init__(self, src_path, dst_path, container, to_container=True, docker_driver=None):
+    def __init__(self, src_path, dst_path, container, docker_driver, to_container=True):
         self.src_path = src_path
         self.dst_path = dst_path
         self.container = container

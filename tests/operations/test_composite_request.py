@@ -4,11 +4,13 @@ from src.operations.shell.shell_request import ShellRequest
 from src.operations.result import OperationResult
 from src.operations.file.file_request import FileRequest, FileOpType
 from src.operations.operation_type import OperationType
+from src.operations.file.file_driver import MockFileDriver
 
 def test_composite_request_shell_and_file():
     req1 = ShellRequest(["echo", "foo"])
     req2 = ShellRequest(["echo", "bar"])
-    req3 = FileRequest(FileOpType.WRITE, "/tmp/test_composite.txt", content="baz")
+    driver = MockFileDriver()
+    req3 = FileRequest(FileOpType.WRITE, "/tmp/test_composite.txt", driver=driver, content="baz")
     composite = CompositeRequest([req1, req2, req3])
     results = composite.execute()
     assert len(results) == 3
@@ -23,7 +25,8 @@ def test_composite_request_nested_flatten():
     req1 = ShellRequest(["echo", "foo"])
     req2 = ShellRequest(["echo", "bar"])
     inner = CompositeRequest([req1, req2])
-    req3 = FileRequest(FileOpType.WRITE, "/tmp/test_composite2.txt", content="baz")
+    driver = MockFileDriver()
+    req3 = FileRequest(FileOpType.WRITE, "/tmp/test_composite2.txt", driver=driver, content="baz")
     outer = CompositeRequest([inner, req3])
     results = outer.execute()
     flat = flatten_results(results)
