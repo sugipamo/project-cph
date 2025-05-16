@@ -1,18 +1,43 @@
+import subprocess
+from .shell_result import ShellResult
+
 class ShellRequest:
-    def __init__(self, cmd, cwd=None, env=None):
+    def __init__(self, cmd, cwd=None, env=None, inputdata=None, timeout=None):
         self.cmd = cmd
         self.cwd = cwd
         self.env = env
+        self.inputdata = inputdata
+        self.timeout = timeout
         self._executed = False
         self._result = None
 
     def execute(self):
         if self._executed:
             raise RuntimeError("This ShellRequest has already been executed.")
-        # 実際のコマンド実行はshell_process等を利用する想定
-        # ここではダミーのShellResultを返す
-        from .shell_result import ShellResult
-        # TODO: 実際のコマンド実行処理に置き換え
-        self._result = ShellResult(stdout="", stderr="", returncode=0)
+        try:
+            completed = subprocess.run(
+                self.cmd,
+                input=self.inputdata,
+                cwd=self.cwd,
+                env=self.env,
+                text=True,
+                capture_output=True,
+                timeout=self.timeout
+            )
+            self._result = ShellResult(
+                stdout=completed.stdout,
+                stderr=completed.stderr,
+                returncode=completed.returncode,
+                request=self
+            )
+        except Exception as e:
+            self._result = ShellResult(
+                stdout="",
+                stderr=str(e),
+                returncode=-1,
+                request=self,
+                exception=e,
+                error_message=str(e)
+            )
         self._executed = True
         return self._result 
