@@ -3,6 +3,30 @@ import time
 from src.execution_client.client.local import LocalAsyncClient
 from src.shell_process import ShellProcessOptions
 
+class DummyShellInteractiveRequest:
+    def __init__(self, *args, **kwargs):
+        self._running = True
+    def start(self):
+        return self
+    def is_running(self):
+        return self._running
+    def stop(self):
+        self._running = False
+    def wait(self):
+        self._running = False
+        class DummyResult:
+            returncode = 0
+            stdout = "dummy"
+            stderr = ""
+        return DummyResult()
+
+@pytest.fixture(autouse=True)
+def patch_shell_interactive_request(monkeypatch):
+    monkeypatch.setattr(
+        "src.operations.shell.shell_interactive_request.ShellInteractiveRequest",
+        DummyShellInteractiveRequest
+    )
+
 @pytest.fixture
 def client():
     return LocalAsyncClient()
