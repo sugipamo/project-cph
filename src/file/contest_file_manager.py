@@ -1,6 +1,9 @@
+from src.operations.file.file_driver import LocalFileDriver
+from src.operations.file.file_request import FileRequest, FileOpType
+
 class ContestFileManager:
-    def __init__(self, handler):
-        self.handler = handler
+    def __init__(self, file_operator=None):
+        self.file_operator = file_operator or LocalFileDriver()
 
     def get_exclude_files(self):
         """
@@ -17,7 +20,7 @@ class ContestFileManager:
         stop_at: これ以上は削除しないディレクトリ（Pathオブジェクト）
         """
         while path != stop_at and path.exists() and path.is_dir() and not any(path.iterdir()):
-            self.file_operator.rmtree(path)
+            FileRequest(FileOpType.RMTREE, path).execute()
             path = path.parent
 
     def copy_current_to_stocks(self):
@@ -28,8 +31,6 @@ class ContestFileManager:
         """
         src_dir = self.file_operator.resolve_path(self.upm.contest_current(self.language_name))
         config_path = self.get_current_config_path()
-
-        
         info_path = self.get_current_info_path()
         if info_path.exists():
             manager = InfoJsonManager(info_path)
@@ -48,9 +49,10 @@ class ContestFileManager:
                     if self._is_ignored(item.name, ignore_patterns):
                         continue
                     if item.is_file():
-                        self.file_operator.copy(item, dst_dir / item.name)
+                        content = FileRequest(FileOpType.READ, item).execute().content
+                        FileRequest(FileOpType.WRITE, dst_dir / item.name, content=content).execute()
                     elif item.is_dir():
-                        self.file_operator.copytree(item, dst_dir / item.name)
+                        FileRequest(FileOpType.COPYTREE, item, dst_path=dst_dir / item.name).execute()
 
     def _move_or_copy_skip_existing(self, src_dir, dst_dir, move=False):
         """
@@ -66,9 +68,10 @@ class ContestFileManager:
                 continue  # 既存はスキップ
             if item.is_file():
                 if move:
-                    self.file_operator.move(item, dst_item)
+                    FileRequest(FileOpType.MOVE, item, dst_path=dst_item).execute()
                 else:
-                    self.file_operator.copy(item, dst_item)
+                    content = FileRequest(FileOpType.READ, item).execute().content
+                    FileRequest(FileOpType.WRITE, dst_item, content=content).execute()
             elif item.is_dir():
                 self._move_or_copy_skip_existing(item, dst_item, move=move)
 
@@ -95,9 +98,9 @@ class ContestFileManager:
         for item in src_dir.iterdir():
             if self._is_ignored(item.name, ignore_patterns):
                 continue
-            self.file_operator.move(item, dst_dir / item.name)
+            FileRequest(FileOpType.MOVE, item, dst_path=dst_dir / item.name).execute()
         if not any(x for x in src_dir.iterdir() if not self._is_ignored(x.name, ignore_patterns)):
-            self.file_operator.rmtree(src_dir)
+            FileRequest(FileOpType.RMTREE, src_dir).execute()
         self._remove_empty_parents(src_dir.parent, self.file_operator.resolve_path(self.upm.contest_stocks(old_contest_name)))
         self._remove_empty_parents(src_dir.parent.parent, self.file_operator.resolve_path("contest_stocks"))
 
@@ -115,7 +118,7 @@ class ContestFileManager:
         self._move_or_copy_skip_existing(src_dir, dst_dir, move=True)
         # 移動後、ストック側が空なら削除
         if not any(src_dir.iterdir()):
-            self.file_operator.rmtree(src_dir)
+            FileRequest(FileOpType.RMTREE, src_dir).execute()
         self._remove_empty_parents(src_dir.parent, self.file_operator.resolve_path(self.upm.contest_stocks(contest_name, problem_name)))
         self._remove_empty_parents(src_dir.parent.parent, self.file_operator.resolve_path(self.upm.contest_stocks(contest_name)))
         self._remove_empty_parents(src_dir.parent.parent.parent, self.file_operator.resolve_path("contest_stocks"))
@@ -132,7 +135,7 @@ class ContestFileManager:
         self._move_or_copy_skip_existing(src_dir, dst_dir, move=True)
         # 移動後、ストック側が空なら削除
         if not any(src_dir.iterdir()):
-            self.file_operator.rmtree(src_dir)
+            FileRequest(FileOpType.RMTREE, src_dir).execute()
         self._remove_empty_parents(src_dir.parent, self.file_operator.resolve_path(self.upm.contest_stocks(self.contest_name, self.problem_name)))
         self._remove_empty_parents(src_dir.parent.parent, self.file_operator.resolve_path(self.upm.contest_stocks(self.contest_name)))
         self._remove_empty_parents(src_dir.parent.parent.parent, self.file_operator.resolve_path("contest_stocks"))
@@ -169,9 +172,10 @@ class ContestFileManager:
                     shutil.rmtree(dst_file)
             if item.is_file():
                 dst_file.parent.mkdir(parents=True, exist_ok=True)
-                self.file_operator.copy(item, dst_file)
+                content = FileRequest(FileOpType.READ, item).execute().content
+                FileRequest(FileOpType.WRITE, dst_file, content=content).execute()
             elif item.is_dir():
-                self.file_operator.copytree(item, dst_dir / item.name)
+                FileRequest(FileOpType.COPYTREE, item, dst_path=dst_dir / item.name).execute()
         info_path = self.get_current_info_path()
         manager = InfoJsonManager(info_path)
         manager.data["contest_name"] = self.contest_name
@@ -194,7 +198,9 @@ class ContestFileManager:
         """
         lang_dir = self.file_operator.resolve_path(self.upm.contest_stocks(self.contest_name, self.problem_name, self.language_name))
         test_dir = self.file_operator.resolve_path(self.upm.contest_stocks(self.contest_name, self.problem_name, "test"))
-        return (lang_dir.exists() and any(lang_dir.iterdir())) or (test_dir.exists() and any(test_dir.iterdir()))
+        lang_exists = FileRequest(FileOpType.EXISTS, lang_dir).execute().exists
+        test_exists = FileRequest(FileOpType.EXISTS, test_dir).execute().exists
+        return lang_exists or test_exists
 
     def copy_from_stocks_to_current(self, contest_name, problem_name, language_name=None):
         """
@@ -209,18 +215,20 @@ class ContestFileManager:
             for item in lang_src.iterdir():
                 dst_file = lang_dst / item.name
                 if item.is_file():
-                    self.file_operator.copy(item, dst_file)
+                    content = FileRequest(FileOpType.READ, item).execute().content
+                    FileRequest(FileOpType.WRITE, dst_file, content=content).execute()
                 elif item.is_dir():
-                    self.file_operator.copytree(item, dst_file)
+                    FileRequest(FileOpType.COPYTREE, item, dst_path=dst_file).execute()
         test_src = self.file_operator.resolve_path(self.upm.contest_stocks(contest_name, problem_name, "test"))
         test_dst = self.file_operator.resolve_path(self.upm.contest_current("test"))
         if test_src.exists():
             test_dst.mkdir(parents=True, exist_ok=True)
             for item in test_src.iterdir():
                 if item.is_file():
-                    self.file_operator.copy(item, test_dst / item.name)
+                    content = FileRequest(FileOpType.READ, item).execute().content
+                    FileRequest(FileOpType.WRITE, test_dst / item.name, content=content).execute()
                 elif item.is_dir():
-                    self.file_operator.copytree(item, test_dst / item.name)
+                    FileRequest(FileOpType.COPYTREE, item, dst_path=test_dst / item.name).execute()
 
     def problem_exists_in_stocks(self):
         return self.stocks_exists()
@@ -245,9 +253,10 @@ class ContestFileManager:
         dst_dir.mkdir(parents=True, exist_ok=True)
         for item in src_dir.iterdir():
             if item.is_file():
-                self.file_operator.copy(item, dst_dir / item.name)
+                content = FileRequest(FileOpType.READ, item).execute().content
+                FileRequest(FileOpType.WRITE, dst_dir / item.name, content=content).execute()
             elif item.is_dir():
-                self.file_operator.copytree(item, dst_dir / item.name)
+                FileRequest(FileOpType.COPYTREE, item, dst_path=dst_dir / item.name).execute()
 
     def prepare_problem_files(self, contest_name=None, problem_name=None, language_name=None):
         """
@@ -293,7 +302,7 @@ class ContestFileManager:
             if item.name != problem_name:
                 dst = stocks_tests_root / item.name
                 dst.parent.mkdir(parents=True, exist_ok=True)
-                self.file_operator.move(item, dst)
+                FileRequest(FileOpType.MOVE, item, dst_path=dst).execute()
 
     def get_problem_files(self, contest_name, problem_name, language_name=None):
         """

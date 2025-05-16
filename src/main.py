@@ -1,6 +1,6 @@
 import sys
 from src.file.contest_file_manager import ContestFileManager
-from src.file.file_operator import LocalFileOperator
+from src.operations.file.file_driver import LocalFileDriver
 from src.command_parser import CommandParser
 
 # コマンドライン引数: main.py {contest_name} {command} {problem_name} {language_name}
@@ -51,7 +51,7 @@ def main():
         return
 
     executor = CommandExecutor(
-        file_manager=ContestFileManager(LocalFileOperator()),
+        file_manager=ContestFileManager(LocalFileDriver()),
         exec_mode=exec_mode
     )
     import asyncio
