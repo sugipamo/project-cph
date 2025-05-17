@@ -85,7 +85,7 @@ def list_language_envs():
 class EnvResourceController:
     def __init__(self, language_name=None, env_type=None, env_config=None, file_handler=None, run_handler=None, const_handler=None):
         # テスト用: 依存注入があればそれを使う
-        if file_handler is not None:
+        if file_handler or run_handler or const_handler:
             self.language_name = language_name
             self.env_type = env_type
             self.const_handler = const_handler
@@ -114,14 +114,14 @@ class EnvResourceController:
             self.run_handler = container.resolve("LocalRunHandler")
             self.file_handler = container.resolve("LocalFileHandler")
 
-    def create_process_options(self, cmd: List[str]):
-        return self.run_handler.create_process_options(cmd)
+    def create_process_options(self, cmd: list, driver=None):
+        return self.run_handler.create_process_options(cmd, driver=driver)
 
     def read_file(self, relative_path: str) -> str:
         return self.file_handler.read(relative_path)
 
     def write_file(self, relative_path: str, content: str):
-        self.file_handler.write(relative_path, content)
+        return self.file_handler.write(relative_path, content)
 
     def file_exists(self, relative_path: str) -> bool:
         return self.file_handler.exists(relative_path)
