@@ -4,7 +4,7 @@ from src.operations.file.file_request import FileRequest, FileOpType
 from pathlib import Path
 from src.operations.file.file_driver import LocalFileDriver
 from src.operations.docker.docker_file_request import DockerFileRequest
-from src.execution_env.run_plan_loader import EnvContext
+from src.execution_env.env_context_loader import EnvContext
 
 class BaseFileHandler(ABC):
     def __init__(self, config: EnvContext, const_handler):

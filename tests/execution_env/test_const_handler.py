@@ -1,7 +1,7 @@
 import pytest
 from src.execution_env.resource_handler.const_handler import LocalConstHandler, DockerConstHandler, EnvType
 from pathlib import Path
-from src.execution_env.run_plan_loader import EnvContext
+from src.execution_env.env_context_loader import EnvContext
 
 def make_local_config():
     return EnvContext(
