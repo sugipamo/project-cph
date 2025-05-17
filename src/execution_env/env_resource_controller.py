@@ -48,6 +48,8 @@ class EnvResourceController:
         """
         env_json = load_env_json(plan.language, plan.env)
         lang_conf = env_json.get(plan.language, {})
+        env_types = lang_conf.get("env_types", {})
+        env_type_conf = env_types.get(plan.env, {})
         env_config = dict(lang_conf)
         env_config["env_type"] = plan.env
         env_config["contest_current_path"] = lang_conf.get("contest_current_path", ".")
@@ -56,6 +58,9 @@ class EnvResourceController:
         env_config["contest_template_path"] = lang_conf.get("contest_template_path", "template")
         env_config["contest_temp_path"] = lang_conf.get("contest_temp_path", "temp")
         env_config["language"] = plan.language
+        env_config["env_type_conf"] = env_type_conf
+        env_config["language_id"] = lang_conf.get("language_id")
+        env_config["dockerfile_path"] = env_type_conf.get("dockerfile_path")
         return cls(language_name=plan.language, env_type=plan.env, env_config=env_config)
 
     def create_process_options(self, cmd: list):
@@ -89,6 +94,8 @@ class EnvResourceController:
         """
         ソースコードをworkspace内の所定の場所にコピーするリクエストを返す
         """
+
+        print(self.const_handler.source_file_path)
         src = str(self.const_handler.source_file_path)
         # コピー先: workspace直下 or contest_temp_path等、要件に応じて変更可
         # ここでは例としてworkspace直下にコピー
@@ -99,8 +106,8 @@ class EnvResourceController:
         """
         env_configやconst_handlerを使ってbuild_cmdをパース・展開（parse_with_workspaceを利用）
         """
-        handler_conf = self.env_config.get("handlers", {}).get(self.env_type, {})
-        build_cmds = handler_conf.get("build_cmd", [])
+        env_type_conf = self.env_config.get("env_type_conf", {})
+        build_cmds = env_type_conf.get("build_cmd", [])
         return [
             [self.const_handler.parse_with_workspace(str(x)) for x in build_cmd]
             for build_cmd in build_cmds
@@ -110,8 +117,8 @@ class EnvResourceController:
         """
         env_configやconst_handlerを使ってrun_cmdをパース・展開（parse_with_workspaceを利用）
         """
-        handler_conf = self.env_config.get("handlers", {}).get(self.env_type, {})
-        run_cmd = handler_conf.get("run_cmd", [])
+        env_type_conf = self.env_config.get("env_type_conf", {})
+        run_cmd = env_type_conf.get("run_cmd", [])
         return [self.const_handler.parse_with_workspace(str(x)) for x in run_cmd]
 
 def get_resource_handler(language: str, env: str):

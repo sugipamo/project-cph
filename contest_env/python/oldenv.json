@@ -1,15 +1,14 @@
 {
   "python": {
-    "language_id": "5078",
+    "LANGUAGE_ID": "5078",
     "source_file": "main.py",
     "contest_current_path": "./contest_current",
     "exclude_patterns": [
       "^.*\\.log$",
       "^debug.*"
     ],
-    "env_types": {
+    "handlers": {
       "docker": {
-        "dockerfile_path": "./contest_env/python/Dockerfile",
         "run_cmd": ["python3", "{source_file}"],
         "build_cmd": []
       },
