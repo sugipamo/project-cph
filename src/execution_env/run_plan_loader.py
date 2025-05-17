@@ -64,9 +64,9 @@ class OjContext(EnvContext):
             contest_template_path=base.contest_template_path,
             contest_temp_path=base.contest_temp_path,
             language_id=base.language_id,
-            dockerfile_path=base.dockerfile_path,
-            build_cmd=base.build_cmd,
-            run_cmd=base.run_cmd,
+            dockerfile_path="./src/execution_env/oj/Dockerfile",
+            build_cmd=None,
+            run_cmd=None,
             test_cmd=["oj", "t", "-c", "{workspace_path}/{source_file_name}"],
             submit_cmd=["oj", "s", "{workspace_path}/{source_file_name}"]
         )
