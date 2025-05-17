@@ -29,10 +29,8 @@ class CompositeRequest(BaseRequest):
         results = []
         for req in self.requests:
             if hasattr(req, 'execute'):
-                try:
-                    results.append(req.execute(driver=driver))
-                except TypeError:
-                    results.append(req.execute())
+                results.append(req.execute(driver=driver))
+                
             else:
                 results.append(req)
         self._results = results
@@ -51,3 +49,15 @@ class CompositeRequest(BaseRequest):
         if len(requests) == 1:
             return requests[0]
         return cls(requests, debug_tag=debug_tag, name=name)
+
+    def count_leaf_requests(self):
+        """
+        再帰的に全ての葉(BaseRequestでCompositeRequestでないもの)の数を数える。
+        """
+        count = 0
+        for req in self.requests:
+            if isinstance(req, CompositeRequest):
+                count += req.count_leaf_requests()
+            else:
+                count += 1
+        return count

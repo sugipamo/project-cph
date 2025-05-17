@@ -21,18 +21,7 @@ class EnvWorkflowService:
             req = controller.get_run_command()
             requests.append(req)
             all_requests.append(CompositeRequest.make_composite_request(requests))
-
-            oj_context = OjContext.from_context(context)
-            oj_requests = []
-            if oj_context.test_cmd:
-                req = controller.create_process_options(oj_context.test_cmd)
-                oj_requests.append(req)
-            if oj_context.submit_cmd:
-                req = controller.create_process_options(oj_context.submit_cmd)
-                oj_requests.append(req)
-            all_requests.append(CompositeRequest.make_composite_request(oj_requests))
-
-        return all_requests
+        return CompositeRequest.make_composite_request(all_requests)
     
 def make_run_test_requests(language: str, env: str):
     # language, env からEnvContextを生成
@@ -42,9 +31,7 @@ def make_run_test_requests(language: str, env: str):
     # ワークフローサービスでrequest群を生成
     service = EnvWorkflowService()
     requests = service.generate_run_test_requests(env_contexts)
-    # ここではrequest群をprintするだけ
-    for i, req in enumerate(requests):
-        print(f"Request {i}: {req}")
+    print(requests)
 
 if __name__ == "__main__":
     #ここでコマンドうけつけ

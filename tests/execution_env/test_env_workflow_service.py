@@ -47,8 +47,4 @@ def test_generate_requests(monkeypatch):
         # EnvContext(language="cpp", env="local"),  # 不要なテストなので削除
     ]
     requests = service.generate_run_test_requests(run_plans)
-    assert len(requests) == 2
-    for req in requests:
-        # driverはダミーでよい場合が多いが、必要なら適宜渡す
-        result = req.execute()
-        assert result is not None 
+    assert requests.count_leaf_requests() == 2

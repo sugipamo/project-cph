@@ -93,6 +93,7 @@ class EnvResourceController:
             requests.append(copy_req)
 
         parsed_cmd = self.create_process_options([self.const_handler.parse(str(x)) for x in run_cmd])
+        requests.append(parsed_cmd)
         return CompositeRequest.make_composite_request(requests)
 
 def get_resource_handler(language: str, env: str):
