@@ -28,11 +28,7 @@ class CompositeRequest(BaseRequest):
             raise RuntimeError("This CompositeRequest has already been executed.")
         results = []
         for req in self.requests:
-            if hasattr(req, 'execute'):
-                results.append(req.execute(driver=driver))
-                
-            else:
-                results.append(req)
+            results.append(req.execute(driver=driver))
         self._results = results
         self._executed = True
         return results
