@@ -50,15 +50,11 @@ class BaseConstHandler(ABC):
     def test_case_out_path(self) -> Path:
         return self.test_case_path / "out"
     
-    @property
-    def build_output_path(self) -> str:
-        return Path(self.config.build_output_path)
-
     def parse(self, s: str) -> str:
         # 変数展開: {contest_current} など
         result = s
         result = result.replace("{workspace_path}", str(self.workspace_path))
-        result = result.replace("{contest_current}", str(self.contest_current_path))
+        result = result.replace("{contest_current_path}", str(self.contest_current_path))
         result = result.replace("{source_file}", str(self.source_file_name))
         result = result.replace("{source_file_name}", str(self.source_file_name))
         result = result.replace("{contest_env}", str(self.contest_env_path))

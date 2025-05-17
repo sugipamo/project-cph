@@ -1,5 +1,5 @@
 import pytest
-from src.operations.composite_request import CompositeRequest, flatten_results
+from src.operations.composite_request import CompositeRequest
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.result import OperationResult
 from src.operations.file.file_request import FileRequest, FileOpType
@@ -32,11 +32,10 @@ def test_composite_request_nested_flatten():
     req3 = FileRequest(FileOpType.WRITE, "/tmp/test_composite2.txt", content="baz")
     outer = CompositeRequest([inner, req3])
     results = [req1.execute(driver=shell_driver), req2.execute(driver=shell_driver), req3.execute(driver=driver)]
-    flat = flatten_results(results)
-    assert len(flat) == 3
-    assert any(r.operation_type == OperationType.SHELL and "foo" in r.stdout for r in flat)
-    assert any(r.operation_type == OperationType.SHELL and "bar" in r.stdout for r in flat)
-    assert any(r.operation_type == OperationType.FILE and r.success for r in flat)
+    assert len(results) == 3
+    assert any(r.operation_type == OperationType.SHELL and "foo" in r.stdout for r in results)
+    assert any(r.operation_type == OperationType.SHELL and "bar" in r.stdout for r in results)
+    assert any(r.operation_type == OperationType.FILE and r.success for r in results)
 
 def test_composite_request_invalid_type():
     # BaseRequestを継承しない型を渡すとTypeErrorになることを確認

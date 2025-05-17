@@ -70,29 +70,30 @@ class EnvResourceController:
         """
 
         requests = []
-        # ソースコードをworkspace内の所定の場所にコピーするリクエストを返す
-        src = str(self.const_handler.contest_current_path / self.const_handler.source_file_name)
-        dst = str(self.const_handler.workspace_path / self.const_handler.source_file_name)
-        copy_req = self.copy_file(src, dst)
-        requests.append(copy_req)
+        for src, dst in self.env_context.build_prepare_file_moves:
+            copy_req = self.copy_file(self.const_handler.parse(src), self.const_handler.parse(dst))
+            requests.append(copy_req)
 
-        # build_output_pathの利用例（成果物の出力先パスとして使う）
-        build_output_path = self.const_handler.build_output_path
-        # 必要に応じてbuild_cmdや他の処理でbuild_output_pathを使う
-
-        for build_cmd in self.env_context.build_cmd:
+        for build_cmd in self.env_context.build_cmds:
             parsed_cmd = [self.const_handler.parse(str(x)) for x in build_cmd]
             requests.append(self.create_process_options(parsed_cmd))
             
-        composite = CompositeRequest(requests)
-        return composite
+        return CompositeRequest.make_composite_request(requests)
 
     def get_run_command(self):
         """
         run_cmdをenv_contextから直接取得し、const_handlerでパースして返す
         """
         run_cmd = self.env_context.run_cmd or []
-        return self.create_process_options([self.const_handler.parse(str(x)) for x in run_cmd])
+        requests = []
+        for run_prepare_file_move in self.env_context.run_prepare_file_moves:
+            src = run_prepare_file_move["src"]
+            dst = run_prepare_file_move["dst"]
+            copy_req = self.copy_file(self.const_handler.parse(src), self.const_handler.parse(dst))
+            requests.append(copy_req)
+
+        parsed_cmd = self.create_process_options([self.const_handler.parse(str(x)) for x in run_cmd])
+        return CompositeRequest.make_composite_request(requests)
 
 def get_resource_handler(language: str, env: str):
     return EnvResourceController(EnvContext(language, env))

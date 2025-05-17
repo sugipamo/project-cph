@@ -14,13 +14,13 @@ class EnvWorkflowService:
         for context in env_contexts:
             requests = []
             controller = EnvResourceController.from_context(context)
-            if controller.env_context.build_cmd:
+            if controller.env_context.build_cmds:
                 req = controller.get_build_commands()
                 requests.append(req)
 
             req = controller.get_run_command()
             requests.append(req)
-            all_requests.append(CompositeRequest(requests))
+            all_requests.append(CompositeRequest.make_composite_request(requests))
 
             oj_context = OjContext.from_context(context)
             oj_requests = []
@@ -30,7 +30,7 @@ class EnvWorkflowService:
             if oj_context.submit_cmd:
                 req = controller.create_process_options(oj_context.submit_cmd)
                 oj_requests.append(req)
-            all_requests.append(CompositeRequest(oj_requests))
+            all_requests.append(CompositeRequest.make_composite_request(oj_requests))
 
         return all_requests
     

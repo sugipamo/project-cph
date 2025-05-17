@@ -9,7 +9,7 @@ class DummyController:
         self.env_type = env_type
         # 本物のEnvResourceControllerと同じインターフェースを持たせる
         self.env_context = self
-        self.build_cmd = DummyRequest(f"build:{self.language_name}:{self.env_type}")
+        self.build_cmds = [DummyRequest(f"build:{self.language_name}:{self.env_type}")]
         self.run_cmd = DummyRequest(f"run:{self.language_name}:{self.env_type}")
     @classmethod
     def from_plan(cls, plan):
@@ -22,7 +22,7 @@ class DummyController:
     def prepare_sourcecode(self):
         return DummyRequest(f"prepare_sourcecode:{self.language_name}:{self.env_type}")
     def get_build_commands(self):
-        return self.build_cmd
+        return DummyRequest(f"build:{self.language_name}:{self.env_type}")
     def get_run_command(self):
         return self.run_cmd
     def create_process_options(self, cmd):

@@ -15,6 +15,9 @@ class CompositeRequest(BaseRequest):
     def set_name(self, name: str):
         self.name = name
         return self
+    
+    def __len__(self):
+        return len(self.requests)
 
     @property
     def operation_type(self):
@@ -40,11 +43,11 @@ class CompositeRequest(BaseRequest):
         reqs_str = ",\n  ".join(repr(r) for r in self.requests)
         return f"<CompositeRequest name={self.name} [\n  {reqs_str}\n]>"
 
-def flatten_results(results):
-    flat = []
-    for r in results:
-        if isinstance(r, list):
-            flat.extend(flatten_results(r))
-        else:
-            flat.append(r)
-    return flat 
+    @classmethod
+    def make_composite_request(cls, requests, debug_tag=None, name=None):
+        """
+        requestsが1つだけならそのまま返し、2つ以上ならCompositeRequestでラップして返す。
+        """
+        if len(requests) == 1:
+            return requests[0]
+        return cls(requests, debug_tag=debug_tag, name=name)

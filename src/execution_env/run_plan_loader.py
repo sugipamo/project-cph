@@ -16,9 +16,11 @@ class EnvContext:
     contest_temp_path: str = None
     language_id: str = None
     dockerfile_path: str = None
-    build_cmd: Optional[list] = None
+    build_cmds: Optional[list] = None
     run_cmd: Optional[list] = None
     build_output_path: Optional[str] = None
+    run_prepare_file_moves: Optional[list] = None
+    build_prepare_file_moves: Optional[list] = None
 
     @classmethod
     def from_json(cls, language: str, env: str):
@@ -37,9 +39,11 @@ class EnvContext:
             contest_temp_path=lang_conf.get("contest_temp_path") or "temp",
             language_id=lang_conf.get("language_id"),
             dockerfile_path=env_type_conf.get("dockerfile_path"),
-            build_cmd=env_type_conf.get("build_cmd"),
+            build_cmds=env_type_conf.get("build_cmd"),
             run_cmd=env_type_conf.get("run_cmd"),
             build_output_path=lang_conf.get("build_output_path"),
+            run_prepare_file_moves=env_type_conf.get("run_prepare_file_moves", []),
+            build_prepare_file_moves=env_type_conf.get("build_prepare_file_moves", []),
         )
 
     def __post_init__(self):
@@ -64,7 +68,7 @@ class OjContext(EnvContext):
             contest_temp_path=base.contest_temp_path,
             language_id=None,
             dockerfile_path="./src/execution_env/oj/Dockerfile",
-            build_cmd=[],
+            build_cmds=[],
             run_cmd=[],
             test_cmd=["oj", "t", "-c", "{workspace_path}/{source_file_name}"],
             submit_cmd=["oj", "s", "{workspace_path}/{source_file_name}"],
