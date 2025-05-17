@@ -116,7 +116,19 @@ class EnvResourceController:
         self.file_handler.write(relative_path, content)
 
     def file_exists(self, relative_path: str) -> bool:
-        return self.file_handler.exists(relative_path) 
+        return self.file_handler.exists(relative_path)
+
+    def remove_file(self, relative_path: str):
+        return self.file_handler.remove(relative_path)
+
+    def move_file(self, src_path: str, dst_path: str):
+        return self.file_handler.move(src_path, dst_path)
+
+    def copytree(self, src_path: str, dst_path: str):
+        return self.file_handler.copytree(src_path, dst_path)
+
+    def rmtree(self, dir_path: str):
+        return self.file_handler.rmtree(dir_path)
 
 def get_resource_handler(language: str, env: str):
     return EnvResourceController(language, env)

@@ -2,6 +2,9 @@ import os
 from abc import ABC, abstractmethod
 from src.operations.file.file_request import FileRequest, FileOpType
 from pathlib import Path
+from src.operations.file.file_driver import LocalFileDriver
+from src.operations.docker.docker_file_request import DockerFileRequest
+from src.operations.docker.docker_driver import LocalDockerDriver
 
 class BaseFileHandler(ABC):
     def __init__(self, config: dict, const_handler):
@@ -21,49 +24,144 @@ class BaseFileHandler(ABC):
         pass
 
     @abstractmethod
-    def copy(self, relative_path: str, target_path: str, container: str, to_container: bool = None, docker_driver=None):
+    def copy(self, relative_path: str, target_path: str):
         pass
-    
+
+    @abstractmethod
+    def remove(self, relative_path: str):
+        pass
+
+    @abstractmethod
+    def move(self, src_path: str, dst_path: str):
+        pass
+
+    @abstractmethod
+    def copytree(self, src_path: str, dst_path: str):
+        pass
+
+    @abstractmethod
+    def rmtree(self, dir_path: str):
+        pass
 
 class DockerFileHandler(BaseFileHandler):
     def __init__(self, config: dict, const_handler):
         super().__init__(config, const_handler)
 
+    def _is_in_container(self, path: str) -> bool:
+        ws = Path(self.const_handler.workspace)
+        return str((ws / Path(path)).resolve()).startswith(str(ws.resolve()))
+
     def read(self, relative_path: str):
-        return FileRequest(FileOpType.READ, relative_path)
+        return FileRequest(FileOpType.READ, relative_path, driver=LocalFileDriver())
 
     def write(self, relative_path: str, content: str):
-        return FileRequest(FileOpType.WRITE, relative_path, content=content)
+        return FileRequest(FileOpType.WRITE, relative_path, driver=LocalFileDriver(), content=content)
 
     def exists(self, relative_path: str):
-        return FileRequest(FileOpType.EXISTS, relative_path)
+        return FileRequest(FileOpType.EXISTS, relative_path, driver=LocalFileDriver())
 
-    def copy(self, relative_path: str, target_path: str, container: str):
-        ws = Path(self.const_handler.workspace)
-        src = Path(relative_path)
-        dst = Path(target_path)
-        src_in_ws = str((ws / src).resolve()).startswith(str(ws.resolve()))
-        dst_in_ws = str((ws / dst).resolve()).startswith(str(ws.resolve()))
+    def copy(self, relative_path: str, target_path: str):
+        src_in_ws = self._is_in_container(relative_path)
+        dst_in_ws = self._is_in_container(target_path)
+        container = self.const_handler.container_name
         if src_in_ws and dst_in_ws:
-            return FileRequest(FileOpType.COPY, relative_path, dst_path=target_path)
+            return FileRequest(FileOpType.COPY, relative_path, driver=LocalFileDriver(), dst_path=target_path)
         # どちらかが外の場合
-        to_container = src_in_ws and not dst_in_ws
-        
-        return FileRequest(FileOpType.DOCKER_CP, relative_path, dst_path=target_path, container=container, to_container=to_container, docker_driver=LocalDockerDriver())
+        to_container = dst_in_ws and not src_in_ws
+        return DockerFileRequest(
+            src_path=relative_path,
+            dst_path=target_path,
+            container=container,
+            docker_driver=LocalDockerDriver(),
+            to_container=to_container
+        )
+
+    def move(self, src_path: str, dst_path: str):
+        src_in_ws = self._is_in_container(src_path)
+        dst_in_ws = self._is_in_container(dst_path)
+        container = self.const_handler.container_name
+        if src_in_ws and dst_in_ws:
+            return FileRequest(FileOpType.MOVE, src_path, driver=LocalFileDriver(), dst_path=dst_path)
+        # どちらかが外の場合はcopy+remove相当（ここではcopyのみ返す。上位層で合成も可）
+        to_container = dst_in_ws and not src_in_ws
+        return DockerFileRequest(
+            src_path=src_path,
+            dst_path=dst_path,
+            container=container,
+            docker_driver=LocalDockerDriver(),
+            to_container=to_container
+        )
+
+    def remove(self, relative_path: str):
+        in_ws = self._is_in_container(relative_path)
+        container = self.const_handler.container_name
+        if in_ws:
+            return FileRequest(FileOpType.REMOVE, relative_path, driver=LocalFileDriver())
+        # ホスト側のファイル削除（DOCKER_RM等があればそちらを使う。なければ例外や警告も検討）
+        # ここではDockerFileRequestで表現できる範囲で返す
+        return DockerFileRequest(
+            src_path=relative_path,
+            dst_path=None,
+            container=container,
+            docker_driver=LocalDockerDriver(),
+            to_container=False
+        )
+
+    def copytree(self, src_path: str, dst_path: str):
+        src_in_ws = self._is_in_container(src_path)
+        dst_in_ws = self._is_in_container(dst_path)
+        container = self.const_handler.container_name
+        if src_in_ws and dst_in_ws:
+            return FileRequest(FileOpType.COPYTREE, src_path, driver=LocalFileDriver(), dst_path=dst_path)
+        # どちらかが外の場合
+        to_container = dst_in_ws and not src_in_ws
+        return DockerFileRequest(
+            src_path=src_path,
+            dst_path=dst_path,
+            container=container,
+            docker_driver=LocalDockerDriver(),
+            to_container=to_container
+        )
+
+    def rmtree(self, dir_path: str):
+        in_ws = self._is_in_container(dir_path)
+        container = self.const_handler.container_name
+        if in_ws:
+            return FileRequest(FileOpType.RMTREE, dir_path, driver=LocalFileDriver())
+        # ホスト側のディレクトリ削除（DOCKER_RM等があればそちらを使う。なければ例外や警告も検討）
+        return DockerFileRequest(
+            src_path=dir_path,
+            dst_path=None,
+            container=container,
+            docker_driver=LocalDockerDriver(),
+            to_container=False
+        )
 
 class LocalFileHandler(BaseFileHandler):
     def __init__(self, config: dict, const_handler):
         super().__init__(config, const_handler)
 
     def read(self, relative_path: str):
-        return FileRequest(FileOpType.READ, relative_path)
+        return FileRequest(FileOpType.READ, relative_path, driver=LocalFileDriver())
 
     def write(self, relative_path: str, content: str):
-        return FileRequest(FileOpType.WRITE, relative_path, content=content)
+        return FileRequest(FileOpType.WRITE, relative_path, driver=LocalFileDriver(), content=content)
 
     def exists(self, relative_path: str):
-        return FileRequest(FileOpType.EXISTS, relative_path)
+        return FileRequest(FileOpType.EXISTS, relative_path, driver=LocalFileDriver())
 
     def copy(self, relative_path: str, target_path: str):
-        return FileRequest(FileOpType.COPY, relative_path, target_path)
+        return FileRequest(FileOpType.COPY, relative_path, driver=LocalFileDriver(), dst_path=target_path)
+
+    def remove(self, relative_path: str):
+        return FileRequest(FileOpType.REMOVE, relative_path, driver=LocalFileDriver())
+
+    def move(self, src_path: str, dst_path: str):
+        return FileRequest(FileOpType.MOVE, src_path, driver=LocalFileDriver(), dst_path=dst_path)
+
+    def copytree(self, src_path: str, dst_path: str):
+        return FileRequest(FileOpType.COPYTREE, src_path, driver=LocalFileDriver(), dst_path=dst_path)
+
+    def rmtree(self, dir_path: str):
+        return FileRequest(FileOpType.RMTREE, dir_path, driver=LocalFileDriver())
         
