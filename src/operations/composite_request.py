@@ -1,14 +1,18 @@
+from src.operations.base_request import BaseRequest
 from src.operations.operation_type import OperationType
 import inspect
 import os
-from src.operations.request_debug_info_mixin import RequestDebugInfoMixin
 
-class CompositeRequest(RequestDebugInfoMixin):
-    def __init__(self, requests, debug_tag=None):
+class CompositeRequest(BaseRequest):
+    def __init__(self, requests, debug_tag=None, name=None):
+        super().__init__(name=name, debug_tag=debug_tag)
         self.requests = requests
         self._executed = False
         self._results = None
-        self._set_debug_info(debug_tag)
+
+    def set_name(self, name: str):
+        self.name = name
+        return self
 
     @property
     def operation_type(self):
@@ -32,7 +36,7 @@ class CompositeRequest(RequestDebugInfoMixin):
 
     def __repr__(self):
         reqs_str = ",\n  ".join(repr(r) for r in self.requests)
-        return f"<CompositeRequest [\n  {reqs_str}\n]>"
+        return f"<CompositeRequest name={self.name} [\n  {reqs_str}\n]>"
 
 def flatten_results(results):
     flat = []

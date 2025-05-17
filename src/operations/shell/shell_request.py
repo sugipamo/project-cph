@@ -3,10 +3,11 @@ from src.operations.result import OperationResult
 from src.operations.operation_type import OperationType
 import inspect
 import os
-from src.operations.request_debug_info_mixin import RequestDebugInfoMixin
+from src.operations.base_request import BaseRequest
 
-class ShellRequest(RequestDebugInfoMixin):
-    def __init__(self, cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None):
+class ShellRequest(BaseRequest):
+    def __init__(self, cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None):
+        super().__init__(name=name, debug_tag=debug_tag)
         self.cmd = cmd
         self.cwd = cwd
         self.env = env
@@ -14,7 +15,6 @@ class ShellRequest(RequestDebugInfoMixin):
         self.timeout = timeout
         self._executed = False
         self._result = None
-        self._set_debug_info(debug_tag)
 
     @property
     def operation_type(self):

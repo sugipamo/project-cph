@@ -1,7 +1,15 @@
 import inspect
 import os
 
-class RequestDebugInfoMixin:
+class BaseRequest:
+    def __init__(self, name=None, debug_tag=None):
+        self.name = name
+        self._set_debug_info(debug_tag)
+
+    def set_name(self, name: str):
+        self.name = name
+        return self
+
     def _set_debug_info(self, debug_tag=None):
         if os.environ.get("CPH_DEBUG_REQUEST_INFO", "1") != "1":
             self.debug_info = None

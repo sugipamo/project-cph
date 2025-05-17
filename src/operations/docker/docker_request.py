@@ -5,7 +5,7 @@ from src.operations.result import OperationResult
 from src.operations.operation_type import OperationType
 import inspect
 import os
-from src.operations.request_debug_info_mixin import RequestDebugInfoMixin
+from src.operations.base_request import BaseRequest
 
 class DockerOpType(Enum):
     RUN = auto()
@@ -14,8 +14,9 @@ class DockerOpType(Enum):
     EXEC = auto()
     LOGS = auto()
 
-class DockerRequest(RequestDebugInfoMixin):
+class DockerRequest(BaseRequest):
     def __init__(self, op: DockerOpType, image: str = None, name: str = None, command: str = None, options: Optional[Dict[str, Any]] = None, debug_tag=None):
+        super().__init__(name=name, debug_tag=debug_tag)
         self.op = op
         self.image = image
         self.name = name
@@ -23,7 +24,6 @@ class DockerRequest(RequestDebugInfoMixin):
         self.options = options or {}
         self._executed = False
         self._result = None
-        self._set_debug_info(debug_tag)
 
     @property
     def operation_type(self):

@@ -54,16 +54,16 @@ class OjContext(EnvContext):
     @classmethod
     def from_context(cls, base: EnvContext):
         return cls(
-            language="oj",
+            language=None,
             env=base.env,
-            count=base.count,
+            count=1,
             contest_current_path=base.contest_current_path,
             source_file=base.source_file,
             source_file_name=base.source_file_name,
             contest_env_path=base.contest_env_path,
             contest_template_path=base.contest_template_path,
             contest_temp_path=base.contest_temp_path,
-            language_id=base.language_id,
+            language_id=None,
             dockerfile_path="./src/execution_env/oj/Dockerfile",
             build_cmd=None,
             run_cmd=None,

@@ -1,9 +1,11 @@
 from typing import List, Optional
 from src.operations.result import OperationResult
 from src.operations.operation_type import OperationType
+from src.operations.base_request import BaseRequest
 
-class MockShellRequest:
-    def __init__(self, cmd: List[str], stdout: str = "", stderr: str = "", returncode: int = 0, env=None, inputdata=None, timeout=None):
+class MockShellRequest(BaseRequest):
+    def __init__(self, cmd: List[str], stdout: str = "", stderr: str = "", returncode: int = 0, env=None, inputdata=None, timeout=None, name=None, debug_tag=None):
+        super().__init__(name=name, debug_tag=debug_tag)
         self.cmd = cmd
         self.env = env
         self.inputdata = inputdata

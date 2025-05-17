@@ -2,7 +2,7 @@ from enum import Enum, auto
 from src.operations.operation_type import OperationType
 from src.operations.file.file_driver import LocalFileDriver
 from src.operations.result import OperationResult
-from src.operations.request_debug_info_mixin import RequestDebugInfoMixin
+from src.operations.base_request import BaseRequest
 import inspect
 import os
 
@@ -16,15 +16,19 @@ class FileOpType(Enum):
     REMOVE = auto()
     RMTREE = auto()
 
-class FileRequest(RequestDebugInfoMixin):
-    def __init__(self, op: FileOpType, path, content=None, dst_path=None, debug_tag=None):
+class FileRequest(BaseRequest):
+    def __init__(self, op: FileOpType, path, content=None, dst_path=None, debug_tag=None, name=None):
+        super().__init__(name=name, debug_tag=debug_tag)
         self.op = op  # FileOpType
         self.path = path
         self.content = content
+        self.dst_path = dst_path  # move/copy/copytree用
         self._executed = False
         self._result = None
-        self.dst_path = dst_path  # move/copy/copytree用
-        self._set_debug_info(debug_tag)
+
+    def set_name(self, name: str):
+        self.name = name
+        return self
 
     @property
     def operation_type(self):
@@ -78,4 +82,4 @@ class FileRequest(RequestDebugInfoMixin):
         return self._result 
 
     def __repr__(self):
-        return f"<FileRequest op={self.op} path={self.path} dst={getattr(self, 'dst_path', None)} content={getattr(self, 'content', None)} >" 
+        return f"<FileRequest name={self.name} op={self.op} path={self.path} dst={getattr(self, 'dst_path', None)} content={getattr(self, 'content', None)} >" 
