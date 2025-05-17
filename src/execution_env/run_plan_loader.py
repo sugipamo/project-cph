@@ -8,7 +8,6 @@ BASE_DIR = "contest_env"
 class EnvContext:
     language: str
     env: str
-    count: int = 1
     contest_current_path: str = None
     source_file: str = None
     source_file_name: str = None
@@ -21,7 +20,7 @@ class EnvContext:
     run_cmd: Optional[list] = None
 
     @classmethod
-    def from_json(cls, language: str, env: str, count: int = 1):
+    def from_json(cls, language: str, env: str):
         env_json = load_env_json(language, env)
         lang_conf = env_json.get(language, {})
         env_types = lang_conf.get("env_types", {})
@@ -29,7 +28,6 @@ class EnvContext:
         return cls(
             language=language,
             env=env,
-            count=count,
             contest_current_path=lang_conf.get("contest_current_path") or ".",
             source_file=lang_conf.get("source_file"),
             source_file_name=lang_conf.get("source_file_name"),
@@ -56,7 +54,6 @@ class OjContext(EnvContext):
         return cls(
             language=None,
             env=base.env,
-            count=1,
             contest_current_path=base.contest_current_path,
             source_file=base.source_file,
             source_file_name=base.source_file_name,
@@ -65,8 +62,8 @@ class OjContext(EnvContext):
             contest_temp_path=base.contest_temp_path,
             language_id=None,
             dockerfile_path="./src/execution_env/oj/Dockerfile",
-            build_cmd=None,
-            run_cmd=None,
+            build_cmd=[],
+            run_cmd=[],
             test_cmd=["oj", "t", "-c", "{workspace_path}/{source_file_name}"],
             submit_cmd=["oj", "s", "{workspace_path}/{source_file_name}"]
         )
@@ -115,9 +112,9 @@ def list_language_envs() -> List[tuple]:
                 continue
     return result
 
-def load_env_context_from_language_env(language: str, env: str, count: int = 1) -> EnvContext:
+def load_env_context_from_language_env(language: str, env: str) -> EnvContext:
     """
     language, envから設定ファイルパスを解決し、EnvContextを生成
     例: contest_env/python/env.json など
     """
-    return EnvContext.from_json(language, env, count)
+    return EnvContext.from_json(language, env)

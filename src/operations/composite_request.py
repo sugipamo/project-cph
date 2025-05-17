@@ -6,6 +6,8 @@ import os
 class CompositeRequest(BaseRequest):
     def __init__(self, requests, debug_tag=None, name=None):
         super().__init__(name=name, debug_tag=debug_tag)
+        if not all(isinstance(r, BaseRequest) for r in requests):
+            raise TypeError("All elements of 'requests' must be BaseRequest (or its subclass)")
         self.requests = requests
         self._executed = False
         self._results = None

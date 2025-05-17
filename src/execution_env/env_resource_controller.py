@@ -1,6 +1,7 @@
 from src.execution_env.resource_handler.file_handler import DockerFileHandler, LocalFileHandler
 from src.execution_env.resource_handler.run_handler import LocalRunHandler, DockerRunHandler
 from src.execution_env.resource_handler.const_handler import DockerConstHandler, LocalConstHandler
+from src.operations.composite_request import CompositeRequest
 from src.operations.di_container import DIContainer
 from src.execution_env.run_plan_loader import load_env_json, EnvContext
 
@@ -63,30 +64,31 @@ class EnvResourceController:
     def copy_file(self, src_path: str, dst_path: str):
         return self.file_handler.copy(src_path, dst_path)
 
-    def prepare_sourcecode(self):
-        """
-        ソースコードをworkspace内の所定の場所にコピーするリクエストを返す
-        """
-        src = str(self.const_handler.contest_current_path / self.const_handler.source_file_name)
-        dst = str(self.const_handler.workspace_path / self.const_handler.source_file_name)
-        return self.copy_file(src, dst)
-
     def get_build_commands(self):
         """
         build_cmdをenv_contextから直接取得し、const_handlerでパースして返す
         """
-        build_cmds = self.env_context.build_cmd or []
-        return [
-            [self.const_handler.parse(str(x)) for x in build_cmd]
-            for build_cmd in build_cmds
-        ]
+
+        requests = []
+        # ソースコードをworkspace内の所定の場所にコピーするリクエストを返す
+        src = str(self.const_handler.contest_current_path / self.const_handler.source_file_name)
+        dst = str(self.const_handler.workspace_path / self.const_handler.source_file_name)
+        copy_req = self.copy_file(src, dst)
+        requests.append(copy_req)
+
+        for build_cmd in self.env_context.build_cmd:
+            parsed_cmd = [self.const_handler.parse(str(x)) for x in build_cmd]
+            requests.append(self.create_process_options(parsed_cmd))
+            
+        composite = CompositeRequest(requests)
+        return composite
 
     def get_run_command(self):
         """
         run_cmdをenv_contextから直接取得し、const_handlerでパースして返す
         """
         run_cmd = self.env_context.run_cmd or []
-        return [self.const_handler.parse(str(x)) for x in run_cmd]
+        return self.create_process_options([self.const_handler.parse(str(x)) for x in run_cmd])
 
 def get_resource_handler(language: str, env: str):
     return EnvResourceController(EnvContext(language, env))
