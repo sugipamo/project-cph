@@ -24,23 +24,23 @@ class BaseFileHandler(ABC):
         pass
 
     @abstractmethod
-    def copy(self, relative_path: str, target_path: str, docker_driver=None):
+    def copy(self, relative_path: str, target_path: str):
         pass
 
     @abstractmethod
-    def remove(self, relative_path: str, docker_driver=None):
+    def remove(self, relative_path: str):
         pass
 
     @abstractmethod
-    def move(self, src_path: str, dst_path: str, docker_driver=None):
+    def move(self, src_path: str, dst_path: str):
         pass
 
     @abstractmethod
-    def copytree(self, src_path: str, dst_path: str, docker_driver=None):
+    def copytree(self, src_path: str, dst_path: str):
         pass
 
     @abstractmethod
-    def rmtree(self, dir_path: str, docker_driver=None):
+    def rmtree(self, dir_path: str):
         pass
 
 class DockerFileHandler(BaseFileHandler):
@@ -60,7 +60,7 @@ class DockerFileHandler(BaseFileHandler):
     def exists(self, relative_path: str):
         return FileRequest(FileOpType.EXISTS, relative_path)
 
-    def copy(self, relative_path: str, target_path: str, docker_driver=None):
+    def copy(self, relative_path: str, target_path: str):
         src_in_ws = self._is_in_container(relative_path)
         dst_in_ws = self._is_in_container(target_path)
         container = self.const_handler.container_name
@@ -73,11 +73,10 @@ class DockerFileHandler(BaseFileHandler):
             dst_path=target_path,
             container=container
         )
-        req.docker_driver = docker_driver
         req.to_container = to_container
         return req
 
-    def move(self, src_path: str, dst_path: str, docker_driver=None):
+    def move(self, src_path: str, dst_path: str):
         src_in_ws = self._is_in_container(src_path)
         dst_in_ws = self._is_in_container(dst_path)
         container = self.const_handler.container_name
@@ -90,11 +89,10 @@ class DockerFileHandler(BaseFileHandler):
             dst_path=dst_path,
             container=container
         )
-        req.docker_driver = docker_driver
         req.to_container = to_container
         return req
 
-    def remove(self, relative_path: str, docker_driver=None):
+    def remove(self, relative_path: str):
         in_ws = self._is_in_container(relative_path)
         container = self.const_handler.container_name
         if in_ws:
@@ -106,11 +104,10 @@ class DockerFileHandler(BaseFileHandler):
             dst_path=None,
             container=container
         )
-        req.docker_driver = docker_driver
         req.to_container = False
         return req
 
-    def copytree(self, src_path: str, dst_path: str, docker_driver=None):
+    def copytree(self, src_path: str, dst_path: str):
         src_in_ws = self._is_in_container(src_path)
         dst_in_ws = self._is_in_container(dst_path)
         container = self.const_handler.container_name
@@ -123,11 +120,10 @@ class DockerFileHandler(BaseFileHandler):
             dst_path=dst_path,
             container=container
         )
-        req.docker_driver = docker_driver
         req.to_container = to_container
         return req
 
-    def rmtree(self, dir_path: str, docker_driver=None):
+    def rmtree(self, dir_path: str):
         in_ws = self._is_in_container(dir_path)
         container = self.const_handler.container_name
         if in_ws:
@@ -138,7 +134,6 @@ class DockerFileHandler(BaseFileHandler):
             dst_path=None,
             container=container
         )
-        req.docker_driver = docker_driver
         req.to_container = False
         return req
 
