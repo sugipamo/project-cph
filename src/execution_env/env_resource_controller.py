@@ -5,41 +5,36 @@ from src.operations.di_container import DIContainer
 from src.execution_env.run_plan_loader import load_env_json, EnvContext
 
 class EnvResourceController:
-    def __init__(self, env_context: EnvContext, file_handler=None, run_handler=None, const_handler=None):
+    def __init__(self, env_context: EnvContext, file_handler, run_handler, const_handler):
         self.env_context = env_context
         self.language_name = env_context.language
         self.env_type = env_context.env
-        # テスト用: 依存注入があればそれを使う
-        if file_handler or run_handler or const_handler:
-            self.const_handler = const_handler
-            self.run_handler = run_handler
-            self.file_handler = file_handler
-            return
-        # DIコンテナのセットアップ
+        self.const_handler = const_handler
+        self.run_handler = run_handler
+        self.file_handler = file_handler
+
+    @classmethod
+    def from_context(cls, env_context):
+        """
+        EnvContextからEnvResourceControllerを生成するファクトリメソッド。
+        DIセットアップもここで行う。
+        """
         container = DIContainer()
-        # provider登録
         container.register("LocalConstHandler", lambda: LocalConstHandler(env_context))
         container.register("DockerConstHandler", lambda: DockerConstHandler(env_context))
         container.register("LocalRunHandler", lambda: LocalRunHandler(env_context, container.resolve("LocalConstHandler")))
         container.register("DockerRunHandler", lambda: DockerRunHandler(env_context, container.resolve("DockerConstHandler")))
         container.register("LocalFileHandler", lambda: LocalFileHandler(env_context, container.resolve("LocalConstHandler")))
         container.register("DockerFileHandler", lambda: DockerFileHandler(env_context, container.resolve("DockerConstHandler")))
-        # HandlerのDI取得
         if env_context.env.lower() == "docker":
-            self.const_handler = container.resolve("DockerConstHandler")
-            self.run_handler = container.resolve("DockerRunHandler")
-            self.file_handler = container.resolve("DockerFileHandler")
+            const_handler = container.resolve("DockerConstHandler")
+            run_handler = container.resolve("DockerRunHandler")
+            file_handler = container.resolve("DockerFileHandler")
         else:
-            self.const_handler = container.resolve("LocalConstHandler")
-            self.run_handler = container.resolve("LocalRunHandler")
-            self.file_handler = container.resolve("LocalFileHandler")
-
-    @classmethod
-    def from_context(cls, env_context):
-        """
-        EnvContextからEnvResourceControllerを生成するファクトリメソッド。
-        """
-        return cls(env_context)
+            const_handler = container.resolve("LocalConstHandler")
+            run_handler = container.resolve("LocalRunHandler")
+            file_handler = container.resolve("LocalFileHandler")
+        return cls(env_context, file_handler, run_handler, const_handler)
 
     def create_process_options(self, cmd: list):
         return self.run_handler.create_process_options(cmd)

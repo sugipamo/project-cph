@@ -10,8 +10,8 @@ class DummyController:
     def from_plan(cls, plan):
         return cls(language_name=plan.language, env_type=plan.env)
     @classmethod
-    def from_context(cls, context):
-        return cls(language_name=getattr(context, 'language', None), env_type=getattr(context, 'env', None))
+    def from_context(cls, env_context):
+        return cls(language_name=getattr(env_context, 'language', None), env_type=getattr(env_context, 'env', None))
     def copy_file(self, src, dst):
         return f"copy:{self.language_name}:{self.env_type}:{src}->{dst}"
     def prepare_sourcecode(self):
