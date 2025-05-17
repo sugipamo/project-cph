@@ -1,5 +1,5 @@
 import pytest
-from src.execution_env.env_workflow_service import EnvWorkflowService, RunPlan
+from src.execution_env.env_workflow_service import EnvWorkflowService, EnvContext
 from src.operations.composite_request import CompositeRequest
 
 class DummyController:
@@ -34,8 +34,8 @@ def test_generate_requests(monkeypatch):
     monkeypatch.setattr(workflow_mod, "EnvResourceController", DummyController)
     service = EnvWorkflowService()
     run_plans = [
-        RunPlan(language="python", env="docker", count=2),
-        # RunPlan(language="cpp", env="local", count=1),  # 不要なテストなので削除
+        EnvContext(language="python", env="docker", count=2),
+        # EnvContext(language="cpp", env="local", count=1),  # 不要なテストなので削除
     ]
     requests = service.generate_requests(run_plans)
     assert len(requests) == 2

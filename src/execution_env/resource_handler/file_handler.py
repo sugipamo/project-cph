@@ -4,9 +4,10 @@ from src.operations.file.file_request import FileRequest, FileOpType
 from pathlib import Path
 from src.operations.file.file_driver import LocalFileDriver
 from src.operations.docker.docker_file_request import DockerFileRequest
+from src.execution_env.run_plan_loader import EnvContext
 
 class BaseFileHandler(ABC):
-    def __init__(self, config: dict, const_handler):
+    def __init__(self, config: EnvContext, const_handler):
         self.config = config
         self.const_handler = const_handler
 
@@ -43,7 +44,7 @@ class BaseFileHandler(ABC):
         pass
 
 class DockerFileHandler(BaseFileHandler):
-    def __init__(self, config: dict, const_handler):
+    def __init__(self, config: EnvContext, const_handler):
         super().__init__(config, const_handler)
 
     def _is_in_container(self, path: str) -> bool:
@@ -142,7 +143,7 @@ class DockerFileHandler(BaseFileHandler):
         return req
 
 class LocalFileHandler(BaseFileHandler):
-    def __init__(self, config: dict, const_handler):
+    def __init__(self, config: EnvContext, const_handler):
         super().__init__(config, const_handler)
 
     def read(self, relative_path: str):

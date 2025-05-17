@@ -1,29 +1,29 @@
 from typing import List
 from src.execution_env.env_resource_controller import EnvResourceController
 from src.operations.composite_request import CompositeRequest
-from src.execution_env.run_plan_loader import load_run_plan_from_language_env, load_env_json
-from src.execution_env.run_plan_loader import RunPlan
+from src.execution_env.run_plan_loader import load_env_context_from_language_env, load_env_json
+from src.execution_env.run_plan_loader import EnvContext
 
 
 class EnvWorkflowService:
     def __init__(self):
         pass
 
-    def generate_requests(self, run_plans: List[RunPlan]):
+    def generate_requests(self, env_contexts: List[EnvContext]):
         """
-        run_plans例:
+        env_contexts例:
         [
-            RunPlan(language="python", env="docker", count=2),
-            RunPlan(language="cpp", env="local", count=1),
+            EnvContext(language="python", env="docker", count=2),
+            EnvContext(language="cpp", env="local", count=1),
         ]
-        各planごとに必要なrequest群（CompositeRequest等）を生成して返す
+        各env_contextごとに必要なrequest群（CompositeRequest等）を生成して返す
         ビルド用ファイル準備→ビルド実行→成果物準備→起動
         """
         all_requests = []
-        for plan in run_plans:
-            for i in range(plan.count):
+        for context in env_contexts:
+            for i in range(context.count):
                 # controller生成
-                controller = EnvResourceController.from_plan(plan)
+                controller = EnvResourceController.from_plan(context)
                 requests = []
                 # 1. ビルド用ファイル準備（prepare_sourcecodeを利用）
                 requests.append(controller.prepare_sourcecode())
@@ -42,12 +42,12 @@ class EnvWorkflowService:
         return all_requests 
     
 def make_service(language: str, env: str, count: int = 1):
-    # language, env からRunPlanを生成
-    run_plan = load_run_plan_from_language_env(language, env, count)
-    run_plans = [run_plan]
+    # language, env からEnvContextを生成
+    env_context = load_env_context_from_language_env(language, env, count)
+    env_contexts = [env_context]
     # ワークフローサービスでrequest群を生成
     service = EnvWorkflowService()
-    requests = service.generate_requests(run_plans)
+    requests = service.generate_requests(env_contexts)
     # ここではrequest群をprintするだけ
     for i, req in enumerate(requests):
         print(f"Request {i}: {req}")

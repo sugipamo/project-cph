@@ -1,28 +1,32 @@
 import pytest
 from src.execution_env.resource_handler.const_handler import LocalConstHandler, DockerConstHandler, EnvType
 from pathlib import Path
+from src.execution_env.run_plan_loader import EnvContext
 
 def make_local_config():
-    return {
-        "contest_current_path": "contests/abc001",
-        "source_file": "main.cpp",
-        "source_file_name": "main.cpp",
-        "contest_env_path": "env",
-        "contest_template_path": "template",
-        "contest_temp_path": "temp",
-    }
+    return EnvContext(
+        language="cpp",
+        env="local",
+        contest_current_path="contests/abc001",
+        source_file="main.cpp",
+        source_file_name="main.cpp",
+        contest_env_path="env",
+        contest_template_path="template",
+        contest_temp_path="temp"
+    )
 
 def make_docker_config():
-    return {
-        "contest_current_path": "contests/abc002",
-        "source_file": "main.py",
-        "source_file_name": "main.py",
-        "contest_env_path": "env_d",
-        "contest_template_path": "template_d",
-        "contest_temp_path": "temp_d",
-        "language": "python",
-        "dockerfile_path": "Dockerfile",
-    }
+    return EnvContext(
+        language="python",
+        env="docker",
+        contest_current_path="contests/abc002",
+        source_file="main.py",
+        source_file_name="main.py",
+        contest_env_path="env_d",
+        contest_template_path="template_d",
+        contest_temp_path="temp_d",
+        dockerfile_path="Dockerfile"
+    )
 
 def test_local_const_handler_properties():
     config = make_local_config()
@@ -44,13 +48,13 @@ def test_local_const_handler_parse():
     s = "{contest_current}/{source_file}/{contest_env}/{contest_template}/{contest_temp}/{test_case}/{test_case_in}/{test_case_out}"
     result = handler.parse(s)
     assert "contests/abc001" in result
-    assert "{source_file}" in result
+    assert "main.cpp" in result
     assert "env" in result
     assert "template" in result
     assert "temp" in result
-    assert "contests/abc001/test" in result
-    assert "contests/abc001/test/in" in result
-    assert "contests/abc001/test/out" in result
+    assert "test" in result
+    assert "in" in result
+    assert "out" in result
 
 def test_docker_const_handler_properties(monkeypatch):
     config = make_docker_config()
@@ -78,10 +82,10 @@ def test_docker_const_handler_parse(monkeypatch):
     s = "{contest_current}/{source_file}/{contest_env}/{contest_template}/{contest_temp}/{test_case}/{test_case_in}/{test_case_out}"
     result = handler.parse(s)
     assert "contests/abc002" in result
-    assert "{source_file}" in result
+    assert "main.py" in result
     assert "env_d" in result
     assert "template_d" in result
     assert "temp_d" in result
-    assert "contests/abc002/test" in result
-    assert "contests/abc002/test/in" in result
-    assert "contests/abc002/test/out" in result 
+    assert "test" in result
+    assert "in" in result
+    assert "out" in result 

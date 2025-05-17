@@ -2,10 +2,11 @@ from abc import ABC, abstractmethod
 from typing import List
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
+from src.execution_env.run_plan_loader import EnvContext
 
 
 class BaseRunHandler(ABC):
-    def __init__(self, config: dict, const_handler):
+    def __init__(self, config: EnvContext, const_handler):
         self.config = config
         self.const_handler = const_handler
 
@@ -14,14 +15,14 @@ class BaseRunHandler(ABC):
         pass
 
 class LocalRunHandler(BaseRunHandler):
-    def __init__(self, config: dict, const_handler):
+    def __init__(self, config: EnvContext, const_handler):
         super().__init__(config, const_handler)
     def create_process_options(self, cmd: list) -> ShellRequest:
         # コマンド配列内の各要素に対して変数展開
         return ShellRequest(cmd)
 
 class DockerRunHandler(BaseRunHandler):
-    def __init__(self, config: dict, const_handler):
+    def __init__(self, config: EnvContext, const_handler):
         super().__init__(config, const_handler)
 
     def create_process_options(self, cmd: list) -> DockerRequest:

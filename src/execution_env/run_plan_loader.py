@@ -2,38 +2,58 @@ import os
 import json
 from typing import List
 from dataclasses import dataclass
-# 新規追加: language, envtypeからRunPlanを生成
+# 新規追加: language, envtypeからEnvContextを生成
 BASE_DIR = "contest_env"
+OJ_ENV_PATH = os.path.join("src", "execution_env", "oj", "env.json")
 
 @dataclass
-class RunPlan:
+class EnvContext:
     language: str
     env: str
     count: int = 1
-    # 今後必要なら追加パラメータもここに
+    contest_current_path: str = None
+    source_file: str = None
+    source_file_name: str = None
+    contest_env_path: str = None
+    contest_template_path: str = None
+    contest_temp_path: str = None
+    language_id: str = None
+    dockerfile_path: str = None
+    env_type_conf: dict = None
 
-def load_run_plans_from_json(path: str) -> List[RunPlan]:
-    """
-    指定パスのjsonファイルからRunPlanのリストを生成して返す
-    例：
-    [
-        {"language": "python", "env": "docker", "count": 2},
-        {"language": "cpp", "env": "local", "count": 1}
-    ]
-    """
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    run_plans = [RunPlan(**item) for item in data]
-    return run_plans
+    @classmethod
+    def from_json(cls, language: str, env: str, count: int = 1):
+        env_json = load_env_json(language, env)
+        lang_conf = env_json.get(language, {})
+        env_types = lang_conf.get("env_types", {})
+        env_type_conf = env_types.get(env, {})
+        return cls(
+            language=language,
+            env=env,
+            count=count,
+            contest_current_path=lang_conf.get("contest_current_path") or ".",
+            source_file=lang_conf.get("source_file"),
+            source_file_name=lang_conf.get("source_file_name"),
+            contest_env_path=lang_conf.get("contest_env_path") or "env",
+            contest_template_path=lang_conf.get("contest_template_path") or "template",
+            contest_temp_path=lang_conf.get("contest_temp_path") or "temp",
+            language_id=lang_conf.get("language_id"),
+            dockerfile_path=env_type_conf.get("dockerfile_path"),
+            env_type_conf=env_type_conf
+        )
 
+    def __post_init__(self):
+        # デフォルトでは何もしない（from_jsonでのみenv.jsonをロード）
+        pass
 
 def load_env_json(language: str, env: str) -> dict:
+    # 通常のenv.json
     json_path = os.path.join(BASE_DIR, language, "env.json")
     if not os.path.exists(json_path):
         raise ValueError(f"env.json not found for language={language}")
     with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return data
+        base_data = json.load(f)
+    return base_data
 
 def list_languages() -> List[str]:
     base_dir = BASE_DIR
@@ -70,16 +90,9 @@ def list_language_envs() -> List[tuple]:
                 continue
     return result
 
-def load_run_plan_from_language_env(language: str, env: str, count: int = 1) -> RunPlan:
+def load_env_context_from_language_env(language: str, env: str, count: int = 1) -> EnvContext:
     """
-    language, envから設定ファイルパスを解決し、RunPlanを生成
+    language, envから設定ファイルパスを解決し、EnvContextを生成
     例: contest_env/python/env.json など
     """
-    json_path = os.path.join(BASE_DIR, language, "env.json")
-    if not os.path.exists(json_path):
-        raise ValueError(f"env.json not found for language={language}")
-    with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    # 必要なパラメータをenv.jsonから取得
-    # ここでは例としてlanguage, env, countのみをRunPlanに渡す
-    return RunPlan(language=language, env=env, count=count) 
+    return EnvContext.from_json(language, env, count)

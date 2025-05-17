@@ -2,36 +2,30 @@ from src.execution_env.resource_handler.file_handler import DockerFileHandler, L
 from src.execution_env.resource_handler.run_handler import LocalRunHandler, DockerRunHandler
 from src.execution_env.resource_handler.const_handler import DockerConstHandler, LocalConstHandler
 from src.operations.di_container import DIContainer
-from src.execution_env.run_plan_loader import load_env_json
+from src.execution_env.run_plan_loader import load_env_json, EnvContext
 
 class EnvResourceController:
-    def __init__(self, language_name=None, env_type=None, env_config=None, file_handler=None, run_handler=None, const_handler=None):
+    def __init__(self, env_context: EnvContext, file_handler=None, run_handler=None, const_handler=None):
+        self.env_context = env_context
+        self.language_name = env_context.language
+        self.env_type = env_context.env
         # テスト用: 依存注入があればそれを使う
         if file_handler or run_handler or const_handler:
-            self.language_name = language_name
-            self.env_type = env_type
             self.const_handler = const_handler
             self.run_handler = run_handler
             self.file_handler = file_handler
-            self.env_config = env_config if env_config is not None else {}
             return
-        self.language_name = language_name
-        self.env_type = env_type
-        # env_configは必ずパース済みデータとして渡す
-        if env_config is None:
-            raise ValueError("env_config must be provided (parsed config dict)")
-        self.env_config = env_config
         # DIコンテナのセットアップ
         container = DIContainer()
         # provider登録
-        container.register("LocalConstHandler", lambda: LocalConstHandler(env_config))
-        container.register("DockerConstHandler", lambda: DockerConstHandler(env_config))
-        container.register("LocalRunHandler", lambda: LocalRunHandler(env_config, container.resolve("LocalConstHandler")))
-        container.register("DockerRunHandler", lambda: DockerRunHandler(env_config, container.resolve("DockerConstHandler")))
-        container.register("LocalFileHandler", lambda: LocalFileHandler(env_config, container.resolve("LocalConstHandler")))
-        container.register("DockerFileHandler", lambda: DockerFileHandler(env_config, container.resolve("DockerConstHandler")))
+        container.register("LocalConstHandler", lambda: LocalConstHandler(env_context))
+        container.register("DockerConstHandler", lambda: DockerConstHandler(env_context))
+        container.register("LocalRunHandler", lambda: LocalRunHandler(env_context, container.resolve("LocalConstHandler")))
+        container.register("DockerRunHandler", lambda: DockerRunHandler(env_context, container.resolve("DockerConstHandler")))
+        container.register("LocalFileHandler", lambda: LocalFileHandler(env_context, container.resolve("LocalConstHandler")))
+        container.register("DockerFileHandler", lambda: DockerFileHandler(env_context, container.resolve("DockerConstHandler")))
         # HandlerのDI取得
-        if env_config["env_type"].lower() == "docker":
+        if env_context.env.lower() == "docker":
             self.const_handler = container.resolve("DockerConstHandler")
             self.run_handler = container.resolve("DockerRunHandler")
             self.file_handler = container.resolve("DockerFileHandler")
@@ -41,27 +35,11 @@ class EnvResourceController:
             self.file_handler = container.resolve("LocalFileHandler")
 
     @classmethod
-    def from_plan(cls, plan):
+    def from_plan(cls, env_context):
         """
-        RunPlanからEnvResourceControllerを生成するファクトリメソッド。
-        env_jsonのロードやenv_configのdict生成もここでまとめる。
+        EnvContextからEnvResourceControllerを生成するファクトリメソッド。
         """
-        env_json = load_env_json(plan.language, plan.env)
-        lang_conf = env_json.get(plan.language, {})
-        env_types = lang_conf.get("env_types", {})
-        env_type_conf = env_types.get(plan.env, {})
-        env_config = dict(lang_conf)
-        env_config["env_type"] = plan.env
-        env_config["contest_current_path"] = lang_conf.get("contest_current_path", ".")
-        env_config["source_file"] = lang_conf.get("source_file")
-        env_config["contest_env_path"] = lang_conf.get("contest_env_path", "env")
-        env_config["contest_template_path"] = lang_conf.get("contest_template_path", "template")
-        env_config["contest_temp_path"] = lang_conf.get("contest_temp_path", "temp")
-        env_config["language"] = plan.language
-        env_config["env_type_conf"] = env_type_conf
-        env_config["language_id"] = lang_conf.get("language_id")
-        env_config["dockerfile_path"] = env_type_conf.get("dockerfile_path")
-        return cls(language_name=plan.language, env_type=plan.env, env_config=env_config)
+        return cls(env_context)
 
     def create_process_options(self, cmd: list):
         return self.run_handler.create_process_options(cmd)
@@ -95,16 +73,14 @@ class EnvResourceController:
         ソースコードをworkspace内の所定の場所にコピーするリクエストを返す
         """
         src = str(self.const_handler.contest_current_path / self.const_handler.source_file_name)
-        # コピー先: workspace直下 or contest_temp_path等、要件に応じて変更可
-        # ここでは例としてworkspace直下にコピー
         dst = str(self.const_handler.workspace_path / self.const_handler.source_file_name)
         return self.copy_file(src, dst)
 
     def get_build_commands(self):
         """
-        env_configやconst_handlerを使ってbuild_cmdをパース・展開（parse_with_workspaceを利用）
+        env_type_confやconst_handlerを使ってbuild_cmdをパース・展開（parse_with_workspaceを利用）
         """
-        env_type_conf = self.env_config.get("env_type_conf", {})
+        env_type_conf = self.env_context.env_type_conf or {}
         build_cmds = env_type_conf.get("build_cmd", [])
         return [
             [self.const_handler.parse(str(x)) for x in build_cmd]
@@ -113,12 +89,12 @@ class EnvResourceController:
 
     def get_run_command(self):
         """
-        env_configやconst_handlerを使ってrun_cmdをパース・展開（parse_with_workspaceを利用）
+        env_type_confやconst_handlerを使ってrun_cmdをパース・展開（parse_with_workspaceを利用）
         """
-        env_type_conf = self.env_config.get("env_type_conf", {})
+        env_type_conf = self.env_context.env_type_conf or {}
         run_cmd = env_type_conf.get("run_cmd", [])
         return [self.const_handler.parse(str(x)) for x in run_cmd]
 
 def get_resource_handler(language: str, env: str):
-    return EnvResourceController(language, env)
+    return EnvResourceController(EnvContext(language, env))
 
