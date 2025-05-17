@@ -20,6 +20,10 @@ class CompositeRequest:
         self._executed = True
         return results
 
+    def __repr__(self):
+        reqs_str = ",\n  ".join(repr(r) for r in self.requests)
+        return f"<CompositeRequest [\n  {reqs_str}\n]>"
+
 def flatten_results(results):
     flat = []
     for r in results:

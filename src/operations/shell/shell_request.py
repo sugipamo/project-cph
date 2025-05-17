@@ -52,4 +52,7 @@ class ShellRequest:
                 end_time=end_time
             )
         self._executed = True
-        return self._result 
+        return self._result
+
+    def __repr__(self):
+        return f"<ShellRequest cmd={self.cmd} driver={self.driver}>" 

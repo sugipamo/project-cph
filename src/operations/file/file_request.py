@@ -71,3 +71,6 @@ class FileRequest:
             raise
         self._executed = True
         return self._result 
+
+    def __repr__(self):
+        return f"<FileRequest op={self.op} path={self.path} dst={getattr(self, 'dst_path', None)} driver={getattr(self, 'driver', None)} content={getattr(self, 'content', None)} >" 
