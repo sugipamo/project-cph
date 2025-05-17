@@ -9,10 +9,9 @@ def test_docker_file_request_to_container():
         src_path="host.txt",
         dst_path="/container/path.txt",
         container="test_container",
-        docker_driver=mock_driver,
         to_container=True
     )
-    result = req.execute()
+    result = req.execute(driver=mock_driver)
     assert result.is_success()
     assert result.op == "DOCKER_CP"
     assert mock_driver.operations[-1][:4] == ("cp", "host.txt", "/container/path.txt", "test_container")
@@ -24,10 +23,9 @@ def test_docker_file_request_from_container():
         src_path="/container/path.txt",
         dst_path="host.txt",
         container="test_container",
-        docker_driver=mock_driver,
         to_container=False
     )
-    result = req.execute()
+    result = req.execute(driver=mock_driver)
     assert result.is_success()
     assert result.op == "DOCKER_CP"
     assert mock_driver.operations[-1][:4] == ("cp", "/container/path.txt", "host.txt", "test_container")
@@ -38,8 +36,7 @@ def test_docker_file_request_no_driver():
         src_path="a",
         dst_path="b",
         container="c",
-        docker_driver=None,
         to_container=True
     )
     with pytest.raises(ValueError):
-        req.execute() 
+        req.execute(driver=None) 

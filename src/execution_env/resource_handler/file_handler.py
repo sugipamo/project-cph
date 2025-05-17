@@ -68,13 +68,14 @@ class DockerFileHandler(BaseFileHandler):
             return FileRequest(FileOpType.COPY, relative_path, dst_path=target_path)
         # どちらかが外の場合
         to_container = dst_in_ws and not src_in_ws
-        return DockerFileRequest(
+        req = DockerFileRequest(
             src_path=relative_path,
             dst_path=target_path,
-            container=container,
-            docker_driver=docker_driver,
-            to_container=to_container
+            container=container
         )
+        req.docker_driver = docker_driver
+        req.to_container = to_container
+        return req
 
     def move(self, src_path: str, dst_path: str, docker_driver=None):
         src_in_ws = self._is_in_container(src_path)
@@ -84,13 +85,14 @@ class DockerFileHandler(BaseFileHandler):
             return FileRequest(FileOpType.MOVE, src_path, dst_path=dst_path)
         # どちらかが外の場合はcopy+remove相当（ここではcopyのみ返す。上位層で合成も可）
         to_container = dst_in_ws and not src_in_ws
-        return DockerFileRequest(
+        req = DockerFileRequest(
             src_path=src_path,
             dst_path=dst_path,
-            container=container,
-            docker_driver=docker_driver,
-            to_container=to_container
+            container=container
         )
+        req.docker_driver = docker_driver
+        req.to_container = to_container
+        return req
 
     def remove(self, relative_path: str, docker_driver=None):
         in_ws = self._is_in_container(relative_path)
@@ -99,13 +101,14 @@ class DockerFileHandler(BaseFileHandler):
             return FileRequest(FileOpType.REMOVE, relative_path)
         # ホスト側のファイル削除（DOCKER_RM等があればそちらを使う。なければ例外や警告も検討）
         # ここではDockerFileRequestで表現できる範囲で返す
-        return DockerFileRequest(
+        req = DockerFileRequest(
             src_path=relative_path,
             dst_path=None,
-            container=container,
-            docker_driver=docker_driver,
-            to_container=False
+            container=container
         )
+        req.docker_driver = docker_driver
+        req.to_container = False
+        return req
 
     def copytree(self, src_path: str, dst_path: str, docker_driver=None):
         src_in_ws = self._is_in_container(src_path)
@@ -115,13 +118,14 @@ class DockerFileHandler(BaseFileHandler):
             return FileRequest(FileOpType.COPYTREE, src_path, dst_path=dst_path)
         # どちらかが外の場合
         to_container = dst_in_ws and not src_in_ws
-        return DockerFileRequest(
+        req = DockerFileRequest(
             src_path=src_path,
             dst_path=dst_path,
-            container=container,
-            docker_driver=docker_driver,
-            to_container=to_container
+            container=container
         )
+        req.docker_driver = docker_driver
+        req.to_container = to_container
+        return req
 
     def rmtree(self, dir_path: str, docker_driver=None):
         in_ws = self._is_in_container(dir_path)
@@ -129,13 +133,14 @@ class DockerFileHandler(BaseFileHandler):
         if in_ws:
             return FileRequest(FileOpType.RMTREE, dir_path)
         # ホスト側のディレクトリ削除（DOCKER_RM等があればそちらを使う。なければ例外や警告も検討）
-        return DockerFileRequest(
+        req = DockerFileRequest(
             src_path=dir_path,
             dst_path=None,
-            container=container,
-            docker_driver=docker_driver,
-            to_container=False
+            container=container
         )
+        req.docker_driver = docker_driver
+        req.to_container = False
+        return req
 
 class LocalFileHandler(BaseFileHandler):
     def __init__(self, config: dict, const_handler):

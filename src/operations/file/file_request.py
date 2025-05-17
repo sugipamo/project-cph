@@ -14,7 +14,7 @@ class FileOpType(Enum):
     RMTREE = auto()
 
 class FileRequest:
-    def __init__(self, op: FileOpType, path, content=None, dst_path=None, container=None, to_container=True, docker_driver=None):
+    def __init__(self, op: FileOpType, path, content=None, dst_path=None):
         self.op = op  # FileOpType
         self.path = path
         self.content = content
