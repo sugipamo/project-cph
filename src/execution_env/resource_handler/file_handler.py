@@ -48,8 +48,17 @@ class DockerFileHandler(BaseFileHandler):
         super().__init__(config, const_handler)
 
     def _is_in_container(self, path: str) -> bool:
-        ws = Path(self.const_handler.workspace_path)
-        return str((ws / Path(path)).resolve()).startswith(str(ws.resolve()))
+        ws = Path(self.const_handler.workspace_path).resolve()
+        p = Path(path).resolve()
+        if p.is_absolute():
+            target = p.resolve()
+        else:
+            target = (ws / p).resolve()
+        try:
+            target.relative_to(ws)
+            return True
+        except ValueError:
+            return False
 
     def read(self, relative_path: str):
         return FileRequest(FileOpType.READ, relative_path)

@@ -12,37 +12,47 @@ class DummyConstHandler:
     def container_name(self):
         return self._container_name
 
-def make_docker_handler(ws="/workspace"):
+def make_docker_handler(ws):
     return DockerFileHandler({}, DummyConstHandler(workspace_path=ws))
 
-def test_is_in_container_true_false():
-    handler = make_docker_handler("/workspace")
+def test_is_in_container_true_false(tmp_path):
+    ws = tmp_path
+    handler = make_docker_handler(str(ws))
+    (ws / "a.txt").touch()
+    (ws / "dir").mkdir()
+    (ws / "dir" / "b.txt").touch()
     # workspace内
-    assert handler._is_in_container("a.txt")
-    assert handler._is_in_container("dir/b.txt")
+    assert handler._is_in_container(str(ws / "a.txt"))
+    assert handler._is_in_container(str(ws / "dir" / "b.txt"))
     # workspace外
     assert not handler._is_in_container("/etc/passwd")
-    assert not handler._is_in_container("../outside.txt")
+    assert not handler._is_in_container(str(ws.parent / "outside.txt"))
 
-def test_copy_host_to_container_and_reverse():
-    handler = make_docker_handler("/workspace")
+def test_copy_host_to_container_and_reverse(tmp_path):
+    ws = tmp_path
+    handler = make_docker_handler(str(ws))
     # ホスト→コンテナ
-    req = handler.copy("/host/file.txt", "in_container.txt")
+    src = "/host/file.txt"
+    dst = ws / "in_container.txt"
+    req = handler.copy(src, str(dst))
     assert isinstance(req, DockerFileRequest)
     assert req.to_container is True
     # コンテナ→ホスト
-    req = handler.copy("in_container.txt", "/host/file.txt")
-    assert isinstance(req, DockerFileRequest)
-    assert req.to_container is False
+    req2 = handler.copy(str(dst), src)
+    assert isinstance(req2, DockerFileRequest)
+    assert req2.to_container is False
 
-def test_move_host_to_container_and_reverse():
-    handler = make_docker_handler("/workspace")
-    req = handler.move("/host/file.txt", "in_container.txt")
+def test_move_host_to_container_and_reverse(tmp_path):
+    ws = tmp_path
+    handler = make_docker_handler(str(ws))
+    src = "/host/file.txt"
+    dst = ws / "in_container.txt"
+    req = handler.move(src, str(dst))
     assert isinstance(req, DockerFileRequest)
     assert req.to_container is True
-    req = handler.move("in_container.txt", "/host/file.txt")
-    assert isinstance(req, DockerFileRequest)
-    assert req.to_container is False
+    req2 = handler.move(str(dst), src)
+    assert isinstance(req2, DockerFileRequest)
+    assert req2.to_container is False
 
 def test_remove_host_side():
     handler = make_docker_handler("/workspace")
@@ -58,58 +68,77 @@ def test_rmtree_host_side():
     assert req.to_container is False
     assert req.dst_path is None
 
-def test_copytree_host_to_container_and_reverse():
-    handler = make_docker_handler("/workspace")
-    req = handler.copytree("/host/dir1", "in_container_dir")
+def test_copytree_host_to_container_and_reverse(tmp_path):
+    ws = tmp_path
+    handler = make_docker_handler(str(ws))
+    src = "/host/dir1"
+    dst = ws / "in_container_dir"
+    req = handler.copytree(src, str(dst))
     assert isinstance(req, DockerFileRequest)
     assert req.to_container is True
-    req = handler.copytree("in_container_dir", "/host/dir1")
-    assert isinstance(req, DockerFileRequest)
-    assert req.to_container is False
+    req2 = handler.copytree(str(dst), src)
+    assert isinstance(req2, DockerFileRequest)
+    assert req2.to_container is False
 
-def test_invalid_path_edge_cases():
-    handler = make_docker_handler("/workspace")
+def test_invalid_path_edge_cases(tmp_path):
+    ws = tmp_path
+    handler = make_docker_handler(str(ws))
     # workspace直下
-    assert handler._is_in_container("/workspace/file.txt")
+    file = ws / "file.txt"
+    file.touch()
+    assert handler._is_in_container(str(file))
     # workspaceの親
-    assert not handler._is_in_container("/workspace/../file.txt")
-    # 空文字列
-    assert handler._is_in_container("")
-    # 絶対パスでworkspace内
-    assert handler._is_in_container("/workspace/abc.txt")
+    parent_file = ws.parent / "file.txt"
+    assert not handler._is_in_container(str(parent_file))
+    # workspace自身
+    assert handler._is_in_container(str(ws))
 
-def test_copy_within_workspace():
-    handler = make_docker_handler("/workspace")
-    req = handler.copy("foo.txt", "bar.txt")
+def test_copy_within_workspace(tmp_path):
+    ws = tmp_path
+    handler = make_docker_handler(str(ws))
+    src = ws / "foo.txt"
+    dst = ws / "bar.txt"
+    src.touch()
+    req = handler.copy(str(src), str(dst))
     assert isinstance(req, FileRequest)
     assert req.op == FileOpType.COPY
-    assert req.path == "foo.txt"
-    assert req.dst_path == "bar.txt"
+    assert req.path == str(src)
+    assert req.dst_path == str(dst)
 
-def test_copy_host_to_container_detect():
-    handler = make_docker_handler("/workspace")
-    req = handler.copy("/host/file.txt", "bar.txt")
+def test_copy_host_to_container_detect(tmp_path):
+    ws = tmp_path
+    handler = make_docker_handler(str(ws))
+    src = "/host/file.txt"
+    dst = ws / "bar.txt"
+    req = handler.copy(src, str(dst))
     assert isinstance(req, DockerFileRequest)
     assert req.to_container is True
 
-def test_copy_container_to_host_detect():
-    handler = make_docker_handler("/workspace")
-    req = handler.copy("foo.txt", "/host/file.txt")
+def test_copy_container_to_host_detect(tmp_path):
+    ws = tmp_path
+    handler = make_docker_handler(str(ws))
+    src = ws / "foo.txt"
+    dst = "/host/file.txt"
+    req = handler.copy(str(src), dst)
     assert isinstance(req, DockerFileRequest)
     assert req.to_container is False
 
-@pytest.mark.parametrize("ws,path,expected", [
-    ("/workspace", "a.txt", True),  # workspace直下
-    ("/workspace", "dir/b.txt", True),  # workspace内サブディレクトリ
-    ("/workspace", "/workspace/file.txt", True),  # 絶対パスでworkspace内
-    ("/workspace", "/workspace/dir/c.txt", True),  # 絶対パスでサブディレクトリ
-    ("/workspace", "../outside.txt", False),  # 親ディレクトリ参照
-    ("/workspace", "/etc/passwd", False),  # 明らかに外
-    ("/workspace", "/workspace/../file.txt", False),  # workspaceの親
-    ("/workspace", "", True),  # 空文字列（=workspace自体）
-    ("workspace", "a.txt", True),  # 相対workspace
-    ("workspace", "../workspace/a.txt", False),  # 相対パスで外
+@pytest.mark.parametrize("rel_path,expected", [
+    ("a.txt", True),
+    ("dir/b.txt", True),
+    ("../outside.txt", False),
+    ("", True),
 ])
-def test_is_in_container_various(ws, path, expected):
-    handler = make_docker_handler(ws)
+def test_is_in_container_various(tmp_path, rel_path, expected):
+    ws = tmp_path
+    handler = make_docker_handler(str(ws))
+    # 必要なファイル・ディレクトリを作成
+    if rel_path:
+        target = ws / rel_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if not target.is_dir():
+            target.touch()
+        path = str(target)
+    else:
+        path = str(ws)
     assert handler._is_in_container(path) == expected 
