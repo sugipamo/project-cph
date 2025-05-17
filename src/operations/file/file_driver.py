@@ -101,6 +101,22 @@ class MockFileDriver(FileDriver):
             self.files.add(dst_path)
             self.contents[dst_path] = self.contents.get(src_path, "")
 
+    def remove(self):
+        path = self.resolve_path()
+        self.operations.append(("remove", path))
+        if path in self.files:
+            self.files.remove(path)
+            self.contents.pop(path, None)
+
+    def rmtree(self):
+        path = self.resolve_path()
+        self.operations.append(("rmtree", path))
+        # ディレクトリ配下も含めて全て削除（モックなので単純化）
+        to_remove = [p for p in self.files if str(p).startswith(str(path))]
+        for p in to_remove:
+            self.files.remove(p)
+            self.contents.pop(p, None)
+
     def exists(self):
         path = self.resolve_path()
         return path in self.files

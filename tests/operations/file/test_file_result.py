@@ -6,7 +6,7 @@ from src.operations.file.file_driver import MockFileDriver
 
 def test_file_result_methods():
     driver = MockFileDriver()
-    req = FileRequest(FileOpType.READ, "foo.txt", driver=driver)
+    req = FileRequest(FileOpType.READ, "foo.txt")
     result = OperationResult(success=True, content="abc", exists=True, path="foo.txt", op=FileOpType.READ, request=req)
     d = result.to_dict()
     assert d["success"] is True

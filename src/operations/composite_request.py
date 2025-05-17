@@ -10,12 +10,18 @@ class CompositeRequest:
     def operation_type(self):
         return OperationType.COMPOSITE
 
-    def execute(self):
+    def execute(self, driver=None):
         if self._executed:
             raise RuntimeError("This CompositeRequest has already been executed.")
         results = []
         for req in self.requests:
-            results.append(req.execute())
+            if hasattr(req, 'execute'):
+                try:
+                    results.append(req.execute(driver=driver))
+                except TypeError:
+                    results.append(req.execute())
+            else:
+                results.append(req)
         self._results = results
         self._executed = True
         return results

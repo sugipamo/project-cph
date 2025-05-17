@@ -46,4 +46,7 @@ class DockerRequest:
         except Exception as e:
             self._result = OperationResult(success=False, op=self.op, stdout=None, stderr=str(e), returncode=None)
         self._executed = True
-        return self._result 
+        return self._result
+
+    def __repr__(self):
+        return f"<DockerRequest op={self.op} name={self.name} command={self.command} driver={self._driver}>" 

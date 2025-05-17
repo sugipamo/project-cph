@@ -40,18 +40,27 @@ class EnvWorkflowService:
                 env_config["contest_env_path"] = lang_conf.get("contest_env_path", "env")
                 env_config["contest_template_path"] = lang_conf.get("contest_template_path", "template")
                 env_config["contest_temp_path"] = lang_conf.get("contest_temp_path", "temp")
+                env_config["language"] = plan.language
                 controller = EnvResourceController(language_name=plan.language, env_type=plan.env, env_config=env_config)
                 requests = []
                 # 1. ビルド用ファイル準備（prepare_sourcecodeを利用）
                 requests.append(controller.prepare_sourcecode())
                 # 2. ビルド実行
                 for build_cmd in controller.get_build_commands():
-                    requests.append(controller.create_process_options(build_cmd))
+                    if plan.env == "docker":
+                        from src.operations.docker.docker_driver import LocalDockerDriver
+                        requests.append(controller.create_process_options(build_cmd, driver=LocalDockerDriver()))
+                    else:
+                        requests.append(controller.create_process_options(build_cmd))
                 # 3. 成果物準備（現状は省略。必要ならここで成果物ファイルをコピー等）
                 # 4. 起動
                 run_cmd = controller.get_run_command()
                 if run_cmd:
-                    requests.append(controller.create_process_options(run_cmd))
+                    if plan.env == "docker":
+                        from src.operations.docker.docker_driver import LocalDockerDriver
+                        requests.append(controller.create_process_options(run_cmd, driver=LocalDockerDriver()))
+                    else:
+                        requests.append(controller.create_process_options(run_cmd))
                 composite = CompositeRequest(requests)
                 all_requests.append(composite)
         return all_requests 

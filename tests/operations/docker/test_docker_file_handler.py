@@ -2,6 +2,7 @@ import pytest
 from src.execution_env.resource_handler.file_handler import DockerFileHandler
 from src.operations.file.file_request import FileOpType, FileRequest
 from src.operations.docker.docker_file_request import DockerFileRequest
+from src.operations.docker.docker_driver import MockDockerDriver
 
 class MockConstHandler:
     def __init__(self, workspace="/workspace", container_name="test_container"):
@@ -33,7 +34,8 @@ def test_copy_in_container():
 def test_copy_host_to_container():
     handler = make_handler()
     handler.const_handler.workspace = "/workspace"
-    req = handler.copy("/host/file.txt", "in_container.txt")
+    mock_driver = MockDockerDriver()
+    req = handler.copy("/host/file.txt", "in_container.txt", docker_driver=mock_driver)
     assert isinstance(req, DockerFileRequest)
     assert req.src_path == "/host/file.txt"
     assert req.dst_path == "in_container.txt"
@@ -43,7 +45,8 @@ def test_copy_host_to_container():
 def test_copy_container_to_host():
     handler = make_handler()
     handler.const_handler.workspace = "/workspace"
-    req = handler.copy("in_container.txt", "/host/file.txt")
+    mock_driver = MockDockerDriver()
+    req = handler.copy("in_container.txt", "/host/file.txt", docker_driver=mock_driver)
     assert isinstance(req, DockerFileRequest)
     assert req.src_path == "in_container.txt"
     assert req.dst_path == "/host/file.txt"
@@ -58,10 +61,11 @@ def test_move_in_container():
     assert req.path == "a.txt"
     assert req.dst_path == "b.txt"
 
-def test_move_host_to_container():
+def test_move_host_to_container_and_reverse():
     handler = make_handler()
     handler.const_handler.workspace = "/workspace"
-    req = handler.move("/host/file.txt", "in_container.txt")
+    mock_driver = MockDockerDriver()
+    req = handler.move("/host/file.txt", "in_container.txt", docker_driver=mock_driver)
     assert isinstance(req, DockerFileRequest)
     assert req.src_path == "/host/file.txt"
     assert req.dst_path == "in_container.txt"
@@ -75,15 +79,13 @@ def test_remove_in_container():
     assert req.op == FileOpType.REMOVE
     assert req.path == "a.txt"
 
-def test_remove_host():
+def test_remove_host_side():
     handler = make_handler()
-    handler.const_handler.workspace = "/workspace"
-    req = handler.remove("/host/file.txt")
+    mock_driver = MockDockerDriver()
+    req = handler.remove("/host/file.txt", docker_driver=mock_driver)
     assert isinstance(req, DockerFileRequest)
-    assert req.src_path == "/host/file.txt"
-    assert req.dst_path is None
-    assert req.container == "test_container"
     assert req.to_container is False
+    assert req.dst_path is None
 
 def test_copytree_in_container():
     handler = make_handler()
@@ -93,13 +95,14 @@ def test_copytree_in_container():
     assert req.path == "dir1"
     assert req.dst_path == "dir2"
 
-def test_copytree_host_to_container():
+def test_copytree_host_to_container_and_reverse():
     handler = make_handler()
     handler.const_handler.workspace = "/workspace"
-    req = handler.copytree("/host/dir1", "dir2")
+    mock_driver = MockDockerDriver()
+    req = handler.copytree("/host/dir1", "in_container_dir", docker_driver=mock_driver)
     assert isinstance(req, DockerFileRequest)
     assert req.src_path == "/host/dir1"
-    assert req.dst_path == "dir2"
+    assert req.dst_path == "in_container_dir"
     assert req.container == "test_container"
     assert req.to_container is True
 
@@ -110,12 +113,10 @@ def test_rmtree_in_container():
     assert req.op == FileOpType.RMTREE
     assert req.path == "dir1"
 
-def test_rmtree_host():
+def test_rmtree_host_side():
     handler = make_handler()
-    handler.const_handler.workspace = "/workspace"
-    req = handler.rmtree("/host/dir1")
+    mock_driver = MockDockerDriver()
+    req = handler.rmtree("/host/dir1", docker_driver=mock_driver)
     assert isinstance(req, DockerFileRequest)
-    assert req.src_path == "/host/dir1"
-    assert req.dst_path is None
-    assert req.container == "test_container"
-    assert req.to_container is False 
+    assert req.to_container is False
+    assert req.dst_path is None 

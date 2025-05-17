@@ -39,8 +39,8 @@ class EnvResourceController:
             self.run_handler = container.resolve("LocalRunHandler")
             self.file_handler = container.resolve("LocalFileHandler")
 
-    def create_process_options(self, cmd: list, driver=None):
-        return self.run_handler.create_process_options(cmd, driver=driver)
+    def create_process_options(self, cmd: list):
+        return self.run_handler.create_process_options(cmd)
 
     def read_file(self, relative_path: str) -> str:
         return self.file_handler.read(relative_path)
