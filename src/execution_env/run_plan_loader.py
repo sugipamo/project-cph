@@ -1,7 +1,16 @@
 import os
 import json
 from typing import List
-from src.execution_env.env_workflow_service import RunPlan
+from dataclasses import dataclass
+# 新規追加: language, envtypeからRunPlanを生成
+BASE_DIR = "contest_env"
+
+@dataclass
+class RunPlan:
+    language: str
+    env: str
+    count: int = 1
+    # 今後必要なら追加パラメータもここに
 
 def load_run_plans_from_json(path: str) -> List[RunPlan]:
     """
@@ -17,8 +26,6 @@ def load_run_plans_from_json(path: str) -> List[RunPlan]:
     run_plans = [RunPlan(**item) for item in data]
     return run_plans
 
-# 新規追加: language, envtypeからRunPlanを生成
-BASE_DIR = "contest_env"
 
 def load_env_json(language: str, env: str) -> dict:
     json_path = os.path.join(BASE_DIR, language, "env.json")

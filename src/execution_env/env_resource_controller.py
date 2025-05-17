@@ -12,12 +12,14 @@ class EnvResourceController:
             self.const_handler = const_handler
             self.run_handler = run_handler
             self.file_handler = file_handler
+            self.env_config = env_config if env_config is not None else {}
             return
         self.language_name = language_name
         self.env_type = env_type
         # env_configは必ずパース済みデータとして渡す
         if env_config is None:
             raise ValueError("env_config must be provided (parsed config dict)")
+        self.env_config = env_config
         # DIコンテナのセットアップ
         container = DIContainer()
         # provider登録
@@ -63,6 +65,35 @@ class EnvResourceController:
 
     def copy_file(self, src_path: str, dst_path: str):
         return self.file_handler.copy(src_path, dst_path)
+
+    def prepare_sourcecode(self):
+        """
+        ソースコードをworkspace内の所定の場所にコピーするリクエストを返す
+        """
+        src = str(self.const_handler.source_file_path)
+        # コピー先: workspace直下 or contest_temp_path等、要件に応じて変更可
+        # ここでは例としてworkspace直下にコピー
+        dst = str(self.const_handler.workspace / self.const_handler.source_file_path.name)
+        return self.copy_file(src, dst)
+
+    def get_build_commands(self):
+        """
+        env_configやconst_handlerを使ってbuild_cmdをパース・展開（parse_with_workspaceを利用）
+        """
+        handler_conf = self.env_config.get("handlers", {}).get(self.env_type, {})
+        build_cmds = handler_conf.get("build_cmd", [])
+        return [
+            [self.const_handler.parse_with_workspace(str(x)) for x in build_cmd]
+            for build_cmd in build_cmds
+        ]
+
+    def get_run_command(self):
+        """
+        env_configやconst_handlerを使ってrun_cmdをパース・展開（parse_with_workspaceを利用）
+        """
+        handler_conf = self.env_config.get("handlers", {}).get(self.env_type, {})
+        run_cmd = handler_conf.get("run_cmd", [])
+        return [self.const_handler.parse_with_workspace(str(x)) for x in run_cmd]
 
 def get_resource_handler(language: str, env: str):
     return EnvResourceController(language, env)
