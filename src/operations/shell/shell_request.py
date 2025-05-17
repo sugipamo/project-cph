@@ -3,9 +3,8 @@ from src.operations.result import OperationResult
 from src.operations.operation_type import OperationType
 
 class ShellRequest:
-    def __init__(self, cmd, driver, cwd=None, env=None, inputdata=None, timeout=None):
+    def __init__(self, cmd, cwd=None, env=None, inputdata=None, timeout=None):
         self.cmd = cmd
-        self.driver = driver
         self.cwd = cwd
         self.env = env
         self.inputdata = inputdata
@@ -17,13 +16,15 @@ class ShellRequest:
     def operation_type(self):
         return OperationType.SHELL
 
-    def execute(self):
+    def execute(self, driver=None):
         if self._executed:
             raise RuntimeError("This ShellRequest has already been executed.")
+        if driver is None:
+            raise ValueError("ShellRequest.execute()にはdriverが必須です")
         import time
         start_time = time.time()
         try:
-            completed = self.driver.run(
+            completed = driver.run(
                 self.cmd,
                 cwd=self.cwd,
                 env=self.env,
@@ -55,4 +56,4 @@ class ShellRequest:
         return self._result
 
     def __repr__(self):
-        return f"<ShellRequest cmd={self.cmd} driver={self.driver}>" 
+        return f"<ShellRequest cmd={self.cmd}>" 

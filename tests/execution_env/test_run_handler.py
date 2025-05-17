@@ -17,10 +17,10 @@ def test_local_run_handler_create_process_options():
     handler = LocalRunHandler(config, const_handler)
     cmd = ["echo", "hello"]
     driver = DummyDriver()
-    req = handler.create_process_options(cmd, driver=driver)
+    req = handler.create_process_options(cmd)
     assert isinstance(req, ShellRequest)
     assert req.cmd == cmd
-    assert req.driver == driver
+    req.execute(driver=driver)
 
 def test_docker_run_handler_create_process_options():
     config = {}
@@ -28,9 +28,9 @@ def test_docker_run_handler_create_process_options():
     handler = DockerRunHandler(config, const_handler)
     cmd = ["ls", "/workspace"]
     driver = DummyDriver()
-    req = handler.create_process_options(cmd, driver=driver)
+    req = handler.create_process_options(cmd)
     assert isinstance(req, DockerRequest)
     assert req.op == DockerOpType.EXEC
     assert req.name == "dummy_container"
     assert req.command == "ls /workspace"
-    assert req._driver == driver 
+    req.execute(driver=driver) 

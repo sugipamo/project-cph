@@ -6,24 +6,24 @@ from src.operations.result import OperationResult
 def test_dockerrequest_with_mockdriver():
     driver = MockDockerDriver()
     # RUN
-    req = DockerRequest(DockerOpType.RUN, image="img", name="c", driver=driver)
-    result = req.execute()
+    req = DockerRequest(DockerOpType.RUN, image="img", name="c")
+    result = req.execute(driver=driver)
     assert result.stdout == "mock_container_c"
     # STOP
-    req = DockerRequest(DockerOpType.STOP, name="c", driver=driver)
-    result = req.execute()
+    req = DockerRequest(DockerOpType.STOP, name="c")
+    result = req.execute(driver=driver)
     assert result.stdout is None
     # REMOVE
-    req = DockerRequest(DockerOpType.REMOVE, name="c", driver=driver)
-    result = req.execute()
+    req = DockerRequest(DockerOpType.REMOVE, name="c")
+    result = req.execute(driver=driver)
     assert result.stdout is None
     # EXEC
-    req = DockerRequest(DockerOpType.EXEC, name="c", command="ls", driver=driver)
-    result = req.execute()
+    req = DockerRequest(DockerOpType.EXEC, name="c", command="ls")
+    result = req.execute(driver=driver)
     assert result.stdout == "mock_exec_result_c_ls"
     # LOGS
-    req = DockerRequest(DockerOpType.LOGS, name="c", driver=driver)
-    result = req.execute()
+    req = DockerRequest(DockerOpType.LOGS, name="c")
+    result = req.execute(driver=driver)
     assert result.stdout == "mock_logs_c"
 
 def test_dockerresult_methods():

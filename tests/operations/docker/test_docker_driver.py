@@ -45,12 +45,10 @@ def test_dummydockerdriver_all_methods():
 import types
 from src.operations.shell.shell_request import ShellRequest
 
-def fake_execute(self):
-    # コマンド内容を返すだけ
-    return self.cmd
-
 @pytest.fixture(autouse=True)
 def patch_shellrequest_execute(monkeypatch):
+    def fake_execute(self, driver=None):
+        return self.cmd
     monkeypatch.setattr(ShellRequest, "execute", fake_execute)
 
 def test_localdockerdriver_commands():

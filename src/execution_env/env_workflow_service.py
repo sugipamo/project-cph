@@ -49,18 +49,22 @@ class EnvWorkflowService:
                 for build_cmd in controller.get_build_commands():
                     if plan.env == "docker":
                         from src.operations.docker.docker_driver import LocalDockerDriver
-                        requests.append(controller.create_process_options(build_cmd, driver=LocalDockerDriver()))
+                        req = controller.create_process_options(build_cmd)
+                        requests.append(lambda req=req: req.execute(driver=LocalDockerDriver()))
                     else:
-                        requests.append(controller.create_process_options(build_cmd))
+                        req = controller.create_process_options(build_cmd)
+                        requests.append(lambda req=req: req.execute())
                 # 3. 成果物準備（現状は省略。必要ならここで成果物ファイルをコピー等）
                 # 4. 起動
                 run_cmd = controller.get_run_command()
                 if run_cmd:
                     if plan.env == "docker":
                         from src.operations.docker.docker_driver import LocalDockerDriver
-                        requests.append(controller.create_process_options(run_cmd, driver=LocalDockerDriver()))
+                        req = controller.create_process_options(run_cmd)
+                        requests.append(lambda req=req: req.execute(driver=LocalDockerDriver()))
                     else:
-                        requests.append(controller.create_process_options(run_cmd))
+                        req = controller.create_process_options(run_cmd)
+                        requests.append(lambda req=req: req.execute())
                 composite = CompositeRequest(requests)
                 all_requests.append(composite)
         return all_requests 

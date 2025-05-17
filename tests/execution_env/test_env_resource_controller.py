@@ -27,11 +27,15 @@ class DummyFileHandler:
         return f"copy:{src}->{dst}"
 
 class DummyRunHandler:
-    def create_process_options(self, cmd, driver=None):
-        return f"run:{cmd}:{driver}"
+    def create_process_options(self, cmd):
+        return f"run:{cmd}"
 
 class DummyConstHandler:
     pass
+
+class DummyController:
+    def __init__(self, language_name=None, env_type=None, env_config=None, file_handler=None, run_handler=None, const_handler=None):
+        pass
 
 def test_dependency_injection():
     controller = EnvResourceController(
@@ -50,7 +54,7 @@ def test_dependency_injection():
     assert controller.copytree("src", "dst") == "copytree:src->dst"
     assert controller.rmtree("dir") == "rmtree:dir"
     assert controller.copy_file("a", "b") == "copy:a->b"
-    assert controller.create_process_options(["ls"], driver="drv") == "run:['ls']:drv"
+    assert controller.create_process_options(["ls"]) == "run:['ls']"
 
 # local/dockerの正常系は既存のtest_env_resource_controller.pyでカバーされているため、
 # ここでは依存注入・異常系を中心にテストしています。 

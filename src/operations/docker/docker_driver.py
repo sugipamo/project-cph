@@ -71,32 +71,32 @@ class LocalDockerDriver(DockerDriver):
                 if v is not None:
                     cmd.append(str(v))
         cmd.append(image)
-        req = ShellRequest(cmd, driver=LocalShellDriver())
-        result = req.execute()
+        req = ShellRequest(cmd)
+        result = req.execute(driver=LocalShellDriver())
         return result
 
     def stop_container(self, name: str):
         cmd = ["docker", "stop", name]
-        req = ShellRequest(cmd, driver=LocalShellDriver())
-        result = req.execute()
+        req = ShellRequest(cmd)
+        result = req.execute(driver=LocalShellDriver())
         return result
 
     def remove_container(self, name: str):
         cmd = ["docker", "rm", name]
-        req = ShellRequest(cmd, driver=LocalShellDriver())
-        result = req.execute()
+        req = ShellRequest(cmd)
+        result = req.execute(driver=LocalShellDriver())
         return result
 
     def exec_in_container(self, name: str, command: str):
         cmd = ["docker", "exec", name] + command.split()
-        req = ShellRequest(cmd, driver=LocalShellDriver())
-        result = req.execute()
+        req = ShellRequest(cmd)
+        result = req.execute(driver=LocalShellDriver())
         return result
 
     def get_logs(self, name: str):
         cmd = ["docker", "logs", name]
-        req = ShellRequest(cmd, driver=LocalShellDriver())
-        result = req.execute()
+        req = ShellRequest(cmd)
+        result = req.execute(driver=LocalShellDriver())
         return result
 
     def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None):
@@ -114,28 +114,28 @@ class LocalDockerDriver(DockerDriver):
                 if v is not None:
                     cmd.append(str(v))
         cmd.append(path)
-        req = ShellRequest(cmd, driver=LocalShellDriver())
-        result = req.execute()
+        req = ShellRequest(cmd)
+        result = req.execute(driver=LocalShellDriver())
         return result
 
     def image_ls(self):
         cmd = ["docker", "image", "ls"]
-        req = ShellRequest(cmd, driver=LocalShellDriver())
-        result = req.execute()
+        req = ShellRequest(cmd)
+        result = req.execute(driver=LocalShellDriver())
         return result
 
     def image_rm(self, image: str):
         cmd = ["docker", "image", "rm", image]
-        req = ShellRequest(cmd, driver=LocalShellDriver())
-        result = req.execute()
+        req = ShellRequest(cmd)
+        result = req.execute(driver=LocalShellDriver())
         return result
 
     def ps(self, all: bool = False):
         cmd = ["docker", "ps"]
         if all:
             cmd.append("-a")
-        req = ShellRequest(cmd, driver=LocalShellDriver())
-        result = req.execute()
+        req = ShellRequest(cmd)
+        result = req.execute(driver=LocalShellDriver())
         return result
 
     def inspect(self, target: str, type_: str = None):
@@ -143,8 +143,8 @@ class LocalDockerDriver(DockerDriver):
         if type_:
             cmd += ["--type", type_]
         cmd.append(target)
-        req = ShellRequest(cmd, driver=LocalShellDriver())
-        result = req.execute()
+        req = ShellRequest(cmd)
+        result = req.execute(driver=LocalShellDriver())
         return result
 
     def cp(self, src: str, dst: str, container: str, to_container: bool = True):
@@ -157,8 +157,8 @@ class LocalDockerDriver(DockerDriver):
             cp_src = f"{container}:{src}"
             cp_dst = str(dst)
         cmd = ["docker", "cp", cp_src, cp_dst]
-        req = ShellRequest(cmd, driver=LocalShellDriver())
-        result = req.execute()
+        req = ShellRequest(cmd)
+        result = req.execute(driver=LocalShellDriver())
         return result
 
 class MockDockerDriver(DockerDriver):
