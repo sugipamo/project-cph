@@ -18,6 +18,7 @@ class EnvContext:
     dockerfile_path: str = None
     build_cmd: Optional[list] = None
     run_cmd: Optional[list] = None
+    build_output_path: Optional[str] = None
 
     @classmethod
     def from_json(cls, language: str, env: str):
@@ -38,6 +39,7 @@ class EnvContext:
             dockerfile_path=env_type_conf.get("dockerfile_path"),
             build_cmd=env_type_conf.get("build_cmd"),
             run_cmd=env_type_conf.get("run_cmd"),
+            build_output_path=lang_conf.get("build_output_path"),
         )
 
     def __post_init__(self):
@@ -65,7 +67,8 @@ class OjContext(EnvContext):
             build_cmd=[],
             run_cmd=[],
             test_cmd=["oj", "t", "-c", "{workspace_path}/{source_file_name}"],
-            submit_cmd=["oj", "s", "{workspace_path}/{source_file_name}"]
+            submit_cmd=["oj", "s", "{workspace_path}/{source_file_name}"],
+            build_output_path=base.build_output_path,
         )
 
 def load_env_json(language: str, env: str) -> dict:

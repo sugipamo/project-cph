@@ -3,7 +3,7 @@ from src.execution_env.resource_handler.run_handler import LocalRunHandler, Dock
 from src.execution_env.resource_handler.const_handler import DockerConstHandler, LocalConstHandler
 from src.operations.composite_request import CompositeRequest
 from src.operations.di_container import DIContainer
-from src.execution_env.run_plan_loader import load_env_json, EnvContext
+from src.execution_env.run_plan_loader import EnvContext
 
 class EnvResourceController:
     def __init__(self, env_context: EnvContext, file_handler, run_handler, const_handler):
@@ -75,6 +75,10 @@ class EnvResourceController:
         dst = str(self.const_handler.workspace_path / self.const_handler.source_file_name)
         copy_req = self.copy_file(src, dst)
         requests.append(copy_req)
+
+        # build_output_pathの利用例（成果物の出力先パスとして使う）
+        build_output_path = self.const_handler.build_output_path
+        # 必要に応じてbuild_cmdや他の処理でbuild_output_pathを使う
 
         for build_cmd in self.env_context.build_cmd:
             parsed_cmd = [self.const_handler.parse(str(x)) for x in build_cmd]

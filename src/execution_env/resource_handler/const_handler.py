@@ -49,6 +49,10 @@ class BaseConstHandler(ABC):
     @property
     def test_case_out_path(self) -> Path:
         return self.test_case_path / "out"
+    
+    @property
+    def build_output_path(self) -> str:
+        return Path(self.config.build_output_path)
 
     def parse(self, s: str) -> str:
         # 変数展開: {contest_current} など
@@ -64,6 +68,7 @@ class BaseConstHandler(ABC):
         result = result.replace("{test_case_in}", str(self.test_case_in_path))
         result = result.replace("{test_case_out}", str(self.test_case_out_path))
         return result
+
 
 class LocalConstHandler(BaseConstHandler):
 

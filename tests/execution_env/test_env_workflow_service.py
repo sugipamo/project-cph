@@ -46,7 +46,7 @@ def test_generate_requests(monkeypatch):
         EnvContext(language="python", env="docker"),
         # EnvContext(language="cpp", env="local"),  # 不要なテストなので削除
     ]
-    requests = service.generate_requests(run_plans)
+    requests = service.generate_run_test_requests(run_plans)
     assert len(requests) == 2
     for req in requests:
         # driverはダミーでよい場合が多いが、必要なら適宜渡す
