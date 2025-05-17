@@ -23,25 +23,8 @@ class EnvWorkflowService:
         all_requests = []
         for plan in run_plans:
             for i in range(plan.count):
-                # env.jsonロード
-                env_json = load_env_json(plan.language, plan.env)
-                lang_conf = env_json.get(plan.language, {})
-                handler_conf = lang_conf.get("handlers", {}).get(plan.env, {})
-                build_cmds = handler_conf.get("build_cmd", [])
-                run_cmd = handler_conf.get("run_cmd", [])
-                source_file = lang_conf.get("source_file")
-                exclude_patterns = lang_conf.get("exclude_patterns", [])
                 # controller生成
-                # contest_env_path等の必須キーを補完
-                env_config = dict(lang_conf)
-                env_config["env_type"] = plan.env
-                env_config["contest_current_path"] = lang_conf.get("contest_current_path", ".")
-                env_config["source_file"] = source_file
-                env_config["contest_env_path"] = lang_conf.get("contest_env_path", "env")
-                env_config["contest_template_path"] = lang_conf.get("contest_template_path", "template")
-                env_config["contest_temp_path"] = lang_conf.get("contest_temp_path", "temp")
-                env_config["language"] = plan.language
-                controller = EnvResourceController(language_name=plan.language, env_type=plan.env, env_config=env_config)
+                controller = EnvResourceController.from_plan(plan)
                 requests = []
                 # 1. ビルド用ファイル準備（prepare_sourcecodeを利用）
                 requests.append(controller.prepare_sourcecode())

@@ -6,6 +6,9 @@ class DummyController:
     def __init__(self, language_name=None, env_type=None, env_config=None, file_handler=None, run_handler=None, const_handler=None):
         self.language_name = language_name
         self.env_type = env_type
+    @classmethod
+    def from_plan(cls, plan):
+        return cls(language_name=plan.language, env_type=plan.env)
     def copy_file(self, src, dst):
         return f"copy:{self.language_name}:{self.env_type}:{src}->{dst}"
     def prepare_sourcecode(self):

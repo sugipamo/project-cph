@@ -2,6 +2,7 @@ from src.execution_env.resource_handler.file_handler import DockerFileHandler, L
 from src.execution_env.resource_handler.run_handler import LocalRunHandler, DockerRunHandler
 from src.execution_env.resource_handler.const_handler import DockerConstHandler, LocalConstHandler
 from src.operations.di_container import DIContainer
+from src.execution_env.run_plan_loader import load_env_json
 
 class EnvResourceController:
     def __init__(self, language_name=None, env_type=None, env_config=None, file_handler=None, run_handler=None, const_handler=None):
@@ -38,6 +39,24 @@ class EnvResourceController:
             self.const_handler = container.resolve("LocalConstHandler")
             self.run_handler = container.resolve("LocalRunHandler")
             self.file_handler = container.resolve("LocalFileHandler")
+
+    @classmethod
+    def from_plan(cls, plan):
+        """
+        RunPlanからEnvResourceControllerを生成するファクトリメソッド。
+        env_jsonのロードやenv_configのdict生成もここでまとめる。
+        """
+        env_json = load_env_json(plan.language, plan.env)
+        lang_conf = env_json.get(plan.language, {})
+        env_config = dict(lang_conf)
+        env_config["env_type"] = plan.env
+        env_config["contest_current_path"] = lang_conf.get("contest_current_path", ".")
+        env_config["source_file"] = lang_conf.get("source_file")
+        env_config["contest_env_path"] = lang_conf.get("contest_env_path", "env")
+        env_config["contest_template_path"] = lang_conf.get("contest_template_path", "template")
+        env_config["contest_temp_path"] = lang_conf.get("contest_temp_path", "temp")
+        env_config["language"] = plan.language
+        return cls(language_name=plan.language, env_type=plan.env, env_config=env_config)
 
     def create_process_options(self, cmd: list):
         return self.run_handler.create_process_options(cmd)
