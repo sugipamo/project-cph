@@ -4,7 +4,6 @@ from src.operations.file.file_request import FileRequest, FileOpType
 from pathlib import Path
 from src.operations.file.file_driver import LocalFileDriver
 from src.operations.docker.docker_file_request import DockerFileRequest
-from src.operations.docker.docker_driver import LocalDockerDriver
 
 class BaseFileHandler(ABC):
     def __init__(self, config: dict, const_handler):
@@ -48,7 +47,7 @@ class DockerFileHandler(BaseFileHandler):
         super().__init__(config, const_handler)
 
     def _is_in_container(self, path: str) -> bool:
-        ws = Path(self.const_handler.workspace)
+        ws = Path(self.const_handler.workspace_path)
         return str((ws / Path(path)).resolve()).startswith(str(ws.resolve()))
 
     def read(self, relative_path: str):

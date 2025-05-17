@@ -94,12 +94,10 @@ class EnvResourceController:
         """
         ソースコードをworkspace内の所定の場所にコピーするリクエストを返す
         """
-
-        print(self.const_handler.source_file_path)
-        src = str(self.const_handler.source_file_path)
+        src = str(self.const_handler.contest_current_path / self.const_handler.source_file_name)
         # コピー先: workspace直下 or contest_temp_path等、要件に応じて変更可
         # ここでは例としてworkspace直下にコピー
-        dst = str(self.const_handler.workspace / self.const_handler.source_file_path.name)
+        dst = str(self.const_handler.workspace_path / self.const_handler.source_file_name)
         return self.copy_file(src, dst)
 
     def get_build_commands(self):
@@ -109,7 +107,7 @@ class EnvResourceController:
         env_type_conf = self.env_config.get("env_type_conf", {})
         build_cmds = env_type_conf.get("build_cmd", [])
         return [
-            [self.const_handler.parse_with_workspace(str(x)) for x in build_cmd]
+            [self.const_handler.parse(str(x)) for x in build_cmd]
             for build_cmd in build_cmds
         ]
 
@@ -119,7 +117,7 @@ class EnvResourceController:
         """
         env_type_conf = self.env_config.get("env_type_conf", {})
         run_cmd = env_type_conf.get("run_cmd", [])
-        return [self.const_handler.parse_with_workspace(str(x)) for x in run_cmd]
+        return [self.const_handler.parse(str(x)) for x in run_cmd]
 
 def get_resource_handler(language: str, env: str):
     return EnvResourceController(language, env)

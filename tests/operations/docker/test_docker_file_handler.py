@@ -5,15 +5,9 @@ from src.operations.docker.docker_file_request import DockerFileRequest
 from src.operations.docker.docker_driver import MockDockerDriver
 
 class MockConstHandler:
-    def __init__(self, workspace="/workspace", container_name="test_container"):
-        self._workspace = workspace
+    def __init__(self, workspace_path="/workspace", container_name="test_container"):
+        self.workspace_path = workspace_path
         self._container_name = container_name
-    @property
-    def workspace(self):
-        return self._workspace
-    @workspace.setter
-    def workspace(self, value):
-        self._workspace = value
     @property
     def container_name(self):
         return self._container_name
@@ -33,7 +27,7 @@ def test_copy_in_container():
 
 def test_copy_host_to_container():
     handler = make_handler()
-    handler.const_handler.workspace = "/workspace"
+    handler.const_handler.workspace_path = "/workspace"
     mock_driver = MockDockerDriver()
     req = handler.copy("/host/file.txt", "in_container.txt", docker_driver=mock_driver)
     assert isinstance(req, DockerFileRequest)
@@ -44,7 +38,7 @@ def test_copy_host_to_container():
 
 def test_copy_container_to_host():
     handler = make_handler()
-    handler.const_handler.workspace = "/workspace"
+    handler.const_handler.workspace_path = "/workspace"
     mock_driver = MockDockerDriver()
     req = handler.copy("in_container.txt", "/host/file.txt", docker_driver=mock_driver)
     assert isinstance(req, DockerFileRequest)
@@ -63,7 +57,7 @@ def test_move_in_container():
 
 def test_move_host_to_container_and_reverse():
     handler = make_handler()
-    handler.const_handler.workspace = "/workspace"
+    handler.const_handler.workspace_path = "/workspace"
     mock_driver = MockDockerDriver()
     req = handler.move("/host/file.txt", "in_container.txt", docker_driver=mock_driver)
     assert isinstance(req, DockerFileRequest)
@@ -97,7 +91,7 @@ def test_copytree_in_container():
 
 def test_copytree_host_to_container_and_reverse():
     handler = make_handler()
-    handler.const_handler.workspace = "/workspace"
+    handler.const_handler.workspace_path = "/workspace"
     mock_driver = MockDockerDriver()
     req = handler.copytree("/host/dir1", "in_container_dir", docker_driver=mock_driver)
     assert isinstance(req, DockerFileRequest)

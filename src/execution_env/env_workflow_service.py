@@ -19,7 +19,6 @@ class EnvWorkflowService:
         各planごとに必要なrequest群（CompositeRequest等）を生成して返す
         ビルド用ファイル準備→ビルド実行→成果物準備→起動
         """
-        import copy
         all_requests = []
         for plan in run_plans:
             for i in range(plan.count):

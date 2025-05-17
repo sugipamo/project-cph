@@ -5,18 +5,15 @@ from src.operations.docker.docker_file_request import DockerFileRequest
 from pathlib import Path
 
 class DummyConstHandler:
-    def __init__(self, workspace="/workspace", container_name="test_container"):
-        self._workspace = workspace
+    def __init__(self, workspace_path="/workspace", container_name="test_container"):
+        self.workspace_path = workspace_path
         self._container_name = container_name
-    @property
-    def workspace(self):
-        return self._workspace
     @property
     def container_name(self):
         return self._container_name
 
 def make_docker_handler(ws="/workspace"):
-    return DockerFileHandler({}, DummyConstHandler(workspace=ws))
+    return DockerFileHandler({}, DummyConstHandler(workspace_path=ws))
 
 def test_is_in_container_true_false():
     handler = make_docker_handler("/workspace")
