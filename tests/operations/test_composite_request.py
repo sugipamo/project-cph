@@ -38,30 +38,7 @@ def test_composite_request_nested_flatten():
     assert any(r.operation_type == OperationType.SHELL and "bar" in r.stdout for r in flat)
     assert any(r.operation_type == OperationType.FILE and r.success for r in flat)
 
-class CompositeRequest:
-    def __init__(self, requests):
-        self.requests = requests
-        self._executed = False
-        self._results = None
-
-    @property
-    def operation_type(self):
-        return OperationType.COMPOSITE
-
-    def execute(self, driver=None):
-        if self._executed:
-            raise RuntimeError("This CompositeRequest has already been executed.")
-        results = []
-        for req in self.requests:
-            # FileRequest/ShellRequestなどでdriverを渡す
-            if hasattr(req, 'execute'):
-                try:
-                    results.append(req.execute(driver=driver))
-                except TypeError:
-                    # driver引数を受け取らない場合
-                    results.append(req.execute())
-            else:
-                results.append(req)
-        self._results = results
-        self._executed = True
-        return results 
+def test_composite_request_invalid_type():
+    # BaseRequestを継承しない型を渡すとTypeErrorになることを確認
+    with pytest.raises(TypeError):
+        CompositeRequest([123, "abc"])  # intやstrは不正 
