@@ -171,6 +171,11 @@ class DockerConstHandler(BaseConstHandler):
     def container_name(self) -> str:
         return f"cph_{self.image_name}"
 
+    @property
+    def base_image_name(self) -> str:
+        # ハッシュを除いたベースのイメージ名（例: "python" など）
+        return self.config.get('language', '')
+
     def parse(self, s: str) -> str:
         # 変数展開: {contest_current} など（Docker用パスで）
         result = s

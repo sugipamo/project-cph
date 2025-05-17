@@ -52,6 +52,9 @@ class DockerFileHandler(BaseFileHandler):
         return FileRequest(FileOpType.DOCKER_CP, relative_path, dst_path=target_path, container=container, to_container=to_container, docker_driver=LocalDockerDriver())
 
 class LocalFileHandler(BaseFileHandler):
+    def __init__(self, config: dict, const_handler):
+        super().__init__(config, const_handler)
+
     def read(self, relative_path: str):
         return FileRequest(FileOpType.READ, relative_path)
 

@@ -5,6 +5,7 @@ from typing import List
 import os
 import json
 from enum import Enum
+from src.operations.di_container import DIContainer
 
 BASE_DIR = "contest_env"
 
@@ -86,14 +87,24 @@ class EnvResourceController:
         self.language_name = language_name
         self.env_type = env_type
         env_config = load_env_json(language_name, env_type)
+        # DIコンテナのセットアップ
+        container = DIContainer()
+        # provider登録
+        container.register("LocalConstHandler", lambda: LocalConstHandler(env_config))
+        container.register("DockerConstHandler", lambda: DockerConstHandler(env_config))
+        container.register("LocalRunHandler", lambda: LocalRunHandler(env_config, container.resolve("LocalConstHandler")))
+        container.register("DockerRunHandler", lambda: DockerRunHandler(env_config, container.resolve("DockerConstHandler")))
+        container.register("LocalFileHandler", lambda: LocalFileHandler(env_config, container.resolve("LocalConstHandler")))
+        container.register("DockerFileHandler", lambda: DockerFileHandler(env_config, container.resolve("DockerConstHandler")))
+        # HandlerのDI取得
         if env_config.env_type == EnvType.DOCKER:
-            self.const_handler = DockerConstHandler(env_config)
-            self.run_handler = DockerRunHandler(env_config, self.const_handler)
-            self.file_handler = DockerFileHandler(env_config, self.const_handler)
+            self.const_handler = container.resolve("DockerConstHandler")
+            self.run_handler = container.resolve("DockerRunHandler")
+            self.file_handler = container.resolve("DockerFileHandler")
         else:
-            self.const_handler = LocalConstHandler(env_config)
-            self.run_handler = LocalRunHandler(env_config, self.const_handler)
-            self.file_handler = LocalFileHandler(env_config, self.const_handler)
+            self.const_handler = container.resolve("LocalConstHandler")
+            self.run_handler = container.resolve("LocalRunHandler")
+            self.file_handler = container.resolve("LocalFileHandler")
 
     def create_process_options(self, cmd: List[str]):
         return self.run_handler.create_process_options(cmd)
