@@ -10,24 +10,25 @@ class BaseRunHandler(ABC):
         self.const_handler = const_handler
 
     @abstractmethod
-    def create_process_options(self, cmd: List[str]):
+    def create_process_options(self, cmd: list, driver):
         pass
 
 class LocalRunHandler(BaseRunHandler):
     def __init__(self, config: dict, const_handler):
         super().__init__(config, const_handler)
-    def create_process_options(self, cmd: List[str]) -> ShellRequest:
+    def create_process_options(self, cmd: list, driver) -> ShellRequest:
         # コマンド配列内の各要素に対して変数展開
-        return ShellRequest(cmd)
+        return ShellRequest(cmd, driver)
 
 class DockerRunHandler(BaseRunHandler):
     def __init__(self, config: dict, const_handler):
         super().__init__(config, const_handler)
 
-    def create_process_options(self, cmd: List[str]) -> DockerRequest:
+    def create_process_options(self, cmd: list, driver) -> DockerRequest:
         # DockerRequest(EXEC)を返す
         return DockerRequest(
             op=DockerOpType.EXEC,
             name=self.const_handler.container_name,
-            command=" ".join(cmd)
+            command=" ".join(cmd),
+            driver=driver
         )
