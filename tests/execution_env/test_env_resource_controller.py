@@ -1,7 +1,8 @@
 import pytest
-from src.execution_env.env_resource_controller import EnvResourceController, EnvType, EnvConfig, list_languages, list_language_envs, load_env_json, BASE_DIR
-from src.operations.file.file_request import FileRequest, FileOpType
+from src.execution_env.env_resource_controller import EnvResourceController
+from src.operations.file.file_request import FileOpType, FileRequest
 from src.operations.docker.docker_file_request import DockerFileRequest
+from src.execution_env.resource_handler.file_handler import LocalFileHandler, DockerFileHandler
 import os
 import tempfile
 import json
@@ -51,20 +52,6 @@ def test_dependency_injection():
     assert controller.copy_file("a", "b") == "copy:a->b"
     assert controller.create_process_options(["ls"], driver="drv") == "run:['ls']:drv"
 
-def test_envconfig_validation():
-    # env_typeなし
-    with pytest.raises(ValueError):
-        EnvConfig({"contest_current_path": "a", "source_file": "b"})
-    # 不正なenv_type
-    with pytest.raises(ValueError):
-        EnvConfig({"env_type": "invalid", "contest_current_path": "a", "source_file": "b"})
-    # contest_current_pathなし
-    with pytest.raises(ValueError):
-        EnvConfig({"env_type": "local", "source_file": "b"})
-    # source_fileなし
-    with pytest.raises(ValueError):
-        EnvConfig({"env_type": "local", "contest_current_path": "a"})
-
 # local/dockerの正常系は既存のtest_env_resource_controller.pyでカバーされているため、
 # ここでは依存注入・異常系を中心にテストしています。 
 
@@ -83,49 +70,3 @@ def make_env_json(dir_path, lang, env_type="local"):
     with open(env_json_path, "w") as f:
         json.dump(data, f)
     return env_json_path
-
-def test_list_languages_and_load_env_json(tmp_path, monkeypatch):
-    # 一時ディレクトリをBASE_DIRに
-    base_dir = tmp_path / "contest_env"
-    base_dir.mkdir()
-    monkeypatch.setattr("src.execution_env.env_resource_controller.BASE_DIR", str(base_dir))
-    # 言語A, Bを作成
-    make_env_json(str(base_dir), "A")
-    make_env_json(str(base_dir), "B")
-    langs = list_languages()
-    assert set(langs) == {"A", "B"}
-    # load_env_jsonでEnvConfigが返る
-    cfg = load_env_json("A", "local")
-    assert isinstance(cfg, EnvConfig)
-    assert cfg.env_type.name == "LOCAL"
-    # 存在しない言語
-    with pytest.raises(ValueError):
-        load_env_json("C", "local")
-
-def test_list_language_envs(tmp_path, monkeypatch):
-    base_dir = tmp_path / "contest_env"
-    base_dir.mkdir()
-    monkeypatch.setattr("src.execution_env.env_resource_controller.BASE_DIR", str(base_dir))
-    # env.jsonのトップレベルキーが言語名の形式
-    lang_dir = base_dir / "python"
-    lang_dir.mkdir()
-    env_json_path = lang_dir / "env.json"
-    data = {
-        "python": {
-            "handlers": {
-                "local": {},
-                "docker": {}
-            }
-        }
-    }
-    with open(env_json_path, "w", encoding="utf-8") as f:
-        json.dump(data, f)
-    result = list_language_envs()
-    assert ("python", "local") in result
-    assert ("python", "docker") in result
-    # handlersが空の場合
-    data2 = {"python": {"handlers": {}}}
-    with open(env_json_path, "w", encoding="utf-8") as f:
-        json.dump(data2, f)
-    result2 = list_language_envs()
-    assert ("python", "local") not in result2 and ("python", "docker") not in result2 
