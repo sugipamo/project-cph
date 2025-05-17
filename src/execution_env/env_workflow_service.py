@@ -3,17 +3,6 @@ from src.execution_env.env_resource_controller import EnvResourceController
 from src.operations.composite_request import CompositeRequest
 from src.execution_env.run_plan_loader import load_run_plan_from_language_env, load_env_json
 from src.execution_env.run_plan_loader import RunPlan
-from src.operations.request_debug_info_mixin import RequestDebugInfoMixin
-
-
-class DeferredRequest(RequestDebugInfoMixin):
-    def __init__(self, func, debug_tag=None):
-        self.func = func
-        self._set_debug_info(debug_tag)
-    def execute(self, driver=None):
-        return self.func()
-    def __repr__(self):
-        return f"<DeferredRequest func={self.func}>"
 
 
 class EnvWorkflowService:
@@ -58,24 +47,14 @@ class EnvWorkflowService:
                 requests.append(controller.prepare_sourcecode())
                 # 2. ビルド実行
                 for build_cmd in controller.get_build_commands():
-                    if plan.env == "docker":
-                        from src.operations.docker.docker_driver import LocalDockerDriver
-                        req = controller.create_process_options(build_cmd)
-                        requests.append(DeferredRequest(lambda req=req: req.execute(driver=LocalDockerDriver())))
-                    else:
-                        req = controller.create_process_options(build_cmd)
-                        requests.append(DeferredRequest(lambda req=req: req.execute()))
+                    req = controller.create_process_options(build_cmd)
+                    requests.append(req)
                 # 3. 成果物準備（現状は省略。必要ならここで成果物ファイルをコピー等）
                 # 4. 起動
                 run_cmd = controller.get_run_command()
                 if run_cmd:
-                    if plan.env == "docker":
-                        from src.operations.docker.docker_driver import LocalDockerDriver
-                        req = controller.create_process_options(run_cmd)
-                        requests.append(DeferredRequest(lambda req=req: req.execute(driver=LocalDockerDriver())))
-                    else:
-                        req = controller.create_process_options(run_cmd)
-                        requests.append(DeferredRequest(lambda req=req: req.execute()))
+                    req = controller.create_process_options(run_cmd)
+                    requests.append(req)
                 composite = CompositeRequest(requests)
                 all_requests.append(composite)
         return all_requests 
