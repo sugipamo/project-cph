@@ -83,7 +83,15 @@ def list_language_envs():
     return result
 
 class EnvResourceController:
-    def __init__(self, language_name, env_type):
+    def __init__(self, language_name=None, env_type=None, env_config=None, file_handler=None, run_handler=None, const_handler=None):
+        # テスト用: 依存注入があればそれを使う
+        if file_handler is not None:
+            self.language_name = language_name
+            self.env_type = env_type
+            self.const_handler = const_handler
+            self.run_handler = run_handler
+            self.file_handler = file_handler
+            return
         self.language_name = language_name
         self.env_type = env_type
         env_config = load_env_json(language_name, env_type)
@@ -129,6 +137,9 @@ class EnvResourceController:
 
     def rmtree(self, dir_path: str):
         return self.file_handler.rmtree(dir_path)
+
+    def copy_file(self, src_path: str, dst_path: str):
+        return self.file_handler.copy(src_path, dst_path)
 
 def get_resource_handler(language: str, env: str):
     return EnvResourceController(language, env)
