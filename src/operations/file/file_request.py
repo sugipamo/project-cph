@@ -2,6 +2,8 @@ from enum import Enum, auto
 from src.operations.operation_type import OperationType
 from src.operations.file.file_driver import LocalFileDriver
 from src.operations.result import OperationResult
+import inspect
+import os
 
 class FileOpType(Enum):
     READ = auto()
@@ -13,14 +15,30 @@ class FileOpType(Enum):
     REMOVE = auto()
     RMTREE = auto()
 
-class FileRequest:
-    def __init__(self, op: FileOpType, path, content=None, dst_path=None):
+class RequestDebugInfoMixin:
+    def _set_debug_info(self, debug_tag=None):
+        if os.environ.get("CPH_DEBUG_REQUEST_INFO", "1") != "1":
+            self._debug_info = None
+            return
+        frame = inspect.stack()[2]
+        self._debug_info = {
+            "file": frame.filename,
+            "line": frame.lineno,
+            "function": frame.function,
+            "debug_tag": debug_tag,
+        }
+    def debug_info(self):
+        return getattr(self, "_debug_info", None)
+
+class FileRequest(RequestDebugInfoMixin):
+    def __init__(self, op: FileOpType, path, content=None, dst_path=None, debug_tag=None):
         self.op = op  # FileOpType
         self.path = path
         self.content = content
         self._executed = False
         self._result = None
         self.dst_path = dst_path  # move/copy/copytree用
+        self._set_debug_info(debug_tag)
 
     @property
     def operation_type(self):

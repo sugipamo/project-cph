@@ -1,14 +1,32 @@
 from src.operations.result import OperationResult
 import time
+import inspect
+import os
 
-class DockerFileRequest:
-    def __init__(self, src_path, dst_path, container, to_container=None):
+class RequestDebugInfoMixin:
+    def _set_debug_info(self, debug_tag=None):
+        if os.environ.get("CPH_DEBUG_REQUEST_INFO", "1") != "1":
+            self._debug_info = None
+            return
+        frame = inspect.stack()[2]
+        self._debug_info = {
+            "file": frame.filename,
+            "line": frame.lineno,
+            "function": frame.function,
+            "debug_tag": debug_tag,
+        }
+    def debug_info(self):
+        return getattr(self, "_debug_info", None)
+
+class DockerFileRequest(RequestDebugInfoMixin):
+    def __init__(self, src_path, dst_path, container, to_container=None, debug_tag=None):
         self.src_path = src_path
         self.dst_path = dst_path
         self.container = container
         self.to_container = to_container
         self._executed = False
         self._result = None
+        self._set_debug_info(debug_tag)
 
     def execute(self, driver=None):
         if self._executed:

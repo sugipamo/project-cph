@@ -3,6 +3,8 @@ from typing import Any, Dict, Optional
 from src.operations.docker.docker_driver import DockerDriver, LocalDockerDriver
 from src.operations.result import OperationResult
 from src.operations.operation_type import OperationType
+import inspect
+import os
 
 class DockerOpType(Enum):
     RUN = auto()
@@ -11,8 +13,23 @@ class DockerOpType(Enum):
     EXEC = auto()
     LOGS = auto()
 
-class DockerRequest:
-    def __init__(self, op: DockerOpType, image: str = None, name: str = None, command: str = None, options: Optional[Dict[str, Any]] = None):
+class RequestDebugInfoMixin:
+    def _set_debug_info(self, debug_tag=None):
+        if os.environ.get("CPH_DEBUG_REQUEST_INFO", "1") != "1":
+            self._debug_info = None
+            return
+        frame = inspect.stack()[2]
+        self._debug_info = {
+            "file": frame.filename,
+            "line": frame.lineno,
+            "function": frame.function,
+            "debug_tag": debug_tag,
+        }
+    def debug_info(self):
+        return getattr(self, "_debug_info", None)
+
+class DockerRequest(RequestDebugInfoMixin):
+    def __init__(self, op: DockerOpType, image: str = None, name: str = None, command: str = None, options: Optional[Dict[str, Any]] = None, debug_tag=None):
         self.op = op
         self.image = image
         self.name = name
@@ -20,6 +37,7 @@ class DockerRequest:
         self.options = options or {}
         self._executed = False
         self._result = None
+        self._set_debug_info(debug_tag)
 
     @property
     def operation_type(self):

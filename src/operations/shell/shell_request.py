@@ -1,9 +1,26 @@
 import subprocess
 from src.operations.result import OperationResult
 from src.operations.operation_type import OperationType
+import inspect
+import os
 
-class ShellRequest:
-    def __init__(self, cmd, cwd=None, env=None, inputdata=None, timeout=None):
+class RequestDebugInfoMixin:
+    def _set_debug_info(self, debug_tag=None):
+        if os.environ.get("CPH_DEBUG_REQUEST_INFO", "1") != "1":
+            self._debug_info = None
+            return
+        frame = inspect.stack()[2]
+        self._debug_info = {
+            "file": frame.filename,
+            "line": frame.lineno,
+            "function": frame.function,
+            "debug_tag": debug_tag,
+        }
+    def debug_info(self):
+        return getattr(self, "_debug_info", None)
+
+class ShellRequest(RequestDebugInfoMixin):
+    def __init__(self, cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None):
         self.cmd = cmd
         self.cwd = cwd
         self.env = env
@@ -11,6 +28,7 @@ class ShellRequest:
         self.timeout = timeout
         self._executed = False
         self._result = None
+        self._set_debug_info(debug_tag)
 
     @property
     def operation_type(self):
