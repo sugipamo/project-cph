@@ -1,10 +1,8 @@
 import os
 import json
-from typing import List
+from typing import List, Optional
 from dataclasses import dataclass
-# 新規追加: language, envtypeからEnvContextを生成
 BASE_DIR = "contest_env"
-OJ_ENV_PATH = os.path.join("src", "execution_env", "oj", "env.json")
 
 @dataclass
 class EnvContext:
@@ -19,7 +17,8 @@ class EnvContext:
     contest_temp_path: str = None
     language_id: str = None
     dockerfile_path: str = None
-    env_type_conf: dict = None
+    build_cmd: Optional[list] = None
+    run_cmd: Optional[list] = None
 
     @classmethod
     def from_json(cls, language: str, env: str, count: int = 1):
@@ -39,12 +38,38 @@ class EnvContext:
             contest_temp_path=lang_conf.get("contest_temp_path") or "temp",
             language_id=lang_conf.get("language_id"),
             dockerfile_path=env_type_conf.get("dockerfile_path"),
-            env_type_conf=env_type_conf
+            build_cmd=env_type_conf.get("build_cmd"),
+            run_cmd=env_type_conf.get("run_cmd"),
         )
 
     def __post_init__(self):
         # デフォルトでは何もしない（from_jsonでのみenv.jsonをロード）
         pass
+
+@dataclass
+class OjContext(EnvContext):
+    test_cmd: Optional[List[str]] = None
+    submit_cmd: Optional[List[str]] = None
+
+    @classmethod
+    def from_context(cls, base: EnvContext):
+        return cls(
+            language="oj",
+            env=base.env,
+            count=base.count,
+            contest_current_path=base.contest_current_path,
+            source_file=base.source_file,
+            source_file_name=base.source_file_name,
+            contest_env_path=base.contest_env_path,
+            contest_template_path=base.contest_template_path,
+            contest_temp_path=base.contest_temp_path,
+            language_id=base.language_id,
+            dockerfile_path=base.dockerfile_path,
+            build_cmd=base.build_cmd,
+            run_cmd=base.run_cmd,
+            test_cmd=["oj", "t", "-c", "{workspace_path}/{source_file_name}"],
+            submit_cmd=["oj", "s", "{workspace_path}/{source_file_name}"]
+        )
 
 def load_env_json(language: str, env: str) -> dict:
     # 通常のenv.json

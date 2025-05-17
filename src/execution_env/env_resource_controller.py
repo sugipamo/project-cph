@@ -73,10 +73,9 @@ class EnvResourceController:
 
     def get_build_commands(self):
         """
-        env_type_confやconst_handlerを使ってbuild_cmdをパース・展開（parse_with_workspaceを利用）
+        build_cmdをenv_contextから直接取得し、const_handlerでパースして返す
         """
-        env_type_conf = self.env_context.env_type_conf or {}
-        build_cmds = env_type_conf.get("build_cmd", [])
+        build_cmds = self.env_context.build_cmd or []
         return [
             [self.const_handler.parse(str(x)) for x in build_cmd]
             for build_cmd in build_cmds
@@ -84,10 +83,9 @@ class EnvResourceController:
 
     def get_run_command(self):
         """
-        env_type_confやconst_handlerを使ってrun_cmdをパース・展開（parse_with_workspaceを利用）
+        run_cmdをenv_contextから直接取得し、const_handlerでパースして返す
         """
-        env_type_conf = self.env_context.env_type_conf or {}
-        run_cmd = env_type_conf.get("run_cmd", [])
+        run_cmd = self.env_context.run_cmd or []
         return [self.const_handler.parse(str(x)) for x in run_cmd]
 
 def get_resource_handler(language: str, env: str):
