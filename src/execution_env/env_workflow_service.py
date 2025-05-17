@@ -23,7 +23,7 @@ class EnvWorkflowService:
         for context in env_contexts:
             for i in range(context.count):
                 # controller生成
-                controller = EnvResourceController.from_plan(context)
+                controller = EnvResourceController.from_context(context)
                 requests = []
                 # 1. ビルド用ファイル準備（prepare_sourcecodeを利用）
                 requests.append(controller.prepare_sourcecode())

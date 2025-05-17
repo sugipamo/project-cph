@@ -35,7 +35,7 @@ class EnvResourceController:
             self.file_handler = container.resolve("LocalFileHandler")
 
     @classmethod
-    def from_plan(cls, env_context):
+    def from_context(cls, env_context):
         """
         EnvContextからEnvResourceControllerを生成するファクトリメソッド。
         """
