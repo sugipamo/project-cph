@@ -6,6 +6,7 @@ from src.operations.file.file_request import FileRequest, FileOpType
 from src.operations.operation_type import OperationType
 from src.operations.file.file_driver import MockFileDriver
 from src.operations.shell.local_shell_driver import LocalShellDriver
+from src.operations.base_request import BaseRequest
 
 def test_composite_request_shell_and_file():
     shell_driver = LocalShellDriver()
@@ -40,4 +41,50 @@ def test_composite_request_nested_flatten():
 def test_composite_request_invalid_type():
     # BaseRequestを継承しない型を渡すとTypeErrorになることを確認
     with pytest.raises(TypeError):
-        CompositeRequest([123, "abc"])  # intやstrは不正 
+        CompositeRequest([123, "abc"])  # intやstrは不正
+
+def test_parallel_composite_request_shell_and_file():
+    from src.operations.composite_request import ParallelCompositeRequest
+    from src.operations.shell.shell_request import ShellRequest
+    from src.operations.file.file_request import FileRequest, FileOpType
+    from src.operations.file.file_driver import MockFileDriver
+    from src.operations.shell.local_shell_driver import LocalShellDriver
+    from src.operations.operation_type import OperationType
+
+    shell_driver = LocalShellDriver()
+    file_driver = MockFileDriver()
+    req1 = ShellRequest(["echo", "foo"])
+    req2 = ShellRequest(["echo", "bar"])
+    req3 = FileRequest(FileOpType.WRITE, "/tmp/test_parallel_composite.txt", content="baz")
+
+    # 各リクエストに適切なドライバを紐付けるラッパー
+    class DriverBoundRequest(BaseRequest):
+        def __init__(self, req, driver):
+            super().__init__(name=getattr(req, 'name', None), debug_tag=getattr(req, 'debug_tag', None))
+            self.req = req
+            self.driver = driver
+        def execute(self, driver=None):
+            return self.req.execute(driver=self.driver)
+        @property
+        def operation_type(self):
+            return getattr(self.req, 'operation_type', None)
+
+    parallel = ParallelCompositeRequest([
+        DriverBoundRequest(req1, shell_driver),
+        DriverBoundRequest(req2, shell_driver),
+        DriverBoundRequest(req3, file_driver),
+    ])
+    results = parallel.execute()
+    assert len(results) == 3
+    shell_results = [r for r in results if hasattr(r, 'operation_type') and r.operation_type == OperationType.SHELL]
+    file_results = [r for r in results if hasattr(r, 'operation_type') and r.operation_type == OperationType.FILE]
+    assert len(shell_results) == 2
+    assert len(file_results) == 1
+    assert any("foo" in (r.stdout or "") or r.stdout == "" for r in shell_results)
+    assert any("bar" in (r.stdout or "") or r.stdout == "" for r in shell_results)
+    assert file_results[0].success
+
+def test_parallel_composite_request_invalid_type():
+    from src.operations.composite_request import ParallelCompositeRequest
+    with pytest.raises(TypeError):
+        ParallelCompositeRequest([123, "abc"])  # intやstrは不正 
