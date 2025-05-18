@@ -73,7 +73,7 @@ class DockerFileHandler(BaseFileHandler):
         src_in_ws = self._is_in_container(relative_path)
         dst_in_ws = self._is_in_container(target_path)
         container = self.const_handler.container_name
-        if src_in_ws and dst_in_ws:
+        if src_in_ws == dst_in_ws:
             return FileRequest(FileOpType.COPY, relative_path, dst_path=target_path)
         # どちらかが外の場合
         to_container = dst_in_ws and not src_in_ws
@@ -89,7 +89,7 @@ class DockerFileHandler(BaseFileHandler):
         src_in_ws = self._is_in_container(src_path)
         dst_in_ws = self._is_in_container(dst_path)
         container = self.const_handler.container_name
-        if src_in_ws and dst_in_ws:
+        if src_in_ws == dst_in_ws:
             return FileRequest(FileOpType.MOVE, src_path, dst_path=dst_path)
         # どちらかが外の場合はcopy+remove相当（ここではcopyのみ返す。上位層で合成も可）
         to_container = dst_in_ws and not src_in_ws
@@ -120,7 +120,7 @@ class DockerFileHandler(BaseFileHandler):
         src_in_ws = self._is_in_container(src_path)
         dst_in_ws = self._is_in_container(dst_path)
         container = self.const_handler.container_name
-        if src_in_ws and dst_in_ws:
+        if src_in_ws == dst_in_ws:
             return FileRequest(FileOpType.COPYTREE, src_path, dst_path=dst_path)
         # どちらかが外の場合
         to_container = dst_in_ws and not src_in_ws
