@@ -1,7 +1,5 @@
 from src.operations.base_request import BaseRequest
 from src.operations.operation_type import OperationType
-import inspect
-import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class CompositeRequest(BaseRequest):
