@@ -70,6 +70,19 @@ class DockerFileHandler(BaseFileHandler):
         return FileRequest(FileOpType.EXISTS, relative_path)
 
     def copy(self, relative_path: str, target_path: str):
+        # ディレクトリかどうかを判定し、適切なFileRequestを返す
+        src_path = relative_path
+        # src_pathが絶対パスでなければworkspace基準で解決
+        if not os.path.isabs(src_path):
+            ws = getattr(self.const_handler, 'workspace_path', None)
+            if ws:
+                src_path_full = os.path.join(ws, src_path)
+            else:
+                src_path_full = src_path
+        else:
+            src_path_full = src_path
+        if os.path.isdir(src_path_full):
+            return self.copytree(relative_path, target_path)
         src_in_ws = self._is_in_container(relative_path)
         dst_in_ws = self._is_in_container(target_path)
         container = self.const_handler.container_name
@@ -160,6 +173,19 @@ class LocalFileHandler(BaseFileHandler):
         return FileRequest(FileOpType.EXISTS, relative_path)
 
     def copy(self, relative_path: str, target_path: str):
+        # ディレクトリかどうかを判定し、適切なFileRequestを返す
+        src_path = relative_path
+        # src_pathが絶対パスでなければworkspace基準で解決
+        if not os.path.isabs(src_path):
+            ws = getattr(self.const_handler, 'workspace_path', None)
+            if ws:
+                src_path_full = os.path.join(ws, src_path)
+            else:
+                src_path_full = src_path
+        else:
+            src_path_full = src_path
+        if os.path.isdir(src_path_full):
+            return self.copytree(relative_path, target_path)
         return FileRequest(FileOpType.COPY, relative_path, dst_path=target_path)
 
     def remove(self, relative_path: str):

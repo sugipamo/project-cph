@@ -15,7 +15,6 @@ class EnvWorkflowService:
             requests = []
             controller = EnvResourceController.from_context(context)
             if controller.env_context.build_cmds:
-
                 req = controller.get_build_commands()
                 requests.append(req)
 
