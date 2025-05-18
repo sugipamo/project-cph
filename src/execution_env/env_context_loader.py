@@ -41,7 +41,7 @@ class EnvContext:
             language_id=lang_conf.get("language_id"),
             dockerfile_path=env_type_conf.get("dockerfile_path"),
             docker_options=env_type_conf.get("docker_options"),
-            build_cmds=env_type_conf.get("build_cmd"),
+            build_cmds=env_type_conf.get("build_cmds"),
             run_cmd=env_type_conf.get("run_cmd"),
             build_output_path=lang_conf.get("build_output_path"),
             run_prepare_file_moves=env_type_conf.get("run_prepare_file_moves", []),
