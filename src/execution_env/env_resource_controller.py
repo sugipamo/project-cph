@@ -70,7 +70,6 @@ class EnvResourceController:
         """
 
         requests = []
-        print("build_prepare_file_moves", self.env_context.build_prepare_file_moves)
         for build_prepare_file_move in self.env_context.build_prepare_file_moves:
             src = build_prepare_file_move["src"]
             dst = build_prepare_file_move["dst"]
