@@ -3,17 +3,46 @@ import json
 from typing import List, Dict, Optional, Tuple
 
 CONTEST_ENV_DIR = "contest_env"
+SYSTEM_INFO_PATH = "contest_current/system_info.json"
+
+class SystemInfoProvider:
+    """
+    system_info.jsonの読み書きを抽象化するプロバイダ。
+    テストや他用途で差し替え可能。
+    """
+    def load(self) -> dict:
+        raise NotImplementedError
+    def save(self, info: dict):
+        raise NotImplementedError
+
+class LocalSystemInfoProvider(SystemInfoProvider):
+    def __init__(self, path: str = SYSTEM_INFO_PATH):
+        self.path = path
+    def load(self) -> dict:
+        if not os.path.exists(self.path):
+            return {}
+        with open(self.path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    def save(self, info: dict):
+        with open(self.path, "w", encoding="utf-8") as f:
+            json.dump(info, f, ensure_ascii=False, indent=2)
 
 class UserInputParser:
     """
     CLI等から渡される引数リストをパースし、必須情報を抽出・バリデーションするクラス。
     """
     @classmethod
-    def parse(cls, args: list) -> 'UserInputParseResult':
+    def parse(cls, args: list, system_info_provider: Optional[SystemInfoProvider] = None) -> 'UserInputParseResult':
         """
         contest_env配下のenv.jsonを全て読み込み、
         言語・env_type・コマンドを特定し、使用済みindexをused_flagsで管理する。
+        未指定項目はsystem_info.jsonから補完する。
         """
+        if system_info_provider is None:
+            system_info_provider = LocalSystemInfoProvider()
+        system_info = system_info_provider.load()
+        print("[DEBUG] system_info.json:", system_info)
+
         env_jsons = cls.load_all_env_jsons(CONTEST_ENV_DIR)
         language_alias_map = cls.extract_language_and_aliases(env_jsons)
         print("[DEBUG] 言語名とエイリアス:", language_alias_map)
@@ -34,9 +63,14 @@ class UserInputParser:
         # contest_name, problem_nameの割り当て
         unused_args = [arg for arg, used in zip(args, used_flags) if not used]
         if len(unused_args) != 2:
-            print("[ERROR] contest_name, problem_nameに割り当てる未使用引数が2つではありません:", unused_args)
-            return None
-        contest_name, problem_name = unused_args
+            print("[INFO] contest_name, problem_nameに割り当てる未使用引数が2つではありません。system_info.jsonから補完を試みます。")
+            contest_name = system_info.get("contest_name")
+            problem_name = system_info.get("problem_name")
+            if not contest_name or not problem_name:
+                print("[ERROR] contest_name, problem_nameが指定されておらず、system_info.jsonにも存在しません。")
+                return None
+        else:
+            contest_name, problem_name = unused_args
         print("[DEBUG] contest_name:", contest_name)
         print("[DEBUG] problem_name:", problem_name)
         # 仮の戻り値
