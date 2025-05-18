@@ -28,7 +28,7 @@ class DockerRunHandler(BaseRunHandler):
     def create_process_options(self, cmd: list) -> DockerRequest:
         # DockerRequest(EXEC)を返す
         return DockerRequest(
-            op=DockerOpType.EXEC,
-            name=self.const_handler.container_name,
-            command=" ".join(cmd)
+            DockerOpType.EXEC,
+            container=self.const_handler.container_name,
+            command=" ".join(cmd),
         )

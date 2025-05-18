@@ -35,8 +35,8 @@ def test_docker_file_request_no_driver():
     req = DockerFileRequest(
         src_path="a",
         dst_path="b",
-        container="c",
-        to_container=True
+        container="c1",
+        to_container="c2"
     )
     with pytest.raises(ValueError):
         req.execute(driver=None) 

@@ -80,9 +80,9 @@ class DockerFileHandler(BaseFileHandler):
         req = DockerFileRequest(
             src_path=relative_path,
             dst_path=target_path,
-            container=container
+            container=container,
+            to_container=to_container
         )
-        req.to_container = to_container
         return req
 
     def move(self, src_path: str, dst_path: str):
@@ -96,9 +96,9 @@ class DockerFileHandler(BaseFileHandler):
         req = DockerFileRequest(
             src_path=src_path,
             dst_path=dst_path,
-            container=container
+            container=container,
+            to_container=to_container
         )
-        req.to_container = to_container
         return req
 
     def remove(self, relative_path: str):
@@ -111,9 +111,9 @@ class DockerFileHandler(BaseFileHandler):
         req = DockerFileRequest(
             src_path=relative_path,
             dst_path=None,
-            container=container
+            container=container,
+            to_container=False
         )
-        req.to_container = False
         return req
 
     def copytree(self, src_path: str, dst_path: str):
@@ -127,9 +127,9 @@ class DockerFileHandler(BaseFileHandler):
         req = DockerFileRequest(
             src_path=src_path,
             dst_path=dst_path,
-            container=container
+            container=container,
+            to_container=to_container
         )
-        req.to_container = to_container
         return req
 
     def rmtree(self, dir_path: str):
@@ -141,9 +141,9 @@ class DockerFileHandler(BaseFileHandler):
         req = DockerFileRequest(
             src_path=dir_path,
             dst_path=None,
-            container=container
+            container=container,
+            to_container=False
         )
-        req.to_container = False
         return req
 
 class LocalFileHandler(BaseFileHandler):

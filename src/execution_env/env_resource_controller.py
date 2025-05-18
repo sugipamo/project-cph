@@ -78,7 +78,7 @@ class EnvResourceController:
             parsed_cmd = [self.const_handler.parse(str(x)) for x in build_cmd]
             requests.append(self.create_process_options(parsed_cmd))
             
-        return CompositeRequest.make_composite_request(requests)
+        return CompositeRequest.make_composite_request(requests, name=f"build_{self.language_name}_{self.env_type}")
 
     def get_run_command(self):
         """
@@ -94,7 +94,7 @@ class EnvResourceController:
 
         parsed_cmd = self.create_process_options([self.const_handler.parse(str(x)) for x in run_cmd])
         requests.append(parsed_cmd)
-        return CompositeRequest.make_composite_request(requests)
+        return CompositeRequest.make_composite_request(requests, name=f"run_test_{self.language_name}_{self.env_type}")
 
 def get_resource_handler(language: str, env: str):
     return EnvResourceController(EnvContext(language, env))

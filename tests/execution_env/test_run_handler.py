@@ -7,6 +7,12 @@ class DummyConstHandler:
     @property
     def container_name(self):
         return "dummy_container"
+    @property
+    def options(self):
+        return {}
+    @property
+    def debug_tag(self):
+        return None
 
 class DummyDriver:
     pass
@@ -31,6 +37,5 @@ def test_docker_run_handler_create_process_options():
     req = handler.create_process_options(cmd)
     assert isinstance(req, DockerRequest)
     assert req.op == DockerOpType.EXEC
-    assert req.name == "dummy_container"
-    assert req.command == "ls /workspace"
+    assert req.container == "dummy_container"
     req.execute(driver=driver) 

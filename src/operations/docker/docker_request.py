@@ -15,11 +15,11 @@ class DockerOpType(Enum):
     LOGS = auto()
 
 class DockerRequest(BaseRequest):
-    def __init__(self, op: DockerOpType, image: str = None, name: str = None, command: str = None, options: Optional[Dict[str, Any]] = None, debug_tag=None):
+    def __init__(self, op: DockerOpType, image: str = None, container: str = None, command: str = None, options: Optional[Dict[str, Any]] = None, debug_tag=None, name=None):
         super().__init__(name=name, debug_tag=debug_tag)
         self.op = op
         self.image = image
-        self.name = name
+        self.container = container
         self.command = command
         self.options = options or {}
         self._executed = False
@@ -36,15 +36,15 @@ class DockerRequest(BaseRequest):
             raise ValueError("DockerRequest.execute()にはdriverが必須です")
         try:
             if self.op == DockerOpType.RUN:
-                result = driver.run_container(self.image, self.name, self.options)
+                result = driver.run_container(self.image, self.container, self.options)
             elif self.op == DockerOpType.STOP:
-                result = driver.stop_container(self.name)
+                result = driver.stop_container(self.container)
             elif self.op == DockerOpType.REMOVE:
-                result = driver.remove_container(self.name)
+                result = driver.remove_container(self.container)
             elif self.op == DockerOpType.EXEC:
-                result = driver.exec_in_container(self.name, self.command)
+                result = driver.exec_in_container(self.container, self.command)
             elif self.op == DockerOpType.LOGS:
-                result = driver.get_logs(self.name)
+                result = driver.get_logs(self.container)
             else:
                 raise ValueError(f"Unknown DockerOpType: {self.op}")
             self._result = OperationResult(success=True, op=self.op, stdout=result.stdout if hasattr(result, 'stdout') else None, stderr=result.stderr if hasattr(result, 'stderr') else None, returncode=result.returncode if hasattr(result, 'returncode') else None)
@@ -54,4 +54,4 @@ class DockerRequest(BaseRequest):
         return self._result
 
     def __repr__(self):
-        return f"<DockerRequest op={self.op} name={self.name} command={self.command}>" 
+        return f"<DockerRequest op={self.op} container={self.container} command={self.command}>" 

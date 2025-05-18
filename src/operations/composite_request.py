@@ -41,9 +41,13 @@ class CompositeRequest(BaseRequest):
     def make_composite_request(cls, requests, debug_tag=None, name=None):
         """
         requestsが1つだけならそのまま返し、2つ以上ならCompositeRequestでラップして返す。
+        ただし、nameが指定されている場合はset_nameを呼ぶ。
         """
         if len(requests) == 1:
-            return requests[0]
+            req = requests[0]
+            if name is not None:
+                req = req.set_name(name)
+            return req
         return cls(requests, debug_tag=debug_tag, name=name)
 
     def count_leaf_requests(self):

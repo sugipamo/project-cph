@@ -5,18 +5,14 @@ import os
 from src.operations.base_request import BaseRequest
 
 class DockerFileRequest(BaseRequest):
-    def __init__(self, src_path, dst_path, container, to_container=None, debug_tag=None, name=None):
-        super().__init__(name=name, debug_tag=debug_tag)
+    def __init__(self, src_path, dst_path, container, to_container=None, debug_tag=None):
+        super().__init__(debug_tag=debug_tag)
         self.src_path = src_path
         self.dst_path = dst_path
         self.container = container
         self.to_container = to_container
         self._executed = False
         self._result = None
-
-    def set_name(self, name: str):
-        self.name = name
-        return self
 
     def execute(self, driver=None):
         if self._executed:
@@ -37,4 +33,4 @@ class DockerFileRequest(BaseRequest):
         return self._result
 
     def __repr__(self):
-        return f"<DockerFileRequest name={self.name} src={self.src_path} dst={self.dst_path} container={self.container} to_container={self.to_container}>" 
+        return f"<DockerFileRequest src={self.src_path} dst={self.dst_path} container={self.container} to_container={self.to_container}>" 

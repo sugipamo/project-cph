@@ -6,23 +6,23 @@ from src.operations.result import OperationResult
 def test_dockerrequest_with_mockdriver():
     driver = MockDockerDriver()
     # RUN
-    req = DockerRequest(DockerOpType.RUN, image="img", name="c")
+    req = DockerRequest(DockerOpType.RUN, image="img", container="c")
     result = req.execute(driver=driver)
     assert result.stdout == "mock_container_c"
     # STOP
-    req = DockerRequest(DockerOpType.STOP, name="c")
+    req = DockerRequest(DockerOpType.STOP, container="c")
     result = req.execute(driver=driver)
     assert result.stdout is None
     # REMOVE
-    req = DockerRequest(DockerOpType.REMOVE, name="c")
+    req = DockerRequest(DockerOpType.REMOVE, container="c")
     result = req.execute(driver=driver)
     assert result.stdout is None
     # EXEC
-    req = DockerRequest(DockerOpType.EXEC, name="c", command="ls")
+    req = DockerRequest(DockerOpType.EXEC, container="c", command="ls")
     result = req.execute(driver=driver)
     assert result.stdout == "mock_exec_result_c_ls"
     # LOGS
-    req = DockerRequest(DockerOpType.LOGS, name="c")
+    req = DockerRequest(DockerOpType.LOGS, container="c")
     result = req.execute(driver=driver)
     assert result.stdout == "mock_logs_c"
 

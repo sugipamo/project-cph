@@ -16,6 +16,7 @@ class EnvContext:
     contest_temp_path: str = None
     language_id: str = None
     dockerfile_path: str = None
+    docker_options: Optional[dict] = None
     build_cmds: Optional[list] = None
     run_cmd: Optional[list] = None
     build_output_path: Optional[str] = None
@@ -39,6 +40,7 @@ class EnvContext:
             contest_temp_path=lang_conf.get("contest_temp_path") or "temp",
             language_id=lang_conf.get("language_id"),
             dockerfile_path=env_type_conf.get("dockerfile_path"),
+            docker_options=env_type_conf.get("docker_options"),
             build_cmds=env_type_conf.get("build_cmd"),
             run_cmd=env_type_conf.get("run_cmd"),
             build_output_path=lang_conf.get("build_output_path"),

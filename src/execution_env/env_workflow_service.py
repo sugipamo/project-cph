@@ -20,8 +20,8 @@ class EnvWorkflowService:
 
             req = controller.get_run_command()
             requests.append(req)
-            all_requests.append(CompositeRequest.make_composite_request(requests))
-        return CompositeRequest.make_composite_request(all_requests)
+            all_requests.append(CompositeRequest.make_composite_request(requests, name=f"run_test_{context.language}_{context.env}"))
+        return CompositeRequest.make_composite_request(all_requests, name="run_test")
     
 def make_run_test_requests(language: str, env: str):
     # language, env からEnvContextを生成
