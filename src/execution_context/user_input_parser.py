@@ -1,6 +1,6 @@
 import os
 import json
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Callable
 from .execution_context import ExecutionContext
 
 CONTEST_ENV_DIR = "contest_env"
@@ -29,7 +29,8 @@ class LocalSystemInfoProvider(SystemInfoProvider):
                 "contest_name": None,
                 "problem_name": None,
                 "contest_current_path": None,
-                "env_json": None
+                "env_json": None,
+                "dockerfile": None
             }
         with open(self.path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -41,8 +42,14 @@ class UserInputParser:
     """
     CLI等から渡される引数リストをパースし、必須情報を抽出するクラス。
     """
-    def __init__(self, system_info_provider: Optional[SystemInfoProvider] = None):
+    def __init__(self, system_info_provider: Optional[SystemInfoProvider] = None, dockerfile_loader: Optional[Callable[[str], str]] = None):
         self.system_info_provider = system_info_provider or LocalSystemInfoProvider()
+        self.dockerfile_loader = dockerfile_loader or self._default_dockerfile_loader
+
+    @staticmethod
+    def _default_dockerfile_loader(path: str) -> str:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
         
     @classmethod
     def from_args(cls, args: List[str]) -> ExecutionContext:
@@ -71,7 +78,8 @@ class UserInputParser:
             env_type=None,
             env_json=None,
             contest_current_path=None,
-            old_execution_context=None
+            dockerfile=None,
+            old_execution_context=None,
         )
         # 2. system_info.jsonの内容をcontextへ反映
         context = self._apply_system_info(context)
@@ -91,6 +99,8 @@ class UserInputParser:
         context = self._apply_contest_current_path(context)
         # 9. env_jsonをcontextにセット
         context = self._apply_env_json(context, env_jsons)
+        # 9.5. dockerfileの内容をセット
+        context = self._apply_dockerfile(context)
         # 10. system_info.jsonへ保存
         self._save_context_to_system_info(context)
         return context
@@ -217,6 +227,17 @@ class UserInputParser:
                 if context.language in env_json:
                     context.env_json = env_json
                     break
+        return context
+
+    def _apply_dockerfile(self, context: ExecutionContext) -> ExecutionContext:
+        dockerfile_path = None
+        if context.env_json and context.language:
+            dockerfile_path = context.env_json.get(context.language, {}).get("dockerfile_path")
+        if dockerfile_path:
+            try:
+                context.dockerfile = self.dockerfile_loader(dockerfile_path)
+            except Exception:
+                context.dockerfile = None
         return context
 
     def _save_context_to_system_info(self, context: ExecutionContext):

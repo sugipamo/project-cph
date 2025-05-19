@@ -105,3 +105,23 @@ class DockerConstHandler(BaseConstHandler):
     def base_image_name(self) -> str:
         # ハッシュを除いたベースのイメージ名（例: "python" など）
         return self.config.language
+
+    @property
+    def oj_dockerfile_path(self) -> str:
+        return Path("./src/execution_env/oj/Dockerfile")
+
+    @property
+    def base_oj_image_name(self) -> str:
+        return "cph_ojtools"
+
+    @property
+    def oj_image_name(self) -> str:
+        file_driver = LocalFileDriver()
+        hash_str = file_driver.hash_file(self.oj_dockerfile_path)
+        return f"{self.base_oj_image_name}_{hash_str}"
+
+
+    @property
+    def oj_container_name(self) -> str:
+        # env_jsonにoj_container_nameがあればそれを、なければデフォルト値
+        return self.config.env_json.get("cph_ojtools")
