@@ -2,6 +2,7 @@ import pytest
 from src.execution_env.resource_handler.const_handler import LocalConstHandler, DockerConstHandler, EnvType
 from pathlib import Path
 from src.execution_context.execution_context import ExecutionContext
+import hashlib
 
 def make_local_config():
     return ExecutionContext(
@@ -68,8 +69,9 @@ def test_local_const_handler_parse():
 
 def test_docker_const_handler_properties(monkeypatch):
     config = make_docker_config()
-    # Dockerfileのハッシュを固定値にする
-    monkeypatch.setattr("src.operations.file.file_driver.LocalFileDriver.hash_file", lambda self, path: "dummyhash")
+    # dockerfile/oj_dockerfileの内容をセット
+    config.dockerfile = "FROM python:3.8\nRUN echo hello"
+    config.oj_dockerfile = "FROM python:3.9\nRUN echo oj"
     handler = DockerConstHandler(config, workspace_path="/ws_d")
     assert handler.workspace_path == Path("/ws_d")
     assert handler.contest_current_path == Path("contests/abc002")
@@ -81,9 +83,12 @@ def test_docker_const_handler_properties(monkeypatch):
     assert handler.test_case_path == Path("contests/abc002/test")
     assert handler.test_case_in_path == Path("contests/abc002/test/in")
     assert handler.test_case_out_path == Path("contests/abc002/test/out")
-    assert handler.image_name == "python_dummyhash"
-    assert handler.container_name == "cph_python_dummyhash"
-    assert handler.base_image_name == "python"
+    # image_nameのハッシュ値をテキストから計算
+    expected_hash = hashlib.sha256(config.dockerfile.encode("utf-8")).hexdigest()[:12]
+    assert handler.image_name == f"python_{expected_hash}"
+    # oj_image_nameのハッシュ値をテキストから計算
+    expected_oj_hash = hashlib.sha256(config.oj_dockerfile.encode("utf-8")).hexdigest()[:12]
+    assert handler.oj_image_name == f"cph_ojtools_{expected_oj_hash}"
 
 def test_docker_const_handler_parse(monkeypatch):
     config = make_docker_config()
