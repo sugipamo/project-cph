@@ -40,16 +40,15 @@ class UserInputParser:
     """
     CLI等から渡される引数リストをパースし、必須情報を抽出するクラス。
     """
-    def __init__(self):
-        pass
+    def __init__(self, system_info_provider: Optional[SystemInfoProvider] = None):
+        self.system_info_provider = system_info_provider or LocalSystemInfoProvider()
 
-    def parse_and_validate(self, args: List[str], system_info_provider: Optional[SystemInfoProvider] = None) -> 'UserInputParseResult':
+    def parse_and_validate(self, args: List[str]) -> 'UserInputParseResult':
         """
         引数をパースし、基本的な検証を行う
         
         Args:
             args: コマンドライン引数
-            system_info_provider: システム情報プロバイダー
             
         Returns:
             UserInputParseResult: パース結果
@@ -58,7 +57,7 @@ class UserInputParser:
             ValueError: パースまたは検証に失敗した場合
         """
         # 引数をパース
-        parse_result = self.parse(args, system_info_provider)
+        parse_result = self.parse(args)
         if not parse_result:
             raise ValueError("引数のパースに失敗しました")
 
@@ -69,18 +68,14 @@ class UserInputParser:
 
         return parse_result
 
-    @classmethod
-    def parse(cls, args: list, system_info_provider: Optional[SystemInfoProvider] = None) -> 'UserInputParseResult':
+    def parse(self, args: list) -> 'UserInputParseResult':
         """
         contest_env配下のenv.jsonを全て読み込み、
         言語・env_type・コマンドを特定し、使用済みindexをused_flagsで管理する。
         未指定項目はsystem_info.jsonから補完する。
         contest_current_pathとold_system_infoも含める。
         """
-        if system_info_provider is None:
-            system_info_provider = LocalSystemInfoProvider()
-
-        old_system_info = system_info_provider.load()
+        old_system_info = self.system_info_provider.load()
         # system_infoをコピーして道中で直接値を更新
         system_info = dict(old_system_info)  # コピー
 
@@ -97,10 +92,10 @@ class UserInputParser:
                 "env_json": old_system_info.get("env_json")
             })
 
-        env_jsons = cls.load_all_env_jsons(CONTEST_ENV_DIR)
-        language_alias_map = cls.extract_language_and_aliases(env_jsons)
+        env_jsons = self.load_all_env_jsons(CONTEST_ENV_DIR)
+        language_alias_map = self.extract_language_and_aliases(env_jsons)
         used_flags = [False] * len(args)
-        matched_env_json, lang_idx = cls.find_env_json_by_language(args + [old_system_info["language"]], language_alias_map, env_jsons)
+        matched_env_json, lang_idx = self.find_env_json_by_language(args + [old_system_info["language"]], language_alias_map, env_jsons)
         lang = None
         if matched_env_json:
             lang = next(iter(matched_env_json.keys()))
@@ -110,12 +105,12 @@ class UserInputParser:
                 used_flags[lang_idx] = True
             system_info["language"] = lang
 
-        matched_env_type, env_type_idx = cls.find_env_type_by_args(args, matched_env_json, used_flags)
+        matched_env_type, env_type_idx = self.find_env_type_by_args(args, matched_env_json, used_flags)
         if env_type_idx is not None:
             used_flags[env_type_idx] = True
             system_info["env_type"] = matched_env_type
 
-        matched_command, cmd_idx = cls.find_command_by_args(args, matched_env_json, used_flags)
+        matched_command, cmd_idx = self.find_command_by_args(args, matched_env_json, used_flags)
         if cmd_idx is not None:
             used_flags[cmd_idx] = True
             system_info["command"] = matched_command
@@ -145,12 +140,11 @@ class UserInputParser:
             contest_current_path=system_info.get("contest_current_path"),
             old_system_info=old_system_info
         )
-        system_info_provider.save(system_info)
+        self.system_info_provider.save(system_info)
 
         return result
 
-    @classmethod
-    def load_all_env_jsons(cls, base_dir: str) -> List[dict]:
+    def load_all_env_jsons(self, base_dir: str) -> List[dict]:
         """
         base_dir配下の全てのenv.jsonを再帰的に探索し、リストで返す。
         """
@@ -166,8 +160,7 @@ class UserInputParser:
                         print(f"[WARN] {path} の読み込みに失敗: {e}")
         return env_jsons
 
-    @classmethod
-    def extract_language_and_aliases(cls, env_jsons: List[dict]) -> Dict[str, List[str]]:
+    def extract_language_and_aliases(self, env_jsons: List[dict]) -> Dict[str, List[str]]:
         """
         env.jsonリストから言語名とそのエイリアス一覧を抽出する。
         戻り値: { 言語名: [エイリアス, ...] }
@@ -179,8 +172,7 @@ class UserInputParser:
                 result[lang] = aliases
         return result
 
-    @classmethod
-    def find_env_json_by_language(cls, args: list, language_alias_map: Dict[str, List[str]], env_jsons: List[dict]) -> Tuple[Optional[dict], Optional[int]]:
+    def find_env_json_by_language(self, args: list, language_alias_map: Dict[str, List[str]], env_jsons: List[dict]) -> Tuple[Optional[dict], Optional[int]]:
         """
         入力引数(args)の中から言語名またはエイリアスに一致するものを探し、
         該当するenv.json（dict）と使用したindexを返す。
@@ -193,8 +185,7 @@ class UserInputParser:
                             return env_json, idx
         return None, None
 
-    @classmethod
-    def find_env_type_by_args(cls, args: list, env_json: dict, used_flags: List[bool]) -> Tuple[Optional[str], Optional[int]]:
+    def find_env_type_by_args(self, args: list, env_json: dict, used_flags: List[bool]) -> Tuple[Optional[str], Optional[int]]:
         """
         env_jsonのenv_typesからenv_type名・エイリアスを取得し、
         args内で未使用かつ一致するものがあれば(env_type名, index)を返す。
@@ -212,8 +203,7 @@ class UserInputParser:
                     return env_type_name, idx
         return None, None
 
-    @classmethod
-    def find_command_by_args(cls, args: list, env_json: dict, used_flags: List[bool]) -> Tuple[Optional[str], Optional[int]]:
+    def find_command_by_args(self, args: list, env_json: dict, used_flags: List[bool]) -> Tuple[Optional[str], Optional[int]]:
         """
         env_jsonのcommandsからコマンド名・エイリアスを取得し、
         args内で未使用かつ一致するものがあれば(command名, index)を返す。
@@ -276,14 +266,3 @@ class UserInputParseResult:
             return False, f"指定された言語 '{self.language}' は環境設定ファイルに存在しません"
             
         return True, None
-
-class EnvJsonInfo:
-    """
-    1つのenv.jsonから抽出した言語名・エイリアス・env_type・command等の情報をまとめて保持する補助クラス。
-    """
-    def __init__(self, language: str, language_aliases: List[str], env_types: Dict[str, List[str]], commands: Dict[str, List[str]], raw_json: dict):
-        self.language = language
-        self.language_aliases = language_aliases
-        self.env_types = env_types  # env_type名→エイリアス
-        self.commands = commands    # command名→エイリアス
-        self.raw_json = raw_json 
