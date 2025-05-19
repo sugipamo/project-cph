@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from enum import Enum, auto
 import hashlib
 from src.operations.file.file_driver import LocalFileDriver
-from src.command_registry.env_context import EnvContext
+from src.execution_context.env_context import EnvContext
 
 class EnvType(Enum):
     LOCAL = auto()
