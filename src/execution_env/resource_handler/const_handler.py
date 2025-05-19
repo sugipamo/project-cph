@@ -121,3 +121,11 @@ class DockerConstHandler(BaseConstHandler):
     def oj_container_name(self) -> str:
         # env_jsonにoj_container_nameがあればそれを、なければデフォルト値
         return self.config.env_json.get("cph_ojtools")
+
+    @property
+    def dockerfile_text(self) -> str:
+        return getattr(self.config, "dockerfile", None)
+
+    @property
+    def oj_dockerfile_text(self) -> str:
+        return getattr(self.config, "oj_dockerfile", None)
