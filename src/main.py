@@ -6,25 +6,23 @@ if __name__ == "__main__":
 
     args = sys.argv[1:]
     
-    # パーサーとレジストリの初期化
-    parser = UserInputParser()
-    parse_result = parser.parse(args)  # 最初のパースでenv_jsonを取得
-    
-    print("=== Parse Result ===")
-    print(f"command: {parse_result.command}")
-    print(f"language: {parse_result.language}")
-    print(f"env_type: {parse_result.env_type}")
-    print(f"contest_name: {parse_result.contest_name}")
-    print(f"problem_name: {parse_result.problem_name}")
-    print(f"env_json exists: {parse_result.env_json is not None}")
-    print("==================")
-    
-    if not parse_result.validate():
-        print("エラー: 無効な引数です")
-        sys.exit(1)
+    try:
+        # パーサーとレジストリの初期化
+        parser = UserInputParser()
+        parse_result = parser.parse(args)  # 最初のパースでenv_jsonを取得
         
-    registry = CommandDefinitionRegistry.from_env_json(parse_result.env_json, parse_result.language)
-    
-    # コマンド実行
-    executor = CommandExecutor(parser, registry)
-    executor.execute(args)
+        if not parse_result.validate():
+            print("エラー: 無効な引数です")
+            sys.exit(1)
+            
+        registry = CommandDefinitionRegistry.from_env_json(parse_result.env_json, parse_result.language)
+        
+        # コマンド実行
+        executor = CommandExecutor(parser, registry)
+        executor.execute(args)
+    except ValueError as e:
+        print(f"エラー: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"予期せぬエラーが発生しました: {e}")
+        sys.exit(1)
