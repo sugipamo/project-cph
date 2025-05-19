@@ -7,8 +7,7 @@ import os
 import tempfile
 import json
 import shutil
-from src.execution_env.env_context_loader import EnvContext
-
+from src.env_context import EnvContext
 class DummyFileHandler:
     def read(self, path):
         return f"read:{path}"
@@ -39,7 +38,15 @@ class DummyController:
         pass
 
 def test_dependency_injection():
-    env_context = EnvContext(language="dummy", env="local")
+    env_context = EnvContext(
+        language="dummy",
+        env_type="local",
+        contest_name="abc",
+        problem_name="a",
+        contest_current_path="contests/abc001",
+        env_json={},
+        old_system_info={}
+    )
     controller = EnvResourceController(
         env_context=env_context,
         file_handler=DummyFileHandler(),

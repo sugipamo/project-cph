@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from enum import Enum, auto
 import hashlib
 from src.operations.file.file_driver import LocalFileDriver
-from src.execution_env.env_context_loader import EnvContext
+from src.env_context import EnvContext
 
 class EnvType(Enum):
     LOCAL = auto()
@@ -23,20 +23,20 @@ class BaseConstHandler(ABC):
         return Path(self.config.contest_current_path)
 
     @property
-    def source_file_name(self) -> Path:
-        return self.config.source_file_name
+    def source_file_name(self) -> str:
+        return self.config.env_json.get("source_file_name", "main.cpp")
 
     @property
     def contest_env_path(self) -> Path:
-        return Path(self.config.contest_env_path)
+        return Path(self.config.env_json.get("contest_env_path", "env"))
 
     @property
     def contest_template_path(self) -> Path:
-        return Path(self.config.contest_template_path)
+        return Path(self.config.env_json.get("contest_template_path", "template"))
 
     @property
     def contest_temp_path(self) -> Path:
-        return Path(self.config.contest_temp_path)
+        return Path(self.config.env_json.get("contest_temp_path", "temp"))
 
     @property
     def test_case_path(self) -> Path:
@@ -90,7 +90,7 @@ class DockerConstHandler(BaseConstHandler):
     def image_name(self) -> str:
         # Dockerfileの内容をハッシュ化し、languagename_hash形式で返す
         language = self.config.language
-        dockerfile_path = self.config.dockerfile_path
+        dockerfile_path = self.config.env_json.get("dockerfile_path")
         if not dockerfile_path:
             return language
         file_driver = LocalFileDriver()

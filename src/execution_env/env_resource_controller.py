@@ -3,13 +3,13 @@ from src.execution_env.resource_handler.run_handler import LocalRunHandler, Dock
 from src.execution_env.resource_handler.const_handler import DockerConstHandler, LocalConstHandler
 from src.operations.composite_request import CompositeRequest
 from src.operations.di_container import DIContainer
-from src.execution_env.env_context_loader import EnvContext
+from src.env_context import EnvContext
 
 class EnvResourceController:
     def __init__(self, env_context: EnvContext, file_handler, run_handler, const_handler):
         self.env_context = env_context
         self.language_name = env_context.language
-        self.env_type = env_context.env
+        self.env_type = env_context.env_type
         self.const_handler = const_handler
         self.run_handler = run_handler
         self.file_handler = file_handler

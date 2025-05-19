@@ -1,31 +1,41 @@
 import pytest
 from src.execution_env.resource_handler.const_handler import LocalConstHandler, DockerConstHandler, EnvType
 from pathlib import Path
-from src.execution_env.env_context_loader import EnvContext
+from src.env_context import EnvContext
 
 def make_local_config():
     return EnvContext(
         language="cpp",
-        env="local",
+        env_type="local",
+        contest_name="abc001",
+        problem_name="a",
         contest_current_path="contests/abc001",
-        source_file="main.cpp",
-        source_file_name="main.cpp",
-        contest_env_path="env",
-        contest_template_path="template",
-        contest_temp_path="temp"
+        env_json={
+            "source_file_name": "main.cpp",
+            "source_file": "main.cpp",
+            "contest_env_path": "env",
+            "contest_template_path": "template",
+            "contest_temp_path": "temp"
+        },
+        old_system_info={}
     )
 
 def make_docker_config():
     return EnvContext(
         language="python",
-        env="docker",
+        env_type="docker",
+        contest_name="abc002",
+        problem_name="a",
         contest_current_path="contests/abc002",
-        source_file="main.py",
-        source_file_name="main.py",
-        contest_env_path="env_d",
-        contest_template_path="template_d",
-        contest_temp_path="temp_d",
-        dockerfile_path="Dockerfile"
+        env_json={
+            "source_file_name": "main.py",
+            "source_file": "main.py",
+            "contest_env_path": "env_d",
+            "contest_template_path": "template_d",
+            "contest_temp_path": "temp_d",
+            "dockerfile_path": "Dockerfile"
+        },
+        old_system_info={},
     )
 
 def test_local_const_handler_properties():

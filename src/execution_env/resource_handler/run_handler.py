@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from typing import List
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
-from src.execution_env.env_context_loader import EnvContext
+from src.operations.shell.shell_driver import ShellDriver
+from src.env_context import EnvContext
 
 
 class BaseRunHandler(ABC):
