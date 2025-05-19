@@ -1,17 +1,17 @@
 {
   "command": "test",
-  "language": "python",
+  "language": "rust",
   "env_type": "docker",
   "contest_name": "a",
   "problem_name": "abc300",
   "contest_current_path": "./contest_current",
   "env_json": {
-    "python": {
+    "rust": {
       "aliases": [
-        "py"
+        "rs"
       ],
       "language_id": "5078",
-      "source_file_name": "main.py",
+      "source_file_name": "src/main.rs",
       "contest_current_path": "./contest_current",
       "contest_template_path": "./contest_template/{language_name}",
       "exclude_patterns": [
@@ -30,27 +30,8 @@
               "allow_failure": true,
               "show_output": true,
               "cmd": [
-                "cursor",
+                "code",
                 "{contest_current_path}/{source_file_name}"
-              ]
-            },
-            {
-              "type": "shell",
-              "allow_failure": true,
-              "show_output": true,
-              "cmd": [
-                "open",
-                "{contest_current_path}/{source_file_name}"
-              ]
-            },
-            {
-              "type": "oj",
-              "allow_failure": true,
-              "show_output": true,
-              "cmd": [
-                "oj",
-                "download",
-                "https://{contest_name}.contest.atcoder.jp/tasks/{contest_name}_{problem_id}"
               ]
             }
           ]
@@ -62,21 +43,12 @@
           "description": "テストを実行する",
           "run": [
             {
-              "type": "copy",
-              "allow_failure": false,
-              "show_output": false,
-              "cmd": [
-                "{contest_current_path}/{source_file_name}",
-                "{workspace_path}/{source_file_name}"
-              ]
-            },
-            {
               "type": "test",
               "allow_failure": false,
               "show_output": true,
               "cmd": [
-                "python3",
-                "{workspace_path}/{source_file_name}"
+                "cargo",
+                "test"
               ]
             }
           ]
@@ -87,15 +59,6 @@
           ],
           "description": "提出する",
           "run": [
-            {
-              "type": "copy",
-              "allow_failure": false,
-              "show_output": false,
-              "cmd": [
-                "{contest_current_path}/{source_file_name}",
-                "{workspace_path}/{source_file_name}"
-              ]
-            },
             {
               "type": "oj",
               "allow_failure": false,
@@ -115,11 +78,45 @@
           "aliases": [
             "docker"
           ],
-          "dockerfile_path": "./contest_env/python/Dockerfile"
+          "dockerfile_path": "./contest_env/rust/Dockerfile",
+          "run_prepare_file_moves": [],
+          "run_cmd": [
+            "cargo",
+            "run"
+          ],
+          "build_prepare_file_moves": [
+            {
+              "src": "{contest_current_path}/src",
+              "dst": "{workspace_path}/src"
+            }
+          ],
+          "build_cmds": [
+            [
+              "cargo",
+              "build"
+            ]
+          ]
         },
         "local": {
           "aliases": [
             "local"
+          ],
+          "run_prepare_file_moves": [],
+          "run_cmd": [
+            "cargo",
+            "run"
+          ],
+          "build_prepare_file_moves": [
+            {
+              "src": "{contest_current_path}/src",
+              "dst": "{workspace_path}/src"
+            }
+          ],
+          "build_cmds": [
+            [
+              "cargo",
+              "build"
+            ]
           ]
         }
       }
