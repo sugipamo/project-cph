@@ -3,10 +3,10 @@ from src.execution_env.resource_handler.run_handler import LocalRunHandler, Dock
 from src.execution_env.resource_handler.const_handler import DockerConstHandler, LocalConstHandler
 from src.operations.composite_request import CompositeRequest
 from src.operations.di_container import DIContainer
-from src.execution_context.env_context import EnvContext
+from src.execution_context.execution_context import ExecutionContext
 
 class EnvResourceController:
-    def __init__(self, env_context: EnvContext, file_handler, run_handler, const_handler):
+    def __init__(self, env_context: ExecutionContext, file_handler, run_handler, const_handler):
         self.env_context = env_context
         self.language_name = env_context.language
         self.env_type = env_context.env_type
@@ -99,5 +99,5 @@ class EnvResourceController:
         return CompositeRequest.make_composite_request(requests, name=f"run_test_{self.language_name}_{self.env_type}")
 
 def get_resource_handler(language: str, env: str):
-    return EnvResourceController(EnvContext(language, env))
+    return EnvResourceController(ExecutionContext(language, env))
 

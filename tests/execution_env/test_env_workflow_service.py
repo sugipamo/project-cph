@@ -1,6 +1,6 @@
 import pytest
 from src.execution_env.env_workflow_service import EnvWorkflowService
-from src.execution_context.env_context import EnvContext
+from src.execution_context.execution_context import ExecutionContext
 from src.operations.composite_request import CompositeRequest
 from src.operations.base_request import BaseRequest
 

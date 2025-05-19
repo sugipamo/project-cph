@@ -3,11 +3,11 @@ from typing import List
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.shell.shell_driver import ShellDriver
-from src.execution_context.env_context import EnvContext
+from src.execution_context.execution_context import ExecutionContext
 
 
 class BaseRunHandler(ABC):
-    def __init__(self, config: EnvContext, const_handler):
+    def __init__(self, config: ExecutionContext, const_handler):
         self.config = config
         self.const_handler = const_handler
 
@@ -16,14 +16,14 @@ class BaseRunHandler(ABC):
         pass
 
 class LocalRunHandler(BaseRunHandler):
-    def __init__(self, config: EnvContext, const_handler):
+    def __init__(self, config: ExecutionContext, const_handler):
         super().__init__(config, const_handler)
     def create_process_options(self, cmd: list) -> ShellRequest:
         # コマンド配列内の各要素に対して変数展開
         return ShellRequest(cmd)
 
 class DockerRunHandler(BaseRunHandler):
-    def __init__(self, config: EnvContext, const_handler):
+    def __init__(self, config: ExecutionContext, const_handler):
         super().__init__(config, const_handler)
 
     def create_process_options(self, cmd: list) -> DockerRequest:

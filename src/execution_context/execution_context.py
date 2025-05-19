@@ -34,4 +34,22 @@ class ExecutionContext:
             env_json=parse_result.env_json,
             contest_current_path=parse_result.contest_current_path,
             old_system_info=parse_result.old_system_info
-        ) 
+        )
+
+    def get_env_config(self) -> dict:
+        return self.env_json.get('env', {})
+
+    def get_language_config(self) -> dict:
+        return self.env_json.get('language', {})
+
+    def get_command_config(self) -> dict:
+        return self.env_json.get('command', {})
+
+    def get_contest_config(self) -> dict:
+        return self.env_json.get('contest', {})
+
+    def get_problem_config(self) -> dict:
+        return self.env_json.get('problem', {})
+
+    def get_old_system_info(self) -> dict:
+        return self.old_system_info 

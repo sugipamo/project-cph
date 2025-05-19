@@ -1,10 +1,11 @@
 import pytest
 from src.execution_env.resource_handler.const_handler import LocalConstHandler, DockerConstHandler, EnvType
 from pathlib import Path
-from src.execution_context.env_context import EnvContext
+from src.execution_context.execution_context import ExecutionContext
 
 def make_local_config():
-    return EnvContext(
+    return ExecutionContext(
+        command_name="test",
         language="cpp",
         env_type="local",
         contest_name="abc001",
@@ -21,7 +22,8 @@ def make_local_config():
     )
 
 def make_docker_config():
-    return EnvContext(
+    return ExecutionContext(
+        command_name="test",
         language="python",
         env_type="docker",
         contest_name="abc002",

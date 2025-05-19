@@ -3,14 +3,14 @@ from abc import ABC, abstractmethod
 from enum import Enum, auto
 import hashlib
 from src.operations.file.file_driver import LocalFileDriver
-from src.execution_context.env_context import EnvContext
+from src.execution_context.execution_context import ExecutionContext
 
 class EnvType(Enum):
     LOCAL = auto()
     DOCKER = auto()
 
 class BaseConstHandler(ABC):
-    def __init__(self, config: EnvContext, workspace_path: str = None):
+    def __init__(self, config: ExecutionContext, workspace_path: str = None):
         self.config = config
         self._workspace_path = workspace_path
 
@@ -68,7 +68,7 @@ class BaseConstHandler(ABC):
 
 class LocalConstHandler(BaseConstHandler):
 
-    def __init__(self, config: EnvContext, workspace_path: str = "./workspace_path"):
+    def __init__(self, config: ExecutionContext, workspace_path: str = "./workspace_path"):
         super().__init__(config, workspace_path)
         self._workspace = workspace_path
 
@@ -78,7 +78,7 @@ class LocalConstHandler(BaseConstHandler):
 
 
 class DockerConstHandler(BaseConstHandler):
-    def __init__(self, config: EnvContext, workspace_path="./workspace_path"):
+    def __init__(self, config: ExecutionContext, workspace_path="./workspace_path"):
         super().__init__(config, workspace_path)
         self._workspace = workspace_path
 

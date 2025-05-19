@@ -1,7 +1,7 @@
 from typing import Optional, List, Dict
 from dataclasses import dataclass
 from src.execution_context.user_input_parser import UserInputParser, UserInputParseResult
-from src.execution_context.env_context import EnvContext
+from src.execution_context.execution_context import ExecutionContext
 
 
 class CommandRunner:
@@ -34,7 +34,7 @@ class CommandRunner:
             raise ValueError(f"コマンド '{parse_result.command}' の定義が見つかりません")
         
         # 実行環境のコンテキストを生成
-        env_context = EnvContext.from_parse_result(parse_result)
+        env_context = ExecutionContext.from_parse_result(parse_result)
         
         # コマンドを実行
         print(f"実行: {cmd_def.name}")
