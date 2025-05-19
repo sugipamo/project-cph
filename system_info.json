@@ -1,8 +1,9 @@
 {
-  "command": "test",
+  "command": "submit",
   "language": "python",
   "env_type": "docker",
   "contest_name": "abc302",
-  "problem_name": "d",
-  "contest_current_path": "./contest_current"
+  "problem_name": "a",
+  "contest_current_path": "./contest_current",
+  "env_json": null
 }

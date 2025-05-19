@@ -55,6 +55,19 @@ class UserInputParser:
         # system_infoをコピーして道中で直接値を更新
         system_info = dict(old_system_info)  # コピー
 
+        # system_info.jsonの情報を復元
+        if old_system_info:
+            # 前回の値を復元（引数で上書きされる可能性あり）
+            system_info.update({
+                "command": old_system_info.get("command"),
+                "language": old_system_info.get("language"),
+                "env_type": old_system_info.get("env_type"),
+                "contest_name": old_system_info.get("contest_name"),
+                "problem_name": old_system_info.get("problem_name"),
+                "contest_current_path": old_system_info.get("contest_current_path"),
+                "env_json": old_system_info.get("env_json")
+            })
+
         env_jsons = cls.load_all_env_jsons(CONTEST_ENV_DIR)
         language_alias_map = cls.extract_language_and_aliases(env_jsons)
         used_flags = [False] * len(args)
@@ -82,8 +95,7 @@ class UserInputParser:
         if len(unused_args) > 2:
             raise ValueError(f"引数が多すぎます: {unused_args}")
         
-        for key, arg in zip(["problem_name", "contest_name"], unused_args):
-            print(key, arg)
+        for key, arg in zip(["problem_name", "contest_name"], reversed(unused_args)):
             system_info[key] = arg
 
         # contest_current_pathの特定
@@ -205,31 +217,36 @@ class UserInputParseResult:
         self.contest_current_path = contest_current_path
         self.old_system_info = old_system_info
 
-    def validate(self) -> bool:
+    def validate(self) -> Tuple[bool, Optional[str]]:
         """
         基本的なバリデーションを行う
         
         Returns:
-            bool: バリデーション結果
+            Tuple[bool, Optional[str]]: (バリデーション結果, エラーメッセージ)
         """
         # 必須項目の存在チェック
-        if not all([
-            self.command,
-            self.language,
-            self.contest_name,
-            self.problem_name
-        ]):
-            return False
+        missing_fields = []
+        if not self.command:
+            missing_fields.append("コマンド")
+        if not self.language:
+            missing_fields.append("言語")
+        if not self.contest_name:
+            missing_fields.append("コンテスト名")
+        if not self.problem_name:
+            missing_fields.append("問題名")
+            
+        if missing_fields:
+            return False, f"以下の項目が指定されていません: {', '.join(missing_fields)}"
             
         # env_jsonの存在チェック
         if not self.env_json:
-            return False
+            return False, "環境設定ファイル(env.json)が見つかりません"
             
         # 言語がenv_jsonに存在するかチェック
         if self.language not in self.env_json:
-            return False
+            return False, f"指定された言語 '{self.language}' は環境設定ファイルに存在しません"
             
-        return True
+        return True, None
 
 class EnvJsonInfo:
     """

@@ -23,7 +23,9 @@ class CommandExecutor:
             return
 
         # パース結果をバリデーション
-        if not parse_result.validate():
+        is_valid, error_message = parse_result.validate()
+        if not is_valid:
+            print(f"エラー: {error_message}")
             return
 
         # コマンド定義を取得
