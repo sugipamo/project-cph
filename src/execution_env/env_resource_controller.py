@@ -27,7 +27,7 @@ class EnvResourceController:
         container.register("DockerRunHandler", lambda: DockerRunHandler(env_context, container.resolve("DockerConstHandler")))
         container.register("LocalFileHandler", lambda: LocalFileHandler(env_context, container.resolve("LocalConstHandler")))
         container.register("DockerFileHandler", lambda: DockerFileHandler(env_context, container.resolve("DockerConstHandler")))
-        if env_context.env.lower() == "docker":
+        if env_context.env_type.lower() == "docker":
             const_handler = container.resolve("DockerConstHandler")
             run_handler = container.resolve("DockerRunHandler")
             file_handler = container.resolve("DockerFileHandler")

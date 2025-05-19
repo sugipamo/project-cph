@@ -43,20 +43,12 @@ class UserInputParser:
     """
     def __init__(self, system_info_provider: Optional[SystemInfoProvider] = None):
         self.system_info_provider = system_info_provider or LocalSystemInfoProvider()
+        
+    @classmethod
+    def from_args(cls, args: List[str]) -> ExecutionContext:
+        return cls(LocalSystemInfoProvider()).parse_and_validate(args)
 
     def parse_and_validate(self, args: List[str]) -> ExecutionContext:
-        """
-        引数をパースし、基本的な検証を行う
-        
-        Args:
-            args: コマンドライン引数
-            
-        Returns:
-            ExecutionContext: パース結果
-            
-        Raises:
-            ValueError: パースまたは検証に失敗した場合
-        """
         # 引数をパース
         context = self.parse(args)
         if not context:
@@ -68,88 +60,67 @@ class UserInputParser:
             raise ValueError(error_message)
 
         return context
-
-    def parse(self, args: list) -> ExecutionContext:
-        """
-        contest_env配下のenv.jsonを全て読み込み、
-        言語・env_type・コマンドを特定し、使用済みindexをused_flagsで管理する。
-        未指定項目はsystem_info.jsonから補完する。
-        contest_current_pathとold_system_infoも含める。
-        """
-        old_system_info = self.system_info_provider.load()
-        # system_infoをコピーして道中で直接値を更新
-        system_info = dict(old_system_info)  # コピー
-
-        # system_info.jsonの情報を復元
-        if old_system_info:
-            # 前回の値を復元（引数で上書きされる可能性あり）
-            system_info.update({
-                "command": old_system_info.get("command"),
-                "language": old_system_info.get("language"),
-                "env_type": old_system_info.get("env_type"),
-                "contest_name": old_system_info.get("contest_name"),
-                "problem_name": old_system_info.get("problem_name"),
-                "contest_current_path": old_system_info.get("contest_current_path"),
-                "env_json": old_system_info.get("env_json")
-            })
-
-        env_jsons = self.load_all_env_jsons(CONTEST_ENV_DIR)
-        language_alias_map = self.extract_language_and_aliases(env_jsons)
-        used_flags = [False] * len(args)
-        matched_env_json, lang_idx = self.find_env_json_by_language(args + [old_system_info["language"]], language_alias_map, env_jsons)
-        lang = None
-        if matched_env_json:
-            lang = next(iter(matched_env_json.keys()))
-
-        if lang_idx is not None:
-            if lang_idx < len(args):
-                used_flags[lang_idx] = True
-            system_info["language"] = lang
-
-        matched_env_type, env_type_idx = self.find_env_type_by_args(args, matched_env_json, used_flags)
-        if env_type_idx is not None:
-            used_flags[env_type_idx] = True
-            system_info["env_type"] = matched_env_type
-
-        matched_command, cmd_idx = self.find_command_by_args(args, matched_env_json, used_flags)
-        if cmd_idx is not None:
-            used_flags[cmd_idx] = True
-            system_info["command"] = matched_command
-
-        unused_args = [arg for arg, used in zip(args, used_flags) if not used]
-        if len(unused_args) > 2:
-            raise ValueError(f"引数が多すぎます: {unused_args}")
         
-        for key, arg in zip(["problem_name", "contest_name"], reversed(unused_args)):
-            system_info[key] = arg
-
-        # contest_current_pathの特定
-        contest_current_path = None
-        if matched_env_json:
-            contest_current_path = matched_env_json[lang].get("contest_current_path")
-        if not contest_current_path:
-            contest_current_path = "./contest_current"
-        system_info["contest_current_path"] = contest_current_path
-
-        # 実行コンテキストを生成
+    def parse(self, args: list) -> ExecutionContext:
+        # 1. contextをNoneで初期化
         context = ExecutionContext(
-            command_name=system_info.get("command"),
-            language=system_info.get("language"),
-            contest_name=system_info.get("contest_name"),
-            problem_name=system_info.get("problem_name"),
-            env_type=system_info.get("env_type"),
-            env_json=matched_env_json,
-            contest_current_path=system_info.get("contest_current_path"),
-            old_system_info=old_system_info
+            command_name=None,
+            language=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            env_json=None,
+            contest_current_path=None,
+            old_system_info=None
         )
-
-        self.system_info_provider.save(system_info)
+        # 2. system_info.jsonの内容をcontextへ反映
+        context = self._apply_system_info(context)
+        # 3. contest_env配下のenv.jsonを全て読み込み
+        env_jsons = self._load_all_env_jsons(CONTEST_ENV_DIR)
+        # 4. 言語特定
+        args, context = self._apply_language(args, context, env_jsons)
+        # 5. env_type特定
+        args, context = self._apply_env_type(args, context)
+        # 6. コマンド特定
+        args, context = self._apply_command(args, context)
+        # 7. 残りの引数からproblem_name, contest_nameを特定
+        args, context = self._apply_names(args, context)
+        # 8. contest_current_path特定
+        context = self._apply_contest_current_path(context)
+        # 9. env_jsonをcontextにセット
+        context = self._apply_env_json(context, env_jsons)
+        # 10. system_info.jsonへ保存
+        self._save_context_to_system_info(context)
         return context
 
-    def load_all_env_jsons(self, base_dir: str) -> List[dict]:
-        """
-        base_dir配下の全てのenv.jsonを再帰的に探索し、リストで返す。
-        """
+    def _apply_system_info(self, context: ExecutionContext) -> ExecutionContext:
+        system_info = self.system_info_provider.load()
+        context.command_name = system_info.get("command")
+        context.language = system_info.get("language")
+        context.env_type = system_info.get("env_type")
+        context.contest_name = system_info.get("contest_name")
+        context.problem_name = system_info.get("problem_name")
+        context.contest_current_path = system_info.get("contest_current_path")
+        context.env_json = system_info.get("env_json")
+        context.old_system_info = system_info
+        return context
+
+    def _validate_env_json(self, data: dict, path: str):
+        if not isinstance(data, dict):
+            raise ValueError(f"{path}: env.jsonのトップレベルはdictである必要があります")
+        for lang, conf in data.items():
+            if not isinstance(conf, dict):
+                raise ValueError(f"{path}: {lang}の値はdictである必要があります")
+            if "commands" not in conf or not isinstance(conf["commands"], dict):
+                raise ValueError(f"{path}: {lang}にcommands(dict)がありません")
+            if "env_types" not in conf or not isinstance(conf["env_types"], dict):
+                raise ValueError(f"{path}: {lang}にenv_types(dict)がありません")
+            if "aliases" in conf and not isinstance(conf["aliases"], list):
+                raise ValueError(f"{path}: {lang}のaliasesはlistである必要があります")
+            if "contest_current_path" in conf and not isinstance(conf["contest_current_path"], str):
+                raise ValueError(f"{path}: {lang}のcontest_current_pathはstrである必要があります")
+
+    def _load_all_env_jsons(self, base_dir: str) -> List[dict]:
         env_jsons = []
         for root, dirs, files in os.walk(base_dir):
             for file in files:
@@ -157,16 +128,27 @@ class UserInputParser:
                     path = os.path.join(root, file)
                     try:
                         with open(path, "r", encoding="utf-8") as f:
-                            env_jsons.append(json.load(f))
+                            data = json.load(f)
+                        self._validate_env_json(data, path)
+                        env_jsons.append(data)
                     except Exception as e:
-                        print(f"[WARN] {path} の読み込みに失敗: {e}")
+                        raise RuntimeError(f"{path} の読み込みまたはバリデーションに失敗: {e}")
         return env_jsons
 
-    def extract_language_and_aliases(self, env_jsons: List[dict]) -> Dict[str, List[str]]:
-        """
-        env.jsonリストから言語名とそのエイリアス一覧を抽出する。
-        戻り値: { 言語名: [エイリアス, ...] }
-        """
+    def _apply_language(self, args: list, context: ExecutionContext, env_jsons: List[dict]) -> tuple:
+        language_alias_map = self._extract_language_and_aliases(env_jsons)
+        for idx, arg in enumerate(args):
+            for lang, aliases in language_alias_map.items():
+                if arg == lang or arg in aliases:
+                    for env_json in env_jsons:
+                        if lang in env_json:
+                            context.language = lang
+                            context.env_json = env_json
+                            new_args = args[:idx] + args[idx+1:]
+                            return new_args, context
+        return args, context
+
+    def _extract_language_and_aliases(self, env_jsons: List[dict]) -> Dict[str, List[str]]:
         result = {}
         for env_json in env_jsons:
             for lang, conf in env_json.items():
@@ -174,51 +156,77 @@ class UserInputParser:
                 result[lang] = aliases
         return result
 
-    def find_env_json_by_language(self, args: list, language_alias_map: Dict[str, List[str]], env_jsons: List[dict]) -> Tuple[Optional[dict], Optional[int]]:
-        """
-        入力引数(args)の中から言語名またはエイリアスに一致するものを探し、
-        該当するenv.json（dict）と使用したindexを返す。
-        """
+    def _apply_env_type(self, args: list, context: ExecutionContext) -> tuple:
+        if not context.env_json or not context.language:
+            return args, context
+        env_types = context.env_json[context.language].get("env_types", {})
         for idx, arg in enumerate(args):
-            for lang, aliases in language_alias_map.items():
-                if arg == lang or arg in aliases:
-                    for env_json in env_jsons:
-                        if lang in env_json:
-                            return env_json, idx
-        return None, None
-
-    def find_env_type_by_args(self, args: list, env_json: dict, used_flags: List[bool]) -> Tuple[Optional[str], Optional[int]]:
-        """
-        env_jsonのenv_typesからenv_type名・エイリアスを取得し、
-        args内で未使用かつ一致するものがあれば(env_type名, index)を返す。
-        """
-        if not env_json:
-            return None, None
-        lang = next(iter(env_json.keys()))
-        env_types = env_json[lang].get("env_types", {})
-        for idx, arg in enumerate(args):
-            if used_flags[idx]:
-                continue
             for env_type_name, env_type_conf in env_types.items():
                 aliases = env_type_conf.get("aliases", [])
                 if arg == env_type_name or arg in aliases:
-                    return env_type_name, idx
-        return None, None
+                    context.env_type = env_type_name
+                    new_args = args[:idx] + args[idx+1:]
+                    return new_args, context
+        return args, context
 
-    def find_command_by_args(self, args: list, env_json: dict, used_flags: List[bool]) -> Tuple[Optional[str], Optional[int]]:
-        """
-        env_jsonのcommandsからコマンド名・エイリアスを取得し、
-        args内で未使用かつ一致するものがあれば(command名, index)を返す。
-        """
-        if not env_json:
-            return None, None
-        lang = next(iter(env_json.keys()))
-        commands = env_json[lang].get("commands", {})
+    def _apply_command(self, args: list, context: ExecutionContext) -> tuple:
+        print(f"[DEBUG] _apply_command: args={args}, context.command_name={context.command_name}, context.language={context.language}")
+        if not context.env_json or not context.language:
+            print("[DEBUG] _apply_command: env_jsonまたはlanguageが未設定のためスキップ")
+            return args, context
+        commands = context.env_json[context.language].get("commands", {})
+        print(f"[DEBUG] _apply_command: commands.keys()={list(commands.keys())}")
         for idx, arg in enumerate(args):
-            if used_flags[idx]:
-                continue
+            print(f"[DEBUG] _apply_command: idx={idx}, arg={arg}")
             for cmd_name, cmd_conf in commands.items():
                 aliases = cmd_conf.get("aliases", [])
+                print(f"[DEBUG] _apply_command: cmd_name={cmd_name}, aliases={aliases}")
                 if arg == cmd_name or arg in aliases:
-                    return cmd_name, idx
-        return None, None
+                    print(f"[DEBUG] _apply_command: HIT! arg={arg} matches cmd_name={cmd_name} or aliases")
+                    context.command_name = cmd_name
+                    new_args = args[:idx] + args[idx+1:]
+                    return new_args, context
+        print("[DEBUG] _apply_command: コマンド該当なし")
+        return args, context
+
+    def _apply_names(self, args: list, context: ExecutionContext) -> tuple:
+        # 残り引数が2つまでなら、problem_name, contest_nameに割り当て
+        if len(args) > 2:
+            raise ValueError(f"引数が多すぎます: {args}")
+        keys = ["problem_name", "contest_name"]
+        for key, arg in zip(reversed(keys), reversed(args)):
+            setattr(context, key, arg)
+        return [], context
+
+    def _apply_contest_current_path(self, context: ExecutionContext) -> ExecutionContext:
+        if context.env_json and context.language:
+            contest_current_path = context.env_json[context.language].get("contest_current_path")
+            if contest_current_path:
+                context.contest_current_path = contest_current_path
+        if not context.contest_current_path:
+            context.contest_current_path = "./contest_current"
+        return context
+
+    def _apply_env_json(self, context: ExecutionContext, env_jsons: List[dict]) -> ExecutionContext:
+        # 既にenv_jsonがセットされていれば何もしない
+        if context.env_json:
+            return context
+        # languageが特定されていればenv_jsonをセット
+        if context.language:
+            for env_json in env_jsons:
+                if context.language in env_json:
+                    context.env_json = env_json
+                    break
+        return context
+
+    def _save_context_to_system_info(self, context: ExecutionContext):
+        info = {
+            "command": context.command_name,
+            "language": context.language,
+            "env_type": context.env_type,
+            "contest_name": context.contest_name,
+            "problem_name": context.problem_name,
+            "contest_current_path": context.contest_current_path,
+            "env_json": context.env_json
+        }
+        self.system_info_provider.save(info)

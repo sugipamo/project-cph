@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "patternProperties": {
+    "^[a-zA-Z0-9_]+$": {
+      "type": "object",
+      "properties": {
+        "aliases": {"type": "array", "items": {"type": "string"}},
+        "commands": {"type": "object"},
+        "env_types": {"type": "object"},
+        "contest_current_path": {"type": "string"}
+      },
+      "required": ["commands", "env_types"]
+    }
+  }
+} 

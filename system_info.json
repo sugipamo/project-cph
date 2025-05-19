@@ -2,8 +2,127 @@
   "command": "test",
   "language": "python",
   "env_type": "docker",
-  "contest_name": "abc302",
-  "problem_name": "a",
+  "contest_name": "a",
+  "problem_name": "abc300",
   "contest_current_path": "./contest_current",
-  "env_json": null
+  "env_json": {
+    "python": {
+      "aliases": [
+        "py"
+      ],
+      "language_id": "5078",
+      "source_file_name": "main.py",
+      "contest_current_path": "./contest_current",
+      "contest_template_path": "./contest_template/{language_name}",
+      "exclude_patterns": [
+        "^.*\\.log$",
+        "^debug.*"
+      ],
+      "commands": {
+        "open": {
+          "aliases": [
+            "o"
+          ],
+          "description": "コンテストを開く",
+          "run": [
+            {
+              "type": "shell",
+              "allow_failure": true,
+              "show_output": true,
+              "cmd": [
+                "cursor",
+                "{contest_current_path}/{source_file_name}"
+              ]
+            },
+            {
+              "type": "shell",
+              "allow_failure": true,
+              "show_output": true,
+              "cmd": [
+                "open",
+                "{contest_current_path}/{source_file_name}"
+              ]
+            },
+            {
+              "type": "oj",
+              "allow_failure": true,
+              "show_output": true,
+              "cmd": [
+                "oj",
+                "download",
+                "https://{contest_name}.contest.atcoder.jp/tasks/{contest_name}_{problem_id}"
+              ]
+            }
+          ]
+        },
+        "test": {
+          "aliases": [
+            "t"
+          ],
+          "description": "テストを実行する",
+          "run": [
+            {
+              "type": "copy",
+              "allow_failure": false,
+              "show_output": false,
+              "cmd": [
+                "{contest_current_path}/{source_file_name}",
+                "{workspace_path}/{source_file_name}"
+              ]
+            },
+            {
+              "type": "test",
+              "allow_failure": false,
+              "show_output": true,
+              "cmd": [
+                "python3",
+                "{workspace_path}/{source_file_name}"
+              ]
+            }
+          ]
+        },
+        "submit": {
+          "aliases": [
+            "s"
+          ],
+          "description": "提出する",
+          "run": [
+            {
+              "type": "copy",
+              "allow_failure": false,
+              "show_output": false,
+              "cmd": [
+                "{contest_current_path}/{source_file_name}",
+                "{workspace_path}/{source_file_name}"
+              ]
+            },
+            {
+              "type": "oj",
+              "allow_failure": false,
+              "show_output": true,
+              "cmd": [
+                "oj",
+                "submit",
+                "https://{contest_name}.contest.atcoder.jp/tasks/{contest_name}_{problem_id}",
+                "{contest_current_path}/{source_file_name}"
+              ]
+            }
+          ]
+        }
+      },
+      "env_types": {
+        "docker": {
+          "aliases": [
+            "docker"
+          ],
+          "dockerfile_path": "./contest_env/python/Dockerfile"
+        },
+        "local": {
+          "aliases": [
+            "local"
+          ]
+        }
+      }
+    }
+  }
 }

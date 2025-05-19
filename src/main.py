@@ -1,7 +1,6 @@
 if __name__ == "__main__":
     import sys
     from src.executor import CommandRunner
-    from src.execution_context.user_input_parser import UserInputParser
     import json
 
     try:
