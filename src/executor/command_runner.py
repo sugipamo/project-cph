@@ -1,14 +1,15 @@
 from typing import Optional, List
-from .command_registry import CommandDefinitionRegistry
-from .user_input_parser import UserInputParser, UserInputParseResult
+from src.command_registry.command_registry import CommandDefinitionRegistry
+from src.command_registry.user_input_parser import UserInputParser, UserInputParseResult
 
-class CommandExecutor:
+class CommandRunner:
     """
-    コマンドライン引数からコマンドを実行するエントリーポイントとなるクラス
+    コマンドライン引数からコマンドを実行するクラス
     """
     def __init__(self):
         self.parser = None
         self.registry = None
+        self._initialized = False
 
     def initialize(self, args: List[str]) -> None:
         """
@@ -20,6 +21,9 @@ class CommandExecutor:
         Raises:
             ValueError: 初期化に失敗した場合
         """
+        if self._initialized:
+            return
+
         # パーサーの初期化
         parser = UserInputParser()
         parse_result = parser.parse(args)  # 最初のパースでenv_jsonを取得
@@ -35,6 +39,7 @@ class CommandExecutor:
         # パーサーにレジストリを設定
         self.parser = UserInputParser(registry)
         self.registry = registry
+        self._initialized = True
 
     def execute(self, args: List[str]) -> None:
         """
@@ -47,8 +52,8 @@ class CommandExecutor:
             ValueError: パースに失敗した場合
             RuntimeError: 初期化されていない場合
         """
-        if not self.parser or not self.registry:
-            raise RuntimeError("CommandExecutorが初期化されていません。initialize()を先に呼び出してください。")
+        if not self._initialized:
+            raise RuntimeError("CommandRunnerが初期化されていません。initialize()を先に呼び出してください。")
         
         # 引数をパースして検証
         parse_result = self.parser.parse_and_validate(args)
