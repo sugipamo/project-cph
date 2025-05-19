@@ -42,7 +42,7 @@ def test_parse_python_command(monkeypatch, setup_env):
     ctx = parser.parse_and_validate(args)
     assert ctx.language == "python"
     assert ctx.env_type == "docker"
-    assert ctx.command_name == "test"
+    assert ctx.command_type == "test"
     assert ctx.problem_name == "abc300"
     assert ctx.contest_name == "a"
     assert ctx.env_json is not None
@@ -61,7 +61,7 @@ def test_parse_python_alias(monkeypatch, setup_env):
     ctx = parser.parse_and_validate(args)
     assert ctx.language == "python"
     assert ctx.env_type == "local"
-    assert ctx.command_name == "test"
+    assert ctx.command_type == "test"
     assert ctx.problem_name == "abc300"
     assert ctx.contest_name == "a"
 

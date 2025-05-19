@@ -5,7 +5,7 @@ from src.execution_context.execution_context import ExecutionContext
 
 def make_local_config():
     return ExecutionContext(
-        command_name="test",
+        command_type="test",
         language="cpp",
         env_type="local",
         contest_name="abc001",
@@ -17,13 +17,12 @@ def make_local_config():
             "contest_env_path": "env",
             "contest_template_path": "template",
             "contest_temp_path": "temp"
-        },
-        old_system_info={}
+        }
     )
 
 def make_docker_config():
     return ExecutionContext(
-        command_name="test",
+        command_type="test",
         language="python",
         env_type="docker",
         contest_name="abc002",
@@ -36,8 +35,7 @@ def make_docker_config():
             "contest_template_path": "template_d",
             "contest_temp_path": "temp_d",
             "dockerfile_path": "Dockerfile"
-        },
-        old_system_info={},
+        }
     )
 
 def test_local_const_handler_properties():

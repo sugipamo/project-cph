@@ -7,14 +7,14 @@ class ExecutionContext:
     実行コンテキストを保持するクラス。
     パース結果の保持、バリデーション、環境設定の取得を担当。
     """
-    command_name: str
+    command_type: str
     language: str
     contest_name: str
     problem_name: str
     env_type: str
     env_json: dict
     contest_current_path: str
-    old_system_info: dict
+    old_execution_context: Optional["ExecutionContext"] = None
 
     def validate(self) -> Tuple[bool, Optional[str]]:
         """
@@ -25,7 +25,7 @@ class ExecutionContext:
         """
         # 必須項目の存在チェック
         missing_fields = []
-        if not self.command_name:
+        if not self.command_type:
             missing_fields.append("コマンド")
         if not self.language:
             missing_fields.append("言語")
@@ -60,7 +60,4 @@ class ExecutionContext:
         return self.env_json.get('contest', {})
 
     def get_problem_config(self) -> dict:
-        return self.env_json.get('problem', {})
-
-    def get_old_system_info(self) -> dict:
-        return self.old_system_info 
+        return self.env_json.get('problem', {}) 

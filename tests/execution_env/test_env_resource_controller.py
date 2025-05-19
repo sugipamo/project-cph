@@ -40,14 +40,13 @@ class DummyController:
 
 def test_dependency_injection():
     env_context = ExecutionContext(
-        command_name="test",
+        command_type="test",
         language="dummy",
         env_type="local",
         contest_name="abc",
         problem_name="a",
         contest_current_path="contests/abc001",
-        env_json={},
-        old_system_info={}
+        env_json={}
     )
     controller = EnvResourceController(
         env_context=env_context,

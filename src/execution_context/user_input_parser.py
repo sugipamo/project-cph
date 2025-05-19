@@ -64,17 +64,19 @@ class UserInputParser:
     def parse(self, args: list) -> ExecutionContext:
         # 1. contextをNoneで初期化
         context = ExecutionContext(
-            command_name=None,
+            command_type=None,
             language=None,
             contest_name=None,
             problem_name=None,
             env_type=None,
             env_json=None,
             contest_current_path=None,
-            old_system_info=None
+            old_execution_context=None
         )
         # 2. system_info.jsonの内容をcontextへ反映
         context = self._apply_system_info(context)
+        # 2.5. contextのコピーをold_execution_contextにセット
+        context = self._apply_old_execution_context(context)
         # 3. contest_env配下のenv.jsonを全て読み込み
         env_jsons = self._load_all_env_jsons(CONTEST_ENV_DIR)
         # 4. 言語特定
@@ -95,14 +97,19 @@ class UserInputParser:
 
     def _apply_system_info(self, context: ExecutionContext) -> ExecutionContext:
         system_info = self.system_info_provider.load()
-        context.command_name = system_info.get("command")
+        context.command_type = system_info.get("command")
         context.language = system_info.get("language")
         context.env_type = system_info.get("env_type")
         context.contest_name = system_info.get("contest_name")
         context.problem_name = system_info.get("problem_name")
         context.contest_current_path = system_info.get("contest_current_path")
         context.env_json = system_info.get("env_json")
-        context.old_system_info = system_info
+        return context
+
+    def _apply_old_execution_context(self, context: ExecutionContext) -> ExecutionContext:
+        # ExecutionContextのコピーを作成してold_execution_contextにセット
+        import copy
+        context.old_execution_context = copy.deepcopy(context)
         return context
 
     def _validate_env_json(self, data: dict, path: str):
@@ -177,7 +184,7 @@ class UserInputParser:
             for cmd_name, cmd_conf in commands.items():
                 aliases = cmd_conf.get("aliases", [])
                 if arg == cmd_name or arg in aliases:
-                    context.command_name = cmd_name
+                    context.command_type = cmd_name
                     new_args = args[:idx] + args[idx+1:]
                     return new_args, context
         return args, context
@@ -214,7 +221,7 @@ class UserInputParser:
 
     def _save_context_to_system_info(self, context: ExecutionContext):
         info = {
-            "command": context.command_name,
+            "command": context.command_type,
             "language": context.language,
             "env_type": context.env_type,
             "contest_name": context.contest_name,
