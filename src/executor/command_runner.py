@@ -1,6 +1,6 @@
 from typing import Optional, List, Dict
 from dataclasses import dataclass
-from src.command_registry.user_input_parser import UserInputParser, UserInputParseResult
+from src.execution_context.user_input_parser import UserInputParser, UserInputParseResult
 
 
 class CommandRunner:

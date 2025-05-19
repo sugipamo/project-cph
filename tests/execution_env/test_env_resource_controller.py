@@ -7,7 +7,7 @@ import os
 import tempfile
 import json
 import shutil
-from src.env_context import EnvContext
+from src.command_registry.env_context import EnvContext
 class DummyFileHandler:
     def read(self, path):
         return f"read:{path}"

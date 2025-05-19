@@ -3,7 +3,7 @@ from typing import List
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.shell.shell_driver import ShellDriver
-from src.env_context import EnvContext
+from src.command_registry.env_context import EnvContext
 
 
 class BaseRunHandler(ABC):

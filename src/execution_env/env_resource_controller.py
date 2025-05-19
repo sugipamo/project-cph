@@ -3,7 +3,7 @@ from src.execution_env.resource_handler.run_handler import LocalRunHandler, Dock
 from src.execution_env.resource_handler.const_handler import DockerConstHandler, LocalConstHandler
 from src.operations.composite_request import CompositeRequest
 from src.operations.di_container import DIContainer
-from src.env_context import EnvContext
+from src.command_registry.env_context import EnvContext
 
 class EnvResourceController:
     def __init__(self, env_context: EnvContext, file_handler, run_handler, const_handler):

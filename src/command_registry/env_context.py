@@ -1,8 +1,7 @@
-
 from dataclasses import dataclass
 from typing import Dict
 
-from .command_registry.user_input_parser import UserInputParseResult
+from .user_input_parser import UserInputParseResult
 
 @dataclass
 class EnvContext:
