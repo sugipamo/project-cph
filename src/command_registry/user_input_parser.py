@@ -3,7 +3,7 @@ import json
 from typing import List, Dict, Optional, Tuple
 
 CONTEST_ENV_DIR = "contest_env"
-SYSTEM_INFO_PATH = "contest_current/system_info.json"
+SYSTEM_INFO_PATH = "system_info.json"
 
 class SystemInfoProvider:
     """
@@ -20,7 +20,16 @@ class LocalSystemInfoProvider(SystemInfoProvider):
         self.path = path
     def load(self) -> dict:
         if not os.path.exists(self.path):
-            return {}
+            # ファイルがなければ全てNoneで返す
+            return {
+                "command": None,
+                "language": None,
+                "env_type": None,
+                "contest_name": None,
+                "problem_name": None,
+                "contest_current_path": None,
+                "env_json": None
+            }
         with open(self.path, "r", encoding="utf-8") as f:
             return json.load(f)
     def save(self, info: dict):
@@ -37,44 +46,67 @@ class UserInputParser:
         contest_env配下のenv.jsonを全て読み込み、
         言語・env_type・コマンドを特定し、使用済みindexをused_flagsで管理する。
         未指定項目はsystem_info.jsonから補完する。
+        パース結果にはcontest_current_pathと旧system_infoも含める。
         """
         if system_info_provider is None:
             system_info_provider = LocalSystemInfoProvider()
-        system_info = system_info_provider.load()
-        print("[DEBUG] system_info.json:", system_info)
+
+        old_system_info = system_info_provider.load()
+        # system_infoをコピーして道中で直接値を更新
+        system_info = dict(old_system_info)  # コピー
 
         env_jsons = cls.load_all_env_jsons(CONTEST_ENV_DIR)
         language_alias_map = cls.extract_language_and_aliases(env_jsons)
-        print("[DEBUG] 言語名とエイリアス:", language_alias_map)
         used_flags = [False] * len(args)
-        matched_env_json, lang_idx = cls.find_env_json_by_language(args, language_alias_map, env_jsons)
+        matched_env_json, lang_idx = cls.find_env_json_by_language(args + [old_system_info["language"]], language_alias_map, env_jsons)
+        lang = None
+        if matched_env_json:
+            lang = next(iter(matched_env_json.keys()))
+
         if lang_idx is not None:
-            used_flags[lang_idx] = True
-        print("[DEBUG] 対象env.json:", matched_env_json)
+            if lang_idx < len(args):
+                used_flags[lang_idx] = True
+            system_info["language"] = lang
+
         matched_env_type, env_type_idx = cls.find_env_type_by_args(args, matched_env_json, used_flags)
         if env_type_idx is not None:
             used_flags[env_type_idx] = True
-        print("[DEBUG] env_type:", matched_env_type)
+            system_info["env_type"] = matched_env_type
+
         matched_command, cmd_idx = cls.find_command_by_args(args, matched_env_json, used_flags)
         if cmd_idx is not None:
             used_flags[cmd_idx] = True
-        print("[DEBUG] command:", matched_command)
-        print("[DEBUG] used_flags:", used_flags)
-        # contest_name, problem_nameの割り当て
+            system_info["command"] = matched_command
+
         unused_args = [arg for arg, used in zip(args, used_flags) if not used]
-        if len(unused_args) != 2:
-            print("[INFO] contest_name, problem_nameに割り当てる未使用引数が2つではありません。system_info.jsonから補完を試みます。")
-            contest_name = system_info.get("contest_name")
-            problem_name = system_info.get("problem_name")
-            if not contest_name or not problem_name:
-                print("[ERROR] contest_name, problem_nameが指定されておらず、system_info.jsonにも存在しません。")
-                return None
-        else:
-            contest_name, problem_name = unused_args
-        print("[DEBUG] contest_name:", contest_name)
-        print("[DEBUG] problem_name:", problem_name)
-        # 仮の戻り値
-        return None
+        if len(unused_args) > 2:
+            raise ValueError(f"引数が多すぎます: {unused_args}")
+        
+        for key, arg in zip(["problem_name", "contest_name"], unused_args):
+            print(key, arg)
+            system_info[key] = arg
+
+        # contest_current_pathの特定
+        contest_current_path = None
+        if matched_env_json:
+            contest_current_path = matched_env_json[lang].get("contest_current_path")
+        if not contest_current_path:
+            contest_current_path = "./contest_current"
+        system_info["contest_current_path"] = contest_current_path
+        # パース結果を返す
+        result = UserInputParseResult(
+            command=system_info.get("command"),
+            language=system_info.get("language"),
+            env_type=system_info.get("env_type"),
+            contest_name=system_info.get("contest_name"),
+            problem_name=system_info.get("problem_name"),
+            env_json=matched_env_json,
+            contest_current_path=system_info.get("contest_current_path"),
+            old_system_info=old_system_info
+        )
+        system_info_provider.save(system_info)
+
+        return result
 
     @classmethod
     def load_all_env_jsons(cls, base_dir: str) -> List[dict]:
@@ -161,14 +193,43 @@ class UserInputParser:
 class UserInputParseResult:
     """
     パース結果（必須情報）を保持するデータクラス。
+    contest_current_path, old_system_infoも含める。
     """
-    def __init__(self, command: str, language: str, env_type: str, contest_name: str, problem_name: str, env_json: dict):
+    def __init__(self, command: str, language: str, env_type: str, contest_name: str, problem_name: str, env_json: dict, contest_current_path: str, old_system_info: dict):
         self.command = command
         self.language = language
         self.env_type = env_type
         self.contest_name = contest_name
         self.problem_name = problem_name
         self.env_json = env_json
+        self.contest_current_path = contest_current_path
+        self.old_system_info = old_system_info
+
+    def validate(self) -> bool:
+        """
+        基本的なバリデーションを行う
+        
+        Returns:
+            bool: バリデーション結果
+        """
+        # 必須項目の存在チェック
+        if not all([
+            self.command,
+            self.language,
+            self.contest_name,
+            self.problem_name
+        ]):
+            return False
+            
+        # env_jsonの存在チェック
+        if not self.env_json:
+            return False
+            
+        # 言語がenv_jsonに存在するかチェック
+        if self.language not in self.env_json:
+            return False
+            
+        return True
 
 class EnvJsonInfo:
     """

@@ -2,8 +2,10 @@ from dataclasses import dataclass
 from typing import List, Dict, Optional
 import argparse
 
+from .user_input_parser import UserInputParseResult
+
 @dataclass
-class CommandInfo:
+class CommandDefinition:
     name: str
     aliases: List[str]
     description: str
@@ -11,24 +13,49 @@ class CommandInfo:
 
 @dataclass
 class ExecutionContext:
-    command: CommandInfo
+    command_name: str
     language: str
-    website: str
     contest_name: str
     problem_name: str
+    env_type: str
+    env_json: dict
+    contest_current_path: str
+    old_system_info: dict
 
-class CommandRegistry:
-    def __init__(self, commands: Dict[str, CommandInfo], env_json: dict):
+    @classmethod
+    def from_parse_result(cls, parse_result: 'UserInputParseResult') -> 'ExecutionContext':
+        """
+        UserInputParseResultからExecutionContextを生成する
+        
+        Args:
+            parse_result: パース結果
+            
+        Returns:
+            ExecutionContext
+        """
+        return cls(
+            command_name=parse_result.command,
+            language=parse_result.language,
+            contest_name=parse_result.contest_name,
+            problem_name=parse_result.problem_name,
+            env_type=parse_result.env_type,
+            env_json=parse_result.env_json,
+            contest_current_path=parse_result.contest_current_path,
+            old_system_info=parse_result.old_system_info
+        )
+
+class CommandDefinitionRegistry:
+    def __init__(self, commands: Dict[str, CommandDefinition], env_json: dict):
         self.commands = commands
         self.alias_map = self._build_alias_map()
         self._json = env_json  # env.json全体を保持
 
     @classmethod
-    def from_env_json(cls, env_json: dict, language: str) -> "CommandRegistry":
+    def from_env_json(cls, env_json: dict, language: str) -> "CommandDefinitionRegistry":
         commands = {}
         lang_commands = env_json.get(language, {}).get("commands", {})
         for cmd_name, cmd_data in lang_commands.items():
-            commands[cmd_name] = CommandInfo(
+            commands[cmd_name] = CommandDefinition(
                 name=cmd_name,
                 aliases=cmd_data.get("aliases", []),
                 description=cmd_data.get("description", ""),
@@ -43,48 +70,17 @@ class CommandRegistry:
                 alias_map[alias] = cmd.name
         return alias_map
 
-    def resolve(self, name_or_alias: str, language: str, website: str, contest_name: str, problem_name: str) -> Optional[ExecutionContext]:
+    def find_command_definition(self, name_or_alias: str) -> Optional[CommandDefinition]:
+        """
+        コマンド名またはエイリアスからコマンド定義を検索する
+        
+        Args:
+            name_or_alias: コマンド名またはエイリアス
+            
+        Returns:
+            CommandDefinition または None（コマンドが見つからない場合）
+        """
         cmd_name = self.alias_map.get(name_or_alias)
         if cmd_name:
-            cmd_info = self.commands[cmd_name]
-            return ExecutionContext(
-                command=cmd_info,
-                language=language,
-                website=website,
-                contest_name=contest_name,
-                problem_name=problem_name
-            )
+            return self.commands[cmd_name]
         return None
-
-    def parse_user_input(self, user_input: list) -> Optional[ExecutionContext]:
-        """
-        ユーザー入力の生データ（sys.argvなどのリスト）をパースし、
-        必要な情報を抽出してresolveに渡す
-        例: ['python3', '-m', 'cph', 't', '--language', 'python', '--website', 'atcoder', '--contest_name', 'abc123', '--problem_name', 'a']
-        """
-        # python3 -m ... の部分をスキップ
-        args = user_input
-        if args and args[0] == 'python3':
-            args = args[1:]
-        if args and args[0] == '-m':
-            args = args[2:]  # -m cph をスキップ
-
-        # コマンド名（またはエイリアス）は最初の要素
-        if not args:
-            return None
-        name_or_alias = args[0]
-        # 残りはオプション引数としてパース
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--language', type=str, default=None)
-        parser.add_argument('--website', type=str, default=None)
-        parser.add_argument('--contest_name', type=str, default=None)
-        parser.add_argument('--problem_name', type=str, default=None)
-        try:
-            parsed, _ = parser.parse_known_args(args[1:])
-        except Exception:
-            return None
-        language = parsed.language
-        website = parsed.website
-        contest_name = parsed.contest_name
-        problem_name = parsed.problem_name
-        return self.resolve(name_or_alias, language, website, contest_name, problem_name) 
