@@ -1,7 +1,8 @@
 from typing import Optional, List, Dict
 from dataclasses import dataclass
-from src.command_registry.command_registry import CommandDefinitionRegistry
+from src.command_registry.command_registry import CommandDefinitionRegistry, CommandDefinition
 from src.command_registry.user_input_parser import UserInputParser, UserInputParseResult
+from src.operations.di_container import DIContainer
 
 @dataclass
 class EnvContext:
@@ -93,45 +94,65 @@ class EnvContext:
 
 class CommandRunner:
     """
-    コマンドライン引数からコマンドを実行するクラス
+    コマンドを実行するクラス
     """
-    @classmethod
-    def run(cls, args: List[str]) -> None:
+    def __init__(self, env_context: EnvContext, command_definition: CommandDefinition, di_container: DIContainer):
+        self.env_context = env_context
+        self.command_definition = command_definition
+        self.di_container = di_container
+
+    def run(self) -> None:
         """
         コマンドを実行する
+        """
+        # 実行情報の表示
+        print(f"実行: {self.command_definition.name}")
+        print(f"言語: {self.env_context.language}")
+        print(f"コンテスト: {self.env_context.contest_name}")
+        print(f"問題: {self.env_context.problem_name}")
+        
+        # コマンドの実行
+        for cmd in self.command_definition.run:
+            # 実行環境に応じたドライバーを取得
+            driver = self.di_container.resolve("docker_driver" if self.env_context.env_type == "docker" else "shell_driver")
+            
+            # コマンドの実行
+            result = driver.execute(cmd)
+            if not result.is_success():
+                raise RuntimeError(f"コマンド実行エラー: {result.stderr}")
+
+class CommandInitializer:
+    """
+    コマンドの初期化を行うクラス
+    """
+    def __init__(self, di_container: DIContainer):
+        self.di_container = di_container
+
+    def initialize(self, args: List[str]) -> CommandRunner:
+        """
+        コマンドを初期化する
         
         Args:
             args: コマンドライン引数
             
-        Raises:
-            ValueError: パースに失敗した場合
-        """
-        # パーサーの初期化
-        parser = UserInputParser()
-        parse_result = parser.parse(args)
-        
-        # パース結果の検証
-        is_valid, error_message = parse_result.validate()
-        if not is_valid:
-            raise ValueError(error_message)
+        Returns:
+            CommandRunner: 初期化されたコマンドランナー
             
-        # レジストリの初期化
-        registry = CommandDefinitionRegistry.from_env_json(parse_result.env_json, parse_result.language)
-        
-        # パーサーにレジストリを設定
-        parser = UserInputParser(registry)
-        
-        # 引数をパースして検証
+        Raises:
+            ValueError: パースまたは検証に失敗した場合
+        """
+        # パーサーの初期化と引数のパース
+        parser = UserInputParser()
         parse_result = parser.parse_and_validate(args)
         
-        # コマンド定義を取得
+        # レジストリの初期化とコマンド定義の取得
+        registry = CommandDefinitionRegistry.from_parse_result(parse_result)
+        if not registry.validate_command(parse_result.command):
+            raise ValueError(f"コマンド '{parse_result.command}' の定義が見つかりません")
+        
         cmd_def = registry.find_command_definition(parse_result.command)
         
         # 実行環境のコンテキストを生成
         env_context = EnvContext.from_parse_result(parse_result)
         
-        # TODO: コマンドを実行
-        print(f"実行: {cmd_def.name}")
-        print(f"言語: {env_context.language}")
-        print(f"コンテスト: {env_context.contest_name}")
-        print(f"問題: {env_context.problem_name}") 
+        return CommandRunner(env_context, cmd_def, self.di_container) 

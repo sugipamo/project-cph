@@ -38,14 +38,14 @@ class LocalSystemInfoProvider(SystemInfoProvider):
 
 class UserInputParser:
     """
-    CLI等から渡される引数リストをパースし、必須情報を抽出・バリデーションするクラス。
+    CLI等から渡される引数リストをパースし、必須情報を抽出するクラス。
     """
-    def __init__(self, registry: Optional['CommandDefinitionRegistry'] = None):
-        self.registry = registry
+    def __init__(self):
+        pass
 
     def parse_and_validate(self, args: List[str], system_info_provider: Optional[SystemInfoProvider] = None) -> 'UserInputParseResult':
         """
-        引数をパースし、検証する
+        引数をパースし、基本的な検証を行う
         
         Args:
             args: コマンドライン引数
@@ -67,12 +67,6 @@ class UserInputParser:
         if not is_valid:
             raise ValueError(error_message)
 
-        # コマンド定義を取得
-        if self.registry:
-            cmd_def = self.registry.find_command_definition(parse_result.command)
-            if not cmd_def:
-                raise ValueError(f"コマンド '{parse_result.command}' の定義が見つかりません")
-
         return parse_result
 
     @classmethod
@@ -81,7 +75,7 @@ class UserInputParser:
         contest_env配下のenv.jsonを全て読み込み、
         言語・env_type・コマンドを特定し、使用済みindexをused_flagsで管理する。
         未指定項目はsystem_info.jsonから補完する。
-        パース結果にはcontest_current_pathと旧system_infoも含める。
+        contest_current_pathとold_system_infoも含める。
         """
         if system_info_provider is None:
             system_info_provider = LocalSystemInfoProvider()

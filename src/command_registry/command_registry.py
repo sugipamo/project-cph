@@ -51,7 +51,30 @@ class CommandDefinitionRegistry:
         self._json = env_json  # env.json全体を保持
 
     @classmethod
+    def from_parse_result(cls, parse_result: 'UserInputParseResult') -> "CommandDefinitionRegistry":
+        """
+        UserInputParseResultからCommandDefinitionRegistryを生成する
+        
+        Args:
+            parse_result: パース結果
+            
+        Returns:
+            CommandDefinitionRegistry
+        """
+        return cls.from_env_json(parse_result.env_json, parse_result.language)
+
+    @classmethod
     def from_env_json(cls, env_json: dict, language: str) -> "CommandDefinitionRegistry":
+        """
+        環境設定からコマンド定義を生成する
+        
+        Args:
+            env_json: 環境設定
+            language: 言語
+            
+        Returns:
+            CommandDefinitionRegistry
+        """
         commands = {}
         lang_commands = env_json.get(language, {}).get("commands", {})
         for cmd_name, cmd_data in lang_commands.items():
@@ -84,3 +107,15 @@ class CommandDefinitionRegistry:
         if cmd_name:
             return self.commands[cmd_name]
         return None
+
+    def validate_command(self, command: str) -> bool:
+        """
+        コマンドが定義されているか検証する
+        
+        Args:
+            command: コマンド名またはエイリアス
+            
+        Returns:
+            bool: コマンドが定義されている場合はTrue
+        """
+        return self.find_command_definition(command) is not None
