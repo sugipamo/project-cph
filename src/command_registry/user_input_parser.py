@@ -40,6 +40,41 @@ class UserInputParser:
     """
     CLI等から渡される引数リストをパースし、必須情報を抽出・バリデーションするクラス。
     """
+    def __init__(self, registry: Optional['CommandDefinitionRegistry'] = None):
+        self.registry = registry
+
+    def parse_and_validate(self, args: List[str], system_info_provider: Optional[SystemInfoProvider] = None) -> 'UserInputParseResult':
+        """
+        引数をパースし、検証する
+        
+        Args:
+            args: コマンドライン引数
+            system_info_provider: システム情報プロバイダー
+            
+        Returns:
+            UserInputParseResult: パース結果
+            
+        Raises:
+            ValueError: パースまたは検証に失敗した場合
+        """
+        # 引数をパース
+        parse_result = self.parse(args, system_info_provider)
+        if not parse_result:
+            raise ValueError("引数のパースに失敗しました")
+
+        # パース結果をバリデーション
+        is_valid, error_message = parse_result.validate()
+        if not is_valid:
+            raise ValueError(error_message)
+
+        # コマンド定義を取得
+        if self.registry:
+            cmd_def = self.registry.find_command_definition(parse_result.command)
+            if not cmd_def:
+                raise ValueError(f"コマンド '{parse_result.command}' の定義が見つかりません")
+
+        return parse_result
+
     @classmethod
     def parse(cls, args: list, system_info_provider: Optional[SystemInfoProvider] = None) -> 'UserInputParseResult':
         """
