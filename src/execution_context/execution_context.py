@@ -1,10 +1,12 @@
 from dataclasses import dataclass
-from typing import Dict
-
-from .user_input_parser import UserInputParseResult
+from typing import Dict, Optional, Tuple
 
 @dataclass
 class ExecutionContext:
+    """
+    実行コンテキストを保持するクラス。
+    パース結果の保持、バリデーション、環境設定の取得を担当。
+    """
     command_name: str
     language: str
     contest_name: str
@@ -14,27 +16,36 @@ class ExecutionContext:
     contest_current_path: str
     old_system_info: dict
 
-    @classmethod
-    def from_parse_result(cls, parse_result: 'UserInputParseResult') -> 'ExecutionContext':
+    def validate(self) -> Tuple[bool, Optional[str]]:
         """
-        UserInputParseResultからExecutionContextを生成する
+        基本的なバリデーションを行う
         
-        Args:
-            parse_result: パース結果
-            
         Returns:
-            ExecutionContext
+            Tuple[bool, Optional[str]]: (バリデーション結果, エラーメッセージ)
         """
-        return cls(
-            command_name=parse_result.command,
-            language=parse_result.language,
-            contest_name=parse_result.contest_name,
-            problem_name=parse_result.problem_name,
-            env_type=parse_result.env_type,
-            env_json=parse_result.env_json,
-            contest_current_path=parse_result.contest_current_path,
-            old_system_info=parse_result.old_system_info
-        )
+        # 必須項目の存在チェック
+        missing_fields = []
+        if not self.command_name:
+            missing_fields.append("コマンド")
+        if not self.language:
+            missing_fields.append("言語")
+        if not self.contest_name:
+            missing_fields.append("コンテスト名")
+        if not self.problem_name:
+            missing_fields.append("問題名")
+            
+        if missing_fields:
+            return False, f"以下の項目が指定されていません: {', '.join(missing_fields)}"
+            
+        # env_jsonの存在チェック
+        if not self.env_json:
+            return False, "環境設定ファイル(env.json)が見つかりません"
+            
+        # 言語がenv_jsonに存在するかチェック
+        if self.language not in self.env_json:
+            return False, f"指定された言語 '{self.language}' は環境設定ファイルに存在しません"
+            
+        return True, None
 
     def get_env_config(self) -> dict:
         return self.env_json.get('env', {})

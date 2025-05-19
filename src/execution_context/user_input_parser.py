@@ -1,6 +1,7 @@
 import os
 import json
 from typing import List, Dict, Optional, Tuple
+from .execution_context import ExecutionContext
 
 CONTEST_ENV_DIR = "contest_env"
 SYSTEM_INFO_PATH = "system_info.json"
@@ -43,7 +44,7 @@ class UserInputParser:
     def __init__(self, system_info_provider: Optional[SystemInfoProvider] = None):
         self.system_info_provider = system_info_provider or LocalSystemInfoProvider()
 
-    def parse_and_validate(self, args: List[str]) -> 'UserInputParseResult':
+    def parse_and_validate(self, args: List[str]) -> ExecutionContext:
         """
         引数をパースし、基本的な検証を行う
         
@@ -51,24 +52,24 @@ class UserInputParser:
             args: コマンドライン引数
             
         Returns:
-            UserInputParseResult: パース結果
+            ExecutionContext: パース結果
             
         Raises:
             ValueError: パースまたは検証に失敗した場合
         """
         # 引数をパース
-        parse_result = self.parse(args)
-        if not parse_result:
+        context = self.parse(args)
+        if not context:
             raise ValueError("引数のパースに失敗しました")
 
         # パース結果をバリデーション
-        is_valid, error_message = parse_result.validate()
+        is_valid, error_message = context.validate()
         if not is_valid:
             raise ValueError(error_message)
 
-        return parse_result
+        return context
 
-    def parse(self, args: list) -> 'UserInputParseResult':
+    def parse(self, args: list) -> ExecutionContext:
         """
         contest_env配下のenv.jsonを全て読み込み、
         言語・env_type・コマンドを特定し、使用済みindexをused_flagsで管理する。
@@ -129,20 +130,21 @@ class UserInputParser:
         if not contest_current_path:
             contest_current_path = "./contest_current"
         system_info["contest_current_path"] = contest_current_path
-        # パース結果を返す
-        result = UserInputParseResult(
-            command=system_info.get("command"),
+
+        # 実行コンテキストを生成
+        context = ExecutionContext(
+            command_name=system_info.get("command"),
             language=system_info.get("language"),
-            env_type=system_info.get("env_type"),
             contest_name=system_info.get("contest_name"),
             problem_name=system_info.get("problem_name"),
+            env_type=system_info.get("env_type"),
             env_json=matched_env_json,
             contest_current_path=system_info.get("contest_current_path"),
             old_system_info=old_system_info
         )
-        self.system_info_provider.save(system_info)
 
-        return result
+        self.system_info_provider.save(system_info)
+        return context
 
     def load_all_env_jsons(self, base_dir: str) -> List[dict]:
         """
@@ -220,49 +222,3 @@ class UserInputParser:
                 if arg == cmd_name or arg in aliases:
                     return cmd_name, idx
         return None, None
-
-class UserInputParseResult:
-    """
-    パース結果（必須情報）を保持するデータクラス。
-    contest_current_path, old_system_infoも含める。
-    """
-    def __init__(self, command: str, language: str, env_type: str, contest_name: str, problem_name: str, env_json: dict, contest_current_path: str, old_system_info: dict):
-        self.command = command
-        self.language = language
-        self.env_type = env_type
-        self.contest_name = contest_name
-        self.problem_name = problem_name
-        self.env_json = env_json
-        self.contest_current_path = contest_current_path
-        self.old_system_info = old_system_info
-
-    def validate(self) -> Tuple[bool, Optional[str]]:
-        """
-        基本的なバリデーションを行う
-        
-        Returns:
-            Tuple[bool, Optional[str]]: (バリデーション結果, エラーメッセージ)
-        """
-        # 必須項目の存在チェック
-        missing_fields = []
-        if not self.command:
-            missing_fields.append("コマンド")
-        if not self.language:
-            missing_fields.append("言語")
-        if not self.contest_name:
-            missing_fields.append("コンテスト名")
-        if not self.problem_name:
-            missing_fields.append("問題名")
-            
-        if missing_fields:
-            return False, f"以下の項目が指定されていません: {', '.join(missing_fields)}"
-            
-        # env_jsonの存在チェック
-        if not self.env_json:
-            return False, "環境設定ファイル(env.json)が見つかりません"
-            
-        # 言語がenv_jsonに存在するかチェック
-        if self.language not in self.env_json:
-            return False, f"指定された言語 '{self.language}' は環境設定ファイルに存在しません"
-            
-        return True, None
