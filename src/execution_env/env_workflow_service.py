@@ -9,37 +9,8 @@ class EnvWorkflowService:
     def __init__(self):
         pass
 
-    def generate_run_test_requests(self, env_contexts: List[EnvContext]):
-        all_requests = []
-        for context in env_contexts:
-            requests = []
-            controller = EnvResourceController.from_context(context)
-            if controller.env_context.build_cmds:
-                req = controller.get_build_commands()
-                requests.append(req)
-
-            req = controller.get_run_command()
-            requests.append(req)
-            all_requests.append(CompositeRequest.make_composite_request(requests, name=f"run_test_{context.language}_{context.env}"))
-        return CompositeRequest.make_composite_request(all_requests, name="run_test")
-    
-def make_run_test_requests(language: str, env: str):
-    # language, env からEnvContextを生成
-    env_context = load_env_context_from_language_env(language, env)
-    
-    env_contexts = [env_context]
-    # ワークフローサービスでrequest群を生成
-    service = EnvWorkflowService()
-    requests = service.generate_run_test_requests(env_contexts)
-    print(requests)
-
-if __name__ == "__main__":
-    #ここでコマンドうけつけ
-    # language = input("language: ")
-    # env = input("env: ")
-    # count = int(input("count: "))
-    # コマンドの引数で受付するようにしたい
-    import sys
-    language = sys.argv[1]
-    env = sys.argv[2]
-    make_run_test_requests(language, env)
+    def generate_run_requests(self, ):
+        # TODO
+        # Controllerを呼び出し
+        # jsonの設定をもとにrequestを生成
+        # requestはsrc/operationsを参照

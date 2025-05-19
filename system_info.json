@@ -1,5 +1,5 @@
 {
-  "command": "submit",
+  "command": "test",
   "language": "python",
   "env_type": "docker",
   "contest_name": "abc302",
