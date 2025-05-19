@@ -170,23 +170,16 @@ class UserInputParser:
         return args, context
 
     def _apply_command(self, args: list, context: ExecutionContext) -> tuple:
-        print(f"[DEBUG] _apply_command: args={args}, context.command_name={context.command_name}, context.language={context.language}")
         if not context.env_json or not context.language:
-            print("[DEBUG] _apply_command: env_jsonまたはlanguageが未設定のためスキップ")
             return args, context
         commands = context.env_json[context.language].get("commands", {})
-        print(f"[DEBUG] _apply_command: commands.keys()={list(commands.keys())}")
         for idx, arg in enumerate(args):
-            print(f"[DEBUG] _apply_command: idx={idx}, arg={arg}")
             for cmd_name, cmd_conf in commands.items():
                 aliases = cmd_conf.get("aliases", [])
-                print(f"[DEBUG] _apply_command: cmd_name={cmd_name}, aliases={aliases}")
                 if arg == cmd_name or arg in aliases:
-                    print(f"[DEBUG] _apply_command: HIT! arg={arg} matches cmd_name={cmd_name} or aliases")
                     context.command_name = cmd_name
                     new_args = args[:idx] + args[idx+1:]
                     return new_args, context
-        print("[DEBUG] _apply_command: コマンド該当なし")
         return args, context
 
     def _apply_names(self, args: list, context: ExecutionContext) -> tuple:

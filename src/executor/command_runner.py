@@ -19,4 +19,4 @@ class CommandRunner:
         # パーサーの初期化
         context = UserInputParser().from_args(args)
         
-        print(context)
+        print("from_command_runner", context)
