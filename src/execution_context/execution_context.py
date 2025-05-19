@@ -15,6 +15,7 @@ class ExecutionContext:
     env_json: dict
     contest_current_path: str
     dockerfile: Optional[str] = None
+    oj_dockerfile: Optional[str] = None
     old_execution_context: Optional["ExecutionContext"] = None
     
 

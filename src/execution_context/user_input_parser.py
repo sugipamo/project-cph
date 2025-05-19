@@ -79,6 +79,7 @@ class UserInputParser:
             env_json=None,
             contest_current_path=None,
             dockerfile=None,
+            oj_dockerfile=None,
             old_execution_context=None,
         )
         # 2. system_info.jsonの内容をcontextへ反映
@@ -101,6 +102,8 @@ class UserInputParser:
         context = self._apply_env_json(context, env_jsons)
         # 9.5. dockerfileの内容をセット
         context = self._apply_dockerfile(context)
+        # 9.6. oj.Dockerfileの内容をセット
+        context = self._apply_oj_dockerfile(context)
         # 10. system_info.jsonへ保存
         self._save_context_to_system_info(context)
         return context
@@ -238,6 +241,15 @@ class UserInputParser:
                 context.dockerfile = self.dockerfile_loader(dockerfile_path)
             except Exception:
                 context.dockerfile = None
+        return context
+
+    def _apply_oj_dockerfile(self, context: ExecutionContext) -> ExecutionContext:
+        import os
+        oj_dockerfile_path = os.path.join(os.path.dirname(__file__), "oj.Dockerfile")
+        try:
+            context.oj_dockerfile = self.dockerfile_loader(oj_dockerfile_path)
+        except Exception:
+            context.oj_dockerfile = None
         return context
 
     def _save_context_to_system_info(self, context: ExecutionContext):
