@@ -88,13 +88,12 @@ class DockerConstHandler(BaseConstHandler):
     
     @property
     def image_name(self) -> str:
-        # Dockerfileの内容をハッシュ化し、languagename_hash形式で返す
+        # dockerfileの内容をハッシュ化し、languagename_hash形式で返す
         language = self.config.language
-        dockerfile_path = self.config.env_json.get("dockerfile_path")
-        if not dockerfile_path:
+        dockerfile_text = getattr(self.config, "dockerfile", None)
+        if not dockerfile_text:
             return language
-        file_driver = LocalFileDriver()
-        hash_str = file_driver.hash_file(dockerfile_path)
+        hash_str = hashlib.sha256(dockerfile_text.encode("utf-8")).hexdigest()[:12]
         return f"{language}_{hash_str}"
 
     @property
@@ -107,19 +106,16 @@ class DockerConstHandler(BaseConstHandler):
         return self.config.language
 
     @property
-    def oj_dockerfile_path(self) -> str:
-        return Path("./src/execution_env/oj/Dockerfile")
-
-    @property
     def base_oj_image_name(self) -> str:
         return "cph_ojtools"
 
     @property
     def oj_image_name(self) -> str:
-        file_driver = LocalFileDriver()
-        hash_str = file_driver.hash_file(self.oj_dockerfile_path)
+        oj_dockerfile_text = getattr(self.config, "oj_dockerfile", None)
+        if not oj_dockerfile_text:
+            return self.base_oj_image_name
+        hash_str = hashlib.sha256(oj_dockerfile_text.encode("utf-8")).hexdigest()[:12]
         return f"{self.base_oj_image_name}_{hash_str}"
-
 
     @property
     def oj_container_name(self) -> str:
