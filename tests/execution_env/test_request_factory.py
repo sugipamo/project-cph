@@ -14,6 +14,10 @@ from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.file.file_request import FileRequest, FileOpType
 from src.operations.shell.shell_request import ShellRequest
 from src.env.request_factory import create_requests_from_run_steps
+from src.env.step.run_step_remove import RemoveRunStep
+from src.env.factory.remove_command_request_factory import RemoveCommandRequestFactory
+from src.env.step.run_step_build import BuildRunStep
+from src.env.factory.build_command_request_factory import BuildCommandRequestFactory
 
 class MockConstHandler:
     def __init__(self):
@@ -34,6 +38,8 @@ def di_container():
     di.register("DockerCommandRequestFactory", lambda: DockerCommandRequestFactory)
     di.register("CopyCommandRequestFactory", lambda: CopyCommandRequestFactory)
     di.register("OjCommandRequestFactory", lambda: OjCommandRequestFactory)
+    di.register("RemoveCommandRequestFactory", lambda: RemoveCommandRequestFactory)
+    di.register("BuildCommandRequestFactory", lambda: BuildCommandRequestFactory)
     return di
 
 def test_shell_command_request_factory(di_container):
@@ -101,4 +107,27 @@ def test_factory_unknown_type(di_container):
     class UnknownStep:
         type = "unknown"
     with pytest.raises(ValueError):
-        RequestFactorySelector.get_factory_for_step(controller, UnknownStep(), di_container) 
+        RequestFactorySelector.get_factory_for_step(controller, UnknownStep(), di_container)
+
+def test_remove_command_request_factory(di_container):
+    controller = MockController()
+    step = RemoveRunStep(type="remove", cmd=["target.txt"])
+    factory = RequestFactorySelector.get_factory_for_step(controller, step, di_container)
+    req = factory.create_request(step)
+    assert isinstance(req, FileRequest)
+    assert req.op == FileOpType.REMOVE
+    assert req.path == "target.txt"
+
+def test_build_command_request_factory(di_container):
+    controller = MockController()
+    step = BuildRunStep(type="build", cmd=["make", "all"])
+    factory = RequestFactorySelector.get_factory_for_step(controller, step, di_container)
+    req = factory.create_request(step)
+    assert isinstance(req, ShellRequest)
+    assert req.cmd == ["make", "all"]
+    # cmd省略時のデフォルト
+    step2 = BuildRunStep(type="build", cmd=[])
+    req2 = factory.create_request(step2)
+    assert isinstance(req2, ShellRequest)
+    # デフォルトは["make"]
+    assert req2.cmd == ["make"] 
