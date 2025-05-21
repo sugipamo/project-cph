@@ -5,7 +5,7 @@ from src.operations.file.file_request import FileRequest, FileOpType
 from pathlib import Path
 from src.operations.file.file_driver import LocalFileDriver
 from src.operations.docker.docker_file_request import DockerFileRequest
-from src.execution_context.execution_context import ExecutionContext
+from src.context.execution_context import ExecutionContext
 from src.execution_env.resource_handler.env_utils.path_environment_checker import PathEnvironmentChecker
 from src.execution_env.resource_handler.file_handler.base_file_handler import BaseFileHandler
 from src.execution_env.resource_handler.file_handler.docker_file_handler import DockerFileHandler

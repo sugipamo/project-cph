@@ -8,7 +8,7 @@ import os
 import tempfile
 import json
 import shutil
-from src.execution_context.execution_context import ExecutionContext
+from src.context.execution_context import ExecutionContext
 
 class DummyFileHandler:
     def read(self, path):

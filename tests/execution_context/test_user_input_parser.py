@@ -3,8 +3,8 @@ import shutil
 import tempfile
 import json
 import pytest
-from src.execution_context.user_input_parser import UserInputParser, SystemInfoProvider
-from src.execution_context.execution_context import ExecutionContext
+from src.context.user_input_parser import UserInputParser, SystemInfoProvider
+from src.context.execution_context import ExecutionContext
 
 # テスト用のSystemInfoProviderモック
 class DummySystemInfoProvider(SystemInfoProvider):
@@ -35,7 +35,7 @@ def setup_env(tmp_path_factory):
 @pytest.mark.usefixtures("setup_env")
 def test_parse_python_command(monkeypatch, setup_env):
     # contest_envのパスを一時ディレクトリに差し替え
-    monkeypatch.setattr("src.execution_context.user_input_parser.CONTEST_ENV_DIR", setup_env)
+    monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
     provider = DummySystemInfoProvider()
     parser = UserInputParser(system_info_provider=provider)
     args = ["python", "docker", "test", "abc300", "a"]
@@ -54,7 +54,7 @@ def test_parse_python_command(monkeypatch, setup_env):
 
 @pytest.mark.usefixtures("setup_env")
 def test_parse_python_alias(monkeypatch, setup_env):
-    monkeypatch.setattr("src.execution_context.user_input_parser.CONTEST_ENV_DIR", setup_env)
+    monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
     provider = DummySystemInfoProvider()
     parser = UserInputParser(system_info_provider=provider)
     args = ["py", "local", "t", "abc300", "a"]
@@ -67,7 +67,7 @@ def test_parse_python_alias(monkeypatch, setup_env):
 
 @pytest.mark.usefixtures("setup_env")
 def test_parse_too_many_args(monkeypatch, setup_env):
-    monkeypatch.setattr("src.execution_context.user_input_parser.CONTEST_ENV_DIR", setup_env)
+    monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
     provider = DummySystemInfoProvider()
     parser = UserInputParser(system_info_provider=provider)
     args = ["python", "docker", "test", "abc300", "a", "extra"]
@@ -77,7 +77,7 @@ def test_parse_too_many_args(monkeypatch, setup_env):
 
 @pytest.mark.usefixtures("setup_env")
 def test_parse_missing_required(monkeypatch, setup_env):
-    monkeypatch.setattr("src.execution_context.user_input_parser.CONTEST_ENV_DIR", setup_env)
+    monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
     provider = DummySystemInfoProvider()
     parser = UserInputParser(system_info_provider=provider)
     # 言語指定なし

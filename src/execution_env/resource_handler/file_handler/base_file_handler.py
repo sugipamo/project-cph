@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from src.execution_context.execution_context import ExecutionContext
+from src.context.execution_context import ExecutionContext
 
 class BaseFileHandler(ABC):
     def __init__(self, config: ExecutionContext, const_handler):
