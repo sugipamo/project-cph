@@ -100,4 +100,58 @@ def test_docker_const_handler_parse(monkeypatch):
     assert "temp_d" in result
     assert "test" in result
     assert "in" in result
-    assert "out" in result 
+    assert "out" in result
+
+def test_const_handler_workspace_path_none():
+    config = make_local_config()
+    with pytest.raises(Exception):
+        handler = ConstHandler(config, workspace_path=None)
+        _ = handler.workspace_path 
+
+def test_const_handler_workspace_path_none_typeerror():
+    config = make_local_config()
+    handler = ConstHandler(config, workspace_path=None)
+    with pytest.raises((TypeError, ValueError)) as excinfo:
+        _ = handler.workspace_path
+    assert "None" in str(excinfo.value) or "str" in str(excinfo.value) or "os.PathLike" in str(excinfo.value) 
+
+def test_const_handler_parse_with_none_workspace_path():
+    config = make_local_config()
+    handler = ConstHandler(config, workspace_path=None)
+    with pytest.raises((TypeError, ValueError)) as excinfo:
+        handler.parse("{workspace_path}/main.cpp")
+    assert "None" in str(excinfo.value) or "str" in str(excinfo.value) or "os.PathLike" in str(excinfo.value)
+
+def test_path_resolver_contest_current_path_none():
+    # contest_current_pathがNoneの場合
+    config = make_local_config()
+    config.contest_current_path = None
+    handler = ConstHandler(config, workspace_path="/ws")
+    with pytest.raises(ValueError) as excinfo:
+        _ = handler.contest_current_path
+    assert "contest_current_path" in str(excinfo.value)
+
+def test_path_resolver_contest_env_path_none():
+    # env_jsonからcontest_env_pathがNoneの場合
+    config = make_local_config()
+    config.env_json["contest_env_path"] = None
+    handler = ConstHandler(config, workspace_path="/ws")
+    with pytest.raises(ValueError) as excinfo:
+        _ = handler.contest_env_path
+    assert "contest_env_path" in str(excinfo.value)
+
+def test_path_resolver_contest_template_path_none():
+    config = make_local_config()
+    config.env_json["contest_template_path"] = None
+    handler = ConstHandler(config, workspace_path="/ws")
+    with pytest.raises(ValueError) as excinfo:
+        _ = handler.contest_template_path
+    assert "contest_template_path" in str(excinfo.value)
+
+def test_path_resolver_contest_temp_path_none():
+    config = make_local_config()
+    config.env_json["contest_temp_path"] = None
+    handler = ConstHandler(config, workspace_path="/ws")
+    with pytest.raises(ValueError) as excinfo:
+        _ = handler.contest_temp_path
+    assert "contest_temp_path" in str(excinfo.value) 
