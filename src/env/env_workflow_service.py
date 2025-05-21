@@ -32,15 +32,16 @@ class EnvWorkflowService:
         self.controller = controller
 
     @classmethod
-    def from_context(cls, env_context):
+    def from_context(cls, env_context, workspace_path=None):
         """
         本番用の依存性を組み立ててEnvWorkflowServiceを生成する
+        workspace_path: 明示的に指定があればそれを使う
         """
         from src.env.env_resource_controller import EnvResourceController
         from src.env.resource.file.local_file_handler import LocalFileHandler
         from src.env.resource.run.local_run_handler import LocalRunHandler
         from src.env.resource.utils.const_handler import ConstHandler
-        const_handler = ConstHandler(env_context)
+        const_handler = ConstHandler(env_context, workspace_path=workspace_path)
         file_handler = LocalFileHandler(env_context, const_handler)
         run_handler = LocalRunHandler(env_context, const_handler)
         controller = EnvResourceController(env_context, file_handler, run_handler, const_handler)
