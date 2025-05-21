@@ -50,10 +50,33 @@ class EnvWorkflowService:
         """
         run_steps_dict_list: List[dict]（env.json等から取得した生データ）
         CompositeRequestを返す
+        エラー時はValueError等を投げる
         """
         from src.env.step.run_steps import RunSteps
         from src.env.run_workflow_builder import RunWorkflowBuilder
+        # env_contextのバリデーション
+        if hasattr(self.env_context, "validate"):
+            valid, err = self.env_context.validate()
+            if not valid:
+                raise ValueError(f"env_context validation failed: {err}")
+        # RunSteps生成とバリデーション
         run_steps = RunSteps.from_list(run_steps_dict_list)
+        if hasattr(run_steps, "validate_all"):
+            try:
+                run_steps.validate_all()
+            except Exception as e:
+                raise ValueError(f"RunSteps validation failed: {e}")
         builder = RunWorkflowBuilder.from_controller(self.controller)
         composite_request = builder.build(run_steps)
         return composite_request
+
+    def run_workflow(self, run_steps_dict_list, driver=None):
+        """
+        run_steps_dict_list: List[dict]（env.json等から取得した生データ）
+        driver: 実行環境に応じて指定（省略時はNone）
+        
+        CompositeRequestを生成し、実行して結果を返す
+        """
+        composite_request = self.generate_run_requests(run_steps_dict_list)
+        result = composite_request.execute(driver=driver)
+        return result
