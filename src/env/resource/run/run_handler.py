@@ -4,9 +4,9 @@ from src.operations.shell.shell_request import ShellRequest
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.shell.shell_driver import ShellDriver
 from src.context.execution_context import ExecutionContext
-from src.execution_env.resource_handler.run_handler.base_run_handler import BaseRunHandler
-from src.execution_env.resource_handler.run_handler.local_run_handler import LocalRunHandler
-from src.execution_env.resource_handler.run_handler.docker_run_handler import DockerRunHandler
+from src.env.resource.run.base_run_handler import BaseRunHandler
+from src.env.resource.run.local_run_handler import LocalRunHandler
+from src.env.resource.run.docker_run_handler import DockerRunHandler
 
 
 class BaseRunHandler(ABC):

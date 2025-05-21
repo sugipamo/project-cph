@@ -1,5 +1,5 @@
-from src.execution_env.command_factory.base_command_request_factory import BaseCommandRequestFactory
-from src.execution_env.run_step.run_step_shell import ShellRunStep
+from src.env.factory.base_command_request_factory import BaseCommandRequestFactory
+from src.env.step.run_step_shell import ShellRunStep
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 
 class DockerCommandRequestFactory(BaseCommandRequestFactory):

@@ -1,5 +1,5 @@
 import pytest
-from src.execution_env.resource_handler.file_handler.docker_file_handler import DockerFileHandler
+from src.env.resource.file.docker_file_handler import DockerFileHandler
 from src.context.execution_context import ExecutionContext
 from src.operations.file.file_request import FileOpType, FileRequest
 from src.operations.docker.docker_file_request import DockerFileRequest

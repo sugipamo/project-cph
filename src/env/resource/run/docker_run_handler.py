@@ -1,5 +1,5 @@
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
-from src.execution_env.resource_handler.run_handler.base_run_handler import BaseRunHandler
+from src.env.resource.run.base_run_handler import BaseRunHandler
 from src.context.execution_context import ExecutionContext
 
 class DockerRunHandler(BaseRunHandler):

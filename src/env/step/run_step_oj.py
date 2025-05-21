@@ -1,5 +1,5 @@
-from src.execution_env.run_step.run_step_base import RunStep
-from src.execution_env.run_step.run_step_registry import register_run_step_type
+from src.env.step.run_step_base import RunStep
+from src.env.step.run_step_registry import register_run_step_type
 
 @register_run_step_type("oj")
 class OjRunStep(RunStep):

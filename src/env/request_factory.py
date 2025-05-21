@@ -1,6 +1,6 @@
 from src.operations.composite_request import CompositeRequest
 from src.operations.di_container import DIContainer
-from src.execution_env.request_factory_selector import RequestFactorySelector
+from src.env.request_factory_selector import RequestFactorySelector
 
 def create_requests_from_run_steps(controller, run_steps, di_container: DIContainer):
     """

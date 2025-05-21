@@ -1,6 +1,6 @@
 import os
 from src.operations.file.file_request import FileRequest, FileOpType
-from src.execution_env.resource_handler.file_handler.base_file_handler import BaseFileHandler
+from src.env.resource.file.base_file_handler import BaseFileHandler
 
 class LocalFileHandler(BaseFileHandler):
     def __init__(self, config, const_handler):

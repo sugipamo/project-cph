@@ -1,5 +1,5 @@
 import pytest
-from src.execution_env.env_workflow_service import EnvWorkflowService
+from src.env.env_workflow_service import EnvWorkflowService
 from src.context.execution_context import ExecutionContext
 from src.operations.composite_request import CompositeRequest
 from src.operations.base_request import BaseRequest
@@ -37,6 +37,6 @@ class DummyRequest(BaseRequest):
         return f"executed:{self.cmd}:{driver}"
 
 # DI用にEnvResourceControllerをモック化
-import src.execution_env.env_workflow_service as workflow_mod
+import src.env.env_workflow_service as workflow_mod
 
 # test_generate_requestsは未実装メソッド依存のため削除

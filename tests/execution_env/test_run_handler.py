@@ -1,6 +1,6 @@
 import pytest
-from src.execution_env.resource_handler.run_handler.local_run_handler import LocalRunHandler
-from src.execution_env.resource_handler.run_handler.docker_run_handler import DockerRunHandler
+from src.env.resource.run.local_run_handler import LocalRunHandler
+from src.env.resource.run.docker_run_handler import DockerRunHandler
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 

@@ -1,6 +1,6 @@
 import pytest
-from src.execution_env.resource_handler.file_handler.local_file_handler import LocalFileHandler
-from src.execution_env.resource_handler.file_handler.docker_file_handler import DockerFileHandler
+from src.env.resource.file.local_file_handler import LocalFileHandler
+from src.env.resource.file.docker_file_handler import DockerFileHandler
 from src.operations.file.file_request import FileOpType, FileRequest
 from src.operations.docker.docker_file_request import DockerFileRequest
 from pathlib import Path
