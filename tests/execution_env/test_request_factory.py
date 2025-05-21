@@ -1,8 +1,9 @@
 import pytest
 from src.execution_env.request_factory import (
     ShellCommandRequestFactory, DockerCommandRequestFactory, CopyCommandRequestFactory, OjCommandRequestFactory,
-    get_factory_for_step, create_requests_from_run_steps
+    create_requests_from_run_steps
 )
+from src.execution_env.request_factory_selector import RequestFactorySelector
 from src.execution_env.run_step import ShellRunStep, CopyRunStep, OjRunStep, RunSteps
 from src.operations.di_container import DIContainer
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
@@ -33,7 +34,7 @@ def di_container():
 def test_shell_command_request_factory(di_container):
     controller = MockController()
     step = ShellRunStep(type="shell", cmd=["echo", "hello"])
-    factory = get_factory_for_step(controller, step, di_container)
+    factory = RequestFactorySelector.get_factory_for_step(controller, step, di_container)
     req = factory.create_request(step)
     assert isinstance(req, ShellRequest)
     assert req.cmd == ["parsed_echo", "parsed_hello"]
@@ -42,7 +43,7 @@ def test_docker_command_request_factory(di_container):
     controller = MockController()
     controller.env_context.env_type = "docker"
     step = ShellRunStep(type="shell", cmd=["ls", "/"])
-    factory = get_factory_for_step(controller, step, di_container)
+    factory = RequestFactorySelector.get_factory_for_step(controller, step, di_container)
     req = factory.create_request(step)
     assert isinstance(req, DockerRequest)
     assert req.container == "mock_container"
@@ -52,7 +53,7 @@ def test_docker_command_request_factory(di_container):
 def test_copy_command_request_factory(di_container):
     controller = MockController()
     step = CopyRunStep(type="copy", cmd=["src.txt", "dst.txt"])
-    factory = get_factory_for_step(controller, step, di_container)
+    factory = RequestFactorySelector.get_factory_for_step(controller, step, di_container)
     req = factory.create_request(step)
     assert isinstance(req, FileRequest)
     assert req.op == FileOpType.COPY
@@ -62,7 +63,7 @@ def test_copy_command_request_factory(di_container):
 def test_oj_command_request_factory(di_container):
     controller = MockController()
     step = OjRunStep(type="oj", cmd=["test", "-c", "./main"])
-    factory = get_factory_for_step(controller, step, di_container)
+    factory = RequestFactorySelector.get_factory_for_step(controller, step, di_container)
     req = factory.create_request(step)
     assert isinstance(req, DockerRequest)
     assert req.container == "mock_oj_container"
@@ -86,7 +87,7 @@ def test_create_requests_from_run_steps(di_container):
 def test_factory_type_error(di_container):
     controller = MockController()
     step = CopyRunStep(type="copy", cmd=["only_src"])
-    factory = get_factory_for_step(controller, step, di_container)
+    factory = RequestFactorySelector.get_factory_for_step(controller, step, di_container)
     with pytest.raises(ValueError):
         factory.create_request(step)
 
@@ -95,4 +96,4 @@ def test_factory_unknown_type(di_container):
     class UnknownStep:
         type = "unknown"
     with pytest.raises(ValueError):
-        get_factory_for_step(controller, UnknownStep(), di_container) 
+        RequestFactorySelector.get_factory_for_step(controller, UnknownStep(), di_container) 

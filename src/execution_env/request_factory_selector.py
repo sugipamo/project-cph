@@ -1,0 +1,39 @@
+from src.execution_env.run_step import ShellRunStep, CopyRunStep, OjRunStep
+from src.operations.di_container import DIContainer
+from src.execution_env.command_factories import (
+    ShellCommandRequestFactory,
+    DockerCommandRequestFactory,
+    CopyCommandRequestFactory,
+    OjCommandRequestFactory,
+)
+
+class RequestFactorySelector:
+    FACTORY_MAP = {
+        "shell": ShellCommandRequestFactory,
+        "docker_shell": DockerCommandRequestFactory,
+        "copy": CopyCommandRequestFactory,
+        "oj": OjCommandRequestFactory,
+        "test": None,
+    }
+
+    @staticmethod
+    def get_shell_factory(controller, di_container: DIContainer):
+        env_type = getattr(controller.env_context, "env_type", "local")
+        if env_type.lower() == "docker":
+            return di_container.resolve("DockerCommandRequestFactory")(controller)
+        else:
+            return di_container.resolve("ShellCommandRequestFactory")(controller)
+
+    @classmethod
+    def get_factory_for_step(cls, controller, step, di_container: DIContainer):
+        if isinstance(step, ShellRunStep):
+            return cls.get_shell_factory(controller, di_container)
+        elif isinstance(step, CopyRunStep):
+            return di_container.resolve("CopyCommandRequestFactory")(controller)
+        elif isinstance(step, OjRunStep):
+            return di_container.resolve("OjCommandRequestFactory")(controller)
+        else:
+            factory_cls = cls.FACTORY_MAP.get(getattr(step, "type", None))
+            if not factory_cls:
+                raise ValueError(f"Unknown or unsupported run type: {getattr(step, 'type', None)} (step={step})")
+            return di_container.resolve(factory_cls.__name__)(controller) 

@@ -22,11 +22,11 @@ def test_is_in_container_true_false(tmp_path):
     (ws / "dir").mkdir()
     (ws / "dir" / "b.txt").touch()
     # workspace内
-    assert handler._is_in_container(str(ws / "a.txt"))
-    assert handler._is_in_container(str(ws / "dir" / "b.txt"))
+    assert handler.path_env_checker.is_in_container(str(ws / "a.txt"))
+    assert handler.path_env_checker.is_in_container(str(ws / "dir" / "b.txt"))
     # workspace外
-    assert not handler._is_in_container("/etc/passwd")
-    assert not handler._is_in_container(str(ws.parent / "outside.txt"))
+    assert not handler.path_env_checker.is_in_container("/etc/passwd")
+    assert not handler.path_env_checker.is_in_container(str(ws.parent / "outside.txt"))
 
 def test_copy_host_to_container_and_reverse(tmp_path):
     ws = tmp_path
@@ -86,12 +86,12 @@ def test_invalid_path_edge_cases(tmp_path):
     # workspace直下
     file = ws / "file.txt"
     file.touch()
-    assert handler._is_in_container(str(file))
+    assert handler.path_env_checker.is_in_container(str(file))
     # workspaceの親
     parent_file = ws.parent / "file.txt"
-    assert not handler._is_in_container(str(parent_file))
+    assert not handler.path_env_checker.is_in_container(str(parent_file))
     # workspace自身
-    assert handler._is_in_container(str(ws))
+    assert handler.path_env_checker.is_in_container(str(ws))
 
 def test_copy_within_workspace(tmp_path):
     ws = tmp_path
@@ -141,4 +141,4 @@ def test_is_in_container_various(tmp_path, rel_path, expected):
         path = str(target)
     else:
         path = str(ws)
-    assert handler._is_in_container(path) == expected 
+    assert handler.path_env_checker.is_in_container(path) == expected 
