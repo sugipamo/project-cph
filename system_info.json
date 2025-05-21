@@ -24,7 +24,7 @@
             "o"
           ],
           "description": "コンテストを開く",
-          "run": [
+          "steps": [
             {
               "type": "shell",
               "allow_failure": true,
@@ -60,7 +60,7 @@
             "t"
           ],
           "description": "テストを実行する",
-          "run": [
+          "steps": [
             {
               "type": "copy",
               "allow_failure": false,
@@ -86,7 +86,7 @@
             "s"
           ],
           "description": "提出する",
-          "run": [
+          "steps": [
             {
               "type": "copy",
               "allow_failure": false,
