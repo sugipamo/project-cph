@@ -1,5 +1,6 @@
 from typing import List, Dict, Any
 from src.env.step.run_step_base import RunStep
+from src.env.step.run_step_factory import RunStepFactory
 
 class RunSteps:
     """
@@ -11,7 +12,7 @@ class RunSteps:
 
     @classmethod
     def from_list(cls, lst: List[Dict[str, Any]]) -> "RunSteps":
-        return cls([RunStep.from_dict(d) for d in lst])
+        return cls([RunStepFactory.from_dict(d) for d in lst])
 
     def __iter__(self):
         return iter(self.steps)
