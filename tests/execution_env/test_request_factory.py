@@ -4,7 +4,10 @@ from src.execution_env.request_factory import (
     create_requests_from_run_steps
 )
 from src.execution_env.request_factory_selector import RequestFactorySelector
-from src.execution_env.run_step import ShellRunStep, CopyRunStep, OjRunStep, RunSteps
+from src.execution_env.run_step_shell import ShellRunStep
+from src.execution_env.run_step_copy import CopyRunStep
+from src.execution_env.run_step_oj import OjRunStep
+from src.execution_env.run_steps import RunSteps
 from src.operations.di_container import DIContainer
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.file.file_request import FileRequest, FileOpType

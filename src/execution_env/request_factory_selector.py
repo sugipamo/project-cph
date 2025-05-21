@@ -1,4 +1,6 @@
-from src.execution_env.run_step import ShellRunStep, CopyRunStep, OjRunStep
+from src.execution_env.run_step_shell import ShellRunStep
+from src.execution_env.run_step_copy import CopyRunStep
+from src.execution_env.run_step_oj import OjRunStep
 from src.operations.di_container import DIContainer
 from src.execution_env.command_factories import (
     ShellCommandRequestFactory,

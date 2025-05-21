@@ -1,7 +1,9 @@
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.file.file_request import FileRequest, FileOpType
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
-from src.execution_env.run_step import ShellRunStep, CopyRunStep, OjRunStep
+from src.execution_env.run_step_shell import ShellRunStep
+from src.execution_env.run_step_copy import CopyRunStep
+from src.execution_env.run_step_oj import OjRunStep
 
 class BaseCommandRequestFactory:
     def __init__(self, controller):

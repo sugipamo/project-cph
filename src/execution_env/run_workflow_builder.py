@@ -1,6 +1,7 @@
 from src.operations.composite_request import CompositeRequest
 from src.execution_env.request_factory import create_requests_from_run_steps
-from src.execution_env.run_step import ShellRunStep, OjRunStep
+from src.execution_env.run_step_shell import ShellRunStep
+from src.execution_env.run_step_oj import OjRunStep
 from src.operations.di_container import DIContainer
 from src.execution_env.types import EnvResourceController, RunSteps, CompositeRequest
 
