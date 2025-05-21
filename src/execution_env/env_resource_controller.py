@@ -1,6 +1,6 @@
 from src.execution_env.resource_handler.file_handler import DockerFileHandler, LocalFileHandler
 from src.execution_env.resource_handler.run_handler import LocalRunHandler, DockerRunHandler
-from src.execution_env.resource_handler.const_handler import DockerConstHandler, LocalConstHandler
+from src.execution_env.resource_handler.const_handler import ConstHandler
 from src.operations.composite_request import CompositeRequest
 from src.operations.di_container import DIContainer
 from src.execution_context.execution_context import ExecutionContext
@@ -21,18 +21,16 @@ class EnvResourceController:
         DIセットアップもここで行う。
         """
         container = DIContainer()
-        container.register("LocalConstHandler", lambda: LocalConstHandler(env_context))
-        container.register("DockerConstHandler", lambda: DockerConstHandler(env_context))
-        container.register("LocalRunHandler", lambda: LocalRunHandler(env_context, container.resolve("LocalConstHandler")))
-        container.register("DockerRunHandler", lambda: DockerRunHandler(env_context, container.resolve("DockerConstHandler")))
-        container.register("LocalFileHandler", lambda: LocalFileHandler(env_context, container.resolve("LocalConstHandler")))
-        container.register("DockerFileHandler", lambda: DockerFileHandler(env_context, container.resolve("DockerConstHandler")))
+        container.register("ConstHandler", lambda: ConstHandler(env_context))
+        container.register("LocalRunHandler", lambda: LocalRunHandler(env_context, container.resolve("ConstHandler")))
+        container.register("DockerRunHandler", lambda: DockerRunHandler(env_context, container.resolve("ConstHandler")))
+        container.register("LocalFileHandler", lambda: LocalFileHandler(env_context, container.resolve("ConstHandler")))
+        container.register("DockerFileHandler", lambda: DockerFileHandler(env_context, container.resolve("ConstHandler")))
+        const_handler = container.resolve("ConstHandler")
         if env_context.env_type.lower() == "docker":
-            const_handler = container.resolve("DockerConstHandler")
             run_handler = container.resolve("DockerRunHandler")
             file_handler = container.resolve("DockerFileHandler")
         else:
-            const_handler = container.resolve("LocalConstHandler")
             run_handler = container.resolve("LocalRunHandler")
             file_handler = container.resolve("LocalFileHandler")
         return cls(env_context, file_handler, run_handler, const_handler)

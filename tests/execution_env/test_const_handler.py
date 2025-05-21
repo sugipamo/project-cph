@@ -1,5 +1,5 @@
 import pytest
-from src.execution_env.resource_handler.const_handler import LocalConstHandler, DockerConstHandler, EnvType
+from src.execution_env.resource_handler.const_handler import ConstHandler
 from pathlib import Path
 from src.execution_context.execution_context import ExecutionContext
 import hashlib
@@ -41,11 +41,11 @@ def make_docker_config():
 
 def test_local_const_handler_properties():
     config = make_local_config()
-    handler = LocalConstHandler(config, workspace_path="/ws")
+    handler = ConstHandler(config, workspace_path="/ws")
     assert handler.workspace_path == Path("/ws")
     assert handler.contest_current_path == Path("contests/abc001")
     assert handler.source_file_name == "main.cpp"
-    assert handler.env_type == EnvType.LOCAL
+    assert config.env_type == "local"
     assert handler.contest_env_path == Path("env")
     assert handler.contest_template_path == Path("template")
     assert handler.contest_temp_path == Path("temp")
@@ -55,7 +55,7 @@ def test_local_const_handler_properties():
 
 def test_local_const_handler_parse():
     config = make_local_config()
-    handler = LocalConstHandler(config, workspace_path="/ws")
+    handler = ConstHandler(config, workspace_path="/ws")
     s = "{contest_current}/{source_file}/{contest_env}/{contest_template}/{contest_temp}/{test_case}/{test_case_in}/{test_case_out}"
     result = handler.parse(s)
     assert "contests/abc001" in result
@@ -69,31 +69,28 @@ def test_local_const_handler_parse():
 
 def test_docker_const_handler_properties(monkeypatch):
     config = make_docker_config()
-    # dockerfile/oj_dockerfileの内容をセット
     config.dockerfile = "FROM python:3.8\nRUN echo hello"
     config.oj_dockerfile = "FROM python:3.9\nRUN echo oj"
-    handler = DockerConstHandler(config, workspace_path="/ws_d")
+    handler = ConstHandler(config, workspace_path="/ws_d")
     assert handler.workspace_path == Path("/ws_d")
     assert handler.contest_current_path == Path("contests/abc002")
     assert handler.source_file_name == "main.py"
-    assert handler.env_type == EnvType.DOCKER
+    assert config.env_type == "docker"
     assert handler.contest_env_path == Path("env_d")
     assert handler.contest_template_path == Path("template_d")
     assert handler.contest_temp_path == Path("temp_d")
     assert handler.test_case_path == Path("contests/abc002/test")
     assert handler.test_case_in_path == Path("contests/abc002/test/in")
     assert handler.test_case_out_path == Path("contests/abc002/test/out")
-    # image_nameのハッシュ値をテキストから計算
     expected_hash = hashlib.sha256(config.dockerfile.encode("utf-8")).hexdigest()[:12]
     assert handler.image_name == f"python_{expected_hash}"
-    # oj_image_nameのハッシュ値をテキストから計算
     expected_oj_hash = hashlib.sha256(config.oj_dockerfile.encode("utf-8")).hexdigest()[:12]
     assert handler.oj_image_name == f"cph_ojtools_{expected_oj_hash}"
 
 def test_docker_const_handler_parse(monkeypatch):
     config = make_docker_config()
     monkeypatch.setattr("src.operations.file.file_driver.LocalFileDriver.hash_file", lambda self, path: "dummyhash")
-    handler = DockerConstHandler(config, workspace_path="/ws_d")
+    handler = ConstHandler(config, workspace_path="/ws_d")
     s = "{contest_current}/{source_file}/{contest_env}/{contest_template}/{contest_temp}/{test_case}/{test_case_in}/{test_case_out}"
     result = handler.parse(s)
     assert "contests/abc002" in result
