@@ -1,5 +1,11 @@
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Type
+from typing import List, Dict, Any, Type
+from src.execution_env.run_step_base import RunStep
+from src.execution_env.run_steps import RunSteps
+from src.execution_env.run_step_shell import ShellRunStep
+from src.execution_env.run_step_copy import CopyRunStep
+from src.execution_env.run_step_oj import OjRunStep
+from src.execution_env.run_step_registry import register_run_step_type, RUN_STEP_TYPE_MAP
 
 @dataclass
 class RunStep:
@@ -19,8 +25,7 @@ class RunStep:
         type_ = d["type"]
         cmd_ = d.get("cmd", [])
         extra = {k: v for k, v in d.items() if k not in ("type", "cmd")}
-        step_cls: Type[RunStep] = RUN_STEP_TYPE_MAP.get(type_, cls)
-        step = step_cls(type=type_, cmd=cmd_, extra=extra)
+        step = cls(type=type_, cmd=cmd_, extra=extra)
         step.validate()
         return step
 
@@ -114,3 +119,7 @@ class OjRunStep(RunStep):
             raise ValueError("OjRunStep: cmdは必須でリストである必要があります")
         # 追加のoj専用バリデーションがあればここに
         return True
+
+register_run_step_type("shell")(ShellRunStep)
+register_run_step_type("copy")(CopyRunStep)
+register_run_step_type("oj")(OjRunStep)
