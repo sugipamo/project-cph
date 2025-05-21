@@ -1,6 +1,8 @@
-from src.execution_env.resource_handler.file_handler import DockerFileHandler, LocalFileHandler
-from src.execution_env.resource_handler.run_handler import LocalRunHandler, DockerRunHandler
-from src.execution_env.resource_handler.const_handler import ConstHandler
+from src.execution_env.resource_handler.file_handler.docker_file_handler import DockerFileHandler
+from src.execution_env.resource_handler.file_handler.local_file_handler import LocalFileHandler
+from src.execution_env.resource_handler.run_handler.local_run_handler import LocalRunHandler
+from src.execution_env.resource_handler.run_handler.docker_run_handler import DockerRunHandler
+from src.execution_env.resource_handler.env_utils.const_handler import ConstHandler
 from src.operations.composite_request import CompositeRequest
 from src.operations.di_container import DIContainer
 from src.execution_context.execution_context import ExecutionContext

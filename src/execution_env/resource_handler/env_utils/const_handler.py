@@ -1,9 +1,9 @@
 from pathlib import Path
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from src.execution_env.resource_handler.path_resolver import PathResolver
-from src.execution_env.resource_handler.image_name_resolver import ImageNameResolver
-from src.execution_env.resource_handler.env_config_accessor import EnvConfigAccessor
+from src.execution_env.resource_handler.env_utils.path_resolver import PathResolver
+from src.execution_env.resource_handler.env_utils.image_name_resolver import ImageNameResolver
+from src.execution_env.resource_handler.env_utils.env_config_accessor import EnvConfigAccessor
 from src.execution_context.execution_context import ExecutionContext
 
 class EnvType(Enum):

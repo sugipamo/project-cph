@@ -1,5 +1,0 @@
-from src.execution_env.base_command_request_factory import BaseCommandRequestFactory
-from src.execution_env.shell_command_request_factory import ShellCommandRequestFactory
-from src.execution_env.docker_command_request_factory import DockerCommandRequestFactory
-from src.execution_env.copy_command_request_factory import CopyCommandRequestFactory
-from src.execution_env.oj_command_request_factory import OjCommandRequestFactory 

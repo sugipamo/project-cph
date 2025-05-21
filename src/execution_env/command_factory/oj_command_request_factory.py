@@ -1,5 +1,5 @@
-from src.execution_env.base_command_request_factory import BaseCommandRequestFactory
-from src.execution_env.run_step_oj import OjRunStep
+from src.execution_env.command_factory.base_command_request_factory import BaseCommandRequestFactory
+from src.execution_env.run_step.run_step_oj import OjRunStep
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 
 class OjCommandRequestFactory(BaseCommandRequestFactory):

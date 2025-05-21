@@ -1,5 +1,5 @@
 import pytest
-from src.execution_env.resource_handler.file_handler import LocalFileHandler
+from src.execution_env.resource_handler.file_handler.local_file_handler import LocalFileHandler
 from src.execution_context.execution_context import ExecutionContext
 from src.operations.file.file_request import FileOpType, FileRequest
 from src.operations.file.file_driver import MockFileDriver

@@ -1,11 +1,11 @@
-from src.execution_env.run_step_shell import ShellRunStep
-from src.execution_env.run_step_copy import CopyRunStep
-from src.execution_env.run_step_oj import OjRunStep
+from src.execution_env.run_step.run_step_shell import ShellRunStep
+from src.execution_env.run_step.run_step_copy import CopyRunStep
+from src.execution_env.run_step.run_step_oj import OjRunStep
 from src.operations.di_container import DIContainer
-from src.execution_env.shell_command_request_factory import ShellCommandRequestFactory
-from src.execution_env.docker_command_request_factory import DockerCommandRequestFactory
-from src.execution_env.copy_command_request_factory import CopyCommandRequestFactory
-from src.execution_env.oj_command_request_factory import OjCommandRequestFactory
+from src.execution_env.command_factory.shell_command_request_factory import ShellCommandRequestFactory
+from src.execution_env.command_factory.docker_command_request_factory import DockerCommandRequestFactory
+from src.execution_env.command_factory.copy_command_request_factory import CopyCommandRequestFactory
+from src.execution_env.command_factory.oj_command_request_factory import OjCommandRequestFactory
 
 class RequestFactorySelector:
     FACTORY_MAP = {

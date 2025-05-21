@@ -1,14 +1,14 @@
 import pytest
-from src.execution_env.shell_command_request_factory import ShellCommandRequestFactory
-from src.execution_env.docker_command_request_factory import DockerCommandRequestFactory
-from src.execution_env.copy_command_request_factory import CopyCommandRequestFactory
-from src.execution_env.oj_command_request_factory import OjCommandRequestFactory
-from src.execution_env.base_command_request_factory import BaseCommandRequestFactory
+from src.execution_env.run_step.run_step_shell import ShellRunStep
+from src.execution_env.run_step.run_step_copy import CopyRunStep
+from src.execution_env.run_step.run_step_oj import OjRunStep
+from src.execution_env.run_step.run_steps import RunSteps
+from src.execution_env.command_factory.shell_command_request_factory import ShellCommandRequestFactory
+from src.execution_env.command_factory.docker_command_request_factory import DockerCommandRequestFactory
+from src.execution_env.command_factory.copy_command_request_factory import CopyCommandRequestFactory
+from src.execution_env.command_factory.oj_command_request_factory import OjCommandRequestFactory
+from src.execution_env.command_factory.base_command_request_factory import BaseCommandRequestFactory
 from src.execution_env.request_factory_selector import RequestFactorySelector
-from src.execution_env.run_step_shell import ShellRunStep
-from src.execution_env.run_step_copy import CopyRunStep
-from src.execution_env.run_step_oj import OjRunStep
-from src.execution_env.run_steps import RunSteps
 from src.operations.di_container import DIContainer
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.file.file_request import FileRequest, FileOpType

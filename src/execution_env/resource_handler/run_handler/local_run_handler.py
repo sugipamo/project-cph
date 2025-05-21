@@ -1,5 +1,5 @@
+from src.execution_env.resource_handler.run_handler.base_run_handler import BaseRunHandler
 from src.operations.shell.shell_request import ShellRequest
-from src.execution_env.resource_handler.base_run_handler import BaseRunHandler
 from src.execution_context.execution_context import ExecutionContext
 
 class LocalRunHandler(BaseRunHandler):
