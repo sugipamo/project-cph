@@ -51,16 +51,17 @@ def get_shell_factory(controller):
         return ShellCommandRequestFactory(controller)
 
 def get_factory_for_step(controller, step):
-    if step["type"] == "shell":
+    # step: RunStep型を想定
+    if step.type == "shell":
         return get_shell_factory(controller)
-    factory_cls = FACTORY_MAP.get(step["type"])
+    factory_cls = FACTORY_MAP.get(step.type)
     if not factory_cls:
-        raise ValueError(f"Unknown run type: {step['type']}")
+        raise ValueError(f"Unknown run type: {step.type}")
     return factory_cls(controller)
 
 def create_requests_from_run_steps(controller, run_steps):
     """
-    run_steps: env.jsonのrun配列
+    run_steps: RunSteps型（RunStepのリスト）
     controller: EnvResourceController
     """
     requests = []
