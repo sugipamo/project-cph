@@ -14,27 +14,6 @@ class EnvResourceController:
         self.run_handler = run_handler
         self.file_handler = file_handler
 
-    @classmethod
-    def from_context(cls, env_context):
-        """
-        EnvContextからEnvResourceControllerを生成するファクトリメソッド。
-        DIセットアップもここで行う。
-        """
-        container = DIContainer()
-        container.register("ConstHandler", lambda: ConstHandler(env_context))
-        container.register("LocalRunHandler", lambda: LocalRunHandler(env_context, container.resolve("ConstHandler")))
-        container.register("DockerRunHandler", lambda: DockerRunHandler(env_context, container.resolve("ConstHandler")))
-        container.register("LocalFileHandler", lambda: LocalFileHandler(env_context, container.resolve("ConstHandler")))
-        container.register("DockerFileHandler", lambda: DockerFileHandler(env_context, container.resolve("ConstHandler")))
-        const_handler = container.resolve("ConstHandler")
-        if env_context.env_type.lower() == "docker":
-            run_handler = container.resolve("DockerRunHandler")
-            file_handler = container.resolve("DockerFileHandler")
-        else:
-            run_handler = container.resolve("LocalRunHandler")
-            file_handler = container.resolve("LocalFileHandler")
-        return cls(env_context, file_handler, run_handler, const_handler)
-
     def create_process_options(self, cmd: list):
         return self.run_handler.create_process_options(cmd)
 
