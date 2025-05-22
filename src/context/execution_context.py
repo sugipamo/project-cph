@@ -14,6 +14,7 @@ class ExecutionContext:
     env_type: str
     env_json: dict
     contest_current_path: str
+    workspace_path: Optional[str] = None
     dockerfile: Optional[str] = None
     oj_dockerfile: Optional[str] = None
     old_execution_context: Optional["ExecutionContext"] = None

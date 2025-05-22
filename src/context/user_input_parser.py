@@ -78,6 +78,7 @@ class UserInputParser:
             env_type=None,
             env_json=None,
             contest_current_path=None,
+            workspace_path=None,
             dockerfile=None,
             oj_dockerfile=None,
             old_execution_context=None,
@@ -98,6 +99,8 @@ class UserInputParser:
         args, context = self._apply_names(args, context)
         # 8. contest_current_path特定
         context = self._apply_contest_current_path(context)
+        # 8.5. workspace_path特定
+        context = self._apply_workspace_path(args, context)
         # 9. env_jsonをcontextにセット
         context = self._apply_env_json(context, env_jsons)
         # 9.5. dockerfileの内容をセット
@@ -250,6 +253,21 @@ class UserInputParser:
             context.oj_dockerfile = self.dockerfile_loader(oj_dockerfile_path)
         except Exception:
             context.oj_dockerfile = None
+        return context
+
+    def _apply_workspace_path(self, args, context):
+        import os
+        ws = None
+        if "--workspace" in args:
+            idx = args.index("--workspace")
+            if idx + 1 < len(args):
+                ws = args[idx + 1]
+        if not ws and context.env_json and context.language:
+            lang_conf = context.env_json.get(context.language, {})
+            ws = lang_conf.get("workspace_path")
+        if not ws:
+            ws = os.getcwd()
+        context.workspace_path = ws
         return context
 
     def _save_context_to_system_info(self, context: ExecutionContext):
