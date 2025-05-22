@@ -96,7 +96,5 @@ class EnvWorkflowService:
         env_type = getattr(self.env_context, 'env_type', 'local').lower()
         driver_key = 'shell_driver' if env_type == 'local' else 'docker_driver'
         driver = self.di_container.resolve(driver_key) if self.di_container else None
-        if driver is None:
-            raise ValueError("driverが必須です")
         result = composite_request.execute(driver=driver)
         return result
