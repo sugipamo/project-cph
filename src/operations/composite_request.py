@@ -22,7 +22,7 @@ class CompositeRequest(BaseRequest):
     def operation_type(self):
         return OperationType.COMPOSITE
 
-    def execute(self, driver=None):
+    def execute(self, driver):
         if self._executed:
             raise RuntimeError("This CompositeRequest has already been executed.")
         results = []
@@ -66,7 +66,7 @@ class ParallelCompositeRequest(CompositeRequest):
         super().__init__(requests, debug_tag=debug_tag, name=name)
         self.max_workers = max_workers
 
-    def execute(self, driver=None):
+    def execute(self, driver):
         if self._executed:
             raise RuntimeError("This ParallelCompositeRequest has already been executed.")
         results = [None] * len(self.requests)

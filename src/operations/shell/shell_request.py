@@ -20,7 +20,7 @@ class ShellRequest(BaseRequest):
     def operation_type(self):
         return OperationType.SHELL
 
-    def execute(self, driver=None):
+    def execute(self, driver):
         if self._executed:
             raise RuntimeError("This ShellRequest has already been executed.")
         if driver is None:

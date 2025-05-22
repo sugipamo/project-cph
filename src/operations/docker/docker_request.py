@@ -29,7 +29,7 @@ class DockerRequest(BaseRequest):
     def operation_type(self):
         return OperationType.DOCKER
 
-    def execute(self, driver=None):
+    def execute(self, driver):
         if self._executed:
             raise RuntimeError("This DockerRequest has already been executed.")
         if driver is None:

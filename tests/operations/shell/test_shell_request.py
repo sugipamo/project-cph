@@ -3,6 +3,7 @@ from src.operations.shell.mock_shell_request import MockShellRequest, MockShellI
 from src.operations.result import ShellResult, OperationResult
 from src.operations.operation_type import OperationType
 from src.operations.shell.shell_request import ShellRequest
+from src.operations.shell.local_shell_driver import LocalShellDriver
 
 def test_mock_shell_request_echo():
     req = MockShellRequest(["echo", "hello"], stdout="hello\n", returncode=0)
@@ -37,5 +38,17 @@ def test_mock_shell_interactive_request():
 def test_shell_request_no_driver():
     req = ShellRequest(["echo", "hello"])
     with pytest.raises(ValueError) as excinfo:
-        req.execute(driver=None)
-    assert str(excinfo.value) == "ShellRequest.execute()にはdriverが必須です" 
+        req.execute(None)
+    assert str(excinfo.value) == "ShellRequest.execute()にはdriverが必須です"
+
+def test_shell_request_echo(monkeypatch):
+    req = ShellRequest(["echo", "hello"])
+    driver = LocalShellDriver()
+    result = req.execute(driver)
+    assert result.stdout.strip() == "hello"
+
+def test_shell_request_timeout(monkeypatch):
+    req = ShellRequest(["echo", "timeout"])
+    driver = LocalShellDriver()
+    result = req.execute(driver)
+    assert result.returncode == 0 

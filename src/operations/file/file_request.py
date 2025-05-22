@@ -34,7 +34,7 @@ class FileRequest(BaseRequest):
     def operation_type(self):
         return OperationType.FILE
 
-    def execute(self, driver=None):
+    def execute(self, driver):
         if self._executed:
             raise RuntimeError("This FileRequest has already been executed.")
         if driver is None:

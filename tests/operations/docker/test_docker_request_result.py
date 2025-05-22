@@ -48,5 +48,5 @@ def test_dockerresult_methods():
 def test_dockerrequest_no_driver():
     req = DockerRequest(DockerOpType.RUN, image="img", container="c")
     with pytest.raises(ValueError) as excinfo:
-        req.execute(driver=None)
+        req.execute(None)
     assert str(excinfo.value) == "DockerRequest.execute()にはdriverが必須です" 

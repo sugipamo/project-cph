@@ -74,7 +74,7 @@ def test_parallel_composite_request_shell_and_file():
         DriverBoundRequest(req2, shell_driver),
         DriverBoundRequest(req3, file_driver),
     ])
-    results = parallel.execute()
+    results = parallel.execute(driver=None)
     assert len(results) == 3
     shell_results = [r for r in results if hasattr(r, 'operation_type') and r.operation_type == OperationType.SHELL]
     file_results = [r for r in results if hasattr(r, 'operation_type') and r.operation_type == OperationType.FILE]

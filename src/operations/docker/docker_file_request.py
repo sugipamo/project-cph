@@ -14,7 +14,7 @@ class DockerFileRequest(BaseRequest):
         self._executed = False
         self._result = None
 
-    def execute(self, driver=None):
+    def execute(self, driver):
         if self._executed:
             raise RuntimeError("This DockerFileRequest has already been executed.")
         if driver is None:

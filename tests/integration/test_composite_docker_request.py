@@ -7,14 +7,14 @@ def test_composite_request_docker_no_driver():
     req = DockerRequest(DockerOpType.RUN, image="img", container="c")
     composite = CompositeRequest([req])
     with pytest.raises(ValueError) as excinfo:
-        composite.execute(driver=None)
+        composite.execute(None)
     assert str(excinfo.value) == "DockerRequest.execute()にはdriverが必須です"
 
 
 def test_docker_request_no_driver_direct():
     req = DockerRequest(DockerOpType.RUN, image="img", container="c")
     with pytest.raises(ValueError) as excinfo:
-        req.execute(driver=None)
+        req.execute(None)
     assert str(excinfo.value) == "DockerRequest.execute()にはdriverが必須です"
 
 
@@ -28,16 +28,12 @@ def test_docker_request_no_driver_direct():
 def test_docker_request_no_driver_all_ops(op):
     req = DockerRequest(op, image="img", container="c", command="ls" if op == DockerOpType.EXEC else None)
     with pytest.raises(ValueError) as excinfo:
-        req.execute(driver=None)
+        req.execute(None)
     assert str(excinfo.value) == "DockerRequest.execute()にはdriverが必須です"
 
 
 def test_docker_request_no_driver_debug():
     req = DockerRequest(DockerOpType.RUN, image="img", container="c")
-    try:
-        result = req.execute(driver=None)
-        print("RETURNED:", result)
-    except Exception as exc:
-        print("RAISED:", exc)
-        raise
-    assert False, "ValueErrorがraiseされるべきです" 
+    with pytest.raises(ValueError) as excinfo:
+        req.execute(None)
+    assert str(excinfo.value) == "DockerRequest.execute()にはdriverが必須です" 
