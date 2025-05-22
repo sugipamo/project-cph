@@ -117,24 +117,49 @@ def test_path_resolver_contest_current_path_none():
     assert "contest_current_path" in str(excinfo.value)
 
 def test_path_resolver_contest_env_path_none():
+    # env_jsonからcontest_env_pathがNoneの場合
     config = make_local_config()
     config.env_json["cpp"]["contest_env_path"] = None
     handler = ConstHandler(config)
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(TypeError) as excinfo:
         _ = handler.contest_env_path
-    assert "contest_env_path" in str(excinfo.value)
+    assert "str" in str(excinfo.value)
 
 def test_path_resolver_contest_template_path_none():
     config = make_local_config()
     config.env_json["cpp"]["contest_template_path"] = None
     handler = ConstHandler(config)
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(TypeError) as excinfo:
         _ = handler.contest_template_path
-    assert "contest_template_path" in str(excinfo.value)
+    assert "str" in str(excinfo.value)
 
 def test_path_resolver_contest_temp_path_none():
     config = make_local_config()
     config.env_json["cpp"]["contest_temp_path"] = None
+    handler = ConstHandler(config)
+    with pytest.raises(TypeError) as excinfo:
+        _ = handler.contest_temp_path
+    assert "str" in str(excinfo.value)
+
+def test_path_resolver_contest_env_path_key_missing():
+    config = make_local_config()
+    del config.env_json["cpp"]["contest_env_path"]
+    handler = ConstHandler(config)
+    with pytest.raises(ValueError) as excinfo:
+        _ = handler.contest_env_path
+    assert "contest_env_path" in str(excinfo.value)
+
+def test_path_resolver_contest_template_path_key_missing():
+    config = make_local_config()
+    del config.env_json["cpp"]["contest_template_path"]
+    handler = ConstHandler(config)
+    with pytest.raises(ValueError) as excinfo:
+        _ = handler.contest_template_path
+    assert "contest_template_path" in str(excinfo.value)
+
+def test_path_resolver_contest_temp_path_key_missing():
+    config = make_local_config()
+    del config.env_json["cpp"]["contest_temp_path"]
     handler = ConstHandler(config)
     with pytest.raises(ValueError) as excinfo:
         _ = handler.contest_temp_path

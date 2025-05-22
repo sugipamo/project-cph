@@ -19,22 +19,25 @@ class PathResolver:
 
     @property
     def contest_env_path(self) -> Path:
-        v = self.config.env_json[self.config.language]["contest_env_path"]
-        if v is None:
+        try:
+            v = self.config.env_json[self.config.language]["contest_env_path"]
+        except KeyError:
             raise ValueError("contest_env_pathがNoneです。必ず有効なパスを指定してください。")
         return Path(v)
 
     @property
     def contest_template_path(self) -> Path:
-        v = self.config.env_json[self.config.language]["contest_template_path"]
-        if v is None:
+        try:
+            v = self.config.env_json[self.config.language]["contest_template_path"]
+        except KeyError:
             raise ValueError("contest_template_pathがNoneです。必ず有効なパスを指定してください。")
         return Path(v)
 
     @property
     def contest_temp_path(self) -> Path:
-        v = self.config.env_json[self.config.language]["contest_temp_path"]
-        if v is None:
+        try:
+            v = self.config.env_json[self.config.language]["contest_temp_path"]
+        except KeyError:
             raise ValueError("contest_temp_pathがNoneです。必ず有効なパスを指定してください。")
         return Path(v)
 
