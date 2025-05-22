@@ -1,5 +1,5 @@
 {
-  "command": "submit",
+  "command": "open",
   "language": "python",
   "env_type": "local",
   "contest_name": "a",
@@ -29,7 +29,6 @@
             {
               "type": "shell",
               "allow_failure": true,
-              "show_output": false,
               "cmd": [
                 "cursor",
                 "{contest_current_path}/{source_file_name}"

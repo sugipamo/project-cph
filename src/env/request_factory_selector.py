@@ -30,12 +30,20 @@ class RequestFactorySelector:
 
     @classmethod
     def get_factory_for_step(cls, controller, step, di_container: DIContainer):
+        # stepにforce_env_typeがあればそれを優先
+        env_type = getattr(step, 'force_env_type', None) or controller.env_context.env_type
         if isinstance(step, ShellRunStep):
-            return cls.get_shell_factory(controller, di_container)
+            if env_type and env_type.lower() == "docker":
+                return di_container.resolve("DockerCommandRequestFactory")(controller)
+            else:
+                return di_container.resolve("ShellCommandRequestFactory")(controller)
         elif isinstance(step, CopyRunStep):
             return di_container.resolve("CopyCommandRequestFactory")(controller)
         elif isinstance(step, OjRunStep):
-            return di_container.resolve("OjCommandRequestFactory")(controller)
+            if env_type and env_type.lower() == "docker":
+                return di_container.resolve("DockerCommandRequestFactory")(controller)
+            else:
+                return di_container.resolve("OjCommandRequestFactory")(controller)
         elif isinstance(step, RemoveRunStep):
             return di_container.resolve("RemoveCommandRequestFactory")(controller)
         elif isinstance(step, BuildRunStep):
