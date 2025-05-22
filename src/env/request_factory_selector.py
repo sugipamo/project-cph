@@ -40,10 +40,7 @@ class RequestFactorySelector:
         elif isinstance(step, CopyRunStep):
             return di_container.resolve("CopyCommandRequestFactory")(controller)
         elif isinstance(step, OjRunStep):
-            if env_type and env_type.lower() == "docker":
-                return di_container.resolve("DockerCommandRequestFactory")(controller)
-            else:
-                return di_container.resolve("OjCommandRequestFactory")(controller)
+            return di_container.resolve("OjCommandRequestFactory")(controller)
         elif isinstance(step, RemoveRunStep):
             return di_container.resolve("RemoveCommandRequestFactory")(controller)
         elif isinstance(step, BuildRunStep):

@@ -73,6 +73,7 @@ def test_copy_command_request_factory(di_container):
 
 def test_oj_command_request_factory(di_container):
     controller = MockController()
+    controller.env_context.env_type = "docker"
     step = OjRunStep(type="oj", cmd=["test", "-c", "./main"])
     factory = RequestFactorySelector.get_factory_for_step(controller, step, di_container)
     req = factory.create_request(step)
@@ -83,6 +84,7 @@ def test_oj_command_request_factory(di_container):
 
 def test_create_requests_from_run_steps(di_container):
     controller = MockController()
+    controller.env_context.env_type = "docker"
     steps = RunSteps([
         ShellRunStep(type="shell", cmd=["echo", "A"]),
         CopyRunStep(type="copy", cmd=["a.txt", "b.txt"]),
@@ -91,7 +93,7 @@ def test_create_requests_from_run_steps(di_container):
     composite = create_requests_from_run_steps(controller, steps, di_container)
     # CompositeRequestのrequestsリストの型・値を確認
     assert len(composite.requests) == 3
-    assert isinstance(composite.requests[0], ShellRequest)
+    assert isinstance(composite.requests[0], DockerRequest)
     assert isinstance(composite.requests[1], FileRequest)
     assert isinstance(composite.requests[2], DockerRequest)
 

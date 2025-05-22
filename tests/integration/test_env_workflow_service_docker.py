@@ -8,7 +8,7 @@ from src.env.resource.utils.const_handler import ConstHandler
 from src.operations.di_container import DIContainer
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
-from src.operations.docker.docker_command_request_factory import DockerCommandRequestFactory
+from src.env.factory.docker_command_request_factory import DockerCommandRequestFactory
 
 def test_env_workflow_service_docker_no_driver():
     # ダミーenv_json（docker環境用）
