@@ -65,6 +65,12 @@ class OperationResult:
     def summary(self):
         return f"[{'OK' if self.success else 'FAIL'}] op={self.op or self.cmd} path={self.path} code={self.returncode} time={self.elapsed_time}s\ncontent={str(self.content)[:100]}\nstdout={str(self.stdout)[:100]}\nstderr={str(self.stderr)[:100]}\nerror={self.error_message}"
 
+    def __repr__(self):
+        return (
+            f"<OperationResult success={self.success} op={self.op} cmd={self.cmd} path={self.path} "
+            f"returncode={self.returncode} error_message={self.error_message}>"
+        )
+
 class ShellResult(OperationResult):
     pass
 class FileResult(OperationResult):

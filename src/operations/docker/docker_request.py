@@ -47,7 +47,12 @@ class DockerRequest(BaseRequest):
                 result = driver.get_logs(self.container)
             else:
                 raise ValueError(f"Unknown DockerOpType: {self.op}")
-            self._result = OperationResult(success=True, op=self.op, stdout=result.stdout if hasattr(result, 'stdout') else None, stderr=result.stderr if hasattr(result, 'stderr') else None, returncode=result.returncode if hasattr(result, 'returncode') else None)
+            self._result = OperationResult(
+                op=self.op,
+                stdout=getattr(result, 'stdout', None),
+                stderr=getattr(result, 'stderr', None),
+                returncode=getattr(result, 'returncode', None)
+            )
         except Exception as e:
             self._result = OperationResult(success=False, op=self.op, stdout=None, stderr=str(e), returncode=None)
         self._executed = True
