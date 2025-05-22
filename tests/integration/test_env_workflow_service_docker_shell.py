@@ -3,19 +3,18 @@ from src.env.env_workflow_service import EnvWorkflowService
 from src.context.execution_context import ExecutionContext
 import os
 
-def test_env_workflow_service_docker_no_driver():
+def test_env_workflow_service_docker_shell_no_driver():
     # ダミーenv_json（docker環境用）
     env_json = {
         "python": {
             "commands": {
                 "run": {
                     "steps": [
-                        {"type": "oj", "cmd": ["echo", "hello"]}
+                        {"type": "shell", "cmd": ["echo", "hello"]}
                     ]
                 }
             }
-        },
-        "cph_ojtools": "dummy_container"
+        }
     }
     env_context = ExecutionContext(
         command_type="run",
@@ -27,7 +26,7 @@ def test_env_workflow_service_docker_no_driver():
         contest_current_path="contests/abc001"
     )
     run_steps_dict_list = [
-        {"type": "oj", "cmd": ["echo", "hello"]}
+        {"type": "shell", "cmd": ["echo", "hello"]}
     ]
     service = EnvWorkflowService.from_context(env_context, workspace_path=os.getcwd())
     with pytest.raises(ValueError) as excinfo:
