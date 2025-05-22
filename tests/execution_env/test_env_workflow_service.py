@@ -3,6 +3,7 @@ from src.env.env_workflow_service import EnvWorkflowService
 from src.context.execution_context import ExecutionContext
 from src.operations.composite_request import CompositeRequest
 from src.operations.base_request import BaseRequest
+from src.env.env_context_with_di import build_di_container_and_context
 
 class DummyController:
     def __init__(self, language_name=None, env_type=None, env_config=None, file_handler=None, run_handler=None, const_handler=None):
@@ -40,3 +41,8 @@ class DummyRequest(BaseRequest):
 import src.env.env_workflow_service as workflow_mod
 
 # test_generate_requestsは未実装メソッド依存のため削除
+
+# もしfrom_contextやEnvContextWithDIの利用があれば、build_di_container_and_contextを使う形に修正
+# 例:
+# env_context, di_container = build_di_container_and_context(env_context)
+# service = EnvWorkflowService.from_context(env_context)

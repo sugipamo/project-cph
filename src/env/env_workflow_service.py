@@ -1,4 +1,4 @@
-from src.env.env_context_with_di import EnvContextWithDI
+from src.env.env_context_with_di import EnvContextWithDI, build_di_container_and_context
 
 class EnvWorkflowService:
     """
@@ -47,8 +47,7 @@ class EnvWorkflowService:
         file_handler = LocalFileHandler(env_context, const_handler)
         run_handler = LocalRunHandler(env_context, const_handler)
         controller = EnvResourceController(env_context, file_handler, run_handler, const_handler)
-        # di_containerの構成はEnvContextWithDIに委譲
-        di_container = EnvContextWithDI.from_context(env_context)
+        env_context, di_container = build_di_container_and_context(env_context)
         return cls(env_context, controller, di_container=di_container)
 
     def generate_run_requests(self, run_steps_dict_list):
