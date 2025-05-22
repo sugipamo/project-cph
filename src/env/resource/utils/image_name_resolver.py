@@ -35,7 +35,7 @@ class ImageNameResolver:
 
     @property
     def oj_container_name(self) -> str:
-        return self.config.env_json[self.config.language]["cph_ojtools"]
+        return f"cph_{self.oj_image_name}"
 
     @property
     def dockerfile_text(self) -> str:
