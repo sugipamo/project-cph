@@ -2,11 +2,6 @@ from typing import List
 from src.context.user_input_parser import UserInputParser
 from src.env.env_workflow_service import EnvWorkflowService
 from src.env.env_context_with_di import build_di_container_and_context
-from src.operations.di_container import DIContainer
-
-def setup_di_container():
-    # driver登録責務は下位レイヤに移譲
-    return DIContainer()
 
 class CommandRunner:
     """
@@ -25,6 +20,6 @@ class CommandRunner:
         """
         context = UserInputParser().from_args(args)
         context, di_container = build_di_container_and_context(context)
-        service = EnvWorkflowService.from_context(context)
+        service = EnvWorkflowService.from_context(context, di_container)
         result = service.run_workflow()
         print(result)

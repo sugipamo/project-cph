@@ -35,7 +35,7 @@ class EnvWorkflowService:
         self.di_container = di_container
 
     @classmethod
-    def from_context(cls, env_context):
+    def from_context(cls, env_context, di_container):
         """
         本番用の依存性を組み立ててEnvWorkflowServiceを生成する
         """
@@ -47,8 +47,7 @@ class EnvWorkflowService:
         file_handler = LocalFileHandler(env_context, const_handler)
         run_handler = LocalRunHandler(env_context, const_handler)
         controller = EnvResourceController(env_context, file_handler, run_handler, const_handler)
-        env_context, di_container = build_di_container_and_context(env_context)
-        return cls(env_context, controller, di_container=di_container)
+        return cls(env_context, controller, di_container)
 
     def generate_run_requests(self, run_steps_dict_list):
         """
