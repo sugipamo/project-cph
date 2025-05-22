@@ -43,8 +43,8 @@ def test_parse_python_command(monkeypatch, setup_env):
     assert ctx.language == "python"
     assert ctx.env_type == "docker"
     assert ctx.command_type == "test"
-    assert ctx.problem_name == "abc300"
-    assert ctx.contest_name == "a"
+    assert ctx.problem_name == "a"
+    assert ctx.contest_name == "abc300"
     assert ctx.env_json is not None
     assert "python" in ctx.env_json
     assert ctx.contest_current_path == "./contest_current"
@@ -62,8 +62,8 @@ def test_parse_python_alias(monkeypatch, setup_env):
     assert ctx.language == "python"
     assert ctx.env_type == "local"
     assert ctx.command_type == "test"
-    assert ctx.problem_name == "abc300"
-    assert ctx.contest_name == "a"
+    assert ctx.problem_name == "a"
+    assert ctx.contest_name == "abc300"
 
 @pytest.mark.usefixtures("setup_env")
 def test_parse_too_many_args(monkeypatch, setup_env):

@@ -7,4 +7,4 @@ class ShellCommandRequestFactory(BaseCommandRequestFactory):
         if not isinstance(run_step, ShellRunStep):
             raise TypeError(f"ShellCommandRequestFactory expects ShellRunStep, got {type(run_step).__name__}")
         cmd = [self.controller.const_handler.parse(arg) for arg in run_step.cmd]
-        return ShellRequest(cmd) 
+        return ShellRequest(cmd, show_output=getattr(run_step, 'show_output', True)) 

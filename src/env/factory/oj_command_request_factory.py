@@ -16,7 +16,8 @@ class OjCommandRequestFactory(BaseCommandRequestFactory):
             return DockerRequest(
                 DockerOpType.EXEC,
                 container=container_name,
-                command=" ".join(cmd)
+                command=" ".join(cmd),
+                show_output=getattr(run_step, 'show_output', True)
             )
         else:
-            return ShellRequest(cmd) 
+            return ShellRequest(cmd, show_output=getattr(run_step, 'show_output', True)) 

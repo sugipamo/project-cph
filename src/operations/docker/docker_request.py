@@ -15,13 +15,14 @@ class DockerOpType(Enum):
     LOGS = auto()
 
 class DockerRequest(BaseRequest):
-    def __init__(self, op: DockerOpType, image: str = None, container: str = None, command: str = None, options: Optional[Dict[str, Any]] = None, debug_tag=None, name=None):
+    def __init__(self, op: DockerOpType, image: str = None, container: str = None, command: str = None, options: Optional[Dict[str, Any]] = None, debug_tag=None, name=None, show_output=True):
         super().__init__(name=name, debug_tag=debug_tag)
         self.op = op
         self.image = image
         self.container = container
         self.command = command
         self.options = options or {}
+        self.show_output = show_output
         self._executed = False
         self._result = None
 

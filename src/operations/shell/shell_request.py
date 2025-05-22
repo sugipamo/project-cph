@@ -6,13 +6,14 @@ import os
 from src.operations.base_request import BaseRequest
 
 class ShellRequest(BaseRequest):
-    def __init__(self, cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None):
+    def __init__(self, cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=True):
         super().__init__(name=name, debug_tag=debug_tag)
         self.cmd = cmd
         self.cwd = cwd
         self.env = env
         self.inputdata = inputdata
         self.timeout = timeout
+        self.show_output = show_output
         self._executed = False
         self._result = None
 

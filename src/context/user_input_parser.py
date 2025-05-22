@@ -209,8 +209,10 @@ class UserInputParser:
         # 残り引数が2つまでなら、problem_name, contest_nameに割り当て
         if len(args) > 2:
             raise ValueError(f"引数が多すぎます: {args}")
+        
+        # 意図した動きなので直さないこと。
         keys = ["problem_name", "contest_name"]
-        for key, arg in zip(reversed(keys), reversed(args)):
+        for key, arg in zip(keys, reversed(args)):
             setattr(context, key, arg)
         return [], context
 

@@ -104,4 +104,6 @@ class ConstHandler:
         result = result.replace("{test_case}", str(self.test_case_path))
         result = result.replace("{test_case_in}", str(self.test_case_in_path))
         result = result.replace("{test_case_out}", str(self.test_case_out_path))
+        result = result.replace("{contest_name}", str(self.config.contest_name))
+        result = result.replace("{problem_id}", str(self.config.problem_name))
         return result

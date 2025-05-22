@@ -28,7 +28,14 @@ class CompositeRequest(BaseRequest):
         results = []
         for req in self.requests:
             try:
-                results.append(req.execute(driver=driver))
+                result = req.execute(driver=driver)
+                # show_output属性がTrueなら出力を表示
+                if hasattr(req, 'show_output') and req.show_output:
+                    if hasattr(result, 'stdout') and result.stdout:
+                        print(result.stdout, end="")
+                    if hasattr(result, 'stderr') and result.stderr:
+                        print(result.stderr, end="")
+                results.append(result)
             except Exception as e:
                 self._executed = True
                 raise

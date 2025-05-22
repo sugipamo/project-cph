@@ -2,8 +2,8 @@
   "command": "open",
   "language": "python",
   "env_type": "local",
-  "contest_name": "a",
-  "problem_name": "abc300",
+  "contest_name": "abc300",
+  "problem_name": "a",
   "contest_current_path": "./contest_current",
   "env_json": {
     "python": {
@@ -29,6 +29,7 @@
             {
               "type": "shell",
               "allow_failure": true,
+              "show_output": false,
               "cmd": [
                 "cursor",
                 "{contest_current_path}/{source_file_name}"
