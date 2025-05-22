@@ -3,7 +3,10 @@ import json
 
 class OperationResult:
     def __init__(self, success: bool = None, returncode: int = None, stdout: str = None, stderr: str = None, content: str = None, exists: bool = None, path=None, op=None, cmd=None, request=None, start_time=None, end_time=None, error_message=None, exception=None, metadata=None):
-        self.success = success if success is not None else (returncode == 0 if returncode is not None else None)
+        if success is not None:
+            self.success = success
+        else:
+            self.success = (returncode == 0) if returncode is not None else False
         self.returncode = returncode
         self.stdout = stdout
         self.stderr = stderr

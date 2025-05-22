@@ -2,6 +2,11 @@ from src.operations.base_request import BaseRequest
 from src.operations.operation_type import OperationType
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+class CompositeStepFailure(Exception):
+    def __init__(self, message, original_exception=None):
+        super().__init__(message)
+        self.original_exception = original_exception
+
 class CompositeRequest(BaseRequest):
     def __init__(self, requests, debug_tag=None, name=None):
         super().__init__(name=name, debug_tag=debug_tag)
@@ -27,18 +32,18 @@ class CompositeRequest(BaseRequest):
             raise RuntimeError("This CompositeRequest has already been executed.")
         results = []
         for req in self.requests:
-            try:
-                result = req.execute(driver=driver)
-                # show_output属性がTrueなら出力を表示
-                if hasattr(req, 'show_output') and req.show_output:
-                    if hasattr(result, 'stdout') and result.stdout:
-                        print(result.stdout, end="")
-                    if hasattr(result, 'stderr') and result.stderr:
-                        print(result.stderr, end="")
-                results.append(result)
-            except Exception as e:
-                self._executed = True
-                raise
+            result = req.execute(driver=driver)
+            # show_output属性がTrueなら出力を表示
+            if hasattr(req, 'show_output') and req.show_output:
+                if hasattr(result, 'stdout') and result.stdout:
+                    print(result.stdout, end="")
+                if hasattr(result, 'stderr') and result.stderr:
+                    print(result.stderr, end="")
+            results.append(result)
+            # allow_failureがFalseまたは未指定、かつ失敗した場合は即停止
+            allow_failure = getattr(req, 'allow_failure', False)
+            if not allow_failure and not (hasattr(result, 'success') and result.success):
+                raise CompositeStepFailure(f"Step failed: {req} (allow_failure=False)\nResult: {result}")
         self._results = results
         self._executed = True
         return results

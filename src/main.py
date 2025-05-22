@@ -15,7 +15,12 @@ if __name__ == "__main__":
         print(f"JSONの解析に失敗しました: {e}")
         sys.exit(1)
     except Exception as e:
-        print(f"予期せぬエラーが発生しました: {e}")
-        import traceback
-        traceback.print_exc()
+        # CompositeStepFailureの場合はTracebackを抑制
+        from src.operations.composite_request import CompositeStepFailure
+        if isinstance(e, CompositeStepFailure):
+            print(f"ユーザー定義コマンドでエラーが発生しました: {e}")
+        else:
+            print(f"予期せぬエラーが発生しました: {e}")
+            import traceback
+            traceback.print_exc()
         sys.exit(1)
