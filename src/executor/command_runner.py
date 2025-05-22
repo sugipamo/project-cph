@@ -1,7 +1,7 @@
 from typing import List
 from src.context.user_input_parser import UserInputParser
 from src.env.env_workflow_service import EnvWorkflowService
-from src.env.env_context_with_di import build_di_container_and_context
+from src.env.build_di_container_and_context import build_di_container_and_context
 
 class CommandRunner:
     """
