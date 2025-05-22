@@ -5,7 +5,7 @@ from src.operations.file.file_request import FileOpType, FileRequest
 from src.operations.file.file_driver import MockFileDriver
 
 class DummyConstHandler:
-    pass
+    workspace_path = "/tmp/workspace"
 
 def make_handler():
     config = {}

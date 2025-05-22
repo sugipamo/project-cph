@@ -11,14 +11,15 @@ def make_local_config():
         env_type="local",
         contest_name="abc001",
         problem_name="a",
-        contest_current_path="contests/abc001",
         env_json={
             "source_file_name": "main.cpp",
             "source_file": "main.cpp",
-            "contest_env_path": "env",
-            "contest_template_path": "template",
-            "contest_temp_path": "temp"
-        }
+            "contest_env_path": "./env",
+            "contest_template_path": "./template",
+            "contest_temp_path": "./temp"
+        },
+        contest_current_path="contests/abc001",
+        workspace_path="/tmp/workspace"
     )
 
 def make_docker_config():
@@ -28,21 +29,21 @@ def make_docker_config():
         env_type="docker",
         contest_name="abc002",
         problem_name="a",
-        contest_current_path="contests/abc002",
         env_json={
             "source_file_name": "main.py",
             "source_file": "main.py",
-            "contest_env_path": "env_d",
-            "contest_template_path": "template_d",
-            "contest_temp_path": "temp_d",
-            "dockerfile_path": "Dockerfile"
-        }
+            "contest_env_path": "./env",
+            "contest_template_path": "./template",
+            "contest_temp_path": "./temp"
+        },
+        contest_current_path="contests/abc002",
+        workspace_path="/tmp/workspace"
     )
 
 def test_local_const_handler_properties():
     config = make_local_config()
     handler = ConstHandler(config)
-    assert handler.workspace_path == Path("workspace")
+    assert handler.workspace_path == Path("/tmp/workspace")
     assert handler.contest_current_path == Path("contests/abc001")
     assert handler.source_file_name == "main.cpp"
     assert config.env_type == "local"
@@ -72,13 +73,13 @@ def test_docker_const_handler_properties(monkeypatch):
     config.dockerfile = "FROM python:3.8\nRUN echo hello"
     config.oj_dockerfile = "FROM python:3.9\nRUN echo oj"
     handler = ConstHandler(config)
-    assert handler.workspace_path == Path("workspace")
+    assert handler.workspace_path == Path("/tmp/workspace")
     assert handler.contest_current_path == Path("contests/abc002")
     assert handler.source_file_name == "main.py"
     assert config.env_type == "docker"
-    assert handler.contest_env_path == Path("env_d")
-    assert handler.contest_template_path == Path("template_d")
-    assert handler.contest_temp_path == Path("temp_d")
+    assert handler.contest_env_path == Path("env")
+    assert handler.contest_template_path == Path("template")
+    assert handler.contest_temp_path == Path("temp")
     assert handler.test_case_path == Path("contests/abc002/test")
     assert handler.test_case_in_path == Path("contests/abc002/test/in")
     assert handler.test_case_out_path == Path("contests/abc002/test/out")
@@ -95,9 +96,9 @@ def test_docker_const_handler_parse(monkeypatch):
     result = handler.parse(s)
     assert "contests/abc002" in result
     assert "main.py" in result
-    assert "env_d" in result
-    assert "template_d" in result
-    assert "temp_d" in result
+    assert "env" in result
+    assert "template" in result
+    assert "temp" in result
     assert "test" in result
     assert "in" in result
     assert "out" in result

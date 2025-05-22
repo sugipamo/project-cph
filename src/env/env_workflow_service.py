@@ -85,7 +85,7 @@ class EnvWorkflowService:
             raise ValueError(f"env.jsonからコマンド({context.command_type})のsteps取得に失敗: {e}")
         composite_request = self.generate_run_requests(steps)
         # driverの種類はenv_type等で判定
-        env_type = getattr(self.env_context, 'env_type', 'local').lower()
+        env_type = self.env_context.env_type.lower()
         driver_key = 'shell_driver' if env_type == 'local' else 'docker_driver'
         driver = self.di_container.resolve(driver_key) if self.di_container else None
         result = composite_request.execute(driver=driver)

@@ -7,7 +7,7 @@ class ImageNameResolver:
     @property
     def image_name(self) -> str:
         language = self.config.language
-        dockerfile_text = getattr(self.config, "dockerfile", None)
+        dockerfile_text = self.config.dockerfile
         if not dockerfile_text:
             return language
         hash_str = hashlib.sha256(dockerfile_text.encode("utf-8")).hexdigest()[:12]
@@ -27,7 +27,7 @@ class ImageNameResolver:
 
     @property
     def oj_image_name(self) -> str:
-        oj_dockerfile_text = getattr(self.config, "oj_dockerfile", None)
+        oj_dockerfile_text = self.config.oj_dockerfile
         if not oj_dockerfile_text:
             return self.base_oj_image_name
         hash_str = hashlib.sha256(oj_dockerfile_text.encode("utf-8")).hexdigest()[:12]
@@ -39,8 +39,8 @@ class ImageNameResolver:
 
     @property
     def dockerfile_text(self) -> str:
-        return getattr(self.config, "dockerfile", None)
+        return self.config.dockerfile
 
     @property
     def oj_dockerfile_text(self) -> str:
-        return getattr(self.config, "oj_dockerfile", None) 
+        return self.config.oj_dockerfile 

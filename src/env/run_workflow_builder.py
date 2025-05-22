@@ -42,7 +42,7 @@ class RunWorkflowBuilder:
         """
         run_steps内にDockerRequestが必要なstep（docker環境のshell/oj等）が含まれていればTrue
         """
-        env_type = getattr(self.controller.env_context, "env_type", "local").lower()
+        env_type = self.controller.env_context.env_type.lower()
         if env_type != "docker":
             return False
         # shell/oj系stepが1つでもあればビルド必要とみなす（仮実装）

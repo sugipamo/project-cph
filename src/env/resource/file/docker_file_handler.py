@@ -4,9 +4,10 @@ from src.operations.file.file_request import FileRequest, FileOpType
 from src.operations.docker.docker_file_request import DockerFileRequest
 from src.env.resource.file.base_file_handler import BaseFileHandler
 from src.env.resource.utils.path_environment_checker import PathEnvironmentChecker
+from src.context.execution_context import ExecutionContext
 
 class DockerFileHandler(BaseFileHandler):
-    def __init__(self, config, const_handler):
+    def __init__(self, config: ExecutionContext, const_handler):
         super().__init__(config, const_handler)
         self.path_env_checker = PathEnvironmentChecker(self.const_handler.workspace_path)
 
@@ -22,11 +23,8 @@ class DockerFileHandler(BaseFileHandler):
     def copy(self, relative_path: str, target_path: str):
         src_path = relative_path
         if not os.path.isabs(src_path):
-            ws = getattr(self.const_handler, 'workspace_path', None)
-            if ws:
-                src_path_full = os.path.join(ws, src_path)
-            else:
-                src_path_full = src_path
+            ws = self.const_handler.workspace_path
+            src_path_full = os.path.join(ws, src_path)
         else:
             src_path_full = src_path
         if os.path.isdir(src_path_full):

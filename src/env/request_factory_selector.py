@@ -22,7 +22,7 @@ class RequestFactorySelector:
 
     @staticmethod
     def get_shell_factory(controller, di_container: DIContainer):
-        env_type = getattr(controller.env_context, "env_type", "local")
+        env_type = controller.env_context.env_type
         if env_type.lower() == "docker":
             return di_container.resolve("DockerCommandRequestFactory")(controller)
         else:
@@ -41,7 +41,7 @@ class RequestFactorySelector:
         elif isinstance(step, BuildRunStep):
             return di_container.resolve("BuildCommandRequestFactory")(controller)
         else:
-            factory_cls = cls.FACTORY_MAP.get(getattr(step, "type", None))
+            factory_cls = cls.FACTORY_MAP.get(step.type)
             if not factory_cls:
                 raise ValueError(f"Unknown or unsupported run type: {getattr(step, 'type', None)} (step={step})")
             return di_container.resolve(factory_cls.__name__)(controller) 

@@ -65,11 +65,8 @@ class DockerFileHandler(BaseFileHandler):
     def copy(self, relative_path: str, target_path: str):
         src_path = relative_path
         if not os.path.isabs(src_path):
-            ws = getattr(self.const_handler, 'workspace_path', None)
-            if ws:
-                src_path_full = os.path.join(ws, src_path)
-            else:
-                src_path_full = src_path
+            ws = self.const_handler.workspace_path
+            src_path_full = os.path.join(ws, src_path)
         else:
             src_path_full = src_path
         if os.path.isdir(src_path_full):
@@ -89,14 +86,19 @@ class DockerFileHandler(BaseFileHandler):
         return req
 
     def move(self, src_path: str, dst_path: str):
-        src_in_ws = self.path_env_checker.is_in_container(src_path)
+        if not os.path.isabs(src_path):
+            ws = self.const_handler.workspace_path
+            src_path_full = os.path.join(ws, src_path)
+        else:
+            src_path_full = src_path
+        src_in_ws = self.path_env_checker.is_in_container(src_path_full)
         dst_in_ws = self.path_env_checker.is_in_container(dst_path)
         container = self.const_handler.container_name
         if src_in_ws == dst_in_ws:
-            return FileRequest(FileOpType.MOVE, src_path, dst_path=dst_path)
+            return FileRequest(FileOpType.MOVE, src_path_full, dst_path=dst_path)
         to_container = dst_in_ws and not src_in_ws
         req = DockerFileRequest(
-            src_path=src_path,
+            src_path=src_path_full,
             dst_path=dst_path,
             container=container,
             to_container=to_container
@@ -160,11 +162,8 @@ class LocalFileHandler(BaseFileHandler):
     def copy(self, relative_path: str, target_path: str):
         src_path = relative_path
         if not os.path.isabs(src_path):
-            ws = getattr(self.const_handler, 'workspace_path', None)
-            if ws:
-                src_path_full = os.path.join(ws, src_path)
-            else:
-                src_path_full = src_path
+            ws = self.const_handler.workspace_path
+            src_path_full = os.path.join(ws, src_path)
         else:
             src_path_full = src_path
         if os.path.isdir(src_path_full):
@@ -175,7 +174,12 @@ class LocalFileHandler(BaseFileHandler):
         return FileRequest(FileOpType.REMOVE, relative_path)
 
     def move(self, src_path: str, dst_path: str):
-        return FileRequest(FileOpType.MOVE, src_path, dst_path=dst_path)
+        if not os.path.isabs(src_path):
+            ws = self.const_handler.workspace_path
+            src_path_full = os.path.join(ws, src_path)
+        else:
+            src_path_full = src_path
+        return FileRequest(FileOpType.MOVE, src_path_full, dst_path=dst_path)
 
     def copytree(self, src_path: str, dst_path: str):
         return FileRequest(FileOpType.COPYTREE, src_path, dst_path=dst_path)

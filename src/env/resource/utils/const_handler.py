@@ -14,8 +14,10 @@ class EnvType(Enum):
 
 class ConstHandler:
     def __init__(self, config: ExecutionContext):
-        # workspace_pathが未設定ならデフォルト値を使う
-        workspace_path = getattr(config, 'workspace_path', None) or DEFAULT_WORKSPACE_PATH
+        # workspace_pathが未設定なら例外を投げる
+        if not hasattr(config, 'workspace_path') or config.workspace_path is None:
+            raise ValueError("workspace_pathがNoneです。必ず有効なパスを指定してください。")
+        workspace_path = config.workspace_path
         self.config = config
         self.path_resolver = PathResolver(config, workspace_path)
         self.image_name_resolver = ImageNameResolver(config)

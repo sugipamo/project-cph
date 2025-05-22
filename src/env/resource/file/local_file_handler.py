@@ -1,6 +1,7 @@
 import os
 from src.operations.file.file_request import FileRequest, FileOpType
 from src.env.resource.file.base_file_handler import BaseFileHandler
+from src.context.execution_context import ExecutionContext
 
 class LocalFileHandler(BaseFileHandler):
     def __init__(self, config, const_handler):
@@ -18,11 +19,8 @@ class LocalFileHandler(BaseFileHandler):
     def copy(self, relative_path: str, target_path: str):
         src_path = relative_path
         if not os.path.isabs(src_path):
-            ws = getattr(self.const_handler, 'workspace_path', None)
-            if ws:
-                src_path_full = os.path.join(ws, src_path)
-            else:
-                src_path_full = src_path
+            ws = self.const_handler.workspace_path
+            src_path_full = os.path.join(ws, src_path)
         else:
             src_path_full = src_path
         if os.path.isdir(src_path_full):

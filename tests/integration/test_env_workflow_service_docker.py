@@ -28,7 +28,8 @@ def test_env_workflow_service_docker_no_driver():
         problem_name="a",
         env_type="docker",  # docker環境
         env_json=env_json,
-        contest_current_path="contests/abc001"
+        contest_current_path="contests/abc001",
+        workspace_path="/tmp/workspace"
     )
     const_handler = ConstHandler(env_context)
     file_handler = LocalFileHandler(env_context, const_handler)

@@ -4,4 +4,4 @@ class EnvConfigAccessor:
 
     @property
     def source_file_name(self) -> str:
-        return self.config.env_json.get("source_file_name", "main.cpp") 
+        return self.config.env_json.get("source_file_name") 

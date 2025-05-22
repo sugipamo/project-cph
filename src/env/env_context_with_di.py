@@ -10,7 +10,7 @@ def build_di_container_and_context(env_context):
     from src.env.factory.remove_command_request_factory import RemoveCommandRequestFactory
     from src.env.factory.build_command_request_factory import BuildCommandRequestFactory
     di_container = DIContainer()
-    env_type = getattr(env_context, 'env_type', 'local').lower()
+    env_type = env_context.env_type.lower()
     if env_type == 'local':
         from src.operations.shell.local_shell_driver import LocalShellDriver
         di_container.register('shell_driver', lambda: LocalShellDriver())
