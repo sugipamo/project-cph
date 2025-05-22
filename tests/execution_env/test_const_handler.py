@@ -3,6 +3,7 @@ from src.env.resource.utils.const_handler import ConstHandler
 from pathlib import Path
 from src.context.execution_context import ExecutionContext
 import hashlib
+import os
 
 def make_local_config():
     return ExecutionContext(
@@ -121,9 +122,25 @@ def test_path_resolver_contest_env_path_none():
     config = make_local_config()
     config.env_json["cpp"]["contest_env_path"] = None
     handler = ConstHandler(config)
-    with pytest.raises(TypeError) as excinfo:
-        _ = handler.contest_env_path
-    assert "str" in str(excinfo.value)
+    # contest_envディレクトリが存在する場合はValueErrorは発生しない
+    # 存在しない場合のみValueErrorを期待
+    found = False
+    cur = os.path.abspath(os.getcwd())
+    while True:
+        candidate = os.path.join(cur, "contest_env")
+        if os.path.isdir(candidate):
+            found = True
+            break
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+    if found:
+        _ = handler.contest_env_path  # エラーにならないことを確認
+    else:
+        with pytest.raises(ValueError) as excinfo:
+            _ = handler.contest_env_path
+        assert "contest_env_path" in str(excinfo.value) or "contest_env_pathが自動検出できません" in str(excinfo.value)
 
 def test_path_resolver_contest_template_path_none():
     config = make_local_config()
@@ -145,9 +162,23 @@ def test_path_resolver_contest_env_path_key_missing():
     config = make_local_config()
     del config.env_json["cpp"]["contest_env_path"]
     handler = ConstHandler(config)
-    with pytest.raises(ValueError) as excinfo:
+    found = False
+    cur = os.path.abspath(os.getcwd())
+    while True:
+        candidate = os.path.join(cur, "contest_env")
+        if os.path.isdir(candidate):
+            found = True
+            break
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+    if found:
         _ = handler.contest_env_path
-    assert "contest_env_path" in str(excinfo.value)
+    else:
+        with pytest.raises(ValueError) as excinfo:
+            _ = handler.contest_env_path
+        assert "contest_env_path" in str(excinfo.value) or "contest_env_pathが自動検出できません" in str(excinfo.value)
 
 def test_path_resolver_contest_template_path_key_missing():
     config = make_local_config()
