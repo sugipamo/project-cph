@@ -2,6 +2,7 @@ import pytest
 from src.env.env_workflow_service import EnvWorkflowService
 from src.context.execution_context import ExecutionContext
 import os
+from src.operations.di_container import DIContainer
 
 def test_env_workflow_service_docker_shell_no_driver():
     # ダミーenv_json（docker環境用）
@@ -25,10 +26,7 @@ def test_env_workflow_service_docker_shell_no_driver():
         env_json=env_json,
         contest_current_path="contests/abc001"
     )
-    run_steps_dict_list = [
-        {"type": "shell", "cmd": ["echo", "hello"]}
-    ]
-    service = EnvWorkflowService.from_context(env_context, workspace_path=os.getcwd())
+    service = EnvWorkflowService.from_context(env_context, di_container=DIContainer())
     with pytest.raises(ValueError) as excinfo:
-        service.run_workflow(run_steps_dict_list, driver=None)
-    assert str(excinfo.value) == "DockerRequest.execute()にはdriverが必須です" 
+        service.run_workflow()
+    assert "not registered" in str(excinfo.value) 

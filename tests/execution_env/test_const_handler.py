@@ -41,8 +41,8 @@ def make_docker_config():
 
 def test_local_const_handler_properties():
     config = make_local_config()
-    handler = ConstHandler(config, workspace_path="/ws")
-    assert handler.workspace_path == Path("/ws")
+    handler = ConstHandler(config)
+    assert handler.workspace_path == Path("workspace")
     assert handler.contest_current_path == Path("contests/abc001")
     assert handler.source_file_name == "main.cpp"
     assert config.env_type == "local"
@@ -55,7 +55,7 @@ def test_local_const_handler_properties():
 
 def test_local_const_handler_parse():
     config = make_local_config()
-    handler = ConstHandler(config, workspace_path="/ws")
+    handler = ConstHandler(config)
     s = "{contest_current}/{source_file}/{contest_env}/{contest_template}/{contest_temp}/{test_case}/{test_case_in}/{test_case_out}"
     result = handler.parse(s)
     assert "contests/abc001" in result
@@ -71,8 +71,8 @@ def test_docker_const_handler_properties(monkeypatch):
     config = make_docker_config()
     config.dockerfile = "FROM python:3.8\nRUN echo hello"
     config.oj_dockerfile = "FROM python:3.9\nRUN echo oj"
-    handler = ConstHandler(config, workspace_path="/ws_d")
-    assert handler.workspace_path == Path("/ws_d")
+    handler = ConstHandler(config)
+    assert handler.workspace_path == Path("workspace")
     assert handler.contest_current_path == Path("contests/abc002")
     assert handler.source_file_name == "main.py"
     assert config.env_type == "docker"
@@ -90,7 +90,7 @@ def test_docker_const_handler_properties(monkeypatch):
 def test_docker_const_handler_parse(monkeypatch):
     config = make_docker_config()
     monkeypatch.setattr("src.operations.file.file_driver.LocalFileDriver.hash_file", lambda self, path: "dummyhash")
-    handler = ConstHandler(config, workspace_path="/ws_d")
+    handler = ConstHandler(config)
     s = "{contest_current}/{source_file}/{contest_env}/{contest_template}/{contest_temp}/{test_case}/{test_case_in}/{test_case_out}"
     result = handler.parse(s)
     assert "contests/abc002" in result
@@ -102,31 +102,11 @@ def test_docker_const_handler_parse(monkeypatch):
     assert "in" in result
     assert "out" in result
 
-def test_const_handler_workspace_path_none():
-    config = make_local_config()
-    with pytest.raises(Exception):
-        handler = ConstHandler(config, workspace_path=None)
-        _ = handler.workspace_path 
-
-def test_const_handler_workspace_path_none_typeerror():
-    config = make_local_config()
-    handler = ConstHandler(config, workspace_path=None)
-    with pytest.raises((TypeError, ValueError)) as excinfo:
-        _ = handler.workspace_path
-    assert "None" in str(excinfo.value) or "str" in str(excinfo.value) or "os.PathLike" in str(excinfo.value) 
-
-def test_const_handler_parse_with_none_workspace_path():
-    config = make_local_config()
-    handler = ConstHandler(config, workspace_path=None)
-    with pytest.raises((TypeError, ValueError)) as excinfo:
-        handler.parse("{workspace_path}/main.cpp")
-    assert "None" in str(excinfo.value) or "str" in str(excinfo.value) or "os.PathLike" in str(excinfo.value)
-
 def test_path_resolver_contest_current_path_none():
     # contest_current_pathがNoneの場合
     config = make_local_config()
     config.contest_current_path = None
-    handler = ConstHandler(config, workspace_path="/ws")
+    handler = ConstHandler(config)
     with pytest.raises(ValueError) as excinfo:
         _ = handler.contest_current_path
     assert "contest_current_path" in str(excinfo.value)
@@ -135,7 +115,7 @@ def test_path_resolver_contest_env_path_none():
     # env_jsonからcontest_env_pathがNoneの場合
     config = make_local_config()
     config.env_json["contest_env_path"] = None
-    handler = ConstHandler(config, workspace_path="/ws")
+    handler = ConstHandler(config)
     with pytest.raises(ValueError) as excinfo:
         _ = handler.contest_env_path
     assert "contest_env_path" in str(excinfo.value)
@@ -143,7 +123,7 @@ def test_path_resolver_contest_env_path_none():
 def test_path_resolver_contest_template_path_none():
     config = make_local_config()
     config.env_json["contest_template_path"] = None
-    handler = ConstHandler(config, workspace_path="/ws")
+    handler = ConstHandler(config)
     with pytest.raises(ValueError) as excinfo:
         _ = handler.contest_template_path
     assert "contest_template_path" in str(excinfo.value)
@@ -151,7 +131,7 @@ def test_path_resolver_contest_template_path_none():
 def test_path_resolver_contest_temp_path_none():
     config = make_local_config()
     config.env_json["contest_temp_path"] = None
-    handler = ConstHandler(config, workspace_path="/ws")
+    handler = ConstHandler(config)
     with pytest.raises(ValueError) as excinfo:
         _ = handler.contest_temp_path
     assert "contest_temp_path" in str(excinfo.value) 

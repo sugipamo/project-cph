@@ -27,7 +27,11 @@ class CompositeRequest(BaseRequest):
             raise RuntimeError("This CompositeRequest has already been executed.")
         results = []
         for req in self.requests:
-            results.append(req.execute(driver=driver))
+            try:
+                results.append(req.execute(driver=driver))
+            except Exception as e:
+                self._executed = True
+                raise
         self._results = results
         self._executed = True
         return results
@@ -77,7 +81,8 @@ class ParallelCompositeRequest(CompositeRequest):
                 try:
                     results[idx] = future.result()
                 except Exception as e:
-                    results[idx] = e
+                    self._executed = True
+                    raise
         self._results = results
         self._executed = True
         return results
