@@ -1,4 +1,4 @@
-from src.env.env_context_with_di import build_di_container_and_context
+# from src.env.env_context_with_di import build_di_container_and_context
 
 class EnvWorkflowService:
     """
@@ -69,7 +69,7 @@ class EnvWorkflowService:
                 run_steps.validate_all()
             except Exception as e:
                 raise ValueError(f"RunSteps validation failed: {e}")
-        builder = RunWorkflowBuilder.from_controller(self.controller)
+        builder = RunWorkflowBuilder.from_controller(self.controller, self.di_container)
         composite_request = builder.build(run_steps)
         return composite_request
 

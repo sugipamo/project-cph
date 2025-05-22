@@ -4,7 +4,6 @@ from src.env.step.run_step_shell import ShellRunStep
 from src.env.step.run_step_oj import OjRunStep
 from src.operations.di_container import DIContainer
 from src.env.types import EnvResourceController, RunSteps, CompositeRequest
-from src.env.env_context_with_di import build_di_container_and_context
 
 class RunWorkflowBuilder:
     def __init__(self, controller: EnvResourceController, di_container: DIContainer):
@@ -12,12 +11,10 @@ class RunWorkflowBuilder:
         self.di_container = di_container
 
     @classmethod
-    def from_controller(cls, controller: EnvResourceController) -> 'RunWorkflowBuilder':
+    def from_controller(cls, controller: EnvResourceController, di_container: DIContainer) -> 'RunWorkflowBuilder':
         """
-        controllerから本番用DIContainerをセットアップしてRunWorkflowBuilderを生成
+        controllerとdi_containerからRunWorkflowBuilderを生成
         """
-        env_context = controller.env_context
-        env_context, di_container = build_di_container_and_context(env_context)
         return cls(controller, di_container)
 
     def build(self, run_steps: RunSteps) -> CompositeRequest:
