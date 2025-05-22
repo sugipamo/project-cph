@@ -1,14 +1,11 @@
 from typing import List
 from src.context.user_input_parser import UserInputParser
 from src.env.env_workflow_service import EnvWorkflowService
+from src.operations.di_container import DIContainer
 
-def resolve_driver(context):
-    env_type = getattr(context, 'env_type', 'local').lower()
-    if env_type == 'local':
-        from src.operations.shell.local_shell_driver import LocalShellDriver
-        return LocalShellDriver()
-    # 今後docker等もここで分岐
-    return None
+def setup_di_container():
+    # driver登録責務は下位レイヤに移譲
+    return DIContainer()
 
 class CommandRunner:
     """
@@ -31,7 +28,7 @@ class CommandRunner:
         except Exception as e:
             raise ValueError(f"env.jsonからコマンド({context.command_type})のsteps取得に失敗: {e}")
 
-        driver = resolve_driver(context)
-        service = EnvWorkflowService.from_context(context, workspace_path=context.workspace_path)
-        result = service.run_workflow(steps, driver=driver)
+        di = setup_di_container()
+        service = EnvWorkflowService.from_context(context, di_container=di)
+        result = service.run_workflow(steps)
         print(result)

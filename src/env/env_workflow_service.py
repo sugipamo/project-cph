@@ -27,15 +27,17 @@ class EnvWorkflowService:
     # composite_request.execute(driver=...)  # 必要に応じて実行
     ```
     """
-    def __init__(self, env_context, controller):
+    def __init__(self, env_context, controller, di_container=None):
         self.env_context = env_context
         self.controller = controller
+        self.di_container = di_container
 
     @classmethod
-    def from_context(cls, env_context, workspace_path=None):
+    def from_context(cls, env_context, di_container=None, workspace_path=None):
         """
         本番用の依存性を組み立ててEnvWorkflowServiceを生成する
         workspace_path: 明示的に指定があればそれを使う
+        di_container: DIContainerインスタンス
         """
         from src.env.env_resource_controller import EnvResourceController
         from src.env.resource.file.local_file_handler import LocalFileHandler
@@ -45,7 +47,17 @@ class EnvWorkflowService:
         file_handler = LocalFileHandler(env_context, const_handler)
         run_handler = LocalRunHandler(env_context, const_handler)
         controller = EnvResourceController(env_context, file_handler, run_handler, const_handler)
-        return cls(env_context, controller)
+        # driver登録責務をここで担う
+        if di_container is not None:
+            env_type = getattr(env_context, 'env_type', 'local').lower()
+            if env_type == 'local':
+                from src.operations.shell.local_shell_driver import LocalShellDriver
+                di_container.register('shell_driver', lambda: LocalShellDriver())
+            elif env_type == 'docker':
+                from src.operations.docker.docker_driver import LocalDockerDriver
+                di_container.register('docker_driver', lambda: LocalDockerDriver())
+            # 他driverもここで分岐・登録可能
+        return cls(env_context, controller, di_container=di_container)
 
     def generate_run_requests(self, run_steps_dict_list):
         """
@@ -71,13 +83,16 @@ class EnvWorkflowService:
         composite_request = builder.build(run_steps)
         return composite_request
 
-    def run_workflow(self, run_steps_dict_list, driver=None):
+    def run_workflow(self, run_steps_dict_list):
         """
         run_steps_dict_list: List[dict]（env.json等から取得した生データ）
-        driver: 実行環境に応じて指定（省略時はNone）
-        
+        driver: DIContainerからresolve
         CompositeRequestを生成し、実行して結果を返す
         """
         composite_request = self.generate_run_requests(run_steps_dict_list)
+        # driverの種類はenv_type等で判定
+        env_type = getattr(self.env_context, 'env_type', 'local').lower()
+        driver_key = 'shell_driver' if env_type == 'local' else 'docker_driver'
+        driver = self.di_container.resolve(driver_key) if self.di_container else None
         result = composite_request.execute(driver=driver)
         return result

@@ -4,6 +4,7 @@ from src.operations.result import ShellResult, OperationResult
 from src.operations.operation_type import OperationType
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.shell.local_shell_driver import LocalShellDriver
+from src.operations.di_container import DIContainer
 
 def test_mock_shell_request_echo():
     req = MockShellRequest(["echo", "hello"], stdout="hello\n", returncode=0)
@@ -42,13 +43,19 @@ def test_shell_request_no_driver():
     assert str(excinfo.value) == "ShellRequest.execute()にはdriverが必須です"
 
 def test_shell_request_echo(monkeypatch):
+    di = DIContainer()
+    from src.operations.shell.local_shell_driver import LocalShellDriver
+    di.register('shell_driver', lambda: LocalShellDriver())
     req = ShellRequest(["echo", "hello"])
-    driver = LocalShellDriver()
+    driver = di.resolve('shell_driver')
     result = req.execute(driver)
     assert result.stdout.strip() == "hello"
 
 def test_shell_request_timeout(monkeypatch):
+    di = DIContainer()
+    from src.operations.shell.local_shell_driver import LocalShellDriver
+    di.register('shell_driver', lambda: LocalShellDriver())
     req = ShellRequest(["echo", "timeout"])
-    driver = LocalShellDriver()
+    driver = di.resolve('shell_driver')
     result = req.execute(driver)
     assert result.returncode == 0 
