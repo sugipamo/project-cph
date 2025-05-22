@@ -6,12 +6,16 @@ from src.env.resource.utils.image_name_resolver import ImageNameResolver
 from src.env.resource.utils.env_config_accessor import EnvConfigAccessor
 from src.context.execution_context import ExecutionContext
 
+DEFAULT_WORKSPACE_PATH = "./workspace"
+
 class EnvType(Enum):
     LOCAL = auto()
     DOCKER = auto()
 
 class ConstHandler:
-    def __init__(self, config: ExecutionContext, workspace_path: str = None):
+    def __init__(self, config: ExecutionContext):
+        # workspace_pathが未設定ならデフォルト値を使う
+        workspace_path = getattr(config, 'workspace_path', None) or DEFAULT_WORKSPACE_PATH
         self.config = config
         self.path_resolver = PathResolver(config, workspace_path)
         self.image_name_resolver = ImageNameResolver(config)
