@@ -2,7 +2,7 @@
   "command": "open",
   "language": "python",
   "env_type": "local",
-  "contest_name": "abc300",
+  "contest_name": "abc301",
   "problem_name": "a",
   "contest_current_path": "./contest_current",
   "env_json": {
@@ -36,12 +36,12 @@
               ]
             },
             {
-              "type": "shell",
+              "type": "python",
               "allow_failure": false,
               "show_output": false,
               "cmd": [
-                "open",
-                "{contest_current_path}/{source_file_name}"
+                "import webbrowser",
+                "webbrowser.open('https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_id}')"
               ]
             },
             {
@@ -52,7 +52,7 @@
               "cmd": [
                 "oj",
                 "download",
-                "https://{contest_name}.contest.atcoder.jp/tasks/{contest_name}_{problem_id}"
+                "https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_id}"
               ]
             }
           ]

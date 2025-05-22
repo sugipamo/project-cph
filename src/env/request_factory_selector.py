@@ -3,6 +3,7 @@ from src.env.step.run_step_copy import CopyRunStep
 from src.env.step.run_step_oj import OjRunStep
 from src.env.step.run_step_remove import RemoveRunStep
 from src.env.step.run_step_build import BuildRunStep
+from src.env.step.run_step_python import PythonRunStep
 from src.operations.di_container import DIContainer
 from src.env.factory.shell_command_request_factory import ShellCommandRequestFactory
 from src.env.factory.docker_command_request_factory import DockerCommandRequestFactory
@@ -10,6 +11,7 @@ from src.env.factory.copy_command_request_factory import CopyCommandRequestFacto
 from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
 from src.env.factory.remove_command_request_factory import RemoveCommandRequestFactory
 from src.env.factory.build_command_request_factory import BuildCommandRequestFactory
+from src.env.factory.python_command_request_factory import PythonCommandRequestFactory
 
 class RequestFactorySelector:
     FACTORY_MAP = {
@@ -17,6 +19,7 @@ class RequestFactorySelector:
         "docker_shell": DockerCommandRequestFactory,
         "copy": CopyCommandRequestFactory,
         "oj": OjCommandRequestFactory,
+        "python": PythonCommandRequestFactory,
         "test": None,
     }
 
@@ -45,6 +48,8 @@ class RequestFactorySelector:
             return di_container.resolve("RemoveCommandRequestFactory")(controller)
         elif isinstance(step, BuildRunStep):
             return di_container.resolve("BuildCommandRequestFactory")(controller)
+        elif isinstance(step, PythonRunStep):
+            return di_container.resolve("PythonCommandRequestFactory")(controller)
         else:
             factory_cls = cls.FACTORY_MAP[step.type]
             if not factory_cls:

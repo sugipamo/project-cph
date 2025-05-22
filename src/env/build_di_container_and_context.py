@@ -7,6 +7,7 @@ from src.env.factory.copy_command_request_factory import CopyCommandRequestFacto
 from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
 from src.env.factory.remove_command_request_factory import RemoveCommandRequestFactory
 from src.env.factory.build_command_request_factory import BuildCommandRequestFactory
+from src.env.factory.python_command_request_factory import PythonCommandRequestFactory
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 
 def build_di_container_and_context(env_context):
@@ -25,6 +26,7 @@ def build_di_container_and_context(env_context):
     di_container.register('OjCommandRequestFactory', lambda: OjCommandRequestFactory)
     di_container.register('RemoveCommandRequestFactory', lambda: RemoveCommandRequestFactory)
     di_container.register('BuildCommandRequestFactory', lambda: BuildCommandRequestFactory)
+    di_container.register('PythonCommandRequestFactory', lambda: PythonCommandRequestFactory)
     # DockerRequest, DockerOpType
     di_container.register('DockerRequest', lambda: DockerRequest)
     di_container.register('DockerOpType', lambda: DockerOpType)
