@@ -2,13 +2,17 @@ class EnvContextWithDI:
     """
     env_contextと、それに基づき構成されたdi_containerをラップするクラス。
     driver登録責任もここで担う。
+    di_containerはテスト用に外部からも注入可能。
     """
-    def __init__(self, env_context):
+    def __init__(self, env_context, di_container):
         self.env_context = env_context
-        self.di_container = self._build_di_container(env_context)
+        self.di_container = di_container
 
-    def _build_di_container(self, env_context):
-        # DIContainerのインスタンス生成
+    @staticmethod
+    def build_production_di_container(env_context):
+        """
+        本番環境用のdi_containerを構成して返す
+        """
         from src.operations.di_container import DIContainer
         di_container = DIContainer()
         env_type = getattr(env_context, 'env_type', 'local').lower()
