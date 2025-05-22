@@ -12,6 +12,7 @@ class RunStep:
     force_env_type: Optional[str] = None
     allow_failure: bool = False
     show_output: bool = True
+    cwd: Optional[str] = None
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "RunStep":
@@ -20,7 +21,8 @@ class RunStep:
             cmd=d.get("cmd", []),
             force_env_type=d.get("force_env_type"),
             allow_failure=d.get("allow_failure"),
-            show_output=d.get("show_output")
+            show_output=d.get("show_output"),
+            cwd=d.get("cwd")
         )
 
     def validate(self) -> bool:

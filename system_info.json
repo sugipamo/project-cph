@@ -37,7 +37,7 @@
             },
             {
               "type": "shell",
-              "allow_failure": true,
+              "allow_failure": false,
               "show_output": false,
               "cmd": [
                 "open",
@@ -48,6 +48,7 @@
               "type": "oj",
               "allow_failure": true,
               "show_output": true,
+              "cwd": "{contest_current_path}",
               "cmd": [
                 "oj",
                 "download",

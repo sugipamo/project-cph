@@ -10,6 +10,7 @@ class OjCommandRequestFactory(BaseCommandRequestFactory):
         if not run_step.cmd:
             raise ValueError("OjRunStep: cmdは必須です")
         cmd = [self.controller.const_handler.parse(arg) for arg in run_step.cmd]
+        cwd = self.controller.const_handler.parse(run_step.cwd) if getattr(run_step, 'cwd', None) else None
         env_type = self.controller.env_context.env_type.lower()
         if env_type == "docker":
             container_name = self.controller.const_handler.oj_container_name
@@ -20,4 +21,4 @@ class OjCommandRequestFactory(BaseCommandRequestFactory):
                 show_output=getattr(run_step, 'show_output', True)
             )
         else:
-            return ShellRequest(cmd, show_output=getattr(run_step, 'show_output', True)) 
+            return ShellRequest(cmd, cwd=cwd, show_output=getattr(run_step, 'show_output', True)) 

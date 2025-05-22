@@ -8,9 +8,14 @@ class DockerCommandRequestFactory(BaseCommandRequestFactory):
             raise TypeError(f"DockerCommandRequestFactory expects ShellRunStep, got {type(run_step).__name__}")
         cmd = [self.controller.const_handler.parse(arg) for arg in run_step.cmd]
         container_name = self.controller.const_handler.container_name
+        cwd = self.controller.const_handler.parse(run_step.cwd) if getattr(run_step, 'cwd', None) else None
+        options = {}
+        if cwd:
+            options["workdir"] = cwd
         return DockerRequest(
             DockerOpType.EXEC,
             container=container_name,
             command=" ".join(cmd),
+            options=options,
             show_output=getattr(run_step, 'show_output', True)
         ) 

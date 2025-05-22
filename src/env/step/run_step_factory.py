@@ -13,7 +13,13 @@ class RunStepFactory:
             return step_cls.from_dict(d)
         # fallback: RunStepのfrom_dict_inner
         cmd_ = d["cmd"] if "cmd" in d else []
-        extra = {k: v for k, v in d.items() if k not in ("type", "cmd")}
-        step = step_cls(type=type_, cmd=cmd_, extra=extra)
+        step = step_cls(
+            type=type_,
+            cmd=cmd_,
+            force_env_type=d.get("force_env_type"),
+            allow_failure=d.get("allow_failure"),
+            show_output=d.get("show_output"),
+            cwd=d.get("cwd")
+        )
         step.validate()
         return step 
