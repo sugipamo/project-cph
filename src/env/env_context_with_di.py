@@ -9,11 +9,18 @@ class EnvContextWithDI:
         self.di_container = di_container
 
     @staticmethod
-    def build_production_di_container(env_context):
+    def from_context(env_context):
         """
-        本番環境用のdi_containerを構成して返す
+        本番環境用のEnvContextWithDIインスタンスを生成して返す
         """
         from src.operations.di_container import DIContainer
+        from src.operations.docker.docker_request import DockerRequest, DockerOpType
+        from src.env.factory.shell_command_request_factory import ShellCommandRequestFactory
+        from src.env.factory.docker_command_request_factory import DockerCommandRequestFactory
+        from src.env.factory.copy_command_request_factory import CopyCommandRequestFactory
+        from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
+        from src.env.factory.remove_command_request_factory import RemoveCommandRequestFactory
+        from src.env.factory.build_command_request_factory import BuildCommandRequestFactory
         di_container = DIContainer()
         env_type = getattr(env_context, 'env_type', 'local').lower()
         if env_type == 'local':
@@ -22,5 +29,13 @@ class EnvContextWithDI:
         elif env_type == 'docker':
             from src.operations.docker.docker_driver import LocalDockerDriver
             di_container.register('docker_driver', lambda: LocalDockerDriver())
-        # 他driverもここで分岐・登録可能
-        return di_container 
+        # --- 追加依存登録 ---
+        di_container.register("DockerRequest", lambda: DockerRequest)
+        di_container.register("DockerOpType", lambda: DockerOpType)
+        di_container.register("ShellCommandRequestFactory", lambda: ShellCommandRequestFactory)
+        di_container.register("DockerCommandRequestFactory", lambda: DockerCommandRequestFactory)
+        di_container.register("CopyCommandRequestFactory", lambda: CopyCommandRequestFactory)
+        di_container.register("OjCommandRequestFactory", lambda: OjCommandRequestFactory)
+        di_container.register("RemoveCommandRequestFactory", lambda: RemoveCommandRequestFactory)
+        di_container.register("BuildCommandRequestFactory", lambda: BuildCommandRequestFactory)
+        return EnvContextWithDI(env_context, di_container) 

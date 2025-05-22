@@ -1,3 +1,5 @@
+from src.env.env_context_with_di import EnvContextWithDI
+
 class EnvWorkflowService:
     """
     ワークフロー全体のリクエスト生成サービス。
@@ -33,10 +35,9 @@ class EnvWorkflowService:
         self.di_container = di_container
 
     @classmethod
-    def from_context(cls, env_context, di_container):
+    def from_context(cls, env_context):
         """
         本番用の依存性を組み立ててEnvWorkflowServiceを生成する
-        di_container: DIContainerインスタンス
         """
         from src.env.env_resource_controller import EnvResourceController
         from src.env.resource.file.local_file_handler import LocalFileHandler
@@ -46,16 +47,8 @@ class EnvWorkflowService:
         file_handler = LocalFileHandler(env_context, const_handler)
         run_handler = LocalRunHandler(env_context, const_handler)
         controller = EnvResourceController(env_context, file_handler, run_handler, const_handler)
-        # driver登録責務をここで担う
-        if di_container is not None:
-            env_type = getattr(env_context, 'env_type', 'local').lower()
-            if env_type == 'local':
-                from src.operations.shell.local_shell_driver import LocalShellDriver
-                di_container.register('shell_driver', lambda: LocalShellDriver())
-            elif env_type == 'docker':
-                from src.operations.docker.docker_driver import LocalDockerDriver
-                di_container.register('docker_driver', lambda: LocalDockerDriver())
-            # 他driverもここで分岐・登録可能
+        # di_containerの構成はEnvContextWithDIに委譲
+        di_container = EnvContextWithDI.from_context(env_context)
         return cls(env_context, controller, di_container=di_container)
 
     def generate_run_requests(self, run_steps_dict_list):

@@ -4,12 +4,7 @@ from src.env.step.run_step_shell import ShellRunStep
 from src.env.step.run_step_oj import OjRunStep
 from src.operations.di_container import DIContainer
 from src.env.types import EnvResourceController, RunSteps, CompositeRequest
-from src.env.factory.shell_command_request_factory import ShellCommandRequestFactory
-from src.env.factory.docker_command_request_factory import DockerCommandRequestFactory
-from src.env.factory.copy_command_request_factory import CopyCommandRequestFactory
-from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
-from src.env.factory.remove_command_request_factory import RemoveCommandRequestFactory
-from src.env.factory.build_command_request_factory import BuildCommandRequestFactory
+from src.env.env_context_with_di import EnvContextWithDI
 
 class RunWorkflowBuilder:
     def __init__(self, controller: EnvResourceController, di_container: DIContainer):
@@ -21,18 +16,9 @@ class RunWorkflowBuilder:
         """
         controllerから本番用DIContainerをセットアップしてRunWorkflowBuilderを生成
         """
-        from src.operations.docker.docker_request import DockerRequest, DockerOpType
-        di = DIContainer()
-        di.register("DockerRequest", lambda: DockerRequest)
-        di.register("DockerOpType", lambda: DockerOpType)
-        # 各種ファクトリも登録
-        di.register("ShellCommandRequestFactory", lambda: ShellCommandRequestFactory)
-        di.register("DockerCommandRequestFactory", lambda: DockerCommandRequestFactory)
-        di.register("CopyCommandRequestFactory", lambda: CopyCommandRequestFactory)
-        di.register("OjCommandRequestFactory", lambda: OjCommandRequestFactory)
-        di.register("RemoveCommandRequestFactory", lambda: RemoveCommandRequestFactory)
-        di.register("BuildCommandRequestFactory", lambda: BuildCommandRequestFactory)
-        return cls(controller, di)
+        env_context = controller.env_context
+        di_container = EnvContextWithDI.from_context(env_context)
+        return cls(controller, di_container)
 
     def build(self, run_steps: RunSteps) -> CompositeRequest:
         """
