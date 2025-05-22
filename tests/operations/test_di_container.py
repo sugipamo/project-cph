@@ -12,6 +12,6 @@ def test_register_and_resolve():
 
 def test_resolve_unregistered_key():
     container = DIContainer()
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(KeyError) as e:
         container.resolve("not_registered")
     assert "not_registered" in str(e.value) 

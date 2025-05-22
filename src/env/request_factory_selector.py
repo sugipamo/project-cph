@@ -41,7 +41,7 @@ class RequestFactorySelector:
         elif isinstance(step, BuildRunStep):
             return di_container.resolve("BuildCommandRequestFactory")(controller)
         else:
-            factory_cls = cls.FACTORY_MAP.get(step.type)
+            factory_cls = cls.FACTORY_MAP[step.type]
             if not factory_cls:
                 raise ValueError(f"Unknown or unsupported run type: {getattr(step, 'type', None)} (step={step})")
             return di_container.resolve(factory_cls.__name__)(controller) 

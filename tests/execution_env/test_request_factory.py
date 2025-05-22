@@ -106,7 +106,7 @@ def test_factory_unknown_type(di_container):
     controller = MockController()
     class UnknownStep:
         type = "unknown"
-    with pytest.raises(ValueError):
+    with pytest.raises(KeyError):
         RequestFactorySelector.get_factory_for_step(controller, UnknownStep(), di_container)
 
 def test_remove_command_request_factory(di_container):

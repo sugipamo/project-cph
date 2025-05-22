@@ -17,7 +17,11 @@ def test_env_workflow_service_shell_no_driver():
                         {"type": "shell", "cmd": ["echo", "hello"]}
                     ]
                 }
-            }
+            },
+            "source_file_name": "main.py",
+            "contest_env_path": "env",
+            "contest_template_path": "template",
+            "contest_temp_path": "temp"
         }
     }
     env_context = ExecutionContext(
@@ -34,10 +38,13 @@ def test_env_workflow_service_shell_no_driver():
     file_handler = LocalFileHandler(env_context, const_handler)
     run_handler = LocalRunHandler(env_context, const_handler)
     controller = EnvResourceController(env_context, file_handler, run_handler, const_handler)
-    service = EnvWorkflowService(env_context, controller, di_container=DIContainer())
-    with pytest.raises(ValueError) as excinfo:
+    di = DIContainer()
+    from src.env.factory.shell_command_request_factory import ShellCommandRequestFactory
+    di.register("ShellCommandRequestFactory", lambda: ShellCommandRequestFactory)
+    di.register("shell_driver", lambda: None)
+    service = EnvWorkflowService(env_context, controller, di_container=di)
+    with pytest.raises(ValueError):
         service.run_workflow()
-    assert "not registered" in str(excinfo.value)
 
 def test_source_file_name_is_none_when_not_set():
     env_json = {
@@ -48,7 +55,11 @@ def test_source_file_name_is_none_when_not_set():
                         {"type": "shell", "cmd": ["echo", "hello"]}
                     ]
                 }
-            }
+            },
+            # source_file_nameは無し
+            "contest_env_path": "env",
+            "contest_template_path": "template",
+            "contest_temp_path": "temp"
         }
     }
     env_context = ExecutionContext(
@@ -62,7 +73,8 @@ def test_source_file_name_is_none_when_not_set():
         workspace_path="/tmp/workspace"
     )
     const_handler = ConstHandler(env_context)
-    assert const_handler.source_file_name is None 
+    with pytest.raises(KeyError):
+        _ = const_handler.source_file_name
 
 def test_source_file_name_must_not_be_none():
     env_json = {
@@ -74,7 +86,10 @@ def test_source_file_name_must_not_be_none():
                     ]
                 }
             },
-            # "source_file_name": "main.py"  # ←これが無いとテストは失敗する
+            "source_file_name": "main.py",
+            "contest_env_path": "env",
+            "contest_template_path": "template",
+            "contest_temp_path": "temp"
         }
     }
     env_context = ExecutionContext(

@@ -11,7 +11,7 @@
         "py"
       ],
       "language_id": "5078",
-      "source_file_name": "main.py",
+      "source_file_name": "maina.py",
       "contest_current_path": "./contest_current",
       "contest_template_path": "./contest_template/{language_name}",
       "exclude_patterns": [

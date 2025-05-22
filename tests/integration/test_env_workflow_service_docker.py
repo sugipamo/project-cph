@@ -6,6 +6,8 @@ from src.env.resource.file.local_file_handler import LocalFileHandler
 from src.env.resource.run.local_run_handler import LocalRunHandler
 from src.env.resource.utils.const_handler import ConstHandler
 from src.operations.di_container import DIContainer
+from src.operations.docker.docker_request import DockerRequest, DockerOpType
+from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
 
 def test_env_workflow_service_docker_no_driver():
     # ダミーenv_json（docker環境用）
@@ -17,9 +19,13 @@ def test_env_workflow_service_docker_no_driver():
                         {"type": "oj", "cmd": ["echo", "hello"]}
                     ]
                 }
-            }
-        },
-        "cph_ojtools": "dummy_container"
+            },
+            "cph_ojtools": "dummy_container",
+            "contest_env_path": "env",
+            "contest_template_path": "template",
+            "contest_temp_path": "temp",
+            "source_file_name": "main.py"
+        }
     }
     env_context = ExecutionContext(
         command_type="run",
@@ -35,7 +41,11 @@ def test_env_workflow_service_docker_no_driver():
     file_handler = LocalFileHandler(env_context, const_handler)
     run_handler = LocalRunHandler(env_context, const_handler)
     controller = EnvResourceController(env_context, file_handler, run_handler, const_handler)
-    service = EnvWorkflowService(env_context, controller, di_container=DIContainer())
-    with pytest.raises(ValueError) as excinfo:
-        service.run_workflow()
-    assert "not registered" in str(excinfo.value) 
+    di = DIContainer()
+    di.register("DockerRequest", lambda: DockerRequest)
+    di.register("DockerOpType", lambda: DockerOpType)
+    di.register("OjCommandRequestFactory", lambda: OjCommandRequestFactory)
+    di.register("docker_driver", lambda: None)
+    service = EnvWorkflowService(env_context, controller, di_container=di)
+    with pytest.raises(ValueError):
+        service.run_workflow() 

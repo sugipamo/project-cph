@@ -10,7 +10,7 @@ class DIContainer:
         self._providers[key] = provider
 
     def resolve(self, key):
-        provider = self._providers.get(key)
+        provider = self._providers[key]
         if provider is None:
             raise ValueError(f"{key} is not registered")
         return provider()

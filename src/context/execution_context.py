@@ -48,23 +48,23 @@ class ExecutionContext:
         # 言語がenv_jsonに存在するかチェック
         if self.language not in self.env_json:
             return False, f"指定された言語 '{self.language}' は環境設定ファイルに存在しません"
-            
+
         return True, None
 
     def get_env_config(self) -> dict:
-        return self.env_json.get('env', {})
+        return self.env_json['env']
 
     def get_language_config(self) -> dict:
-        return self.env_json.get('language', {})
+        return self.env_json['language']
 
     def get_command_config(self) -> dict:
-        return self.env_json.get('command', {})
+        return self.env_json['command']
 
     def get_contest_config(self) -> dict:
-        return self.env_json.get('contest', {})
+        return self.env_json['contest']
 
     def get_problem_config(self) -> dict:
-        return self.env_json.get('problem', {})
+        return self.env_json['problem']
 
     def get_steps(self) -> list:
         """

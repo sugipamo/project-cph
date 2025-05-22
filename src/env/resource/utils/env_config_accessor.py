@@ -4,4 +4,8 @@ class EnvConfigAccessor:
 
     @property
     def source_file_name(self) -> str:
-        return self.config.env_json.get("source_file_name") 
+        lang = self.config.language
+        lang_conf = self.config.env_json[lang]
+        if lang_conf["source_file_name"] is None:
+            raise ValueError("source_file_nameがNoneです。必ず有効なパスを指定してください。")
+        return lang_conf["source_file_name"] 

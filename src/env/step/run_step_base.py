@@ -14,7 +14,7 @@ class RunStep:
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "RunStep":
         type_ = d["type"]
-        cmd_ = d.get("cmd", [])
+        cmd_ = d["cmd"] if "cmd" in d else []
         extra = {k: v for k, v in d.items() if k not in ("type", "cmd")}
         step = cls(type=type_, cmd=cmd_, extra=extra)
         step.validate()

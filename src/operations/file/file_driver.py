@@ -99,7 +99,7 @@ class MockFileDriver(FileDriver):
         self.operations.append(("copy", src_path, dst_path))
         if src_path in self.files:
             self.files.add(dst_path)
-            self.contents[dst_path] = self.contents.get(src_path, "")
+            self.contents[dst_path] = self.contents[src_path] if src_path in self.contents else ""
 
     def remove(self):
         path = self.resolve_path()
@@ -156,7 +156,7 @@ class MockFileDriver(FileDriver):
                     if self._read: return ""
                     self._read = True
                     return self._content
-            return Reader(self.contents.get(path, ""))
+            return Reader(self.contents[path] if path in self.contents else "")
         else:
             raise NotImplementedError(f"MockFileDriver.open: mode {mode} not supported")
 
@@ -174,7 +174,8 @@ class MockFileDriver(FileDriver):
     def hash_file(self, path, algo='sha256'):
         import hashlib
         h = hashlib.new(algo)
-        content = self.contents.get(Path(path), "").encode()
+        content = self.contents[Path(path)] if Path(path) in self.contents else ""
+        content = content.encode()
         h.update(content)
         return h.hexdigest()
 
@@ -265,7 +266,7 @@ class DummyFileDriver(FileDriver):
         self.operations.append(("copy", src_path, dst_path))
         if src_path in self.files:
             self.files.add(dst_path)
-            self.contents[dst_path] = self.contents.get(src_path, "")
+            self.contents[dst_path] = self.contents[src_path] if src_path in self.contents else ""
 
     def exists(self):
         path = self.resolve_path()

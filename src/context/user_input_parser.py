@@ -113,13 +113,13 @@ class UserInputParser:
 
     def _apply_system_info(self, context: ExecutionContext) -> ExecutionContext:
         system_info = self.system_info_provider.load()
-        context.command_type = system_info.get("command")
-        context.language = system_info.get("language")
-        context.env_type = system_info.get("env_type")
-        context.contest_name = system_info.get("contest_name")
-        context.problem_name = system_info.get("problem_name")
-        context.contest_current_path = system_info.get("contest_current_path")
-        context.env_json = system_info.get("env_json")
+        context.command_type = system_info["command"]
+        context.language = system_info["language"]
+        context.env_type = system_info["env_type"]
+        context.contest_name = system_info["contest_name"]
+        context.problem_name = system_info["problem_name"]
+        context.contest_current_path = system_info["contest_current_path"]
+        context.env_json = system_info["env_json"]
         return context
 
     def _apply_old_execution_context(self, context: ExecutionContext) -> ExecutionContext:
@@ -182,10 +182,10 @@ class UserInputParser:
     def _apply_env_type(self, args: list, context: ExecutionContext) -> tuple:
         if not context.env_json or not context.language:
             return args, context
-        env_types = context.env_json[context.language].get("env_types", {})
+        env_types = context.env_json[context.language]["env_types"] if "env_types" in context.env_json[context.language] else {}
         for idx, arg in enumerate(args):
             for env_type_name, env_type_conf in env_types.items():
-                aliases = env_type_conf.get("aliases", [])
+                aliases = env_type_conf["aliases"] if "aliases" in env_type_conf else []
                 if arg == env_type_name or arg in aliases:
                     context.env_type = env_type_name
                     new_args = args[:idx] + args[idx+1:]
@@ -195,10 +195,10 @@ class UserInputParser:
     def _apply_command(self, args: list, context: ExecutionContext) -> tuple:
         if not context.env_json or not context.language:
             return args, context
-        commands = context.env_json[context.language].get("commands", {})
+        commands = context.env_json[context.language]["commands"] if "commands" in context.env_json[context.language] else {}
         for idx, arg in enumerate(args):
             for cmd_name, cmd_conf in commands.items():
-                aliases = cmd_conf.get("aliases", [])
+                aliases = cmd_conf["aliases"] if "aliases" in cmd_conf else []
                 if arg == cmd_name or arg in aliases:
                     context.command_type = cmd_name
                     new_args = args[:idx] + args[idx+1:]
@@ -216,7 +216,7 @@ class UserInputParser:
 
     def _apply_contest_current_path(self, context: ExecutionContext) -> ExecutionContext:
         if context.env_json and context.language:
-            contest_current_path = context.env_json[context.language].get("contest_current_path")
+            contest_current_path = context.env_json[context.language]["contest_current_path"] if "contest_current_path" in context.env_json[context.language] else None
             if contest_current_path:
                 context.contest_current_path = contest_current_path
         if not context.contest_current_path:
@@ -238,7 +238,7 @@ class UserInputParser:
     def _apply_dockerfile(self, context: ExecutionContext) -> ExecutionContext:
         dockerfile_path = None
         if context.env_json and context.language:
-            dockerfile_path = context.env_json.get(context.language, {}).get("dockerfile_path")
+            dockerfile_path = context.env_json[context.language]["dockerfile_path"] if context.language in context.env_json and "dockerfile_path" in context.env_json[context.language] else None
         if dockerfile_path:
             try:
                 context.dockerfile = self.dockerfile_loader(dockerfile_path)
@@ -263,8 +263,8 @@ class UserInputParser:
             if idx + 1 < len(args):
                 ws = args[idx + 1]
         if not ws and context.env_json and context.language:
-            lang_conf = context.env_json.get(context.language, {})
-            ws = lang_conf.get("workspace_path")
+            lang_conf = context.env_json[context.language] if context.language in context.env_json else {}
+            ws = lang_conf["workspace_path"] if "workspace_path" in lang_conf else None
         if not ws:
             ws = os.getcwd()
         context.workspace_path = ws

@@ -12,11 +12,13 @@ def make_local_config():
         contest_name="abc001",
         problem_name="a",
         env_json={
-            "source_file_name": "main.cpp",
-            "source_file": "main.cpp",
-            "contest_env_path": "./env",
-            "contest_template_path": "./template",
-            "contest_temp_path": "./temp"
+            "cpp": {
+                "source_file_name": "main.cpp",
+                "source_file": "main.cpp",
+                "contest_env_path": "./env",
+                "contest_template_path": "./template",
+                "contest_temp_path": "./temp"
+            }
         },
         contest_current_path="contests/abc001",
         workspace_path="/tmp/workspace"
@@ -30,11 +32,13 @@ def make_docker_config():
         contest_name="abc002",
         problem_name="a",
         env_json={
-            "source_file_name": "main.py",
-            "source_file": "main.py",
-            "contest_env_path": "./env",
-            "contest_template_path": "./template",
-            "contest_temp_path": "./temp"
+            "python": {
+                "source_file_name": "main.py",
+                "source_file": "main.py",
+                "contest_env_path": "./env",
+                "contest_template_path": "./template",
+                "contest_temp_path": "./temp"
+            }
         },
         contest_current_path="contests/abc002",
         workspace_path="/tmp/workspace"
@@ -113,9 +117,8 @@ def test_path_resolver_contest_current_path_none():
     assert "contest_current_path" in str(excinfo.value)
 
 def test_path_resolver_contest_env_path_none():
-    # env_jsonからcontest_env_pathがNoneの場合
     config = make_local_config()
-    config.env_json["contest_env_path"] = None
+    config.env_json["cpp"]["contest_env_path"] = None
     handler = ConstHandler(config)
     with pytest.raises(ValueError) as excinfo:
         _ = handler.contest_env_path
@@ -123,7 +126,7 @@ def test_path_resolver_contest_env_path_none():
 
 def test_path_resolver_contest_template_path_none():
     config = make_local_config()
-    config.env_json["contest_template_path"] = None
+    config.env_json["cpp"]["contest_template_path"] = None
     handler = ConstHandler(config)
     with pytest.raises(ValueError) as excinfo:
         _ = handler.contest_template_path
@@ -131,7 +134,7 @@ def test_path_resolver_contest_template_path_none():
 
 def test_path_resolver_contest_temp_path_none():
     config = make_local_config()
-    config.env_json["contest_temp_path"] = None
+    config.env_json["cpp"]["contest_temp_path"] = None
     handler = ConstHandler(config)
     with pytest.raises(ValueError) as excinfo:
         _ = handler.contest_temp_path
