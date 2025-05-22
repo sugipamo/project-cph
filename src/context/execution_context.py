@@ -64,4 +64,14 @@ class ExecutionContext:
         return self.env_json.get('contest', {})
 
     def get_problem_config(self) -> dict:
-        return self.env_json.get('problem', {}) 
+        return self.env_json.get('problem', {})
+
+    def get_steps(self) -> list:
+        """
+        現在のlanguageとcommand_typeに基づきstepsリストを返す。
+        取得できない場合はValueErrorを投げる。
+        """
+        try:
+            return self.env_json[self.language]["commands"][self.command_type]["steps"]
+        except Exception as e:
+            raise ValueError(f"stepsの取得に失敗しました: {e}") 

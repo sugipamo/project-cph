@@ -88,7 +88,7 @@ class EnvWorkflowService:
         """
         context = self.env_context
         try:
-            steps = context.env_json[context.language]["commands"][context.command_type]["steps"]
+            steps = context.get_steps()
         except Exception as e:
             raise ValueError(f"env.jsonからコマンド({context.command_type})のsteps取得に失敗: {e}")
         composite_request = self.generate_run_requests(steps)
