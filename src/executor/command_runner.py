@@ -23,12 +23,7 @@ class CommandRunner:
             ValueError: パースに失敗した場合
         """
         context = UserInputParser().from_args(args)
-        try:
-            steps = context.env_json[context.language]["commands"][context.command_type]["steps"]
-        except Exception as e:
-            raise ValueError(f"env.jsonからコマンド({context.command_type})のsteps取得に失敗: {e}")
-
         di = setup_di_container()
         service = EnvWorkflowService.from_context(context, di_container=di)
-        result = service.run_workflow(steps)
+        result = service.run_workflow()
         print(result)

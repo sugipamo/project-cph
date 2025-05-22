@@ -82,13 +82,16 @@ class EnvWorkflowService:
         composite_request = builder.build(run_steps)
         return composite_request
 
-    def run_workflow(self, run_steps_dict_list):
+    def run_workflow(self):
         """
-        run_steps_dict_list: List[dict]（env.json等から取得した生データ）
-        driver: DIContainerからresolve
-        CompositeRequestを生成し、実行して結果を返す
+        self.env_contextからstepsを取得し、CompositeRequestを生成・実行して結果を返す
         """
-        composite_request = self.generate_run_requests(run_steps_dict_list)
+        context = self.env_context
+        try:
+            steps = context.env_json[context.language]["commands"][context.command_type]["steps"]
+        except Exception as e:
+            raise ValueError(f"env.jsonからコマンド({context.command_type})のsteps取得に失敗: {e}")
+        composite_request = self.generate_run_requests(steps)
         # driverの種類はenv_type等で判定
         env_type = getattr(self.env_context, 'env_type', 'local').lower()
         driver_key = 'shell_driver' if env_type == 'local' else 'docker_driver'
