@@ -1,5 +1,5 @@
 {
-  "command": "open",
+  "command": "test",
   "language": "python",
   "env_type": "local",
   "contest_name": "abc301",
@@ -134,6 +134,10 @@
               "cmd": [
                 "oj",
                 "submit",
+                "--wait=0",
+                "--yes",
+                "--language",
+                "{language_id}",
                 "https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_id}",
                 "{contest_current_path}/{source_file_name}"
               ]

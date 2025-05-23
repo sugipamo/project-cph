@@ -29,6 +29,11 @@ if __name__ == "__main__":
         from src.operations.exceptions.composite_step_failure import CompositeStepFailure
         if isinstance(e, CompositeStepFailure):
             print(f"ユーザー定義コマンドでエラーが発生しました: {e}")
+            if hasattr(e, 'result') and e.result is not None:
+                try:
+                    print(e.result.get_error_output())
+                except Exception:
+                    pass
         else:
             print(f"予期せぬエラーが発生しました: {e}")
             import traceback

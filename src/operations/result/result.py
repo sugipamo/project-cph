@@ -72,4 +72,16 @@ class OperationResult:
         return (
             f"<OperationResult success={self.success} op={self.op} cmd={self.cmd} path={self.path} "
             f"returncode={self.returncode} error_message={self.error_message}>"
-        ) 
+        )
+
+    def get_error_output(self):
+        parts = []
+        if self.error_message:
+            parts.append(f"error_message: {self.error_message}")
+        if self.stderr:
+            parts.append(f"stderr: {self.stderr}")
+        if self.stdout and not self.success:
+            parts.append(f"stdout: {self.stdout}")
+        if self.exception:
+            parts.append(f"exception: {self.exception}")
+        return "\n".join(parts) if parts else "No error output" 

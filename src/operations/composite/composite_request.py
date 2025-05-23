@@ -32,7 +32,7 @@ class CompositeRequest(BaseCompositeRequest):
             # allow_failureがFalseまたは未指定、かつ失敗した場合は即停止
             allow_failure = getattr(req, 'allow_failure', False)
             if not allow_failure and not (hasattr(result, 'success') and result.success):
-                raise CompositeStepFailure(f"Step failed: {req} (allow_failure=False)\nResult: {result}")
+                raise CompositeStepFailure(f"Step failed: {req} (allow_failure=False)\nResult: {result}", result=result)
         self._results = results
         return results
 

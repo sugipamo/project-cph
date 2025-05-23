@@ -74,4 +74,8 @@ class ExecutionContext:
         try:
             return self.env_json[self.language]["commands"][self.command_type]["steps"]
         except Exception as e:
-            raise ValueError(f"stepsの取得に失敗しました: {e}") 
+            raise ValueError(f"stepsの取得に失敗しました: {e}")
+
+    @property
+    def language_id(self):
+        return self.env_json[self.language]["language_id"] 

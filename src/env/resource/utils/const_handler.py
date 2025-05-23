@@ -90,6 +90,10 @@ class ConstHandler:
     @property
     def source_file_name(self):
         return self.config_accessor.source_file_name
+    
+    @property
+    def language_id(self):
+        return self.config.language_id
 
     def parse(self, s: str) -> str:
         # 変数展開: {contest_current} など
@@ -106,4 +110,5 @@ class ConstHandler:
         result = result.replace("{test_case_out}", str(self.test_case_out_path))
         result = result.replace("{contest_name}", str(self.config.contest_name))
         result = result.replace("{problem_id}", str(self.config.problem_name))
+        result = result.replace("{language_id}", str(self.language_id))
         return result
