@@ -1,9 +1,9 @@
 {
-  "command": "submit",
+  "command": "open",
   "language": "python",
   "env_type": "local",
   "contest_name": "abc301",
-  "problem_name": "dummy",
+  "problem_name": "a",
   "contest_current_path": "./contest_current",
   "env_json": {
     "python": {

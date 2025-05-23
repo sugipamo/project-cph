@@ -1,29 +1,31 @@
-def main():
+def main(context, controller, operations):
     """
-    メイン処理本体。context, operationsは必須。
+    メイン処理本体。context, operations, controllerは必須。
     """
     from src.env.env_workflow_service import EnvWorkflowService
-    from context import ExecutionContext, parse_user_input
-    import sys
-
-    args = sys.argv[1:]
-    try:
-        context = parse_user_input(args)
-    except Exception as e:
-        print(f"[ERROR] 入力パース失敗: {e}")
-        sys.exit(1)
-
-    service = EnvWorkflowService.from_context(context)
+    service = EnvWorkflowService(context, controller, operations)
     result = service.run_workflow()
     print(result)
 
 if __name__ == "__main__":
     import sys
     import json
+    from context import parse_user_input
     from src.env.build_di_container_and_context import build_operations_and_context
+    from src.env.env_resource_controller import EnvResourceController
+    from src.env.resource.file.local_file_handler import LocalFileHandler
+    from src.env.resource.run.local_run_handler import LocalRunHandler
+    from src.env.resource.utils.const_handler import ConstHandler
 
     try:
-        main()
+        args = sys.argv[1:]
+        context = parse_user_input(args)
+        _, operations = build_operations_and_context(context)
+        const_handler = ConstHandler(context)
+        file_handler = LocalFileHandler(context, const_handler)
+        run_handler = LocalRunHandler(context, const_handler)
+        controller = EnvResourceController(context, file_handler, run_handler, const_handler)
+        main(context, controller, operations)
     except ValueError as e:
         print(f"エラー: {e}")
         sys.exit(1)
