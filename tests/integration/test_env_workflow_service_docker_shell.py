@@ -48,6 +48,6 @@ def test_env_workflow_service_docker_shell_no_driver():
     operations.register("DockerOpType", lambda: DockerOpType)
     operations.register("DockerCommandRequestFactory", lambda: DockerCommandRequestFactory)
     operations.register("docker_driver", lambda: None)
-    service = EnvWorkflowService(env_context, controller, operations)
+    service = EnvWorkflowService(env_context, operations)
     with pytest.raises(ValueError):
         service.run_workflow() 

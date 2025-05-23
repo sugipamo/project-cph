@@ -42,7 +42,7 @@ def test_env_workflow_service_shell_no_driver():
     from src.env.factory.shell_command_request_factory import ShellCommandRequestFactory
     operations.register("ShellCommandRequestFactory", lambda: ShellCommandRequestFactory)
     operations.register("shell_driver", lambda: None)
-    service = EnvWorkflowService(env_context, controller, operations)
+    service = EnvWorkflowService(env_context, operations)
     with pytest.raises(ValueError):
         service.run_workflow()
 

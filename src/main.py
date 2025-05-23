@@ -1,38 +1,21 @@
-def build_app_from_args(args, system_info_provider=None, dockerfile_loader=None):
-    """
-    引数リストからcontext, controller, operationsをまとめて生成する初期化関数。
-    parse_user_inputへの依存注入も可能。
-    """
-    from context import parse_user_input
-    from src.env.build_di_container_and_context import build_operations_and_context
-    from src.env.env_resource_controller import EnvResourceController
-    from src.env.resource.file.local_file_handler import LocalFileHandler
-    from src.env.resource.run.local_run_handler import LocalRunHandler
-    from src.env.resource.utils.const_handler import ConstHandler
-
-    context = parse_user_input(args, system_info_provider=system_info_provider, dockerfile_loader=dockerfile_loader)
-    _, operations = build_operations_and_context(context)
-    const_handler = ConstHandler(context)
-    file_handler = LocalFileHandler(context, const_handler)
-    run_handler = LocalRunHandler(context, const_handler)
-    controller = EnvResourceController(context, file_handler, run_handler, const_handler)
-    return context, controller, operations
-
-def main(context, controller, operations):
+def main(context, operations):
     """
     メイン処理本体。context, operations, controllerは必須。
     """
     from src.env.env_workflow_service import EnvWorkflowService
-    service = EnvWorkflowService(context, controller, operations)
+    service = EnvWorkflowService(context, operations)
     result = service.run_workflow()
     print(result)
 
 if __name__ == "__main__":
     import sys
     import json
+    from src.context.user_input_parser import parse_user_input
+    from src.env.build_di_container_and_context import build_operations
     try:
-        context, controller, operations = build_app_from_args(sys.argv[1:])
-        main(context, controller, operations)
+        context = parse_user_input(sys.argv[1:])
+        operations = build_operations()
+        main(context, operations)
     except ValueError as e:
         print(f"エラー: {e}")
         sys.exit(1)

@@ -12,9 +12,9 @@ from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.file.local_file_driver import LocalFileDriver
 from pathlib import Path
 
-def build_operations_and_context(env_context):
+def build_operations():
     """
-    env_contextからoperations(DIContainer)をセットアップし、(env_context, operations) を返す
+    operations(DIContainer)をセットアップして返す
     テストや本番で共通利用できるよう最低限の依存性のみ登録する
     """
     operations = DIContainer()
@@ -33,4 +33,31 @@ def build_operations_and_context(env_context):
     # DockerRequest, DockerOpType
     operations.register('DockerRequest', lambda: DockerRequest)
     operations.register('DockerOpType', lambda: DockerOpType)
-    return env_context, operations 
+    return operations
+
+def build_mock_operations():
+    """
+    モック用のoperations(DIContainer)をセットアップして返す
+    """
+    from src.operations.mock.mock_file_driver import MockFileDriver
+    from src.operations.mock.mock_docker_driver import MockDockerDriver
+    from src.operations.mock.mock_shell_driver import MockShellDriver
+    from pathlib import Path
+
+    operations = DIContainer()
+    # driver
+    operations.register('shell_driver', lambda: MockShellDriver())
+    operations.register('docker_driver', lambda: MockDockerDriver())
+    operations.register('file_driver', lambda: MockFileDriver(base_dir=Path('.')))
+    # ファクトリー（本物をそのまま登録）
+    operations.register('ShellCommandRequestFactory', lambda: ShellCommandRequestFactory)
+    operations.register('DockerCommandRequestFactory', lambda: DockerCommandRequestFactory)
+    operations.register('CopyCommandRequestFactory', lambda: CopyCommandRequestFactory)
+    operations.register('OjCommandRequestFactory', lambda: OjCommandRequestFactory)
+    operations.register('RemoveCommandRequestFactory', lambda: RemoveCommandRequestFactory)
+    operations.register('BuildCommandRequestFactory', lambda: BuildCommandRequestFactory)
+    operations.register('PythonCommandRequestFactory', lambda: PythonCommandRequestFactory)
+    # DockerRequest, DockerOpType
+    operations.register('DockerRequest', lambda: DockerRequest)
+    operations.register('DockerOpType', lambda: DockerOpType)
+    return operations 

@@ -29,16 +29,7 @@ class EnvWorkflowService:
     # composite_request.execute(driver=...)  # 必要に応じて実行
     ```
     """
-    def __init__(self, env_context, controller, operations):
-        self.env_context = env_context
-        self.controller = controller
-        self.operations = operations
-
-    @classmethod
-    def from_context(cls, env_context, operations, controller):
-        """
-        本番用の依存性を組み立ててEnvWorkflowServiceを生成する
-        """
+    def __init__(self, env_context, operations):
         from src.env.env_resource_controller import EnvResourceController
         from src.env.resource.file.local_file_handler import LocalFileHandler
         from src.env.resource.run.local_run_handler import LocalRunHandler
@@ -46,8 +37,16 @@ class EnvWorkflowService:
         const_handler = ConstHandler(env_context)
         file_handler = LocalFileHandler(env_context, const_handler)
         run_handler = LocalRunHandler(env_context, const_handler)
-        controller = EnvResourceController(env_context, file_handler, run_handler, const_handler)
-        return cls(env_context, controller, operations)
+        self.controller = EnvResourceController(env_context, file_handler, run_handler, const_handler)
+        self.env_context = env_context
+        self.operations = operations
+
+    @classmethod
+    def from_context(cls, env_context, operations):
+        """
+        本番用の依存性を組み立ててEnvWorkflowServiceを生成する
+        """
+        return cls(env_context, operations)
 
     def generate_run_requests(self, run_steps_dict_list):
         """
