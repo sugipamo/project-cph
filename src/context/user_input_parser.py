@@ -52,11 +52,9 @@ class UserInputParser:
             return f.read()
     
     @classmethod
-    def from_args(cls, args: List[str], system_info_provider=None, dockerfile_loader=None) -> ExecutionContext:
-        if system_info_provider is None:
-            system_info_provider = LocalSystemInfoProvider()
-        if dockerfile_loader is None:
-            dockerfile_loader = cls._default_dockerfile_loader
+    def from_args(cls, args: List[str]) -> ExecutionContext:
+        system_info_provider = LocalSystemInfoProvider()
+        dockerfile_loader = cls._default_dockerfile_loader
         return cls(system_info_provider, dockerfile_loader).parse_and_validate(args)
 
     def parse_and_validate(self, args: List[str]) -> ExecutionContext:

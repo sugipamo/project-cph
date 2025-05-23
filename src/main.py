@@ -1,10 +1,27 @@
+def main(args, user_input_parser, di_container):
+    """
+    メイン処理本体。args, user_input_parser, di_containerは必須。
+    """
+    context = user_input_parser.from_args(args)
+    from src.env.env_workflow_service import EnvWorkflowService
+    service = EnvWorkflowService.from_context(context, di_container)
+    result = service.run_workflow()
+    print(result)
+
 if __name__ == "__main__":
     import sys
-    from src.executor import CommandRunner
     import json
+    from src.context.user_input_parser import UserInputParser, LocalSystemInfoProvider
+    from src.env.build_di_container_and_context import build_di_container_and_context
+
+    args = sys.argv[1:]
+    user_input_parser = UserInputParser(LocalSystemInfoProvider())
+    # contextはUserInputParserで生成
+    context = user_input_parser.from_args(args)
+    _, di_container = build_di_container_and_context(context)
 
     try:
-        CommandRunner.from_args().run(sys.argv[1:])
+        main(args, user_input_parser, di_container)
     except ValueError as e:
         print(f"エラー: {e}")
         sys.exit(1)
@@ -15,7 +32,6 @@ if __name__ == "__main__":
         print(f"JSONの解析に失敗しました: {e}")
         sys.exit(1)
     except Exception as e:
-        # CompositeStepFailureの場合はTracebackを抑制
         from src.operations.exceptions.composite_step_failure import CompositeStepFailure
         if isinstance(e, CompositeStepFailure):
             print(f"ユーザー定義コマンドでエラーが発生しました: {e}")
