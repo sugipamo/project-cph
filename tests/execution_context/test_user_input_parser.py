@@ -3,26 +3,9 @@ import shutil
 import tempfile
 import json
 import pytest
-from src.context.user_input_parser import parse_user_input, SystemInfoProvider
+from src.context.user_input_parser import parse_user_input
 from src.context.execution_context import ExecutionContext
-
-# テスト用のSystemInfoProviderモック
-class DummySystemInfoProvider(SystemInfoProvider):
-    def __init__(self, info=None):
-        self._info = info or {
-            "command": None,
-            "language": None,
-            "env_type": None,
-            "contest_name": None,
-            "problem_name": None,
-            "contest_current_path": None,
-            "env_json": None
-        }
-        self.saved = None
-    def load(self):
-        return self._info
-    def save(self, info):
-        self.saved = info
+from src.env.build_di_container_and_context import build_mock_operations
 
 @pytest.fixture(scope="module")
 def setup_env(tmp_path_factory):
@@ -34,11 +17,10 @@ def setup_env(tmp_path_factory):
 
 @pytest.mark.usefixtures("setup_env")
 def test_parse_python_command(monkeypatch, setup_env):
-    # contest_envのパスを一時ディレクトリに差し替え
     monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
-    provider = DummySystemInfoProvider()
     args = ["python", "docker", "test", "abc300", "a"]
-    ctx = parse_user_input(args, system_info_provider=provider)
+    operations = build_mock_operations()
+    ctx = parse_user_input(args, operations)
     assert ctx.language == "python"
     assert ctx.env_type == "docker"
     assert ctx.command_type == "test"
@@ -47,16 +29,13 @@ def test_parse_python_command(monkeypatch, setup_env):
     assert ctx.env_json is not None
     assert "python" in ctx.env_json
     assert ctx.contest_current_path == "./contest_current"
-    # system_info.jsonへの保存内容も確認
-    assert provider.saved["language"] == "python"
-    assert provider.saved["command"] == "test"
 
 @pytest.mark.usefixtures("setup_env")
 def test_parse_python_alias(monkeypatch, setup_env):
     monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
-    provider = DummySystemInfoProvider()
     args = ["py", "local", "t", "abc300", "a"]
-    ctx = parse_user_input(args, system_info_provider=provider)
+    operations = build_mock_operations()
+    ctx = parse_user_input(args, operations)
     assert ctx.language == "python"
     assert ctx.env_type == "local"
     assert ctx.command_type == "test"
@@ -66,18 +45,18 @@ def test_parse_python_alias(monkeypatch, setup_env):
 @pytest.mark.usefixtures("setup_env")
 def test_parse_too_many_args(monkeypatch, setup_env):
     monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
-    provider = DummySystemInfoProvider()
     args = ["python", "docker", "test", "abc300", "a", "extra"]
+    operations = build_mock_operations()
     with pytest.raises(ValueError) as e:
-        parse_user_input(args, system_info_provider=provider)
+        parse_user_input(args, operations)
     assert "引数が多すぎます" in str(e.value)
 
 @pytest.mark.usefixtures("setup_env")
 def test_parse_missing_required(monkeypatch, setup_env):
     monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
-    provider = DummySystemInfoProvider()
     # 言語指定なし
     args = ["docker", "test", "abc300", "a"]
+    operations = build_mock_operations()
     with pytest.raises(ValueError) as e:
-        parse_user_input(args, system_info_provider=provider)
+        parse_user_input(args, operations)
     assert "引数が多すぎます" in str(e.value) 

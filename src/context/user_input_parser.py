@@ -7,37 +7,32 @@ from .execution_context import ExecutionContext
 CONTEST_ENV_DIR = "contest_env"
 SYSTEM_INFO_PATH = "system_info.json"
 
-class SystemInfoProvider:
-    """
-    system_info.jsonの読み書きを抽象化するプロバイダ。
-    テストや他用途で差し替え可能。
-    """
-    def load(self) -> dict:
-        raise NotImplementedError
-    def save(self, info: dict):
-        raise NotImplementedError
+def _load_system_info(operations, path=SYSTEM_INFO_PATH):
+    file_driver = operations.resolve("file_driver")
+    from src.operations.file.file_request import FileRequest, FileOpType
+    req = FileRequest(FileOpType.EXISTS, path)
+    result = req.execute(driver=file_driver)
+    if not result.exists:
+        return {
+            "command": None,
+            "language": None,
+            "env_type": None,
+            "contest_name": None,
+            "problem_name": None,
+            "contest_current_path": None,
+            "env_json": None,
+            "dockerfile": None
+        }
+    req = FileRequest(FileOpType.READ, path)
+    result = req.execute(driver=file_driver)
+    return json.loads(result.content)
 
-class LocalSystemInfoProvider(SystemInfoProvider):
-    def __init__(self, path: str = SYSTEM_INFO_PATH):
-        self.path = path
-    def load(self) -> dict:
-        if not os.path.exists(self.path):
-            # ファイルがなければ全てNoneで返す
-            return {
-                "command": None,
-                "language": None,
-                "env_type": None,
-                "contest_name": None,
-                "problem_name": None,
-                "contest_current_path": None,
-                "env_json": None,
-                "dockerfile": None
-            }
-        with open(self.path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    def save(self, info: dict):
-        with open(self.path, "w", encoding="utf-8") as f:
-            json.dump(info, f, ensure_ascii=False, indent=2)
+def _save_system_info(operations, info, path=SYSTEM_INFO_PATH):
+    file_driver = operations.resolve("file_driver")
+    from src.operations.file.file_request import FileRequest, FileOpType
+    import json
+    req = FileRequest(FileOpType.WRITE, path, content=json.dumps(info, ensure_ascii=False, indent=2))
+    req.execute(driver=file_driver)
 
 def _default_dockerfile_loader(path: str) -> str:
     with open(path, "r", encoding="utf-8") as f:
@@ -180,33 +175,28 @@ def _apply_oj_dockerfile(context, dockerfile_loader):
         context.oj_dockerfile = None
     return context
 
-def _save_context_to_system_info(context, system_info_provider):
-    info = {
-        "command": context.command_type,
-        "language": context.language,
-        "env_type": context.env_type,
-        "contest_name": context.contest_name,
-        "problem_name": context.problem_name,
-        "contest_current_path": context.contest_current_path,
-        "env_json": context.env_json
-    }
-    system_info_provider.save(info)
+def make_dockerfile_loader(operations):
+    def loader(path: str) -> str:
+        file_driver = operations.resolve("file_driver")
+        from src.operations.file.file_request import FileRequest, FileOpType
+        req = FileRequest(FileOpType.READ, path)
+        result = req.execute(driver=file_driver)
+        return result.content
+    return loader
 
 def parse_user_input(
     args: List[str],
-    system_info_provider: SystemInfoProvider = None,
+    operations,  # 必須引数
     dockerfile_loader: Callable[[str], str] = None
 ) -> ExecutionContext:
     """
     引数リストからExecutionContextを生成するトップレベル関数。
     テスト用に依存注入も可能。
     """
-    if system_info_provider is None:
-        system_info_provider = LocalSystemInfoProvider()
     if dockerfile_loader is None:
-        dockerfile_loader = _default_dockerfile_loader
+        dockerfile_loader = make_dockerfile_loader(operations)
 
-    system_info = system_info_provider.load()
+    system_info = _load_system_info(operations)
     context = ExecutionContext(
         command_type=system_info["command"],
         language=system_info["language"],
@@ -243,7 +233,15 @@ def parse_user_input(
     # oj.Dockerfileの内容をセット
     context = _apply_oj_dockerfile(context, dockerfile_loader)
     # system_info.jsonへ保存
-    _save_context_to_system_info(context, system_info_provider)
+    _save_system_info(operations, {
+        "command": context.command_type,
+        "language": context.language,
+        "env_type": context.env_type,
+        "contest_name": context.contest_name,
+        "problem_name": context.problem_name,
+        "contest_current_path": context.contest_current_path,
+        "env_json": context.env_json
+    })
     # バリデーション
     is_valid, error_message = context.validate()
     if not is_valid:

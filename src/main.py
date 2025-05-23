@@ -13,8 +13,8 @@ if __name__ == "__main__":
     from src.context.user_input_parser import parse_user_input
     from src.env.build_di_container_and_context import build_operations
     try:
-        context = parse_user_input(sys.argv[1:])
         operations = build_operations()
+        context = parse_user_input(sys.argv[1:], operations)
         main(context, operations)
     except ValueError as e:
         print(f"エラー: {e}")
