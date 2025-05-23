@@ -11,7 +11,7 @@
         "py"
       ],
       "language_id": "5078",
-      "source_file_name": "maina.py",
+      "source_file_name": "main.py",
       "contest_current_path": "./contest_current",
       "contest_template_path": "./contest_template/{language_name}",
       "contest_temp_path": "./contest_temp",
@@ -26,6 +26,25 @@
           ],
           "description": "コンテストを開く",
           "steps": [
+            {
+              "type": "shell",
+              "allow_failure": false,
+              "show_output": false,
+              "cmd": [
+                "mkdir",
+                "-p",
+                "{contest_current_path}"
+              ]
+            },
+            {
+              "type": "shell",
+              "allow_failure": false,
+              "show_output": false,
+              "cmd": [
+                "touch",
+                "{contest_current_path}/{source_file_name}"
+              ]
+            },
             {
               "type": "shell",
               "allow_failure": true,
