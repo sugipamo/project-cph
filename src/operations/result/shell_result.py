@@ -1,16 +1,12 @@
 from .result import OperationResult
 
 class ShellResult(OperationResult):
-    def __init__(self, success: bool = None, stdout: str = None, stderr: str = None, returncode: int = None, cmd=None, start_time=None, end_time=None, request=None, error_message=None, exception=None, metadata=None):
-        super().__init__(success=success, exception=exception, error_message=error_message)
+    def __init__(self, success: bool = None, stdout: str = None, stderr: str = None, returncode: int = None, cmd=None, error_message=None, exception=None, start_time=None, end_time=None, request=None, metadata=None):
+        super().__init__(success=success, exception=exception, error_message=error_message, start_time=start_time, end_time=end_time, request=request, metadata=metadata)
         self.stdout = stdout
         self.stderr = stderr
         self.returncode = returncode
         self.cmd = cmd
-        self.start_time = start_time
-        self.end_time = end_time
-        self.request = request
-        self.metadata = metadata or {}
 
     def to_dict(self):
         base = super().to_dict()
@@ -19,9 +15,5 @@ class ShellResult(OperationResult):
             'stderr': self.stderr,
             'returncode': self.returncode,
             'cmd': self.cmd,
-            'start_time': self.start_time,
-            'end_time': self.end_time,
-            'request': str(self.request),
-            'metadata': self.metadata,
         })
         return base 
