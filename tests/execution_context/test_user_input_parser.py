@@ -37,7 +37,7 @@ def test_parse_python_command(monkeypatch, setup_env):
     # contest_envのパスを一時ディレクトリに差し替え
     monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
     provider = DummySystemInfoProvider()
-    parser = UserInputParser(system_info_provider=provider)
+    parser = UserInputParser(system_info_provider=provider, dockerfile_loader=UserInputParser._default_dockerfile_loader)
     args = ["python", "docker", "test", "abc300", "a"]
     ctx = parser.parse_and_validate(args)
     assert ctx.language == "python"
@@ -56,7 +56,7 @@ def test_parse_python_command(monkeypatch, setup_env):
 def test_parse_python_alias(monkeypatch, setup_env):
     monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
     provider = DummySystemInfoProvider()
-    parser = UserInputParser(system_info_provider=provider)
+    parser = UserInputParser(system_info_provider=provider, dockerfile_loader=UserInputParser._default_dockerfile_loader)
     args = ["py", "local", "t", "abc300", "a"]
     ctx = parser.parse_and_validate(args)
     assert ctx.language == "python"
@@ -69,7 +69,7 @@ def test_parse_python_alias(monkeypatch, setup_env):
 def test_parse_too_many_args(monkeypatch, setup_env):
     monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
     provider = DummySystemInfoProvider()
-    parser = UserInputParser(system_info_provider=provider)
+    parser = UserInputParser(system_info_provider=provider, dockerfile_loader=UserInputParser._default_dockerfile_loader)
     args = ["python", "docker", "test", "abc300", "a", "extra"]
     with pytest.raises(ValueError) as e:
         parser.parse_and_validate(args)
@@ -79,7 +79,7 @@ def test_parse_too_many_args(monkeypatch, setup_env):
 def test_parse_missing_required(monkeypatch, setup_env):
     monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
     provider = DummySystemInfoProvider()
-    parser = UserInputParser(system_info_provider=provider)
+    parser = UserInputParser(system_info_provider=provider, dockerfile_loader=UserInputParser._default_dockerfile_loader)
     # 言語指定なし
     args = ["docker", "test", "abc300", "a"]
     with pytest.raises(ValueError) as e:

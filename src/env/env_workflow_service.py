@@ -35,18 +35,19 @@ class EnvWorkflowService:
         self.di_container = di_container
 
     @classmethod
-    def from_context(cls, env_context, di_container):
+    def from_context(cls, env_context, di_container, controller=None):
         """
         本番用の依存性を組み立ててEnvWorkflowServiceを生成する
         """
-        from src.env.env_resource_controller import EnvResourceController
-        from src.env.resource.file.local_file_handler import LocalFileHandler
-        from src.env.resource.run.local_run_handler import LocalRunHandler
-        from src.env.resource.utils.const_handler import ConstHandler
-        const_handler = ConstHandler(env_context)
-        file_handler = LocalFileHandler(env_context, const_handler)
-        run_handler = LocalRunHandler(env_context, const_handler)
-        controller = EnvResourceController(env_context, file_handler, run_handler, const_handler)
+        if controller is None:
+            from src.env.env_resource_controller import EnvResourceController
+            from src.env.resource.file.local_file_handler import LocalFileHandler
+            from src.env.resource.run.local_run_handler import LocalRunHandler
+            from src.env.resource.utils.const_handler import ConstHandler
+            const_handler = ConstHandler(env_context)
+            file_handler = LocalFileHandler(env_context, const_handler)
+            run_handler = LocalRunHandler(env_context, const_handler)
+            controller = EnvResourceController(env_context, file_handler, run_handler, const_handler)
         return cls(env_context, controller, di_container)
 
     def generate_run_requests(self, run_steps_dict_list):

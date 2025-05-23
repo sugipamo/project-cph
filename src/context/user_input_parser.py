@@ -42,18 +42,22 @@ class UserInputParser:
     """
     CLI等から渡される引数リストをパースし、必須情報を抽出するクラス。
     """
-    def __init__(self, system_info_provider: Optional[SystemInfoProvider] = None, dockerfile_loader: Optional[Callable[[str], str]] = None):
-        self.system_info_provider = system_info_provider or LocalSystemInfoProvider()
-        self.dockerfile_loader = dockerfile_loader or self._default_dockerfile_loader
+    def __init__(self, system_info_provider, dockerfile_loader):
+        self.system_info_provider = system_info_provider
+        self.dockerfile_loader = dockerfile_loader
 
     @staticmethod
     def _default_dockerfile_loader(path: str) -> str:
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
-        
+    
     @classmethod
-    def from_args(cls, args: List[str]) -> ExecutionContext:
-        return cls(LocalSystemInfoProvider()).parse_and_validate(args)
+    def from_args(cls, args: List[str], system_info_provider=None, dockerfile_loader=None) -> ExecutionContext:
+        if system_info_provider is None:
+            system_info_provider = LocalSystemInfoProvider()
+        if dockerfile_loader is None:
+            dockerfile_loader = cls._default_dockerfile_loader
+        return cls(system_info_provider, dockerfile_loader).parse_and_validate(args)
 
     def parse_and_validate(self, args: List[str]) -> ExecutionContext:
         # 引数をパース
