@@ -68,8 +68,8 @@ def test_copy_command_request_factory(operations):
     req = factory.create_request(step)
     assert isinstance(req, FileRequest)
     assert req.op == FileOpType.COPY
-    assert req.src == "src.txt"
-    assert req.dst == "dst.txt"
+    assert req.path == "parsed_src.txt"
+    assert req.dst_path == "parsed_dst.txt"
 
 def test_oj_command_request_factory(operations):
     controller = MockController()
@@ -112,7 +112,7 @@ def test_remove_command_request_factory(operations):
     req = factory.create_request(step)
     assert isinstance(req, FileRequest)
     assert req.op == FileOpType.REMOVE
-    assert req.src == "target.txt"
+    assert req.path == "target.txt"
 
 def test_build_command_request_factory(operations):
     controller = MockController()
