@@ -1,7 +1,7 @@
 import pytest
 from src.env.env_workflow_service import EnvWorkflowService
 from src.context.execution_context import ExecutionContext
-from src.operations.composite_request import CompositeRequest
+from src.operations.composite.composite_request import CompositeRequest
 from src.operations.base_request import BaseRequest
 
 class DummyController:

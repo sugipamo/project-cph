@@ -16,7 +16,7 @@ if __name__ == "__main__":
         sys.exit(1)
     except Exception as e:
         # CompositeStepFailureの場合はTracebackを抑制
-        from src.operations.composite_request import CompositeStepFailure
+        from src.operations.composite.composite_step_failure import CompositeStepFailure
         if isinstance(e, CompositeStepFailure):
             print(f"ユーザー定義コマンドでエラーが発生しました: {e}")
         else:

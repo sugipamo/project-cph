@@ -9,6 +9,8 @@ from src.env.factory.remove_command_request_factory import RemoveCommandRequestF
 from src.env.factory.build_command_request_factory import BuildCommandRequestFactory
 from src.env.factory.python_command_request_factory import PythonCommandRequestFactory
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
+from src.operations.file.file_driver import LocalFileDriver
+from pathlib import Path
 
 def build_di_container_and_context(env_context):
     """
@@ -19,6 +21,7 @@ def build_di_container_and_context(env_context):
     # driver
     di_container.register('shell_driver', lambda: LocalShellDriver())
     di_container.register('docker_driver', lambda: LocalDockerDriver())
+    di_container.register('file_driver', lambda: LocalFileDriver(base_dir=Path('.')))
     # ファクトリー
     di_container.register('ShellCommandRequestFactory', lambda: ShellCommandRequestFactory)
     di_container.register('DockerCommandRequestFactory', lambda: DockerCommandRequestFactory)

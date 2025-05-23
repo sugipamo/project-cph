@@ -1,5 +1,5 @@
 {
-  "command": "open",
+  "command": "submit",
   "language": "python",
   "env_type": "local",
   "contest_name": "abc301",
@@ -42,6 +42,16 @@
               "cmd": [
                 "import webbrowser",
                 "webbrowser.open('https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_id}')"
+              ]
+            },
+            {
+              "type": "shell",
+              "allow_failure": true,
+              "show_output": false,
+              "cmd": [
+                "rm",
+                "-rf",
+                "{contest_current_path}/test"
               ]
             },
             {
@@ -105,7 +115,7 @@
               "cmd": [
                 "oj",
                 "submit",
-                "https://{contest_name}.contest.atcoder.jp/tasks/{contest_name}_{problem_id}",
+                "https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_id}",
                 "{contest_current_path}/{source_file_name}"
               ]
             }

@@ -1,5 +1,5 @@
 import pytest
-from src.operations.composite_request import CompositeRequest
+from src.operations.composite.composite_request import CompositeRequest
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.result import OperationResult
 from src.operations.file.file_request import FileRequest, FileOpType
@@ -7,6 +7,7 @@ from src.operations.operation_type import OperationType
 from src.operations.file.file_driver import MockFileDriver
 from src.operations.shell.local_shell_driver import LocalShellDriver
 from src.operations.base_request import BaseRequest
+from src.operations.composite.parallel_composite_request import ParallelCompositeRequest
 
 def test_composite_request_shell_and_file():
     shell_driver = LocalShellDriver()
@@ -44,7 +45,7 @@ def test_composite_request_invalid_type():
         CompositeRequest([123, "abc"])  # intやstrは不正
 
 def test_parallel_composite_request_shell_and_file():
-    from src.operations.composite_request import ParallelCompositeRequest
+    from src.operations.composite.parallel_composite_request import ParallelCompositeRequest
     from src.operations.shell.shell_request import ShellRequest
     from src.operations.file.file_request import FileRequest, FileOpType
     from src.operations.file.file_driver import MockFileDriver
@@ -85,6 +86,6 @@ def test_parallel_composite_request_shell_and_file():
     assert file_results[0].success
 
 def test_parallel_composite_request_invalid_type():
-    from src.operations.composite_request import ParallelCompositeRequest
+    from src.operations.composite.parallel_composite_request import ParallelCompositeRequest
     with pytest.raises(TypeError):
         ParallelCompositeRequest([123, "abc"])  # intやstrは不正 

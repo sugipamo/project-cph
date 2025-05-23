@@ -1,5 +1,5 @@
 import pytest
-from src.operations.composite_request import CompositeRequest
+from src.operations.composite.composite_request import CompositeRequest
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 
 

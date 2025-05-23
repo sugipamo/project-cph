@@ -1,4 +1,4 @@
-from src.operations.composite_request import CompositeRequest
+from src.operations.composite.composite_request import CompositeRequest
 from src.env.request_factory import create_requests_from_run_steps
 from src.env.step.run_step_shell import ShellRunStep
 from src.env.step.run_step_oj import OjRunStep

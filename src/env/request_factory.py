@@ -1,6 +1,11 @@
-from src.operations.composite_request import CompositeRequest
+from src.operations.composite.composite_request import CompositeRequest
+from src.operations.composite.driver_bound_request import DriverBoundRequest
 from src.operations.di_container import DIContainer
 from src.env.request_factory_selector import RequestFactorySelector
+from src.operations.shell.shell_request import ShellRequest
+from src.operations.file.file_request import FileRequest
+from src.operations.file.file_driver import LocalFileDriver
+from src.operations.shell.local_shell_driver import LocalShellDriver
 
 def create_requests_from_run_steps(controller, run_steps, di_container: DIContainer):
     """
@@ -9,8 +14,24 @@ def create_requests_from_run_steps(controller, run_steps, di_container: DIContai
     di_container: DIContainer
     """
     requests = []
+    def safe_resolve(di_container, key):
+        try:
+            return di_container.resolve(key) if di_container else None
+        except KeyError:
+            return None
+    shell_driver = safe_resolve(di_container, 'shell_driver')
+    file_driver = safe_resolve(di_container, 'file_driver')
     for step in run_steps:
         factory = RequestFactorySelector.get_factory_for_step(controller, step, di_container)
         req = factory.create_request(step)
-        requests.append(req)
+        # ShellRequest/ FileRequest などでdriverを割り当てる
+        if isinstance(req, ShellRequest):
+            requests.append(DriverBoundRequest(req, shell_driver))
+        elif isinstance(req, FileRequest):
+            if file_driver is not None:
+                requests.append(DriverBoundRequest(req, file_driver))
+            else:
+                requests.append(req)  # fallback: driver未指定
+        else:
+            requests.append(req)
     return CompositeRequest.make_composite_request(requests) 

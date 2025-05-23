@@ -1,5 +1,5 @@
 import pytest
-from src.operations.composite_request import CompositeRequest
+from src.operations.composite.composite_request import CompositeRequest
 from src.operations.shell.shell_request import ShellRequest
 
 def test_composite_request_shell_no_driver():
