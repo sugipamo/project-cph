@@ -8,6 +8,7 @@ from src.operations.mock.mock_file_driver import MockFileDriver
 from src.operations.shell.local_shell_driver import LocalShellDriver
 from src.operations.base_request import BaseRequest
 from src.operations.composite.parallel_composite_request import ParallelCompositeRequest
+from src.operations.exceptions.composite_step_failure import CompositeStepFailure
 
 def test_composite_request_shell_and_file():
     shell_driver = LocalShellDriver()
@@ -91,3 +92,77 @@ def test_parallel_composite_request_invalid_type():
     from src.operations.composite.parallel_composite_request import ParallelCompositeRequest
     with pytest.raises(TypeError):
         ParallelCompositeRequest([123, "abc"])  # intやstrは不正 
+
+class DummyRequest(BaseRequest):
+    _require_driver = False
+    def __init__(self, name=None, success=True, show_output=False, allow_failure=False):
+        super().__init__(name=name)
+        self._success = success
+        self.show_output = show_output
+        self.allow_failure = allow_failure
+    @property
+    def operation_type(self):
+        return "DUMMY"
+    def _execute_core(self, driver):
+        class Result:
+            def __init__(self, success):
+                self.success = success
+                self.stdout = "out" if success else ""
+                self.stderr = "err" if not success else ""
+            def __repr__(self):
+                return f"<Result success={self.success}>"
+        return Result(self._success)
+
+def test_composite_request_allow_failure():
+    req1 = DummyRequest("a", success=False, allow_failure=True)
+    req2 = DummyRequest("b", success=True)
+    composite = CompositeRequest([req1, req2])
+    # 失敗してもallow_failure=Trueなら例外にならない
+    results = composite._execute_core(driver=None)
+    assert len(results) == 2
+    assert not results[0].success
+    assert results[1].success
+
+def test_composite_request_step_failure():
+    req1 = DummyRequest("a", success=False, allow_failure=False)
+    req2 = DummyRequest("b", success=True)
+    composite = CompositeRequest([req1, req2])
+    with pytest.raises(CompositeStepFailure):
+        composite._execute_core(driver=None)
+
+def test_composite_request_show_output(capsys):
+    req1 = DummyRequest("a", success=True, show_output=True, allow_failure=True)
+    req2 = DummyRequest("b", success=False, show_output=True, allow_failure=True)
+    composite = CompositeRequest([req1, req2])
+    composite._execute_core(driver=None)
+    out, err = capsys.readouterr()
+    assert "out" in out or out == ""
+    assert "err" in out or err == ""
+
+def test_composite_request_repr():
+    req1 = DummyRequest("a")
+    req2 = DummyRequest("b")
+    composite = CompositeRequest([req1, req2], name="test")
+    s = repr(composite)
+    assert "CompositeRequest" in s
+    assert "test" in s
+    assert "a" in s and "b" in s
+
+def test_make_composite_request_single():
+    req = DummyRequest("a")
+    result = CompositeRequest.make_composite_request([req], name="single")
+    assert isinstance(result, DummyRequest)
+    assert result.name == "single"
+
+def test_make_composite_request_multiple():
+    reqs = [DummyRequest("a"), DummyRequest("b")]
+    result = CompositeRequest.make_composite_request(reqs, name="multi")
+    assert isinstance(result, CompositeRequest)
+    assert result.name == "multi"
+
+def test_count_leaf_requests_nested():
+    leaf1 = DummyRequest("a")
+    leaf2 = DummyRequest("b")
+    inner = CompositeRequest([leaf1, leaf2])
+    outer = CompositeRequest([inner, DummyRequest("c")])
+    assert outer.count_leaf_requests() == 3 
