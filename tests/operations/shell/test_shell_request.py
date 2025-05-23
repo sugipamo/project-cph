@@ -23,7 +23,10 @@ def test_mock_shell_request_fail():
         result.raise_if_error()
 
 def test_mock_shell_interactive_request():
-    req = MockShellInteractiveRequest(["python3", "-i"], stdout_lines=[">>> ", "hello\n", ">>> "], returncode=0)
+    class DummyMockShellInteractiveRequest(MockShellInteractiveRequest):
+        def _execute_core(self, driver=None):
+            return None
+    req = DummyMockShellInteractiveRequest(["python3", "-i"], stdout_lines=[">>> ", "hello\n", ">>> "], returncode=0)
     req.start()
     req.send_input('print("hello")\n')
     lines = []

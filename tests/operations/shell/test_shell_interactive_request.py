@@ -4,7 +4,10 @@ from src.operations.result import OperationResult
 from src.operations.constants.operation_type import OperationType
 
 def test_mock_interactive_multiple_inputs():
-    req = MockShellInteractiveRequest(["python3", "-i"], stdout_lines=[">>> ", "foo\n", ">>> ", "bar\n", ">>> "], stderr_lines=["err\n"], returncode=0)
+    class DummyMockShellInteractiveRequest(MockShellInteractiveRequest):
+        def _execute_core(self, driver=None):
+            return None
+    req = DummyMockShellInteractiveRequest(["python3", "-i"], stdout_lines=[">>> ", "foo\n", ">>> ", "bar\n", ">>> "], stderr_lines=["err\n"], returncode=0)
     req.start()
     req.send_input('print("foo")\n')
     req.send_input('print("bar")\n')
@@ -29,21 +32,30 @@ def test_mock_interactive_multiple_inputs():
     assert "foo" in result.stdout or "bar" in result.stdout
 
 def test_mock_is_running_and_wait():
-    req = MockShellInteractiveRequest(["sleep", "1"])
+    class DummyMockShellInteractiveRequest(MockShellInteractiveRequest):
+        def _execute_core(self, driver=None):
+            return None
+    req = DummyMockShellInteractiveRequest(["sleep", "1"])
     req.start()
     assert req.is_running()
     req.wait()
     assert not req.is_running()
 
 def test_mock_stop():
-    req = MockShellInteractiveRequest(["sleep", "10"])
+    class DummyMockShellInteractiveRequest(MockShellInteractiveRequest):
+        def _execute_core(self, driver=None):
+            return None
+    req = DummyMockShellInteractiveRequest(["sleep", "10"])
     req.start()
     assert req.is_running()
     req.stop()
     assert not req.is_running()
 
 def test_mock_timeout():
-    req = MockShellInteractiveRequest(["sleep", "10"], returncode=-9)
+    class DummyMockShellInteractiveRequest(MockShellInteractiveRequest):
+        def _execute_core(self, driver=None):
+            return None
+    req = DummyMockShellInteractiveRequest(["sleep", "10"], returncode=-9)
     req.start()
     # timeoutの模倣: stop()を呼ぶことで終了させる
     req.stop()

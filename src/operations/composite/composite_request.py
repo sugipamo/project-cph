@@ -16,8 +16,9 @@ class CompositeRequest(BaseCompositeRequest):
         return len(self.requests)
 
     def execute(self, driver):
-        if self._executed:
-            raise RuntimeError("This CompositeRequest has already been executed.")
+        return super().execute(driver)
+
+    def _execute_core(self, driver):
         results = []
         for req in self.requests:
             result = req.execute(driver=driver)
@@ -33,7 +34,6 @@ class CompositeRequest(BaseCompositeRequest):
             if not allow_failure and not (hasattr(result, 'success') and result.success):
                 raise CompositeStepFailure(f"Step failed: {req} (allow_failure=False)\nResult: {result}")
         self._results = results
-        self._executed = True
         return results
 
     def __repr__(self):

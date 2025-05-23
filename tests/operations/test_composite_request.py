@@ -69,13 +69,15 @@ def test_parallel_composite_request_shell_and_file():
         @property
         def operation_type(self):
             return getattr(self.req, 'operation_type', None)
+        def _execute_core(self, driver=None):
+            return self.req.execute(driver=self.driver)
 
     parallel = ParallelCompositeRequest([
         DriverBoundRequest(req1, shell_driver),
         DriverBoundRequest(req2, shell_driver),
         DriverBoundRequest(req3, file_driver),
     ])
-    results = parallel.execute(driver=None)
+    results = parallel.execute(driver="dummy")
     assert len(results) == 3
     shell_results = [r for r in results if hasattr(r, 'operation_type') and r.operation_type == OperationType.SHELL]
     file_results = [r for r in results if hasattr(r, 'operation_type') and r.operation_type == OperationType.FILE]

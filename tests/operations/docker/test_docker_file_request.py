@@ -4,8 +4,13 @@ from src.operations.mock.mock_docker_driver import MockDockerDriver
 
 
 def test_docker_file_request_to_container():
+    class DummyDockerFileRequest(DockerFileRequest):
+        @property
+        def operation_type(self):
+            from src.operations.constants.operation_type import OperationType
+            return OperationType.DOCKER
     mock_driver = MockDockerDriver()
-    req = DockerFileRequest(
+    req = DummyDockerFileRequest(
         src_path="host.txt",
         dst_path="/container/path.txt",
         container="test_container",
@@ -18,8 +23,13 @@ def test_docker_file_request_to_container():
     assert mock_driver.operations[-1][4] is True
 
 def test_docker_file_request_from_container():
+    class DummyDockerFileRequest(DockerFileRequest):
+        @property
+        def operation_type(self):
+            from src.operations.constants.operation_type import OperationType
+            return OperationType.DOCKER
     mock_driver = MockDockerDriver()
-    req = DockerFileRequest(
+    req = DummyDockerFileRequest(
         src_path="/container/path.txt",
         dst_path="host.txt",
         container="test_container",
@@ -32,7 +42,12 @@ def test_docker_file_request_from_container():
     assert mock_driver.operations[-1][4] is False
 
 def test_docker_file_request_no_driver():
-    req = DockerFileRequest(
+    class DummyDockerFileRequest(DockerFileRequest):
+        @property
+        def operation_type(self):
+            from src.operations.constants.operation_type import OperationType
+            return OperationType.DOCKER
+    req = DummyDockerFileRequest(
         src_path="a",
         dst_path="b",
         container="c1",

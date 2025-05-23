@@ -23,10 +23,9 @@ class ShellRequest(BaseRequest):
         return OperationType.SHELL
 
     def execute(self, driver):
-        if self._executed:
-            raise RuntimeError("This ShellRequest has already been executed.")
-        if driver is None:
-            raise ValueError("ShellRequest.execute()にはdriverが必須です")
+        return super().execute(driver)
+
+    def _execute_core(self, driver):
         import time
         start_time = time.time()
         try:
@@ -38,7 +37,7 @@ class ShellRequest(BaseRequest):
                 timeout=self.timeout
             )
             end_time = time.time()
-            self._result = OperationResult(
+            return OperationResult(
                 stdout=completed.stdout,
                 stderr=completed.stderr,
                 returncode=completed.returncode,
@@ -49,7 +48,7 @@ class ShellRequest(BaseRequest):
             )
         except Exception as e:
             end_time = time.time()
-            self._result = OperationResult(
+            return OperationResult(
                 stdout="",
                 stderr=str(e),
                 returncode=None,
@@ -58,8 +57,6 @@ class ShellRequest(BaseRequest):
                 start_time=start_time,
                 end_time=end_time
             )
-        self._executed = True
-        return self._result
 
     def __repr__(self):
         return f"<ShellRequest cmd={self.cmd}>" 

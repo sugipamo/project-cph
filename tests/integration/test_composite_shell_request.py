@@ -7,4 +7,4 @@ def test_composite_request_shell_no_driver():
     composite = CompositeRequest([req])
     with pytest.raises(ValueError) as excinfo:
         composite.execute(None)
-    assert str(excinfo.value) == "ShellRequest.execute()にはdriverが必須です" 
+    assert str(excinfo.value) == "CompositeRequest.execute()にはdriverが必須です" 

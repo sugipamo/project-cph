@@ -10,4 +10,8 @@ class DriverBoundRequest(BaseRequest):
         return self.req.execute(driver=self.driver)
     @property
     def operation_type(self):
-        return getattr(self.req, 'operation_type', None) 
+        return getattr(self.req, 'operation_type', None)
+
+    def _execute_core(self, driver=None):
+        # driver引数より自身のdriver属性を優先
+        return self.req.execute(driver=self.driver) 

@@ -6,6 +6,7 @@ from src.operations.base_request import BaseRequest
 from src.operations.python.python_util import PythonUtil
 
 class PythonRequest(BaseRequest):
+    _require_driver = False
     def __init__(self, code_or_file, cwd=None, show_output=True, name=None, debug_tag=None):
         super().__init__(name=name, debug_tag=debug_tag)
         self.code_or_file = code_or_file  # コード文字列またはファイル名
@@ -19,6 +20,9 @@ class PythonRequest(BaseRequest):
         return OperationType.PYTHON
 
     def execute(self, driver=None):
+        return super().execute(driver)
+
+    def _execute_core(self, driver=None):
         import os
         import time
         start_time = time.time()
@@ -32,7 +36,7 @@ class PythonRequest(BaseRequest):
                 code = "\n".join(self.code_or_file)
                 stdout, stderr, returncode = PythonUtil.run_code_string(code, cwd=self.cwd)
             end_time = time.time()
-            self._result = OperationResult(
+            return OperationResult(
                 stdout=stdout,
                 stderr=stderr,
                 returncode=returncode,
@@ -42,7 +46,7 @@ class PythonRequest(BaseRequest):
             )
         except Exception as e:
             end_time = time.time()
-            self._result = OperationResult(
+            return OperationResult(
                 stdout="",
                 stderr=str(e),
                 returncode=1,
@@ -52,8 +56,6 @@ class PythonRequest(BaseRequest):
             )
         finally:
             os.chdir(old_cwd)
-        self._executed = True
-        return self._result
 
     def __repr__(self):
         return f"<PythonRequest code_or_file={self.code_or_file}>" 

@@ -4,6 +4,7 @@ from src.operations.base_request import BaseRequest
 from typing import List, Optional
 
 class MockShellRequest(BaseRequest):
+    _require_driver = False
     def __init__(self, cmd: List[str], stdout: str = "", stderr: str = "", returncode: int = 0, env=None, inputdata=None, timeout=None, name=None, debug_tag=None):
         super().__init__(name=name, debug_tag=debug_tag)
         self.cmd = cmd
@@ -17,30 +18,30 @@ class MockShellRequest(BaseRequest):
         self.mock_returncode = returncode
         self.history = []
 
-    def execute(self):
-        if self._executed:
-            raise RuntimeError("This MockShellRequest has already been executed.")
+    def execute(self, driver=None):
+        return super().execute(driver)
+
+    def _execute_core(self, driver=None):
         self.history.append({
             "cmd": self.cmd,
             "env": self.env,
             "inputdata": self.inputdata,
             "timeout": self.timeout
         })
-        self._result = OperationResult(
+        return OperationResult(
             stdout=self.mock_stdout,
             stderr=self.mock_stderr,
             returncode=self.mock_returncode,
             request=self,
             path=None
         )
-        self._executed = True
-        return self._result
 
     @property
     def operation_type(self):
         return OperationType.SHELL
 
 class MockShellInteractiveRequest(BaseRequest):
+    _require_driver = False
     def __init__(self, cmd, stdout_lines=None, stderr_lines=None, returncode=0, env=None, name=None, debug_tag=None):
         super().__init__(name=name, debug_tag=debug_tag)
         self.cmd = cmd
@@ -120,4 +121,8 @@ class MockShellInteractiveRequest(BaseRequest):
 
     @property
     def operation_type(self):
-        return OperationType.SHELL 
+        return OperationType.SHELL
+
+    def _execute_core(self, driver=None):
+        # テスト用のダミー実装
+        return None 

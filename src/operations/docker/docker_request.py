@@ -31,10 +31,9 @@ class DockerRequest(BaseRequest):
         return OperationType.DOCKER
 
     def execute(self, driver):
-        if self._executed:
-            raise RuntimeError("This DockerRequest has already been executed.")
-        if driver is None:
-            raise ValueError("DockerRequest.execute()にはdriverが必須です")
+        return super().execute(driver)
+
+    def _execute_core(self, driver):
         try:
             if self.op == DockerOpType.RUN:
                 result = driver.run_container(self.image, self.container, self.options)
@@ -48,16 +47,14 @@ class DockerRequest(BaseRequest):
                 result = driver.get_logs(self.container)
             else:
                 raise ValueError(f"Unknown DockerOpType: {self.op}")
-            self._result = OperationResult(
+            return OperationResult(
                 op=self.op,
                 stdout=getattr(result, 'stdout', None),
                 stderr=getattr(result, 'stderr', None),
                 returncode=getattr(result, 'returncode', None)
             )
         except Exception as e:
-            self._result = OperationResult(success=False, op=self.op, stdout=None, stderr=str(e), returncode=None)
-        self._executed = True
-        return self._result
+            return OperationResult(success=False, op=self.op, stdout=None, stderr=str(e), returncode=None)
 
     def __repr__(self):
         return f"<DockerRequest op={self.op} container={self.container} command={self.command}>" 

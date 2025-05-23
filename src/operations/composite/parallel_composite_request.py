@@ -7,8 +7,9 @@ class ParallelCompositeRequest(BaseCompositeRequest):
         self.max_workers = max_workers
 
     def execute(self, driver):
-        if self._executed:
-            raise RuntimeError("This ParallelCompositeRequest has already been executed.")
+        return super().execute(driver)
+
+    def _execute_core(self, driver):
         results = [None] * len(self.requests)
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             future_to_idx = {executor.submit(req.execute, driver): idx for idx, req in enumerate(self.requests)}
@@ -17,10 +18,8 @@ class ParallelCompositeRequest(BaseCompositeRequest):
                 try:
                     results[idx] = future.result()
                 except Exception as e:
-                    self._executed = True
                     raise
         self._results = results
-        self._executed = True
         return results
 
     def __repr__(self):
