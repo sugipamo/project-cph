@@ -4,7 +4,7 @@ if __name__ == "__main__":
     import json
 
     try:
-        CommandRunner.run(sys.argv[1:])
+        CommandRunner.from_args().run(sys.argv[1:])
     except ValueError as e:
         print(f"エラー: {e}")
         sys.exit(1)
@@ -16,7 +16,7 @@ if __name__ == "__main__":
         sys.exit(1)
     except Exception as e:
         # CompositeStepFailureの場合はTracebackを抑制
-        from src.operations.composite.composite_step_failure import CompositeStepFailure
+        from src.operations.exceptions.composite_step_failure import CompositeStepFailure
         if isinstance(e, CompositeStepFailure):
             print(f"ユーザー定義コマンドでエラーが発生しました: {e}")
         else:
