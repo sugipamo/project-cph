@@ -5,7 +5,7 @@ def main(context, operations):
     from src.env.env_workflow_service import EnvWorkflowService
     service = EnvWorkflowService(context, operations)
     result = service.run_workflow()
-    print(result)
+    [print(r) for r in result]
 
 if __name__ == "__main__":
     import sys
