@@ -41,6 +41,7 @@ class PythonRequest(BaseRequest):
                 stderr=stderr,
                 returncode=returncode,
                 request=self,
+                cmd=self.code_or_file,
                 start_time=start_time,
                 end_time=end_time
             )
@@ -51,6 +52,7 @@ class PythonRequest(BaseRequest):
                 stderr=str(e),
                 returncode=1,
                 request=self,
+                cmd=self.code_or_file,
                 start_time=start_time,
                 end_time=end_time
             )

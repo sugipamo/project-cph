@@ -1,5 +1,5 @@
 {
-  "command": "submit",
+  "command": "open",
   "language": "python",
   "env_type": "local",
   "contest_name": "abc301",
