@@ -182,7 +182,7 @@ def make_dockerfile_loader(operations):
 
 def parse_user_input(
     args: List[str],
-    operations,  # 必須引数
+    operations,
     dockerfile_loader: Callable[[str], str] = None
 ) -> ExecutionContext:
     """
