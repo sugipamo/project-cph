@@ -29,13 +29,13 @@ class EnvWorkflowService:
     # composite_request.execute(driver=...)  # 必要に応じて実行
     ```
     """
-    def __init__(self, env_context, controller, di_container):
+    def __init__(self, env_context, controller, operations):
         self.env_context = env_context
         self.controller = controller
-        self.di_container = di_container
+        self.operations = operations
 
     @classmethod
-    def from_context(cls, env_context, di_container, controller):
+    def from_context(cls, env_context, operations, controller):
         """
         本番用の依存性を組み立ててEnvWorkflowServiceを生成する
         """
@@ -47,7 +47,7 @@ class EnvWorkflowService:
         file_handler = LocalFileHandler(env_context, const_handler)
         run_handler = LocalRunHandler(env_context, const_handler)
         controller = EnvResourceController(env_context, file_handler, run_handler, const_handler)
-        return cls(env_context, controller, di_container)
+        return cls(env_context, controller, operations)
 
     def generate_run_requests(self, run_steps_dict_list):
         """
@@ -69,7 +69,7 @@ class EnvWorkflowService:
                 run_steps.validate_all()
             except Exception as e:
                 raise ValueError(f"RunSteps validation failed: {e}")
-        builder = RunWorkflowBuilder.from_controller(self.controller, self.di_container)
+        builder = RunWorkflowBuilder.from_controller(self.controller, self.operations)
         composite_request = builder.build(run_steps)
         return composite_request
 
@@ -86,6 +86,6 @@ class EnvWorkflowService:
         # driverの種類はenv_type等で判定
         env_type = self.env_context.env_type.lower()
         driver_key = 'shell_driver' if env_type == 'local' else 'docker_driver'
-        driver = self.di_container.resolve(driver_key) if self.di_container else None
+        driver = self.operations.resolve(driver_key) if self.operations else None
         result = composite_request.execute(driver=driver)
         return result

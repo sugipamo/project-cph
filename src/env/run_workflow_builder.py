@@ -6,16 +6,16 @@ from src.operations.di_container import DIContainer
 from src.env.types import EnvResourceController, RunSteps, CompositeRequest
 
 class RunWorkflowBuilder:
-    def __init__(self, controller: EnvResourceController, di_container: DIContainer):
+    def __init__(self, controller: EnvResourceController, operations: DIContainer):
         self.controller = controller
-        self.di_container = di_container
+        self.operations = operations
 
     @classmethod
-    def from_controller(cls, controller: EnvResourceController, di_container: DIContainer) -> 'RunWorkflowBuilder':
+    def from_controller(cls, controller: EnvResourceController, operations: DIContainer) -> 'RunWorkflowBuilder':
         """
-        controllerとdi_containerからRunWorkflowBuilderを生成
+        controllerとoperationsからRunWorkflowBuilderを生成
         """
-        return cls(controller, di_container)
+        return cls(controller, operations)
 
     def build(self, run_steps: RunSteps) -> CompositeRequest:
         """
@@ -27,7 +27,7 @@ class RunWorkflowBuilder:
             build_req = self.create_docker_build_request()
             requests.append(build_req)
         # 2. 各run_stepからrequest生成
-        step_requests = create_requests_from_run_steps(self.controller, run_steps, self.di_container)
+        step_requests = create_requests_from_run_steps(self.controller, run_steps, self.operations)
         # step_requestsがCompositeRequestなら展開、単体ならそのまま
         if isinstance(step_requests, CompositeRequest):
             requests.extend(step_requests.requests)
@@ -50,12 +50,12 @@ class RunWorkflowBuilder:
 
     def create_docker_build_request(self) -> object:
         """
-        docker build用のDockerRequestを生成（DIContainerからクラスを解決）
+        docker build用のDockerRequestを生成（operationsからクラスを解決）
         """
         image_name = self.controller.const_handler.image_name
         dockerfile_text = self.controller.const_handler.dockerfile_text
-        DockerRequest = self.di_container.resolve("DockerRequest")
-        DockerOpType = self.di_container.resolve("DockerOpType")
+        DockerRequest = self.operations.resolve("DockerRequest")
+        DockerOpType = self.operations.resolve("DockerOpType")
         return DockerRequest(
             DockerOpType.RUN,
             image=image_name,

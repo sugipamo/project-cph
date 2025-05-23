@@ -7,22 +7,22 @@ from src.operations.file.file_request import FileRequest
 from src.operations.file.local_file_driver import LocalFileDriver
 from src.operations.shell.local_shell_driver import LocalShellDriver
 
-def create_requests_from_run_steps(controller, run_steps, di_container: DIContainer):
+def create_requests_from_run_steps(controller, run_steps, operations: DIContainer):
     """
     run_steps: RunSteps型（RunStepのリスト）
     controller: EnvResourceController
-    di_container: DIContainer
+    operations: DIContainer
     """
     requests = []
-    def safe_resolve(di_container, key):
+    def safe_resolve(operations, key):
         try:
-            return di_container.resolve(key) if di_container else None
+            return operations.resolve(key) if operations else None
         except KeyError:
             return None
-    shell_driver = safe_resolve(di_container, 'shell_driver')
-    file_driver = safe_resolve(di_container, 'file_driver')
+    shell_driver = safe_resolve(operations, 'shell_driver')
+    file_driver = safe_resolve(operations, 'file_driver')
     for step in run_steps:
-        factory = RequestFactorySelector.get_factory_for_step(controller, step, di_container)
+        factory = RequestFactorySelector.get_factory_for_step(controller, step, operations)
         req = factory.create_request(step)
         # ShellRequest/ FileRequest などでdriverを割り当てる
         if isinstance(req, ShellRequest):

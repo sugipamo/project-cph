@@ -1,10 +1,10 @@
-def main(args, user_input_parser, di_container):
+def main(args, user_input_parser, operations):
     """
-    メイン処理本体。args, user_input_parser, di_containerは必須。
+    メイン処理本体。args, user_input_parser, operationsは必須。
     """
     context = user_input_parser.from_args(args)
     from src.env.env_workflow_service import EnvWorkflowService
-    service = EnvWorkflowService.from_context(context, di_container)
+    service = EnvWorkflowService.from_context(context, operations)
     result = service.run_workflow()
     print(result)
 
@@ -18,10 +18,10 @@ if __name__ == "__main__":
     user_input_parser = UserInputParser(LocalSystemInfoProvider())
     # contextはUserInputParserで生成
     context = user_input_parser.from_args(args)
-    _, di_container = build_di_container_and_context(context)
+    _, operations = build_di_container_and_context(context)
 
     try:
-        main(args, user_input_parser, di_container)
+        main(args, user_input_parser, operations)
     except ValueError as e:
         print(f"エラー: {e}")
         sys.exit(1)

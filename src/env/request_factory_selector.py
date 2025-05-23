@@ -24,34 +24,34 @@ class RequestFactorySelector:
     }
 
     @staticmethod
-    def get_shell_factory(controller, di_container: DIContainer):
+    def get_shell_factory(controller, operations: DIContainer):
         env_type = controller.env_context.env_type
         if env_type.lower() == "docker":
-            return di_container.resolve("DockerCommandRequestFactory")(controller)
+            return operations.resolve("DockerCommandRequestFactory")(controller)
         else:
-            return di_container.resolve("ShellCommandRequestFactory")(controller)
+            return operations.resolve("ShellCommandRequestFactory")(controller)
 
     @classmethod
-    def get_factory_for_step(cls, controller, step, di_container: DIContainer):
+    def get_factory_for_step(cls, controller, step, operations: DIContainer):
         # stepにforce_env_typeがあればそれを優先
         env_type = getattr(step, 'force_env_type', None) or controller.env_context.env_type
         if isinstance(step, ShellRunStep):
             if env_type and env_type.lower() == "docker":
-                return di_container.resolve("DockerCommandRequestFactory")(controller)
+                return operations.resolve("DockerCommandRequestFactory")(controller)
             else:
-                return di_container.resolve("ShellCommandRequestFactory")(controller)
+                return operations.resolve("ShellCommandRequestFactory")(controller)
         elif isinstance(step, CopyRunStep):
-            return di_container.resolve("CopyCommandRequestFactory")(controller)
+            return operations.resolve("CopyCommandRequestFactory")(controller)
         elif isinstance(step, OjRunStep):
-            return di_container.resolve("OjCommandRequestFactory")(controller)
+            return operations.resolve("OjCommandRequestFactory")(controller)
         elif isinstance(step, RemoveRunStep):
-            return di_container.resolve("RemoveCommandRequestFactory")(controller)
+            return operations.resolve("RemoveCommandRequestFactory")(controller)
         elif isinstance(step, BuildRunStep):
-            return di_container.resolve("BuildCommandRequestFactory")(controller)
+            return operations.resolve("BuildCommandRequestFactory")(controller)
         elif isinstance(step, PythonRunStep):
-            return di_container.resolve("PythonCommandRequestFactory")(controller)
+            return operations.resolve("PythonCommandRequestFactory")(controller)
         else:
             factory_cls = cls.FACTORY_MAP[step.type]
             if not factory_cls:
                 raise ValueError(f"Unknown or unsupported run type: {getattr(step, 'type', None)} (step={step})")
-            return di_container.resolve(factory_cls.__name__)(controller) 
+            return operations.resolve(factory_cls.__name__)(controller) 

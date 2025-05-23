@@ -14,23 +14,23 @@ from pathlib import Path
 
 def build_di_container_and_context(env_context):
     """
-    env_contextからDIContainerをセットアップし、(env_context, di_container) を返す
+    env_contextからoperations(DIContainer)をセットアップし、(env_context, operations) を返す
     テストや本番で共通利用できるよう最低限の依存性のみ登録する
     """
-    di_container = DIContainer()
+    operations = DIContainer()
     # driver
-    di_container.register('shell_driver', lambda: LocalShellDriver())
-    di_container.register('docker_driver', lambda: LocalDockerDriver())
-    di_container.register('file_driver', lambda: LocalFileDriver(base_dir=Path('.')))
+    operations.register('shell_driver', lambda: LocalShellDriver())
+    operations.register('docker_driver', lambda: LocalDockerDriver())
+    operations.register('file_driver', lambda: LocalFileDriver(base_dir=Path('.')))
     # ファクトリー
-    di_container.register('ShellCommandRequestFactory', lambda: ShellCommandRequestFactory)
-    di_container.register('DockerCommandRequestFactory', lambda: DockerCommandRequestFactory)
-    di_container.register('CopyCommandRequestFactory', lambda: CopyCommandRequestFactory)
-    di_container.register('OjCommandRequestFactory', lambda: OjCommandRequestFactory)
-    di_container.register('RemoveCommandRequestFactory', lambda: RemoveCommandRequestFactory)
-    di_container.register('BuildCommandRequestFactory', lambda: BuildCommandRequestFactory)
-    di_container.register('PythonCommandRequestFactory', lambda: PythonCommandRequestFactory)
+    operations.register('ShellCommandRequestFactory', lambda: ShellCommandRequestFactory)
+    operations.register('DockerCommandRequestFactory', lambda: DockerCommandRequestFactory)
+    operations.register('CopyCommandRequestFactory', lambda: CopyCommandRequestFactory)
+    operations.register('OjCommandRequestFactory', lambda: OjCommandRequestFactory)
+    operations.register('RemoveCommandRequestFactory', lambda: RemoveCommandRequestFactory)
+    operations.register('BuildCommandRequestFactory', lambda: BuildCommandRequestFactory)
+    operations.register('PythonCommandRequestFactory', lambda: PythonCommandRequestFactory)
     # DockerRequest, DockerOpType
-    di_container.register('DockerRequest', lambda: DockerRequest)
-    di_container.register('DockerOpType', lambda: DockerOpType)
-    return env_context, di_container 
+    operations.register('DockerRequest', lambda: DockerRequest)
+    operations.register('DockerOpType', lambda: DockerOpType)
+    return env_context, operations 
