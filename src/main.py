@@ -1,25 +1,29 @@
-def main(context, operations):
+def main():
     """
     メイン処理本体。context, operationsは必須。
     """
     from src.env.env_workflow_service import EnvWorkflowService
-    service = EnvWorkflowService.from_context(context, operations)
+    from context import ExecutionContext, parse_user_input
+    import sys
+
+    args = sys.argv[1:]
+    try:
+        context = parse_user_input(args)
+    except Exception as e:
+        print(f"[ERROR] 入力パース失敗: {e}")
+        sys.exit(1)
+
+    service = EnvWorkflowService.from_context(context)
     result = service.run_workflow()
     print(result)
 
 if __name__ == "__main__":
     import sys
     import json
-    from src.context.user_input_parser import UserInputParser, LocalSystemInfoProvider
     from src.env.build_di_container_and_context import build_operations_and_context
 
-    args = sys.argv[1:]
-    user_input_parser = UserInputParser(LocalSystemInfoProvider())
-    context = user_input_parser.from_args(args)
-    _, operations = build_operations_and_context(context)
-
     try:
-        main(context, operations)
+        main()
     except ValueError as e:
         print(f"エラー: {e}")
         sys.exit(1)

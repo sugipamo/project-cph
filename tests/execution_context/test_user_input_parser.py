@@ -3,7 +3,7 @@ import shutil
 import tempfile
 import json
 import pytest
-from src.context.user_input_parser import UserInputParser, SystemInfoProvider
+from src.context.user_input_parser import parse_user_input, SystemInfoProvider
 from src.context.execution_context import ExecutionContext
 
 # テスト用のSystemInfoProviderモック
@@ -37,9 +37,8 @@ def test_parse_python_command(monkeypatch, setup_env):
     # contest_envのパスを一時ディレクトリに差し替え
     monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
     provider = DummySystemInfoProvider()
-    parser = UserInputParser(system_info_provider=provider, dockerfile_loader=UserInputParser._default_dockerfile_loader)
     args = ["python", "docker", "test", "abc300", "a"]
-    ctx = parser.parse_and_validate(args)
+    ctx = parse_user_input(args, system_info_provider=provider)
     assert ctx.language == "python"
     assert ctx.env_type == "docker"
     assert ctx.command_type == "test"
@@ -56,9 +55,8 @@ def test_parse_python_command(monkeypatch, setup_env):
 def test_parse_python_alias(monkeypatch, setup_env):
     monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
     provider = DummySystemInfoProvider()
-    parser = UserInputParser(system_info_provider=provider, dockerfile_loader=UserInputParser._default_dockerfile_loader)
     args = ["py", "local", "t", "abc300", "a"]
-    ctx = parser.parse_and_validate(args)
+    ctx = parse_user_input(args, system_info_provider=provider)
     assert ctx.language == "python"
     assert ctx.env_type == "local"
     assert ctx.command_type == "test"
@@ -69,19 +67,17 @@ def test_parse_python_alias(monkeypatch, setup_env):
 def test_parse_too_many_args(monkeypatch, setup_env):
     monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
     provider = DummySystemInfoProvider()
-    parser = UserInputParser(system_info_provider=provider, dockerfile_loader=UserInputParser._default_dockerfile_loader)
     args = ["python", "docker", "test", "abc300", "a", "extra"]
     with pytest.raises(ValueError) as e:
-        parser.parse_and_validate(args)
+        parse_user_input(args, system_info_provider=provider)
     assert "引数が多すぎます" in str(e.value)
 
 @pytest.mark.usefixtures("setup_env")
 def test_parse_missing_required(monkeypatch, setup_env):
     monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
     provider = DummySystemInfoProvider()
-    parser = UserInputParser(system_info_provider=provider, dockerfile_loader=UserInputParser._default_dockerfile_loader)
     # 言語指定なし
     args = ["docker", "test", "abc300", "a"]
     with pytest.raises(ValueError) as e:
-        parser.parse_and_validate(args)
+        parse_user_input(args, system_info_provider=provider)
     assert "引数が多すぎます" in str(e.value) 
