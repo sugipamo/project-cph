@@ -34,10 +34,6 @@ def _save_system_info(operations, info, path=SYSTEM_INFO_PATH):
     req = FileRequest(FileOpType.WRITE, path, content=json.dumps(info, ensure_ascii=False, indent=2))
     req.execute(driver=file_driver)
 
-def _default_dockerfile_loader(path: str) -> str:
-    with open(path, "r", encoding="utf-8") as f:
-        return f.read()
-
 def _validate_env_json(data: dict, path: str):
     if not isinstance(data, dict):
         raise ValueError(f"{path}: env.jsonのトップレベルはdictである必要があります")
