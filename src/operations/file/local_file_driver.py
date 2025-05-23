@@ -6,45 +6,31 @@ from .file_driver import FileDriver
 class LocalFileDriver(FileDriver):
     def __init__(self, base_dir=Path(".")):
         super().__init__(base_dir)
-        self.operations = []
-        self.files = set()
-        self.contents = dict()
 
-    def move(self):
-        src_path = self.path.resolve()
-        dst_path = self.dst_path.resolve()
-        self.ensure_parent_dir(dst_path)
+    def _move_impl(self, src_path, dst_path):
         src_path.rename(dst_path)
 
-    def copy(self):
-        src_path = self.path.resolve()
-        dst_path = self.dst_path.resolve()
-        self.ensure_parent_dir(dst_path)
+    def _copy_impl(self, src_path, dst_path):
         copy2(src_path, dst_path)
 
-    def exists(self):
-        path = self.resolve_path()
+    def _exists_impl(self, path):
         return path.exists()
 
-    def create(self, content: str = ""):
-        path = self.resolve_path()
-        self.ensure_parent_dir(path)
+    def _create_impl(self, path, content):
         with path.open("w", encoding="utf-8") as f:
             f.write(content)
 
-    def copytree(self):
-        src_path = self.path.resolve()
-        dst_path = self.dst_path.resolve()
-        if src_path == dst_path:
-            return
-        self.ensure_parent_dir(dst_path)
+    def _copytree_impl(self, src_path, dst_path):
         shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
 
-    def rmtree(self):
-        p = self.resolve_path()
+    def _rmtree_impl(self, p):
         if p.is_dir():
             shutil.rmtree(p)
         elif p.exists():
+            p.unlink()
+
+    def _remove_impl(self, p):
+        if p.exists():
             p.unlink()
 
     def open(self, mode="r", encoding=None):

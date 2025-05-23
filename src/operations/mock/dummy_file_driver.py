@@ -8,9 +8,7 @@ class DummyFileDriver(FileDriver):
         self.files = set()
         self.contents = dict()
 
-    def move(self):
-        src_path = self.resolve_path()
-        dst_path = self.resolve_path()
+    def _move_impl(self, src_path, dst_path):
         self.ensure_parent_dir(dst_path)
         self.operations.append(("move", src_path, dst_path))
         if src_path in self.files:
@@ -18,38 +16,37 @@ class DummyFileDriver(FileDriver):
             self.files.add(dst_path)
             self.contents[dst_path] = self.contents.pop(src_path, "")
 
-    def copy(self):
-        src_path = self.resolve_path()
-        dst_path = self.resolve_path()
+    def _copy_impl(self, src_path, dst_path):
         self.ensure_parent_dir(dst_path)
         self.operations.append(("copy", src_path, dst_path))
         if src_path in self.files:
             self.files.add(dst_path)
             self.contents[dst_path] = self.contents[src_path] if src_path in self.contents else ""
 
-    def exists(self):
-        path = self.resolve_path()
+    def _exists_impl(self, path):
         return path in self.files
 
-    def create(self, content: str = ""):
-        path = self.resolve_path()
+    def _create_impl(self, path, content):
         self.ensure_parent_dir(path)
         self.operations.append(("create", path, content))
         self.files.add(path)
         self.contents[path] = content
 
-    def copytree(self):
-        src_path = self.resolve_path()
-        dst_path = self.resolve_path()
+    def _copytree_impl(self, src_path, dst_path):
         self.ensure_parent_dir(dst_path)
         self.operations.append(("copytree", src_path, dst_path))
 
-    def rmtree(self):
-        path = self.resolve_path()
-        self.operations.append(("rmtree", path))
-        if path in self.files:
-            self.files.remove(path)
-            self.contents.pop(path, None)
+    def _rmtree_impl(self, p):
+        self.operations.append(("rmtree", p))
+        if p in self.files:
+            self.files.remove(p)
+            self.contents.pop(p, None)
+
+    def _remove_impl(self, p):
+        self.operations.append(("remove", p))
+        if p in self.files:
+            self.files.remove(p)
+            self.contents.pop(p, None)
 
     def isdir(self):
         path = self.resolve_path()

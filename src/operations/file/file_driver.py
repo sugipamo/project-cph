@@ -11,6 +11,9 @@ import shutil
 class FileDriver(ABC):
     def __init__(self, base_dir=Path(".")):
         self.base_dir = Path(base_dir)
+        self.operations = []
+        self.files = set()
+        self.contents = dict()
 
     def resolve_path(self):
         return self.path.resolve()
@@ -24,38 +27,73 @@ class FileDriver(ABC):
     def glob(self, pattern):
         return list(self.base_dir.glob(pattern))
 
-    def remove(self):
-        self.path.unlink()
+    def move(self):
+        src_path = self.resolve_path()
+        dst_path = self.dst_path.resolve()
+        self.ensure_parent_dir(dst_path)
+        self._move_impl(src_path, dst_path)
+
+    def _move_impl(self, src_path, dst_path):
+        # Local/Mock/Dummyでoverride
+        raise NotImplementedError
+
+    def copy(self):
+        src_path = self.resolve_path()
+        dst_path = self.dst_path.resolve()
+        self.ensure_parent_dir(dst_path)
+        self._copy_impl(src_path, dst_path)
+
+    def _copy_impl(self, src_path, dst_path):
+        # Local/Mock/Dummyでoverride
+        raise NotImplementedError
+
+    def exists(self):
+        path = self.resolve_path()
+        return self._exists_impl(path)
+
+    def _exists_impl(self, path):
+        # Local/Mock/Dummyでoverride
+        raise NotImplementedError
+
+    def create(self, content: str = ""):
+        path = self.resolve_path()
+        self.ensure_parent_dir(path)
+        self._create_impl(path, content)
+
+    def _create_impl(self, path, content):
+        # Local/Mock/Dummyでoverride
+        raise NotImplementedError
+
+    def copytree(self):
+        src_path = self.path.resolve()
+        dst_path = self.dst_path.resolve()
+        if src_path == dst_path:
+            return
+        self.ensure_parent_dir(dst_path)
+        self._copytree_impl(src_path, dst_path)
+
+    def _copytree_impl(self, src_path, dst_path):
+        # Local/Mock/Dummyでoverride
+        raise NotImplementedError
 
     def rmtree(self):
-        shutil.rmtree(self.path)
+        p = self.resolve_path()
+        self._rmtree_impl(p)
+
+    def _rmtree_impl(self, p):
+        # Local/Mock/Dummyでoverride
+        raise NotImplementedError
+
+    def remove(self):
+        p = self.resolve_path()
+        self._remove_impl(p)
+
+    def _remove_impl(self, p):
+        # Local/Mock/Dummyでoverride
+        raise NotImplementedError
 
     @abstractmethod
     def open(self, mode="r", encoding=None):
-        pass
-
-    @abstractmethod
-    def move(self):
-        pass
-
-    @abstractmethod
-    def copy(self):
-        pass
-
-    @abstractmethod
-    def exists(self):
-        pass
-
-    @abstractmethod
-    def create(self, content: str = ""):
-        pass
-
-    @abstractmethod
-    def copytree(self):
-        pass
-
-    @abstractmethod
-    def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver=None):
         pass
 
     def ensure_parent_dir(self, path):
@@ -72,6 +110,10 @@ class FileDriver(ABC):
                     break
                 h.update(chunk)
         return h.hexdigest()
+
+    @abstractmethod
+    def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver=None):
+        pass
 
 class FileUtil:
     @staticmethod
