@@ -1,7 +1,7 @@
 import pytest
 from src.operations.result import OperationResult
-from src.operations.shell.mock_shell_request import MockShellRequest
-from src.operations.operation_type import OperationType
+from src.operations.mock.mock_shell_request import MockShellRequest
+from src.operations.constants.operation_type import OperationType
 
 def test_shell_result_methods():
     req = MockShellRequest(["echo", "abc"], stdout="abc\n", returncode=0)

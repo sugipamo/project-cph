@@ -3,7 +3,9 @@ import shutil
 import tempfile
 from pathlib import Path
 import pytest
-from src.operations.file.file_driver import LocalFileDriver, MockFileDriver, DummyFileDriver
+from src.operations.file.local_file_driver import LocalFileDriver
+from src.operations.mock.mock_file_driver import MockFileDriver
+from src.operations.mock.dummy_file_driver import DummyFileDriver
 
 def test_localfiledriver_create_and_exists(tmp_path):
     driver = LocalFileDriver(base_dir=tmp_path)

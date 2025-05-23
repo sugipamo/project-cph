@@ -1,9 +1,9 @@
 import pytest
 from pathlib import Path
 from src.operations.file.file_request import FileRequest, FileOpType
-from src.operations.result import FileResult, OperationResult
-from src.operations.file.file_driver import MockFileDriver
-from src.operations.operation_type import OperationType
+from src.operations.result.file_result import FileResult
+from src.operations.mock.mock_file_driver import MockFileDriver
+from src.operations.constants.operation_type import OperationType
 
 def test_file_write_and_read_with_mock():
     driver = MockFileDriver()

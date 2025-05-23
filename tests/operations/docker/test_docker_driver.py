@@ -1,5 +1,6 @@
 import pytest
-from src.operations.docker.docker_driver import MockDockerDriver, DummyDockerDriver, LocalDockerDriver
+from src.operations.mock.mock_docker_driver import MockDockerDriver, DummyDockerDriver
+from src.operations.docker.docker_driver import LocalDockerDriver
 
 # MockDockerDriverのテスト
 
@@ -54,7 +55,7 @@ def patch_shellrequest_execute(monkeypatch):
 def test_localdockerdriver_commands():
     driver = LocalDockerDriver()
     # build
-    assert driver.build("./ctx", tag="t", dockerfile="Df", options={"build_arg": "VAL"}) == ["docker", "build", "-t", "t", "-f", "Df", "--build-arg", "VAL", "./ctx"]
+    assert driver.build("./ctx", tag="t", dockerfile="Df", options={"build_arg": "VAL"}) == ["docker", "build", "--build-arg", "VAL", "-t", "t", "-f", "Df", "./ctx"]
     # image_ls
     assert driver.image_ls() == ["docker", "image", "ls"]
     # image_rm
@@ -65,7 +66,7 @@ def test_localdockerdriver_commands():
     # inspect
     assert driver.inspect("img", type_="image") == ["docker", "inspect", "--type", "image", "img"]
     # run_container
-    assert driver.run_container("img", name="c", options={"env": "VAL"}) == ["docker", "run", "-d", "--name", "c", "--env", "VAL", "img"]
+    assert driver.run_container("img", name="c", options={"env": "VAL"}) == ["docker", "run", "-d", "--env", "VAL", "--name", "c", "img"]
     # stop_container
     assert driver.stop_container("c") == ["docker", "stop", "c"]
     # remove_container

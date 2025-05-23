@@ -1,7 +1,7 @@
 import pytest
-from src.operations.shell.mock_shell_request import MockShellInteractiveRequest
+from src.operations.mock.mock_shell_request import MockShellInteractiveRequest
 from src.operations.result import OperationResult
-from src.operations.operation_type import OperationType
+from src.operations.constants.operation_type import OperationType
 
 def test_mock_interactive_multiple_inputs():
     req = MockShellInteractiveRequest(["python3", "-i"], stdout_lines=[">>> ", "foo\n", ">>> ", "bar\n", ">>> "], stderr_lines=["err\n"], returncode=0)

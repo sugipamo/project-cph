@@ -1,5 +1,6 @@
 import inspect
 import os
+from src.operations.constants.operation_type import OperationType
 
 class BaseRequest:
     def __init__(self, name=None, debug_tag=None):

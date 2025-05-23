@@ -1,6 +1,6 @@
 import pytest
 from src.operations.docker.docker_file_request import DockerFileRequest
-from src.operations.docker.docker_driver import MockDockerDriver
+from src.operations.mock.mock_docker_driver import MockDockerDriver
 
 
 def test_docker_file_request_to_container():

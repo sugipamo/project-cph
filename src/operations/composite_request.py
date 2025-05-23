@@ -1,19 +1,27 @@
-from src.operations.composite.base_composite_request import BaseCompositeRequest
-from src.operations.exceptions.composite_step_failure import CompositeStepFailure
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.operations.base_request import BaseRequest
+from src.operations.constants.operation_type import OperationType
+from src.operations.composite_step_failure import CompositeStepFailure
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-class CompositeRequest(BaseCompositeRequest):
+class CompositeRequest(BaseRequest):
     def __init__(self, requests, debug_tag=None, name=None):
-        super().__init__(requests, name=name, debug_tag=debug_tag)
+        super().__init__(name=name, debug_tag=debug_tag)
         if not all(isinstance(r, BaseRequest) for r in requests):
             raise TypeError("All elements of 'requests' must be BaseRequest (or its subclass)")
         self.requests = requests
         self._executed = False
         self._results = None
 
+    def set_name(self, name: str):
+        self.name = name
+        return self
+    
     def __len__(self):
         return len(self.requests)
+
+    @property
+    def operation_type(self):
+        return OperationType.COMPOSITE
 
     def execute(self, driver):
         if self._executed:
@@ -55,7 +63,7 @@ class CompositeRequest(BaseCompositeRequest):
 
     def count_leaf_requests(self):
         """
-        再帰的に全ての葉(BaseCompositeRequestでCompositeRequestでないもの)の数を数える。
+        再帰的に全ての葉(BaseRequestでCompositeRequestでないもの)の数を数える。
         """
         count = 0
         for req in self.requests:

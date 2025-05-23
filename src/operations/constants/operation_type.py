@@ -4,4 +4,5 @@ class OperationType(Enum):
     SHELL = auto()
     FILE = auto()
     DOCKER = auto()
-    COMPOSITE = auto() 
+    COMPOSITE = auto()
+    PYTHON = auto() 

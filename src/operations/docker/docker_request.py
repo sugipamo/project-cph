@@ -2,7 +2,7 @@ from enum import Enum, auto
 from typing import Any, Dict, Optional
 from src.operations.docker.docker_driver import DockerDriver, LocalDockerDriver
 from src.operations.result import OperationResult
-from src.operations.operation_type import OperationType
+from src.operations.constants.operation_type import OperationType
 import inspect
 import os
 from src.operations.base_request import BaseRequest

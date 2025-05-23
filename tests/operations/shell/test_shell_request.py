@@ -1,7 +1,8 @@
 import pytest
-from src.operations.shell.mock_shell_request import MockShellRequest, MockShellInteractiveRequest
-from src.operations.result import ShellResult, OperationResult
-from src.operations.operation_type import OperationType
+from src.operations.mock.mock_shell_request import MockShellRequest, MockShellInteractiveRequest
+from src.operations.result.shell_result import ShellResult
+from src.operations.result.result import OperationResult
+from src.operations.constants.operation_type import OperationType
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.shell.local_shell_driver import LocalShellDriver
 from src.operations.di_container import DIContainer

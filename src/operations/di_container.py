@@ -16,7 +16,7 @@ class DIContainer:
         return provider()
 
 # --- 使い方例 ---
-# from src.operations.file.file_driver import LocalFileDriver
+# from src.operations.file.local_file_driver import LocalFileDriver
 # container = DIContainer()
 # container.register("file_driver", lambda: LocalFileDriver())
 # driver = container.resolve("file_driver") 

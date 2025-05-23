@@ -1,8 +1,8 @@
 import pytest
-from src.operations.result import OperationResult
+from src.operations.result.result import OperationResult
 from src.operations.file.file_request import FileRequest, FileOpType
-from src.operations.operation_type import OperationType
-from src.operations.file.file_driver import MockFileDriver
+from src.operations.constants.operation_type import OperationType
+from src.operations.mock.mock_file_driver import MockFileDriver
 
 def test_file_result_methods():
     driver = MockFileDriver()

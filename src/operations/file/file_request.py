@@ -1,6 +1,6 @@
 from enum import Enum, auto
-from src.operations.operation_type import OperationType
-from src.operations.file.file_driver import LocalFileDriver
+from src.operations.constants.operation_type import OperationType
+from src.operations.file.local_file_driver import LocalFileDriver
 from src.operations.result import OperationResult
 from src.operations.base_request import BaseRequest
 import inspect

@@ -1,7 +1,7 @@
-from src.operations.composite.composite_request import CompositeRequest
+from src.operations.composite.base_composite_request import BaseCompositeRequest
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-class ParallelCompositeRequest(CompositeRequest):
+class ParallelCompositeRequest(BaseCompositeRequest):
     def __init__(self, requests, debug_tag=None, name=None, max_workers=None):
         super().__init__(requests, debug_tag=debug_tag, name=name)
         self.max_workers = max_workers

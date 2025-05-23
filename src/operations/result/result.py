@@ -72,11 +72,4 @@ class OperationResult:
         return (
             f"<OperationResult success={self.success} op={self.op} cmd={self.cmd} path={self.path} "
             f"returncode={self.returncode} error_message={self.error_message}>"
-        )
-
-class ShellResult(OperationResult):
-    pass
-class FileResult(OperationResult):
-    pass
-class DockerResult(OperationResult):
-    pass
+        ) 

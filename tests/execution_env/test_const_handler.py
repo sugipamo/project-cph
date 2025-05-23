@@ -95,7 +95,7 @@ def test_docker_const_handler_properties(monkeypatch):
 
 def test_docker_const_handler_parse(monkeypatch):
     config = make_docker_config()
-    monkeypatch.setattr("src.operations.file.file_driver.LocalFileDriver.hash_file", lambda self, path: "dummyhash")
+    monkeypatch.setattr("src.operations.file.local_file_driver.LocalFileDriver.hash_file", lambda self, path: "dummyhash")
     handler = ConstHandler(config)
     s = "{contest_current}/{source_file}/{contest_env}/{contest_template}/{contest_temp}/{test_case}/{test_case_in}/{test_case_out}"
     result = handler.parse(s)

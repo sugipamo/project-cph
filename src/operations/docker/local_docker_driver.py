@@ -1,63 +1,8 @@
-"""
-docker_driver.py
-operations層のDockerRequest等から利用される、docker操作の実体（バックエンド）実装。
-ローカル・モック・ダミーなど複数の実装を提供する。
-"""
-from abc import ABC, abstractmethod
 from typing import Any, Dict
+from src.operations.docker.docker_driver import DockerDriver
 from src.operations.shell.shell_request import ShellRequest
-from src.operations.result.shell_result import ShellResult
-from src.operations.result.result import OperationResult
 from src.operations.shell.local_shell_driver import LocalShellDriver
 from src.operations.docker.docker_util import DockerUtil
-
-class DockerDriver(ABC):
-    def __init__(self):
-        pass
-
-    @abstractmethod
-    def run_container(self, image: str, name: str = None, options: Dict[str, Any] = None):
-        pass
-
-    @abstractmethod
-    def stop_container(self, name: str):
-        pass
-
-    @abstractmethod
-    def remove_container(self, name: str):
-        pass
-
-    @abstractmethod
-    def exec_in_container(self, name: str, command: str):
-        pass
-
-    @abstractmethod
-    def get_logs(self, name: str):
-        pass
-
-    @abstractmethod
-    def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None):
-        pass
-
-    @abstractmethod
-    def image_ls(self):
-        pass
-
-    @abstractmethod
-    def image_rm(self, image: str):
-        pass
-
-    @abstractmethod
-    def ps(self, all: bool = False):
-        pass
-
-    @abstractmethod
-    def inspect(self, target: str, type_: str = None):
-        pass
-
-    @abstractmethod
-    def cp(self, src: str, dst: str, container: str, to_container: bool = True):
-        pass
 
 class LocalDockerDriver(DockerDriver):
     def run_container(self, image: str, name: str = None, options: Dict[str, Any] = None):
@@ -136,8 +81,6 @@ class LocalDockerDriver(DockerDriver):
         return result
 
     def cp(self, src: str, dst: str, container: str, to_container: bool = True):
-        # to_container=True: src(ホスト)→dst(コンテナ)
-        # to_container=False: src(コンテナ)→dst(ホスト)
         if to_container:
             cp_src = str(src)
             cp_dst = f"{container}:{dst}"
@@ -147,38 +90,4 @@ class LocalDockerDriver(DockerDriver):
         cmd = ["docker", "cp", cp_src, cp_dst]
         req = ShellRequest(cmd)
         result = req.execute(driver=LocalShellDriver())
-        return result
-
-class DummyDockerDriver(DockerDriver):
-    def run_container(self, image: str, name: str = None, options: Dict[str, Any] = None):
-        return None
-
-    def stop_container(self, name: str):
-        pass
-
-    def remove_container(self, name: str):
-        pass
-
-    def exec_in_container(self, name: str, command: str):
-        return None
-
-    def get_logs(self, name: str):
-        return None
-
-    def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None):
-        return None
-
-    def image_ls(self):
-        return []
-
-    def image_rm(self, image: str):
-        return None
-
-    def ps(self, all: bool = False):
-        return []
-
-    def inspect(self, target: str, type_: str = None):
-        pass
-
-    def cp(self, src: str, dst: str, container: str, to_container: bool = True):
-        pass 
+        return result 

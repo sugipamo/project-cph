@@ -2,6 +2,7 @@ import subprocess
 import threading
 from queue import Queue, Empty
 from src.operations.result import OperationResult
+from src.operations.shell.shell_util import ShellUtil
 
 class ShellInteractiveRequest:
     def __init__(self, cmd, cwd=None, env=None, timeout=None):
@@ -20,24 +21,19 @@ class ShellInteractiveRequest:
         self._timeout_expired = False
 
     def start(self):
-        self._proc = subprocess.Popen(
+        self._proc = ShellUtil.start_interactive(
             self.cmd,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
             cwd=self.cwd,
-            env=self.env,
-            text=True,
-            bufsize=1
+            env=self.env
         )
-        self._stdout_thread = threading.Thread(target=self._enqueue_output, args=(self._proc.stdout, self._stdout_queue))
-        self._stderr_thread = threading.Thread(target=self._enqueue_output, args=(self._proc.stderr, self._stderr_queue))
+        self._stdout_thread = threading.Thread(target=ShellUtil.enqueue_output, args=(self._proc.stdout, self._stdout_queue))
+        self._stderr_thread = threading.Thread(target=ShellUtil.enqueue_output, args=(self._proc.stderr, self._stderr_queue))
         self._stdout_thread.daemon = True
         self._stderr_thread.daemon = True
         self._stdout_thread.start()
         self._stderr_thread.start()
         if self.timeout is not None:
-            self._timeout_thread = threading.Thread(target=self._enforce_timeout)
+            self._timeout_thread = threading.Thread(target=ShellUtil.enforce_timeout, args=(self._proc, self.timeout, self.stop))
             self._timeout_thread.daemon = True
             self._timeout_thread.start()
         return self
@@ -91,8 +87,8 @@ class ShellInteractiveRequest:
         if self._proc:
             self._proc.wait()
             # 残りのqueueもdrainしてlinesに追加
-            self._stdout_lines.extend(list(self._drain_queue(self._stdout_queue)))
-            self._stderr_lines.extend(list(self._drain_queue(self._stderr_queue)))
+            self._stdout_lines.extend(list(ShellUtil.drain_queue(self._stdout_queue)))
+            self._stderr_lines.extend(list(ShellUtil.drain_queue(self._stderr_queue)))
             stdout = ''.join(self._stdout_lines)
             stderr = ''.join(self._stderr_lines)
             return OperationResult(
@@ -101,11 +97,4 @@ class ShellInteractiveRequest:
                 returncode=self._proc.returncode,
                 request=self,
                 path=None
-            )
-
-    def _drain_queue(self, queue):
-        while True:
-            try:
-                yield queue.get_nowait()
-            except Empty:
-                break 
+            ) 
