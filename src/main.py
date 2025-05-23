@@ -12,13 +12,13 @@ if __name__ == "__main__":
     import sys
     import json
     from src.context.user_input_parser import UserInputParser, LocalSystemInfoProvider
-    from src.env.build_di_container_and_context import build_di_container_and_context
+    from src.env.build_di_container_and_context import build_operations_and_context
 
     args = sys.argv[1:]
     user_input_parser = UserInputParser(LocalSystemInfoProvider())
     # contextはUserInputParserで生成
     context = user_input_parser.from_args(args)
-    _, operations = build_di_container_and_context(context)
+    _, operations = build_operations_and_context(context)
 
     try:
         main(args, user_input_parser, operations)

@@ -12,7 +12,7 @@ from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.file.local_file_driver import LocalFileDriver
 from pathlib import Path
 
-def build_di_container_and_context(env_context):
+def build_operations_and_context(env_context):
     """
     env_contextからoperations(DIContainer)をセットアップし、(env_context, operations) を返す
     テストや本番で共通利用できるよう最低限の依存性のみ登録する
