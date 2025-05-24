@@ -117,12 +117,13 @@ class LocalDockerDriver(DockerDriver):
     def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None, show_output: bool = True):
         base_cmd = ["docker", "build"]
         opt = dict(options) if options else {}
+        inputdata = opt.pop('inputdata', None)
         if tag:
             opt["t"] = tag
         if dockerfile:
             opt["f"] = dockerfile
         cmd = DockerUtil.build_docker_cmd(base_cmd, options=opt, positional_args=[path])
-        req = ShellRequest(cmd, show_output=show_output)
+        req = ShellRequest(cmd, show_output=show_output, inputdata=inputdata)
         result = req.execute(driver=LocalShellDriver())
         return result
 

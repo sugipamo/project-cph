@@ -79,5 +79,6 @@ class EnvWorkflowService:
         env_type = self.env_context.env_type.lower()
         driver_key = 'shell_driver' if env_type == 'local' else 'docker_driver'
         driver = self.operations.resolve(driver_key) if self.operations else None
+        print("request", composite_request)
         result = composite_request.execute(driver=driver)
         return result

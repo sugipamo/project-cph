@@ -15,6 +15,7 @@ class DockerOpType(Enum):
     EXEC = auto()
     LOGS = auto()
     INSPECT = auto()
+    BUILD = auto()
 
 class DockerRequest(BaseRequest):
     def __init__(self, op: DockerOpType, image: str = None, container: str = None, command: str = None, options: Optional[Dict[str, Any]] = None, debug_tag=None, name=None, show_output=True):
@@ -82,6 +83,12 @@ class DockerRequest(BaseRequest):
                 result = driver.exec_in_container(self.container, self.command, show_output=self.show_output)
             elif self.op == DockerOpType.LOGS:
                 result = driver.get_logs(self.container, show_output=self.show_output)
+            elif self.op == DockerOpType.BUILD:
+                # BUILD用の処理
+                path = self.command or '.'
+                tag = self.options.get('t')
+                dockerfile = self.options.get('f')
+                result = driver.build(path, tag=tag, dockerfile=dockerfile, options=self.options, show_output=self.show_output)
             else:
                 raise ValueError(f"Unknown DockerOpType: {self.op}")
             return OperationResult(

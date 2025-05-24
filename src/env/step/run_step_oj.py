@@ -20,4 +20,6 @@ class OjRunStep(RunStep):
         if not self.cmd or not isinstance(self.cmd, list):
             raise ValueError("OjRunStep: cmdは必須でリストである必要があります")
         # 追加のoj専用バリデーションがあればここに
-        return True 
+        return True
+    def __repr__(self):
+        return f"<OjRunStep type={self.type} cmd={self.cmd} force_env_type={self.force_env_type} allow_failure={self.allow_failure} show_output={self.show_output} cwd={self.cwd}>" 

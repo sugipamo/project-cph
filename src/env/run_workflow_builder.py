@@ -4,6 +4,7 @@ from src.env.step.run_step_shell import ShellRunStep
 from src.env.step.run_step_oj import OjRunStep
 from src.operations.di_container import DIContainer
 from src.env.types import EnvResourceController, RunSteps, CompositeRequest
+import os
 
 class RunWorkflowBuilder:
     def __init__(self, controller: EnvResourceController, operations: DIContainer):
@@ -22,6 +23,11 @@ class RunWorkflowBuilder:
         run_steps: RunSteps型
         """
         requests = []
+        # docker環境ならダミーoj stepを先頭に追加
+        if self.controller.env_context.env_type.lower() == "docker":
+            from src.env.step.run_step_oj import OjRunStep
+            dummy_oj_step = OjRunStep(type="oj", cmd=["true"])
+            run_steps = [dummy_oj_step] + list(run_steps)
         # 1. 必要ならビルドrequestを先頭に追加
         if self.needs_docker_build(run_steps):
             build_req = self.create_docker_build_request()
@@ -53,12 +59,15 @@ class RunWorkflowBuilder:
         docker build用のDockerRequestを生成（operationsからクラスを解決）
         """
         image_name = self.controller.const_handler.image_name
-        container_name = self.controller.const_handler.container_name
+        temp_path = str(self.controller.const_handler.contest_temp_path)
+        dockerfile_text = self.controller.const_handler.dockerfile_text
+        if not os.path.exists(temp_path):
+            os.makedirs(temp_path, exist_ok=True)
         DockerRequest = self.operations.resolve("DockerRequest")
         DockerOpType = self.operations.resolve("DockerOpType")
         return DockerRequest(
-            DockerOpType.RUN,
+            DockerOpType.BUILD,
             image=image_name,
-            container=container_name,
-            options={}
+            options={"f": "-", "t": image_name, "inputdata": dockerfile_text},
+            command=temp_path
         ) 
