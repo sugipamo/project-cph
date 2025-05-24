@@ -48,8 +48,9 @@ def test_dummydockerdriver_all_methods():
 def test_localdockerdriver_commands():
     driver = LocalDockerDriver()
     # build
-    result = driver.build("./ctx", tag="t", dockerfile="Df", options={"build_arg": "VAL"})
-    assert result.cmd == ["docker", "build", "-f", "Df", "-t", "t", "--build-arg", "VAL", "./ctx"]
+    dockerfile_content = 'FROM python:3.8\n'
+    result = driver.build(tag="t", options={"build_arg": "VAL"}, dockerfile_text=dockerfile_content)
+    assert result.cmd == ["docker", "build", "-f", "-", "-t", "t", "--build-arg", "VAL", "."]
     # image_ls
     result = driver.image_ls()
     assert result.cmd == ["docker", "image", "ls"]
@@ -113,9 +114,9 @@ def test_build():
     driver = LocalDockerDriver()
     dockerfile_content = 'FROM python:3.9\n'
     # -f - で標準入力を使うケース
-    result = driver.build(".", tag="t1", dockerfile="-", options={"no_cache": None, "inputdata": dockerfile_content})
+    result = driver.build(tag="t1", options={"no_cache": None}, dockerfile_text=dockerfile_content)
     # コマンド内容の確認
-    assert result.cmd[:3] == ["docker", "build", "-f"]
+    assert result.cmd[:4] == ["docker", "build", "-f", "-"]
     assert "-t" in result.cmd
     assert "t1" in result.cmd
     assert "." in result.cmd
@@ -179,9 +180,32 @@ def test_localdockerdriver_build_stdin():
     try:
         driver = LocalDockerDriver()
         dockerfile_content = 'FROM python:3.10\nRUN echo "hello"\n'
-        result = driver.build(".", tag="t2", dockerfile="-", options={}, dockerfile_text=dockerfile_content)
+        result = driver.build(tag="t2", options={}, dockerfile_text=dockerfile_content)
         print(called)  # デバッグ用
         assert called["inputdata"] == dockerfile_content
         assert result.stdout == "build ok"
     finally:
         shell_util.ShellUtil.run_subprocess = orig_run_subprocess 
+
+def test_build_raises_on_none_dockerfile_text():
+    driver = LocalDockerDriver()
+    with pytest.raises(ValueError):
+        driver.build(None, tag="t")
+
+def test_build_with_short_and_long_options():
+    driver = LocalDockerDriver()
+    dockerfile_content = 'FROM python:3.8\n'
+    result = driver.build(dockerfile_content, tag="t", options={"q": None, "no_cache": None})
+    assert "-q" in result.cmd
+    assert "--no-cache" in result.cmd
+
+def test_build_show_output_false():
+    driver = LocalDockerDriver()
+    dockerfile_content = 'FROM python:3.8\n'
+    result = driver.build(dockerfile_content, tag="t", options={"no_cache": None}, show_output=False)
+    assert result.cmd[:4] == ["docker", "build", "-f", "-"]
+    assert "-t" in result.cmd
+    assert "t" in result.cmd
+    assert "." in result.cmd
+    assert "--no-cache" in result.cmd
+    # result.stdout の内容は環境依存のため検証しない 

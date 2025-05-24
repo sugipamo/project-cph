@@ -6,8 +6,6 @@ operations層のDockerRequest等から利用される、docker操作の実体（
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 from src.operations.shell.shell_request import ShellRequest
-from src.operations.result.shell_result import ShellResult
-from src.operations.result.result import OperationResult
 from src.operations.shell.local_shell_driver import LocalShellDriver
 from src.operations.docker.docker_util import DockerUtil
 
@@ -36,7 +34,7 @@ class DockerDriver(ABC):
         pass
 
     @abstractmethod
-    def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None):
+    def build(self, tag: str = None, options: Dict[str, Any] = None, show_output: bool = True, dockerfile_text: str = None):
         pass
 
     @abstractmethod
@@ -95,12 +93,14 @@ class LocalDockerDriver(DockerDriver):
         result = req.execute(driver=LocalShellDriver())
         return result
 
-    def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None, show_output: bool = True, dockerfile_text: str = None):
+    def build(self, dockerfile_text: str, tag: str = None, options: Dict[str, Any] = None, show_output: bool = True):
+        if not dockerfile_text or dockerfile_text is None:
+            raise ValueError("dockerfile_text is None. Dockerfile内容が正しく渡っていません。")
+        
         base_cmd = ["docker", "build"]
         opt = dict(options) if options else {}
         cmd = list(base_cmd)
-        if dockerfile:
-            cmd += ["-f", dockerfile]
+        cmd += ["-f", "-"]
         if tag:
             cmd += ["-t", tag]
         for k, v in opt.items():
@@ -112,10 +112,7 @@ class LocalDockerDriver(DockerDriver):
                 cmd.append(f"--{k.replace('_','-')}")
             if v is not None:
                 cmd.append(str(v))
-        cmd.append(path)
-        if dockerfile == "-":
-            if dockerfile_text is None:
-                raise ValueError("dockerfile_text is None. Dockerfile内容が正しく渡っていません。")
+        cmd.append('.')
         req = ShellRequest(cmd, show_output=show_output, inputdata=dockerfile_text)
         result = req.execute(driver=LocalShellDriver())
         return result
@@ -184,7 +181,7 @@ class DummyDockerDriver(DockerDriver):
     def get_logs(self, name: str):
         return None
 
-    def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None):
+    def build(self, tag: str = None, options: Dict[str, Any] = None, show_output: bool = True, dockerfile_text: str = None):
         return None
 
     def image_ls(self):
