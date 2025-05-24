@@ -121,7 +121,7 @@ def test_remove_command_request_factory(operations):
     req = factory.create_request(step)
     assert isinstance(req, FileRequest)
     assert req.op == FileOpType.REMOVE
-    assert req.path == "target.txt"
+    assert req.path == "parsed_target.txt"
 
 def test_build_command_request_factory(operations):
     controller = MockController()

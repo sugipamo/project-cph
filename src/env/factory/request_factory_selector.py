@@ -6,6 +6,9 @@ from src.env.step.run_step_build import BuildRunStep
 from src.env.step.run_step_python import PythonRunStep
 from src.env.step.run_step_mkdir import MkdirRunStep
 from src.env.step.run_step_touch import TouchRunStep
+from src.env.step.run_step_rmtree import RmtreeRunStep
+from src.env.step.run_step_move import MoveRunStep
+from src.env.step.run_step_movetree import MoveTreeRunStep
 from src.operations.di_container import DIContainer
 from src.env.factory.shell_command_request_factory import ShellCommandRequestFactory
 from src.env.factory.docker_command_request_factory import DockerCommandRequestFactory
@@ -16,6 +19,9 @@ from src.env.factory.build_command_request_factory import BuildCommandRequestFac
 from src.env.factory.python_command_request_factory import PythonCommandRequestFactory
 from src.env.factory.mkdir_command_request_factory import MkdirCommandRequestFactory
 from src.env.factory.touch_command_request_factory import TouchCommandRequestFactory
+from src.env.factory.rmtree_command_request_factory import RmtreeCommandRequestFactory
+from src.env.factory.move_command_request_factory import MoveCommandRequestFactory
+from src.env.factory.movetree_command_request_factory import MoveTreeCommandRequestFactory
 
 class RequestFactorySelector:
     FACTORY_MAP = {
@@ -27,6 +33,9 @@ class RequestFactorySelector:
         "mkdir": MkdirCommandRequestFactory,
         "touch": TouchCommandRequestFactory,
         "test": None,
+        "rmtree": RmtreeCommandRequestFactory,
+        "move": MoveCommandRequestFactory,
+        "movetree": MoveTreeCommandRequestFactory,
     }
 
     @staticmethod
@@ -62,6 +71,12 @@ class RequestFactorySelector:
             return operations.resolve("MkdirCommandRequestFactory")(controller)
         elif isinstance(step, TouchRunStep):
             return operations.resolve("TouchCommandRequestFactory")(controller)
+        elif isinstance(step, RmtreeRunStep):
+            return operations.resolve("RmtreeCommandRequestFactory")(controller)
+        elif isinstance(step, MoveRunStep):
+            return operations.resolve("MoveCommandRequestFactory")(controller)
+        elif isinstance(step, MoveTreeRunStep):
+            return operations.resolve("MoveTreeCommandRequestFactory")(controller)
         else:
             factory_cls = cls.FACTORY_MAP[step.type]
             if not factory_cls:

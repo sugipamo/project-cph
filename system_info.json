@@ -1,7 +1,7 @@
 {
   "command": "open",
   "language": "python",
-  "env_type": "docker",
+  "env_type": "local",
   "contest_name": "abc301",
   "problem_name": "a",
   "contest_current_path": "./contest_current",
@@ -14,7 +14,7 @@
       "source_file_name": "main.py",
       "contest_current_path": "./contest_current",
       "contest_template_path": "./contest_template/{language_name}",
-      "contest_temp_path": "./contest_temp",
+      "contest_temp_path": "./.temp",
       "workspace_path": "./workspace",
       "exclude_patterns": [
         "^.*\\.log$",
@@ -74,7 +74,7 @@
               ]
             },
             {
-              "type": "remove",
+              "type": "rmtree",
               "allow_failure": true,
               "show_output": false,
               "force_env_type": "local",
@@ -91,6 +91,16 @@
                 "oj",
                 "download",
                 "https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_id}"
+              ]
+            },
+            {
+              "type": "movetree",
+              "allow_failure": false,
+              "show_output": false,
+              "force_env_type": "local",
+              "cmd": [
+                "{workspace_path}/test",
+                "{contest_current_path}/test"
               ]
             }
           ]
