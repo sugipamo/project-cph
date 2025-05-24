@@ -75,7 +75,7 @@ def test_local_const_handler_parse():
     assert "in" in result
     assert "out" in result
 
-def test_docker_const_handler_properties(monkeypatch):
+def test_docker_const_handler_properties():
     config = make_docker_config()
     config.dockerfile = "FROM python:3.8\nRUN echo hello"
     config.oj_dockerfile = "FROM python:3.9\nRUN echo oj"
@@ -95,9 +95,8 @@ def test_docker_const_handler_properties(monkeypatch):
     expected_oj_hash = hashlib.sha256(config.oj_dockerfile.encode("utf-8")).hexdigest()[:12]
     assert handler.oj_image_name == f"cph_ojtools_{expected_oj_hash}"
 
-def test_docker_const_handler_parse(monkeypatch):
+def test_docker_const_handler_parse():
     config = make_docker_config()
-    monkeypatch.setattr("src.operations.file.local_file_driver.LocalFileDriver.hash_file", lambda self, path: "dummyhash")
     handler = ConstHandler(config)
     s = "{contest_current}/{source_file}/{contest_env}/{contest_template}/{contest_temp}/{test_case}/{test_case_in}/{test_case_out}"
     result = handler.parse(s)

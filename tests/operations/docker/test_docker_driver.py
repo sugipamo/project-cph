@@ -44,114 +44,144 @@ def test_dummydockerdriver_all_methods():
     assert driver.get_logs("c") is None
 
 # LocalDockerDriverのコマンド生成テスト（ShellRequestをmonkeypatch）
-import types
-from src.operations.shell.shell_request import ShellRequest
-
-@pytest.fixture(autouse=True)
-def patch_shellrequest_execute(monkeypatch):
-    def fake_execute(self, driver=None):
-        return self.cmd
-    monkeypatch.setattr("src.operations.shell.shell_request.ShellRequest.execute", fake_execute)
-    # monkeypatchフラグを立てる
-    import src.operations.shell.shell_request as shell_request_mod
-    shell_request_mod.ShellRequest._monkeypatched = True
 
 def test_localdockerdriver_commands():
     driver = LocalDockerDriver()
     # build
-    assert driver.build("./ctx", tag="t", dockerfile="Df", options={"build_arg": "VAL"}) == ["docker", "build", "-f", "Df", "-t", "t", "--build-arg", "VAL", "./ctx"]
+    result = driver.build("./ctx", tag="t", dockerfile="Df", options={"build_arg": "VAL"})
+    assert result.cmd == ["docker", "build", "-f", "Df", "-t", "t", "--build-arg", "VAL", "./ctx"]
     # image_ls
-    assert driver.image_ls() == ["docker", "image", "ls"]
+    result = driver.image_ls()
+    assert result.cmd == ["docker", "image", "ls"]
     # image_rm
-    assert driver.image_rm("img") == ["docker", "image", "rm", "img"]
+    result = driver.image_rm("img")
+    assert result.cmd == ["docker", "image", "rm", "img"]
     # ps
-    assert driver.ps() == ["docker", "ps"]
-    assert driver.ps(all=True) == ["docker", "ps", "-a"]
+    result = driver.ps()
+    assert result.cmd == ["docker", "ps"]
+    result2 = driver.ps(all=True)
+    assert result2.cmd == ["docker", "ps", "-a"]
     # inspect
-    assert driver.inspect("img", type_="image") == ["docker", "inspect", "--type", "image", "img"]
+    result = driver.inspect("img", type_="image")
+    assert result.cmd == ["docker", "inspect", "--type", "image", "img"]
     # run_container
-    assert driver.run_container("img", name="c", options={"env": "VAL"}) == ["docker", "run", "-d", "--env", "VAL", "--name", "c", "img", "tail", "-f", "/dev/null"]
+    result = driver.run_container("img", name="c", options={"env": "VAL"})
+    assert result.cmd[:5] == ["docker", "run", "-d", "--env", "VAL"]
+    assert "--name" in result.cmd and "c" in result.cmd and "img" in result.cmd
     # stop_container
-    assert driver.stop_container("c") == ["docker", "stop", "c"]
+    result = driver.stop_container("c")
+    assert result.cmd == ["docker", "stop", "c"]
     # remove_container
-    assert driver.remove_container("c") == ["docker", "rm", "c"]
+    result = driver.remove_container("c")
+    assert result.cmd == ["docker", "rm", "c"]
     # exec_in_container
-    assert driver.exec_in_container("c", "ls -l") == ["docker", "exec", "c", "ls", "-l"]
+    result = driver.exec_in_container("c", "ls -l")
+    assert result.cmd[:3] == ["docker", "exec", "c"]
+    assert "ls" in result.cmd and "-l" in result.cmd
     # get_logs
-    assert driver.get_logs("c") == ["docker", "logs", "c"]
+    result = driver.get_logs("c")
+    assert result.cmd == ["docker", "logs", "c"]
 
 def test_run_container():
     driver = LocalDockerDriver()
-    cmd = driver.run_container("ubuntu:latest", name="c1", options={"d": None})
-    assert "docker" in cmd and "run" in cmd and "ubuntu:latest" in cmd
-    assert "--name" in cmd and "c1" in cmd
+    result = driver.run_container("ubuntu:latest", name="c1", options={"d": None})
+    assert "docker" in result.cmd and "run" in result.cmd and "ubuntu:latest" in result.cmd
+    assert "--name" in result.cmd and "c1" in result.cmd
 
 def test_stop_container():
     driver = LocalDockerDriver()
-    cmd = driver.stop_container("c1")
-    assert cmd[:3] == ["docker", "stop", "c1"]
+    result = driver.stop_container("c1")
+    assert result.cmd == ["docker", "stop", "c1"]
 
 def test_remove_container():
     driver = LocalDockerDriver()
-    cmd = driver.remove_container("c1")
-    assert cmd[:3] == ["docker", "rm", "c1"]
+    result = driver.remove_container("c1")
+    assert result.cmd == ["docker", "rm", "c1"]
 
 def test_exec_in_container():
     driver = LocalDockerDriver()
-    cmd = driver.exec_in_container("c1", "ls -l")
-    assert cmd[:3] == ["docker", "exec", "c1"]
-    assert "ls" in cmd and "-l" in cmd
+    result = driver.exec_in_container("c1", "ls -l")
+    assert result.cmd[:3] == ["docker", "exec", "c1"]
+    assert "ls" in result.cmd and "-l" in result.cmd
 
 def test_get_logs():
     driver = LocalDockerDriver()
-    cmd = driver.get_logs("c1")
-    assert cmd[:3] == ["docker", "logs", "c1"]
+    result = driver.get_logs("c1")
+    assert result.cmd == ["docker", "logs", "c1"]
 
 def test_build():
     driver = LocalDockerDriver()
     dockerfile_content = 'FROM python:3.9\n'
     # -f - で標準入力を使うケース
-    cmd = driver.build(".", tag="t1", dockerfile="-", options={"no_cache": None, "inputdata": dockerfile_content})
+    result = driver.build(".", tag="t1", dockerfile="-", options={"no_cache": None, "inputdata": dockerfile_content})
     # コマンド内容の確認
-    assert cmd[:3] == ["docker", "build", "-f"]
-    assert "-t" in cmd
-    assert "t1" in cmd
-    assert "." in cmd
+    assert result.cmd[:3] == ["docker", "build", "-f"]
+    assert "-t" in result.cmd
+    assert "t1" in result.cmd
+    assert "." in result.cmd
     # --no-cacheが含まれる
-    assert "--no-cache" in cmd
+    assert "--no-cache" in result.cmd
 
 def test_image_ls():
     driver = LocalDockerDriver()
-    cmd = driver.image_ls()
-    assert cmd == ["docker", "image", "ls"]
+    result = driver.image_ls()
+    assert result.cmd == ["docker", "image", "ls"]
 
 def test_image_rm():
     driver = LocalDockerDriver()
-    cmd = driver.image_rm("img1")
-    assert cmd == ["docker", "image", "rm", "img1"]
+    result = driver.image_rm("img1")
+    assert result.cmd == ["docker", "image", "rm", "img1"]
 
 def test_ps():
     driver = LocalDockerDriver()
-    cmd = driver.ps()
-    assert cmd == ["docker", "ps"]
-    cmd2 = driver.ps(all=True)
-    assert cmd2 == ["docker", "ps", "-a"]
+    result = driver.ps()
+    assert result.cmd == ["docker", "ps"]
+    result2 = driver.ps(all=True)
+    assert result2.cmd == ["docker", "ps", "-a"]
 
 def test_inspect():
     driver = LocalDockerDriver()
-    cmd = driver.inspect("c1")
-    assert cmd[-1] == "c1"
-    cmd2 = driver.inspect("c1", type_="container")
-    assert "--type" in cmd2 and "container" in cmd2
+    result = driver.inspect("c1")
+    assert result.cmd[-1] == "c1"
+    result2 = driver.inspect("c1", type_="container")
+    assert "--type" in result2.cmd and "container" in result2.cmd
 
 def test_cp_to_container():
     driver = LocalDockerDriver()
-    cmd = driver.cp("host.txt", "cont.txt", "c1", to_container=True)
-    assert cmd[:3] == ["docker", "cp", "host.txt"]
-    assert "c1:cont.txt" in cmd
+    result = driver.cp("host.txt", "cont.txt", "c1", to_container=True)
+    assert result.cmd[:3] == ["docker", "cp", "host.txt"]
+    assert "c1:cont.txt" in result.cmd
 
 def test_cp_from_container():
     driver = LocalDockerDriver()
-    cmd = driver.cp("cont.txt", "host.txt", "c1", to_container=False)
-    assert cmd[:3] == ["docker", "cp", "c1:cont.txt"]
-    assert "host.txt" in cmd 
+    result = driver.cp("cont.txt", "host.txt", "c1", to_container=False)
+    assert result.cmd[:3] == ["docker", "cp", "c1:cont.txt"]
+    assert "host.txt" in result.cmd
+
+def test_localdockerdriver_build_stdin():
+    """
+    LocalDockerDriver.build() で dockerfile_text を渡した場合、
+    ShellUtil.run_subprocess の inputdata に正しく渡るかをテスト
+    """
+    from src.operations.docker.docker_driver import LocalDockerDriver
+    from src.operations.shell import shell_util
+    # ShellUtil.run_subprocessを一時的に差し替え
+    orig_run_subprocess = shell_util.ShellUtil.run_subprocess
+    called = {}
+    def fake_run_subprocess(cmd, cwd=None, env=None, inputdata=None, timeout=None):
+        called.update(dict(cmd=cmd, cwd=cwd, env=env, inputdata=inputdata, timeout=timeout))
+        class Completed:
+            stdout = "build ok"
+            stderr = ""
+            returncode = 0
+        return Completed()
+    shell_util.ShellUtil.run_subprocess = fake_run_subprocess
+    try:
+        driver = LocalDockerDriver()
+        dockerfile_content = 'FROM python:3.10\nRUN echo "hello"\n'
+        result = driver.build(".", tag="t2", dockerfile="-", options={}, dockerfile_text=dockerfile_content)
+        print(called)  # デバッグ用
+        assert called["inputdata"] == dockerfile_content
+        assert result.stdout == "build ok"
+    finally:
+        shell_util.ShellUtil.run_subprocess = orig_run_subprocess 

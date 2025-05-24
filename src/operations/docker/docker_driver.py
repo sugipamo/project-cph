@@ -132,8 +132,6 @@ class LocalDockerDriver(DockerDriver):
             if v is not None:
                 cmd.append(str(v))
         cmd.append(path)
-        if hasattr(ShellRequest, "_monkeypatched"):
-            return cmd
         req = ShellRequest(cmd, show_output=show_output, inputdata=dockerfile_text)
         result = req.execute(driver=LocalShellDriver())
         return result

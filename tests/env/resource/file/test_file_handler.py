@@ -3,6 +3,8 @@ from unittest.mock import MagicMock
 from src.env.resource.file.file_handler import DockerFileHandler, LocalFileHandler
 from src.operations.file.file_request import FileOpType, FileRequest
 from src.operations.docker.docker_file_request import DockerFileRequest
+import os
+import unittest.mock
 
 class DummyConstHandler:
     workspace_path = "/ws"
@@ -20,12 +22,7 @@ def config():
     return DummyConfig()
 
 @pytest.fixture
-def docker_handler(config, const_handler, monkeypatch):
-    # PathEnvironmentCheckerのis_in_containerをモック
-    monkeypatch.setattr(
-        "src.env.resource.utils.path_environment_checker.PathEnvironmentChecker.is_in_container",
-        lambda self, path: "in_container" in str(path)
-    )
+def docker_handler(config, const_handler):
     return DockerFileHandler(config, const_handler)
 
 @pytest.fixture
@@ -48,14 +45,16 @@ def test_docker_copy_in_container_to_in_container(docker_handler):
     assert req.op == FileOpType.COPY
 
 def test_docker_copy_host_to_container(docker_handler):
-    req = docker_handler.copy("host.txt", "in_container_dst.txt")
-    assert isinstance(req, DockerFileRequest)
-    assert req.to_container is True
+    with unittest.mock.patch("src.env.resource.utils.path_environment_checker.PathEnvironmentChecker.is_in_container", lambda self, path: "in_container" in str(path)):
+        req = docker_handler.copy("host.txt", "in_container_dst.txt")
+        assert isinstance(req, DockerFileRequest)
+        assert req.to_container is True
 
 def test_docker_copy_container_to_host(docker_handler):
-    req = docker_handler.copy("in_container_src.txt", "host.txt")
-    assert isinstance(req, DockerFileRequest)
-    assert req.to_container is False
+    with unittest.mock.patch("src.env.resource.utils.path_environment_checker.PathEnvironmentChecker.is_in_container", lambda self, path: "in_container" in str(path)):
+        req = docker_handler.copy("in_container_src.txt", "host.txt")
+        assert isinstance(req, DockerFileRequest)
+        assert req.to_container is False
 
 def test_docker_copytree_in_container_to_in_container(docker_handler):
     req = docker_handler.copytree("in_container_src", "in_container_dst")
@@ -63,24 +62,28 @@ def test_docker_copytree_in_container_to_in_container(docker_handler):
     assert req.op == FileOpType.COPYTREE
 
 def test_docker_copytree_host_to_container(docker_handler):
-    req = docker_handler.copytree("host", "in_container_dst")
-    assert isinstance(req, DockerFileRequest)
-    assert req.to_container is True
+    with unittest.mock.patch("src.env.resource.utils.path_environment_checker.PathEnvironmentChecker.is_in_container", lambda self, path: "in_container" in str(path)):
+        req = docker_handler.copytree("host", "in_container_dst")
+        assert isinstance(req, DockerFileRequest)
+        assert req.to_container is True
 
 def test_docker_move_in_container_to_in_container(docker_handler):
-    req = docker_handler.move("in_container_src", "in_container_dst")
-    assert isinstance(req, FileRequest)
-    assert req.op == FileOpType.MOVE
+    with unittest.mock.patch("src.env.resource.utils.path_environment_checker.PathEnvironmentChecker.is_in_container", lambda self, path: "in_container" in str(path)):
+        req = docker_handler.move("in_container_src", "in_container_dst")
+        assert isinstance(req, FileRequest)
+        assert req.op == FileOpType.MOVE
 
 def test_docker_move_host_to_container(docker_handler):
-    req = docker_handler.move("host", "in_container_dst")
-    assert isinstance(req, DockerFileRequest)
-    assert req.to_container is True
+    with unittest.mock.patch("src.env.resource.utils.path_environment_checker.PathEnvironmentChecker.is_in_container", lambda self, path: "in_container" in str(path)):
+        req = docker_handler.move("host", "in_container_dst")
+        assert isinstance(req, DockerFileRequest)
+        assert req.to_container is True
 
 def test_docker_remove_in_container(docker_handler):
-    req = docker_handler.remove("in_container_file")
-    assert isinstance(req, FileRequest)
-    assert req.op == FileOpType.REMOVE
+    with unittest.mock.patch("src.env.resource.utils.path_environment_checker.PathEnvironmentChecker.is_in_container", lambda self, path: "in_container" in str(path)):
+        req = docker_handler.remove("in_container_file")
+        assert isinstance(req, FileRequest)
+        assert req.op == FileOpType.REMOVE
 
 def test_docker_remove_host(docker_handler):
     req = docker_handler.remove("host_file")
@@ -88,38 +91,45 @@ def test_docker_remove_host(docker_handler):
     assert req.to_container is False
 
 def test_docker_rmtree_in_container(docker_handler):
-    req = docker_handler.rmtree("in_container_dir")
-    assert isinstance(req, FileRequest)
-    assert req.op == FileOpType.RMTREE
+    with unittest.mock.patch("src.env.resource.utils.path_environment_checker.PathEnvironmentChecker.is_in_container", lambda self, path: "in_container" in str(path)):
+        req = docker_handler.rmtree("in_container_dir")
+        assert isinstance(req, FileRequest)
+        assert req.op == FileOpType.RMTREE
 
 def test_docker_rmtree_host(docker_handler):
     req = docker_handler.rmtree("host_dir")
     assert isinstance(req, DockerFileRequest)
     assert req.to_container is False
 
-def test_local_copy_file(monkeypatch, local_handler, const_handler):
-    monkeypatch.setattr("os.path.isabs", lambda p: False)
-    monkeypatch.setattr("os.path.isdir", lambda p: False)
-    req = local_handler.copy("foo.txt", "bar.txt")
+def test_local_copy_file(local_handler, const_handler, tmp_path):
+    src = tmp_path / "foo.txt"
+    dst = tmp_path / "bar.txt"
+    src.write_text("abc")
+    req = local_handler.copy(str(src), str(dst))
     assert isinstance(req, FileRequest)
     assert req.op == FileOpType.COPY
 
-def test_local_copy_dir(monkeypatch, local_handler, const_handler):
-    monkeypatch.setattr("os.path.isabs", lambda p: False)
-    monkeypatch.setattr("os.path.isdir", lambda p: True)
-    req = local_handler.copy("foo", "bar")
+def test_local_copy_dir(local_handler, const_handler, tmp_path):
+    src = tmp_path / "foo"
+    dst = tmp_path / "bar"
+    src.mkdir()
+    req = local_handler.copy(str(src), str(dst))
     assert isinstance(req, FileRequest)
     assert req.op == FileOpType.COPYTREE
 
-def test_local_move_abs(monkeypatch, local_handler, const_handler):
-    monkeypatch.setattr("os.path.isabs", lambda p: True)
-    req = local_handler.move("/abs/foo", "bar")
+def test_local_move_abs(local_handler, const_handler, tmp_path):
+    src = tmp_path / "foo.txt"
+    dst = tmp_path / "bar.txt"
+    src.write_text("abc")
+    req = local_handler.move(str(src), str(dst))
     assert isinstance(req, FileRequest)
     assert req.op == FileOpType.MOVE
 
-def test_local_move_rel(monkeypatch, local_handler, const_handler):
-    monkeypatch.setattr("os.path.isabs", lambda p: False)
-    req = local_handler.move("foo", "bar")
+def test_local_move_rel(local_handler, const_handler, tmp_path):
+    src = tmp_path / "foo.txt"
+    dst = tmp_path / "bar.txt"
+    src.write_text("abc")
+    req = local_handler.move(str(src), str(dst))
     assert isinstance(req, FileRequest)
     assert req.op == FileOpType.MOVE
 

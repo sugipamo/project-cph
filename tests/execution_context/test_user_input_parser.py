@@ -16,8 +16,7 @@ def setup_env(tmp_path_factory):
     return str(tmp_dir)
 
 @pytest.mark.usefixtures("setup_env")
-def test_parse_python_command(monkeypatch, setup_env):
-    monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
+def test_parse_python_command(setup_env):
     args = ["python", "docker", "test", "abc300", "a"]
     operations = build_mock_operations()
     ctx = parse_user_input(args, operations)
@@ -31,8 +30,7 @@ def test_parse_python_command(monkeypatch, setup_env):
     assert ctx.contest_current_path == "./contest_current"
 
 @pytest.mark.usefixtures("setup_env")
-def test_parse_python_alias(monkeypatch, setup_env):
-    monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
+def test_parse_python_alias(setup_env):
     args = ["py", "local", "t", "abc300", "a"]
     operations = build_mock_operations()
     ctx = parse_user_input(args, operations)
@@ -43,8 +41,7 @@ def test_parse_python_alias(monkeypatch, setup_env):
     assert ctx.contest_name == "abc300"
 
 @pytest.mark.usefixtures("setup_env")
-def test_parse_too_many_args(monkeypatch, setup_env):
-    monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
+def test_parse_too_many_args(setup_env):
     args = ["python", "docker", "test", "abc300", "a", "extra"]
     operations = build_mock_operations()
     with pytest.raises(ValueError) as e:
@@ -52,8 +49,7 @@ def test_parse_too_many_args(monkeypatch, setup_env):
     assert "引数が多すぎます" in str(e.value)
 
 @pytest.mark.usefixtures("setup_env")
-def test_parse_missing_required(monkeypatch, setup_env):
-    monkeypatch.setattr("src.context.user_input_parser.CONTEST_ENV_DIR", setup_env)
+def test_parse_missing_required(setup_env):
     # 言語指定なし
     args = ["docker", "test", "abc300", "a"]
     operations = build_mock_operations()

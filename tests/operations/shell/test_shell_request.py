@@ -7,6 +7,7 @@ from src.operations.shell.shell_request import ShellRequest
 from src.operations.shell.local_shell_driver import LocalShellDriver
 from src.operations.di_container import DIContainer
 import os
+import unittest.mock
 
 def test_mock_shell_request_echo():
     req = MockShellRequest(["echo", "hello"], stdout="hello\n", returncode=0)
@@ -114,4 +115,6 @@ def test_shell_request_show_output(monkeypatch, capsys):
     result = req._execute_core(driver)
     # show_outputの分岐は本体でprintしていないが、今後の拡張用にカバレッジ確保
     assert result.stdout == "out"
-    assert result.stderr == "err" 
+    assert result.stderr == "err"
+
+# monkeypatchを使った部分をunittest.mock.patchで書き換える形に修正してください。 
