@@ -21,7 +21,8 @@ def test_env_workflow_service_shell_no_driver():
             "source_file_name": "main.py",
             "contest_env_path": "env",
             "contest_template_path": "template",
-            "contest_temp_path": "temp"
+            "contest_temp_path": "temp",
+            "language_id": 2001
         }
     }
     env_context = ExecutionContext(
@@ -59,7 +60,8 @@ def test_source_file_name_is_none_when_not_set():
             # source_file_nameは無し
             "contest_env_path": "env",
             "contest_template_path": "template",
-            "contest_temp_path": "temp"
+            "contest_temp_path": "temp",
+            "language_id": 2001
         }
     }
     env_context = ExecutionContext(
@@ -89,7 +91,8 @@ def test_source_file_name_must_not_be_none():
             "source_file_name": "main.py",
             "contest_env_path": "env",
             "contest_template_path": "template",
-            "contest_temp_path": "temp"
+            "contest_temp_path": "temp",
+            "language_id": 2001
         }
     }
     env_context = ExecutionContext(

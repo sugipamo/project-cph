@@ -18,7 +18,8 @@ def make_local_config():
                 "source_file": "main.cpp",
                 "contest_env_path": "./env",
                 "contest_template_path": "./template",
-                "contest_temp_path": "./temp"
+                "contest_temp_path": "./temp",
+                "language_id": 1001
             }
         },
         contest_current_path="contests/abc001",
@@ -38,7 +39,8 @@ def make_docker_config():
                 "source_file": "main.py",
                 "contest_env_path": "./env",
                 "contest_template_path": "./template",
-                "contest_temp_path": "./temp"
+                "contest_temp_path": "./temp",
+                "language_id": 2001
             }
         },
         contest_current_path="contests/abc002",

@@ -26,7 +26,8 @@ def test_env_workflow_service_docker_shell_no_driver():
             "contest_template_path": "template",
             "contest_temp_path": "temp",
             "source_file_name": "main.py",
-            "cph_ojtools": "dummy_container"
+            "cph_ojtools": "dummy_container",
+            "language_id": 2001
         }
     }
     env_context = ExecutionContext(

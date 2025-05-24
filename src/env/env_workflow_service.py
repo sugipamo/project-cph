@@ -41,13 +41,6 @@ class EnvWorkflowService:
         self.env_context = env_context
         self.operations = operations
 
-    @classmethod
-    def from_context(cls, env_context, operations):
-        """
-        本番用の依存性を組み立ててEnvWorkflowServiceを生成する
-        """
-        return cls(env_context, operations)
-
     def generate_run_requests(self, run_steps_dict_list):
         """
         run_steps_dict_list: List[dict]（env.json等から取得した生データ）

@@ -25,7 +25,8 @@ def test_env_workflow_service_docker_no_driver():
             "contest_env_path": "env",
             "contest_template_path": "template",
             "contest_temp_path": "temp",
-            "source_file_name": "main.py"
+            "source_file_name": "main.py",
+            "language_id": 2001
         }
     }
     env_context = ExecutionContext(
