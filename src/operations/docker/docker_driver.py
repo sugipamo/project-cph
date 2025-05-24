@@ -66,7 +66,6 @@ class LocalDockerDriver(DockerDriver):
         if name:
             opt["name"] = name
         container_name = name
-        # 1. 既存コンテナの状態をinspect
         if container_name:
             inspect_cmd = ["docker", "inspect", container_name]
             inspect_req = ShellRequest(inspect_cmd, show_output=False)
@@ -78,17 +77,13 @@ class LocalDockerDriver(DockerDriver):
                     state = inspect_data[0].get("State", {})
                     status = state.get("Status", "")
                     if status == "running":
-                        # 既に起動中ならrunをスキップ
                         return inspect_result
                     else:
-                        # 停止中ならrmしてrun
                         rm_cmd = ["docker", "rm", container_name]
                         rm_req = ShellRequest(rm_cmd, show_output=False)
                         rm_req.execute(driver=LocalShellDriver())
             except Exception:
-                # inspect失敗（存在しない）→runしてOK
                 pass
-        # デフォルトコマンドをtail -f /dev/nullにする
         positional_args = [image, "tail", "-f", "/dev/null"]
         cmd = DockerUtil.build_docker_cmd(base_cmd, options=opt, positional_args=positional_args)
         req = ShellRequest(cmd, show_output=show_output)
@@ -103,7 +98,7 @@ class LocalDockerDriver(DockerDriver):
 
     def remove_container(self, name: str, show_output: bool = True):
         cmd = ["docker", "rm", name]
-        req = ShellRequest(cmd, show_output=False)  # rmは常に前処理なので抑制
+        req = ShellRequest(cmd, show_output=False)
         result = req.execute(driver=LocalShellDriver())
         return result
 
@@ -148,7 +143,6 @@ class LocalDockerDriver(DockerDriver):
             cmd = ["docker", "ps", "-a", "--format", "{{.Names}}"]
             req = ShellRequest(cmd, show_output=show_output)
             result = req.execute(driver=LocalShellDriver())
-            # 改行区切りのリストに変換
             names = result.stdout.strip().split("\n") if result.stdout else []
             return names
         else:
@@ -169,8 +163,6 @@ class LocalDockerDriver(DockerDriver):
         return result
 
     def cp(self, src: str, dst: str, container: str, to_container: bool = True, show_output: bool = True):
-        # to_container=True: src(ホスト)→dst(コンテナ)
-        # to_container=False: src(コンテナ)→dst(ホスト)
         if to_container:
             cp_src = str(src)
             cp_dst = f"{container}:{dst}"

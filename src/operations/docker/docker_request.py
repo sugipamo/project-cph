@@ -47,31 +47,27 @@ class DockerRequest(BaseRequest):
                 # 1. inspect
                 inspect_result = driver.inspect(self.container, show_output=False)
                 import json
-                need_stop = False
-                need_remove = False
                 try:
                     inspect_data = json.loads(inspect_result.stdout)
                     if isinstance(inspect_data, list) and len(inspect_data) > 0:
                         state = inspect_data[0].get("State", {})
                         status = state.get("Status", "")
+                        reqs = []
                         if status == "running":
-                            need_stop = True
-                            need_remove = True
-                        elif status in ("exited", "created", "dead", "paused"):  # 停止中
-                            need_remove = True
+                            # 既に起動中なら何もしない（再利用）
+                            return OperationResult(success=True, op=self.op, stdout="already running", stderr=None, returncode=0)
+                        elif status in ("exited", "created", "dead", "paused"):
+                            # 停止中ならrm
+                            reqs.append(DockerRequest(DockerOpType.REMOVE, container=self.container, show_output=False))
+                        # いずれの場合もrun
+                        reqs.append(DockerRequest(DockerOpType.RUN, image=self.image, container=self.container, options=self.options, show_output=self.show_output))
+                        results = CompositeRequest.make_composite_request(reqs).execute(driver)
+                        if isinstance(results, list) and results:
+                            return results[-1]
+                        return results
                 except Exception:
-                    pass
-                reqs = []
-                reqs.append(DockerRequest(DockerOpType.INSPECT, container=self.container, show_output=False))
-                if need_stop:
-                    reqs.append(DockerRequest(DockerOpType.STOP, container=self.container, show_output=False))
-                if need_remove:
-                    reqs.append(DockerRequest(DockerOpType.REMOVE, container=self.container, show_output=False))
-                reqs.append(DockerRequest(DockerOpType.RUN, image=self.image, container=self.container, options=self.options, show_output=self.show_output))
-                results = CompositeRequest.make_composite_request(reqs).execute(driver)
-                if isinstance(results, list) and results:
-                    return results[-1]  # 最後のOperationResult（=RUNの結果）を返す
-                return results
+                    # inspect失敗時はrunのみ
+                    return driver.run_container(self.image, self.container, self.options, show_output=self.show_output)
         # 通常の単体リクエスト
         try:
             if self.op == DockerOpType.RUN:
