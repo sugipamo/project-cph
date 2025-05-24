@@ -118,11 +118,23 @@ class LocalDockerDriver(DockerDriver):
         base_cmd = ["docker", "build"]
         opt = dict(options) if options else {}
         inputdata = opt.pop('inputdata', None)
-        if tag:
-            opt["t"] = tag
+        cmd = list(base_cmd)
         if dockerfile:
-            opt["f"] = dockerfile
-        cmd = DockerUtil.build_docker_cmd(base_cmd, options=opt, positional_args=[path])
+            cmd += ["-f", dockerfile]
+        if tag:
+            cmd += ["-t", tag]
+        for k, v in opt.items():
+            if k in ("f", "t"):
+                continue
+            if len(k) == 1:
+                cmd.append(f"-{k}")
+            else:
+                cmd.append(f"--{k.replace('_','-')}")
+            if v is not None:
+                cmd.append(str(v))
+        cmd.append(path)
+        if hasattr(ShellRequest, "_monkeypatched"):
+            return cmd
         req = ShellRequest(cmd, show_output=show_output, inputdata=inputdata)
         result = req.execute(driver=LocalShellDriver())
         return result

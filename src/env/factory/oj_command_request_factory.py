@@ -28,7 +28,6 @@ class OjCommandRequestFactory(BaseCommandRequestFactory):
                 self.DockerOpType.BUILD,
                 image=image_name,
                 options={"f": "-", "t": image_name, "inputdata": dockerfile_text},
-                command=temp_path
             )
             # RUNリクエスト
             run_req = self.DockerRequest(

@@ -10,6 +10,7 @@ from src.env.env_workflow_service import EnvWorkflowService
 from src.context.execution_context import ExecutionContext
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.env.factory.docker_command_request_factory import DockerCommandRequestFactory
+from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
 
 def test_env_workflow_service_docker_shell_no_driver():
     # ダミーenv_json（docker環境用）
@@ -48,6 +49,7 @@ def test_env_workflow_service_docker_shell_no_driver():
     operations.register("DockerRequest", lambda: DockerRequest)
     operations.register("DockerOpType", lambda: DockerOpType)
     operations.register("DockerCommandRequestFactory", lambda: DockerCommandRequestFactory)
+    operations.register("OjCommandRequestFactory", lambda: OjCommandRequestFactory)
     operations.register("docker_driver", lambda: None)
     service = EnvWorkflowService(env_context, operations)
     with pytest.raises(ValueError):

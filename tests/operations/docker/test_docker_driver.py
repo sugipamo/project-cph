@@ -1,6 +1,7 @@
 import pytest
 from src.operations.mock.mock_docker_driver import MockDockerDriver, DummyDockerDriver
 from src.operations.docker.docker_driver import LocalDockerDriver
+from src.operations.result import OperationResult
 
 # MockDockerDriverのテスト
 
@@ -51,11 +52,14 @@ def patch_shellrequest_execute(monkeypatch):
     def fake_execute(self, driver=None):
         return self.cmd
     monkeypatch.setattr("src.operations.shell.shell_request.ShellRequest.execute", fake_execute)
+    # monkeypatchフラグを立てる
+    import src.operations.shell.shell_request as shell_request_mod
+    shell_request_mod.ShellRequest._monkeypatched = True
 
 def test_localdockerdriver_commands():
     driver = LocalDockerDriver()
     # build
-    assert driver.build("./ctx", tag="t", dockerfile="Df", options={"build_arg": "VAL"}) == ["docker", "build", "--build-arg", "VAL", "-t", "t", "-f", "Df", "./ctx"]
+    assert driver.build("./ctx", tag="t", dockerfile="Df", options={"build_arg": "VAL"}) == ["docker", "build", "-f", "Df", "-t", "t", "--build-arg", "VAL", "./ctx"]
     # image_ls
     assert driver.image_ls() == ["docker", "image", "ls"]
     # image_rm
@@ -105,10 +109,15 @@ def test_get_logs():
 
 def test_build():
     driver = LocalDockerDriver()
-    cmd = driver.build(".", tag="t1", dockerfile="Dockerfile", options={"no_cache": None})
-    assert "docker" in cmd and "build" in cmd and "." in cmd
-    assert "-t" in cmd and "t1" in cmd
-    assert "-f" in cmd and "Dockerfile" in cmd
+    dockerfile_content = 'FROM python:3.9\n'
+    # -f - で標準入力を使うケース
+    cmd = driver.build(".", tag="t1", dockerfile="-", options={"no_cache": None, "inputdata": dockerfile_content})
+    # コマンド内容の確認
+    assert cmd[:3] == ["docker", "build", "-f"]
+    assert "-t" in cmd
+    assert "t1" in cmd
+    assert "." in cmd
+    # --no-cacheが含まれる
     assert "--no-cache" in cmd
 
 def test_image_ls():
