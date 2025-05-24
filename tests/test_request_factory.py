@@ -86,7 +86,10 @@ def test_oj_command_request_factory(operations):
     step = OjRunStep(type="oj", cmd=["test", "-c", "./main"])
     factory = RequestFactorySelector.get_factory_for_step(controller, step, operations)
     req = factory.create_request(step)
-    assert hasattr(req, "requests")
+    assert isinstance(req, DockerRequest)
+    assert req.op == DockerOpType.EXEC
+    assert req.container == "mock_oj_container"
+    assert req.command == "parsed_test parsed_-c parsed_./main"
 
 def test_create_requests_from_run_steps(operations):
     controller = MockController()

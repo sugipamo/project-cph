@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $# -eq 0 ]; then
-  pytest --cov=src tests
+  pytest --cov=src
 else
-  pytest "$@"
+  pytest --cov=src "$@"
 fi

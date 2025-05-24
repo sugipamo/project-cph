@@ -80,7 +80,7 @@ class EnvWorkflowService:
         env_type = self.env_context.env_type.lower()
         driver_key = 'shell_driver' if env_type == 'local' else 'docker_driver'
         driver = self.operations.resolve(driver_key) if self.operations else None
-        print("request", composite_request)
-        return [composite_request]
+        if driver is None:
+            raise ValueError(f"driver({driver_key})が設定されていません")
         result = composite_request.execute(driver=driver)
         return result
