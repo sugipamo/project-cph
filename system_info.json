@@ -16,10 +16,6 @@
       "contest_template_path": "./contest_template/{language_name}",
       "contest_temp_path": "./.temp",
       "workspace_path": "./workspace",
-      "exclude_patterns": [
-        "^.*\\.log$",
-        "^debug.*"
-      ],
       "commands": {
         "open": {
           "aliases": [
@@ -37,33 +33,6 @@
               ]
             },
             {
-              "type": "mkdir",
-              "allow_failure": false,
-              "show_output": false,
-              "force_env_type": "local",
-              "cmd": [
-                "{contest_current_path}"
-              ]
-            },
-            {
-              "type": "mkdir",
-              "allow_failure": false,
-              "show_output": false,
-              "force_env_type": "local",
-              "cmd": [
-                "{workspace_path}"
-              ]
-            },
-            {
-              "type": "touch",
-              "allow_failure": false,
-              "show_output": false,
-              "force_env_type": "local",
-              "cmd": [
-                "{contest_current_path}/{source_file_name}"
-              ]
-            },
-            {
               "type": "shell",
               "allow_failure": true,
               "show_output": false,
@@ -71,15 +40,6 @@
               "cmd": [
                 "cursor",
                 "{contest_current_path}/{source_file_name}"
-              ]
-            },
-            {
-              "type": "rmtree",
-              "allow_failure": true,
-              "show_output": false,
-              "force_env_type": "local",
-              "cmd": [
-                "{workspace_path}/test"
               ]
             },
             {
