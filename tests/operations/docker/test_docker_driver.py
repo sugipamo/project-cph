@@ -66,7 +66,7 @@ def test_localdockerdriver_commands():
     # inspect
     assert driver.inspect("img", type_="image") == ["docker", "inspect", "--type", "image", "img"]
     # run_container
-    assert driver.run_container("img", name="c", options={"env": "VAL"}) == ["docker", "run", "-d", "--env", "VAL", "--name", "c", "img"]
+    assert driver.run_container("img", name="c", options={"env": "VAL"}) == ["docker", "run", "-d", "--env", "VAL", "--name", "c", "img", "tail", "-f", "/dev/null"]
     # stop_container
     assert driver.stop_container("c") == ["docker", "stop", "c"]
     # remove_container

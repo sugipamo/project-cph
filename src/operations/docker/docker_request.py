@@ -6,6 +6,7 @@ from src.operations.constants.operation_type import OperationType
 import inspect
 import os
 from src.operations.base_request import BaseRequest
+from src.operations.composite.composite_request import CompositeRequest
 
 class DockerOpType(Enum):
     RUN = auto()
@@ -13,6 +14,7 @@ class DockerOpType(Enum):
     REMOVE = auto()
     EXEC = auto()
     LOGS = auto()
+    INSPECT = auto()
 
 class DockerRequest(BaseRequest):
     def __init__(self, op: DockerOpType, image: str = None, container: str = None, command: str = None, options: Optional[Dict[str, Any]] = None, debug_tag=None, name=None, show_output=True):
@@ -34,17 +36,53 @@ class DockerRequest(BaseRequest):
         return super().execute(driver)
 
     def _execute_core(self, driver):
+        # 前処理が必要な場合はCompositeRequestとして分離
+        if self.op == DockerOpType.RUN:
+            if isinstance(driver, LocalDockerDriver) and self.container:
+                # 0. psで存在確認
+                container_names = driver.ps(all=True, show_output=False, names_only=True)
+                if self.container not in container_names:
+                    # 存在しなければrunのみ
+                    return driver.run_container(self.image, self.container, self.options, show_output=self.show_output)
+                # 1. inspect
+                inspect_result = driver.inspect(self.container, show_output=False)
+                import json
+                need_stop = False
+                need_remove = False
+                try:
+                    inspect_data = json.loads(inspect_result.stdout)
+                    if isinstance(inspect_data, list) and len(inspect_data) > 0:
+                        state = inspect_data[0].get("State", {})
+                        status = state.get("Status", "")
+                        if status == "running":
+                            need_stop = True
+                            need_remove = True
+                        elif status in ("exited", "created", "dead", "paused"):  # 停止中
+                            need_remove = True
+                except Exception:
+                    pass
+                reqs = []
+                reqs.append(DockerRequest(DockerOpType.INSPECT, container=self.container, show_output=False))
+                if need_stop:
+                    reqs.append(DockerRequest(DockerOpType.STOP, container=self.container, show_output=False))
+                if need_remove:
+                    reqs.append(DockerRequest(DockerOpType.REMOVE, container=self.container, show_output=False))
+                reqs.append(DockerRequest(DockerOpType.RUN, image=self.image, container=self.container, options=self.options, show_output=self.show_output))
+                return CompositeRequest.make_composite_request(reqs).execute(driver)
+        # 通常の単体リクエスト
         try:
             if self.op == DockerOpType.RUN:
-                result = driver.run_container(self.image, self.container, self.options)
+                result = driver.run_container(self.image, self.container, self.options, show_output=self.show_output)
             elif self.op == DockerOpType.STOP:
-                result = driver.stop_container(self.container)
+                result = driver.stop_container(self.container, show_output=self.show_output)
             elif self.op == DockerOpType.REMOVE:
-                result = driver.remove_container(self.container)
+                result = driver.remove_container(self.container, show_output=self.show_output)
+            elif self.op == DockerOpType.INSPECT:
+                result = driver.inspect(self.container, show_output=self.show_output)
             elif self.op == DockerOpType.EXEC:
-                result = driver.exec_in_container(self.container, self.command)
+                result = driver.exec_in_container(self.container, self.command, show_output=self.show_output)
             elif self.op == DockerOpType.LOGS:
-                result = driver.get_logs(self.container)
+                result = driver.get_logs(self.container, show_output=self.show_output)
             else:
                 raise ValueError(f"Unknown DockerOpType: {self.op}")
             return OperationResult(

@@ -48,7 +48,7 @@ class DockerDriver(ABC):
         pass
 
     @abstractmethod
-    def ps(self, all: bool = False):
+    def ps(self, all: bool = False, show_output: bool = True, names_only: bool = False):
         pass
 
     @abstractmethod
@@ -60,41 +60,66 @@ class DockerDriver(ABC):
         pass
 
 class LocalDockerDriver(DockerDriver):
-    def run_container(self, image: str, name: str = None, options: Dict[str, Any] = None):
+    def run_container(self, image: str, name: str = None, options: Dict[str, Any] = None, show_output: bool = True):
         base_cmd = ["docker", "run", "-d"]
         opt = dict(options) if options else {}
         if name:
             opt["name"] = name
-        cmd = DockerUtil.build_docker_cmd(base_cmd, options=opt, positional_args=[image])
-        req = ShellRequest(cmd)
+        container_name = name
+        # 1. 既存コンテナの状態をinspect
+        if container_name:
+            inspect_cmd = ["docker", "inspect", container_name]
+            inspect_req = ShellRequest(inspect_cmd, show_output=False)
+            inspect_result = inspect_req.execute(driver=LocalShellDriver())
+            import json
+            try:
+                inspect_data = json.loads(inspect_result.stdout)
+                if isinstance(inspect_data, list) and len(inspect_data) > 0:
+                    state = inspect_data[0].get("State", {})
+                    status = state.get("Status", "")
+                    if status == "running":
+                        # 既に起動中ならrunをスキップ
+                        return inspect_result
+                    else:
+                        # 停止中ならrmしてrun
+                        rm_cmd = ["docker", "rm", container_name]
+                        rm_req = ShellRequest(rm_cmd, show_output=False)
+                        rm_req.execute(driver=LocalShellDriver())
+            except Exception:
+                # inspect失敗（存在しない）→runしてOK
+                pass
+        # デフォルトコマンドをtail -f /dev/nullにする
+        positional_args = [image, "tail", "-f", "/dev/null"]
+        cmd = DockerUtil.build_docker_cmd(base_cmd, options=opt, positional_args=positional_args)
+        req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=LocalShellDriver())
         return result
 
-    def stop_container(self, name: str):
+    def stop_container(self, name: str, show_output: bool = True):
         cmd = ["docker", "stop", name]
-        req = ShellRequest(cmd)
+        req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=LocalShellDriver())
         return result
 
-    def remove_container(self, name: str):
+    def remove_container(self, name: str, show_output: bool = True):
         cmd = ["docker", "rm", name]
-        req = ShellRequest(cmd)
+        req = ShellRequest(cmd, show_output=False)  # rmは常に前処理なので抑制
         result = req.execute(driver=LocalShellDriver())
         return result
 
-    def exec_in_container(self, name: str, command: str):
+    def exec_in_container(self, name: str, command: str, show_output: bool = True):
         cmd = ["docker", "exec", name] + command.split()
-        req = ShellRequest(cmd)
+        req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=LocalShellDriver())
         return result
 
-    def get_logs(self, name: str):
+    def get_logs(self, name: str, show_output: bool = True):
         cmd = ["docker", "logs", name]
-        req = ShellRequest(cmd)
+        req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=LocalShellDriver())
         return result
 
-    def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None):
+    def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None, show_output: bool = True):
         base_cmd = ["docker", "build"]
         opt = dict(options) if options else {}
         if tag:
@@ -102,40 +127,48 @@ class LocalDockerDriver(DockerDriver):
         if dockerfile:
             opt["f"] = dockerfile
         cmd = DockerUtil.build_docker_cmd(base_cmd, options=opt, positional_args=[path])
-        req = ShellRequest(cmd)
+        req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=LocalShellDriver())
         return result
 
-    def image_ls(self):
+    def image_ls(self, show_output: bool = True):
         cmd = ["docker", "image", "ls"]
-        req = ShellRequest(cmd)
+        req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=LocalShellDriver())
         return result
 
-    def image_rm(self, image: str):
+    def image_rm(self, image: str, show_output: bool = True):
         cmd = ["docker", "image", "rm", image]
-        req = ShellRequest(cmd)
+        req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=LocalShellDriver())
         return result
 
-    def ps(self, all: bool = False):
-        cmd = ["docker", "ps"]
-        if all:
-            cmd.append("-a")
-        req = ShellRequest(cmd)
-        result = req.execute(driver=LocalShellDriver())
-        return result
+    def ps(self, all: bool = False, show_output: bool = True, names_only: bool = False):
+        if names_only:
+            cmd = ["docker", "ps", "-a", "--format", "{{.Names}}"]
+            req = ShellRequest(cmd, show_output=show_output)
+            result = req.execute(driver=LocalShellDriver())
+            # 改行区切りのリストに変換
+            names = result.stdout.strip().split("\n") if result.stdout else []
+            return names
+        else:
+            cmd = ["docker", "ps"]
+            if all:
+                cmd.append("-a")
+            req = ShellRequest(cmd, show_output=show_output)
+            result = req.execute(driver=LocalShellDriver())
+            return result
 
-    def inspect(self, target: str, type_: str = None):
+    def inspect(self, target: str, type_: str = None, show_output: bool = True):
         cmd = ["docker", "inspect"]
         if type_:
             cmd += ["--type", type_]
         cmd.append(target)
-        req = ShellRequest(cmd)
+        req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=LocalShellDriver())
         return result
 
-    def cp(self, src: str, dst: str, container: str, to_container: bool = True):
+    def cp(self, src: str, dst: str, container: str, to_container: bool = True, show_output: bool = True):
         # to_container=True: src(ホスト)→dst(コンテナ)
         # to_container=False: src(コンテナ)→dst(ホスト)
         if to_container:
@@ -145,7 +178,7 @@ class LocalDockerDriver(DockerDriver):
             cp_src = f"{container}:{src}"
             cp_dst = str(dst)
         cmd = ["docker", "cp", cp_src, cp_dst]
-        req = ShellRequest(cmd)
+        req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=LocalShellDriver())
         return result
 

@@ -53,11 +53,12 @@ class RunWorkflowBuilder:
         docker build用のDockerRequestを生成（operationsからクラスを解決）
         """
         image_name = self.controller.const_handler.image_name
-        dockerfile_text = self.controller.const_handler.dockerfile_text
+        container_name = self.controller.const_handler.container_name
         DockerRequest = self.operations.resolve("DockerRequest")
         DockerOpType = self.operations.resolve("DockerOpType")
         return DockerRequest(
             DockerOpType.RUN,
             image=image_name,
-            options={"dockerfile": dockerfile_text}
+            container=container_name,
+            options={}
         ) 
