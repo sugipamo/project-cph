@@ -8,6 +8,8 @@ from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
 from src.env.factory.remove_command_request_factory import RemoveCommandRequestFactory
 from src.env.factory.build_command_request_factory import BuildCommandRequestFactory
 from src.env.factory.python_command_request_factory import PythonCommandRequestFactory
+from src.env.factory.mkdir_command_request_factory import MkdirCommandRequestFactory
+from src.env.factory.touch_command_request_factory import TouchCommandRequestFactory
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.file.local_file_driver import LocalFileDriver
 from pathlib import Path
@@ -30,6 +32,8 @@ def build_operations():
     operations.register('RemoveCommandRequestFactory', lambda: RemoveCommandRequestFactory)
     operations.register('BuildCommandRequestFactory', lambda: BuildCommandRequestFactory)
     operations.register('PythonCommandRequestFactory', lambda: PythonCommandRequestFactory)
+    operations.register('MkdirCommandRequestFactory', lambda: MkdirCommandRequestFactory)
+    operations.register('TouchCommandRequestFactory', lambda: TouchCommandRequestFactory)
     # DockerRequest, DockerOpType
     operations.register('DockerRequest', lambda: DockerRequest)
     operations.register('DockerOpType', lambda: DockerOpType)
@@ -57,6 +61,8 @@ def build_mock_operations():
     operations.register('RemoveCommandRequestFactory', lambda: RemoveCommandRequestFactory)
     operations.register('BuildCommandRequestFactory', lambda: BuildCommandRequestFactory)
     operations.register('PythonCommandRequestFactory', lambda: PythonCommandRequestFactory)
+    operations.register('MkdirCommandRequestFactory', lambda: MkdirCommandRequestFactory)
+    operations.register('TouchCommandRequestFactory', lambda: TouchCommandRequestFactory)
     # DockerRequest, DockerOpType
     operations.register('DockerRequest', lambda: DockerRequest)
     operations.register('DockerOpType', lambda: DockerOpType)

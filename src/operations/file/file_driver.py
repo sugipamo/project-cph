@@ -115,6 +115,15 @@ class FileDriver(ABC):
     def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver=None):
         pass
 
+    def mkdir(self):
+        path = self.resolve_path()
+        path.mkdir(parents=True, exist_ok=True)
+
+    def touch(self):
+        path = self.resolve_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch(exist_ok=True)
+
 class FileUtil:
     @staticmethod
     def hash_file(path, algo='sha256'):

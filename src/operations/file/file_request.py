@@ -15,6 +15,8 @@ class FileOpType(Enum):
     COPYTREE = auto()
     REMOVE = auto()
     RMTREE = auto()
+    MKDIR = auto()
+    TOUCH = auto()
 
 class FileRequest(BaseRequest):
     def __init__(self, op: FileOpType, path, content=None, dst_path=None, debug_tag=None, name=None):
@@ -70,6 +72,12 @@ class FileRequest(BaseRequest):
                 return OperationResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
             elif self.op == FileOpType.RMTREE:
                 driver.rmtree()
+                return OperationResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
+            elif self.op == FileOpType.MKDIR:
+                driver.mkdir()
+                return OperationResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
+            elif self.op == FileOpType.TOUCH:
+                driver.touch()
                 return OperationResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
             else:
                 raise RuntimeError(f"Unknown operation: {self.op}")

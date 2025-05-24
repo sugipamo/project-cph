@@ -4,6 +4,8 @@ from src.env.step.run_step_oj import OjRunStep
 from src.env.step.run_step_remove import RemoveRunStep
 from src.env.step.run_step_build import BuildRunStep
 from src.env.step.run_step_python import PythonRunStep
+from src.env.step.run_step_mkdir import MkdirRunStep
+from src.env.step.run_step_touch import TouchRunStep
 from src.operations.di_container import DIContainer
 from src.env.factory.shell_command_request_factory import ShellCommandRequestFactory
 from src.env.factory.docker_command_request_factory import DockerCommandRequestFactory
@@ -12,6 +14,8 @@ from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
 from src.env.factory.remove_command_request_factory import RemoveCommandRequestFactory
 from src.env.factory.build_command_request_factory import BuildCommandRequestFactory
 from src.env.factory.python_command_request_factory import PythonCommandRequestFactory
+from src.env.factory.mkdir_command_request_factory import MkdirCommandRequestFactory
+from src.env.factory.touch_command_request_factory import TouchCommandRequestFactory
 
 class RequestFactorySelector:
     FACTORY_MAP = {
@@ -20,6 +24,8 @@ class RequestFactorySelector:
         "copy": CopyCommandRequestFactory,
         "oj": OjCommandRequestFactory,
         "python": PythonCommandRequestFactory,
+        "mkdir": MkdirCommandRequestFactory,
+        "touch": TouchCommandRequestFactory,
         "test": None,
     }
 
@@ -52,6 +58,10 @@ class RequestFactorySelector:
             return operations.resolve("BuildCommandRequestFactory")(controller)
         elif isinstance(step, PythonRunStep):
             return operations.resolve("PythonCommandRequestFactory")(controller)
+        elif isinstance(step, MkdirRunStep):
+            return operations.resolve("MkdirCommandRequestFactory")(controller)
+        elif isinstance(step, TouchRunStep):
+            return operations.resolve("TouchCommandRequestFactory")(controller)
         else:
             factory_cls = cls.FACTORY_MAP[step.type]
             if not factory_cls:
