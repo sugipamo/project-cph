@@ -8,12 +8,12 @@ from src.env.factory.docker_command_request_factory import DockerCommandRequestF
 from src.env.factory.copy_command_request_factory import CopyCommandRequestFactory
 from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
 from src.env.factory.base_command_request_factory import BaseCommandRequestFactory
-from src.env.request_factory_selector import RequestFactorySelector
+from src.env.factory.request_factory_selector import RequestFactorySelector
 from src.operations.di_container import DIContainer
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.file.file_request import FileRequest, FileOpType
 from src.operations.shell.shell_request import ShellRequest
-from src.env.request_factory import create_requests_from_run_steps
+from src.env.factory.request_factory import create_requests_from_run_steps
 from src.env.step.run_step_remove import RemoveRunStep
 from src.env.factory.remove_command_request_factory import RemoveCommandRequestFactory
 from src.env.step.run_step_build import BuildRunStep

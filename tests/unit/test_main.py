@@ -1,7 +1,7 @@
 import pytest
 import json
 from src.main import main
-from src.env.build_di_container_and_context import build_mock_operations
+from src.env.build_operations import build_mock_operations
 from src.context.execution_context import ExecutionContext
 from src.operations.exceptions.composite_step_failure import CompositeStepFailure
 

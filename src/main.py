@@ -5,13 +5,13 @@ def main(context, operations):
     from src.env.env_workflow_service import EnvWorkflowService
     service = EnvWorkflowService(context, operations)
     result = service.run_workflow()
-    [print(r) for r in result]
+    # [print(r) for r in result]
 
 if __name__ == "__main__":
     import sys
     import json
     from src.context.user_input_parser import parse_user_input
-    from src.env.build_di_container_and_context import build_operations
+    from src.env.build_operations import build_operations
     try:
         operations = build_operations()
         context = parse_user_input(sys.argv[1:], operations)

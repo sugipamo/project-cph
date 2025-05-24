@@ -1,4 +1,4 @@
-FROM python:3.10
+FROM rust:1.70
 
 RUN mkdir -p /workspace
 WORKDIR /workspace

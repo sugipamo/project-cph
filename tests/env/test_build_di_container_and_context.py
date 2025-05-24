@@ -1,4 +1,4 @@
-from src.env.build_di_container_and_context import build_operations
+from src.env.build_operations import build_operations
 class DummyEnvContext:
     pass
 def test_build_operations_and_context():

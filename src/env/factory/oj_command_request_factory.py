@@ -20,30 +20,13 @@ class OjCommandRequestFactory(BaseCommandRequestFactory):
         env_type = self.controller.env_context.env_type.lower()
         if env_type == "docker":
             container_name = self.controller.const_handler.oj_container_name
-            image_name = self.controller.const_handler.oj_image_name
-            temp_path = str(self.controller.const_handler.contest_temp_path)
-            dockerfile_text = self.controller.const_handler.oj_dockerfile_text
-            # BUILDリクエスト
-            build_req = self.DockerRequest(
-                self.DockerOpType.BUILD,
-                image=image_name,
-                options={"f": "-", "t": image_name},
-                dockerfile_text=dockerfile_text,
-            )
-            # RUNリクエスト
-            run_req = self.DockerRequest(
-                self.DockerOpType.RUN,
-                image=image_name,
-                container=container_name,
-                options={}
-            )
-            # EXECリクエスト
+            # BUILDやRUNリクエストは生成しない
             exec_req = self.DockerRequest(
                 self.DockerOpType.EXEC,
                 container=container_name,
                 command=" ".join(cmd),
                 show_output=getattr(run_step, 'show_output', True)
             )
-            return CompositeRequest.make_composite_request([build_req, run_req, exec_req])
+            return exec_req
         else:
             return ShellRequest(cmd, cwd=cwd, show_output=getattr(run_step, 'show_output', True)) 

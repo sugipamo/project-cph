@@ -1,5 +1,5 @@
 from src.operations.composite.composite_request import CompositeRequest
-from src.env.request_factory import create_requests_from_run_steps
+from src.env.factory.request_factory import create_requests_from_run_steps
 from src.env.step.run_step_shell import ShellRunStep
 from src.env.step.run_step_oj import OjRunStep
 from src.operations.di_container import DIContainer
@@ -21,25 +21,14 @@ class RunWorkflowBuilder:
     def build(self, run_steps: RunSteps) -> CompositeRequest:
         """
         run_steps: RunSteps型
+        最低限のリクエストのみ生成（事前準備リクエストは追加しない）
         """
-        requests = []
-        # docker環境ならダミーoj stepを先頭に追加
-        if self.controller.env_context.env_type.lower() == "docker":
-            from src.env.step.run_step_oj import OjRunStep
-            dummy_oj_step = OjRunStep(type="oj", cmd=["true"])
-            run_steps = [dummy_oj_step] + list(run_steps)
-        # 1. 必要ならビルドrequestを先頭に追加
-        if self.needs_docker_build(run_steps):
-            build_req = self.create_docker_build_request(self.controller.const_handler.dockerfile_text)
-            requests.append(build_req)
-        # 2. 各run_stepからrequest生成
+        # 事前準備（ダミーoj stepやdocker buildリクエスト）は追加しない
         step_requests = create_requests_from_run_steps(self.controller, run_steps, self.operations)
-        # step_requestsがCompositeRequestなら展開、単体ならそのまま
         if isinstance(step_requests, CompositeRequest):
-            requests.extend(step_requests.requests)
+            return step_requests
         else:
-            requests.append(step_requests)
-        return CompositeRequest.make_composite_request(requests)
+            return CompositeRequest.make_composite_request([step_requests])
 
     def needs_docker_build(self, run_steps: RunSteps) -> bool:
         """

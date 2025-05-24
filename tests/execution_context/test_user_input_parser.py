@@ -5,7 +5,7 @@ import json
 import pytest
 from src.context.user_input_parser import parse_user_input
 from src.context.execution_context import ExecutionContext
-from src.env.build_di_container_and_context import build_mock_operations
+from src.env.build_operations import build_mock_operations
 
 @pytest.fixture(scope="module")
 def setup_env(tmp_path_factory):

@@ -14,4 +14,7 @@ class DriverBoundRequest(BaseRequest):
 
     def _execute_core(self, driver=None):
         # driver引数より自身のdriver属性を優先
-        return self.req.execute(driver=self.driver) 
+        return self.req.execute(driver=self.driver)
+
+    def __repr__(self):
+        return f"<DriverBoundRequest req={repr(self.req)}>" 

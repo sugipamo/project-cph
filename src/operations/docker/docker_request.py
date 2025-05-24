@@ -86,10 +86,8 @@ class DockerRequest(BaseRequest):
                 result = driver.get_logs(self.container, show_output=self.show_output)
             elif self.op == DockerOpType.BUILD:
                 # BUILD用の処理
-                path = self.command or '.'
                 tag = self.options.get('t')
-                dockerfile = self.options.get('f')
-                result = driver.build(path, tag=tag, dockerfile=dockerfile, options=self.options, show_output=self.show_output, dockerfile_text=self.dockerfile_text)
+                result = driver.build(self.dockerfile_text, tag=tag, options=self.options, show_output=self.show_output)
             else:
                 raise ValueError(f"Unknown DockerOpType: {self.op}")
             return OperationResult(

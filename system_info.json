@@ -1,7 +1,7 @@
 {
   "command": "open",
   "language": "python",
-  "env_type": "docker",
+  "env_type": "local",
   "contest_name": "abc301",
   "problem_name": "a",
   "contest_current_path": "./contest_current",
@@ -27,9 +27,19 @@
           "description": "コンテストを開く",
           "steps": [
             {
+              "type": "python",
+              "allow_failure": false,
+              "show_output": false,
+              "cmd": [
+                "import webbrowser",
+                "webbrowser.open('https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_id}')"
+              ]
+            },
+            {
               "type": "shell",
               "allow_failure": false,
               "show_output": false,
+              "force_env_type": "local",
               "cmd": [
                 "mkdir",
                 "-p",
@@ -40,6 +50,7 @@
               "type": "shell",
               "allow_failure": false,
               "show_output": false,
+              "force_env_type": "local",
               "cmd": [
                 "touch",
                 "{contest_current_path}/{source_file_name}"
@@ -56,18 +67,10 @@
               ]
             },
             {
-              "type": "python",
-              "allow_failure": false,
-              "show_output": false,
-              "cmd": [
-                "import webbrowser",
-                "webbrowser.open('https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_id}')"
-              ]
-            },
-            {
               "type": "shell",
               "allow_failure": true,
               "show_output": false,
+              "force_env_type": "local",
               "cmd": [
                 "rm",
                 "-rf",
