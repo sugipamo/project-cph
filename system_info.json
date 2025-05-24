@@ -1,7 +1,7 @@
 {
   "command": "open",
   "language": "python",
-  "env_type": "local",
+  "env_type": "docker",
   "contest_name": "abc301",
   "problem_name": "a",
   "contest_current_path": "./contest_current",
