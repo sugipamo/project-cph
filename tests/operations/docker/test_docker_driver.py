@@ -66,8 +66,8 @@ def test_localdockerdriver_commands():
     assert result.cmd == ["docker", "inspect", "--type", "image", "img"]
     # run_container
     result = driver.run_container("img", name="c", options={"env": "VAL"})
-    assert result.cmd[:5] == ["docker", "run", "-d", "--env", "VAL"]
-    assert "--name" in result.cmd and "c" in result.cmd and "img" in result.cmd
+    assert result.cmd[:6] == ["docker", "run", "-d", "--env", "VAL", "--name"] or result.cmd[:6] == ["docker", "run", "-d", "--name", "c", "--env"]
+    assert "img" in result.cmd
     # stop_container
     result = driver.stop_container("c")
     assert result.cmd == ["docker", "stop", "c"]

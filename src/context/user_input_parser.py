@@ -154,10 +154,13 @@ def _apply_env_json(context, env_jsons):
 
 def _apply_dockerfile(context, dockerfile_loader):
     dockerfile_path = None
-    if context.env_json and context.language:
-        dockerfile_path = context.env_json[context.language]["dockerfile_path"] if context.language in context.env_json and "dockerfile_path" in context.env_json[context.language] else None
+    if context.env_json and context.language and context.env_type:
+        env_types = context.env_json[context.language].get("env_types", {})
+        env_type_conf = env_types.get(context.env_type, {})
+        dockerfile_path = env_type_conf.get("dockerfile_path")
     if dockerfile_path:
         try:
+            print("[debug] dockerfile_path", dockerfile_path)
             context.dockerfile = dockerfile_loader(dockerfile_path)
         except Exception:
             context.dockerfile = None

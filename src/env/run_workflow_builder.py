@@ -30,7 +30,7 @@ class RunWorkflowBuilder:
             run_steps = [dummy_oj_step] + list(run_steps)
         # 1. 必要ならビルドrequestを先頭に追加
         if self.needs_docker_build(run_steps):
-            build_req = self.create_docker_build_request()
+            build_req = self.create_docker_build_request(self.controller.const_handler.dockerfile_text)
             requests.append(build_req)
         # 2. 各run_stepからrequest生成
         step_requests = create_requests_from_run_steps(self.controller, run_steps, self.operations)
@@ -54,13 +54,12 @@ class RunWorkflowBuilder:
                 return True
         return False
 
-    def create_docker_build_request(self) -> object:
+    def create_docker_build_request(self, dockerfile_text) -> object:
         """
         docker build用のDockerRequestを生成（operationsからクラスを解決）
         """
         image_name = self.controller.const_handler.image_name
         temp_path = str(self.controller.const_handler.contest_temp_path)
-        dockerfile_text = self.controller.const_handler.dockerfile_text
         if not os.path.exists(temp_path):
             os.makedirs(temp_path, exist_ok=True)
         DockerRequest = self.operations.resolve("DockerRequest")

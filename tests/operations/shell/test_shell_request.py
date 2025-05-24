@@ -48,7 +48,7 @@ def test_shell_request_no_driver():
         req.execute(None)
     assert str(excinfo.value) == "ShellRequest.execute()にはdriverが必須です"
 
-def test_shell_request_echo(monkeypatch):
+def test_shell_request_echo():
     di = DIContainer()
     from src.operations.shell.local_shell_driver import LocalShellDriver
     di.register('shell_driver', lambda: LocalShellDriver())
@@ -57,7 +57,7 @@ def test_shell_request_echo(monkeypatch):
     result = req.execute(driver)
     assert result.stdout.strip() == "hello"
 
-def test_shell_request_timeout(monkeypatch):
+def test_shell_request_timeout():
     di = DIContainer()
     from src.operations.shell.local_shell_driver import LocalShellDriver
     di.register('shell_driver', lambda: LocalShellDriver())
@@ -71,17 +71,17 @@ def test_shell_request_repr():
     s = repr(req)
     assert "ShellRequest" in s and "/" in s
 
-def test_shell_request_execute_exception(monkeypatch):
+def test_shell_request_execute_exception():
     # ShellUtil.run_subprocessで例外を投げるようにする
     req = ShellRequest(["false"])
     driver = LocalShellDriver()
-    monkeypatch.setattr("src.operations.shell.shell_util.ShellUtil.run_subprocess", lambda *a, **kw: (_ for _ in ()).throw(Exception("fail")))
-    result = req._execute_core(driver)
+    with unittest.mock.patch("src.operations.shell.shell_util.ShellUtil.run_subprocess", side_effect=Exception("fail")):
+        result = req._execute_core(driver)
     assert isinstance(result, OperationResult)
     assert result.stderr == "fail"
     assert result.returncode is None
 
-def test_shell_request_with_inputdata_env_cwd(monkeypatch, tmp_path):
+def test_shell_request_with_inputdata_env_cwd(tmp_path):
     # run_subprocessの呼び出し内容を検証
     called = {}
     def fake_run_subprocess(cmd, cwd=None, env=None, inputdata=None, timeout=None):
@@ -91,10 +91,10 @@ def test_shell_request_with_inputdata_env_cwd(monkeypatch, tmp_path):
             stderr = ""
             returncode = 0
         return Completed()
-    monkeypatch.setattr("src.operations.shell.shell_util.ShellUtil.run_subprocess", fake_run_subprocess)
-    req = ShellRequest(["echo", "x"], cwd=str(tmp_path), env={"A": "B"}, inputdata="in", timeout=1)
-    driver = LocalShellDriver()
-    result = req._execute_core(driver)
+    with unittest.mock.patch("src.operations.shell.shell_util.ShellUtil.run_subprocess", fake_run_subprocess):
+        req = ShellRequest(["echo", "x"], cwd=str(tmp_path), env={"A": "B"}, inputdata="in", timeout=1)
+        driver = LocalShellDriver()
+        result = req._execute_core(driver)
     assert called["cwd"] == str(tmp_path)
     assert called["env"] == {"A": "B"}
     assert called["inputdata"] == "in"
@@ -102,19 +102,17 @@ def test_shell_request_with_inputdata_env_cwd(monkeypatch, tmp_path):
     assert result.stdout == "ok"
     assert result.returncode == 0
 
-def test_shell_request_show_output(monkeypatch, capsys):
+def test_shell_request_show_output(capsys):
     def fake_run_subprocess(*a, **k):
         class Completed:
             stdout = "out"
             stderr = "err"
             returncode = 0
         return Completed()
-    monkeypatch.setattr("src.operations.shell.shell_util.ShellUtil.run_subprocess", fake_run_subprocess)
-    req = ShellRequest(["echo", "x"], show_output=True)
-    driver = LocalShellDriver()
-    result = req._execute_core(driver)
+    with unittest.mock.patch("src.operations.shell.shell_util.ShellUtil.run_subprocess", fake_run_subprocess):
+        req = ShellRequest(["echo", "x"], show_output=True)
+        driver = LocalShellDriver()
+        result = req._execute_core(driver)
     # show_outputの分岐は本体でprintしていないが、今後の拡張用にカバレッジ確保
     assert result.stdout == "out"
-    assert result.stderr == "err"
-
-# monkeypatchを使った部分をunittest.mock.patchで書き換える形に修正してください。 
+    assert result.stderr == "err" 

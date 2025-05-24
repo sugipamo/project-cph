@@ -23,7 +23,7 @@ class ImageNameResolver:
 
     @property
     def base_oj_image_name(self) -> str:
-        return "cph_ojtools"
+        return "ojtools"
 
     @property
     def oj_image_name(self) -> str:

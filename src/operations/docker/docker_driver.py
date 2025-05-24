@@ -65,25 +65,6 @@ class LocalDockerDriver(DockerDriver):
         opt = dict(options) if options else {}
         if name:
             opt["name"] = name
-        container_name = name
-        if container_name:
-            inspect_cmd = ["docker", "inspect", container_name]
-            inspect_req = ShellRequest(inspect_cmd, show_output=False)
-            inspect_result = inspect_req.execute(driver=LocalShellDriver())
-            import json
-            try:
-                inspect_data = json.loads(inspect_result.stdout)
-                if isinstance(inspect_data, list) and len(inspect_data) > 0:
-                    state = inspect_data[0].get("State", {})
-                    status = state.get("Status", "")
-                    if status == "running":
-                        return inspect_result
-                    else:
-                        rm_cmd = ["docker", "rm", container_name]
-                        rm_req = ShellRequest(rm_cmd, show_output=False)
-                        rm_req.execute(driver=LocalShellDriver())
-            except Exception:
-                pass
         positional_args = [image, "tail", "-f", "/dev/null"]
         cmd = DockerUtil.build_docker_cmd(base_cmd, options=opt, positional_args=positional_args)
         req = ShellRequest(cmd, show_output=show_output)
@@ -132,6 +113,9 @@ class LocalDockerDriver(DockerDriver):
             if v is not None:
                 cmd.append(str(v))
         cmd.append(path)
+        if dockerfile == "-":
+            if dockerfile_text is None:
+                raise ValueError("dockerfile_text is None. Dockerfile内容が正しく渡っていません。")
         req = ShellRequest(cmd, show_output=show_output, inputdata=dockerfile_text)
         result = req.execute(driver=LocalShellDriver())
         return result

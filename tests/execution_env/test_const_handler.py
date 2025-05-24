@@ -93,7 +93,7 @@ def test_docker_const_handler_properties():
     expected_hash = hashlib.sha256(config.dockerfile.encode("utf-8")).hexdigest()[:12]
     assert handler.image_name == f"python_{expected_hash}"
     expected_oj_hash = hashlib.sha256(config.oj_dockerfile.encode("utf-8")).hexdigest()[:12]
-    assert handler.oj_image_name == f"cph_ojtools_{expected_oj_hash}"
+    assert handler.oj_image_name == f"ojtools_{expected_oj_hash}"
 
 def test_docker_const_handler_parse():
     config = make_docker_config()
