@@ -68,7 +68,10 @@ class DockerRequest(BaseRequest):
                 if need_remove:
                     reqs.append(DockerRequest(DockerOpType.REMOVE, container=self.container, show_output=False))
                 reqs.append(DockerRequest(DockerOpType.RUN, image=self.image, container=self.container, options=self.options, show_output=self.show_output))
-                return CompositeRequest.make_composite_request(reqs).execute(driver)
+                results = CompositeRequest.make_composite_request(reqs).execute(driver)
+                if isinstance(results, list) and results:
+                    return results[-1]  # 最後のOperationResult（=RUNの結果）を返す
+                return results
         # 通常の単体リクエスト
         try:
             if self.op == DockerOpType.RUN:
