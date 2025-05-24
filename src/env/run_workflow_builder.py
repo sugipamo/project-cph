@@ -68,6 +68,7 @@ class RunWorkflowBuilder:
         return DockerRequest(
             DockerOpType.BUILD,
             image=image_name,
-            options={"f": "-", "t": image_name, "inputdata": dockerfile_text},
-            command=temp_path
+            options={"f": "-", "t": image_name},
+            command=temp_path,
+            dockerfile_text=dockerfile_text
         ) 

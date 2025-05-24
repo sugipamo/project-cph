@@ -114,10 +114,9 @@ class LocalDockerDriver(DockerDriver):
         result = req.execute(driver=LocalShellDriver())
         return result
 
-    def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None, show_output: bool = True):
+    def build(self, path: str, tag: str = None, dockerfile: str = None, options: Dict[str, Any] = None, show_output: bool = True, dockerfile_text: str = None):
         base_cmd = ["docker", "build"]
         opt = dict(options) if options else {}
-        inputdata = opt.pop('inputdata', None)
         cmd = list(base_cmd)
         if dockerfile:
             cmd += ["-f", dockerfile]
@@ -135,7 +134,7 @@ class LocalDockerDriver(DockerDriver):
         cmd.append(path)
         if hasattr(ShellRequest, "_monkeypatched"):
             return cmd
-        req = ShellRequest(cmd, show_output=show_output, inputdata=inputdata)
+        req = ShellRequest(cmd, show_output=show_output, inputdata=dockerfile_text)
         result = req.execute(driver=LocalShellDriver())
         return result
 

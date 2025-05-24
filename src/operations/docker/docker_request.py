@@ -18,7 +18,7 @@ class DockerOpType(Enum):
     BUILD = auto()
 
 class DockerRequest(BaseRequest):
-    def __init__(self, op: DockerOpType, image: str = None, container: str = None, command: str = None, options: Optional[Dict[str, Any]] = None, debug_tag=None, name=None, show_output=True):
+    def __init__(self, op: DockerOpType, image: str = None, container: str = None, command: str = None, options: Optional[Dict[str, Any]] = None, debug_tag=None, name=None, show_output=True, dockerfile_text=None):
         super().__init__(name=name, debug_tag=debug_tag)
         self.op = op
         self.image = image
@@ -28,6 +28,7 @@ class DockerRequest(BaseRequest):
         self.show_output = show_output
         self._executed = False
         self._result = None
+        self.dockerfile_text = dockerfile_text
 
     @property
     def operation_type(self):
@@ -88,7 +89,7 @@ class DockerRequest(BaseRequest):
                 path = self.command or '.'
                 tag = self.options.get('t')
                 dockerfile = self.options.get('f')
-                result = driver.build(path, tag=tag, dockerfile=dockerfile, options=self.options, show_output=self.show_output)
+                result = driver.build(path, tag=tag, dockerfile=dockerfile, options=self.options, show_output=self.show_output, dockerfile_text=self.dockerfile_text)
             else:
                 raise ValueError(f"Unknown DockerOpType: {self.op}")
             return OperationResult(
