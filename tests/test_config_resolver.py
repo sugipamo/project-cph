@@ -211,7 +211,6 @@ def test_parent_reference():
     assert baz_node.parent.parent.name == 'foo'
 
 def test_large_structure():
-    sys.setrecursionlimit(3000)
     data = {'root': {}}
     current = data['root']
     for i in range(1000):
