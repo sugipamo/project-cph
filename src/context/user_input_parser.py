@@ -82,11 +82,11 @@ def _apply_language(args, context, env_json: dict):
     return args, context
 
 def _apply_env_type(args, context, resolver: ConfigResolver):
-    for idx, arg in enumerate(args):
-        if arg in env_json[language]["env_types"]:
-            context.env_type = arg
-            new_args = args[:idx] + args[idx+1:]
-            return new_args, context
+    # for idx, arg in enumerate(args):
+    #     if arg in env_json[language]["env_types"]:
+    #         context.env_type = arg
+    #         new_args = args[:idx] + args[idx+1:]
+    #         return new_args, context
     return args, context
 
 def _apply_command(args, context):
