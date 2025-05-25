@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, List
 
 @dataclass
 class ExecutionContext:
@@ -18,6 +18,7 @@ class ExecutionContext:
     dockerfile: Optional[str] = None
     oj_dockerfile: Optional[str] = None
     old_execution_context: Optional["ExecutionContext"] = None
+    resolver: Optional[object] = None  # ConfigResolver型（循環import回避のためobject型で）
     
 
     def validate(self) -> Tuple[bool, Optional[str]]:
@@ -50,6 +51,14 @@ class ExecutionContext:
             return False, f"指定された言語 '{self.language}' は環境設定ファイルに存在しません"
 
         return True, None
+
+    def resolve(self, path: List[str]):
+        """
+        resolverを使ってパスで設定値ノードを解決する
+        """
+        if not self.resolver:
+            raise ValueError("resolverがセットされていません")
+        return self.resolver.resolve(path)
 
     def get_env_config(self) -> dict:
         return self.env_json['env']

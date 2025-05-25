@@ -3,6 +3,7 @@ import json
 import copy
 from typing import List, Dict, Optional, Tuple, Callable
 from .execution_context import ExecutionContext
+from .config_resolver import ConfigResolver
 
 CONTEST_ENV_DIR = "contest_env"
 SYSTEM_INFO_PATH = "system_info.json"
@@ -72,30 +73,31 @@ def _extract_language_and_aliases(env_jsons: List[dict]) -> Dict[str, List[str]]
             result[lang] = aliases
     return result
 
-def _apply_language(args, context, env_jsons):
-    language_alias_map = _extract_language_and_aliases(env_jsons)
+def _apply_language(args, context, resolver: ConfigResolver):
     for idx, arg in enumerate(args):
-        for lang, aliases in language_alias_map.items():
-            if arg == lang or arg in aliases:
-                for env_json in env_jsons:
-                    if lang in env_json:
-                        context.language = lang
-                        context.env_json = env_json
-                        new_args = args[:idx] + args[idx+1:]
-                        return new_args, context
+        results = resolver.resolve([arg])
+        if results:
+            context.language = arg
+            # 言語ノードのvalueをenv_jsonとしてcontextにセット（必要なら）
+            context.env_json = {arg: results[0].node.value}
+            new_args = args[:idx] + args[idx+1:]
+            return new_args, context
     return args, context
 
-def _apply_env_type(args, context):
-    if not context.env_json or not context.language:
+def _apply_env_type(args, context, resolver: ConfigResolver):
+    if not context.language:
         return args, context
-    env_types = context.env_json[context.language]["env_types"] if "env_types" in context.env_json[context.language] else {}
+    # 言語ノードを取得
+    lang_results = resolver.resolve([context.language])
+    if not lang_results:
+        return args, context
+    lang_node = lang_results[0].node
     for idx, arg in enumerate(args):
-        for env_type_name, env_type_conf in env_types.items():
-            aliases = env_type_conf["aliases"] if "aliases" in env_type_conf else []
-            if arg == env_type_name or arg in aliases:
-                context.env_type = env_type_name
-                new_args = args[:idx] + args[idx+1:]
-                return new_args, context
+        # env_type名で子ノードを探索
+        if arg in lang_node.children:
+            context.env_type = arg
+            new_args = args[:idx] + args[idx+1:]
+            return new_args, context
     return args, context
 
 def _apply_command(args, context):
@@ -214,9 +216,10 @@ def parse_user_input(
     # env.json読み込み
     env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR)
     # 言語特定
-    args, context = _apply_language(args, context, env_jsons)
+    resolver = ConfigResolver()
+    args, context = _apply_language(args, context, resolver)
     # env_type特定
-    args, context = _apply_env_type(args, context)
+    args, context = _apply_env_type(args, context, resolver)
     # コマンド特定
     args, context = _apply_command(args, context)
     # 残りの引数からproblem_name, contest_nameを特定
