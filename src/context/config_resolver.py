@@ -43,18 +43,20 @@ class ConfigResolver:
 
     @classmethod
     def from_dict(cls, data: Any, root_name: str = 'root') -> 'ConfigResolver':
-        def build_node(name: str, value: Any) -> ConfigNode:
-            node = ConfigNode(name, value)
+        root = ConfigNode(root_name, data)
+        stack = [(root, data)]  # (親ノード, value)
+        while stack:
+            parent_node, value = stack.pop()
             if isinstance(value, dict):
                 for k, v in value.items():
-                    child = build_node(k, v)
-                    node.add_child(k, child)
+                    child_node = ConfigNode(k, v)
+                    parent_node.add_child(k, child_node)
+                    stack.append((child_node, v))
             elif isinstance(value, list):
                 for idx, v in enumerate(value):
-                    child = build_node(str(idx), v)
-                    node.add_list_child(child)
-            return node
-        root = build_node(root_name, data)
+                    child_node = ConfigNode(str(idx), v)
+                    parent_node.add_list_child(child_node)
+                    stack.append((child_node, v))
         return cls(root)
 
     def resolve(self, path: List[str]) -> List[ConfigResult]:
