@@ -73,28 +73,17 @@ def _extract_language_and_aliases(env_jsons: List[dict]) -> Dict[str, List[str]]
             result[lang] = aliases
     return result
 
-def _apply_language(args, context, resolver: ConfigResolver):
+def _apply_language(args, context, env_json: dict):
     for idx, arg in enumerate(args):
-        results = resolver.resolve([arg])
-        if results:
+        if arg in env_json:
             context.language = arg
-            # 言語ノードのvalueをenv_jsonとしてcontextにセット（必要なら）
-            context.env_json = {arg: results[0].node.value}
             new_args = args[:idx] + args[idx+1:]
             return new_args, context
     return args, context
 
 def _apply_env_type(args, context, resolver: ConfigResolver):
-    if not context.language:
-        return args, context
-    # 言語ノードを取得
-    lang_results = resolver.resolve([context.language])
-    if not lang_results:
-        return args, context
-    lang_node = lang_results[0].node
     for idx, arg in enumerate(args):
-        # env_type名で子ノードを探索
-        if arg in lang_node.children:
+        if arg in env_json[language]["env_types"]:
             context.env_type = arg
             new_args = args[:idx] + args[idx+1:]
             return new_args, context
@@ -205,19 +194,19 @@ def parse_user_input(
         problem_name=system_info["problem_name"],
         env_type=system_info["env_type"],
         env_json=system_info["env_json"],
-        contest_current_path=system_info["contest_current_path"],
-        workspace_path=None,
-        dockerfile=None,
-        oj_dockerfile=None,
-        old_execution_context=None,
     )
     # old_execution_context
     context.old_execution_context = copy.deepcopy(context)
     # env.json読み込み
     env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR)
+    # env_jsonsをマージして1つのdictにまとめる
+    merged_env_json = {}
+    for env_json in env_jsons:
+        merged_env_json.update(env_json)
+    resolver = ConfigResolver.from_dict(merged_env_json)
+    context.resolver = resolver
     # 言語特定
-    resolver = ConfigResolver()
-    args, context = _apply_language(args, context, resolver)
+    args, context = _apply_language(args, context, env_json)
     # env_type特定
     args, context = _apply_env_type(args, context, resolver)
     # コマンド特定
