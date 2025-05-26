@@ -4,15 +4,15 @@ from functools import lru_cache
 
 class ConfigNode:
     def __init__(self, name: str, value: Optional[Any] = None):
-        self.name = name
-        self.matches, self.value = self._init_matches(name, value)
-        self.next_nodes: List['ConfigNode'] = []
-        self.parent: Optional['ConfigNode'] = None
+        self._name = name
+        self._matches, self._value = self._init_matches(name, value)
+        self._next_nodes: List['ConfigNode'] = []
+        self._parent: Optional['ConfigNode'] = None
 
     def __lt__(self, other: 'ConfigNode'):
         if not isinstance(other, ConfigNode):
             raise TypeError(f"ConfigNodeとの比較ができません: {other}")
-        return self.name < other.name
+        return self._name < other._name
 
     def _init_matches(self, name: str, value: Any) -> tuple[set[str], Any]:
         matches = set([name])
@@ -23,19 +23,39 @@ class ConfigNode:
         return matches, value
 
     def add_edge(self, to_node: 'ConfigNode'):
-        self.next_nodes.append(to_node)
-        to_node.next_nodes.append(self)
-        to_node.parent = self
+        self._next_nodes.append(to_node)
+        to_node._next_nodes.append(self)
+        to_node._parent = self
 
     def get_next_nodes(self, name: str) -> List['ConfigNode']:
         results = []
-        for node in self.next_nodes:
-            if name == "*" or name in node.matches:
+        for node in self._next_nodes:
+            if name == "*" or name in node._matches:
                 results.append(node)
         return results
                 
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def matches(self) -> set[str]:
+        return self._matches
+
+    @property
+    def value(self) -> Any:
+        return self._value
+
+    @property
+    def next_nodes(self) -> List['ConfigNode']:
+        return self._next_nodes
+
+    @property
+    def parent(self) -> Optional['ConfigNode']:
+        return self._parent
+
     def __repr__(self):
-        return f"ConfigNode(name={self.name}, matches={self.matches}, next_nodes={self.next_nodes})"
+        return f"ConfigNode(name={self._name}, matches={self._matches}, next_nodes={self._next_nodes})"
 
 class ConfigResolver:
     def __init__(self, root: ConfigNode):
@@ -53,7 +73,7 @@ class ConfigResolver:
             if isinstance(d, dict):
                 if "aliases" in d:
                     for a in d["aliases"]:
-                        parent.matches.add(a)
+                        parent._matches.add(a)
                 for k, v in d.items():
                     if k == "aliases":
                         continue
@@ -112,3 +132,6 @@ class ConfigResolver:
     
     def resolve(self, path: Union[list, tuple]) -> list:
         return self._resolve(tuple(path))
+
+    def resolve_values(self, path: Union[list, tuple]) -> list:
+        return [x.value for x in self.resolve(path)]
