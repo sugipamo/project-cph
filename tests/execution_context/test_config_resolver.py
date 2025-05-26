@@ -114,7 +114,7 @@ def test_resolve_circular_reference():
     resolver = ConfigResolver(node_a)
     # 無限ループしないこと
     results = resolver.resolve(["b"])
-    assert any(r.name == "b" for r in results)
+    assert any(r.key == "b" for r in results)
 
 def test_resolve_aliases_and_other_keys():
     config = {
@@ -215,7 +215,7 @@ def test_resolve_tuple_path():
 
 def test_confignode_properties_and_repr():
     node = ConfigNode("test", {"aliases": ["t1", "t2"], "value": 5})
-    assert node.name == "test"
+    assert node.key == "test"
     assert "t1" in node.matches and "t2" in node.matches
     assert node.value["value"] == 5
     assert node.parent is None
@@ -345,3 +345,109 @@ def test_matches_direct_modification():
     # matchesはsetだが、直接書き換えはできない（property）
     with pytest.raises(AttributeError):
         node.matches = {"b"}
+
+def test_get_next_nodes_star_and_non_match():
+    node1 = ConfigNode("a")
+    node2 = ConfigNode("b")
+    node1.add_edge(node2)
+    # "*"指定で全て返す
+    assert node1.get_next_nodes("*") == [node2]
+    # 存在しない名前
+    assert node1.get_next_nodes("zzz") == []
+
+def test_repr_with_self_and_cycle():
+    node1 = ConfigNode("a")
+    node1.add_edge(node1)  # 自己参照
+    r = repr(node1)
+    assert "ConfigNode" in r
+
+def test_parent_property():
+    node1 = ConfigNode("a")
+    node2 = ConfigNode("b")
+    node1.add_edge(node2)
+    assert node2.parent == node1
+
+def test_matches_with_duplicate_aliases():
+    node = ConfigNode("a", {"aliases": ["x", "x", "a"], "value": 1})
+    # setなので重複しない
+    assert list(node.matches).count("x") == 1
+    assert "a" in node.matches
+
+def test_from_dict_aliases_none():
+    config = {"docker": {"aliases": None, "value": 1}}
+    with pytest.raises(TypeError):
+        ConfigResolver.from_dict(config)
+
+def test_add_edge_self_multiple():
+    node = ConfigNode("a")
+    node.add_edge(node)
+    node.add_edge(node)
+    assert node.next_nodes.count(node) >= 2
+
+def test_value_property_various_types():
+    assert ConfigNode("a", 123).value == 123
+    assert ConfigNode("b", None).value is None
+    assert ConfigNode("c", "str").value == "str"
+
+def test_find_nearest_key_node_basic():
+    config = {
+        "python": {
+            "language_id": "5078",
+            "source_file_name": "main.py",
+            "commands": {
+                "test": {"aliases": ["t"]}
+            }
+        },
+        "java": {
+            "language_id": "9999",
+            "source_file_name": "Main.java",
+            "commands": {
+                "test": {"aliases": ["t"]}
+            }
+        }
+    }
+    resolver = ConfigResolver.from_dict(config)
+    # pythonのlanguage_id
+    py_nodes = resolver.root.get_next_nodes("python")
+    assert py_nodes
+    py_node = py_nodes[0]
+    found = py_node.find_nearest_key_node("language_id")
+    assert found and found[0].value == "5078"
+    # javaのsource_file_name
+    java_nodes = resolver.root.get_next_nodes("java")
+    assert java_nodes
+    java_node = java_nodes[0]
+    found = java_node.find_nearest_key_node("source_file_name")
+    assert found and found[0].value == "Main.java"
+
+
+def test_find_nearest_key_node_deep():
+    config = {
+        "python": {
+            "level1": {
+                "level2": {
+                    "target": 42
+                }
+            }
+        }
+    }
+    resolver = ConfigResolver.from_dict(config)
+    py_node = resolver.root.get_next_nodes("python")[0]
+    found = py_node.find_nearest_key_node("target")
+    assert found and found[0].value == 42
+
+
+def test_find_nearest_key_node_multiple():
+    config = {
+        "python": {
+            "target": 1,
+            "level1": {
+                "target": 2
+            }
+        }
+    }
+    resolver = ConfigResolver.from_dict(config)
+    py_node = resolver.root.get_next_nodes("python")[0]
+    found = py_node.find_nearest_key_node("target")
+    # 最も近い（浅い）ノードのみ返る
+    assert found and found[0].value == 1

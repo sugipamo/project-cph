@@ -3,19 +3,19 @@ from functools import lru_cache
 
 
 class ConfigNode:
-    def __init__(self, name: str, value: Optional[Any] = None):
-        self._name = name
-        self._matches, self._value = self._init_matches(name, value)
+    def __init__(self, key: str, value: Optional[Any] = None):
+        self._key = key
+        self._matches, self._value = self._init_matches(key, value)
         self._next_nodes: List['ConfigNode'] = []
         self._parent: Optional['ConfigNode'] = None
 
     def __lt__(self, other: 'ConfigNode'):
         if not isinstance(other, ConfigNode):
             raise TypeError(f"ConfigNodeとの比較ができません: {other}")
-        return self._name < other._name
+        return self._key < other._key
 
-    def _init_matches(self, name: str, value: Any) -> tuple[set[str], Any]:
-        matches = set([name])
+    def _init_matches(self, key: str, value: Any) -> tuple[set[str], Any]:
+        matches = set([key])
         if isinstance(value, dict) and "aliases" in value:
             aliases = value["aliases"]
             if not isinstance(aliases, list):
@@ -30,16 +30,16 @@ class ConfigNode:
         to_node._next_nodes.append(self)
         to_node._parent = self
 
-    def get_next_nodes(self, name: str) -> List['ConfigNode']:
+    def get_next_nodes(self, key: str) -> List['ConfigNode']:
         results = []
         for node in self._next_nodes:
-            if name == "*" or name in node._matches:
+            if key == "*" or key in node._matches:
                 results.append(node)
         return results
                 
     @property
-    def name(self) -> str:
-        return self._name
+    def key(self) -> str:
+        return self._key
 
     @property
     def matches(self) -> set[str]:
@@ -56,9 +56,30 @@ class ConfigNode:
     @property
     def parent(self) -> Optional['ConfigNode']:
         return self._parent
+    
+    @lru_cache(maxsize=1000)
+    def find_nearest_key_node(self, key: str) -> list['ConfigNode']:
+        from collections import deque
+        que = deque([(0, self)])
+        visited = set()
+        find_depth = 1 << 31
+        results = []
+        while que:
+            depth, node = que.popleft()
+            if depth > find_depth:
+                break
+            if node in visited:
+                continue
+            visited.add(node)
+            if key in node.matches:
+                find_depth = min(find_depth, depth)
+                results.append(node)
+            for next_node in node.next_nodes:
+                que.append((depth + 1, next_node))
+        return results
 
     def __repr__(self):
-        return f"ConfigNode(name={self._name}, matches={self._matches}, next_nodes={self._next_nodes})"
+        return f"ConfigNode(key={self._key}, matches={self._matches}, next_nodes={self._next_nodes})"
 
 class ConfigResolver:
     def __init__(self, root: ConfigNode):
@@ -96,18 +117,6 @@ class ConfigResolver:
 
     @lru_cache(maxsize=1000)
     def _resolve(self, path: tuple) -> list:
-        """
-        設定値ノードを取得する
-        与えられたパス（リスト）の末尾に最もよく一致し、かつ最も浅いノードを返す
-
-        Args:
-            path (List[str]): 取得したい設定値へのパス
-
-        Returns:
-            list: 該当する設定値ノードのリスト
-
-        """
-
         if not path:
             return []
         
