@@ -9,7 +9,12 @@ class ConfigNode:
         self.next_nodes: List['ConfigNode'] = []
         self.parent: Optional['ConfigNode'] = None
 
-    def _init_matches(self, name: str, value: Any):
+    def __lt__(self, other: 'ConfigNode'):
+        if not isinstance(other, ConfigNode):
+            raise TypeError(f"ConfigNodeとの比較ができません: {other}")
+        return self.name < other.name
+
+    def _init_matches(self, name: str, value: Any) -> tuple[set[str], Any]:
         matches = set([name])
         if isinstance(value, dict) and "aliases" in value:
             for alias in value["aliases"]:
@@ -80,45 +85,30 @@ class ConfigResolver:
         if not path:
             return []
         
-        start_node = self.root
-        for p in path:
-            next_node = start_node.get_next_node(p)
-            if next_node is None:
-                break
-            start_node = next_node
-
-
-        if start_node is None:
-            raise ValueError(f"ConfigResolver: {path}は存在しません")
-        
-        que = [(0, start_node)]
-        visited = set()
         results = []
+        que = [(path, 0, self.root)]
+        visited = set()
         while que:
-            depth, node = que.pop()
-            if id(node) in visited:
+            path, match_rank, node = que.pop()
+            if node in visited:
                 continue
-            visited.add(id(node))
-            if path[-1] in node.matches:
-                match_rank = 1
-                nnode = node
-                while nnode.parent is not None and path[-match_rank] in nnode.parent.matches:
-                    nnode = nnode.parent
-                    match_rank += 1
-                results.append((node, depth, match_rank))
-            for next_nodes in node.next_nodes:
-                que.append((depth + 1, next_nodes))
+            visited.add(node)
+            for i, p in enumerate(path):
+                if p in node.matches:
+                    if len(path) == 1:
+                        results.append((match_rank, node))
+                    else:
+                        path = path[i+1:]
+                        match_rank +=1
+                        break
+            for next_node in node.next_nodes:
+                que.append((path, match_rank, next_node))
 
-        if not results:
-            return []
+        results.sort(reverse=True)
+        results = [x[1] for x in results]
 
-        max_match_rank = max(result[2] for result in results)
-        results = [result for result in results if result[2] == max_match_rank]
+        return results           
 
-        min_depth = min(result[1] for result in results)
-        results = [result[0] for result in results if result[1] == min_depth]
-
-        return results
-# TODO 必須要素、必須ではないが一致度が高いものという形式で引数にいれられるようにする
+    
     def resolve(self, path: Union[list, tuple]) -> list:
         return self._resolve(tuple(path))
