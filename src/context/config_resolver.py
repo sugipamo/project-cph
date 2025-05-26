@@ -1,25 +1,36 @@
-from typing import Any, Dict, List, Optional, Set, Union
-from collections import deque
+from typing import Any, List, Optional, Union
+from functools import lru_cache
+
 
 class ConfigNode:
     def __init__(self, name: str, value: Optional[Any] = None):
         self.name = name
-        self.aliases: Set[str] = set()
-        self.value = value
-        self.edges: Dict[str, List['ConfigNode']] = {}
+        self.matches, self.value = self._init_matches(name, value)
+        self.next_nodes: List['ConfigNode'] = []
+        self.parent: Optional['ConfigNode'] = None
+
+    def _init_matches(self, name: str, value: Any):
+        matches = set([name])
+        if isinstance(value, dict) and "aliases" in value:
+            for alias in value["aliases"]:
+                matches.add(alias)
+            del value["aliases"]
+        return matches, value
 
     def add_edge(self, to_node: 'ConfigNode'):
-        if to_node.name not in self.edges:
-            self.edges[to_node.name] = []
-        self.edges[to_node.name].append(to_node)
-        # 逆方向も追加（必要なら）
-        if self.name not in to_node.edges:
-            to_node.edges[self.name] = []
-        to_node.edges[self.name].append(self)
+        self.next_nodes.append(to_node)
+        to_node.next_nodes.append(self)
+        to_node.parent = self
 
-class ConfigResult:
-    def __init__(self, node: ConfigNode):
-        self.node = node
+    def get_next_nodes(self, name: str) -> List['ConfigNode']:
+        results = []
+        for node in self.next_nodes:
+            if name == "*" or name in node.matches:
+                results.append(node)
+        return results
+                
+    def __repr__(self):
+        return f"ConfigNode(name={self.name}, matches={self.matches}, next_nodes={self.next_nodes})"
 
 class ConfigResolver:
     def __init__(self, root: ConfigNode):
@@ -30,79 +41,84 @@ class ConfigResolver:
         if not isinstance(data, dict):
             raise ValueError("ConfigResolver: dict以外は未対応です")
         root = ConfigNode('root', data)
-        stack = [(root, data)]
-        while stack:
-            parent_node, value = stack.pop()
-            value_dict = None
-
-            if isinstance(value, dict):
-                value_dict = value
-            elif isinstance(value, list):
-                raise ValueError("ConfigResolver: list値は未対応です")
-
-            if isinstance(value_dict, dict):
-                for k, v in value_dict.items():
-                    if k == 'aliases':
-                        # 親ノード自身のaliases
-                        aliases = v if isinstance(v, list) else []
-                        for alias in aliases:
-                            parent_node.aliases.add(alias)
+        
+        que = [(root, data)]
+        while que:
+            parent, d = que.pop()
+            if isinstance(d, dict):
+                if "aliases" in d:
+                    for a in d["aliases"]:
+                        parent.matches.add(a)
+                for k, v in d.items():
+                    if k == "aliases":
                         continue
-                    child_node = ConfigNode(k, v)
-                    # 子ノードのaliases
-                    aliases = v.get('aliases') if isinstance(v, dict) else []
-                    if not isinstance(aliases, list):
-                        aliases = []
-                    for alias in aliases:
-                        child_node.aliases.add(alias)
-                    parent_node.add_edge(child_node)
-                    stack.append((child_node, v))
+                    node = ConfigNode(k, v)
+                    parent.add_edge(node)
+                    que.append((node, v))
+            elif isinstance(d, list):
+                for i, v in enumerate(d):
+                    node = ConfigNode(i, v)
+                    parent.add_edge(node)
+                    que.append((node, v))
+
         return cls(root)
 
-    def resolve(self, path: List[str]) -> List[ConfigResult]:
-        if not path or not isinstance(path, list):
-            raise ValueError("resolve: pathは空やNone、list以外は不可")
-        target = path[-1]
-        # まずroot直下でpath[0]（ノード名またはエイリアス）に一致するノードを列挙
-        start_nodes = []
-        for nodes in self.root.edges.values():
-            for node in nodes:
-                if node.name == path[0] or path[0] in node.aliases:
-                    start_nodes.append(node)
-        if not start_nodes:
+    @lru_cache(maxsize=1000)
+    def _resolve(self, path: tuple) -> list:
+        """
+        設定値ノードを取得する
+        与えられたパス（リスト）の末尾に最もよく一致し、かつ最も浅いノードを返す
+
+        Args:
+            path (List[str]): 取得したい設定値へのパス
+
+        Returns:
+            list: 該当する設定値ノードのリスト
+
+        """
+
+        if not path:
             return []
-        # パスの途中もノード名またはエイリアス一致でたどる
-        for p in path[1:-1]:
-            next_nodes = []
-            for node in start_nodes:
-                for nodes in node.edges.values():
-                    for child in nodes:
-                        if child.name == p or p in child.aliases:
-                            next_nodes.append(child)
-            if not next_nodes:
-                return []
-            start_nodes = next_nodes
-        # 完全一致しなかった場合、そこからBFSでtargetを探す
+        
+        start_node = self.root
+        for p in path:
+            next_node = start_node.get_next_node(p)
+            if next_node is None:
+                break
+            start_node = next_node
+
+
+        if start_node is None:
+            raise ValueError(f"ConfigResolver: {path}は存在しません")
+        
+        que = [(0, start_node)]
+        visited = set()
         results = []
-        for start_node in start_nodes:
-            queue = deque([(0, start_node)])
-            visited: Set[int] = set()
-            found_depth = -1
-            while queue:
-                depth, node = queue.popleft()
-                # 最後の要素もエイリアス許容
-                if node.name == target or target in node.aliases:
-                    results.append(ConfigResult(node))
-                    found_depth = depth if found_depth == -1 else found_depth
-                if found_depth != -1 and depth > found_depth:
-                    break
-                node_id = id(node)
-                if node_id in visited:
-                    continue
-                visited.add(node_id)
-                for edge_nodes in node.edges.values():
-                    for edge in edge_nodes:
-                        queue.append((depth + 1, edge))
-            if results:
-                break  # 最初に見つかった深さのみ返す
+        while que:
+            depth, node = que.pop()
+            if id(node) in visited:
+                continue
+            visited.add(id(node))
+            if path[-1] in node.matches:
+                match_rank = 1
+                nnode = node
+                while nnode.parent is not None and path[-match_rank] in nnode.parent.matches:
+                    nnode = nnode.parent
+                    match_rank += 1
+                results.append((node, depth, match_rank))
+            for next_nodes in node.next_nodes:
+                que.append((depth + 1, next_nodes))
+
+        if not results:
+            return []
+
+        max_match_rank = max(result[2] for result in results)
+        results = [result for result in results if result[2] == max_match_rank]
+
+        min_depth = min(result[1] for result in results)
+        results = [result[0] for result in results if result[1] == min_depth]
+
         return results
+# TODO 必須要素、必須ではないが一致度が高いものという形式で引数にいれられるようにする
+    def resolve(self, path: Union[list, tuple]) -> list:
+        return self._resolve(tuple(path))

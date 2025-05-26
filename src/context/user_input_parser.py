@@ -20,7 +20,6 @@ def _load_system_info(operations, path=SYSTEM_INFO_PATH):
             "env_type": None,
             "contest_name": None,
             "problem_name": None,
-            "contest_current_path": None,
             "env_json": None,
             "dockerfile": None
         }
@@ -47,8 +46,6 @@ def _validate_env_json(data: dict, path: str):
             raise ValueError(f"{path}: {lang}にenv_types(dict)がありません")
         if "aliases" in conf and not isinstance(conf["aliases"], list):
             raise ValueError(f"{path}: {lang}のaliasesはlistである必要があります")
-        if "contest_current_path" in conf and not isinstance(conf["contest_current_path"], str):
-            raise ValueError(f"{path}: {lang}のcontest_current_pathはstrである必要があります")
 
 def _load_all_env_jsons(base_dir: str) -> List[dict]:
     env_jsons = []
@@ -82,11 +79,14 @@ def _apply_language(args, context, env_json: dict):
     return args, context
 
 def _apply_env_type(args, context, resolver: ConfigResolver):
-    # for idx, arg in enumerate(args):
-    #     if arg in env_json[language]["env_types"]:
-    #         context.env_type = arg
-    #         new_args = args[:idx] + args[idx+1:]
-    #         return new_args, context
+    env_type = None
+    for idx, arg in enumerate(args):
+        env_type = resolver.resolve([context.language, "env_types", arg])
+        if env_type and env_type[0].parent.name == "env_types":
+            context.env_type = env_type[0].name
+            print("[debug] env_type", context.env_type)
+            new_args = args[:idx] + args[idx+1:]
+            return new_args, context
     return args, context
 
 def _apply_command(args, context):
@@ -109,15 +109,6 @@ def _apply_names(args, context):
     for key, arg in zip(keys, reversed(args)):
         setattr(context, key, arg)
     return [], context
-
-def _apply_contest_current_path(context):
-    if context.env_json and context.language:
-        contest_current_path = context.env_json[context.language]["contest_current_path"] if "contest_current_path" in context.env_json[context.language] else None
-        if contest_current_path:
-            context.contest_current_path = contest_current_path
-    if not context.contest_current_path:
-        context.contest_current_path = "./contest_current"
-    return context
 
 def _apply_workspace_path(args, context):
     ws = None
@@ -213,8 +204,6 @@ def parse_user_input(
     args, context = _apply_command(args, context)
     # 残りの引数からproblem_name, contest_nameを特定
     args, context = _apply_names(args, context)
-    # contest_current_path特定
-    context = _apply_contest_current_path(context)
     # workspace_path特定
     context = _apply_workspace_path(args, context)
     # env_jsonをcontextにセット（既にセット済みならスキップ）
@@ -230,7 +219,6 @@ def parse_user_input(
         "env_type": context.env_type,
         "contest_name": context.contest_name,
         "problem_name": context.problem_name,
-        "contest_current_path": context.contest_current_path,
         "env_json": context.env_json
     })
     # バリデーション
