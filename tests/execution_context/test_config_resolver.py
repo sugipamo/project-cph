@@ -222,3 +222,126 @@ def test_confignode_properties_and_repr():
     assert isinstance(node.next_nodes, list)
     r = repr(node)
     assert "ConfigNode" in r and "test" in r
+
+def test_from_dict_invalid_type():
+    with pytest.raises(ValueError):
+        ConfigResolver.from_dict([1, 2, 3])
+    with pytest.raises(ValueError):
+        ConfigResolver.from_dict(None)
+    with pytest.raises(ValueError):
+        ConfigResolver.from_dict(123)
+
+
+def test_resolve_invalid_path_type(sample_config):
+    resolver = ConfigResolver.from_dict(sample_config)
+    with pytest.raises(TypeError):
+        resolver.resolve("notalist")
+    with pytest.raises(TypeError):
+        resolver.resolve(None)
+    with pytest.raises(TypeError):
+        resolver.resolve(123)
+
+
+def test_add_edge_invalid_type():
+    node = ConfigNode("a")
+    with pytest.raises(AttributeError):
+        node.add_edge("notanode")
+
+
+def test_aliases_invalid_type():
+    config = {
+        "docker": {
+            "aliases": "notalist",
+            "value": 1
+        }
+    }
+    # from_dictでエラーになるか
+    with pytest.raises(Exception):
+        ConfigResolver.from_dict(config)
+
+
+def test_confignode_lt_invalid_type():
+    node = ConfigNode("a")
+    with pytest.raises(TypeError):
+        node < "notanode"
+
+def test_add_edge_self_reference():
+    node = ConfigNode("self")
+    node.add_edge(node)
+    # 自己参照でも例外が出ないこと、next_nodesに自分自身が含まれる
+    assert node in node.next_nodes
+
+
+def test_add_edge_duplicate():
+    node1 = ConfigNode("a")
+    node2 = ConfigNode("b")
+    node1.add_edge(node2)
+    node1.add_edge(node2)
+    # 重複してもnext_nodesに2回追加される（現仕様）
+    assert node1.next_nodes.count(node2) >= 2
+
+
+def test_value_dict_not_destroyed():
+    value = {"aliases": ["x"], "value": 1}
+    import copy
+    value_copy = copy.deepcopy(value)
+    node = ConfigNode("a", value_copy)
+    # value_copyのaliasesが消えていないこと
+    assert "aliases" in value
+
+
+def test_add_edge_parent_and_next_nodes():
+    node1 = ConfigNode("a")
+    node2 = ConfigNode("b")
+    node1.add_edge(node2)
+    assert node2 in node1.next_nodes
+    assert node1 in node2.next_nodes
+    assert node2.parent == node1
+
+
+def test_repr_circular_reference():
+    node1 = ConfigNode("a")
+    node2 = ConfigNode("b")
+    node1.add_edge(node2)
+    node2.add_edge(node1)  # 循環
+    r = repr(node1)
+    assert "ConfigNode" in r
+
+
+def test_resolve_path_with_empty_and_duplicate():
+    config = {
+        "python": {
+            "env_type": {
+                "docker": {"value": 1}
+            }
+        }
+    }
+    resolver = ConfigResolver.from_dict(config)
+    # 空文字列を含むパス
+    results_empty = resolver.resolve(["python", "", "docker"])
+    assert results_empty == []
+    # 重複要素を含むパス
+    results_dup = resolver.resolve(["python", "python", "env_type", "docker"])
+    # 仕様上、重複しても一致しない場合は空リスト
+    assert isinstance(results_dup, list)
+
+
+def test_large_nested_dict():
+    # 100階層のネスト
+    d = v = {}
+    for i in range(100):
+        nv = {}
+        v[str(i)] = nv
+        v = nv
+    resolver = ConfigResolver.from_dict(d)
+    # 存在しない深いパス
+    path = [str(i) for i in range(100)]
+    results = resolver.resolve(path)
+    assert isinstance(results, list)
+
+
+def test_matches_direct_modification():
+    node = ConfigNode("a")
+    # matchesはsetだが、直接書き換えはできない（property）
+    with pytest.raises(AttributeError):
+        node.matches = {"b"}

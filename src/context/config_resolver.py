@@ -17,7 +17,10 @@ class ConfigNode:
     def _init_matches(self, name: str, value: Any) -> tuple[set[str], Any]:
         matches = set([name])
         if isinstance(value, dict) and "aliases" in value:
-            for alias in value["aliases"]:
+            aliases = value["aliases"]
+            if not isinstance(aliases, list):
+                raise TypeError(f"aliasesはlist型である必要があります: {aliases}")
+            for alias in aliases:
                 matches.add(alias)
             del value["aliases"]
         return matches, value
@@ -72,7 +75,10 @@ class ConfigResolver:
             parent, d = que.pop()
             if isinstance(d, dict):
                 if "aliases" in d:
-                    for a in d["aliases"]:
+                    aliases = d["aliases"]
+                    if not isinstance(aliases, list):
+                        raise TypeError(f"aliasesはlist型である必要があります: {aliases}")
+                    for a in aliases:
                         parent._matches.add(a)
                 for k, v in d.items():
                     if k == "aliases":
@@ -131,6 +137,8 @@ class ConfigResolver:
 
     
     def resolve(self, path: Union[list, tuple]) -> list:
+        if not isinstance(path, (list, tuple)):
+            raise TypeError(f"resolve: pathはlistまたはtupleである必要があります: {path}")
         return self._resolve(tuple(path))
 
     def resolve_values(self, path: Union[list, tuple]) -> list:
