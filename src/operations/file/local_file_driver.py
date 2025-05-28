@@ -2,6 +2,7 @@ from pathlib import Path
 from shutil import copy2
 import shutil
 from .file_driver import FileDriver
+import os
 
 class LocalFileDriver(FileDriver):
     def __init__(self, base_dir=Path(".")):
@@ -50,4 +51,14 @@ class LocalFileDriver(FileDriver):
                 if not chunk:
                     break
                 h.update(chunk)
-        return h.hexdigest() 
+        return h.hexdigest()
+
+    def list_files(self, base_dir):
+        import os
+        from pathlib import Path
+        base = self.base_dir / base_dir
+        result = []
+        for root, dirs, files in os.walk(base):
+            for file in files:
+                result.append(str(Path(root) / file))
+        return result 

@@ -77,4 +77,30 @@ def test_fileutil_glob_isdir_makedirs():
         FileUtil.makedirs(Path(subdir))
         assert FileUtil.isdir(Path(subdir))
         files = FileUtil.glob(Path(tmpdir), "*")
-        assert isinstance(files, list) 
+        assert isinstance(files, list)
+
+def test_list_files_local_file_driver(tmp_path):
+    # ディレクトリ・ファイル構成を作成
+    (tmp_path / "a").mkdir()
+    (tmp_path / "a" / "b").mkdir()
+    (tmp_path / "a" / "b" / "file1.txt").write_text("hello")
+    (tmp_path / "a" / "file2.txt").write_text("world")
+    from src.operations.file.local_file_driver import LocalFileDriver
+    driver = LocalFileDriver(base_dir=tmp_path)
+    files = set(driver.list_files("a"))
+    expected = {
+        str(tmp_path / "a" / "b" / "file1.txt"),
+        str(tmp_path / "a" / "file2.txt"),
+    }
+    assert files == expected
+
+def test_list_files_mock_file_driver():
+    from src.operations.mock.mock_file_driver import MockFileDriver
+    from pathlib import Path
+    driver = MockFileDriver(base_dir=Path("."))
+    # 仮想ファイルを追加
+    driver.contents[Path("a/b/file1.txt")] = "hello"
+    driver.contents[Path("a/file2.txt")] = "world"
+    files = set(driver.list_files("a"))
+    expected = {"a/b/file1.txt", "a/file2.txt"}
+    assert files == expected 

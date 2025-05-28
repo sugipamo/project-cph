@@ -2,33 +2,48 @@
   "command": "open",
   "language": "python",
   "env_type": "local",
-  "contest_name": "abc301",
+  "contest_name": "abc300",
   "problem_name": "a",
   "env_json": {
     "python": {
-      "aliases": [
-        "py"
-      ],
       "language_id": "5078",
       "source_file_name": "main.py",
       "contest_current_path": "./contest_current",
+      "contest_stock_path": "./contest_stock",
       "contest_template_path": "./contest_template/{language_name}",
       "contest_temp_path": "./.temp",
       "workspace_path": "./workspace",
       "commands": {
         "open": {
-          "aliases": [
-            "o"
-          ],
           "description": "コンテストを開く",
           "steps": [
             {
               "type": "python",
-              "allow_failure": false,
+              "allow_failure": true,
               "show_output": false,
               "cmd": [
                 "import webbrowser",
                 "webbrowser.open('https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_id}')"
+              ]
+            },
+            {
+              "type": "copy",
+              "allow_failure": true,
+              "show_output": false,
+              "force_env_type": "local",
+              "cmd": [
+                "{contest_current_path}/{source_file_name}",
+                "{contest_stock_path}/{contest_name}/{problem_id}/{source_file_name}"
+              ]
+            },
+            {
+              "type": "copy",
+              "allow_failure": true,
+              "show_output": false,
+              "force_env_type": "local",
+              "cmd": [
+                "{contest_template_path}/{language_name}/{source_file_name}",
+                "{contest_current_path}/{source_file_name}"
               ]
             },
             {
@@ -54,7 +69,7 @@
             },
             {
               "type": "movetree",
-              "allow_failure": false,
+              "allow_failure": true,
               "show_output": false,
               "force_env_type": "local",
               "cmd": [
@@ -65,9 +80,6 @@
           ]
         },
         "test": {
-          "aliases": [
-            "t"
-          ],
           "description": "テストを実行する",
           "steps": [
             {
@@ -91,9 +103,6 @@
           ]
         },
         "submit": {
-          "aliases": [
-            "s"
-          ],
           "description": "提出する",
           "steps": [
             {
@@ -125,16 +134,9 @@
       },
       "env_types": {
         "docker": {
-          "aliases": [
-            "docker"
-          ],
           "dockerfile_path": "./contest_env/python/Dockerfile"
         },
-        "local": {
-          "aliases": [
-            "local"
-          ]
-        }
+        "local": {}
       }
     }
   }

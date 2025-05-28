@@ -1,24 +1,56 @@
 import os
-import shutil
-import tempfile
 import json
 import pytest
 from src.context.user_input_parser import parse_user_input
-from src.context.execution_context import ExecutionContext
 from src.env.build_operations import build_mock_operations
 
-@pytest.fixture(scope="module")
-def setup_env(tmp_path_factory):
-    # contest_envディレクトリを一時ディレクトリにコピー
-    tmp_dir = tmp_path_factory.mktemp("contest_env")
-    shutil.copytree("contest_env/python", tmp_dir / "python")
-    shutil.copytree("contest_env/rust", tmp_dir / "rust")
-    return str(tmp_dir)
+# テスト用env.jsonデータ
+PYTHON_ENV_JSON = {
+    "python": {
+        "commands": {
+            "test": {
+                "aliases": ["t"],
+                "steps": []
+            }
+        },
+        "env_types": {
+            "local": {},
+            "docker": {}
+        },
+        "aliases": ["py"],
+        "contest_current_path": "./contest_current"
+    }
+}
+RUST_ENV_JSON = {
+    "rust": {
+        "commands": {
+            "test": {
+                "aliases": [],
+                "steps": []
+            }
+        },
+        "env_types": {
+            "local": {},
+            "docker": {}
+        },
+        "aliases": [],
+        "contest_current_path": "./contest_current"
+    }
+}
 
-@pytest.mark.usefixtures("setup_env")
-def test_parse_python_command(setup_env):
+def inject_env_json_to_operations(operations):
+    """
+    build_mock_operationsで生成したoperationsにenv.jsonデータを注入する共通関数。
+    """
+    file_driver = operations.resolve("file_driver")
+    file_driver.contents[file_driver.base_dir / "contest_env/python/env.json"] = json.dumps(PYTHON_ENV_JSON)
+    file_driver.contents[file_driver.base_dir / "contest_env/rust/env.json"] = json.dumps(RUST_ENV_JSON)
+
+
+def test_parse_python_command():
     args = ["python", "docker", "test", "abc300", "a"]
     operations = build_mock_operations()
+    inject_env_json_to_operations(operations)
     ctx = parse_user_input(args, operations)
     assert ctx.language == "python"
     assert ctx.env_type == "docker"
@@ -29,10 +61,10 @@ def test_parse_python_command(setup_env):
     assert "python" in ctx.env_json
     assert ctx.contest_current_path == "./contest_current"
 
-@pytest.mark.usefixtures("setup_env")
-def test_parse_python_alias(setup_env):
+def test_parse_python_alias():
     args = ["py", "local", "t", "abc300", "a"]
     operations = build_mock_operations()
+    inject_env_json_to_operations(operations)
     ctx = parse_user_input(args, operations)
     assert ctx.language == "python"
     assert ctx.env_type == "local"
@@ -40,19 +72,19 @@ def test_parse_python_alias(setup_env):
     assert ctx.problem_name == "a"
     assert ctx.contest_name == "abc300"
 
-@pytest.mark.usefixtures("setup_env")
-def test_parse_too_many_args(setup_env):
+def test_parse_too_many_args():
     args = ["python", "docker", "test", "abc300", "a", "extra"]
     operations = build_mock_operations()
+    inject_env_json_to_operations(operations)
     with pytest.raises(ValueError) as e:
         parse_user_input(args, operations)
     assert "引数が多すぎます" in str(e.value)
 
-@pytest.mark.usefixtures("setup_env")
-def test_parse_missing_required(setup_env):
+def test_parse_missing_required():
     # 言語指定なし
     args = ["docker", "test", "abc300", "a"]
     operations = build_mock_operations()
+    inject_env_json_to_operations(operations)
     with pytest.raises(ValueError) as e:
         parse_user_input(args, operations)
-    assert "引数が多すぎます" in str(e.value) 
+    assert "引数が多すぎます" in str(e.value)

@@ -173,22 +173,115 @@ if __name__ == "__main__":
     }
 
     data = {
-        "python": {
-            "env_type": {
-                "docker": {
-                    "aliases": ["container"],
-                    "value": 1
-                },
-            },
-            "local": {"value": 2}
-        },
-        "java": {
-            "env_type": {
-                "docker": {"value": 3}
-            }
-        }
+  "python": {
+    "aliases": ["py"],
+    "language_id": "5078",
+    "source_file_name": "main.py",
+    "contest_current_path": "./contest_current",
+    "contest_stock_path": "./contest_stock",
+    "contest_template_path": "./contest_template/{language_name}",
+    "contest_temp_path": "./.temp",
+    "workspace_path": "./workspace",
+    "commands": {
+      "open": {
+        "aliases": ["o"],
+        "description": "コンテストを開く",
+        "steps": [
+          {
+            "type": "python",
+            "allow_failure": True, 
+            "show_output": False, 
+            "cmd": [
+              "import webbrowser",
+              "webbrowser.open('https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_id}')"
+            ]
+          },
+          {
+            "type": "copy",
+            "allow_failure": True,
+            "show_output": False,
+            "force_env_type": "local",
+            "cmd": ["{contest_current_path}/{source_file_name}", "{contest_stock_path}/{contest_name}/{problem_id}/{source_file_name}"]
+          },
+          {
+            "type": "copy",
+            "allow_failure": True,
+            "show_output": False,
+            "force_env_type": "local",
+            "cmd": ["{contest_template_path}/{language_name}/{source_file_name}", "{contest_current_path}/{source_file_name}"]
+          },
+          {
+            "type": "shell", 
+            "allow_failure": True,
+            "show_output": False,
+            "force_env_type": "local",
+            "cmd": ["cursor", "{contest_current_path}/{source_file_name}"]
+          },
+          {
+            "type": "oj", 
+            "allow_failure": True, 
+            "show_output": True, 
+            "cwd": "{workspace_path}",
+            "cmd": ["oj", "download", "https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_id}"]
+          },
+          {
+            "type": "movetree",
+            "allow_failure": True,
+            "show_output": False,
+            "force_env_type": "local",
+            "cmd": ["{workspace_path}/test", "{contest_current_path}/test"]
+          }
+        ]
+      },
+      "test": {
+        "aliases": ["t"],
+        "description": "テストを実行する",
+        "steps": [
+          {
+            "type": "copy",
+            "allow_failure": False,
+            "show_output": False,
+            "cmd": ["{contest_current_path}/{source_file_name}", "{workspace_path}/{source_file_name}"]
+          },
+          {
+            "type": "test",
+            "allow_failure": False,
+            "show_output": True,
+            "cmd": ["python3", "{workspace_path}/{source_file_name}"]
+          }
+        ]
+      },
+      "submit": {
+        "aliases": ["s"],
+        "description": "提出する",
+        "steps": [
+          {
+            "type": "copy",
+            "allow_failure": False,
+            "show_output": False,
+            "cmd": ["{contest_current_path}/{source_file_name}", "{workspace_path}/{source_file_name}"]
+          },
+          {
+            "type": "oj",
+            "allow_failure": False,
+            "show_output": True,
+            "cmd": ["oj", "submit", "--wait=0", "--yes", "--language", "{language_id}", "https://atcoder.jp/contests/{contest_name}/tasks/{contest_name}_{problem_id}", "{contest_current_path}/{source_file_name}"]
+          }
+        ]
+      }
+    },
+    "env_types": {
+      "docker": {
+        "aliases": ["docker"],
+        "dockerfile_path": "./contest_env/python/Dockerfile"
+      },
+      "local": {
+        "aliases": ["local"]
+      }
     }
+  }
+}
 
     resolver = ConfigResolver.from_dict(data)
 
-    [print(x) for x in resolver.resolve_by_match_desc(["docker"])]
+    # [print(x) for x in resolver.resolve_by_match_desc(["python", "commands"])]

@@ -124,6 +124,12 @@ class FileDriver(ABC):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.touch(exist_ok=True)
 
+    def list_files(self, base_dir):
+        """
+        指定ディレクトリ以下の全ファイルパスをリストで返す（サブクラスで実装）
+        """
+        raise NotImplementedError
+
 class FileUtil:
     @staticmethod
     def hash_file(path, algo='sha256'):

@@ -51,21 +51,16 @@ def _load_all_env_jsons(base_dir: str, operations) -> List[dict]:
     env_jsons = []
     file_driver = operations.resolve("file_driver")
     from src.operations.file.file_request import FileRequest, FileOpType
-    for root, dirs, files in os.walk(base_dir):
-        for file in files:
-            if file == "env.json":
-                path = os.path.join(root, file)
-                try:
-                    req = FileRequest(FileOpType.READ, path)
-                    result = req.execute(driver=file_driver)
-                    if not result.content:
-                        # 空ファイルはスキップ
-                        continue
-                    data = json.loads(result.content)
-                    _validate_env_json(data, path)
-                    env_jsons.append(data)
-                except Exception as e:
-                    raise RuntimeError(f"{path} の読み込みまたはバリデーションに失敗: {e}")
+
+    for path in file_driver.list_files(base_dir):
+        if str(path).endswith("env.json"):
+            req = FileRequest(FileOpType.READ, path)
+            result = req.execute(driver=file_driver)
+            if not result.content:
+                continue
+            data = json.loads(result.content)
+            _validate_env_json(data, path)
+            env_jsons.append(data)
     return env_jsons
 
 def _apply_language(args, context, resolver):
@@ -80,33 +75,25 @@ def _apply_language(args, context, resolver):
     return args, context
 
 def _apply_env_type(args, context, resolver: ConfigResolver):
-    env_type = None
+    type_env_nodes = resolver.resolve_by_match_desc([context.language, "env_types"])
     for idx, arg in enumerate(args):
-        env_type_node = resolver.resolve_best([context.language, "env_types", arg])
-        if env_type_node and env_type_node.parent and getattr(env_type_node.parent, 'key', None) == "env_types":
-            context.env_type = env_type_node.key
-            print("[debug] env_type", context.env_type)
-            new_args = args[:idx] + args[idx+1:]
-            return new_args, context
+        for type_env_node in type_env_nodes:
+            for node in type_env_node.next_nodes:
+                if arg in node.matches:
+                    context.env_type = node.key
+                    new_args = args[:idx] + args[idx+1:]
+                    return new_args, context
     return args, context
 
-def _apply_command(args, context):
-    if not context.env_json or not context.language:
-        return args, context
-    commands = context.env_json[context.language]["commands"] if "commands" in context.env_json[context.language] else {}
-    alias_map = {}
-    for cmd_name, cmd_conf in commands.items():
-        for alias in cmd_conf.get("aliases", []):
-            alias_map[alias] = cmd_name
+def _apply_command(args, context, resolver: ConfigResolver):
+    command_nodes = resolver.resolve_by_match_desc([context.language, "commands"])
     for idx, arg in enumerate(args):
-        if arg in commands:
-            context.command_type = arg
-            new_args = args[:idx] + args[idx+1:]
-            return new_args, context
-        if arg in alias_map:
-            context.command_type = alias_map[arg]
-            new_args = args[:idx] + args[idx+1:]
-            return new_args, context
+        for command_node in command_nodes:
+            for node in command_node.next_nodes:
+                if arg in node.matches:
+                    context.command_type = node.key
+                    new_args = args[:idx] + args[idx+1:]
+                    return new_args, context
     return args, context
 
 def _apply_names(args, context):
@@ -196,7 +183,7 @@ def parse_user_input(
     # env_type特定
     args, context = _apply_env_type(args, context, resolver)
     # コマンド特定
-    args, context = _apply_command(args, context)
+    args, context = _apply_command(args, context, resolver)
     # 残りの引数からproblem_name, contest_nameを特定
     args, context = _apply_names(args, context)
     # dockerfileの内容をセット
@@ -217,3 +204,8 @@ def parse_user_input(
     if not is_valid:
         raise ValueError(error_message)
     return context
+
+if __name__ == "__main__":
+    from src.env.build_operations import build_operations
+    operations = build_operations()
+    print(parse_user_input(["py", "local", "t", "abc300", "a"], operations))

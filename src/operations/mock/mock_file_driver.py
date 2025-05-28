@@ -95,4 +95,8 @@ class MockFileDriver(FileDriver):
         content = self.contents[Path(path)] if Path(path) in self.contents else ""
         content = content.encode()
         h.update(content)
-        return h.hexdigest() 
+        return h.hexdigest()
+
+    def list_files(self, base_dir):
+        base = str(self.base_dir / base_dir) if not str(base_dir).startswith(str(self.base_dir)) else str(base_dir)
+        return [str(p) for p in self.contents.keys() if str(p).startswith(base)] 

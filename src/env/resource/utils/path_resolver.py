@@ -15,11 +15,6 @@ class PathResolver:
 
     @property
     def contest_env_path(self) -> Path:
-        # まずenv_jsonにcontest_env_pathがあればそれを使う
-        lang_conf = Path(self.config.resolver.resolve_best([self.config.language, "contest_env_path"]).value)
-
-        if lang_conf is not None:
-            return Path(lang_conf)
         # 無ければ親ディレクトリをたどってcontest_envを探す
         cur = os.path.abspath(os.getcwd())
         while True:
