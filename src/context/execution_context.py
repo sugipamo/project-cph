@@ -18,6 +18,7 @@ class ExecutionContext:
     oj_dockerfile: Optional[str] = None
     old_execution_context: Optional["ExecutionContext"] = None
     resolver: Optional[object] = None  # ConfigResolver型（循環import回避のためobject型で）
+    contest_current_path: Optional[str] = None
     
 
     def validate(self) -> Tuple[bool, Optional[str]]:
@@ -57,7 +58,7 @@ class ExecutionContext:
         """
         if not self.resolver:
             raise ValueError("resolverがセットされていません")
-        return self.resolver.resolve(path)
+        return self.resolver.resolve_best(path)
 
     def get_env_config(self) -> dict:
         return self.env_json['env']

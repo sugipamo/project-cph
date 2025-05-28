@@ -70,10 +70,29 @@ def _extract_language_and_aliases(env_jsons: List[dict]) -> Dict[str, List[str]]
             result[lang] = aliases
     return result
 
-def _apply_language(args, context, env_json: dict):
+def _apply_language(args, context, env_json: dict, resolver=None):
+    # resolverが渡されていればそれを使って言語候補を取得
+    language_keys = []
+    alias_map = {}
+    if resolver is not None:
+        language_nodes = resolver.resolve_by_match_desc(["*"])
+        for node in language_nodes:
+            language_keys.append(node.key)
+            # エイリアスもmapに追加
+            for alias in getattr(node, 'matches', []):
+                alias_map[alias] = node.key
+    else:
+        for lang, conf in env_json.items():
+            language_keys.append(lang)
+            for alias in conf.get("aliases", []):
+                alias_map[alias] = lang
     for idx, arg in enumerate(args):
-        if arg in env_json:
+        if arg in language_keys:
             context.language = arg
+            new_args = args[:idx] + args[idx+1:]
+            return new_args, context
+        if arg in alias_map:
+            context.language = alias_map[arg]
             new_args = args[:idx] + args[idx+1:]
             return new_args, context
     return args, context
@@ -81,9 +100,9 @@ def _apply_language(args, context, env_json: dict):
 def _apply_env_type(args, context, resolver: ConfigResolver):
     env_type = None
     for idx, arg in enumerate(args):
-        env_type = resolver.resolve([context.language, "env_types", arg])
-        if env_type and env_type[0].parent.name == "env_types":
-            context.env_type = env_type[0].name
+        env_type_node = resolver.resolve_best([context.language, "env_types", arg])
+        if env_type_node and env_type_node.parent and getattr(env_type_node.parent, 'key', None) == "env_types":
+            context.env_type = env_type_node.key
             print("[debug] env_type", context.env_type)
             new_args = args[:idx] + args[idx+1:]
             return new_args, context
@@ -93,13 +112,19 @@ def _apply_command(args, context):
     if not context.env_json or not context.language:
         return args, context
     commands = context.env_json[context.language]["commands"] if "commands" in context.env_json[context.language] else {}
+    alias_map = {}
+    for cmd_name, cmd_conf in commands.items():
+        for alias in cmd_conf.get("aliases", []):
+            alias_map[alias] = cmd_name
     for idx, arg in enumerate(args):
-        for cmd_name, cmd_conf in commands.items():
-            aliases = cmd_conf["aliases"] if "aliases" in cmd_conf else []
-            if arg == cmd_name or arg in aliases:
-                context.command_type = cmd_name
-                new_args = args[:idx] + args[idx+1:]
-                return new_args, context
+        if arg in commands:
+            context.command_type = arg
+            new_args = args[:idx] + args[idx+1:]
+            return new_args, context
+        if arg in alias_map:
+            context.command_type = alias_map[arg]
+            new_args = args[:idx] + args[idx+1:]
+            return new_args, context
     return args, context
 
 def _apply_names(args, context):
@@ -197,7 +222,9 @@ def parse_user_input(
     resolver = ConfigResolver.from_dict(merged_env_json)
     context.resolver = resolver
     # 言語特定
-    args, context = _apply_language(args, context, env_json)
+    args, context = _apply_language(args, context, resolver)
+    # env_jsonをcontextにセット（既にセット済みならスキップ）
+    context = _apply_env_json(context, env_jsons)
     # env_type特定
     args, context = _apply_env_type(args, context, resolver)
     # コマンド特定
@@ -206,8 +233,6 @@ def parse_user_input(
     args, context = _apply_names(args, context)
     # workspace_path特定
     context = _apply_workspace_path(args, context)
-    # env_jsonをcontextにセット（既にセット済みならスキップ）
-    context = _apply_env_json(context, env_jsons)
     # dockerfileの内容をセット
     context = _apply_dockerfile(context, dockerfile_loader)
     # oj.Dockerfileの内容をセット
