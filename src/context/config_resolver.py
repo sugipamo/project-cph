@@ -1,85 +1,88 @@
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Union, Set
 from functools import lru_cache
 
 
 class ConfigNode:
     def __init__(self, key: str, value: Optional[Any] = None):
-        self._key = key
-        self._matches, self._value = self._init_matches(key, value)
-        self._next_nodes: List['ConfigNode'] = []
-        self._parent: Optional['ConfigNode'] = None
+        self.key = key
+        self.value = value
+        self.parent: Optional['ConfigNode'] = None
+        self.next_nodes: List['ConfigNode'] = []
+        self._matches: Set[str] = set([key, "*"])
+        ConfigNodeLogic.init_matches(self, value)
 
-    def __lt__(self, other: 'ConfigNode'):
-        if not isinstance(other, ConfigNode):
-            raise TypeError(f"ConfigNodeとの比較ができません: {other}")
-        return self._key < other._key
+    @property
+    def matches(self) -> Set[str]:
+        return self._matches
 
-    def _init_matches(self, key: str, value: Any) -> tuple[set[str], Any]:
-        matches = set([key])
+    def add_edge(self, to_node: 'ConfigNode'):
+        ConfigNodeLogic.add_edge(self, to_node)
+
+    def next_nodes_with_key(self, key: str) -> List['ConfigNode']:
+        return ConfigNodeLogic.next_nodes_with_key(self, key)
+
+    def path(self) -> List[str]:
+        return ConfigNodeLogic.path(self)
+
+    def find_nearest_key_node(self, key: str) -> List['ConfigNode']:
+        return ConfigNodeLogic.find_nearest_key_node(self, key)
+
+    def __repr__(self):
+        return f"ConfigNode(key={self.key!r}, value={self.value!r}, matches={self.matches!r}, next_nodes={[x.key for x in self.next_nodes]})"
+
+class ConfigNodeLogic:
+    @staticmethod
+    def init_matches(node: ConfigNode, value: Any):
         if isinstance(value, dict) and "aliases" in value:
             aliases = value["aliases"]
             if not isinstance(aliases, list):
                 raise TypeError(f"aliasesはlist型である必要があります: {aliases}")
             for alias in aliases:
-                matches.add(alias)
+                node.matches.add(alias)
             del value["aliases"]
-        return matches, value
+        node.value = value
 
-    def add_edge(self, to_node: 'ConfigNode'):
-        self._next_nodes.append(to_node)
-        to_node._next_nodes.append(self)
-        to_node._parent = self
+    @staticmethod
+    def add_edge(parent: ConfigNode, to_node: ConfigNode):
+        if to_node in parent.next_nodes:
+            raise ValueError(f"重複したエッジは許可されていません: {to_node}")
+        parent.next_nodes.append(to_node)
+        to_node.parent = parent
 
-    def get_next_nodes(self, key: str) -> List['ConfigNode']:
-        results = []
-        for node in self._next_nodes:
-            if key == "*" or key in node._matches:
-                results.append(node)
-        return results
-                
-    @property
-    def key(self) -> str:
-        return self._key
+    @staticmethod
+    def path(node: ConfigNode) -> List[str]:
+        path = []
+        n = node
+        while n.parent:
+            path.append(n.key)
+            n = n.parent
+        return path[::-1]
 
-    @property
-    def matches(self) -> set[str]:
-        return self._matches
+    @staticmethod
+    def next_nodes_with_key(node: ConfigNode, key: str) -> List[ConfigNode]:
+        return [n for n in node.next_nodes if key in n.matches]
 
-    @property
-    def value(self) -> Any:
-        return self._value
-
-    @property
-    def next_nodes(self) -> List['ConfigNode']:
-        return self._next_nodes
-
-    @property
-    def parent(self) -> Optional['ConfigNode']:
-        return self._parent
-    
+    @staticmethod
     @lru_cache(maxsize=1000)
-    def find_nearest_key_node(self, key: str) -> list['ConfigNode']:
+    def find_nearest_key_node(node: ConfigNode, key: str) -> List[ConfigNode]:
         from collections import deque
-        que = deque([(0, self)])
+        que = deque([(0, node)])
         visited = set()
         find_depth = 1 << 31
         results = []
         while que:
-            depth, node = que.popleft()
+            depth, n = que.popleft()
             if depth > find_depth:
                 break
-            if node in visited:
+            if n in visited:
                 continue
-            visited.add(node)
-            if key in node.matches:
+            visited.add(n)
+            if key in n.matches:
                 find_depth = min(find_depth, depth)
-                results.append(node)
-            for next_node in node.next_nodes:
+                results.append(n)
+            for next_node in n.next_nodes:
                 que.append((depth + 1, next_node))
         return results
-
-    def __repr__(self):
-        return f"ConfigNode(key={self._key}, matches={self._matches}, next_nodes={self._next_nodes})"
 
 class ConfigResolver:
     def __init__(self, root: ConfigNode):
@@ -90,7 +93,7 @@ class ConfigResolver:
         if not isinstance(data, dict):
             raise ValueError("ConfigResolver: dict以外は未対応です")
         root = ConfigNode('root', data)
-        
+        ConfigNodeLogic.init_matches(root, data)
         que = [(root, data)]
         while que:
             parent, d = que.pop()
@@ -100,55 +103,92 @@ class ConfigResolver:
                     if not isinstance(aliases, list):
                         raise TypeError(f"aliasesはlist型である必要があります: {aliases}")
                     for a in aliases:
-                        parent._matches.add(a)
+                        parent.matches.add(a)
                 for k, v in d.items():
                     if k == "aliases":
                         continue
                     node = ConfigNode(k, v)
-                    parent.add_edge(node)
+                    ConfigNodeLogic.init_matches(node, v)
+                    ConfigNodeLogic.add_edge(parent, node)
                     que.append((node, v))
             elif isinstance(d, list):
                 for i, v in enumerate(d):
                     node = ConfigNode(i, v)
-                    parent.add_edge(node)
+                    ConfigNodeLogic.init_matches(node, v)
+                    ConfigNodeLogic.add_edge(parent, node)
                     que.append((node, v))
-
         return cls(root)
 
     @lru_cache(maxsize=1000)
-    def _resolve(self, path: tuple) -> list:
+    def _resolve_by_match_desc(self, path: tuple) -> list:
         if not path:
             return []
-        
+        orig_path = path
         results = []
-        que = [(path, 0, self.root)]
+        que = [(path, 1, self.root)]
         visited = set()
         while que:
             path, match_rank, node = que.pop()
-            if node in visited:
+            if id(node) in visited:
                 continue
-            visited.add(node)
-            for i, p in enumerate(path):
-                if p in node.matches:
-                    if len(path) == 1:
-                        results.append((match_rank, node))
-                    else:
-                        path = path[i+1:]
-                        match_rank +=1
-                        break
+            visited.add(id(node))
             for next_node in node.next_nodes:
-                que.append((path, match_rank, next_node))
-
-        results.sort(reverse=True)
+                isok = False
+                for i in range(len(path)):
+                    if path[i] in next_node.matches:
+                        isok = True
+                        que.append((path[i+1:], match_rank + (1 << (len(orig_path) - i)), next_node))
+                        results.append((match_rank + (1 << (len(orig_path) - i)), next_node))
+                if not isok:
+                    que.append((path, match_rank, next_node))
+        results = list(results)
+        results.sort(key=lambda x: x[0], reverse=True)
         results = [x[1] for x in results]
+        return results
 
-        return results           
-
-    
-    def resolve(self, path: Union[list, tuple]) -> list:
+    def resolve_by_match_desc(self, path: Union[list, tuple]) -> list:
+        """
+        マッチ度降順でConfigNodeのリストを返す
+        """
         if not isinstance(path, (list, tuple)):
-            raise TypeError(f"resolve: pathはlistまたはtupleである必要があります: {path}")
-        return self._resolve(tuple(path))
+            raise TypeError(f"resolve_by_match_desc: pathはlistまたはtupleである必要があります: {path}")
+        return self._resolve_by_match_desc(tuple(path))
+
+    def resolve_best(self, path: Union[list, tuple]) -> Optional[ConfigNode]:
+        """
+        最もマッチ度の高いConfigNodeを1つだけ返す（なければNone）
+        """
+        results = self.resolve_by_match_desc(path)
+        return results[0] if results else None
 
     def resolve_values(self, path: Union[list, tuple]) -> list:
-        return [x.value for x in self.resolve(path)]
+        return [x.value for x in self.resolve_by_match_desc(path)]
+    
+if __name__ == "__main__":
+    data = {
+        "a": {
+            "aliases": ["b", "c"],
+            "value": "a"
+        }
+    }
+
+    data = {
+        "python": {
+            "env_type": {
+                "docker": {
+                    "aliases": ["container"],
+                    "value": 1
+                },
+            },
+            "local": {"value": 2}
+        },
+        "java": {
+            "env_type": {
+                "docker": {"value": 3}
+            }
+        }
+    }
+
+    resolver = ConfigResolver.from_dict(data)
+
+    [print(x) for x in resolver.resolve_by_match_desc(["docker"])]
