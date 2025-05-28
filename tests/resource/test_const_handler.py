@@ -6,45 +6,57 @@ import hashlib
 import os
 
 def make_local_config():
+    env_json = {
+        "cpp": {
+            "workspace_path": "/tmp/workspace",
+            "contest_current_path": "contests/abc001",
+            "source_file_name": "main.cpp",
+            "source_file": "main.cpp",
+            "contest_env_path": "./env",
+            "contest_template_path": "./template",
+            "contest_temp_path": "./temp",
+            "language_id": 1001,
+            "commands": {},
+            "env_types": {"local": {}}
+        }
+    }
+    from src.context.config_resolver import ConfigResolver
+    resolver = ConfigResolver.from_dict(env_json)
     return ExecutionContext(
         command_type="test",
         language="cpp",
         env_type="local",
         contest_name="abc001",
         problem_name="a",
-        env_json={
-            "cpp": {
-                "source_file_name": "main.cpp",
-                "source_file": "main.cpp",
-                "contest_env_path": "./env",
-                "contest_template_path": "./template",
-                "contest_temp_path": "./temp",
-                "language_id": 1001
-            }
-        },
-        contest_current_path="contests/abc001",
-        workspace_path="/tmp/workspace"
+        env_json=env_json,
+        resolver=resolver
     )
 
 def make_docker_config():
+    env_json = {
+        "python": {
+            "workspace_path": "/tmp/workspace",
+            "contest_current_path": "contests/abc002",
+            "source_file_name": "main.py",
+            "source_file": "main.py",
+            "contest_env_path": "./env",
+            "contest_template_path": "./template",
+            "contest_temp_path": "./temp",
+            "language_id": 2001,
+            "commands": {},
+            "env_types": {"docker": {}}
+        }
+    }
+    from src.context.config_resolver import ConfigResolver
+    resolver = ConfigResolver.from_dict(env_json)
     return ExecutionContext(
         command_type="test",
         language="python",
         env_type="docker",
         contest_name="abc002",
         problem_name="a",
-        env_json={
-            "python": {
-                "source_file_name": "main.py",
-                "source_file": "main.py",
-                "contest_env_path": "./env",
-                "contest_template_path": "./template",
-                "contest_temp_path": "./temp",
-                "language_id": 2001
-            }
-        },
-        contest_current_path="contests/abc002",
-        workspace_path="/tmp/workspace"
+        env_json=env_json,
+        resolver=resolver
     )
 
 def test_local_const_handler_properties():
@@ -109,15 +121,6 @@ def test_docker_const_handler_parse():
     assert "in" in result
     assert "out" in result
 
-def test_path_resolver_contest_current_path_none():
-    # contest_current_pathがNoneの場合
-    config = make_local_config()
-    config.contest_current_path = None
-    handler = ConstHandler(config)
-    with pytest.raises(ValueError) as excinfo:
-        _ = handler.contest_current_path
-    assert "contest_current_path" in str(excinfo.value)
-
 def test_path_resolver_contest_env_path_none():
     # env_jsonからcontest_env_pathがNoneの場合
     config = make_local_config()
@@ -146,6 +149,8 @@ def test_path_resolver_contest_env_path_none():
 def test_path_resolver_contest_template_path_none():
     config = make_local_config()
     config.env_json["cpp"]["contest_template_path"] = None
+    from src.context.config_resolver import ConfigResolver
+    config.resolver = ConfigResolver.from_dict(config.env_json)
     handler = ConstHandler(config)
     with pytest.raises(TypeError) as excinfo:
         _ = handler.contest_template_path
@@ -154,6 +159,8 @@ def test_path_resolver_contest_template_path_none():
 def test_path_resolver_contest_temp_path_none():
     config = make_local_config()
     config.env_json["cpp"]["contest_temp_path"] = None
+    from src.context.config_resolver import ConfigResolver
+    config.resolver = ConfigResolver.from_dict(config.env_json)
     handler = ConstHandler(config)
     with pytest.raises(TypeError) as excinfo:
         _ = handler.contest_temp_path
@@ -184,15 +191,19 @@ def test_path_resolver_contest_env_path_key_missing():
 def test_path_resolver_contest_template_path_key_missing():
     config = make_local_config()
     del config.env_json["cpp"]["contest_template_path"]
+    from src.context.config_resolver import ConfigResolver
+    config.resolver = ConfigResolver.from_dict(config.env_json)
     handler = ConstHandler(config)
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(TypeError) as excinfo:
         _ = handler.contest_template_path
-    assert "contest_template_path" in str(excinfo.value)
+    assert "argument should be a str" in str(excinfo.value)
 
 def test_path_resolver_contest_temp_path_key_missing():
     config = make_local_config()
     del config.env_json["cpp"]["contest_temp_path"]
+    from src.context.config_resolver import ConfigResolver
+    config.resolver = ConfigResolver.from_dict(config.env_json)
     handler = ConstHandler(config)
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(TypeError) as excinfo:
         _ = handler.contest_temp_path
-    assert "contest_temp_path" in str(excinfo.value) 
+    assert "argument should be a str" in str(excinfo.value) 

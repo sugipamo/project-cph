@@ -2,29 +2,24 @@ from pathlib import Path
 import os
 
 class PathResolver:
-    def __init__(self, config, workspace_path):
+    def __init__(self, config):
         self.config = config
-        self._workspace_path = workspace_path
 
     @property
     def workspace_path(self) -> Path:
-        if self._workspace_path is None:
-            raise ValueError("workspace_pathがNoneです。必ず有効なパスを指定してください。")
-        return Path(self._workspace_path)
+        return Path(self.config.resolver.resolve_best([self.config.language, "workspace_path"]).value)
 
     @property
     def contest_current_path(self) -> Path:
-        if self.config.contest_current_path is None:
-            raise ValueError("contest_current_pathがNoneです。必ず有効なパスを指定してください。")
-        return Path(self.config.contest_current_path)
+        return Path(self.config.resolver.resolve_best([self.config.language, "contest_current_path"]).value)
 
     @property
     def contest_env_path(self) -> Path:
         # まずenv_jsonにcontest_env_pathがあればそれを使う
-        lang_conf = self.config.env_json[self.config.language]
-        v = lang_conf.get("contest_env_path", None)
-        if v is not None:
-            return Path(v)
+        lang_conf = Path(self.config.resolver.resolve_best([self.config.language, "contest_env_path"]).value)
+
+        if lang_conf is not None:
+            return Path(lang_conf)
         # 無ければ親ディレクトリをたどってcontest_envを探す
         cur = os.path.abspath(os.getcwd())
         while True:
@@ -39,19 +34,11 @@ class PathResolver:
 
     @property
     def contest_template_path(self) -> Path:
-        try:
-            v = self.config.env_json[self.config.language]["contest_template_path"]
-        except KeyError:
-            raise ValueError("contest_template_pathがNoneです。必ず有効なパスを指定してください。")
-        return Path(v)
+        return Path(self.config.resolver.resolve_best([self.config.language, "contest_template_path"]).value)
 
     @property
     def contest_temp_path(self) -> Path:
-        try:
-            v = self.config.env_json[self.config.language]["contest_temp_path"]
-        except KeyError:
-            raise ValueError("contest_temp_pathがNoneです。必ず有効なパスを指定してください。")
-        return Path(v)
+        return Path(self.config.resolver.resolve_best([self.config.language, "contest_temp_path"]).value)
 
     @property
     def test_case_path(self) -> Path:

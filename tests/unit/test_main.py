@@ -34,15 +34,25 @@ def main_with_service(context, operations, service):
 
 @pytest.fixture
 def context():
+    env_json = {
+        "python": {
+            "workspace_path": ".",
+            "contest_current_path": "contests/abc",
+            "commands": {"run": {"steps": []}},
+            "language_id": 5078,
+            "env_types": {"local": {}}
+        }
+    }
+    from src.context.config_resolver import ConfigResolver
+    resolver = ConfigResolver.from_dict(env_json)
     return ExecutionContext(
         command_type="run",
         language="python",
         contest_name="abc",
         problem_name="a",
         env_type="local",
-        env_json={"python": {"commands": {"run": {"steps": []}}}},
-        contest_current_path="contests/abc",
-        workspace_path="."
+        env_json=env_json,
+        resolver=resolver
     )
 
 @pytest.fixture

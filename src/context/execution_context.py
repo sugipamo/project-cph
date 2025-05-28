@@ -13,12 +13,7 @@ class ExecutionContext:
     problem_name: str
     env_type: str
     env_json: dict
-    workspace_path: Optional[str] = None
-    dockerfile: Optional[str] = None
-    oj_dockerfile: Optional[str] = None
-    old_execution_context: Optional["ExecutionContext"] = None
     resolver: Optional[object] = None  # ConfigResolver型（循環import回避のためobject型で）
-    contest_current_path: Optional[str] = None
     
 
     def validate(self) -> Tuple[bool, Optional[str]]:
@@ -59,6 +54,16 @@ class ExecutionContext:
         if not self.resolver:
             raise ValueError("resolverがセットされていません")
         return self.resolver.resolve_best(path)
+
+    @property
+    def workspace_path(self):
+        node = self.resolver.resolve_best([self.language, "workspace_path"])
+        return node.value if node else None
+
+    @property
+    def contest_current_path(self):
+        node = self.resolver.resolve_best([self.language, "contest_current_path"])
+        return node.value if node else None
 
     def get_env_config(self) -> dict:
         return self.env_json['env']

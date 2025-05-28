@@ -9,6 +9,7 @@ import tempfile
 import json
 import shutil
 from src.context.execution_context import ExecutionContext
+from src.context.config_resolver import ConfigResolver
 
 class DummyFileHandler:
     def read(self, path):
@@ -40,14 +41,23 @@ class DummyController:
         pass
 
 def test_dependency_injection():
+    env_json = {
+        "dummy": {
+            "workspace_path": "/tmp/workspace",
+            "contest_current_path": "contests/abc001",
+            "commands": {},
+            "env_types": {"local": {}}
+        }
+    }
+    resolver = ConfigResolver.from_dict(env_json)
     env_context = ExecutionContext(
         command_type="test",
         language="dummy",
         env_type="local",
         contest_name="abc",
         problem_name="a",
-        contest_current_path="contests/abc001",
-        env_json={}
+        env_json=env_json,
+        resolver=resolver
     )
     controller = EnvResourceController(
         env_context=env_context,

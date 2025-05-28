@@ -47,54 +47,36 @@ def _validate_env_json(data: dict, path: str):
         if "aliases" in conf and not isinstance(conf["aliases"], list):
             raise ValueError(f"{path}: {lang}のaliasesはlistである必要があります")
 
-def _load_all_env_jsons(base_dir: str) -> List[dict]:
+def _load_all_env_jsons(base_dir: str, operations) -> List[dict]:
     env_jsons = []
+    file_driver = operations.resolve("file_driver")
+    from src.operations.file.file_request import FileRequest, FileOpType
     for root, dirs, files in os.walk(base_dir):
         for file in files:
             if file == "env.json":
                 path = os.path.join(root, file)
                 try:
-                    with open(path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
+                    req = FileRequest(FileOpType.READ, path)
+                    result = req.execute(driver=file_driver)
+                    if not result.content:
+                        # 空ファイルはスキップ
+                        continue
+                    data = json.loads(result.content)
                     _validate_env_json(data, path)
                     env_jsons.append(data)
                 except Exception as e:
                     raise RuntimeError(f"{path} の読み込みまたはバリデーションに失敗: {e}")
     return env_jsons
 
-def _extract_language_and_aliases(env_jsons: List[dict]) -> Dict[str, List[str]]:
-    result = {}
-    for env_json in env_jsons:
-        for lang, conf in env_json.items():
-            aliases = conf.get("aliases", [])
-            result[lang] = aliases
-    return result
-
-def _apply_language(args, context, env_json: dict, resolver=None):
+def _apply_language(args, context, resolver):
     # resolverが渡されていればそれを使って言語候補を取得
-    language_keys = []
-    alias_map = {}
-    if resolver is not None:
-        language_nodes = resolver.resolve_by_match_desc(["*"])
-        for node in language_nodes:
-            language_keys.append(node.key)
-            # エイリアスもmapに追加
-            for alias in getattr(node, 'matches', []):
-                alias_map[alias] = node.key
-    else:
-        for lang, conf in env_json.items():
-            language_keys.append(lang)
-            for alias in conf.get("aliases", []):
-                alias_map[alias] = lang
+    language_nodes = resolver.resolve_by_match_desc(["*"])
     for idx, arg in enumerate(args):
-        if arg in language_keys:
-            context.language = arg
-            new_args = args[:idx] + args[idx+1:]
-            return new_args, context
-        if arg in alias_map:
-            context.language = alias_map[arg]
-            new_args = args[:idx] + args[idx+1:]
-            return new_args, context
+        for node in language_nodes:
+            if arg in node.matches:
+                context.language = node.key
+                new_args = args[:idx] + args[idx+1:]
+                return new_args, context
     return args, context
 
 def _apply_env_type(args, context, resolver: ConfigResolver):
@@ -134,20 +116,6 @@ def _apply_names(args, context):
     for key, arg in zip(keys, reversed(args)):
         setattr(context, key, arg)
     return [], context
-
-def _apply_workspace_path(args, context):
-    ws = None
-    if "--workspace" in args:
-        idx = args.index("--workspace")
-        if idx + 1 < len(args):
-            ws = args[idx + 1]
-    if not ws and context.env_json and context.language:
-        lang_conf = context.env_json[context.language] if context.language in context.env_json else {}
-        ws = lang_conf["workspace_path"] if "workspace_path" in lang_conf else None
-    if not ws:
-        ws = os.getcwd()
-    context.workspace_path = ws
-    return context
 
 def _apply_env_json(context, env_jsons):
     if context.env_json:
@@ -214,7 +182,7 @@ def parse_user_input(
     # old_execution_context
     context.old_execution_context = copy.deepcopy(context)
     # env.json読み込み
-    env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR)
+    env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, operations)
     # env_jsonsをマージして1つのdictにまとめる
     merged_env_json = {}
     for env_json in env_jsons:
@@ -231,8 +199,6 @@ def parse_user_input(
     args, context = _apply_command(args, context)
     # 残りの引数からproblem_name, contest_nameを特定
     args, context = _apply_names(args, context)
-    # workspace_path特定
-    context = _apply_workspace_path(args, context)
     # dockerfileの内容をセット
     context = _apply_dockerfile(context, dockerfile_loader)
     # oj.Dockerfileの内容をセット

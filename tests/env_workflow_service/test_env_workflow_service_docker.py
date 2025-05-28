@@ -9,11 +9,14 @@ from src.operations.di_container import DIContainer
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
 from src.env.factory.docker_command_request_factory import DockerCommandRequestFactory
+from src.context.config_resolver import ConfigResolver
 
 def test_env_workflow_service_docker_no_driver():
     # ダミーenv_json（docker環境用）
     env_json = {
         "python": {
+            "workspace_path": "/tmp/workspace",
+            "contest_current_path": "contests/abc001",
             "commands": {
                 "run": {
                     "steps": [
@@ -26,9 +29,11 @@ def test_env_workflow_service_docker_no_driver():
             "contest_template_path": "template",
             "contest_temp_path": "temp",
             "source_file_name": "main.py",
-            "language_id": 2001
+            "language_id": 2001,
+            "env_types": {"docker": {}}
         }
     }
+    resolver = ConfigResolver.from_dict(env_json)
     env_context = ExecutionContext(
         command_type="run",
         language="python",
@@ -36,9 +41,9 @@ def test_env_workflow_service_docker_no_driver():
         problem_name="a",
         env_type="docker",  # docker環境
         env_json=env_json,
-        contest_current_path="contests/abc001",
-        workspace_path="/tmp/workspace"
+        resolver=resolver
     )
+    env_context.oj_dockerfile = "FROM python:3.9\nRUN echo oj"
     const_handler = ConstHandler(env_context)
     file_handler = LocalFileHandler(env_context, const_handler)
     run_handler = LocalRunHandler(env_context, const_handler)
