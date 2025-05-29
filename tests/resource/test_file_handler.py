@@ -1,9 +1,10 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 from src.env.resource.file.docker_file_handler import DockerFileHandler
 from src.env.resource.file.local_file_handler import LocalFileHandler
 from src.operations.file.file_request import FileOpType, FileRequest
 from src.operations.docker.docker_file_request import DockerFileRequest
+from src.context.execution_context import ExecutionContext
 import unittest.mock
 
 class DummyConfig:
@@ -13,15 +14,33 @@ class DummyConfig:
 def config():
     return DummyConfig()
 
+@pytest.fixture 
+def docker_config():
+    """Create a simple config for Docker tests"""
+    config = ExecutionContext(
+        command_type="test",
+        language="python", 
+        contest_name="abc123",
+        problem_name="a",
+        env_type="docker",
+        env_json={"python": {"workspace_path": "/workspace"}}
+    )
+    return config
+
 @pytest.fixture
-def docker_handler(config):
-    return DockerFileHandler(config)
+def docker_handler(docker_config):
+    handler = DockerFileHandler(docker_config)
+    # Override the problematic initialization
+    handler.workspace_path = "/workspace"
+    from src.env.resource.utils.path_environment_checker import PathEnvironmentChecker
+    handler.path_env_checker = PathEnvironmentChecker("/workspace")
+    return handler
 
 @pytest.fixture
 def local_handler(config):
     return LocalFileHandler(config)
 
-@pytest.mark.skip(reason="Complex Docker path logic needs proper setup")
+@pytest.mark.skip(reason="Complex Docker path logic needs proper setup - requires resolver")
 def test_docker_read_write_exists(docker_handler):
     assert isinstance(docker_handler.read("foo.txt"), FileRequest)
     assert isinstance(docker_handler.write("foo.txt", "abc"), FileRequest)
@@ -32,9 +51,10 @@ def test_local_read_write_exists(local_handler):
     assert isinstance(local_handler.write("foo.txt", "abc"), FileRequest)
     assert isinstance(local_handler.exists("foo.txt"), FileRequest)
 
-@pytest.mark.skip(reason="Complex Docker path logic needs proper setup")
+@pytest.mark.skip(reason="Complex Docker path logic needs proper setup - requires resolver")
 def test_docker_copy_in_container_to_in_container(docker_handler):
-    req = docker_handler.copy("in_container_src.txt", "in_container_dst.txt")
+    # Both paths are relative, so they should be treated as in-container
+    req = docker_handler.copy("src.txt", "dst.txt")
     assert isinstance(req, FileRequest)
     assert req.op == FileOpType.COPY
 
@@ -79,12 +99,12 @@ def test_docker_move_host_to_container(docker_handler):
         assert isinstance(req, DockerFileRequest)
         assert req.to_container is True
 
-@pytest.mark.skip(reason="Complex Docker path logic needs proper setup")
+@pytest.mark.skip(reason="Complex Docker path logic needs proper setup - requires resolver")
 def test_docker_remove_in_container(docker_handler):
-    with unittest.mock.patch("src.env.resource.utils.path_environment_checker.PathEnvironmentChecker.is_in_container", lambda self, path: "in_container" in str(path)):
-        req = docker_handler.remove("in_container_file")
-        assert isinstance(req, FileRequest)
-        assert req.op == FileOpType.REMOVE
+    # Test removing a file that's considered in container (relative path)
+    req = docker_handler.remove("test_file.txt")
+    assert isinstance(req, FileRequest)
+    assert req.op == FileOpType.REMOVE
 
 @pytest.mark.skip(reason="Complex Docker path logic needs proper setup")
 def test_docker_remove_host(docker_handler):
@@ -92,12 +112,12 @@ def test_docker_remove_host(docker_handler):
     assert isinstance(req, DockerFileRequest)
     assert req.to_container is False
 
-@pytest.mark.skip(reason="Complex Docker path logic needs proper setup")
+@pytest.mark.skip(reason="Complex Docker path logic needs proper setup - requires resolver")
 def test_docker_rmtree_in_container(docker_handler):
-    with unittest.mock.patch("src.env.resource.utils.path_environment_checker.PathEnvironmentChecker.is_in_container", lambda self, path: "in_container" in str(path)):
-        req = docker_handler.rmtree("in_container_dir")
-        assert isinstance(req, FileRequest)
-        assert req.op == FileOpType.RMTREE
+    # Test removing a directory that's considered in container (relative path)
+    req = docker_handler.rmtree("test_dir")
+    assert isinstance(req, FileRequest)
+    assert req.op == FileOpType.RMTREE
 
 @pytest.mark.skip(reason="Complex Docker path logic needs proper setup")
 def test_docker_rmtree_host(docker_handler):
