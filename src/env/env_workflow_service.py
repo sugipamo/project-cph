@@ -33,12 +33,10 @@ class EnvWorkflowService:
         from src.env.env_resource_controller import EnvResourceController
         from src.env.resource.file.local_file_handler import LocalFileHandler
         from src.env.resource.run.local_run_handler import LocalRunHandler
-        from src.env.resource.utils.const_handler import ConstHandler
 
-        const_handler = ConstHandler(env_context)
-        file_handler = LocalFileHandler(env_context, const_handler)
-        run_handler = LocalRunHandler(env_context, const_handler)
-        self.controller = EnvResourceController(env_context, file_handler, run_handler, const_handler)
+        file_handler = LocalFileHandler(env_context)
+        run_handler = LocalRunHandler(env_context)
+        self.controller = EnvResourceController(env_context, file_handler, run_handler)
         self.env_context = env_context
         self.operations = operations
 

@@ -3,6 +3,7 @@ from src.env.step.run_step_oj import OjRunStep
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.composite.composite_request import CompositeRequest
+from src.env.resource.utils.docker_naming import get_oj_container_name
 
 class OjCommandRequestFactory(BaseCommandRequestFactory):
     def __init__(self, controller, DockerRequestClass, DockerOpTypeClass):
@@ -19,7 +20,8 @@ class OjCommandRequestFactory(BaseCommandRequestFactory):
         cwd = self.format_string(run_step.cwd) if getattr(run_step, 'cwd', None) else None
         env_type = self.controller.env_context.env_type.lower()
         if env_type == "docker":
-            container_name = self.controller.const_handler.oj_container_name
+            oj_dockerfile_text = getattr(self.controller.env_context, 'oj_dockerfile', None)
+            container_name = get_oj_container_name(oj_dockerfile_text)
             # BUILDやRUNリクエストは生成しない
             exec_req = self.DockerRequest(
                 self.DockerOpType.EXEC,
@@ -80,7 +82,8 @@ class OjCommandRequestFactory(BaseCommandRequestFactory):
             formatted_cwd = self.format_value(cwd, cwd_node if cwd_node else node)
         
         if env_type == "docker":
-            container_name = self.controller.const_handler.oj_container_name
+            oj_dockerfile_text = getattr(self.controller.env_context, 'oj_dockerfile', None)
+            container_name = get_oj_container_name(oj_dockerfile_text)
             # BUILDやRUNリクエストは生成しない
             exec_req = self.DockerRequest(
                 self.DockerOpType.EXEC,

@@ -4,13 +4,9 @@ from src.context.execution_context import ExecutionContext
 from src.operations.file.file_request import FileOpType, FileRequest
 from src.operations.mock.mock_file_driver import MockFileDriver
 
-class DummyConstHandler:
-    workspace_path = "/tmp/workspace"
-
 def make_handler():
     config = {}
-    const_handler = DummyConstHandler()
-    return LocalFileHandler(config, const_handler)
+    return LocalFileHandler(config)
 
 def test_read():
     handler = make_handler()

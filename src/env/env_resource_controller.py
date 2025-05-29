@@ -1,7 +1,7 @@
 from src.context.execution_context import ExecutionContext
 
 class EnvResourceController:
-    def __init__(self, env_context: ExecutionContext, file_handler, run_handler, const_handler):
+    def __init__(self, env_context: ExecutionContext, file_handler, run_handler, const_handler=None):
         self.env_context = env_context
         self.language_name = env_context.language
         self.env_type = env_context.env_type

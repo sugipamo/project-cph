@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from src.context.execution_context import ExecutionContext
 
 class BaseFileHandler(ABC):
-    def __init__(self, config: ExecutionContext, const_handler):
+    def __init__(self, config: ExecutionContext, const_handler=None):
         self.config = config
         self.const_handler = const_handler
 

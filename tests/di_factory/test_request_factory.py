@@ -37,7 +37,9 @@ class MockController:
             "problem_name": "a",
             "language": "python",
             "command_type": "test",
-            "resolver": None
+            "resolver": None,
+            "dockerfile": None,
+            "oj_dockerfile": None
         })()
 
 @pytest.fixture
@@ -75,7 +77,7 @@ def test_docker_command_request_factory(operations):
     factory.format_string = lambda s: f"parsed_{s}"
     req = factory.create_request(step)
     assert isinstance(req, DockerRequest)
-    assert req.container == "mock_container"
+    assert req.container == "cph_python"
     assert req.command == "parsed_ls parsed_/"
     assert req.op == DockerOpType.EXEC
 
@@ -101,7 +103,7 @@ def test_oj_command_request_factory(operations):
     req = factory.create_request(step)
     assert isinstance(req, DockerRequest)
     assert req.op == DockerOpType.EXEC
-    assert req.container == "mock_oj_container"
+    assert req.container == "cph_ojtools"
     assert req.command == "parsed_test parsed_-c parsed_./main"
 
 

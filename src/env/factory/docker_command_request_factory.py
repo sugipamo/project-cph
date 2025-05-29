@@ -1,13 +1,15 @@
 from src.env.factory.base_command_request_factory import BaseCommandRequestFactory
 from src.env.step.run_step_shell import ShellRunStep
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
+from src.env.resource.utils.docker_naming import get_container_name
 
 class DockerCommandRequestFactory(BaseCommandRequestFactory):
     def create_request(self, run_step):
         if not isinstance(run_step, ShellRunStep):
             raise TypeError(f"DockerCommandRequestFactory expects ShellRunStep, got {type(run_step).__name__}")
         cmd = [self.format_string(arg) for arg in run_step.cmd]
-        container_name = self.controller.const_handler.container_name
+        dockerfile_text = getattr(self.controller.env_context, 'dockerfile', None)
+        container_name = get_container_name(self.controller.env_context.language, dockerfile_text)
         cwd = self.format_string(run_step.cwd) if getattr(run_step, 'cwd', None) else None
         options = {}
         if cwd:
@@ -28,7 +30,8 @@ class DockerCommandRequestFactory(BaseCommandRequestFactory):
         cmd = node.value.get('cmd', [])
         cwd = node.value.get('cwd')
         show_output = node.value.get('show_output', True)
-        container_name = self.controller.const_handler.container_name
+        dockerfile_text = getattr(self.controller.env_context, 'dockerfile', None)
+        container_name = get_container_name(self.controller.env_context.language, dockerfile_text)
         
         # cmdフィールドのConfigNodeを探す
         cmd_node = None

@@ -33,9 +33,6 @@ class DummyRunHandler:
     def create_process_options(self, cmd):
         return f"run:{cmd}"
 
-class DummyConstHandler:
-    pass
-
 class DummyController:
     def __init__(self, language_name=None, env_type=None, env_config=None, file_handler=None, run_handler=None, const_handler=None):
         pass
@@ -63,7 +60,6 @@ def test_dependency_injection():
         env_context=env_context,
         file_handler=DummyFileHandler(),
         run_handler=DummyRunHandler(),
-        const_handler=DummyConstHandler(),
     )
     assert controller.read_file("foo.txt") == "read:foo.txt"
     assert controller.write_file("bar.txt", "abc") == "write:bar.txt:abc"

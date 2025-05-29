@@ -4,7 +4,6 @@ from src.context.execution_context import ExecutionContext
 from src.env.env_resource_controller import EnvResourceController
 from src.env.resource.file.local_file_handler import LocalFileHandler
 from src.env.resource.run.local_run_handler import LocalRunHandler
-from src.env.resource.utils.const_handler import ConstHandler
 from src.operations.di_container import DIContainer
 from src.env.env_workflow_service import EnvWorkflowService
 from src.context.execution_context import ExecutionContext
@@ -46,10 +45,9 @@ def test_env_workflow_service_docker_shell_no_driver():
         resolver=root
     )
     env_context.dockerfile = "FROM python:3.8\nRUN echo hello"
-    const_handler = ConstHandler(env_context)
-    file_handler = LocalFileHandler(env_context, const_handler)
-    run_handler = LocalRunHandler(env_context, const_handler)
-    controller = EnvResourceController(env_context, file_handler, run_handler, const_handler)
+    file_handler = LocalFileHandler(env_context)
+    run_handler = LocalRunHandler(env_context)
+    controller = EnvResourceController(env_context, file_handler, run_handler)
     operations = DIContainer()
     operations.register("DockerRequest", lambda: DockerRequest)
     operations.register("DockerOpType", lambda: DockerOpType)
