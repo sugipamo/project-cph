@@ -1,5 +1,7 @@
 from typing import Any, List, Optional, Union, Set
 from functools import lru_cache
+from collections import deque
+from src.context.utils.format_utils import extract_format_keys, format_with_missing_keys
 
 
 class ConfigNode:
@@ -65,7 +67,6 @@ class ConfigNodeLogic:
     @staticmethod
     @lru_cache(maxsize=1000)
     def find_nearest_key_node(node: ConfigNode, key: str) -> List[ConfigNode]:
-        from collections import deque
         que = deque([(0, node)])
         visited = set()
         find_depth = 1 << 31
@@ -165,6 +166,52 @@ class ConfigResolver:
 
     def resolve_values(self, path: Union[list, tuple]) -> list:
         return [x.value for x in self.resolve_by_match_desc(path)]
+
+    def resolve_format_string(self, node: 'ConfigNode', initial_values: dict = None) -> str:
+        """
+        指定ノードのvalue（format文字列）に対し、initial_valuesでformatし、
+        さらに親・子方向BFSでformatキーを解決し、値を埋め込んだ文字列を返す。
+        """
+        # format対象の文字列を取得
+        if isinstance(node.value, str):
+            s = node.value
+        elif isinstance(node.value, dict) and "value" in node.value:
+            s = node.value["value"]
+        else:
+            return str(node.value)
+
+        key_values = dict(initial_values) if initial_values else {}
+        formatted, missing_keys = format_with_missing_keys(s, **key_values)
+        if not missing_keys:
+            return formatted
+
+        queue = deque([node])
+        visited = set()
+        while queue and missing_keys:
+            current = queue.popleft()
+            if id(current) in visited:
+                continue
+            visited.add(id(current))
+
+            for key in list(missing_keys):
+                if key in key_values:
+                    continue
+                if current.key == key:
+                    v = current.value
+                    if isinstance(v, dict) and "value" in v:
+                        key_values[key] = v["value"]
+                    elif isinstance(v, str) or isinstance(v, int):
+                        key_values[key] = v
+                    missing_keys.remove(key)
+
+            # 親・子をキューに追加
+            if current.parent:
+                queue.append(current.parent)
+            queue.extend(current.next_nodes)
+
+        # 最終的にformat
+        formatted, still_missing = format_with_missing_keys(s, **key_values)
+        return formatted
     
 if __name__ == "__main__":
     data = {
