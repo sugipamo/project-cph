@@ -11,7 +11,7 @@ from src.context.execution_context import ExecutionContext
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.env.factory.docker_command_request_factory import DockerCommandRequestFactory
 from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
-from src.context.config_resolver import ConfigResolver
+from src.context.resolver.config_resolver import ConfigResolver
 
 def test_env_workflow_service_docker_shell_no_driver():
     # ダミーenv_json（docker環境用）

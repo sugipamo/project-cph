@@ -4,6 +4,7 @@ from src.main import main
 from src.env.build_operations import build_mock_operations
 from src.context.execution_context import ExecutionContext
 from src.operations.exceptions.composite_step_failure import CompositeStepFailure
+from src.context.resolver.config_resolver import ConfigResolver
 
 class DummyService:
     def __init__(self, exception=None, result=None):
@@ -43,7 +44,6 @@ def context():
             "env_types": {"local": {}}
         }
     }
-    from src.context.config_resolver import ConfigResolver
     resolver = ConfigResolver.from_dict(env_json)
     return ExecutionContext(
         command_type="run",

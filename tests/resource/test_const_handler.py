@@ -4,6 +4,7 @@ from pathlib import Path
 from src.context.execution_context import ExecutionContext
 import hashlib
 import os
+from src.context.resolver.config_resolver import ConfigResolver
 
 def make_local_config():
     env_json = {
@@ -20,7 +21,6 @@ def make_local_config():
             "env_types": {"local": {}}
         }
     }
-    from src.context.config_resolver import ConfigResolver
     resolver = ConfigResolver.from_dict(env_json)
     return ExecutionContext(
         command_type="test",
@@ -47,7 +47,6 @@ def make_docker_config():
             "env_types": {"docker": {}}
         }
     }
-    from src.context.config_resolver import ConfigResolver
     resolver = ConfigResolver.from_dict(env_json)
     return ExecutionContext(
         command_type="test",
@@ -147,7 +146,7 @@ def test_path_resolver_contest_env_path_none():
 def test_path_resolver_contest_template_path_none():
     config = make_local_config()
     config.env_json["cpp"]["contest_template_path"] = None
-    from src.context.config_resolver import ConfigResolver
+    from src.context.resolver.config_resolver import ConfigResolver
     config.resolver = ConfigResolver.from_dict(config.env_json)
     handler = ConstHandler(config)
     with pytest.raises(TypeError) as excinfo:
@@ -157,7 +156,7 @@ def test_path_resolver_contest_template_path_none():
 def test_path_resolver_contest_temp_path_none():
     config = make_local_config()
     config.env_json["cpp"]["contest_temp_path"] = None
-    from src.context.config_resolver import ConfigResolver
+    from src.context.resolver.config_resolver import ConfigResolver
     config.resolver = ConfigResolver.from_dict(config.env_json)
     handler = ConstHandler(config)
     with pytest.raises(TypeError) as excinfo:
@@ -189,7 +188,7 @@ def test_path_resolver_contest_env_path_key_missing():
 def test_path_resolver_contest_template_path_key_missing():
     config = make_local_config()
     del config.env_json["cpp"]["contest_template_path"]
-    from src.context.config_resolver import ConfigResolver
+    from src.context.resolver.config_resolver import ConfigResolver
     config.resolver = ConfigResolver.from_dict(config.env_json)
     handler = ConstHandler(config)
     with pytest.raises(TypeError) as excinfo:
@@ -199,7 +198,7 @@ def test_path_resolver_contest_template_path_key_missing():
 def test_path_resolver_contest_temp_path_key_missing():
     config = make_local_config()
     del config.env_json["cpp"]["contest_temp_path"]
-    from src.context.config_resolver import ConfigResolver
+    from src.context.resolver.config_resolver import ConfigResolver
     config.resolver = ConfigResolver.from_dict(config.env_json)
     handler = ConstHandler(config)
     with pytest.raises(TypeError) as excinfo:

@@ -9,7 +9,7 @@ import tempfile
 import json
 import shutil
 from src.context.execution_context import ExecutionContext
-from src.context.config_resolver import ConfigResolver
+from src.context.resolver.config_resolver import ConfigResolver
 
 class DummyFileHandler:
     def read(self, path):

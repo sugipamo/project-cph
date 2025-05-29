@@ -1,5 +1,7 @@
 import pytest
-from src.context.config_resolver import ConfigResolver, ConfigNode
+from src.context.resolver.config_resolver import ConfigResolver
+from src.context.resolver.config_node import ConfigNode
+from src.context.resolver.config_node_logic import find_nearest_key_node, init_matches
 
 @pytest.fixture
 def sample_config():
@@ -217,7 +219,8 @@ def test_resolve_tuple_path():
     assert results.value == {"value": 1}
 
 def test_confignode_properties_and_repr():
-    node = ConfigNode("test", {"aliases": ["t1", "t2"], "value": 5})
+    node = ConfigNode("test")
+    init_matches(node, {"aliases": ["t1", "t2"], "value": 5})
     assert node.key == "test"
     assert "t1" in node.matches and "t2" in node.matches
     assert node.value["value"] == 5
@@ -341,12 +344,6 @@ def test_large_nested_dict():
     assert isinstance(results, list)
 
 
-def test_matches_direct_modification():
-    node = ConfigNode("a")
-    # matchesはsetだが、直接書き換えはできない（property）
-    with pytest.raises(AttributeError):
-        node.matches = {"b"}
-
 def test_next_nodes_with_key_star_and_non_match():
     node1 = ConfigNode("a")
     node2 = ConfigNode("b")
@@ -369,7 +366,8 @@ def test_parent_property():
     assert node2.parent == node1
 
 def test_matches_with_duplicate_aliases():
-    node = ConfigNode("a", {"aliases": ["x", "x", "a"], "value": 1})
+    node = ConfigNode("a")
+    init_matches(node, {"aliases": ["x", "x", "a"], "value": 1})
     # setなので重複しない
     assert list(node.matches).count("x") == 1
     assert "a" in node.matches
@@ -412,7 +410,7 @@ def test_find_nearest_key_node_basic():
     py_nodes = resolver.root.next_nodes_with_key("python")
     assert py_nodes
     py_node = py_nodes[0]
-    found = py_node.find_nearest_key_node("language_id")
+    found = find_nearest_key_node(py_node, "language_id")
     assert found and found[0].value == "5078"
     # javaのsource_file_name
     java_nodes = resolver.root.next_nodes_with_key("java")
@@ -433,8 +431,8 @@ def test_find_nearest_key_node_deep():
         }
     }
     resolver = ConfigResolver.from_dict(config)
-    py_node = resolver.root.next_nodes_with_key("python")[0]
-    found = py_node.find_nearest_key_node("target")
+    py_node = [n for n in resolver.root.next_nodes if n.key == "python"][0]
+    found = find_nearest_key_node(py_node, "target")
     assert found and found[0].value == 42
 
 
@@ -448,7 +446,7 @@ def test_find_nearest_key_node_multiple():
         }
     }
     resolver = ConfigResolver.from_dict(config)
-    py_node = resolver.root.next_nodes_with_key("python")[0]
-    found = py_node.find_nearest_key_node("target")
+    py_node = [n for n in resolver.root.next_nodes if n.key == "python"][0]
+    found = find_nearest_key_node(py_node, "target")
     # 最も近い（浅い）ノードのみ返る
     assert found and found[0].value == 1

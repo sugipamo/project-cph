@@ -6,7 +6,7 @@ from src.env.resource.file.local_file_handler import LocalFileHandler
 from src.env.resource.run.local_run_handler import LocalRunHandler
 from src.env.resource.utils.const_handler import ConstHandler
 from src.operations.di_container import DIContainer
-from src.context.config_resolver import ConfigResolver
+from src.context.resolver.config_resolver import ConfigResolver
 
 def test_env_workflow_service_shell_no_driver():
     # ダミーenv_json（最低限languageが必要）

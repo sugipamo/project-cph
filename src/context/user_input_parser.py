@@ -3,7 +3,7 @@ import json
 import copy
 from typing import List, Dict, Optional, Tuple, Callable
 from .execution_context import ExecutionContext
-from .config_resolver import ConfigResolver
+from src.context.resolver.config_resolver import ConfigResolver
 
 CONTEST_ENV_DIR = "contest_env"
 SYSTEM_INFO_PATH = "system_info.json"
