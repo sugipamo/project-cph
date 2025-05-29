@@ -21,12 +21,12 @@ def factory():
 
 
 def test_create_request_success(factory):
-    step = RemoveRunStep(type="remove", target="test.txt")
+    step = RemoveRunStep(type="remove", cmd=["test.txt"])
     
     req = factory.create_request(step)
     
     assert isinstance(req, FileRequest)
-    assert req.op_type == FileOpType.REMOVE
+    assert req.op == FileOpType.REMOVE
     assert req.path == "test.txt"
 
 

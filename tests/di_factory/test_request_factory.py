@@ -125,12 +125,11 @@ def test_remove_command_request_factory(operations):
     controller = MockController()
     step = RemoveRunStep(type="remove", cmd=["target.txt"])
     factory = RequestFactorySelector.get_factory_for_step(controller, step, operations)
-    # format_stringメソッドをモック
-    factory.format_string = lambda s: f"parsed_{s}"
     req = factory.create_request(step)
     assert isinstance(req, FileRequest)
     assert req.op == FileOpType.REMOVE
-    assert req.path == "parsed_target.txt"
+    # Currently no format processing, so path should remain as is
+    assert req.path == "target.txt"
 
 def test_build_command_request_factory(operations):
     controller = MockController()

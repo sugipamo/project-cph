@@ -21,12 +21,12 @@ def factory():
 
 
 def test_create_request_success(factory):
-    step = RmtreeRunStep(type="rmtree", target="test_dir")
+    step = RmtreeRunStep(type="rmtree", cmd=["test_dir"])
     
     req = factory.create_request(step)
     
     assert isinstance(req, FileRequest)
-    assert req.op_type == FileOpType.RMTREE
+    assert req.op == FileOpType.RMTREE
     assert req.path == "test_dir"
 
 

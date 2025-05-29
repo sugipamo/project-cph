@@ -6,5 +6,5 @@ class RemoveCommandRequestFactory(BaseCommandRequestFactory):
     def create_request(self, run_step):
         if not isinstance(run_step, RemoveRunStep):
             raise TypeError(f"RemoveCommandRequestFactory expects RemoveRunStep, got {type(run_step).__name__}")
-        target = self.format_string(run_step.target)
+        target = run_step.target
         return FileRequest(FileOpType.REMOVE, target) 

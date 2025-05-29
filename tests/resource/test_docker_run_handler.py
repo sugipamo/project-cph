@@ -20,7 +20,7 @@ def test_docker_run_handler_create_process_options():
     result = handler.create_process_options(["python", "main.py"])
     
     assert isinstance(result, DockerRequest)
-    assert result.op_type == DockerOpType.EXEC
+    assert result.op == DockerOpType.EXEC
     assert "python" in result.container  # Container name should contain language
     assert result.command == "python main.py"
 
@@ -41,6 +41,6 @@ def test_docker_run_handler_without_dockerfile():
     result = handler.create_process_options(["g++", "main.cpp"])
     
     assert isinstance(result, DockerRequest)
-    assert result.op_type == DockerOpType.EXEC
+    assert result.op == DockerOpType.EXEC
     assert "cpp" in result.container  # Container name should contain language
     assert result.command == "g++ main.cpp"
