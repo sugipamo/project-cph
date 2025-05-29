@@ -1,5 +1,5 @@
 import pytest
-from src.context.resolver.config_resolver import ConfigResolver
+from src.context.resolver.config_resolver import create_config_root_from_dict, resolve_by_match_desc, resolve_best, resolve_format_string
 from src.context.resolver.config_node import ConfigNode
 from src.context.resolver.config_node_logic import (
     find_nearest_key_node, init_matches, add_edge, next_nodes_with_key, path
@@ -25,59 +25,59 @@ def sample_config():
     }
 
 def test_resolve_wildcard_match(sample_config):
-    resolver = ConfigResolver.from_dict(sample_config)
-    results = resolver.resolve_by_match_desc(["*"])
+    root = create_config_root_from_dict(sample_config)
+    results = resolve_by_match_desc(root, ["*"])
     assert set([r.key for r in results]) == set(["python", "java"])
 
 def test_resolve_python_match(sample_config):
-    resolver = ConfigResolver.from_dict(sample_config)
+    root = create_config_root_from_dict(sample_config)
     # 完全一致
-    results = resolver.resolve_best(["python", "env_type", "docker"])
+    results = resolve_best(root, ["python", "env_type", "docker"])
     assert results.key == "docker"
 
 def test_resolve_java_docker(sample_config):
-    resolver = ConfigResolver.from_dict(sample_config)
-    results = resolver.resolve_best(["java", "env_type", "docker"])
+    root = create_config_root_from_dict(sample_config)
+    results = resolve_best(root, ["java", "env_type", "docker"])
     assert results.key == "docker"
 
 def test_resolve_local(sample_config):
-    resolver = ConfigResolver.from_dict(sample_config)
-    results = resolver.resolve_best(["python", "local"])
+    root = create_config_root_from_dict(sample_config)
+    results = resolve_best(root, ["python", "local"])
     assert results.key == "local"
 
 def test_resolve_alias(sample_config):
-    resolver = ConfigResolver.from_dict(sample_config)
+    root = create_config_root_from_dict(sample_config)
     # "container" は "docker" のエイリアス
-    results = resolver.resolve_best(["python", "env_type", "container"])
+    results = resolve_best(root, ["python", "env_type", "container"])
     assert results.key == "docker"
 
 def test_resolve_not_found(sample_config):
-    resolver = ConfigResolver.from_dict(sample_config)
+    root = create_config_root_from_dict(sample_config)
     # 存在しないパス
-    results = resolver.resolve_best(["nonexistent"])
+    results = resolve_best(root, ["nonexistent"])
     assert results is None
 
 def test_resolve_neighbor_match(sample_config):
-    resolver = ConfigResolver.from_dict(sample_config)
+    root = create_config_root_from_dict(sample_config)
     # 存在しないパスであっても、最もよく一致するノードを返す
-    results = resolver.resolve_best(["nonexistent", "env_type", "container"])
+    results = resolve_best(root, ["nonexistent", "env_type", "container"])
     assert path(results) == ["python", "env_type", "docker"]
 
 def test_resolve_multiple_matches(sample_config):
-    resolver = ConfigResolver.from_dict(sample_config)
+    root = create_config_root_from_dict(sample_config)
     # 同じパスで複数のノードが一致する場合、最もよく一致するノードを返す
-    results = resolver.resolve_best(["python", "env_type"])
+    results = resolve_best(root, ["python", "env_type"])
     assert path(results) == ["python", "env_type"]
 
 def test_resolve_multiple_matches_with_alias(sample_config):
-    resolver = ConfigResolver.from_dict(sample_config)
+    root = create_config_root_from_dict(sample_config)
     # 同じパスで複数のノードが一致する場合、最もよく一致するノードを返す
-    results = resolver.resolve_best(["env_type", "container"])
+    results = resolve_best(root, ["env_type", "container"])
     assert path(results) == ["python", "env_type", "docker"]
 
 def test_resolve_empty_path(sample_config):
-    resolver = ConfigResolver.from_dict(sample_config)
-    results = resolver.resolve_by_match_desc([])
+    root = create_config_root_from_dict(sample_config)
+    results = resolve_by_match_desc(root, [])
     assert results == []
 
 def test_resolve_multiple_aliases():
@@ -91,16 +91,16 @@ def test_resolve_multiple_aliases():
             }
         }
     }
-    resolver = ConfigResolver.from_dict(config)
-    results = resolver.resolve_best(["python", "env_type", "box"])
+    root = create_config_root_from_dict(config)
+    results = resolve_best(root, ["python", "env_type", "box"])
     assert path(results) == ["python", "env_type", "docker"]
 
 def test_resolve_list_node():
     config = {
         "python": [1, 2, 3]
     }
-    resolver = ConfigResolver.from_dict(config)
-    results = resolver.resolve_best(["python", 1])  # インデックスでアクセス
+    root = create_config_root_from_dict(config)
+    results = resolve_best(root, ["python", 1])  # インデックスでアクセス
     assert results.value == 2
 
 def test_resolve_parent_alias():
@@ -110,8 +110,8 @@ def test_resolve_parent_alias():
             "value": 1
         }
     }
-    resolver = ConfigResolver.from_dict(config)
-    results = resolver.resolve_by_match_desc(["container"])
+    root = create_config_root_from_dict(config)
+    results = resolve_by_match_desc(root, ["container"])
     assert [r.value for r in results] == [{"value": 1}]
 
 def test_resolve_circular_reference():
@@ -120,9 +120,9 @@ def test_resolve_circular_reference():
     node_b = ConfigNode("b", {"value": 2})
     add_edge(node_a, node_b)
     add_edge(node_b, node_a)  # 循環
-    resolver = ConfigResolver(node_a)
+    root = node_a
     # 無限ループしないこと
-    results = resolver.resolve_by_match_desc(["b"])
+    results = resolve_by_match_desc(root, ["b"])
     assert any(r.key == "b" for r in results)
 
 def test_resolve_aliases_and_other_keys():
@@ -133,8 +133,8 @@ def test_resolve_aliases_and_other_keys():
             "desc": "test"
         }
     }
-    resolver = ConfigResolver.from_dict(config)
-    results = resolver.resolve_by_match_desc(["container"])
+    root = create_config_root_from_dict(config)
+    results = resolve_by_match_desc(root, ["container"])
     # descが消えていないこと
     assert any("desc" in r.value for r in results)
     assert [r.value["value"] for r in results] == [1]
@@ -147,8 +147,8 @@ def test_resolve_values():
             }
         }
     }
-    resolver = ConfigResolver.from_dict(config)
-    values = resolver.resolve_best(["python", "env_type", "docker"])
+    root = create_config_root_from_dict(config)
+    values = resolve_best(root, ["python", "env_type", "docker"])
     assert values.value == {"value": 1}
 
 def test_resolve_deep_nested_path():
@@ -161,8 +161,8 @@ def test_resolve_deep_nested_path():
             }
         }
     }
-    resolver = ConfigResolver.from_dict(config)
-    results = resolver.resolve_best(["python", "env_type", "docker", "extra"])
+    root = create_config_root_from_dict(config)
+    results = resolve_best(root, ["python", "env_type", "docker", "extra"])
     assert results.key == "docker"
 
 def test_resolve_with_special_keys():
@@ -172,9 +172,9 @@ def test_resolve_with_special_keys():
             123: {"value": 42}
         }
     }
-    resolver = ConfigResolver.from_dict(config)
-    results_none = resolver.resolve_best(["python", None])
-    results_num = resolver.resolve_best(["python", 123])
+    root = create_config_root_from_dict(config)
+    results_none = resolve_best(root, ["python", None])
+    results_num = resolve_best(root, ["python", 123])
     assert results_none.value == {"value": 99}
     assert results_num.value == {"value": 42}
 
@@ -185,11 +185,11 @@ def test_resolve_empty_aliases():
             "value": 1
         }
     }
-    resolver = ConfigResolver.from_dict(config)
-    results = resolver.resolve_best(["docker"])
+    root = create_config_root_from_dict(config)
+    results = resolve_best(root, ["docker"])
     assert results.key == "docker"
     # 空aliasesでも通常のキーで一致すること
-    results_alias = resolver.resolve_best(["value"])
+    results_alias = resolve_best(root, ["value"])
     assert results_alias.key == "value"
 
 def test_resolve_same_name_multi_level():
@@ -203,8 +203,8 @@ def test_resolve_same_name_multi_level():
             "c": 2
         }
     }
-    resolver = ConfigResolver.from_dict(config)
-    results = resolver.resolve_best(["b", "c"])
+    root = create_config_root_from_dict(config)
+    results = resolve_best(root, ["b", "c"])
     # どちらのb/cも返る可能性があるが、最もよく一致するノードが先頭
     assert results.value == 2
 
@@ -216,8 +216,8 @@ def test_resolve_tuple_path():
             }
         }
     }
-    resolver = ConfigResolver.from_dict(config)
-    results = resolver.resolve_best(("python", "env_type", "docker"))
+    root = create_config_root_from_dict(config)
+    results = resolve_best(root, ("python", "env_type", "docker"))
     assert results.value == {"value": 1}
 
 def test_confignode_properties_and_repr():
@@ -233,21 +233,21 @@ def test_confignode_properties_and_repr():
 
 def test_from_dict_invalid_type():
     with pytest.raises(ValueError):
-        ConfigResolver.from_dict([1, 2, 3])
+        create_config_root_from_dict([1, 2, 3])
     with pytest.raises(ValueError):
-        ConfigResolver.from_dict(None)
+        create_config_root_from_dict(None)
     with pytest.raises(ValueError):
-        ConfigResolver.from_dict(123)
+        create_config_root_from_dict(123)
 
 
 def test_resolve_invalid_path_type(sample_config):
-    resolver = ConfigResolver.from_dict(sample_config)
+    root = create_config_root_from_dict(sample_config)
     with pytest.raises(TypeError):
-        resolver.resolve_by_match_desc("notalist")
+        resolve_by_match_desc(root, "notalist")
     with pytest.raises(TypeError):
-        resolver.resolve_by_match_desc(None)
+        resolve_by_match_desc(root, None)
     with pytest.raises(TypeError):
-        resolver.resolve_by_match_desc(123)
+        resolve_by_match_desc(root, 123)
 
 
 def test_add_edge_invalid_type():
@@ -265,7 +265,7 @@ def test_aliases_invalid_type():
     }
     # from_dictでエラーになるか
     with pytest.raises(Exception):
-        ConfigResolver.from_dict(config)
+        create_config_root_from_dict(config)
 
 
 def test_confignode_lt_invalid_type():
@@ -322,12 +322,12 @@ def test_resolve_path_with_empty_and_duplicate():
             }
         }
     }
-    resolver = ConfigResolver.from_dict(config)
+    root = create_config_root_from_dict(config)
     # 空文字列を含むパス
-    results_empty = resolver.resolve_best(["python", "", "docker"])
+    results_empty = resolve_best(root, ["python", "", "docker"])
     assert results_empty.key == "docker"
     # 重複要素を含むパス
-    results_dup = resolver.resolve_best(["python", "python", "env_type", "docker"])
+    results_dup = resolve_best(root, ["python", "python", "env_type", "docker"])
     # 仕様上、重複しても一致しない場合は空リスト
     assert results_dup.key == "docker"
 
@@ -339,10 +339,10 @@ def test_large_nested_dict():
         nv = {}
         v[str(i)] = nv
         v = nv
-    resolver = ConfigResolver.from_dict(d)
+    root = create_config_root_from_dict(d)
     # 存在しない深いパス
     path = [str(i) for i in range(100)]
-    results = resolver.resolve_by_match_desc(path)
+    results = resolve_by_match_desc(root, path)
     assert isinstance(results, list)
 
 
@@ -377,7 +377,7 @@ def test_matches_with_duplicate_aliases():
 def test_from_dict_aliases_none():
     config = {"docker": {"aliases": None, "value": 1}}
     with pytest.raises(TypeError):
-        ConfigResolver.from_dict(config)
+        create_config_root_from_dict(config)
 
 def test_add_edge_self_multiple():
     node = ConfigNode("a")
@@ -407,15 +407,15 @@ def test_find_nearest_key_node_basic():
             }
         }
     }
-    resolver = ConfigResolver.from_dict(config)
+    root = create_config_root_from_dict(config)
     # pythonのlanguage_id
-    py_nodes = next_nodes_with_key(resolver.root, "python")
+    py_nodes = next_nodes_with_key(root, "python")
     assert py_nodes
     py_node = py_nodes[0]
     found = find_nearest_key_node(py_node, "language_id")
     assert found and found[0].value == "5078"
     # javaのsource_file_name
-    java_nodes = next_nodes_with_key(resolver.root, "java")
+    java_nodes = next_nodes_with_key(root, "java")
     assert java_nodes
     java_node = java_nodes[0]
     found = find_nearest_key_node(java_node, "source_file_name")
@@ -432,8 +432,8 @@ def test_find_nearest_key_node_deep():
             }
         }
     }
-    resolver = ConfigResolver.from_dict(config)
-    py_node = [n for n in resolver.root.next_nodes if n.key == "python"][0]
+    root = create_config_root_from_dict(config)
+    py_node = [n for n in root.next_nodes if n.key == "python"][0]
     found = find_nearest_key_node(py_node, "target")
     assert found and found[0].value == 42
 
@@ -447,8 +447,8 @@ def test_find_nearest_key_node_multiple():
             }
         }
     }
-    resolver = ConfigResolver.from_dict(config)
-    py_node = [n for n in resolver.root.next_nodes if n.key == "python"][0]
+    root = create_config_root_from_dict(config)
+    py_node = [n for n in root.next_nodes if n.key == "python"][0]
     found = find_nearest_key_node(py_node, "target")
     # 最も近い（浅い）ノードのみ返る
     assert found and found[0].value == 1

@@ -3,7 +3,7 @@ import json
 import copy
 from typing import List, Dict, Optional, Tuple, Callable
 from .execution_context import ExecutionContext
-from src.context.resolver.config_resolver import ConfigResolver
+from src.context.resolver.config_resolver import create_config_root_from_dict, resolve_by_match_desc
 
 CONTEST_ENV_DIR = "contest_env"
 SYSTEM_INFO_PATH = "system_info.json"
@@ -71,9 +71,9 @@ def _load_all_env_jsons(base_dir: str, operations) -> list:
     print(f"[DEBUG] _load_all_env_jsons: env_jsons={env_jsons}")
     return env_jsons
 
-def _apply_language(args, context, resolver):
+def _apply_language(args, context, root):
     print(f"[DEBUG] _apply_language: in args={args} context.language={context.language}")
-    language_nodes = resolver.resolve_by_match_desc(["*"])
+    language_nodes = resolve_by_match_desc(root, ["*"])
     print(f"[DEBUG] _apply_language: language_nodes={[repr(n) for n in language_nodes]}")
     for idx, arg in enumerate(args):
         for node in language_nodes:
@@ -85,9 +85,9 @@ def _apply_language(args, context, resolver):
     print(f"[DEBUG] _apply_language: out args={args} context.language={context.language}")
     return args, context
 
-def _apply_env_type(args, context, resolver: ConfigResolver):
+def _apply_env_type(args, context, root):
     print(f"[DEBUG] _apply_env_type: in args={args} context.env_type={context.env_type}")
-    type_env_nodes = resolver.resolve_by_match_desc([context.language, "env_types"])
+    type_env_nodes = resolve_by_match_desc(root, [context.language, "env_types"])
     for idx, arg in enumerate(args):
         for type_env_node in type_env_nodes:
             for node in type_env_node.next_nodes:
@@ -99,9 +99,9 @@ def _apply_env_type(args, context, resolver: ConfigResolver):
     print(f"[DEBUG] _apply_env_type: out args={args} context.env_type={context.env_type}")
     return args, context
 
-def _apply_command(args, context, resolver: ConfigResolver):
+def _apply_command(args, context, root):
     print(f"[DEBUG] _apply_command: in args={args} context.command_type={context.command_type}")
-    command_nodes = resolver.resolve_by_match_desc([context.language, "commands"])
+    command_nodes = resolve_by_match_desc(root, [context.language, "commands"])
     for idx, arg in enumerate(args):
         for command_node in command_nodes:
             for node in command_node.next_nodes:
@@ -195,16 +195,16 @@ def parse_user_input(
     merged_env_json = {}
     for env_json in env_jsons:
         merged_env_json.update(env_json)
-    resolver = ConfigResolver.from_dict(merged_env_json)
-    context.resolver = resolver
+    root = create_config_root_from_dict(merged_env_json)
+    context.resolver = root
     # 言語特定
-    args, context = _apply_language(args, context, resolver)
+    args, context = _apply_language(args, context, root)
     # env_jsonをcontextにセット（既にセット済みならスキップ）
     context = _apply_env_json(context, env_jsons)
     # env_type特定
-    args, context = _apply_env_type(args, context, resolver)
+    args, context = _apply_env_type(args, context, root)
     # コマンド特定
-    args, context = _apply_command(args, context, resolver)
+    args, context = _apply_command(args, context, root)
     # 残りの引数からproblem_name, contest_nameを特定
     args, context = _apply_problem_name(args, context)
     args, context = _apply_contest_name(args, context)

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple, List
+from src.context.utils.format_utils import format_with_missing_keys
 
 @dataclass
 class ExecutionContext:
@@ -53,7 +54,8 @@ class ExecutionContext:
         """
         if not self.resolver:
             raise ValueError("resolverがセットされていません")
-        return self.resolver.resolve_best(path)
+        from src.context.resolver.config_resolver import resolve_best
+        return resolve_best(self.resolver, path)
 
     @property
     def workspace_path(self):

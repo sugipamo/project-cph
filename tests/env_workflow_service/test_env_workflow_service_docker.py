@@ -9,7 +9,7 @@ from src.operations.di_container import DIContainer
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
 from src.env.factory.docker_command_request_factory import DockerCommandRequestFactory
-from src.context.resolver.config_resolver import ConfigResolver
+from src.context.resolver.config_resolver import create_config_root_from_dict
 
 def test_env_workflow_service_docker_no_driver():
     # ダミーenv_json（docker環境用）
@@ -33,7 +33,7 @@ def test_env_workflow_service_docker_no_driver():
             "env_types": {"docker": {}}
         }
     }
-    resolver = ConfigResolver.from_dict(env_json)
+    root = create_config_root_from_dict(env_json)
     env_context = ExecutionContext(
         command_type="run",
         language="python",
@@ -41,7 +41,7 @@ def test_env_workflow_service_docker_no_driver():
         problem_name="a",
         env_type="docker",  # docker環境
         env_json=env_json,
-        resolver=resolver
+        resolver=root
     )
     env_context.oj_dockerfile = "FROM python:3.9\nRUN echo oj"
     const_handler = ConstHandler(env_context)

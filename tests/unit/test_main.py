@@ -4,7 +4,7 @@ from src.main import main
 from src.env.build_operations import build_mock_operations
 from src.context.execution_context import ExecutionContext
 from src.operations.exceptions.composite_step_failure import CompositeStepFailure
-from src.context.resolver.config_resolver import ConfigResolver
+from src.context.resolver.config_resolver import create_config_root_from_dict
 
 class DummyService:
     def __init__(self, exception=None, result=None):
@@ -44,7 +44,7 @@ def context():
             "env_types": {"local": {}}
         }
     }
-    resolver = ConfigResolver.from_dict(env_json)
+    root = create_config_root_from_dict(env_json)
     return ExecutionContext(
         command_type="run",
         language="python",
@@ -52,7 +52,7 @@ def context():
         problem_name="a",
         env_type="local",
         env_json=env_json,
-        resolver=resolver
+        resolver=root
     )
 
 @pytest.fixture
