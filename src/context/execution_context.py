@@ -53,7 +53,7 @@ class ExecutionContext:
         """
         if not self.resolver:
             raise ValueError("resolverがセットされていません")
-        return self.resolver.resolve_best(path).value
+        return self.resolver.resolve_best(path)
 
     @property
     def workspace_path(self):
@@ -71,10 +71,12 @@ class ExecutionContext:
         取得できない場合はValueErrorを投げる。
         """
         try:
-            return self.resolve([self.language, "commands", self.command_type, "steps"])
+            node = self.resolve([self.language, "commands", self.command_type, "steps"])
+            return node.value if node else None
         except Exception as e:
             raise ValueError(f"stepsの取得に失敗しました: {e}")
 
     @property
     def language_id(self):
-        return self.resolve([self.language, "language_id"])
+        node = self.resolve([self.language, "language_id"])
+        return node.value if node else None

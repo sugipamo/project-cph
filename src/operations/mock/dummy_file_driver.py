@@ -52,7 +52,7 @@ class DummyFileDriver(FileDriver):
         path = self.resolve_path()
         return str(path).endswith("/")
 
-    def open(self, mode="r", encoding=None):
+    def open(self, path, mode="r", encoding=None):
         class Dummy:
             def __enter__(self): return self
             def __exit__(self, exc_type, exc_val, exc_tb): pass
@@ -68,4 +68,9 @@ class DummyFileDriver(FileDriver):
         pass
 
     def hash_file(self, path, algo='sha256'):
-        return 'dummyhash' 
+        return 'dummyhash'
+
+    def add(self, path, content=""):
+        """テスト用: ファイルの内容と存在を同時にセット"""
+        self.contents[path] = content
+        self.files.add(path) 

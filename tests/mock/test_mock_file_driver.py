@@ -48,20 +48,20 @@ def test_open_read_and_write():
     driver = MockFileDriver(base_dir=Path(""))
     p = Path("a.txt")
     driver.path = p
-    driver._create_impl(driver.resolve_path(), "abc")
-    with driver.open("r") as f:
+    driver._create_impl(driver.base_dir / p, "abc")
+    with driver.open("a.txt", "r") as f:
         content = f.read()
     assert content == "abc"
     driver.path = p
-    with driver.open("w") as f:
+    with driver.open("a.txt", "w") as f:
         f.write("def")
-    assert driver.contents[driver.resolve_path()] == "def"  # writeで内容が上書きされる
+    assert driver.contents[driver.base_dir / p] == "def"  # writeで内容が上書きされる
 
 def test_open_unsupported_mode():
     driver = MockFileDriver()
     driver.path = Path("a.txt")
     with pytest.raises(NotImplementedError):
-        driver.open("x")
+        driver.open("a.txt", "x")
 
 def test_docker_cp_and_hash_file():
     driver = MockFileDriver()

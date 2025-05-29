@@ -50,9 +50,9 @@ def test_open_read_and_write():
     driver = DummyFileDriver()
     p = Path("a.txt")
     driver.path = p
-    with driver.open("r") as f:
+    with driver.open("a.txt", "r") as f:
         assert f.read() == ""
-    with driver.open("w") as f:
+    with driver.open("a.txt", "w") as f:
         f.write("def")
 
 def test_ensure_parent_dir():

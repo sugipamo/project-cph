@@ -55,9 +55,10 @@ def build_mock_operations():
 
     operations = DIContainer()
     # driver
+    file_driver = MockFileDriver(base_dir=Path('.'))
     operations.register('shell_driver', lambda: MockShellDriver())
     operations.register('docker_driver', lambda: MockDockerDriver())
-    operations.register('file_driver', lambda: MockFileDriver(base_dir=Path('.')))
+    operations.register('file_driver', lambda: file_driver)
     # ファクトリー（本物をそのまま登録）
     operations.register('ShellCommandRequestFactory', lambda: ShellCommandRequestFactory)
     operations.register('DockerCommandRequestFactory', lambda: DockerCommandRequestFactory)

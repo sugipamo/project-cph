@@ -50,7 +50,7 @@ def test_open(tmp_path):
     p.write_text("abc")
     driver = LocalFileDriver()
     driver.path = p
-    with driver.open() as f:
+    with driver.open(p, "r") as f:
         assert f.read() == "abc"
 
 def test_docker_cp_raises():

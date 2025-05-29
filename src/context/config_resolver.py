@@ -117,6 +117,8 @@ class ConfigResolver:
                     ConfigNodeLogic.init_matches(node, v)
                     ConfigNodeLogic.add_edge(parent, node)
                     que.append((node, v))
+        return_nodes = [repr(n) for n in root.next_nodes]
+        print(f"[DEBUG] ConfigResolver.from_dict: root.next_nodes={return_nodes}")
         return cls(root)
 
     @lru_cache(maxsize=1000)

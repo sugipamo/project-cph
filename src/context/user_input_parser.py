@@ -46,34 +46,47 @@ def _validate_env_json(data: dict, path: str):
         if "aliases" in conf and not isinstance(conf["aliases"], list):
             raise ValueError(f"{path}: {lang}のaliasesはlistである必要があります")
 
-def _load_all_env_jsons(base_dir: str, operations) -> List[dict]:
+def _load_all_env_jsons(base_dir: str, operations) -> list:
     env_jsons = []
     file_driver = operations.resolve("file_driver")
     from src.operations.file.file_request import FileRequest, FileOpType
 
-    for path in file_driver.list_files(base_dir):
+    files = file_driver.list_files(base_dir)
+    print(f"[DEBUG] _load_all_env_jsons: list_files({base_dir}) -> {files}")
+    for path in files:
+        print(f"[DEBUG] _load_all_env_jsons: path={path} type={type(path)}")
         if str(path).endswith("env.json"):
             req = FileRequest(FileOpType.READ, path)
+            print(f"[DEBUG] _load_all_env_jsons: FileRequest path={req.path} type={type(req.path)}")
             result = req.execute(driver=file_driver)
             if not result.content:
                 continue
-            data = json.loads(result.content)
-            _validate_env_json(data, path)
-            env_jsons.append(data)
+            import json as _json
+            try:
+                env_json = _json.loads(result.content)
+                print(f"[DEBUG] _load_all_env_jsons: loaded env_json={env_json}")
+                env_jsons.append(env_json)
+            except Exception as e:
+                print(f"[DEBUG] _load_all_env_jsons: JSON decode error: {e} content={result.content}")
+    print(f"[DEBUG] _load_all_env_jsons: env_jsons={env_jsons}")
     return env_jsons
 
 def _apply_language(args, context, resolver):
-    # resolverが渡されていればそれを使って言語候補を取得
+    print(f"[DEBUG] _apply_language: in args={args} context.language={context.language}")
     language_nodes = resolver.resolve_by_match_desc(["*"])
+    print(f"[DEBUG] _apply_language: language_nodes={[repr(n) for n in language_nodes]}")
     for idx, arg in enumerate(args):
         for node in language_nodes:
             if arg in node.matches:
                 context.language = node.key
                 new_args = args[:idx] + args[idx+1:]
+                print(f"[DEBUG] _apply_language: out args={new_args} context.language={context.language}")
                 return new_args, context
+    print(f"[DEBUG] _apply_language: out args={args} context.language={context.language}")
     return args, context
 
 def _apply_env_type(args, context, resolver: ConfigResolver):
+    print(f"[DEBUG] _apply_env_type: in args={args} context.env_type={context.env_type}")
     type_env_nodes = resolver.resolve_by_match_desc([context.language, "env_types"])
     for idx, arg in enumerate(args):
         for type_env_node in type_env_nodes:
@@ -81,10 +94,13 @@ def _apply_env_type(args, context, resolver: ConfigResolver):
                 if arg in node.matches:
                     context.env_type = node.key
                     new_args = args[:idx] + args[idx+1:]
+                    print(f"[DEBUG] _apply_env_type: out args={new_args} context.env_type={context.env_type}")
                     return new_args, context
+    print(f"[DEBUG] _apply_env_type: out args={args} context.env_type={context.env_type}")
     return args, context
 
 def _apply_command(args, context, resolver: ConfigResolver):
+    print(f"[DEBUG] _apply_command: in args={args} context.command_type={context.command_type}")
     command_nodes = resolver.resolve_by_match_desc([context.language, "commands"])
     for idx, arg in enumerate(args):
         for command_node in command_nodes:
@@ -92,17 +108,23 @@ def _apply_command(args, context, resolver: ConfigResolver):
                 if arg in node.matches:
                     context.command_type = node.key
                     new_args = args[:idx] + args[idx+1:]
+                    print(f"[DEBUG] _apply_command: out args={new_args} context.command_type={context.command_type}")
                     return new_args, context
+    print(f"[DEBUG] _apply_command: out args={args} context.command_type={context.command_type}")
     return args, context
 
 def _apply_problem_name(args, context):
+    print(f"[DEBUG] _apply_problem_name: in args={args} context.problem_name={context.problem_name}")
     if args:
         context.problem_name = args.pop()
+    print(f"[DEBUG] _apply_problem_name: out args={args} context.problem_name={context.problem_name}")
     return args, context
 
 def _apply_contest_name(args, context):
+    print(f"[DEBUG] _apply_contest_name: in args={args} context.contest_name={context.contest_name}")
     if args:
         context.contest_name = args.pop()
+    print(f"[DEBUG] _apply_contest_name: out args={args} context.contest_name={context.contest_name}")
     return args, context
 
 def _apply_env_json(context, env_jsons):

@@ -45,11 +45,11 @@ class FileRequest(BaseRequest):
         try:
             driver.path = driver.base_dir / self.path
             if self.op == FileOpType.READ:
-                with driver.open("r", encoding="utf-8") as f:
+                with driver.open(self.path, "r", encoding="utf-8") as f:
                     content = f.read()
                 return OperationResult(success=True, content=content, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
             elif self.op == FileOpType.WRITE:
-                with driver.open("w", encoding="utf-8") as f:
+                with driver.open(self.path, "w", encoding="utf-8") as f:
                     f.write(self.content or "")
                 return OperationResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
             elif self.op == FileOpType.EXISTS:

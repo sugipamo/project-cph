@@ -93,7 +93,7 @@ class FileDriver(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def open(self, mode="r", encoding=None):
+    def open(self, path, mode="r", encoding=None):
         pass
 
     def ensure_parent_dir(self, path):

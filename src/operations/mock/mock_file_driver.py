@@ -1,5 +1,6 @@
 from pathlib import Path
 from src.operations.file.file_driver import FileDriver
+import os
 
 class MockFileDriver(FileDriver):
     def __init__(self, base_dir=Path(".")):
@@ -9,6 +10,8 @@ class MockFileDriver(FileDriver):
         self.contents = dict()
 
     def _move_impl(self, src_path, dst_path):
+        src_path = self.base_dir / Path(src_path)
+        dst_path = self.base_dir / Path(dst_path)
         self.ensure_parent_dir(dst_path)
         self.operations.append(("move", src_path, dst_path))
         if src_path in self.files:
@@ -17,6 +20,8 @@ class MockFileDriver(FileDriver):
             self.contents[dst_path] = self.contents.pop(src_path, "")
 
     def _copy_impl(self, src_path, dst_path):
+        src_path = self.base_dir / Path(src_path)
+        dst_path = self.base_dir / Path(dst_path)
         self.ensure_parent_dir(dst_path)
         if src_path not in self.files:
             raise FileNotFoundError(f"MockFileDriver: {src_path} が存在しません")
@@ -26,20 +31,29 @@ class MockFileDriver(FileDriver):
             self.contents[dst_path] = self.contents[src_path] if src_path in self.contents else ""
 
     def _exists_impl(self, path):
-        return path in self.files
+        # すでに絶対パスならbase_dirを重ねない
+        if isinstance(path, Path) and path.is_absolute():
+            abs_path = path
+        else:
+            abs_path = self.base_dir / Path(path)
+        return abs_path in self.files
 
     def _create_impl(self, path, content):
-        self.ensure_parent_dir(path)
-        self.operations.append(("create", path, content))
-        self.files.add(path)
-        self.contents[path] = content
+        abs_path = self.base_dir / Path(path)
+        self.ensure_parent_dir(abs_path)
+        self.operations.append(("create", abs_path, content))
+        self.files.add(abs_path)
+        self.contents[abs_path] = content
 
     def _copytree_impl(self, src_path, dst_path):
+        src_path = self.base_dir / Path(src_path)
+        dst_path = self.base_dir / Path(dst_path)
         self.ensure_parent_dir(dst_path)
         self.operations.append(("copytree", src_path, dst_path))
         # モックなので、ディレクトリ構造の再現は省略
 
     def _rmtree_impl(self, p):
+        p = self.base_dir / Path(p)
         self.operations.append(("rmtree", p))
         # ディレクトリ配下も含めて全て削除（モックなので単純化）
         to_remove = [x for x in self.files if str(x).startswith(str(p))]
@@ -48,21 +62,29 @@ class MockFileDriver(FileDriver):
             self.contents.pop(x, None)
 
     def _remove_impl(self, p):
+        p = self.base_dir / Path(p)
         self.operations.append(("remove", p))
         if p in self.files:
             self.files.remove(p)
             self.contents.pop(p, None)
 
-    def open(self, mode="r", encoding=None):
-        path = self.resolve_path()
+    def open(self, path, mode="r", encoding=None):
+        abs_path = self.base_dir / Path(path)
+        print(f"[DEBUG] MockFileDriver.open: path={abs_path} type={type(abs_path)}")
+        print(f"[DEBUG] MockFileDriver.open: self.contents.keys()={list(self.contents.keys())}")
         if mode.startswith("w"):
-            def write_func(content):
-                self.create(content)
             class Writer:
+                def __init__(self, driver, path):
+                    self.driver = driver
+                    self.path = path
+                    self._written = False
                 def __enter__(self): return self
                 def __exit__(self, exc_type, exc_val, exc_tb): pass
-                def write(self, content): write_func(content)
-            return Writer()
+                def write(self, content):
+                    self.driver.contents[self.path] = content
+                    self.driver.files.add(self.path)
+                    self._written = True
+            return Writer(self, abs_path)
         elif mode.startswith("r"):
             class Reader:
                 def __init__(self, content):
@@ -71,19 +93,20 @@ class MockFileDriver(FileDriver):
                 def __enter__(self): return self
                 def __exit__(self, exc_type, exc_val, exc_tb): pass
                 def read(self):
-                    if self._read: return ""
-                    self._read = True
-                    return self._content
-            return Reader(self.contents[path] if path in self.contents else "")
+                    if not self._read:
+                        self._read = True
+                        return self._content
+                    return ""
+            return Reader(self.contents.get(abs_path, ""))
         else:
-            raise NotImplementedError(f"MockFileDriver.open: mode {mode} not supported")
+            raise NotImplementedError(f"MockFileDriver: mode {mode} 未対応")
 
     def ensure_parent_dir(self, path):
         parent = Path(path).parent
         self.files.add(parent)
 
     def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver=None):
-        src_path = Path(src)
+        src_path = self.base_dir / Path(src)
         if src_path not in self.files:
             raise FileNotFoundError(f"MockFileDriver: {src_path} が存在しません (docker_cp)")
         self.operations.append(("docker_cp", src, dst, container, to_container))
@@ -91,12 +114,35 @@ class MockFileDriver(FileDriver):
 
     def hash_file(self, path, algo='sha256'):
         import hashlib
+        path = self.base_dir / Path(path)
         h = hashlib.new(algo)
-        content = self.contents[Path(path)] if Path(path) in self.contents else ""
+        content = self.contents[path] if path in self.contents else ""
         content = content.encode()
         h.update(content)
         return h.hexdigest()
 
     def list_files(self, base_dir):
-        base = str(self.base_dir / base_dir) if not str(base_dir).startswith(str(self.base_dir)) else str(base_dir)
-        return [str(p) for p in self.contents.keys() if str(p).startswith(base)] 
+        base = self.base_dir / Path(base_dir)
+        print(f"[DEBUG] list_files: base={base} str(base)={str(base)}")
+        result = []
+        for p in self.files:
+            print(f"[DEBUG] list_files: p={p} str(p)={str(p)}")
+            try:
+                if p.is_relative_to(base):
+                    print(f"[DEBUG] list_files: {p} is_relative_to {base} -> True")
+                    result.append(p)
+            except AttributeError:
+                if str(p).startswith(str(base)):
+                    print(f"[DEBUG] list_files: {str(p)} startswith {str(base)} -> True")
+                    result.append(p)
+        print(f"[DEBUG] list_files: result={result}")
+        return result
+
+    def add(self, path, content=""):
+        """テスト用: ファイルの内容と存在を同時にセット"""
+        abs_path = self.base_dir / Path(path)
+        self.contents[abs_path] = content
+        self.files.add(abs_path)
+
+    def resolve_path(self):
+        return self.base_dir / self.path 

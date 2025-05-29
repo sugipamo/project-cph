@@ -34,8 +34,8 @@ class LocalFileDriver(FileDriver):
         if p.exists():
             p.unlink()
 
-    def open(self, mode="r", encoding=None):
-        return self.path.open(mode=mode, encoding=encoding)
+    def open(self, path, mode="r", encoding=None):
+        return Path(path).open(mode=mode, encoding=encoding)
 
     def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver=None):
         if docker_driver is None:

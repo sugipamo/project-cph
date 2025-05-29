@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 class DummyFileDriver(FileDriver):
-    def open(self, mode="r", encoding=None):
+    def open(self, path, mode="r", encoding=None):
         pass
     def docker_cp(self, src, dst, container, to_container=True, docker_driver=None):
         pass
@@ -99,8 +99,8 @@ def test_list_files_mock_file_driver():
     from pathlib import Path
     driver = MockFileDriver(base_dir=Path("."))
     # 仮想ファイルを追加
-    driver.contents[Path("a/b/file1.txt")] = "hello"
-    driver.contents[Path("a/file2.txt")] = "world"
+    driver.add("a/b/file1.txt", "hello")
+    driver.add("a/file2.txt", "world")
     files = set(driver.list_files("a"))
-    expected = {"a/b/file1.txt", "a/file2.txt"}
+    expected = {Path("a/b/file1.txt"), Path("a/file2.txt")}
     assert files == expected 
