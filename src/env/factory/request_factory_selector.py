@@ -47,6 +47,42 @@ class RequestFactorySelector:
             return operations.resolve("ShellCommandRequestFactory")(controller)
 
     @classmethod
+    def get_factory_for_step_type(cls, step_type: str, controller, operations: DIContainer):
+        """
+        step_typeに基づいて適切なファクトリーを返す
+        """
+        env_type = controller.env_context.env_type
+        if step_type == "shell":
+            if env_type and env_type.lower() == "docker":
+                return operations.resolve("DockerCommandRequestFactory")(controller)
+            else:
+                return operations.resolve("ShellCommandRequestFactory")(controller)
+        elif step_type == "copy":
+            return operations.resolve("CopyCommandRequestFactory")(controller)
+        elif step_type == "oj":
+            DockerRequestClass = operations.resolve("DockerRequest")
+            DockerOpTypeClass = operations.resolve("DockerOpType")
+            return operations.resolve("OjCommandRequestFactory")(controller, DockerRequestClass, DockerOpTypeClass)
+        elif step_type == "remove":
+            return operations.resolve("RemoveCommandRequestFactory")(controller)
+        elif step_type == "build":
+            return operations.resolve("BuildCommandRequestFactory")(controller)
+        elif step_type == "python":
+            return operations.resolve("PythonCommandRequestFactory")(controller)
+        elif step_type == "mkdir":
+            return operations.resolve("MkdirCommandRequestFactory")(controller)
+        elif step_type == "touch":
+            return operations.resolve("TouchCommandRequestFactory")(controller)
+        elif step_type == "rmtree":
+            return operations.resolve("RmtreeCommandRequestFactory")(controller)
+        elif step_type == "move":
+            return operations.resolve("MoveCommandRequestFactory")(controller)
+        elif step_type == "movetree":
+            return operations.resolve("MoveTreeCommandRequestFactory")(controller)
+        else:
+            raise KeyError(f"Unknown step type: {step_type}")
+    
+    @classmethod
     def get_factory_for_step(cls, controller, step, operations: DIContainer):
         # stepにforce_env_typeがあればそれを優先
         env_type = getattr(step, 'force_env_type', None) or controller.env_context.env_type

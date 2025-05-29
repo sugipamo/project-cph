@@ -2,12 +2,16 @@ import pytest
 from src.env.step.run_step_move import MoveRunStep
 from src.env.factory.move_command_request_factory import MoveCommandRequestFactory
 
-class DummyConstHandler:
-    def parse(self, s):
-        return s.replace("{workspace_path}", "/home/user/workspace")
-
 class MockController:
-    const_handler = DummyConstHandler()
+    def __init__(self):
+        self.env_context = type("EnvContext", (), {
+            "contest_name": "test",
+            "problem_name": "a",
+            "language": "python",
+            "env_type": "local",
+            "command_type": "test",
+            "resolver": None
+        })()
 
 def test_move_run_step_validate_ok():
     step = MoveRunStep(type="move", cmd=["src.txt", "dst.txt"])
@@ -29,6 +33,7 @@ def test_move_run_step_src_dst():
 def test_move_command_request_factory_parse():
     step = MoveRunStep(type="move", cmd=["{workspace_path}/a.txt", "{workspace_path}/b.txt"])
     factory = MoveCommandRequestFactory(MockController())
+    factory.format_string = lambda s: s.replace("{workspace_path}", "/home/user/workspace")
     req = factory.create_request(step)
     assert req.path == "/home/user/workspace/a.txt"
     assert req.dst_path == "/home/user/workspace/b.txt" 

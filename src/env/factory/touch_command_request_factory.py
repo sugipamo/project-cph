@@ -6,5 +6,5 @@ class TouchCommandRequestFactory(BaseCommandRequestFactory):
     def create_request(self, run_step):
         if not isinstance(run_step, TouchRunStep):
             raise TypeError(f"TouchCommandRequestFactory expects TouchRunStep, got {type(run_step).__name__}")
-        target = self.controller.const_handler.parse(run_step.target)
+        target = self.format_string(run_step.target)
         return FileRequest(FileOpType.TOUCH, target) 

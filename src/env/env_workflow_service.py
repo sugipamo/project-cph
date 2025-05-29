@@ -72,10 +72,15 @@ class EnvWorkflowService:
         """
         context = self.env_context
         try:
-            steps = context.get_steps()
+            step_nodes = context.get_steps()  # ConfigNodeのリストを取得
         except Exception as e:
             raise ValueError(f"env.jsonからコマンド({context.command_type})のsteps取得に失敗: {e}")
-        composite_request = self.generate_run_requests(steps)
+        
+        # RunWorkflowBuilderを使用してConfigNodeから直接リクエストを生成
+        from src.env.run_workflow_builder import RunWorkflowBuilder
+        builder = RunWorkflowBuilder.from_controller(self.controller, self.operations)
+        composite_request = builder.build_from_nodes(step_nodes)
+        
         # driverの種類はenv_type等で判定
         env_type = self.env_context.env_type.lower()
         driver_key = 'shell_driver' if env_type == 'local' else 'docker_driver'

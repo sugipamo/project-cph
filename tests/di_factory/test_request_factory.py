@@ -2,7 +2,6 @@ import pytest
 from src.env.step.run_step_shell import ShellRunStep
 from src.env.step.run_step_copy import CopyRunStep
 from src.env.step.run_step_oj import OjRunStep
-from src.env.step.run_steps import RunSteps
 from src.env.factory.shell_command_request_factory import ShellCommandRequestFactory
 from src.env.factory.docker_command_request_factory import DockerCommandRequestFactory
 from src.env.factory.copy_command_request_factory import CopyCommandRequestFactory
@@ -13,7 +12,6 @@ from src.operations.di_container import DIContainer
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.file.file_request import FileRequest, FileOpType
 from src.operations.shell.shell_request import ShellRequest
-from src.env.factory.request_factory import create_requests_from_run_steps
 from src.env.step.run_step_remove import RemoveRunStep
 from src.env.factory.remove_command_request_factory import RemoveCommandRequestFactory
 from src.env.step.run_step_build import BuildRunStep
@@ -33,7 +31,14 @@ class MockConstHandler:
 class MockController:
     def __init__(self):
         self.const_handler = MockConstHandler()
-        self.env_context = type("EnvContext", (), {"env_type": "local"})()
+        self.env_context = type("EnvContext", (), {
+            "env_type": "local",
+            "contest_name": "test_contest",
+            "problem_name": "a",
+            "language": "python",
+            "command_type": "test",
+            "resolver": None
+        })()
 
 @pytest.fixture
 def operations():
@@ -55,6 +60,8 @@ def test_shell_command_request_factory(operations):
     controller = MockController()
     step = ShellRunStep(type="shell", cmd=["echo", "hello"])
     factory = RequestFactorySelector.get_factory_for_step(controller, step, operations)
+    # format_stringメソッドをモック
+    factory.format_string = lambda s: f"parsed_{s}"
     req = factory.create_request(step)
     assert isinstance(req, ShellRequest)
     assert req.cmd == ["parsed_echo", "parsed_hello"]
@@ -64,6 +71,8 @@ def test_docker_command_request_factory(operations):
     controller.env_context.env_type = "docker"
     step = ShellRunStep(type="shell", cmd=["ls", "/"])
     factory = RequestFactorySelector.get_factory_for_step(controller, step, operations)
+    # format_stringメソッドをモック
+    factory.format_string = lambda s: f"parsed_{s}"
     req = factory.create_request(step)
     assert isinstance(req, DockerRequest)
     assert req.container == "mock_container"
@@ -74,6 +83,8 @@ def test_copy_command_request_factory(operations):
     controller = MockController()
     step = CopyRunStep(type="copy", cmd=["src.txt", "dst.txt"])
     factory = RequestFactorySelector.get_factory_for_step(controller, step, operations)
+    # format_stringメソッドをモック
+    factory.format_string = lambda s: f"parsed_{s}"
     req = factory.create_request(step)
     assert isinstance(req, FileRequest)
     assert req.op == FileOpType.COPY
@@ -85,20 +96,14 @@ def test_oj_command_request_factory(operations):
     controller.env_context.env_type = "docker"
     step = OjRunStep(type="oj", cmd=["test", "-c", "./main"])
     factory = RequestFactorySelector.get_factory_for_step(controller, step, operations)
+    # format_stringメソッドをモック
+    factory.format_string = lambda s: f"parsed_{s}"
     req = factory.create_request(step)
     assert isinstance(req, DockerRequest)
     assert req.op == DockerOpType.EXEC
     assert req.container == "mock_oj_container"
     assert req.command == "parsed_test parsed_-c parsed_./main"
 
-def test_create_requests_from_run_steps(operations):
-    controller = MockController()
-    steps = RunSteps([
-        ShellRunStep(type="shell", cmd=["echo", "hello"]),
-        CopyRunStep(type="copy", cmd=["src.txt", "dst.txt"]),
-    ])
-    composite = create_requests_from_run_steps(controller, steps, operations)
-    assert isinstance(composite, ShellRequest) or hasattr(composite, "requests")
 
 def test_factory_type_error(operations):
     controller = MockController()
@@ -118,6 +123,8 @@ def test_remove_command_request_factory(operations):
     controller = MockController()
     step = RemoveRunStep(type="remove", cmd=["target.txt"])
     factory = RequestFactorySelector.get_factory_for_step(controller, step, operations)
+    # format_stringメソッドをモック
+    factory.format_string = lambda s: f"parsed_{s}"
     req = factory.create_request(step)
     assert isinstance(req, FileRequest)
     assert req.op == FileOpType.REMOVE

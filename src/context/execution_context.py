@@ -69,12 +69,23 @@ class ExecutionContext:
 
     def get_steps(self) -> list:
         """
-        現在のlanguageとcommand_typeに基づきstepsリストを返す。
+        現在のlanguageとcommand_typeに基づきstepsのConfigNodeリストを返す。
         取得できない場合はValueErrorを投げる。
         """
         try:
-            node = self.resolve([self.language, "commands", self.command_type, "steps"])
-            return node.value if node else None
+            steps_node = self.resolve([self.language, "commands", self.command_type, "steps"])
+            if not steps_node:
+                raise ValueError("stepsが見つかりません")
+            
+            # steps配列の各要素のConfigNodeを返す
+            step_nodes = []
+            for child in steps_node.next_nodes:
+                if isinstance(child.key, int):  # 配列のインデックス
+                    step_nodes.append(child)
+            
+            # インデックス順にソート
+            step_nodes.sort(key=lambda n: n.key)
+            return step_nodes
         except Exception as e:
             raise ValueError(f"stepsの取得に失敗しました: {e}")
 

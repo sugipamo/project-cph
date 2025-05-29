@@ -6,6 +6,6 @@ class MoveTreeCommandRequestFactory(BaseCommandRequestFactory):
     def create_request(self, run_step):
         if not isinstance(run_step, MoveTreeRunStep):
             raise TypeError(f"MoveTreeCommandRequestFactory expects MoveTreeRunStep, got {type(run_step).__name__}")
-        src = self.controller.const_handler.parse(run_step.src)
-        dst = self.controller.const_handler.parse(run_step.dst)
+        src = self.format_string(run_step.src)
+        dst = self.format_string(run_step.dst)
         return FileRequest(FileOpType.MOVE, src, dst_path=dst) 

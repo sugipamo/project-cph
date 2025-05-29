@@ -2,9 +2,16 @@ import pytest
 from src.env.step.run_step_remove import RemoveRunStep
 from src.env.factory.remove_command_request_factory import RemoveCommandRequestFactory
 
-class DummyConstHandler:
-    def parse(self, s):
-        return s.replace("{workspace_path}", "/home/user/workspace")
+class MockController:
+    def __init__(self):
+        self.env_context = type("EnvContext", (), {
+            "contest_name": "test",
+            "problem_name": "a",
+            "language": "python",
+            "env_type": "local",
+            "command_type": "test",
+            "resolver": None
+        })()
 
 def test_remove_run_step_validate_ok():
     step = RemoveRunStep(type="remove", cmd=["target.txt"])
@@ -24,7 +31,7 @@ def test_remove_run_step_target():
 
 def test_remove_command_request_factory_parse():
     step = RemoveRunStep(type="remove", cmd=["{workspace_path}/test"])
-    factory = RemoveCommandRequestFactory(None)
-    dummy_handler = DummyConstHandler()
-    req = factory.create_request(step, const_handler=dummy_handler)
+    factory = RemoveCommandRequestFactory(MockController())
+    factory.format_string = lambda s: s.replace("{workspace_path}", "/home/user/workspace")
+    req = factory.create_request(step)
     assert req.path == "/home/user/workspace/test" 

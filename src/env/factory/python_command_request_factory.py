@@ -6,7 +6,7 @@ class PythonCommandRequestFactory(BaseCommandRequestFactory):
     def create_request(self, run_step):
         if not isinstance(run_step, PythonRunStep):
             raise TypeError(f"PythonCommandRequestFactory expects PythonRunStep, got {type(run_step).__name__}")
-        code_or_file = [self.controller.const_handler.parse(str(arg)) for arg in run_step.cmd]
-        cwd = self.controller.const_handler.parse(run_step.cwd) if getattr(run_step, 'cwd', None) else None
+        code_or_file = [self.format_string(str(arg)) for arg in run_step.cmd]
+        cwd = self.format_string(run_step.cwd) if getattr(run_step, 'cwd', None) else None
         show_output = getattr(run_step, 'show_output', True)
         return PythonRequest(code_or_file, cwd=cwd, show_output=show_output) 
