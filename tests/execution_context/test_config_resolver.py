@@ -1,7 +1,9 @@
 import pytest
 from src.context.resolver.config_resolver import ConfigResolver
 from src.context.resolver.config_node import ConfigNode
-from src.context.resolver.config_node_logic import find_nearest_key_node, init_matches
+from src.context.resolver.config_node_logic import (
+    find_nearest_key_node, init_matches, add_edge, next_nodes_with_key, path
+)
 
 @pytest.fixture
 def sample_config():
@@ -59,19 +61,19 @@ def test_resolve_neighbor_match(sample_config):
     resolver = ConfigResolver.from_dict(sample_config)
     # 存在しないパスであっても、最もよく一致するノードを返す
     results = resolver.resolve_best(["nonexistent", "env_type", "container"])
-    assert results.path() == ["python", "env_type", "docker"]
+    assert path(results) == ["python", "env_type", "docker"]
 
 def test_resolve_multiple_matches(sample_config):
     resolver = ConfigResolver.from_dict(sample_config)
     # 同じパスで複数のノードが一致する場合、最もよく一致するノードを返す
     results = resolver.resolve_best(["python", "env_type"])
-    assert results.path() == ["python", "env_type"]
+    assert path(results) == ["python", "env_type"]
 
 def test_resolve_multiple_matches_with_alias(sample_config):
     resolver = ConfigResolver.from_dict(sample_config)
     # 同じパスで複数のノードが一致する場合、最もよく一致するノードを返す
     results = resolver.resolve_best(["env_type", "container"])
-    assert results.path() == ["python", "env_type", "docker"]
+    assert path(results) == ["python", "env_type", "docker"]
 
 def test_resolve_empty_path(sample_config):
     resolver = ConfigResolver.from_dict(sample_config)
@@ -91,7 +93,7 @@ def test_resolve_multiple_aliases():
     }
     resolver = ConfigResolver.from_dict(config)
     results = resolver.resolve_best(["python", "env_type", "box"])
-    assert results.path() == ["python", "env_type", "docker"]
+    assert path(results) == ["python", "env_type", "docker"]
 
 def test_resolve_list_node():
     config = {
@@ -116,8 +118,8 @@ def test_resolve_circular_reference():
     # 手動で循環参照を作る
     node_a = ConfigNode("a", {"value": 1})
     node_b = ConfigNode("b", {"value": 2})
-    node_a.add_edge(node_b)
-    node_b.add_edge(node_a)  # 循環
+    add_edge(node_a, node_b)
+    add_edge(node_b, node_a)  # 循環
     resolver = ConfigResolver(node_a)
     # 無限ループしないこと
     results = resolver.resolve_by_match_desc(["b"])
@@ -251,7 +253,7 @@ def test_resolve_invalid_path_type(sample_config):
 def test_add_edge_invalid_type():
     node = ConfigNode("a")
     with pytest.raises(AttributeError):
-        node.add_edge("notanode")
+        add_edge(node, "notanode")
 
 
 def test_aliases_invalid_type():
@@ -273,7 +275,7 @@ def test_confignode_lt_invalid_type():
 
 def test_add_edge_self_reference():
     node = ConfigNode("self")
-    node.add_edge(node)
+    add_edge(node, node)
     # 自己参照でも例外が出ないこと、next_nodesに自分自身が含まれる
     assert node in node.next_nodes
 
@@ -281,9 +283,9 @@ def test_add_edge_self_reference():
 def test_add_edge_duplicate():
     node1 = ConfigNode("a")
     node2 = ConfigNode("b")
-    node1.add_edge(node2)
+    add_edge(node1, node2)
     with pytest.raises(ValueError):
-        node1.add_edge(node2)
+        add_edge(node1, node2)
 
 
 def test_value_dict_not_destroyed():
@@ -298,7 +300,7 @@ def test_value_dict_not_destroyed():
 def test_add_edge_parent_and_next_nodes():
     node1 = ConfigNode("a")
     node2 = ConfigNode("b")
-    node1.add_edge(node2)
+    add_edge(node1, node2)
     assert node1.next_nodes[0] == node2
     assert node2.parent == node1
 
@@ -306,8 +308,8 @@ def test_add_edge_parent_and_next_nodes():
 def test_repr_circular_reference():
     node1 = ConfigNode("a")
     node2 = ConfigNode("b")
-    node1.add_edge(node2)
-    node2.add_edge(node1)  # 循環
+    add_edge(node1, node2)
+    add_edge(node2, node1)  # 循環
     r = repr(node1)
     assert "ConfigNode" in r
 
@@ -347,22 +349,22 @@ def test_large_nested_dict():
 def test_next_nodes_with_key_star_and_non_match():
     node1 = ConfigNode("a")
     node2 = ConfigNode("b")
-    node1.add_edge(node2)
+    add_edge(node1, node2)
     # "*"指定で全て返す
-    assert node1.next_nodes_with_key("*") == [node2]
+    assert next_nodes_with_key(node1, "*") == [node2]
     # 存在しない名前
-    assert node1.next_nodes_with_key("zzz") == []
+    assert next_nodes_with_key(node1, "zzz") == []
 
 def test_repr_with_self_and_cycle():
     node1 = ConfigNode("a")
-    node1.add_edge(node1)  # 自己参照
+    add_edge(node1, node1)  # 自己参照
     r = repr(node1)
     assert "ConfigNode" in r
 
 def test_parent_property():
     node1 = ConfigNode("a")
     node2 = ConfigNode("b")
-    node1.add_edge(node2)
+    add_edge(node1, node2)
     assert node2.parent == node1
 
 def test_matches_with_duplicate_aliases():
@@ -379,9 +381,9 @@ def test_from_dict_aliases_none():
 
 def test_add_edge_self_multiple():
     node = ConfigNode("a")
-    node.add_edge(node)  # 1回目はOK
+    add_edge(node, node)  # 1回目はOK
     with pytest.raises(ValueError):
-        node.add_edge(node)  # 2回目はエラー
+        add_edge(node, node)  # 2回目はエラー
 
 def test_value_property_various_types():
     assert ConfigNode("a", 123).value == 123
@@ -407,16 +409,16 @@ def test_find_nearest_key_node_basic():
     }
     resolver = ConfigResolver.from_dict(config)
     # pythonのlanguage_id
-    py_nodes = resolver.root.next_nodes_with_key("python")
+    py_nodes = next_nodes_with_key(resolver.root, "python")
     assert py_nodes
     py_node = py_nodes[0]
     found = find_nearest_key_node(py_node, "language_id")
     assert found and found[0].value == "5078"
     # javaのsource_file_name
-    java_nodes = resolver.root.next_nodes_with_key("java")
+    java_nodes = next_nodes_with_key(resolver.root, "java")
     assert java_nodes
     java_node = java_nodes[0]
-    found = java_node.find_nearest_key_node("source_file_name")
+    found = find_nearest_key_node(java_node, "source_file_name")
     assert found and found[0].value == "Main.java"
 
 
