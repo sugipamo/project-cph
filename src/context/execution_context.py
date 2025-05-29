@@ -53,32 +53,17 @@ class ExecutionContext:
         """
         if not self.resolver:
             raise ValueError("resolverがセットされていません")
-        return self.resolver.resolve_best(path)
+        return self.resolver.resolve_best(path).value
 
     @property
     def workspace_path(self):
-        node = self.resolver.resolve_best([self.language, "workspace_path"])
+        node = self.resolve([self.language, "workspace_path"])
         return node.value if node else None
 
     @property
     def contest_current_path(self):
-        node = self.resolver.resolve_best([self.language, "contest_current_path"])
+        node = self.resolve([self.language, "contest_current_path"])
         return node.value if node else None
-
-    def get_env_config(self) -> dict:
-        return self.env_json['env']
-
-    def get_language_config(self) -> dict:
-        return self.env_json['language']
-
-    def get_command_config(self) -> dict:
-        return self.env_json['command']
-
-    def get_contest_config(self) -> dict:
-        return self.env_json['contest']
-
-    def get_problem_config(self) -> dict:
-        return self.env_json['problem']
 
     def get_steps(self) -> list:
         """
@@ -86,10 +71,10 @@ class ExecutionContext:
         取得できない場合はValueErrorを投げる。
         """
         try:
-            return self.env_json[self.language]["commands"][self.command_type]["steps"]
+            return self.resolve([self.language, "commands", self.command_type, "steps"])
         except Exception as e:
             raise ValueError(f"stepsの取得に失敗しました: {e}")
 
     @property
     def language_id(self):
-        return self.env_json[self.language]["language_id"] 
+        return self.resolve([self.language, "language_id"])

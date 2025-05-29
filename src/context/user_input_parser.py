@@ -21,7 +21,6 @@ def _load_system_info(operations, path=SYSTEM_INFO_PATH):
             "contest_name": None,
             "problem_name": None,
             "env_json": None,
-            "dockerfile": None
         }
     req = FileRequest(FileOpType.READ, path)
     result = req.execute(driver=file_driver)
@@ -96,13 +95,15 @@ def _apply_command(args, context, resolver: ConfigResolver):
                     return new_args, context
     return args, context
 
-def _apply_names(args, context):
-    if len(args) > 2:
-        raise ValueError(f"引数が多すぎます: {args}")
-    keys = ["problem_name", "contest_name"]
-    for key, arg in zip(keys, reversed(args)):
-        setattr(context, key, arg)
-    return [], context
+def _apply_problem_name(args, context):
+    if args:
+        context.problem_name = args.pop()
+    return args, context
+
+def _apply_contest_name(args, context):
+    if args:
+        context.contest_name = args.pop()
+    return args, context
 
 def _apply_env_json(context, env_jsons):
     if context.env_json:
@@ -128,12 +129,10 @@ def _apply_dockerfile(context, dockerfile_loader):
             context.dockerfile = None
     return context
 
-def _apply_oj_dockerfile(context, dockerfile_loader):
+def _apply_oj_dockerfile(context):
     oj_dockerfile_path = os.path.join(os.path.dirname(__file__), "oj.Dockerfile")
-    try:
-        context.oj_dockerfile = dockerfile_loader(oj_dockerfile_path)
-    except Exception:
-        context.oj_dockerfile = None
+    with open(oj_dockerfile_path, "r") as f:
+        context.oj_dockerfile = f.read()
     return context
 
 def make_dockerfile_loader(operations):
@@ -185,11 +184,14 @@ def parse_user_input(
     # コマンド特定
     args, context = _apply_command(args, context, resolver)
     # 残りの引数からproblem_name, contest_nameを特定
-    args, context = _apply_names(args, context)
+    args, context = _apply_problem_name(args, context)
+    args, context = _apply_contest_name(args, context)
+    if args:
+        raise ValueError(f"引数が多すぎます: {args}")
     # dockerfileの内容をセット
     context = _apply_dockerfile(context, dockerfile_loader)
     # oj.Dockerfileの内容をセット
-    context = _apply_oj_dockerfile(context, dockerfile_loader)
+    context = _apply_oj_dockerfile(context)
     # system_info.jsonへ保存
     _save_system_info(operations, {
         "command": context.command_type,

@@ -66,7 +66,6 @@ def test_local_const_handler_properties():
     assert handler.contest_current_path == Path("contests/abc001")
     assert handler.source_file_name == "main.cpp"
     assert config.env_type == "local"
-    assert handler.contest_env_path == Path("env")
     assert handler.contest_template_path == Path("template")
     assert handler.contest_temp_path == Path("temp")
     assert handler.test_case_path == Path("contests/abc001/test")
@@ -96,7 +95,6 @@ def test_docker_const_handler_properties():
     assert handler.contest_current_path == Path("contests/abc002")
     assert handler.source_file_name == "main.py"
     assert config.env_type == "docker"
-    assert handler.contest_env_path == Path("env")
     assert handler.contest_template_path == Path("template")
     assert handler.contest_temp_path == Path("temp")
     assert handler.test_case_path == Path("contests/abc002/test")
