@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple, List
 from src.context.utils.format_utils import format_with_missing_keys
+from src.context.utils.validation_utils import validate_execution_context_data, get_steps_from_resolver
 
 @dataclass
 class ExecutionContext:
@@ -24,29 +25,13 @@ class ExecutionContext:
         Returns:
             Tuple[bool, Optional[str]]: (バリデーション結果, エラーメッセージ)
         """
-        # 必須項目の存在チェック
-        missing_fields = []
-        if not self.command_type:
-            missing_fields.append("コマンド")
-        if not self.language:
-            missing_fields.append("言語")
-        if not self.contest_name:
-            missing_fields.append("コンテスト名")
-        if not self.problem_name:
-            missing_fields.append("問題名")
-            
-        if missing_fields:
-            return False, f"以下の項目が指定されていません: {', '.join(missing_fields)}"
-            
-        # env_jsonの存在チェック
-        if not self.env_json:
-            return False, "環境設定ファイル(env.json)が見つかりません"
-            
-        # 言語がenv_jsonに存在するかチェック
-        if self.language not in self.env_json:
-            return False, f"指定された言語 '{self.language}' は環境設定ファイルに存在しません"
-
-        return True, None
+        return validate_execution_context_data(
+            self.command_type,
+            self.language, 
+            self.contest_name,
+            self.problem_name,
+            self.env_json
+        )
 
     def resolve(self, path: List[str]):
         """
@@ -72,22 +57,9 @@ class ExecutionContext:
         現在のlanguageとcommand_typeに基づきstepsのConfigNodeリストを返す。
         取得できない場合はValueErrorを投げる。
         """
-        try:
-            steps_node = self.resolve([self.language, "commands", self.command_type, "steps"])
-            if not steps_node:
-                raise ValueError("stepsが見つかりません")
-            
-            # steps配列の各要素のConfigNodeを返す
-            step_nodes = []
-            for child in steps_node.next_nodes:
-                if isinstance(child.key, int):  # 配列のインデックス
-                    step_nodes.append(child)
-            
-            # インデックス順にソート
-            step_nodes.sort(key=lambda n: n.key)
-            return step_nodes
-        except Exception as e:
-            raise ValueError(f"stepsの取得に失敗しました: {e}")
+        if not self.resolver:
+            raise ValueError("resolverがセットされていません")
+        return get_steps_from_resolver(self.resolver, self.language, self.command_type)
 
     @property
     def language_id(self):
