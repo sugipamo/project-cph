@@ -75,18 +75,4 @@ def test_dependency_injection():
 # local/dockerの正常系は既存のtest_env_resource_controller.pyでカバーされているため、
 # ここでは依存注入・異常系を中心にテストしています。 
 
-def make_env_json(dir_path, lang, env_type="local"):
-    lang_dir = os.path.join(dir_path, lang)
-    os.makedirs(lang_dir, exist_ok=True)
-    env_json_path = os.path.join(lang_dir, "env.json")
-    data = {
-        "env_type": env_type,
-        "contest_current_path": "abc",
-        "source_file": "main.cpp",
-        "contest_env_path": "env",
-        "contest_template_path": "template",
-        "contest_temp_path": "temp",
-    }
-    with open(env_json_path, "w") as f:
-        json.dump(data, f)
-    return env_json_path
+# Removed make_env_json function as it violates DI principles by directly accessing filesystem

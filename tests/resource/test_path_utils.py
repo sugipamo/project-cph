@@ -146,3 +146,39 @@ def test_get_source_file_name_missing():
     with pytest.raises(ValueError) as excinfo:
         get_source_file_name(root, "python")
     assert "source_file_nameが設定されていません" in str(excinfo.value)
+
+
+def test_get_contest_current_path_wrong_key():
+    """Test case where resolve_best returns a node but with wrong key"""
+    env_json = {
+        "python": {
+            "workspace_path": "/tmp/workspace",
+            "other_path": "some_value"  # This will be matched but key is wrong
+        }
+    }
+    root = create_config_root_from_dict(env_json)
+    
+    from src.env.resource.utils.path_utils import get_contest_current_path
+    with pytest.raises(TypeError) as excinfo:
+        get_contest_current_path(root, "python")
+    assert "contest_current_pathが設定されていません" in str(excinfo.value)
+
+
+def test_get_contest_env_path_no_parent():
+    """Test contest_env path detection reaching root directory"""
+    import os
+    from unittest.mock import patch
+    from src.env.resource.utils.path_utils import get_contest_env_path
+    
+    # Mock os.path.dirname to simulate reaching root
+    with patch('os.path.dirname') as mock_dirname, \
+         patch('os.path.isdir') as mock_isdir, \
+         patch('os.path.abspath') as mock_abspath:
+        
+        mock_abspath.return_value = '/some/deep/path'
+        mock_isdir.return_value = False  # No contest_env found
+        mock_dirname.side_effect = ['/some/deep', '/some', '/', '/']  # Reach root
+        
+        with pytest.raises(ValueError) as excinfo:
+            get_contest_env_path()
+        assert "contest_env_pathが自動検出できませんでした" in str(excinfo.value)
