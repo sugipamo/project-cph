@@ -1,0 +1,393 @@
+"""
+純粋関数のテストケース
+
+pure_functions.pyモジュールの関数をテストして、
+純粋関数としての動作（同一入力→同一出力、副作用なし）を確認。
+"""
+import pytest
+from src.operations.utils.pure_functions import (
+    format_string_pure,
+    extract_missing_keys_pure,
+    is_potential_script_path_pure,
+    validate_file_path_format_pure,
+    build_docker_run_command_pure,
+    build_docker_build_command_pure,
+    build_docker_stop_command_pure,
+    build_docker_remove_command_pure,
+    build_docker_ps_command_pure,
+    build_docker_inspect_command_pure,
+    build_docker_cp_command_pure,
+    validate_docker_image_name_pure,
+    parse_container_names_pure,
+    validate_step_configuration_pure,
+    merge_configurations_pure,
+    calculate_duration_seconds_pure,
+    format_duration_human_readable_pure,
+    calculate_success_rate_pure,
+    flatten_nested_lists_pure,
+    group_by_key_pure,
+    filter_by_criteria_pure,
+    compose,
+    pipe
+)
+
+
+class TestStringFormatting:
+    """文字列フォーマット関連の純粋関数テスト"""
+
+    def test_format_string_pure_basic(self):
+        """基本的な文字列フォーマットのテスト"""
+        template = "Hello {name}, you are {age} years old"
+        context = {"name": "Alice", "age": "25"}
+        result = format_string_pure(template, context)
+        assert result == "Hello Alice, you are 25 years old"
+
+    def test_format_string_pure_non_string(self):
+        """非文字列入力のテスト"""
+        result = format_string_pure(123, {"key": "value"})
+        assert result == 123
+
+    def test_format_string_pure_missing_keys(self):
+        """キーが不足している場合のテスト"""
+        template = "Hello {name}, you are {age} years old"
+        context = {"name": "Alice"}
+        result = format_string_pure(template, context)
+        assert result == "Hello Alice, you are {age} years old"
+
+    def test_extract_missing_keys_pure(self):
+        """未解決キーの抽出テスト"""
+        template = "Hello {name}, you are {age} years old in {city}"
+        available_keys = {"name", "age"}
+        missing = extract_missing_keys_pure(template, available_keys)
+        assert missing == ["city"]
+
+    def test_extract_missing_keys_pure_no_missing(self):
+        """すべてのキーが利用可能な場合"""
+        template = "Hello {name}, you are {age} years old"
+        available_keys = {"name", "age", "city"}
+        missing = extract_missing_keys_pure(template, available_keys)
+        assert missing == []
+
+
+class TestPathValidation:
+    """パス検証関連の純粋関数テスト"""
+
+    def test_is_potential_script_path_pure_true(self):
+        """スクリプトファイルパスのテスト"""
+        assert is_potential_script_path_pure(["script.py"])
+        assert is_potential_script_path_pure(["app.js"])
+        assert is_potential_script_path_pure(["build.sh"])
+
+    def test_is_potential_script_path_pure_false(self):
+        """非スクリプトファイルパスのテスト"""
+        assert not is_potential_script_path_pure(["data.txt"])
+        assert not is_potential_script_path_pure(["file1.py", "file2.py"])
+        assert not is_potential_script_path_pure([])
+
+    def test_validate_file_path_format_pure_valid(self):
+        """有効なファイルパスのテスト"""
+        valid, error = validate_file_path_format_pure("path/to/file.txt")
+        assert valid
+        assert error is None
+
+    def test_validate_file_path_format_pure_invalid_empty(self):
+        """空のパスのテスト"""
+        valid, error = validate_file_path_format_pure("")
+        assert not valid
+        assert "cannot be empty" in error
+
+    def test_validate_file_path_format_pure_invalid_dangerous(self):
+        """危険な文字を含むパスのテスト"""
+        valid, error = validate_file_path_format_pure("path|dangerous")
+        assert not valid
+        assert "dangerous characters" in error
+
+
+class TestDockerFunctions:
+    """Docker関連の純粋関数テスト"""
+
+    def test_build_docker_stop_command_pure(self):
+        """docker stopコマンド構築のテスト"""
+        cmd = build_docker_stop_command_pure("my-container")
+        assert cmd == ["docker", "stop", "my-container"]
+
+    def test_build_docker_remove_command_pure_basic(self):
+        """基本的なdocker rmコマンド構築"""
+        cmd = build_docker_remove_command_pure("my-container")
+        assert cmd == ["docker", "rm", "my-container"]
+
+    def test_build_docker_remove_command_pure_force(self):
+        """強制削除のdocker rmコマンド構築"""
+        cmd = build_docker_remove_command_pure("my-container", force=True)
+        assert cmd == ["docker", "rm", "-f", "my-container"]
+
+    def test_build_docker_ps_command_pure_basic(self):
+        """基本的なdocker psコマンド構築"""
+        cmd = build_docker_ps_command_pure()
+        assert cmd == ["docker", "ps"]
+
+    def test_build_docker_ps_command_pure_all_names_only(self):
+        """全コンテナ名のみ表示のdocker psコマンド構築"""
+        cmd = build_docker_ps_command_pure(all_containers=True, names_only=True)
+        assert "docker" in cmd
+        assert "ps" in cmd
+        assert "-a" in cmd
+        assert "--format" in cmd
+        assert "{{.Names}}" in cmd
+
+    def test_build_docker_inspect_command_pure_basic(self):
+        """基本的なdocker inspectコマンド構築"""
+        cmd = build_docker_inspect_command_pure("my-container")
+        assert cmd == ["docker", "inspect", "my-container"]
+
+    def test_build_docker_inspect_command_pure_with_type(self):
+        """タイプ指定のdocker inspectコマンド構築"""
+        cmd = build_docker_inspect_command_pure("my-container", type_="container")
+        assert "--type" in cmd
+        assert "container" in cmd
+
+    def test_build_docker_cp_command_pure_to_container(self):
+        """コンテナへのファイルコピーコマンド構築"""
+        cmd = build_docker_cp_command_pure("/host/file", "/container/file", "my-container", to_container=True)
+        assert cmd == ["docker", "cp", "/host/file", "my-container:/container/file"]
+
+    def test_build_docker_cp_command_pure_from_container(self):
+        """コンテナからのファイルコピーコマンド構築"""
+        cmd = build_docker_cp_command_pure("/container/file", "/host/file", "my-container", to_container=False)
+        assert cmd == ["docker", "cp", "my-container:/container/file", "/host/file"]
+
+    def test_build_docker_run_command_pure_basic(self):
+        """基本的なdocker runコマンド構築"""
+        cmd = build_docker_run_command_pure("ubuntu:20.04")
+        expected = ["docker", "run", "-d", "ubuntu:20.04", "tail", "-f", "/dev/null"]
+        assert cmd == expected
+
+    def test_build_docker_run_command_pure_with_name(self):
+        """名前付きコンテナのdocker runコマンド構築"""
+        cmd = build_docker_run_command_pure("ubuntu:20.04", name="my-container")
+        assert "--name" in cmd
+        assert "my-container" in cmd
+
+    def test_build_docker_run_command_pure_with_options(self):
+        """オプション付きdocker runコマンド構築"""
+        options = {"v": "/host:/container", "p": "8080:80"}
+        cmd = build_docker_run_command_pure("nginx", options=options)
+        assert "-v" in cmd
+        assert "/host:/container" in cmd
+        assert "-p" in cmd
+        assert "8080:80" in cmd
+
+    def test_build_docker_build_command_pure_basic(self):
+        """基本的なdocker buildコマンド構築"""
+        cmd = build_docker_build_command_pure()
+        expected = ["docker", "build", "-f", "-", "."]
+        assert cmd == expected
+
+    def test_build_docker_build_command_pure_with_tag(self):
+        """タグ付きdocker buildコマンド構築"""
+        cmd = build_docker_build_command_pure(tag="my-image:latest")
+        assert "-t" in cmd
+        assert "my-image:latest" in cmd
+
+    def test_validate_docker_image_name_pure_valid(self):
+        """有効なDockerイメージ名のテスト"""
+        valid, error = validate_docker_image_name_pure("ubuntu:20.04")
+        assert valid
+        assert error is None
+
+    def test_validate_docker_image_name_pure_invalid_empty(self):
+        """空のイメージ名のテスト"""
+        valid, error = validate_docker_image_name_pure("")
+        assert not valid
+        assert "cannot be empty" in error
+
+    def test_parse_container_names_pure(self):
+        """コンテナ名解析のテスト"""
+        output = "container1\ncontainer2\ncontainer3"
+        names = parse_container_names_pure(output)
+        assert names == ["container1", "container2", "container3"]
+
+    def test_parse_container_names_pure_empty(self):
+        """空の出力のテスト"""
+        names = parse_container_names_pure("")
+        assert names == []
+
+
+class TestConfigurationValidation:
+    """設定検証関連の純粋関数テスト"""
+
+    def test_validate_step_configuration_pure_valid(self):
+        """有効なステップ設定のテスト"""
+        config = {"type": "shell", "cmd": "echo hello"}
+        valid, errors = validate_step_configuration_pure(config)
+        assert valid
+        assert errors == []
+
+    def test_validate_step_configuration_pure_missing_fields(self):
+        """必須フィールド不足のテスト"""
+        config = {"type": "shell"}
+        valid, errors = validate_step_configuration_pure(config)
+        assert not valid
+        assert any("Missing required field: cmd" in error for error in errors)
+
+    def test_validate_step_configuration_pure_invalid_type(self):
+        """無効なタイプのテスト"""
+        config = {"type": "invalid", "cmd": "echo hello"}
+        valid, errors = validate_step_configuration_pure(config)
+        assert not valid
+        assert any("Invalid step type" in error for error in errors)
+
+    def test_merge_configurations_pure(self):
+        """設定マージのテスト"""
+        config1 = {"a": 1, "b": {"x": 10}}
+        config2 = {"a": 2, "b": {"y": 20}, "c": 3}
+        merged = merge_configurations_pure([config1, config2])
+        assert merged["a"] == 2  # 後の設定で上書き
+        assert merged["b"]["x"] == 10  # ネストした値はマージ
+        assert merged["b"]["y"] == 20
+        assert merged["c"] == 3
+
+
+class TestTimeCalculations:
+    """時間計算関連の純粋関数テスト"""
+
+    def test_calculate_duration_seconds_pure(self):
+        """期間計算のテスト"""
+        duration = calculate_duration_seconds_pure(1.0, 3.5)
+        assert duration == 2.5
+
+    def test_calculate_duration_seconds_pure_negative(self):
+        """負の期間のテスト"""
+        duration = calculate_duration_seconds_pure(3.5, 1.0)
+        assert duration == 0.0  # 負の値は0にクランプ
+
+    def test_format_duration_human_readable_pure_milliseconds(self):
+        """ミリ秒フォーマットのテスト"""
+        formatted = format_duration_human_readable_pure(0.123)
+        assert "123.0ms" in formatted
+
+    def test_format_duration_human_readable_pure_seconds(self):
+        """秒フォーマットのテスト"""
+        formatted = format_duration_human_readable_pure(5.67)
+        assert "5.7s" in formatted
+
+    def test_format_duration_human_readable_pure_minutes(self):
+        """分フォーマットのテスト"""
+        formatted = format_duration_human_readable_pure(125.4)
+        assert "2m5.4s" in formatted
+
+    def test_calculate_success_rate_pure(self):
+        """成功率計算のテスト"""
+        rate = calculate_success_rate_pure(8, 10)
+        assert rate == 0.8
+
+    def test_calculate_success_rate_pure_zero_total(self):
+        """総数ゼロの場合のテスト"""
+        rate = calculate_success_rate_pure(5, 0)
+        assert rate == 0.0
+
+
+class TestDataTransformation:
+    """データ変換関連の純粋関数テスト"""
+
+    def test_flatten_nested_lists_pure(self):
+        """ネストしたリストの平坦化テスト"""
+        nested = [[1, 2], [3, 4], 5, [6, 7, 8]]
+        flattened = flatten_nested_lists_pure(nested)
+        assert flattened == [1, 2, 3, 4, 5, 6, 7, 8]
+
+    def test_group_by_key_pure(self):
+        """キーによるグループ化テスト"""
+        items = [
+            {"type": "A", "value": 1},
+            {"type": "B", "value": 2},
+            {"type": "A", "value": 3}
+        ]
+        grouped = group_by_key_pure(items, "type")
+        assert len(grouped["A"]) == 2
+        assert len(grouped["B"]) == 1
+
+    def test_filter_by_criteria_pure(self):
+        """条件によるフィルタリングテスト"""
+        items = [
+            {"status": "active", "priority": "high"},
+            {"status": "inactive", "priority": "low"},
+            {"status": "active", "priority": "low"}
+        ]
+        filtered = filter_by_criteria_pure(items, {"status": "active"})
+        assert len(filtered) == 2
+
+
+class TestFunctionalComposition:
+    """関数合成関連のテスト"""
+
+    def test_compose(self):
+        """関数合成のテスト"""
+        add_one = lambda x: x + 1
+        multiply_two = lambda x: x * 2
+        composed = compose(multiply_two, add_one)
+        result = composed(3)
+        assert result == 8  # (3 + 1) * 2
+
+    def test_pipe(self):
+        """パイプライン処理のテスト"""
+        add_one = lambda x: x + 1
+        multiply_two = lambda x: x * 2
+        subtract_three = lambda x: x - 3
+        result = pipe(5, add_one, multiply_two, subtract_three)
+        assert result == 9  # ((5 + 1) * 2) - 3
+
+
+class TestPureFunctionProperties:
+    """純粋関数の性質テスト"""
+
+    def test_pure_function_deterministic(self):
+        """純粋関数は決定的である（同じ入力→同じ出力）"""
+        template = "Hello {name}"
+        context = {"name": "World"}
+        
+        # 同じ入力で複数回実行
+        result1 = format_string_pure(template, context)
+        result2 = format_string_pure(template, context)
+        result3 = format_string_pure(template, context)
+        
+        # 結果はすべて同じ
+        assert result1 == result2 == result3 == "Hello World"
+
+    def test_pure_function_no_side_effects(self):
+        """純粋関数は副作用がない（入力を変更しない）"""
+        original_context = {"name": "Alice", "age": "25"}
+        context_copy = original_context.copy()
+        
+        format_string_pure("Hello {name}", context_copy)
+        
+        # 元の辞書は変更されていない
+        assert context_copy == original_context
+
+    def test_pure_function_composability(self):
+        """純粋関数は合成可能である"""
+        # 複数の純粋関数を組み合わせて新しい機能を作る
+        def validate_and_format_path(path_list):
+            # ステップ1: スクリプトパスかチェック
+            if not is_potential_script_path_pure(path_list):
+                return None, "Not a script path"
+            
+            # ステップ2: パス形式を検証
+            path = path_list[0]
+            valid, error = validate_file_path_format_pure(path)
+            if not valid:
+                return None, error
+            
+            # ステップ3: フォーマット
+            context = {"script": path}
+            formatted = format_string_pure("Executing {script}", context)
+            return formatted, None
+        
+        # テスト
+        result, error = validate_and_format_path(["script.py"])
+        assert result == "Executing script.py"
+        assert error is None
+        
+        result, error = validate_and_format_path(["data.txt"])
+        assert result is None
+        assert "Not a script path" in error

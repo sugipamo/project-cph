@@ -8,6 +8,17 @@ from typing import Any, Dict
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.shell.local_shell_driver import LocalShellDriver
 from src.operations.docker.docker_util import DockerUtil
+from src.operations.utils.pure_functions import (
+    build_docker_run_command_pure,
+    build_docker_build_command_pure,
+    build_docker_stop_command_pure,
+    build_docker_remove_command_pure,
+    build_docker_ps_command_pure,
+    build_docker_inspect_command_pure,
+    build_docker_cp_command_pure,
+    parse_container_names_pure,
+    validate_docker_image_name_pure
+)
 
 class DockerDriver(ABC):
     def __init__(self):
@@ -59,25 +70,21 @@ class DockerDriver(ABC):
 
 class LocalDockerDriver(DockerDriver):
     def run_container(self, image: str, name: str = None, options: Dict[str, Any] = None, show_output: bool = True):
-        base_cmd = ["docker", "run", "-d"]
-        opt = dict(options) if options else {}
-        if name:
-            opt["name"] = name
-        positional_args = [image, "tail", "-f", "/dev/null"]
-        cmd = DockerUtil.build_docker_cmd(base_cmd, options=opt, positional_args=positional_args)
+        # 純粋関数を使用してコマンドを構築
+        cmd = build_docker_run_command_pure(image, name, options)
         req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=LocalShellDriver())
         return result
 
     def stop_container(self, name: str, show_output: bool = True):
-        cmd = ["docker", "stop", name]
+        cmd = build_docker_stop_command_pure(name)
         req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=LocalShellDriver())
         return result
 
     def remove_container(self, name: str, show_output: bool = True):
-        cmd = ["docker", "rm", name]
-        req = ShellRequest(cmd, show_output=False)
+        cmd = build_docker_remove_command_pure(name)
+        req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=LocalShellDriver())
         return result
 
@@ -97,22 +104,8 @@ class LocalDockerDriver(DockerDriver):
         if not dockerfile_text or dockerfile_text is None:
             raise ValueError("dockerfile_text is None. Dockerfile内容が正しく渡っていません。")
         
-        base_cmd = ["docker", "build"]
-        opt = dict(options) if options else {}
-        cmd = list(base_cmd)
-        cmd += ["-f", "-"]
-        if tag:
-            cmd += ["-t", tag]
-        for k, v in opt.items():
-            if k in ("f", "t"):
-                continue
-            if len(k) == 1:
-                cmd.append(f"-{k}")
-            else:
-                cmd.append(f"--{k.replace('_','-')}")
-            if v is not None:
-                cmd.append(str(v))
-        cmd.append('.')
+        # 純粋関数を使用してコマンドを構築
+        cmd = build_docker_build_command_pure(tag, dockerfile_text, options)
         req = ShellRequest(cmd, show_output=show_output, inputdata=dockerfile_text)
         result = req.execute(driver=LocalShellDriver())
         return result
@@ -134,8 +127,8 @@ class LocalDockerDriver(DockerDriver):
             cmd = ["docker", "ps", "-a", "--format", "{{.Names}}"]
             req = ShellRequest(cmd, show_output=show_output)
             result = req.execute(driver=LocalShellDriver())
-            names = result.stdout.strip().split("\n") if result.stdout else []
-            return names
+            # 純粋関数を使用してコンテナ名を解析
+            return parse_container_names_pure(result.stdout or "")
         else:
             cmd = ["docker", "ps"]
             if all:
