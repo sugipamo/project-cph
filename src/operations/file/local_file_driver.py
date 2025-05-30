@@ -43,16 +43,6 @@ class LocalFileDriver(FileDriver):
             raise ValueError("docker_driverが必要です")
         return docker_driver.cp(src, dst, container, to_container=to_container)
 
-    def hash_file(self, path, algo='sha256'):
-        import hashlib
-        h = hashlib.new(algo)
-        with open(path, 'rb') as f:
-            while True:
-                chunk = f.read(8192)
-                if not chunk:
-                    break
-                h.update(chunk)
-        return h.hexdigest()
 
     def list_files(self, base_dir):
         import os

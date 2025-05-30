@@ -128,35 +128,4 @@ class FileDriver(ABC):
         """
         指定ディレクトリ以下の全ファイルパスをリストで返す（サブクラスで実装）
         """
-        raise NotImplementedError
-
-class FileUtil:
-    @staticmethod
-    def hash_file(path, algo='sha256'):
-        import hashlib
-        h = hashlib.new(algo)
-        with open(path, 'rb') as f:
-            while True:
-                chunk = f.read(8192)
-                if not chunk:
-                    break
-                h.update(chunk)
-        return h.hexdigest()
-
-    @staticmethod
-    def ensure_parent_dir(path):
-        from pathlib import Path
-        parent = Path(path).parent
-        parent.mkdir(parents=True, exist_ok=True)
-
-    @staticmethod
-    def glob(base_dir, pattern):
-        return list(base_dir.glob(pattern))
-
-    @staticmethod
-    def isdir(path):
-        return path.is_dir()
-
-    @staticmethod
-    def makedirs(path, exist_ok=True):
-        path.mkdir(parents=True, exist_ok=exist_ok) 
+        raise NotImplementedError 

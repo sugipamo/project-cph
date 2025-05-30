@@ -1,5 +1,5 @@
 import pytest
-from src.operations.file.file_driver import FileDriver, FileUtil
+from src.operations.file.file_driver import FileDriver
 import tempfile
 import os
 from pathlib import Path
@@ -62,21 +62,24 @@ def test_copytree_src_equals_dst():
     # _copytree_implは呼ばれないのでNotImplementedErrorは出ない
     driver.copytree()
 
-def test_fileutil_hash_file_and_ensure_parent_dir():
+def test_filedriver_hash_file_and_ensure_parent_dir():
+    driver = DummyFileDriver()
     with tempfile.TemporaryDirectory() as tmpdir:
         file_path = os.path.join(tmpdir, "test.txt")
-        FileUtil.ensure_parent_dir(file_path)
+        driver.ensure_parent_dir(file_path)
         with open(file_path, "w") as f:
             f.write("abc")
-        h = FileUtil.hash_file(file_path)
+        h = driver.hash_file(file_path)
         assert isinstance(h, str) and len(h) > 0
 
-def test_fileutil_glob_isdir_makedirs():
+def test_filedriver_glob_isdir_makedirs():
+    driver = DummyFileDriver(base_dir=Path("."))
     with tempfile.TemporaryDirectory() as tmpdir:
         subdir = os.path.join(tmpdir, "subdir")
-        FileUtil.makedirs(Path(subdir))
-        assert FileUtil.isdir(Path(subdir))
-        files = FileUtil.glob(Path(tmpdir), "*")
+        driver.path = Path(subdir)
+        driver.makedirs()
+        assert driver.path.is_dir()
+        files = driver.glob("*")
         assert isinstance(files, list)
 
 def test_list_files_local_file_driver(tmp_path):

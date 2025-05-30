@@ -11,7 +11,7 @@ class BuildCommandRequestFactory(BaseCommandRequestFactory):
     
     def create_request_from_node(self, node):
         """ConfigNodeからShellRequestを生成"""
-        if not node.value or not isinstance(node.value, dict):
+        if node.value is None or not isinstance(node.value, dict):
             raise ValueError("Invalid node value for BuildCommandRequestFactory")
             
         cmd = node.value.get('cmd', ["make"])  # デフォルトでmake

@@ -12,10 +12,9 @@ from src.env.factory.move_command_request_factory import MoveCommandRequestFacto
 from src.env.factory.movetree_command_request_factory import MoveTreeCommandRequestFactory
 from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
 from src.context.resolver.config_node import ConfigNode
-from src.operations.file.file_request import FileRequest
+from src.operations.file.file_request import FileRequest, FileOpType
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.python.python_request import PythonRequest
-from src.operations.constants.operation_type import FileOpType
 
 
 class TestFactoryCreateRequestFromNode:
@@ -97,7 +96,7 @@ class TestFactoryCreateRequestFromNode:
         request = factory.create_request_from_node(node)
         
         assert isinstance(request, FileRequest)
-        assert request.op_type == FileOpType.COPY
+        assert request.op == FileOpType.COPY
         assert request.path == '/src/file.txt'
         assert request.dst_path == '/dst/file.txt'
         assert request.allow_failure is True
@@ -136,7 +135,7 @@ class TestFactoryCreateRequestFromNode:
         request = factory.create_request_from_node(node)
         
         assert isinstance(request, FileRequest)
-        assert request.op_type == FileOpType.MKDIR
+        assert request.op == FileOpType.MKDIR
         assert request.path == '/new/directory'
         
     def test_mkdir_factory_missing_target(self):
@@ -160,7 +159,7 @@ class TestFactoryCreateRequestFromNode:
         request = factory.create_request_from_node(node)
         
         assert isinstance(request, FileRequest)
-        assert request.op_type == FileOpType.TOUCH
+        assert request.op == FileOpType.TOUCH
         assert request.path == '/new/file.txt'
         
     def test_remove_factory_create_request_from_node(self):
@@ -175,7 +174,7 @@ class TestFactoryCreateRequestFromNode:
         request = factory.create_request_from_node(node)
         
         assert isinstance(request, FileRequest)
-        assert request.op_type == FileOpType.REMOVE
+        assert request.op == FileOpType.REMOVE
         assert request.path == '/old/file.txt'
         
     def test_rmtree_factory_create_request_from_node(self):
@@ -190,7 +189,7 @@ class TestFactoryCreateRequestFromNode:
         request = factory.create_request_from_node(node)
         
         assert isinstance(request, FileRequest)
-        assert request.op_type == FileOpType.RMTREE
+        assert request.op == FileOpType.RMTREE
         assert request.path == '/old/directory'
         
     def test_move_factory_create_request_from_node(self):
@@ -205,7 +204,7 @@ class TestFactoryCreateRequestFromNode:
         request = factory.create_request_from_node(node)
         
         assert isinstance(request, FileRequest)
-        assert request.op_type == FileOpType.MOVE
+        assert request.op == FileOpType.MOVE
         assert request.path == '/src/file.txt'
         assert request.dst_path == '/dst/file.txt'
         
@@ -225,7 +224,7 @@ class TestFactoryCreateRequestFromNode:
         request = factory.create_request_from_node(node)
         
         assert isinstance(request, FileRequest)
-        assert request.op_type == FileOpType.MOVE
+        assert request.op == FileOpType.MOVE
         assert request.path == '/src/dir'
         assert request.dst_path == '/dst/dir'
         assert request.allow_failure is True
@@ -233,7 +232,10 @@ class TestFactoryCreateRequestFromNode:
         
     def test_oj_factory_create_request_from_node_local(self):
         """OjCommandRequestFactory (local環境)のテスト"""
-        factory = OjCommandRequestFactory(self.mock_controller, self.mock_operations)
+        # OjCommandRequestFactoryは追加の引数が必要なので、モックを作成
+        mock_docker_request = Mock()
+        mock_docker_op_type = Mock()
+        factory = OjCommandRequestFactory(self.mock_controller, mock_docker_request, mock_docker_op_type)
         
         node = self.create_config_node(
             'oj_step',

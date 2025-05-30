@@ -11,7 +11,7 @@ class MkdirCommandRequestFactory(BaseCommandRequestFactory):
     
     def create_request_from_node(self, node):
         """ConfigNodeからFileRequestを生成"""
-        if not node.value or not isinstance(node.value, dict):
+        if node.value is None or not isinstance(node.value, dict):
             raise ValueError("Invalid node value for MkdirCommandRequestFactory")
             
         target = node.value.get('target')
