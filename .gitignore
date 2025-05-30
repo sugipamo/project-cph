@@ -12,3 +12,6 @@ contest_current/
 **/__pycache__/**
 target/
 workspace/
+
+claude_api_key.txt
+claude-desktop-debian/
