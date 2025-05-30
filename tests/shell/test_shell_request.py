@@ -39,7 +39,7 @@ def test_mock_shell_interactive_request():
     assert any("hello" in l for l in lines)
     req.send_input('exit()\n')
     result = req.wait()
-    assert result.operation_type == OperationType.SHELL
+    assert result.operation_type == OperationType.SHELL_INTERACTIVE
     assert result.success or result.returncode == 0
 
 def test_shell_request_no_driver():

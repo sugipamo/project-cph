@@ -3,29 +3,68 @@ from src.operations.file.file_driver import FileDriver
 import os
 
 class MockFileDriver(FileDriver):
+    """
+    振る舞い検証用のモックドライバー
+    - 操作履歴の詳細記録
+    - 期待される戻り値の返却
+    - 内部状態のシミュレーション
+    """
     def __init__(self, base_dir=Path(".")):
         super().__init__(base_dir)
+        # 操作履歴（振る舞い検証用）
         self.operations = []
+        self.call_count = {}
+        
+        # 内部状態のシミュレーション
         self.files = set()
         self.contents = dict()
+        
+        # 期待値設定
+        self.expected_results = {}
+        self.file_exists_map = {}
+
+    def _record_operation(self, operation, *args):
+        """操作を記録し、呼び出し回数をカウント"""
+        self.operations.append((operation, *args))
+        self.call_count[operation] = self.call_count.get(operation, 0) + 1
+
+    def assert_operation_called(self, operation, times=None):
+        """指定された操作が呼ばれたことを検証"""
+        count = self.call_count.get(operation, 0)
+        if times is None:
+            assert count > 0, f"Operation '{operation}' was not called"
+        else:
+            assert count == times, f"Operation '{operation}' was called {count} times, expected {times}"
+
+    def assert_operation_called_with(self, operation, *expected_args):
+        """指定された操作が特定の引数で呼ばれたことを検証"""
+        matching_calls = [op for op in self.operations if op[0] == operation and op[1:] == expected_args]
+        assert len(matching_calls) > 0, f"Operation '{operation}' with args {expected_args} was not found in {self.operations}"
+
+    def set_file_exists(self, path, exists=True):
+        """ファイルの存在状態を設定"""
+        abs_path = self.base_dir / Path(path)
+        self.file_exists_map[abs_path] = exists
+        if exists:
+            self.files.add(abs_path)
+        elif abs_path in self.files:
+            self.files.remove(abs_path)
 
     def _move_impl(self, src_path, dst_path):
-        src_path = self.base_dir / Path(src_path)
-        dst_path = self.base_dir / Path(dst_path)
+        # src_pathとdst_pathは既に解決済みの絶対パスである
         self.ensure_parent_dir(dst_path)
-        self.operations.append(("move", src_path, dst_path))
+        self._record_operation("move", src_path, dst_path)
         if src_path in self.files:
             self.files.remove(src_path)
             self.files.add(dst_path)
             self.contents[dst_path] = self.contents.pop(src_path, "")
 
     def _copy_impl(self, src_path, dst_path):
-        src_path = self.base_dir / Path(src_path)
-        dst_path = self.base_dir / Path(dst_path)
+        # src_pathとdst_pathは既に解決済みの絶対パスである
         self.ensure_parent_dir(dst_path)
         if src_path not in self.files:
             raise FileNotFoundError(f"MockFileDriver: {src_path} が存在しません")
-        self.operations.append(("copy", src_path, dst_path))
+        self._record_operation("copy", src_path, dst_path)
         if src_path in self.files:
             self.files.add(dst_path)
             self.contents[dst_path] = self.contents[src_path] if src_path in self.contents else ""
@@ -36,12 +75,17 @@ class MockFileDriver(FileDriver):
             abs_path = path
         else:
             abs_path = self.base_dir / Path(path)
+        self._record_operation("exists", abs_path)
         return abs_path in self.files
 
     def _create_impl(self, path, content):
-        abs_path = self.base_dir / Path(path)
+        # pathが既に絶対パスならbase_dirを重ねない
+        if isinstance(path, Path) and path.is_absolute():
+            abs_path = path
+        else:
+            abs_path = self.base_dir / Path(path)
         self.ensure_parent_dir(abs_path)
-        self.operations.append(("create", abs_path, content))
+        self._record_operation("create", abs_path, content)
         self.files.add(abs_path)
         self.contents[abs_path] = content
 
@@ -144,5 +188,11 @@ class MockFileDriver(FileDriver):
         self.contents[abs_path] = content
         self.files.add(abs_path)
 
-    def resolve_path(self):
-        return self.base_dir / self.path 
+    def create(self, content=""):
+        """後方互換性: driver.path が設定されている場合の古いAPIパターンをサポート"""
+        if self.path is not None:
+            # 古いAPIパターン: driver.path = path; driver.create(content)
+            self._create_impl(self.path, content)
+        else:
+            # 新しいAPIパターンでは、引数でパスを指定する必要がある
+            raise ValueError("Path must be provided either as argument or via self.path") 

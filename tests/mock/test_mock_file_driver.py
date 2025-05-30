@@ -10,6 +10,36 @@ def test_create_and_exists():
     assert driver._exists_impl(p)
     assert driver.contents[p] == "abc"
 
+def test_behavior_verification():
+    """MockFileDriverの振る舞い検証機能をテスト"""
+    driver = MockFileDriver()
+    
+    # 操作を実行
+    driver._create_impl("test.txt", "content")
+    driver._copy_impl(Path("test.txt"), Path("copy.txt"))
+    driver._move_impl(Path("copy.txt"), Path("moved.txt"))
+    
+    # 振る舞い検証
+    driver.assert_operation_called("create")
+    driver.assert_operation_called("copy", times=1)
+    driver.assert_operation_called("move", times=1)
+    
+    # 特定の引数での呼び出し検証
+    abs_test_path = driver.base_dir / Path("test.txt")
+    driver.assert_operation_called_with("create", abs_test_path, "content")
+
+def test_file_exists_setup():
+    """ファイル存在状態の設定機能をテスト"""
+    driver = MockFileDriver()
+    
+    # ファイルの存在状態を設定
+    driver.set_file_exists("existing_file.txt", exists=True)
+    driver.set_file_exists("non_existing_file.txt", exists=False)
+    
+    # 確認
+    assert driver._exists_impl(driver.base_dir / "existing_file.txt")
+    assert not driver._exists_impl(driver.base_dir / "non_existing_file.txt")
+
 def test_move_and_copy_impl():
     driver = MockFileDriver()
     src = Path("a.txt")

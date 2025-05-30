@@ -5,62 +5,87 @@ import os
 from pathlib import Path
 
 class DummyFileDriver(FileDriver):
+    def _move_impl(self, src_path, dst_path):
+        raise NotImplementedError
+    
+    def _copy_impl(self, src_path, dst_path):
+        raise NotImplementedError
+    
+    def _exists_impl(self, path):
+        raise NotImplementedError
+    
+    def _create_impl(self, path, content):
+        raise NotImplementedError
+    
+    def _copytree_impl(self, src_path, dst_path):
+        raise NotImplementedError
+    
+    def _rmtree_impl(self, path):
+        raise NotImplementedError
+    
+    def _remove_impl(self, path):
+        raise NotImplementedError
+    
     def open(self, path, mode="r", encoding=None):
         pass
+    
     def docker_cp(self, src, dst, container, to_container=True, docker_driver=None):
         pass
+    
+    def list_files(self, base_dir):
+        return []
 
 def test_move_impl_not_implemented():
     driver = DummyFileDriver()
-    driver.path = driver.base_dir / "a.txt"
-    driver.dst_path = driver.base_dir / "b.txt"
+    src_path = driver.base_dir / "a.txt"
+    dst_path = driver.base_dir / "b.txt"
     with pytest.raises(NotImplementedError):
-        driver._move_impl(driver.path, driver.dst_path)
+        driver._move_impl(src_path, dst_path)
 
 def test_copy_impl_not_implemented():
     driver = DummyFileDriver()
-    driver.path = driver.base_dir / "a.txt"
-    driver.dst_path = driver.base_dir / "b.txt"
+    src_path = driver.base_dir / "a.txt"
+    dst_path = driver.base_dir / "b.txt"
     with pytest.raises(NotImplementedError):
-        driver._copy_impl(driver.path, driver.dst_path)
+        driver._copy_impl(src_path, dst_path)
 
 def test_exists_impl_not_implemented():
     driver = DummyFileDriver()
-    driver.path = driver.base_dir / "a.txt"
+    path = driver.base_dir / "a.txt"
     with pytest.raises(NotImplementedError):
-        driver._exists_impl(driver.path)
+        driver._exists_impl(path)
 
 def test_create_impl_not_implemented():
     driver = DummyFileDriver()
-    driver.path = driver.base_dir / "a.txt"
+    path = driver.base_dir / "a.txt"
     with pytest.raises(NotImplementedError):
-        driver._create_impl(driver.path, "")
+        driver._create_impl(path, "")
 
 def test_copytree_impl_not_implemented():
     driver = DummyFileDriver()
-    driver.path = driver.base_dir / "a.txt"
-    driver.dst_path = driver.base_dir / "b.txt"
+    src_path = driver.base_dir / "a.txt"
+    dst_path = driver.base_dir / "b.txt"
     with pytest.raises(NotImplementedError):
-        driver._copytree_impl(driver.path, driver.dst_path)
+        driver._copytree_impl(src_path, dst_path)
 
 def test_rmtree_impl_not_implemented():
     driver = DummyFileDriver()
-    driver.path = driver.base_dir / "a.txt"
+    path = driver.base_dir / "a.txt"
     with pytest.raises(NotImplementedError):
-        driver._rmtree_impl(driver.path)
+        driver._rmtree_impl(path)
 
 def test_remove_impl_not_implemented():
     driver = DummyFileDriver()
-    driver.path = driver.base_dir / "a.txt"
+    path = driver.base_dir / "a.txt"
     with pytest.raises(NotImplementedError):
-        driver._remove_impl(driver.path)
+        driver._remove_impl(path)
 
 def test_copytree_src_equals_dst():
     driver = DummyFileDriver()
-    driver.path = driver.base_dir / "a.txt"
-    driver.dst_path = driver.base_dir / "a.txt"
+    src_path = "a.txt"
+    dst_path = "a.txt"
     # _copytree_implは呼ばれないのでNotImplementedErrorは出ない
-    driver.copytree()
+    driver.copytree(src_path, dst_path)
 
 def test_filedriver_hash_file_and_ensure_parent_dir():
     driver = DummyFileDriver()
@@ -69,16 +94,18 @@ def test_filedriver_hash_file_and_ensure_parent_dir():
         driver.ensure_parent_dir(file_path)
         with open(file_path, "w") as f:
             f.write("abc")
-        h = driver.hash_file(file_path)
+        # 相対パスを作成してテスト
+        rel_path = os.path.relpath(file_path, driver.base_dir)
+        h = driver.hash_file(rel_path)
         assert isinstance(h, str) and len(h) > 0
 
 def test_filedriver_glob_isdir_makedirs():
     driver = DummyFileDriver(base_dir=Path("."))
     with tempfile.TemporaryDirectory() as tmpdir:
         subdir = os.path.join(tmpdir, "subdir")
-        driver.path = Path(subdir)
-        driver.makedirs()
-        assert driver.path.is_dir()
+        rel_subdir = os.path.relpath(subdir, driver.base_dir)
+        driver.makedirs(rel_subdir)
+        assert driver.isdir(rel_subdir)
         files = driver.glob("*")
         assert isinstance(files, list)
 

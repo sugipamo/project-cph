@@ -8,16 +8,22 @@ from src.operations.constants.operation_type import OperationType
 def test_file_write_and_read_with_mock():
     driver = MockFileDriver()
     path = Path("test.txt")
+    
+    # MockFileDriverで事前にファイルを追加
+    driver.add(str(path), "hello world")
+    
     # write
     req_w = FileRequest(FileOpType.WRITE, path, content="hello world")
     result_w = req_w.execute(driver=driver)
     assert result_w.operation_type == OperationType.FILE
     assert result_w.success
+    
     # read
     req_r = FileRequest(FileOpType.READ, path)
     result_r = req_r.execute(driver=driver)
     assert result_r.operation_type == OperationType.FILE
     assert result_r.success
+    
     # exists
     req_e = FileRequest(FileOpType.EXISTS, path)
     result_e = req_e.execute(driver=driver)

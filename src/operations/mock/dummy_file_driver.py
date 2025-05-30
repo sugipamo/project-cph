@@ -2,75 +2,57 @@ from pathlib import Path
 from src.operations.file.file_driver import FileDriver
 
 class DummyFileDriver(FileDriver):
+    """
+    最小実装のスタブドライバー
+    - エラーを起こさない
+    - None/空値を返す
+    - 内部状態や操作記録は持たない
+    """
     def __init__(self, base_dir=Path(".")):
         super().__init__(base_dir)
-        self.operations = []
-        self.files = set()
-        self.contents = dict()
 
     def _move_impl(self, src_path, dst_path):
-        self.ensure_parent_dir(dst_path)
-        self.operations.append(("move", src_path, dst_path))
-        if src_path in self.files:
-            self.files.remove(src_path)
-            self.files.add(dst_path)
-            self.contents[dst_path] = self.contents.pop(src_path, "")
+        # 何もしない
+        pass
 
     def _copy_impl(self, src_path, dst_path):
-        self.ensure_parent_dir(dst_path)
-        self.operations.append(("copy", src_path, dst_path))
-        if src_path in self.files:
-            self.files.add(dst_path)
-            self.contents[dst_path] = self.contents[src_path] if src_path in self.contents else ""
+        # 何もしない
+        pass
 
     def _exists_impl(self, path):
-        return path in self.files
+        # 常にFalseを返す
+        return False
 
     def _create_impl(self, path, content):
-        self.ensure_parent_dir(path)
-        self.operations.append(("create", path, content))
-        self.files.add(path)
-        self.contents[path] = content
+        # 何もしない
+        pass
 
     def _copytree_impl(self, src_path, dst_path):
-        self.ensure_parent_dir(dst_path)
-        self.operations.append(("copytree", src_path, dst_path))
+        # 何もしない
+        pass
 
     def _rmtree_impl(self, p):
-        self.operations.append(("rmtree", p))
-        if p in self.files:
-            self.files.remove(p)
-            self.contents.pop(p, None)
+        # 何もしない
+        pass
 
     def _remove_impl(self, p):
-        self.operations.append(("remove", p))
-        if p in self.files:
-            self.files.remove(p)
-            self.contents.pop(p, None)
-
-    def isdir(self):
-        path = self.resolve_path()
-        return str(path).endswith("/")
+        # 何もしない
+        pass
 
     def open(self, path, mode="r", encoding=None):
-        class Dummy:
+        """空のダミーファイルオブジェクトを返す"""
+        class DummyFile:
             def __enter__(self): return self
             def __exit__(self, exc_type, exc_val, exc_tb): pass
             def read(self): return ""
             def write(self, content): pass
-        return Dummy()
-
-    def ensure_parent_dir(self, path):
-        parent = Path(path).parent
-        self.files.add(parent)
+            def close(self): pass
+        return DummyFile()
 
     def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver=None):
+        # 何もしない
         pass
 
-    def hash_file(self, path, algo='sha256'):
-        return 'dummyhash'
-
-    def add(self, path, content=""):
-        """テスト用: ファイルの内容と存在を同時にセット"""
-        self.contents[path] = content
-        self.files.add(path) 
+    def list_files(self, base_dir):
+        # 空のリストを返す
+        return [] 
