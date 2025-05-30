@@ -11,9 +11,7 @@ class CopyCommandRequestFactory(BaseCommandRequestFactory):
         src = self.format_string(run_step.cmd[0])
         dst = self.format_string(run_step.cmd[1])
         request = FileRequest(FileOpType.COPY, src, dst_path=dst)
-        request.allow_failure = getattr(run_step, 'allow_failure', False)
-        request.show_output = getattr(run_step, 'show_output', False)
-        return request
+        return self.set_request_attributes(request, run_step)
     
     def create_request_from_node(self, node):
         """ConfigNodeからFileRequestを生成"""
@@ -23,8 +21,6 @@ class CopyCommandRequestFactory(BaseCommandRequestFactory):
         cmd = node.value.get('cmd', [])
         if len(cmd) < 2:
             raise ValueError("CopyRunStep: cmdにはsrcとdstの2つが必要です")
-        allow_failure = node.value.get('allow_failure', False)
-        show_output = node.value.get('show_output', False)
         
         # cmdフィールドのConfigNodeを探す
         cmd_node = None
@@ -46,6 +42,4 @@ class CopyCommandRequestFactory(BaseCommandRequestFactory):
             dst = self.format_value(cmd[1], node)
         
         request = FileRequest(FileOpType.COPY, src, dst_path=dst)
-        request.allow_failure = allow_failure
-        request.show_output = show_output
-        return request 
+        return self.set_request_attributes(request, node) 

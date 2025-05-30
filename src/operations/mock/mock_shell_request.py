@@ -121,7 +121,7 @@ class MockShellInteractiveRequest(BaseRequest):
 
     @property
     def operation_type(self):
-        return OperationType.SHELL
+        return OperationType.SHELL_INTERACTIVE
 
     def _execute_core(self, driver=None):
         # テスト用のダミー実装

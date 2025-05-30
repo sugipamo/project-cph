@@ -27,7 +27,7 @@ def test_mock_interactive_multiple_inputs():
     assert any("err" in l for l in err_lines)
     req.send_input('exit()\n')
     result = req.wait()
-    assert result.operation_type == OperationType.SHELL
+    assert result.operation_type == OperationType.SHELL_INTERACTIVE
     assert result.success or result.returncode == 0
     assert "foo" in result.stdout or "bar" in result.stdout
 

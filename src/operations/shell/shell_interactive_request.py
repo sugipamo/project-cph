@@ -3,9 +3,12 @@ import threading
 from queue import Queue, Empty
 from src.operations.result import OperationResult
 from src.operations.shell.shell_util import ShellUtil
+from src.operations.base_request import BaseRequest
+from src.operations.constants.operation_type import OperationType
 
-class ShellInteractiveRequest:
-    def __init__(self, cmd, cwd=None, env=None, timeout=None):
+class ShellInteractiveRequest(BaseRequest):
+    def __init__(self, cmd, cwd=None, env=None, timeout=None, name=None, debug_tag=None):
+        super().__init__(name=name, debug_tag=debug_tag)
         self.cmd = cmd
         self.cwd = cwd
         self.env = env
@@ -19,6 +22,15 @@ class ShellInteractiveRequest:
         self._stderr_lines = []
         self._timeout_thread = None
         self._timeout_expired = False
+        self._require_driver = False  # ドライバー不要
+
+    @property
+    def operation_type(self):
+        return OperationType.SHELL_INTERACTIVE
+
+    def _execute_core(self, driver):
+        """BaseRequestの抽象メソッド実装。startを呼び出してインタラクティブセッションを開始"""
+        return self.start()
 
     def start(self):
         self._proc = ShellUtil.start_interactive(
