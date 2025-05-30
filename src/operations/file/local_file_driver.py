@@ -9,7 +9,8 @@ class LocalFileDriver(FileDriver):
         super().__init__(base_dir)
 
     def _move_impl(self, src_path, dst_path):
-        src_path.rename(dst_path)
+        # Use shutil.move for better handling of directories and cross-filesystem moves
+        shutil.move(str(src_path), str(dst_path))
 
     def _copy_impl(self, src_path, dst_path):
         copy2(src_path, dst_path)

@@ -20,6 +20,9 @@ class RunWorkflowBuilder:
         """
         ConfigNodeのリストからCompositeRequestを生成
         """
+        from src.operations.file.file_request import FileRequest
+        from src.operations.composite.driver_bound_request import DriverBoundRequest
+        
         requests = []
         
         for node in step_nodes:
@@ -37,8 +40,35 @@ class RunWorkflowBuilder:
             if factory:
                 request = factory.create_request_from_node(node)
                 if request:
+                    # FileRequestの場合はfile_driverでラップ
+                    if isinstance(request, FileRequest):
+                        file_driver = self.operations.resolve('file_driver')
+                        request = DriverBoundRequest(request, file_driver)
                     requests.append(request)
         
         return CompositeRequest.make_composite_request(requests)
 
- 
+    def build(self, run_steps) -> CompositeRequest:
+        """
+        RunStepsからCompositeRequestを生成
+        """
+        from src.operations.file.file_request import FileRequest
+        from src.operations.composite.driver_bound_request import DriverBoundRequest
+        
+        requests = []
+        
+        for step in run_steps.steps:
+            # ファクトリーを取得
+            factory = RequestFactorySelector.get_factory_for_step(
+                self.controller, step, self.operations
+            )
+            if factory:
+                request = factory.create_request(step)
+                if request:
+                    # FileRequestの場合はfile_driverでラップ
+                    if isinstance(request, FileRequest):
+                        file_driver = self.operations.resolve('file_driver')
+                        request = DriverBoundRequest(request, file_driver)
+                    requests.append(request)
+        
+        return CompositeRequest.make_composite_request(requests)

@@ -29,9 +29,12 @@ class OjCommandRequestFactory(BaseCommandRequestFactory):
                 command=" ".join(cmd),
                 show_output=getattr(run_step, 'show_output', True)
             )
+            exec_req.allow_failure = getattr(run_step, 'allow_failure', False)
             return exec_req
         else:
-            return ShellRequest(cmd, cwd=cwd, show_output=getattr(run_step, 'show_output', True))
+            request = ShellRequest(cmd, cwd=cwd, show_output=getattr(run_step, 'show_output', True))
+            request.allow_failure = getattr(run_step, 'allow_failure', False)
+            return request
     
     def create_request_from_node(self, node):
         """ConfigNodeからリクエストを生成"""
@@ -44,6 +47,7 @@ class OjCommandRequestFactory(BaseCommandRequestFactory):
             
         cwd = node.value.get('cwd')
         show_output = node.value.get('show_output', True)
+        allow_failure = node.value.get('allow_failure', False)
         env_type = self.controller.env_context.env_type.lower()
         
         # cmdフィールドのConfigNodeを探す
@@ -91,6 +95,9 @@ class OjCommandRequestFactory(BaseCommandRequestFactory):
                 command=" ".join(formatted_cmd),
                 show_output=show_output
             )
+            exec_req.allow_failure = allow_failure
             return exec_req
         else:
-            return ShellRequest(formatted_cmd, cwd=formatted_cwd, show_output=show_output) 
+            request = ShellRequest(formatted_cmd, cwd=formatted_cwd, show_output=show_output)
+            request.allow_failure = allow_failure
+            return request 

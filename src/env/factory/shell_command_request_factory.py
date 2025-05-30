@@ -8,7 +8,9 @@ class ShellCommandRequestFactory(BaseCommandRequestFactory):
             raise TypeError(f"ShellCommandRequestFactory expects ShellRunStep, got {type(run_step).__name__}")
         cmd = [self.format_string(arg) for arg in run_step.cmd]
         cwd = self.format_string(run_step.cwd) if getattr(run_step, 'cwd', None) else None
-        return ShellRequest(cmd, cwd=cwd, show_output=getattr(run_step, 'show_output', True))
+        request = ShellRequest(cmd, cwd=cwd, show_output=getattr(run_step, 'show_output', True))
+        request.allow_failure = getattr(run_step, 'allow_failure', False)
+        return request
     
     def create_request_from_node(self, node):
         """ConfigNodeからShellRequestを生成"""
@@ -18,6 +20,7 @@ class ShellCommandRequestFactory(BaseCommandRequestFactory):
         cmd = node.value.get('cmd', [])
         cwd = node.value.get('cwd')
         show_output = node.value.get('show_output', True)
+        allow_failure = node.value.get('allow_failure', False)
         
         # cmdフィールドのConfigNodeを探す
         cmd_node = None
@@ -54,4 +57,6 @@ class ShellCommandRequestFactory(BaseCommandRequestFactory):
                     break
             formatted_cwd = self.format_value(cwd, cwd_node if cwd_node else node)
         
-        return ShellRequest(formatted_cmd, cwd=formatted_cwd, show_output=show_output) 
+        request = ShellRequest(formatted_cmd, cwd=formatted_cwd, show_output=show_output)
+        request.allow_failure = allow_failure
+        return request 

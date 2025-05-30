@@ -5,6 +5,9 @@ class DriverBoundRequest(BaseRequest):
         super().__init__(name=getattr(req, 'name', None), debug_tag=getattr(req, 'debug_tag', None))
         self.req = req
         self.driver = driver
+        # Pass through attributes from the wrapped request
+        self.allow_failure = getattr(req, 'allow_failure', False)
+        self.show_output = getattr(req, 'show_output', False)
     def execute(self, driver=None):
         # driver引数より自身のdriver属性を優先
         return self.req.execute(driver=self.driver)
