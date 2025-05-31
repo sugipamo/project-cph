@@ -52,6 +52,26 @@ class ExecutionContext:
         node = self.resolve([self.language, "contest_current_path"])
         return node.value if node else None
 
+    @property
+    def contest_stock_path(self):
+        node = self.resolve([self.language, "contest_stock_path"])
+        return node.value if node else None
+
+    @property
+    def contest_template_path(self):
+        node = self.resolve([self.language, "contest_template_path"])
+        return node.value if node else None
+
+    @property
+    def contest_temp_path(self):
+        node = self.resolve([self.language, "contest_temp_path"])
+        return node.value if node else None
+
+    @property
+    def source_file_name(self):
+        node = self.resolve([self.language, "source_file_name"])
+        return node.value if node else None
+
     def get_steps(self) -> list:
         """
         現在のlanguageとcommand_typeに基づきstepsのConfigNodeリストを返す。
