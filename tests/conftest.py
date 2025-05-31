@@ -25,7 +25,8 @@ def mock_controller():
 def di_container():
     """基本的なDIコンテナを提供"""
     from src.operations.docker.docker_request import DockerRequest, DockerOpType
-    from src.operations.file.file_request import FileRequest, FileOpType
+    from src.operations.file.file_request import FileRequest
+    from src.operations.file.file_op_type import FileOpType
     from src.operations.shell.shell_request import ShellRequest
     from src.operations.python.python_request import PythonRequest
     

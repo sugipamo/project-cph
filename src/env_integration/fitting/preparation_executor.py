@@ -118,7 +118,8 @@ class PreparationExecutor:
         
         # DIコンテナから必要なファクトリを取得
         try:
-            from src.operations.file.file_request import FileRequest, FileOpType
+            from src.operations.file.file_request import FileRequest
+            from src.operations.file.file_op_type import FileOpType
         except ImportError:
             # フォールバック: 基本的なrequest生成
             return preparation_requests

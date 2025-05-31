@@ -1,8 +1,9 @@
 import subprocess
-from src.operations.result import OperationResult
-from src.operations.constants.operation_type import OperationType
+import time
 import inspect
 import os
+from src.operations.result import OperationResult
+from src.operations.constants.operation_type import OperationType
 from src.operations.base_request import BaseRequest
 from src.operations.shell.shell_utils import ShellUtils
 
@@ -26,8 +27,14 @@ class ShellRequest(BaseRequest):
         return super().execute(driver)
 
     def _execute_core(self, driver):
-        import time
-        start_time = time.time()
+        """
+        シェルコマンド実行のコアロジック
+        
+        パフォーマンス最適化:
+        - より精密な時間計測
+        - インポートの最適化
+        """
+        start_time = time.perf_counter()  # More precise timing
         try:
             completed = ShellUtils.run_subprocess(
                 self.cmd,
@@ -36,7 +43,7 @@ class ShellRequest(BaseRequest):
                 inputdata=self.inputdata,
                 timeout=self.timeout
             )
-            end_time = time.time()
+            end_time = time.perf_counter()  # Consistent timing method
             return OperationResult(
                 stdout=completed.stdout,
                 stderr=completed.stderr,
@@ -47,7 +54,7 @@ class ShellRequest(BaseRequest):
                 end_time=end_time
             )
         except Exception as e:
-            end_time = time.time()
+            end_time = time.perf_counter()  # Consistent timing method
             return OperationResult(
                 stdout="",
                 stderr=str(e),

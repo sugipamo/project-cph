@@ -1,24 +1,17 @@
-from enum import Enum, auto
 from src.operations.constants.operation_type import OperationType
 from src.operations.file.local_file_driver import LocalFileDriver
 from src.operations.result import OperationResult
 from src.operations.base_request import BaseRequest
+from src.operations.file.strategies.strategy_factory import FileOperationStrategyFactory
+from src.operations.file.file_op_type import FileOpType
 import inspect
 import os
-
-class FileOpType(Enum):
-    READ = auto()
-    WRITE = auto()
-    EXISTS = auto()
-    MOVE = auto()
-    COPY = auto()
-    COPYTREE = auto()
-    REMOVE = auto()
-    RMTREE = auto()
-    MKDIR = auto()
-    TOUCH = auto()
+import time
 
 class FileRequest(BaseRequest):
+    # Class-level strategy cache for better performance
+    _strategy_cache = {}
+    
     def __init__(self, op: FileOpType, path, content=None, dst_path=None, debug_tag=None, name=None):
         super().__init__(name=name, debug_tag=debug_tag)
         self.op = op  # FileOpType
@@ -40,43 +33,22 @@ class FileRequest(BaseRequest):
         return super().execute(driver)
 
     def _execute_core(self, driver):
-        import time
-        start_time = time.time()
+        """
+        コア実行ロジック
+        
+        パフォーマンス最適化:
+        - ストラテジーインスタンスのキャッシング
+        - より精密な時間計測
+        """
+        self._start_time = time.perf_counter()  # More precise timing
         try:
-            if self.op == FileOpType.READ:
-                with driver.open(self.path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                return OperationResult(success=True, content=content, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
-            elif self.op == FileOpType.WRITE:
-                with driver.open(self.path, "w", encoding="utf-8") as f:
-                    f.write(self.content or "")
-                return OperationResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
-            elif self.op == FileOpType.EXISTS:
-                exists = driver.exists(self.path)
-                return OperationResult(success=True, exists=exists, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
-            elif self.op == FileOpType.MOVE:
-                driver.move(self.path, self.dst_path)
-                return OperationResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
-            elif self.op == FileOpType.COPY:
-                driver.copy(self.path, self.dst_path)
-                return OperationResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
-            elif self.op == FileOpType.COPYTREE:
-                driver.copytree(self.path, self.dst_path)
-                return OperationResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
-            elif self.op == FileOpType.REMOVE:
-                driver.remove(self.path)
-                return OperationResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
-            elif self.op == FileOpType.RMTREE:
-                driver.rmtree(self.path)
-                return OperationResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
-            elif self.op == FileOpType.MKDIR:
-                driver.mkdir(self.path)
-                return OperationResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
-            elif self.op == FileOpType.TOUCH:
-                driver.touch(self.path)
-                return OperationResult(success=True, path=self.path, op=self.op, request=self, start_time=start_time, end_time=time.time())
-            else:
-                raise RuntimeError(f"Unknown operation: {self.op}")
+            # Use cached strategy for better performance
+            strategy = self._strategy_cache.get(self.op)
+            if strategy is None:
+                strategy = FileOperationStrategyFactory.get_strategy(self.op)
+                self._strategy_cache[self.op] = strategy
+            
+            return strategy.execute(driver, self)
         except Exception as e:
             raise RuntimeError(f"FileRequest failed: {str(e)}")
 

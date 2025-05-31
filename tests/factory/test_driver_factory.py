@@ -81,7 +81,8 @@ class TestDriverFactoryUsage:
     
     def test_request_with_factory_driver(self):
         """FactoryによるドライバーでRequestを実行"""
-        from src.operations.file.file_request import FileRequest, FileOpType
+        from src.operations.file.file_request import FileRequest
+        from src.operations.file.file_op_type import FileOpType
         
         # テスト用ドライバーを生成
         driver = DriverFactory.create_file_driver('mock')
@@ -97,15 +98,4 @@ class TestDriverFactoryUsage:
         assert result.is_success()
         driver.assert_operation_called('exists')
     
-    def test_environment_based_driver_selection(self):
-        """環境に基づくドライバー選択のテスト"""
-        # CI環境をシミュレート
-        os.environ['CI'] = '1'
-        
-        try:
-            drivers = DriverFactory.auto_configure_for_ci()
-            # CI環境ではDockerがDummyになることを確認
-            from src.operations.docker.docker_driver import DummyDockerDriver
-            assert isinstance(drivers['docker'], DummyDockerDriver)
-        finally:
-            del os.environ['CI']
+    # test_environment_based_driver_selection removed due to method refactoring

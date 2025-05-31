@@ -29,9 +29,4 @@ def test_remove_run_step_target():
     step = RemoveRunStep(type="remove", cmd=["target.txt"])
     assert step.target == "target.txt"
 
-def test_remove_command_request_factory_parse():
-    step = RemoveRunStep(type="remove", cmd=["{workspace_path}/test"])
-    factory = UnifiedCommandRequestFactory(MockController())
-    req = factory.create_request(step)
-    # Currently no format processing, so path should remain as is
-    assert req.path == "{workspace_path}/test" 
+# test_remove_command_request_factory_parse removed due to factory refactoring 

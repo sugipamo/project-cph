@@ -8,14 +8,16 @@ with reduced code duplication and improved maintainability.
 from typing import Dict, Any, Optional, Union
 from .base.factory import BaseCommandRequestFactory
 from .command_types import CommandType, get_command_type_from_string, get_command_config
-from .request_builders import RequestBuilderRegistry
-from src.operations.file.file_request import FileRequest, FileOpType
+from .builders.builder_registry import RequestBuilderRegistry
+from src.operations.file.file_request import FileRequest
+from src.operations.file.file_op_type import FileOpType
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.python.python_request import PythonRequest
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
+from src.factories.abstract_factory import AbstractRequestFactory
 
 
-class UnifiedCommandRequestFactory(BaseCommandRequestFactory):
+class UnifiedCommandRequestFactory(BaseCommandRequestFactory, AbstractRequestFactory):
     """
     Unified factory for creating command requests
     

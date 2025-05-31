@@ -93,7 +93,7 @@ class DriverFactory:
             from src.operations.mock.mock_docker_driver import MockDockerDriver
             return MockDockerDriver(**kwargs)
         elif driver_type == 'dummy':
-            from src.operations.docker.docker_driver import DummyDockerDriver
+            from src.operations.mock.dummy_docker_driver import DummyDockerDriver
             return DummyDockerDriver(**kwargs)
         else:
             raise ValueError(f"Unknown docker driver type: {driver_type}")

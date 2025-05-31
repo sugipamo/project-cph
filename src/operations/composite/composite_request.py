@@ -1,19 +1,23 @@
 from src.operations.composite.base_composite_request import BaseCompositeRequest
-from src.operations.exceptions.composite_step_failure import CompositeStepFailure
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from src.operations.composite.execution_controller import ExecutionController
+from src.operations.composite.output_manager import OutputManager
+from src.operations.composite.composite_structure import CompositeStructure
 from src.operations.base_request import BaseRequest
 
 class CompositeRequest(BaseCompositeRequest):
     def __init__(self, requests, debug_tag=None, name=None):
         super().__init__(requests, name=name, debug_tag=debug_tag)
-        if not all(isinstance(r, BaseRequest) for r in requests):
-            raise TypeError("All elements of 'requests' must be BaseRequest (or its subclass)")
-        self.requests = requests
+        self.structure = CompositeStructure(requests)
+        self.execution_controller = ExecutionController()
         self._executed = False
         self._results = None
 
     def __len__(self):
-        return len(self.requests)
+        return len(self.structure)
+    
+    @property
+    def requests(self):
+        return self.structure.requests
 
     def execute(self, driver):
         return super().execute(driver)
@@ -22,23 +26,17 @@ class CompositeRequest(BaseCompositeRequest):
         results = []
         for req in self.requests:
             result = req.execute(driver=driver)
-            # show_output属性がTrueなら出力を表示
-            if hasattr(req, 'show_output') and req.show_output:
-                if hasattr(result, 'stdout') and result.stdout:
-                    print(result.stdout, end="")
-                if hasattr(result, 'stderr') and result.stderr:
-                    print(result.stderr, end="")
+            OutputManager.handle_request_output(req, result)
             results.append(result)
-            # allow_failureがFalseまたは未指定、かつ失敗した場合は即停止
-            allow_failure = getattr(req, 'allow_failure', False)
-            if not allow_failure and not (hasattr(result, 'success') and result.success):
-                raise CompositeStepFailure(f"Step failed: {req} (allow_failure=False)\nResult: {result}", result=result)
+            
+            # allow_failureチェックは ExecutionController に委譲
+            self.execution_controller._check_failure(req, result)
+        
         self._results = results
         return results
 
     def __repr__(self):
-        reqs_str = ",\n  ".join(repr(r) for r in self.requests)
-        return f"<CompositeRequest name={self.name} [\n  {reqs_str}\n]>"
+        return f"<CompositeRequest name={self.name} {self.structure}>"
 
     @classmethod
     def make_composite_request(cls, requests, debug_tag=None, name=None):
@@ -57,10 +55,4 @@ class CompositeRequest(BaseCompositeRequest):
         """
         再帰的に全ての葉(BaseCompositeRequestでCompositeRequestでないもの)の数を数える。
         """
-        count = 0
-        for req in self.requests:
-            if isinstance(req, CompositeRequest):
-                count += req.count_leaf_requests()
-            else:
-                count += 1
-        return count
+        return self.structure.count_leaf_requests()

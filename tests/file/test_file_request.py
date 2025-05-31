@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
-from src.operations.file.file_request import FileRequest, FileOpType
+from src.operations.file.file_request import FileRequest
+from src.operations.file.file_op_type import FileOpType
 from src.operations.result.file_result import FileResult
 from src.operations.mock.mock_file_driver import MockFileDriver
 from src.operations.constants.operation_type import OperationType

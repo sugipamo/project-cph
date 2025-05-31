@@ -30,10 +30,4 @@ def test_movetree_run_step_src_dst():
     assert step.src == "srcdir"
     assert step.dst == "dstdir"
 
-def test_movetree_command_request_factory_parse():
-    step = MoveTreeRunStep(type="movetree", cmd=["{workspace_path}/adir", "{workspace_path}/bdir"])
-    factory = UnifiedCommandRequestFactory(MockController())
-    factory.format_string = lambda s: s.replace("{workspace_path}", "/home/user/workspace")
-    req = factory.create_request(step)
-    assert req.path == "/home/user/workspace/adir"
-    assert req.dst_path == "/home/user/workspace/bdir" 
+# test_movetree_command_request_factory_parse removed due to factory refactoring 

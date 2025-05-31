@@ -49,26 +49,4 @@ class MockDockerDriver(DockerDriver):
         self.operations.append(("cp", src, dst, container, to_container, show_output))
         return f"mock_cp_{src}_{dst}_{container}_{to_container}"
 
-class DummyDockerDriver(DockerDriver):
-    def run_container(self, image: str, name: str = None, options=None):
-        return None
-    def stop_container(self, name: str):
-        return None
-    def remove_container(self, name: str):
-        return None
-    def exec_in_container(self, name: str, command: str):
-        return None
-    def get_logs(self, name: str):
-        return None
-    def build(self, path: str, tag: str = None, dockerfile: str = None, options=None):
-        return None
-    def image_ls(self):
-        return []
-    def image_rm(self, image: str):
-        return None
-    def ps(self, all: bool = False):
-        return []
-    def inspect(self, target: str, type_: str = None):
-        return None
-    def cp(self, src: str, dst: str, container: str, to_container: bool = True):
-        return None 
+ 

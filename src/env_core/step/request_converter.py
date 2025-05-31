@@ -3,7 +3,8 @@ Step オブジェクトから Request オブジェクトへの変換を行う純
 """
 from typing import List, Optional, Dict, Any
 from src.operations.base_request import BaseRequest
-from src.operations.file.file_request import FileRequest, FileOpType
+from src.operations.file.file_request import FileRequest
+from src.operations.file.file_op_type import FileOpType
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.python.python_request import PythonRequest
 from src.operations.composite.driver_bound_request import DriverBoundRequest

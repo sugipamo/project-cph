@@ -11,7 +11,8 @@ from typing import Dict, Type, Any, List, Optional
 # from src.env_factories.base.factory import BaseCommandRequestFactory
 # from src.operations.shell.shell_request import ShellRequest
 # from src.operations.docker.docker_request import DockerRequest, DockerOpType
-# from src.operations.file.file_request import FileRequest, FileOpType
+# from src.operations.file.file_request import FileRequest
+from src.operations.file.file_op_type import FileOpType
 # from src.operations.python.python_request import PythonRequest
 
 

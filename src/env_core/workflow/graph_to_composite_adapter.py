@@ -115,7 +115,7 @@ class GraphToCompositeAdapter:
         # FileRequestの場合
         if hasattr(request, 'operation_type') and hasattr(request, 'op'):
             from src.operations.constants.operation_type import OperationType
-            from src.operations.file.file_request import FileOpType
+            from src.operations.file.file_op_type import FileOpType
             
             if request.operation_type == OperationType.FILE:
                 file_op = request.op

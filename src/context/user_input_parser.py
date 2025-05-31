@@ -1,133 +1,48 @@
 import os
-import json
 import copy
-from typing import List, Dict, Optional, Tuple, Callable
+from typing import List, Callable
 from .execution_context import ExecutionContext
-from src.context.resolver.config_resolver import create_config_root_from_dict, resolve_by_match_desc
+from .parsers.system_info_manager import SystemInfoManager
+from .parsers.validation_service import ValidationService
+from .parsers.input_parser import InputParser
+from src.context.resolver.config_resolver import create_config_root_from_dict
 
 CONTEST_ENV_DIR = "contest_env"
-SYSTEM_INFO_PATH = "system_info.json"
 
-def _load_system_info(operations, path=SYSTEM_INFO_PATH):
-    file_driver = operations.resolve("file_driver")
-    from src.operations.file.file_request import FileRequest, FileOpType
-    req = FileRequest(FileOpType.EXISTS, path)
-    result = req.execute(driver=file_driver)
-    if not result.exists:
-        return {
-            "command": None,
-            "language": None,
-            "env_type": None,
-            "contest_name": None,
-            "problem_name": None,
-            "env_json": None,
-        }
-    req = FileRequest(FileOpType.READ, path)
-    result = req.execute(driver=file_driver)
-    return json.loads(result.content)
-
-def _save_system_info(operations, info, path=SYSTEM_INFO_PATH):
-    file_driver = operations.resolve("file_driver")
-    from src.operations.file.file_request import FileRequest, FileOpType
-    import json
-    req = FileRequest(FileOpType.WRITE, path, content=json.dumps(info, ensure_ascii=False, indent=2))
-    req.execute(driver=file_driver)
-
-def _validate_env_json(data: dict, path: str):
-    if not isinstance(data, dict):
-        raise ValueError(f"{path}: env.jsonのトップレベルはdictである必要があります")
-    for lang, conf in data.items():
-        if not isinstance(conf, dict):
-            raise ValueError(f"{path}: {lang}の値はdictである必要があります")
-        if "commands" not in conf or not isinstance(conf["commands"], dict):
-            raise ValueError(f"{path}: {lang}にcommands(dict)がありません")
-        if "env_types" not in conf or not isinstance(conf["env_types"], dict):
-            raise ValueError(f"{path}: {lang}にenv_types(dict)がありません")
-        if "aliases" in conf and not isinstance(conf["aliases"], list):
-            raise ValueError(f"{path}: {lang}のaliasesはlistである必要があります")
 
 def _load_all_env_jsons(base_dir: str, operations) -> list:
+    """環境設定JSONファイルを全て読み込む"""
     env_jsons = []
     file_driver = operations.resolve("file_driver")
-    from src.operations.file.file_request import FileRequest, FileOpType
-
-    files = file_driver.list_files(base_dir)
-    print(f"[DEBUG] _load_all_env_jsons: list_files({base_dir}) -> {files}")
-    for path in files:
-        print(f"[DEBUG] _load_all_env_jsons: path={path} type={type(path)}")
-        if str(path).endswith("env.json"):
+    from src.operations.file.file_request import FileRequest
+    from src.operations.file.file_op_type import FileOpType
+    
+    req = FileRequest(FileOpType.EXISTS, base_dir)
+    result = req.execute(driver=file_driver)
+    if not result.exists:
+        return env_jsons
+    
+    import glob
+    import json
+    
+    pattern = os.path.join(base_dir, "*", "env.json")
+    env_json_paths = glob.glob(pattern)
+    
+    for path in env_json_paths:
+        try:
             req = FileRequest(FileOpType.READ, path)
-            print(f"[DEBUG] _load_all_env_jsons: FileRequest path={req.path} type={type(req.path)}")
             result = req.execute(driver=file_driver)
-            if not result.content:
-                continue
-            import json as _json
-            try:
-                env_json = _json.loads(result.content)
-                print(f"[DEBUG] _load_all_env_jsons: loaded env_json={env_json}")
-                env_jsons.append(env_json)
-            except Exception as e:
-                print(f"[DEBUG] _load_all_env_jsons: JSON decode error: {e} content={result.content}")
-    print(f"[DEBUG] _load_all_env_jsons: env_jsons={env_jsons}")
+            data = json.loads(result.content)
+            ValidationService.validate_env_json(data, path)
+            env_jsons.append(data)
+        except Exception as e:
+            print(f"Warning: Failed to load {path}: {e}")
+    
     return env_jsons
 
-def _apply_language(args, context, root):
-    print(f"[DEBUG] _apply_language: in args={args} context.language={context.language}")
-    language_nodes = resolve_by_match_desc(root, ["*"])
-    print(f"[DEBUG] _apply_language: language_nodes={[repr(n) for n in language_nodes]}")
-    for idx, arg in enumerate(args):
-        for node in language_nodes:
-            if arg in node.matches:
-                context.language = node.key
-                new_args = args[:idx] + args[idx+1:]
-                print(f"[DEBUG] _apply_language: out args={new_args} context.language={context.language}")
-                return new_args, context
-    print(f"[DEBUG] _apply_language: out args={args} context.language={context.language}")
-    return args, context
-
-def _apply_env_type(args, context, root):
-    print(f"[DEBUG] _apply_env_type: in args={args} context.env_type={context.env_type}")
-    type_env_nodes = resolve_by_match_desc(root, [context.language, "env_types"])
-    for idx, arg in enumerate(args):
-        for type_env_node in type_env_nodes:
-            for node in type_env_node.next_nodes:
-                if arg in node.matches:
-                    context.env_type = node.key
-                    new_args = args[:idx] + args[idx+1:]
-                    print(f"[DEBUG] _apply_env_type: out args={new_args} context.env_type={context.env_type}")
-                    return new_args, context
-    print(f"[DEBUG] _apply_env_type: out args={args} context.env_type={context.env_type}")
-    return args, context
-
-def _apply_command(args, context, root):
-    print(f"[DEBUG] _apply_command: in args={args} context.command_type={context.command_type}")
-    command_nodes = resolve_by_match_desc(root, [context.language, "commands"])
-    for idx, arg in enumerate(args):
-        for command_node in command_nodes:
-            for node in command_node.next_nodes:
-                if arg in node.matches:
-                    context.command_type = node.key
-                    new_args = args[:idx] + args[idx+1:]
-                    print(f"[DEBUG] _apply_command: out args={new_args} context.command_type={context.command_type}")
-                    return new_args, context
-    print(f"[DEBUG] _apply_command: out args={args} context.command_type={context.command_type}")
-    return args, context
-
-def _apply_problem_name(args, context):
-    print(f"[DEBUG] _apply_problem_name: in args={args} context.problem_name={context.problem_name}")
-    if args:
-        context.problem_name = args.pop()
-    print(f"[DEBUG] _apply_problem_name: out args={args} context.problem_name={context.problem_name}")
-    return args, context
-
-def _apply_contest_name(args, context):
-    print(f"[DEBUG] _apply_contest_name: in args={args} context.contest_name={context.contest_name}")
-    if args:
-        context.contest_name = args.pop()
-    print(f"[DEBUG] _apply_contest_name: out args={args} context.contest_name={context.contest_name}")
-    return args, context
 
 def _apply_env_json(context, env_jsons):
+    """環境JSONをコンテキストに適用"""
     if context.env_json:
         return context
     if context.language:
@@ -137,7 +52,9 @@ def _apply_env_json(context, env_jsons):
                 break
     return context
 
+
 def _apply_dockerfile(context, dockerfile_loader):
+    """Dockerfileをコンテキストに適用"""
     dockerfile_path = None
     if context.env_json and context.language and context.env_type:
         env_types = context.env_json[context.language].get("env_types", {})
@@ -151,20 +68,25 @@ def _apply_dockerfile(context, dockerfile_loader):
             context.dockerfile = None
     return context
 
+
 def _apply_oj_dockerfile(context):
+    """OJ Dockerfileをコンテキストに適用"""
     oj_dockerfile_path = os.path.join(os.path.dirname(__file__), "oj.Dockerfile")
     with open(oj_dockerfile_path, "r") as f:
         context.oj_dockerfile = f.read()
     return context
 
+
 def make_dockerfile_loader(operations):
     def loader(path: str) -> str:
         file_driver = operations.resolve("file_driver")
-        from src.operations.file.file_request import FileRequest, FileOpType
+        from src.operations.file.file_request import FileRequest
+        from src.operations.file.file_op_type import FileOpType
         req = FileRequest(FileOpType.READ, path)
         result = req.execute(driver=file_driver)
         return result.content
     return loader
+
 
 def parse_user_input(
     args: List[str],
@@ -178,7 +100,12 @@ def parse_user_input(
     if dockerfile_loader is None:
         dockerfile_loader = make_dockerfile_loader(operations)
 
-    system_info = _load_system_info(operations)
+    # システム情報管理とバリデーション初期化
+    system_info_manager = SystemInfoManager(operations)
+    validation_service = ValidationService()
+    
+    # システム情報読み込み
+    system_info = system_info_manager.load_system_info()
     context = ExecutionContext(
         command_type=system_info["command"],
         language=system_info["language"],
@@ -187,35 +114,34 @@ def parse_user_input(
         env_type=system_info["env_type"],
         env_json=system_info["env_json"],
     )
-    # old_execution_context
+    
+    # バックアップコンテキスト作成
     context.old_execution_context = copy.deepcopy(context)
-    # env.json読み込み
+    
+    # 環境設定読み込みと設定ルート作成
     env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, operations)
-    # env_jsonsをマージして1つのdictにまとめる
     merged_env_json = {}
     for env_json in env_jsons:
         merged_env_json.update(env_json)
     root = create_config_root_from_dict(merged_env_json)
     context.resolver = root
-    # 言語特定
-    args, context = _apply_language(args, context, root)
-    # env_jsonをcontextにセット（既にセット済みならスキップ）
+    
+    # コマンドライン引数解析
+    args, context = InputParser.parse_command_line(args, context, root)
+    
+    # 環境JSON適用
     context = _apply_env_json(context, env_jsons)
-    # env_type特定
-    args, context = _apply_env_type(args, context, root)
-    # コマンド特定
-    args, context = _apply_command(args, context, root)
-    # 残りの引数からproblem_name, contest_nameを特定
-    args, context = _apply_problem_name(args, context)
-    args, context = _apply_contest_name(args, context)
+    
+    # 残り引数チェック
     if args:
         raise ValueError(f"引数が多すぎます: {args}")
-    # dockerfileの内容をセット
+    
+    # Dockerfile設定
     context = _apply_dockerfile(context, dockerfile_loader)
-    # oj.Dockerfileの内容をセット
     context = _apply_oj_dockerfile(context)
-    # system_info.jsonへ保存
-    _save_system_info(operations, {
+    
+    # システム情報保存
+    system_info_manager.save_system_info({
         "command": context.command_type,
         "language": context.language,
         "env_type": context.env_type,
@@ -223,11 +149,14 @@ def parse_user_input(
         "problem_name": context.problem_name,
         "env_json": context.env_json
     })
+    
     # バリデーション
     is_valid, error_message = context.validate()
     if not is_valid:
         raise ValueError(error_message)
+    
     return context
+
 
 if __name__ == "__main__":
     from src.env.build_operations import build_operations

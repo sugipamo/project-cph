@@ -1,7 +1,8 @@
 import pytest
 from src.env_resource.file.docker_file_handler import DockerFileHandler
 from src.context.execution_context import ExecutionContext
-from src.operations.file.file_request import FileOpType, FileRequest
+from src.operations.file.file_request import FileRequest
+from src.operations.file.file_op_type import FileOpType
 from src.operations.docker.docker_file_request import DockerFileRequest
 from src.operations.mock.mock_docker_driver import MockDockerDriver
 
