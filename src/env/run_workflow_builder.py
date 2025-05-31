@@ -18,7 +18,7 @@ class RunWorkflowBuilder:
     def __init__(self, controller: EnvResourceController, operations: DIContainer):
         self.controller = controller
         self.operations = operations
-        self.graph_builder = GraphBasedWorkflowBuilder(controller, operations)
+        self.graph_builder = GraphBasedWorkflowBuilder.from_controller(controller, operations)
 
     @classmethod
     def from_controller(cls, controller: EnvResourceController, operations: DIContainer) -> 'RunWorkflowBuilder':

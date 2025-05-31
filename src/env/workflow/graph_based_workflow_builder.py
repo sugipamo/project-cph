@@ -5,8 +5,6 @@ ConfigNodeからRequestExecutionGraphを生成し、
 依存関係を考慮した実行計画を構築する
 """
 from typing import List, Dict, Any, Tuple, Optional
-from src.operations.di_container import DIContainer
-from src.env.types import EnvResourceController
 from src.context.resolver.config_node import ConfigNode
 from .request_execution_graph import (
     RequestExecutionGraph,
@@ -29,20 +27,38 @@ from pathlib import Path
 class GraphBasedWorkflowBuilder:
     """グラフベースのワークフロー生成器"""
     
-    def __init__(self, controller: EnvResourceController, operations: DIContainer):
-        self.controller = controller
-        self.operations = operations
+    def __init__(self, context: Optional[Any] = None):
+        """
+        純粋なワークフロービルダー
+        
+        Args:
+            context: StepContextまたは環境情報（オプション）
+        """
+        self.context = context
+    
+    @classmethod
+    def from_context(cls, context: Any) -> 'GraphBasedWorkflowBuilder':
+        """
+        コンテキストからGraphBasedWorkflowBuilderを生成
+        
+        Args:
+            context: StepContextまたは環境情報
+        """
+        return cls(context)
     
     @classmethod
     def from_controller(
         cls, 
-        controller: EnvResourceController, 
-        operations: DIContainer
+        controller: Any, 
+        operations: Any
     ) -> 'GraphBasedWorkflowBuilder':
         """
-        controllerとoperationsからGraphBasedWorkflowBuilderを生成
+        controller(既存互換性のため保持)
         """
-        return cls(controller, operations)
+        # controllerからcontextを抽出
+        from src.env.step_generation.workflow import create_step_context_from_env_context
+        context = create_step_context_from_env_context(controller.env_context)
+        return cls(context)
     
     def build_graph_from_json_steps(
         self, 
@@ -58,8 +74,20 @@ class GraphBasedWorkflowBuilder:
             Tuple[RequestExecutionGraph, List[str], List[str]]: 
                 (実行グラフ, エラーリスト, 警告リスト)
         """
-        # EnvContext から StepContext を作成
-        context = create_step_context_from_env_context(self.controller.env_context)
+        # コンテキストを取得（事前に設定済み、またはデフォルト）
+        context = self.context
+        if context is None:
+            # デフォルトコンテキストを作成
+            from src.env.step_generation.step import StepContext
+            context = StepContext(
+                contest_name="",
+                problem_name="", 
+                language="",
+                env_type="local",
+                command_type="",
+                workspace_path="./workspace",
+                contest_current_path="./contest_current"
+            )
         
         # JSON から Step オブジェクトを生成
         generation_result = generate_steps_from_json(json_steps, context)
@@ -170,7 +198,7 @@ class GraphBasedWorkflowBuilder:
     
     def _step_to_request(self, step: Step) -> Optional[Any]:
         """
-        StepからRequestを生成
+        StepからRequestを生成（純粋関数版）
         
         Args:
             step: 変換するステップ
@@ -178,19 +206,10 @@ class GraphBasedWorkflowBuilder:
         Returns:
             生成されたリクエスト、または None
         """
-        from src.env.factory.request_factory_selector import RequestFactorySelector
+        from .pure_request_factory import PureRequestFactory
         
-        # ファクトリセレクタを使用してリクエストを生成
-        try:
-            factory = RequestFactorySelector.get_factory_for_step_type(
-                step.type.value, 
-                self.controller, 
-                self.operations
-            )
-            return factory.create_request(step)
-        except KeyError:
-            # 未知のステップタイプの場合はNoneを返す
-            return None
+        # 純粋なファクトリを使用してリクエストを生成（operations不要）
+        return PureRequestFactory.create_request_from_step(step, context=None)
     
     def _extract_resource_info_from_step(
         self, 
