@@ -2,14 +2,14 @@
 純粋関数ベースのステップ生成のコア機能テスト
 """
 import pytest
-from src.env.step_generation.core import (
+from src.env_core.step.core import (
     generate_steps_from_json,
     create_step_from_json,
     format_template,
     validate_step_sequence,
     optimize_step_sequence
 )
-from src.env.step_generation.step import Step, StepType, StepContext, StepGenerationResult
+from src.env_core.step.step import Step, StepType, StepContext, StepGenerationResult
 
 
 @pytest.fixture

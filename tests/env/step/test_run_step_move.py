@@ -1,6 +1,6 @@
 import pytest
 from src.env.step.run_step_move import MoveRunStep
-from src.env.factory.move_command_request_factory import MoveCommandRequestFactory
+from src.env_factories.unified_factory import UnifiedCommandRequestFactory
 
 class MockController:
     def __init__(self):
@@ -32,7 +32,7 @@ def test_move_run_step_src_dst():
 
 def test_move_command_request_factory_parse():
     step = MoveRunStep(type="move", cmd=["{workspace_path}/a.txt", "{workspace_path}/b.txt"])
-    factory = MoveCommandRequestFactory(MockController())
+    factory = UnifiedCommandRequestFactory(MockController())
     factory.format_string = lambda s: s.replace("{workspace_path}", "/home/user/workspace")
     req = factory.create_request(step)
     assert req.path == "/home/user/workspace/a.txt"

@@ -1,6 +1,6 @@
 import pytest
 from src.env.step.run_step_rmtree import RmtreeRunStep
-from src.env.factory.rmtree_command_request_factory import RmtreeCommandRequestFactory
+from src.env_factories.unified_factory import UnifiedCommandRequestFactory
 
 class MockController:
     def __init__(self):
@@ -31,7 +31,7 @@ def test_rmtree_run_step_target():
 
 def test_rmtree_command_request_factory_parse():
     step = RmtreeRunStep(type="rmtree", cmd=["{workspace_path}/test"])
-    factory = RmtreeCommandRequestFactory(MockController())
+    factory = UnifiedCommandRequestFactory(MockController())
     req = factory.create_request(step)
     # Currently no format processing, so path should remain as is
     assert req.path == "{workspace_path}/test" 

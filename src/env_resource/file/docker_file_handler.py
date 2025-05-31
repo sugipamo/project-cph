@@ -2,11 +2,11 @@ import os
 from pathlib import Path
 from src.operations.file.file_request import FileRequest, FileOpType
 from src.operations.docker.docker_file_request import DockerFileRequest
-from src.env.resource.file.base_file_handler import BaseFileHandler
-from src.env.resource.utils.path_environment_checker import PathEnvironmentChecker
+from src.env_resource.file.base_file_handler import BaseFileHandler
+from src.env_resource.utils.path_environment_checker import PathEnvironmentChecker
 from src.context.execution_context import ExecutionContext
-from src.env.resource.utils.path_utils import get_workspace_path
-from src.env.resource.utils.docker_naming import get_container_name
+from src.env_resource.utils.path_utils import get_workspace_path
+from src.env_resource.utils.docker_naming import get_container_name
 
 class DockerFileHandler(BaseFileHandler):
     def __init__(self, config: ExecutionContext, const_handler=None):

@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, Mock
-from src.env.resource.file.docker_file_handler import DockerFileHandler
-from src.env.resource.file.local_file_handler import LocalFileHandler
+from src.env_resource.file.docker_file_handler import DockerFileHandler
+from src.env_resource.file.local_file_handler import LocalFileHandler
 from src.operations.file.file_request import FileOpType, FileRequest
 from src.operations.docker.docker_file_request import DockerFileRequest
 from src.context.execution_context import ExecutionContext
@@ -32,7 +32,7 @@ def docker_handler(docker_config):
     handler = DockerFileHandler(docker_config)
     # Override the problematic initialization
     handler.workspace_path = "/workspace"
-    from src.env.resource.utils.path_environment_checker import PathEnvironmentChecker
+    from src.env_resource.utils.path_environment_checker import PathEnvironmentChecker
     handler.path_env_checker = PathEnvironmentChecker("/workspace")
     return handler
 

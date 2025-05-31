@@ -1,4 +1,4 @@
-from src.env.resource.run.base_run_handler import BaseRunHandler
+from src.env_resource.run.base_run_handler import BaseRunHandler
 from src.operations.shell.shell_request import ShellRequest
 from src.context.execution_context import ExecutionContext
 

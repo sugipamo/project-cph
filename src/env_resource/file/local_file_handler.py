@@ -1,8 +1,8 @@
 import os
 from src.operations.file.file_request import FileRequest, FileOpType
-from src.env.resource.file.base_file_handler import BaseFileHandler
+from src.env_resource.file.base_file_handler import BaseFileHandler
 from src.context.execution_context import ExecutionContext
-from src.env.resource.utils.path_utils import get_workspace_path
+from src.env_resource.utils.path_utils import get_workspace_path
 
 class LocalFileHandler(BaseFileHandler):
     def __init__(self, config, const_handler=None):

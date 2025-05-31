@@ -1,6 +1,6 @@
 import pytest
 from src.env.step.run_step_remove import RemoveRunStep
-from src.env.factory.remove_command_request_factory import RemoveCommandRequestFactory
+from src.env_factories.unified_factory import UnifiedCommandRequestFactory
 
 class MockController:
     def __init__(self):
@@ -31,7 +31,7 @@ def test_remove_run_step_target():
 
 def test_remove_command_request_factory_parse():
     step = RemoveRunStep(type="remove", cmd=["{workspace_path}/test"])
-    factory = RemoveCommandRequestFactory(MockController())
+    factory = UnifiedCommandRequestFactory(MockController())
     req = factory.create_request(step)
     # Currently no format processing, so path should remain as is
     assert req.path == "{workspace_path}/test" 

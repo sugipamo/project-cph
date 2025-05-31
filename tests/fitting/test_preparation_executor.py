@@ -3,7 +3,7 @@ PreparationExecutor のテスト
 """
 import pytest
 from unittest.mock import Mock, MagicMock
-from src.env.fitting.preparation_executor import PreparationExecutor
+from src.env_integration.fitting.preparation_executor import PreparationExecutor
 from src.operations.di_container import DIContainer
 from src.operations.result.result import OperationResult
 

@@ -1,24 +1,14 @@
 import pytest
 from unittest.mock import Mock, MagicMock
-from src.env.factory.python_command_request_factory import PythonCommandRequestFactory
-from src.env.factory.shell_command_request_factory import ShellCommandRequestFactory
-from src.env.factory.copy_command_request_factory import CopyCommandRequestFactory
-from src.env.factory.build_command_request_factory import BuildCommandRequestFactory
-from src.env.factory.mkdir_command_request_factory import MkdirCommandRequestFactory
-from src.env.factory.touch_command_request_factory import TouchCommandRequestFactory
-from src.env.factory.remove_command_request_factory import RemoveCommandRequestFactory
-from src.env.factory.rmtree_command_request_factory import RmtreeCommandRequestFactory
-from src.env.factory.move_command_request_factory import MoveCommandRequestFactory
-from src.env.factory.movetree_command_request_factory import MoveTreeCommandRequestFactory
-from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
+from src.env_factories.unified_factory import UnifiedCommandRequestFactory
 from src.context.resolver.config_node import ConfigNode
 from src.operations.file.file_request import FileRequest, FileOpType
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.python.python_request import PythonRequest
 
 
-class TestFactoryCreateRequestFromNode:
-    """各ファクトリーのcreate_request_from_nodeメソッドのテスト"""
+class TestUnifiedFactoryCreateRequestFromNode:
+    """UnifiedCommandRequestFactoryのcreate_request_from_nodeメソッドのテスト"""
     
     def setup_method(self):
         """テスト前の共通セットアップ"""
@@ -38,13 +28,14 @@ class TestFactoryCreateRequestFromNode:
         return node
         
     def test_python_factory_create_request_from_node(self):
-        """PythonCommandRequestFactoryのテスト"""
-        factory = PythonCommandRequestFactory(self.mock_controller)
+        """UnifiedCommandRequestFactory (Python)のテスト"""
+        factory = UnifiedCommandRequestFactory(self.mock_controller)
         
         # コードを含むnode
         node = self.create_config_node(
             'python_step',
             {
+                'type': 'python',
                 'cmd': ['import sys', 'print(sys.version)'],
                 'cwd': '/test/dir',
                 'show_output': False
@@ -59,12 +50,13 @@ class TestFactoryCreateRequestFromNode:
         assert request.show_output is False
         
     def test_shell_factory_create_request_from_node(self):
-        """ShellCommandRequestFactoryのテスト"""
-        factory = ShellCommandRequestFactory(self.mock_controller)
+        """UnifiedCommandRequestFactory (Shell)のテスト"""
+        factory = UnifiedCommandRequestFactory(self.mock_controller)
         
         node = self.create_config_node(
             'shell_step',
             {
+                'type': 'shell',
                 'cmd': ['ls', '-la'],
                 'cwd': '/home/user',
                 'show_output': True,
@@ -81,12 +73,13 @@ class TestFactoryCreateRequestFromNode:
         assert request.allow_failure is True
         
     def test_copy_factory_create_request_from_node(self):
-        """CopyCommandRequestFactoryのテスト"""
-        factory = CopyCommandRequestFactory(self.mock_controller)
+        """UnifiedCommandRequestFactory (Copy)のテスト"""
+        factory = UnifiedCommandRequestFactory(self.mock_controller)
         
         node = self.create_config_node(
             'copy_step',
             {
+                'type': 'copy',
                 'cmd': ['/src/file.txt', '/dst/file.txt'],
                 'allow_failure': True,
                 'show_output': False
@@ -103,13 +96,13 @@ class TestFactoryCreateRequestFromNode:
         assert request.show_output is False
         
     def test_build_factory_create_request_from_node(self):
-        """BuildCommandRequestFactoryのテスト"""
-        factory = BuildCommandRequestFactory(self.mock_controller)
+        """UnifiedCommandRequestFactory (Build)のテスト"""
+        factory = UnifiedCommandRequestFactory(self.mock_controller)
         
         # カスタムビルドコマンド
         node = self.create_config_node(
             'build_step',
-            {'cmd': ['cargo', 'build', '--release']}
+            {'type': 'build', 'cmd': ['cargo', 'build', '--release']}
         )
         
         request = factory.create_request_from_node(node)
@@ -118,7 +111,7 @@ class TestFactoryCreateRequestFromNode:
         assert request.cmd == ['cargo', 'build', '--release']
         
         # デフォルトのmakeコマンド
-        node_default = self.create_config_node('build_step', {})
+        node_default = self.create_config_node('build_step', {'type': 'build'})
         request_default = factory.create_request_from_node(node_default)
         
         assert request_default.cmd == ['make']

@@ -3,8 +3,8 @@ GraphToCompositeAdapterのテスト
 """
 import pytest
 from unittest.mock import Mock, MagicMock
-from src.env.workflow.graph_to_composite_adapter import GraphToCompositeAdapter
-from src.env.workflow.request_execution_graph import (
+from src.env_core.workflow.graph_to_composite_adapter import GraphToCompositeAdapter
+from src.env_core.workflow.request_execution_graph import (
     RequestExecutionGraph,
     RequestNode,
     DependencyEdge,

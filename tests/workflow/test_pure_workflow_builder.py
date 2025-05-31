@@ -3,9 +3,9 @@
 """
 import pytest
 from unittest.mock import Mock, patch
-from src.env.workflow.graph_based_workflow_builder import GraphBasedWorkflowBuilder
-from src.env.workflow.request_execution_graph import RequestExecutionGraph
-from src.env.step_generation.step import StepContext, Step, StepType
+from src.env_core.workflow.graph_based_workflow_builder import GraphBasedWorkflowBuilder
+from src.env_core.workflow.request_execution_graph import RequestExecutionGraph
+from src.env_core.step.step import StepContext, Step, StepType
 from src.context.resolver.config_node import ConfigNode
 
 

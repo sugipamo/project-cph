@@ -1,5 +1,5 @@
 import pytest
-from src.env.resource.utils.path_utils import (
+from src.env_resource.utils.path_utils import (
     get_workspace_path, get_contest_current_path, get_contest_env_path,
     get_contest_template_path, get_contest_temp_path, get_test_case_path,
     get_test_case_in_path, get_test_case_out_path
@@ -129,7 +129,7 @@ def test_get_source_file_name():
     }
     root = create_config_root_from_dict(env_json)
     
-    from src.env.resource.utils.path_utils import get_source_file_name
+    from src.env_resource.utils.path_utils import get_source_file_name
     result = get_source_file_name(root, "python")
     assert result == "main.py"
 
@@ -142,7 +142,7 @@ def test_get_source_file_name_missing():
     }
     root = create_config_root_from_dict(env_json)
     
-    from src.env.resource.utils.path_utils import get_source_file_name
+    from src.env_resource.utils.path_utils import get_source_file_name
     with pytest.raises(ValueError) as excinfo:
         get_source_file_name(root, "python")
     assert "source_file_nameが設定されていません" in str(excinfo.value)
@@ -158,7 +158,7 @@ def test_get_contest_current_path_wrong_key():
     }
     root = create_config_root_from_dict(env_json)
     
-    from src.env.resource.utils.path_utils import get_contest_current_path
+    from src.env_resource.utils.path_utils import get_contest_current_path
     with pytest.raises(TypeError) as excinfo:
         get_contest_current_path(root, "python")
     assert "contest_current_pathが設定されていません" in str(excinfo.value)
@@ -168,7 +168,7 @@ def test_get_contest_env_path_no_parent():
     """Test contest_env path detection reaching root directory"""
     import os
     from unittest.mock import patch
-    from src.env.resource.utils.path_utils import get_contest_env_path
+    from src.env_resource.utils.path_utils import get_contest_env_path
     
     # Mock os.path.dirname to simulate reaching root
     with patch('os.path.dirname') as mock_dirname, \

@@ -2,13 +2,13 @@
 依存関係解決機能のテスト
 """
 import pytest
-from src.env.step_generation.dependency import (
+from src.env_core.step.dependency import (
     resolve_dependencies,
     generate_preparation_steps,
     optimize_mkdir_steps,
     analyze_step_dependencies
 )
-from src.env.step_generation.step import Step, StepType, StepContext
+from src.env_core.step.step import Step, StepType, StepContext
 
 
 @pytest.fixture

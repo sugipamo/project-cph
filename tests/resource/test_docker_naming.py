@@ -1,6 +1,6 @@
 import pytest
 import hashlib
-from src.env.resource.utils.docker_naming import (
+from src.env_resource.utils.docker_naming import (
     get_image_name, get_container_name, get_oj_image_name, get_oj_container_name
 )
 

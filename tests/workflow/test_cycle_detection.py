@@ -3,7 +3,7 @@
 """
 import pytest
 from unittest.mock import Mock
-from src.env.workflow.request_execution_graph import (
+from src.env_core.workflow.request_execution_graph import (
     RequestExecutionGraph,
     RequestNode,
     DependencyEdge,

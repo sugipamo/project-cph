@@ -1,17 +1,7 @@
 from src.operations.di_container import DIContainer
 from src.operations.shell.local_shell_driver import LocalShellDriver
 from src.operations.docker.docker_driver import LocalDockerDriver
-from src.env.factory.shell_command_request_factory import ShellCommandRequestFactory
-from src.env.factory.docker_command_request_factory import DockerCommandRequestFactory
-from src.env.factory.copy_command_request_factory import CopyCommandRequestFactory
-from src.env.factory.oj_command_request_factory import OjCommandRequestFactory
-from src.env.factory.remove_command_request_factory import RemoveCommandRequestFactory
-from src.env.factory.build_command_request_factory import BuildCommandRequestFactory
-from src.env.factory.python_command_request_factory import PythonCommandRequestFactory
-from src.env.factory.mkdir_command_request_factory import MkdirCommandRequestFactory
-from src.env.factory.touch_command_request_factory import TouchCommandRequestFactory
-from src.env.factory.movetree_command_request_factory import MoveTreeCommandRequestFactory
-from src.env.factory.rmtree_command_request_factory import RmtreeCommandRequestFactory
+from src.env_factories.unified_factory import UnifiedCommandRequestFactory
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.file.local_file_driver import LocalFileDriver
 from pathlib import Path
@@ -26,19 +16,21 @@ def build_operations():
     operations.register('shell_driver', lambda: LocalShellDriver())
     operations.register('docker_driver', lambda: LocalDockerDriver())
     operations.register('file_driver', lambda: LocalFileDriver(base_dir=Path('.')))
-    # ファクトリー
-    operations.register('ShellCommandRequestFactory', lambda: ShellCommandRequestFactory)
-    operations.register('DockerCommandRequestFactory', lambda: DockerCommandRequestFactory)
-    operations.register('CopyCommandRequestFactory', lambda: CopyCommandRequestFactory)
-    operations.register('OjCommandRequestFactory', lambda: OjCommandRequestFactory)
-    operations.register('RemoveCommandRequestFactory', lambda: RemoveCommandRequestFactory)
-    operations.register('BuildCommandRequestFactory', lambda: BuildCommandRequestFactory)
-    operations.register('PythonCommandRequestFactory', lambda: PythonCommandRequestFactory)
-    operations.register('MkdirCommandRequestFactory', lambda: MkdirCommandRequestFactory)
-    operations.register('TouchCommandRequestFactory', lambda: TouchCommandRequestFactory)
-    operations.register('RmtreeCommandRequestFactory', lambda: RmtreeCommandRequestFactory)
-    operations.register('MoveCommandRequestFactory', lambda: MoveCommandRequestFactory)
-    operations.register('MoveTreeCommandRequestFactory', lambda: MoveTreeCommandRequestFactory)
+    # Unified factory instead of individual factories
+    operations.register('UnifiedCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    # Legacy factory names for backward compatibility - all point to UnifiedFactory
+    operations.register('ShellCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('DockerCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('CopyCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('OjCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('RemoveCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('BuildCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('PythonCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('MkdirCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('TouchCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('RmtreeCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('MoveCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('MoveTreeCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
     # DockerRequest, DockerOpType
     operations.register('DockerRequest', lambda: DockerRequest)
     operations.register('DockerOpType', lambda: DockerOpType)
@@ -59,20 +51,22 @@ def build_mock_operations():
     operations.register('shell_driver', lambda: MockShellDriver())
     operations.register('docker_driver', lambda: MockDockerDriver())
     operations.register('file_driver', lambda: file_driver)
-    # ファクトリー（本物をそのまま登録）
-    operations.register('ShellCommandRequestFactory', lambda: ShellCommandRequestFactory)
-    operations.register('DockerCommandRequestFactory', lambda: DockerCommandRequestFactory)
-    operations.register('CopyCommandRequestFactory', lambda: CopyCommandRequestFactory)
-    operations.register('OjCommandRequestFactory', lambda: OjCommandRequestFactory)
-    operations.register('RemoveCommandRequestFactory', lambda: RemoveCommandRequestFactory)
-    operations.register('BuildCommandRequestFactory', lambda: BuildCommandRequestFactory)
-    operations.register('PythonCommandRequestFactory', lambda: PythonCommandRequestFactory)
-    operations.register('MkdirCommandRequestFactory', lambda: MkdirCommandRequestFactory)
-    operations.register('TouchCommandRequestFactory', lambda: TouchCommandRequestFactory)
-    operations.register('RmtreeCommandRequestFactory', lambda: RmtreeCommandRequestFactory)
-    operations.register('MoveCommandRequestFactory', lambda: MoveCommandRequestFactory)
-    operations.register('MoveTreeCommandRequestFactory', lambda: MoveTreeCommandRequestFactory)
+    # Unified factory
+    operations.register('UnifiedCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    # Legacy factory names for backward compatibility
+    operations.register('ShellCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('DockerCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('CopyCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('OjCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('RemoveCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('BuildCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('PythonCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('MkdirCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('TouchCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('RmtreeCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('MoveCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
+    operations.register('MoveTreeCommandRequestFactory', lambda: UnifiedCommandRequestFactory)
     # DockerRequest, DockerOpType
     operations.register('DockerRequest', lambda: DockerRequest)
     operations.register('DockerOpType', lambda: DockerOpType)
-    return operations 
+    return operations

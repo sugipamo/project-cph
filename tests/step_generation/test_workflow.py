@@ -3,13 +3,13 @@
 """
 import pytest
 from unittest.mock import Mock, MagicMock
-from src.env.step_generation.workflow import (
+from src.env_core.step.workflow import (
     generate_workflow_from_json,
     create_step_context_from_env_context,
     validate_workflow_execution,
     debug_workflow_generation
 )
-from src.env.step_generation.step import StepContext
+from src.env_core.step.step import StepContext
 from src.operations.composite.composite_request import CompositeRequest
 
 

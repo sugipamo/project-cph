@@ -103,7 +103,7 @@ class UnifiedCommandRequestFactory(BaseCommandRequestFactory):
             'RemoveRunStep': CommandType.REMOVE,
             'RmtreeRunStep': CommandType.RMTREE,
             'MoveRunStep': CommandType.MOVE,
-            'MovetreeRunStep': CommandType.MOVETREE,
+            'MoveTreeRunStep': CommandType.MOVETREE,
             'PythonRunStep': CommandType.PYTHON,
             'DockerRunStep': CommandType.DOCKER,
             'BuildRunStep': CommandType.BUILD,

@@ -1,9 +1,9 @@
 import pytest
-from src.env.env_resource_controller import EnvResourceController
+from src.env_integration.controller import EnvResourceController
 from src.operations.file.file_request import FileOpType, FileRequest
 from src.operations.docker.docker_file_request import DockerFileRequest
-from src.env.resource.file.local_file_handler import LocalFileHandler
-from src.env.resource.file.docker_file_handler import DockerFileHandler
+from src.env_resource.file.local_file_handler import LocalFileHandler
+from src.env_resource.file.docker_file_handler import DockerFileHandler
 import os
 import tempfile
 import json

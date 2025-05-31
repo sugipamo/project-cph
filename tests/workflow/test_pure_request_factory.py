@@ -2,8 +2,8 @@
 PureRequestFactory のテスト
 """
 import pytest
-from src.env.workflow.pure_request_factory import PureRequestFactory
-from src.env.step_generation.step import Step, StepType
+from src.env_core.workflow.pure_request_factory import PureRequestFactory
+from src.env_core.step.step import Step, StepType
 from src.operations.file.file_request import FileRequest, FileOpType
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.python.python_request import PythonRequest

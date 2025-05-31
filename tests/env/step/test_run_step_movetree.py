@@ -1,6 +1,6 @@
 import pytest
 from src.env.step.run_step_movetree import MoveTreeRunStep
-from src.env.factory.movetree_command_request_factory import MoveTreeCommandRequestFactory
+from src.env_factories.unified_factory import UnifiedCommandRequestFactory
 
 class MockController:
     def __init__(self):
@@ -32,7 +32,7 @@ def test_movetree_run_step_src_dst():
 
 def test_movetree_command_request_factory_parse():
     step = MoveTreeRunStep(type="movetree", cmd=["{workspace_path}/adir", "{workspace_path}/bdir"])
-    factory = MoveTreeCommandRequestFactory(MockController())
+    factory = UnifiedCommandRequestFactory(MockController())
     factory.format_string = lambda s: s.replace("{workspace_path}", "/home/user/workspace")
     req = factory.create_request(step)
     assert req.path == "/home/user/workspace/adir"

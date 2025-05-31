@@ -1,7 +1,7 @@
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
-from src.env.resource.run.base_run_handler import BaseRunHandler
+from src.env_resource.run.base_run_handler import BaseRunHandler
 from src.context.execution_context import ExecutionContext
-from src.env.resource.utils.docker_naming import get_container_name
+from src.env_resource.utils.docker_naming import get_container_name
 
 class DockerRunHandler(BaseRunHandler):
     def __init__(self, config: ExecutionContext, const_handler=None):
