@@ -4,7 +4,7 @@ from src.operations.constants.operation_type import OperationType
 import inspect
 import os
 from src.operations.base_request import BaseRequest
-from src.operations.shell.shell_util import ShellUtil
+from src.operations.shell.shell_utils import ShellUtils
 
 class ShellRequest(BaseRequest):
     def __init__(self, cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=True):
@@ -29,7 +29,7 @@ class ShellRequest(BaseRequest):
         import time
         start_time = time.time()
         try:
-            completed = ShellUtil.run_subprocess(
+            completed = ShellUtils.run_subprocess(
                 self.cmd,
                 cwd=self.cwd,
                 env=self.env,

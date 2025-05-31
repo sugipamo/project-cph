@@ -3,10 +3,10 @@ GraphBasedWorkflowBuilderのテスト（新API用）
 """
 import pytest
 from unittest.mock import Mock, MagicMock, patch
-from src.env.workflow.graph_based_workflow_builder import GraphBasedWorkflowBuilder
-from src.env.workflow.request_execution_graph import RequestExecutionGraph
+from src.env_core.workflow.graph_based_workflow_builder import GraphBasedWorkflowBuilder
+from src.env_core.workflow.request_execution_graph import RequestExecutionGraph
 from src.context.resolver.config_node import ConfigNode
-from src.env.step_generation.step import Step, StepType
+from src.env_core.step.step import Step, StepType
 
 
 class TestGraphBasedWorkflowBuilder:
@@ -59,7 +59,7 @@ class TestGraphBasedWorkflowBuilder:
         mock_controller.env_context = Mock()
         mock_operations = Mock()
         
-        with patch('src.env.step_generation.workflow.create_step_context_from_env_context') as mock_create:
+        with patch('src.env_core.step.workflow.create_step_context_from_env_context') as mock_create:
             mock_context = Mock()
             mock_create.return_value = mock_context
             
@@ -72,9 +72,9 @@ class TestGraphBasedWorkflowBuilder:
             assert builder.context == mock_context
             mock_create.assert_called_once_with(mock_controller.env_context)
     
-    @patch('src.env.workflow.graph_based_workflow_builder.generate_steps_from_json')
-    @patch('src.env.workflow.graph_based_workflow_builder.resolve_dependencies')
-    @patch('src.env.workflow.graph_based_workflow_builder.optimize_workflow_steps')
+    @patch('src.env_core.workflow.graph_based_workflow_builder.generate_steps_from_json')
+    @patch('src.env_core.workflow.graph_based_workflow_builder.resolve_dependencies')
+    @patch('src.env_core.workflow.graph_based_workflow_builder.optimize_workflow_steps')
     def test_build_graph_from_json_steps_success(
         self, 
         mock_optimize, 
@@ -113,7 +113,7 @@ class TestGraphBasedWorkflowBuilder:
         mock_resolve.assert_called_once_with(mock_steps, mock_generate.call_args[0][1])
         mock_optimize.assert_called_once_with(mock_steps)
     
-    @patch('src.env.workflow.graph_based_workflow_builder.generate_steps_from_json')
+    @patch('src.env_core.workflow.graph_based_workflow_builder.generate_steps_from_json')
     def test_build_graph_from_json_steps_error(
         self, 
         mock_generate,
@@ -169,7 +169,7 @@ class TestGraphBasedWorkflowBuilder:
         # モックグラフを作成
         mock_graph = Mock(spec=RequestExecutionGraph)
         
-        with patch('src.env.workflow.graph_based_workflow_builder.GraphToCompositeAdapter') as MockAdapter:
+        with patch('src.env_core.workflow.graph_based_workflow_builder.GraphToCompositeAdapter') as MockAdapter:
             mock_composite = Mock()
             MockAdapter.to_composite_request.return_value = mock_composite
             

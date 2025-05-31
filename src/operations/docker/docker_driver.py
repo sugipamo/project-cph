@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.shell.local_shell_driver import LocalShellDriver
-from src.operations.docker.docker_util import DockerUtil
+from src.operations.docker.docker_utils import DockerUtils
 from src.operations.utils.pure_functions import (
     build_docker_run_command_pure,
     build_docker_build_command_pure,

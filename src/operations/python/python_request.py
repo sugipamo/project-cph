@@ -3,7 +3,7 @@ import traceback
 from src.operations.result import OperationResult
 from src.operations.constants.operation_type import OperationType
 from src.operations.base_request import BaseRequest
-from src.operations.python.python_util import PythonUtil
+from src.operations.python.python_utils import PythonUtils
 
 class PythonRequest(BaseRequest):
     _require_driver = False
@@ -30,11 +30,11 @@ class PythonRequest(BaseRequest):
         try:
             if self.cwd:
                 os.chdir(self.cwd)
-            if PythonUtil.is_script_file(self.code_or_file):
-                stdout, stderr, returncode = PythonUtil.run_script_file(self.code_or_file[0], cwd=self.cwd)
+            if PythonUtils.is_script_file(self.code_or_file):
+                stdout, stderr, returncode = PythonUtils.run_script_file(self.code_or_file[0], cwd=self.cwd)
             else:
                 code = "\n".join(self.code_or_file)
-                stdout, stderr, returncode = PythonUtil.run_code_string(code, cwd=self.cwd)
+                stdout, stderr, returncode = PythonUtils.run_code_string(code, cwd=self.cwd)
             end_time = time.time()
             return OperationResult(
                 stdout=stdout,

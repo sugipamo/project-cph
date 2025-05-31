@@ -2,7 +2,7 @@ import subprocess
 import threading
 from queue import Queue, Empty
 from src.operations.result import OperationResult
-from src.operations.shell.shell_util import ShellUtil
+from src.operations.shell.shell_utils import ShellUtils
 from src.operations.base_request import BaseRequest
 from src.operations.constants.operation_type import OperationType
 
@@ -33,19 +33,19 @@ class ShellInteractiveRequest(BaseRequest):
         return self.start()
 
     def start(self):
-        self._proc = ShellUtil.start_interactive(
+        self._proc = ShellUtils.start_interactive(
             self.cmd,
             cwd=self.cwd,
             env=self.env
         )
-        self._stdout_thread = threading.Thread(target=ShellUtil.enqueue_output, args=(self._proc.stdout, self._stdout_queue))
-        self._stderr_thread = threading.Thread(target=ShellUtil.enqueue_output, args=(self._proc.stderr, self._stderr_queue))
+        self._stdout_thread = threading.Thread(target=ShellUtils.enqueue_output, args=(self._proc.stdout, self._stdout_queue))
+        self._stderr_thread = threading.Thread(target=ShellUtils.enqueue_output, args=(self._proc.stderr, self._stderr_queue))
         self._stdout_thread.daemon = True
         self._stderr_thread.daemon = True
         self._stdout_thread.start()
         self._stderr_thread.start()
         if self.timeout is not None:
-            self._timeout_thread = threading.Thread(target=ShellUtil.enforce_timeout, args=(self._proc, self.timeout, self.stop))
+            self._timeout_thread = threading.Thread(target=ShellUtils.enforce_timeout, args=(self._proc, self.timeout, self.stop))
             self._timeout_thread.daemon = True
             self._timeout_thread.start()
         return self
@@ -99,8 +99,8 @@ class ShellInteractiveRequest(BaseRequest):
         if self._proc:
             self._proc.wait()
             # 残りのqueueもdrainしてlinesに追加
-            self._stdout_lines.extend(list(ShellUtil.drain_queue(self._stdout_queue)))
-            self._stderr_lines.extend(list(ShellUtil.drain_queue(self._stderr_queue)))
+            self._stdout_lines.extend(list(ShellUtils.drain_queue(self._stdout_queue)))
+            self._stderr_lines.extend(list(ShellUtils.drain_queue(self._stderr_queue)))
             stdout = ''.join(self._stdout_lines)
             stderr = ''.join(self._stderr_lines)
             return OperationResult(
