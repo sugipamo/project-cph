@@ -247,56 +247,88 @@ class GraphBasedWorkflowBuilder:
         nodes: List[RequestNode]
     ) -> None:
         """
-        ノード間の依存関係を構築
+        ノード間の依存関係を構築（最適化版）
         
         Args:
             graph: 依存関係を追加するグラフ
             nodes: ノードのリスト
         """
-        # リソースベースの依存関係を検出
-        for i, from_node in enumerate(nodes):
-            for j, to_node in enumerate(nodes):
-                if i >= j:
-                    continue
-                
-                # ファイル作成依存
-                for file_path in from_node.creates_files:
-                    if file_path in to_node.reads_files:
-                        edge = DependencyEdge(
-                            from_node=from_node.id,
-                            to_node=to_node.id,
-                            dependency_type=DependencyType.FILE_CREATION,
-                            resource_path=file_path,
-                            description=f"File {file_path} must be created before being read"
-                        )
-                        graph.add_dependency(edge)
-                
-                # ディレクトリ作成依存
-                for dir_path in from_node.creates_dirs:
-                    if dir_path in to_node.requires_dirs:
-                        edge = DependencyEdge(
-                            from_node=from_node.id,
-                            to_node=to_node.id,
-                            dependency_type=DependencyType.DIRECTORY_CREATION,
-                            resource_path=dir_path,
-                            description=f"Directory {dir_path} must be created before being used"
-                        )
-                        graph.add_dependency(edge)
-                    
-                    # ディレクトリ内のファイル作成依存
-                    for file_path in to_node.creates_files:
-                        if self._is_parent_directory(dir_path, file_path):
+        from collections import defaultdict
+        
+        # リソースからノードへのインデックスを構築（O(n)）
+        file_creators = defaultdict(list)  # file_path -> [(node_idx, node)]
+        dir_creators = defaultdict(list)   # dir_path -> [(node_idx, node)]
+        file_readers = defaultdict(list)   # file_path -> [(node_idx, node)]
+        dir_requirers = defaultdict(list)  # dir_path -> [(node_idx, node)]
+        
+        for idx, node in enumerate(nodes):
+            for file_path in node.creates_files:
+                file_creators[file_path].append((idx, node))
+            for dir_path in node.creates_dirs:
+                dir_creators[dir_path].append((idx, node))
+            for file_path in node.reads_files:
+                file_readers[file_path].append((idx, node))
+            for dir_path in node.requires_dirs:
+                dir_requirers[dir_path].append((idx, node))
+        
+        # ファイル作成依存を検出（O(m)、mは依存関係数）
+        for file_path, creators in file_creators.items():
+            if file_path in file_readers:
+                for creator_idx, creator in creators:
+                    for reader_idx, reader in file_readers[file_path]:
+                        if creator_idx < reader_idx:  # 順序を保持
                             edge = DependencyEdge(
-                                from_node=from_node.id,
-                                to_node=to_node.id,
-                                dependency_type=DependencyType.DIRECTORY_CREATION,
-                                resource_path=dir_path,
-                                description=f"Directory {dir_path} must exist for file {file_path}"
+                                from_node=creator.id,
+                                to_node=reader.id,
+                                dependency_type=DependencyType.FILE_CREATION,
+                                resource_path=file_path,
+                                description=f"File {file_path} must be created before being read"
                             )
                             graph.add_dependency(edge)
         
-        # 明示的な順序依存を追加（依存関係がないノード間）
-        # これにより、元の順序をある程度保持
+        # ディレクトリ作成依存を検出
+        for dir_path, creators in dir_creators.items():
+            if dir_path in dir_requirers:
+                for creator_idx, creator in creators:
+                    for requirer_idx, requirer in dir_requirers[dir_path]:
+                        if creator_idx < requirer_idx:
+                            edge = DependencyEdge(
+                                from_node=creator.id,
+                                to_node=requirer.id,
+                                dependency_type=DependencyType.DIRECTORY_CREATION,
+                                resource_path=dir_path,
+                                description=f"Directory {dir_path} must be created before being used"
+                            )
+                            graph.add_dependency(edge)
+        
+        # ディレクトリ内のファイル作成依存（最適化：必要な場合のみチェック）
+        for idx, node in enumerate(nodes):
+            if node.creates_files:
+                # このノードが作成するファイルの親ディレクトリを収集
+                parent_dirs = set()
+                for file_path in node.creates_files:
+                    parent = str(Path(file_path).parent)
+                    if parent != '.':
+                        parent_dirs.add(parent)
+                
+                # 必要な親ディレクトリを作成するノードを検索
+                for parent_dir in parent_dirs:
+                    # 完全一致または親ディレクトリを作成するノードを探す
+                    for check_dir, creators in dir_creators.items():
+                        if self._is_parent_directory(check_dir, parent_dir) or check_dir == parent_dir:
+                            for creator_idx, creator in creators:
+                                if creator_idx < idx:
+                                    edge = DependencyEdge(
+                                        from_node=creator.id,
+                                        to_node=node.id,
+                                        dependency_type=DependencyType.DIRECTORY_CREATION,
+                                        resource_path=check_dir,
+                                        description=f"Directory {check_dir} must exist for files in {parent_dir}"
+                                    )
+                                    graph.add_dependency(edge)
+                                    break  # 同じディレクトリに対して複数の依存を追加しない
+        
+        # 明示的な順序依存を追加（競合がある場合のみ）
         for i in range(len(nodes) - 1):
             from_node = nodes[i]
             to_node = nodes[i + 1]
@@ -309,17 +341,15 @@ class GraphBasedWorkflowBuilder:
             if from_node.id in graph.adjacency_list.get(to_node.id, set()):
                 continue
             
-            # リソースの競合がない場合は順序依存を追加
-            if not self._has_resource_conflict(from_node, to_node):
-                continue
-            
-            edge = DependencyEdge(
-                from_node=from_node.id,
-                to_node=to_node.id,
-                dependency_type=DependencyType.EXECUTION_ORDER,
-                description="Preserve original execution order"
-            )
-            graph.add_dependency(edge)
+            # リソースの競合がある場合のみ順序依存を追加
+            if self._has_resource_conflict(from_node, to_node):
+                edge = DependencyEdge(
+                    from_node=from_node.id,
+                    to_node=to_node.id,
+                    dependency_type=DependencyType.EXECUTION_ORDER,
+                    description="Preserve original execution order due to resource conflict"
+                )
+                graph.add_dependency(edge)
     
     def _is_parent_directory(self, parent_path: str, child_path: str) -> bool:
         """

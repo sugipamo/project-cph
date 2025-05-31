@@ -209,14 +209,16 @@ class GraphToCompositeAdapter:
                 new_node = RequestNode(
                     id=new_id,
                     request=node.request,
-                    status=node.status,
-                    result=node.result,
-                    creates_files=node.creates_files.copy(),
-                    creates_dirs=node.creates_dirs.copy(),
-                    reads_files=node.reads_files.copy(),
-                    requires_dirs=node.requires_dirs.copy(),
-                    metadata=node.metadata.copy()
+                    creates_files=node.creates_files.copy() if node.creates_files else None,
+                    creates_dirs=node.creates_dirs.copy() if node.creates_dirs else None,
+                    reads_files=node.reads_files.copy() if node.reads_files else None,
+                    requires_dirs=node.requires_dirs.copy() if node.requires_dirs else None,
+                    metadata=node.metadata.copy() if node.metadata else None
                 )
+                
+                # ステータスと結果を手動でコピー
+                new_node.status = node.status
+                new_node.result = node.result
                 merged_graph.add_request_node(new_node)
             
             # エッジを追加（IDを調整）

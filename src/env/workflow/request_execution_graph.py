@@ -4,7 +4,6 @@
 依存関係を持つリクエストのグラフ構造と実行戦略を提供
 """
 from typing import List, Dict, Set, Optional, Tuple, Any
-from dataclasses import dataclass, field
 from enum import Enum
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict, deque
@@ -20,24 +19,51 @@ class DependencyType(Enum):
     EXECUTION_ORDER = "exec_order"       # 実行順序依存
 
 
-@dataclass
 class RequestNode:
-    """リクエストノード（グラフの頂点）"""
-    id: str
-    request: BaseRequest
+    """リクエストノード（グラフの頂点）
     
-    # 実行情報
-    status: str = "pending"  # pending, running, completed, failed
-    result: Optional[OperationResult] = None
+    メモリ効率を考慮して、必要最小限の情報のみ保持
+    """
+    __slots__ = ('id', 'request', 'status', 'result', '_resource_info', 'metadata')
     
-    # リソース情報
-    creates_files: Set[str] = field(default_factory=set)
-    creates_dirs: Set[str] = field(default_factory=set)
-    reads_files: Set[str] = field(default_factory=set)
-    requires_dirs: Set[str] = field(default_factory=set)
+    def __init__(self, id: str, request: BaseRequest,
+                 creates_files: Optional[Set[str]] = None,
+                 creates_dirs: Optional[Set[str]] = None,
+                 reads_files: Optional[Set[str]] = None,
+                 requires_dirs: Optional[Set[str]] = None,
+                 metadata: Optional[Dict[str, Any]] = None):
+        self.id = id
+        self.request = request
+        self.status = "pending"
+        self.result = None
+        
+        # リソース情報をコンパクトに保存
+        self._resource_info = None
+        if creates_files or creates_dirs or reads_files or requires_dirs:
+            self._resource_info = {
+                'creates_files': creates_files or set(),
+                'creates_dirs': creates_dirs or set(),
+                'reads_files': reads_files or set(),
+                'requires_dirs': requires_dirs or set()
+            }
+        
+        self.metadata = metadata or {}
     
-    # メタデータ
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    @property
+    def creates_files(self) -> Set[str]:
+        return self._resource_info.get('creates_files', set()) if self._resource_info else set()
+    
+    @property
+    def creates_dirs(self) -> Set[str]:
+        return self._resource_info.get('creates_dirs', set()) if self._resource_info else set()
+    
+    @property
+    def reads_files(self) -> Set[str]:
+        return self._resource_info.get('reads_files', set()) if self._resource_info else set()
+    
+    @property
+    def requires_dirs(self) -> Set[str]:
+        return self._resource_info.get('requires_dirs', set()) if self._resource_info else set()
     
     def __hash__(self):
         return hash(self.id)
@@ -48,14 +74,17 @@ class RequestNode:
         return self.id == other.id
 
 
-@dataclass
 class DependencyEdge:
     """依存関係エッジ（グラフの辺）"""
-    from_node: str
-    to_node: str
-    dependency_type: DependencyType
-    resource_path: Optional[str] = None
-    description: str = ""
+    __slots__ = ('from_node', 'to_node', 'dependency_type', 'resource_path', 'description')
+    
+    def __init__(self, from_node: str, to_node: str, dependency_type: DependencyType,
+                 resource_path: Optional[str] = None, description: str = ""):
+        self.from_node = from_node
+        self.to_node = to_node
+        self.dependency_type = dependency_type
+        self.resource_path = resource_path
+        self.description = description
 
 
 class RequestExecutionGraph:
@@ -129,11 +158,116 @@ class RequestExecutionGraph:
         
         return cycles
     
+    def analyze_cycles(self) -> Dict[str, Any]:
+        """
+        循環依存を解析して詳細な情報を取得
+        
+        Returns:
+            Dict[str, Any]: 循環の詳細情報
+        """
+        cycles = self.detect_cycles()
+        if not cycles:
+            return {'has_cycles': False, 'cycles': []}
+        
+        cycle_analysis = []
+        for cycle in cycles:
+            # 循環の詳細情報を収集
+            cycle_info = {
+                'nodes': cycle,
+                'length': len(cycle),
+                'dependencies': []
+            }
+            
+            # 循環内の依存関係を調査
+            for i, from_node in enumerate(cycle):
+                to_node = cycle[(i + 1) % len(cycle)]
+                
+                # このエッジを探す
+                edge_info = None
+                for edge in self.edges:
+                    if edge.from_node == from_node and edge.to_node == to_node:
+                        edge_info = {
+                            'from': from_node,
+                            'to': to_node,
+                            'type': edge.dependency_type.value,
+                            'resource': edge.resource_path,
+                            'description': edge.description
+                        }
+                        break
+                
+                if edge_info:
+                    cycle_info['dependencies'].append(edge_info)
+            
+            cycle_analysis.append(cycle_info)
+        
+        return {
+            'has_cycles': True,
+            'cycle_count': len(cycles),
+            'cycles': cycle_analysis
+        }
+    
+    def format_cycle_error(self) -> str:
+        """
+        循環依存のエラーメッセージをフォーマット
+        
+        Returns:
+            str: ユーザーに優しいエラーメッセージ
+        """
+        analysis = self.analyze_cycles()
+        if not analysis['has_cycles']:
+            return ""
+        
+        lines = [
+            "Circular dependency detected in the workflow graph!",
+            "",
+            f"Found {analysis['cycle_count']} circular dependency chain(s):",
+            ""
+        ]
+        
+        for i, cycle in enumerate(analysis['cycles'], 1):
+            lines.append(f"Cycle {i} ({cycle['length']} nodes):")
+            
+            # ノードの循環を表示
+            node_names = []
+            for node_id in cycle['nodes']:
+                node = self.nodes.get(node_id)
+                if node and hasattr(node.request, '__class__'):
+                    node_names.append(f"{node_id} ({node.request.__class__.__name__})") 
+                else:
+                    node_names.append(node_id)
+            
+            cycle_chain = " -> ".join(node_names) + f" -> {node_names[0]}"
+            lines.append(f"  {cycle_chain}")
+            lines.append("")
+            
+            # 依存関係の詳細
+            if cycle['dependencies']:
+                lines.append("  Dependencies in this cycle:")
+                for dep in cycle['dependencies']:
+                    dep_desc = f"    {dep['from']} -> {dep['to']} ({dep['type']})"
+                    if dep['resource']:
+                        dep_desc += f" [resource: {dep['resource']}]"
+                    if dep['description']:
+                        dep_desc += f" - {dep['description']}"
+                    lines.append(dep_desc)
+                lines.append("")
+        
+        lines.extend([
+            "Resolution suggestions:",
+            "1. Remove or modify one of the dependencies in each cycle",
+            "2. Check if the dependencies are actually necessary",
+            "3. Consider using conditional execution or different resources",
+            "4. Review the workflow logic for potential design issues"
+        ])
+        
+        return "\n".join(lines)
+    
     def get_execution_order(self) -> List[str]:
         """トポロジカルソートによる実行順序を取得（Kahnのアルゴリズム）"""
         cycles = self.detect_cycles()
         if cycles:
-            raise ValueError(f"Circular dependency detected: {cycles}")
+            cycle_error = self.format_cycle_error()
+            raise ValueError(cycle_error)
         
         # 入次数を計算
         in_degree = {node: 0 for node in self.nodes}
@@ -222,90 +356,137 @@ class RequestExecutionGraph:
         
         return results
     
-    def execute_parallel(self, driver=None, max_workers: int = 4) -> List[OperationResult]:
-        """並行実行"""
+    def execute_parallel(self, driver=None, max_workers: int = 4, 
+                        executor_class: type = ThreadPoolExecutor) -> List[OperationResult]:
+        """
+        並行実行（最適化版）
+        
+        Args:
+            driver: 実行に使用するドライバー
+            max_workers: 最大ワーカー数（CPUコア数に基づいて自動調整）
+            executor_class: 使用するExecutorクラス（テスト用）
+        
+        Returns:
+            List[OperationResult]: 実行結果のリスト
+        """
+        import os
+        
+        # CPUコア数に基づいてmax_workersを調整
+        cpu_count = os.cpu_count() or 1
+        optimal_workers = min(max_workers, cpu_count * 2)  # CPUコア数の2倍まで
+        
         parallel_groups = self.get_parallel_groups()
         all_results = {}
         failed_nodes = set()
         
-        for group in parallel_groups:
-            # 失敗したノードに依存するノードをスキップ
-            executable_nodes = []
-            for node_id in group:
-                dependencies = set(self.get_dependencies(node_id))
-                if not dependencies.intersection(failed_nodes):
-                    executable_nodes.append(node_id)
-                else:
-                    self.nodes[node_id].status = "skipped"
-            
-            if not executable_nodes:
-                continue
-            
-            if len(executable_nodes) == 1:
-                # 単一ノードは直接実行
-                node_id = executable_nodes[0]
-                node = self.nodes[node_id]
-                node.status = "running"
+        # グローバルスレッドプールを使用
+        with executor_class(max_workers=optimal_workers) as executor:
+            for group in parallel_groups:
+                # 失敗したノードに依存するノードをスキップ
+                executable_nodes = []
+                for node_id in group:
+                    dependencies = set(self.get_dependencies(node_id))
+                    if not dependencies.intersection(failed_nodes):
+                        executable_nodes.append(node_id)
+                    else:
+                        self.nodes[node_id].status = "skipped"
                 
-                try:
-                    result = node.request.execute(driver=driver)
-                    node.result = result
-                    node.status = "completed" if result.success else "failed"
-                    all_results[node_id] = result
+                if not executable_nodes:
+                    continue
+                
+                # バッチ処理で効率化
+                futures_batch = self._submit_batch(executor, executable_nodes, driver)
+                
+                # 結果を収集
+                for future, node_id in futures_batch:
+                    node = self.nodes[node_id]
                     
-                    if not result.success and not getattr(node.request, 'allow_failure', False):
-                        failed_nodes.add(node_id)
+                    try:
+                        result = future.result(timeout=300)  # 5分のタイムアウト
+                        node.result = result
+                        node.status = "completed" if result.success else "failed"
+                        all_results[node_id] = result
                         
-                except Exception as e:
-                    node.status = "failed"
-                    error_result = OperationResult(success=False, error_message=str(e))
-                    node.result = error_result
-                    all_results[node_id] = error_result
-                    
-                    if not getattr(node.request, 'allow_failure', False):
-                        failed_nodes.add(node_id)
-            else:
-                # 複数ノードは並行実行
-                with ThreadPoolExecutor(max_workers=min(max_workers, len(executable_nodes))) as executor:
-                    futures = {}
-                    
-                    for node_id in executable_nodes:
-                        node = self.nodes[node_id]
-                        node.status = "running"
-                        future = executor.submit(node.request.execute, driver=driver)
-                        futures[future] = node_id
-                    
-                    for future in as_completed(futures):
-                        node_id = futures[future]
-                        node = self.nodes[node_id]
+                        if not result.success and not getattr(node.request, 'allow_failure', False):
+                            failed_nodes.add(node_id)
+                            
+                    except Exception as e:
+                        node.status = "failed"
+                        error_result = OperationResult(success=False, error_message=str(e))
+                        node.result = error_result
+                        all_results[node_id] = error_result
                         
-                        try:
-                            result = future.result()
-                            node.result = result
-                            node.status = "completed" if result.success else "failed"
-                            all_results[node_id] = result
-                            
-                            if not result.success and not getattr(node.request, 'allow_failure', False):
-                                failed_nodes.add(node_id)
-                                
-                        except Exception as e:
-                            node.status = "failed"
-                            error_result = OperationResult(success=False, error_message=str(e))
-                            node.result = error_result
-                            all_results[node_id] = error_result
-                            
-                            if not getattr(node.request, 'allow_failure', False):
-                                failed_nodes.add(node_id)
+                        if not getattr(node.request, 'allow_failure', False):
+                            failed_nodes.add(node_id)
         
-        # 実行順序に従って結果を並べ替え
+        # 結果を実行順序に従って並べ替え
+        return self._collect_results(all_results)
+    
+    def _submit_batch(self, executor, node_ids: List[str], driver) -> List[Tuple]:
+        """
+        ノードをバッチでスレッドプールに送信
+        
+        Args:
+            executor: ThreadPoolExecutor
+            node_ids: 実行するノードIDのリスト
+            driver: 実行ドライバー
+        
+        Returns:
+            List[Tuple[Future, str]]: (Future, node_id)のリスト
+        """
+        futures = []
+        
+        for node_id in node_ids:
+            node = self.nodes[node_id]
+            node.status = "running"
+            
+            # タスクを送信
+            future = executor.submit(self._execute_node_safe, node, driver)
+            futures.append((future, node_id))
+        
+        return futures
+    
+    def _execute_node_safe(self, node: RequestNode, driver) -> OperationResult:
+        """
+        ノードを安全に実行（例外ハンドリング付き）
+        
+        Args:
+            node: 実行するノード
+            driver: 実行ドライバー
+        
+        Returns:
+            OperationResult: 実行結果
+        """
+        try:
+            return node.request.execute(driver=driver)
+        except Exception as e:
+            # 例外をキャッチしてエラー結果を返す
+            import traceback
+            error_msg = f"{str(e)}\n{traceback.format_exc()}"
+            return OperationResult(success=False, error_message=error_msg)
+    
+    def _collect_results(self, all_results: Dict[str, OperationResult]) -> List[OperationResult]:
+        """
+        結果を実行順序に従って収集
+        
+        Args:
+            all_results: ノードIDと結果の辞書
+        
+        Returns:
+            List[OperationResult]: 順序付けされた結果のリスト
+        """
         execution_order = self.get_execution_order()
         results = []
+        
         for node_id in execution_order:
             if node_id in all_results:
                 results.append(all_results[node_id])
             elif self.nodes[node_id].status == "skipped":
                 # スキップされたノードの結果
-                results.append(OperationResult(success=False, error_message="Skipped due to dependency failure"))
+                results.append(OperationResult(
+                    success=False, 
+                    error_message="Skipped due to dependency failure"
+                ))
         
         return results
     

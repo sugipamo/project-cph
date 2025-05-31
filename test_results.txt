@@ -1,0 +1,207 @@
+/home/cphelper/.local/lib/python3.12/site-packages/pytest_asyncio/plugin.py:217: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.3.5, pluggy-1.5.0
+rootdir: /home/cphelper/project-cph
+configfile: pytest.ini
+plugins: asyncio-0.26.0, cov-6.1.1
+asyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 491 items
+
+tests/cli/test_cph_sh.py ssssssssss                                      [  2%]
+tests/cli/test_user_input_parser.py .....                                [  3%]
+tests/context/test_validation_utils.py ........                          [  4%]
+tests/di_factory/test_base_composite_request.py ......                   [  5%]
+tests/di_factory/test_build_di_container_and_context.py .                [  6%]
+tests/di_factory/test_composite_request.py ............                  [  8%]
+tests/di_factory/test_di_container.py ..                                 [  8%]
+tests/docker/test_docker_file_handler.py sssssssssss                     [ 11%]
+tests/docker/test_docker_file_request.py ...                             [ 11%]
+tests/docker/test_docker_request_result.py ...                           [ 12%]
+tests/docker/test_docker_util.py ......                                  [ 13%]
+tests/env/factory/test_base_command_request_factory.py ...               [ 14%]
+tests/env/factory/test_build_command_request_factory.py ...              [ 14%]
+tests/env/factory/test_command_factories.py .                            [ 15%]
+tests/env/factory/test_copy_command_request_factory.py .......           [ 16%]
+tests/env/factory/test_mkdir_command_request_factory.py ..               [ 16%]
+tests/env/factory/test_python_command_request_factory.py ...             [ 17%]
+tests/env/factory/test_remove_command_request_factory.py ..              [ 17%]
+tests/env/factory/test_rmtree_command_request_factory.py ..              [ 18%]
+tests/env/factory/test_touch_command_request_factory.py ..               [ 18%]
+tests/env/step/test_run_step_base.py ...                                 [ 19%]
+tests/env/step/test_run_step_build.py ..                                 [ 19%]
+tests/env/step/test_run_step_copy.py ...                                 [ 20%]
+tests/env/step/test_run_step_factory.py ......                           [ 21%]
+tests/env/step/test_run_step_mkdir.py ...                                [ 22%]
+tests/env/step/test_run_step_move.py ....                                [ 23%]
+tests/env/step/test_run_step_movetree.py ....                            [ 23%]
+tests/env/step/test_run_step_oj.py ....                                  [ 24%]
+tests/env/step/test_run_step_python.py ....                              [ 25%]
+tests/env/step/test_run_step_remove.py ....                              [ 26%]
+tests/env/step/test_run_step_rmtree.py ....                              [ 27%]
+tests/env/step/test_run_step_shell.py ..                                 [ 27%]
+tests/env/step/test_run_step_touch.py ...                                [ 28%]
+tests/env/step/test_run_steps.py ..                                      [ 28%]
+tests/env_workflow_service/test_env_workflow_service_docker.py .         [ 28%]
+tests/env_workflow_service/test_env_workflow_service_docker_shell.py .   [ 28%]
+tests/env_workflow_service/test_env_workflow_service_shell.py ...        [ 29%]
+tests/env_workflow_service/test_factory_create_request_from_node.py .... [ 30%]
+..........                                                               [ 32%]
+tests/execution_context/test_config_resolver.py ........................ [ 37%]
+....................                                                     [ 41%]
+tests/factory/test_driver_factory.py ..........                          [ 43%]
+tests/file/test_file_request.py ....                                     [ 44%]
+tests/file/test_local_file_driver.py .......                             [ 45%]
+tests/file/test_local_file_handler.py ........                           [ 47%]
+tests/integration/test_composite_docker_request.py ........              [ 48%]
+tests/integration/test_composite_shell_request.py .                      [ 49%]
+tests/mock/test_dummy_file_driver.py ......                              [ 50%]
+tests/mock/test_mock_file_driver.py ..........                           [ 52%]
+tests/python/test_python_request.py .........                            [ 54%]
+tests/python/test_python_util.py ....                                    [ 54%]
+tests/resource/test_base_file_handler.py ....                            [ 55%]
+tests/resource/test_docker_naming.py ..........                          [ 57%]
+tests/resource/test_docker_run_handler.py ..                             [ 58%]
+tests/resource/test_env_resource_controller.py .                         [ 58%]
+tests/resource/test_file_driver.py ............                          [ 60%]
+tests/resource/test_file_handler.py s.sssssssssss.......                 [ 64%]
+tests/resource/test_path_utils.py .........                              [ 66%]
+tests/resource/test_run_handler.py ..                                    [ 67%]
+tests/result/test_docker_result.py ..                                    [ 67%]
+tests/result/test_file_result.py ..                                      [ 68%]
+tests/result/test_result.py ...                                          [ 68%]
+tests/result/test_shell_result.py ..                                     [ 69%]
+tests/shell/test_shell_interactive_request.py ....                       [ 69%]
+tests/shell/test_shell_request.py ..........                             [ 71%]
+tests/step_generation/test_core.py ...............                       [ 74%]
+tests/step_generation/test_dependency.py .............                   [ 77%]
+tests/step_generation/test_workflow.py ............                      [ 80%]
+tests/unit/test_format_utils.py .........                                [ 81%]
+tests/unit/test_main.py ........                                         [ 83%]
+tests/unit/test_pure_functions.py ...................................... [ 91%]
+.........                                                                [ 93%]
+tests/workflow/test_graph_based_workflow_builder.py ...........          [ 95%]
+tests/workflow/test_graph_to_composite_adapter.py .........              [ 97%]
+tests/workflow/test_request_execution_graph.py ..............            [100%]
+
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.3-final-0 ________________
+
+Name                                                     Stmts   Miss  Cover
+----------------------------------------------------------------------------
+src/__init__.py                                              0      0   100%
+src/context/__init__.py                                      2      0   100%
+src/context/execution_context.py                            36      2    94%
+src/context/resolver/__init__.py                             0      0   100%
+src/context/resolver/config_node.py                         19      4    79%
+src/context/resolver/config_node_logic.py                   45      2    96%
+src/context/resolver/config_resolver.py                    127     58    54%
+src/context/user_input_parser.py                           176     35    80%
+src/context/utils/format_utils.py                           15      3    80%
+src/context/utils/validation_utils.py                       32      2    94%
+src/env/__init__.py                                          0      0   100%
+src/env/build_operations.py                                 62      0   100%
+src/env/env_resource_controller.py                          27      0   100%
+src/env/env_workflow_service.py                             26      2    92%
+src/env/factory/__init__.py                                  0      0   100%
+src/env/factory/base_command_request_factory.py             33      9    73%
+src/env/factory/build_command_request_factory.py            31     13    58%
+src/env/factory/command_factories.py                         7      0   100%
+src/env/factory/copy_command_request_factory.py             33      0   100%
+src/env/factory/docker_command_request_factory.py           52     45    13%
+src/env/factory/mkdir_command_request_factory.py            22      4    82%
+src/env/factory/move_command_request_factory.py             29     10    66%
+src/env/factory/movetree_command_request_factory.py         37     10    73%
+src/env/factory/oj_command_request_factory.py               72     38    47%
+src/env/factory/python_command_request_factory.py           43     15    65%
+src/env/factory/remove_command_request_factory.py           22      5    77%
+src/env/factory/request_factory_selector.py                 44     17    61%
+src/env/factory/rmtree_command_request_factory.py           22      5    77%
+src/env/factory/shell_command_request_factory.py            47      9    81%
+src/env/factory/touch_command_request_factory.py            22      5    77%
+src/env/resource/__init__.py                                 0      0   100%
+src/env/resource/file/__init__.py                            0      0   100%
+src/env/resource/file/base_file_handler.py                  30      8    73%
+src/env/resource/file/docker_file_handler.py                78     58    26%
+src/env/resource/file/local_file_handler.py                 34      2    94%
+src/env/resource/run/__init__.py                             0      0   100%
+src/env/resource/run/base_run_handler.py                     9      1    89%
+src/env/resource/run/docker_run_handler.py                  13      0   100%
+src/env/resource/run/local_run_handler.py                    8      0   100%
+src/env/resource/utils/__init__.py                           0      0   100%
+src/env/resource/utils/docker_naming.py                     19      0   100%
+src/env/resource/utils/path_environment_checker.py          14     10    29%
+src/env/resource/utils/path_utils.py                        46      0   100%
+src/env/run_workflow_builder.py                             53     20    62%
+src/env/step/__init__.py                                     2      0   100%
+src/env/step/run_step_base.py                               15      0   100%
+src/env/step/run_step_build.py                               8      0   100%
+src/env/step/run_step_copy.py                               14      0   100%
+src/env/step/run_step_factory.py                            15      5    67%
+src/env/step/run_step_mkdir.py                              11      0   100%
+src/env/step/run_step_move.py                               14      0   100%
+src/env/step/run_step_movetree.py                           14      0   100%
+src/env/step/run_step_oj.py                                 13      0   100%
+src/env/step/run_step_python.py                             11      0   100%
+src/env/step/run_step_registry.py                            8      0   100%
+src/env/step/run_step_remove.py                             11      0   100%
+src/env/step/run_step_rmtree.py                             11      0   100%
+src/env/step/run_step_shell.py                              11      0   100%
+src/env/step/run_step_touch.py                              11      0   100%
+src/env/step/run_steps.py                                   19      0   100%
+src/env/step_generation/__init__.py                          6      0   100%
+src/env/step_generation/core.py                             86     10    88%
+src/env/step_generation/dependency.py                      102     15    85%
+src/env/step_generation/request_converter.py               113     53    53%
+src/env/step_generation/simple_graph_analysis.py            69     69     0%
+src/env/step_generation/step.py                             68      7    90%
+src/env/step_generation/workflow.py                         53      3    94%
+src/env/types.py                                             4      0   100%
+src/env/workflow/__init__.py                                 4      0   100%
+src/env/workflow/graph_based_workflow_builder.py           177     28    84%
+src/env/workflow/graph_to_composite_adapter.py             105      3    97%
+src/env/workflow/request_execution_graph.py                281     35    88%
+src/main.py                                                 35     30    14%
+src/operations/base_request.py                              34      4    88%
+src/operations/composite/base_composite_request.py          36      1    97%
+src/operations/composite/composite_request.py               49      2    96%
+src/operations/composite/driver_bound_request.py            17      4    76%
+src/operations/composite/parallel_composite_request.py      23      4    83%
+src/operations/constants/operation_type.py                   8      0   100%
+src/operations/di_container.py                              25      6    76%
+src/operations/docker/docker_driver.py                     138     83    40%
+src/operations/docker/docker_file_request.py                31      6    81%
+src/operations/docker/docker_request.py                     81     31    62%
+src/operations/docker/docker_util.py                        19      0   100%
+src/operations/exceptions/composite_step_failure.py          5      0   100%
+src/operations/factory/__init__.py                           0      0   100%
+src/operations/factory/driver_factory.py                    96     37    61%
+src/operations/file/file_driver.py                         113     24    79%
+src/operations/file/file_request.py                         76      7    91%
+src/operations/file/local_file_driver.py                    42      3    93%
+src/operations/mock/dummy_file_driver.py                    31      0   100%
+src/operations/mock/mock_docker_driver.py                   61     21    66%
+src/operations/mock/mock_file_driver.py                    149      9    94%
+src/operations/mock/mock_shell_driver.py                    33     22    33%
+src/operations/mock/mock_shell_request.py                   95      6    94%
+src/operations/python/python_request.py                     40      1    98%
+src/operations/python/python_util.py                        25      0   100%
+src/operations/result/__init__.py                            4      0   100%
+src/operations/result/docker_result.py                      12      0   100%
+src/operations/result/file_result.py                        12      0   100%
+src/operations/result/result.py                             54     10    81%
+src/operations/result/shell_result.py                       12      0   100%
+src/operations/shell/local_shell_driver.py                   5      1    80%
+src/operations/shell/shell_driver.py                         5      1    80%
+src/operations/shell/shell_request.py                       35      0   100%
+src/operations/shell/shell_util.py                          30     14    53%
+src/operations/utils/__init__.py                             0      0   100%
+src/operations/utils/pure_functions.py                     167     20    88%
+src/utils/__init__.py                                        0      0   100%
+src/utils/formatting.py                                     25     25     0%
+src/utils/validation.py                                     71     71     0%
+----------------------------------------------------------------------------
+TOTAL                                                     4337   1063    75%
+======================= 458 passed, 33 skipped in 1.54s ========================
