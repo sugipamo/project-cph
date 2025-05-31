@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Tuple, Union
 from src.operations.composite.composite_request import CompositeRequest
 from src.operations.di_container import DIContainer
-from src.env_core.types import EnvResourceController
+from src.env_integration.controller import EnvResourceController
 from src.env_core.step.workflow import (
     generate_workflow_from_json, 
     create_step_context_from_env_context,

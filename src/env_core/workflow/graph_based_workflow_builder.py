@@ -56,7 +56,7 @@ class GraphBasedWorkflowBuilder:
         controller(既存互換性のため保持)
         """
         # controllerからcontextを抽出
-        from src.env.step_generation.workflow import create_step_context_from_env_context
+        from src.env_core.step.workflow import create_step_context_from_env_context
         context = create_step_context_from_env_context(controller.env_context)
         return cls(context)
     
@@ -78,7 +78,7 @@ class GraphBasedWorkflowBuilder:
         context = self.context
         if context is None:
             # デフォルトコンテキストを作成
-            from src.env.step_generation.step import StepContext
+            from src.env_core.step.step import StepContext
             context = StepContext(
                 contest_name="",
                 problem_name="", 

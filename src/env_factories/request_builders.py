@@ -202,16 +202,22 @@ class FileRequestBuilder(RequestBuilder):
     
     def _build_single_path_request_from_node(self, node, factory):
         """Build single-path request from ConfigNode"""
-        cmd = node.value.get('cmd', [])
-        if not cmd:
-            raise ValueError(f"{self.file_op_type}: cmd requires target path")
-        
-        cmd_node = self._find_child_node(node, 'cmd')
-        if cmd_node and cmd_node.next_nodes:
-            target_node = cmd_node.next_nodes[0]
-            target = factory.format_value(cmd[0], target_node)
+        # Check for 'target' field first, then 'cmd'
+        target_path = node.value.get('target')
+        if target_path:
+            target_node = self._find_child_node(node, 'target')
+            target = factory.format_value(target_path, target_node if target_node else node)
         else:
-            target = factory.format_value(cmd[0], node)
+            cmd = node.value.get('cmd', [])
+            if not cmd:
+                raise ValueError(f"{self.file_op_type}: requires 'target' or 'cmd' field")
+            
+            cmd_node = self._find_child_node(node, 'cmd')
+            if cmd_node and cmd_node.next_nodes:
+                target_node = cmd_node.next_nodes[0]
+                target = factory.format_value(cmd[0], target_node)
+            else:
+                target = factory.format_value(cmd[0], node)
         
         request = FileRequest(self.file_op_type, target)
         request.allow_failure = node.value.get('allow_failure', False)

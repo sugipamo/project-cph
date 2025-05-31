@@ -43,9 +43,9 @@ class TestPureWorkflowBuilder:
         
         assert builder.context is None
     
-    @patch('src.env.workflow.graph_based_workflow_builder.generate_steps_from_json')
-    @patch('src.env.workflow.graph_based_workflow_builder.resolve_dependencies')
-    @patch('src.env.workflow.graph_based_workflow_builder.optimize_workflow_steps')
+    @patch('src.env_core.workflow.graph_based_workflow_builder.generate_steps_from_json')
+    @patch('src.env_core.workflow.graph_based_workflow_builder.resolve_dependencies')
+    @patch('src.env_core.workflow.graph_based_workflow_builder.optimize_workflow_steps')
     def test_build_graph_from_json_steps_success(
         self, 
         mock_optimize, 
@@ -89,7 +89,7 @@ class TestPureWorkflowBuilder:
             mock_optimize.assert_called_once_with(mock_steps)
             mock_build.assert_called_once_with(mock_steps)
     
-    @patch('src.env.workflow.graph_based_workflow_builder.generate_steps_from_json')
+    @patch('src.env_core.workflow.graph_based_workflow_builder.generate_steps_from_json')
     def test_build_graph_from_json_steps_failure(self, mock_generate, builder):
         """JSONステップからのグラフ生成失敗テスト"""
         # エラーのあるgeneration_result
@@ -115,7 +115,7 @@ class TestPureWorkflowBuilder:
         
         json_steps = [{"type": "mkdir", "cmd": ["./test"]}]
         
-        with patch('src.env.workflow.graph_based_workflow_builder.generate_steps_from_json') as mock_generate:
+        with patch('src.env_core.workflow.graph_based_workflow_builder.generate_steps_from_json') as mock_generate:
             mock_generation_result = Mock()
             mock_generation_result.is_success = True
             mock_generation_result.steps = []
@@ -162,7 +162,7 @@ class TestPureWorkflowBuilder:
         """グラフからCompositeRequestの生成テスト"""
         graph = RequestExecutionGraph()
         
-        with patch('src.env.workflow.graph_to_composite_adapter.GraphToCompositeAdapter.to_composite_request') as mock_convert:
+        with patch('src.env_core.workflow.graph_to_composite_adapter.GraphToCompositeAdapter.to_composite_request') as mock_convert:
             mock_composite = Mock()
             mock_convert.return_value = mock_composite
             
@@ -171,7 +171,7 @@ class TestPureWorkflowBuilder:
             assert result == mock_composite
             mock_convert.assert_called_once_with(graph)
     
-    @patch('src.env.workflow.pure_request_factory.PureRequestFactory.create_request_from_step')
+    @patch('src.env_core.workflow.pure_request_factory.PureRequestFactory.create_request_from_step')
     def test_step_to_request_success(self, mock_factory, builder):
         """StepからRequest生成成功テスト"""
         step = Step(type=StepType.MKDIR, cmd=["./test"], allow_failure=False)
@@ -183,7 +183,7 @@ class TestPureWorkflowBuilder:
         assert result == mock_request
         mock_factory.assert_called_once_with(step, context=None)
     
-    @patch('src.env.workflow.pure_request_factory.PureRequestFactory.create_request_from_step')
+    @patch('src.env_core.workflow.pure_request_factory.PureRequestFactory.create_request_from_step')
     def test_step_to_request_failure(self, mock_factory, builder):
         """StepからRequest生成失敗テスト"""
         step = Step(type=StepType.BUILD, cmd=["make"], allow_failure=False)  # 未対応タイプ
@@ -237,7 +237,7 @@ class TestPureWorkflowBuilder:
         
         mock_operations = Mock()
         
-        with patch('src.env.step_generation.workflow.create_step_context_from_env_context') as mock_create:
+        with patch('src.env_core.step.workflow.create_step_context_from_env_context') as mock_create:
             mock_context = Mock()
             mock_create.return_value = mock_context
             

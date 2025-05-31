@@ -134,7 +134,7 @@ class TestUnifiedCommandRequestFactory:
     
     def test_unsupported_command_type(self, factory):
         """Test handling of unsupported command type"""
-        with pytest.raises(ValueError, match="Unsupported command type"):
+        with pytest.raises(ValueError, match="No builder registered for command type"):
             factory.create_request_by_type("unsupported_type")
     
     def test_invalid_node_value(self, factory):

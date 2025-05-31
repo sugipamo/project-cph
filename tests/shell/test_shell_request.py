@@ -72,10 +72,10 @@ def test_shell_request_repr():
     assert "ShellRequest" in s and "/" in s
 
 def test_shell_request_execute_exception():
-    # ShellUtil.run_subprocessで例外を投げるようにする
+    # ShellUtils.run_subprocessで例外を投げるようにする
     req = ShellRequest(["false"])
     driver = LocalShellDriver()
-    with unittest.mock.patch("src.operations.shell.shell_util.ShellUtil.run_subprocess", side_effect=Exception("fail")):
+    with unittest.mock.patch("src.operations.shell.shell_utils.ShellUtils.run_subprocess", side_effect=Exception("fail")):
         result = req._execute_core(driver)
     assert isinstance(result, OperationResult)
     assert result.stderr == "fail"
@@ -91,7 +91,7 @@ def test_shell_request_with_inputdata_env_cwd(tmp_path):
             stderr = ""
             returncode = 0
         return Completed()
-    with unittest.mock.patch("src.operations.shell.shell_util.ShellUtil.run_subprocess", fake_run_subprocess):
+    with unittest.mock.patch("src.operations.shell.shell_utils.ShellUtils.run_subprocess", fake_run_subprocess):
         req = ShellRequest(["echo", "x"], cwd=str(tmp_path), env={"A": "B"}, inputdata="in", timeout=1)
         driver = LocalShellDriver()
         result = req._execute_core(driver)
@@ -109,7 +109,7 @@ def test_shell_request_show_output(capsys):
             stderr = "err"
             returncode = 0
         return Completed()
-    with unittest.mock.patch("src.operations.shell.shell_util.ShellUtil.run_subprocess", fake_run_subprocess):
+    with unittest.mock.patch("src.operations.shell.shell_utils.ShellUtils.run_subprocess", fake_run_subprocess):
         req = ShellRequest(["echo", "x"], show_output=True)
         driver = LocalShellDriver()
         result = req._execute_core(driver)
