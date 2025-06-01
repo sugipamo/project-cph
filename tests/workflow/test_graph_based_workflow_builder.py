@@ -21,6 +21,7 @@ class TestGraphBasedWorkflowBuilder:
         context.language = "python"
         context.env_type = "local"
         context.command_type = "run"
+        context.env_json = None  # No debug config
         return context
     
     @pytest.fixture
