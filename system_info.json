@@ -1,6 +1,6 @@
 {
-  "command": "test",
-  "language": "open",
+  "command": "open",
+  "language": "python",
   "env_type": "docker",
   "contest_name": "abc300",
   "problem_name": "a",

@@ -37,12 +37,13 @@ class InputParser:
         print(f"[DEBUG] _apply_language: in args={args} context.language={context.language}")
         
         for idx, arg in enumerate(args):
-            langs = resolve_by_match_desc(root, [arg])
-            if langs:
-                context.language = langs[0].key
-                new_args = args[:idx] + args[idx+1:]
-                print(f"[DEBUG] _apply_language: out args={new_args} context.language={context.language}")
-                return new_args, context
+            # 第1レベルのノード（言語）のみをチェック
+            for lang_node in root.next_nodes:
+                if arg in lang_node.matches:
+                    context.language = lang_node.key
+                    new_args = args[:idx] + args[idx+1:]
+                    print(f"[DEBUG] _apply_language: out args={new_args} context.language={context.language}")
+                    return new_args, context
         
         print(f"[DEBUG] _apply_language: out args={args} context.language={context.language}")
         return args, context
