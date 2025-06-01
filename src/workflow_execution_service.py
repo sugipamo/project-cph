@@ -132,12 +132,25 @@ class WorkflowExecutionService:
         else:
             results = graph.execute_sequential(driver=unified_driver)
         
-        # Check if all results are successful
-        success = all(r.success for r in results)
+        # Check if all results are successful (considering allow_failure)
+        critical_failures = []
         errors = []
         for i, result in enumerate(results):
             if not result.success:
-                errors.append(f"Step {i} failed: {result.get_error_output()}")
+                # Check if this request has allow_failure=true
+                request = result.request if hasattr(result, 'request') else None
+                allow_failure = getattr(request, 'allow_failure', False) if request else False
+                
+                if allow_failure:
+                    # Failure is allowed, don't count as critical
+                    errors.append(f"Step {i} failed (allowed): {result.get_error_output()}")
+                else:
+                    # Critical failure
+                    critical_failures.append(result)
+                    errors.append(f"Step {i} failed: {result.get_error_output()}")
+        
+        # Success if no critical failures occurred
+        success = len(critical_failures) == 0
         
         return WorkflowExecutionResult(
             success=success,

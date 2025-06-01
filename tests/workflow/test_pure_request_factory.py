@@ -142,12 +142,16 @@ class TestPureRequestFactory:
     
     def test_invalid_step_type(self):
         """未知のステップタイプの処理テスト"""
-        # StepTypeにないタイプを直接作成（テスト目的）
-        step = Step(
-            type=StepType.BUILD,  # PureRequestFactoryで未対応
-            cmd=["make"],
-            allow_failure=False
-        )
+        from unittest.mock import Mock
+        
+        # 存在しないステップタイプをモックで作成
+        fake_step_type = Mock()
+        fake_step_type.value = "unknown_type"
+        
+        step = Mock()
+        step.type = fake_step_type
+        step.cmd = ["make"]
+        step.allow_failure = False
         
         request = PureRequestFactory.create_request_from_step(step)
         
@@ -168,15 +172,16 @@ class TestPureRequestFactory:
         
         # Stepの検証でエラーが出るケースは除外し、
         # Factoryレベルでのエラーハンドリングをテスト
-        # 例：未知のステップタイプ
-        build_step = Step(
-            type=StepType.BUILD,  # PureRequestFactoryで未対応
-            cmd=["make", "all"],
-            allow_failure=False
-        )
+        # モックを使って検証をバイパス
+        from unittest.mock import Mock
         
-        request = PureRequestFactory.create_request_from_step(build_step)
-        assert request is None  # 未対応タイプはNoneを返す
+        invalid_step = Mock()
+        invalid_step.type = StepType.COPY
+        invalid_step.cmd = ["only_one_arg"]  # COPYには2つの引数が必要
+        invalid_step.allow_failure = False
+        
+        request = PureRequestFactory.create_request_from_step(invalid_step)
+        assert request is None  # 例外が発生してNoneを返す
     
     def test_operations_independence(self):
         """operations非依存の確認テスト"""

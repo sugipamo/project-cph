@@ -37,7 +37,16 @@ def main(context, operations):
     # Show detailed step debug information
     print(f"\n=== ステップ実行詳細 ===")
     for i, step_result in enumerate(result.results):
-        status = "✓ 成功" if step_result.success else "✗ 失敗"
+        if step_result.success:
+            status = "✓ 成功"
+        else:
+            # Check if failure is allowed
+            request = step_result.request if hasattr(step_result, 'request') else None
+            allow_failure = getattr(request, 'allow_failure', False) if request else False
+            if allow_failure:
+                status = "⚠️ 失敗 (許可済み)"
+            else:
+                status = "✗ 失敗"
         print(f"\nステップ {i+1}: {status}")
         
         # Show step type and command if available

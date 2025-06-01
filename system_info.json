@@ -1,7 +1,7 @@
 {
   "command": "open",
   "language": "python",
-  "env_type": "docker",
+  "env_type": "local",
   "contest_name": "abc300",
   "problem_name": "a",
   "env_json": {

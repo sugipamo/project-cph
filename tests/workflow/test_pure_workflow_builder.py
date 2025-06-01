@@ -181,18 +181,24 @@ class TestPureWorkflowBuilder:
         result = builder._step_to_request(step)
         
         assert result == mock_request
-        mock_factory.assert_called_once_with(step, context=None)
+        # contextが設定されたbuilderが正しくcontextを渡すことを確認
+        call_args = mock_factory.call_args
+        assert call_args[0][0] == step  # 最初の引数はstep
+        assert call_args[1]['context'] is not None  # contextは None ではない
     
     @patch('src.env_core.workflow.pure_request_factory.PureRequestFactory.create_request_from_step')
     def test_step_to_request_failure(self, mock_factory, builder):
-        """StepからRequest生成失敗テスト"""
-        step = Step(type=StepType.BUILD, cmd=["make"], allow_failure=False)  # 未対応タイプ
-        mock_factory.return_value = None
+        """StepからRequest生成失敗テスト（Factoryが例外でNoneを返す場合）"""
+        step = Step(type=StepType.BUILD, cmd=["make"], allow_failure=False)
+        mock_factory.return_value = None  # Factoryが例外等でNoneを返すケース
         
         result = builder._step_to_request(step)
         
         assert result is None
-        mock_factory.assert_called_once_with(step, context=None)
+        # contextが正しく渡されることを確認
+        call_args = mock_factory.call_args
+        assert call_args[0][0] == step  # 最初の引数はstep
+        assert call_args[1]['context'] is not None  # contextは None ではない
     
     def test_extract_resource_info_from_step(self, builder):
         """Stepからのリソース情報抽出テスト"""

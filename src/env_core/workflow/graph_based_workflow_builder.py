@@ -209,7 +209,7 @@ class GraphBasedWorkflowBuilder:
         from .pure_request_factory import PureRequestFactory
         
         # 純粋なファクトリを使用してリクエストを生成（operations不要）
-        return PureRequestFactory.create_request_from_step(step, context=None)
+        return PureRequestFactory.create_request_from_step(step, context=self.context)
     
     def _extract_resource_info_from_step(
         self, 
