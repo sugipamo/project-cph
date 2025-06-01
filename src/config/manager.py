@@ -92,9 +92,29 @@ class UnifiedConfig:
         # Support both 'steps' and 'run' arrays
         steps = command_config.get('steps', command_config.get('run', []))
         
-        # Process templates in steps
+        # Build enhanced context with resolved config values
+        enhanced_context = self.execution_context.copy()
+        
+        # Get language config and resolve commonly used template values
+        lang_config = self.get_language_config(language)
+        if lang_config:
+            # Process workspace_path if it exists
+            if 'workspace_path' in lang_config:
+                resolved_workspace = self._template_processor.process_template(
+                    lang_config['workspace_path'], self.execution_context
+                )
+                enhanced_context['workspace_path'] = resolved_workspace
+            
+            # Process contest_template_path if it exists
+            if 'contest_template_path' in lang_config:
+                resolved_template_path = self._template_processor.process_template(
+                    lang_config['contest_template_path'], self.execution_context
+                )
+                enhanced_context['contest_template_path'] = resolved_template_path
+        
+        # Process templates in steps with enhanced context
         processed_steps = self._template_processor.process_config_recursive(
-            steps, self.execution_context
+            steps, enhanced_context
         )
         
         return processed_steps if isinstance(processed_steps, list) else []
