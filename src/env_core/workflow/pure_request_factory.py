@@ -1,55 +1,38 @@
 """
-純粋なRequest生成Factory
+Request生成Factory
 
-operationsに依存しない、ユーザー入力からRequestを生成する純粋関数的Factory
-純粋なデータ構造としてリクエストを表現し、fittingでoperationsリクエストに変換
+env.jsonステップからoperationsリクエストを生成する
+実行はしないが、executeメソッドを持つoperationsリクエストを生成
 """
-from typing import Optional, Any, Dict, List, Union
-from dataclasses import dataclass
+from typing import Optional, Any
 from src.env_core.step.step import Step, StepType
-
-
-@dataclass
-class PureRequest:
-    """
-    純粋なリクエストデータ構造
-    operationsに依存しない、シンプルなデータ表現
-    """
-    type: str  # ファイル操作、シェル、Python、Docker等
-    operation: str  # mkdir, touch, copy, shell, exec等の具体的操作
-    params: Dict[str, Any]  # パラメータ辞書
-    allow_failure: bool = False
-    show_output: bool = True
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """辞書形式での表現を提供"""
-        return {
-            'type': self.type,
-            'operation': self.operation,
-            'params': self.params,
-            'allow_failure': self.allow_failure,
-            'show_output': self.show_output
-        }
+from src.operations.file.file_request import FileRequest
+from src.operations.file.file_op_type import FileOpType
+from src.operations.shell.shell_request import ShellRequest
+from src.operations.python.python_request import PythonRequest
+from src.operations.docker.docker_request import DockerRequest, DockerOpType
+from src.operations.base_request import BaseRequest
 
 
 class PureRequestFactory:
     """
-    純粋なRequest生成Factory
+    Request生成Factory
     
-    operationsに依存せず、Step情報からPureRequestを直接生成
+    env.jsonステップからoperationsリクエストを直接生成
+    実行はしないが、executeメソッドを持つリクエストを生成
     """
     
     @staticmethod
-    def create_request_from_step(step: Step, context=None) -> Optional[PureRequest]:
+    def create_request_from_step(step: Step, context=None) -> Optional[BaseRequest]:
         """
-        StepからPureRequestを純粋に生成
+        Stepからoperationsリクエストを生成
         
         Args:
             step: 変換するStep
             context: フォーマット用のコンテキスト（オプション）
             
         Returns:
-            生成されたPureRequest、または None
+            生成されたoperationsリクエスト、または None
         """
         try:
             if step.type == StepType.MKDIR:
@@ -92,134 +75,100 @@ class PureRequestFactory:
             return None
     
     @staticmethod
-    def _create_mkdir_request(step: Step, context) -> PureRequest:
+    def _create_mkdir_request(step: Step, context) -> FileRequest:
         """mkdir requestを生成"""
         if not step.cmd:
             raise ValueError("mkdir step requires target path in cmd")
         target_path = step.cmd[0]
-        return PureRequest(
-            type="file",
-            operation="mkdir",
-            params={"path": target_path},
-            allow_failure=step.allow_failure
-        )
+        request = FileRequest(op=FileOpType.MKDIR, path=target_path)
+        request.allow_failure = step.allow_failure
+        return request
     
     @staticmethod
-    def _create_touch_request(step: Step, context) -> PureRequest:
+    def _create_touch_request(step: Step, context) -> FileRequest:
         """touch requestを生成"""
         if not step.cmd:
             raise ValueError("touch step requires target path in cmd")
         target_path = step.cmd[0]
-        return PureRequest(
-            type="file",
-            operation="touch",
-            params={"path": target_path},
-            allow_failure=step.allow_failure
-        )
+        request = FileRequest(op=FileOpType.TOUCH, path=target_path)
+        request.allow_failure = step.allow_failure
+        return request
     
     @staticmethod
-    def _create_copy_request(step: Step, context) -> PureRequest:
+    def _create_copy_request(step: Step, context) -> FileRequest:
         """copy requestを生成"""
         if len(step.cmd) < 2:
             raise ValueError("copy step requires source and destination paths")
         source_path = step.cmd[0]
         dest_path = step.cmd[1]
-        return PureRequest(
-            type="file",
-            operation="copy",
-            params={"path": source_path, "dst_path": dest_path},
-            allow_failure=step.allow_failure
-        )
+        request = FileRequest(op=FileOpType.COPY, path=source_path, dst_path=dest_path)
+        request.allow_failure = step.allow_failure
+        return request
     
     @staticmethod
-    def _create_move_request(step: Step, context) -> PureRequest:
+    def _create_move_request(step: Step, context) -> FileRequest:
         """move requestを生成"""
         if len(step.cmd) < 2:
             raise ValueError("move step requires source and destination paths")
         source_path = step.cmd[0]
         dest_path = step.cmd[1]
-        return PureRequest(
-            type="file",
-            operation="move",
-            params={"path": source_path, "dst_path": dest_path},
-            allow_failure=step.allow_failure
-        )
+        request = FileRequest(op=FileOpType.MOVE, path=source_path, dst_path=dest_path)
+        request.allow_failure = step.allow_failure
+        return request
     
     @staticmethod
-    def _create_movetree_request(step: Step, context) -> PureRequest:
+    def _create_movetree_request(step: Step, context) -> FileRequest:
         """movetree requestを生成（実際にはcopytreeとして実装）"""
         if len(step.cmd) < 2:
             raise ValueError("movetree step requires source and destination paths")
         source_path = step.cmd[0]
         dest_path = step.cmd[1]
-        return PureRequest(
-            type="file",
-            operation="copytree",
-            params={"path": source_path, "dst_path": dest_path},
-            allow_failure=step.allow_failure
-        )
+        request = FileRequest(op=FileOpType.COPYTREE, path=source_path, dst_path=dest_path)
+        request.allow_failure = step.allow_failure
+        return request
     
     @staticmethod
-    def _create_remove_request(step: Step, context) -> PureRequest:
+    def _create_remove_request(step: Step, context) -> FileRequest:
         """remove requestを生成"""
         if not step.cmd:
             raise ValueError("remove step requires target path in cmd")
         target_path = step.cmd[0]
-        return PureRequest(
-            type="file",
-            operation="remove",
-            params={"path": target_path},
-            allow_failure=step.allow_failure
-        )
+        request = FileRequest(op=FileOpType.REMOVE, path=target_path)
+        request.allow_failure = step.allow_failure
+        return request
     
     @staticmethod
-    def _create_rmtree_request(step: Step, context) -> PureRequest:
+    def _create_rmtree_request(step: Step, context) -> FileRequest:
         """rmtree requestを生成"""
         if not step.cmd:
             raise ValueError("rmtree step requires target path in cmd")
         target_path = step.cmd[0]
-        return PureRequest(
-            type="file",
-            operation="rmtree",
-            params={"path": target_path},
-            allow_failure=step.allow_failure
-        )
+        request = FileRequest(op=FileOpType.RMTREE, path=target_path)
+        request.allow_failure = step.allow_failure
+        return request
     
     @staticmethod
-    def _create_shell_request(step: Step, context) -> PureRequest:
+    def _create_shell_request(step: Step, context) -> ShellRequest:
         """shell requestを生成"""
         if not step.cmd:
             raise ValueError("shell step requires command")
-        return PureRequest(
-            type="shell",
-            operation="exec",
-            params={
-                "cmd": step.cmd,
-                "cwd": step.cwd
-            },
-            allow_failure=step.allow_failure,
-            show_output=step.show_output
-        )
+        request = ShellRequest(cmd=step.cmd, cwd=step.cwd, show_output=step.show_output)
+        request.allow_failure = step.allow_failure
+        return request
     
     @staticmethod
-    def _create_python_request(step: Step, context) -> PureRequest:
+    def _create_python_request(step: Step, context) -> PythonRequest:
         """python requestを生成"""
         if not step.cmd:
             raise ValueError("python step requires code")
         
-        return PureRequest(
-            type="python",
-            operation="exec",
-            params={
-                "code_or_file": step.cmd,
-                "cwd": step.cwd
-            },
-            allow_failure=step.allow_failure,
-            show_output=step.show_output
-        )
+        # PythonRequestはcode_or_fileとしてリストを受け取る
+        request = PythonRequest(code_or_file=step.cmd, cwd=step.cwd, show_output=step.show_output)
+        request.allow_failure = step.allow_failure
+        return request
     
     @staticmethod
-    def _create_docker_exec_request(step: Step, context) -> PureRequest:
+    def _create_docker_exec_request(step: Step, context) -> DockerRequest:
         """docker exec requestを生成"""
         if len(step.cmd) < 2:
             raise ValueError("docker_exec step requires container and command")
@@ -227,19 +176,17 @@ class PureRequestFactory:
         container_name = step.cmd[0]
         command = ' '.join(step.cmd[1:])  # Join remaining arguments as command
         
-        return PureRequest(
-            type="docker",
-            operation="exec",
-            params={
-                "container": container_name,
-                "command": command
-            },
-            allow_failure=step.allow_failure,
-            show_output=step.show_output
+        request = DockerRequest(
+            op=DockerOpType.EXEC,
+            container=container_name,
+            command=command
         )
+        request.allow_failure = step.allow_failure
+        request.show_output = step.show_output
+        return request
     
     @staticmethod
-    def _create_docker_cp_request(step: Step, context) -> PureRequest:
+    def _create_docker_cp_request(step: Step, context) -> DockerRequest:
         """docker cp requestを生成"""
         if len(step.cmd) < 2:
             raise ValueError("docker_cp step requires source and destination")
@@ -266,21 +213,24 @@ class PureRequestFactory:
         else:
             raise ValueError("docker_cp step requires container:path format in src or dst")
         
-        return PureRequest(
-            type="docker",
-            operation="cp",
-            params={
-                "container": container_name,
-                "local_path": local_path,
-                "remote_path": remote_path,
-                "to_container": to_container
-            },
-            allow_failure=step.allow_failure,
-            show_output=step.show_output
+        # Use options to pass cp-specific parameters
+        options = {
+            'local_path': local_path,
+            'remote_path': remote_path,
+            'to_container': to_container
+        }
+        
+        request = DockerRequest(
+            op=DockerOpType.CP,
+            container=container_name,
+            options=options
         )
+        request.allow_failure = step.allow_failure
+        request.show_output = step.show_output
+        return request
     
     @staticmethod
-    def _create_docker_run_request(step: Step, context) -> PureRequest:
+    def _create_docker_run_request(step: Step, context) -> DockerRequest:
         """docker run requestを生成"""
         if not step.cmd:
             raise ValueError("docker_run step requires image name")
@@ -306,20 +256,18 @@ class PureRequestFactory:
             else:
                 container_name = docker_names.get('container_name')
         
-        return PureRequest(
-            type="docker",
-            operation="run",
-            params={
-                "image": image_name,
-                "container": container_name,
-                "options": options
-            },
-            allow_failure=step.allow_failure,
-            show_output=step.show_output
+        request = DockerRequest(
+            op=DockerOpType.RUN,
+            image=image_name,
+            container=container_name,
+            options=options
         )
+        request.allow_failure = step.allow_failure
+        request.show_output = step.show_output
+        return request
 
     @staticmethod
-    def _create_test_request(step: Step, context) -> PureRequest:
+    def _create_test_request(step: Step, context) -> BaseRequest:
         """test requestを生成（テストケースファイルを使った実行）"""
         if not step.cmd:
             raise ValueError("test step requires command")
@@ -422,16 +370,14 @@ workspace_file="{workspace_path}/main.py"
             fi
             '''
             
-            return PureRequest(
-                type="docker",
-                operation="exec",
-                params={
-                    "container": container_name,
-                    "command": f"bash -c '{test_script}'"
-                },
-                allow_failure=step.allow_failure,
-                show_output=step.show_output
+            request = DockerRequest(
+                op=DockerOpType.EXEC,
+                container=container_name,
+                command=f"bash -c '{test_script}'"
             )
+            request.allow_failure = step.allow_failure
+            request.show_output = step.show_output
+            return request
         
         # ローカル環境の場合は従来のShellRequest
         find_and_test_cmd = [
@@ -511,19 +457,13 @@ workspace_file="{workspace_path}/main.py"
             '''
         ]
         
-        return PureRequest(
-            type="shell",
-            operation="exec",
-            params={
-                "cmd": find_and_test_cmd,
-                "cwd": step.cwd
-            },
-            allow_failure=step.allow_failure,
-            show_output=step.show_output
-        )
+        request = ShellRequest(cmd=find_and_test_cmd, cwd=step.cwd, show_output=step.show_output)
+        request.allow_failure = step.allow_failure
+        request.show_output = step.show_output
+        return request
     
     @staticmethod
-    def _create_build_request(step: Step, context) -> PureRequest:
+    def _create_build_request(step: Step, context) -> BaseRequest:
         """build requestを生成（Docker環境ではdocker exec、ローカルではshell）"""
         if not step.cmd:
             raise ValueError("build step requires command")
@@ -537,50 +477,34 @@ workspace_file="{workspace_path}/main.py"
             # コマンドを文字列に結合
             command = ' '.join(step.cmd)
             
-            return PureRequest(
-                type="docker",
-                operation="exec",
-                params={
-                    "container": container_name,
-                    "command": command
-                },
-                allow_failure=step.allow_failure,
-                show_output=step.show_output
+            request = DockerRequest(
+                op=DockerOpType.EXEC,
+                container=container_name,
+                command=command
             )
         else:
             # ローカル環境の場合はShellRequestにフォールバック
-            return PureRequest(
-                type="shell",
-                operation="exec",
-                params={
-                    "cmd": step.cmd,
-                    "cwd": step.cwd
-                },
-                allow_failure=step.allow_failure,
-                show_output=step.show_output
-            )
+            request = ShellRequest(cmd=step.cmd, cwd=step.cwd, show_output=step.show_output)
+        
+        request.allow_failure = step.allow_failure
+        request.show_output = step.show_output
+        return request
     
     @staticmethod
-    def _create_result_request(step: Step, context) -> PureRequest:
+    def _create_result_request(step: Step, context) -> ShellRequest:
         """result requestを生成（テスト結果を表示・処理）"""
         if not step.cmd:
             raise ValueError("result step requires command or display type")
         
         # RESULTタイプのコマンドは主にテスト結果の集計・表示用
         # 基本的にはShellRequestで実装
-        return PureRequest(
-            type="shell",
-            operation="exec",
-            params={
-                "cmd": step.cmd,
-                "cwd": step.cwd
-            },
-            allow_failure=step.allow_failure,
-            show_output=True  # RESULTは常に出力を表示
-        )
+        request = ShellRequest(cmd=step.cmd, cwd=step.cwd, show_output=True)
+        request.allow_failure = step.allow_failure
+        request.show_output = True  # RESULTは常に出力を表示
+        return request
     
     @staticmethod
-    def _create_oj_request(step: Step, context) -> PureRequest:
+    def _create_oj_request(step: Step, context) -> BaseRequest:
         """oj requestを生成（Docker環境ではdocker exec、ローカルではshell）"""
         if not step.cmd:
             raise ValueError("oj step requires command")
@@ -594,25 +518,15 @@ workspace_file="{workspace_path}/main.py"
             # コマンドを文字列に結合
             command = ' '.join(step.cmd)
             
-            return PureRequest(
-                type="docker",
-                operation="exec",
-                params={
-                    "container": container_name,
-                    "command": command
-                },
-                allow_failure=step.allow_failure,
-                show_output=step.show_output
+            request = DockerRequest(
+                op=DockerOpType.EXEC,
+                container=container_name,
+                command=command
             )
         else:
             # ローカル環境の場合はShellRequestにフォールバック
-            return PureRequest(
-                type="shell",
-                operation="exec",
-                params={
-                    "cmd": step.cmd,
-                    "cwd": step.cwd
-                },
-                allow_failure=step.allow_failure,
-                show_output=step.show_output
-            )
+            request = ShellRequest(cmd=step.cmd, cwd=step.cwd, show_output=step.show_output)
+        
+        request.allow_failure = step.allow_failure
+        request.show_output = step.show_output
+        return request

@@ -6,11 +6,13 @@ from src.operations.base_request import BaseRequest
 
 class CompositeRequest(BaseCompositeRequest):
     def __init__(self, requests, debug_tag=None, name=None):
-        super().__init__(requests, name=name, debug_tag=debug_tag)
+        # Initialize structure first before calling super().__init__
         self.structure = CompositeStructure(requests)
         self.execution_controller = ExecutionController()
         self._executed = False
         self._results = None
+        # Now call super().__init__ which tries to set self.requests
+        super().__init__(requests, name=name, debug_tag=debug_tag)
 
     def __len__(self):
         return len(self.structure)
@@ -18,6 +20,15 @@ class CompositeRequest(BaseCompositeRequest):
     @property
     def requests(self):
         return self.structure.requests
+    
+    @requests.setter
+    def requests(self, value):
+        # Update the structure when requests is set
+        if hasattr(self, 'structure'):
+            self.structure = CompositeStructure(value)
+        else:
+            # This will be called during initialization
+            pass
 
     def execute(self, driver):
         return super().execute(driver)
