@@ -1,18 +1,130 @@
 {
-  "command": "open",
+  "command": "test",
   "language": "python",
-  "env_type": "local",
+  "env_type": "docker",
   "contest_name": "abc300",
   "problem_name": "a",
   "env_json": {
+    "rust": {
+      "language_id": "5078",
+      "source_file_name": "src/main.rs",
+      "contest_current_path": "./contest_current",
+      "contest_template_path": "./contest_template/{language_name}",
+      "exclude_patterns": [
+        "^.*\\.log$",
+        "^debug.*"
+      ],
+      "commands": {
+        "open": {
+          "description": "コンテストを開く",
+          "run": [
+            {
+              "type": "shell",
+              "allow_failure": true,
+              "show_output": true,
+              "cmd": [
+                "code",
+                "{contest_current_path}/{source_file_name}"
+              ]
+            }
+          ]
+        },
+        "test": {
+          "description": "テストを実行する",
+          "run": [
+            {
+              "type": "test",
+              "allow_failure": false,
+              "show_output": true,
+              "cmd": [
+                "cargo",
+                "test"
+              ]
+            }
+          ]
+        },
+        "submit": {
+          "description": "提出する",
+          "run": [
+            {
+              "type": "oj",
+              "allow_failure": false,
+              "show_output": true,
+              "cmd": [
+                "oj",
+                "submit",
+                "https://{contest_name}.contest.atcoder.jp/tasks/{contest_name}_{problem_id}",
+                "{contest_current_path}/{source_file_name}"
+              ]
+            }
+          ]
+        }
+      },
+      "env_types": {
+        "docker": {
+          "dockerfile_path": "./contest_env/rust/Dockerfile",
+          "run_prepare_file_moves": [],
+          "run_cmd": [
+            "cargo",
+            "run"
+          ],
+          "build_prepare_file_moves": [
+            {
+              "src": "{contest_current_path}/src",
+              "dst": "{workspace_path}/src"
+            }
+          ],
+          "build_cmds": [
+            [
+              "cargo",
+              "build"
+            ]
+          ]
+        },
+        "local": {
+          "run_prepare_file_moves": [],
+          "run_cmd": [
+            "cargo",
+            "run"
+          ],
+          "build_prepare_file_moves": [
+            {
+              "src": "{contest_current_path}/src",
+              "dst": "{workspace_path}/src"
+            }
+          ],
+          "build_cmds": [
+            [
+              "cargo",
+              "build"
+            ]
+          ]
+        }
+      }
+    },
     "python": {
       "language_id": "5078",
       "source_file_name": "main.py",
       "contest_current_path": "./contest_current",
       "contest_stock_path": "./contest_stock",
-      "contest_template_path": "./contest_template/{language_name}",
+      "contest_template_path": "./contest_template",
       "contest_temp_path": "./.temp",
       "workspace_path": "./workspace",
+      "debug": {
+        "enabled": false,
+        "level": "detailed",
+        "format": {
+          "icons": {
+            "start": "🚀",
+            "file_mkdir": "📁",
+            "file_copy": "📋",
+            "shell": "🔧",
+            "test": "🧪",
+            "success": "✅",
+            "failure": "❌"
+          }
+        }
+      },
       "commands": {
         "open": {
           "description": "コンテストを開く",
@@ -42,7 +154,7 @@
               "show_output": false,
               "force_env_type": "local",
               "cmd": [
-                "{contest_template_path}/{source_file_name}",
+                "{contest_template_path}/{language_name}/{source_file_name}",
                 "{contest_current_path}/{source_file_name}"
               ]
             },
@@ -93,7 +205,7 @@
             },
             {
               "type": "test",
-              "allow_failure": false,
+              "allow_failure": true,
               "show_output": true,
               "cmd": [
                 "python3",

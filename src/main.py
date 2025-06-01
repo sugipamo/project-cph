@@ -1,3 +1,7 @@
+# コマンド表示の最大文字数
+MAX_COMMAND_DISPLAY_LENGTH = 80
+
+
 def main(context, operations):
     """
     メイン処理本体。context, operations, controllerは必須。
@@ -59,13 +63,10 @@ def main(context, operations):
                 else:
                     print(f"  タイプ: {req.operation_type}")
             if hasattr(req, 'cmd') and req.cmd:
-                if isinstance(req.cmd, list):
-                    if len(req.cmd) == 1:
-                        print(f"  コマンド: {req.cmd[0]}")
-                    else:
-                        print(f"  コマンド: {req.cmd}")
-                else:
-                    print(f"  コマンド: {req.cmd}")
+                cmd_str = str(req.cmd)
+                if len(cmd_str) > MAX_COMMAND_DISPLAY_LENGTH:
+                    cmd_str = cmd_str[:MAX_COMMAND_DISPLAY_LENGTH-3] + "..."
+                print(f"  コマンド: {cmd_str}")
             if hasattr(req, 'path') and req.path:
                 print(f"  パス: {req.path}")
             if hasattr(req, 'dst_path') and req.dst_path:

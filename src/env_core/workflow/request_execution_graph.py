@@ -10,6 +10,7 @@ from collections import defaultdict, deque
 import re
 from src.operations.base_request import BaseRequest
 from src.operations.result.result import OperationResult
+from src.utils.debug_logger import DebugLogger
 
 
 class DependencyType(Enum):
@@ -91,7 +92,7 @@ class DependencyEdge:
 class RequestExecutionGraph:
     """リクエスト実行グラフ"""
     
-    def __init__(self):
+    def __init__(self, debug_config: Optional[Dict[str, Any]] = None):
         # 隣接リストでグラフを表現
         self.adjacency_list: Dict[str, Set[str]] = defaultdict(set)
         self.reverse_adjacency_list: Dict[str, Set[str]] = defaultdict(set)
@@ -99,6 +100,8 @@ class RequestExecutionGraph:
         self.edges: List[DependencyEdge] = []
         # 実行結果の蓄積用（結果置換機能用）
         self.execution_results: Dict[str, OperationResult] = {}
+        # デバッグロガー
+        self.debug_logger = DebugLogger(debug_config)
     
     def add_request_node(self, node: RequestNode) -> None:
         """リクエストノードを追加"""
@@ -326,6 +329,9 @@ class RequestExecutionGraph:
         """順次実行"""
         execution_order = self.get_execution_order()
         results = []
+        
+        # ワークフロー開始ログ
+        self.debug_logger.log_workflow_start(len(execution_order), parallel=False)
         
         for node_id in execution_order:
             node = self.nodes[node_id]
@@ -562,43 +568,41 @@ class RequestExecutionGraph:
             node: 実行するリクエストノード
             node_id: ノードID
         """
+        if not self.debug_logger.is_enabled():
+            return
+            
         req = node.request
         
-        print(f"\n🚀 実行開始: {node_id}")
-        
-        # リクエストタイプの表示
+        # リクエストタイプを取得
+        step_type = "unknown"
         if hasattr(req, 'operation_type'):
-            # FileRequestの場合はより具体的なfile operation typeを表示
             if str(req.operation_type) == "OperationType.FILE" and hasattr(req, 'op'):
-                print(f"  📁 タイプ: FILE.{req.op.name}")
+                step_type = f"FILE.{req.op.name}"
             else:
-                print(f"  🔧 タイプ: {req.operation_type}")
+                step_type = str(req.operation_type)
         
-        # コマンド情報の表示
+        # デバッグ情報を収集
+        debug_kwargs = {}
+        
+        # コマンド情報
         if hasattr(req, 'cmd') and req.cmd:
-            if isinstance(req.cmd, list):
-                if len(req.cmd) == 1:
-                    print(f"  ⚡ コマンド: {req.cmd[0]}")
-                else:
-                    print(f"  ⚡ コマンド: {req.cmd}")
-            else:
-                print(f"  ⚡ コマンド: {req.cmd}")
+            debug_kwargs['cmd'] = req.cmd
         
-        # パス情報の表示
+        # パス情報
         if hasattr(req, 'path') and req.path:
-            print(f"  📂 パス: {req.path}")
+            debug_kwargs['path'] = req.path
         if hasattr(req, 'dst_path') and req.dst_path:
-            print(f"  📋 送信先: {req.dst_path}")
+            debug_kwargs['dest'] = req.dst_path
+            debug_kwargs['source'] = getattr(req, 'path', '')
         
-        # 追加情報
-        if hasattr(req, 'cwd') and req.cwd:
-            print(f"  📍 作業ディレクトリ: {req.cwd}")
-        if hasattr(req, 'allow_failure') and req.allow_failure:
-            print(f"  ⚠️  失敗許可: True")
-        if hasattr(req, 'show_output') and req.show_output:
-            print(f"  📺 出力表示: True")
+        # オプション情報
+        if hasattr(req, 'allow_failure'):
+            debug_kwargs['allow_failure'] = req.allow_failure
+        if hasattr(req, 'show_output'):
+            debug_kwargs['show_output'] = req.show_output
         
-        print(f"  ⏱️  実行中...")
+        # デバッグログ出力
+        self.debug_logger.log_step_start(node_id, step_type, **debug_kwargs)
     
     def substitute_result_placeholders(self, text) -> str:
         """

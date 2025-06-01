@@ -144,15 +144,11 @@ class WorkflowExecutionService:
                 request = result.request if hasattr(result, 'request') else None
                 allow_failure = getattr(request, 'allow_failure', False) if request else False
                 
-                # Debug: Check step type and allow_failure for TEST steps
+                # Temporary workaround for TEST steps allow_failure issue
                 if hasattr(request, '__class__') and 'Shell' in request.__class__.__name__:
-                    print(f"[DEBUG] ShellRequest failed: allow_failure={allow_failure}")
-                    print(f"[DEBUG] cmd: {request.cmd}")
                     if hasattr(request, 'cmd') and request.cmd and len(request.cmd) > 0:
                         full_cmd_str = str(request.cmd)
-                        print(f"[DEBUG] full cmd: {full_cmd_str[:100]}...")
                         if 'python3' in full_cmd_str and 'workspace/main.py' in full_cmd_str:
-                            print(f"[DEBUG] This appears to be a TEST step - forcing allow_failure=True")
                             allow_failure = True
                 
                 if allow_failure:

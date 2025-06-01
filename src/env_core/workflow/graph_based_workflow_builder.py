@@ -161,7 +161,13 @@ class GraphBasedWorkflowBuilder:
         Returns:
             RequestExecutionGraph: 構築されたグラフ
         """
-        graph = RequestExecutionGraph()
+        # デバッグ設定を取得
+        debug_config = None
+        if self.context and hasattr(self.context, 'env_json') and self.context.env_json:
+            language_config = self.context.env_json.get(self.context.language, {})
+            debug_config = language_config.get('debug')
+        
+        graph = RequestExecutionGraph(debug_config)
         node_map: Dict[int, RequestNode] = {}
         
         # ステップからリクエストノードを作成

@@ -105,8 +105,10 @@ def parse_user_input(
     # コマンドライン引数解析
     args, context = InputParser.parse_command_line(args, context, root)
     
-    # 環境JSON適用
-    context = _apply_env_json(context, env_jsons)
+    # 環境JSON適用（マージされたJSONを使用）
+    # 常にマージされたJSONを使用して最新の設定を反映
+    if context.language and context.language in merged_env_json:
+        context.env_json = merged_env_json
     
     # 残り引数チェック
     if args:
