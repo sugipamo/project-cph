@@ -68,6 +68,7 @@ def create_step_from_json(json_step: Dict[str, Any], context: StepContext) -> St
     # オプション属性の処理
     allow_failure = json_step.get('allow_failure', False)
     show_output = json_step.get('show_output', False)
+    
     cwd = format_template(json_step.get('cwd'), context) if json_step.get('cwd') else None
     force_env_type = json_step.get('force_env_type')
     

@@ -367,6 +367,8 @@ class PureRequestFactory:
         request = ShellRequest(cmd=find_and_test_cmd, cwd=step.cwd, show_output=step.show_output)
         request.allow_failure = step.allow_failure
         request.show_output = step.show_output
+        
+        
         return request
     
     @staticmethod

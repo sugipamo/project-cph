@@ -258,6 +258,17 @@ class GraphBasedWorkflowBuilder:
             if len(step.cmd) > 0:
                 requires_dirs.add(step.cmd[0])
         
+        elif step.type == StepType.TEST:
+            # TESTステップは実行対象ファイルを読み取る
+            if len(step.cmd) >= 2:
+                # cmd[1]が実行対象ファイル（例: python3 ./workspace/main.py）
+                target_file = step.cmd[1]
+                reads_files.add(target_file)
+                # 実行ファイルの親ディレクトリも必要
+                parent = str(Path(target_file).parent)
+                if parent != '.':
+                    requires_dirs.add(parent)
+        
         return creates_files, creates_dirs, reads_files, requires_dirs
     
     def _build_dependencies(

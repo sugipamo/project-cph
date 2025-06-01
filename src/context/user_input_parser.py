@@ -33,6 +33,8 @@ def _load_all_env_jsons(base_dir: str, operations) -> list:
             req = FileRequest(FileOpType.READ, path)
             result = req.execute(driver=file_driver)
             data = json.loads(result.content)
+            
+            
             ValidationService.validate_env_json(data, path)
             env_jsons.append(data)
         except Exception as e:
