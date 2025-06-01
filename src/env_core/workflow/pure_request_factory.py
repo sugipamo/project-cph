@@ -268,9 +268,6 @@ class PureRequestFactory:
         if not step.cmd:
             raise ValueError("test step requires command")
         
-        # テストケース実行のためのコンポジットリクエストを作成
-        from src.operations.composite.composite_request import CompositeRequest
-        
         # テストケースディレクトリパスを構築
         if hasattr(context, 'contest_current_path'):
             test_dir = f"{context.contest_current_path}/test"
@@ -279,14 +276,110 @@ class PureRequestFactory:
             test_dir = "./contest_current/test"
             workspace_path = "./workspace"
         
-        # テストケースファイルを探すためのシェルコマンドを構築
-        # 各sample-*.inファイルに対してテストを実行
-        test_commands = []
+        # Dockerの場合はworkspace_pathを調整
+        if hasattr(context, 'env_type') and context.env_type == 'docker':
+            workspace_path = "./contest_current"
         
-        # ベースディレクトリを取得
-        base_dir = "/home/cphelper/project-cph"
+        # ベースディレクトリを取得（Dockerの場合は/workspaceを使用）
+        if hasattr(context, 'env_type') and context.env_type == 'docker':
+            base_dir = "/workspace"
+        else:
+            base_dir = "/home/cphelper/project-cph"
         
-        # sample-*.inファイルを探して、それぞれに対してテストを実行
+        # env_typeがdockerの場合はDockerRequestを生成
+        if hasattr(context, 'env_type') and context.env_type == 'docker':
+            from src.operations.docker.docker_request import DockerRequest, DockerOpType
+            
+            # Docker名を取得
+            docker_names = context.get_docker_names() if hasattr(context, 'get_docker_names') else {}
+            container_name = docker_names.get('container_name', 'cph_container')
+            
+            # Dockerコンテナ内で実行するためのテストスクリプト
+            test_script = f'''cd "{base_dir}"
+test_dir="{test_dir}"
+workspace_file="{workspace_path}/main.py"
+            
+            if [[ ! -d "$test_dir" ]]; then
+                echo "テストディレクトリが見つかりません: $test_dir"
+                exit 1
+            fi
+            
+            if [[ ! -f "$workspace_file" ]]; then
+                echo "実行ファイルが見つかりません: $workspace_file"
+                exit 1
+            fi
+            
+            test_passed=0
+            test_total=0
+            
+            for input_file in $(ls "$test_dir"/sample-*.in 2>/dev/null | sort); do
+                if [[ -f "$input_file" ]]; then
+                    test_total=$((test_total + 1))
+                    test_name=$(basename "$input_file" .in)
+                    expected_file="${{input_file%.in}}.out"
+                    
+                    echo "=== テストケース: $test_name ==="
+                    echo "入力:"
+                    cat "$input_file"
+                    echo "期待する出力:"
+                    if [[ -f "$expected_file" ]]; then
+                        cat "$expected_file"
+                    else
+                        echo "(期待する出力ファイルが見つかりません)"
+                    fi
+                    echo "実際の出力:"
+                    
+                    # プログラムを実行
+                    if python3 ./workspace/main.py < "$input_file" > temp_output.txt 2>&1; then
+                        cat temp_output.txt
+                        if [[ -f "$expected_file" ]] && diff -q "$expected_file" temp_output.txt > /dev/null; then
+                            echo "✓ PASS"
+                            test_passed=$((test_passed + 1))
+                        else
+                            echo "✗ FAIL"
+                            if [[ -f "$expected_file" ]]; then
+                                echo "差分:"
+                                diff "$expected_file" temp_output.txt || true
+                            fi
+                        fi
+                    else
+                        echo "✗ RUNTIME ERROR"
+                        cat temp_output.txt
+                    fi
+                    echo
+                    rm -f temp_output.txt
+                fi
+            done
+            
+            if [[ $test_total -eq 0 ]]; then
+                echo "テストケースが見つかりませんでした"
+                exit 1
+            fi
+            
+            echo "=== テスト結果 ==="
+            echo "合格: $test_passed / $test_total"
+            
+            if [[ $test_passed -eq $test_total ]]; then
+                echo "すべてのテストが合格しました！"
+                exit 0
+            else
+                echo "いくつかのテストが失敗しました"
+                exit 1
+            fi
+            '''
+            
+            request = DockerRequest(
+                op=DockerOpType.EXEC,
+                container=container_name,
+                command=f"bash -c '{test_script}'"
+            )
+            request.allow_failure = step.allow_failure
+            request.show_output = step.show_output
+            return request
+        
+        # ローカル環境の場合は従来のShellRequest
+        from src.operations.shell.shell_request import ShellRequest
+        
         find_and_test_cmd = [
             "bash", "-c", 
             f'''
@@ -325,7 +418,7 @@ class PureRequestFactory:
                     echo "実際の出力:"
                     
                     # プログラムを実行
-                    if {" ".join(step.cmd)} < "$input_file" > temp_output.txt 2>&1; then
+                    if python3 ./workspace/main.py < "$input_file" > temp_output.txt 2>&1; then
                         cat temp_output.txt
                         if [[ -f "$expected_file" ]] && diff -q "$expected_file" temp_output.txt > /dev/null; then
                             echo "✓ PASS"
@@ -367,8 +460,6 @@ class PureRequestFactory:
         request = ShellRequest(cmd=find_and_test_cmd, cwd=step.cwd, show_output=step.show_output)
         request.allow_failure = step.allow_failure
         request.show_output = step.show_output
-        
-        
         return request
     
     @staticmethod

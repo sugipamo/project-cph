@@ -33,7 +33,7 @@ class DockerDriver(ABC):
         pass
 
     @abstractmethod
-    def remove_container(self, name: str):
+    def remove_container(self, name: str, force: bool = False):
         pass
 
     @abstractmethod
@@ -82,14 +82,27 @@ class LocalDockerDriver(DockerDriver):
         result = req.execute(driver=LocalShellDriver())
         return result
 
-    def remove_container(self, name: str, show_output: bool = True):
-        cmd = build_docker_remove_command_pure(name)
+    def remove_container(self, name: str, force: bool = False, show_output: bool = True):
+        cmd = build_docker_remove_command_pure(name, force=force)
         req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=LocalShellDriver())
         return result
 
     def exec_in_container(self, name: str, command: str, show_output: bool = True):
-        cmd = ["docker", "exec", name] + command.split()
+        # commandが既にリストの場合はそのまま使用、文字列の場合はshlex.splitを使用
+        import shlex
+        if isinstance(command, list):
+            cmd = ["docker", "exec", name] + command
+        elif isinstance(command, str):
+            # シンプルなコマンドの場合はsplitで十分
+            if command.startswith("bash -c"):
+                # bash -c の場合は特別処理
+                cmd = ["docker", "exec", name, "bash", "-c", command[8:].strip().strip("'\"")]
+            else:
+                cmd = ["docker", "exec", name] + shlex.split(command)
+        else:
+            raise ValueError(f"Invalid command type: {type(command)}")
+        
         req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=LocalShellDriver())
         return result

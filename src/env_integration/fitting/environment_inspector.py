@@ -177,6 +177,72 @@ class EnvironmentInspector:
         
         return results
     
+    def inspect_docker_images(self, required_images: List[str]) -> Dict[str, ResourceStatus]:
+        """Inspect Docker image existence
+        
+        Args:
+            required_images: List of image names that should exist
+            
+        Returns:
+            Dict mapping image name to ResourceStatus
+        """
+        results = {}
+        
+        # Get all available images
+        try:
+            image_ls_result = self._docker_driver.image_ls(show_output=False)
+            available_images = set()
+            
+            if hasattr(image_ls_result, 'stdout') and image_ls_result.stdout:
+                # Parse docker image ls output to extract image names
+                lines = image_ls_result.stdout.strip().split('\n')
+                for line in lines[1:]:  # Skip header line
+                    if line.strip():
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            # Format: REPOSITORY TAG
+                            repo = parts[0]
+                            tag = parts[1]
+                            if tag != '<none>':
+                                available_images.add(f"{repo}:{tag}")
+                                if tag == 'latest':
+                                    available_images.add(repo)  # Also add without :latest
+                            else:
+                                available_images.add(repo)
+        except Exception:
+            # Fallback - assume no images available
+            available_images = set()
+        
+        # Check each required image
+        for image_name in required_images:
+            # Normalize image name (add :latest if no tag specified)
+            normalized_name = image_name if ':' in image_name else f"{image_name}:latest"
+            
+            if image_name in available_images or normalized_name in available_images:
+                # Image exists - no preparation needed
+                status = ResourceStatus(
+                    resource_type=ResourceType.DOCKER_IMAGE,
+                    identifier=image_name,
+                    current_state="available",
+                    exists=True,
+                    needs_preparation=False,
+                    preparation_actions=[]
+                )
+            else:
+                # Image doesn't exist - needs building or pulling
+                status = ResourceStatus(
+                    resource_type=ResourceType.DOCKER_IMAGE,
+                    identifier=image_name,
+                    current_state="missing",
+                    exists=False,
+                    needs_preparation=True,
+                    preparation_actions=["build_or_pull_image"]
+                )
+            
+            results[image_name] = status
+        
+        return results
+    
     def extract_requirements_from_workflow_tasks(self, workflow_tasks: List) -> List[ResourceRequirement]:
         """Extract resource requirements from workflow tasks
         
@@ -222,27 +288,45 @@ class EnvironmentInspector:
                         required_state="exists",
                         context_info={"task_type": "docker_cp_destination"}
                     ))
+            
+            # Extract Docker image requirements
+            elif self._is_docker_run_task(task_data):
+                image_name = self._extract_image_name_from_run(task_data)
+                if image_name:
+                    requirements.append(ResourceRequirement(
+                        resource_type=ResourceType.DOCKER_IMAGE,
+                        identifier=image_name,
+                        required_state="available",
+                        context_info={"task_type": "docker_run"}
+                    ))
         
         return requirements
     
     def _is_docker_exec_task(self, task_data: Dict) -> bool:
         """Check if task is a docker exec task"""
-        # Look for docker exec patterns in command or request type
+        # Check request type first (more reliable)
+        request_type = task_data.get('request_type', '')
+        if request_type == 'docker' and task_data.get('operation') == 'exec':
+            return True
+        
+        # Fallback: Look for docker exec patterns in command
         if isinstance(task_data.get('command'), str):
             return 'docker exec' in task_data['command']
         
-        # Check request type
-        request_type = task_data.get('request_type', '')
-        return request_type == 'docker' and task_data.get('operation') == 'exec'
+        return False
     
     def _is_docker_cp_task(self, task_data: Dict) -> bool:
         """Check if task is a docker cp task"""
+        # Check request type first (more reliable)
+        request_type = task_data.get('request_type', '')
+        if request_type == 'docker' and task_data.get('operation') == 'cp':
+            return True
+        
+        # Fallback: Look for docker cp patterns in command
         if isinstance(task_data.get('command'), str):
             return 'docker cp' in task_data['command']
         
-        # Check request type
-        request_type = task_data.get('request_type', '')
-        return request_type == 'docker' and task_data.get('operation') == 'cp'
+        return False
     
     def _extract_container_name_from_exec(self, task_data: Dict) -> Optional[str]:
         """Extract container name from docker exec task"""
@@ -289,3 +373,37 @@ class EnvironmentInspector:
         
         # Check direct destination specification
         return task_data.get('destination_directory')
+    
+    def _is_docker_run_task(self, task_data: Dict) -> bool:
+        """Check if task is a docker run task"""
+        # Check request type first (more reliable)
+        request_type = task_data.get('request_type', '')
+        if request_type == 'docker' and task_data.get('operation') == 'run':
+            return True
+        
+        # Fallback: Look for docker run patterns in command
+        if isinstance(task_data.get('command'), str):
+            return 'docker run' in task_data['command']
+        
+        return False
+    
+    def _extract_image_name_from_run(self, task_data: Dict) -> Optional[str]:
+        """Extract image name from docker run task"""
+        # Check direct image specification
+        if 'image' in task_data:
+            return task_data['image']
+        
+        command = task_data.get('command', '')
+        if isinstance(command, str) and 'docker run' in command:
+            # Parse: docker run [options] image [command]
+            parts = command.split()
+            if len(parts) >= 3 and parts[0] == 'docker' and parts[1] == 'run':
+                # Find the image name (first argument that doesn't start with -)
+                for i in range(2, len(parts)):
+                    if not parts[i].startswith('-'):
+                        # Skip option values
+                        if i > 2 and parts[i-1].startswith('-') and not parts[i-1].startswith('--'):
+                            continue
+                        return parts[i]
+        
+        return None

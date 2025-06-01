@@ -72,6 +72,52 @@ class UnifiedDriver:
             self._driver_cache[driver_name] = self.operations.resolve(driver_name)
         return self._driver_cache[driver_name]
     
+    # Docker driver methods
+    def exec_in_container(self, *args, **kwargs):
+        """Execute command in container using docker driver"""
+        docker_driver = self._get_cached_driver("docker_driver")
+        return docker_driver.exec_in_container(*args, **kwargs)
+    
+    def run_container(self, *args, **kwargs):
+        """Run container using docker driver"""
+        docker_driver = self._get_cached_driver("docker_driver")
+        return docker_driver.run_container(*args, **kwargs)
+    
+    def stop_container(self, *args, **kwargs):
+        """Stop container using docker driver"""
+        docker_driver = self._get_cached_driver("docker_driver")
+        return docker_driver.stop_container(*args, **kwargs)
+    
+    def remove_container(self, *args, **kwargs):
+        """Remove container using docker driver"""
+        docker_driver = self._get_cached_driver("docker_driver")
+        return docker_driver.remove_container(*args, **kwargs)
+    
+    def inspect(self, *args, **kwargs):
+        """Inspect container using docker driver"""
+        docker_driver = self._get_cached_driver("docker_driver")
+        return docker_driver.inspect(*args, **kwargs)
+    
+    def get_logs(self, *args, **kwargs):
+        """Get container logs using docker driver"""
+        docker_driver = self._get_cached_driver("docker_driver")
+        return docker_driver.get_logs(*args, **kwargs)
+    
+    def build(self, *args, **kwargs):
+        """Build image using docker driver"""
+        docker_driver = self._get_cached_driver("docker_driver")
+        return docker_driver.build(*args, **kwargs)
+    
+    def cp(self, *args, **kwargs):
+        """Copy files to/from container using docker driver"""
+        docker_driver = self._get_cached_driver("docker_driver")
+        return docker_driver.cp(*args, **kwargs)
+    
+    def ps(self, *args, **kwargs):
+        """List containers using docker driver"""
+        docker_driver = self._get_cached_driver("docker_driver")
+        return docker_driver.ps(*args, **kwargs)
+    
     # Delegate all other method calls to operations
     def __getattr__(self, name):
         """他のメソッド呼び出しをoperationsに委譲"""

@@ -92,7 +92,7 @@ class TestWorkflowExecutionService:
         tasks = service._create_workflow_tasks(steps)
         
         assert len(tasks) == 3
-        assert tasks[0]["request_type"] == "other"  # shell
+        assert tasks[0]["request_type"] == "shell"  # shell
         assert tasks[1]["request_type"] == "file"   # mkdir
         assert tasks[2]["request_type"] == "docker"  # docker_exec
     

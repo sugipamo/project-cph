@@ -78,7 +78,8 @@ class DockerRequest(BaseRequest):
             elif self.op == DockerOpType.STOP:
                 result = driver.stop_container(self.container, show_output=self.show_output)
             elif self.op == DockerOpType.REMOVE:
-                result = driver.remove_container(self.container, show_output=self.show_output)
+                force = self.options.get('f') is not None if self.options else False
+                result = driver.remove_container(self.container, force=force, show_output=self.show_output)
             elif self.op == DockerOpType.INSPECT:
                 result = driver.inspect(self.container, show_output=self.show_output)
             elif self.op == DockerOpType.EXEC:

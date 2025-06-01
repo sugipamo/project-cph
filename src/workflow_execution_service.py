@@ -192,8 +192,14 @@ class WorkflowExecutionService:
             # Create request from step
             request = PureRequestFactory.create_request_from_step(step, self.context)
             if request:
-                # Determine request type
-                if step.type.value.startswith("docker"):
+                # Determine request type based on actual request class
+                if request.__class__.__name__ == "DockerRequest":
+                    request_type = "docker"
+                elif request.__class__.__name__ == "FileRequest":
+                    request_type = "file"
+                elif request.__class__.__name__ == "ShellRequest":
+                    request_type = "shell"
+                elif step.type.value.startswith("docker"):
                     request_type = "docker"
                 elif step.type in [StepType.MKDIR, StepType.TOUCH, StepType.COPY, 
                                  StepType.MOVE, StepType.REMOVE, StepType.RMTREE]:
@@ -202,11 +208,23 @@ class WorkflowExecutionService:
                     request_type = "other"
                 
                 # Create task representation
-                workflow_tasks.append({
+                task = {
                     "request_object": request,
                     "command": f"{step.type.value} {' '.join(step.cmd)}",
                     "request_type": request_type
-                })
+                }
+                
+                # Add operation info for docker requests
+                if request_type == "docker" and hasattr(request, 'op'):
+                    # Extract operation name from DockerOpType enum
+                    op_name = str(request.op).split('.')[-1].lower()  # e.g., "exec"
+                    task["operation"] = op_name
+                    
+                    # Add container name if available
+                    if hasattr(request, 'container'):
+                        task["container_name"] = request.container
+                
+                workflow_tasks.append(task)
         
         return workflow_tasks
     
