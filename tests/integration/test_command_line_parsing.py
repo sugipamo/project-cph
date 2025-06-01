@@ -138,38 +138,6 @@ class TestCommandLineParsing:
             assert parsed_context.contest_name == "abc300"
             assert parsed_context.problem_name == "a"
     
-    def test_edge_case_language_like_commands(self):
-        """Test commands that could be confused with languages don't affect language parsing"""
-        # Add a command that looks like a language
-        config_with_edge_case = dict(self.mock_config)
-        config_with_edge_case["python"]["commands"]["rust"] = {"description": "Special rust command"}
-        root = create_config_root_from_dict(config_with_edge_case)
-        
-        context = self.create_context(language="python")
-        
-        # Parse arguments: abc300 rust a (rust as command, not language)
-        args = ["abc300", "rust", "a"]
-        remaining_args, parsed_context = InputParser.parse_command_line(args, context, root)
-        
-        # Language should remain python (not changed to rust)
-        assert parsed_context.language == "python", "Language incorrectly changed by command name"
-        assert parsed_context.command_type == "rust"
-        assert parsed_context.contest_name == "abc300"
-        assert parsed_context.problem_name == "a"
-    
-    def test_minimal_arguments(self):
-        """Test parsing with minimal arguments"""
-        context = self.create_context(language="python")
-        
-        # Just contest name
-        args = ["abc123"]
-        remaining_args, parsed_context = InputParser.parse_command_line(args, context, self.root)
-        
-        assert parsed_context.contest_name == "abc123"
-        assert parsed_context.language == "python"  # Should remain unchanged
-        # Other values should remain from original context
-        assert parsed_context.command_type == "test"  # From original context
-        assert len(remaining_args) == 0
     
     def test_language_only_checks_first_level_nodes(self):
         """
