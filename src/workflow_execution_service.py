@@ -1,0 +1,186 @@
+"""
+Workflow execution service to replace the removed EnvWorkflowService
+Integrates workflow building, fitting, and execution
+"""
+from typing import List, Dict, Tuple, Optional
+from dataclasses import dataclass
+
+from src.env_core.step.step import Step, StepType
+from src.env_core.step.core import generate_steps_from_json
+from src.env_core.workflow.graph_based_workflow_builder import GraphBasedWorkflowBuilder
+from src.env_core.workflow.pure_request_factory import PureRequestFactory
+from src.env_integration.fitting.preparation_executor import PreparationExecutor
+from src.context.execution_context import ExecutionContext
+from src.operations.result.result import OperationResult
+from src.operations.composite.driver_bound_request import DriverBoundRequest
+
+
+@dataclass
+class WorkflowExecutionResult:
+    """Result of workflow execution"""
+    success: bool
+    results: List[OperationResult]
+    preparation_results: List[OperationResult]
+    errors: List[str]
+    warnings: List[str]
+
+
+class WorkflowExecutionService:
+    """
+    Service for executing workflows with environment preparation
+    Replaces the removed EnvWorkflowService
+    """
+    
+    def __init__(self, context: ExecutionContext, operations):
+        """
+        Initialize workflow execution service
+        
+        Args:
+            context: Execution context with configuration
+            operations: Operations container for drivers
+        """
+        self.context = context
+        self.operations = operations
+        self.preparation_executor = PreparationExecutor(operations, context)
+    
+    def execute_workflow(self, parallel: bool = False, max_workers: int = 4) -> WorkflowExecutionResult:
+        """
+        Execute workflow based on context configuration
+        
+        Args:
+            parallel: Whether to execute in parallel
+            max_workers: Maximum number of parallel workers
+            
+        Returns:
+            WorkflowExecutionResult with execution results
+        """
+        # Get workflow steps from context
+        json_steps = self._get_workflow_steps()
+        if not json_steps:
+            return WorkflowExecutionResult(
+                success=False,
+                results=[],
+                preparation_results=[],
+                errors=["No workflow steps found for command"],
+                warnings=[]
+            )
+        
+        # Generate Step objects from JSON
+        step_result = generate_steps_from_json(
+            json_steps, 
+            self.context
+        )
+        
+        if step_result.errors:
+            return WorkflowExecutionResult(
+                success=False,
+                results=[],
+                preparation_results=[],
+                errors=step_result.errors,
+                warnings=step_result.warnings
+            )
+        
+        # Build workflow graph
+        builder = GraphBasedWorkflowBuilder.from_context(self.context)
+        graph, graph_errors, graph_warnings = builder.build_graph_from_json_steps(json_steps)
+        
+        if graph_errors:
+            return WorkflowExecutionResult(
+                success=False,
+                results=[],
+                preparation_results=[],
+                errors=graph_errors,
+                warnings=graph_warnings + step_result.warnings
+            )
+        
+        # Convert steps to workflow tasks for fitting analysis
+        workflow_tasks = self._create_workflow_tasks(step_result.steps)
+        
+        # Analyze environment and prepare if needed
+        preparation_results = []
+        if workflow_tasks:
+            preparation_tasks, statuses = self.preparation_executor.analyze_and_prepare(workflow_tasks)
+            
+            if preparation_tasks:
+                # Convert preparation tasks to requests
+                preparation_requests = self.preparation_executor.convert_to_workflow_requests(preparation_tasks)
+                
+                # Execute preparation tasks
+                from src.operations.composite.unified_driver import UnifiedDriver
+                unified_driver = UnifiedDriver(self.operations)
+                
+                for request in preparation_requests:
+                    bound_request = DriverBoundRequest(request, unified_driver)
+                    result = bound_request.execute()
+                    preparation_results.append(result)
+                    
+                    if not result.success:
+                        return WorkflowExecutionResult(
+                            success=False,
+                            results=[],
+                            preparation_results=preparation_results,
+                            errors=[f"Preparation failed: {result.get_error_output()}"],
+                            warnings=graph_warnings + step_result.warnings
+                        )
+        
+        # Execute main workflow
+        from src.operations.composite.unified_driver import UnifiedDriver
+        unified_driver = UnifiedDriver(self.operations)
+        
+        if parallel:
+            results = graph.execute_parallel(driver=unified_driver, max_workers=max_workers)
+        else:
+            results = graph.execute_sequential(driver=unified_driver)
+        
+        # Check if all results are successful
+        success = all(r.success for r in results)
+        errors = []
+        for i, result in enumerate(results):
+            if not result.success:
+                errors.append(f"Step {i} failed: {result.get_error_output()}")
+        
+        return WorkflowExecutionResult(
+            success=success,
+            results=results,
+            preparation_results=preparation_results,
+            errors=errors,
+            warnings=graph_warnings + step_result.warnings
+        )
+    
+    def _get_workflow_steps(self) -> List[Dict]:
+        """Get workflow steps from context configuration"""
+        if not self.context.env_json or self.context.language not in self.context.env_json:
+            return []
+        
+        language_config = self.context.env_json[self.context.language]
+        commands = language_config.get('commands', {})
+        command_config = commands.get(self.context.command_type, {})
+        
+        return command_config.get('steps', [])
+    
+    def _create_workflow_tasks(self, steps: List[Step]) -> List[Dict]:
+        """Convert steps to workflow tasks for fitting analysis"""
+        workflow_tasks = []
+        
+        for step in steps:
+            # Create request from step
+            request = PureRequestFactory.create_request_from_step(step, self.context)
+            if request:
+                # Determine request type
+                if step.type.value.startswith("docker"):
+                    request_type = "docker"
+                elif step.type in [StepType.MKDIR, StepType.TOUCH, StepType.COPY, 
+                                 StepType.MOVE, StepType.REMOVE, StepType.RMTREE]:
+                    request_type = "file"
+                else:
+                    request_type = "other"
+                
+                # Create task representation
+                workflow_tasks.append({
+                    "request_object": request,
+                    "command": f"{step.type.value} {' '.join(step.cmd)}",
+                    "request_type": request_type
+                })
+        
+        return workflow_tasks
+    

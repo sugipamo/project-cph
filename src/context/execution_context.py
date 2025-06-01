@@ -146,6 +146,45 @@ class ExecutionContext:
         resolverを使ってパスで設定値ノードを解決する
         """
         return self._config_resolver.resolve(path)
+    
+    def to_format_dict(self) -> Dict[str, str]:
+        """
+        フォーマット用の辞書を返す
+        
+        Returns:
+            Dict[str, str]: フォーマット用のキーと値の辞書
+        """
+        # 基本的な値
+        format_dict = {
+            "command_type": self.command_type,
+            "language": self.language,
+            "contest_name": self.contest_name,
+            "problem_name": self.problem_name,
+            "problem_id": self.problem_name,  # 互換性のため
+            "env_type": self.env_type,
+        }
+        
+        # env_jsonから追加の値を取得
+        if self.env_json and self.language in self.env_json:
+            lang_config = self.env_json[self.language]
+            
+            # パス関連
+            format_dict.update({
+                "contest_current_path": lang_config.get("contest_current_path", "./contest_current"),
+                "contest_stock_path": lang_config.get("contest_stock_path", "./contest_stock"),
+                "contest_template_path": lang_config.get("contest_template_path", "./contest_template/{language_name}"),
+                "contest_temp_path": lang_config.get("contest_temp_path", "./.temp"),
+                "workspace_path": lang_config.get("workspace_path", "./workspace"),
+            })
+            
+            # その他の値
+            format_dict.update({
+                "language_id": lang_config.get("language_id", ""),
+                "source_file_name": lang_config.get("source_file_name", "main.py"),
+                "language_name": self.language,
+            })
+        
+        return format_dict
 
     @property
     def workspace_path(self):

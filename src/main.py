@@ -2,14 +2,45 @@ def main(context, operations):
     """
     メイン処理本体。context, operations, controllerは必須。
     
-    Note: EnvWorkflowService has been removed during refactoring.
-    This function is temporarily disabled until a replacement is implemented.
+    Executes workflow based on context configuration with environment preparation.
     """
-    # TODO: Implement replacement for EnvWorkflowService
-    # The service was removed during the module refactoring
-    print("Warning: EnvWorkflowService has been removed. Main functionality is currently disabled.")
-    print("Please use the individual operation modules directly.")
-    return None
+    from src.workflow_execution_service import WorkflowExecutionService
+    
+    # Create workflow execution service
+    service = WorkflowExecutionService(context, operations)
+    
+    # Execute workflow with fitting
+    result = service.execute_workflow(parallel=False)
+    
+    # Handle results
+    if result.preparation_results:
+        print(f"準備タスク実行: {len(result.preparation_results)} 件")
+        for i, prep_result in enumerate(result.preparation_results):
+            if prep_result.success:
+                print(f"  ✓ 準備タスク {i+1}: 成功")
+            else:
+                print(f"  ✗ 準備タスク {i+1}: 失敗 - {prep_result.get_error_output()}")
+    
+    if result.warnings:
+        for warning in result.warnings:
+            print(f"警告: {warning}")
+    
+    if not result.success:
+        for error in result.errors:
+            print(f"エラー: {error}")
+        raise Exception("ワークフロー実行に失敗しました")
+    
+    # Show results summary
+    successful_steps = sum(1 for r in result.results if r.success)
+    print(f"\nワークフロー実行完了: {successful_steps}/{len(result.results)} ステップ成功")
+    
+    # Show output from steps that produced output
+    for i, step_result in enumerate(result.results):
+        if step_result.stdout and step_result.stdout.strip():
+            print(f"\nステップ {i+1} の出力:")
+            print(step_result.stdout)
+    
+    return result
 
 if __name__ == "__main__":
     import sys
