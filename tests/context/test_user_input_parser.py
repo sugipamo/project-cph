@@ -11,7 +11,6 @@ from src.context.user_input_parser import (
     parse_user_input,
     _load_all_env_jsons,
     _apply_env_json,
-    _apply_dockerfile_resolver,
     make_dockerfile_loader,
     CONTEST_ENV_DIR
 )
@@ -155,41 +154,6 @@ class TestApplyEnvJson:
         assert result.env_json is None
 
 
-class TestApplyDockerfileResolver:
-    """Test _apply_dockerfile_resolver function"""
-    
-    def test_apply_dockerfile_resolver_no_env_json(self):
-        """Test when env_json is not set"""
-        context = MagicMock()
-        context.env_json = None
-        mock_operations = MagicMock()
-        
-        result = _apply_dockerfile_resolver(context, mock_operations)
-        
-        assert result == context
-        assert hasattr(result, 'dockerfile_resolver')
-    
-    def test_apply_dockerfile_resolver_with_path(self):
-        """Test creating resolver when dockerfile path is specified"""
-        context = MagicMock()
-        context.env_json = {
-            "python": {
-                "env_types": {
-                    "docker": {
-                        "dockerfile_path": "/path/to/Dockerfile"
-                    }
-                }
-            }
-        }
-        context.language = "python"
-        context.env_type = "docker"
-        mock_operations = MagicMock()
-        
-        result = _apply_dockerfile_resolver(context, mock_operations)
-        
-        assert result == context
-        assert hasattr(result, 'dockerfile_resolver')
-        assert result.dockerfile_resolver is not None
 
 
 class TestMakeDockerfileLoader:

@@ -110,8 +110,6 @@ def parse_user_input(
     if args:
         raise ValueError(f"引数が多すぎます: {args}")
     
-    # Dockerfile resolver設定（遅延読み込み）
-    context = _apply_dockerfile_resolver(context, operations)
     
     # システム情報保存
     system_info_manager.save_system_info({
@@ -131,25 +129,6 @@ def parse_user_input(
     return context
 
 
-def _apply_dockerfile_resolver(context, operations):
-    """Dockerfile resolverを設定（遅延読み込み）"""
-    dockerfile_path = None
-    if context.env_json and context.language and context.env_type:
-        env_types = context.env_json[context.language].get("env_types", {})
-        env_type_conf = env_types.get(context.env_type, {})
-        dockerfile_path = env_type_conf.get("dockerfile_path")
-    
-    oj_dockerfile_path = os.path.join(os.path.dirname(__file__), "oj.Dockerfile")
-    
-    # DockerfileResolverを作成（パスのみ保存、内容は遅延読み込み）
-    from src.context.dockerfile_resolver import DockerfileResolver
-    context.dockerfile_resolver = DockerfileResolver(
-        dockerfile_path=dockerfile_path,
-        oj_dockerfile_path=oj_dockerfile_path,
-        dockerfile_loader=make_dockerfile_loader(operations)
-    )
-    
-    return context
 
 
 if __name__ == "__main__":
