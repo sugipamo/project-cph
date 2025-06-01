@@ -1,5 +1,5 @@
 {
-  "command": "open",
+  "command": "test",
   "language": "python",
   "env_type": "local",
   "contest_name": "abc300",
