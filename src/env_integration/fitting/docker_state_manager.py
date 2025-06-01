@@ -56,9 +56,31 @@ class DockerStateManager:
     Manages Docker state tracking for rebuild/recreate decisions
     """
     
-    def __init__(self, state_file_path: str = "docker_state.json"):
+    def __init__(self, state_file_path: str = "docker_state.json", initial_state: Optional[Dict] = None):
+        """
+        Initialize DockerStateManager
+        
+        Args:
+            state_file_path: Path to JSON file for persistent state storage
+            initial_state: Optional initial state dict (mainly for testing)
+        """
         self.state_file_path = state_file_path
-        self._state_cache: Optional[Dict] = None
+        self._state_cache: Optional[Dict] = initial_state
+    
+    @classmethod
+    def from_filepath(cls, state_file_path: str) -> 'DockerStateManager':
+        """
+        Create DockerStateManager and immediately load state from file
+        
+        Args:
+            state_file_path: Path to JSON file to load
+            
+        Returns:
+            DockerStateManager instance with loaded state
+        """
+        manager = cls(state_file_path=state_file_path)
+        manager._load_state()  # Force loading
+        return manager
     
     def _load_state(self) -> Dict:
         """Load docker state from file"""

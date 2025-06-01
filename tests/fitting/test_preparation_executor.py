@@ -67,12 +67,17 @@ class TestPreparationExecutor:
     
     def test_create_docker_run_task_oj(self):
         """Test creation of OJ Docker run task"""
-        task = self.executor._create_docker_run_task("cph_ojtools")
+        tasks = self.executor._create_docker_run_task("cph_ojtools")
         
-        assert task.task_type == "docker_run"
-        assert task.description == "Run container: cph_ojtools from image: ojtools"
-        assert task.request_object.image == "ojtools"
-        assert task.request_object.container == "cph_ojtools"
+        # Should return a list of tasks, find the run task
+        assert isinstance(tasks, list)
+        assert len(tasks) > 0
+        
+        # Find the docker_run task
+        run_task = next((task for task in tasks if task.task_type == "docker_run"), None)
+        assert run_task is not None
+        assert run_task.description.startswith("Run container: cph_ojtools from image:")
+        assert run_task.request_object.container == "cph_ojtools"
     
     def test_create_docker_remove_task(self):
         """Test creation of Docker remove task"""

@@ -13,8 +13,7 @@ class TestDockerNamingIntegration:
         # Create mock context
         context = MagicMock()
         context.language = "python"
-        context.dockerfile = None
-        context.oj_dockerfile = None
+        context._dockerfile_resolver = None
         
         # Add the method to the mock
         from src.context.execution_context import ExecutionContext
@@ -59,8 +58,12 @@ class TestDockerNamingIntegration:
         # Create mock context
         context = MagicMock()
         context.language = "python"
-        context.dockerfile = ""
-        context.oj_dockerfile = "   "
+        
+        # Mock dockerfile_resolver to return empty content
+        mock_resolver = MagicMock()
+        mock_resolver.dockerfile = ""
+        mock_resolver.oj_dockerfile = "   "
+        context._dockerfile_resolver = mock_resolver
         
         # Add the method to the mock
         from src.context.execution_context import ExecutionContext

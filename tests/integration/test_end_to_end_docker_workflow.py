@@ -39,8 +39,12 @@ class TestEndToEndDockerWorkflow:
         self.mock_context.contest_name = "abc300"
         self.mock_context.problem_name = "a"
         self.mock_context.env_type = "docker"
-        self.mock_context.dockerfile = "FROM python:3.9\nRUN pip install requests"
-        self.mock_context.oj_dockerfile = None
+        
+        # Setup dockerfile_resolver properly
+        mock_dockerfile_resolver = MagicMock()
+        mock_dockerfile_resolver.dockerfile = "FROM python:3.9\nRUN pip install requests"
+        mock_dockerfile_resolver.oj_dockerfile = None
+        self.mock_context.dockerfile_resolver = mock_dockerfile_resolver
         
         # Components
         self.preparation_executor = PreparationExecutor(self.mock_operations, self.mock_context)

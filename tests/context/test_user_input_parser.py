@@ -190,12 +190,8 @@ class TestParseUserInput:
     @patch('src.context.user_input_parser.create_config_root_from_dict')
     @patch('src.context.user_input_parser.InputParser')
     @patch('src.context.user_input_parser._apply_env_json')
-    @patch('src.context.user_input_parser._apply_dockerfile')
-    @patch('src.context.user_input_parser._apply_oj_dockerfile')
     def test_parse_user_input_success(
         self,
-        mock_apply_oj,
-        mock_apply_dockerfile,
         mock_apply_env_json,
         mock_input_parser,
         mock_create_root,
@@ -238,17 +234,7 @@ class TestParseUserInput:
             ctx.env_json = {"python": {"language_name": "Python"}}
             return ctx
         
-        def apply_dockerfile_side_effect(ctx, loader):
-            ctx.dockerfile = "FROM python:3.8"
-            return ctx
-        
-        def apply_oj_dockerfile_side_effect(ctx):
-            ctx.oj_dockerfile = "OJ Dockerfile"
-            return ctx
-        
         mock_apply_env_json.side_effect = apply_env_json_side_effect
-        mock_apply_dockerfile.side_effect = apply_dockerfile_side_effect
-        mock_apply_oj.side_effect = apply_oj_dockerfile_side_effect
         
         # Create proper ExecutionContext mock that returns itself from apply functions
         mock_context = MagicMock()
@@ -262,8 +248,6 @@ class TestParseUserInput:
         
         # Make apply functions return the context
         mock_apply_env_json.return_value = mock_context
-        mock_apply_dockerfile.return_value = mock_context  
-        mock_apply_oj.return_value = mock_context
         
         # Make parse_command_line return empty args and the context
         mock_input_parser.parse_command_line.return_value = ([], mock_context)
@@ -313,12 +297,8 @@ class TestParseUserInput:
     @patch('src.context.user_input_parser.create_config_root_from_dict')
     @patch('src.context.user_input_parser.InputParser')
     @patch('src.context.user_input_parser._apply_env_json')
-    @patch('src.context.user_input_parser._apply_dockerfile')
-    @patch('src.context.user_input_parser._apply_oj_dockerfile')
     def test_parse_user_input_validation_fails(
         self,
-        mock_apply_oj,
-        mock_apply_dockerfile,
         mock_apply_env_json,
         mock_input_parser,
         mock_create_root,
@@ -348,8 +328,6 @@ class TestParseUserInput:
         
         # Setup side effects
         mock_apply_env_json.side_effect = lambda ctx, env_jsons: ctx
-        mock_apply_dockerfile.side_effect = lambda ctx, loader: ctx
-        mock_apply_oj.side_effect = lambda ctx: ctx
         
         # Make parse_command_line return empty args and the context
         mock_input_parser.parse_command_line.return_value = ([], mock_context)

@@ -1,12 +1,212 @@
 {
   "python_docker": {
     "language": "python",
-    "dockerfile_hash": null,
+    "dockerfile_hash": "5adb7c972153",
     "oj_dockerfile_hash": null,
-    "image_name": "python",
-    "oj_image_name": "ojtools",
-    "container_name": "cph_python",
-    "oj_container_name": "cph_ojtools",
-    "last_updated": "2025-06-01T07:11:11.895305"
+    "image_name": "python_abc123",
+    "oj_image_name": "ojtools_def456",
+    "container_name": "cph_python_abc123",
+    "oj_container_name": "cph_ojtools_def456",
+    "last_updated": "2025-06-01T07:19:13.779136"
+  },
+  "python_<MagicMock name='mock.env_type' id='133107093207280'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:14:38.401051"
+  },
+  "python_<MagicMock name='mock.env_type' id='133107092170432'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:14:38.406210"
+  },
+  "python_<MagicMock name='mock.env_type' id='133107092256240'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:14:38.414702"
+  },
+  "python_<MagicMock name='mock.env_type' id='133107092487488'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:14:38.423631"
+  },
+  "python_<MagicMock name='mock.env_type' id='133107095799760'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:14:38.431084"
+  },
+  "python_<MagicMock name='mock.env_type' id='124656489929504'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:14:51.554040"
+  },
+  "python_<MagicMock name='mock.env_type' id='124656488000800'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:14:51.562479"
+  },
+  "python_<MagicMock name='mock.env_type' id='124656488237440'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:14:51.576405"
+  },
+  "python_<MagicMock name='mock.env_type' id='124656488436592'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:14:51.592297"
+  },
+  "python_<MagicMock name='mock.env_type' id='124656488615088'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:14:51.606209"
+  },
+  "python_<MagicMock name='mock.env_type' id='136498486405472'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:17:44.752012"
+  },
+  "python_<MagicMock name='mock.env_type' id='136498486589392'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:17:44.760493"
+  },
+  "python_<MagicMock name='mock.env_type' id='136498486778416'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:17:44.774170"
+  },
+  "python_<MagicMock name='mock.env_type' id='136498486941920'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:17:44.788127"
+  },
+  "python_<MagicMock name='mock.env_type' id='136498487203248'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:17:44.803433"
+  },
+  "python_<MagicMock name='mock.env_type' id='131321302708880'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:19:13.788391"
+  },
+  "python_<MagicMock name='mock.env_type' id='131321302944464'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:19:13.797401"
+  },
+  "python_<MagicMock name='mock.env_type' id='131321303033152'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:19:13.812920"
+  },
+  "python_<MagicMock name='mock.env_type' id='131321303262432'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:19:13.828897"
+  },
+  "python_<MagicMock name='mock.env_type' id='131321303580944'>": {
+    "language": "python",
+    "dockerfile_hash": "5adb7c972153",
+    "oj_dockerfile_hash": null,
+    "image_name": "python_test",
+    "oj_image_name": "ojtools_test",
+    "container_name": "cph_python_test",
+    "oj_container_name": "cph_ojtools_test",
+    "last_updated": "2025-06-01T07:19:13.845498"
   }
 }

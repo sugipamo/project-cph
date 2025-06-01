@@ -36,8 +36,12 @@ class TestWorkflowFittingIntegration:
             "oj_container_name": "cph_ojtools_test"
         }
         self.mock_context.language = "python"
-        self.mock_context.dockerfile = "FROM python:3.9\nRUN pip install requests"
-        self.mock_context.oj_dockerfile = None
+        
+        # Setup dockerfile_resolver properly
+        mock_dockerfile_resolver = MagicMock()
+        mock_dockerfile_resolver.dockerfile = "FROM python:3.9\nRUN pip install requests"
+        mock_dockerfile_resolver.oj_dockerfile = None
+        self.mock_context.dockerfile_resolver = mock_dockerfile_resolver
         
         self.executor = PreparationExecutor(self.mock_operations, self.mock_context)
     
