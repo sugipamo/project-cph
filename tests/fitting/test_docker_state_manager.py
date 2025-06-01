@@ -115,14 +115,14 @@ class TestDockerStateManager:
     def test_init_default(self):
         """Test default initialization"""
         manager = DockerStateManager()
-        assert manager.state_file_path == "docker_state.json"
-        assert manager._state_cache is None
+        assert manager.state_file_path is None
+        assert manager._state_cache == {}
     
     def test_init_with_file_path(self):
         """Test initialization with custom file path"""
         manager = DockerStateManager(state_file_path="/custom/path.json")
         assert manager.state_file_path == "/custom/path.json"
-        assert manager._state_cache is None
+        assert manager._state_cache == {}
     
     def test_init_with_initial_state(self):
         """Test initialization with initial state (for testing)"""
@@ -154,37 +154,30 @@ class TestDockerStateManager:
         assert manager.state_file_path == self.temp_file_path
         assert manager._state_cache == test_data
     
-    def test_load_state_no_file(self):
-        """Test loading state when file doesn't exist"""
-        manager = DockerStateManager(state_file_path="/nonexistent/file.json")
-        state = manager._load_state()
+    def test_get_state_empty(self):
+        """Test getting state when no initial state provided"""
+        manager = DockerStateManager()
+        state = manager._get_state()
         assert state == {}
-        assert manager._state_cache == {}
     
-    def test_load_state_existing_file(self):
-        """Test loading state from existing file"""
-        # Write test data to file
+    def test_get_state_with_initial_state(self):
+        """Test getting state with initial state provided"""
         test_data = {"test": "data"}
-        with open(self.temp_file_path, 'w') as f:
-            json.dump(test_data, f)
-        
-        manager = DockerStateManager(state_file_path=self.temp_file_path)
-        state = manager._load_state()
+        manager = DockerStateManager(initial_state=test_data)
+        state = manager._get_state()
         assert state == test_data
-        assert manager._state_cache == test_data
     
-    def test_load_state_invalid_json(self):
+    def test_load_state_from_file_invalid_json(self):
         """Test loading state from file with invalid JSON"""
         # Write invalid JSON to file
         with open(self.temp_file_path, 'w') as f:
             f.write("invalid json content")
         
-        manager = DockerStateManager(state_file_path=self.temp_file_path)
-        state = manager._load_state()
+        # Test static method
+        state = DockerStateManager._load_state_from_file(self.temp_file_path)
         assert state == {}
-        assert manager._state_cache == {}
     
-    def test_save_state(self):
+    def test_save_state_with_file(self):
         """Test saving state to file"""
         manager = DockerStateManager(state_file_path=self.temp_file_path)
         test_data = {"python_docker": {"language": "python"}}
@@ -196,6 +189,68 @@ class TestDockerStateManager:
             saved_data = json.load(f)
         assert saved_data == test_data
         assert manager._state_cache == test_data
+    
+    def test_save_state_without_file(self):
+        """Test saving state without file path (cache only)"""
+        manager = DockerStateManager()  # No file path
+        test_data = {"python_docker": {"language": "python"}}
+        
+        manager._save_state(test_data)
+        
+        # Should update cache but not write to file
+        assert manager._state_cache == test_data
+    
+    def test_dependency_injection_workflow(self):
+        """Test dependency injection workflow: JSON -> Manager -> Operations"""
+        # Simulate dependency injection scenario
+        initial_state = {
+            "python_docker": {
+                "language": "python",
+                "dockerfile_hash": "abc123456789",
+                "oj_dockerfile_hash": None,
+                "image_name": "python_abc123",
+                "container_name": "cph_python",
+                "oj_image_name": "ojtools",
+                "oj_container_name": "cph_ojtools",
+                "last_updated": "2023-01-01T00:00:00"
+            }
+        }
+        
+        # Create manager with injected state (no file persistence)
+        manager = DockerStateManager(initial_state=initial_state)
+        
+        # Mock context
+        mock_context = MagicMock(spec=ExecutionContext)
+        mock_context.language = "python"
+        mock_context.env_type = "docker"
+        mock_context.get_docker_names.return_value = {
+            "image_name": "python_abc123",
+            "container_name": "cph_python",
+            "oj_image_name": "ojtools",
+            "oj_container_name": "cph_ojtools"
+        }
+        
+        # Mock dockerfile resolver that produces same hash
+        mock_resolver = MagicMock()
+        mock_resolver.dockerfile = "FROM python:3.9"
+        mock_resolver.oj_dockerfile = None
+        mock_context.dockerfile_resolver = mock_resolver
+        
+        # Patch hash to match stored value
+        with patch('src.env_integration.fitting.docker_state_manager.hashlib.sha256') as mock_sha256:
+            mock_sha256.return_value.hexdigest.return_value = "abc123456789abcdef"
+            
+            # Check rebuild - should not need rebuild since state matches
+            result = manager.check_rebuild_needed(mock_context)
+            image_rebuild, oj_rebuild, container_recreate, oj_container_recreate = result
+            
+            assert image_rebuild is False  # Same hash
+            assert oj_rebuild is False
+            assert container_recreate is False
+            assert oj_container_recreate is False
+            
+            # Verify state is preserved
+            assert manager._get_state() == initial_state
     
     def test_get_state_key(self):
         """Test state key generation"""
@@ -316,8 +371,8 @@ class TestDockerStateManager:
         assert container_recreate is True
         assert oj_container_recreate is False
     
-    def test_update_state(self):
-        """Test updating stored state"""
+    def test_update_state_with_file(self):
+        """Test updating stored state with file persistence"""
         manager = DockerStateManager(state_file_path=self.temp_file_path)
         
         # Mock context
@@ -335,7 +390,7 @@ class TestDockerStateManager:
         # Update state
         manager.update_state(mock_context)
         
-        # Verify state was saved
+        # Verify state was saved to file
         with open(self.temp_file_path, 'r') as f:
             saved_data = json.load(f)
         
@@ -344,6 +399,32 @@ class TestDockerStateManager:
         assert state_data["language"] == "python"
         assert state_data["image_name"] == "python_abc123"
         assert state_data["container_name"] == "cph_python"
+    
+    def test_update_state_without_file(self):
+        """Test updating stored state without file persistence"""
+        manager = DockerStateManager()  # No file path
+        
+        # Mock context
+        mock_context = MagicMock(spec=ExecutionContext)
+        mock_context.language = "python"
+        mock_context.env_type = "docker"
+        mock_context.get_docker_names.return_value = {
+            "image_name": "python_abc123",
+            "container_name": "cph_python",
+            "oj_image_name": "ojtools",
+            "oj_container_name": "cph_ojtools"
+        }
+        mock_context.dockerfile_resolver = None
+        
+        # Update state
+        manager.update_state(mock_context)
+        
+        # Verify state was saved to cache only
+        state = manager._get_state()
+        assert "python_docker" in state
+        state_data = state["python_docker"]
+        assert state_data["language"] == "python"
+        assert state_data["image_name"] == "python_abc123"
     
     def test_get_expected_image_name(self):
         """Test getting expected image name"""
@@ -370,39 +451,35 @@ class TestDockerStateManager:
     
     def test_clear_state_specific(self):
         """Test clearing specific state entry"""
-        manager = DockerStateManager(state_file_path=self.temp_file_path)
-        
         # Setup initial state
         initial_state = {
             "python_docker": {"language": "python"},
             "rust_docker": {"language": "rust"}
         }
-        manager._save_state(initial_state)
+        manager = DockerStateManager(initial_state=initial_state, state_file_path=self.temp_file_path)
         
         # Clear specific entry
         manager.clear_state("python", "docker")
         
         # Verify only python_docker was removed
-        state = manager._load_state()
+        state = manager._get_state()
         assert "python_docker" not in state
         assert "rust_docker" in state
     
     def test_clear_state_all(self):
         """Test clearing all state"""
-        manager = DockerStateManager(state_file_path=self.temp_file_path)
-        
         # Setup initial state
         initial_state = {
             "python_docker": {"language": "python"},
             "rust_docker": {"language": "rust"}
         }
-        manager._save_state(initial_state)
+        manager = DockerStateManager(initial_state=initial_state, state_file_path=self.temp_file_path)
         
         # Clear all state
         manager.clear_state()
         
         # Verify all state was cleared
-        state = manager._load_state()
+        state = manager._get_state()
         assert state == {}
     
     def test_inspect_container_compatibility_nonexistent(self):

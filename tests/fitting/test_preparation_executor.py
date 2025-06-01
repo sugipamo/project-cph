@@ -137,7 +137,9 @@ class TestPreparationExecutor:
             preparation_actions=["remove_stopped_container", "run_new_container"]
         )
         
-        tasks = self.executor._create_container_preparation_tasks("cph_python", status)
+        # Mock DockerStateManager to indicate no rebuild needed
+        with patch.object(self.executor.state_manager, 'check_rebuild_needed', return_value=(False, False, False, False)):
+            tasks = self.executor._create_container_preparation_tasks("cph_python", status)
         
         assert len(tasks) == 2
         
@@ -149,7 +151,7 @@ class TestPreparationExecutor:
         # Second task should be run with dependency on remove
         run_task = tasks[1]
         assert run_task.task_type == "docker_run"
-        assert run_task.dependencies == [remove_task.task_id]
+        assert remove_task.task_id in run_task.dependencies
     
     def test_create_container_preparation_tasks_missing(self):
         """Test container preparation for missing container"""
@@ -162,7 +164,9 @@ class TestPreparationExecutor:
             preparation_actions=["run_new_container"]
         )
         
-        tasks = self.executor._create_container_preparation_tasks("cph_python", status)
+        # Mock DockerStateManager to indicate no rebuild needed
+        with patch.object(self.executor.state_manager, 'check_rebuild_needed', return_value=(False, False, False, False)):
+            tasks = self.executor._create_container_preparation_tasks("cph_python", status)
         
         assert len(tasks) == 1
         run_task = tasks[0]

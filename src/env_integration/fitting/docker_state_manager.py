@@ -56,21 +56,21 @@ class DockerStateManager:
     Manages Docker state tracking for rebuild/recreate decisions
     """
     
-    def __init__(self, state_file_path: str = "docker_state.json", initial_state: Optional[Dict] = None):
+    def __init__(self, initial_state: Optional[Dict] = None, state_file_path: Optional[str] = None):
         """
-        Initialize DockerStateManager
+        Initialize DockerStateManager with JSON state
         
         Args:
-            state_file_path: Path to JSON file for persistent state storage
-            initial_state: Optional initial state dict (mainly for testing)
+            initial_state: State dict (for dependency injection and testing)
+            state_file_path: Optional file path for persistence (if None, state is not persisted)
         """
+        self._state_cache: Dict = initial_state if initial_state is not None else {}
         self.state_file_path = state_file_path
-        self._state_cache: Optional[Dict] = initial_state
     
     @classmethod
     def from_filepath(cls, state_file_path: str) -> 'DockerStateManager':
         """
-        Create DockerStateManager and immediately load state from file
+        Entry point: Create DockerStateManager by loading state from file
         
         Args:
             state_file_path: Path to JSON file to load
@@ -78,36 +78,47 @@ class DockerStateManager:
         Returns:
             DockerStateManager instance with loaded state
         """
-        manager = cls(state_file_path=state_file_path)
-        manager._load_state()  # Force loading
-        return manager
+        # Load state from file
+        loaded_state = cls._load_state_from_file(state_file_path)
+        return cls(initial_state=loaded_state, state_file_path=state_file_path)
     
-    def _load_state(self) -> Dict:
-        """Load docker state from file"""
-        if self._state_cache is not None:
-            return self._state_cache
+    @staticmethod
+    def _load_state_from_file(file_path: str) -> Dict:
+        """
+        Load state from JSON file
+        
+        Args:
+            file_path: Path to JSON file
             
-        if not os.path.exists(self.state_file_path):
-            self._state_cache = {}
-            return self._state_cache
+        Returns:
+            Dict: Loaded state or empty dict if file doesn't exist or is invalid
+        """
+        if not os.path.exists(file_path):
+            return {}
         
         try:
-            with open(self.state_file_path, 'r') as f:
-                self._state_cache = json.load(f)
+            with open(file_path, 'r') as f:
+                return json.load(f)
         except Exception:
-            self._state_cache = {}
-        
+            return {}
+    
+    def _get_state(self) -> Dict:
+        """Get current state"""
         return self._state_cache
     
     def _save_state(self, state: Dict) -> None:
-        """Save docker state to file"""
-        try:
-            with open(self.state_file_path, 'w') as f:
-                json.dump(state, f, indent=2)
-            self._state_cache = state
-        except Exception:
-            # If save fails, continue without caching
-            pass
+        """Save docker state to file and update cache"""
+        # Update cache
+        self._state_cache = state
+        
+        # Save to file if file path is provided
+        if self.state_file_path:
+            try:
+                with open(self.state_file_path, 'w') as f:
+                    json.dump(state, f, indent=2)
+            except Exception:
+                # If save fails, continue without persistence
+                pass
     
     def get_state_key(self, language: str, env_type: str) -> str:
         """Generate unique key for state tracking"""
@@ -128,7 +139,7 @@ class DockerStateManager:
         current_state = DockerStateInfo.from_context(context)
         state_key = self.get_state_key(context.language, context.env_type)
         
-        stored_state = self._load_state().get(state_key)
+        stored_state = self._get_state().get(state_key)
         
         if not stored_state:
             # No previous state - need to build everything
@@ -168,7 +179,7 @@ class DockerStateManager:
         current_state = DockerStateInfo.from_context(context)
         state_key = self.get_state_key(context.language, context.env_type)
         
-        state = self._load_state()
+        state = self._get_state().copy()  # Copy to avoid modifying original
         state[state_key] = asdict(current_state)
         self._save_state(state)
     
@@ -181,15 +192,13 @@ class DockerStateManager:
         """Clear stored state (for testing or cleanup)"""
         if language and env_type:
             state_key = self.get_state_key(language, env_type)
-            state = self._load_state()
+            state = self._get_state().copy()
             if state_key in state:
                 del state[state_key]
                 self._save_state(state)
         else:
             # Clear all state
             self._save_state({})
-        
-        self._state_cache = None
     
     def inspect_container_compatibility(self, operations, container_name: str, expected_image: str) -> bool:
         """
