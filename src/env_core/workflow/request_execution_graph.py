@@ -327,6 +327,9 @@ class RequestExecutionGraph:
         for node_id in execution_order:
             node = self.nodes[node_id]
             
+            # リクエスト実行前のデバッグ出力
+            self._debug_request_before_execution(node, node_id)
+            
             # ステータスを更新
             node.status = "running"
             
@@ -438,6 +441,10 @@ class RequestExecutionGraph:
         
         for node_id in node_ids:
             node = self.nodes[node_id]
+            
+            # リクエスト実行前のデバッグ出力
+            self._debug_request_before_execution(node, node_id)
+            
             node.status = "running"
             
             # タスクを送信
@@ -525,3 +532,49 @@ class RequestExecutionGraph:
             lines.append(f"\nError: {str(e)}")
         
         return '\n'.join(lines)
+    
+    def _debug_request_before_execution(self, node: RequestNode, node_id: str):
+        """
+        リクエスト実行前のデバッグ出力
+        
+        Args:
+            node: 実行するリクエストノード
+            node_id: ノードID
+        """
+        req = node.request
+        
+        print(f"\n🚀 実行開始: {node_id}")
+        
+        # リクエストタイプの表示
+        if hasattr(req, 'operation_type'):
+            # FileRequestの場合はより具体的なfile operation typeを表示
+            if str(req.operation_type) == "OperationType.FILE" and hasattr(req, 'op'):
+                print(f"  📁 タイプ: FILE.{req.op.name}")
+            else:
+                print(f"  🔧 タイプ: {req.operation_type}")
+        
+        # コマンド情報の表示
+        if hasattr(req, 'cmd') and req.cmd:
+            if isinstance(req.cmd, list):
+                if len(req.cmd) == 1:
+                    print(f"  ⚡ コマンド: {req.cmd[0]}")
+                else:
+                    print(f"  ⚡ コマンド: {req.cmd}")
+            else:
+                print(f"  ⚡ コマンド: {req.cmd}")
+        
+        # パス情報の表示
+        if hasattr(req, 'path') and req.path:
+            print(f"  📂 パス: {req.path}")
+        if hasattr(req, 'dst_path') and req.dst_path:
+            print(f"  📋 送信先: {req.dst_path}")
+        
+        # 追加情報
+        if hasattr(req, 'cwd') and req.cwd:
+            print(f"  📍 作業ディレクトリ: {req.cwd}")
+        if hasattr(req, 'allow_failure') and req.allow_failure:
+            print(f"  ⚠️  失敗許可: True")
+        if hasattr(req, 'show_output') and req.show_output:
+            print(f"  📺 出力表示: True")
+        
+        print(f"  ⏱️  実行中...")

@@ -34,11 +34,78 @@ def main(context, operations):
     successful_steps = sum(1 for r in result.results if r.success)
     print(f"\nワークフロー実行完了: {successful_steps}/{len(result.results)} ステップ成功")
     
-    # Show output from steps that produced output
+    # Show detailed step debug information
+    print(f"\n=== ステップ実行詳細 ===")
     for i, step_result in enumerate(result.results):
-        if step_result.stdout and step_result.stdout.strip():
-            print(f"\nステップ {i+1} の出力:")
-            print(step_result.stdout)
+        status = "✓ 成功" if step_result.success else "✗ 失敗"
+        print(f"\nステップ {i+1}: {status}")
+        
+        # Show step type and command if available
+        if hasattr(step_result, 'request') and step_result.request:
+            req = step_result.request
+            if hasattr(req, 'operation_type'):
+                # FileRequestの場合はより具体的なfile operation typeを表示
+                if str(req.operation_type) == "OperationType.FILE" and hasattr(req, 'op'):
+                    print(f"  タイプ: FILE.{req.op.name}")
+                else:
+                    print(f"  タイプ: {req.operation_type}")
+            if hasattr(req, 'cmd') and req.cmd:
+                if isinstance(req.cmd, list):
+                    if len(req.cmd) == 1:
+                        print(f"  コマンド: {req.cmd[0]}")
+                    else:
+                        print(f"  コマンド: {req.cmd}")
+                else:
+                    print(f"  コマンド: {req.cmd}")
+            if hasattr(req, 'path') and req.path:
+                print(f"  パス: {req.path}")
+            if hasattr(req, 'dst_path') and req.dst_path:
+                print(f"  送信先: {req.dst_path}")
+        
+        # Show execution time if available
+        if (hasattr(step_result, 'start_time') and hasattr(step_result, 'end_time') and
+            step_result.start_time is not None and step_result.end_time is not None):
+            try:
+                duration = step_result.end_time - step_result.start_time
+                print(f"  実行時間: {duration:.3f}秒")
+            except (TypeError, ValueError):
+                # Handle mock objects or invalid time values
+                pass
+        
+        # Show output
+        try:
+            if step_result.stdout and step_result.stdout.strip():
+                print(f"  標準出力:")
+                for line in step_result.stdout.strip().split('\n'):
+                    print(f"    {line}")
+        except (AttributeError, TypeError):
+            # Handle mock objects
+            pass
+        
+        # Show errors
+        if not step_result.success:
+            try:
+                if step_result.stderr and step_result.stderr.strip():
+                    print(f"  標準エラー:")
+                    for line in step_result.stderr.strip().split('\n'):
+                        print(f"    {line}")
+                elif hasattr(step_result, 'error_message') and step_result.error_message:
+                    print(f"  エラー: {step_result.error_message}")
+                elif hasattr(step_result, 'error') and step_result.error:
+                    print(f"  エラー: {step_result.error}")
+            except (AttributeError, TypeError):
+                # Handle mock objects
+                pass
+        
+        # Show return code if available
+        try:
+            if hasattr(step_result, 'returncode') and step_result.returncode is not None:
+                print(f"  終了コード: {step_result.returncode}")
+        except (AttributeError, TypeError):
+            # Handle mock objects
+            pass
+    
+    print(f"\n=== 実行完了 ===")
     
     return result
 

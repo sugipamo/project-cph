@@ -212,3 +212,92 @@ class TestWorkflowExecutionService:
         assert result.preparation_results == prep_results
         assert result.errors == errors
         assert result.warnings == warnings
+    
+    
+    @patch('src.operations.composite.unified_driver.UnifiedDriver')
+    @patch('src.workflow_execution_service.GraphBasedWorkflowBuilder')
+    @patch('src.workflow_execution_service.generate_steps_from_json')
+    def test_execute_workflow_parallel(self, mock_generate, mock_builder_class, mock_driver_class):
+        """Test parallel workflow execution"""
+        # Mock successful step generation
+        mock_step = MagicMock()
+        mock_step.type.value = "shell"
+        mock_step.cmd = ["echo", "test"]
+        
+        mock_step_result = MagicMock()
+        mock_step_result.errors = []
+        mock_step_result.warnings = []
+        mock_step_result.steps = [mock_step]
+        mock_generate.return_value = mock_step_result
+        
+        # Mock graph builder with parallel execution
+        mock_graph = MagicMock()
+        mock_graph.execute_parallel.return_value = [
+            OperationResult(success=True, stdout="test output")
+        ]
+        
+        mock_builder = MagicMock()
+        mock_builder_class.from_context.return_value = mock_builder
+        mock_builder.build_graph_from_json_steps.return_value = (
+            mock_graph,  # graph
+            [],  # errors
+            []   # warnings
+        )
+        
+        # Mock unified driver
+        mock_driver = MagicMock()
+        mock_driver_class.return_value = mock_driver
+        
+        service = WorkflowExecutionService(self.mock_context, self.mock_operations)
+        result = service.execute_workflow(parallel=True, max_workers=2)
+        
+        assert result.success is True
+        assert len(result.results) == 1
+        assert result.results[0].success is True
+        mock_graph.execute_parallel.assert_called_once_with(driver=mock_driver, max_workers=2)
+    
+    @patch('src.operations.composite.unified_driver.UnifiedDriver')
+    @patch('src.workflow_execution_service.GraphBasedWorkflowBuilder')
+    @patch('src.workflow_execution_service.generate_steps_from_json')
+    def test_execute_workflow_with_failed_steps(self, mock_generate, mock_builder_class, mock_driver_class):
+        """Test workflow execution with failed steps"""
+        # Mock successful step generation
+        mock_step = MagicMock()
+        mock_step.type.value = "shell"
+        mock_step.cmd = ["echo", "test"]
+        
+        mock_step_result = MagicMock()
+        mock_step_result.errors = []
+        mock_step_result.warnings = []
+        mock_step_result.steps = [mock_step]
+        mock_generate.return_value = mock_step_result
+        
+        # Mock graph builder with failed execution
+        mock_graph = MagicMock()
+        failed_result = OperationResult(success=False, stderr="Command failed")
+        failed_result.get_error_output = MagicMock(return_value="Command failed")
+        mock_graph.execute_sequential.return_value = [
+            OperationResult(success=True, stdout="step 1 ok"),
+            failed_result  # step 2 fails
+        ]
+        
+        mock_builder = MagicMock()
+        mock_builder_class.from_context.return_value = mock_builder
+        mock_builder.build_graph_from_json_steps.return_value = (
+            mock_graph,  # graph
+            [],  # errors
+            []   # warnings
+        )
+        
+        # Mock unified driver
+        mock_driver = MagicMock()
+        mock_driver_class.return_value = mock_driver
+        
+        service = WorkflowExecutionService(self.mock_context, self.mock_operations)
+        result = service.execute_workflow()
+        
+        assert result.success is False
+        assert len(result.results) == 2
+        assert result.results[0].success is True
+        assert result.results[1].success is False
+        assert "Step 1 failed: Command failed" in result.errors[0]

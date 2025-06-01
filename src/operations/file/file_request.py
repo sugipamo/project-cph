@@ -40,7 +40,7 @@ class FileRequest(BaseRequest):
         - ストラテジーインスタンスのキャッシング
         - より精密な時間計測
         """
-        self._start_time = time.perf_counter()  # More precise timing
+        self._start_time = time.time()  # Use time.time() for consistency
         try:
             # Use cached strategy for better performance
             strategy = self._strategy_cache.get(self.op)
@@ -48,7 +48,14 @@ class FileRequest(BaseRequest):
                 strategy = FileOperationStrategyFactory.get_strategy(self.op)
                 self._strategy_cache[self.op] = strategy
             
-            return strategy.execute(driver, self)
+            # If driver is UnifiedDriver, get the file driver specifically
+            from src.operations.composite.unified_driver import UnifiedDriver
+            if isinstance(driver, UnifiedDriver):
+                actual_driver = driver._get_cached_driver("file_driver")
+            else:
+                actual_driver = driver
+            
+            return strategy.execute(actual_driver, self)
         except Exception as e:
             raise RuntimeError(f"FileRequest failed: {str(e)}")
 

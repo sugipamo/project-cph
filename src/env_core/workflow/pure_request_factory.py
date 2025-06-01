@@ -138,10 +138,8 @@ class PureRequestFactory:
         if not step.cmd:
             raise ValueError("python step requires code")
         
-        # Python codeの結合
-        python_code = '\n'.join(step.cmd)
-        
-        request = PythonRequest(code_or_file=python_code, cwd=step.cwd, show_output=step.show_output)
+        # PythonRequestはcode_or_fileとしてリストを受け取る
+        request = PythonRequest(code_or_file=step.cmd, cwd=step.cwd, show_output=step.show_output)
         request.allow_failure = step.allow_failure
         return request
     
