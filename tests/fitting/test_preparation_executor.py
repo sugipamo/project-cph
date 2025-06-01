@@ -5,7 +5,8 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from src.env_integration.fitting.preparation_executor import (
-    PreparationExecutor, PreparationTask
+    PreparationExecutor, PreparationTask, ContainerConfig,
+    _determine_container_config, _generate_docker_tasks, _update_container_state
 )
 from src.env_integration.fitting.environment_inspector import (
     ResourceStatus, ResourceType
@@ -299,3 +300,441 @@ class TestPreparationExecutor:
                     
                     assert isinstance(tasks, list)
                     assert isinstance(statuses, dict)
+
+
+class TestPureFunctions:
+    """Test pure functions extracted from PreparationExecutor"""
+
+    def test_determine_container_config_regular_container(self):
+        """Test _determine_container_config for regular container"""
+        # Setup mock context
+        mock_context = MagicMock()
+        mock_context.get_docker_names.return_value = {
+            "image_name": "python:3.10",
+            "container_name": "cph_python",
+            "oj_image_name": "ojtools:latest",
+            "oj_container_name": "cph_ojtools"
+        }
+        mock_context.dockerfile = "FROM python:3.10\nRUN pip install ..."
+        mock_context.oj_dockerfile = "FROM ubuntu:20.04\nRUN apt-get ..."
+
+        # Setup mock state manager
+        mock_state_manager = MagicMock()
+        mock_state_manager.check_rebuild_needed.return_value = (True, False, True, False)
+
+        # Test regular container
+        config = _determine_container_config("cph_python", mock_context, mock_state_manager)
+
+        assert config.container_name == "cph_python"
+        assert config.image_name == "python:3.10"
+        assert config.is_oj_container == False
+        assert config.needs_image_rebuild == True
+        assert config.needs_container_recreate == True
+        assert config.dockerfile_content == "FROM python:3.10\nRUN pip install ..."
+
+    def test_determine_container_config_oj_container(self):
+        """Test _determine_container_config for OJ container"""
+        # Setup mock context
+        mock_context = MagicMock()
+        mock_context.get_docker_names.return_value = {
+            "image_name": "python:3.10",
+            "container_name": "cph_python",
+            "oj_image_name": "ojtools:latest",
+            "oj_container_name": "cph_ojtools"
+        }
+        mock_context.dockerfile = "FROM python:3.10\nRUN pip install ..."
+        mock_context.oj_dockerfile = "FROM ubuntu:20.04\nRUN apt-get ..."
+
+        # Setup mock state manager
+        mock_state_manager = MagicMock()
+        mock_state_manager.check_rebuild_needed.return_value = (False, True, False, True)
+
+        # Test OJ container
+        config = _determine_container_config("cph_ojtools_test", mock_context, mock_state_manager)
+
+        assert config.container_name == "cph_ojtools_test"
+        assert config.image_name == "ojtools:latest"
+        assert config.is_oj_container == True
+        assert config.needs_image_rebuild == True
+        assert config.needs_container_recreate == True
+        assert config.dockerfile_content == "FROM ubuntu:20.04\nRUN apt-get ..."
+
+    def test_generate_docker_tasks_no_rebuild_needed(self):
+        """Test _generate_docker_tasks when no rebuild needed"""
+        config = ContainerConfig(
+            container_name="test_container",
+            image_name="test_image",
+            is_oj_container=False,
+            needs_image_rebuild=False,
+            needs_container_recreate=False,
+            dockerfile_content="FROM python:3.10"
+        )
+
+        # Mock task ID generator
+        task_counter = [0]
+        def mock_task_id_generator(prefix):
+            task_counter[0] += 1
+            return f"{prefix}_{task_counter[0]:03d}"
+
+        # Mock operations and state manager
+        mock_operations = MagicMock()
+        mock_docker_driver = MagicMock()
+        mock_docker_driver.ps.return_value = []  # No existing containers
+        mock_operations.resolve.return_value = mock_docker_driver
+
+        mock_state_manager = MagicMock()
+        mock_state_manager.inspect_container_compatibility.return_value = True
+
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+
+        # Should only have run task
+        assert len(tasks) == 1
+        assert tasks[0].task_type == "docker_run"
+        assert tasks[0].dependencies == []
+
+    def test_generate_docker_tasks_full_rebuild(self):
+        """Test _generate_docker_tasks with full rebuild needed"""
+        config = ContainerConfig(
+            container_name="test_container",
+            image_name="test_image",
+            is_oj_container=False,
+            needs_image_rebuild=True,
+            needs_container_recreate=True,
+            dockerfile_content="FROM python:3.10\nRUN pip install requests"
+        )
+
+        # Mock task ID generator
+        task_counter = [0]
+        def mock_task_id_generator(prefix):
+            task_counter[0] += 1
+            return f"{prefix}_{task_counter[0]:03d}"
+
+        # Mock operations and state manager
+        mock_operations = MagicMock()
+        mock_docker_driver = MagicMock()
+        mock_docker_driver.ps.return_value = ["test_container"]  # Container exists
+        mock_operations.resolve.return_value = mock_docker_driver
+
+        mock_state_manager = MagicMock()
+        mock_state_manager.inspect_container_compatibility.return_value = False
+
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+
+        # Should have build, remove, and run tasks
+        task_types = [t.task_type for t in tasks]
+        assert "docker_build" in task_types
+        assert "docker_remove" in task_types
+        assert "docker_run" in task_types
+
+        # Verify dependencies
+        build_task = next(t for t in tasks if t.task_type == "docker_build")
+        remove_task = next(t for t in tasks if t.task_type == "docker_remove")
+        run_task = next(t for t in tasks if t.task_type == "docker_run")
+
+        assert build_task.dependencies == []
+        assert remove_task.dependencies == []
+        assert build_task.task_id in run_task.dependencies
+        assert remove_task.task_id in run_task.dependencies
+
+    def test_generate_docker_tasks_image_build_only(self):
+        """Test _generate_docker_tasks with image build only"""
+        config = ContainerConfig(
+            container_name="test_container",
+            image_name="test_image",
+            is_oj_container=False,
+            needs_image_rebuild=True,
+            needs_container_recreate=False,
+            dockerfile_content="FROM python:3.10"
+        )
+
+        task_counter = [0]
+        def mock_task_id_generator(prefix):
+            task_counter[0] += 1
+            return f"{prefix}_{task_counter[0]:03d}"
+
+        mock_operations = MagicMock()
+        mock_docker_driver = MagicMock()
+        mock_docker_driver.ps.return_value = []
+        mock_operations.resolve.return_value = mock_docker_driver
+
+        mock_state_manager = MagicMock()
+        mock_state_manager.inspect_container_compatibility.return_value = True
+
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+
+        # Should have build and run tasks
+        task_types = [t.task_type for t in tasks]
+        assert "docker_build" in task_types
+        assert "docker_run" in task_types
+        assert "docker_remove" not in task_types
+
+        # Verify dependencies
+        build_task = next(t for t in tasks if t.task_type == "docker_build")
+        run_task = next(t for t in tasks if t.task_type == "docker_run")
+
+        assert build_task.task_id in run_task.dependencies
+
+    def test_generate_docker_tasks_no_dockerfile(self):
+        """Test _generate_docker_tasks with no dockerfile content"""
+        config = ContainerConfig(
+            container_name="test_container",
+            image_name="test_image",
+            is_oj_container=False,
+            needs_image_rebuild=True,
+            needs_container_recreate=False,
+            dockerfile_content=None
+        )
+
+        task_counter = [0]
+        def mock_task_id_generator(prefix):
+            task_counter[0] += 1
+            return f"{prefix}_{task_counter[0]:03d}"
+
+        mock_operations = MagicMock()
+        mock_docker_driver = MagicMock()
+        mock_docker_driver.ps.return_value = []
+        mock_operations.resolve.return_value = mock_docker_driver
+
+        mock_state_manager = MagicMock()
+        mock_state_manager.inspect_container_compatibility.return_value = True
+
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+
+        # Should only have run task (no build without dockerfile)
+        task_types = [t.task_type for t in tasks]
+        assert "docker_build" not in task_types
+        assert "docker_run" in task_types
+
+    def test_update_container_state(self):
+        """Test _update_container_state function"""
+        mock_state_manager = MagicMock()
+        mock_context = MagicMock()
+
+        _update_container_state(mock_state_manager, mock_context)
+
+        mock_state_manager.update_state.assert_called_once_with(mock_context)
+
+
+class TestContainerConfig:
+    """Test ContainerConfig dataclass"""
+
+    def test_container_config_creation(self):
+        """Test creating ContainerConfig instance"""
+        config = ContainerConfig(
+            container_name="test_container",
+            image_name="test_image:latest",
+            is_oj_container=True,
+            needs_image_rebuild=False,
+            needs_container_recreate=True,
+            dockerfile_content="FROM ubuntu"
+        )
+
+        assert config.container_name == "test_container"
+        assert config.image_name == "test_image:latest"
+        assert config.is_oj_container == True
+        assert config.needs_image_rebuild == False
+        assert config.needs_container_recreate == True
+        assert config.dockerfile_content == "FROM ubuntu"
+
+    def test_container_config_default_dockerfile(self):
+        """Test ContainerConfig with default dockerfile content"""
+        config = ContainerConfig(
+            container_name="test_container",
+            image_name="test_image",
+            is_oj_container=False,
+            needs_image_rebuild=True,
+            needs_container_recreate=False
+        )
+
+        assert config.dockerfile_content is None
+
+
+class TestEdgeCases:
+    """Test edge cases for pure functions"""
+
+    def test_determine_container_config_edge_container_name(self):
+        """Test edge cases for container name patterns"""
+        mock_context = MagicMock()
+        mock_context.get_docker_names.return_value = {
+            "image_name": "python",
+            "oj_image_name": "ojtools"
+        }
+        mock_context.dockerfile = "FROM python"
+        mock_context.oj_dockerfile = "FROM ubuntu"
+
+        mock_state_manager = MagicMock()
+        mock_state_manager.check_rebuild_needed.return_value = (False, False, False, False)
+
+        # Test edge case: container name starts with "cph_ojtools"
+        config = _determine_container_config("cph_ojtools_test", mock_context, mock_state_manager)
+        assert config.is_oj_container == True
+
+        # Test edge case: container name exactly matches prefix
+        config = _determine_container_config("cph_ojtools", mock_context, mock_state_manager)
+        assert config.is_oj_container == True
+
+        # Test edge case: similar but different prefix
+        config = _determine_container_config("cph_other", mock_context, mock_state_manager)
+        assert config.is_oj_container == False
+
+        # Test edge case: substring but not prefix
+        config = _determine_container_config("my_cph_ojtools_test", mock_context, mock_state_manager)
+        assert config.is_oj_container == False
+
+    def test_generate_docker_tasks_compatibility_check_override(self):
+        """Test compatibility check overriding needs_container_recreate"""
+        config = ContainerConfig(
+            container_name="test_container",
+            image_name="test_image",
+            is_oj_container=False,
+            needs_image_rebuild=False,
+            needs_container_recreate=False,  # Initially False
+            dockerfile_content=None
+        )
+
+        task_counter = [0]
+        def mock_task_id_generator(prefix):
+            task_counter[0] += 1
+            return f"{prefix}_{task_counter[0]:03d}"
+
+        mock_operations = MagicMock()
+        mock_docker_driver = MagicMock()
+        mock_docker_driver.ps.return_value = ["test_container"]  # Container exists
+        mock_operations.resolve.return_value = mock_docker_driver
+
+        mock_state_manager = MagicMock()
+        mock_state_manager.inspect_container_compatibility.return_value = False  # Incompatible
+
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+
+        # Should now include remove task due to compatibility check
+        task_types = [t.task_type for t in tasks]
+        assert "docker_remove" in task_types
+        assert "docker_run" in task_types
+
+    def test_generate_docker_tasks_empty_container_list(self):
+        """Test _generate_docker_tasks when container list is empty"""
+        config = ContainerConfig(
+            container_name="test_container",
+            image_name="test_image",
+            is_oj_container=False,
+            needs_image_rebuild=False,
+            needs_container_recreate=True,
+            dockerfile_content=None
+        )
+
+        task_counter = [0]
+        def mock_task_id_generator(prefix):
+            task_counter[0] += 1
+            return f"{prefix}_{task_counter[0]:03d}"
+
+        mock_operations = MagicMock()
+        mock_docker_driver = MagicMock()
+        mock_docker_driver.ps.return_value = []  # Empty container list
+        mock_operations.resolve.return_value = mock_docker_driver
+
+        mock_state_manager = MagicMock()
+        mock_state_manager.inspect_container_compatibility.return_value = True
+
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+
+        # Should not include remove task since no container exists
+        task_types = [t.task_type for t in tasks]
+        assert "docker_remove" not in task_types
+        assert "docker_run" in task_types
+
+    def test_determine_container_config_boundary_values(self):
+        """Test _determine_container_config with boundary values"""
+        mock_context = MagicMock()
+        mock_context.get_docker_names.return_value = {
+            "image_name": "",  # Empty string
+            "oj_image_name": ""
+        }
+        mock_context.dockerfile = ""  # Empty dockerfile
+        mock_context.oj_dockerfile = None  # None dockerfile
+
+        mock_state_manager = MagicMock()
+        mock_state_manager.check_rebuild_needed.return_value = (True, True, True, True)
+
+        # Test with empty strings
+        config = _determine_container_config("", mock_context, mock_state_manager)
+        assert config.container_name == ""
+        assert config.image_name == ""
+        assert config.is_oj_container == False
+        assert config.dockerfile_content == ""
+
+        # Test with None-like container name
+        config = _determine_container_config("cph_ojtools", mock_context, mock_state_manager)
+        assert config.is_oj_container == True
+        assert config.dockerfile_content is None
+
+    def test_generate_docker_tasks_task_id_uniqueness(self):
+        """Test that task IDs are unique across multiple calls"""
+        config = ContainerConfig(
+            container_name="test_container",
+            image_name="test_image",
+            is_oj_container=False,
+            needs_image_rebuild=True,
+            needs_container_recreate=True,
+            dockerfile_content="FROM python"
+        )
+
+        task_counter = [0]
+        def mock_task_id_generator(prefix):
+            task_counter[0] += 1
+            return f"{prefix}_{task_counter[0]:03d}"
+
+        mock_operations = MagicMock()
+        mock_docker_driver = MagicMock()
+        mock_docker_driver.ps.return_value = ["test_container"]
+        mock_operations.resolve.return_value = mock_docker_driver
+
+        mock_state_manager = MagicMock()
+        mock_state_manager.inspect_container_compatibility.return_value = False
+
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+
+        # Verify all task IDs are unique
+        task_ids = [t.task_id for t in tasks]
+        assert len(task_ids) == len(set(task_ids))  # No duplicates
+
+        # Verify task ID format
+        for task_id in task_ids:
+            assert "_" in task_id
+            assert task_id.split("_")[-1].isdigit()  # Ends with number
+
+    def test_generate_docker_tasks_mutable_config(self):
+        """Test that _generate_docker_tasks can modify config.needs_container_recreate"""
+        config = ContainerConfig(
+            container_name="test_container",
+            image_name="test_image",
+            is_oj_container=False,
+            needs_image_rebuild=False,
+            needs_container_recreate=False,
+            dockerfile_content=None
+        )
+
+        original_recreate = config.needs_container_recreate
+
+        task_counter = [0]
+        def mock_task_id_generator(prefix):
+            task_counter[0] += 1
+            return f"{prefix}_{task_counter[0]:03d}"
+
+        mock_operations = MagicMock()
+        mock_docker_driver = MagicMock()
+        mock_docker_driver.ps.return_value = ["test_container"]
+        mock_operations.resolve.return_value = mock_docker_driver
+
+        mock_state_manager = MagicMock()
+        mock_state_manager.inspect_container_compatibility.return_value = False
+
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+
+        # Config should be modified due to compatibility check
+        assert config.needs_container_recreate != original_recreate
+        assert config.needs_container_recreate == True
+
+        # Should include remove task
+        task_types = [t.task_type for t in tasks]
+        assert "docker_remove" in task_types

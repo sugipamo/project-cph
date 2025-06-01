@@ -29,6 +29,17 @@ class PreparationTask:
     parallel_group: Optional[str] = None  # Group ID for parallel execution
 
 
+@dataclass
+class ContainerConfig:
+    """Configuration for Docker container operations"""
+    container_name: str
+    image_name: str
+    is_oj_container: bool
+    needs_image_rebuild: bool
+    needs_container_recreate: bool
+    dockerfile_content: Optional[str] = None
+
+
 class PreparationExecutor:
     """Generates preparation tasks based on environment inspection results"""
     
@@ -116,44 +127,39 @@ class PreparationExecutor:
         Returns:
             List of PreparationTask objects
         """
-        tasks = []
+        # Task generators mapping
+        task_generators = {
+            ResourceType.DOCKER_CONTAINER: self._create_container_preparation_tasks,
+            ResourceType.DIRECTORY: self._create_mkdir_preparation_task,
+            ResourceType.DOCKER_IMAGE: self._create_image_preparation_task,
+        }
         
-        # Track tasks that can run in parallel
-        parallel_docker_tasks = []
-        parallel_mkdir_tasks = []
-        parallel_image_tasks = []
+        # Parallel group assignments
+        parallel_group_map = {
+            ResourceType.DOCKER_CONTAINER: "docker_preparation",
+            ResourceType.DIRECTORY: "mkdir_preparation", 
+            ResourceType.DOCKER_IMAGE: "image_preparation",
+        }
+        
+        tasks = []
         
         for identifier, status in statuses.items():
             if not status.needs_preparation:
                 continue
             
-            if status.resource_type == ResourceType.DOCKER_CONTAINER:
-                container_tasks = self._create_container_preparation_tasks(identifier, status)
-                parallel_docker_tasks.extend(container_tasks)
-                
-            elif status.resource_type == ResourceType.DIRECTORY:
-                mkdir_task = self._create_mkdir_preparation_task(identifier, status)
-                if mkdir_task:
-                    parallel_mkdir_tasks.append(mkdir_task)
-            
-            elif status.resource_type == ResourceType.DOCKER_IMAGE:
-                image_task = self._create_image_preparation_task(identifier, status)
-                if image_task:
-                    parallel_image_tasks.append(image_task)
-        
-        # Assign parallel groups
-        # Docker tasks and mkdir tasks can run in parallel with each other
-        for task in parallel_docker_tasks:
-            task.parallel_group = "docker_preparation"
-            tasks.append(task)
-        
-        for task in parallel_mkdir_tasks:
-            task.parallel_group = "mkdir_preparation"
-            tasks.append(task)
-        
-        for task in parallel_image_tasks:
-            task.parallel_group = "image_preparation"
-            tasks.append(task)
+            # Generate tasks using pure function dispatch
+            generator = task_generators.get(status.resource_type)
+            if generator:
+                generated_tasks = generator(identifier, status)
+                if generated_tasks:
+                    # Handle both single task and list of tasks
+                    if isinstance(generated_tasks, list):
+                        for task in generated_tasks:
+                            task.parallel_group = parallel_group_map[status.resource_type]
+                            tasks.append(task)
+                    else:
+                        generated_tasks.parallel_group = parallel_group_map[status.resource_type]
+                        tasks.append(generated_tasks)
         
         return tasks
     
@@ -282,127 +288,19 @@ class PreparationExecutor:
     
     def _create_docker_run_task(self, container_name: str) -> List[PreparationTask]:
         """Create Docker container run task (with rebuild/recreate logic)"""
-        tasks = []
+        # Determine container configuration
+        container_config = _determine_container_config(container_name, self.context, self.state_manager)
         
-        # Check if rebuilds/recreates are needed
-        (image_rebuild_needed, oj_image_rebuild_needed, 
-         container_recreate_needed, oj_container_recreate_needed) = (
-            self.state_manager.check_rebuild_needed(self.context)
+        # Generate tasks based on configuration
+        tasks = _generate_docker_tasks(
+            container_config, 
+            self._next_task_id,
+            self.operations,
+            self.state_manager
         )
-        
-        # Get Docker names from context
-        docker_names = self.context.get_docker_names()
-        
-        # Determine which image to use based on container name
-        is_oj_container = container_name.startswith("cph_ojtools")
-        if is_oj_container:
-            image_name = docker_names["oj_image_name"]
-            needs_image_rebuild = oj_image_rebuild_needed
-            needs_container_recreate = oj_container_recreate_needed
-        else:
-            image_name = docker_names["image_name"]
-            needs_image_rebuild = image_rebuild_needed
-            needs_container_recreate = container_recreate_needed
-        
-        # Additional compatibility check for existing containers
-        if not needs_container_recreate:
-            compatible = self.state_manager.inspect_container_compatibility(
-                self.operations, container_name, image_name
-            )
-            if not compatible:
-                needs_container_recreate = True
-        
-        # Create image build task if needed
-        build_task_id = None
-        if needs_image_rebuild:
-            build_task_id = self._next_task_id("docker_build")
-            # Get Dockerfile content through resolver (this triggers the lazy loading)
-            dockerfile_content = None
-            if is_oj_container:
-                dockerfile_content = self.context.oj_dockerfile
-            else:
-                dockerfile_content = self.context.dockerfile
-            
-            if dockerfile_content:
-                build_request = DockerRequest(
-                    op=DockerOpType.BUILD,
-                    image=image_name,
-                    dockerfile_text=dockerfile_content,
-                    options={"t": image_name}
-                )
-                
-                build_task = PreparationTask(
-                    task_id=build_task_id,
-                    task_type="docker_build",
-                    request_object=build_request,
-                    dependencies=[],
-                    description=f"Build image: {image_name}",
-                    parallel_group="docker_preparation"
-                )
-                tasks.append(build_task)
-        
-        # Create container remove task if recreation needed
-        rebuild_remove_task_id = None
-        if needs_container_recreate:
-            # Check if container exists first
-            ps_result = self.operations.resolve("docker_driver").ps(
-                all=True, show_output=False, names_only=True
-            )
-            if container_name in ps_result:
-                rebuild_remove_task_id = self._next_task_id("docker_remove")
-                remove_request = DockerRequest(
-                    op=DockerOpType.REMOVE,
-                    container=container_name,
-                    options={"f": ""}  # Force remove flag
-                )
-                
-                remove_task = PreparationTask(
-                    task_id=rebuild_remove_task_id,
-                    task_type="docker_remove",
-                    request_object=remove_request,
-                    dependencies=[],
-                    description=f"Remove old container: {container_name}",
-                    parallel_group="docker_preparation"
-                )
-                tasks.append(remove_task)
-        
-        # Create container run task
-        run_task_id = self._next_task_id("docker_run")
-        run_dependencies = []
-        
-        # Add dependencies based on what needs to be done first
-        if needs_image_rebuild and build_task_id:
-            run_dependencies.append(build_task_id)
-        if needs_container_recreate and rebuild_remove_task_id:
-            run_dependencies.append(rebuild_remove_task_id)
-        
-        # Add volume mount options to make project files accessible in container
-        import os
-        project_path = os.getcwd()
-        volume_options = {
-            "v": f"{project_path}:/workspace"
-        }
-        
-        run_request = DockerRequest(
-            op=DockerOpType.RUN,
-            image=image_name,
-            container=container_name,
-            command="tail -f /dev/null",  # Keep container running
-            options=volume_options
-        )
-        
-        run_task = PreparationTask(
-            task_id=run_task_id,
-            task_type="docker_run",
-            request_object=run_request,
-            dependencies=run_dependencies,
-            description=f"Run container: {container_name} from image: {image_name}",
-            parallel_group="docker_preparation"
-        )
-        tasks.append(run_task)
         
         # Update state after successful preparation
-        self.state_manager.update_state(self.context)
+        _update_container_state(self.state_manager, self.context)
         
         return tasks
     
@@ -531,31 +429,162 @@ class PreparationExecutor:
                 errors.append("Failed to get Docker configuration from context")
         
         return errors
+
+
+def _determine_container_config(container_name: str, context, state_manager) -> ContainerConfig:
+    """Determine container configuration based on name and state"""
+    # Check if rebuilds/recreates are needed
+    (image_rebuild_needed, oj_image_rebuild_needed, 
+     container_recreate_needed, oj_container_recreate_needed) = (
+        state_manager.check_rebuild_needed(context)
+    )
     
-    def execute_preparation_with_retry(self, preparation_tasks: List[PreparationTask]) -> Tuple[bool, List[str]]:
-        """Execute preparation tasks with robust error handling
+    # Get Docker names from context
+    docker_names = context.get_docker_names()
+    
+    # Determine which image to use based on container name
+    is_oj_container = container_name.startswith("cph_ojtools")
+    if is_oj_container:
+        image_name = docker_names["oj_image_name"]
+        needs_image_rebuild = oj_image_rebuild_needed
+        needs_container_recreate = oj_container_recreate_needed
+        dockerfile_content = context.oj_dockerfile
+    else:
+        image_name = docker_names["image_name"]
+        needs_image_rebuild = image_rebuild_needed
+        needs_container_recreate = container_recreate_needed
+        dockerfile_content = context.dockerfile
+    
+    return ContainerConfig(
+        container_name=container_name,
+        image_name=image_name,
+        is_oj_container=is_oj_container,
+        needs_image_rebuild=needs_image_rebuild,
+        needs_container_recreate=needs_container_recreate,
+        dockerfile_content=dockerfile_content
+    )
+
+
+def _generate_docker_tasks(config: ContainerConfig, task_id_generator, operations, state_manager) -> List[PreparationTask]:
+    """Generate Docker tasks based on configuration"""
+    tasks = []
+    
+    # Additional compatibility check for existing containers
+    if not config.needs_container_recreate:
+        compatible = state_manager.inspect_container_compatibility(
+            operations, config.container_name, config.image_name
+        )
+        if not compatible:
+            config.needs_container_recreate = True
+    
+    # Create image build task if needed
+    build_task_id = None
+    if config.needs_image_rebuild and config.dockerfile_content:
+        build_task_id = task_id_generator("docker_build")
+        build_request = DockerRequest(
+            op=DockerOpType.BUILD,
+            image=config.image_name,
+            dockerfile_text=config.dockerfile_content,
+            options={"t": config.image_name}
+        )
         
-        Args:
-            preparation_tasks: List of preparation tasks to execute
+        build_task = PreparationTask(
+            task_id=build_task_id,
+            task_type="docker_build",
+            request_object=build_request,
+            dependencies=[],
+            description=f"Build image: {config.image_name}",
+            parallel_group="docker_preparation"
+        )
+        tasks.append(build_task)
+    
+    # Create container remove task if recreation needed
+    rebuild_remove_task_id = None
+    if config.needs_container_recreate:
+        # Check if container exists first
+        ps_result = operations.resolve("docker_driver").ps(
+            all=True, show_output=False, names_only=True
+        )
+        if config.container_name in ps_result:
+            rebuild_remove_task_id = task_id_generator("docker_remove")
+            remove_request = DockerRequest(
+                op=DockerOpType.REMOVE,
+                container=config.container_name,
+                options={"f": ""}  # Force remove flag
+            )
             
-        Returns:
-            Tuple of (success, error_messages)
-        """
-        if not preparation_tasks:
-            return True, []
-        
-        robust_executor = RobustPreparationExecutor(self, self.error_handler)
-        success, successful_tasks, failed_tasks = robust_executor.execute_with_retry(preparation_tasks)
-        
-        error_messages = []
-        if failed_tasks:
-            for task in failed_tasks:
-                error_messages.append(f"Task {task.task_id} ({task.description}) failed")
-        
-        # Generate error report
-        error_report = self.error_handler.generate_error_report()
-        if error_report.get("status") == "errors_found":
-            self.logger.warning(f"Preparation completed with {len(failed_tasks)} failures")
-            self.logger.info(f"Error report: {error_report}")
-        
-        return success, error_messages
+            remove_task = PreparationTask(
+                task_id=rebuild_remove_task_id,
+                task_type="docker_remove",
+                request_object=remove_request,
+                dependencies=[],
+                description=f"Remove old container: {config.container_name}",
+                parallel_group="docker_preparation"
+            )
+            tasks.append(remove_task)
+    
+    # Create container run task
+    run_task_id = task_id_generator("docker_run")
+    run_dependencies = []
+    
+    # Add dependencies based on what needs to be done first
+    if config.needs_image_rebuild and build_task_id:
+        run_dependencies.append(build_task_id)
+    if config.needs_container_recreate and rebuild_remove_task_id:
+        run_dependencies.append(rebuild_remove_task_id)
+    
+    # Add volume mount options to make project files accessible in container
+    import os
+    project_path = os.getcwd()
+    volume_options = {
+        "v": f"{project_path}:/workspace"
+    }
+    
+    run_request = DockerRequest(
+        op=DockerOpType.RUN,
+        image=config.image_name,
+        container=config.container_name,
+        command="tail -f /dev/null",  # Keep container running
+        options=volume_options
+    )
+    
+    run_task = PreparationTask(
+        task_id=run_task_id,
+        task_type="docker_run",
+        request_object=run_request,
+        dependencies=run_dependencies,
+        description=f"Run container: {config.container_name} from image: {config.image_name}",
+        parallel_group="docker_preparation"
+    )
+    tasks.append(run_task)
+    
+    return tasks
+
+
+def _update_container_state(state_manager, context):
+    """Update state after successful preparation"""
+    state_manager.update_state(context)
+
+
+# Add execute_preparation_with_retry method back to PreparationExecutor
+def execute_preparation_with_retry(self, preparation_tasks: List[PreparationTask]) -> Tuple[bool, List[str]]:
+    """Execute preparation tasks with robust error handling"""
+    if not preparation_tasks:
+        return True, []
+    
+    robust_executor = RobustPreparationExecutor(self, self.error_handler)
+    success, successful_tasks, failed_tasks = robust_executor.execute_with_retry(preparation_tasks)
+    
+    error_messages = []
+    if failed_tasks:
+        for task in failed_tasks:
+            error_messages.append(f"Task {task.task_id} ({task.description}) failed")
+    
+    error_report = self.error_handler.generate_error_report()
+    if error_report.get("status") == "errors_found":
+        self.logger.warning(f"Preparation completed with {len(failed_tasks)} failures")
+        self.logger.info(f"Error report: {error_report}")
+    
+    return success, error_messages
+
+PreparationExecutor.execute_preparation_with_retry = execute_preparation_with_retry
