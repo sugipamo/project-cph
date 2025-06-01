@@ -3,6 +3,7 @@ from src.context.execution_data import ExecutionData
 from src.context.context_validator import ContextValidator
 from src.context.config_resolver_proxy import ConfigResolverProxy
 from src.context.utils.format_utils import format_with_missing_keys
+from src.context.dockerfile_resolver import DockerfileResolver
 
 
 class ExecutionContext:
@@ -24,6 +25,7 @@ class ExecutionContext:
         )
         self._validator = ContextValidator()
         self._config_resolver = ConfigResolverProxy(self._data)
+        self._dockerfile_resolver: Optional[DockerfileResolver] = None
     
     # データアクセス用プロパティ（既存APIとの互換性）
     @property
@@ -84,20 +86,42 @@ class ExecutionContext:
         self._config_resolver = ConfigResolverProxy(self._data)
     
     @property
+    def dockerfile_resolver(self) -> Optional[DockerfileResolver]:
+        """Get the Dockerfile resolver for lazy loading"""
+        return self._dockerfile_resolver
+    
+    @dockerfile_resolver.setter
+    def dockerfile_resolver(self, value: Optional[DockerfileResolver]):
+        """Set the Dockerfile resolver"""
+        self._dockerfile_resolver = value
+
+    @property
     def dockerfile(self):
-        return self._data.dockerfile
+        """Get dockerfile content via resolver (lazy loading)"""
+        if self._dockerfile_resolver:
+            return self._dockerfile_resolver.dockerfile
+        return None
     
     @dockerfile.setter
     def dockerfile(self, value):
-        self._data.dockerfile = value
+        """Set dockerfile content (backward compatibility - discouraged)"""
+        # For backward compatibility only - consider deprecating
+        # Content should be managed via resolver
+        pass
     
     @property
     def oj_dockerfile(self):
-        return self._data.oj_dockerfile
+        """Get OJ dockerfile content via resolver (lazy loading)"""
+        if self._dockerfile_resolver:
+            return self._dockerfile_resolver.oj_dockerfile
+        return None
     
     @oj_dockerfile.setter
     def oj_dockerfile(self, value):
-        self._data.oj_dockerfile = value
+        """Set OJ dockerfile content (backward compatibility - discouraged)"""
+        # For backward compatibility only - consider deprecating
+        # Content should be managed via resolver
+        pass
     
     @property
     def old_execution_context(self):
@@ -159,3 +183,34 @@ class ExecutionContext:
     def language_id(self):
         node = self.resolve([self.language, "language_id"])
         return node.value if node else None
+    
+    def get_docker_names(self) -> dict:
+        """Get Docker naming for current context
+        
+        Returns:
+            Dictionary with image_name, container_name, oj_image_name, oj_container_name
+        """
+        from src.operations.utils.docker_naming import (
+            get_docker_image_name, get_docker_container_name,
+            get_oj_image_name, get_oj_container_name
+        )
+        
+        # Container names are now fixed (no hash), so can be generated without Dockerfile content
+        container_name = get_docker_container_name(self.language)
+        oj_container_name = get_oj_container_name()
+        
+        # Image names use hash and require Dockerfile content (loaded on-demand via resolver)
+        if self._dockerfile_resolver:
+            image_name = get_docker_image_name(self.language, self._dockerfile_resolver.dockerfile)
+            oj_image_name = get_oj_image_name(self._dockerfile_resolver.oj_dockerfile)
+        else:
+            # Fallback without hash if no resolver
+            image_name = get_docker_image_name(self.language, None)
+            oj_image_name = get_oj_image_name(None)
+        
+        return {
+            "image_name": image_name,
+            "container_name": container_name,
+            "oj_image_name": oj_image_name,
+            "oj_container_name": oj_container_name
+        }

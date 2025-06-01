@@ -1,6 +1,9 @@
-from src.env_resource.run.docker_run_handler import DockerRunHandler
+# from src.env_resource.run.docker_run_handler import DockerRunHandler
 from src.context.execution_context import ExecutionContext
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
+import pytest
+
+pytestmark = pytest.mark.skip(reason="env_resource module has been deleted")
 
 
 def test_docker_run_handler_create_process_options():

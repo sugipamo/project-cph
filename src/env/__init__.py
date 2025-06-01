@@ -10,21 +10,20 @@ directly from the specific modules.
 from src.env_core.step import Step, StepType, StepContext
 from src.env_core.workflow import GraphBasedWorkflowBuilder, RequestExecutionGraph
 
-# Request factories (avoid circular import)
-from src.env_factories.base.factory import BaseCommandRequestFactory
-try:
-    from src.env_factories.unified_selector import UnifiedFactorySelector as RequestFactorySelector
-except ImportError:
-    RequestFactorySelector = None
+# Request factories (modules have been removed)
+BaseCommandRequestFactory = None
+RequestFactorySelector = None
 
-# Resource management
-from src.env_resource.file import LocalFileHandler, DockerFileHandler
-from src.env_resource.run import LocalRunHandler, DockerRunHandler
+# Resource management (modules have been removed)
+LocalFileHandler = None
+DockerFileHandler = None
+LocalRunHandler = None
+DockerRunHandler = None
 
-# Integration services
-from src.env_integration.service import EnvWorkflowService
-from src.env_integration.controller import EnvResourceController
-from src.env_integration.builder import RunWorkflowBuilder
+# Integration services (modules have been removed)
+EnvWorkflowService = None
+EnvResourceController = None
+RunWorkflowBuilder = None
 
 # Legacy support has been removed
 # Use env_core directly for new implementations

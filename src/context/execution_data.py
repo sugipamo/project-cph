@@ -18,6 +18,4 @@ class ExecutionData:
     env_type: str
     env_json: dict
     resolver: Optional[object] = None  # ConfigResolver型（循環import回避のためobject型で）
-    dockerfile: Optional[str] = None
-    oj_dockerfile: Optional[str] = None
     old_execution_context: Optional['ExecutionData'] = None

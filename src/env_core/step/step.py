@@ -20,6 +20,9 @@ class StepType(Enum):
     OJ = "oj"
     TEST = "test"
     BUILD = "build"
+    DOCKER_EXEC = "docker_exec"
+    DOCKER_CP = "docker_cp"
+    DOCKER_RUN = "docker_run"
 
 
 @dataclass(frozen=True)
@@ -84,6 +87,18 @@ class Step:
         if self.type in [StepType.MKDIR, StepType.TOUCH, StepType.REMOVE, StepType.RMTREE]:
             if len(self.cmd) < 1:
                 raise ValueError(f"Step {self.type} requires at least 1 argument (path)")
+        
+        if self.type == StepType.DOCKER_EXEC:
+            if len(self.cmd) < 2:
+                raise ValueError(f"Step {self.type} requires at least 2 arguments (container, command)")
+        
+        if self.type == StepType.DOCKER_CP:
+            if len(self.cmd) < 2:
+                raise ValueError(f"Step {self.type} requires at least 2 arguments (src, dst)")
+        
+        if self.type == StepType.DOCKER_RUN:
+            if len(self.cmd) < 1:
+                raise ValueError(f"Step {self.type} requires at least 1 argument (image)")
 
 
 @dataclass(frozen=True)

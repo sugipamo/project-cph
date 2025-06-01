@@ -1,0 +1,12 @@
+{
+  "python_docker": {
+    "language": "python",
+    "dockerfile_hash": null,
+    "oj_dockerfile_hash": null,
+    "image_name": "python",
+    "oj_image_name": "ojtools",
+    "container_name": "cph_python",
+    "oj_container_name": "cph_ojtools",
+    "last_updated": "2025-06-01T07:04:50.111417"
+  }
+}

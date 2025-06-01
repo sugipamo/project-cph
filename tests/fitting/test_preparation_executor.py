@@ -1,261 +1,292 @@
 """
-PreparationExecutor のテスト
+Test preparation executor functionality
 """
 import pytest
-from unittest.mock import Mock, MagicMock
-from src.env_integration.fitting.preparation_executor import PreparationExecutor
-from src.operations.di_container import DIContainer
-from src.operations.result.result import OperationResult
+from unittest.mock import MagicMock, patch
+
+from src.env_integration.fitting.preparation_executor import (
+    PreparationExecutor, PreparationTask
+)
+from src.env_integration.fitting.environment_inspector import (
+    ResourceStatus, ResourceType
+)
+from src.context.execution_context import ExecutionContext
+from src.operations.docker.docker_request import DockerRequest
+from src.operations.file.file_request import FileRequest
 
 
 class TestPreparationExecutor:
-    """PreparationExecutor のテストクラス"""
+    """Test PreparationExecutor class"""
     
-    @pytest.fixture
-    def mock_operations(self):
-        """モックDIContainer"""
-        operations = Mock(spec=DIContainer)
-        mock_file_driver = Mock()
-        operations.resolve.return_value = mock_file_driver
-        return operations
-    
-    @pytest.fixture
-    def mock_file_driver(self, mock_operations):
-        """モックファイルドライバー"""
-        return mock_operations.resolve.return_value
-    
-    @pytest.fixture
-    def preparation_executor(self, mock_operations):
-        """PreparationExecutor インスタンス"""
-        return PreparationExecutor(mock_operations)
-    
-    def test_check_environment_state_base_exists(self, preparation_executor, mock_file_driver):
-        """環境状態確認テスト（ベースディレクトリ存在）"""
-        mock_file_driver.exists.return_value = True
+    def setup_method(self):
+        """Setup test environment"""
+        self.mock_operations = MagicMock()
+        self.mock_context = MagicMock(spec=ExecutionContext)
         
-        state = preparation_executor.check_environment_state("./test_project")
-        
-        assert state['base_exists'] is True
-        assert state['base_path'] == "./test_project"
-        assert 'existing_files' in state
-        assert 'existing_directories' in state
-        mock_file_driver.exists.assert_called_with("./test_project")
-    
-    def test_check_environment_state_base_not_exists(self, preparation_executor, mock_file_driver):
-        """環境状態確認テスト（ベースディレクトリ不存在）"""
-        mock_file_driver.exists.return_value = False
-        
-        state = preparation_executor.check_environment_state("./missing_project")
-        
-        assert state['base_exists'] is False
-        assert state['base_path'] == "./missing_project"
-        mock_file_driver.exists.assert_called_with("./missing_project")
-    
-    def test_check_environment_state_error_handling(self, preparation_executor, mock_file_driver):
-        """環境状態確認エラーハンドリングテスト"""
-        mock_file_driver.exists.side_effect = Exception("Permission denied")
-        
-        state = preparation_executor.check_environment_state("./restricted")
-        
-        assert state['base_exists'] is False
-        assert 'error' in state
-        assert "Permission denied" in state['error']
-    
-    def test_verify_requirements_missing_items(self, preparation_executor, mock_file_driver):
-        """要求確認テスト（不足項目あり）"""
-        # ファイルが存在しない設定
-        mock_file_driver.exists.return_value = False
-        
-        # モックワークフロー（特定のリソースを要求）
-        class MockWorkflow:
-            def __init__(self):
-                self.requests = []
-        
-        mock_workflow = MockWorkflow()
-        
-        # _extract_required_resourcesをモック
-        def mock_extract_resources(workflow):
-            return {
-                'directories': ['./project/src', './project/build'],
-                'files': ['./project/main.py']
-            }
-        
-        preparation_executor._extract_required_resources = mock_extract_resources
-        
-        missing_items = preparation_executor.verify_requirements_against_environment(
-            mock_workflow, "./project"
-        )
-        
-        assert missing_items['preparation_needed'] is True
-        assert './project/src' in missing_items['directories']
-        assert './project/build' in missing_items['directories']
-        assert './project/main.py' in missing_items['files']
-    
-    def test_verify_requirements_no_missing_items(self, preparation_executor, mock_file_driver):
-        """要求確認テスト（不足項目なし）"""
-        # 全ファイルが存在する設定
-        mock_file_driver.exists.return_value = True
-        
-        class MockWorkflow:
-            def __init__(self):
-                self.requests = []
-        
-        mock_workflow = MockWorkflow()
-        
-        def mock_extract_resources(workflow):
-            return {
-                'directories': ['./project/src'],
-                'files': ['./project/main.py']
-            }
-        
-        preparation_executor._extract_required_resources = mock_extract_resources
-        
-        missing_items = preparation_executor.verify_requirements_against_environment(
-            mock_workflow, "./project"
-        )
-        
-        assert missing_items['preparation_needed'] is False
-        assert len(missing_items['directories']) == 0
-        assert len(missing_items['files']) == 0
-    
-    def test_create_preparation_requests(self, preparation_executor):
-        """準備request生成テスト"""
-        missing_items = {
-            'directories': ['./project/src', './project/build'],
-            'files': ['./project/main.py'],
-            'preparation_needed': True
+        # Mock Docker names  
+        self.mock_context.get_docker_names.return_value = {
+            "image_name": "python",
+            "container_name": "cph_python",
+            "oj_image_name": "ojtools",
+            "oj_container_name": "cph_ojtools"
         }
         
-        preparation_requests = preparation_executor.create_preparation_requests(missing_items)
+        # Mock basic context attributes needed by DockerStateManager
+        self.mock_context.language = "python"
+        self.mock_context.env_type = "docker"
+        self.mock_context.dockerfile_resolver = None  # No resolver for simple tests
         
-        # 準備requestが生成される（import可能な場合）
-        # import エラーの場合は空リストが返される
-        if preparation_requests:
-            from src.operations.file.file_request import FileRequest
-            for request in preparation_requests:
-                if hasattr(request, 'path'):
-                    assert isinstance(request, FileRequest)
-                    assert request.allow_failure is True  # 準備段階なので失敗許容
-        # import失敗時は空リスト
-        assert isinstance(preparation_requests, list)
+        # Mock docker driver for ps command
+        self.mock_docker_driver = MagicMock()
+        self.mock_operations.resolve.return_value = self.mock_docker_driver
+        self.mock_docker_driver.ps.return_value = []  # No containers exist
+        
+        self.executor = PreparationExecutor(self.mock_operations, self.mock_context)
     
-    def test_execute_preparation_success(self, preparation_executor, mock_file_driver):
-        """準備実行テスト（成功）"""
-        # 成功するモックrequest
-        mock_request = Mock()
-        mock_request.execute.return_value = OperationResult(success=True)
+    def test_create_docker_run_task(self):
+        """Test creation of Docker run task"""
+        tasks = self.executor._create_docker_run_task("cph_python")
         
-        preparation_requests = [mock_request]
+        # Should return a list of tasks
+        assert isinstance(tasks, list)
+        assert len(tasks) >= 1
         
-        results = preparation_executor.execute_preparation(preparation_requests)
+        # Find the run task
+        run_task = None
+        for task in tasks:
+            if task.task_type == "docker_run":
+                run_task = task
+                break
         
-        assert len(results) == 1
-        assert results[0].success is True
-        mock_request.execute.assert_called_once_with(driver=mock_file_driver)
+        assert run_task is not None
+        assert run_task.description == "Run container: cph_python from image: python"
+        assert isinstance(run_task.request_object, DockerRequest)
+        assert run_task.request_object.op.name == "RUN"
+        assert run_task.request_object.image == "python"
+        assert run_task.request_object.container == "cph_python"
     
-    def test_execute_preparation_failure(self, preparation_executor, mock_file_driver):
-        """準備実行テスト（失敗）"""
-        # 失敗するモックrequest
-        mock_request = Mock()
-        mock_request.execute.side_effect = Exception("File creation failed")
+    def test_create_docker_run_task_oj(self):
+        """Test creation of OJ Docker run task"""
+        task = self.executor._create_docker_run_task("cph_ojtools")
         
-        preparation_requests = [mock_request]
-        
-        results = preparation_executor.execute_preparation(preparation_requests)
-        
-        assert len(results) == 1
-        assert results[0].success is False
-        assert "File creation failed" in results[0].error_message
+        assert task.task_type == "docker_run"
+        assert task.description == "Run container: cph_ojtools from image: ojtools"
+        assert task.request_object.image == "ojtools"
+        assert task.request_object.container == "cph_ojtools"
     
-    def test_fit_workflow_to_environment_no_preparation_needed(self, preparation_executor, mock_file_driver):
-        """環境適合テスト（準備不要）"""
-        mock_file_driver.exists.return_value = True
+    def test_create_docker_remove_task(self):
+        """Test creation of Docker remove task"""
+        task = self.executor._create_docker_remove_task("cph_python")
         
-        class MockWorkflow:
-            def __init__(self):
-                self.requests = []
-        
-        mock_workflow = MockWorkflow()
-        
-        def mock_extract_resources(workflow):
-            return {'directories': [], 'files': []}
-        
-        preparation_executor._extract_required_resources = mock_extract_resources
-        
-        result = preparation_executor.fit_workflow_to_environment(
-            mock_workflow, "./project"
+        assert task.task_type == "docker_remove"
+        assert task.description == "Remove stopped container: cph_python"
+        assert isinstance(task.request_object, DockerRequest)
+        assert task.dependencies == []
+        assert task.request_object.op.name == "REMOVE"
+        assert task.request_object.container == "cph_python"
+    
+    def test_create_mkdir_preparation_task(self):
+        """Test creation of mkdir preparation task"""
+        status = ResourceStatus(
+            resource_type=ResourceType.DIRECTORY,
+            identifier="/workspace",
+            current_state="missing",
+            exists=False,
+            needs_preparation=True,
+            preparation_actions=["create_directory"]
         )
         
-        assert result['preparation_needed'] is False
-        assert 'Environment is ready' in result['message']
-        assert 'environment_state' in result
+        task = self.executor._create_mkdir_preparation_task("/workspace", status)
+        
+        assert task is not None
+        assert task.task_type == "mkdir"
+        assert task.description == "Create directory: /workspace"
+        assert isinstance(task.request_object, FileRequest)
+        assert task.dependencies == []
+        assert task.request_object.op.name == "MKDIR"
+        assert task.request_object.path == "/workspace"
     
-    def test_fit_workflow_to_environment_with_preparation(self, preparation_executor, mock_file_driver):
-        """環境適合テスト（準備必要）"""
-        mock_file_driver.exists.return_value = False
-        
-        class MockWorkflow:
-            def __init__(self):
-                self.requests = []
-        
-        mock_workflow = MockWorkflow()
-        
-        def mock_extract_resources(workflow):
-            return {
-                'directories': ['./project/src'],
-                'files': []
-            }
-        
-        preparation_executor._extract_required_resources = mock_extract_resources
-        
-        result = preparation_executor.fit_workflow_to_environment(
-            mock_workflow, "./project"
+    def test_create_mkdir_preparation_task_no_action(self):
+        """Test mkdir task creation when no action needed"""
+        status = ResourceStatus(
+            resource_type=ResourceType.DIRECTORY,
+            identifier="/workspace",
+            current_state="exists",
+            exists=True,
+            needs_preparation=False,
+            preparation_actions=[]
         )
         
-        assert result['preparation_needed'] is True
-        assert result['preparation_executed'] is True
-        assert 'total_preparations' in result
-        assert 'successful_preparations' in result
-        assert 'missing_items' in result
-        assert 'environment_state' in result
+        task = self.executor._create_mkdir_preparation_task("/workspace", status)
+        
+        assert task is None
     
-    def test_extract_required_resources_composite_request(self, preparation_executor):
-        """リソース抽出テスト（CompositeRequest）"""
-        # モックCompositeRequest
-        class MockCompositeRequest:
-            def __init__(self):
-                self.requests = []
+    def test_create_container_preparation_tasks_stopped(self):
+        """Test container preparation for stopped container"""
+        status = ResourceStatus(
+            resource_type=ResourceType.DOCKER_CONTAINER,
+            identifier="cph_python",
+            current_state="stopped",
+            exists=True,
+            needs_preparation=True,
+            preparation_actions=["remove_stopped_container", "run_new_container"]
+        )
         
-        # モックリクエスト（pathを持つ）
-        mock_request = Mock()
-        mock_request.path = "./project/src/main.py"
+        tasks = self.executor._create_container_preparation_tasks("cph_python", status)
         
-        mock_workflow = MockCompositeRequest()
-        mock_workflow.requests = [mock_request]
+        assert len(tasks) == 2
         
-        resources = preparation_executor._extract_required_resources(mock_workflow)
+        # First task should be remove
+        remove_task = tasks[0]
+        assert remove_task.task_type == "docker_remove"
+        assert remove_task.dependencies == []
         
-        assert 'directories' in resources
-        assert 'files' in resources
-        # pathの親ディレクトリが抽出される（相対パス形式）
-        assert 'project/src' in resources['directories']
+        # Second task should be run with dependency on remove
+        run_task = tasks[1]
+        assert run_task.task_type == "docker_run"
+        assert run_task.dependencies == [remove_task.task_id]
     
-    def test_extract_required_resources_execution_graph(self, preparation_executor):
-        """リソース抽出テスト（RequestExecutionGraph）"""
-        # モックRequestExecutionGraph
-        class MockGraph:
-            def __init__(self):
-                self.nodes = {}
+    def test_create_container_preparation_tasks_missing(self):
+        """Test container preparation for missing container"""
+        status = ResourceStatus(
+            resource_type=ResourceType.DOCKER_CONTAINER,
+            identifier="cph_python",
+            current_state="missing",
+            exists=False,
+            needs_preparation=True,
+            preparation_actions=["run_new_container"]
+        )
         
-        # モックnode
-        mock_node = Mock()
-        mock_node.requires_dirs = {'./project/build'}
-        mock_node.reads_files = {'./project/config.json'}
+        tasks = self.executor._create_container_preparation_tasks("cph_python", status)
         
-        mock_graph = MockGraph()
-        mock_graph.nodes = {'node1': mock_node}
+        assert len(tasks) == 1
+        run_task = tasks[0]
+        assert run_task.task_type == "docker_run"
+        assert run_task.dependencies == []
+    
+    def test_generate_preparation_tasks_parallel_groups(self):
+        """Test generation of preparation tasks with parallel groups"""
+        statuses = {
+            "cph_python": ResourceStatus(
+                resource_type=ResourceType.DOCKER_CONTAINER,
+                identifier="cph_python",
+                current_state="missing",
+                exists=False,
+                needs_preparation=True,
+                preparation_actions=["run_new_container"]
+            ),
+            "/workspace": ResourceStatus(
+                resource_type=ResourceType.DIRECTORY,
+                identifier="/workspace",
+                current_state="missing",
+                exists=False,
+                needs_preparation=True,
+                preparation_actions=["create_directory"]
+            )
+        }
         
-        resources = preparation_executor._extract_required_resources(mock_graph)
+        tasks = self.executor._generate_preparation_tasks(statuses)
         
-        assert './project/build' in resources['directories']
-        assert './project/config.json' in resources['files']
+        # Should have one docker task and one mkdir task
+        docker_tasks = [t for t in tasks if t.task_type == "docker_run"]
+        mkdir_tasks = [t for t in tasks if t.task_type == "mkdir"]
+        
+        assert len(docker_tasks) == 1
+        assert len(mkdir_tasks) == 1
+        
+        # Check parallel groups
+        assert docker_tasks[0].parallel_group == "docker_preparation"
+        assert mkdir_tasks[0].parallel_group == "mkdir_preparation"
+    
+    def test_sort_tasks_by_dependencies(self):
+        """Test task sorting by dependencies"""
+        task1 = PreparationTask(
+            task_id="remove_001",
+            task_type="docker_remove",
+            request_object=MagicMock(),
+            dependencies=[],
+            description="Remove task"
+        )
+        
+        task2 = PreparationTask(
+            task_id="run_001",
+            task_type="docker_run",
+            request_object=MagicMock(),
+            dependencies=["remove_001"],
+            description="Run task"
+        )
+        
+        task3 = PreparationTask(
+            task_id="mkdir_001",
+            task_type="mkdir",
+            request_object=MagicMock(),
+            dependencies=[],
+            description="Mkdir task",
+            parallel_group="mkdir_preparation"
+        )
+        
+        # Tasks in wrong order
+        tasks = [task2, task3, task1]
+        
+        sorted_tasks = self.executor._sort_tasks_by_dependencies(tasks)
+        
+        # Should have dependencies resolved
+        task_ids = [t.task_id for t in sorted_tasks]
+        
+        # mkdir task can be anywhere (no dependencies)
+        # remove task must come before run task
+        remove_index = task_ids.index("remove_001")
+        run_index = task_ids.index("run_001")
+        
+        assert remove_index < run_index
+    
+    def test_convert_to_workflow_requests(self):
+        """Test conversion of preparation tasks to workflow requests"""
+        task1 = PreparationTask(
+            task_id="mkdir_001",
+            task_type="mkdir",
+            request_object=MagicMock(),
+            dependencies=[],
+            description="Mkdir task"
+        )
+        
+        task2 = PreparationTask(
+            task_id="docker_001",
+            task_type="docker_run",
+            request_object=MagicMock(),
+            dependencies=[],
+            description="Docker task"
+        )
+        
+        tasks = [task1, task2]
+        
+        requests = self.executor.convert_to_workflow_requests(tasks)
+        
+        assert len(requests) == 2
+        assert requests[0] == task1.request_object
+        assert requests[1] == task2.request_object
+    
+    def test_analyze_and_prepare_integration(self):
+        """Test full analyze and prepare workflow"""
+        # Mock workflow tasks with docker exec
+        workflow_tasks = [
+            {"command": "docker exec cph_python python main.py"}
+        ]
+        
+        # Mock inspector methods directly through the executor's inspector
+        with patch.object(self.executor.inspector, 'extract_requirements_from_workflow_tasks') as mock_extract:
+            with patch.object(self.executor.inspector, 'inspect_docker_containers') as mock_docker:
+                with patch.object(self.executor.inspector, 'inspect_directories') as mock_dirs:
+                    
+                    # Setup mock returns
+                    mock_extract.return_value = []
+                    mock_docker.return_value = {}
+                    mock_dirs.return_value = {}
+                    
+                    tasks, statuses = self.executor.analyze_and_prepare(workflow_tasks)
+                    
+                    # Should call inspector methods
+                    mock_extract.assert_called_once_with(workflow_tasks)
+                    
+                    assert isinstance(tasks, list)
+                    assert isinstance(statuses, dict)

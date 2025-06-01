@@ -1,11 +1,15 @@
 def main(context, operations):
     """
     メイン処理本体。context, operations, controllerは必須。
+    
+    Note: EnvWorkflowService has been removed during refactoring.
+    This function is temporarily disabled until a replacement is implemented.
     """
-    from src.env.env_workflow_service import EnvWorkflowService
-    service = EnvWorkflowService(context, operations)
-    result = service.run_workflow()
-    # [print(r) for r in result]
+    # TODO: Implement replacement for EnvWorkflowService
+    # The service was removed during the module refactoring
+    print("Warning: EnvWorkflowService has been removed. Main functionality is currently disabled.")
+    print("Please use the individual operation modules directly.")
+    return None
 
 if __name__ == "__main__":
     import sys

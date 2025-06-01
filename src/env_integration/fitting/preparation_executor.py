@@ -1,268 +1,385 @@
 """
-環境準備の実行機能
+Preparation executor for generating pre-workflow tasks
 """
-from typing import List, Dict, Any, Optional
-from src.operations.di_container import DIContainer
-from src.operations.result.result import OperationResult
+from typing import List, Dict, Optional, Tuple
+from dataclasses import dataclass
+
+from src.env_integration.fitting.environment_inspector import (
+    EnvironmentInspector, ResourceStatus, ResourceType, ResourceRequirement
+)
+from src.env_integration.fitting.docker_state_manager import DockerStateManager
+from src.operations.docker.docker_request import DockerRequest, DockerOpType
+from src.operations.file.file_request import FileRequest
+from src.operations.file.file_op_type import FileOpType
+from src.context.execution_context import ExecutionContext
+
+
+@dataclass
+class PreparationTask:
+    """Represents a preparation task that needs to be executed"""
+    task_id: str
+    task_type: str  # "docker_run", "mkdir", "docker_remove", etc.
+    request_object: object  # The actual request object to execute
+    dependencies: List[str]  # Task IDs this task depends on
+    description: str
+    parallel_group: Optional[str] = None  # Group ID for parallel execution
 
 
 class PreparationExecutor:
-    """
-    環境準備を実際に実行するクラス
+    """Generates preparation tasks based on environment inspection results"""
     
-    operations経由で実環境の状態確認と準備作業を行う
-    """
-    
-    def __init__(self, operations: DIContainer):
-        """
+    def __init__(self, operations, context: ExecutionContext):
+        """Initialize with operations container and execution context
+        
         Args:
-            operations: DI container for accessing drivers
+            operations: Operations container for creating requests
+            context: Execution context with configuration and Docker names
         """
         self.operations = operations
+        self.context = context
+        self.inspector = EnvironmentInspector(operations)
+        self.state_manager = DockerStateManager()
+        self._task_counter = 0
     
-    def check_environment_state(self, base_path: str = ".") -> Dict[str, Any]:
-        """
-        operations経由で実環境の状態を確認
+    def analyze_and_prepare(self, workflow_tasks: List) -> Tuple[List[PreparationTask], Dict[str, ResourceStatus]]:
+        """Analyze workflow tasks and generate preparation tasks
         
         Args:
-            base_path: 確認対象のベースパス
+            workflow_tasks: List of workflow task objects
             
         Returns:
-            Dict[str, Any]: 環境状態情報
+            Tuple of (preparation_tasks, resource_status_map)
         """
-        file_driver = self.operations.resolve('file_driver')
+        # Extract requirements from workflow
+        requirements = self.inspector.extract_requirements_from_workflow_tasks(workflow_tasks)
         
-        state = {
-            'existing_files': set(),
-            'existing_directories': set(),
-            'base_path': base_path
-        }
+        # Group requirements by type
+        container_requirements = [r for r in requirements if r.resource_type == ResourceType.DOCKER_CONTAINER]
+        directory_requirements = [r for r in requirements if r.resource_type == ResourceType.DIRECTORY]
         
-        try:
-            # ベースディレクトリの存在確認
-            if file_driver.exists(base_path):
-                # ディレクトリ内容の列挙（可能な場合）
-                state['base_exists'] = True
-                # 注: file_driverの具体的なAPIに依存
-            else:
-                state['base_exists'] = False
+        # Inspect current environment state
+        container_statuses = {}
+        directory_statuses = {}
+        
+        if container_requirements:
+            container_names = [r.identifier for r in container_requirements]
+            container_statuses = self.inspector.inspect_docker_containers(container_names)
+        
+        if directory_requirements:
+            directory_paths = [r.identifier for r in directory_requirements]
+            directory_statuses = self.inspector.inspect_directories(directory_paths)
+        
+        # Combine all statuses
+        all_statuses = {**container_statuses, **directory_statuses}
+        
+        # Generate preparation tasks
+        preparation_tasks = self._generate_preparation_tasks(all_statuses)
+        
+        return preparation_tasks, all_statuses
+    
+    def _generate_preparation_tasks(self, statuses: Dict[str, ResourceStatus]) -> List[PreparationTask]:
+        """Generate preparation tasks based on resource statuses
+        
+        Args:
+            statuses: Dict mapping resource identifier to ResourceStatus
+            
+        Returns:
+            List of PreparationTask objects
+        """
+        tasks = []
+        
+        # Track tasks that can run in parallel
+        parallel_docker_tasks = []
+        parallel_mkdir_tasks = []
+        
+        for identifier, status in statuses.items():
+            if not status.needs_preparation:
+                continue
+            
+            if status.resource_type == ResourceType.DOCKER_CONTAINER:
+                container_tasks = self._create_container_preparation_tasks(identifier, status)
+                parallel_docker_tasks.extend(container_tasks)
                 
-        except Exception as e:
-            state['error'] = str(e)
-            state['base_exists'] = False
+            elif status.resource_type == ResourceType.DIRECTORY:
+                mkdir_task = self._create_mkdir_preparation_task(identifier, status)
+                if mkdir_task:
+                    parallel_mkdir_tasks.append(mkdir_task)
         
-        return state
+        # Assign parallel groups
+        # Docker tasks and mkdir tasks can run in parallel with each other
+        for task in parallel_docker_tasks:
+            task.parallel_group = "docker_preparation"
+            tasks.append(task)
+        
+        for task in parallel_mkdir_tasks:
+            task.parallel_group = "mkdir_preparation"
+            tasks.append(task)
+        
+        return tasks
     
-    def verify_requirements_against_environment(
-        self, 
-        workflow_requests,
-        base_path: str = "."
-    ) -> Dict[str, Any]:
-        """
-        ワークフローの要求と実環境の差異を確認
+    def _create_container_preparation_tasks(self, container_name: str, status: ResourceStatus) -> List[PreparationTask]:
+        """Create preparation tasks for Docker container
         
         Args:
-            workflow_requests: ワークフローのrequests
-            base_path: ベースパス
+            container_name: Name of the container
+            status: Current status of the container
             
         Returns:
-            Dict[str, Any]: 差異分析結果
+            List of PreparationTask objects
         """
-        file_driver = self.operations.resolve('file_driver')
+        tasks = []
         
-        # ワークフローから必要なリソースを抽出
-        required_resources = self._extract_required_resources(workflow_requests)
+        if "remove_stopped_container" in status.preparation_actions:
+            # Remove stopped container first
+            remove_task = self._create_docker_remove_task(container_name)
+            tasks.append(remove_task)
         
-        missing_items = {
-            'directories': [],
-            'files': [],
-            'preparation_needed': False
-        }
+        if "run_new_container" in status.preparation_actions:
+            # Run new container (now returns multiple tasks for build/remove/run)
+            run_tasks = self._create_docker_run_task(container_name)
+            
+            # If we're removing first, first run task depends on remove
+            if tasks and run_tasks:
+                run_tasks[0].dependencies.append(tasks[-1].task_id)
+            
+            tasks.extend(run_tasks)
         
-        # 必要なディレクトリの確認
-        for dir_path in required_resources.get('directories', []):
-            try:
-                if not file_driver.exists(dir_path):
-                    missing_items['directories'].append(dir_path)
-                    missing_items['preparation_needed'] = True
-            except Exception:
-                missing_items['directories'].append(dir_path)
-                missing_items['preparation_needed'] = True
-        
-        # 必要なファイルの確認
-        for file_path in required_resources.get('files', []):
-            try:
-                if not file_driver.exists(file_path):
-                    missing_items['files'].append(file_path)
-                    missing_items['preparation_needed'] = True
-            except Exception:
-                missing_items['files'].append(file_path)
-                missing_items['preparation_needed'] = True
-        
-        return missing_items
+        return tasks
     
-    def create_preparation_requests(
-        self, 
-        missing_items: Dict[str, Any]
-    ) -> List[Any]:
-        """
-        不足している項目に対する準備requestを生成
+    def _create_mkdir_preparation_task(self, directory_path: str, status: ResourceStatus) -> Optional[PreparationTask]:
+        """Create mkdir preparation task
         
         Args:
-            missing_items: verify_requirements_against_environmentの結果
+            directory_path: Path to the directory
+            status: Current status of the directory
             
         Returns:
-            List[Any]: 準備用のrequestリスト
+            PreparationTask object or None
         """
-        preparation_requests = []
+        if "create_directory" not in status.preparation_actions:
+            return None
         
-        # DIコンテナから必要なファクトリを取得
-        try:
-            from src.operations.file.file_request import FileRequest
-            from src.operations.file.file_op_type import FileOpType
-        except ImportError:
-            # フォールバック: 基本的なrequest生成
-            return preparation_requests
+        task_id = self._next_task_id("mkdir")
         
-        # 不足ディレクトリの作成request
-        for dir_path in missing_items.get('directories', []):
-            try:
-                mkdir_request = FileRequest(
-                    path=dir_path,
-                    op=FileOpType.MKDIR,
-                    allow_failure=True  # 事前準備なので失敗を許容
-                )
-                preparation_requests.append(mkdir_request)
-            except Exception:
-                # Request作成に失敗した場合はスキップ
-                continue
-        
-        # 不足ファイルの作成request（必要に応じて）
-        for file_path in missing_items.get('files', []):
-            # ファイルはテンプレートコピーまたは空ファイル作成
-            try:
-                touch_request = FileRequest(
-                    path=file_path,
-                    op=FileOpType.TOUCH,
-                    allow_failure=True
-                )
-                preparation_requests.append(touch_request)
-            except Exception:
-                continue
-        
-        return preparation_requests
-    
-    def execute_preparation(
-        self, 
-        preparation_requests: List[Any]
-    ) -> List[OperationResult]:
-        """
-        準備requestを実行
-        
-        Args:
-            preparation_requests: 準備用requestリスト
-            
-        Returns:
-            List[OperationResult]: 実行結果リスト
-        """
-        results = []
-        file_driver = self.operations.resolve('file_driver')
-        
-        for request in preparation_requests:
-            try:
-                result = request.execute(driver=file_driver)
-                results.append(result)
-            except Exception as e:
-                # 準備段階のエラーは記録するが継続
-                error_result = OperationResult(
-                    success=False,
-                    error_message=str(e)
-                )
-                results.append(error_result)
-        
-        return results
-    
-    def fit_workflow_to_environment(
-        self, 
-        workflow_requests,
-        base_path: str = "."
-    ) -> Dict[str, Any]:
-        """
-        ワークフローを実環境に適合させるメイン機能
-        
-        Args:
-            workflow_requests: ワークフローのrequests
-            base_path: ベースパス
-            
-        Returns:
-            Dict[str, Any]: 適合処理の結果
-        """
-        # 1. 環境状態確認
-        env_state = self.check_environment_state(base_path)
-        
-        # 2. 差異確認
-        missing_items = self.verify_requirements_against_environment(
-            workflow_requests, base_path
+        # Create mkdir request
+        mkdir_request = FileRequest(
+            op=FileOpType.MKDIR,
+            path=directory_path
         )
         
-        # 3. 準備が必要かチェック
-        if not missing_items['preparation_needed']:
-            return {
-                'preparation_needed': False,
-                'message': 'Environment is ready for workflow execution',
-                'environment_state': env_state
-            }
-        
-        # 4. 準備requestの生成
-        preparation_requests = self.create_preparation_requests(missing_items)
-        
-        # 5. 準備の実行
-        preparation_results = self.execute_preparation(preparation_requests)
-        
-        # 6. 結果の集約
-        successful_preparations = sum(1 for r in preparation_results if r.success)
-        
-        return {
-            'preparation_needed': True,
-            'preparation_executed': True,
-            'total_preparations': len(preparation_requests),
-            'successful_preparations': successful_preparations,
-            'preparation_results': preparation_results,
-            'missing_items': missing_items,
-            'environment_state': env_state
-        }
+        return PreparationTask(
+            task_id=task_id,
+            task_type="mkdir",
+            request_object=mkdir_request,
+            dependencies=[],
+            description=f"Create directory: {directory_path}"
+        )
     
-    def _extract_required_resources(self, workflow_requests) -> Dict[str, List[str]]:
-        """
-        ワークフローから必要なリソースを抽出
+    def _create_docker_remove_task(self, container_name: str) -> PreparationTask:
+        """Create Docker container removal task"""
+        task_id = self._next_task_id("docker_remove")
+        
+        remove_request = DockerRequest(
+            op=DockerOpType.REMOVE,
+            container=container_name
+        )
+        
+        return PreparationTask(
+            task_id=task_id,
+            task_type="docker_remove",
+            request_object=remove_request,
+            dependencies=[],
+            description=f"Remove stopped container: {container_name}"
+        )
+    
+    def _create_docker_run_task(self, container_name: str) -> List[PreparationTask]:
+        """Create Docker container run task (with rebuild/recreate logic)"""
+        tasks = []
+        
+        # Check if rebuilds/recreates are needed
+        (image_rebuild_needed, oj_image_rebuild_needed, 
+         container_recreate_needed, oj_container_recreate_needed) = (
+            self.state_manager.check_rebuild_needed(self.context)
+        )
+        
+        # Get Docker names from context
+        docker_names = self.context.get_docker_names()
+        
+        # Determine which image to use based on container name
+        is_oj_container = container_name.startswith("cph_ojtools")
+        if is_oj_container:
+            image_name = docker_names["oj_image_name"]
+            needs_image_rebuild = oj_image_rebuild_needed
+            needs_container_recreate = oj_container_recreate_needed
+        else:
+            image_name = docker_names["image_name"]
+            needs_image_rebuild = image_rebuild_needed
+            needs_container_recreate = container_recreate_needed
+        
+        # Additional compatibility check for existing containers
+        if not needs_container_recreate:
+            compatible = self.state_manager.inspect_container_compatibility(
+                self.operations, container_name, image_name
+            )
+            if not compatible:
+                needs_container_recreate = True
+        
+        # Create image build task if needed
+        build_task_id = None
+        if needs_image_rebuild:
+            build_task_id = self._next_task_id("docker_build")
+            # Get Dockerfile content through resolver (this triggers the lazy loading)
+            dockerfile_content = None
+            if is_oj_container:
+                dockerfile_content = self.context.oj_dockerfile
+            else:
+                dockerfile_content = self.context.dockerfile
+            
+            if dockerfile_content:
+                build_request = DockerRequest(
+                    op=DockerOpType.BUILD,
+                    image=image_name,
+                    dockerfile_text=dockerfile_content,
+                    options={"t": image_name}
+                )
+                
+                build_task = PreparationTask(
+                    task_id=build_task_id,
+                    task_type="docker_build",
+                    request_object=build_request,
+                    dependencies=[],
+                    description=f"Build image: {image_name}",
+                    parallel_group="docker_preparation"
+                )
+                tasks.append(build_task)
+        
+        # Create container remove task if recreation needed
+        rebuild_remove_task_id = None
+        if needs_container_recreate:
+            # Check if container exists first
+            ps_result = self.operations.resolve("docker_driver").ps(
+                all=True, show_output=False, names_only=True
+            )
+            if container_name in ps_result:
+                rebuild_remove_task_id = self._next_task_id("docker_remove")
+                remove_request = DockerRequest(
+                    op=DockerOpType.REMOVE,
+                    container=container_name
+                )
+                
+                remove_task = PreparationTask(
+                    task_id=rebuild_remove_task_id,
+                    task_type="docker_remove",
+                    request_object=remove_request,
+                    dependencies=[],
+                    description=f"Remove old container: {container_name}",
+                    parallel_group="docker_preparation"
+                )
+                tasks.append(remove_task)
+        
+        # Create container run task
+        run_task_id = self._next_task_id("docker_run")
+        run_dependencies = []
+        
+        # Add dependencies based on what needs to be done first
+        if needs_image_rebuild and build_task_id:
+            run_dependencies.append(build_task_id)
+        if needs_container_recreate and rebuild_remove_task_id:
+            run_dependencies.append(rebuild_remove_task_id)
+        
+        run_request = DockerRequest(
+            op=DockerOpType.RUN,
+            image=image_name,
+            container=container_name,
+            command="tail -f /dev/null"  # Keep container running
+        )
+        
+        run_task = PreparationTask(
+            task_id=run_task_id,
+            task_type="docker_run",
+            request_object=run_request,
+            dependencies=run_dependencies,
+            description=f"Run container: {container_name} from image: {image_name}",
+            parallel_group="docker_preparation"
+        )
+        tasks.append(run_task)
+        
+        # Update state after successful preparation
+        self.state_manager.update_state(self.context)
+        
+        return tasks
+    
+    def _next_task_id(self, prefix: str) -> str:
+        """Generate next task ID"""
+        self._task_counter += 1
+        return f"{prefix}_{self._task_counter:03d}"
+    
+    def convert_to_workflow_requests(self, preparation_tasks: List[PreparationTask]) -> List:
+        """Convert preparation tasks to workflow-compatible request objects
         
         Args:
-            workflow_requests: ワークフローのrequests
+            preparation_tasks: List of PreparationTask objects
             
         Returns:
-            Dict[str, List[str]]: 必要なリソース情報
+            List of request objects ready for workflow execution
         """
-        resources = {
-            'files': [],
-            'directories': []
-        }
+        # Sort tasks by dependencies and parallel groups
+        sorted_tasks = self._sort_tasks_by_dependencies(preparation_tasks)
         
-        # CompositeRequestまたはRequestExecutionGraphから抽出
-        if hasattr(workflow_requests, 'nodes'):
-            # RequestExecutionGraphの場合
-            for node in workflow_requests.nodes.values():
-                if hasattr(node, 'requires_dirs') and node.requires_dirs:
-                    resources['directories'].extend(node.requires_dirs)
-                if hasattr(node, 'reads_files') and node.reads_files:
-                    resources['files'].extend(node.reads_files)
-        elif hasattr(workflow_requests, 'requests'):
-            # CompositeRequestの場合
-            for request in workflow_requests.requests:
-                # FileRequestの場合の特別処理
-                if hasattr(request, 'path'):
-                    from pathlib import Path
-                    parent_dir = str(Path(request.path).parent)
-                    if parent_dir != '.':
-                        resources['directories'].append(parent_dir)
+        # Extract request objects
+        return [task.request_object for task in sorted_tasks]
+    
+    def _sort_tasks_by_dependencies(self, tasks: List[PreparationTask]) -> List[PreparationTask]:
+        """Sort tasks by dependencies using topological sort
         
-        return resources
+        Args:
+            tasks: List of PreparationTask objects
+            
+        Returns:
+            List of sorted PreparationTask objects
+        """
+        # Create task lookup
+        task_map = {task.task_id: task for task in tasks}
+        
+        # Simple dependency resolution (could be enhanced with graph algorithms)
+        sorted_tasks = []
+        remaining_tasks = tasks.copy()
+        
+        while remaining_tasks:
+            # Find tasks with no unresolved dependencies
+            ready_tasks = []
+            for task in remaining_tasks:
+                deps_satisfied = all(
+                    dep_id in [t.task_id for t in sorted_tasks] 
+                    for dep_id in task.dependencies
+                )
+                if deps_satisfied:
+                    ready_tasks.append(task)
+            
+            if not ready_tasks:
+                # Circular dependency or error - add remaining tasks
+                sorted_tasks.extend(remaining_tasks)
+                break
+            
+            # Group parallel tasks together
+            parallel_groups = {}
+            non_parallel_tasks = []
+            
+            for task in ready_tasks:
+                if task.parallel_group:
+                    if task.parallel_group not in parallel_groups:
+                        parallel_groups[task.parallel_group] = []
+                    parallel_groups[task.parallel_group].append(task)
+                else:
+                    non_parallel_tasks.append(task)
+            
+            # Add parallel groups first, then non-parallel tasks
+            for group_tasks in parallel_groups.values():
+                sorted_tasks.extend(group_tasks)
+            sorted_tasks.extend(non_parallel_tasks)
+            
+            # Remove processed tasks
+            for task in ready_tasks:
+                remaining_tasks.remove(task)
+        
+        return sorted_tasks
