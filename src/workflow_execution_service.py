@@ -71,6 +71,7 @@ class WorkflowExecutionService:
             self.context
         )
         
+        
         if step_result.errors:
             return WorkflowExecutionResult(
                 success=False,
@@ -83,6 +84,7 @@ class WorkflowExecutionService:
         # Build workflow graph
         builder = GraphBasedWorkflowBuilder.from_context(self.context)
         graph, graph_errors, graph_warnings = builder.build_graph_from_json_steps(json_steps)
+        
         
         if graph_errors:
             return WorkflowExecutionResult(
@@ -126,6 +128,7 @@ class WorkflowExecutionService:
         # Execute main workflow
         from src.operations.composite.unified_driver import UnifiedDriver
         unified_driver = UnifiedDriver(self.operations)
+        
         
         if parallel:
             results = graph.execute_parallel(driver=unified_driver, max_workers=max_workers)

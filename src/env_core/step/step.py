@@ -20,6 +20,7 @@ class StepType(Enum):
     OJ = "oj"
     TEST = "test"
     BUILD = "build"
+    RESULT = "result"
     DOCKER_EXEC = "docker_exec"
     DOCKER_CP = "docker_cp"
     DOCKER_RUN = "docker_run"

@@ -62,6 +62,8 @@ class PureRequestFactory:
                 return PureRequestFactory._create_build_request(step, context)
             elif step.type == StepType.OJ:
                 return PureRequestFactory._create_oj_request(step, context)
+            elif step.type == StepType.RESULT:
+                return PureRequestFactory._create_result_request(step, context)
             else:
                 # 未知のステップタイプ
                 return None
@@ -305,7 +307,7 @@ class PureRequestFactory:
             test_passed=0
             test_total=0
             
-            for input_file in "$test_dir"/sample-*.in; do
+            for input_file in $(ls "$test_dir"/sample-*.in 2>/dev/null | sort); do
                 if [[ -f "$input_file" ]]; then
                     test_total=$((test_total + 1))
                     test_name=$(basename "$input_file" .in)
@@ -396,6 +398,19 @@ class PureRequestFactory:
         return request
     
     @staticmethod
+    def _create_result_request(step: Step, context) -> Any:
+        """result requestを生成（テスト結果を表示・処理）"""
+        if not step.cmd:
+            raise ValueError("result step requires command or display type")
+        
+        # RESULTタイプのコマンドは主にテスト結果の集計・表示用
+        # 基本的にはShellRequestで実装
+        request = ShellRequest(cmd=step.cmd, cwd=step.cwd, show_output=True)
+        request.allow_failure = step.allow_failure
+        request.show_output = True  # RESULTは常に出力を表示
+        return request
+    
+    @staticmethod
     def _create_oj_request(step: Step, context) -> Any:
         """oj requestを生成（Docker環境ではdocker exec、ローカルではshell）"""
         if not step.cmd:
@@ -421,4 +436,17 @@ class PureRequestFactory:
         
         request.allow_failure = step.allow_failure
         request.show_output = step.show_output
+        return request
+    
+    @staticmethod
+    def _create_result_request(step: Step, context) -> Any:
+        """result requestを生成（テスト結果を表示・処理）"""
+        if not step.cmd:
+            raise ValueError("result step requires command or display type")
+        
+        # RESULTタイプのコマンドは主にテスト結果の集計・表示用
+        # 基本的にはShellRequestで実装
+        request = ShellRequest(cmd=step.cmd, cwd=step.cwd, show_output=True)
+        request.allow_failure = step.allow_failure
+        request.show_output = True  # RESULTは常に出力を表示
         return request

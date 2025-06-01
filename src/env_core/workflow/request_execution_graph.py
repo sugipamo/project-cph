@@ -7,6 +7,7 @@ from typing import List, Dict, Set, Optional, Tuple, Any
 from enum import Enum
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict, deque
+import re
 from src.operations.base_request import BaseRequest
 from src.operations.result.result import OperationResult
 
@@ -96,6 +97,8 @@ class RequestExecutionGraph:
         self.reverse_adjacency_list: Dict[str, Set[str]] = defaultdict(set)
         self.nodes: Dict[str, RequestNode] = {}
         self.edges: List[DependencyEdge] = []
+        # 実行結果の蓄積用（結果置換機能用）
+        self.execution_results: Dict[str, OperationResult] = {}
     
     def add_request_node(self, node: RequestNode) -> None:
         """リクエストノードを追加"""
@@ -327,6 +330,9 @@ class RequestExecutionGraph:
         for node_id in execution_order:
             node = self.nodes[node_id]
             
+            # 結果置換を適用
+            self.apply_result_substitution_to_request(node.request, node_id)
+            
             # リクエスト実行前のデバッグ出力
             self._debug_request_before_execution(node, node_id)
             
@@ -340,6 +346,9 @@ class RequestExecutionGraph:
                 node.status = "completed" if result.success else "failed"
                 results.append(result)
                 
+                # 実行結果を蓄積
+                self.execution_results[node_id] = result
+                
                 # 失敗時の処理
                 if not result.success and not getattr(node.request, 'allow_failure', False):
                     # 依存するノードをスキップ
@@ -352,6 +361,9 @@ class RequestExecutionGraph:
                 error_result = OperationResult(success=False, error_message=str(e))
                 node.result = error_result
                 results.append(error_result)
+                
+                # エラー結果も蓄積
+                self.execution_results[node_id] = error_result
                 
                 if not getattr(node.request, 'allow_failure', False):
                     self._mark_dependent_nodes_skipped(node_id)
@@ -410,6 +422,9 @@ class RequestExecutionGraph:
                         node.status = "completed" if result.success else "failed"
                         all_results[node_id] = result
                         
+                        # 実行結果を蓄積
+                        self.execution_results[node_id] = result
+                        
                         if not result.success and not getattr(node.request, 'allow_failure', False):
                             failed_nodes.add(node_id)
                             
@@ -418,6 +433,9 @@ class RequestExecutionGraph:
                         error_result = OperationResult(success=False, error_message=str(e))
                         node.result = error_result
                         all_results[node_id] = error_result
+                        
+                        # エラー結果も蓄積
+                        self.execution_results[node_id] = error_result
                         
                         if not getattr(node.request, 'allow_failure', False):
                             failed_nodes.add(node_id)
@@ -441,6 +459,9 @@ class RequestExecutionGraph:
         
         for node_id in node_ids:
             node = self.nodes[node_id]
+            
+            # 結果置換を適用
+            self.apply_result_substitution_to_request(node.request, node_id)
             
             # リクエスト実行前のデバッグ出力
             self._debug_request_before_execution(node, node_id)
@@ -578,3 +599,73 @@ class RequestExecutionGraph:
             print(f"  📺 出力表示: True")
         
         print(f"  ⏱️  実行中...")
+    
+    def substitute_result_placeholders(self, text) -> str:
+        """
+        テキスト内の結果プレースホルダーを実際の値で置換
+        
+        形式: {{step_X.result.Y}} または {{step_X.Y}}
+        例: {{step_0.result.stdout}}, {{step_test.returncode}}
+        
+        Args:
+            text: 置換対象のテキスト（文字列でない場合はそのまま返す）
+            
+        Returns:
+            str: 置換済みのテキスト
+        """
+        # 文字列でない場合はそのまま返す（テスト用のMockオブジェクト等）
+        if not isinstance(text, str):
+            return text
+            
+        # {{step_X.result.Y}}形式のパターンを検索
+        pattern1 = r'\{\{step_(\w+)\.result\.(\w+)\}\}'
+        # {{step_X.Y}}形式のパターンも対応
+        pattern2 = r'\{\{step_(\w+)\.(\w+)\}\}'
+        
+        def replacer(match):
+            step_id = match.group(1)
+            field_name = match.group(2)
+            
+            if step_id in self.execution_results:
+                result = self.execution_results[step_id]
+                if hasattr(result, field_name):
+                    value = getattr(result, field_name)
+                    return str(value) if value is not None else ""
+            
+            # 置換できない場合は元のまま
+            return match.group(0)
+        
+        # 両方のパターンを置換
+        text = re.sub(pattern1, replacer, text)
+        text = re.sub(pattern2, replacer, text)
+        
+        return text
+    
+    def apply_result_substitution_to_request(self, request, node_id: str) -> None:
+        """
+        リクエストのコマンドに結果置換を適用
+        
+        Args:
+            request: 置換対象のリクエスト
+            node_id: リクエストのノードID
+        """
+        # ShellRequestのcmdを置換
+        if hasattr(request, 'cmd') and request.cmd:
+            if isinstance(request.cmd, list):
+                # リスト内の各要素が文字列の場合のみ置換
+                new_cmd = []
+                for cmd in request.cmd:
+                    new_cmd.append(self.substitute_result_placeholders(cmd))
+                request.cmd = new_cmd
+            else:
+                request.cmd = self.substitute_result_placeholders(request.cmd)
+        
+        # DockerRequestのcommandを置換
+        if hasattr(request, 'command') and request.command:
+            request.command = self.substitute_result_placeholders(request.command)
+        
+        # その他のテキストフィールドも置換
+        if hasattr(request, 'path') and request.path:
+            request.path = self.substitute_result_placeholders(request.path)
+        if hasattr(request, 'dst_path') and request.dst_path:
+            request.dst_path = self.substitute_result_placeholders(request.dst_path)
