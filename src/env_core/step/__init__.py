@@ -26,8 +26,10 @@ from .dependency import (
     analyze_step_dependencies
 )
 from .request_converter import (
-    steps_to_requests,
-    step_to_request
+    steps_to_pure_sequence,
+    step_to_pure_request,
+    PureStepRequest,
+    PureStepSequence
 )
 from .workflow import (
     generate_workflow_from_json,
@@ -56,8 +58,10 @@ __all__ = [
     'analyze_step_dependencies',
     
     # Request conversion
-    'steps_to_requests',
-    'step_to_request',
+    'steps_to_pure_sequence',
+    'step_to_pure_request',
+    'PureStepRequest',
+    'PureStepSequence',
     
     # High-level workflow API
     'generate_workflow_from_json',

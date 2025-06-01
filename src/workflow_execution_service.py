@@ -8,8 +8,10 @@ from dataclasses import dataclass
 from src.env_core.step.step import Step, StepType
 from src.env_core.step.core import generate_steps_from_json
 from src.env_core.workflow.graph_based_workflow_builder import GraphBasedWorkflowBuilder
-from src.env_core.workflow.pure_request_factory import PureRequestFactory
+from src.env_core.workflow.pure_request_factory import PureRequestFactory, PureRequest
+from src.env_core.step.request_converter import steps_to_pure_sequence, PureStepSequence
 from src.env_integration.fitting.preparation_executor import PreparationExecutor
+from src.env_integration.fitting.pure_request_converter import PureRequestConverter
 from src.context.execution_context import ExecutionContext
 from src.operations.result.result import OperationResult
 from src.operations.composite.driver_bound_request import DriverBoundRequest
@@ -42,6 +44,7 @@ class WorkflowExecutionService:
         self.context = context
         self.operations = operations
         self.preparation_executor = PreparationExecutor(operations, context)
+        self.pure_request_converter = PureRequestConverter(operations, context)
     
     def execute_workflow(self, parallel: bool = False, max_workers: int = 4) -> WorkflowExecutionResult:
         """
@@ -95,12 +98,16 @@ class WorkflowExecutionService:
                 warnings=graph_warnings + step_result.warnings
             )
         
-        # Convert steps to workflow tasks for fitting analysis
-        workflow_tasks = self._create_workflow_tasks(step_result.steps)
+        # Convert steps to pure requests (env.json step reproduction only)
+        pure_sequence = steps_to_pure_sequence(step_result.steps)
         
-        # Analyze environment and prepare if needed
+        # Analyze environment and prepare if needed (fitting responsibility)
         preparation_results = []
-        if workflow_tasks:
+        if pure_sequence.steps:
+            # Convert pure requests for fitting analysis
+            pure_requests = [self._convert_pure_step_to_pure_request(step) for step in pure_sequence.steps]
+            workflow_tasks = self._create_workflow_tasks_from_pure_requests(pure_requests)
+            
             preparation_tasks, statuses = self.preparation_executor.analyze_and_prepare(workflow_tasks)
             
             if preparation_tasks:
@@ -184,47 +191,37 @@ class WorkflowExecutionService:
         
         return steps
     
-    def _create_workflow_tasks(self, steps: List[Step]) -> List[Dict]:
-        """Convert steps to workflow tasks for fitting analysis"""
+    def _convert_pure_step_to_pure_request(self, pure_step) -> PureRequest:
+        """Convert PureStepRequest to PureRequest for compatibility"""
+        return PureRequest(
+            type=pure_step.step_type,
+            operation=pure_step.action,
+            params=pure_step.parameters,
+            allow_failure=pure_step.allow_failure,
+            show_output=pure_step.show_output
+        )
+    
+    def _create_workflow_tasks_from_pure_requests(self, pure_requests: List[PureRequest]) -> List[Dict]:
+        """Convert pure requests to workflow tasks for fitting analysis"""
         workflow_tasks = []
         
-        for step in steps:
-            # Create request from step
-            request = PureRequestFactory.create_request_from_step(step, self.context)
-            if request:
-                # Determine request type based on actual request class
-                if request.__class__.__name__ == "DockerRequest":
-                    request_type = "docker"
-                elif request.__class__.__name__ == "FileRequest":
-                    request_type = "file"
-                elif request.__class__.__name__ == "ShellRequest":
-                    request_type = "shell"
-                elif step.type.value.startswith("docker"):
-                    request_type = "docker"
-                elif step.type in [StepType.MKDIR, StepType.TOUCH, StepType.COPY, 
-                                 StepType.MOVE, StepType.REMOVE, StepType.RMTREE]:
-                    request_type = "file"
-                else:
-                    request_type = "other"
+        for pure_request in pure_requests:
+            # Create task representation from pure request
+            task = {
+                "request_object": pure_request,
+                "command": f"{pure_request.type} {pure_request.operation}",
+                "request_type": pure_request.type
+            }
+            
+            # Add operation info for docker requests
+            if pure_request.type == "docker":
+                task["operation"] = pure_request.operation
                 
-                # Create task representation
-                task = {
-                    "request_object": request,
-                    "command": f"{step.type.value} {' '.join(step.cmd)}",
-                    "request_type": request_type
-                }
-                
-                # Add operation info for docker requests
-                if request_type == "docker" and hasattr(request, 'op'):
-                    # Extract operation name from DockerOpType enum
-                    op_name = str(request.op).split('.')[-1].lower()  # e.g., "exec"
-                    task["operation"] = op_name
-                    
-                    # Add container name if available
-                    if hasattr(request, 'container'):
-                        task["container_name"] = request.container
-                
-                workflow_tasks.append(task)
+                # Add container name if available
+                if "container" in pure_request.params:
+                    task["container_name"] = pure_request.params["container"]
+            
+            workflow_tasks.append(task)
         
         return workflow_tasks
     

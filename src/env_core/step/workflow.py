@@ -6,7 +6,7 @@ from src.operations.composite.composite_request import CompositeRequest
 from .step import Step, StepContext, StepGenerationResult
 from .core import generate_steps_from_json, validate_step_sequence, optimize_step_sequence
 from .dependency import resolve_dependencies, optimize_mkdir_steps
-from .request_converter import steps_to_requests
+from .request_converter import steps_to_pure_sequence
 
 
 def generate_workflow_from_json(
