@@ -222,60 +222,13 @@ class GraphBasedWorkflowBuilder:
         step: Step
     ) -> Tuple[set, set, set, set]:
         """
-        ステップからリソース情報を抽出
+        ステップからリソース情報を抽出（純粋関数版使用）
         
         Returns:
             (creates_files, creates_dirs, reads_files, requires_dirs)
         """
-        creates_files = set()
-        creates_dirs = set()
-        reads_files = set()
-        requires_dirs = set()
-        
-        if step.type == StepType.MKDIR:
-            creates_dirs.add(step.cmd[0])
-        
-        elif step.type == StepType.TOUCH:
-            creates_files.add(step.cmd[0])
-            # touchは親ディレクトリも必要
-            parent = str(Path(step.cmd[0]).parent)
-            if parent != '.':
-                requires_dirs.add(parent)
-        
-        elif step.type in [StepType.COPY, StepType.MOVE]:
-            if len(step.cmd) >= 2:
-                reads_files.add(step.cmd[0])
-                creates_files.add(step.cmd[1])
-                # 宛先の親ディレクトリが必要
-                parent = str(Path(step.cmd[1]).parent)
-                if parent != '.':
-                    requires_dirs.add(parent)
-        
-        elif step.type == StepType.MOVETREE:
-            if len(step.cmd) >= 2:
-                reads_files.add(step.cmd[0])  # ソースディレクトリ
-                creates_dirs.add(step.cmd[1])  # 宛先ディレクトリ
-        
-        elif step.type in [StepType.REMOVE, StepType.RMTREE]:
-            reads_files.add(step.cmd[0])  # 削除対象
-        
-        elif step.type == StepType.BUILD:
-            # ビルドコマンドは特定のディレクトリで実行される可能性
-            if len(step.cmd) > 0:
-                requires_dirs.add(step.cmd[0])
-        
-        elif step.type == StepType.TEST:
-            # TESTステップは実行対象ファイルを読み取る
-            if len(step.cmd) >= 2:
-                # cmd[1]が実行対象ファイル（例: python3 ./workspace/main.py）
-                target_file = step.cmd[1]
-                reads_files.add(target_file)
-                # 実行ファイルの親ディレクトリも必要
-                parent = str(Path(target_file).parent)
-                if parent != '.':
-                    requires_dirs.add(parent)
-        
-        return creates_files, creates_dirs, reads_files, requires_dirs
+        from src.pure_functions.graph_builder_pure import extract_node_resource_info_pure
+        return extract_node_resource_info_pure(step)
     
     def _build_dependencies(
         self, 
@@ -389,15 +342,10 @@ class GraphBasedWorkflowBuilder:
     
     def _is_parent_directory(self, parent_path: str, child_path: str) -> bool:
         """
-        parent_pathがchild_pathの親ディレクトリかどうかを判定
+        parent_pathがchild_pathの親ディレクトリかどうかを判定（純粋関数版使用）
         """
-        try:
-            parent = Path(parent_path).resolve()
-            child = Path(child_path).resolve()
-            return parent in child.parents
-        except:
-            # パスの解決に失敗した場合は文字列で判定
-            return child_path.startswith(parent_path + '/')
+        from src.pure_functions.graph_builder_pure import is_parent_directory_pure
+        return is_parent_directory_pure(parent_path, child_path)
     
     def _has_resource_conflict(
         self, 
@@ -405,7 +353,7 @@ class GraphBasedWorkflowBuilder:
         node2: RequestNode
     ) -> bool:
         """
-        2つのノード間でリソースの競合があるかどうかを判定
+        2つのノード間でリソースの競合があるかどうかを判定（純粋関数版使用）
         
         Args:
             node1: 最初のノード
@@ -414,20 +362,86 @@ class GraphBasedWorkflowBuilder:
         Returns:
             bool: 競合がある場合True
         """
-        # 同じファイルへの書き込み
-        if node1.creates_files & node2.creates_files:
-            return True
+        from src.pure_functions.graph_builder_pure import NodeInfo, has_resource_conflict_pure
         
-        # 同じディレクトリの作成
-        if node1.creates_dirs & node2.creates_dirs:
-            return True
+        # RequestNodeからNodeInfoへの変換
+        node_info1 = NodeInfo(
+            id=node1.id,
+            step=None,  # ダミー
+            creates_files=node1.creates_files,
+            creates_dirs=node1.creates_dirs,
+            reads_files=node1.reads_files,
+            requires_dirs=node1.requires_dirs,
+            metadata={}
+        )
+        node_info2 = NodeInfo(
+            id=node2.id,
+            step=None,  # ダミー
+            creates_files=node2.creates_files,
+            creates_dirs=node2.creates_dirs,
+            reads_files=node2.reads_files,
+            requires_dirs=node2.requires_dirs,
+            metadata={}
+        )
         
-        # 一方が作成し、他方が削除するファイル
-        if (node1.creates_files & node2.reads_files) or \
-           (node2.creates_files & node1.reads_files):
-            return True
+        return has_resource_conflict_pure(node_info1, node_info2)
+    
+    def build_graph_pure(
+        self,
+        steps: List[Step]
+    ) -> Tuple[RequestExecutionGraph, List[str], List[str]]:
+        """
+        純粋関数を使用したグラフ構築
         
-        return False
+        Args:
+            steps: ステップのリスト
+            
+        Returns:
+            Tuple[RequestExecutionGraph, List[str], List[str]]: 
+                (実行グラフ, エラーリスト, 警告リスト)
+        """
+        from src.pure_functions.graph_builder_pure import build_execution_graph_pure
+        
+        # 純粋関数でグラフ構築結果を取得
+        result = build_execution_graph_pure(steps, self.context)
+        
+        # RequestExecutionGraphを作成
+        debug_config = None
+        if self.context and hasattr(self.context, 'env_json') and self.context.env_json:
+            language_config = self.context.env_json.get(self.context.language, {})
+            debug_config = language_config.get('debug')
+        
+        graph = RequestExecutionGraph(debug_config)
+        
+        # ノード情報からRequestNodeを作成
+        for node_info in result.nodes:
+            request = self._step_to_request(node_info.step)
+            if not request:
+                continue
+                
+            request_node = RequestNode(
+                id=node_info.id,
+                request=request,
+                creates_files=node_info.creates_files,
+                creates_dirs=node_info.creates_dirs,
+                reads_files=node_info.reads_files,
+                requires_dirs=node_info.requires_dirs,
+                metadata=node_info.metadata
+            )
+            graph.add_request_node(request_node)
+        
+        # 依存関係を追加
+        for dep_info in result.dependencies:
+            edge = DependencyEdge(
+                from_node=dep_info.from_node_id,
+                to_node=dep_info.to_node_id,
+                dependency_type=getattr(DependencyType, dep_info.dependency_type, DependencyType.EXECUTION_ORDER),
+                resource_path=dep_info.resource_path,
+                description=dep_info.description
+            )
+            graph.add_dependency(edge)
+        
+        return graph, result.errors, result.warnings
     
     def validate_graph(
         self, 

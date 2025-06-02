@@ -256,3 +256,87 @@ class TestGraphBasedWorkflowBuilder:
         
         # Verify debug config was passed to graph
         assert graph.debug_logger.config == {"enabled": True, "level": "detailed"}
+    
+    def test_build_graph_pure_method(self):
+        """Test pure function based graph building"""
+        # Setup
+        context = Mock(spec=StepContext)
+        context.env_json = None
+        builder = GraphBasedWorkflowBuilder(context)
+        
+        # Create test steps
+        step1 = Step(type=StepType.MKDIR, cmd=["./output"])
+        step2 = Step(type=StepType.TOUCH, cmd=["./output/file.txt"])
+        steps = [step1, step2]
+        
+        # Mock the step to request conversion
+        with patch.object(builder, '_step_to_request', side_effect=[Mock(), Mock()]):
+            # Execute
+            graph, errors, warnings = builder.build_graph_pure(steps)
+        
+        # Verify
+        assert isinstance(graph, RequestExecutionGraph)
+        assert len(graph.nodes) == 2
+        assert len(errors) == 0
+        assert "step_0" in graph.nodes
+        assert "step_1" in graph.nodes
+    
+    def test_extract_resource_info_integration(self):
+        """Test resource info extraction using pure functions"""
+        # Setup
+        builder = GraphBasedWorkflowBuilder()
+        
+        # Test different step types
+        mkdir_step = Step(type=StepType.MKDIR, cmd=["./test"])
+        touch_step = Step(type=StepType.TOUCH, cmd=["./test/file.txt"])
+        copy_step = Step(type=StepType.COPY, cmd=["src.txt", "./test/dst.txt"])
+        
+        # Execute
+        mkdir_result = builder._extract_resource_info_from_step(mkdir_step)
+        touch_result = builder._extract_resource_info_from_step(touch_step)
+        copy_result = builder._extract_resource_info_from_step(copy_step)
+        
+        # Verify
+        assert mkdir_result[1] == {"./test"}  # creates_dirs
+        assert touch_result[0] == {"./test/file.txt"}  # creates_files
+        assert copy_result[0] == {"./test/dst.txt"}  # creates_files
+        assert copy_result[2] == {"src.txt"}  # reads_files
+    
+    def test_parent_directory_check_integration(self):
+        """Test parent directory checking using pure functions"""
+        builder = GraphBasedWorkflowBuilder()
+        
+        # Test cases
+        assert builder._is_parent_directory("./output", "./output/subdir")
+        assert not builder._is_parent_directory("./output", "./other")
+        assert not builder._is_parent_directory("./output/subdir", "./output")
+    
+    def test_resource_conflict_check_integration(self):
+        """Test resource conflict checking using pure functions"""
+        builder = GraphBasedWorkflowBuilder()
+        
+        # Create conflicting nodes
+        node1 = Mock(spec=RequestNode)
+        node1.id = "node1"
+        node1.creates_files = {"test.txt"}
+        node1.creates_dirs = set()
+        node1.reads_files = set()
+        node1.requires_dirs = set()
+        
+        node2 = Mock(spec=RequestNode)
+        node2.id = "node2"
+        node2.creates_files = {"test.txt"}  # Same file - conflict
+        node2.creates_dirs = set()
+        node2.reads_files = set()
+        node2.requires_dirs = set()
+        
+        node3 = Mock(spec=RequestNode)
+        node3.id = "node3"
+        node3.creates_files = {"other.txt"}  # Different file - no conflict
+        node3.creates_dirs = set()
+        node3.reads_files = set()
+        node3.requires_dirs = set()
+        
+        # Test conflict detection
+        assert builder._has_resource_conflict(node1, node2)  # Should have conflict
+        assert not builder._has_resource_conflict(node1, node3)  # Should not have conflict
