@@ -18,7 +18,7 @@ class BaseRequest(ABC):
         if os.environ.get("CPH_DEBUG_REQUEST_INFO", "1") != "1":
             self.debug_info = None
             return
-        frame = inspect.stack()[2]
+        frame = inspect.stack()[3]
         self.debug_info = {
             "file": frame.filename,
             "line": frame.lineno,
@@ -37,9 +37,11 @@ class BaseRequest(ABC):
         # driver必須かどうかはサブクラスで制御
         if getattr(self, '_require_driver', True) and driver is None:
             raise ValueError(f"{self.__class__.__name__}.execute()にはdriverが必須です")
-        self._result = self._execute_core(driver)
-        self._executed = True
-        return self._result
+        try:
+            self._result = self._execute_core(driver)
+            return self._result
+        finally:
+            self._executed = True
 
     @abstractmethod
     def _execute_core(self, driver):

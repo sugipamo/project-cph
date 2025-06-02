@@ -186,6 +186,18 @@ class ExecutionContext:
         
         return format_dict
 
+    def format_string(self, template: str) -> str:
+        """
+        Format a template string using the current context
+        
+        Args:
+            template: Template string with {key} placeholders
+            
+        Returns:
+            Formatted string
+        """
+        return format_with_missing_keys(template, **self.to_format_dict())[0]
+
     @property
     def workspace_path(self):
         return self._config_resolver.workspace_path
