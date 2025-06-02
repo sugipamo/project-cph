@@ -173,21 +173,16 @@ class TestExecutionContext:
         context.old_execution_context = old_context
         assert context.old_execution_context == old_context
     
-    @patch('src.context.execution_context.ContextValidator')
-    def test_validate(self, mock_validator_class):
+    def test_validate(self):
         """Test validate method"""
-        # Setup
-        mock_validator = Mock()
-        mock_validator.validate.return_value = (True, None)
-        mock_validator_class.return_value = mock_validator
-        
+        # Valid context
         context = ExecutionContext(
             command_type="build",
             language="python",
             contest_name="abc123",
             problem_name="a",
             env_type="docker",
-            env_json={}
+            env_json={"python": {}}
         )
         
         # Execute
@@ -196,7 +191,20 @@ class TestExecutionContext:
         # Verify
         assert is_valid is True
         assert error is None
-        mock_validator.validate.assert_called_once()
+        
+        # Invalid context - missing command_type
+        context2 = ExecutionContext(
+            command_type="",
+            language="python",
+            contest_name="abc123",
+            problem_name="a",
+            env_type="docker",
+            env_json={}
+        )
+        
+        is_valid2, error2 = context2.validate()
+        assert is_valid2 is False
+        assert error2 == "command_type is required"
     
     def test_resolve(self):
         """Test resolve method"""
@@ -287,8 +295,7 @@ class TestExecutionContext:
         
         assert result == "Contest: abc123, Problem: a"
     
-    @patch('src.context.execution_context.format_with_missing_keys')
-    def test_format_string_with_missing_keys(self, mock_format):
+    def test_format_string_with_missing_keys(self):
         """Test format_string with missing keys"""
         context = ExecutionContext(
             command_type="build",
@@ -299,14 +306,13 @@ class TestExecutionContext:
             env_json={}
         )
         
-        mock_format.return_value = ("formatted", ["missing_key"])
-        
         # Test formatting with missing key
         template = "Contest: {contest_name}, Missing: {missing_key}"
         result = context.format_string(template)
         
-        # Should call format_with_missing_keys
-        mock_format.assert_called_once()
+        # Should handle missing keys gracefully
+        assert "abc123" in result
+        assert "{missing_key}" in result
     
     def test_dockerfile_setter_backward_compatibility(self):
         """Test dockerfile setter for backward compatibility"""

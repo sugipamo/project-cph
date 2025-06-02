@@ -1,6 +1,10 @@
 """
 出力表示制御を担当するクラス
 """
+from src.pure_functions.output_manager_formatter_pure import (
+    extract_output_data, should_show_output, 
+    decide_output_action
+)
 
 
 class OutputManager:
@@ -15,12 +19,14 @@ class OutputManager:
             request: 実行されたリクエスト
             result: 実行結果
         """
-        # show_output属性がTrueなら出力を表示
-        if hasattr(request, 'show_output') and request.show_output:
-            if hasattr(result, 'stdout') and result.stdout:
-                print(result.stdout, end="")
-            if hasattr(result, 'stderr') and result.stderr:
-                print(result.stderr, end="")
+        # 純粋関数を使用して出力決定
+        show_output_flag = should_show_output(request)
+        output_data = extract_output_data(result)
+        should_output, output_text = decide_output_action(show_output_flag, output_data)
+        
+        # 出力が必要な場合のみprint（副作用）
+        if should_output:
+            print(output_text, end="")
     
     @classmethod
     def execute_with_output_handling(cls, requests, execution_func, driver):

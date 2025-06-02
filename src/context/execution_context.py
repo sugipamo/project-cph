@@ -4,6 +4,10 @@ from src.context.context_validator import ContextValidator
 from src.context.config_resolver_proxy import ConfigResolverProxy
 from src.context.utils.format_utils import format_with_missing_keys
 from src.context.dockerfile_resolver import DockerfileResolver
+from src.pure_functions.execution_context_formatter_pure import (
+    ExecutionFormatData, create_format_dict, format_template_string,
+    validate_execution_data, get_docker_naming_from_data
+)
 
 
 class ExecutionContext:
@@ -139,7 +143,16 @@ class ExecutionContext:
         Returns:
             Tuple[bool, Optional[str]]: (バリデーション結果, エラーメッセージ)
         """
-        return self._validator.validate(self._data)
+        # 純粋関数を使用してバリデーション
+        format_data = ExecutionFormatData(
+            command_type=self.command_type,
+            language=self.language,
+            contest_name=self.contest_name,
+            problem_name=self.problem_name,
+            env_type=self.env_type,
+            env_json=self.env_json
+        )
+        return validate_execution_data(format_data)
 
     def resolve(self, path: List[str]):
         """
@@ -154,37 +167,16 @@ class ExecutionContext:
         Returns:
             Dict[str, str]: フォーマット用のキーと値の辞書
         """
-        # 基本的な値
-        format_dict = {
-            "command_type": self.command_type,
-            "language": self.language,
-            "contest_name": self.contest_name,
-            "problem_name": self.problem_name,
-            "problem_id": self.problem_name,  # 互換性のため
-            "env_type": self.env_type,
-        }
-        
-        # env_jsonから追加の値を取得
-        if self.env_json and self.language in self.env_json:
-            lang_config = self.env_json[self.language]
-            
-            # パス関連
-            format_dict.update({
-                "contest_current_path": lang_config.get("contest_current_path", "./contest_current"),
-                "contest_stock_path": lang_config.get("contest_stock_path", "./contest_stock"),
-                "contest_template_path": lang_config.get("contest_template_path", "./contest_template/{language_name}"),
-                "contest_temp_path": lang_config.get("contest_temp_path", "./.temp"),
-                "workspace_path": lang_config.get("workspace_path", "./workspace"),
-            })
-            
-            # その他の値
-            format_dict.update({
-                "language_id": lang_config.get("language_id", ""),
-                "source_file_name": lang_config.get("source_file_name", "main.py"),
-                "language_name": self.language,
-            })
-        
-        return format_dict
+        # 純粋関数を使用して辞書を生成
+        format_data = ExecutionFormatData(
+            command_type=self.command_type,
+            language=self.language,
+            contest_name=self.contest_name,
+            problem_name=self.problem_name,
+            env_type=self.env_type,
+            env_json=self.env_json
+        )
+        return create_format_dict(format_data)
 
     def format_string(self, template: str) -> str:
         """
@@ -196,7 +188,16 @@ class ExecutionContext:
         Returns:
             Formatted string
         """
-        return format_with_missing_keys(template, **self.to_format_dict())[0]
+        # 純粋関数を使用してフォーマット
+        format_data = ExecutionFormatData(
+            command_type=self.command_type,
+            language=self.language,
+            contest_name=self.contest_name,
+            problem_name=self.problem_name,
+            env_type=self.env_type,
+            env_json=self.env_json
+        )
+        return format_template_string(template, format_data)[0]
 
     @property
     def workspace_path(self):
@@ -241,27 +242,25 @@ class ExecutionContext:
         Returns:
             Dictionary with image_name, container_name, oj_image_name, oj_container_name
         """
-        from src.operations.utils.docker_naming import (
-            get_docker_image_name, get_docker_container_name,
-            get_oj_image_name, get_oj_container_name
+        # 純粋関数を使用してDocker名を生成
+        format_data = ExecutionFormatData(
+            command_type=self.command_type,
+            language=self.language,
+            contest_name=self.contest_name,
+            problem_name=self.problem_name,
+            env_type=self.env_type,
+            env_json=self.env_json
         )
         
-        # Container names are now fixed (no hash), so can be generated without Dockerfile content
-        container_name = get_docker_container_name(self.language)
-        oj_container_name = get_oj_container_name()
+        dockerfile_content = None
+        oj_dockerfile_content = None
         
-        # Image names use hash and require Dockerfile content (loaded on-demand via resolver)
         if self._dockerfile_resolver:
-            image_name = get_docker_image_name(self.language, self._dockerfile_resolver.dockerfile)
-            oj_image_name = get_oj_image_name(self._dockerfile_resolver.oj_dockerfile)
-        else:
-            # Fallback without hash if no resolver
-            image_name = get_docker_image_name(self.language, None)
-            oj_image_name = get_oj_image_name(None)
+            dockerfile_content = self._dockerfile_resolver.dockerfile
+            oj_dockerfile_content = self._dockerfile_resolver.oj_dockerfile
         
-        return {
-            "image_name": image_name,
-            "container_name": container_name,
-            "oj_image_name": oj_image_name,
-            "oj_container_name": oj_container_name
-        }
+        return get_docker_naming_from_data(
+            format_data,
+            dockerfile_content,
+            oj_dockerfile_content
+        )
