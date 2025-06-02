@@ -1,6 +1,7 @@
 import pytest
 from src.operations.mock.mock_docker_driver import MockDockerDriver
-from src.operations.docker.docker_driver import LocalDockerDriver, DummyDockerDriver
+from src.operations.docker.docker_driver import LocalDockerDriver
+from src.operations.mock.dummy_docker_driver import DummyDockerDriver
 from src.operations.result import OperationResult
 
 # MockDockerDriverのテスト
@@ -165,9 +166,9 @@ def test_localdockerdriver_build_stdin():
     ShellUtil.run_subprocess の inputdata に正しく渡るかをテスト
     """
     from src.operations.docker.docker_driver import LocalDockerDriver
-    from src.operations.shell import shell_util
-    # ShellUtil.run_subprocessを一時的に差し替え
-    orig_run_subprocess = shell_util.ShellUtil.run_subprocess
+    from src.operations.shell import shell_utils
+    # ShellUtils.run_subprocessを一時的に差し替え
+    orig_run_subprocess = shell_utils.ShellUtils.run_subprocess
     called = {}
     def fake_run_subprocess(cmd, cwd=None, env=None, inputdata=None, timeout=None):
         called.update(dict(cmd=cmd, cwd=cwd, env=env, inputdata=inputdata, timeout=timeout))
@@ -176,7 +177,7 @@ def test_localdockerdriver_build_stdin():
             stderr = ""
             returncode = 0
         return Completed()
-    shell_util.ShellUtil.run_subprocess = fake_run_subprocess
+    shell_utils.ShellUtils.run_subprocess = fake_run_subprocess
     try:
         driver = LocalDockerDriver()
         dockerfile_content = 'FROM python:3.10\nRUN echo "hello"\n'
@@ -185,7 +186,7 @@ def test_localdockerdriver_build_stdin():
         assert called["inputdata"] == dockerfile_content
         assert result.stdout == "build ok"
     finally:
-        shell_util.ShellUtil.run_subprocess = orig_run_subprocess 
+        shell_utils.ShellUtils.run_subprocess = orig_run_subprocess 
 
 def test_build_raises_on_none_dockerfile_text():
     driver = LocalDockerDriver()
