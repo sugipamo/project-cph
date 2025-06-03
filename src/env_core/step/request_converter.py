@@ -13,13 +13,14 @@ from src.operations.composite.composite_request import CompositeRequest
 from .step import Step, StepType
 
 
-def steps_to_requests(steps: List[Step], operations) -> CompositeRequest:
+def steps_to_requests(steps: List[Step], operations, context=None) -> CompositeRequest:
     """
     Stepリストを CompositeRequest に変換する純粋関数
     
     Args:
         steps: 変換対象のStepリスト
         operations: DIコンテナ（ドライバ取得用）
+        context: 実行コンテキスト（OJ/TEST/BUILD等の特殊なステップ用）
         
     Returns:
         CompositeRequest: 変換されたコンポジットリクエスト
@@ -27,7 +28,13 @@ def steps_to_requests(steps: List[Step], operations) -> CompositeRequest:
     requests = []
     
     for step in steps:
-        request = step_to_request(step)
+        # OJ, TEST, BUILD ステップは PureRequestFactory を使用（遅延インポート）
+        if step.type in [StepType.OJ, StepType.TEST, StepType.BUILD] and context:
+            from src.env_core.workflow.pure_request_factory import PureRequestFactory
+            request = PureRequestFactory.create_request_from_step(step, context)
+        else:
+            request = step_to_request(step)
+            
         if request:
             # FileRequest の場合は DriverBoundRequest でラップ
             if isinstance(request, FileRequest):

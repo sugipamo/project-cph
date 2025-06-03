@@ -125,6 +125,22 @@ def parse_user_input(
         "env_json": context.env_json
     })
     
+    # Dockerfile resolver setup
+    from src.context.dockerfile_resolver import DockerfileResolver
+    
+    # Default OJ Dockerfile path
+    oj_dockerfile_path = os.path.join(os.path.dirname(__file__), "oj.Dockerfile")
+    
+    # Create Dockerfile resolver with loader
+    dockerfile_loader = make_dockerfile_loader(operations)
+    resolver = DockerfileResolver(
+        dockerfile_path=None,  # No language-specific Dockerfile for now
+        oj_dockerfile_path=oj_dockerfile_path,
+        dockerfile_loader=dockerfile_loader
+    )
+    
+    context.dockerfile_resolver = resolver
+    
     # バリデーション
     is_valid, error_message = context.validate()
     if not is_valid:

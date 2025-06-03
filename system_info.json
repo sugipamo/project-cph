@@ -2,7 +2,7 @@
   "command": "open",
   "language": "python",
   "env_type": "docker",
-  "contest_name": "o",
+  "contest_name": "abc300",
   "problem_name": "a",
   "env_json": {
     "rust": {

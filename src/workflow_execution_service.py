@@ -97,7 +97,7 @@ class WorkflowExecutionService:
             )
         
         # Convert steps to operations requests directly
-        operations_composite = steps_to_requests(step_result.steps, self.operations)
+        operations_composite = steps_to_requests(step_result.steps, self.operations, self.context)
         
         # Analyze environment and prepare if needed (fitting responsibility)
         preparation_results = []

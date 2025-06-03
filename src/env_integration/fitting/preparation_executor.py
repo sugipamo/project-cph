@@ -236,6 +236,31 @@ class PreparationExecutor:
         
         task_id = self._next_task_id("image_prepare")
         
+        # Check if this is a custom OJ image
+        if image_name.startswith("ojtools"):
+            # Build OJ image from Dockerfile
+            # Get OJ Dockerfile content from context
+            oj_dockerfile_content = self.context.oj_dockerfile
+            
+            if not oj_dockerfile_content:
+                self.logger.error(f"OJ Dockerfile content not found for image: {image_name}")
+                return None
+            
+            build_request = DockerRequest(
+                op=DockerOpType.BUILD,
+                image=image_name,
+                dockerfile_text=oj_dockerfile_content,
+                options={"t": image_name}
+            )
+            
+            return PreparationTask(
+                task_id=task_id,
+                task_type="docker_build",
+                request_object=build_request,
+                dependencies=[],
+                description=f"Build custom Docker image: {image_name}"
+            )
+        
         # Try to pull the image first (for public images)
         # Note: This could be enhanced to check if it's a custom image that needs building
         try:
@@ -257,14 +282,34 @@ class PreparationExecutor:
                     description=f"Pull Docker image: {image_name}"
                 )
             else:
-                # For custom images, we would need to build them
-                # This requires more context about where the Dockerfile is
-                # For now, skip custom image building
-                return None
+                # For other custom images, check if we have dockerfile content
+                # (could be main dockerfile for language-specific images)
+                dockerfile_content = self.context.dockerfile
                 
-        except Exception:
+                if dockerfile_content:
+                    build_request = DockerRequest(
+                        op=DockerOpType.BUILD,
+                        image=image_name,
+                        dockerfile_text=dockerfile_content,
+                        options={"t": image_name}
+                    )
+                    
+                    return PreparationTask(
+                        task_id=task_id,
+                        task_type="docker_build",
+                        request_object=build_request,
+                        dependencies=[],
+                        description=f"Build custom Docker image: {image_name}"
+                    )
+                else:
+                    # For custom images without dockerfile, we cannot build
+                    self.logger.warning(f"Cannot build custom image {image_name}: No Dockerfile available")
+                    return None
+                
+        except Exception as e:
             # If pull strategy fails, skip image preparation
             # The system will handle missing images during execution
+            self.logger.error(f"Error preparing image {image_name}: {e}")
             return None
     
     def _create_docker_remove_task(self, container_name: str) -> PreparationTask:
