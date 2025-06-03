@@ -79,16 +79,26 @@ def validate_file_path_format_pure(path: str) -> Tuple[bool, Optional[str]]:
     Returns:
         (有効かどうか, エラーメッセージ)のタプル
     """
+    import os
+    
     if not path:
         return False, "Path cannot be empty"
     
-    if path.startswith('/') and '..' in path:
+    # パスを正規化してトラバーサル攻撃を検出
+    normalized = os.path.normpath(path)
+    
+    # 正規化されたパスが親ディレクトリへの参照を含むか確認
+    if normalized.startswith('..') or '/..' in normalized:
+        return False, "Path traversal detected"
+    
+    # 絶対パスで'..'を含む場合も拒否
+    if os.path.isabs(path) and '..' in path:
         return False, "Absolute paths with '..' are not allowed"
     
-    # 危険な文字のチェック
-    dangerous_chars = ['|', ';', '&', '$', '`']
+    # 危険な文字のチェック（拡張版）
+    dangerous_chars = ['|', ';', '&', '$', '`', '\n', '\r', '\0']
     if any(char in path for char in dangerous_chars):
-        return False, f"Path contains dangerous characters: {path}"
+        return False, f"Path contains dangerous characters"
     
     return True, None
 

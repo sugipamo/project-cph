@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union, List
 from src.operations.docker.docker_driver import DockerDriver, LocalDockerDriver
 from src.operations.result import OperationResult
 from src.operations.constants.operation_type import OperationType
@@ -19,7 +19,7 @@ class DockerOpType(Enum):
     CP = auto()
 
 class DockerRequest(BaseRequest):
-    def __init__(self, op: DockerOpType, image: str = None, container: str = None, command: str = None, options: Optional[Dict[str, Any]] = None, debug_tag=None, name=None, show_output=True, dockerfile_text=None):
+    def __init__(self, op: DockerOpType, image: str = None, container: str = None, command: Union[str, List[str]] = None, options: Optional[Dict[str, Any]] = None, debug_tag=None, name=None, show_output=True, dockerfile_text=None):
         super().__init__(name=name, debug_tag=debug_tag)
         self.op = op
         self.image = image

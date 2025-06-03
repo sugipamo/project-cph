@@ -125,7 +125,7 @@ class TestPureRequestFactory:
         assert isinstance(request, DockerRequest)
         assert request.op == DockerOpType.EXEC
         assert request.container == "container1"
-        assert request.command == "ls -la"
+        assert request.command == ["ls", "-la"]
         assert request.show_output is True
     
     def test_create_docker_exec_request_insufficient_args(self):

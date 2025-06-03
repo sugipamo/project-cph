@@ -4,7 +4,7 @@ operations層のDockerRequest等から利用される、docker操作の実体（
 ローカル・モック・ダミーなど複数の実装を提供する。
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Union, List
 from src.operations.shell.shell_request import ShellRequest
 from src.operations.shell.local_shell_driver import LocalShellDriver
 from src.operations.docker.docker_utils import DockerUtils
@@ -37,7 +37,7 @@ class DockerDriver(ABC):
         pass
 
     @abstractmethod
-    def exec_in_container(self, name: str, command: str):
+    def exec_in_container(self, name: str, command: Union[str, List[str]]):
         pass
 
     @abstractmethod
@@ -88,18 +88,18 @@ class LocalDockerDriver(DockerDriver):
         result = req.execute(driver=LocalShellDriver())
         return result
 
-    def exec_in_container(self, name: str, command: str, show_output: bool = True):
-        # commandが既にリストの場合はそのまま使用、文字列の場合はshlex.splitを使用
+    def exec_in_container(self, name: str, command: Union[str, List[str]], show_output: bool = True):
+        # セキュリティ強化: 全てのコマンドを統一的にshlex.splitで処理
         import shlex
+        
         if isinstance(command, list):
+            # コマンドが既にリスト形式の場合はそのまま使用
             cmd = ["docker", "exec", name] + command
         elif isinstance(command, str):
-            # シンプルなコマンドの場合はsplitで十分
-            if command.startswith("bash -c"):
-                # bash -c の場合は特別処理
-                cmd = ["docker", "exec", name, "bash", "-c", command[8:].strip().strip("'\"")]
-            else:
-                cmd = ["docker", "exec", name] + shlex.split(command)
+            # 文字列の場合は常にshlex.splitを使用して安全に解析
+            # bash -c の特殊処理を削除し、統一的な処理に変更
+            cmd_parts = shlex.split(command)
+            cmd = ["docker", "exec", name] + cmd_parts
         else:
             raise ValueError(f"Invalid command type: {type(command)}")
         

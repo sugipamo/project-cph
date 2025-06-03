@@ -385,7 +385,8 @@ class TestPureFunctions:
         mock_state_manager = MagicMock()
         mock_state_manager.inspect_container_compatibility.return_value = True
 
-        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+        mock_context = MagicMock()
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager, mock_context)
 
         # Should only have run task
         assert len(tasks) == 1
@@ -418,7 +419,8 @@ class TestPureFunctions:
         mock_state_manager = MagicMock()
         mock_state_manager.inspect_container_compatibility.return_value = False
 
-        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+        mock_context = MagicMock()
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager, mock_context)
 
         # Should have build, remove, and run tasks
         task_types = [t.task_type for t in tasks]
@@ -460,7 +462,8 @@ class TestPureFunctions:
         mock_state_manager = MagicMock()
         mock_state_manager.inspect_container_compatibility.return_value = True
 
-        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+        mock_context = MagicMock()
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager, mock_context)
 
         # Should have build and run tasks
         task_types = [t.task_type for t in tasks]
@@ -498,7 +501,8 @@ class TestPureFunctions:
         mock_state_manager = MagicMock()
         mock_state_manager.inspect_container_compatibility.return_value = True
 
-        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+        mock_context = MagicMock()
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager, mock_context)
 
         # Should only have run task (no build without dockerfile)
         task_types = [t.task_type for t in tasks]
@@ -605,7 +609,8 @@ class TestEdgeCases:
         mock_state_manager = MagicMock()
         mock_state_manager.inspect_container_compatibility.return_value = False  # Incompatible
 
-        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+        mock_context = MagicMock()
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager, mock_context)
 
         # Should now include remove task due to compatibility check
         task_types = [t.task_type for t in tasks]
@@ -636,7 +641,8 @@ class TestEdgeCases:
         mock_state_manager = MagicMock()
         mock_state_manager.inspect_container_compatibility.return_value = True
 
-        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+        mock_context = MagicMock()
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager, mock_context)
 
         # Should not include remove task since no container exists
         task_types = [t.task_type for t in tasks]
@@ -692,7 +698,8 @@ class TestEdgeCases:
         mock_state_manager = MagicMock()
         mock_state_manager.inspect_container_compatibility.return_value = False
 
-        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+        mock_context = MagicMock()
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager, mock_context)
 
         # Verify all task IDs are unique
         task_ids = [t.task_id for t in tasks]
@@ -729,7 +736,8 @@ class TestEdgeCases:
         mock_state_manager = MagicMock()
         mock_state_manager.inspect_container_compatibility.return_value = False
 
-        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager)
+        mock_context = MagicMock()
+        tasks = _generate_docker_tasks(config, mock_task_id_generator, mock_operations, mock_state_manager, mock_context)
 
         # Config should be modified due to compatibility check
         assert config.needs_container_recreate != original_recreate

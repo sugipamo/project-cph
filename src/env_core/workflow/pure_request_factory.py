@@ -175,12 +175,13 @@ class PureRequestFactory:
             raise ValueError("docker_exec step requires container and command")
         
         container_name = step.cmd[0]
-        command = ' '.join(step.cmd[1:])  # Join remaining arguments as command
+        # セキュリティ強化: コマンドをリスト形式で保持し、文字列結合を避ける
+        command = step.cmd[1:]  # Keep as list instead of joining
         
         request = DockerRequest(
             op=DockerOpType.EXEC,
             container=container_name,
-            command=command
+            command=command  # Pass list directly
         )
         request.allow_failure = step.allow_failure
         request.show_output = step.show_output
