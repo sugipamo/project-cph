@@ -12,6 +12,7 @@ from src.operations.shell.shell_request import ShellRequest
 from src.operations.python.python_request import PythonRequest
 from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.base_request import BaseRequest
+from src.pure_functions.docker_path_utils_pure import wrap_command_with_cwd
 
 
 class PureRequestFactory:
@@ -284,9 +285,9 @@ class PureRequestFactory:
         if hasattr(context, 'env_type') and context.env_type == 'docker':
             workspace_path = "./contest_current"
         
-        # ベースディレクトリを取得（Dockerの場合は/workspaceを使用）
+        # ベースディレクトリを取得（Dockerの場合はマウントパスを使用）
         if hasattr(context, 'env_type') and context.env_type == 'docker':
-            base_dir = "/workspace"
+            base_dir = context.get_docker_mount_path() if hasattr(context, 'get_docker_mount_path') else '/workspace'
         else:
             base_dir = "/home/cphelper/project-cph"
         
@@ -332,7 +333,7 @@ workspace_file="{workspace_path}/main.py"
                     echo "実際の出力:"
                     
                     # プログラムを実行
-                    if python3 ./workspace/main.py < "$input_file" > temp_output.txt 2>&1; then
+                    if python3 "$workspace_file" < "$input_file" > temp_output.txt 2>&1; then
                         cat temp_output.txt
                         if [[ -f "$expected_file" ]] && diff -q "$expected_file" temp_output.txt > /dev/null; then
                             echo "✓ PASS"
@@ -418,7 +419,7 @@ workspace_file="{workspace_path}/main.py"
                     echo "実際の出力:"
                     
                     # プログラムを実行
-                    if python3 ./workspace/main.py < "$input_file" > temp_output.txt 2>&1; then
+                    if python3 "$workspace_file" < "$input_file" > temp_output.txt 2>&1; then
                         cat temp_output.txt
                         if [[ -f "$expected_file" ]] && diff -q "$expected_file" temp_output.txt > /dev/null; then
                             echo "✓ PASS"
@@ -477,6 +478,11 @@ workspace_file="{workspace_path}/main.py"
             # コマンドを文字列に結合
             command = ' '.join(step.cmd)
             
+            # Docker内でのcwdを設定（もしstep.cwdが指定されていれば）
+            mount_path = context.get_docker_mount_path() if hasattr(context, 'get_docker_mount_path') else '/workspace'
+            workspace_path = str(context.workspace_path) if hasattr(context, 'workspace_path') else None
+            command = wrap_command_with_cwd(command, step.cwd, workspace_path, mount_path)
+            
             request = DockerRequest(
                 op=DockerOpType.EXEC,
                 container=container_name,
@@ -517,6 +523,11 @@ workspace_file="{workspace_path}/main.py"
             
             # コマンドを文字列に結合
             command = ' '.join(step.cmd)
+            
+            # Docker内でのcwdを設定（もしstep.cwdが指定されていれば）
+            mount_path = context.get_docker_mount_path() if hasattr(context, 'get_docker_mount_path') else '/workspace'
+            workspace_path = str(context.workspace_path) if hasattr(context, 'workspace_path') else None
+            command = wrap_command_with_cwd(command, step.cwd, workspace_path, mount_path)
             
             request = DockerRequest(
                 op=DockerOpType.EXEC,

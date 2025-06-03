@@ -246,7 +246,8 @@
       },
       "env_types": {
         "docker": {
-          "dockerfile_path": "./contest_env/python/Dockerfile"
+          "dockerfile_path": "./contest_env/python/Dockerfile",
+          "mount_path": "/workspace"
         },
         "local": {}
       }

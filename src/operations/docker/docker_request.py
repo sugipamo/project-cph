@@ -111,11 +111,4 @@ class DockerRequest(BaseRequest):
             return OperationResult(success=False, op=self.op, stdout=None, stderr=str(e), returncode=None)
 
     def __repr__(self):
-        return f"<DockerRequest op={self.op} container={self.container} command={self.command}>"
-    
-    def __str__(self):
-        # For debugging - show what command would be executed
-        if self.op == DockerOpType.EXEC:
-            return f"docker exec {self.container} {self.command}"
-        else:
-            return f"<DockerRequest op={self.op} container={self.container}>" 
+        return f"<DockerRequest op={self.op} container={self.container} command={self.command}>" 

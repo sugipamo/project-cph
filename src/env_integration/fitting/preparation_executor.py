@@ -16,6 +16,7 @@ from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.file.file_request import FileRequest
 from src.operations.file.file_op_type import FileOpType
 from src.context.execution_context import ExecutionContext
+from src.pure_functions.docker_path_utils_pure import should_build_custom_docker_image
 
 
 @dataclass
@@ -236,20 +237,28 @@ class PreparationExecutor:
         
         task_id = self._next_task_id("image_prepare")
         
-        # Check if this is a custom OJ image
-        if image_name.startswith("ojtools"):
-            # Build OJ image from Dockerfile
-            # Get OJ Dockerfile content from context
-            oj_dockerfile_content = self.context.oj_dockerfile
+        # Check if this is a custom image that needs to be built
+        if should_build_custom_docker_image(image_name):
+            # Determine which Dockerfile to use
+            dockerfile_content = None
             
-            if not oj_dockerfile_content:
-                self.logger.error(f"OJ Dockerfile content not found for image: {image_name}")
-                return None
+            if image_name.startswith("ojtools"):
+                # OJ-specific image
+                dockerfile_content = self.context.oj_dockerfile
+                if not dockerfile_content:
+                    self.logger.error(f"OJ Dockerfile content not found for image: {image_name}")
+                    return None
+            else:
+                # Language-specific image
+                dockerfile_content = self.context.dockerfile
+                if not dockerfile_content:
+                    self.logger.error(f"Dockerfile content not found for image: {image_name}")
+                    return None
             
             build_request = DockerRequest(
                 op=DockerOpType.BUILD,
                 image=image_name,
-                dockerfile_text=oj_dockerfile_content,
+                dockerfile_text=dockerfile_content,
                 options={"t": image_name}
             )
             
@@ -261,56 +270,19 @@ class PreparationExecutor:
                 description=f"Build custom Docker image: {image_name}"
             )
         
-        # Try to pull the image first (for public images)
-        # Note: This could be enhanced to check if it's a custom image that needs building
-        try:
-            # Check if this is a standard image (contains no slashes or only one slash for registry/image)
-            is_standard_image = image_name.count('/') <= 1 and not any(char in image_name for char in [':', '@']) or ':' in image_name
-            
-            if is_standard_image:
-                # Try to pull standard images like python:3.10, ubuntu:latest, etc.
-                from src.operations.shell.shell_request import ShellRequest
-                pull_request = ShellRequest([
-                    "docker", "pull", image_name
-                ])
-                
-                return PreparationTask(
-                    task_id=task_id,
-                    task_type="image_pull",
-                    request_object=pull_request,
-                    dependencies=[],
-                    description=f"Pull Docker image: {image_name}"
-                )
-            else:
-                # For other custom images, check if we have dockerfile content
-                # (could be main dockerfile for language-specific images)
-                dockerfile_content = self.context.dockerfile
-                
-                if dockerfile_content:
-                    build_request = DockerRequest(
-                        op=DockerOpType.BUILD,
-                        image=image_name,
-                        dockerfile_text=dockerfile_content,
-                        options={"t": image_name}
-                    )
-                    
-                    return PreparationTask(
-                        task_id=task_id,
-                        task_type="docker_build",
-                        request_object=build_request,
-                        dependencies=[],
-                        description=f"Build custom Docker image: {image_name}"
-                    )
-                else:
-                    # For custom images without dockerfile, we cannot build
-                    self.logger.warning(f"Cannot build custom image {image_name}: No Dockerfile available")
-                    return None
-                
-        except Exception as e:
-            # If pull strategy fails, skip image preparation
-            # The system will handle missing images during execution
-            self.logger.error(f"Error preparing image {image_name}: {e}")
-            return None
+        # For standard images that can be pulled from registry
+        from src.operations.shell.shell_request import ShellRequest
+        pull_request = ShellRequest([
+            "docker", "pull", image_name
+        ])
+        
+        return PreparationTask(
+            task_id=task_id,
+            task_type="image_pull",
+            request_object=pull_request,
+            dependencies=[],
+            description=f"Pull Docker image: {image_name}"
+        )
     
     def _create_docker_remove_task(self, container_name: str) -> PreparationTask:
         """Create Docker container removal task with force option"""
@@ -341,7 +313,8 @@ class PreparationExecutor:
             container_config, 
             self._next_task_id,
             self.operations,
-            self.state_manager
+            self.state_manager,
+            self.context
         )
         
         # Update state after successful preparation
@@ -510,7 +483,7 @@ def _determine_container_config(container_name: str, context, state_manager) -> 
     )
 
 
-def _generate_docker_tasks(config: ContainerConfig, task_id_generator, operations, state_manager) -> List[PreparationTask]:
+def _generate_docker_tasks(config: ContainerConfig, task_id_generator, operations, state_manager, context) -> List[PreparationTask]:
     """Generate Docker tasks based on configuration"""
     tasks = []
     
@@ -581,8 +554,9 @@ def _generate_docker_tasks(config: ContainerConfig, task_id_generator, operation
     # Add volume mount options to make project files accessible in container
     import os
     project_path = os.getcwd()
+    mount_path = context.get_docker_mount_path() if context else '/workspace'
     volume_options = {
-        "v": f"{project_path}:/workspace"
+        "v": f"{project_path}:{mount_path}"
     }
     
     run_request = DockerRequest(

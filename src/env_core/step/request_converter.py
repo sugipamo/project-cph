@@ -83,10 +83,7 @@ def step_to_request(step: Step) -> Optional[BaseRequest]:
     elif step.type == StepType.RMTREE:
         return create_rmtree_request(step)
     
-    elif step.type in [StepType.OJ, StepType.TEST, StepType.BUILD]:
-        # これらは特殊なシェルコマンドとして扱う
-        return create_shell_request(step)
-    
+    # OJ, TEST, BUILD は PureRequestFactory で処理されるためここでは None を返す
     return None
 
 
