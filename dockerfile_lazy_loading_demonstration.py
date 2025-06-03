@@ -7,7 +7,7 @@ Dockerfile reading until fitting time while maintaining the hash-based naming sy
 """
 import time
 from unittest.mock import MagicMock
-from src.env.build_operations import build_operations
+from src.operations.build_operations import build_operations
 from src.context.user_input_parser import parse_user_input
 from src.context.user_input_parser_lazy import parse_user_input_lazy
 from src.context.dockerfile_resolver import DockerfileResolver

@@ -152,6 +152,6 @@ def parse_user_input(
 
 
 if __name__ == "__main__":
-    from src.env.build_operations import build_operations
+    from src.operations.build_operations import build_operations
     operations = build_operations()
     print(parse_user_input(["py", "local", "t", "abc300", "a"], operations))

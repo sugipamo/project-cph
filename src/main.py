@@ -123,7 +123,7 @@ if __name__ == "__main__":
     import sys
     import json
     from src.context.user_input_parser import parse_user_input
-    from src.env.build_operations import build_operations
+    from src.operations.build_operations import build_operations
     try:
         operations = build_operations()
         context = parse_user_input(sys.argv[1:], operations)
