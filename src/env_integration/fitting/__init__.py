@@ -1,23 +1,66 @@
 """
-Fitting functionality for environment preparation
+Fitting functionality for environment preparation - New pluggable architecture
 """
 
-from .environment_inspector import (
-    EnvironmentInspector,
-    ResourceType,
+# New pluggable architecture
+from .core import (
+    ResourceInspector,
+    TaskGenerator,
+    StateManager,
+    ProviderSet,
+    ResourceStatus,
     ResourceRequirement,
-    ResourceStatus
+    ResourceType,
+    PreparationTask,
+    RebuildDecision,
+    ContainerRequirement,
+    NetworkRequirement,
+    PreparationOrchestrator
 )
-from .preparation_executor import (
-    PreparationExecutor,
-    PreparationTask
+from .registry import (
+    ProviderRegistry,
+    get_global_registry,
+    register_provider_factory,
+    get_provider_set
+)
+from .providers import DockerProviderFactory
+
+# Legacy compatibility - maintains existing interface
+from .legacy_compatibility import (
+    LegacyPreparationExecutor as PreparationExecutor,
+    create_legacy_environment_inspector as EnvironmentInspector,
+    create_legacy_docker_state_manager as DockerStateManager,
+    create_legacy_preparation_error_handler as PreparationErrorHandler
 )
 
+# Auto-register Docker provider
+register_provider_factory("docker", DockerProviderFactory())
+
 __all__ = [
-    "EnvironmentInspector",
-    "ResourceType", 
-    "ResourceRequirement",
+    # New architecture components
+    "ResourceInspector",
+    "TaskGenerator", 
+    "StateManager",
+    "ProviderSet",
+    "PreparationOrchestrator",
+    "ProviderRegistry",
+    "get_global_registry",
+    "register_provider_factory",
+    "get_provider_set",
+    "DockerProviderFactory",
+    
+    # Models
     "ResourceStatus",
+    "ResourceRequirement", 
+    "ResourceType",
+    "PreparationTask",
+    "RebuildDecision",
+    "ContainerRequirement",
+    "NetworkRequirement",
+    
+    # Legacy compatibility (existing interfaces)
+    "EnvironmentInspector",
     "PreparationExecutor",
-    "PreparationTask"
+    "DockerStateManager",
+    "PreparationErrorHandler"
 ]
