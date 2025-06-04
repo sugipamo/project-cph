@@ -590,8 +590,9 @@ class TestRobustPreparationExecutor:
         mock_driver = Mock()
         self.mock_operations.resolve.return_value = mock_driver
         
-        # Execute
-        success, successful_tasks, failed_tasks = self.executor.execute_with_retry(tasks)
+        # Execute with mocked time.sleep to speed up test
+        with patch('time.sleep'):
+            success, successful_tasks, failed_tasks = self.executor.execute_with_retry(tasks)
         
         assert success is True
         assert len(successful_tasks) == 3
@@ -626,8 +627,9 @@ class TestRobustPreparationExecutor:
         mock_driver = Mock()
         self.mock_operations.resolve.return_value = mock_driver
         
-        # Execute
-        success, successful_tasks, failed_tasks = self.executor.execute_with_retry(tasks)
+        # Execute with mocked time.sleep to speed up test
+        with patch('time.sleep'):
+            success, successful_tasks, failed_tasks = self.executor.execute_with_retry(tasks)
         
         assert success is False
         assert len(successful_tasks) == 1

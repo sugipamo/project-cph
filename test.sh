@@ -17,21 +17,43 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     exit 0
 fi
 
-# カバレッジなしオプション
-if [ "$1" = "--no-cov" ]; then
-    shift
-    exec pytest "$@"
+# オプションの処理
+NO_COV=false
+HTML=false
+PYTEST_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-cov)
+            NO_COV=true
+            shift
+            ;;
+        --html)
+            HTML=true
+            shift
+            ;;
+        *)
+            PYTEST_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# 競合オプションのチェック
+if [ "$NO_COV" = true ] && [ "$HTML" = true ]; then
+    echo "エラー: --no-cov と --html は同時に使用できません"
+    echo "HTMLカバレッジレポートを生成するには --html のみを使用してください"
+    exit 1
 fi
 
-# HTMLレポート生成オプション
-if [ "$1" = "--html" ]; then
-    shift
-    exec pytest --cov=src --cov-report=html --cov-report=term "$@"
-fi
-
-# デフォルト: カバレッジ付きテスト実行
-if [ $# -eq 0 ]; then
-    exec pytest --cov=src --cov-report=term-missing
+# テストの実行
+if [ "$NO_COV" = true ]; then
+    # カバレッジなし
+    exec pytest "${PYTEST_ARGS[@]}"
+elif [ "$HTML" = true ]; then
+    # HTMLレポート生成
+    exec pytest --cov=src --cov-report=html --cov-report=term "${PYTEST_ARGS[@]}"
 else
-    exec pytest --cov=src --cov-report=term-missing "$@"
+    # デフォルト: カバレッジ付きテスト実行
+    exec pytest --cov=src --cov-report=term-missing "${PYTEST_ARGS[@]}"
 fi

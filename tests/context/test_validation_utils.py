@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import Mock, patch
 from src.context.utils.validation_utils import validate_execution_context_data, get_steps_from_resolver
 
 
@@ -84,61 +85,41 @@ def test_validate_execution_context_data_language_not_in_env():
 
 def test_get_steps_from_resolver_success():
     """Test successful steps retrieval"""
-    # Mock resolver and related imports
-    from unittest.mock import Mock
-    from src.context.resolver.config_node import ConfigNode
+    # Create a completely isolated test using direct mocking
+    class MockNode:
+        def __init__(self, key, value):
+            self.key = key
+            self.value = value
+            self.next_nodes = []
     
-    # Create mock steps
-    step1 = ConfigNode(key=0, value={"type": "shell", "cmd": ["echo", "test1"]})
-    step2 = ConfigNode(key=1, value={"type": "shell", "cmd": ["echo", "test2"]})
-    steps_node = ConfigNode(key="steps", value=None)
+    # Create mock structure
+    step1 = MockNode(0, {"type": "shell", "cmd": ["echo", "test1"]})
+    step2 = MockNode(1, {"type": "shell", "cmd": ["echo", "test2"]})
+    steps_node = MockNode("steps", None)
     steps_node.next_nodes = [step1, step2]
-    
-    # Mock resolve_best function
-    import src.context.utils.validation_utils as module
-    original_resolve = module.resolve_best if hasattr(module, 'resolve_best') else None
     
     def mock_resolve_best(resolver, path):
         if path == ["python", "commands", "test", "steps"]:
             return steps_node
         return None
     
-    # Replace the import
-    import src.context.resolver.config_resolver as config_module
-    original_resolve_best = config_module.resolve_best
-    config_module.resolve_best = mock_resolve_best
-    
-    try:
+    with patch('src.context.resolver.config_resolver.resolve_best', side_effect=mock_resolve_best):
         mock_resolver = Mock()
         result = get_steps_from_resolver(mock_resolver, "python", "test")
         
         assert len(result) == 2
         assert result[0].key == 0
         assert result[1].key == 1
-    finally:
-        # Restore original function
-        config_module.resolve_best = original_resolve_best
 
 
 def test_get_steps_from_resolver_no_steps():
     """Test steps retrieval when steps are not found"""
-    from unittest.mock import Mock
-    
-    # Mock resolve_best to return None
-    import src.context.resolver.config_resolver as config_module
-    original_resolve_best = config_module.resolve_best
-    
     def mock_resolve_best(resolver, path):
         return None
     
-    config_module.resolve_best = mock_resolve_best
-    
-    try:
+    with patch('src.context.resolver.config_resolver.resolve_best', side_effect=mock_resolve_best):
         mock_resolver = Mock()
         
         with pytest.raises(ValueError) as excinfo:
             get_steps_from_resolver(mock_resolver, "python", "test")
         assert "stepsが見つかりません" in str(excinfo.value)
-    finally:
-        # Restore original function
-        config_module.resolve_best = original_resolve_best
