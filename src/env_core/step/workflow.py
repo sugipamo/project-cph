@@ -17,13 +17,13 @@ def steps_to_requests(steps: List[Step], operations) -> CompositeRequest:
     Returns:
         CompositeRequest: Composite request containing all converted steps
     """
-    from src.env_core.workflow.request_factory_v2 import RequestFactoryV2
+    from src.operations.factory.unified_request_factory import UnifiedRequestFactory
     
     requests = []
-    factory = RequestFactoryV2(operations)
+    factory = UnifiedRequestFactory()
     
     for step in steps:
-        request = factory.create_request(step)
+        request = factory.create_request(step, context=operations)
         if request is not None:
             requests.append(request)
     

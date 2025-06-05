@@ -2,7 +2,7 @@
 Configuration resolver proxy
 """
 from typing import List, Optional
-from src.operations.utils.path_utils import (
+from src.utils.path_operations import (
     get_workspace_path, get_contest_current_path, get_contest_template_path, 
     get_contest_temp_path, get_source_file_name
 )
