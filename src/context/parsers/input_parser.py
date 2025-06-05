@@ -26,8 +26,8 @@ class InputParser:
         args, context = InputParser._apply_language(args, context, root)
         args, context = InputParser._apply_env_type(args, context, root)
         args, context = InputParser._apply_command(args, context, root)
-        args, context = InputParser._apply_contest_name(args, context)
         args, context = InputParser._apply_problem_name(args, context)
+        args, context = InputParser._apply_contest_name(args, context)
         
         return args, context
     

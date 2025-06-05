@@ -26,10 +26,6 @@ class ValidationService:
             if not isinstance(conf, dict):
                 raise ValueError(f"{path}: {lang}の値はdictである必要があります")
             
-            # 共通設定ファイルの場合はcommands/env_typesチェックをスキップ
-            if lang == "common":
-                continue
-                
             if "commands" not in conf or not isinstance(conf["commands"], dict):
                 raise ValueError(f"{path}: {lang}にcommands(dict)がありません")
             

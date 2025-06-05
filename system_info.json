@@ -1,17 +1,31 @@
 {
-  "command": "open",
+  "command": "test",
   "language": "python",
   "env_type": "local",
-  "contest_name": "a",
-  "problem_name": "abc300",
+  "contest_name": "abc300",
+  "problem_name": "a",
   "env_json": {
     "cpp": {
       "language_id": "5017",
       "source_file_name": "main.cpp",
+      "contest_current_path": "./contest_current",
+      "contest_stock_path": "./contest_stock",
+      "contest_template_path": "./contest_template",
+      "contest_temp_path": "./.temp",
+      "workspace_path": "./workspace",
       "debug": {
+        "enabled": false,
+        "level": "detailed",
         "format": {
           "icons": {
-            "compile": "⚙️"
+            "start": "🚀",
+            "file_mkdir": "📁",
+            "file_copy": "📋",
+            "shell": "🔧",
+            "test": "🧪",
+            "compile": "⚙️",
+            "success": "✅",
+            "failure": "❌"
           }
         }
       },
@@ -54,7 +68,7 @@
               "show_output": false,
               "force_env_type": "local",
               "cmd": [
-                "cursor",
+                "code",
                 "{contest_current_path}/{source_file_name}"
               ]
             },
@@ -94,12 +108,25 @@
               ]
             },
             {
+              "type": "compile",
+              "allow_failure": false,
+              "show_output": true,
+              "cmd": [
+                "g++",
+                "-std=c++17",
+                "-Wall",
+                "-O2",
+                "-o",
+                "{workspace_path}/main",
+                "{workspace_path}/{source_file_name}"
+              ]
+            },
+            {
               "type": "test",
               "allow_failure": true,
               "show_output": true,
               "cmd": [
-                "python3",
-                "{workspace_path}/{source_file_name}"
+                "{workspace_path}/main"
               ]
             }
           ]
@@ -113,6 +140,20 @@
               "show_output": false,
               "cmd": [
                 "{contest_current_path}/{source_file_name}",
+                "{workspace_path}/{source_file_name}"
+              ]
+            },
+            {
+              "type": "compile",
+              "allow_failure": false,
+              "show_output": true,
+              "cmd": [
+                "g++",
+                "-std=c++17",
+                "-Wall",
+                "-O2",
+                "-o",
+                "{workspace_path}/main",
                 "{workspace_path}/{source_file_name}"
               ]
             },
@@ -175,6 +216,10 @@
       "env_types": {
         "docker": {
           "dockerfile_path": "./contest_env/cpp/Dockerfile",
+          "mount_path": "/workspace",
+          "working_directory": "/workspace",
+          "keep_alive_command": "tail -f /dev/null",
+          "default_shell": "bash",
           "compiler_settings": {
             "standard": "c++17",
             "optimization": "-O2",
@@ -197,6 +242,26 @@
             "timeout_seconds": 300
           },
           "error_patterns": {
+            "daemon_connection": [
+              "cannot connect to the docker daemon",
+              "docker daemon is not running",
+              "connection refused",
+              "docker.sock"
+            ],
+            "image_not_found": [
+              "no such image",
+              "pull access denied",
+              "repository does not exist",
+              "image not found",
+              "manifest unknown"
+            ],
+            "container_conflict": [
+              "container already exists",
+              "container is running",
+              "container not found",
+              "conflict",
+              "name is already in use"
+            ],
             "build_error": [
               "dockerfile",
               "build failed",
@@ -208,7 +273,86 @@
               "fatal error",
               "undefined reference",
               "no such file"
+            ],
+            "network_error": [
+              "network",
+              "timeout",
+              "connection",
+              "dns",
+              "tls"
+            ],
+            "filesystem_error": [
+              "permission denied",
+              "no such file or directory",
+              "directory not empty",
+              "disk space"
+            ],
+            "resource_error": [
+              "out of memory",
+              "resource",
+              "quota",
+              "limit",
+              "no space left"
             ]
+          },
+          "retry_settings": {
+            "max_attempts": 3,
+            "base_delay_seconds": 1.0,
+            "max_delay_seconds": 30.0,
+            "exponential_backoff": true
+          },
+          "state_management": {
+            "state_directory": "~/.cph/state",
+            "state_file_format": "json",
+            "auto_backup": true,
+            "max_history": 100
+          },
+          "naming_conventions": {
+            "container_prefix": "cph",
+            "oj_container_prefix": "cph_ojtools",
+            "separator": "_",
+            "image_tag_format": "{language}:latest"
+          },
+          "path_settings": {
+            "container_root_path": "/",
+            "host_current_directory": ".",
+            "path_separator": "/",
+            "temp_directory": "/tmp",
+            "workspace_alias": "./workspace"
+          },
+          "docker_settings": {
+            "dockerfile_hash_length": 12,
+            "custom_image_prefixes": [
+              "ojtools",
+              "cph_"
+            ],
+            "known_registries": [
+              "docker.io",
+              "gcr.io",
+              "registry.hub.docker.com",
+              "quay.io",
+              "ghcr.io"
+            ],
+            "command_wrapper": "bash -c",
+            "invalid_path_chars": [
+              "..",
+              " ",
+              "\\t",
+              "\\n",
+              "\\r"
+            ]
+          },
+          "timeout_settings": {
+            "process_termination_timeout": 3
+          },
+          "preparation_actions": {
+            "remove_stopped_container": "remove_stopped_container",
+            "run_new_container": "run_new_container",
+            "create_directory": "create_directory",
+            "build_or_pull_image": "build_or_pull_image"
+          },
+          "docker_options": {
+            "force_remove_flag": "f"
           },
           "system_limits": {
             "min_disk_space_mb": 100,
@@ -323,7 +467,106 @@
         }
       }
     },
-    "common": {
+    "rust": {
+      "language_id": "5078",
+      "source_file_name": "src/main.rs",
+      "contest_current_path": "./contest_current",
+      "contest_template_path": "./contest_template/{language_name}",
+      "exclude_patterns": [
+        "^.*\\.log$",
+        "^debug.*"
+      ],
+      "commands": {
+        "open": {
+          "description": "コンテストを開く",
+          "run": [
+            {
+              "type": "shell",
+              "allow_failure": true,
+              "show_output": true,
+              "cmd": [
+                "code",
+                "{contest_current_path}/{source_file_name}"
+              ]
+            }
+          ]
+        },
+        "test": {
+          "description": "テストを実行する",
+          "run": [
+            {
+              "type": "test",
+              "allow_failure": false,
+              "show_output": true,
+              "cmd": [
+                "cargo",
+                "test"
+              ]
+            }
+          ]
+        },
+        "submit": {
+          "description": "提出する",
+          "run": [
+            {
+              "type": "oj",
+              "allow_failure": false,
+              "show_output": true,
+              "cmd": [
+                "oj",
+                "submit",
+                "https://{contest_name}.contest.atcoder.jp/tasks/{contest_name}_{problem_id}",
+                "{contest_current_path}/{source_file_name}"
+              ]
+            }
+          ]
+        }
+      },
+      "env_types": {
+        "docker": {
+          "dockerfile_path": "./contest_env/rust/Dockerfile",
+          "run_prepare_file_moves": [],
+          "run_cmd": [
+            "cargo",
+            "run"
+          ],
+          "build_prepare_file_moves": [
+            {
+              "src": "{contest_current_path}/src",
+              "dst": "{workspace_path}/src"
+            }
+          ],
+          "build_cmds": [
+            [
+              "cargo",
+              "build"
+            ]
+          ]
+        },
+        "local": {
+          "run_prepare_file_moves": [],
+          "run_cmd": [
+            "cargo",
+            "run"
+          ],
+          "build_prepare_file_moves": [
+            {
+              "src": "{contest_current_path}/src",
+              "dst": "{workspace_path}/src"
+            }
+          ],
+          "build_cmds": [
+            [
+              "cargo",
+              "build"
+            ]
+          ]
+        }
+      }
+    },
+    "python": {
+      "language_id": "5078",
+      "source_file_name": "main.py",
       "contest_current_path": "./contest_current",
       "contest_stock_path": "./contest_stock",
       "contest_template_path": "./contest_template",
@@ -344,124 +587,6 @@
           }
         }
       },
-      "docker_settings": {
-        "dockerfile_hash_length": 12,
-        "custom_image_prefixes": [
-          "ojtools",
-          "cph_"
-        ],
-        "known_registries": [
-          "docker.io",
-          "gcr.io",
-          "registry.hub.docker.com",
-          "quay.io",
-          "ghcr.io"
-        ],
-        "command_wrapper": "bash -c",
-        "invalid_path_chars": [
-          "..",
-          " ",
-          "\\t",
-          "\\n",
-          "\\r"
-        ]
-      },
-      "error_patterns": {
-        "daemon_connection": [
-          "cannot connect to the docker daemon",
-          "docker daemon is not running",
-          "connection refused",
-          "docker.sock"
-        ],
-        "image_not_found": [
-          "no such image",
-          "pull access denied",
-          "repository does not exist",
-          "image not found",
-          "manifest unknown"
-        ],
-        "container_conflict": [
-          "container already exists",
-          "container is running",
-          "container not found",
-          "conflict",
-          "name is already in use"
-        ],
-        "network_error": [
-          "network",
-          "timeout",
-          "connection",
-          "dns",
-          "tls"
-        ],
-        "filesystem_error": [
-          "permission denied",
-          "no such file or directory",
-          "directory not empty",
-          "disk space"
-        ],
-        "resource_error": [
-          "out of memory",
-          "resource",
-          "quota",
-          "limit",
-          "no space left"
-        ]
-      },
-      "retry_settings": {
-        "max_attempts": 3,
-        "base_delay_seconds": 1.0,
-        "max_delay_seconds": 30.0,
-        "exponential_backoff": true
-      },
-      "state_management": {
-        "state_directory": "~/.cph/state",
-        "state_file_format": "json",
-        "auto_backup": true,
-        "max_history": 100
-      },
-      "naming_conventions": {
-        "container_prefix": "cph",
-        "oj_container_prefix": "cph_ojtools",
-        "separator": "_",
-        "image_tag_format": "{language}:latest"
-      },
-      "path_settings": {
-        "container_root_path": "/",
-        "host_current_directory": ".",
-        "path_separator": "/",
-        "temp_directory": "/tmp",
-        "workspace_alias": "./workspace"
-      },
-      "timeout_settings": {
-        "process_termination_timeout": 3
-      },
-      "preparation_actions": {
-        "remove_stopped_container": "remove_stopped_container",
-        "run_new_container": "run_new_container",
-        "create_directory": "create_directory",
-        "build_or_pull_image": "build_or_pull_image"
-      },
-      "docker_options": {
-        "force_remove_flag": "f"
-      },
-      "env_types": {
-        "docker": {
-          "mount_path": "/workspace",
-          "working_directory": "/workspace",
-          "keep_alive_command": "tail -f /dev/null",
-          "default_shell": "bash"
-        },
-        "local": {
-          "working_directory": ".",
-          "default_shell": "bash",
-          "timeout_seconds": 300
-        }
-      }
-    },
-    "python": {
-      "language_id": "5078",
-      "source_file_name": "main.py",
       "commands": {
         "open": {
           "description": "コンテストを開く",
@@ -584,10 +709,115 @@
       "env_types": {
         "docker": {
           "dockerfile_path": "./contest_env/python/Dockerfile",
+          "mount_path": "/workspace",
+          "working_directory": "/workspace",
+          "keep_alive_command": "tail -f /dev/null",
+          "default_shell": "bash",
           "container_settings": {
             "memory_limit": "1GB",
             "cpu_limit": "1.0",
             "timeout_seconds": 300
+          },
+          "error_patterns": {
+            "daemon_connection": [
+              "cannot connect to the docker daemon",
+              "docker daemon is not running",
+              "connection refused",
+              "docker.sock"
+            ],
+            "image_not_found": [
+              "no such image",
+              "pull access denied",
+              "repository does not exist",
+              "image not found",
+              "manifest unknown"
+            ],
+            "container_conflict": [
+              "container already exists",
+              "container is running",
+              "container not found",
+              "conflict",
+              "name is already in use"
+            ],
+            "network_error": [
+              "network",
+              "timeout",
+              "connection",
+              "dns",
+              "tls"
+            ],
+            "filesystem_error": [
+              "permission denied",
+              "no such file or directory",
+              "directory not empty",
+              "disk space"
+            ],
+            "resource_error": [
+              "out of memory",
+              "resource",
+              "quota",
+              "limit",
+              "no space left"
+            ]
+          },
+          "retry_settings": {
+            "max_attempts": 3,
+            "base_delay_seconds": 1.0,
+            "max_delay_seconds": 30.0,
+            "exponential_backoff": true
+          },
+          "state_management": {
+            "state_directory": "~/.cph/state",
+            "state_file_format": "json",
+            "auto_backup": true,
+            "max_history": 100
+          },
+          "naming_conventions": {
+            "container_prefix": "cph",
+            "oj_container_prefix": "cph_ojtools",
+            "separator": "_",
+            "image_tag_format": "{language}:latest"
+          },
+          "path_settings": {
+            "container_root_path": "/",
+            "host_current_directory": ".",
+            "path_separator": "/",
+            "temp_directory": "/tmp",
+            "workspace_alias": "./workspace"
+          },
+          "docker_settings": {
+            "dockerfile_hash_length": 12,
+            "custom_image_prefixes": [
+              "ojtools",
+              "cph_"
+            ],
+            "known_registries": [
+              "docker.io",
+              "gcr.io",
+              "registry.hub.docker.com",
+              "quay.io",
+              "ghcr.io"
+            ],
+            "command_wrapper": "bash -c",
+            "invalid_path_chars": [
+              "..",
+              " ",
+              "\\t",
+              "\\n",
+              "\\r"
+            ]
+          },
+          "timeout_settings": {
+            "process_termination_timeout": 3
+          },
+          "preparation_actions": {
+            "remove_stopped_container": "remove_stopped_container",
+            "run_new_container": "run_new_container",
+            "create_directory": "create_directory",
+            "build_or_pull_image": "build_or_pull_image"
+          },
+          "docker_options": {
+            "force_remove_flag": "f"
           },
           "system_limits": {
             "min_disk_space_mb": 100,
@@ -611,6 +841,9 @@
           }
         },
         "local": {
+          "working_directory": ".",
+          "default_shell": "bash",
+          "timeout_seconds": 300,
           "retry_settings": {
             "max_attempts": 3,
             "base_delay_seconds": 1.0,
