@@ -1,13 +1,13 @@
 {
   "command": "open",
-  "language": "cpp",
+  "language": "python",
   "env_type": "local",
   "contest_name": "abc300",
   "problem_name": "a",
   "env_json": {
-    "cpp": {
-      "language_id": "5003",
-      "source_file_name": "main.cpp",
+    "python": {
+      "language_id": "5078",
+      "source_file_name": "main.py",
       "commands": {
         "open": {
           "description": "コンテストを開く",
@@ -91,12 +91,8 @@
               "allow_failure": true,
               "show_output": true,
               "cmd": [
-                "g++",
-                "-o",
-                "{workspace_path}/main",
-                "{workspace_path}/{source_file_name}",
-                "&&",
-                "{workspace_path}/main"
+                "python3",
+                "{workspace_path}/{source_file_name}"
               ]
             }
           ]

@@ -203,9 +203,69 @@ class ComplexRequestStrategy(RequestCreationStrategy):
         return step_type in [StepType.TEST, StepType.BUILD, StepType.OJ]
     
     def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
-        # For complex requests like TEST, BUILD, OJ, we need specific implementations
-        # This is a placeholder - implement as needed for specific step types
+        if step.type == StepType.TEST:
+            from src.operations.shell.shell_request import ShellRequest
+            
+            # Format command with context  
+            formatted_cmd = self._format_step_values(step.cmd, context)
+            cwd = self._format_value(step.cwd, context) if step.cwd else env_manager.get_working_directory()
+            
+            # Create test script that runs the program against all test cases
+            contest_current_path = self._format_value('{contest_current_path}', context) if context else './contest_current'
+            
+            test_script = f'''
+            for i in {contest_current_path}/test/sample-*.in; do
+                if [ -f "$i" ]; then
+                    echo "Testing $(basename "$i")"
+                    expected="${{i%.in}}.out"
+                    if [ -f "$expected" ]; then
+                        if {' '.join(formatted_cmd)} < "$i" > output.tmp 2>error.tmp; then
+                            if diff -q output.tmp "$expected" > /dev/null 2>&1; then
+                                echo "✓ PASS"
+                            else
+                                echo "✗ FAIL"
+                                echo "Expected:"
+                                cat "$expected"
+                                echo "Got:"
+                                cat output.tmp
+                            fi
+                        else
+                            echo "✗ ERROR"
+                            echo "Program failed with error:"
+                            cat error.tmp
+                        fi
+                        rm -f output.tmp error.tmp
+                    else
+                        echo "Expected output file not found: $expected"
+                    fi
+                else
+                    echo "No test files found"
+                fi
+            done
+            '''
+            
+            request = ShellRequest(
+                cmd=['bash', '-c', test_script],
+                timeout=env_manager.get_timeout(),
+                cwd=cwd,
+                env=getattr(step, 'env', None),
+                show_output=getattr(step, 'show_output', True)
+            )
+            request.allow_failure = getattr(step, 'allow_failure', False)
+            return request
+        
+        # For BUILD and OJ, return None for now (can be implemented later)
         return None
+    
+    def _format_value(self, value: str, context: Any) -> str:
+        """Format a single value with context"""
+        if hasattr(context, 'format_string'):
+            return context.format_string(value)
+        return value
+    
+    def _format_step_values(self, values: List[str], context: Any) -> List[str]:
+        """Format step values with context"""
+        return [self._format_value(v, context) for v in values]
 
 
 class UnifiedRequestFactory:
