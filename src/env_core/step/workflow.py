@@ -6,7 +6,28 @@ from src.operations.composite.composite_request import CompositeRequest
 from .step import Step, StepContext, StepGenerationResult
 from .core import generate_steps_from_json, validate_step_sequence, optimize_step_sequence
 from .dependency import resolve_dependencies, optimize_mkdir_steps
-from .request_converter import steps_to_requests
+def steps_to_requests(steps: List[Step], operations) -> CompositeRequest:
+    """
+    Convert a list of steps to a CompositeRequest using RequestFactoryV2
+    
+    Args:
+        steps: List of Step objects to convert
+        operations: Operations object (contains context)
+        
+    Returns:
+        CompositeRequest: Composite request containing all converted steps
+    """
+    from src.env_core.workflow.request_factory_v2 import RequestFactoryV2
+    
+    requests = []
+    factory = RequestFactoryV2(operations)
+    
+    for step in steps:
+        request = factory.create_request(step)
+        if request is not None:
+            requests.append(request)
+    
+    return CompositeRequest(requests, debug_tag="workflow")
 
 
 def generate_workflow_from_json(

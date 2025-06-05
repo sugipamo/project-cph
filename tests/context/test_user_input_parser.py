@@ -55,29 +55,38 @@ class TestLoadAllEnvJsons:
         python_env = {"python": {"language_name": "Python"}}
         rust_env = {"rust": {"language_name": "Rust"}}
         
-        # Mock file operations - first call is exists, then reads
-        read_result1 = MagicMock()
-        read_result1.content = json.dumps(python_env)
-        read_result2 = MagicMock()
-        read_result2.content = json.dumps(rust_env)
+        # Mock file operations - set up proper sequence
+        read_result_python = MagicMock()
+        read_result_python.content = json.dumps(python_env)
+        read_result_rust = MagicMock()
+        read_result_rust.content = json.dumps(rust_env)
         
-        # Create mock FileRequest instances
+        # Mock shared config failure (no shared/env.json)
+        shared_error = Exception("File not found")
+        
+        # Create mock FileRequest instances with proper execution order
         mock_requests = []
         
         def create_file_request(op_type, path):
             mock_req = MagicMock()
-            if len(mock_requests) == 0:  # First call is exists check
+            request_index = len(mock_requests)
+            
+            if request_index == 0:  # base_dir exists check
                 mock_req.execute.return_value = exists_result
-            elif len(mock_requests) == 1:  # Second call reads python env
-                mock_req.execute.return_value = read_result1
-            elif len(mock_requests) == 2:  # Third call reads rust env
-                mock_req.execute.return_value = read_result2
+            elif "shared" in path:  # shared config read (fails)
+                mock_req.execute.side_effect = shared_error
+            elif "python" in path:  # python env read
+                mock_req.execute.return_value = read_result_python
+            elif "rust" in path:  # rust env read
+                mock_req.execute.return_value = read_result_rust
+            else:
+                mock_req.execute.return_value = exists_result
+                
             mock_requests.append(mock_req)
             return mock_req
         
         # Patch FileRequest where it's imported
         with patch('src.operations.file.file_request.FileRequest', side_effect=create_file_request):
-        
             with patch('src.context.user_input_parser.ValidationService.validate_env_json'):
                 env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, mock_operations)
         
@@ -230,7 +239,7 @@ class TestParseUserInput:
         mock_context.validate.return_value = (True, None)
         
         # Setup side effects to return modified context
-        def apply_env_json_side_effect(ctx, env_jsons):
+        def apply_env_json_side_effect(ctx, env_jsons, base_dir=None, operations=None):
             ctx.env_json = {"python": {"language_name": "Python"}}
             return ctx
         
@@ -327,7 +336,7 @@ class TestParseUserInput:
         mock_context.validate.return_value = (False, "Validation error message")
         
         # Setup side effects
-        mock_apply_env_json.side_effect = lambda ctx, env_jsons: ctx
+        mock_apply_env_json.side_effect = lambda ctx, env_jsons, base_dir=None, operations=None: ctx
         
         # Make parse_command_line return empty args and the context
         mock_input_parser.parse_command_line.return_value = ([], mock_context)

@@ -25,10 +25,6 @@ from .dependency import (
     optimize_mkdir_steps,
     analyze_step_dependencies
 )
-from .request_converter import (
-    steps_to_requests,
-    step_to_request
-)
 from .workflow import (
     generate_workflow_from_json,
     create_step_context_from_env_context,
@@ -55,9 +51,6 @@ __all__ = [
     'optimize_mkdir_steps',
     'analyze_step_dependencies',
     
-    # Request conversion
-    'steps_to_requests',
-    'step_to_request',
     
     # High-level workflow API
     'generate_workflow_from_json',

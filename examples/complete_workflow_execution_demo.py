@@ -200,7 +200,7 @@ def demonstrate_workflow_with_fitting():
     
     # 3. Convert to workflow tasks
     from src.env_core.step.step import Step, StepType
-    from src.env_core.workflow.pure_request_factory import PureRequestFactory
+    from src.env_core.workflow.request_factory_v2 import RequestFactoryV2
     
     workflow_tasks = []
     for step_json in workflow_json:
@@ -208,7 +208,8 @@ def demonstrate_workflow_with_fitting():
             type=StepType(step_json["type"]),
             cmd=step_json["cmd"]
         )
-        request = PureRequestFactory.create_request_from_step(step, mock_context)
+        factory = RequestFactoryV2(mock_context)
+        request = factory.create_request(step)
         
         task_type = "docker" if step_json["type"].startswith("docker") else "file"
         workflow_tasks.append({

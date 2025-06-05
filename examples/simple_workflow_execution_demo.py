@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from src.env_core.workflow.graph_based_workflow_builder import GraphBasedWorkflowBuilder
 from src.env_core.step.step import StepContext, Step, StepType
-from src.env_core.workflow.pure_request_factory import PureRequestFactory
+from src.env_core.workflow.request_factory_v2 import RequestFactoryV2
 
 
 def main():
@@ -123,8 +123,9 @@ def main():
     )
     print(f"→ Step object: type={example_step.type}, cmd={example_step.cmd}")
     
-    # Convert to Request object (pure function, no operations needed)
-    example_request = PureRequestFactory.create_request_from_step(example_step)
+    # Convert to Request object (using factory)
+    factory = RequestFactoryV2(context)
+    example_request = factory.create_request(example_step)
     print(f"→ Request object: {type(example_request).__name__}")
     print(f"  - Operation: {example_request.op if hasattr(example_request, 'op') else 'N/A'}")
     print(f"  - Path: {example_request.path if hasattr(example_request, 'path') else 'N/A'}")
@@ -228,7 +229,7 @@ def main():
         type=StepType.DOCKER_EXEC,
         cmd=["my_container", "echo", "Hello from Docker"]
     )
-    docker_request = PureRequestFactory.create_request_from_step(docker_step)
+    docker_request = factory.create_request(docker_step)
     
     print("Docker step conversion:")
     print(f"  Step type: {docker_step.type}")

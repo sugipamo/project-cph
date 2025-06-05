@@ -203,9 +203,10 @@ class ComplexRequestStrategy(RequestCreationStrategy):
         return step_type in [StepType.TEST, StepType.BUILD, StepType.OJ]
     
     def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
-        # Delegate to existing PureRequestFactory for complex requests
-        from src.env_core.workflow.pure_request_factory import PureRequestFactory
-        return PureRequestFactory.create_request_from_step(step, context)
+        # Delegate to RequestFactoryV2 for complex requests
+        from src.env_core.workflow.request_factory_v2 import RequestFactoryV2
+        factory = RequestFactoryV2(context)
+        return factory.create_request(step)
 
 
 class UnifiedRequestFactory:
