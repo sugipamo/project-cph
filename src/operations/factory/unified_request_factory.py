@@ -142,7 +142,7 @@ class PythonRequestStrategy(RequestCreationStrategy):
         
         # Format and join command lines
         formatted_cmd = self._format_step_values(step.cmd, context)
-        code = '\\n'.join(formatted_cmd)
+        code = '\n'.join(formatted_cmd)
         
         return PythonRequest(
             code_or_file=code

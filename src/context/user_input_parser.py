@@ -2,9 +2,14 @@ import os
 import copy
 from typing import List
 from .execution_context import ExecutionContext
+from .parsers.system_info_manager import SystemInfoManager
+from .parsers.validation_service import ValidationService
+from .parsers.input_parser import InputParser
 from src.context.resolver.config_resolver import create_config_root_from_dict
 
 CONTEST_ENV_DIR = "contest_env"
+
+
 
 
 def _load_shared_config(base_dir: str, operations):
@@ -57,9 +62,8 @@ def _load_all_env_jsons(base_dir: str, operations) -> list:
             result = req.execute(driver=file_driver)
             data = json.loads(result.content)
             
-            # 基本バリデーション（必要最小限）
-            if not isinstance(data, dict):
-                raise ValueError(f"env.json must be a dictionary: {path}")
+            # 共有設定を考慮してバリデーション
+            ValidationService.validate_env_json(data, path, shared_config)
             env_jsons.append(data)
         except Exception as e:
             print(f"Warning: Failed to load {path}: {e}")

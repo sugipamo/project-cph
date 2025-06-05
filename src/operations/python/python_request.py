@@ -33,7 +33,10 @@ class PythonRequest(BaseRequest):
             if PythonUtils.is_script_file(self.code_or_file):
                 stdout, stderr, returncode = PythonUtils.run_script_file(self.code_or_file[0], cwd=self.cwd)
             else:
-                code = "\n".join(self.code_or_file)
+                if isinstance(self.code_or_file, list):
+                    code = "\n".join(self.code_or_file)
+                else:
+                    code = self.code_or_file
                 stdout, stderr, returncode = PythonUtils.run_code_string(code, cwd=self.cwd)
             end_time = time.time()
             return OperationResult(
