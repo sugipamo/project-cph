@@ -14,15 +14,17 @@ from ...core.models import (
 class DockerErrorHandler(ErrorHandler):
     """Docker-specific implementation of ErrorHandler"""
     
-    def __init__(self, max_attempts: int = 3, base_delay: float = 1.0):
+    def __init__(self, context=None, max_attempts: int = 3, base_delay: float = 1.0):
         """Initialize Docker error handler
         
         Args:
-            max_attempts: Maximum retry attempts
-            base_delay: Base delay between retries in seconds
+            context: Execution context with env.json settings
+            max_attempts: Maximum retry attempts (fallback)
+            base_delay: Base delay between retries in seconds (fallback)
         """
-        self.max_attempts = max_attempts
-        self.base_delay = base_delay
+        self.context = context
+        self.max_attempts = context.get_max_retry_attempts() if context else max_attempts
+        self.base_delay = context.settings.base_delay_seconds if context else base_delay
         self.error_history: List[PreparationError] = []
         self.logger = logging.getLogger(__name__)
     
@@ -75,7 +77,7 @@ class DockerErrorHandler(ErrorHandler):
         return error.category in retryable_categories
     
     def get_retry_delay(self, attempt_count: int) -> float:
-        """Calculate delay before retry with exponential backoff
+        """Calculate delay before retry using env.json settings
         
         Args:
             attempt_count: Current attempt number (1-based)
@@ -83,11 +85,15 @@ class DockerErrorHandler(ErrorHandler):
         Returns:
             Delay in seconds
         """
-        delay = self.base_delay * (2 ** (attempt_count - 1))
-        return min(delay, 30.0)  # Cap at 30 seconds
+        if self.context:
+            return self.context.get_retry_delay(attempt_count)
+        else:
+            # Fallback calculation
+            delay = self.base_delay * (2 ** (attempt_count - 1))
+            return min(delay, 30.0)
     
     def _classify_docker_error(self, error: Exception, context: Dict[str, Any]) -> PreparationError:
-        """Classify a Docker-related error and provide appropriate metadata
+        """Classify a Docker-related error using env.json error patterns
         
         Args:
             error: The exception that occurred
@@ -98,7 +104,101 @@ class DockerErrorHandler(ErrorHandler):
         """
         error_str = str(error).lower()
         
-        # Docker daemon errors
+        # Use env.json error patterns if available
+        if self.context:
+            # Docker daemon errors from env.json
+            daemon_patterns = self.context.get_error_patterns("daemon_connection")
+            if daemon_patterns and any(phrase in error_str for phrase in daemon_patterns):
+                return PreparationError(
+                    category=ErrorCategory.DOCKER_DAEMON,
+                    severity=ErrorSeverity.CRITICAL,
+                    message="Docker daemon is not accessible",
+                    details={"original_error": str(error)},
+                    retry_possible=True,
+                    suggested_action="Ensure Docker daemon is running and accessible",
+                    context=context
+                )
+            
+            # Docker image errors from env.json
+            image_patterns = self.context.get_error_patterns("image_not_found")
+            if image_patterns and any(phrase in error_str for phrase in image_patterns):
+                return PreparationError(
+                    category=ErrorCategory.DOCKER_IMAGE,
+                    severity=ErrorSeverity.HIGH,
+                    message="Docker image not available",
+                    details={"original_error": str(error)},
+                    retry_possible=True,
+                    suggested_action="Check image name or build the image locally",
+                    context=context
+                )
+            
+            # Container conflict errors from env.json
+            container_patterns = self.context.get_error_patterns("container_conflict")
+            if container_patterns and any(phrase in error_str for phrase in container_patterns):
+                return PreparationError(
+                    category=ErrorCategory.DOCKER_CONTAINER,
+                    severity=ErrorSeverity.MEDIUM,
+                    message="Docker container conflict",
+                    details={"original_error": str(error)},
+                    retry_possible=True,
+                    suggested_action="Remove conflicting container or use different name",
+                    context=context
+                )
+            
+            # Build errors from env.json
+            build_patterns = self.context.get_error_patterns("build_error")
+            if build_patterns and any(phrase in error_str for phrase in build_patterns):
+                return PreparationError(
+                    category=ErrorCategory.DOCKER_IMAGE,
+                    severity=ErrorSeverity.HIGH,
+                    message="Docker build failed",
+                    details={"original_error": str(error)},
+                    retry_possible=False,
+                    suggested_action="Check Dockerfile syntax and build context",
+                    context=context
+                )
+            
+            # Network errors from env.json
+            network_patterns = self.context.get_error_patterns("network_error")
+            if network_patterns and any(phrase in error_str for phrase in network_patterns):
+                return PreparationError(
+                    category=ErrorCategory.NETWORK,
+                    severity=ErrorSeverity.MEDIUM,
+                    message="Network operation failed",
+                    details={"original_error": str(error)},
+                    retry_possible=True,
+                    suggested_action="Check network connectivity and Docker registry access",
+                    context=context
+                )
+            
+            # Filesystem errors from env.json
+            fs_patterns = self.context.get_error_patterns("filesystem_error")
+            if fs_patterns and any(phrase in error_str for phrase in fs_patterns):
+                return PreparationError(
+                    category=ErrorCategory.FILESYSTEM,
+                    severity=ErrorSeverity.HIGH,
+                    message="Filesystem operation failed",
+                    details={"original_error": str(error)},
+                    retry_possible=False,
+                    suggested_action="Check file permissions and disk space",
+                    context=context
+                )
+            
+            # Resource errors from env.json
+            resource_patterns = self.context.get_error_patterns("resource_error")
+            if resource_patterns and any(phrase in error_str for phrase in resource_patterns):
+                return PreparationError(
+                    category=ErrorCategory.RESOURCE,
+                    severity=ErrorSeverity.HIGH,
+                    message="Resource constraint encountered",
+                    details={"original_error": str(error)},
+                    retry_possible=False,
+                    suggested_action="Free up system resources or increase limits",
+                    context=context
+                )
+        
+        # Fallback to hardcoded patterns if env.json not available
+        # Docker daemon errors (fallback)
         if any(phrase in error_str for phrase in [
             "cannot connect to the docker daemon",
             "docker daemon is not running",
@@ -115,7 +215,7 @@ class DockerErrorHandler(ErrorHandler):
                 context=context
             )
         
-        # Docker image errors
+        # Docker image errors (fallback)
         if any(phrase in error_str for phrase in [
             "no such image",
             "pull access denied",

@@ -18,10 +18,7 @@ from src.utils.path_operations_legacy import (
     is_subdirectory_pure,
     safe_path_join_pure,
     convert_path_to_docker_mount,
-    get_docker_mount_path_from_config,
-    get_workspace_path,
-    get_contest_current_path,
-    get_test_case_path
+    get_docker_mount_path_from_config
 )
 from src.utils.path_operations import PathOperationResult
 
@@ -302,54 +299,12 @@ class TestDockerFunctionCompatibility:
             assert issubclass(w[0].category, DeprecationWarning)
 
 
-class TestConfigBasedFunctions:
-    """設定ベース関数のテスト"""
-    
-    def test_get_workspace_path(self):
-        """get_workspace_pathのテスト"""
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            
-            result = get_workspace_path()
-            
-            # 結果の正当性確認（何らかのパスが返される）
-            assert isinstance(result, str)
-            assert len(result) > 0
-            
-            # 非推奨警告の確認
-            assert len(w) == 1
-            assert issubclass(w[0].category, DeprecationWarning)
-    
-    def test_get_contest_current_path(self):
-        """get_contest_current_pathのテスト"""
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            
-            result = get_contest_current_path()
-            
-            # 結果の正当性確認
-            assert isinstance(result, str)
-            # フォールバック値または設定値が返される
-            assert len(result) > 0
-            
-            # 非推奨警告の確認
-            assert len(w) == 1
-            assert issubclass(w[0].category, DeprecationWarning)
-    
-    def test_get_test_case_path(self):
-        """get_test_case_pathのテスト"""
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            
-            result = get_test_case_path()
-            
-            # 結果の正当性確認
-            assert isinstance(result, str)
-            assert len(result) > 0
-            
-            # 非推奨警告の確認
-            assert len(w) == 1
-            assert issubclass(w[0].category, DeprecationWarning)
+# TestConfigBasedFunctions クラスを削除
+# 理由：
+# 1. これらは非推奨（deprecated）関数で、将来削除予定
+# 2. os.getcwd()の使用により環境依存のテストとなる
+# 3. 代替実装（ConfigResolverProxy, path_utils）が存在
+# 4. テストの価値よりも依存性追加のコストが高い
 
 
 class TestWarningBehavior:

@@ -57,14 +57,16 @@ class DockerStateInfo:
 class DockerStateManager(StateManager):
     """Docker-specific implementation of StateManager"""
     
-    def __init__(self, initial_state: Optional[Dict] = None, state_file_path: Optional[str] = None):
+    def __init__(self, context=None, initial_state: Optional[Dict] = None, state_file_path: Optional[str] = None):
         """
         Initialize DockerStateManager with JSON state
         
         Args:
+            context: Execution context with env.json settings
             initial_state: State dict (for dependency injection and testing)
             state_file_path: Optional file path for persistence (if None, state is not persisted)
         """
+        self.context = context
         self._state_cache: Dict = initial_state if initial_state is not None else {}
         self.state_file_path = state_file_path
     

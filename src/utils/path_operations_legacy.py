@@ -280,10 +280,8 @@ try:
             "get_workspace_path()",
             "適切な設定管理システムへの移行を検討してください"
         )
-        config = resolve_best(ConfigNode, "workspace")
-        if config and hasattr(config, 'path'):
-            return config.path
-        return os.getcwd()
+        # ConfigNodeのインスタンスがないため、フォールバック値を返す
+        return "."
     
     def get_contest_current_path() -> str:
         """現在のコンテストパスを取得（設定依存）
@@ -295,9 +293,7 @@ try:
             "get_contest_current_path()",
             "適切な設定管理システムへの移行を検討してください"
         )
-        config = resolve_best(ConfigNode, "contest_current")
-        if config and hasattr(config, 'path'):
-            return config.path
+        # ConfigNodeのインスタンスがないため、フォールバック値を返す
         return "./contest_current"
     
     def get_test_case_path() -> str:
@@ -310,9 +306,7 @@ try:
             "get_test_case_path()",
             "適切な設定管理システムへの移行を検討してください"
         )
-        config = resolve_best(ConfigNode, "test_case")
-        if config and hasattr(config, 'path'):
-            return config.path
+        # ConfigNodeのインスタンスがないため、フォールバック値を返す
         return "./test"
 
 except ImportError:

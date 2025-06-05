@@ -24,7 +24,7 @@ class DockerTaskGenerator(TaskGenerator):
         
         Args:
             operations: Operations container
-            context: Execution context
+            context: Execution context (env.json based)
             state_manager: Docker state manager
         """
         self.operations = operations
@@ -252,8 +252,8 @@ class DockerTaskGenerator(TaskGenerator):
         # Get Docker names from context
         docker_names = self.context.get_docker_names()
         
-        # Determine which image to use based on container name
-        is_oj_container = container_name.startswith("cph_ojtools")
+        # Determine which image to use based on container name using env.json naming
+        is_oj_container = self.context.is_oj_container(container_name)
         if is_oj_container:
             image_name = docker_names["oj_image_name"]
             needs_image_rebuild = rebuild_decision.oj_image_rebuild_needed
@@ -343,18 +343,19 @@ class DockerTaskGenerator(TaskGenerator):
         if config['needs_container_recreate'] and rebuild_remove_task_id:
             run_dependencies.append(rebuild_remove_task_id)
         
-        # Add volume mount options to make project files accessible in container
-        project_path = os.getcwd()
-        mount_path = getattr(self.context, 'get_docker_mount_path', lambda: '/workspace')()
-        volume_options = {
-            "v": f"{project_path}:{mount_path}"
-        }
+        # Add volume mount options from env.json
+        project_path = self.context.get_project_path()
+        volume_options = self.context.get_mount_options(project_path)
+        
+        # Add container resource limits from env.json
+        container_options = self.context.get_container_options()
+        volume_options.update(container_options)
         
         run_request = DockerRequest(
             op=DockerOpType.RUN,
             image=config['image_name'],
             container=config['container_name'],
-            command="tail -f /dev/null",  # Keep container running
+            command=self.context.get_keep_alive_command(),  # From env.json
             options=volume_options
         )
         

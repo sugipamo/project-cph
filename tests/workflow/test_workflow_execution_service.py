@@ -1,5 +1,6 @@
 """
-Tests for WorkflowExecutionService
+Comprehensive tests for WorkflowExecutionService
+This is a critical untested module that orchestrates the entire workflow execution process
 """
 import pytest
 from unittest.mock import Mock, MagicMock, patch

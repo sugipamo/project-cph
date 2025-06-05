@@ -6,13 +6,14 @@ from .inspector import DockerResourceInspector
 from .generator import DockerTaskGenerator
 from .state import DockerStateManager
 from .error_handler import DockerErrorHandler
+from ...env_context import create_env_json_context
 
 
 class DockerProviderFactory(ProviderFactory):
     """Factory for creating Docker-specific provider components"""
     
     def create_provider_set(self, operations, context) -> ProviderSet:
-        """Create a complete Docker provider set
+        """Create a complete Docker provider set using env.json configuration
         
         Args:
             operations: Operations container
@@ -21,17 +22,30 @@ class DockerProviderFactory(ProviderFactory):
         Returns:
             Complete ProviderSet for Docker environment
         """
-        # Create state manager first as other components may depend on it
-        state_manager = DockerStateManager()
+        # Create env.json based context if not already available
+        if not hasattr(context, 'get_docker_mount_path'):
+            # Convert legacy context to env.json based context
+            language = getattr(context, 'language', 'python')
+            env_type = getattr(context, 'env_type', 'docker')
+            env_context = create_env_json_context(
+                language=language,
+                env_type=env_type,
+                operations=operations
+            )
+        else:
+            env_context = context
+        
+        # Create state manager with env.json configuration
+        state_manager = DockerStateManager(context=env_context)
         
         # Create inspector
         inspector = DockerResourceInspector(operations)
         
-        # Create task generator with dependencies
-        generator = DockerTaskGenerator(operations, context, state_manager)
+        # Create task generator with env.json context
+        generator = DockerTaskGenerator(operations, env_context, state_manager)
         
-        # Create error handler
-        error_handler = DockerErrorHandler()
+        # Create error handler with env.json configuration
+        error_handler = DockerErrorHandler(context=env_context)
         
         return ProviderSet(
             inspector=inspector,

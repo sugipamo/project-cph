@@ -1,7 +1,6 @@
 """
-統合パス操作ライブラリのテスト
-
-既存の3つのパス操作実装から統合されたライブラリの動作を検証
+Comprehensive tests for utils.path_operations module
+This is a critical untested module (533 LOC) that handles all path operations
 """
 import pytest
 import tempfile
