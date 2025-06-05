@@ -31,15 +31,15 @@ class TestGraphBasedWorkflowBuilderExtended:
         step.type = StepType.OJ
         step.cmd = ["oj", "test"]
         
-        with patch('src.env_core.workflow.pure_request_factory.PureRequestFactory') as mock_factory:
-            mock_factory.create_request_from_step.return_value = None
+        with patch('src.operations.factory.unified_request_factory.create_request') as mock_factory:
+            mock_factory.return_value = None
             
             # Execute
             result = self.builder._step_to_request(step)
             
             # Verify
             assert result is None
-            mock_factory.create_request_from_step.assert_called_once_with(step, context=self.mock_context)
+            mock_factory.assert_called_once_with(step, context=self.mock_context)
     
     def test_build_graph_from_steps_with_skip_none_request(self):
         """Test _build_graph_from_steps skips steps that produce None requests"""

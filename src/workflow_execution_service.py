@@ -8,8 +8,7 @@ from dataclasses import dataclass
 from src.env_core.step.step import Step, StepType
 from src.env_core.step.core import generate_steps_from_json
 from src.env_core.workflow.graph_based_workflow_builder import GraphBasedWorkflowBuilder
-from src.env_core.workflow.pure_request_factory import PureRequestFactory
-from src.env_core.step.request_converter import steps_to_requests
+from src.operations.factory.unified_request_factory import create_composite_request
 from src.env_integration.fitting.preparation_executor import PreparationExecutor
 from src.context.execution_context import ExecutionContext
 from src.operations.result.result import OperationResult
@@ -96,8 +95,8 @@ class WorkflowExecutionService:
                 warnings=graph_warnings + step_result.warnings
             )
         
-        # Convert steps to operations requests directly
-        operations_composite = steps_to_requests(step_result.steps, self.operations, self.context)
+        # Convert steps to operations requests using unified factory
+        operations_composite = create_composite_request(step_result.steps, self.context, self.operations)
         
         # Analyze environment and prepare if needed (fitting responsibility)
         preparation_results = []
@@ -195,8 +194,9 @@ class WorkflowExecutionService:
         workflow_tasks = []
         
         for step in steps:
-            # Create request from step
-            request = PureRequestFactory.create_request_from_step(step, self.context)
+            # Create request from step using unified factory
+            from src.operations.factory.unified_request_factory import create_request
+            request = create_request(step, self.context)
             if request:
                 # Determine request type based on actual request class
                 if request.__class__.__name__ == "DockerRequest":

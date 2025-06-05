@@ -131,9 +131,9 @@ class TestWorkflowExecutionService:
     
     @patch('src.workflow_execution_service.generate_steps_from_json')
     @patch('src.workflow_execution_service.GraphBasedWorkflowBuilder')
-    @patch('src.workflow_execution_service.steps_to_requests')
+    @patch('src.workflow_execution_service.create_composite_request')
     @patch('src.operations.composite.unified_driver.UnifiedDriver')
-    def test_execute_workflow_success(self, mock_unified_driver_class, mock_steps_to_requests, 
+    def test_execute_workflow_success(self, mock_unified_driver_class, mock_create_composite_request, 
                                     mock_builder_class, mock_generate, service):
         """Test successful workflow execution"""
         # Mock step generation
@@ -154,7 +154,7 @@ class TestWorkflowExecutionService:
         
         # Mock request conversion
         mock_composite = Mock()
-        mock_steps_to_requests.return_value = mock_composite
+        mock_create_composite_request.return_value = mock_composite
         
         # Mock execution
         mock_unified_driver = Mock()
@@ -172,13 +172,14 @@ class TestWorkflowExecutionService:
     
     @patch('src.workflow_execution_service.generate_steps_from_json')
     @patch('src.workflow_execution_service.GraphBasedWorkflowBuilder')
-    @patch('src.workflow_execution_service.steps_to_requests')
+    @patch('src.workflow_execution_service.create_composite_request')
     @patch('src.operations.composite.unified_driver.UnifiedDriver')
-    def test_execute_workflow_failure(self, mock_unified_driver_class, mock_steps_to_requests,
+    def test_execute_workflow_failure(self, mock_unified_driver_class, mock_create_composite_request,
                                     mock_builder_class, mock_generate, service):
         """Test workflow execution with failure"""
         # Setup mocks similar to success case
         mock_step = Mock(spec=Step)
+        mock_step.type = StepType.SHELL
         mock_result = Mock()
         mock_result.errors = []
         mock_result.warnings = []
@@ -190,7 +191,7 @@ class TestWorkflowExecutionService:
         mock_builder_class.from_context.return_value = mock_builder
         
         mock_composite = Mock()
-        mock_steps_to_requests.return_value = mock_composite
+        mock_create_composite_request.return_value = mock_composite
         
         mock_unified_driver = Mock()
         mock_unified_driver_class.return_value = mock_unified_driver
@@ -202,7 +203,10 @@ class TestWorkflowExecutionService:
         failure_result.request = None
         mock_composite.execute.return_value = failure_result
         
-        result = service.execute_workflow()
+        # Mock unified factory for _create_workflow_tasks
+        with patch('src.operations.factory.unified_request_factory.create_request') as mock_factory:
+            mock_factory.return_value = None  # Return None to skip task creation
+            result = service.execute_workflow()
         
         assert not result.success
         assert len(result.results) == 1
@@ -219,15 +223,15 @@ class TestWorkflowExecutionService:
         step2.type = StepType.COPY
         step2.cmd = ["src", "dst"]
         
-        # Mock PureRequestFactory
+        # Mock unified factory
         mock_shell_request = Mock()
         mock_shell_request.__class__.__name__ = "ShellRequest"
         
         mock_file_request = Mock()
         mock_file_request.__class__.__name__ = "FileRequest"
         
-        with patch('src.workflow_execution_service.PureRequestFactory') as mock_factory:
-            mock_factory.create_request_from_step.side_effect = [
+        with patch('src.operations.factory.unified_request_factory.create_request') as mock_factory:
+            mock_factory.side_effect = [
                 mock_shell_request,
                 mock_file_request
             ]
@@ -252,8 +256,8 @@ class TestWorkflowExecutionService:
         mock_docker_request.op.__str__ = lambda x: "DockerOpType.exec"
         mock_docker_request.container = "test_container"
         
-        with patch('src.workflow_execution_service.PureRequestFactory') as mock_factory:
-            mock_factory.create_request_from_step.return_value = mock_docker_request
+        with patch('src.operations.factory.unified_request_factory.create_request') as mock_factory:
+            mock_factory.return_value = mock_docker_request
             
             tasks = service._create_workflow_tasks([step])
             
@@ -264,9 +268,9 @@ class TestWorkflowExecutionService:
     
     @patch('src.workflow_execution_service.generate_steps_from_json')
     @patch('src.workflow_execution_service.GraphBasedWorkflowBuilder')
-    @patch('src.workflow_execution_service.steps_to_requests')
+    @patch('src.workflow_execution_service.create_composite_request')
     @patch('src.operations.composite.unified_driver.UnifiedDriver')
-    def test_execute_workflow_with_preparation(self, mock_unified_driver_class, mock_steps_to_requests,
+    def test_execute_workflow_with_preparation(self, mock_unified_driver_class, mock_create_composite_request,
                                              mock_builder_class, mock_generate, service):
         """Test workflow execution with preparation tasks"""
         # Setup basic mocks
@@ -284,7 +288,7 @@ class TestWorkflowExecutionService:
         mock_builder_class.from_context.return_value = mock_builder
         
         mock_composite = Mock()
-        mock_steps_to_requests.return_value = mock_composite
+        mock_create_composite_request.return_value = mock_composite
         
         mock_unified_driver = Mock()
         mock_unified_driver_class.return_value = mock_unified_driver
@@ -305,12 +309,12 @@ class TestWorkflowExecutionService:
         
         mock_composite.execute.return_value = main_result
         
-        # Mock DriverBoundRequest and PureRequestFactory
+        # Mock DriverBoundRequest and unified factory
         with patch('src.workflow_execution_service.DriverBoundRequest') as mock_driver_bound:
-            with patch('src.workflow_execution_service.PureRequestFactory') as mock_factory:
+            with patch('src.operations.factory.unified_request_factory.create_request') as mock_factory:
                 mock_request = Mock()
                 mock_request.__class__.__name__ = "ShellRequest"
-                mock_factory.create_request_from_step.return_value = mock_request
+                mock_factory.return_value = mock_request
                 
                 mock_bound = Mock()
                 mock_bound.execute.return_value = prep_result
@@ -324,13 +328,14 @@ class TestWorkflowExecutionService:
     
     @patch('src.workflow_execution_service.generate_steps_from_json')
     @patch('src.workflow_execution_service.GraphBasedWorkflowBuilder')
-    @patch('src.workflow_execution_service.steps_to_requests')
+    @patch('src.workflow_execution_service.create_composite_request')
     @patch('src.operations.composite.unified_driver.UnifiedDriver')
-    def test_execute_workflow_with_allowed_failure(self, mock_unified_driver_class, mock_steps_to_requests,
+    def test_execute_workflow_with_allowed_failure(self, mock_unified_driver_class, mock_create_composite_request,
                                                   mock_builder_class, mock_generate, service):
         """Test workflow execution with allowed failures"""
         # Setup mocks
         mock_step = Mock(spec=Step)
+        mock_step.type = StepType.SHELL
         mock_result = Mock()
         mock_result.errors = []
         mock_result.warnings = []
@@ -342,7 +347,7 @@ class TestWorkflowExecutionService:
         mock_builder_class.from_context.return_value = mock_builder
         
         mock_composite = Mock()
-        mock_steps_to_requests.return_value = mock_composite
+        mock_create_composite_request.return_value = mock_composite
         
         mock_unified_driver = Mock()
         mock_unified_driver_class.return_value = mock_unified_driver
@@ -358,7 +363,10 @@ class TestWorkflowExecutionService:
         
         mock_composite.execute.return_value = failure_result
         
-        result = service.execute_workflow()
+        # Mock unified factory for _create_workflow_tasks
+        with patch('src.operations.factory.unified_request_factory.create_request') as mock_factory:
+            mock_factory.return_value = None  # Return None to skip task creation
+            result = service.execute_workflow()
         
         # Should succeed because failure is allowed
         assert result.success

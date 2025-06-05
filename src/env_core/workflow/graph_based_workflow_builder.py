@@ -204,7 +204,7 @@ class GraphBasedWorkflowBuilder:
     
     def _step_to_request(self, step: Step) -> Optional[Any]:
         """
-        StepからRequestを生成（純粋関数版）
+        StepからRequestを生成（統一ファクトリー版）
         
         Args:
             step: 変換するステップ
@@ -212,10 +212,10 @@ class GraphBasedWorkflowBuilder:
         Returns:
             生成されたリクエスト、または None
         """
-        from .pure_request_factory import PureRequestFactory
+        from src.operations.factory.unified_request_factory import create_request
         
-        # 純粋なファクトリを使用してリクエストを生成（operations不要）
-        return PureRequestFactory.create_request_from_step(step, context=self.context)
+        # 統一ファクトリを使用してリクエストを生成
+        return create_request(step, context=self.context)
     
     def _extract_resource_info_from_step(
         self, 
