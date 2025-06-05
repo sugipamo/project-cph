@@ -437,7 +437,7 @@ class TestExecutionContextAdvanced:
         assert result == expected_steps
         context._config_resolver.get_steps.assert_called_once()
     
-    @patch('src.context.execution_context.get_docker_mount_path_from_config')
+    @patch('src.utils.path_operations.DockerPathOperations.get_docker_mount_path_from_config')
     def test_get_docker_mount_path(self, mock_get_mount_path):
         """Test get_docker_mount_path method"""
         context = ExecutionContext("build", "python", "abc", "a", "local", {"docker": {"mount": "/test"}})

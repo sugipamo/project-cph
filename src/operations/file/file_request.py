@@ -54,12 +54,20 @@ class FileRequest(BaseRequest):
             from src.operations.result.file_result import FileResult
             
             if self.op == FileOpType.READ:
-                with actual_driver.open(self.path, "r", encoding="utf-8") as f:
+                resolved_path = actual_driver.resolve_path(self.path)
+                with resolved_path.open("r", encoding="utf-8") as f:
                     content = f.read()
                 return FileResult(content=content, path=self.path, success=True)
             
             elif self.op == FileOpType.WRITE:
-                actual_driver.create(self.path, self.content or "")
+                # Check if it's a mock driver with different API
+                if hasattr(actual_driver, '_create_impl'):
+                    # For drivers with _create_impl, resolve path first
+                    resolved_path = actual_driver.resolve_path(self.path)
+                    actual_driver._create_impl(resolved_path, self.content or "")
+                else:
+                    # Regular driver
+                    actual_driver.create(self.path, self.content or "")
                 return FileResult(path=self.path, success=True)
             
             elif self.op == FileOpType.EXISTS:
