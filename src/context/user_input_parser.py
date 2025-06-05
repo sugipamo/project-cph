@@ -30,6 +30,12 @@ def _load_all_env_jsons(base_dir: str, operations) -> list:
     
     for path in env_json_paths:
         try:
+            # 特殊フォルダは除外（バリデーション対象外）
+            dir_name = os.path.basename(os.path.dirname(path))
+            excluded_dirs = {'shared', '__common__', 'common', 'base'}
+            if dir_name in excluded_dirs:
+                continue
+                
             req = FileRequest(FileOpType.READ, path)
             result = req.execute(driver=file_driver)
             data = json.loads(result.content)
