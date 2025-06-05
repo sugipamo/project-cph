@@ -1,1 +1,0 @@
-"""Tests for pure functions formatting module"""

@@ -10,8 +10,7 @@ from functools import lru_cache
 
 
 # Pre-compiled regex patterns for better performance
-# This pattern matches {key} but not {{key}} (escaped braces)
-_FORMAT_KEY_PATTERN = re.compile(r'(?<!\{)\{(\w+)\}(?!\})')
+_FORMAT_KEY_PATTERN = re.compile(r'{(\w+)}')
 
 
 @lru_cache(maxsize=512)

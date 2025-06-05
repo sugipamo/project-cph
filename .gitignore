@@ -10,7 +10,6 @@
 contest_stocks/
 contest_current/
 **/__pycache__/**
-test/
 target/
 workspace/
 

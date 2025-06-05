@@ -49,24 +49,35 @@ def format_path_template(template: str, context: Dict[str, Any]) -> str:
     return format_with_context(template, context)
 
 
+def validate_path_template(template: str, required_context_keys: List[str]) -> Tuple[bool, List[str]]:
+    """
+    パステンプレートが必要なコンテキストキーを含んでいるかチェック
+    
+    Args:
+        template: チェックするパステンプレート
+        required_context_keys: 必須のコンテキストキー
+        
+    Returns:
+        Tuple[bool, List[str]]: (有効かどうか, 不足キーリスト)
+    """
+    return validate_template_keys(template, required_context_keys)
+
+
 def normalize_path_separators(path: str, target_separator: str = '/') -> str:
     """
-    パスのセパレータを指定されたセパレータに正規化
+    パスの区切り文字を正規化
     
     Args:
         path: 正規化するパス
-        target_separator: 目標セパレータ ('/' または '\\')
+        target_separator: 目標の区切り文字
         
     Returns:
         str: 正規化されたパス
     """
-    # すべてのセパレータを統一
-    if target_separator == '/':
-        normalized = path.replace('\\', '/')
-    else:
-        normalized = path.replace('/', '\\')
+    # 一般的な区切り文字を統一
+    normalized = path.replace('\\', target_separator).replace('//', target_separator)
     
-    # 連続するセパレータを単一のセパレータに置換
+    # 連続する区切り文字を単一に
     while target_separator + target_separator in normalized:
         normalized = normalized.replace(target_separator + target_separator, target_separator)
     
@@ -75,11 +86,11 @@ def normalize_path_separators(path: str, target_separator: str = '/') -> str:
 
 def join_path_parts(*parts: str, separator: str = '/') -> str:
     """
-    パス部分を結合（空白のみの部分は除外、先頭/末尾のセパレータを正しく処理）
+    パス部分を安全に結合
     
     Args:
         *parts: 結合するパス部分
-        separator: 使用するパス区切り文字
+        separator: 使用する区切り文字
         
     Returns:
         str: 結合されたパス
@@ -87,43 +98,33 @@ def join_path_parts(*parts: str, separator: str = '/') -> str:
     if not parts:
         return ""
     
-    # 空白のみの部分を除外
-    valid_parts = [part for part in parts if part.strip()]
+    # 空の部分を除去
+    non_empty_parts = [part for part in parts if part]
     
-    if not valid_parts:
+    if not non_empty_parts:
         return ""
     
-    # 各部分から先頭と末尾のセパレータを削除
+    # 各部分の前後の区切り文字を整理
     cleaned_parts = []
-    for part in valid_parts:
-        # 先頭と末尾のセパレータを削除（ただし/と\の両方を考慮）
-        cleaned = part.strip().strip('/').strip('\\')
+    for part in non_empty_parts:
+        cleaned = part.strip(separator)
         if cleaned:
             cleaned_parts.append(cleaned)
     
     return separator.join(cleaned_parts)
 
 
-def validate_path_template(template: str, required_keys: List[str]) -> Tuple[bool, List[str]]:
-    """
-    パステンプレートの必要キーが含まれているかを検証
-    
-    Args:
-        template: 検証するパステンプレート
-        required_keys: 必要なキーのリスト
-        
-    Returns:
-        Tuple[bool, List[str]]: (検証結果, 不足キーリスト)
-    """
-    template_keys = extract_format_keys(template)
-    missing_keys = [key for key in required_keys if key not in template_keys]
-    return len(missing_keys) == 0, missing_keys
-
-
 class PathFormatter:
-    """パスフォーマット処理のクラス実装"""
+    """
+    パスフォーマットのカスタマイズ可能なクラス
     
-    def __init__(self, base_paths: Dict[str, str] = None, default_context: Dict[str, Any] = None, path_separator: str = '/'):
+    特定のプロジェクト構造に合わせたパス生成機能を提供
+    """
+    
+    def __init__(self, 
+                 base_paths: Dict[str, str] = None,
+                 default_context: Dict[str, Any] = None,
+                 path_separator: str = '/'):
         """
         Args:
             base_paths: ベースパスのテンプレート辞書
