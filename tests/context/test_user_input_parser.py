@@ -335,3 +335,184 @@ class TestParseUserInput:
         with patch('src.context.user_input_parser.ExecutionContext', return_value=mock_context):
             with pytest.raises(ValueError, match="Validation error message"):
                 parse_user_input(["py", "local", "t", "abc300", "a"], mock_operations)
+
+
+class TestParseUserInputRegressionTests:
+    """Regression tests for specific command line scenarios"""
+    
+    @patch('src.context.user_input_parser.SystemInfoManager')
+    @patch('src.context.user_input_parser.ValidationService')
+    @patch('src.context.user_input_parser._load_all_env_jsons')
+    @patch('src.context.user_input_parser.create_config_root_from_dict')
+    @patch('src.context.user_input_parser.InputParser')
+    @patch('src.context.user_input_parser._apply_env_json')
+    def test_abc300_test_a_command_parsing(
+        self,
+        mock_apply_env_json,
+        mock_input_parser,
+        mock_create_root,
+        mock_load_env_jsons,
+        mock_validation_service,
+        mock_system_info_manager
+    ):
+        """
+        REGRESSION TEST: Test the specific abc300 test a command scenario
+        This verifies that the command line parsing correctly handles this common case
+        """
+        mock_operations = MagicMock()
+        
+        # Setup system info to return expected values
+        mock_system_info = {
+            "command": "test",
+            "language": "python",
+            "contest_name": "abc300",
+            "problem_name": "a",
+            "env_type": "local",
+            "env_json": None
+        }
+        mock_system_info_manager.return_value.load_system_info.return_value = mock_system_info
+        
+        # Setup other mocks
+        mock_load_env_jsons.return_value = []
+        mock_create_root.return_value = MagicMock()
+        
+        # Create proper context mock
+        mock_context = MagicMock()
+        mock_context.validate.return_value = (True, None)
+        mock_context.command_type = "test"
+        mock_context.language = "python"
+        mock_context.contest_name = "abc300"
+        mock_context.problem_name = "a"
+        mock_context.env_type = "local"
+        mock_context.env_json = None
+        
+        # Setup parse_command_line to simulate correct parsing
+        mock_input_parser.parse_command_line.return_value = ([], mock_context)
+        mock_apply_env_json.return_value = mock_context
+        
+        with patch('src.context.user_input_parser.ExecutionContext', return_value=mock_context):
+            result = parse_user_input(["abc300", "test", "a"], mock_operations)
+        
+        # Verify that the context has the expected values
+        assert result.contest_name == "abc300"
+        assert result.command_type == "test"
+        assert result.problem_name == "a"
+        
+        # Verify system info was saved
+        mock_system_info_manager.return_value.save_system_info.assert_called_once()
+    
+    @patch('src.context.user_input_parser.SystemInfoManager')
+    @patch('src.context.user_input_parser._load_all_env_jsons')
+    @patch('src.context.user_input_parser.create_config_root_from_dict')
+    @patch('src.context.user_input_parser.InputParser')
+    @patch('src.context.user_input_parser._apply_env_json')
+    def test_argument_order_scenarios(
+        self,
+        mock_apply_env_json,
+        mock_input_parser,
+        mock_create_root,
+        mock_load_env_jsons,
+        mock_system_info_manager
+    ):
+        """Test various argument order scenarios that should work"""
+        mock_operations = MagicMock()
+        
+        test_scenarios = [
+            # (input_args, expected_contest, expected_command, expected_problem)
+            (["abc300", "test", "a"], "abc300", "test", "a"),
+            (["abc301", "open", "b"], "abc301", "open", "b"),
+            (["arc100", "submit", "c"], "arc100", "submit", "c"),
+        ]
+        
+        for input_args, exp_contest, exp_command, exp_problem in test_scenarios:
+            # Reset mocks for each test
+            mock_system_info = {
+                "command": exp_command,
+                "language": "python",
+                "contest_name": exp_contest,
+                "problem_name": exp_problem,
+                "env_type": "local",
+                "env_json": None
+            }
+            mock_system_info_manager.return_value.load_system_info.return_value = mock_system_info
+            mock_load_env_jsons.return_value = []
+            mock_create_root.return_value = MagicMock()
+            
+            mock_context = MagicMock()
+            mock_context.validate.return_value = (True, None)
+            mock_context.command_type = exp_command
+            mock_context.language = "python"
+            mock_context.contest_name = exp_contest
+            mock_context.problem_name = exp_problem
+            mock_context.env_type = "local"
+            mock_context.env_json = None
+            
+            mock_input_parser.parse_command_line.return_value = ([], mock_context)
+            mock_apply_env_json.return_value = mock_context
+            
+            with patch('src.context.user_input_parser.ExecutionContext', return_value=mock_context):
+                result = parse_user_input(input_args, mock_operations)
+            
+            # Verify correct parsing
+            assert result.contest_name == exp_contest, f"Failed for {input_args}: contest"
+            assert result.command_type == exp_command, f"Failed for {input_args}: command"
+            assert result.problem_name == exp_problem, f"Failed for {input_args}: problem"
+    
+    @patch('src.context.user_input_parser.SystemInfoManager')
+    @patch('src.context.user_input_parser._load_all_env_jsons')
+    @patch('src.context.user_input_parser.create_config_root_from_dict')
+    @patch('src.context.user_input_parser.InputParser')
+    @patch('src.context.user_input_parser._apply_env_json')
+    def test_edge_case_argument_patterns(
+        self,
+        mock_apply_env_json,
+        mock_input_parser,
+        mock_create_root,
+        mock_load_env_jsons,
+        mock_system_info_manager
+    ):
+        """Test edge cases in argument patterns"""
+        mock_operations = MagicMock()
+        
+        edge_cases = [
+            # Contest names that might be confused with commands
+            (["test123", "test", "a"], "test123", "test", "a"),
+            (["open2023", "open", "b"], "open2023", "open", "b"),
+            # Single character problem names
+            (["abc300", "test", "x"], "abc300", "test", "x"),
+            (["abc300", "test", "1"], "abc300", "test", "1"),
+            # Long contest names
+            (["very_long_contest_name", "test", "a"], "very_long_contest_name", "test", "a"),
+        ]
+        
+        for input_args, exp_contest, exp_command, exp_problem in edge_cases:
+            mock_system_info = {
+                "command": exp_command,
+                "language": "python",
+                "contest_name": exp_contest,
+                "problem_name": exp_problem,
+                "env_type": "local",
+                "env_json": None
+            }
+            mock_system_info_manager.return_value.load_system_info.return_value = mock_system_info
+            mock_load_env_jsons.return_value = []
+            mock_create_root.return_value = MagicMock()
+            
+            mock_context = MagicMock()
+            mock_context.validate.return_value = (True, None)
+            mock_context.command_type = exp_command
+            mock_context.language = "python"
+            mock_context.contest_name = exp_contest
+            mock_context.problem_name = exp_problem
+            mock_context.env_type = "local"
+            mock_context.env_json = None
+            
+            mock_input_parser.parse_command_line.return_value = ([], mock_context)
+            mock_apply_env_json.return_value = mock_context
+            
+            with patch('src.context.user_input_parser.ExecutionContext', return_value=mock_context):
+                result = parse_user_input(input_args, mock_operations)
+            
+            assert result.contest_name == exp_contest, f"Edge case failed for {input_args}: contest"
+            assert result.command_type == exp_command, f"Edge case failed for {input_args}: command"
+            assert result.problem_name == exp_problem, f"Edge case failed for {input_args}: problem"

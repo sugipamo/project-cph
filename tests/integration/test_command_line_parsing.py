@@ -157,3 +157,97 @@ class TestCommandLineParsing:
         assert parsed_context.command_type == "open"  # Should be parsed as command
         assert parsed_context.contest_name == "abc300"
         assert parsed_context.problem_name == "a"
+    
+    def test_abc300_test_a_scenario_specific(self):
+        """
+        REGRESSION TEST: Test the specific abc300 test a scenario that's failing
+        This addresses the bug where arguments are parsed in wrong order
+        """
+        context = self.create_context(language="python")
+        
+        # The exact scenario: abc300 test a
+        args = ["abc300", "test", "a"]
+        remaining_args, parsed_context = InputParser.parse_command_line(args, context, self.root)
+        
+        # CRITICAL: Verify correct parsing order
+        assert parsed_context.contest_name == "abc300", f"Expected contest_name='abc300', got '{parsed_context.contest_name}'"
+        assert parsed_context.command_type == "test", f"Expected command_type='test', got '{parsed_context.command_type}'"
+        assert parsed_context.problem_name == "a", f"Expected problem_name='a', got '{parsed_context.problem_name}'"
+        assert parsed_context.language == "python"  # Should remain unchanged
+        assert len(remaining_args) == 0, f"Expected no remaining args, got {remaining_args}"
+    
+    def test_abc300_test_a_with_aliases(self):
+        """Test abc300 test a scenario with command aliases"""
+        context = self.create_context(language="python")
+        
+        # Using alias 't' instead of 'test'
+        args = ["abc300", "t", "a"]
+        remaining_args, parsed_context = InputParser.parse_command_line(args, context, self.root)
+        
+        assert parsed_context.contest_name == "abc300"
+        assert parsed_context.command_type == "test"  # t -> test
+        assert parsed_context.problem_name == "a"
+        assert parsed_context.language == "python"
+        assert len(remaining_args) == 0
+    
+    def test_abc300_test_a_various_contest_formats(self):
+        """Test various contest name formats with test a"""
+        context = self.create_context(language="python")
+        
+        contest_patterns = [
+            "abc300", "abc301", "arc100", "agc050", 
+            "typical90", "dp", "math", "graph"
+        ]
+        
+        for contest in contest_patterns:
+            args = [contest, "test", "a"]
+            remaining_args, parsed_context = InputParser.parse_command_line(args, context, self.root)
+            
+            assert parsed_context.contest_name == contest, f"Contest parsing failed for {contest}"
+            assert parsed_context.command_type == "test"
+            assert parsed_context.problem_name == "a"
+            assert len(remaining_args) == 0
+    
+    def test_abc300_test_various_problems(self):
+        """Test abc300 test with various problem names"""
+        context = self.create_context(language="python")
+        
+        problem_names = ["a", "b", "c", "d", "e", "f", "ex"]
+        
+        for problem in problem_names:
+            args = ["abc300", "test", problem]
+            remaining_args, parsed_context = InputParser.parse_command_line(args, context, self.root)
+            
+            assert parsed_context.contest_name == "abc300"
+            assert parsed_context.command_type == "test"
+            assert parsed_context.problem_name == problem, f"Problem parsing failed for {problem}"
+            assert len(remaining_args) == 0
+    
+    def test_argument_order_parsing_regression(self):
+        """
+        CRITICAL REGRESSION TEST: Ensure arguments are processed in correct order
+        This tests the core issue with the abc300 test a command
+        """
+        context = self.create_context(language="python")
+        
+        # Test different argument orders that should all work
+        test_cases = [
+            # (args, expected_contest, expected_command, expected_problem)
+            (["abc300", "test", "a"], "abc300", "test", "a"),
+            (["contest123", "open", "b"], "contest123", "open", "b"),
+            (["xyz", "submit", "c"], "xyz", "submit", "c"),
+            (["typical90", "t", "001"], "typical90", "test", "001"),  # with alias
+        ]
+        
+        for args, exp_contest, exp_command, exp_problem in test_cases:
+            context_copy = self.create_context(language="python")
+            remaining_args, parsed_context = InputParser.parse_command_line(args, context_copy, self.root)
+            
+            assert parsed_context.contest_name == exp_contest, \
+                f"Args {args}: expected contest '{exp_contest}', got '{parsed_context.contest_name}'"
+            assert parsed_context.command_type == exp_command, \
+                f"Args {args}: expected command '{exp_command}', got '{parsed_context.command_type}'"
+            assert parsed_context.problem_name == exp_problem, \
+                f"Args {args}: expected problem '{exp_problem}', got '{parsed_context.problem_name}'"
+            assert len(remaining_args) == 0, \
+                f"Args {args}: unexpected remaining arguments {remaining_args}"
