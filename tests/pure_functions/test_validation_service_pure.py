@@ -28,7 +28,31 @@ from src.pure_functions.validation_service_pure import (
 class TestValidationResult:
     """ValidationResultのテスト"""
     
+    def test_create_validation_result(self):
+        """バリデーション結果作成のテスト"""
+        result = ValidationResult(
+            is_valid=True,
+            errors=["error1", "error2"],
+            warnings=["warning1"]
+        )
+        
+        assert result.is_valid is True
+        assert result.errors == ["error1", "error2"]
+        assert result.warnings == ["warning1"]
     
+    def test_validation_result_immutability(self):
+        """バリデーション結果の不変性テスト"""
+        result = ValidationResult(is_valid=True, errors=[], warnings=[])
+        
+        with pytest.raises(AttributeError):
+            result.is_valid = False
+    
+    def test_validation_result_defaults(self):
+        """バリデーション結果のデフォルト値テスト"""
+        result = ValidationResult(is_valid=True, errors=None, warnings=None)
+        
+        assert result.errors == []
+        assert result.warnings == []
 
 
 class TestDebugConfig:

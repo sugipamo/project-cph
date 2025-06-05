@@ -44,6 +44,12 @@ class TestResourceInfo:
         assert info.reads_files == {"input.txt"}
         assert info.requires_dirs == {"workspace"}
     
+    def test_resource_info_immutability(self):
+        """リソース情報の不変性テスト"""
+        info = ResourceInfo(set(), set(), set(), set())
+        
+        with pytest.raises(AttributeError):
+            info.creates_files = {"new_file"}
 
 
 class TestRequestData:
@@ -76,6 +82,12 @@ class TestRequestData:
         assert data.parameters == {"timeout": 30}
         assert data.metadata == {"step_type": "python"}
     
+    def test_request_data_immutability(self):
+        """リクエストデータの不変性テスト"""
+        data = RequestData("shell", "SHELL", ["echo", "test"])
+        
+        with pytest.raises(AttributeError):
+            data.request_type = "python"
 
 
 class TestExtractResourceInfo:

@@ -27,7 +27,35 @@ from src.pure_functions.path_utils_pure import (
 class TestPathInfo:
     """PathInfoのテスト"""
     
+    def test_create_path_info(self):
+        """パス情報作成のテスト"""
+        info = PathInfo(
+            path="/home/user/file.txt",
+            is_absolute=True,
+            is_directory=False,
+            is_file=True,
+            parent="/home/user",
+            name="file.txt",
+            stem="file",
+            suffix=".txt",
+            parts=("/", "home", "user", "file.txt")
+        )
+        
+        assert info.path == "/home/user/file.txt"
+        assert info.is_absolute is True
+        assert info.name == "file.txt"
+        assert info.suffix == ".txt"
     
+    def test_path_info_immutability(self):
+        """パス情報の不変性テスト"""
+        info = PathInfo(
+            path="test.txt", is_absolute=False, is_directory=False,
+            is_file=True, parent=".", name="test.txt", stem="test",
+            suffix=".txt", parts=("test.txt",)
+        )
+        
+        with pytest.raises(AttributeError):
+            info.path = "new_path.txt"
     
     def test_path_info_from_path(self):
         """パスからのPathInfo作成テスト"""

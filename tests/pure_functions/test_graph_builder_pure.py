@@ -23,7 +23,44 @@ from src.env_core.step.step import Step, StepType, StepContext
 class TestNodeInfo:
     """NodeInfoのテスト"""
     
+    def test_create_node_info(self):
+        """ノード情報作成のテスト"""
+        step = Step(type=StepType.SHELL, cmd=["echo", "test"])
+        
+        info = NodeInfo(
+            id="test_node",
+            step=step,
+            creates_files={"file1.txt"},
+            creates_dirs={"dir1"},
+            reads_files={"input.txt"},
+            requires_dirs={"workspace"},
+            metadata={"test": "data"}
+        )
+        
+        assert info.id == "test_node"
+        assert info.step == step
+        assert info.creates_files == {"file1.txt"}
+        assert info.creates_dirs == {"dir1"}
+        assert info.reads_files == {"input.txt"}
+        assert info.requires_dirs == {"workspace"}
+        assert info.metadata == {"test": "data"}
     
+    def test_node_info_immutability(self):
+        """ノード情報の不変性テスト"""
+        step = Step(type=StepType.SHELL, cmd=["echo", "test"])
+        
+        info = NodeInfo(
+            id="test",
+            step=step,
+            creates_files=set(),
+            creates_dirs=set(),
+            reads_files=set(),
+            requires_dirs=set(),
+            metadata={}
+        )
+        
+        with pytest.raises(AttributeError):
+            info.id = "new_id"
 
 
 class TestDependencyInfo:
@@ -45,6 +82,18 @@ class TestDependencyInfo:
         assert info.resource_path == "test.txt"
         assert info.description == "Test dependency"
     
+    def test_dependency_info_immutability(self):
+        """依存関係情報の不変性テスト"""
+        info = DependencyInfo(
+            from_node_id="node1",
+            to_node_id="node2",
+            dependency_type="FILE_CREATION",
+            resource_path="test.txt",
+            description="Test"
+        )
+        
+        with pytest.raises(AttributeError):
+            info.from_node_id = "new_node"
 
 
 class TestExtractNodeResourceInfo:

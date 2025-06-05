@@ -14,10 +14,51 @@ from src.env_integration.fitting.preparation_error_handler import (
 )
 
 
+class TestErrorSeverity:
+    """Tests for ErrorSeverity enum"""
+    
+    def test_error_severity_values(self):
+        """Test ErrorSeverity enum values"""
+        assert ErrorSeverity.CRITICAL.value == "critical"
+        assert ErrorSeverity.HIGH.value == "high"
+        assert ErrorSeverity.MEDIUM.value == "medium"
+        assert ErrorSeverity.LOW.value == "low"
+
+
+class TestErrorCategory:
+    """Tests for ErrorCategory enum"""
+    
+    def test_error_category_values(self):
+        """Test ErrorCategory enum values"""
+        assert ErrorCategory.DOCKER_DAEMON.value == "docker_daemon"
+        assert ErrorCategory.DOCKER_IMAGE.value == "docker_image"
+        assert ErrorCategory.DOCKER_CONTAINER.value == "docker_container"
+        assert ErrorCategory.FILESYSTEM.value == "filesystem"
+        assert ErrorCategory.NETWORK.value == "network"
+        assert ErrorCategory.RESOURCE.value == "resource"
+        assert ErrorCategory.CONFIGURATION.value == "configuration"
+        assert ErrorCategory.DEPENDENCY.value == "dependency"
+
 
 class TestPreparationError:
     """Tests for PreparationError dataclass"""
     
+    def test_preparation_error_creation_minimal(self):
+        """Test creating PreparationError with minimal parameters"""
+        error = PreparationError(
+            category=ErrorCategory.DOCKER_DAEMON,
+            severity=ErrorSeverity.CRITICAL,
+            message="Test error",
+            details={"test": "value"}
+        )
+        
+        assert error.category == ErrorCategory.DOCKER_DAEMON
+        assert error.severity == ErrorSeverity.CRITICAL
+        assert error.message == "Test error"
+        assert error.details == {"test": "value"}
+        assert error.retry_possible is False
+        assert error.suggested_action is None
+        assert error.context is None
     
     def test_preparation_error_creation_full(self):
         """Test creating PreparationError with all parameters"""
