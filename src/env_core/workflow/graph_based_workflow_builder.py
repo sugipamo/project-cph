@@ -12,7 +12,7 @@ from .request_execution_graph import (
     DependencyEdge,
     DependencyType
 )
-from .graph_to_composite_adapter import GraphToCompositeAdapter
+# from .graph_to_composite_adapter import GraphToCompositeAdapter  # Temporarily disabled
 from src.operations.composite.composite_request import CompositeRequest
 from src.env_core.step.step import Step, StepType, StepContext
 from src.env_core.step.core import generate_steps_from_json

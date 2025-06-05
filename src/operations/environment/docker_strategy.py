@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional, List
 from src.operations.base_request import BaseRequest
 from src.operations.result.result import OperationResult
 from src.operations.docker.docker_request import DockerRequest
-from src.operations.docker.docker_file_request import DockerFileRequest
+# from src.operations.docker.docker_file_request import DockerFileRequest  # Removed
 from .base_strategy import EnvironmentStrategy
 
 
@@ -110,7 +110,7 @@ class DockerStrategy(EnvironmentStrategy):
             True if the request should be wrapped
         """
         # Already Docker requests don't need wrapping
-        if isinstance(request, (DockerRequest, DockerFileRequest)):
+        if isinstance(request, DockerRequest):
             return False
         
         # File and shell operations typically need wrapping

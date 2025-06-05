@@ -87,8 +87,7 @@ class TestLoadAllEnvJsons:
         
         # Patch FileRequest where it's imported
         with patch('src.operations.file.file_request.FileRequest', side_effect=create_file_request):
-            with patch('src.context.user_input_parser.ValidationService.validate_env_json'):
-                env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, mock_operations)
+            env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, mock_operations)
         
         assert len(env_jsons) == 2
         assert env_jsons[0] == python_env
@@ -193,20 +192,14 @@ class TestMakeDockerfileLoader:
 class TestParseUserInput:
     """Test parse_user_input function"""
     
-    @patch('src.context.user_input_parser.SystemInfoManager')
-    @patch('src.context.user_input_parser.ValidationService')
     @patch('src.context.user_input_parser._load_all_env_jsons')
     @patch('src.context.user_input_parser.create_config_root_from_dict')
-    @patch('src.context.user_input_parser.InputParser')
     @patch('src.context.user_input_parser._apply_env_json')
     def test_parse_user_input_success(
         self,
         mock_apply_env_json,
-        mock_input_parser,
         mock_create_root,
-        mock_load_env_jsons,
-        mock_validation_service,
-        mock_system_info_manager
+        mock_load_env_jsons
     ):
         """Test successful user input parsing"""
         # Setup mocks
@@ -221,8 +214,6 @@ class TestParseUserInput:
             "env_type": "local",
             "env_json": None
         }
-        mock_system_info_manager.return_value.load_system_info.return_value = mock_system_info
-        
         # Mock env jsons
         mock_env_jsons = [{"python": {"language_name": "Python"}}]
         mock_load_env_jsons.return_value = mock_env_jsons
@@ -230,9 +221,6 @@ class TestParseUserInput:
         # Mock config root
         mock_root = MagicMock()
         mock_create_root.return_value = mock_root
-        
-        # Mock input parser
-        mock_input_parser.parse_command_line.return_value = ([], MagicMock())
         
         # Mock context validation
         mock_context = MagicMock()

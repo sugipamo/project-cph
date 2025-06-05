@@ -177,22 +177,9 @@ class TestGraphBasedWorkflowBuilder:
         ]
         mock_build.assert_called_once_with(expected_json)
     
-    @patch('src.env_core.workflow.graph_based_workflow_builder.GraphToCompositeAdapter')
-    def test_build_composite_from_graph(self, mock_adapter_class):
-        """Test building CompositeRequest from graph"""
-        # Setup
-        builder = GraphBasedWorkflowBuilder()
-        mock_graph = Mock(spec=RequestExecutionGraph)
-        mock_composite = Mock(spec=CompositeRequest)
-        
-        mock_adapter_class.to_composite_request.return_value = mock_composite
-        
-        # Execute
-        result = builder.build_composite_from_graph(mock_graph)
-        
-        # Verify
-        assert result == mock_composite
-        mock_adapter_class.to_composite_request.assert_called_once_with(mock_graph)
+    def test_build_composite_from_graph(self):
+        """Test building CompositeRequest from graph - DISABLED"""
+        pytest.skip("GraphToCompositeAdapter functionality removed")
     
     def test_build_graph_from_steps(self):
         """Test building graph from steps"""

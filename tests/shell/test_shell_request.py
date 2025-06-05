@@ -1,5 +1,4 @@
 import pytest
-from src.operations.mock.mock_shell_request import MockShellRequest, MockShellInteractiveRequest
 from src.operations.result.shell_result import ShellResult
 from src.operations.result.result import OperationResult
 from src.operations.constants.operation_type import OperationType
@@ -9,38 +8,39 @@ from src.operations.di_container import DIContainer
 import os
 import unittest.mock
 
-def test_mock_shell_request_echo():
-    req = MockShellRequest(["echo", "hello"], stdout="hello\n", returncode=0)
-    result = req.execute()
-    assert result.operation_type == OperationType.SHELL
+def test_shell_request_echo():
+    """Test shell request using mock driver instead of MockShellRequest"""
+    with unittest.mock.patch('subprocess.run') as mock_run:
+        mock_run.return_value.stdout = "hello\n"
+        mock_run.return_value.stderr = ""
+        mock_run.return_value.returncode = 0
+        
+        req = ShellRequest(["echo", "hello"])
+        driver = LocalShellDriver()
+        result = req.execute(driver=driver)
+        assert result.operation_type == OperationType.SHELL
     assert result.success
     assert "hello" in result.stdout
     result.raise_if_error()
 
-def test_mock_shell_request_fail():
-    req = MockShellRequest(["false"], stdout="", stderr="fail", returncode=1)
-    result = req.execute()
-    assert not result.success
-    with pytest.raises(RuntimeError):
-        result.raise_if_error()
+def test_shell_request_fail():
+    """Test shell request failure using mock"""
+    with unittest.mock.patch('subprocess.run') as mock_run:
+        mock_run.return_value.stdout = ""
+        mock_run.return_value.stderr = "fail"
+        mock_run.return_value.returncode = 1
+        
+        req = ShellRequest(["false"])
+        driver = LocalShellDriver()
+        result = req.execute(driver=driver)
+        assert not result.success
+        with pytest.raises(RuntimeError):
+            result.raise_if_error()
 
-def test_mock_shell_interactive_request():
-    class DummyMockShellInteractiveRequest(MockShellInteractiveRequest):
-        def _execute_core(self, driver=None):
-            return None
-    req = DummyMockShellInteractiveRequest(["python3", "-i"], stdout_lines=[">>> ", "hello\n", ">>> "], returncode=0)
-    req.start()
-    req.send_input('print("hello")\n')
-    lines = []
-    for _ in range(3):
-        line = req.read_output_line(timeout=2)
-        if line:
-            lines.append(line)
-    assert any("hello" in l for l in lines)
-    req.send_input('exit()\n')
-    result = req.wait()
-    assert result.operation_type == OperationType.SHELL_INTERACTIVE
-    assert result.success or result.returncode == 0
+def test_shell_request_interactive_disabled():
+    """Interactive shell request functionality is disabled for now"""
+    # Skip this test as interactive functionality was removed
+    pytest.skip("Interactive shell request functionality removed")
 
 def test_shell_request_no_driver():
     req = ShellRequest(["echo", "hello"])

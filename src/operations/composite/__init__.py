@@ -4,7 +4,6 @@ Composite operations package
 from .base_composite_request import BaseCompositeRequest
 from .composite_request import CompositeRequest
 from .driver_bound_request import DriverBoundRequest  
-from .parallel_composite_request import ParallelCompositeRequest
 
 # New separated components
 try:
@@ -18,6 +17,5 @@ except ImportError:
 __all__ = [
     'BaseCompositeRequest',
     'CompositeRequest',
-    'DriverBoundRequest',
-    'ParallelCompositeRequest'
+    'DriverBoundRequest'
 ] + separated_exports
