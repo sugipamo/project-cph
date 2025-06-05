@@ -8,13 +8,14 @@ class ValidationService:
     """設定データのバリデーションを担当"""
     
     @staticmethod
-    def validate_env_json(data: Dict[str, Any], path: str):
+    def validate_env_json(data: Dict[str, Any], path: str, shared_config=None):
         """
         env.jsonの構造をバリデートする
         
         Args:
             data: バリデートするデータ
             path: ファイルパス（エラーメッセージ用）
+            shared_config: 共有設定（sharedフォルダの設定）
             
         Raises:
             ValueError: バリデーション失敗時
@@ -26,10 +27,23 @@ class ValidationService:
             if not isinstance(conf, dict):
                 raise ValueError(f"{path}: {lang}の値はdictである必要があります")
             
-            if "commands" not in conf or not isinstance(conf["commands"], dict):
+            # commandsのバリデーション（sharedに存在するかもチェック）
+            has_commands = "commands" in conf and isinstance(conf["commands"], dict)
+            has_shared_commands = (shared_config and 
+                                  "shared" in shared_config and 
+                                  "commands" in shared_config["shared"])
+            
+            if not has_commands and not has_shared_commands:
                 raise ValueError(f"{path}: {lang}にcommands(dict)がありません")
             
-            if "env_types" not in conf or not isinstance(conf["env_types"], dict):
+            # env_typesのバリデーション（sharedに存在するかもチェック）
+            has_env_types = "env_types" in conf and isinstance(conf["env_types"], dict)
+            has_shared_env_types = (shared_config and 
+                                   "shared" in shared_config and 
+                                   ("env_types" in shared_config["shared"] or 
+                                    "local" in shared_config["shared"]))
+            
+            if not has_env_types and not has_shared_env_types:
                 raise ValueError(f"{path}: {lang}にenv_types(dict)がありません")
             
             if "aliases" in conf and not isinstance(conf["aliases"], list):

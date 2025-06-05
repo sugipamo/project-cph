@@ -44,7 +44,7 @@ def create_format_dict(data: ExecutionFormatData) -> Dict[str, str]:
         format_dict.update({
             "contest_current_path": lang_config.get("contest_current_path", "./contest_current"),
             "contest_stock_path": lang_config.get("contest_stock_path", "./contest_stock"),
-            "contest_template_path": lang_config.get("contest_template_path", "./contest_template/{language_name}"),
+            "contest_template_path": lang_config.get("contest_template_path", "./contest_template"),
             "contest_temp_path": lang_config.get("contest_temp_path", "./.temp"),
             "workspace_path": lang_config.get("workspace_path", "./workspace"),
         })
