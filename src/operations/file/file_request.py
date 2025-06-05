@@ -2,7 +2,7 @@ from src.operations.constants.operation_type import OperationType
 from src.operations.file.local_file_driver import LocalFileDriver
 from src.operations.result import OperationResult
 from src.operations.base_request import BaseRequest
-from src.operations.file.strategies.strategy_factory import FileOperationStrategyFactory
+# Note: FileOperationStrategyFactory removed - using direct implementation
 from src.operations.file.file_op_type import FileOpType
 import inspect
 import os
@@ -42,20 +42,60 @@ class FileRequest(BaseRequest):
         """
         self._start_time = time.time()  # Use time.time() for consistency
         try:
-            # Use cached strategy for better performance
-            strategy = self._strategy_cache.get(self.op)
-            if strategy is None:
-                strategy = FileOperationStrategyFactory.get_strategy(self.op)
-                self._strategy_cache[self.op] = strategy
-            
-            # If driver is UnifiedDriver, get the file driver specifically
+            # Use direct file driver implementation instead of strategy pattern
             from src.operations.composite.unified_driver import UnifiedDriver
             if isinstance(driver, UnifiedDriver):
                 actual_driver = driver._get_cached_driver("file_driver")
             else:
                 actual_driver = driver
             
-            return strategy.execute(actual_driver, self)
+            # Direct execution using file driver based on operation type
+            from src.operations.file.file_op_type import FileOpType
+            from src.operations.result.file_result import FileResult
+            
+            if self.op == FileOpType.READ:
+                with actual_driver.open(self.path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                return FileResult(content=content, path=self.path, success=True)
+            
+            elif self.op == FileOpType.WRITE:
+                actual_driver.create(self.path, self.content or "")
+                return FileResult(path=self.path, success=True)
+            
+            elif self.op == FileOpType.EXISTS:
+                exists = actual_driver.exists(self.path)
+                return FileResult(path=self.path, success=True, exists=exists)
+            
+            elif self.op == FileOpType.MOVE:
+                actual_driver.move(self.path, self.dst_path)
+                return FileResult(path=self.dst_path, success=True)
+            
+            elif self.op == FileOpType.COPY:
+                actual_driver.copy(self.path, self.dst_path)
+                return FileResult(path=self.dst_path, success=True)
+            
+            elif self.op == FileOpType.COPYTREE:
+                actual_driver.copytree(self.path, self.dst_path)
+                return FileResult(path=self.dst_path, success=True)
+            
+            elif self.op == FileOpType.REMOVE:
+                actual_driver.remove(self.path)
+                return FileResult(path=self.path, success=True)
+            
+            elif self.op == FileOpType.RMTREE:
+                actual_driver.rmtree(self.path)
+                return FileResult(path=self.path, success=True)
+            
+            elif self.op == FileOpType.MKDIR:
+                actual_driver.mkdir(self.path)
+                return FileResult(path=self.path, success=True)
+            
+            elif self.op == FileOpType.TOUCH:
+                actual_driver.touch(self.path)
+                return FileResult(path=self.path, success=True)
+            
+            else:
+                raise ValueError(f"Unsupported file operation: {self.op}")
         except Exception as e:
             raise RuntimeError(f"FileRequest failed: {str(e)}")
 

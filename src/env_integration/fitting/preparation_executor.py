@@ -16,7 +16,7 @@ from src.operations.docker.docker_request import DockerRequest, DockerOpType
 from src.operations.file.file_request import FileRequest
 from src.operations.file.file_op_type import FileOpType
 from src.context.execution_context import ExecutionContext
-from src.pure_functions.docker_path_utils_pure import should_build_custom_docker_image
+from src.utils.path_operations import DockerPathOperations
 
 
 @dataclass
@@ -238,7 +238,7 @@ class PreparationExecutor:
         task_id = self._next_task_id("image_prepare")
         
         # Check if this is a custom image that needs to be built
-        if should_build_custom_docker_image(image_name):
+        if DockerPathOperations.should_build_custom_docker_image(image_name):
             # Determine which Dockerfile to use
             dockerfile_content = None
             

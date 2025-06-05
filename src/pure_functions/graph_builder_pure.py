@@ -6,7 +6,7 @@ from typing import List, Dict, Set, Optional, Tuple, Any
 from pathlib import Path
 from src.env_core.step.step import Step, StepType, StepContext
 from src.env_core.workflow.request_execution_graph import RequestExecutionGraph, RequestNode, DependencyEdge, DependencyType
-from src.pure_functions.request_builder_pure import RequestBuildResult, step_to_request_data_pure
+# Note: request_builder_pure removed - using direct implementation
 
 
 @dataclass(frozen=True)

@@ -482,6 +482,46 @@ class DockerPathOperations:
     """Docker特化のパス操作クラス"""
     
     @staticmethod
+    def should_build_custom_docker_image(image_name: str) -> bool:
+        """
+        Determine if a Docker image should be built locally or pulled from registry
+        
+        Args:
+            image_name: Name of the Docker image
+            
+        Returns:
+            True if image should be built locally, False if it should be pulled
+        """
+        # Custom CPH images that need to be built
+        custom_image_prefixes = ['ojtools', 'cph_']
+        
+        for prefix in custom_image_prefixes:
+            if image_name.startswith(prefix):
+                return True
+        
+        # Check if it's a registry image (e.g., docker.io/library/python)
+        # Registry images typically have format: registry/namespace/image:tag
+        if '/' in image_name:
+            parts = image_name.split('/')
+            # Common registries
+            registries = ['docker.io', 'gcr.io', 'registry.hub.docker.com', 'quay.io', 'ghcr.io']
+            if parts[0] in registries or '.' in parts[0]:
+                # Looks like a registry URL
+                return False
+        
+        # Standard images without registry prefix (e.g., python:3.9, ubuntu)
+        # These can be pulled from Docker Hub
+        if ':' in image_name and '/' not in image_name:
+            return False
+        
+        # Simple image names without tag (e.g., python, ubuntu, alpine)
+        if '/' not in image_name and '@' not in image_name:
+            return False
+        
+        # Everything else is considered custom
+        return True
+    
+    @staticmethod
     def convert_path_to_docker_mount(path: str,
                                    workspace_path: str,
                                    mount_path: str) -> str:

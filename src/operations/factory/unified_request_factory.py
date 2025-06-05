@@ -308,10 +308,10 @@ class UnifiedRequestFactory:
         if env_manager.should_force_local(step.__dict__):
             # Temporarily switch to local strategy
             original_env = env_manager._env_type
-            env_manager.switch_strategy('local')
+            env_manager.switch_environment('local')
             request = self._create_request_with_strategies(step, context, env_manager)
             if original_env:
-                env_manager.switch_strategy(original_env)
+                env_manager.switch_environment(original_env)
             return request
         
         return self._create_request_with_strategies(step, context, env_manager)

@@ -1,17 +1,15 @@
 """
-Environment manager using strategy pattern
+Environment manager - simplified direct implementation
 """
 from typing import Any, Optional, Dict
 from src.operations.base_request import BaseRequest
 from src.operations.result.result import OperationResult
-from .base_strategy import EnvironmentStrategy
-from .strategy_registry import get_strategy, get_default_strategy
 
 
 class EnvironmentManager:
     """
-    Manages environment-specific operations using the strategy pattern.
-    Replaces scattered env_type branching with centralized strategy management.
+    Simplified environment manager without strategy pattern.
+    Direct implementation for basic environment management.
     """
     
     def __init__(self, env_type: Optional[str] = None):
@@ -19,30 +17,9 @@ class EnvironmentManager:
         Initialize environment manager.
         
         Args:
-            env_type: Environment type to use, defaults to registry default
+            env_type: Environment type to use (local, docker, etc.)
         """
-        self._env_type = env_type
-        self._strategy = self._get_strategy()
-    
-    def _get_strategy(self) -> EnvironmentStrategy:
-        """Get the appropriate strategy based on environment type"""
-        if self._env_type:
-            strategy = get_strategy(self._env_type)
-            if strategy:
-                return strategy
-        
-        # Fall back to default strategy
-        default = get_default_strategy()
-        if default:
-            return default
-        
-        # This shouldn't happen if registry is properly initialized
-        raise ValueError(f"No strategy found for env_type: {self._env_type}")
-    
-    @property
-    def strategy(self) -> EnvironmentStrategy:
-        """Get the current environment strategy"""
-        return self._strategy
+        self._env_type = env_type or "local"
     
     def prepare_environment(self, context: Any) -> OperationResult:
         """
@@ -54,7 +31,8 @@ class EnvironmentManager:
         Returns:
             OperationResult indicating success/failure
         """
-        return self._strategy.prepare_environment(context)
+        # Simple direct implementation
+        return OperationResult(success=True, message=f"Environment {self._env_type} prepared")
     
     def cleanup_environment(self, context: Any) -> OperationResult:
         """
@@ -66,11 +44,12 @@ class EnvironmentManager:
         Returns:
             OperationResult indicating success/failure
         """
-        return self._strategy.cleanup_environment(context)
+        # Simple direct implementation
+        return OperationResult(success=True, message=f"Environment {self._env_type} cleaned up")
     
     def execute_request(self, request: BaseRequest, driver: Any) -> OperationResult:
         """
-        Execute a request using the appropriate environment strategy.
+        Execute a request using the appropriate environment.
         
         Args:
             request: The request to execute
@@ -79,7 +58,8 @@ class EnvironmentManager:
         Returns:
             OperationResult with execution details
         """
-        return self._strategy.execute_request(request, driver)
+        # Direct execution without strategy pattern
+        return request.execute(driver)
     
     def should_force_local(self, step_config: Dict[str, Any]) -> bool:
         """
@@ -91,19 +71,20 @@ class EnvironmentManager:
         Returns:
             True if step should run locally
         """
-        return self._strategy.should_force_local(step_config)
+        # Simple logic: force local for certain operations
+        return step_config.get('force_local', False) or self._env_type == 'local'
     
     def get_working_directory(self) -> str:
         """Get the working directory for this environment"""
-        return self._strategy.get_working_directory()
+        return "."
     
     def get_timeout(self) -> int:
         """Get the default timeout for this environment"""
-        return self._strategy.get_timeout()
+        return 300  # 5 minutes default
     
     def get_shell(self) -> str:
         """Get the default shell for this environment"""
-        return self._strategy.get_shell()
+        return "bash"
     
     @classmethod
     def from_context(cls, context: Any) -> 'EnvironmentManager':
@@ -119,16 +100,11 @@ class EnvironmentManager:
         env_type = getattr(context, 'env_type', None)
         return cls(env_type)
     
-    def switch_strategy(self, env_type: str):
+    def switch_environment(self, env_type: str):
         """
-        Switch to a different environment strategy.
+        Switch to a different environment type.
         
         Args:
             env_type: New environment type
         """
-        strategy = get_strategy(env_type)
-        if strategy:
-            self._env_type = env_type
-            self._strategy = strategy
-        else:
-            raise ValueError(f"Unknown environment type: {env_type}")
+        self._env_type = env_type

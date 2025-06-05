@@ -8,7 +8,7 @@ from src.pure_functions.execution_context_formatter_pure import (
     ExecutionFormatData, create_format_dict, format_template_string,
     validate_execution_data, get_docker_naming_from_data
 )
-from src.pure_functions.docker_path_utils_pure import get_docker_mount_path_from_config
+from src.utils.path_operations import DockerPathOperations
 
 
 class ExecutionContext:
@@ -272,7 +272,7 @@ class ExecutionContext:
         Returns:
             Docker mount path (default: /workspace)
         """
-        return get_docker_mount_path_from_config(
+        return DockerPathOperations.get_docker_mount_path_from_config(
             self.env_json,
             self.language,
             '/workspace'

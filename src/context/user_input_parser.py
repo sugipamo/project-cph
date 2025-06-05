@@ -2,14 +2,130 @@ import os
 import copy
 from typing import List
 from .execution_context import ExecutionContext
-from .parsers.system_info_manager import SystemInfoManager
 from .parsers.validation_service import ValidationService
-from .parsers.input_parser import InputParser
+# Note: SystemInfoManager and InputParser removed - using direct implementation
 from src.context.resolver.config_resolver import create_config_root_from_dict
 
 CONTEST_ENV_DIR = "contest_env"
 
 
+def _load_system_info_direct(operations, path="system_info.json"):
+    """システム情報を直接読み込む"""
+    import json
+    from src.operations.file.file_request import FileRequest
+    from src.operations.file.file_op_type import FileOpType
+    
+    file_driver = operations.resolve("file_driver")
+    
+    req = FileRequest(FileOpType.EXISTS, path)
+    result = req.execute(driver=file_driver)
+    
+    if not result.exists:
+        return {
+            "command": None,
+            "language": None,
+            "env_type": None,
+            "contest_name": None,
+            "problem_name": None,
+            "env_json": None,
+        }
+    
+    req = FileRequest(FileOpType.READ, path)
+    result = req.execute(driver=file_driver)
+    return json.loads(result.content)
+
+
+def _save_system_info_direct(operations, info, path="system_info.json"):
+    """システム情報を直接保存する"""
+    import json
+    from src.operations.file.file_request import FileRequest
+    from src.operations.file.file_op_type import FileOpType
+    
+    file_driver = operations.resolve("file_driver")
+    
+    req = FileRequest(
+        FileOpType.WRITE, 
+        path, 
+        content=json.dumps(info, ensure_ascii=False, indent=2)
+    )
+    req.execute(driver=file_driver)
+
+
+def _parse_command_line_direct(args, context, root):
+    """コマンドライン引数を直接解析する"""
+    from src.context.resolver.config_resolver import resolve_by_match_desc
+    
+    # 順次処理を適用
+    args, context = _apply_language_direct(args, context, root)
+    args, context = _apply_env_type_direct(args, context, root)
+    args, context = _apply_command_direct(args, context, root)
+    args, context = _apply_problem_name_direct(args, context)
+    args, context = _apply_contest_name_direct(args, context)
+    
+    return args, context
+
+
+def _apply_language_direct(args, context, root):
+    """言語の適用"""
+    for idx, arg in enumerate(args):
+        # 第1レベルのノード（言語）のみをチェック
+        for lang_node in root.next_nodes:
+            if arg in lang_node.matches:
+                context.language = lang_node.key
+                new_args = args[:idx] + args[idx+1:]
+                return new_args, context
+    
+    return args, context
+
+
+def _apply_env_type_direct(args, context, root):
+    """環境タイプの適用"""
+    from src.context.resolver.config_resolver import resolve_by_match_desc
+    
+    if context.language:
+        env_type_nodes = resolve_by_match_desc(root, [context.language, "env_types"])
+        for idx, arg in enumerate(args):
+            for env_type_node in env_type_nodes:
+                for node in env_type_node.next_nodes:
+                    if arg in node.matches:
+                        context.env_type = node.key
+                        new_args = args[:idx] + args[idx+1:]
+                        return new_args, context
+    
+    return args, context
+
+
+def _apply_command_direct(args, context, root):
+    """コマンドの適用"""
+    from src.context.resolver.config_resolver import resolve_by_match_desc
+    
+    if context.language:
+        command_nodes = resolve_by_match_desc(root, [context.language, "commands"])
+        for idx, arg in enumerate(args):
+            for command_node in command_nodes:
+                for node in command_node.next_nodes:
+                    if arg in node.matches:
+                        context.command_type = node.key
+                        new_args = args[:idx] + args[idx+1:]
+                        return new_args, context
+    
+    return args, context
+
+
+def _apply_problem_name_direct(args, context):
+    """問題名の適用"""
+    if args:
+        context.problem_name = args.pop()
+    
+    return args, context
+
+
+def _apply_contest_name_direct(args, context):
+    """コンテスト名の適用"""
+    if args:
+        context.contest_name = args.pop()
+    
+    return args, context
 
 
 def _load_shared_config(base_dir: str, operations):
@@ -143,11 +259,10 @@ def parse_user_input(
     """
 
     # システム情報管理とバリデーション初期化
-    system_info_manager = SystemInfoManager(operations)
     validation_service = ValidationService()
     
-    # システム情報読み込み
-    system_info = system_info_manager.load_system_info()
+    # システム情報読み込み (direct implementation)
+    system_info = _load_system_info_direct(operations)
     context = ExecutionContext(
         command_type=system_info["command"],
         language=system_info["language"],
@@ -168,8 +283,8 @@ def parse_user_input(
     root = create_config_root_from_dict(merged_env_json)
     context.resolver = root
     
-    # コマンドライン引数解析
-    args, context = InputParser.parse_command_line(args, context, root)
+    # コマンドライン引数解析 (direct implementation)
+    args, context = _parse_command_line_direct(args, context, root)
     
     # 環境JSON適用（shared設定とマージ）
     context = _apply_env_json(context, env_jsons, CONTEST_ENV_DIR, operations)
@@ -179,8 +294,8 @@ def parse_user_input(
         raise ValueError(f"引数が多すぎます: {args}")
     
     
-    # システム情報保存
-    system_info_manager.save_system_info({
+    # システム情報保存 (direct implementation)
+    _save_system_info_direct(operations, {
         "command": context.command_type,
         "language": context.language,
         "env_type": context.env_type,
