@@ -1,9 +1,9 @@
 {
-  "command": "test",
+  "command": "open",
   "language": "python",
   "env_type": "docker",
-  "contest_name": "abc301",
-  "problem_name": "pyton",
+  "contest_name": "abc300",
+  "problem_name": "c",
   "env_json": {
     "python": {
       "language_id": "5078",
@@ -28,7 +28,7 @@
               "force_env_type": "local",
               "cmd": [
                 "{contest_current_path}/{source_file_name}",
-                "{contest_stock_path}/{contest_name}/{problem_id}/{source_file_name}"
+                "{contest_stock_path}/{previous_contest_name}/{previous_problem_id}/{source_file_name}"
               ]
             },
             {
@@ -38,6 +38,16 @@
               "force_env_type": "local",
               "cmd": [
                 "{contest_template_path}/{language_name}/{source_file_name}",
+                "{contest_current_path}/{source_file_name}"
+              ]
+            },
+            {
+              "type": "copy",
+              "allow_failure": true,
+              "show_output": false,
+              "force_env_type": "local",
+              "cmd": [
+                "{contest_stock_path}/{contest_name}/{problem_id}/{source_file_name}",
                 "{contest_current_path}/{source_file_name}"
               ]
             },
@@ -96,81 +106,6 @@
               ],
               "output_format": "preset",
               "format_preset": "standard"
-            }
-          ]
-        },
-        "test_minimal": {
-          "description": "最小限の出力でテストを実行する",
-          "steps": [
-            {
-              "type": "copy",
-              "allow_failure": false,
-              "show_output": false,
-              "cmd": [
-                "{contest_current_path}/{source_file_name}",
-                "{workspace_path}/{source_file_name}"
-              ]
-            },
-            {
-              "type": "test",
-              "allow_failure": true,
-              "show_output": true,
-              "cmd": [
-                "python3",
-                "{workspace_path}/{source_file_name}"
-              ],
-              "output_format": "preset",
-              "format_preset": "minimal"
-            }
-          ]
-        },
-        "test_compact": {
-          "description": "コンパクトフォーマットでテストを実行する",
-          "steps": [
-            {
-              "type": "copy",
-              "allow_failure": false,
-              "show_output": false,
-              "cmd": [
-                "{contest_current_path}/{source_file_name}",
-                "{workspace_path}/{source_file_name}"
-              ]
-            },
-            {
-              "type": "test",
-              "allow_failure": true,
-              "show_output": true,
-              "cmd": [
-                "python3",
-                "{workspace_path}/{source_file_name}"
-              ],
-              "output_format": "preset",
-              "format_preset": "compact"
-            }
-          ]
-        },
-        "test_competitive": {
-          "description": "競技プログラミング向け詳細フォーマットでテストを実行する",
-          "steps": [
-            {
-              "type": "copy",
-              "allow_failure": false,
-              "show_output": false,
-              "cmd": [
-                "{contest_current_path}/{source_file_name}",
-                "{workspace_path}/{source_file_name}"
-              ]
-            },
-            {
-              "type": "test",
-              "allow_failure": true,
-              "show_output": true,
-              "cmd": [
-                "python3",
-                "{workspace_path}/{source_file_name}"
-              ],
-              "output_format": "preset",
-              "format_preset": "competitive"
             }
           ]
         },

@@ -308,10 +308,11 @@ def parse_user_input(
         problem_name=system_info["problem_name"],
         env_type=system_info["env_type"],
         env_json=final_env_json,
+        previous_contest_name=system_info["contest_name"],  # previous情報として保存
+        previous_problem_name=system_info["problem_name"]   # previous情報として保存
     )
     
-    # バックアップコンテキスト作成
-    context.old_execution_context = copy.deepcopy(context)
+    # レゾルバー設定
     context.resolver = root
     
     # コマンドライン引数解析 (direct implementation)

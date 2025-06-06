@@ -18,4 +18,5 @@ class ExecutionData:
     env_type: str
     env_json: dict
     resolver: Optional[object] = None  # ConfigResolver型（循環import回避のためobject型で）
-    old_execution_context: Optional['ExecutionData'] = None
+    previous_contest_name: Optional[str] = None
+    previous_problem_name: Optional[str] = None

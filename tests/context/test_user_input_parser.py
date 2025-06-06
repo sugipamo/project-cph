@@ -554,6 +554,9 @@ class TestParseUserInputIntegration(BaseTest):
         assert result.command_type == "test"
         assert result.contest_name == "abc300"
         assert result.problem_name == "a"
+        # previous情報は、コマンドライン引数解析前のsystem_infoから取得
+        assert result.previous_contest_name is None  # system_infoが空だったため
+        assert result.previous_problem_name is None
     
     def test_parse_user_input_too_many_args(self):
         """Test parse_user_input with too many arguments"""
@@ -608,6 +611,91 @@ class TestParseUserInputIntegration(BaseTest):
                     
                     with pytest.raises(ValueError, match="Validation error message"):
                         parse_user_input(["py", "local", "t", "abc300", "a"], operations)
+    
+    @patch('src.context.user_input_parser._load_all_env_jsons')
+    @patch('src.context.user_input_parser.create_config_root_from_dict')
+    @patch('src.context.resolver.config_resolver.resolve_by_match_desc')
+    def test_parse_user_input_with_previous_info(self, mock_resolve, mock_create_root, mock_load_env_jsons):
+        """Test parse_user_input with existing previous information"""
+        operations = self.create_mock_di_container()
+        mock_file_driver = operations.resolve("file_driver")
+        
+        # Setup system info with existing data (previous information)
+        existing_system_info = {
+            "command": "test",
+            "language": "python", 
+            "contest_name": "abc299",  # previous contest
+            "problem_name": "b",       # previous problem
+            "env_type": "local",
+            "env_json": None
+        }
+        mock_file_driver.setup_file_content("system_info.json", json.dumps(existing_system_info))
+        
+        # Setup env jsons
+        python_env = {
+            "python": {
+                "language_name": "Python",
+                "env_types": {
+                    "local": {"aliases": ["local"]}
+                },
+                "commands": {
+                    "test": {"aliases": ["test", "t"]}
+                }
+            }
+        }
+        mock_load_env_jsons.return_value = [python_env]
+        
+        # Setup config root
+        mock_root = Mock()
+        python_node = Mock()
+        python_node.key = "python"
+        python_node.matches = ["python", "py"]
+        mock_root.next_nodes = [python_node]
+        mock_create_root.return_value = mock_root
+        
+        # Setup resolve_by_match_desc
+        env_type_parent = Mock()
+        local_node = Mock()
+        local_node.key = "local" 
+        local_node.matches = ["local"]
+        env_type_parent.next_nodes = [local_node]
+        
+        command_parent = Mock()
+        test_node = Mock()
+        test_node.key = "test"
+        test_node.matches = ["test", "t"]
+        command_parent.next_nodes = [test_node]
+        
+        mock_resolve.side_effect = [
+            [env_type_parent],  # env_type resolution
+            [command_parent]    # command resolution
+        ]
+        
+        # Setup shared config (empty)
+        shared_path = os.path.join("contest_env", "shared", "env.json")
+        mock_file_driver.setup_file_not_exists(shared_path)
+        
+        args = ["py", "local", "t", "abc300", "c"]  # New contest and problem
+        
+        with patch('src.context.user_input_parser.ValidationService'):
+            result = parse_user_input(args, operations)
+        
+        assert isinstance(result, ExecutionContext)
+        # New information from command line args
+        assert result.language == "python"
+        assert result.env_type == "local"
+        assert result.command_type == "test"
+        assert result.contest_name == "abc300"
+        assert result.problem_name == "c"
+        # Previous information from existing system_info.json
+        assert result.previous_contest_name == "abc299"
+        assert result.previous_problem_name == "b"
+        
+        # Verify new system_info.json was saved with updated values
+        saved_content = mock_file_driver.get_file_content("system_info.json")
+        saved_data = json.loads(saved_content)
+        assert saved_data["contest_name"] == "abc300"
+        assert saved_data["problem_name"] == "c"
 
 
 class TestErrorHandling(BaseTest):
