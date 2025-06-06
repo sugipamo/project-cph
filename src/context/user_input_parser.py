@@ -201,9 +201,12 @@ def _merge_with_shared_config(env_json, shared_config):
     shared_data = shared_config["shared"]
     merged_json = env_json.copy()
     
+    # shared設定を直接追加
+    merged_json["shared"] = shared_data
+    
     # 各言語設定に共有設定をマージ
     for lang, lang_config in merged_json.items():
-        if not isinstance(lang_config, dict):
+        if not isinstance(lang_config, dict) or lang == "shared":
             continue
             
         # パス設定をマージ
@@ -219,6 +222,16 @@ def _merge_with_shared_config(env_json, shared_config):
         elif "local" in shared_data and "env_types" in lang_config:
             if "local" not in lang_config["env_types"]:
                 lang_config["env_types"]["local"] = shared_data["local"]
+        
+        # output設定をマージ
+        if "output" in shared_data:
+            if "output" not in lang_config:
+                lang_config["output"] = shared_data["output"].copy()
+            else:
+                # 既存のoutput設定と共有設定をマージ
+                for output_key, output_value in shared_data["output"].items():
+                    if output_key not in lang_config["output"]:
+                        lang_config["output"][output_key] = output_value
     
     return merged_json
 
