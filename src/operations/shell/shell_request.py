@@ -8,7 +8,7 @@ from src.operations.base_request import BaseRequest
 from src.operations.shell.shell_utils import ShellUtils
 
 class ShellRequest(BaseRequest):
-    def __init__(self, cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=True):
+    def __init__(self, cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=True, allow_failure=False):
         super().__init__(name=name, debug_tag=debug_tag)
         self.cmd = cmd
         self.cwd = cwd
@@ -16,6 +16,7 @@ class ShellRequest(BaseRequest):
         self.inputdata = inputdata
         self.timeout = timeout
         self.show_output = show_output
+        self.allow_failure = allow_failure
         self._executed = False
         self._result = None
 

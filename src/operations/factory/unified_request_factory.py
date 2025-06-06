@@ -77,14 +77,16 @@ class FileRequestStrategy(RequestCreationStrategy):
             # Single path operations
             return FileRequest(
                 op=op_type,
-                path=formatted_cmd[0]
+                path=formatted_cmd[0],
+                allow_failure=step.allow_failure
             )
         elif len(formatted_cmd) >= 2:
             # Two path operations
             return FileRequest(
                 op=op_type,
                 path=formatted_cmd[0],
-                dst_path=formatted_cmd[1]
+                dst_path=formatted_cmd[1],
+                allow_failure=step.allow_failure
             )
         
         return None
@@ -117,7 +119,8 @@ class ShellRequestStrategy(RequestCreationStrategy):
             cmd=formatted_cmd,
             timeout=timeout,
             cwd=cwd,
-            env=getattr(step, 'env', None)
+            env=getattr(step, 'env', None),
+            allow_failure=step.allow_failure
         )
     
     def _format_value(self, value: str, context: Any) -> str:

@@ -12,12 +12,13 @@ class FileRequest(BaseRequest):
     # Class-level strategy cache for better performance
     _strategy_cache = {}
     
-    def __init__(self, op: FileOpType, path, content=None, dst_path=None, debug_tag=None, name=None):
+    def __init__(self, op: FileOpType, path, content=None, dst_path=None, debug_tag=None, name=None, allow_failure=False):
         super().__init__(name=name, debug_tag=debug_tag)
         self.op = op  # FileOpType
         self.path = path
         self.content = content
         self.dst_path = dst_path  # move/copy/copytree用
+        self.allow_failure = allow_failure
         self._executed = False
         self._result = None
 
