@@ -1,9 +1,9 @@
 {
-  "command": "open",
+  "command": "test",
   "language": "python",
-  "env_type": "docker",
-  "contest_name": "abc300",
-  "problem_name": "b",
+  "env_type": "local",
+  "contest_name": "abc299",
+  "problem_name": "a",
   "env_json": {
     "python": {
       "language_id": "5078",
