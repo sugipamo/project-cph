@@ -71,7 +71,12 @@ class EnvironmentManager:
         Returns:
             True if step should run locally
         """
-        # Simple logic: force local for certain operations
+        # Check if force_env_type is set to 'local'
+        force_env_type = step_config.get('force_env_type')
+        if force_env_type == 'local':
+            return True
+        
+        # Fall back to force_local for backwards compatibility
         return step_config.get('force_local', False) or self._env_type == 'local'
     
     def get_working_directory(self) -> str:

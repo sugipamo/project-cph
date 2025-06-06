@@ -1,9 +1,9 @@
 {
-  "command": "test",
+  "command": "open",
   "language": "python",
-  "env_type": "local",
+  "env_type": "docker",
   "contest_name": "abc300",
-  "problem_name": "a",
+  "problem_name": "b",
   "env_json": {
     "python": {
       "language_id": "5078",
@@ -127,26 +127,15 @@
           ]
         }
       },
+      "env_types": {
+        "local": {},
+        "docker": {}
+      },
       "contest_current_path": "./contest_current",
       "contest_stock_path": "./contest_stock",
       "contest_template_path": "./contest_template",
       "contest_temp_path": "./.temp",
-      "workspace_path": "./workspace",
-      "env_types": {
-        "local": {
-          "aliases": [
-            "local"
-          ],
-          "working_directory": ".",
-          "default_shell": "bash",
-          "timeout_seconds": 300,
-          "retry_settings": {
-            "max_attempts": 3,
-            "base_delay_seconds": 1.0,
-            "max_delay_seconds": 30.0
-          }
-        }
-      }
+      "workspace_path": "./workspace"
     }
   }
 }
