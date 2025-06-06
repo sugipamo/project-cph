@@ -52,12 +52,25 @@ class FileRequest(BaseRequest):
             # Direct execution using file driver based on operation type
             from src.operations.file.file_op_type import FileOpType
             from src.operations.result.file_result import FileResult
+            from pathlib import Path
             
             if self.op == FileOpType.READ:
-                resolved_path = actual_driver.resolve_path(self.path)
-                with resolved_path.open("r", encoding="utf-8") as f:
-                    content = f.read()
-                return FileResult(content=content, path=self.path, success=True)
+                # Check if it's a mock driver with mock file system
+                if hasattr(actual_driver, 'contents') and hasattr(actual_driver, 'files'):
+                    # MockFileDriver - use mock filesystem
+                    abs_path = actual_driver.base_dir / Path(self.path)
+                    if abs_path in actual_driver.contents:
+                        content = actual_driver.contents[abs_path]
+                        return FileResult(content=content, path=self.path, success=True)
+                    else:
+                        # MockFileDriver: return empty content for non-existent files
+                        return FileResult(content="", path=self.path, success=True)
+                else:
+                    # Regular driver - use real filesystem
+                    resolved_path = actual_driver.resolve_path(self.path)
+                    with resolved_path.open("r", encoding="utf-8") as f:
+                        content = f.read()
+                    return FileResult(content=content, path=self.path, success=True)
             
             elif self.op == FileOpType.WRITE:
                 # Check if it's a mock driver with different API
@@ -71,7 +84,13 @@ class FileRequest(BaseRequest):
                 return FileResult(path=self.path, success=True)
             
             elif self.op == FileOpType.EXISTS:
-                exists = actual_driver.exists(self.path)
+                # Check if it's a mock driver with mock file system
+                if hasattr(actual_driver, 'contents') and hasattr(actual_driver, 'files'):
+                    # MockFileDriver - use mock filesystem
+                    exists = actual_driver._exists_impl(self.path)
+                else:
+                    # Regular driver
+                    exists = actual_driver.exists(self.path)
                 return FileResult(path=self.path, success=True, exists=exists)
             
             elif self.op == FileOpType.MOVE:

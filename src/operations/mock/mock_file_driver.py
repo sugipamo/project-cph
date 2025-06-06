@@ -145,6 +145,12 @@ class MockFileDriver(FileDriver):
         else:
             raise NotImplementedError(f"MockFileDriver: mode {mode} 未対応")
 
+    def add(self, path, content=""):
+        """Add a file to the mock filesystem (for testing)"""
+        abs_path = self.base_dir / Path(path)
+        self.files.add(abs_path)
+        self.contents[abs_path] = content
+    
     def ensure_parent_dir(self, path):
         parent = Path(path).parent
         self.files.add(parent)

@@ -36,7 +36,15 @@ class ShellRequest(BaseRequest):
         """
         start_time = time.perf_counter()  # More precise timing
         try:
-            completed = ShellUtils.run_subprocess(
+            # Use the driver to run the command instead of direct subprocess
+            # Check if we have a unified driver that can resolve shell_driver
+            actual_driver = driver
+            from src.operations.composite.unified_driver import UnifiedDriver
+            if isinstance(driver, UnifiedDriver):
+                actual_driver = driver._get_cached_driver("shell_driver")
+            
+            # Use the shell driver to run the command
+            completed = actual_driver.run(
                 self.cmd,
                 cwd=self.cwd,
                 env=self.env,

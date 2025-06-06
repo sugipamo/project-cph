@@ -32,7 +32,13 @@ def _load_system_info_direct(operations, path="system_info.json"):
     
     req = FileRequest(FileOpType.READ, path)
     result = req.execute(driver=file_driver)
-    return json.loads(result.content)
+    loaded_info = json.loads(result.content)
+    
+    # env_jsonフィールドがない場合はNoneを設定
+    if "env_json" not in loaded_info:
+        loaded_info["env_json"] = None
+    
+    return loaded_info
 
 
 def _save_system_info_direct(operations, info, path="system_info.json"):
@@ -263,17 +269,6 @@ def parse_user_input(
     
     # システム情報読み込み (direct implementation)
     system_info = _load_system_info_direct(operations)
-    context = ExecutionContext(
-        command_type=system_info["command"],
-        language=system_info["language"],
-        contest_name=system_info["contest_name"],
-        problem_name=system_info["problem_name"],
-        env_type=system_info["env_type"],
-        env_json=system_info["env_json"],
-    )
-    
-    # バックアップコンテキスト作成
-    context.old_execution_context = copy.deepcopy(context)
     
     # 環境設定読み込みと設定ルート作成
     env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, operations)
@@ -281,12 +276,35 @@ def parse_user_input(
     for env_json in env_jsons:
         merged_env_json.update(env_json)
     root = create_config_root_from_dict(merged_env_json)
+    
+    # system_info.env_jsonが存在しない場合は、読み込んだenv_jsonを使用
+    final_env_json = system_info["env_json"]
+    if final_env_json is None and system_info["language"]:
+        # shared設定を読み込み
+        shared_config = _load_shared_config(CONTEST_ENV_DIR, operations)
+        for env_json in env_jsons:
+            if system_info["language"] in env_json:
+                # shared設定とマージ
+                final_env_json = _merge_with_shared_config(env_json, shared_config)
+                break
+    
+    context = ExecutionContext(
+        command_type=system_info["command"],
+        language=system_info["language"],
+        contest_name=system_info["contest_name"],
+        problem_name=system_info["problem_name"],
+        env_type=system_info["env_type"],
+        env_json=final_env_json,
+    )
+    
+    # バックアップコンテキスト作成
+    context.old_execution_context = copy.deepcopy(context)
     context.resolver = root
     
     # コマンドライン引数解析 (direct implementation)
     args, context = _parse_command_line_direct(args, context, root)
     
-    # 環境JSON適用（shared設定とマージ）
+    # 環境JSON適用（shared設定とマージ）- 最終的な調整
     context = _apply_env_json(context, env_jsons, CONTEST_ENV_DIR, operations)
     
     # 残り引数チェック

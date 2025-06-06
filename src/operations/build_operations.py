@@ -40,11 +40,13 @@ def build_mock_operations():
     
     operations = DIContainer()
     
-    # Register mock drivers
+    # Register mock drivers - reuse same instances
     file_driver = MockFileDriver(base_dir=Path('.'))
     python_driver = MockPythonDriver()
-    operations.register('shell_driver', lambda: MockShellDriver())
-    operations.register('docker_driver', lambda: MockDockerDriver())
+    shell_driver = MockShellDriver()
+    docker_driver = MockDockerDriver()
+    operations.register('shell_driver', lambda: shell_driver)
+    operations.register('docker_driver', lambda: docker_driver)
     operations.register('file_driver', lambda: file_driver)
     operations.register('python_driver', lambda: python_driver)
     

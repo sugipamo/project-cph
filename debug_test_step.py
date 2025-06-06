@@ -1,178 +1,127 @@
 #!/usr/bin/env python3
-"""
-Debug script to test TEST step type processing
-"""
+
 import json
-from src.env_core.step.step import Step, StepType
-from src.env_core.step.core import create_step_from_json
-from src.operations.factory.unified_request_factory import ComplexRequestStrategy, create_request
-from src.operations.environment.environment_manager import EnvironmentManager
+import sys
+from pathlib import Path
+from io import StringIO
 
-class MockStepContext:
-    """Mock context for testing step creation"""
-    def __init__(self):
-        self.contest_name = "abc300"
-        self.problem_name = "a"
-        self.language = "python"
-        self.env_type = "local"
-        self.command_type = "test"
-        self.workspace_path = "./workspace"
-        self.contest_current_path = "./contest_current"
-        self.contest_stock_path = "./contest_stock"
-        self.contest_template_path = "./contest_template"
-        self.contest_temp_path = "./.temp"
-        self.source_file_name = "main.py"
-        self.language_id = "5078"
-    
-    def to_format_dict(self):
-        return {
-            'contest_name': self.contest_name,
-            'problem_id': self.problem_name,
-            'problem_name': self.problem_name,
-            'language': self.language,
-            'language_name': self.language,
-            'env_type': self.env_type,
-            'command_type': self.command_type,
-            'workspace_path': self.workspace_path,
-            'contest_current_path': self.contest_current_path,
-            'contest_stock_path': self.contest_stock_path,
-            'contest_template_path': self.contest_template_path,
-            'contest_temp_path': self.contest_temp_path,
-            'source_file_name': self.source_file_name,
-            'language_id': self.language_id,
-        }
+# Add src to path
+sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-class MockExecutionContext:
-    """Mock execution context for testing request creation"""
-    def __init__(self):
-        self.env_type = "local"
-        self.language = "python"
-        self.contest_name = "abc300"
-        self.problem_name = "a"
-        self.command_type = "test"
-    
-    def format_string(self, template: str) -> str:
-        """Simple formatting for testing"""
-        replacements = {
-            '{contest_name}': self.contest_name,
-            '{problem_name}': self.problem_name,
-            '{workspace_path}': './workspace',
-            '{source_file_name}': 'main.py'
-        }
-        result = template
-        for key, value in replacements.items():
-            result = result.replace(key, value)
-        return result
+from src.main import main
+from src.operations.build_operations import build_mock_operations
+from src.context.user_input_parser import parse_user_input
 
-def test_step_type_enum():
-    """Test StepType enum values"""
-    print("1. Testing StepType enum:")
-    print(f"   StepType.TEST = {StepType.TEST}")
-    print(f"   StepType.TEST.value = {StepType.TEST.value}")
+def debug_main_execution():
+    """Debug single step main execution"""
+    # Setup mock operations
+    operations = build_mock_operations()
+    mock_file_driver = operations.resolve('file_driver')
+    mock_shell_driver = operations.resolve('shell_driver')
+    mock_python_driver = operations.resolve('python_driver')
     
-    # Test creating StepType from string
-    try:
-        test_type = StepType("test")
-        print(f"   StepType('test') = {test_type}")
-        print(f"   StepType('test') == StepType.TEST: {test_type == StepType.TEST}")
-    except ValueError as e:
-        print(f"   ERROR creating StepType from 'test': {e}")
+    # Clear any previous state
+    mock_file_driver.files.clear()
+    mock_file_driver.contents.clear()
+    mock_file_driver.operations.clear()
+    mock_shell_driver.calls.clear()
+    mock_shell_driver.expected_results.clear()
+    mock_python_driver.reset()
     
-    print()
-
-def test_json_step_creation():
-    """Test creating Step from JSON data"""
-    print("2. Testing Step creation from JSON:")
-    
-    # Test JSON data from system_info.json
-    json_step = {
-        "type": "test",
-        "allow_failure": True,
-        "show_output": True,
-        "cmd": [
-            "python3",
-            "{workspace_path}/{source_file_name}"
-        ]
+    # Setup system_info.json
+    system_info = {
+        "command": "test",
+        "language": "python",
+        "env_type": "local",
+        "contest_name": "abc300",
+        "problem_name": "a"
     }
+    mock_file_driver._create_impl(
+        "system_info.json",
+        json.dumps(system_info, ensure_ascii=False, indent=2)
+    )
     
-    print(f"   JSON step: {json.dumps(json_step, indent=2)}")
+    # Create contest_env directory in mock filesystem
+    mock_file_driver.files.add(mock_file_driver.base_dir / Path("contest_env"))
+    mock_file_driver.files.add(mock_file_driver.base_dir / Path("contest_env/python"))
     
-    context = MockStepContext()
+    # Setup env.json for Python
+    env_config = {
+        "python": {
+            "aliases": ["py"],
+            "commands": {
+                "test": {
+                    "aliases": ["t"],
+                    "steps": [
+                        {"type": "shell", "cmd": ["echo", "test output"]}
+                    ]
+                }
+            },
+            "env_types": {
+                "local": {
+                    "aliases": ["local"]
+                }
+            }
+        }
+    }
+    mock_file_driver._create_impl(
+        "contest_env/python/env.json",
+        json.dumps(env_config, ensure_ascii=False, indent=2)
+    )
     
+    # Mock shell execution 
+    mock_shell_driver.set_expected_result(
+        "echo test output",
+        stdout="test output\n",
+        stderr="",
+        returncode=0
+    )
+    
+    # Parse arguments and create context
+    print("=== Parsing user input ===")
+    args = []
     try:
-        step = create_step_from_json(json_step, context)
-        print(f"   Created Step:")
-        print(f"     type: {step.type}")
-        print(f"     type.value: {step.type.value}")
-        print(f"     cmd: {step.cmd}")
-        print(f"     allow_failure: {step.allow_failure}")
-        print(f"     show_output: {step.show_output}")
-        return step
+        context = parse_user_input(args, operations)
+        print(f"✓ Context created successfully")
+        print(f"  command_type: {context.command_type}")
+        print(f"  language: {context.language}")
+        print(f"  env_json is None: {context.env_json is None}")
+        if context.env_json:
+            print(f"  env_json keys: {list(context.env_json.keys())}")
+            if context.language in context.env_json:
+                lang_config = context.env_json[context.language]
+                print(f"  {context.language} commands: {list(lang_config.get('commands', {}).keys())}")
+        else:
+            print("  Checking if contest_env files exist:")
+            env_exists = mock_file_driver._exists_impl("contest_env")
+            print(f"    contest_env exists: {env_exists}")
+            python_env_exists = mock_file_driver._exists_impl("contest_env/python/env.json")
+            print(f"    contest_env/python/env.json exists: {python_env_exists}")
+            if python_env_exists:
+                from src.operations.file.file_request import FileRequest
+                from src.operations.file.file_op_type import FileOpType
+                req = FileRequest(FileOpType.READ, "contest_env/python/env.json")
+                result = req.execute(driver=mock_file_driver)
+                print(f"    contest_env/python/env.json content: {result.content[:200]}...")
     except Exception as e:
-        print(f"   ERROR creating Step: {e}")
-        return None
+        print(f"✗ Failed to create context: {e}")
+        import traceback
+        traceback.print_exc()
+        return
     
-    print()
-
-def test_complex_request_strategy(step):
-    """Test ComplexRequestStrategy handling of TEST step"""
-    print("3. Testing ComplexRequestStrategy:")
-    
-    strategy = ComplexRequestStrategy()
-    
-    print(f"   Can handle StepType.TEST: {strategy.can_handle(StepType.TEST)}")
-    print(f"   Can handle step.type: {strategy.can_handle(step.type)}")
-    
-    context = MockExecutionContext()
-    env_manager = EnvironmentManager("local")
-    
+    # Try main execution
+    print("\n=== Executing main ===")
     try:
-        request = strategy.create_request(step, context, env_manager)
-        print(f"   Created request: {request}")
-        if request:
-            print(f"     request type: {type(request).__name__}")
-            print(f"     request.cmd: {request.cmd}")
-            print(f"     request.allow_failure: {getattr(request, 'allow_failure', 'N/A')}")
-        return request
+        result = main(context, operations)
+        print(f"✓ Main executed successfully")
+        print(f"  success: {result.success}")
+        print(f"  results count: {len(result.results)}")
+        print(f"  errors: {result.errors}")
+        print(f"  warnings: {result.warnings}")
     except Exception as e:
-        print(f"   ERROR creating request: {e}")
-        return None
-    
-    print()
-
-def test_unified_factory(step):
-    """Test unified factory request creation"""
-    print("4. Testing unified factory:")
-    
-    context = MockExecutionContext()
-    env_manager = EnvironmentManager("local")
-    
-    try:
-        request = create_request(step, context, env_manager)
-        print(f"   Created request: {request}")
-        if request:
-            print(f"     request type: {type(request).__name__}")
-            print(f"     request.cmd: {request.cmd}")
-            print(f"     request.allow_failure: {getattr(request, 'allow_failure', 'N/A')}")
-        return request
-    except Exception as e:
-        print(f"   ERROR creating request: {e}")
-        return None
-    
-    print()
-
-def main():
-    """Main debug function"""
-    print("=== Debugging TEST step type processing ===\n")
-    
-    test_step_type_enum()
-    step = test_json_step_creation()
-    
-    if step:
-        test_complex_request_strategy(step)
-        test_unified_factory(step)
-    
-    print("=== Debug complete ===")
+        print(f"✗ Main execution failed: {e}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
-    main()
+    debug_main_execution()
