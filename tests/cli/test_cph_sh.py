@@ -5,15 +5,15 @@ import os
 CPH_SH = os.path.abspath("./cph.sh")
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__ + "/../../"))
 
-pytestmark = pytest.mark.skip(reason="e2eテスト一時スキップ（リファクタ対応中）")
+pytestmark = pytest.mark.skip(reason="e2eテスト一時スキップ（Rust設定未完了のため）")
 
 @pytest.mark.parametrize("args", [
-    ["open", "abc301", "a", "python"],
-    ["test", "abc301", "a", "python", "local"],
-    ["test", "abc301", "a", "python", "docker"],
-    ["open", "abc301", "a", "rust"],
-    ["test", "abc301", "a", "rust", "local"],
-    ["test", "abc301", "a", "rust", "docker"],
+    ["python", "open", "abc301", "a"],
+    ["python", "local", "test", "abc301", "a"],
+    ["python", "docker", "test", "abc301", "a"],
+    ["rust", "open", "abc301", "a"],
+    ["rust", "local", "test", "abc301", "a"],
+    ["rust", "docker", "test", "abc301", "a"],
 ])
 def test_cph_sh_basic(args):
     env = os.environ.copy()
@@ -26,10 +26,10 @@ def test_cph_sh_basic(args):
         assert "ビルド失敗" not in result.stdout, f"Build failed: {result.stdout}"
 
 @pytest.mark.parametrize("args", [
-    ["submit", "abc301", "a", "python", "local"],
-    ["submit", "abc301", "a", "python", "docker"],
-    ["submit", "abc301", "a", "rust", "local"],
-    ["submit", "abc301", "a", "rust", "docker"],
+    ["python", "local", "submit", "abc301", "a"],
+    ["python", "docker", "submit", "abc301", "a"],
+    ["rust", "local", "submit", "abc301", "a"],
+    ["rust", "docker", "submit", "abc301", "a"],
 ])
 def test_cph_sh_submit(args):
     env = os.environ.copy()

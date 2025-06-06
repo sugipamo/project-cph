@@ -177,9 +177,6 @@ class TestGraphBasedWorkflowBuilder:
         ]
         mock_build.assert_called_once_with(expected_json)
     
-    def test_build_composite_from_graph(self):
-        """Test building CompositeRequest from graph - DISABLED"""
-        pytest.skip("GraphToCompositeAdapter functionality removed")
     
     def test_build_graph_from_steps(self):
         """Test building graph from steps"""

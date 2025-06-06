@@ -37,10 +37,6 @@ def test_shell_request_fail():
         with pytest.raises(RuntimeError):
             result.raise_if_error()
 
-def test_shell_request_interactive_disabled():
-    """Interactive shell request functionality is disabled for now"""
-    # Skip this test as interactive functionality was removed
-    pytest.skip("Interactive shell request functionality removed")
 
 def test_shell_request_no_driver():
     req = ShellRequest(["echo", "hello"])

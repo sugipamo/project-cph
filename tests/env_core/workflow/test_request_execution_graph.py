@@ -686,13 +686,11 @@ class TestRequestExecutionGraph:
     
     def test_execute_parallel_cpu_count_adjustment(self):
         """Test parallel execution adjusts workers based on CPU count"""
-        # Skip this test as it's complex to mock os module correctly
-        pytest.skip("Complex os module mocking")
+        pytest.skip("CPU count tests require complex os module mocking - not critical for core functionality")
     
     def test_execute_parallel_cpu_count_none(self):
         """Test parallel execution when cpu_count returns None"""
-        # Skip this test as it's complex to mock os module correctly
-        pytest.skip("Complex os module mocking")
+        pytest.skip("CPU count tests require complex os module mocking - not critical for core functionality")
     
     def test_mark_dependent_nodes_skipped(self):
         """Test marking dependent nodes as skipped"""
