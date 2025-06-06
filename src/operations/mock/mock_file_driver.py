@@ -188,11 +188,6 @@ class MockFileDriver(FileDriver):
         print(f"[DEBUG] list_files: result={result}")
         return result
 
-    def add(self, path, content=""):
-        """テスト用: ファイルの内容と存在を同時にセット"""
-        abs_path = self.base_dir / Path(path)
-        self.contents[abs_path] = content
-        self.files.add(abs_path)
 
     def create(self, content=""):
         """後方互換性: driver.path が設定されている場合の古いAPIパターンをサポート"""
@@ -201,4 +196,42 @@ class MockFileDriver(FileDriver):
             self._create_impl(self.path, content)
         else:
             # 新しいAPIパターンでは、引数でパスを指定する必要がある
-            raise ValueError("Path must be provided either as argument or via self.path") 
+            raise ValueError("Path must be provided either as argument or via self.path")
+    
+    def setup_file_content(self, path, content):
+        """Test helper: Setup file with specific content"""
+        # Handle path consistently with _exists_impl
+        if isinstance(path, Path) and path.is_absolute():
+            abs_path = path
+        else:
+            abs_path = self.base_dir / Path(path)
+        
+        # Ensure parent directories exist
+        parent = abs_path.parent
+        while parent != parent.parent:  # Stop at root
+            self.files.add(parent)
+            parent = parent.parent
+        
+        self.files.add(abs_path)
+        self.contents[abs_path] = content
+    
+    def setup_file_not_exists(self, path):
+        """Test helper: Ensure file does not exist"""
+        # Handle path consistently with _exists_impl
+        if isinstance(path, Path) and path.is_absolute():
+            abs_path = path
+        else:
+            abs_path = self.base_dir / Path(path)
+        if abs_path in self.files:
+            self.files.remove(abs_path)
+        if abs_path in self.contents:
+            del self.contents[abs_path]
+    
+    def get_file_content(self, path):
+        """Test helper: Get file content"""
+        # Handle path consistently with _exists_impl
+        if isinstance(path, Path) and path.is_absolute():
+            abs_path = path
+        else:
+            abs_path = self.base_dir / Path(path)
+        return self.contents.get(abs_path, None) 

@@ -22,10 +22,16 @@ class BaseTest:
     
     def create_mock_di_container(self) -> DIContainer:
         """Create a DIContainer with mock drivers"""
+        from pathlib import Path
         di = DIContainer()
-        di.register("file_driver", lambda: MockFileDriver())
-        di.register("shell_driver", lambda: MockShellDriver())
-        di.register("docker_driver", lambda: MockDockerDriver())
+        # Create singleton instances to maintain state across multiple resolve() calls
+        mock_file_driver = MockFileDriver(base_dir=Path.cwd())
+        mock_shell_driver = MockShellDriver()
+        mock_docker_driver = MockDockerDriver()
+        
+        di.register("file_driver", lambda: mock_file_driver)
+        di.register("shell_driver", lambda: mock_shell_driver)
+        di.register("docker_driver", lambda: mock_docker_driver)
         return di
     
     def create_test_context(self, **kwargs):
