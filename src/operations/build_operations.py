@@ -36,14 +36,17 @@ def build_mock_operations():
     from src.operations.mock.mock_file_driver import MockFileDriver
     from src.operations.mock.mock_docker_driver import MockDockerDriver
     from src.operations.mock.mock_shell_driver import MockShellDriver
+    from src.operations.mock.mock_python_driver import MockPythonDriver
     
     operations = DIContainer()
     
     # Register mock drivers
     file_driver = MockFileDriver(base_dir=Path('.'))
+    python_driver = MockPythonDriver()
     operations.register('shell_driver', lambda: MockShellDriver())
     operations.register('docker_driver', lambda: MockDockerDriver())
     operations.register('file_driver', lambda: file_driver)
+    operations.register('python_driver', lambda: python_driver)
     
     # Register essential classes (not factories that return None)
     operations.register('DockerRequest', lambda: DockerRequest)

@@ -6,7 +6,7 @@ from src.operations.base_request import BaseRequest
 from src.operations.python.python_utils import PythonUtils
 
 class PythonRequest(BaseRequest):
-    _require_driver = False
+    _require_driver = True
     def __init__(self, code_or_file, cwd=None, show_output=True, name=None, debug_tag=None):
         super().__init__(name=name, debug_tag=debug_tag)
         self.code_or_file = code_or_file  # コード文字列またはファイル名
@@ -30,14 +30,61 @@ class PythonRequest(BaseRequest):
         try:
             if self.cwd:
                 os.chdir(self.cwd)
-            if PythonUtils.is_script_file(self.code_or_file):
-                stdout, stderr, returncode = PythonUtils.run_script_file(self.code_or_file[0], cwd=self.cwd)
-            else:
-                if isinstance(self.code_or_file, list):
-                    code = "\n".join(self.code_or_file)
+            
+            # Check if we have a mock python driver
+            if driver and hasattr(driver, 'python_driver'):
+                python_driver = driver.python_driver
+                if hasattr(python_driver, 'is_script_file'):
+                    is_script = python_driver.is_script_file(self.code_or_file)
                 else:
-                    code = self.code_or_file
-                stdout, stderr, returncode = PythonUtils.run_code_string(code, cwd=self.cwd)
+                    is_script = PythonUtils.is_script_file(self.code_or_file)
+                
+                if is_script:
+                    stdout, stderr, returncode = python_driver.run_script_file(self.code_or_file[0], cwd=self.cwd)
+                else:
+                    if isinstance(self.code_or_file, list):
+                        code = "\n".join(self.code_or_file)
+                    else:
+                        code = self.code_or_file
+                    stdout, stderr, returncode = python_driver.run_code_string(code, cwd=self.cwd)
+            # Check if we have a unified driver that can resolve python_driver
+            elif driver and hasattr(driver, 'resolve') and callable(driver.resolve):
+                try:
+                    python_driver = driver.resolve('python_driver')
+                    if hasattr(python_driver, 'is_script_file'):
+                        is_script = python_driver.is_script_file(self.code_or_file)
+                    else:
+                        is_script = PythonUtils.is_script_file(self.code_or_file)
+                    
+                    if is_script:
+                        stdout, stderr, returncode = python_driver.run_script_file(self.code_or_file[0], cwd=self.cwd)
+                    else:
+                        if isinstance(self.code_or_file, list):
+                            code = "\n".join(self.code_or_file)
+                        else:
+                            code = self.code_or_file
+                        stdout, stderr, returncode = python_driver.run_code_string(code, cwd=self.cwd)
+                except:
+                    # Fallback to PythonUtils if driver resolution fails
+                    if PythonUtils.is_script_file(self.code_or_file):
+                        stdout, stderr, returncode = PythonUtils.run_script_file(self.code_or_file[0], cwd=self.cwd)
+                    else:
+                        if isinstance(self.code_or_file, list):
+                            code = "\n".join(self.code_or_file)
+                        else:
+                            code = self.code_or_file
+                        stdout, stderr, returncode = PythonUtils.run_code_string(code, cwd=self.cwd)
+            else:
+                # Fallback to PythonUtils for backward compatibility
+                if PythonUtils.is_script_file(self.code_or_file):
+                    stdout, stderr, returncode = PythonUtils.run_script_file(self.code_or_file[0], cwd=self.cwd)
+                else:
+                    if isinstance(self.code_or_file, list):
+                        code = "\n".join(self.code_or_file)
+                    else:
+                        code = self.code_or_file
+                    stdout, stderr, returncode = PythonUtils.run_code_string(code, cwd=self.cwd)
+            
             end_time = time.time()
             return OperationResult(
                 stdout=stdout,
