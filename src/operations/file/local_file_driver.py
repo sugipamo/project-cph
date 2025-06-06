@@ -13,14 +13,24 @@ class LocalFileDriver(FileDriver):
         shutil.move(str(src_path), str(dst_path))
 
     def _copy_impl(self, src_path, dst_path):
+        # VSCodeが変更を検知しやすくするため、一時的に削除してからコピー
+        if dst_path.exists():
+            dst_path.unlink()
         copy2(src_path, dst_path)
+        # ファイルのタイムスタンプを明示的に更新してVSCodeに変更を通知
+        os.utime(dst_path)
 
     def _exists_impl(self, path):
         return path.exists()
 
     def _create_impl(self, path, content):
+        # VSCodeが変更を検知しやすくするため、一時的に削除してから作成
+        if path.exists():
+            path.unlink()
         with path.open("w", encoding="utf-8") as f:
             f.write(content)
+        # ファイルのタイムスタンプを明示的に更新してVSCodeに変更を通知
+        os.utime(path)
 
     def _copytree_impl(self, src_path, dst_path):
         shutil.copytree(src_path, dst_path, dirs_exist_ok=True)

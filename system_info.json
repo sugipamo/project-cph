@@ -2,7 +2,7 @@
   "command": "open",
   "language": "python",
   "env_type": "docker",
-  "contest_name": "abc353",
+  "contest_name": "abc300",
   "problem_name": "a",
   "env_json": {
     "python": {
@@ -22,7 +22,7 @@
               ]
             },
             {
-              "type": "copy",
+              "type": "move",
               "allow_failure": true,
               "show_output": false,
               "force_env_type": "local",
