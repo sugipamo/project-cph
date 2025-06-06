@@ -62,16 +62,16 @@ class FileRequest(BaseRequest):
                     abs_path = actual_driver.base_dir / Path(self.path)
                     if abs_path in actual_driver.contents:
                         content = actual_driver.contents[abs_path]
-                        return FileResult(content=content, path=self.path, success=True)
+                        return FileResult(content=content, path=self.path, success=True, request=self)
                     else:
                         # MockFileDriver: return empty content for non-existent files
-                        return FileResult(content="", path=self.path, success=True)
+                        return FileResult(content="", path=self.path, success=True, request=self)
                 else:
                     # Regular driver - use real filesystem
                     resolved_path = actual_driver.resolve_path(self.path)
                     with resolved_path.open("r", encoding="utf-8") as f:
                         content = f.read()
-                    return FileResult(content=content, path=self.path, success=True)
+                    return FileResult(content=content, path=self.path, success=True, request=self)
             
             elif self.op == FileOpType.WRITE:
                 # Check if it's a mock driver with different API
@@ -82,7 +82,7 @@ class FileRequest(BaseRequest):
                 else:
                     # Regular driver
                     actual_driver.create(self.path, self.content or "")
-                return FileResult(path=self.path, success=True)
+                return FileResult(path=self.path, success=True, request=self)
             
             elif self.op == FileOpType.EXISTS:
                 # Check if it's a mock driver with mock file system
@@ -92,40 +92,50 @@ class FileRequest(BaseRequest):
                 else:
                     # Regular driver
                     exists = actual_driver.exists(self.path)
-                return FileResult(path=self.path, success=True, exists=exists)
+                return FileResult(path=self.path, success=True, exists=exists, request=self)
             
             elif self.op == FileOpType.MOVE:
                 actual_driver.move(self.path, self.dst_path)
-                return FileResult(path=self.dst_path, success=True)
+                return FileResult(path=self.dst_path, success=True, request=self)
             
             elif self.op == FileOpType.COPY:
                 actual_driver.copy(self.path, self.dst_path)
-                return FileResult(path=self.dst_path, success=True)
+                return FileResult(path=self.dst_path, success=True, request=self)
             
             elif self.op == FileOpType.COPYTREE:
                 actual_driver.copytree(self.path, self.dst_path)
-                return FileResult(path=self.dst_path, success=True)
+                return FileResult(path=self.dst_path, success=True, request=self)
             
             elif self.op == FileOpType.REMOVE:
                 actual_driver.remove(self.path)
-                return FileResult(path=self.path, success=True)
+                return FileResult(path=self.path, success=True, request=self)
             
             elif self.op == FileOpType.RMTREE:
                 actual_driver.rmtree(self.path)
-                return FileResult(path=self.path, success=True)
+                return FileResult(path=self.path, success=True, request=self)
             
             elif self.op == FileOpType.MKDIR:
                 actual_driver.mkdir(self.path)
-                return FileResult(path=self.path, success=True)
+                return FileResult(path=self.path, success=True, request=self)
             
             elif self.op == FileOpType.TOUCH:
                 actual_driver.touch(self.path)
-                return FileResult(path=self.path, success=True)
+                return FileResult(path=self.path, success=True, request=self)
             
             else:
                 raise ValueError(f"Unsupported file operation: {self.op}")
         except Exception as e:
-            raise RuntimeError(f"FileRequest failed: {str(e)}")
+            # If allow_failure is True, return a failure result instead of raising exception
+            if self.allow_failure:
+                from src.operations.result.file_result import FileResult
+                return FileResult(
+                    path=self.path, 
+                    success=False, 
+                    error_message=f"FileRequest failed: {str(e)}",
+                    request=self
+                )
+            else:
+                raise RuntimeError(f"FileRequest failed: {str(e)}")
 
     def __repr__(self):
         return f"<FileRequest name={self.name} op={self.op} path={self.path} dst={getattr(self, 'dst_path', None)} content={getattr(self, 'content', None)} >" 
