@@ -181,8 +181,8 @@ class TestUnifiedRequestFactoryIntegration:
         step.cwd = None
         step.env = None
         step.allow_failure = False
+        step.output_format = "template"
         step.format_options = {
-            "output_format": "template",
             "templates": {
                 "default": "{test_name:.<25} | {status_symbol} {status:^8} | {time_formatted:>10}"
             }
