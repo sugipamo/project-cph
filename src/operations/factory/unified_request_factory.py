@@ -277,7 +277,8 @@ class ComplexRequestStrategy(RequestCreationStrategy):
                 shared_config = context.env_json.get('shared', {})
                 format_presets = shared_config.get('format_presets', {})
                 preset = format_presets.get(preset_name, {})
-                return preset.get('templates', {})
+                templates = preset.get('templates', {})
+                return templates
         except (AttributeError, TypeError, KeyError):
             # Handle missing or invalid configuration gracefully
             pass
@@ -342,20 +343,22 @@ class ComplexRequestStrategy(RequestCreationStrategy):
                     if {' '.join(formatted_cmd)} < "$i" > output.tmp 2>error.tmp; then
                         end_time=$(date +%s.%N)
                         exec_time=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0.000")
+                        exec_time_ms=$(echo "scale=0; $exec_time * 1000" | bc -l 2>/dev/null || echo "0")
                         
                         if diff -q output.tmp "$expected" > /dev/null 2>&1; then
                             passed_tests=$((passed_tests + 1))
-                            printf "%-25s | ✅   PASS   | %10.3fs\\n" "$test_name" "$exec_time"
+                            {self._generate_shell_output('pass', templates, default_template)}
                         else
-                            printf "%-25s | ❌   FAIL   | %10.3fs\\n" "$test_name" "$exec_time"
-                            echo "  Expected: $(cat "$expected" | tr '\\n' ' ')"
-                            echo "  Got:      $(cat output.tmp | tr '\\n' ' ')"
+                            expected_output=$(cat "$expected" | tr '\\n' ' ')
+                            actual_output=$(cat output.tmp | tr '\\n' ' ')
+                            {self._generate_shell_output('fail', templates, fail_template)}
                         fi
                     else
                         end_time=$(date +%s.%N)
                         exec_time=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0.000")
-                        printf "%-25s | 💥  ERROR   | %10.3fs\\n" "$test_name" "$exec_time"
-                        echo "  Error: $(cat error.tmp | tr '\\n' ' ')"
+                        exec_time_ms=$(echo "scale=0; $exec_time * 1000" | bc -l 2>/dev/null || echo "0")
+                        error_message=$(cat error.tmp | tr '\\n' ' ')
+                        {self._generate_shell_output('error', templates, error_template)}
                     fi
                     rm -f output.tmp error.tmp
                 else
@@ -369,9 +372,92 @@ class ComplexRequestStrategy(RequestCreationStrategy):
         # Print summary
         if [ $total_tests -gt 0 ]; then
             pass_rate=$(echo "scale=1; $passed_tests * 100 / $total_tests" | bc -l 2>/dev/null || echo "0.0")
-            printf "Tests: %03d/%03d passed (%s%%)\\n" "$passed_tests" "$total_tests" "$pass_rate"
+            failed_tests=$((total_tests - passed_tests))
+            {self._generate_shell_output('summary', templates, summary_template)}
         fi
         '''
+    
+    def _generate_shell_output(self, output_type: str, templates: Dict[str, str], fallback_template: str) -> str:
+        """Generate shell command for template output"""
+        template = templates.get(output_type, fallback_template)
+        
+        # Simple variable substitution for basic templates
+        if output_type == 'pass':
+            if template == '✅ {test_name}':
+                return 'echo "✅ $test_name"'
+            elif template == '[{status_symbol}] {test_name:>20} ({time_ms:>4d}ms)':
+                return 'printf "[✅] %20s (%4dms)\\n" "$test_name" "$exec_time_ms"'
+            elif '{status_symbol}' in template and '{test_name}' in template:
+                # Handle basic template patterns
+                output = template.replace('{status_symbol}', '✅')
+                output = output.replace('{test_name}', '$test_name')
+                output = output.replace('{status}', 'PASS')
+                output = output.replace('{time_formatted}', '${exec_time}s')
+                output = output.replace('{time_ms}', '${exec_time_ms}ms')
+                return f'echo "{output}"'
+            else:
+                return 'printf "%-25s | ✅   PASS   | %10.3fs\\n" "$test_name" "$exec_time"'
+                
+        elif output_type == 'fail':
+            if template == '❌ {test_name}: Expected {expected_output}, Got {actual_output}':
+                return 'echo "❌ $test_name: Expected $expected_output, Got $actual_output"'
+            elif template == '[{status_symbol}] {test_name:>20} ({time_ms:>4d}ms) Expected: {expected_output}, Got: {actual_output}':
+                return 'printf "[❌] %20s (%4dms) Expected: %s, Got: %s\\n" "$test_name" "$exec_time_ms" "$expected_output" "$actual_output"'
+            elif '{status_symbol}' in template and '{test_name}' in template:
+                output = template.replace('{status_symbol}', '❌')
+                output = output.replace('{test_name}', '$test_name')
+                output = output.replace('{status}', 'FAIL')
+                output = output.replace('{time_formatted}', '${exec_time}s')
+                output = output.replace('{time_ms}', '${exec_time_ms}ms')
+                output = output.replace('{expected_output}', '$expected_output')
+                output = output.replace('{actual_output}', '$actual_output')
+                # Handle newlines
+                if '\\n' in output:
+                    lines = output.split('\\n')
+                    commands = [f'echo "{line}"' for line in lines if line.strip()]
+                    return '; '.join(commands)
+                return f'echo "{output}"'
+            else:
+                return 'printf "%-25s | ❌   FAIL   | %10.3fs\\n" "$test_name" "$exec_time"; echo "  Expected: $expected_output"; echo "  Got:      $actual_output"'
+                
+        elif output_type == 'error':
+            if template == '💥 {test_name}: {error_message}':
+                return 'echo "💥 $test_name: $error_message"'
+            elif template == '[{status_symbol}] {test_name:>20} ({time_ms:>4d}ms) Error: {error_message}':
+                return 'printf "[💥] %20s (%4dms) Error: %s\\n" "$test_name" "$exec_time_ms" "$error_message"'
+            elif '{status_symbol}' in template and '{test_name}' in template:
+                output = template.replace('{status_symbol}', '💥')
+                output = output.replace('{test_name}', '$test_name')
+                output = output.replace('{status}', 'ERROR')
+                output = output.replace('{time_formatted}', '${exec_time}s')
+                output = output.replace('{time_ms}', '${exec_time_ms}ms')
+                output = output.replace('{error_message}', '$error_message')
+                if '\\n' in output:
+                    lines = output.split('\\n')
+                    commands = [f'echo "{line}"' for line in lines if line.strip()]
+                    return '; '.join(commands)
+                return f'echo "{output}"'
+            else:
+                return 'printf "%-25s | 💥  ERROR   | %10.3fs\\n" "$test_name" "$exec_time"; echo "  Error: $error_message"'
+                
+        elif output_type == 'summary':
+            if template == '{passed}/{total} passed':
+                return 'echo "$passed_tests/$total_tests passed"'
+            elif template == '✨ {passed}/{total} tests passed ({pass_rate:.1f}%)':
+                return 'echo "✨ $passed_tests/$total_tests tests passed ($pass_rate%)"'
+            else:
+                output = template.replace('{passed}', '$passed_tests')
+                output = output.replace('{total}', '$total_tests')
+                output = output.replace('{failed}', '$failed_tests')
+                output = output.replace('{pass_rate}', '$pass_rate')
+                output = output.replace('{passed:03d}', '$passed_tests')
+                output = output.replace('{total:03d}', '$total_tests')
+                output = output.replace('{failed:03d}', '$failed_tests')
+                output = output.replace('{pass_rate:.1f}', '$pass_rate')
+                return f'echo "{output}"'
+                
+        # Fallback
+        return 'echo "Test output"'
 
 
 class UnifiedRequestFactory:

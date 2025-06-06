@@ -161,6 +161,7 @@ class TestUnifiedRequestFactoryIntegration:
         step.cwd = None
         step.env = None
         step.allow_failure = False
+        step.format_preset = None
         
         # No format options - should use default
         context = Mock()
@@ -182,6 +183,7 @@ class TestUnifiedRequestFactoryIntegration:
         step.env = None
         step.allow_failure = False
         step.output_format = "template"
+        step.format_preset = None
         step.format_options = {
             "templates": {
                 "default": "{test_name:.<25} | {status_symbol} {status:^8} | {time_formatted:>10}"
