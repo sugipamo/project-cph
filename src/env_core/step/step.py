@@ -74,6 +74,8 @@ class Step:
     show_output: bool = False
     cwd: Optional[str] = None
     force_env_type: Optional[str] = None
+    format_options: Optional[Dict[str, Any]] = None
+    output_format: Optional[str] = None
     
     def __post_init__(self):
         """データ検証"""

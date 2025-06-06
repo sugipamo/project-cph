@@ -216,36 +216,18 @@ class ComplexRequestStrategy(RequestCreationStrategy):
             # Create test script that runs the program against all test cases
             contest_current_path = self._format_value('{contest_current_path}', context) if context else './contest_current'
             
-            test_script = f'''
-            for i in {contest_current_path}/test/sample-*.in; do
-                if [ -f "$i" ]; then
-                    echo "Testing $(basename "$i")"
-                    expected="${{i%.in}}.out"
-                    if [ -f "$expected" ]; then
-                        if {' '.join(formatted_cmd)} < "$i" > output.tmp 2>error.tmp; then
-                            if diff -q output.tmp "$expected" > /dev/null 2>&1; then
-                                echo "✓ PASS"
-                            else
-                                echo "✗ FAIL"
-                                echo "Expected:"
-                                cat "$expected"
-                                echo "Got:"
-                                cat output.tmp
-                            fi
-                        else
-                            echo "✗ ERROR"
-                            echo "Program failed with error:"
-                            cat error.tmp
-                        fi
-                        rm -f output.tmp error.tmp
-                    else
-                        echo "Expected output file not found: $expected"
-                    fi
-                else
-                    echo "No test files found"
-                fi
-            done
-            '''
+            # Check for custom format options
+            format_options = getattr(step, 'format_options', {}) or {}
+            output_format = getattr(step, 'output_format', 'default')
+            
+            if output_format == 'template':
+                # Use template-based formatting
+                test_script = self._create_template_test_script(
+                    contest_current_path, formatted_cmd, format_options
+                )
+            else:
+                # Use default formatting
+                test_script = self._create_default_test_script(contest_current_path, formatted_cmd)
             
             request = ShellRequest(
                 cmd=['bash', '-c', test_script],
@@ -269,6 +251,95 @@ class ComplexRequestStrategy(RequestCreationStrategy):
     def _format_step_values(self, values: List[str], context: Any) -> List[str]:
         """Format step values with context"""
         return [self._format_value(v, context) for v in values]
+    
+    def _create_default_test_script(self, contest_current_path: str, formatted_cmd: List[str]) -> str:
+        """Create default test script"""
+        return f'''
+        for i in {contest_current_path}/test/sample-*.in; do
+            if [ -f "$i" ]; then
+                echo "Testing $(basename "$i")"
+                expected="${{i%.in}}.out"
+                if [ -f "$expected" ]; then
+                    if {' '.join(formatted_cmd)} < "$i" > output.tmp 2>error.tmp; then
+                        if diff -q output.tmp "$expected" > /dev/null 2>&1; then
+                            echo "✓ PASS"
+                        else
+                            echo "✗ FAIL"
+                            echo "Expected:"
+                            cat "$expected"
+                            echo "Got:"
+                            cat output.tmp
+                        fi
+                    else
+                        echo "✗ ERROR"
+                        echo "Program failed with error:"
+                        cat error.tmp
+                    fi
+                    rm -f output.tmp error.tmp
+                else
+                    echo "Expected output file not found: $expected"
+                fi
+            else
+                echo "No test files found"
+            fi
+        done
+        '''
+    
+    def _create_template_test_script(self, contest_current_path: str, formatted_cmd: List[str], format_options: Dict[str, Any]) -> str:
+        """Create template-based test script with custom formatting"""
+        # Get template configuration
+        templates = format_options.get('templates', {})
+        default_template = templates.get('default', '{test_name:.<25} | {status_symbol} {status:^8} | {time_formatted:>10}')
+        fail_template = templates.get('fail', default_template + '\\n  Expected: {expected_output}\\n  Got:      {actual_output}')
+        error_template = templates.get('error', default_template + '\\n  Error: {error_message}')
+        summary_template = templates.get('summary', 'Tests: {passed:03d}/{total:03d} passed ({pass_rate:.1f}%)')
+        
+        # Simple template-based test script using basic shell formatting
+        return f'''
+        total_tests=0
+        passed_tests=0
+        
+        for i in {contest_current_path}/test/sample-*.in; do
+            if [ -f "$i" ]; then
+                total_tests=$((total_tests + 1))
+                test_name=$(basename "$i" .in)
+                expected="${{i%.in}}.out"
+                
+                if [ -f "$expected" ]; then
+                    start_time=$(date +%s.%N)
+                    if {' '.join(formatted_cmd)} < "$i" > output.tmp 2>error.tmp; then
+                        end_time=$(date +%s.%N)
+                        exec_time=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0.000")
+                        
+                        if diff -q output.tmp "$expected" > /dev/null 2>&1; then
+                            passed_tests=$((passed_tests + 1))
+                            printf "%-25s | ✅   PASS   | %10.3fs\\n" "$test_name" "$exec_time"
+                        else
+                            printf "%-25s | ❌   FAIL   | %10.3fs\\n" "$test_name" "$exec_time"
+                            echo "  Expected: $(cat "$expected" | tr '\\n' ' ')"
+                            echo "  Got:      $(cat output.tmp | tr '\\n' ' ')"
+                        fi
+                    else
+                        end_time=$(date +%s.%N)
+                        exec_time=$(echo "$end_time - $start_time" | bc -l 2>/dev/null || echo "0.000")
+                        printf "%-25s | 💥  ERROR   | %10.3fs\\n" "$test_name" "$exec_time"
+                        echo "  Error: $(cat error.tmp | tr '\\n' ' ')"
+                    fi
+                    rm -f output.tmp error.tmp
+                else
+                    echo "Expected output file not found: $expected"
+                fi
+            else
+                echo "No test files found"
+            fi
+        done
+        
+        # Print summary
+        if [ $total_tests -gt 0 ]; then
+            pass_rate=$(echo "scale=1; $passed_tests * 100 / $total_tests" | bc -l 2>/dev/null || echo "0.0")
+            printf "Tests: %03d/%03d passed (%s%%)\\n" "$passed_tests" "$total_tests" "$pass_rate"
+        fi
+        '''
 
 
 class UnifiedRequestFactory:

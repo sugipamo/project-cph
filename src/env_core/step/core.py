@@ -71,6 +71,8 @@ def create_step_from_json(json_step: Dict[str, Any], context: StepContext) -> St
     
     cwd = format_template(json_step.get('cwd'), context) if json_step.get('cwd') else None
     force_env_type = json_step.get('force_env_type')
+    format_options = json_step.get('format_options')
+    output_format = json_step.get('output_format')
     
     return Step(
         type=step_type,
@@ -78,7 +80,9 @@ def create_step_from_json(json_step: Dict[str, Any], context: StepContext) -> St
         allow_failure=allow_failure,
         show_output=show_output,
         cwd=cwd,
-        force_env_type=force_env_type
+        force_env_type=force_env_type,
+        format_options=format_options,
+        output_format=output_format
     )
 
 
