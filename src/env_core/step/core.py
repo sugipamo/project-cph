@@ -152,7 +152,7 @@ def validate_single_step(step: Step) -> List[str]:
         return errors
     
     # 各ステップタイプ固有の検証
-    if step.type in [StepType.COPY, StepType.MOVE, StepType.MOVETREE, StepType.VSCODE_COPY]:
+    if step.type in [StepType.COPY, StepType.MOVE, StepType.MOVETREE]:
         if len(step.cmd) < 2:
             errors.append(f"Requires at least 2 arguments (src, dst), got {len(step.cmd)}")
         elif not step.cmd[0] or not step.cmd[1]:

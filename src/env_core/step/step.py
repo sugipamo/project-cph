@@ -24,7 +24,6 @@ class StepType(Enum):
     DOCKER_EXEC = "docker_exec"
     DOCKER_CP = "docker_cp"
     DOCKER_RUN = "docker_run"
-    VSCODE_COPY = "vscode_copy"  # VSCode向けの改善されたコピー
 
 
 @dataclass(frozen=True)

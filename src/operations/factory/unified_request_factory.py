@@ -49,7 +49,7 @@ class FileRequestStrategy(RequestCreationStrategy):
     def can_handle(self, step_type: StepType) -> bool:
         return step_type in [
             StepType.MKDIR, StepType.TOUCH, StepType.COPY, 
-            StepType.MOVE, StepType.MOVETREE, StepType.REMOVE, StepType.VSCODE_COPY
+            StepType.MOVE, StepType.MOVETREE, StepType.REMOVE
         ]
     
     def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
@@ -64,7 +64,6 @@ class FileRequestStrategy(RequestCreationStrategy):
             StepType.MOVE: FileOpType.MOVE,
             StepType.MOVETREE: FileOpType.COPYTREE,
             StepType.REMOVE: FileOpType.REMOVE,
-            StepType.VSCODE_COPY: FileOpType.VSCODE_COPY,
         }
         
         op_type = op_mapping.get(step.type)

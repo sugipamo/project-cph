@@ -102,28 +102,6 @@ class FileRequest(BaseRequest):
                 actual_driver.copy(self.path, self.dst_path)
                 return FileResult(path=self.dst_path, success=True, request=self)
             
-            elif self.op == FileOpType.VSCODE_COPY:
-                # VSCode向けの改善されたコピー - より確実な変更検知のため
-                from pathlib import Path
-                
-                dst_resolved = actual_driver.resolve_path(self.dst_path)
-                src_resolved = actual_driver.resolve_path(self.path)
-                
-                # VSCodeが確実に変更を検知するための処理
-                if dst_resolved.exists():
-                    # 既存ファイルを一時的に削除
-                    dst_resolved.unlink()
-                    # 少し待機してVSCodeに削除を認識させる
-                    time.sleep(0.01)
-                
-                # コピーを実行
-                actual_driver.copy(self.path, self.dst_path)
-                
-                # タイムスタンプを明示的に更新してVSCodeに変更を通知
-                os.utime(dst_resolved)
-                
-                return FileResult(path=self.dst_path, success=True, request=self)
-            
             elif self.op == FileOpType.COPYTREE:
                 actual_driver.copytree(self.path, self.dst_path)
                 return FileResult(path=self.dst_path, success=True, request=self)
