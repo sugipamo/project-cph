@@ -219,11 +219,17 @@ class ComplexRequestStrategy(RequestCreationStrategy):
             # Check for custom format options
             format_options = getattr(step, 'format_options', {}) or {}
             output_format = getattr(step, 'output_format', 'default')
+            format_preset = getattr(step, 'format_preset', None)
             
-            if output_format == 'template':
+            if output_format == 'template' or output_format == 'preset' or format_preset:
+                # Resolve format templates from preset or inline options
+                templates = self._get_format_templates(step, context, format_options, format_preset)
+                resolved_format_options = format_options.copy()
+                resolved_format_options['templates'] = templates
+                
                 # Use template-based formatting
                 test_script = self._create_template_test_script(
-                    contest_current_path, formatted_cmd, format_options
+                    contest_current_path, formatted_cmd, resolved_format_options
                 )
             else:
                 # Use default formatting
@@ -251,6 +257,32 @@ class ComplexRequestStrategy(RequestCreationStrategy):
     def _format_step_values(self, values: List[str], context: Any) -> List[str]:
         """Format step values with context"""
         return [self._format_value(v, context) for v in values]
+    
+    def _get_format_templates(self, step: Step, context: Any, format_options: Dict[str, Any], format_preset: Optional[str]) -> Dict[str, str]:
+        """Resolve format templates from presets or inline options"""
+        # Check for preset reference first
+        preset_name = format_preset or format_options.get('preset')
+        if preset_name:
+            preset_templates = self._resolve_format_preset(preset_name, context)
+            if preset_templates:
+                return preset_templates
+        
+        # Fallback to inline templates
+        return format_options.get('templates', {})
+    
+    def _resolve_format_preset(self, preset_name: str, context: Any) -> Dict[str, str]:
+        """Resolve format preset from shared configuration"""
+        try:
+            if hasattr(context, 'env_json') and context.env_json:
+                shared_config = context.env_json.get('shared', {})
+                format_presets = shared_config.get('format_presets', {})
+                preset = format_presets.get(preset_name, {})
+                return preset.get('templates', {})
+        except (AttributeError, TypeError, KeyError):
+            # Handle missing or invalid configuration gracefully
+            pass
+        
+        return {}
     
     def _create_default_test_script(self, contest_current_path: str, formatted_cmd: List[str]) -> str:
         """Create default test script"""

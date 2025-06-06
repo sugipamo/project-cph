@@ -1,5 +1,5 @@
 {
-  "command": "test_format",
+  "command": "test",
   "language": "python",
   "env_type": "docker",
   "contest_name": "abc300",
@@ -75,30 +75,7 @@
           ]
         },
         "test": {
-          "description": "テストを実行する",
-          "steps": [
-            {
-              "type": "copy",
-              "allow_failure": false,
-              "show_output": false,
-              "cmd": [
-                "{contest_current_path}/{source_file_name}",
-                "{workspace_path}/{source_file_name}"
-              ]
-            },
-            {
-              "type": "test",
-              "allow_failure": true,
-              "show_output": true,
-              "cmd": [
-                "python3",
-                "{workspace_path}/{source_file_name}"
-              ]
-            }
-          ]
-        },
-        "test_format": {
-          "description": "カスタムフォーマットでテストを実行する",
+          "description": "テストを実行する（標準フォーマット）",
           "steps": [
             {
               "type": "copy",
@@ -117,88 +94,8 @@
                 "python3",
                 "{workspace_path}/{source_file_name}"
               ],
-              "output_format": "template",
-              "format_options": {
-                "template_syntax": "python",
-                "strict_formatting": true,
-                "templates": {
-                  "default": "{test_name:.<30} │ {status_symbol} {status:^10} │ {time_formatted:>12}",
-                  "pass": "{test_name:.<30} │ {status_symbol} {status:^10} │ {time_formatted:>12}",
-                  "fail": "{test_name:.<30} │ {status_symbol} {status:^10} │ {time_formatted:>12}\\n    Expected: {expected_output}\\n    Got:      {actual_output}",
-                  "error": "{test_name:.<30} │ {status_symbol} {status:^10} │ {time_formatted:>12}\\n    Error: {error_message}",
-                  "summary": "Results: {passed:03d}/{total:03d} tests passed ({pass_rate:.1f}%)"
-                }
-              }
-            }
-          ]
-        },
-        "test_compact": {
-          "description": "コンパクトフォーマットでテストを実行する",
-          "steps": [
-            {
-              "type": "copy",
-              "allow_failure": false,
-              "show_output": false,
-              "cmd": [
-                "{contest_current_path}/{source_file_name}",
-                "{workspace_path}/{source_file_name}"
-              ]
-            },
-            {
-              "type": "test",
-              "allow_failure": true,
-              "show_output": true,
-              "cmd": [
-                "python3",
-                "{workspace_path}/{source_file_name}"
-              ],
-              "output_format": "template",
-              "format_options": {
-                "template_syntax": "python",
-                "strict_formatting": true,
-                "templates": {
-                  "default": "[{status_symbol}] {test_name:>20} ({time_ms:>4d}ms)",
-                  "pass": "[{status_symbol}] {test_name:>20} ({time_ms:>4d}ms)",
-                  "fail": "[{status_symbol}] {test_name:>20} ({time_ms:>4d}ms) Expected: {expected_output}, Got: {actual_output}",
-                  "error": "[{status_symbol}] {test_name:>20} ({time_ms:>4d}ms) Error: {error_message}",
-                  "summary": "✨ {passed}/{total} tests passed ({pass_rate:.1f}%)"
-                }
-              }
-            }
-          ]
-        },
-        "test_detailed": {
-          "description": "詳細フォーマットでテストを実行する",
-          "steps": [
-            {
-              "type": "copy",
-              "allow_failure": false,
-              "show_output": false,
-              "cmd": [
-                "{contest_current_path}/{source_file_name}",
-                "{workspace_path}/{source_file_name}"
-              ]
-            },
-            {
-              "type": "test",
-              "allow_failure": true,
-              "show_output": true,
-              "cmd": [
-                "python3",
-                "{workspace_path}/{source_file_name}"
-              ],
-              "output_format": "template",
-              "format_options": {
-                "template_syntax": "python",
-                "strict_formatting": true,
-                "templates": {
-                  "default": "Test: {test_name:.<35} | Status: {status:^8} | Time: {execution_time:>8.3f}s | Memory: {time_ms:>5d}ms",
-                  "pass": "Test: {test_name:.<35} | Status: {status_symbol} {status:^6} | Time: {execution_time:>8.3f}s | Memory: {time_ms:>5d}ms",
-                  "fail": "Test: {test_name:.<35} | Status: {status_symbol} {status:^6} | Time: {execution_time:>8.3f}s | Memory: {time_ms:>5d}ms\\n  ✓ Expected: {expected_output}\\n  ✗ Actual:   {actual_output}\\n  📊 Diff:     See above",
-                  "error": "Test: {test_name:.<35} | Status: {status_symbol} {status:^6} | Time: {execution_time:>8.3f}s | Memory: {time_ms:>5d}ms\\n  💥 Error:    {error_message}\\n  📍 Details:  Program execution failed",
-                  "summary": "📋 Test Summary: {passed:03d} passed / {failed:03d} failed / {total:03d} total ({pass_rate:>6.2f}% success rate)"
-                }
-              }
+              "output_format": "preset",
+              "format_preset": "standard"
             }
           ]
         },
