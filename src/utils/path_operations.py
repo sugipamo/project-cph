@@ -46,9 +46,9 @@ class PathInfo:
     parts: tuple[str, ...]
 
     @classmethod
-    def from_path(cls, path: Union[str, Path]) -> 'PathInfo':
+    def from_path(cls, file_path: Union[str, Path]) -> 'PathInfo':
         """パスからPathInfoを作成"""
-        p = Path(path)
+        p = Path(file_path)
         return cls(
             path=str(p),
             is_absolute=p.is_absolute(),

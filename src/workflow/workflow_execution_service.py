@@ -97,15 +97,15 @@ class WorkflowExecutionService:
                 unified_driver = UnifiedDriver(self.operations)
 
                 for request in preparation_requests:
-                    result = request.execute(unified_driver)
-                    preparation_results.append(result)
+                    execution_result = request.execute(unified_driver)
+                    preparation_results.append(execution_result)
 
-                    if not result.success:
+                    if not execution_result.success:
                         return WorkflowExecutionResult(
                             success=False,
                             results=[],
                             preparation_results=preparation_results,
-                            errors=[f"Preparation failed: {result.get_error_output()}"],
+                            errors=[f"Preparation failed: {execution_result.get_error_output()}"],
                             warnings=graph_warnings + step_result.warnings
                         )
 

@@ -18,13 +18,13 @@ class DebugLogger:
     """Configurable debug output logger for workflow execution
     """
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, logger_config: Optional[dict[str, Any]] = None):
         """Initialize debug logger with configuration
 
         Args:
-            config: Debug configuration from env.json
+            logger_config: Debug configuration from env.json
         """
-        self.config = config or {}
+        self.config = logger_config or {}
         self.enabled = self.config.get("enabled", False)
         self.level = DebugLevel(self.config.get("level", "minimal"))
         self.format_config = self.config.get("format", {})
@@ -72,10 +72,10 @@ class DebugLogger:
             return
 
         icon = self.icons.get("success", "✅")
-        output = f"{icon} 完了: {step_name}"
+        success_message = f"{icon} 完了: {step_name}"
         if message:
-            output += f" - {message}"
-        print(output)
+            success_message += f" - {message}"
+        print(success_message)
 
     def log_step_failure(self, step_name: str, error: str, allow_failure: bool = False):
         """Log step failure"""
