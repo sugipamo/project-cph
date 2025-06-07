@@ -17,7 +17,6 @@ from src.workflow_execution_service import WorkflowExecutionResult
 from src.domain.results.shell_result import ShellResult
 
 
-@pytest.mark.skip(reason="Mock driver interface needs refactoring")
 class TestMainE2EMock:
     """E2E tests for main() function using mock drivers"""
     
@@ -109,12 +108,13 @@ class TestMainE2EMock:
         
         # Mock shell execution to simulate successful Python script run
         # The command is passed as a list, so we need to match the string representation
-        # self.mock_shell_driver.set_expected_result(  # TODO: Fix method signature
-            "python", # substring match for "python" command
-            stdout="Hello AtCoder\n",
-            stderr="",
-            returncode=0
-        )
+        # TODO: Fix method signature
+        # self.mock_shell_driver.set_expected_result(
+        #     "python", # substring match for "python" command
+        #     stdout="Hello AtCoder\n",
+        #     stderr="",
+        #     returncode=0
+        # )
         
         # Parse arguments and create context
         # Since system_info.json already contains the required information,
@@ -170,12 +170,13 @@ class TestMainE2EMock:
         )
         
         # Mock shell execution to simulate file not found
-        # self.mock_shell_driver.set_expected_result(  # TODO: Fix method signature
-            "python",  # Match on just "python" since cmd is passed as list
-            stdout="",
-            stderr="python: can't open file 'contest_stock/abc999/z/main.py': [Errno 2] No such file or directory",
-            returncode=2
-        )
+        # TODO: Fix method signature
+        # self.mock_shell_driver.set_expected_result(
+        #     "python",  # Match on just "python" since cmd is passed as list
+        #     stdout="",
+        #     stderr="python: can't open file 'contest_stock/abc999/z/main.py': [Errno 2] No such file or directory",
+        #     returncode=2
+        # )
         
         # Parse arguments and create context
         args = []
@@ -252,12 +253,13 @@ class TestMainE2EMock:
         )
         
         # Mock shell execution
-        # self.mock_shell_driver.set_expected_result(  # TODO: Fix method signature
-            "python",  # Match on just "python" since cmd is passed as list
-            stdout="Template executed\n",
-            stderr="",
-            returncode=0
-        )
+        # TODO: Fix method signature
+        # self.mock_shell_driver.set_expected_result(
+        #     "python",  # Match on just "python" since cmd is passed as list
+        #     stdout="Template executed\n",
+        #     stderr="",
+        #     returncode=0
+        # )
         
         # Parse arguments and create context
         args = []
@@ -457,7 +459,6 @@ class TestMainE2EMock:
             sys.stdout = old_stdout
 
 
-@pytest.mark.skip(reason="Mock driver interface needs refactoring")
 class TestMainE2EMockErrorCases:
     """E2E error case tests for main() function using mock drivers"""
     

@@ -50,7 +50,7 @@ class UnifiedFormatter:
             return result.formatted_text if result.success else template
         except Exception:
             # Fallback to basic formatting
-            return format_string_simple(template, context_dict)
+            return format_string_pure(template, context_dict)
     
     def format_string(self, template: str, context_dict: Dict[str, Any], 
                      use_advanced: bool = False) -> str:
@@ -68,7 +68,7 @@ class UnifiedFormatter:
         if use_advanced:
             return self.format_string_advanced(template, context_dict)
         else:
-            return format_string_simple(template, context_dict)
+            return format_string_pure(template, context_dict)
 
 
 # Global singleton instance

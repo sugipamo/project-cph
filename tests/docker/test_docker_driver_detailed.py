@@ -67,7 +67,7 @@ class TestLocalDockerDriver(BaseTest):
         assert result.success is True
         assert result.stdout == "success output"
         mock_shell_request.assert_called_once()
-        mock_request_instance.execute.assert_called_once()
+        mock_request_instance.execute.assert_called_once_with(driver=self.driver.shell_driver)
     
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
     def test_run_container_with_options(self, mock_shell_request):
@@ -101,7 +101,7 @@ class TestLocalDockerDriver(BaseTest):
         
         assert result.success is True
         mock_shell_request.assert_called_once()
-        mock_request_instance.execute.assert_called_once()
+        mock_request_instance.execute.assert_called_once_with(driver=self.driver.shell_driver)
     
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
     def test_remove_container_basic(self, mock_shell_request):
@@ -285,7 +285,7 @@ class TestLocalDockerDriver(BaseTest):
         assert call_args == ["docker", "ps", "-a"]
     
     @pytest.mark.skip(reason="Output parsing implementation details changed")
-    @patch('src.shared.utils.pure_functions.parse_container_names_pure')
+    @patch('src.infrastructure.drivers.docker.docker_driver.parse_container_names_pure')
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
     def test_ps_names_only(self, mock_shell_request, mock_parse_names):
         """Test docker ps with names_only flag"""
@@ -481,7 +481,7 @@ class TestDockerDriverEdgeCases(BaseTest):
         assert call_args[0:3] == ["docker", "exec", "test-container"]
         assert len(call_args) > 3  # Should have parsed the complex command
     
-    @patch('src.shared.utils.pure_functions.parse_container_names_pure')
+    @patch('src.infrastructure.drivers.docker.docker_driver.parse_container_names_pure')
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
     def test_ps_names_only_empty_output(self, mock_shell_request, mock_parse_names):
         """Test ps names_only with empty container output"""

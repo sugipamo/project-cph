@@ -418,7 +418,7 @@ class TestCLIEntryPoint:
                 sys.argv = old_argv
         return cli_wrapper
     
-    @patch('src.operations.build_operations.build_operations')
+    @patch('src.infrastructure.build_infrastructure.build_operations')
     @patch('src.context.user_input_parser.parse_user_input')
     @patch('src.main.main')
     def test_cli_successful_execution(self, mock_main, mock_parse, mock_build):
@@ -436,7 +436,7 @@ class TestCLIEntryPoint:
         mock_parse.assert_called_once_with(['py', 'local', 'test', 'abc300', 'a'], mock_operations)
         mock_main.assert_called_once_with(mock_context, mock_operations)
     
-    @patch('src.operations.build_operations.build_operations')
+    @patch('src.infrastructure.build_infrastructure.build_operations')
     @patch('src.context.user_input_parser.parse_user_input')
     @patch('builtins.print')
     def test_cli_value_error_handling(self, mock_print, mock_parse, mock_build):
@@ -451,7 +451,7 @@ class TestCLIEntryPoint:
         assert result == 1
         mock_print.assert_called_with("エラー: Invalid arguments")
     
-    @patch('src.operations.build_operations.build_operations')
+    @patch('src.infrastructure.build_infrastructure.build_operations')
     @patch('src.context.user_input_parser.parse_user_input')
     @patch('builtins.print')
     def test_cli_file_not_found_error_handling(self, mock_print, mock_parse, mock_build):
@@ -466,7 +466,7 @@ class TestCLIEntryPoint:
         assert result == 1
         mock_print.assert_called_with("ファイルが見つかりません: Config file not found")
     
-    @patch('src.operations.build_operations.build_operations')
+    @patch('src.infrastructure.build_infrastructure.build_operations')
     @patch('src.context.user_input_parser.parse_user_input')
     @patch('builtins.print')
     def test_cli_json_decode_error_handling(self, mock_print, mock_parse, mock_build):
@@ -481,7 +481,7 @@ class TestCLIEntryPoint:
         assert result == 1
         mock_print.assert_called_with("JSONの解析に失敗しました: Invalid JSON: line 1 column 2 (char 1)")
     
-    @patch('src.operations.build_operations.build_operations')
+    @patch('src.infrastructure.build_infrastructure.build_operations')
     @patch('src.context.user_input_parser.parse_user_input')
     @patch('src.main.main')
     @patch('builtins.print')
@@ -505,7 +505,7 @@ class TestCLIEntryPoint:
         mock_print.assert_any_call("ユーザー定義コマンドでエラーが発生しました: Step failed")
         mock_print.assert_any_call("Step error details")
     
-    @patch('src.operations.build_operations.build_operations')
+    @patch('src.infrastructure.build_infrastructure.build_operations')
     @patch('src.context.user_input_parser.parse_user_input')
     @patch('src.main.main')
     @patch('builtins.print')
@@ -526,7 +526,7 @@ class TestCLIEntryPoint:
         assert result == 1
         mock_print.assert_called_with("ユーザー定義コマンドでエラーが発生しました: Step failed")
     
-    @patch('src.operations.build_operations.build_operations')
+    @patch('src.infrastructure.build_infrastructure.build_operations')
     @patch('src.context.user_input_parser.parse_user_input')
     @patch('src.main.main')
     @patch('builtins.print')
