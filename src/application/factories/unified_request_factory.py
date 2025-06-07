@@ -1,6 +1,7 @@
 """
 Unified Request Factory - Consolidates all request creation logic
 """
+import os
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List
 from src.env_core.step.step import Step, StepType
@@ -104,7 +105,7 @@ class ShellRequestStrategy(RequestCreationStrategy):
     """Strategy for creating shell command requests"""
     
     def can_handle(self, step_type: StepType) -> bool:
-        return step_type == StepType.SHELL
+        return step_type in [StepType.SHELL, StepType.TEST, StepType.BUILD, StepType.OJ]
     
     def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
         from src.domain.requests.shell.shell_request import ShellRequest
@@ -112,19 +113,56 @@ class ShellRequestStrategy(RequestCreationStrategy):
         # Format command with context
         formatted_cmd = self._format_step_values(step.cmd, context)
         
+        # For TEST type, create a test script instead of direct execution
+        if step.type == StepType.TEST:
+            cmd = self._create_test_script_command(formatted_cmd, context)
+        else:
+            cmd = formatted_cmd
+        
         return ShellRequest(
-            cmd=formatted_cmd,
+            cmd=cmd,
             cwd=getattr(step, 'cwd', None),
             allow_failure=step.allow_failure,
             show_output=step.show_output,
-            name=f"shell_{' '.join(formatted_cmd[:3])}"
+            name=f"shell_{' '.join(cmd[:3]) if isinstance(cmd, list) else 'test_script'}"
         )
+    
+    def _create_test_script_command(self, cmd: List[str], context: Any) -> List[str]:
+        """Create a bash script that runs tests with input files"""
+        # Get contest_current_path from context
+        context_dict = context.to_dict() if hasattr(context, 'to_dict') else {}
+        contest_current_path = context_dict.get('contest_current_path', './contest_current')
+        
+        # Create a bash script that runs the program with test inputs
+        script = f'''
+for i in {contest_current_path}/test/sample-*.in; do
+    if [ -f "$i" ]; then
+        basename_i=$(basename "$i" .in)
+        expected_output="{contest_current_path}/test/${{basename_i}}.out"
+        if [ -f "$expected_output" ]; then
+            echo "Running test: $basename_i"
+            actual_output=$({' '.join(cmd)} < "$i" 2>/dev/null)
+            expected=$(cat "$expected_output")
+            if [ "$actual_output" = "$expected" ]; then
+                echo "✓ PASS: $basename_i"
+            else
+                echo "✗ FAIL: $basename_i"
+                echo "  Expected: $expected"
+                echo "  Got:      $actual_output"
+            fi
+        fi
+    fi
+done
+'''
+        return ["bash", "-c", script.strip()]
     
     def _format_step_values(self, cmd: List[str], context: Any) -> List[str]:
         """Format step command values with context variables."""
         from src.pure_functions.execution_context_formatter_pure import format_values_with_context_dict
         context_dict = context.to_dict() if hasattr(context, 'to_dict') else {}
         return format_values_with_context_dict(cmd, context_dict)
+
+
 
 
 class PythonRequestStrategy(RequestCreationStrategy):
