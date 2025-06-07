@@ -11,7 +11,7 @@ from io import StringIO
 from src.main import main
 from src.workflow_execution_service import WorkflowExecutionResult
 from src.domain.results.result import OperationResult
-from src.shared.exceptions.composite_step_failure import CompositeStepFailure
+from src.domain.exceptions.composite_step_failure import CompositeStepFailure
 
 
 class TestMainFunction:
@@ -401,7 +401,7 @@ class TestCLIEntryPoint:
                 print(f"エラー: {e}")
                 return 1
             except Exception as e:
-                from src.shared.exceptions.composite_step_failure import CompositeStepFailure
+                from src.domain.exceptions.composite_step_failure import CompositeStepFailure
                 if isinstance(e, CompositeStepFailure):
                     print(f"ユーザー定義コマンドでエラーが発生しました: {e}")
                     if hasattr(e, 'result') and e.result is not None:

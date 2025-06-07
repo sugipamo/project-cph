@@ -159,7 +159,7 @@ if __name__ == "__main__":
         print(f"JSONの解析に失敗しました: {e}")
         sys.exit(1)
     except Exception as e:
-        from src.shared.exceptions.composite_step_failure import CompositeStepFailure
+        from src.domain.exceptions.composite_step_failure import CompositeStepFailure
         if isinstance(e, CompositeStepFailure):
             print(f"ユーザー定義コマンドでエラーが発生しました: {e}")
             if hasattr(e, 'result') and e.result is not None:

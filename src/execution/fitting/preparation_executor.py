@@ -5,11 +5,11 @@ from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 import logging
 
-from src.env_integration.fitting.environment_inspector import (
+from src.execution.fitting.environment_inspector import (
     EnvironmentInspector, ResourceStatus, ResourceType, ResourceRequirement
 )
-from src.env_integration.fitting.docker_state_manager import DockerStateManager
-from src.env_integration.fitting.preparation_error_handler import (
+from src.execution.fitting.docker_state_manager import DockerStateManager
+from src.execution.fitting.preparation_error_handler import (
     PreparationErrorHandler, RobustPreparationExecutor, ErrorSeverity, ErrorCategory
 )
 from src.domain.requests.docker.docker_request import DockerRequest, DockerOpType

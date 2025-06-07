@@ -11,7 +11,7 @@ from src.application.factories.unified_request_factory import (
     create_request,
     create_composite_request
 )
-from src.env_core.step.step import Step, StepType
+from src.workflow.step.step import Step, StepType
 from src.domain.requests.file.file_request import FileRequest
 from src.domain.requests.shell.shell_request import ShellRequest
 from src.domain.requests.python.python_request import PythonRequest

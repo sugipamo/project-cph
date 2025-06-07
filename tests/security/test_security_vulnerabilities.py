@@ -6,9 +6,9 @@ import shlex
 from unittest.mock import Mock, patch, MagicMock
 from src.infrastructure.drivers.docker.docker_driver import LocalDockerDriver
 from src.domain.requests.docker.docker_request import DockerRequest, DockerOpType
-from src.shared.utils.pure_functions import validate_file_path_format_pure
+from src.utils.helpers import validate_file_path_format_pure
 from src.application.factories.unified_request_factory import create_request
-from src.env_core.step.step import Step, StepType
+from src.workflow.step.step import Step, StepType
 
 
 class TestDockerExecSecurity:

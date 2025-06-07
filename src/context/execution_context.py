@@ -2,9 +2,9 @@ from typing import Dict, Optional, Tuple, List
 from src.context.execution_data import ExecutionData
 from src.context.context_validator import ContextValidator
 from src.context.config_resolver_proxy import ConfigResolverProxy
-from src.shared.utils.basic_formatter import format_with_missing_keys
+from src.utils.formatters import format_with_missing_keys
 from src.context.dockerfile_resolver import DockerfileResolver
-from src.pure_functions.execution_context_formatter_pure import (
+from src.context.formatters.context_formatter import (
     ExecutionFormatData, create_format_dict, format_template_string,
     validate_execution_data, get_docker_naming_from_data
 )

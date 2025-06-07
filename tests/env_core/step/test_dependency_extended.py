@@ -8,12 +8,12 @@ import pytest
 from pathlib import Path
 from typing import List, Set
 
-from src.env_core.step.dependency import (
+from src.workflow.step.dependency import (
     resolve_dependencies,
     generate_preparation_steps,
     update_resource_tracking
 )
-from src.env_core.step.step import Step, StepType, StepContext
+from src.workflow.step.step import Step, StepType, StepContext
 
 
 class TestGeneratePreparationSteps:

@@ -3,7 +3,7 @@ Dockerfile resolver for delayed loading
 Implements the resolver pattern for Dockerfile content management
 """
 from typing import Optional, Callable, Dict, Any
-from src.shared.utils.docker.docker_naming import (
+from src.infrastructure.drivers.docker.utils.docker_naming import (
     get_docker_image_name, get_docker_container_name,
     get_oj_image_name, get_oj_container_name
 )

@@ -5,7 +5,7 @@ Tests all core step generation functions
 import pytest
 from unittest.mock import Mock
 
-from src.env_core.step.core import (
+from src.workflow.step.core import (
     generate_steps_from_json,
     create_step_from_json,
     format_template,
@@ -13,7 +13,7 @@ from src.env_core.step.core import (
     validate_single_step,
     optimize_step_sequence
 )
-from src.env_core.step.step import Step, StepType, StepContext, StepGenerationResult
+from src.workflow.step.step import Step, StepType, StepContext, StepGenerationResult
 
 
 class TestGenerateStepsFromJson:

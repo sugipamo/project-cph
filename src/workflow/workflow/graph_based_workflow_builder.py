@@ -14,10 +14,10 @@ from .request_execution_graph import (
 )
 # from .graph_to_composite_adapter import GraphToCompositeAdapter  # Temporarily disabled
 from src.domain.requests.composite.composite_request import CompositeRequest
-from src.env_core.step.step import Step, StepType, StepContext
-from src.env_core.step.core import generate_steps_from_json
-from src.env_core.step.dependency import resolve_dependencies
-from src.env_core.step.workflow import (
+from src.workflow.step.step import Step, StepType, StepContext
+from src.workflow.step.core import generate_steps_from_json
+from src.workflow.step.dependency import resolve_dependencies
+from src.workflow.step.workflow import (
     create_step_context_from_env_context,
     optimize_workflow_steps
 )
@@ -56,7 +56,7 @@ class GraphBasedWorkflowBuilder:
         controller(既存互換性のため保持)
         """
         # controllerからcontextを抽出
-        from src.env_core.step.workflow import create_step_context_from_env_context
+        from src.workflow.step.workflow import create_step_context_from_env_context
         context = create_step_context_from_env_context(controller.env_context)
         return cls(context)
     
@@ -78,7 +78,7 @@ class GraphBasedWorkflowBuilder:
         context = self.context
         if context is None:
             # デフォルトコンテキストを作成
-            from src.env_core.step.step import StepContext
+            from src.workflow.step.step import StepContext
             context = StepContext(
                 contest_name="",
                 problem_name="", 
@@ -227,7 +227,7 @@ class GraphBasedWorkflowBuilder:
         Returns:
             (creates_files, creates_dirs, reads_files, requires_dirs)
         """
-        from src.pure_functions.graph_builder_pure import extract_node_resource_info_pure
+        from src.workflow.workflow.graph_builder_utils import extract_node_resource_info_pure
         return extract_node_resource_info_pure(step)
     
     def _build_dependencies(
@@ -344,7 +344,7 @@ class GraphBasedWorkflowBuilder:
         """
         parent_pathがchild_pathの親ディレクトリかどうかを判定（純粋関数版使用）
         """
-        from src.pure_functions.graph_builder_pure import is_parent_directory_pure
+        from src.workflow.workflow.graph_builder_utils import is_parent_directory_pure
         return is_parent_directory_pure(parent_path, child_path)
     
     def _has_resource_conflict(
@@ -362,7 +362,7 @@ class GraphBasedWorkflowBuilder:
         Returns:
             bool: 競合がある場合True
         """
-        from src.pure_functions.graph_builder_pure import NodeInfo, has_resource_conflict_pure
+        from src.workflow.workflow.graph_builder_utils import NodeInfo, has_resource_conflict_pure
         
         # RequestNodeからNodeInfoへの変換
         node_info1 = NodeInfo(
@@ -400,7 +400,7 @@ class GraphBasedWorkflowBuilder:
             Tuple[RequestExecutionGraph, List[str], List[str]]: 
                 (実行グラフ, エラーリスト, 警告リスト)
         """
-        from src.pure_functions.graph_builder_pure import build_execution_graph_pure
+        from src.workflow.workflow.graph_builder_utils import build_execution_graph_pure
         
         # 純粋関数でグラフ構築結果を取得
         result = build_execution_graph_pure(steps, self.context)

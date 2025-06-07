@@ -5,7 +5,7 @@ pure_functions.pyモジュールの関数をテストして、
 純粋関数としての動作（同一入力→同一出力、副作用なし）を確認。
 """
 import pytest
-from src.shared.utils.pure_functions import (
+from src.utils.helpers import (
     format_string_pure,
     extract_missing_keys_pure,
     is_potential_script_path_pure,

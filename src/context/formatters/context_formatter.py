@@ -78,7 +78,7 @@ def format_template_string(template: str, data: ExecutionFormatData) -> Tuple[st
     Returns:
         Tuple[str, set]: (フォーマット済み文字列, 見つからなかったキーのセット)
     """
-    from src.shared.utils.basic_formatter import format_with_missing_keys
+    from src.utils.formatters import format_with_missing_keys
     format_dict = create_format_dict(data)
     formatted, missing_list = format_with_missing_keys(template, **format_dict)
     return formatted, set(missing_list)
@@ -129,7 +129,7 @@ def format_values_with_context_dict(values: list, context_dict: dict) -> list:
     Returns:
         List of formatted strings
     """
-    from src.shared.utils.basic_formatter import format_string_simple as format_string_pure
+    from src.utils.formatters import format_string_simple as format_string_pure
     
     result = []
     for value in values:
@@ -156,7 +156,7 @@ def get_docker_naming_from_data(data: ExecutionFormatData,
     Returns:
         dict: Docker命名情報
     """
-    from src.shared.utils.docker.docker_naming import (
+    from src.infrastructure.drivers.docker.utils.docker_naming import (
         get_docker_image_name, get_docker_container_name,
         get_oj_image_name, get_oj_container_name
     )

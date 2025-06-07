@@ -2,7 +2,7 @@
 Execution control class
 """
 from typing import List, Any
-from src.shared.exceptions.composite_step_failure import CompositeStepFailure
+from src.domain.exceptions.composite_step_failure import CompositeStepFailure
 
 
 class ExecutionController:

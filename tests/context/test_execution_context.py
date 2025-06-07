@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch, MagicMock, PropertyMock
 from src.context.execution_context import ExecutionContext
 from src.context.execution_data import ExecutionData
 from src.context.dockerfile_resolver import DockerfileResolver
-from src.pure_functions.execution_context_formatter_pure import ExecutionFormatData
+from src.context.formatters.context_formatter import ExecutionFormatData
 
 
 class TestExecutionContext:

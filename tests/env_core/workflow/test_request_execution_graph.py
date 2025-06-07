@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, Future
 import threading
 import time
 
-from src.env_core.workflow.request_execution_graph import (
+from src.workflow.workflow.request_execution_graph import (
     RequestExecutionGraph, RequestNode, DependencyEdge, DependencyType
 )
 from src.domain.results.result import OperationResult

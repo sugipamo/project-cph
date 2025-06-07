@@ -4,7 +4,7 @@ Tests for basic RequestExecutionGraph operations
 import pytest
 from unittest.mock import Mock
 
-from src.env_core.workflow.request_execution_graph import (
+from src.workflow.workflow.request_execution_graph import (
     RequestExecutionGraph, RequestNode, DependencyEdge, DependencyType
 )
 from src.domain.requests.base.base_request import BaseRequest

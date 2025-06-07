@@ -4,7 +4,7 @@ Tests for RequestNode class
 import pytest
 from unittest.mock import Mock
 
-from src.env_core.workflow.request_execution_graph import RequestNode
+from src.workflow.workflow.request_execution_graph import RequestNode
 from src.domain.requests.base.base_request import BaseRequest
 
 

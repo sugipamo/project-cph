@@ -2,7 +2,7 @@
 Output display control class
 """
 from typing import List, Any, Callable
-from src.pure_functions.output_manager_formatter_pure import (
+from src.application.orchestration.output_formatters import (
     extract_output_data, should_show_output, 
     decide_output_action
 )

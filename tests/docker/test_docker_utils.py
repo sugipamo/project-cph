@@ -1,4 +1,4 @@
-from src.shared.utils.docker.docker_utils import DockerUtils
+from src.infrastructure.drivers.docker.utils.docker_utils import DockerUtils
 
 def test_build_docker_cmd_basic():
     cmd = DockerUtils.build_docker_cmd(["docker", "run"], options={"name": "mycontainer", "d": None}, positional_args=["ubuntu:latest"])

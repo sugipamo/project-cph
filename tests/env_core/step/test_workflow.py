@@ -3,24 +3,24 @@ Tests for workflow module
 """
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from src.env_core.step.workflow import (
+from src.workflow.step.workflow import (
     generate_workflow_from_json,
     optimize_workflow_steps,
     create_step_context_from_env_context,
     validate_workflow_execution,
     debug_workflow_generation
 )
-from src.env_core.step.step import Step, StepType, StepContext, StepGenerationResult
+from src.workflow.step.step import Step, StepType, StepContext, StepGenerationResult
 from src.domain.requests.composite.composite_request import CompositeRequest
 
 
 class TestGenerateWorkflowFromJson:
     
-    @patch('src.env_core.step.workflow.generate_steps_from_json')
-    @patch('src.env_core.step.workflow.validate_step_sequence')
-    @patch('src.env_core.step.workflow.resolve_dependencies')
-    @patch('src.env_core.step.workflow.optimize_workflow_steps')
-    @patch('src.env_core.step.workflow.steps_to_requests')
+    @patch('src.workflow.step.workflow.generate_steps_from_json')
+    @patch('src.workflow.step.workflow.validate_step_sequence')
+    @patch('src.workflow.step.workflow.resolve_dependencies')
+    @patch('src.workflow.step.workflow.optimize_workflow_steps')
+    @patch('src.workflow.step.workflow.steps_to_requests')
     def test_success_path(self, mock_steps_to_requests, mock_optimize, mock_resolve,
                          mock_validate, mock_generate):
         """Test successful workflow generation"""
@@ -66,8 +66,8 @@ class TestGenerateWorkflowFromJson:
         mock_optimize.assert_called_once_with([test_step])
         mock_steps_to_requests.assert_called_once_with([test_step], operations)
     
-    @patch('src.env_core.step.workflow.generate_steps_from_json')
-    @patch('src.env_core.step.workflow.CompositeRequest')
+    @patch('src.workflow.step.workflow.generate_steps_from_json')
+    @patch('src.workflow.step.workflow.CompositeRequest')
     def test_generation_failure(self, mock_composite_request, mock_generate):
         """Test workflow generation with step generation failure"""
         # Setup
@@ -95,9 +95,9 @@ class TestGenerateWorkflowFromJson:
         assert warnings == []
         mock_composite_request.make_composite_request.assert_called_once_with([])
     
-    @patch('src.env_core.step.workflow.generate_steps_from_json')
-    @patch('src.env_core.step.workflow.validate_step_sequence')
-    @patch('src.env_core.step.workflow.CompositeRequest')
+    @patch('src.workflow.step.workflow.generate_steps_from_json')
+    @patch('src.workflow.step.workflow.validate_step_sequence')
+    @patch('src.workflow.step.workflow.CompositeRequest')
     def test_validation_failure(self, mock_composite_request, mock_validate, mock_generate):
         """Test workflow generation with validation failure"""
         # Setup
@@ -132,8 +132,8 @@ class TestGenerateWorkflowFromJson:
 
 class TestOptimizeWorkflowSteps:
     
-    @patch('src.env_core.step.workflow.optimize_step_sequence')
-    @patch('src.env_core.step.workflow.optimize_mkdir_steps')
+    @patch('src.workflow.step.workflow.optimize_step_sequence')
+    @patch('src.workflow.step.workflow.optimize_mkdir_steps')
     def test_optimize_workflow_steps(self, mock_optimize_mkdir, mock_optimize_sequence):
         """Test workflow step optimization"""
         # Setup
@@ -279,9 +279,9 @@ class TestValidateWorkflowExecution:
 
 class TestDebugWorkflowGeneration:
     
-    @patch('src.env_core.step.workflow.generate_steps_from_json')
-    @patch('src.env_core.step.workflow.resolve_dependencies')
-    @patch('src.env_core.step.workflow.optimize_workflow_steps')
+    @patch('src.workflow.step.workflow.generate_steps_from_json')
+    @patch('src.workflow.step.workflow.resolve_dependencies')
+    @patch('src.workflow.step.workflow.optimize_workflow_steps')
     def test_debug_successful_generation(self, mock_optimize, mock_resolve, mock_generate):
         """Test debug info for successful workflow generation"""
         # Setup
@@ -338,7 +338,7 @@ class TestDebugWorkflowGeneration:
         assert opt_stage['post_optimization'] == 1
         assert opt_stage['removed_steps'] == 1
     
-    @patch('src.env_core.step.workflow.generate_steps_from_json')
+    @patch('src.workflow.step.workflow.generate_steps_from_json')
     def test_debug_failed_generation(self, mock_generate):
         """Test debug info for failed workflow generation"""
         # Setup

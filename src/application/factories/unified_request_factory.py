@@ -4,7 +4,7 @@ Unified Request Factory - Consolidates all request creation logic
 import os
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List
-from src.env_core.step.step import Step, StepType
+from src.workflow.step.step import Step, StepType
 from src.domain.requests.base.base_request import BaseRequest
 from src.infrastructure.environment.environment_manager import EnvironmentManager
 from src.context.commands.base_command import Command
@@ -96,7 +96,7 @@ class FileRequestStrategy(RequestCreationStrategy):
     
     def _format_step_values(self, cmd: List[str], context: Any) -> List[str]:
         """Format step command values with context variables."""
-        from src.pure_functions.execution_context_formatter_pure import format_values_with_context_dict
+        from src.context.formatters.context_formatter import format_values_with_context_dict
         context_dict = context.to_dict() if hasattr(context, 'to_dict') else {}
         return format_values_with_context_dict(cmd, context_dict)
 
@@ -158,7 +158,7 @@ done
     
     def _format_step_values(self, cmd: List[str], context: Any) -> List[str]:
         """Format step command values with context variables."""
-        from src.pure_functions.execution_context_formatter_pure import format_values_with_context_dict
+        from src.context.formatters.context_formatter import format_values_with_context_dict
         context_dict = context.to_dict() if hasattr(context, 'to_dict') else {}
         return format_values_with_context_dict(cmd, context_dict)
 
@@ -186,7 +186,7 @@ class PythonRequestStrategy(RequestCreationStrategy):
     
     def _format_step_values(self, cmd: List[str], context: Any) -> List[str]:
         """Format step command values with context variables."""
-        from src.pure_functions.execution_context_formatter_pure import format_values_with_context_dict
+        from src.context.formatters.context_formatter import format_values_with_context_dict
         context_dict = context.to_dict() if hasattr(context, 'to_dict') else {}
         return format_values_with_context_dict(cmd, context_dict)
 

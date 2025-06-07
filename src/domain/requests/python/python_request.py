@@ -4,7 +4,7 @@ from typing import Union, List, Optional, Any
 from src.domain.requests.base.base_request import BaseRequest
 from src.domain.constants.operation_type import OperationType
 from src.domain.results.result import OperationResult
-from src.shared.utils.python.python_utils import PythonUtils
+from src.infrastructure.drivers.python.utils.python_utils import PythonUtils
 
 
 class PythonRequest(BaseRequest):

@@ -36,7 +36,7 @@ class PythonDriver(BaseDriver):
     def execute(self, request: Any) -> Any:
         """Execute a Python request."""
         if hasattr(request, 'code_or_file'):
-            from src.shared.utils.python.python_utils import PythonUtils
+            from src.infrastructure.drivers.python.utils.python_utils import PythonUtils
             
             if PythonUtils.is_script_file(request.code_or_file):
                 return self.run_script_file(

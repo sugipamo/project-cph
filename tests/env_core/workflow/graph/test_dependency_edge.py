@@ -4,7 +4,7 @@ Tests for DependencyEdge class
 import pytest
 from unittest.mock import Mock
 
-from src.env_core.workflow.request_execution_graph import DependencyEdge, DependencyType
+from src.workflow.workflow.request_execution_graph import DependencyEdge, DependencyType
 
 
 class TestDependencyEdge:
