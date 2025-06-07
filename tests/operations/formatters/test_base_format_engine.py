@@ -2,7 +2,7 @@
 Tests for base format engine components
 """
 import pytest
-from src.operations.formatters.base_format_engine import (
+from src.application.formatters.base.base_format_engine import (
     FormatSyntaxType,
     FormatContext,
     FormatResult,

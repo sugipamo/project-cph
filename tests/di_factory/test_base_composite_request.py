@@ -1,6 +1,6 @@
 import pytest
-from src.operations.composite.base_composite_request import BaseCompositeRequest
-from src.operations.base_request import BaseRequest
+from src.domain.requests.composite.base_composite_request import BaseCompositeRequest
+from src.domain.requests.base.base_request import BaseRequest
 
 class DummyRequest(BaseRequest):
     def __init__(self, name=None):

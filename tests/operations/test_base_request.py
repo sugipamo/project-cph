@@ -4,8 +4,8 @@ Tests for BaseRequest abstract base class
 import pytest
 import os
 from unittest.mock import Mock, patch
-from src.operations.base_request import BaseRequest
-from src.operations.constants.operation_type import OperationType
+from src.domain.requests.base.base_request import BaseRequest
+from src.domain.constants.operation_type import OperationType
 
 
 class ConcreteRequest(BaseRequest):
@@ -98,7 +98,7 @@ class TestBaseRequest:
         with pytest.raises(ValueError) as exc_info:
             request.execute()
         
-        assert "driverが必須です" in str(exc_info.value)
+        assert "requires a driver" in str(exc_info.value)
     
     def test_execute_without_driver_when_not_required(self):
         """Test executing without driver when driver is not required"""

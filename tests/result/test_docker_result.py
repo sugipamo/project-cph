@@ -1,5 +1,5 @@
 import pytest
-from src.operations.result.docker_result import DockerResult
+from src.domain.results.docker_result import DockerResult
 
 def test_docker_result_success_and_to_dict():
     r = DockerResult(success=True, stdout="ok", stderr="", returncode=0, op="RUN")

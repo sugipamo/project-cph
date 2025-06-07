@@ -7,7 +7,7 @@ from src.env_core.workflow.graph_based_workflow_builder import GraphBasedWorkflo
 from src.env_core.workflow.request_execution_graph import RequestExecutionGraph, RequestNode
 from src.env_core.step.step import Step, StepType, StepContext, StepGenerationResult
 from src.context.resolver.config_node import ConfigNode
-from src.operations.composite.composite_request import CompositeRequest
+from src.domain.requests.composite.composite_request import CompositeRequest
 
 
 class TestGraphBasedWorkflowBuilder:

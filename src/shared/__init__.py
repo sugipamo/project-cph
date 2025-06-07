@@ -1,0 +1,1 @@
+"""Shared layer - Cross-cutting concerns and utilities."""

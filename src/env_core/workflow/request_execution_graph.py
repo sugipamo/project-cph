@@ -8,8 +8,8 @@ from enum import Enum
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict, deque
 import re
-from src.operations.base_request import BaseRequest
-from src.operations.result.result import OperationResult
+from src.domain.requests.base.base_request import BaseRequest
+from src.domain.results.result import OperationResult
 from src.utils.debug_logger import DebugLogger
 
 

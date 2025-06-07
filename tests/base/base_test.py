@@ -2,10 +2,10 @@
 Base test class with common utilities
 """
 import pytest
-from src.operations.di_container import DIContainer
-from src.operations.mock.mock_file_driver import MockFileDriver
-from src.operations.mock.mock_shell_driver import MockShellDriver
-from src.operations.mock.mock_docker_driver import MockDockerDriver
+from src.infrastructure.di_container import DIContainer
+from src.infrastructure.mock.mock_file_driver import MockFileDriver
+from src.infrastructure.mock.mock_shell_driver import MockShellDriver
+from src.infrastructure.mock.mock_docker_driver import MockDockerDriver
 
 
 class BaseTest:

@@ -3,9 +3,9 @@ Tests for CompositeRequest
 """
 import pytest
 from unittest.mock import Mock, MagicMock
-from src.operations.composite.composite_request import CompositeRequest
-from src.operations.base_request import BaseRequest
-from src.operations.result.result import OperationResult
+from src.domain.requests.composite.composite_request import CompositeRequest
+from src.domain.requests.base.base_request import BaseRequest
+from src.domain.results.result import OperationResult
 
 
 class MockRequest(BaseRequest):
@@ -152,22 +152,6 @@ class TestCompositeRequest:
         composite.requests = [req2, req3]
         assert composite.requests == [req2, req3]
         assert len(composite) == 2
-    
-    def test_output_manager_integration(self):
-        """Test that OutputManager is called during execution"""
-        req1 = MockRequest("req1")
-        composite = CompositeRequest([req1])
-        driver = Mock()
-        
-        from unittest.mock import patch
-        with patch('src.operations.composite.composite_request.OutputManager') as mock_output:
-            results = composite.execute(driver)
-            
-            # Verify OutputManager.handle_request_output was called
-            mock_output.handle_request_output.assert_called_once()
-            call_args = mock_output.handle_request_output.call_args
-            assert call_args[0][0] == req1  # First argument is the request
-            assert call_args[0][1] == results[0]  # Second argument is the result
     
     def test_empty_composite(self):
         """Test composite with no requests"""

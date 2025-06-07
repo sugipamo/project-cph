@@ -4,7 +4,7 @@ import sys
 import os
 import threading
 from queue import Queue
-from src.operations.shell.shell_utils import ShellUtils
+from src.shared.utils.shell.shell_utils import ShellUtils
 
 def test_run_subprocess_echo():
     result = ShellUtils.run_subprocess([sys.executable, "-c", "print('hello')"])

@@ -1,17 +1,17 @@
 import pytest
 from pathlib import Path
-from src.operations.file.file_request import FileRequest
-from src.operations.file.file_op_type import FileOpType
-from src.operations.result.file_result import FileResult
-from src.operations.mock.mock_file_driver import MockFileDriver
-from src.operations.constants.operation_type import OperationType
+from src.domain.requests.file.file_request import FileRequest
+from src.domain.requests.file.file_op_type import FileOpType
+from src.domain.results.file_result import FileResult
+from src.infrastructure.mock.mock_file_driver import MockFileDriver
+from src.domain.constants.operation_type import OperationType
 
 def test_file_write_and_read_with_mock():
     driver = MockFileDriver()
     path = Path("test.txt")
     
     # MockFileDriverで事前にファイルを追加
-    driver.add(str(path), "hello world")
+    driver._create_impl(path, "hello world")
     
     # write
     req_w = FileRequest(FileOpType.WRITE, path, content="hello world")

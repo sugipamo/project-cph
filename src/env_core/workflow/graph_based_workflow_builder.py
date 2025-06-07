@@ -13,7 +13,7 @@ from .request_execution_graph import (
     DependencyType
 )
 # from .graph_to_composite_adapter import GraphToCompositeAdapter  # Temporarily disabled
-from src.operations.composite.composite_request import CompositeRequest
+from src.domain.requests.composite.composite_request import CompositeRequest
 from src.env_core.step.step import Step, StepType, StepContext
 from src.env_core.step.core import generate_steps_from_json
 from src.env_core.step.dependency import resolve_dependencies
@@ -212,7 +212,7 @@ class GraphBasedWorkflowBuilder:
         Returns:
             生成されたリクエスト、または None
         """
-        from src.operations.factory.unified_request_factory import create_request
+        from src.infrastructure.factory.unified_request_factory import create_request
         
         # 統一ファクトリを使用してリクエストを生成
         return create_request(step, context=self.context)

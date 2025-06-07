@@ -2,7 +2,7 @@
 完全な純粋関数ベースのワークフロー生成・実行パイプライン
 """
 from typing import List, Dict, Any, Tuple
-from src.operations.composite.composite_request import CompositeRequest
+from src.domain.requests.composite.composite_request import CompositeRequest
 from .step import Step, StepContext, StepGenerationResult
 from .core import generate_steps_from_json, validate_step_sequence, optimize_step_sequence
 from .dependency import resolve_dependencies, optimize_mkdir_steps
@@ -17,7 +17,7 @@ def steps_to_requests(steps: List[Step], operations) -> CompositeRequest:
     Returns:
         CompositeRequest: Composite request containing all converted steps
     """
-    from src.operations.factory.unified_request_factory import UnifiedRequestFactory
+    from src.application.factories.unified_request_factory import UnifiedRequestFactory
     
     requests = []
     factory = UnifiedRequestFactory()

@@ -8,7 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from src.workflow_execution_service import WorkflowExecutionService
 from src.context.user_input_parser import parse_user_input
-from src.operations.build_operations import build_operations
+from src.infrastructure.build_infrastructure import build_operations
 
 def demo_parallel_execution():
     """並列実行のデモ"""

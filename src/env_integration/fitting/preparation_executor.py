@@ -12,9 +12,9 @@ from src.env_integration.fitting.docker_state_manager import DockerStateManager
 from src.env_integration.fitting.preparation_error_handler import (
     PreparationErrorHandler, RobustPreparationExecutor, ErrorSeverity, ErrorCategory
 )
-from src.operations.docker.docker_request import DockerRequest, DockerOpType
-from src.operations.file.file_request import FileRequest
-from src.operations.file.file_op_type import FileOpType
+from src.domain.requests.docker.docker_request import DockerRequest, DockerOpType
+from src.domain.requests.file.file_request import FileRequest
+from src.domain.requests.file.file_op_type import FileOpType
 from src.context.execution_context import ExecutionContext
 from src.utils.path_operations import DockerPathOperations
 
@@ -271,7 +271,7 @@ class PreparationExecutor:
             )
         
         # For standard images that can be pulled from registry
-        from src.operations.shell.shell_request import ShellRequest
+        from src.infrastructure.shell.shell_request import ShellRequest
         pull_request = ShellRequest([
             "docker", "pull", image_name
         ])

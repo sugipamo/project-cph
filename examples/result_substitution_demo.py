@@ -7,8 +7,8 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from src.env_core.workflow.request_execution_graph import RequestExecutionGraph, RequestNode
-from src.operations.shell.shell_request import ShellRequest
-from src.operations.result.result import OperationResult
+from src.domain.requests.shell.shell_request import ShellRequest
+from src.domain.results.result import OperationResult
 
 def demo_result_substitution():
     """結果置換機能のデモ"""

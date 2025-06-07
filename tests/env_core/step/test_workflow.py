@@ -11,7 +11,7 @@ from src.env_core.step.workflow import (
     debug_workflow_generation
 )
 from src.env_core.step.step import Step, StepType, StepContext, StepGenerationResult
-from src.operations.composite.composite_request import CompositeRequest
+from src.domain.requests.composite.composite_request import CompositeRequest
 
 
 class TestGenerateWorkflowFromJson:

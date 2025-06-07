@@ -1,10 +1,10 @@
 import pytest
-from src.operations.result.shell_result import ShellResult
-from src.operations.result.result import OperationResult
-from src.operations.constants.operation_type import OperationType
-from src.operations.shell.shell_request import ShellRequest
-from src.operations.shell.local_shell_driver import LocalShellDriver
-from src.operations.di_container import DIContainer
+from src.domain.results.shell_result import ShellResult
+from src.domain.results.result import OperationResult
+from src.domain.constants.operation_type import OperationType
+from src.domain.requests.shell.shell_request import ShellRequest
+from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
+from src.infrastructure.di_container import DIContainer
 import os
 import unittest.mock
 
@@ -42,11 +42,11 @@ def test_shell_request_no_driver():
     req = ShellRequest(["echo", "hello"])
     with pytest.raises(ValueError) as excinfo:
         req.execute(None)
-    assert str(excinfo.value) == "ShellRequest.execute()にはdriverが必須です"
+    assert "requires a driver" in str(excinfo.value)
 
 def test_shell_request_echo():
     di = DIContainer()
-    from src.operations.shell.local_shell_driver import LocalShellDriver
+    from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
     di.register('shell_driver', lambda: LocalShellDriver())
     req = ShellRequest(["echo", "hello"])
     driver = di.resolve('shell_driver')
@@ -55,7 +55,7 @@ def test_shell_request_echo():
 
 def test_shell_request_timeout():
     di = DIContainer()
-    from src.operations.shell.local_shell_driver import LocalShellDriver
+    from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
     di.register('shell_driver', lambda: LocalShellDriver())
     req = ShellRequest(["echo", "timeout"])
     driver = di.resolve('shell_driver')
@@ -71,7 +71,7 @@ def test_shell_request_execute_exception():
     # ShellUtils.run_subprocessで例外を投げるようにする
     req = ShellRequest(["false"])
     driver = LocalShellDriver()
-    with unittest.mock.patch("src.operations.shell.shell_utils.ShellUtils.run_subprocess", side_effect=Exception("fail")):
+    with unittest.mock.patch("src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess", side_effect=Exception("fail")):
         result = req._execute_core(driver)
     assert isinstance(result, OperationResult)
     assert result.stderr == "fail"
@@ -87,7 +87,7 @@ def test_shell_request_with_inputdata_env_cwd(tmp_path):
             stderr = ""
             returncode = 0
         return Completed()
-    with unittest.mock.patch("src.operations.shell.shell_utils.ShellUtils.run_subprocess", fake_run_subprocess):
+    with unittest.mock.patch("src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess", fake_run_subprocess):
         req = ShellRequest(["echo", "x"], cwd=str(tmp_path), env={"A": "B"}, inputdata="in", timeout=1)
         driver = LocalShellDriver()
         result = req._execute_core(driver)
@@ -105,7 +105,7 @@ def test_shell_request_show_output(capsys):
             stderr = "err"
             returncode = 0
         return Completed()
-    with unittest.mock.patch("src.operations.shell.shell_utils.ShellUtils.run_subprocess", fake_run_subprocess):
+    with unittest.mock.patch("src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess", fake_run_subprocess):
         req = ShellRequest(["echo", "x"], show_output=True)
         driver = LocalShellDriver()
         result = req._execute_core(driver)

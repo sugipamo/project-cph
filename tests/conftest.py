@@ -3,7 +3,7 @@
 テストコードの重複を削減し、保守性を向上させる
 """
 import pytest
-from src.operations.di_container import DIContainer
+from src.infrastructure.di_container import DIContainer
 
 
 @pytest.fixture
@@ -24,11 +24,11 @@ def mock_controller():
 @pytest.fixture
 def di_container():
     """基本的なDIコンテナを提供"""
-    from src.operations.docker.docker_request import DockerRequest, DockerOpType
-    from src.operations.file.file_request import FileRequest
-    from src.operations.file.file_op_type import FileOpType
-    from src.operations.shell.shell_request import ShellRequest
-    from src.operations.python.python_request import PythonRequest
+    from src.domain.requests.docker.docker_request import DockerRequest, DockerOpType
+    from src.domain.requests.file.file_request import FileRequest
+    from src.domain.requests.file.file_op_type import FileOpType
+    from src.domain.requests.shell.shell_request import ShellRequest
+    from src.domain.requests.python.python_request import PythonRequest
     
     di = DIContainer()
     di.register("DockerRequest", lambda: DockerRequest)

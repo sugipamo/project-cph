@@ -2,7 +2,7 @@ import pytest
 import tempfile
 import os
 from pathlib import Path
-from src.operations.file.local_file_driver import LocalFileDriver
+from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
 
 
 def test_move_and_copy_impl(tmp_path):

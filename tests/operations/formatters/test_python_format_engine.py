@@ -2,8 +2,8 @@
 Tests for Python format engine
 """
 import pytest
-from src.operations.formatters.python_format_engine import PythonFormatEngine, EnhancedPythonFormatEngine
-from src.operations.formatters.base_format_engine import FormatContext, FormatSyntaxType
+from src.application.formatters.python_format_engine import PythonFormatEngine, EnhancedPythonFormatEngine
+from src.application.formatters.base.base_format_engine import FormatContext, FormatSyntaxType
 
 
 class TestPythonFormatEngine:

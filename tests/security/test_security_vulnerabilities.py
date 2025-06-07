@@ -4,10 +4,10 @@
 import pytest
 import shlex
 from unittest.mock import Mock, patch, MagicMock
-from src.operations.docker.docker_driver import LocalDockerDriver
-from src.operations.docker.docker_request import DockerRequest, DockerOpType
-from src.operations.utils.pure_functions import validate_file_path_format_pure
-from src.operations.factory.unified_request_factory import create_request
+from src.infrastructure.drivers.docker.docker_driver import LocalDockerDriver
+from src.domain.requests.docker.docker_request import DockerRequest, DockerOpType
+from src.shared.utils.pure_functions import validate_file_path_format_pure
+from src.application.factories.unified_request_factory import create_request
 from src.env_core.step.step import Step, StepType
 
 

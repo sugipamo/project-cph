@@ -15,10 +15,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from src.env_core.workflow.graph_based_workflow_builder import GraphBasedWorkflowBuilder
 from src.env_core.step.step import StepContext
 from src.env_integration.fitting.preparation_executor import PreparationExecutor
-from src.operations.di_container import DIContainer
-from src.operations.mock.mock_docker_driver import MockDockerDriver
-from src.operations.mock.mock_file_driver import MockFileDriver
-from src.operations.mock.mock_shell_driver import MockShellDriver
+from src.infrastructure.di_container import DIContainer
+from src.infrastructure.mock.mock_docker_driver import MockDockerDriver
+from src.infrastructure.mock.mock_file_driver import MockFileDriver
+from src.infrastructure.mock.mock_shell_driver import MockShellDriver
 from unittest.mock import MagicMock
 
 

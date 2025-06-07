@@ -6,8 +6,8 @@ import unittest.mock
 from unittest.mock import Mock, patch, MagicMock
 from tests.base.base_test import BaseTest
 
-from src.operations.shell.shell_driver import ShellDriver
-from src.operations.shell.local_shell_driver import LocalShellDriver
+from src.infrastructure.drivers.shell.shell_driver import ShellDriver
+from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
 
 
 class TestShellDriverInterface(BaseTest):
@@ -48,7 +48,7 @@ class TestLocalShellDriver(BaseTest):
         assert isinstance(self.driver, ShellDriver)
         assert hasattr(self.driver, 'run')
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_basic_command(self, mock_run_subprocess):
         """Test running basic command"""
         mock_run_subprocess.return_value = self.mock_success_result
@@ -65,7 +65,7 @@ class TestLocalShellDriver(BaseTest):
             timeout=None
         )
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_with_cwd(self, mock_run_subprocess):
         """Test running command with working directory"""
         mock_run_subprocess.return_value = self.mock_success_result
@@ -81,7 +81,7 @@ class TestLocalShellDriver(BaseTest):
             timeout=None
         )
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_with_environment(self, mock_run_subprocess):
         """Test running command with environment variables"""
         mock_run_subprocess.return_value = self.mock_success_result
@@ -98,7 +98,7 @@ class TestLocalShellDriver(BaseTest):
             timeout=None
         )
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_with_input_data(self, mock_run_subprocess):
         """Test running command with input data (stdin)"""
         mock_run_subprocess.return_value = self.mock_success_result
@@ -115,7 +115,7 @@ class TestLocalShellDriver(BaseTest):
             timeout=None
         )
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_with_timeout(self, mock_run_subprocess):
         """Test running command with timeout"""
         mock_run_subprocess.return_value = self.mock_success_result
@@ -131,7 +131,7 @@ class TestLocalShellDriver(BaseTest):
             timeout=5
         )
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_with_all_parameters(self, mock_run_subprocess):
         """Test running command with all parameters"""
         mock_run_subprocess.return_value = self.mock_success_result
@@ -156,7 +156,7 @@ class TestLocalShellDriver(BaseTest):
             timeout=10
         )
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_command_failure(self, mock_run_subprocess):
         """Test handling of command execution failure"""
         mock_run_subprocess.return_value = self.mock_failure_result
@@ -168,7 +168,7 @@ class TestLocalShellDriver(BaseTest):
         assert result.returncode == 1
         mock_run_subprocess.assert_called_once()
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_shell_utils_exception(self, mock_run_subprocess):
         """Test handling of ShellUtils exceptions"""
         mock_run_subprocess.side_effect = Exception("Shell execution failed")
@@ -176,7 +176,7 @@ class TestLocalShellDriver(BaseTest):
         with pytest.raises(Exception, match="Shell execution failed"):
             self.driver.run(["echo", "test"])
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_empty_command(self, mock_run_subprocess):
         """Test running empty command"""
         mock_run_subprocess.return_value = self.mock_success_result
@@ -192,7 +192,7 @@ class TestLocalShellDriver(BaseTest):
             timeout=None
         )
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_complex_command(self, mock_run_subprocess):
         """Test running complex command with multiple arguments"""
         mock_run_subprocess.return_value = self.mock_success_result
@@ -217,7 +217,7 @@ class TestLocalShellDriverIntegration(BaseTest):
         """Setup test data"""
         self.driver = LocalShellDriver()
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_multiple_sequential_commands(self, mock_run_subprocess):
         """Test running multiple commands in sequence"""
         # Setup different return values for each call
@@ -242,7 +242,7 @@ class TestLocalShellDriverIntegration(BaseTest):
         assert actual_results == ["result1", "result2", "result3"]
         assert mock_run_subprocess.call_count == 3
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_command_with_piped_input(self, mock_run_subprocess):
         """Test command that processes piped input"""
         mock_run_subprocess.return_value = Mock(
@@ -263,7 +263,7 @@ class TestLocalShellDriverIntegration(BaseTest):
             timeout=None
         )
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_command_with_large_environment(self, mock_run_subprocess):
         """Test command with large environment variable set"""
         mock_run_subprocess.return_value = Mock(
@@ -288,7 +288,7 @@ class TestLocalShellDriverEdgeCases(BaseTest):
         """Setup test data"""
         self.driver = LocalShellDriver()
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_with_none_parameters(self, mock_run_subprocess):
         """Test running with explicitly None parameters"""
         mock_run_subprocess.return_value = Mock(
@@ -314,7 +314,7 @@ class TestLocalShellDriverEdgeCases(BaseTest):
             timeout=None
         )
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_with_zero_timeout(self, mock_run_subprocess):
         """Test running with zero timeout"""
         mock_run_subprocess.return_value = Mock(
@@ -334,7 +334,7 @@ class TestLocalShellDriverEdgeCases(BaseTest):
             timeout=0
         )
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_with_empty_environment(self, mock_run_subprocess):
         """Test running with empty environment dictionary"""
         mock_run_subprocess.return_value = Mock(
@@ -354,7 +354,7 @@ class TestLocalShellDriverEdgeCases(BaseTest):
             timeout=None
         )
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_with_empty_input_data(self, mock_run_subprocess):
         """Test running with empty input data"""
         mock_run_subprocess.return_value = Mock(
@@ -374,7 +374,7 @@ class TestLocalShellDriverEdgeCases(BaseTest):
             timeout=None
         )
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_with_unicode_input(self, mock_run_subprocess):
         """Test running command with unicode input data"""
         mock_run_subprocess.return_value = Mock(
@@ -395,7 +395,7 @@ class TestLocalShellDriverEdgeCases(BaseTest):
             timeout=None
         )
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_command_with_special_characters(self, mock_run_subprocess):
         """Test running command with special characters"""
         mock_run_subprocess.return_value = Mock(
@@ -424,7 +424,7 @@ class TestShellDriverParameterValidation(BaseTest):
         """Setup test data"""
         self.driver = LocalShellDriver()
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_parameter_types(self, mock_run_subprocess):
         """Test that parameters maintain their types when passed through"""
         mock_run_subprocess.return_value = Mock(
@@ -450,7 +450,7 @@ class TestShellDriverParameterValidation(BaseTest):
         call_args = mock_run_subprocess.call_args
         assert isinstance(call_args[1]['env'], dict)
     
-    @patch('src.operations.shell.local_shell_driver.ShellUtils.run_subprocess')
+    @patch('src.shared.utils.shell.shell_utils.ShellUtils.run_subprocess')
     def test_run_preserves_parameter_order(self, mock_run_subprocess):
         """Test that parameter order is preserved correctly"""
         mock_run_subprocess.return_value = Mock(

@@ -1,5 +1,5 @@
 import pytest
-from src.operations.result.file_result import FileResult
+from src.domain.results.file_result import FileResult
 
 def test_file_result_success_and_to_dict():
     r = FileResult(success=True, content="abc", path="a.txt", exists=True, op="WRITE")

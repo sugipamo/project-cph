@@ -1,5 +1,5 @@
 import pytest
-from src.operations.di_container import DIContainer
+from src.infrastructure.di_container import DIContainer
 
 def test_register_and_resolve():
     container = DIContainer()
@@ -12,6 +12,6 @@ def test_register_and_resolve():
 
 def test_resolve_unregistered_key():
     container = DIContainer()
-    with pytest.raises(KeyError) as e:
+    with pytest.raises(ValueError) as e:
         container.resolve("not_registered")
     assert "not_registered" in str(e.value) 

@@ -2,7 +2,7 @@
 Test Docker naming utilities
 """
 import pytest
-from src.operations.utils.docker_naming import (
+from src.shared.utils.docker.docker_naming import (
     calculate_dockerfile_hash,
     get_docker_image_name,
     get_docker_container_name,

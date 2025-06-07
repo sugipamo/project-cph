@@ -144,7 +144,7 @@ if __name__ == "__main__":
     import sys
     import json
     from src.context.user_input_parser import parse_user_input
-    from src.operations.build_operations import build_operations
+    from src.infrastructure.build_operations import build_operations
     try:
         operations = build_operations()
         context = parse_user_input(sys.argv[1:], operations)
@@ -159,7 +159,7 @@ if __name__ == "__main__":
         print(f"JSONの解析に失敗しました: {e}")
         sys.exit(1)
     except Exception as e:
-        from src.operations.exceptions.composite_step_failure import CompositeStepFailure
+        from src.infrastructure.exceptions.composite_step_failure import CompositeStepFailure
         if isinstance(e, CompositeStepFailure):
             print(f"ユーザー定義コマンドでエラーが発生しました: {e}")
             if hasattr(e, 'result') and e.result is not None:

@@ -117,6 +117,30 @@ def validate_execution_data(data: ExecutionFormatData) -> Tuple[bool, Optional[s
     return True, None
 
 
+def format_values_with_context_dict(values: list, context_dict: dict) -> list:
+    """
+    Format list of values with context dictionary
+    
+    Args:
+        values: List of string values to format
+        context_dict: Dictionary containing format variables
+        
+    Returns:
+        List of formatted strings
+    """
+    from src.shared.utils.pure_functions import format_string_pure
+    
+    result = []
+    for value in values:
+        if isinstance(value, str):
+            formatted = format_string_pure(value, context_dict)
+            result.append(formatted)
+        else:
+            result.append(str(value))
+    
+    return result
+
+
 def get_docker_naming_from_data(data: ExecutionFormatData, 
                                dockerfile_content: Optional[str] = None,
                                oj_dockerfile_content: Optional[str] = None) -> dict:
@@ -131,7 +155,7 @@ def get_docker_naming_from_data(data: ExecutionFormatData,
     Returns:
         dict: Docker命名情報
     """
-    from src.operations.utils.docker_naming import (
+    from src.shared.utils.docker.docker_naming import (
         get_docker_image_name, get_docker_container_name,
         get_oj_image_name, get_oj_container_name
     )

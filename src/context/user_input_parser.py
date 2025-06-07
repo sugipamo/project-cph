@@ -12,8 +12,8 @@ CONTEST_ENV_DIR = "contest_env"
 def _load_system_info_direct(operations, path="system_info.json"):
     """システム情報を直接読み込む"""
     import json
-    from src.operations.file.file_request import FileRequest
-    from src.operations.file.file_op_type import FileOpType
+    from src.domain.requests.file.file_request import FileRequest
+    from src.domain.requests.file.file_op_type import FileOpType
     
     file_driver = operations.resolve("file_driver")
     
@@ -44,8 +44,8 @@ def _load_system_info_direct(operations, path="system_info.json"):
 def _save_system_info_direct(operations, info, path="system_info.json"):
     """システム情報を直接保存する"""
     import json
-    from src.operations.file.file_request import FileRequest
-    from src.operations.file.file_op_type import FileOpType
+    from src.domain.requests.file.file_request import FileRequest
+    from src.domain.requests.file.file_op_type import FileOpType
     
     file_driver = operations.resolve("file_driver")
     
@@ -137,8 +137,8 @@ def _apply_contest_name_direct(args, context):
 def _load_shared_config(base_dir: str, operations):
     """共有設定を読み込む"""
     import json
-    from src.operations.file.file_request import FileRequest
-    from src.operations.file.file_op_type import FileOpType
+    from src.domain.requests.file.file_request import FileRequest
+    from src.domain.requests.file.file_op_type import FileOpType
     
     file_driver = operations.resolve("file_driver")
     shared_path = os.path.join(base_dir, "shared", "env.json")
@@ -155,8 +155,8 @@ def _load_all_env_jsons(base_dir: str, operations) -> list:
     """環境設定JSONファイルを全て読み込む"""
     env_jsons = []
     file_driver = operations.resolve("file_driver")
-    from src.operations.file.file_request import FileRequest
-    from src.operations.file.file_op_type import FileOpType
+    from src.domain.requests.file.file_request import FileRequest
+    from src.domain.requests.file.file_op_type import FileOpType
     
     req = FileRequest(FileOpType.EXISTS, base_dir)
     result = req.execute(driver=file_driver)
@@ -261,8 +261,8 @@ def _apply_env_json(context, env_jsons, base_dir=None, operations=None):
 def make_dockerfile_loader(operations):
     def loader(path: str) -> str:
         file_driver = operations.resolve("file_driver")
-        from src.operations.file.file_request import FileRequest
-        from src.operations.file.file_op_type import FileOpType
+        from src.infrastructure.file.file_request import FileRequest
+        from src.infrastructure.file.file_op_type import FileOpType
         req = FileRequest(FileOpType.READ, path)
         result = req.execute(driver=file_driver)
         return result.content
@@ -363,6 +363,6 @@ def parse_user_input(
 
 
 if __name__ == "__main__":
-    from src.operations.build_operations import build_operations
+    from src.infrastructure.build_operations import build_operations
     operations = build_operations()
     print(parse_user_input(["py", "local", "t", "abc300", "a"], operations))

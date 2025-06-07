@@ -2,8 +2,8 @@
 Tests for format manager
 """
 import pytest
-from src.operations.formatters.format_manager import FormatManager, get_format_manager, format_template
-from src.operations.formatters.base_format_engine import FormatSyntaxType, FormatEngine, FormatContext, FormatResult
+from src.application.formatters.format_manager import FormatManager  # get_format_manager, format_template removed
+from src.application.formatters.base.base_format_engine import FormatSyntaxType, FormatEngine, FormatContext, FormatResult
 
 
 class MockFormatEngine(FormatEngine):
@@ -152,43 +152,6 @@ class TestFormatManager:
         # Should fallback to default
         engine = self.manager._detect_engine("no special markers")
         assert engine == self.manager._default_engine
-
-
-class TestGlobalInstances:
-    """Test global instances and convenience functions"""
-    
-    def test_get_format_manager(self):
-        """Test global format manager getter"""
-        manager1 = get_format_manager()
-        manager2 = get_format_manager()
-        
-        # Should return same instance
-        assert manager1 is manager2
-        assert isinstance(manager1, FormatManager)
-    
-    def test_format_template_function(self):
-        """Test convenience format function"""
-        template = "{greeting} {name}!"
-        data = {"greeting": "Hello", "name": "World"}
-        
-        result = format_template(template, data)
-        
-        assert result.success is True
-        assert "Hello World!" in result.formatted_text
-    
-    def test_format_template_with_kwargs(self):
-        """Test convenience function with kwargs"""
-        template = "{name}"
-        data = {"name": "test"}
-        
-        result = format_template(
-            template=template,
-            data=data,
-            strict_mode=False,
-            syntax_type=FormatSyntaxType.PYTHON
-        )
-        
-        assert result.success is True
 
 
 class TestErrorHandling:

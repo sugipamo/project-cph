@@ -10,8 +10,8 @@ import time
 from src.env_core.workflow.request_execution_graph import (
     RequestExecutionGraph, RequestNode, DependencyEdge, DependencyType
 )
-from src.operations.result.result import OperationResult
-from src.operations.base_request import BaseRequest
+from src.domain.results.result import OperationResult
+from src.domain.requests.base.base_request import BaseRequest
 
 
 class TestRequestNode:

@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from enum import Enum
 from unittest.mock import MagicMock
 
-from src.operations.docker.docker_request import DockerRequest, DockerOpType
-from src.operations.file.file_request import FileRequest
-from src.operations.file.file_op_type import FileOpType
+from src.domain.requests.docker.docker_request import DockerRequest, DockerOpType
+from src.domain.requests.file.file_request import FileRequest
+from src.domain.requests.file.file_op_type import FileOpType
 
 
 class ResourceType(Enum):

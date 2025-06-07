@@ -8,11 +8,11 @@ from dataclasses import dataclass
 from src.env_core.step.step import Step, StepType
 from src.env_core.step.core import generate_steps_from_json
 from src.env_core.workflow.graph_based_workflow_builder import GraphBasedWorkflowBuilder
-from src.operations.factory.unified_request_factory import create_composite_request
+from src.application.factories.unified_request_factory import create_composite_request
 from src.env_integration.fitting.preparation_executor import PreparationExecutor
 from src.context.execution_context import ExecutionContext
-from src.operations.result.result import OperationResult
-from src.operations.composite.driver_bound_request import DriverBoundRequest
+from src.domain.results.result import OperationResult
+from src.domain.requests.composite.composite_request import CompositeRequest
 
 
 @dataclass
@@ -96,7 +96,7 @@ class WorkflowExecutionService:
             )
         
         # Convert steps to operations requests using unified factory
-        operations_composite = create_composite_request(step_result.steps, self.context, self.operations)
+        operations_composite = create_composite_request(step_result.steps, self.context)
         
         # Analyze environment and prepare if needed (fitting responsibility)
         preparation_results = []
@@ -110,12 +110,11 @@ class WorkflowExecutionService:
                 preparation_requests = self.preparation_executor.convert_to_workflow_requests(preparation_tasks)
                 
                 # Execute preparation tasks
-                from src.operations.composite.unified_driver import UnifiedDriver
+                from src.application.orchestration.unified_driver import UnifiedDriver
                 unified_driver = UnifiedDriver(self.operations)
                 
                 for request in preparation_requests:
-                    bound_request = DriverBoundRequest(request, unified_driver)
-                    result = bound_request.execute()
+                    result = request.execute(unified_driver)
                     preparation_results.append(result)
                     
                     if not result.success:
@@ -128,7 +127,7 @@ class WorkflowExecutionService:
                         )
         
         # Execute main workflow
-        from src.operations.composite.unified_driver import UnifiedDriver
+        from src.infrastructure.composite.unified_driver import UnifiedDriver
         unified_driver = UnifiedDriver(self.operations)
         
         # Execute the operations requests directly
@@ -195,7 +194,7 @@ class WorkflowExecutionService:
         
         for step in steps:
             # Create request from step using unified factory
-            from src.operations.factory.unified_request_factory import create_request
+            from src.infrastructure.factory.unified_request_factory import create_request
             request = create_request(step, self.context)
             if request:
                 # Determine request type based on actual request class

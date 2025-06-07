@@ -2,7 +2,7 @@
 Tests for CompositeStepFailure exception
 """
 import pytest
-from src.operations.exceptions.composite_step_failure import CompositeStepFailure
+from src.shared.exceptions.composite_step_failure import CompositeStepFailure
 
 
 class TestCompositeStepFailure:

@@ -5,7 +5,7 @@ from io import StringIO
 import sys
 
 from src.main import main
-from src.operations.build_operations import build_mock_operations
+from src.infrastructure.build_infrastructure import build_mock_operations
 from src.context.user_input_parser import parse_user_input
 
 # Create mock operations

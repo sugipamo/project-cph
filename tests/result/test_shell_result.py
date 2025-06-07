@@ -1,5 +1,5 @@
 import pytest
-from src.operations.result.shell_result import ShellResult
+from src.domain.results.shell_result import ShellResult
 
 def test_shell_result_success_and_to_dict():
     r = ShellResult(success=True, stdout="ok", stderr="", returncode=0, cmd=["ls"])
