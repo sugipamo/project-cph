@@ -1,1 +1,0 @@
-# Formatters tests package
