@@ -39,7 +39,7 @@ CRITICAL_MODULES = {
 
 # Get all tested modules
 tested_modules = set()
-for root, _dirs, files in os.walk('tests'):
+for _root, _dirs, files in os.walk('tests'):
     for file in files:
         if file.startswith('test_') and file.endswith('.py'):
             test_name = file[5:-3]  # Remove 'test_' and '.py'

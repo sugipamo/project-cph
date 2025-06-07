@@ -29,7 +29,7 @@ class TestGraphBasedWorkflowBuilder:
         assert isinstance(builder, GraphBasedWorkflowBuilder)
         assert builder.context == context
 
-    @patch('src.workflow.step.workflow.create_step_context_from_env_context')
+    @patch('src.workflow.workflow.graph_based_workflow_builder.create_step_context_from_env_context')
     def test_from_controller(self, mock_create_context):
         """Test creating builder from controller"""
         # Setup

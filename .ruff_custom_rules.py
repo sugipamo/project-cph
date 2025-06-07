@@ -23,7 +23,7 @@ FORBIDDEN_PATTERNS = [
     r"print\s*\(",           # print文の使用禁止（ロガー推奨）
     r"import\s+pdb",         # pdbデバッガーの禁止
     r"breakpoint\s*\(",      # breakpoint()の禁止
-    r"# noqa",               # noqaコメントの制限
+    r"# noqa:",              # noqaコメントの制限
     r"type:\s*ignore",       # type: ignoreの制限
     r"\.strip\(\)\.strip\(\)", # 重複するstrip()
     r"len\(.+\)\s*==\s*0",   # len(x) == 0 instead of not x

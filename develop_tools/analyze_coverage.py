@@ -12,7 +12,7 @@ for root, _dirs, files in os.walk('src'):
 
 # Get all test modules
 test_files = set()
-for root, _dirs, files in os.walk('tests'):
+for _root, _dirs, files in os.walk('tests'):
     for file in files:
         if file.startswith('test_') and file.endswith('.py'):
             # Extract what this test is testing
