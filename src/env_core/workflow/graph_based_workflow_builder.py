@@ -212,7 +212,7 @@ class GraphBasedWorkflowBuilder:
         Returns:
             生成されたリクエスト、または None
         """
-        from src.infrastructure.factory.unified_request_factory import create_request
+        from src.application.factories.unified_request_factory import create_request
         
         # 統一ファクトリを使用してリクエストを生成
         return create_request(step, context=self.context)

@@ -127,7 +127,7 @@ class WorkflowExecutionService:
                         )
         
         # Execute main workflow
-        from src.infrastructure.composite.unified_driver import UnifiedDriver
+        from src.application.orchestration.unified_driver import UnifiedDriver
         unified_driver = UnifiedDriver(self.operations)
         
         # Execute the operations requests directly
@@ -194,7 +194,7 @@ class WorkflowExecutionService:
         
         for step in steps:
             # Create request from step using unified factory
-            from src.infrastructure.factory.unified_request_factory import create_request
+            from src.application.factories.unified_request_factory import create_request
             request = create_request(step, self.context)
             if request:
                 # Determine request type based on actual request class

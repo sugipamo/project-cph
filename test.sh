@@ -17,6 +17,7 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     exit 0
 fi
 
+
 # オプションの処理
 NO_COV=false
 HTML=false
