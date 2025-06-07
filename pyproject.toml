@@ -46,12 +46,14 @@ select = [
     "RET", # flake8-return
     "RUF", # Ruff-specific rules
     
-    # 追加セット（将来的に有効化）
+    # 追加セット（段階的に有効化）
+    "N",   # naming conventions (汎用名検出)
+    
+    # 将来的に有効化
     # "D",   # pydocstyle (ドキュメント文字列)
     # "S",   # flake8-bandit (セキュリティ)
     # "PL",  # pylint (より厳格なチェック)
     # "C90", # McCabe complexity
-    # "N",   # naming conventions
 ]
 
 # 無視するルール（ruff.tomlベース + 追加）
@@ -79,6 +81,7 @@ ignore = [
     "RUF001",   # 全角文字の使用（処理系に影響しない）
     "RUF002",   # 全角文字の使用（処理系に影響しない）
     "RUF003",   # 全角文字の使用（処理系に影響しない）
+    "B027",     # 抽象クラスの空メソッド（optional override pattern）
 ]
 
 # 1つの関数の最大行数
@@ -92,11 +95,24 @@ max-statements = 50
 [tool.ruff.lint.mccabe]
 max-complexity = 10
 
-# 命名規約
+# 命名規約（汎用的すぎる名前を検出）
 [tool.ruff.lint.pep8-naming]
 # クラス名: PascalCase
 classmethod-decorators = ["classmethod"]
 staticmethod-decorators = ["staticmethod"]
+
+# 汎用的すぎる変数名を禁止
+ignore-names = [
+    # 一時的に許可する名前（必要最小限）
+    "i", "j", "k",        # ループカウンター
+    "x", "y", "z",        # 座標系
+    "f",                  # ファイルオブジェクト
+    "e",                  # 例外オブジェクト
+    "_",                  # 使用しない変数
+]
+
+# 禁止する汎用名（これらを使うとN999エラー）
+extend-ignore-names = []
 
 # docstring の設定
 [tool.ruff.lint.pydocstyle]
@@ -123,4 +139,8 @@ check-typed-exception = true
 # __init__.pyファイル（ruff.tomlから）
 "**/__init__.py" = [
     "F401",    # unused imports in __init__ files
+]
+# scriptsディレクトリ（開発ツール用）
+"scripts/**/*.py" = [
+    "N802",    # ASTビジター等でPascalCase必要
 ]

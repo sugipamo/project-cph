@@ -38,6 +38,65 @@ NAMING_VIOLATIONS = [
     r".*[0-9]$",             # 末尾数字の制限
 ]
 
+# 汎用的すぎる変数名（禁止リスト）
+GENERIC_VARIABLE_NAMES = [
+    # 汎用すぎる名前
+    r"^data$",           # data
+    r"^info$",           # info
+    r"^obj$",            # obj
+    r"^item$",           # item
+    r"^value$",          # value
+    r"^result$",         # result
+    r"^output$",         # output
+    r"^input$",          # input
+    r"^content$",        # content
+    r"^text$",           # text
+    r"^string$",         # string
+    r"^number$",         # number
+    r"^count$",          # count
+    r"^index$",          # index
+    r"^list$",           # list
+    r"^dict$",           # dict
+    r"^config$",         # config
+    r"^params$",         # params
+    r"^args$",           # args
+    r"^kwargs$",         # kwargs (場合による)
+    r"^var$",            # var
+    r"^val$",            # val
+    r"^elem$",           # elem
+    r"^node$",           # node
+    r"^file$",           # file
+    r"^path$",           # path
+    r"^name$",           # name
+    r"^id$",             # id
+
+    # 1-2文字の汎用名（許可リスト以外）
+    r"^[a-z]$",          # 単一文字（i, j, k, x, y, z, f, e, _ 以外）
+    r"^[a-z]{2}$",       # 2文字（特定用途以外）
+]
+
+# 関数・クラス名の汎用名チェック
+GENERIC_FUNCTION_NAMES = [
+    r"^process$",        # process
+    r"^handle$",         # handle
+    r"^execute$",        # execute
+    r"^run$",            # run
+    r"^do$",             # do
+    r"^get$",            # get
+    r"^set$",            # set
+    r"^create$",         # create
+    r"^make$",           # make
+    r"^build$",          # build
+    r"^parse$",          # parse
+    r"^load$",           # load
+    r"^save$",           # save
+    r"^update$",         # update
+    r"^check$",          # check
+    r"^validate$",       # validate
+    r"^convert$",        # convert
+    r"^transform$",      # transform
+]
+
 # 許可される最大行数
 MAX_FUNCTION_LINES = 50
 MAX_CLASS_LINES = 200

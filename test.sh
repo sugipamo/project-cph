@@ -75,11 +75,77 @@ if [ "$NO_RUFF" = false ]; then
         else
             echo "✓ コード品質チェック完了"
         fi
+        
+        # 汎用名チェック
+        if [ -f "scripts/check_generic_names.py" ]; then
+            echo "🔍 汎用名チェック中..."
+            if ! python3 scripts/check_generic_names.py src/; then
+                echo "汎用名の修正が必要です"
+            fi
+        fi
+        
         echo ""
     else
         echo "警告: ruffがインストールされていません"
         echo "インストール: pip install ruff"
         echo ""
+    fi
+fi
+
+# check-onlyモード（cargo check相当）
+if [ "$CHECK_ONLY" = true ]; then
+    echo "=== 高速チェック（cargo check相当）==="
+    
+    # 2. 型チェック（mypy）
+    echo ""
+    echo "🔍 型チェック中..."
+    if command -v mypy &> /dev/null; then
+        if ! mypy src/ --no-error-summary --quiet 2>/dev/null; then
+            echo "❌ 型エラーが見つかりました"
+            echo "詳細:"
+            mypy src/ --show-error-codes | head -10
+            exit 1
+        else
+            echo "✓ 型チェック完了"
+        fi
+    else
+        echo "⚠️  mypyがインストールされていません（推奨）"
+        echo "インストール: pip install mypy"
+    fi
+
+    # 3. 基本構文チェック
+    echo ""
+    echo "📝 構文チェック中..."
+    if python3 -c "
+import ast
+import glob
+import sys
+
+errors = []
+for file in glob.glob('src/**/*.py', recursive=True):
+    try:
+        with open(file, 'r', encoding='utf-8') as f:
+            ast.parse(f.read(), filename=file)
+    except SyntaxError as e:
+        errors.append(f'{file}:{e.lineno}: {e.msg}')
+    except Exception as e:
+        errors.append(f'{file}: {e}')
+
+if errors:
+    print('❌ 構文エラー:')
+    for error in errors[:10]:  # 最初の10個のみ
+        print(f'  {error}')
+    sys.exit(1)
+else:
+    print('✓ 構文チェック完了')
+"; then
+        echo ""
+        echo "🎉 チェック完了（cargo check相当）"
+        echo "詳細テスト: ./test.sh"
+        exit 0
+    else
+        echo "💥 構文エラーが見つかりました"
+        exit 1
     fi
 fi
 
