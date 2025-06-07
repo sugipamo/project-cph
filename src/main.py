@@ -13,7 +13,7 @@ def main(context, operations):
     
     Executes workflow based on context configuration with environment preparation.
     """
-    from src.workflow_execution_service import WorkflowExecutionService
+    from src.workflow.workflow_execution_service import WorkflowExecutionService
     
     # Get output configuration
     output_config = _get_output_config(context)

@@ -9,7 +9,7 @@ from src.workflow.step.step import Step, StepType
 from src.workflow.step.core import generate_steps_from_json
 from src.workflow.workflow.graph_based_workflow_builder import GraphBasedWorkflowBuilder
 from src.application.factories.unified_request_factory import create_composite_request
-from src.execution.fitting.preparation_executor import PreparationExecutor
+from src.workflow.preparation.preparation_executor import PreparationExecutor
 from src.context.execution_context import ExecutionContext
 from src.domain.results.result import OperationResult
 from src.domain.requests.composite.composite_request import CompositeRequest

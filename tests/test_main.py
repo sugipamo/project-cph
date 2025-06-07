@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch, MagicMock
 from io import StringIO
 
 from src.main import main
-from src.workflow_execution_service import WorkflowExecutionResult
+from src.workflow.workflow_execution_service import WorkflowExecutionResult
 from src.domain.results.result import OperationResult
 from src.domain.exceptions.composite_step_failure import CompositeStepFailure
 
@@ -22,7 +22,7 @@ class TestMainFunction:
         self.mock_context = Mock()
         self.mock_operations = Mock()
         
-    @patch('src.workflow_execution_service.WorkflowExecutionService')
+    @patch('src.workflow.workflow_execution_service.WorkflowExecutionService')
     @patch('builtins.print')
     def test_main_successful_execution_no_preparation(self, mock_print, mock_service_class):
         """Test successful workflow execution without preparation tasks"""
@@ -58,7 +58,7 @@ class TestMainFunction:
         mock_print.assert_any_call("\n=== ステップ実行詳細 ===")
         mock_print.assert_any_call("\n=== 実行完了 ===")
     
-    @patch('src.workflow_execution_service.WorkflowExecutionService')
+    @patch('src.workflow.workflow_execution_service.WorkflowExecutionService')
     @patch('builtins.print')
     def test_main_with_preparation_tasks_success(self, mock_print, mock_service_class):
         """Test workflow execution with successful preparation tasks"""
@@ -90,7 +90,7 @@ class TestMainFunction:
         
         assert result == mock_result
     
-    @patch('src.workflow_execution_service.WorkflowExecutionService')
+    @patch('src.workflow.workflow_execution_service.WorkflowExecutionService')
     @patch('builtins.print')
     def test_main_with_warnings(self, mock_print, mock_service_class):
         """Test workflow execution with warnings"""
@@ -115,7 +115,7 @@ class TestMainFunction:
         
         assert result == mock_result
     
-    @patch('src.workflow_execution_service.WorkflowExecutionService')
+    @patch('src.workflow.workflow_execution_service.WorkflowExecutionService')
     @patch('builtins.print')
     def test_main_execution_failure(self, mock_print, mock_service_class):
         """Test workflow execution failure"""
@@ -148,7 +148,7 @@ class TestStepResultDisplayLogic:
         self.mock_context = Mock()
         self.mock_operations = Mock()
     
-    @patch('src.workflow_execution_service.WorkflowExecutionService')
+    @patch('src.workflow.workflow_execution_service.WorkflowExecutionService')
     @patch('builtins.print')
     def test_step_result_display_successful_step(self, mock_print, mock_service_class):
         """Test display of successful step results"""
@@ -194,7 +194,7 @@ class TestStepResultDisplayLogic:
         mock_print.assert_any_call("    line 2")
         mock_print.assert_any_call("  終了コード: 0")
     
-    @patch('src.workflow_execution_service.WorkflowExecutionService')
+    @patch('src.workflow.workflow_execution_service.WorkflowExecutionService')
     @patch('builtins.print')
     def test_step_result_display_failed_step_with_allow_failure(self, mock_print, mock_service_class):
         """Test display of failed step with allow_failure=True"""
@@ -226,7 +226,7 @@ class TestStepResultDisplayLogic:
         mock_print.assert_any_call("  標準エラー:")
         mock_print.assert_any_call("    error message")
     
-    @patch('src.workflow_execution_service.WorkflowExecutionService')
+    @patch('src.workflow.workflow_execution_service.WorkflowExecutionService')
     @patch('builtins.print')
     def test_step_result_display_failed_step_critical(self, mock_print, mock_service_class):
         """Test display of critical failed step"""
@@ -259,7 +259,7 @@ class TestStepResultDisplayLogic:
         mock_print.assert_any_call("\nステップ 1: ✗ 失敗")
         mock_print.assert_any_call("  エラー: Critical error")
     
-    @patch('src.workflow_execution_service.WorkflowExecutionService')
+    @patch('src.workflow.workflow_execution_service.WorkflowExecutionService')
     @patch('builtins.print')
     def test_step_result_display_long_command_truncation(self, mock_print, mock_service_class):
         """Test command truncation for long commands"""
@@ -307,7 +307,7 @@ class TestStepResultDisplayLogic:
         assert len(command_calls) > 0, "Command output should be present"
         # The test passes if the command display logic was invoked correctly
     
-    @patch('src.workflow_execution_service.WorkflowExecutionService')
+    @patch('src.workflow.workflow_execution_service.WorkflowExecutionService')
     @patch('builtins.print')
     def test_step_result_display_file_request_detailed_type(self, mock_print, mock_service_class):
         """Test display of FILE operation with detailed type"""
@@ -340,7 +340,7 @@ class TestStepResultDisplayLogic:
         # Verify detailed file operation type
         mock_print.assert_any_call("  タイプ: FILE.WRITE")
     
-    @patch('src.workflow_execution_service.WorkflowExecutionService')
+    @patch('src.workflow.workflow_execution_service.WorkflowExecutionService')
     @patch('builtins.print')
     def test_step_result_display_exception_handling(self, mock_print, mock_service_class):
         """Test exception handling in step result display"""
