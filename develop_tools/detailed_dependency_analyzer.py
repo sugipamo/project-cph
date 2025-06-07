@@ -308,7 +308,7 @@ class DetailedDependencyAnalyzer:
             "summary": {
                 "total_modules": len(self.modules),
                 "layer_distribution": dict(layer_stats),
-                "max_layer": max([l for l in layers.values() if l >= 0], default=0),
+                "max_layer": max([layer for layer in layers.values() if layer >= 0], default=0),
                 "cyclic_modules": len([m for m in layers.values() if m == -1])
             },
             "layers": layers,

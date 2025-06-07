@@ -53,8 +53,8 @@ def create_step_from_json(json_step: dict[str, Any], context: StepContext) -> St
 
     try:
         step_type = StepType(step_type_str)
-    except ValueError:
-        raise ValueError(f"Unknown step type: {step_type_str}")
+    except ValueError as e:
+        raise ValueError(f"Unknown step type: {step_type_str}") from e
 
     raw_cmd = json_step.get('cmd', [])
     if not isinstance(raw_cmd, list):

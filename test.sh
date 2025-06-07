@@ -7,6 +7,7 @@
 #   ./test.sh --no-cov          # カバレッジなしで実行
 #   ./test.sh --html             # HTMLカバレッジレポート生成
 #   ./test.sh --no-ruff          # ruffスキップ
+#   ./test.sh --check-only       # cargo check相当（テストなし）
 
 if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo "使用方法:"
@@ -15,6 +16,7 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo "  ./test.sh --no-cov          # カバレッジなしで実行"
     echo "  ./test.sh --html             # HTMLカバレッジレポート生成"
     echo "  ./test.sh --no-ruff          # ruffスキップ"
+    echo "  ./test.sh --check-only       # cargo check相当（テストなし）"
     echo "  ./test.sh --help             # このヘルプを表示"
     exit 0
 fi
@@ -24,6 +26,7 @@ fi
 NO_COV=false
 HTML=false
 NO_RUFF=false
+CHECK_ONLY=false
 PYTEST_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -38,6 +41,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-ruff)
             NO_RUFF=true
+            shift
+            ;;
+        --check-only)
+            CHECK_ONLY=true
             shift
             ;;
         *)

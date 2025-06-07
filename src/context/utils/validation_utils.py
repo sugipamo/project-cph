@@ -76,4 +76,4 @@ def get_steps_from_resolver(resolver, language: str, command_type: str) -> list:
         step_nodes.sort(key=lambda n: n.key)
         return step_nodes
     except Exception as e:
-        raise ValueError(f"stepsの取得に失敗しました: {e}")
+        raise ValueError(f"stepsの取得に失敗しました: {e}") from e

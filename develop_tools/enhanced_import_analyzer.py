@@ -261,7 +261,7 @@ class EnhancedImportAnalyzer:
                 "total_modules": len(self.modules),
                 "circular_dependencies": len(circular_deps),
                 "modules_in_cycles": len([m for m in self.modules if layers.get(m) == -1]),
-                "max_layer": max([l for l in layers.values() if l >= 0], default=0),
+                "max_layer": max([layer for layer in layers.values() if layer >= 0], default=0),
                 "layer_distribution": dict(layer_stats)
             },
             "circular_dependencies": circular_deps,

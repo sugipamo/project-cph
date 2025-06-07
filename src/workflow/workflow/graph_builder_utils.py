@@ -293,7 +293,7 @@ def is_parent_directory_pure(parent_path: str, child_path: str) -> bool:
         parent = Path(parent_path).resolve()
         child = Path(child_path).resolve()
         return parent in child.parents
-    except:
+    except Exception:
         # パスの解決に失敗した場合は文字列で判定
         return child_path.startswith(parent_path + '/')
 

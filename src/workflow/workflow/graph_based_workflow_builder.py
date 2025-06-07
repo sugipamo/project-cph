@@ -136,7 +136,8 @@ class GraphBasedWorkflowBuilder:
         Returns:
             CompositeRequest: 順次実行用のコンポジットリクエスト
         """
-        return GraphToCompositeAdapter.to_composite_request(graph)
+        # TODO: GraphToCompositeAdapter implementation needed
+        raise NotImplementedError("GraphToCompositeAdapter is temporarily disabled")
 
     def _build_graph_from_steps(self, steps: list[Step]) -> RequestExecutionGraph:
         """Stepリストから実行グラフを構築

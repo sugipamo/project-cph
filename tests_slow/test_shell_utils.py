@@ -28,7 +28,7 @@ def test_start_interactive_and_enqueue_output_and_drain_queue():
     t.start()
     t.join(timeout=2)
     lines = list(ShellUtils.drain_queue(q))
-    assert any("xyz" in l for l in lines)
+    assert any("xyz" in line for line in lines)
     proc.stdout.close()
     proc.wait()
 

@@ -76,7 +76,7 @@ class PythonRequest(BaseRequest):
                         stdout, stderr, returncode = python_driver.run_code_string(
                             code, cwd=self.cwd
                         )
-                except:
+                except Exception:
                     # Fallback to PythonUtils if driver resolution fails
                     if PythonUtils.is_script_file(self.code_or_file):
                         stdout, stderr, returncode = PythonUtils.run_script_file(

@@ -14,7 +14,7 @@ def count_lines_of_code(file_path):
             if stripped and not stripped.startswith('#'):
                 loc += 1
         return loc
-    except:
+    except Exception:
         return 0
 
 # Analyze complexity of modules
@@ -32,7 +32,7 @@ for root, _dirs, files in os.walk('src'):
 
 # Get tested modules
 tested_modules = set()
-for root, _dirs, files in os.walk('tests'):
+for _root, _dirs, files in os.walk('tests'):
     for file in files:
         if file.startswith('test_') and file.endswith('.py'):
             test_name = file[5:-3]
