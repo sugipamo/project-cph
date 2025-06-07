@@ -155,18 +155,15 @@ class TestUnifiedDriver:
             mock_request.execute.assert_called_once_with(driver=expected_driver)
             assert result.success is True
     
-    def test_getattr_delegation(self):
-        """Test that unknown attributes are delegated to operations"""
+    def test_direct_driver_methods(self):
+        """Test direct driver methods are available"""
         driver = UnifiedDriver(self.mock_operations)
         
-        # Set a mock attribute on operations
-        self.mock_operations.custom_method = MagicMock(return_value="custom_result")
-        
-        # Access via driver
-        result = driver.custom_method()
-        
-        assert result == "custom_result"
-        self.mock_operations.custom_method.assert_called_once()
+        # Test that specific driver methods are available
+        assert hasattr(driver, 'run')  # Shell driver method
+        assert hasattr(driver, 'copy')  # File driver method
+        assert hasattr(driver, 'run_container')  # Docker driver method
+        assert hasattr(driver, 'exec_in_container')  # Docker driver method
     
     def test_multiple_executions_use_cache(self):
         """Test that multiple executions use cached drivers"""

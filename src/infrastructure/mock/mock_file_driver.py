@@ -109,19 +109,55 @@ class MockFileDriver(FileDriver):
         if path in self.contents:
             del self.contents[path]
 
-    def open(self, path: Path, mode: str = "r", encoding: Optional[str] = None):
+    def open(self, path: str, mode: str = "r", encoding: Optional[str] = None):
         """Mock file open"""
-        self._record_operation("open", path, mode)
-        # Return mock file object or raise error
-        if mode.startswith('r') and path not in self.files:
-            raise FileNotFoundError(f"MockFileDriver: {path} does not exist")
-        # For mock purposes, return None
-        return None
+        from io import StringIO
+        from contextlib import contextmanager
+        
+        # Convert to absolute path
+        if isinstance(path, str):
+            path_obj = self.base_dir / Path(path)
+        else:
+            path_obj = path
+            
+        self._record_operation("open", path_obj, mode)
+        
+        @contextmanager
+        def mock_file():
+            if mode.startswith('r'):
+                if path_obj not in self.files:
+                    raise FileNotFoundError(f"MockFileDriver: {path_obj} does not exist")
+                content = self.contents.get(path_obj, "")
+                yield StringIO(content)
+            elif mode.startswith('w'):
+                content_io = StringIO()
+                yield content_io
+                # After writing, save content
+                written_content = content_io.getvalue()
+                self.files.add(path_obj)
+                self.contents[path_obj] = written_content
+            else:
+                raise NotImplementedError(f"Mode '{mode}' not implemented in MockFileDriver")
+        
+        return mock_file()
 
     def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver: Any = None):
         """Mock Docker copy"""
         self._record_operation("docker_cp", src, dst, container, to_container)
-        return None
+        # Check if source file exists
+        src_path = Path(src) if Path(src).is_absolute() else self.base_dir / Path(src)
+        if src_path not in self.files:
+            raise FileNotFoundError(f"MockFileDriver: {src_path} does not exist")
+        return f"mock_docker_cp_{container}_{src}_{dst}"
+    
+    def hash_file(self, path: Path) -> str:
+        """Mock file hash calculation"""
+        self._record_operation("hash_file", path)
+        if path not in self.files:
+            raise FileNotFoundError(f"MockFileDriver: {path} does not exist")
+        # Return mock hash based on file content
+        content = self.contents.get(path, "")
+        return f"mock_hash_{hash(content)}"
 
     def list_files(self, base_dir: Path) -> List[Path]:
         """List all files under directory"""

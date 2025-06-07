@@ -254,11 +254,12 @@ class MockDockerDriver(DockerDriver):
         })
         return self._default_result
     
-    def get_logs(self, name: str):
+    def get_logs(self, name: str, show_output: bool = True):
         """Get container logs (mocked)."""
         self._operations_executed.append({
             'operation': 'logs',
-            'container': name
+            'container': name,
+            'show_output': show_output
         })
         return DockerResult(
             stdout=f"Mock logs for {name}",

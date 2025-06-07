@@ -15,9 +15,13 @@ def test_behavior_verification():
     driver = MockFileDriver()
     
     # 操作を実行
-    driver._create_impl("test.txt", "content")
-    driver._copy_impl(Path("test.txt"), Path("copy.txt"))
-    driver._move_impl(Path("copy.txt"), Path("moved.txt"))
+    test_path = driver.base_dir / Path("test.txt")
+    copy_path = driver.base_dir / Path("copy.txt")
+    moved_path = driver.base_dir / Path("moved.txt")
+    
+    driver._create_impl(test_path, "content")
+    driver._copy_impl(test_path, copy_path)
+    driver._move_impl(copy_path, moved_path)
     
     # 振る舞い検証
     driver.assert_operation_called("create")
@@ -25,8 +29,7 @@ def test_behavior_verification():
     driver.assert_operation_called("move", times=1)
     
     # 特定の引数での呼び出し検証
-    abs_test_path = driver.base_dir / Path("test.txt")
-    driver.assert_operation_called_with("create", abs_test_path, "content")
+    driver.assert_operation_called_with("create", test_path, "content")
 
 def test_file_exists_setup():
     """ファイル存在状態の設定機能をテスト"""
@@ -42,8 +45,8 @@ def test_file_exists_setup():
 
 def test_move_and_copy_impl():
     driver = MockFileDriver()
-    src = Path("a.txt")
-    dst = Path("b.txt")
+    src = driver.base_dir / Path("a.txt")
+    dst = driver.base_dir / Path("b.txt")
     driver._create_impl(src, "abc")
     driver._move_impl(src, dst)
     assert not driver._exists_impl(src)
@@ -55,12 +58,12 @@ def test_move_and_copy_impl():
 def test_copy_impl_file_not_found():
     driver = MockFileDriver()
     with pytest.raises(FileNotFoundError):
-        driver._copy_impl(Path("notfound.txt"), Path("b.txt"))
+        driver._copy_impl(driver.base_dir / Path("notfound.txt"), driver.base_dir / Path("b.txt"))
 
 def test_copytree_and_rmtree_impl():
     driver = MockFileDriver()
-    src = Path("dir1")
-    dst = Path("dir2")
+    src = driver.base_dir / Path("dir1")
+    dst = driver.base_dir / Path("dir2")
     driver._create_impl(src, "")
     driver._copytree_impl(src, dst)
     assert ("copytree", src, dst) in driver.operations
@@ -69,7 +72,7 @@ def test_copytree_and_rmtree_impl():
 
 def test_remove_impl():
     driver = MockFileDriver()
-    p = Path("a.txt")
+    p = driver.base_dir / Path("a.txt")
     driver._create_impl(p, "abc")
     driver._remove_impl(p)
     assert not driver._exists_impl(p)
@@ -91,11 +94,12 @@ def test_open_unsupported_mode():
     driver = MockFileDriver()
     driver.path = Path("a.txt")
     with pytest.raises(NotImplementedError):
-        driver.open("a.txt", "x")
+        with driver.open("a.txt", "x") as f:
+            pass
 
 def test_docker_cp_and_hash_file():
     driver = MockFileDriver()
-    p = Path("a.txt")
+    p = driver.base_dir / Path("a.txt")
     driver._create_impl(p, "abc")
     driver.files.add(p)
     result = driver.docker_cp(str(p), "dst", "container")

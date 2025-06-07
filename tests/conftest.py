@@ -3,7 +3,11 @@
 テストコードの重複を削減し、保守性を向上させる
 """
 import pytest
+import tempfile
+import os
+from pathlib import Path
 from src.infrastructure.di_container import DIContainer
+from src.infrastructure.build_infrastructure import build_mock_infrastructure
 
 
 @pytest.fixture
@@ -69,3 +73,58 @@ def assert_request_success(result, operation_type=None):
     assert result.is_success()
     if operation_type:
         assert result.op == operation_type
+
+
+@pytest.fixture
+def temp_workspace():
+    """テスト用の一時ワークスペースを提供"""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        old_cwd = os.getcwd()
+        os.chdir(temp_dir)
+        try:
+            yield Path(temp_dir)
+        finally:
+            os.chdir(old_cwd)
+
+
+@pytest.fixture
+def mock_infrastructure():
+    """統一されたモックインフラストラクチャを提供"""
+    return build_mock_infrastructure()
+
+
+@pytest.fixture
+def mock_drivers(mock_infrastructure):
+    """個別のモックドライバーを提供"""
+    return {
+        'file_driver': mock_infrastructure.resolve('file_driver'),
+        'shell_driver': mock_infrastructure.resolve('shell_driver'),
+        'docker_driver': mock_infrastructure.resolve('docker_driver'),
+        'python_driver': mock_infrastructure.resolve('python_driver'),
+    }
+
+
+@pytest.fixture
+def clean_mock_state(mock_drivers):
+    """テスト実行前にモック状態をクリア"""
+    # ファイルドライバーのクリア
+    file_driver = mock_drivers['file_driver']
+    file_driver.files.clear()
+    file_driver.contents.clear()
+    file_driver.operations.clear()
+    
+    # シェルドライバーのクリア
+    shell_driver = mock_drivers['shell_driver']
+    shell_driver._commands_executed.clear()
+    
+    # ドッカードライバーのクリア
+    docker_driver = mock_drivers['docker_driver']
+    if hasattr(docker_driver, 'clear_history'):
+        docker_driver.clear_history()
+    
+    # Pythonドライバーのクリア
+    python_driver = mock_drivers['python_driver']
+    if hasattr(python_driver, 'clear_history'):
+        python_driver.clear_history()
+    
+    yield mock_drivers

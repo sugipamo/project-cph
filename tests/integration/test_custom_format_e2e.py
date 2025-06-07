@@ -3,7 +3,7 @@ End-to-end tests for custom format integration
 """
 import pytest
 from unittest.mock import Mock, MagicMock
-from src.application.formatters.test_result_formatter import (
+from src.application.formatters.result_formatter import (
     TemplateBasedFormatter, AdvancedFormatOptions, TestResult, TestStatus
 )
 from src.application.formatters.base.base_format_engine import FormatSyntaxType
