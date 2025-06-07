@@ -64,7 +64,16 @@ class TestCompositeRequest:
         req2 = MockRequest("req2", should_fail=True)
         req3 = MockRequest("req3")
         
-        composite = CompositeRequest([req1, req2, req3])
+        # Create mock execution controller that raises on failure only for failed requests
+        mock_execution_controller = Mock()
+        
+        def check_failure_side_effect(req, result):
+            if not result.success:
+                raise Exception("Execution failed")
+        
+        mock_execution_controller._check_failure = Mock(side_effect=check_failure_side_effect)
+        
+        composite = CompositeRequest([req1, req2, req3], execution_controller=mock_execution_controller)
         driver = Mock()
         
         with pytest.raises(Exception):  # ExecutionController raises on failure
