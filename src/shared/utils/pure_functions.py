@@ -25,15 +25,15 @@ def format_string_pure(value: str, context_dict: Dict[str, str]) -> str:
     Returns:
         Formatted string
     
-    Note: This function uses basic formatter to avoid circular dependencies
+    Note: Self-contained implementation without external dependencies
     """
-    # Import here to avoid circular dependencies
-    from src.shared.utils.basic_formatter import format_string_simple
-    
     if not isinstance(value, str):
         return value
     
-    return format_string_simple(value, context_dict)
+    result = value
+    for key, val in context_dict.items():
+        result = result.replace(f"{{{key}}}", str(val))
+    return result
 
 
 def extract_missing_keys_pure(template: str, available_keys: set) -> List[str]:

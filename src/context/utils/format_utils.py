@@ -1,56 +1,18 @@
 """
-Minimal format utilities for internal use
+Format utilities - delegates to basic_formatter
 
-This module provides only the essential formatting functions needed by 
-python_format_engine.py to avoid circular imports. For general use, 
-prefer src.shared.utils.unified_formatter.
+This module is a thin wrapper around basic_formatter to maintain
+backward compatibility while avoiding code duplication.
 """
-import re
 from typing import Dict, List, Tuple, Any
-from functools import lru_cache
 
-# Pre-compiled regex patterns for performance
-_FORMAT_KEY_PATTERN = re.compile(r'{(\w+)}')
-
-
-@lru_cache(maxsize=512)
-def extract_format_keys(s: str) -> List[str]:
-    """
-    Extract format keys from template string.
-    
-    Args:
-        s: Template string with {key} placeholders
-        
-    Returns:
-        List of format keys found in template
-    """
-    return _FORMAT_KEY_PATTERN.findall(s)
-
-
-def format_with_missing_keys(s: str, **kwargs) -> Tuple[str, List[str]]:
-    """
-    Format template with partial data, returning missing keys.
-    
-    Args:
-        s: Template string to format
-        **kwargs: Format variables
-        
-    Returns:
-        Tuple of (formatted_string, missing_keys)
-    """
-    keys = extract_format_keys(s)
-    missing = [k for k in keys if k not in kwargs]
-    
-    class SafeDict(dict):
-        def __missing__(self, key):
-            return '{' + key + '}'
-    
-    formatted = s.format_map(SafeDict(kwargs))
-    return formatted, missing
-
-
-# Import additional function from basic_formatter for backward compatibility
-from src.shared.utils.basic_formatter import format_with_context
+# Import all basic formatting functions from the canonical source
+from src.shared.utils.basic_formatter import (
+    extract_format_keys,
+    format_with_missing_keys, 
+    format_with_context,
+    validate_template_keys
+)
 
 
 def build_path_template(base_path: str, *parts: str) -> str:
@@ -85,22 +47,6 @@ def build_path_template(base_path: str, *parts: str) -> str:
         return normalized_base + '/' + '/'.join(normalized_parts)
     else:
         return normalized_base
-
-
-def validate_template_keys(template: str, required_keys: List[str]) -> Tuple[bool, List[str]]:
-    """
-    Validate that template contains required keys.
-    
-    Args:
-        template: Template string to validate
-        required_keys: List of required keys
-        
-    Returns:
-        Tuple of (is_valid, missing_keys)
-    """
-    template_keys = set(extract_format_keys(template))
-    missing_keys = [key for key in required_keys if key not in template_keys]
-    return len(missing_keys) == 0, missing_keys
 
 
 # Backward compatibility aliases
