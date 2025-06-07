@@ -442,15 +442,27 @@ class TestCLIEntryPoint:
                 sys.argv = old_argv
         return cli_wrapper
     
+    @patch('src.application.cli_application.WorkflowExecutionService')
     @patch('src.infrastructure.build_infrastructure.build_operations')
     @patch('src.context.user_input_parser.parse_user_input')
-    @patch('src.main.main')
-    def test_cli_successful_execution(self, mock_main, mock_parse, mock_build):
+    def test_cli_successful_execution(self, mock_parse, mock_build, mock_service_class):
         """Test successful CLI execution"""
         mock_operations = Mock()
         mock_context = Mock()
+        mock_context.env_json = {'shared': {'output': {}}}
         mock_build.return_value = mock_operations
         mock_parse.return_value = mock_context
+        
+        # Mock workflow execution service
+        mock_service = Mock()
+        mock_service_class.return_value = mock_service
+        mock_result = Mock()
+        mock_result.success = True
+        mock_result.preparation_results = []
+        mock_result.warnings = []
+        mock_result.errors = []
+        mock_result.results = []
+        mock_service.execute_workflow.return_value = mock_result
         
         cli_wrapper = self.create_cli_wrapper()
         result = cli_wrapper(['main.py', 'py', 'local', 'test', 'abc300', 'a'])
@@ -458,7 +470,6 @@ class TestCLIEntryPoint:
         assert result == 0
         mock_build.assert_called_once()
         mock_parse.assert_called_once_with(['py', 'local', 'test', 'abc300', 'a'], mock_operations)
-        mock_main.assert_called_once_with(mock_context, mock_operations)
     
     @patch('src.infrastructure.build_infrastructure.build_operations')
     @patch('src.context.user_input_parser.parse_user_input')
@@ -505,22 +516,25 @@ class TestCLIEntryPoint:
         assert result == 1
         mock_print.assert_called_with("JSONの解析に失敗しました: Invalid JSON: line 1 column 2 (char 1)")
     
+    @patch('src.application.cli_application.WorkflowExecutionService')
     @patch('src.infrastructure.build_infrastructure.build_operations')
     @patch('src.context.user_input_parser.parse_user_input')
-    @patch('src.main.main')
     @patch('builtins.print')
-    def test_cli_composite_step_failure_handling(self, mock_print, mock_main, mock_parse, mock_build):
+    def test_cli_composite_step_failure_handling(self, mock_print, mock_parse, mock_build, mock_service_class):
         """Test CLI handling of CompositeStepFailure"""
         mock_operations = Mock()
         mock_context = Mock()
+        mock_context.env_json = {'shared': {'output': {}}}
         mock_build.return_value = mock_operations
         mock_parse.return_value = mock_context
         
-        # Create CompositeStepFailure with result
+        # Mock workflow execution service to raise CompositeStepFailure
+        mock_service = Mock()
+        mock_service_class.return_value = mock_service
         mock_result = Mock()
         mock_result.get_error_output.return_value = "Step error details"
         composite_error = CompositeStepFailure("Step failed", mock_result)
-        mock_main.side_effect = composite_error
+        mock_service.execute_workflow.side_effect = composite_error
         
         cli_wrapper = self.create_cli_wrapper()
         result = cli_wrapper(['main.py', 'py', 'local', 'test'])
@@ -529,20 +543,23 @@ class TestCLIEntryPoint:
         mock_print.assert_any_call("ユーザー定義コマンドでエラーが発生しました: Step failed")
         mock_print.assert_any_call("Step error details")
     
+    @patch('src.application.cli_application.WorkflowExecutionService')
     @patch('src.infrastructure.build_infrastructure.build_operations')
     @patch('src.context.user_input_parser.parse_user_input')
-    @patch('src.main.main')
     @patch('builtins.print')
-    def test_cli_composite_step_failure_without_result(self, mock_print, mock_main, mock_parse, mock_build):
+    def test_cli_composite_step_failure_without_result(self, mock_print, mock_parse, mock_build, mock_service_class):
         """Test CLI handling of CompositeStepFailure without result"""
         mock_operations = Mock()
         mock_context = Mock()
+        mock_context.env_json = {'shared': {'output': {}}}
         mock_build.return_value = mock_operations
         mock_parse.return_value = mock_context
         
-        # Create CompositeStepFailure without result
+        # Mock workflow execution service to raise CompositeStepFailure without result
+        mock_service = Mock()
+        mock_service_class.return_value = mock_service
         composite_error = CompositeStepFailure("Step failed", None)
-        mock_main.side_effect = composite_error
+        mock_service.execute_workflow.side_effect = composite_error
         
         cli_wrapper = self.create_cli_wrapper()
         result = cli_wrapper(['main.py', 'py', 'local', 'test'])
@@ -550,20 +567,23 @@ class TestCLIEntryPoint:
         assert result == 1
         mock_print.assert_called_with("ユーザー定義コマンドでエラーが発生しました: Step failed")
     
+    @patch('src.application.cli_application.WorkflowExecutionService')
     @patch('src.infrastructure.build_infrastructure.build_operations')
     @patch('src.context.user_input_parser.parse_user_input')
-    @patch('src.main.main')
     @patch('builtins.print')
     @patch('traceback.print_exc')
-    def test_cli_generic_exception_handling(self, mock_traceback, mock_print, mock_main, mock_parse, mock_build):
+    def test_cli_generic_exception_handling(self, mock_traceback, mock_print, mock_parse, mock_build, mock_service_class):
         """Test CLI handling of generic exceptions"""
         mock_operations = Mock()
         mock_context = Mock()
+        mock_context.env_json = {'shared': {'output': {}}}
         mock_build.return_value = mock_operations
         mock_parse.return_value = mock_context
         
-        # Generic exception
-        mock_main.side_effect = RuntimeError("Unexpected error")
+        # Mock workflow execution service to raise RuntimeError
+        mock_service = Mock()
+        mock_service_class.return_value = mock_service
+        mock_service.execute_workflow.side_effect = RuntimeError("Unexpected error")
         
         cli_wrapper = self.create_cli_wrapper()
         result = cli_wrapper(['main.py', 'py', 'local', 'test'])
