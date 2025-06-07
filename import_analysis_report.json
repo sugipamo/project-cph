@@ -1,6 +1,6 @@
 {
   "summary": {
-    "total_modules": 132,
+    "total_modules": 135,
     "circular_dependencies": 0,
     "max_layer": 0
   },
@@ -34,7 +34,6 @@
     "shared.exceptions": 0,
     "shared.exceptions.composite_step_failure": 0,
     "shared.utils.output_utils": 0,
-    "shared.utils.unified_formatter": 0,
     "shared.utils": 0,
     "shared.utils.basic_formatter": 0,
     "shared.utils.pure_functions": 0,
@@ -82,6 +81,9 @@
     "domain.constants": 0,
     "domain.constants.operation_type": 0,
     "domain.requests": 0,
+    "domain.interfaces.docker_interface": 0,
+    "domain.interfaces": 0,
+    "domain.interfaces.execution_interface": 0,
     "domain.types": 0,
     "domain.types.execution_types": 0,
     "domain.results": 0,
@@ -133,6 +135,7 @@
     "application.orchestration.execution_controller": 0,
     "application.orchestration.unified_driver": 0,
     "application.orchestration.output_manager": 0,
+    "application.formatters.unified_formatter": 0,
     "application.formatters": 0,
     "application.formatters.python_format_engine": 0,
     "application.formatters.format_manager": 0,
@@ -148,17 +151,6 @@
           "imports": [],
           "imported_by": [],
           "file_path": "/home/cphelper/project-cph/src/shared/utils/output_utils.py"
-        },
-        {
-          "name": "shared.utils.unified_formatter",
-          "layer": 0,
-          "imports": [
-            "src.shared.utils.basic_formatter",
-            "src.application.formatters.format_manager",
-            "src.application.formatters.base.base_format_engine"
-          ],
-          "imported_by": [],
-          "file_path": "/home/cphelper/project-cph/src/shared/utils/unified_formatter.py"
         },
         {
           "name": "shared.utils",
@@ -254,6 +246,17 @@
     },
     "application.formatters": {
       "modules": [
+        {
+          "name": "application.formatters.unified_formatter",
+          "layer": 0,
+          "imports": [
+            "src.shared.utils.basic_formatter",
+            "src.application.formatters.format_manager",
+            "src.application.formatters.base.base_format_engine"
+          ],
+          "imported_by": [],
+          "file_path": "/home/cphelper/project-cph/src/application/formatters/unified_formatter.py"
+        },
         {
           "name": "application.formatters",
           "layer": 0,
@@ -1231,20 +1234,20 @@
       "raw_imports": [
         "typing",
         "dataclasses",
-        "src.shared.utils.unified_formatter",
-        "src.shared.utils.unified_formatter",
+        "src.shared.utils.basic_formatter",
+        "src.shared.utils.basic_formatter",
         "src.shared.utils.docker.docker_naming"
       ],
       "normalized_imports": [
         "typing",
         "dataclasses",
-        "src.shared.utils.unified_formatter",
-        "src.shared.utils.unified_formatter",
+        "src.shared.utils.basic_formatter",
+        "src.shared.utils.basic_formatter",
         "src.shared.utils.docker.docker_naming"
       ],
       "internal_imports": [
-        "src.shared.utils.unified_formatter",
-        "src.shared.utils.unified_formatter",
+        "src.shared.utils.basic_formatter",
+        "src.shared.utils.basic_formatter",
         "src.shared.utils.docker.docker_naming"
       ],
       "external_imports": [
@@ -1354,29 +1357,6 @@
       "external_imports": [
         "typing",
         "enum"
-      ]
-    },
-    "shared.utils.unified_formatter": {
-      "file_path": "/home/cphelper/project-cph/src/shared/utils/unified_formatter.py",
-      "raw_imports": [
-        "typing",
-        "src.shared.utils.basic_formatter",
-        "src.application.formatters.format_manager",
-        "src.application.formatters.base.base_format_engine"
-      ],
-      "normalized_imports": [
-        "typing",
-        "src.shared.utils.basic_formatter",
-        "src.application.formatters.format_manager",
-        "src.application.formatters.base.base_format_engine"
-      ],
-      "internal_imports": [
-        "src.shared.utils.basic_formatter",
-        "src.application.formatters.format_manager",
-        "src.application.formatters.base.base_format_engine"
-      ],
-      "external_imports": [
-        "typing"
       ]
     },
     "shared.utils": {
@@ -2212,6 +2192,53 @@
       "internal_imports": [],
       "external_imports": []
     },
+    "domain.interfaces.docker_interface": {
+      "file_path": "/home/cphelper/project-cph/src/domain/interfaces/docker_interface.py",
+      "raw_imports": [
+        "abc",
+        "typing",
+        "src.domain.results.result"
+      ],
+      "normalized_imports": [
+        "abc",
+        "typing",
+        "src.domain.results.result"
+      ],
+      "internal_imports": [
+        "src.domain.results.result"
+      ],
+      "external_imports": [
+        "abc",
+        "typing"
+      ]
+    },
+    "domain.interfaces": {
+      "file_path": "/home/cphelper/project-cph/src/domain/interfaces/__init__.py",
+      "raw_imports": [],
+      "normalized_imports": [],
+      "internal_imports": [],
+      "external_imports": []
+    },
+    "domain.interfaces.execution_interface": {
+      "file_path": "/home/cphelper/project-cph/src/domain/interfaces/execution_interface.py",
+      "raw_imports": [
+        "abc",
+        "typing",
+        "src.domain.results.result"
+      ],
+      "normalized_imports": [
+        "abc",
+        "typing",
+        "src.domain.results.result"
+      ],
+      "internal_imports": [
+        "src.domain.results.result"
+      ],
+      "external_imports": [
+        "abc",
+        "typing"
+      ]
+    },
     "domain.types": {
       "file_path": "/home/cphelper/project-cph/src/domain/types/__init__.py",
       "raw_imports": [],
@@ -2353,8 +2380,7 @@
         "src.domain.requests.base.base_request",
         "src.domain.constants.operation_type",
         "src.domain.requests.file.file_op_type",
-        "src.domain.results.file_result",
-        "src.application.orchestration.unified_driver"
+        "src.domain.results.file_result"
       ],
       "normalized_imports": [
         "time",
@@ -2363,15 +2389,13 @@
         "src.domain.requests.base.base_request",
         "src.domain.constants.operation_type",
         "src.domain.requests.file.file_op_type",
-        "src.domain.results.file_result",
-        "src.application.orchestration.unified_driver"
+        "src.domain.results.file_result"
       ],
       "internal_imports": [
         "src.domain.requests.base.base_request",
         "src.domain.constants.operation_type",
         "src.domain.requests.file.file_op_type",
-        "src.domain.results.file_result",
-        "src.application.orchestration.unified_driver"
+        "src.domain.results.file_result"
       ],
       "external_imports": [
         "time",
@@ -2444,25 +2468,25 @@
       "raw_imports": [
         "typing",
         "src.domain.requests.composite.base_composite_request",
-        "src.application.orchestration.execution_controller",
-        "src.application.orchestration.output_manager",
+        "src.domain.interfaces.execution_interface",
         "src.domain.requests.composite.composite_structure",
-        "src.domain.requests.base.base_request"
+        "src.domain.requests.base.base_request",
+        "src.application.orchestration.output_manager"
       ],
       "normalized_imports": [
         "typing",
         "src.domain.requests.composite.base_composite_request",
-        "src.application.orchestration.execution_controller",
-        "src.application.orchestration.output_manager",
+        "src.domain.interfaces.execution_interface",
         "src.domain.requests.composite.composite_structure",
-        "src.domain.requests.base.base_request"
+        "src.domain.requests.base.base_request",
+        "src.application.orchestration.output_manager"
       ],
       "internal_imports": [
         "src.domain.requests.composite.base_composite_request",
-        "src.application.orchestration.execution_controller",
-        "src.application.orchestration.output_manager",
+        "src.domain.interfaces.execution_interface",
         "src.domain.requests.composite.composite_structure",
-        "src.domain.requests.base.base_request"
+        "src.domain.requests.base.base_request",
+        "src.application.orchestration.output_manager"
       ],
       "external_imports": [
         "typing"
@@ -2472,17 +2496,14 @@
       "file_path": "/home/cphelper/project-cph/src/domain/requests/composite/composite_structure.py",
       "raw_imports": [
         "typing",
-        "src.domain.requests.base.base_request",
-        "src.domain.requests.composite.composite_request"
+        "src.domain.requests.base.base_request"
       ],
       "normalized_imports": [
         "typing",
-        "src.domain.requests.base.base_request",
-        "src.domain.requests.composite.composite_request"
+        "src.domain.requests.base.base_request"
       ],
       "internal_imports": [
-        "src.domain.requests.base.base_request",
-        "src.domain.requests.composite.composite_request"
+        "src.domain.requests.base.base_request"
       ],
       "external_imports": [
         "typing"
@@ -2506,7 +2527,7 @@
       "raw_imports": [
         "enum",
         "typing",
-        "src.infrastructure.drivers.docker.docker_driver",
+        "src.domain.interfaces.docker_interface",
         "src.domain.results.result",
         "src.domain.constants.operation_type",
         "inspect",
@@ -2518,7 +2539,7 @@
       "normalized_imports": [
         "enum",
         "typing",
-        "src.infrastructure.drivers.docker.docker_driver",
+        "src.domain.interfaces.docker_interface",
         "src.domain.results.result",
         "src.domain.constants.operation_type",
         "inspect",
@@ -2528,7 +2549,7 @@
         "json"
       ],
       "internal_imports": [
-        "src.infrastructure.drivers.docker.docker_driver",
+        "src.domain.interfaces.docker_interface",
         "src.domain.results.result",
         "src.domain.constants.operation_type",
         "src.domain.requests.base.base_request",
@@ -2556,22 +2577,19 @@
         "typing",
         "src.domain.requests.base.base_request",
         "src.domain.constants.operation_type",
-        "src.domain.results.result",
-        "src.application.orchestration.unified_driver"
+        "src.domain.results.result"
       ],
       "normalized_imports": [
         "time",
         "typing",
         "src.domain.requests.base.base_request",
         "src.domain.constants.operation_type",
-        "src.domain.results.result",
-        "src.application.orchestration.unified_driver"
+        "src.domain.results.result"
       ],
       "internal_imports": [
         "src.domain.requests.base.base_request",
         "src.domain.constants.operation_type",
-        "src.domain.results.result",
-        "src.application.orchestration.unified_driver"
+        "src.domain.results.result"
       ],
       "external_imports": [
         "time",
@@ -3296,6 +3314,29 @@
       ],
       "internal_imports": [
         "src.pure_functions.output_manager_formatter_pure"
+      ],
+      "external_imports": [
+        "typing"
+      ]
+    },
+    "application.formatters.unified_formatter": {
+      "file_path": "/home/cphelper/project-cph/src/application/formatters/unified_formatter.py",
+      "raw_imports": [
+        "typing",
+        "src.shared.utils.basic_formatter",
+        "src.application.formatters.format_manager",
+        "src.application.formatters.base.base_format_engine"
+      ],
+      "normalized_imports": [
+        "typing",
+        "src.shared.utils.basic_formatter",
+        "src.application.formatters.format_manager",
+        "src.application.formatters.base.base_format_engine"
+      ],
+      "internal_imports": [
+        "src.shared.utils.basic_formatter",
+        "src.application.formatters.format_manager",
+        "src.application.formatters.base.base_format_engine"
       ],
       "external_imports": [
         "typing"

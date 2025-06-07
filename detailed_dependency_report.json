@@ -1,22 +1,19 @@
 {
   "summary": {
-    "total_modules": 132,
+    "total_modules": 135,
     "layer_distribution": {
-      "0": 77,
-      "1": 16,
-      "2": 14,
-      "3": 6,
-      "4": 6,
-      "5": 2,
-      "6": 2,
-      "7": 3,
-      "8": 2,
-      "9": 1,
-      "10": 1,
-      "-1": 2
+      "0": 78,
+      "1": 19,
+      "2": 15,
+      "3": 7,
+      "4": 7,
+      "5": 4,
+      "6": 3,
+      "7": 1,
+      "8": 1
     },
-    "max_layer": 10,
-    "cyclic_modules": 2
+    "max_layer": 8,
+    "cyclic_modules": 0
   },
   "layers": {
     "src": 0,
@@ -67,6 +64,7 @@
     "src.domain.constants": 0,
     "src.domain.constants.operation_type": 0,
     "src.domain.requests": 0,
+    "src.domain.interfaces": 0,
     "src.domain.types": 0,
     "src.domain.types.execution_types": 0,
     "src.domain.results": 0,
@@ -101,6 +99,7 @@
     "src.context.utils.format_utils": 1,
     "src.shared.utils.pure_functions": 1,
     "src.context.dockerfile_resolver": 1,
+    "src.pure_functions.execution_context_formatter_pure": 1,
     "src.infrastructure.drivers.file.file_driver": 1,
     "src.infrastructure.drivers.shell.shell_driver": 1,
     "src.infrastructure.drivers.python.python_driver": 1,
@@ -108,6 +107,8 @@
     "src.infrastructure.persistence.sqlite.repositories.session_repository": 1,
     "src.domain.requests.base.base_request": 1,
     "src.application.orchestration.unified_driver": 1,
+    "src.domain.interfaces.docker_interface": 1,
+    "src.domain.interfaces.execution_interface": 1,
     "src.domain.results.shell_result": 1,
     "src.domain.results.docker_result": 1,
     "src.domain.results.file_result": 1,
@@ -120,153 +121,114 @@
     "src.infrastructure.environment.base_strategy": 2,
     "src.infrastructure.environment.environment_manager": 2,
     "src.domain.requests.composite.base_composite_request": 2,
+    "src.domain.requests.composite.composite_structure": 2,
+    "src.domain.requests.shell.shell_request": 2,
     "src.domain.requests.python.python_request": 2,
     "src.env_core.workflow.request_execution_graph": 2,
-    "src.domain.requests.shell.shell_request": 2,
     "src.infrastructure.mock.mock_shell_driver": 2,
     "src.domain.requests.file.file_request": 2,
     "src.context.resolver.config_resolver": 2,
     "src.application.formatters.format_manager": 3,
-    "src.pure_functions.graph_builder_pure": 3,
+    "src.domain.requests.composite.composite_request": 3,
     "src.infrastructure.drivers.docker.docker_driver": 3,
+    "src.pure_functions.graph_builder_pure": 3,
     "src.utils.path_operations": 3,
     "src.context.user_input_parser": 3,
     "src.context.utils.validation_utils": 3,
-    "src.shared.utils.unified_formatter": 4,
+    "src.application.formatters.unified_formatter": 4,
     "src.application.formatters.test_result_formatter": 4,
-    "src.infrastructure.mock.mock_docker_driver": 4,
     "src.domain.requests.docker.docker_request": 4,
+    "src.application.factories.unified_request_factory": 4,
+    "src.infrastructure.mock.mock_docker_driver": 4,
     "src.context.context_validator": 4,
     "src.context.config_resolver_proxy": 4,
-    "src.pure_functions.execution_context_formatter_pure": 5,
     "src.env_integration.fitting.environment_inspector": 5,
-    "src.context.execution_context": 6,
-    "src.application.factories.unified_request_factory": 6,
-    "src.env_integration.fitting.preparation_executor": 7,
-    "src.infrastructure.config.di_config": 7,
-    "src.env_core.step.workflow": 7,
-    "src.infrastructure.build_infrastructure": 8,
-    "src.env_core.workflow.graph_based_workflow_builder": 8,
-    "src.workflow_execution_service": 9,
-    "src.main": 10,
-    "src.domain.requests.composite.composite_request": -1,
-    "src.domain.requests.composite.composite_structure": -1
+    "src.env_core.step.workflow": 5,
+    "src.infrastructure.config.di_config": 5,
+    "src.context.execution_context": 5,
+    "src.env_core.workflow.graph_based_workflow_builder": 6,
+    "src.infrastructure.build_infrastructure": 6,
+    "src.env_integration.fitting.preparation_executor": 6,
+    "src.workflow_execution_service": 7,
+    "src.main": 8
   },
   "issues": {
     "layer_violations": [
       {
-        "violator": "src.shared.utils.unified_formatter",
-        "dependency": "src.application.formatters.format_manager",
-        "rule": "shared should not depend on application"
-      },
-      {
-        "violator": "src.shared.utils.unified_formatter",
-        "dependency": "src.application.formatters.base.base_format_engine",
-        "rule": "shared should not depend on application"
-      },
-      {
-        "violator": "src.domain.requests.file.file_request",
-        "dependency": "src.application.orchestration.unified_driver",
-        "rule": "domain should not depend on infrastructure or application"
-      },
-      {
         "violator": "src.domain.requests.composite.composite_request",
         "dependency": "src.application.orchestration.output_manager",
         "rule": "domain should not depend on infrastructure or application"
-      },
-      {
-        "violator": "src.domain.requests.composite.composite_request",
-        "dependency": "src.application.orchestration.execution_controller",
-        "rule": "domain should not depend on infrastructure or application"
-      },
-      {
-        "violator": "src.domain.requests.docker.docker_request",
-        "dependency": "src.infrastructure.drivers.docker.docker_driver",
-        "rule": "domain should not depend on infrastructure or application"
-      },
-      {
-        "violator": "src.domain.requests.shell.shell_request",
-        "dependency": "src.application.orchestration.unified_driver",
-        "rule": "domain should not depend on infrastructure or application"
       }
     ],
-    "circular_dependencies": [
-      {
-        "modules": [
-          "src.domain.requests.composite.composite_structure",
-          "src.domain.requests.composite.composite_request"
-        ],
-        "size": 2
-      }
-    ],
+    "circular_dependencies": [],
     "high_coupling": [
       {
         "module": "src.workflow_execution_service",
         "dependency_count": 9,
         "dependencies": [
-          "src.application.factories.unified_request_factory",
-          "src.context.execution_context",
-          "src.application.orchestration.unified_driver",
-          "src.domain.requests.composite.composite_request",
-          "src.domain.results.result",
-          "src.env_core.workflow.graph_based_workflow_builder",
-          "src.env_integration.fitting.preparation_executor",
           "src.env_core.step.core",
-          "src.env_core.step.step"
+          "src.domain.requests.composite.composite_request",
+          "src.env_core.step.step",
+          "src.env_integration.fitting.preparation_executor",
+          "src.application.orchestration.unified_driver",
+          "src.domain.results.result",
+          "src.application.factories.unified_request_factory",
+          "src.env_core.workflow.graph_based_workflow_builder",
+          "src.context.execution_context"
         ]
       },
       {
         "module": "src.infrastructure.config.di_config",
         "dependency_count": 17,
         "dependencies": [
-          "src.infrastructure.environment.environment_manager",
-          "src.infrastructure.mock.mock_docker_driver",
-          "src.infrastructure.mock.mock_file_driver",
-          "src.infrastructure.mock.mock_shell_driver",
           "src.infrastructure.drivers.shell.local_shell_driver",
-          "src.application.orchestration.unified_driver",
-          "src.infrastructure.persistence.sqlite.repositories.operation_repository",
           "src.infrastructure.persistence.sqlite.repositories.session_repository",
-          "src.infrastructure.mock.mock_python_driver",
-          "src.infrastructure.persistence.sqlite.sqlite_manager",
-          "src.application.orchestration.output_manager",
-          "src.infrastructure.drivers.docker.docker_driver",
           "src.infrastructure.drivers.python.python_driver",
+          "src.infrastructure.mock.mock_python_driver",
+          "src.application.orchestration.unified_driver",
+          "src.infrastructure.mock.mock_file_driver",
           "src.application.orchestration.execution_controller",
-          "src.infrastructure.di_container",
+          "src.infrastructure.persistence.sqlite.repositories.operation_repository",
           "src.application.factories.unified_request_factory",
-          "src.infrastructure.drivers.file.local_file_driver"
+          "src.infrastructure.drivers.file.local_file_driver",
+          "src.infrastructure.persistence.sqlite.sqlite_manager",
+          "src.infrastructure.mock.mock_shell_driver",
+          "src.infrastructure.drivers.docker.docker_driver",
+          "src.infrastructure.mock.mock_docker_driver",
+          "src.infrastructure.di_container",
+          "src.application.orchestration.output_manager",
+          "src.infrastructure.environment.environment_manager"
         ]
       },
       {
         "module": "src.env_integration.fitting.preparation_executor",
         "dependency_count": 9,
         "dependencies": [
-          "src.domain.requests.docker.docker_request",
-          "src.env_integration.fitting.preparation_error_handler",
-          "src.context.execution_context",
-          "src.env_integration.fitting.environment_inspector",
-          "src.utils.path_operations",
+          "src.domain.requests.file.file_request",
           "src.env_integration.fitting.docker_state_manager",
           "src.infrastructure.shell.shell_request",
+          "src.env_integration.fitting.preparation_error_handler",
+          "src.env_integration.fitting.environment_inspector",
+          "src.utils.path_operations",
           "src.domain.requests.file.file_op_type",
-          "src.domain.requests.file.file_request"
+          "src.domain.requests.docker.docker_request",
+          "src.context.execution_context"
         ]
       },
       {
         "module": "src.application.factories.unified_request_factory",
         "dependency_count": 10,
         "dependencies": [
-          "src.infrastructure.environment.environment_manager",
-          "src.domain.requests.python.python_request",
-          "src.pure_functions.execution_context_formatter_pure",
+          "src.domain.requests.file.file_request",
           "src.domain.requests.shell.shell_request",
-          "src.domain.requests.base.base_request",
           "src.domain.requests.composite.composite_request",
           "src.context.commands.base_command",
-          "src.domain.requests.file.file_op_type",
           "src.env_core.step.step",
-          "src.domain.requests.file.file_request"
+          "src.pure_functions.execution_context_formatter_pure",
+          "src.domain.requests.file.file_op_type",
+          "src.domain.requests.python.python_request",
+          "src.domain.requests.base.base_request",
+          "src.infrastructure.environment.environment_manager"
         ]
       }
     ]
@@ -278,16 +240,6 @@
         "layer": 0,
         "dependencies": [],
         "dependency_count": 0
-      },
-      {
-        "name": "src.shared.utils.unified_formatter",
-        "layer": 4,
-        "dependencies": [
-          "src.application.formatters.format_manager",
-          "src.shared.utils.basic_formatter",
-          "src.application.formatters.base.base_format_engine"
-        ],
-        "dependency_count": 3
       },
       {
         "name": "src.shared.utils",
@@ -305,8 +257,8 @@
         "name": "src.shared.utils.pure_functions",
         "layer": 1,
         "dependencies": [
-          "src.shared.utils.docker.docker_command_builder",
-          "src.shared.utils.docker.docker_utils"
+          "src.shared.utils.docker.docker_utils",
+          "src.shared.utils.docker.docker_command_builder"
         ],
         "dependency_count": 2
       },
@@ -361,6 +313,16 @@
     ],
     "application.formatters": [
       {
+        "name": "src.application.formatters.unified_formatter",
+        "layer": 4,
+        "dependencies": [
+          "src.application.formatters.format_manager",
+          "src.application.formatters.base.base_format_engine",
+          "src.shared.utils.basic_formatter"
+        ],
+        "dependency_count": 3
+      },
+      {
         "name": "src.application.formatters",
         "layer": 0,
         "dependencies": [],
@@ -370,8 +332,8 @@
         "name": "src.application.formatters.python_format_engine",
         "layer": 2,
         "dependencies": [
-          "src.context.utils.format_utils",
-          "src.application.formatters.base.base_format_engine"
+          "src.application.formatters.base.base_format_engine",
+          "src.context.utils.format_utils"
         ],
         "dependency_count": 2
       },
@@ -379,8 +341,8 @@
         "name": "src.application.formatters.format_manager",
         "layer": 3,
         "dependencies": [
-          "src.application.formatters.python_format_engine",
-          "src.application.formatters.base.base_format_engine"
+          "src.application.formatters.base.base_format_engine",
+          "src.application.formatters.python_format_engine"
         ],
         "dependency_count": 2
       },
@@ -418,15 +380,15 @@
       },
       {
         "name": "src.context.execution_context",
-        "layer": 6,
+        "layer": 5,
         "dependencies": [
-          "src.context.config_resolver_proxy",
+          "src.context.dockerfile_resolver",
           "src.pure_functions.execution_context_formatter_pure",
-          "src.context.execution_data",
-          "src.shared.utils.basic_formatter",
-          "src.utils.path_operations",
+          "src.context.config_resolver_proxy",
           "src.context.context_validator",
-          "src.context.dockerfile_resolver"
+          "src.utils.path_operations",
+          "src.context.execution_data",
+          "src.shared.utils.basic_formatter"
         ],
         "dependency_count": 7
       },
@@ -458,13 +420,13 @@
         "name": "src.context.user_input_parser",
         "layer": 3,
         "dependencies": [
-          "src.context.resolver.config_resolver",
-          "src.infrastructure.file.file_request",
-          "src.infrastructure.build_operations",
-          "src.domain.requests.file.file_op_type",
-          "src.infrastructure.file.file_op_type",
+          "src.domain.requests.file.file_request",
           "src.context.dockerfile_resolver",
-          "src.domain.requests.file.file_request"
+          "src.infrastructure.file.file_op_type",
+          "src.infrastructure.file.file_request",
+          "src.domain.requests.file.file_op_type",
+          "src.infrastructure.build_operations",
+          "src.context.resolver.config_resolver"
         ],
         "dependency_count": 7
       },
@@ -496,8 +458,8 @@
         "name": "src.context.resolver.config_resolver",
         "layer": 2,
         "dependencies": [
-          "src.context.resolver.config_node",
           "src.context.resolver.config_node_logic",
+          "src.context.resolver.config_node",
           "src.shared.utils.basic_formatter"
         ],
         "dependency_count": 3
@@ -542,10 +504,10 @@
     "infrastructure": [
       {
         "name": "src.infrastructure.build_infrastructure",
-        "layer": 8,
+        "layer": 6,
         "dependencies": [
-          "src.infrastructure.config.di_config",
-          "src.infrastructure.di_container"
+          "src.infrastructure.di_container",
+          "src.infrastructure.config.di_config"
         ],
         "dependency_count": 2
       },
@@ -599,25 +561,25 @@
       },
       {
         "name": "src.infrastructure.config.di_config",
-        "layer": 7,
+        "layer": 5,
         "dependencies": [
-          "src.infrastructure.environment.environment_manager",
-          "src.infrastructure.mock.mock_docker_driver",
-          "src.infrastructure.mock.mock_file_driver",
-          "src.infrastructure.mock.mock_shell_driver",
           "src.infrastructure.drivers.shell.local_shell_driver",
-          "src.application.orchestration.unified_driver",
-          "src.infrastructure.persistence.sqlite.repositories.operation_repository",
           "src.infrastructure.persistence.sqlite.repositories.session_repository",
-          "src.infrastructure.mock.mock_python_driver",
-          "src.infrastructure.persistence.sqlite.sqlite_manager",
-          "src.application.orchestration.output_manager",
-          "src.infrastructure.drivers.docker.docker_driver",
           "src.infrastructure.drivers.python.python_driver",
+          "src.infrastructure.mock.mock_python_driver",
+          "src.application.orchestration.unified_driver",
+          "src.infrastructure.mock.mock_file_driver",
           "src.application.orchestration.execution_controller",
-          "src.infrastructure.di_container",
+          "src.infrastructure.persistence.sqlite.repositories.operation_repository",
           "src.application.factories.unified_request_factory",
-          "src.infrastructure.drivers.file.local_file_driver"
+          "src.infrastructure.drivers.file.local_file_driver",
+          "src.infrastructure.persistence.sqlite.sqlite_manager",
+          "src.infrastructure.mock.mock_shell_driver",
+          "src.infrastructure.drivers.docker.docker_driver",
+          "src.infrastructure.mock.mock_docker_driver",
+          "src.infrastructure.di_container",
+          "src.application.orchestration.output_manager",
+          "src.infrastructure.environment.environment_manager"
         ],
         "dependency_count": 17
       },
@@ -639,8 +601,8 @@
         "name": "src.infrastructure.mock.mock_docker_driver",
         "layer": 4,
         "dependencies": [
-          "src.infrastructure.drivers.docker.docker_driver",
-          "src.domain.results.docker_result"
+          "src.domain.results.docker_result",
+          "src.infrastructure.drivers.docker.docker_driver"
         ],
         "dependency_count": 2
       },
@@ -711,12 +673,12 @@
         "name": "src.infrastructure.drivers.docker.docker_driver",
         "layer": 3,
         "dependencies": [
-          "src.shared.utils.docker",
           "src.infrastructure.drivers.shell.local_shell_driver",
           "src.infrastructure.drivers.shell.shell_driver",
           "src.domain.requests.shell.shell_request",
-          "src.shared.utils.docker.docker_utils",
-          "src.infrastructure.drivers.base.base_driver"
+          "src.infrastructure.drivers.base.base_driver",
+          "src.shared.utils.docker",
+          "src.shared.utils.docker.docker_utils"
         ],
         "dependency_count": 6
       },
@@ -724,8 +686,8 @@
         "name": "src.infrastructure.drivers.shell.local_shell_driver",
         "layer": 2,
         "dependencies": [
-          "src.infrastructure.drivers.shell.shell_driver",
-          "src.shared.utils.shell.shell_utils"
+          "src.shared.utils.shell.shell_utils",
+          "src.infrastructure.drivers.shell.shell_driver"
         ],
         "dependency_count": 2
       },
@@ -798,8 +760,8 @@
         "name": "src.infrastructure.persistence.sqlite.repositories.operation_repository",
         "layer": 1,
         "dependencies": [
-          "src.infrastructure.persistence.base.base_repository",
-          "src.infrastructure.persistence.sqlite.sqlite_manager"
+          "src.infrastructure.persistence.sqlite.sqlite_manager",
+          "src.infrastructure.persistence.base.base_repository"
         ],
         "dependency_count": 2
       },
@@ -813,8 +775,8 @@
         "name": "src.infrastructure.persistence.sqlite.repositories.session_repository",
         "layer": 1,
         "dependencies": [
-          "src.infrastructure.persistence.base.base_repository",
-          "src.infrastructure.persistence.sqlite.sqlite_manager"
+          "src.infrastructure.persistence.sqlite.sqlite_manager",
+          "src.infrastructure.persistence.base.base_repository"
         ],
         "dependency_count": 2
       }
@@ -843,6 +805,28 @@
         "layer": 0,
         "dependencies": [],
         "dependency_count": 0
+      },
+      {
+        "name": "src.domain.interfaces.docker_interface",
+        "layer": 1,
+        "dependencies": [
+          "src.domain.results.result"
+        ],
+        "dependency_count": 1
+      },
+      {
+        "name": "src.domain.interfaces",
+        "layer": 0,
+        "dependencies": [],
+        "dependency_count": 0
+      },
+      {
+        "name": "src.domain.interfaces.execution_interface",
+        "layer": 1,
+        "dependencies": [
+          "src.domain.results.result"
+        ],
+        "dependency_count": 1
       },
       {
         "name": "src.domain.types",
@@ -888,8 +872,8 @@
         "name": "src.domain.results.file_result",
         "layer": 1,
         "dependencies": [
-          "src.domain.results.result",
-          "src.domain.constants.operation_type"
+          "src.domain.constants.operation_type",
+          "src.domain.results.result"
         ],
         "dependency_count": 2
       },
@@ -909,13 +893,12 @@
         "name": "src.domain.requests.file.file_request",
         "layer": 2,
         "dependencies": [
-          "src.domain.results.file_result",
-          "src.application.orchestration.unified_driver",
           "src.domain.constants.operation_type",
+          "src.domain.requests.file.file_op_type",
           "src.domain.requests.base.base_request",
-          "src.domain.requests.file.file_op_type"
+          "src.domain.results.file_result"
         ],
-        "dependency_count": 5
+        "dependency_count": 4
       },
       {
         "name": "src.domain.requests.base",
@@ -935,8 +918,8 @@
         "name": "src.domain.requests.composite.base_composite_request",
         "layer": 2,
         "dependencies": [
-          "src.domain.requests.base.base_request",
-          "src.domain.constants.operation_type"
+          "src.domain.constants.operation_type",
+          "src.domain.requests.base.base_request"
         ],
         "dependency_count": 2
       },
@@ -948,24 +931,23 @@
       },
       {
         "name": "src.domain.requests.composite.composite_request",
-        "layer": -1,
+        "layer": 3,
         "dependencies": [
           "src.domain.requests.composite.composite_structure",
           "src.domain.requests.composite.base_composite_request",
-          "src.application.orchestration.output_manager",
           "src.domain.requests.base.base_request",
-          "src.application.orchestration.execution_controller"
+          "src.domain.interfaces.execution_interface",
+          "src.application.orchestration.output_manager"
         ],
         "dependency_count": 5
       },
       {
         "name": "src.domain.requests.composite.composite_structure",
-        "layer": -1,
+        "layer": 2,
         "dependencies": [
-          "src.domain.requests.base.base_request",
-          "src.domain.requests.composite.composite_request"
+          "src.domain.requests.base.base_request"
         ],
-        "dependency_count": 2
+        "dependency_count": 1
       },
       {
         "name": "src.domain.requests.docker",
@@ -978,10 +960,10 @@
         "layer": 4,
         "dependencies": [
           "src.domain.constants.operation_type",
-          "src.infrastructure.drivers.docker.docker_driver",
+          "src.domain.interfaces.docker_interface",
           "src.domain.requests.composite.composite_request",
-          "src.domain.requests.base.base_request",
-          "src.domain.results.result"
+          "src.domain.results.result",
+          "src.domain.requests.base.base_request"
         ],
         "dependency_count": 5
       },
@@ -995,21 +977,20 @@
         "name": "src.domain.requests.shell.shell_request",
         "layer": 2,
         "dependencies": [
-          "src.domain.results.result",
-          "src.domain.requests.base.base_request",
           "src.domain.constants.operation_type",
-          "src.application.orchestration.unified_driver"
+          "src.domain.requests.base.base_request",
+          "src.domain.results.result"
         ],
-        "dependency_count": 4
+        "dependency_count": 3
       },
       {
         "name": "src.domain.requests.python.python_request",
         "layer": 2,
         "dependencies": [
-          "src.domain.results.result",
-          "src.domain.requests.base.base_request",
+          "src.shared.utils.python.python_utils",
           "src.domain.constants.operation_type",
-          "src.shared.utils.python.python_utils"
+          "src.domain.requests.base.base_request",
+          "src.domain.results.result"
         ],
         "dependency_count": 4
       },
