@@ -17,12 +17,10 @@ class CompositeStructure:
         """
         Recursively count all leaves (BaseCompositeRequest that are not CompositeRequest).
         """
-        # Import here to avoid circular import
-        from src.domain.requests.composite.composite_request import CompositeRequest
-        
         count = 0
         for req in self.requests:
-            if isinstance(req, CompositeRequest):
+            # Check if request has count_leaf_requests method (duck typing)
+            if hasattr(req, 'count_leaf_requests') and callable(getattr(req, 'count_leaf_requests')):
                 count += req.count_leaf_requests()
             else:
                 count += 1

@@ -1,7 +1,7 @@
 """Docker request implementation for container operations."""
 from enum import Enum, auto
 from typing import Any, Dict, Optional, Union, List
-from src.infrastructure.drivers.docker.docker_driver import DockerDriver, LocalDockerDriver
+from src.domain.interfaces.docker_interface import DockerDriverInterface
 from src.domain.results.result import OperationResult
 from src.domain.constants.operation_type import OperationType
 import inspect
@@ -61,11 +61,11 @@ class DockerRequest(BaseRequest):
         """Execute the Docker request."""
         return super().execute(driver)
 
-    def _execute_core(self, driver):
+    def _execute_core(self, driver: DockerDriverInterface):
         """Core execution logic for Docker operations."""
         # Pre-processing for RUN operations
         if self.op == DockerOpType.RUN:
-            if isinstance(driver, LocalDockerDriver) and self.container:
+            if hasattr(driver, 'ps') and self.container:
                 # Check if container exists
                 container_names = driver.ps(all=True, show_output=False, names_only=True)
                 if self.container not in container_names:

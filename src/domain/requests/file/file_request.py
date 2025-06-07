@@ -30,9 +30,8 @@ class FileRequest(BaseRequest):
         """Core execution logic for file operations."""
         self._start_time = time.time()
         try:
-            # Handle unified driver case
-            from src.application.orchestration.unified_driver import UnifiedDriver
-            if isinstance(driver, UnifiedDriver):
+            # Handle unified driver case using duck typing
+            if hasattr(driver, '_get_cached_driver') and callable(getattr(driver, '_get_cached_driver')):
                 actual_driver = driver._get_cached_driver("file_driver")
             else:
                 actual_driver = driver

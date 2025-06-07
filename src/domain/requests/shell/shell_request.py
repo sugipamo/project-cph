@@ -37,10 +37,9 @@ class ShellRequest(BaseRequest):
         """
         start_time = time.perf_counter()
         try:
-            # Handle unified driver case
+            # Handle unified driver case using duck typing
             actual_driver = driver
-            from src.application.orchestration.unified_driver import UnifiedDriver
-            if isinstance(driver, UnifiedDriver):
+            if hasattr(driver, '_get_cached_driver') and callable(getattr(driver, '_get_cached_driver')):
                 actual_driver = driver._get_cached_driver("shell_driver")
             
             # Use the shell driver to run the command

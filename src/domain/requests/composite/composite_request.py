@@ -1,8 +1,7 @@
 """Composite request implementation."""
-from typing import List, Any
+from typing import List, Any, Optional
 from src.domain.requests.composite.base_composite_request import BaseCompositeRequest
-from src.application.orchestration.execution_controller import ExecutionController
-from src.application.orchestration.output_manager import OutputManager
+from src.domain.interfaces.execution_interface import ExecutionInterface, OutputInterface
 from src.domain.requests.composite.composite_structure import CompositeStructure
 from src.domain.requests.base.base_request import BaseRequest
 
@@ -10,10 +9,11 @@ from src.domain.requests.base.base_request import BaseRequest
 class CompositeRequest(BaseCompositeRequest):
     """Composite request that contains multiple sub-requests."""
     
-    def __init__(self, requests: List[BaseRequest], debug_tag: str = None, name: str = None):
+    def __init__(self, requests: List[BaseRequest], debug_tag: str = None, name: str = None,
+                 execution_controller: Optional[ExecutionInterface] = None):
         # Initialize structure first before calling super().__init__
         self.structure = CompositeStructure(requests)
-        self.execution_controller = ExecutionController()
+        self.execution_controller = execution_controller  # Will be injected from infrastructure
         self._executed = False
         self._results = None
         # Now call super().__init__ which tries to set self.requests
@@ -42,11 +42,17 @@ class CompositeRequest(BaseCompositeRequest):
         results = []
         for req in self.requests:
             result = req.execute(driver=driver)
-            OutputManager.handle_request_output(req, result)
+            
+            # Handle output directly using OutputManager static method
+            if hasattr(req, 'show_output') and req.show_output:
+                from src.application.orchestration.output_manager import OutputManager
+                OutputManager.handle_request_output(req, result)
+            
             results.append(result)
             
-            # Delegate allow_failure check to ExecutionController
-            self.execution_controller._check_failure(req, result)
+            # Check failure if execution controller is available
+            if self.execution_controller and hasattr(self.execution_controller, '_check_failure'):
+                self.execution_controller._check_failure(req, result)
         
         self._results = results
         return results
