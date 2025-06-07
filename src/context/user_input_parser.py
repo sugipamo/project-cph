@@ -72,7 +72,7 @@ def _parse_command_line_direct(args, context, root):
 
 
 def _apply_language_direct(args, context, root):
-    """言語の適用"""
+    """言語の適用 - 引数で指定された場合のみ更新、なければ既存設定を保持"""
     for idx, arg in enumerate(args):
         # 第1レベルのノード（言語）のみをチェック
         for lang_node in root.next_nodes:
@@ -81,11 +81,12 @@ def _apply_language_direct(args, context, root):
                 new_args = args[:idx] + args[idx+1:]
                 return new_args, context
     
+    # 引数に言語指定がない場合は既存設定を保持
     return args, context
 
 
 def _apply_env_type_direct(args, context, root):
-    """環境タイプの適用"""
+    """環境タイプの適用 - 引数で指定された場合のみ更新、なければ既存設定を保持"""
     from src.context.resolver.config_resolver import resolve_by_match_desc
     
     if context.language:
@@ -98,6 +99,7 @@ def _apply_env_type_direct(args, context, root):
                         new_args = args[:idx] + args[idx+1:]
                         return new_args, context
     
+    # 引数にenv_type指定がない場合は既存設定を保持
     return args, context
 
 

@@ -25,14 +25,17 @@ def format_string_pure(value: str, context_dict: Dict[str, str]) -> str:
         
     Returns:
         Formatted string
+    
+    Note: This function now delegates to the unified formatter for consistency
     """
+    # Import here to avoid circular dependencies
+    from src.shared.utils.unified_formatter import get_unified_formatter
+    
     if not isinstance(value, str):
         return value
     
-    result = value
-    for key, val in context_dict.items():
-        result = result.replace(f"{{{key}}}", str(val))
-    return result
+    formatter = get_unified_formatter()
+    return formatter.format_string_simple(value, context_dict)
 
 
 def extract_missing_keys_pure(template: str, available_keys: set) -> List[str]:
@@ -103,188 +106,79 @@ def validate_file_path_format_pure(path: str) -> Tuple[bool, Optional[str]]:
 
 def validate_docker_image_name_pure(image_name: str) -> bool:
     """
-    Pure function to validate Docker image name format
-    
-    Args:
-        image_name: Docker image name to validate
-        
-    Returns:
-        Boolean indicating if the image name is valid
+    DEPRECATED: Use src.shared.utils.docker.validate_docker_image_name instead
     """
-    if not image_name:
-        return False
-    
-    # Basic Docker image name validation
-    # Pattern: [registry/]name[:tag]
-    pattern = r'^([a-z0-9._-]+/)*[a-z0-9._-]+(:[\w.-]+)?$'
-    return bool(re.match(pattern, image_name, re.IGNORECASE))
+    from src.shared.utils.docker.docker_command_builder import validate_docker_image_name
+    return validate_docker_image_name(image_name)
 
 
 # =============================================================================
 # Docker Command Construction Pure Functions
+# DEPRECATED: Use src.shared.utils.docker.docker_command_builder instead
 # =============================================================================
 
 def build_docker_run_command_pure(image: str, name: str = None, options: Dict[str, Any] = None) -> List[str]:
     """
-    Pure function to build docker run command
-    
-    Args:
-        image: Docker image name
-        name: Container name
-        options: Additional options
-        
-    Returns:
-        Docker run command as list
+    DEPRECATED: Use src.shared.utils.docker.build_docker_run_command instead
     """
-    cmd = ["docker", "run"]
-    
-    if name:
-        cmd.extend(["--name", name])
-    
-    if options:
-        if options.get("detach", False):
-            cmd.append("-d")
-        if "ports" in options:
-            for port in options["ports"]:
-                cmd.extend(["-p", port])
-        if "volumes" in options:
-            for volume in options["volumes"]:
-                cmd.extend(["-v", volume])
-        if "environment" in options:
-            for env in options["environment"]:
-                cmd.extend(["-e", env])
-    
-    cmd.append(image)
-    return cmd
+    from src.shared.utils.docker.docker_command_builder import build_docker_run_command
+    return build_docker_run_command(image, name, options)
 
 
 def build_docker_stop_command_pure(name: str) -> List[str]:
     """
-    Pure function to build docker stop command
-    
-    Args:
-        name: Container name
-        
-    Returns:
-        Docker stop command as list
+    DEPRECATED: Use src.shared.utils.docker.build_docker_stop_command instead
     """
-    return ["docker", "stop", name]
+    from src.shared.utils.docker.docker_command_builder import build_docker_stop_command
+    return build_docker_stop_command(name)
 
 
 def build_docker_remove_command_pure(name: str, force: bool = False) -> List[str]:
     """
-    Pure function to build docker remove command
-    
-    Args:
-        name: Container name
-        force: Force removal flag
-        
-    Returns:
-        Docker remove command as list
+    DEPRECATED: Use src.shared.utils.docker.build_docker_remove_command instead
     """
-    cmd = ["docker", "rm"]
-    if force:
-        cmd.append("-f")
-    cmd.append(name)
-    return cmd
+    from src.shared.utils.docker.docker_command_builder import build_docker_remove_command
+    return build_docker_remove_command(name, force)
 
 
 def build_docker_build_command_pure(tag: str = None, dockerfile_text: str = None, options: Dict[str, Any] = None) -> List[str]:
     """
-    Pure function to build docker build command
-    
-    Args:
-        tag: Image tag
-        dockerfile_text: Dockerfile content
-        options: Additional options
-        
-    Returns:
-        Docker build command as list
+    DEPRECATED: Use src.shared.utils.docker.build_docker_build_command instead
     """
-    cmd = ["docker", "build"]
-    
-    if tag:
-        cmd.extend(["-t", tag])
-    
-    if options:
-        if "build_args" in options:
-            for arg in options["build_args"]:
-                cmd.extend(["--build-arg", arg])
-        if "no_cache" in options and options["no_cache"]:
-            cmd.append("--no-cache")
-    
-    cmd.extend(["-f", "-", "."])  # Read Dockerfile from stdin
-    return cmd
+    from src.shared.utils.docker.docker_command_builder import build_docker_build_command
+    return build_docker_build_command(tag, dockerfile_text, options=options)
 
 
 def build_docker_ps_command_pure(all: bool = False) -> List[str]:
     """
-    Pure function to build docker ps command
-    
-    Args:
-        all: Show all containers flag
-        
-    Returns:
-        Docker ps command as list
+    DEPRECATED: Use src.shared.utils.docker.build_docker_ps_command instead
     """
-    cmd = ["docker", "ps"]
-    if all:
-        cmd.append("-a")
-    return cmd
+    from src.shared.utils.docker.docker_command_builder import build_docker_ps_command
+    return build_docker_ps_command(all)
 
 
 def build_docker_inspect_command_pure(target: str, type_: str = None) -> List[str]:
     """
-    Pure function to build docker inspect command
-    
-    Args:
-        target: Target to inspect
-        type_: Type of target
-        
-    Returns:
-        Docker inspect command as list
+    DEPRECATED: Use src.shared.utils.docker.build_docker_inspect_command instead
     """
-    cmd = ["docker", "inspect"]
-    if type_:
-        cmd.extend(["--type", type_])
-    cmd.append(target)
-    return cmd
+    from src.shared.utils.docker.docker_command_builder import build_docker_inspect_command
+    return build_docker_inspect_command(target, type_)
 
 
 def build_docker_cp_command_pure(src: str, dst: str, container: str, to_container: bool = True) -> List[str]:
     """
-    Pure function to build docker cp command
-    
-    Args:
-        src: Source path
-        dst: Destination path
-        container: Container name
-        to_container: Copy to container flag
-        
-    Returns:
-        Docker cp command as list
+    DEPRECATED: Use src.shared.utils.docker.build_docker_cp_command instead
     """
-    if to_container:
-        return ["docker", "cp", src, f"{container}:{dst}"]
-    else:
-        return ["docker", "cp", f"{container}:{src}", dst]
+    from src.shared.utils.docker.docker_command_builder import build_docker_cp_command
+    return build_docker_cp_command(src, dst, container, to_container)
 
 
 def parse_container_names_pure(output: str) -> List[str]:
     """
-    Pure function to parse container names from docker ps output
-    
-    Args:
-        output: Docker ps output
-        
-    Returns:
-        List of container names
+    DEPRECATED: Use src.shared.utils.docker.parse_container_names instead
     """
-    if not output:
-        return []
-    
-    lines = output.strip().split('\n')
-    return [line.strip() for line in lines if line.strip()]
+    from src.shared.utils.docker.docker_command_builder import parse_container_names
+    return parse_container_names(output)
 
 
 # =============================================================================

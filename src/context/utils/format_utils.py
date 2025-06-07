@@ -1,28 +1,30 @@
 """
-文字列フォーマット関連のユーティリティ
+DEPRECATED: 文字列フォーマット関連のユーティリティ
+
+この module は非推奨です。代わりに src.shared.utils.unified_formatter を使用してください。
+後方互換性のために関数は残していますが、統一フォーマッターに委譲されます。
 
 テンプレート文字列の処理、キー抽出、安全なフォーマット処理を提供
 高性能化のため正規表現キャッシングとテンプレート処理最適化を実装
 """
-import re
+import warnings
 from typing import Dict, List, Tuple, Any
-from functools import lru_cache
-
-# Pre-compiled regex patterns for better performance
-_FORMAT_KEY_PATTERN = re.compile(r'{(\w+)}')
 
 
-@lru_cache(maxsize=512)
 def extract_format_keys(s: str) -> List[str]:
     """
+    DEPRECATED: Use src.shared.utils.unified_formatter.extract_format_keys instead
+    
     文字列sからstr.format用のキー（{key}のkey部分）をリストで抽出する
     例: '/path/{foo}/{bar}.py' -> ['foo', 'bar']
-    
-    パフォーマンス最適化:
-    - 正規表現パターンの事前コンパイル
-    - LRUキャッシュによる結果の再利用
     """
-    return _FORMAT_KEY_PATTERN.findall(s)
+    warnings.warn(
+        "format_utils.extract_format_keys is deprecated. Use unified_formatter.extract_format_keys instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    from src.shared.utils.unified_formatter import extract_format_keys as new_extract_format_keys
+    return new_extract_format_keys(s)
 
 
 # 既存コードとの互換性のためのエイリアス
@@ -31,19 +33,19 @@ extract_template_keys = extract_format_keys
 
 def format_with_missing_keys(s: str, **kwargs) -> Tuple[str, List[str]]:
     """
+    DEPRECATED: Use src.shared.utils.unified_formatter.format_with_missing_keys instead
+    
     sの{key}をkwargsで置換し、新しい文字列と足りなかったキーのリストを返す
     例: s = '/path/{foo}/{bar}.py', kwargs={'foo': 'A'}
     -> ('/path/A/{bar}.py', ['bar'])
     """
-    keys = extract_format_keys(s)
-    missing = [k for k in keys if k not in kwargs]
-    
-    class SafeDict(dict):
-        def __missing__(self, key):
-            return '{' + key + '}'
-    
-    formatted = s.format_map(SafeDict(kwargs))
-    return formatted, missing
+    warnings.warn(
+        "format_utils.format_with_missing_keys is deprecated. Use unified_formatter.format_with_missing_keys instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    from src.shared.utils.unified_formatter import format_with_missing_keys as new_format_with_missing_keys
+    return new_format_with_missing_keys(s, **kwargs)
 
 
 # より良いAPIを提供するエイリアス
@@ -52,37 +54,17 @@ safe_format_template = format_with_missing_keys
 
 def format_with_context(template: str, context: Dict[str, Any]) -> str:
     """
+    DEPRECATED: Use src.shared.utils.unified_formatter.format_with_context instead
+    
     コンテキスト辞書を使ってテンプレートをフォーマット
-    
-    Args:
-        template: フォーマットするテンプレート文字列
-        context: フォーマット用のコンテキスト辞書
-        
-    Returns:
-        フォーマット済みの文字列
-        
-    パフォーマンス最適化:
-    - str.format_map()を使用してO(n)での処理
-    - 文字列値への変換を一度だけ実行
     """
-    if not isinstance(template, str):
-        return template
-    
-    # Convert values to strings once for better performance
-    str_context = {k: str(v) for k, v in context.items()}
-    
-    class SafeDict(dict):
-        def __missing__(self, key):
-            return f"{{{key}}}"
-    
-    try:
-        return template.format_map(SafeDict(str_context))
-    except (KeyError, ValueError):
-        # Fallback to original method if format_map fails
-        result = template
-        for key, value in str_context.items():
-            result = result.replace(f"{{{key}}}", value)
-        return result
+    warnings.warn(
+        "format_utils.format_with_context is deprecated. Use unified_formatter.format_with_context instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    from src.shared.utils.unified_formatter import format_with_context as new_format_with_context
+    return new_format_with_context(template, context)
 
 
 def build_path_template(base: str, *parts: str) -> str:
@@ -101,19 +83,17 @@ def build_path_template(base: str, *parts: str) -> str:
 
 def validate_template_keys(template: str, required_keys: List[str]) -> Tuple[bool, List[str]]:
     """
+    DEPRECATED: Use src.shared.utils.unified_formatter.validate_template_keys instead
+    
     テンプレートが必要なキーを含んでいるかチェック
-    
-    Args:
-        template: チェックするテンプレート文字列
-        required_keys: 必須キーのリスト
-        
-    Returns:
-        Tuple[bool, List[str]]: (有効かどうか, 不足キーリスト)
     """
-    template_keys = set(extract_format_keys(template))
-    missing_keys = [key for key in required_keys if key not in template_keys]
-    
-    return len(missing_keys) == 0, missing_keys
+    warnings.warn(
+        "format_utils.validate_template_keys is deprecated. Use unified_formatter.validate_template_keys instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    from src.shared.utils.unified_formatter import validate_template_keys as new_validate_template_keys
+    return new_validate_template_keys(template, required_keys)
 
 if __name__ == "__main__":
     s = '/home/cphelper/project-cph/{contest_template_path}/{language_name}/main.py'

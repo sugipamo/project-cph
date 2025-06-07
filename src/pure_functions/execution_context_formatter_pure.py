@@ -78,9 +78,10 @@ def format_template_string(template: str, data: ExecutionFormatData) -> Tuple[st
     Returns:
         Tuple[str, set]: (フォーマット済み文字列, 見つからなかったキーのセット)
     """
-    from src.context.utils.format_utils import format_with_missing_keys
+    from src.shared.utils.unified_formatter import format_with_missing_keys
     format_dict = create_format_dict(data)
-    return format_with_missing_keys(template, **format_dict)
+    formatted, missing_list = format_with_missing_keys(template, **format_dict)
+    return formatted, set(missing_list)
 
 
 def validate_execution_data(data: ExecutionFormatData) -> Tuple[bool, Optional[str]]:
@@ -128,7 +129,7 @@ def format_values_with_context_dict(values: list, context_dict: dict) -> list:
     Returns:
         List of formatted strings
     """
-    from src.shared.utils.pure_functions import format_string_pure
+    from src.shared.utils.unified_formatter import format_string_pure
     
     result = []
     for value in values:

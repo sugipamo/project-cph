@@ -2,7 +2,7 @@ from typing import Any, List, Optional, Union
 from collections import deque
 from src.context.resolver.config_node import ConfigNode
 from src.context.resolver.config_node_logic import init_matches, add_edge
-from src.context.utils.format_utils import format_with_missing_keys
+from src.shared.utils.unified_formatter import format_with_missing_keys
 
 def create_config_root_from_dict(data: Any) -> ConfigNode:
     if not isinstance(data, dict):
