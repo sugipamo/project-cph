@@ -13,19 +13,19 @@ GENERIC_PATTERNS = {
     'variables': [
         # 本当に問題のある汎用名のみ
         r'^var$', r'^val$', r'^tmp$', r'^temp$', r'^thing$', r'^stuff$',
-        r'^obj$', r'^item$', r'^elem$',
+        r'^obj$', r'^item$', r'^elem$', r'^pure$',
         # 単独の型名は避ける
         r'^list$', r'^dict$', r'^string$', r'^number$',
     ],
     'functions': [
         # 意味が全く不明な関数名のみ
-        r'^do$', r'^func$', r'^method$', r'^action$',
+        r'^do$', r'^func$', r'^method$', r'^action$', r'^pure$',
         # 単独の動詞は文脈によって許可
         # r'^process$', r'^handle$', r'^run$' などは削除
     ],
     'classes': [
         # 意味のないクラス名のみ
-        r'^Object$', r'^Thing$', r'^Item$', r'^Stuff$',
+        r'^Object$', r'^Thing$', r'^Item$', r'^Stuff$', r'^Pure$',
         # Manager, Handler, Processor などは一般的なパターンなので許可
     ]
 }
@@ -186,9 +186,10 @@ def main():
             print(f"  ... and {len(all_errors) - 20} more")
 
         print("\n💡 改善例:")
-        print("  ❌ data -> ✅ user_data, config_data")
-        print("  ❌ process() -> ✅ process_payment(), process_order()")
-        print("  ❌ result -> ✅ calculation_result, api_response")
+        print("  ❌ pure -> ✅ calculation_result, validated_data")
+        print("  ❌ pure() -> ✅ calculate_pure(), validate_input()")
+        print("  ❌ var, tmp -> ✅ user_data, temp_file")
+        print("  ❌ thing, stuff -> ✅ payment_info, config_data")
 
         sys.exit(1)
     else:
