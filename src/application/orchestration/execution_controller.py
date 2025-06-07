@@ -2,7 +2,7 @@
 """
 from typing import Any
 
-from src.domain.exceptions.composite_step_failure import CompositeStepFailure
+from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
 
 
 class ExecutionController:
@@ -36,7 +36,7 @@ class ExecutionController:
         # If allow_failure is False or unspecified and operation failed, stop immediately
         allow_failure = getattr(request, 'allow_failure', False)
         if not allow_failure and not (hasattr(result, 'success') and result.success):
-            raise CompositeStepFailure(
+            raise CompositeStepFailureError(
                 f"Step failed: {request} (allow_failure=False)\nResult: {result}",
                 result=result
             )

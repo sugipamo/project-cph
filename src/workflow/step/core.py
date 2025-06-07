@@ -159,8 +159,7 @@ def validate_single_step(step: Step) -> list[str]:
         elif not step.cmd[0]:
             errors.append("Path cannot be empty")
 
-    elif step.type in [StepType.SHELL, StepType.PYTHON, StepType.OJ, StepType.TEST, StepType.BUILD]:
-        if not step.cmd[0]:
+    elif step.type in [StepType.SHELL, StepType.PYTHON, StepType.OJ, StepType.TEST, StepType.BUILD] and not step.cmd[0]:
             errors.append("Command cannot be empty")
 
     return errors

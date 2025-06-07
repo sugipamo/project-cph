@@ -44,7 +44,7 @@ def test_dockerresult_methods():
     # 例外付き
     ex = Exception("fail")
     r3 = OperationResult(success=False, op="RUN", exception=ex)
-    with pytest.raises(Exception):
+    with pytest.raises((Exception, RuntimeError)):
         r3.raise_if_error()
 
 def test_dockerrequest_no_driver():

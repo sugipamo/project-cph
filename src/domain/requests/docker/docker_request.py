@@ -63,8 +63,7 @@ class DockerRequest(BaseRequest):
     def _execute_core(self, driver: DockerDriverInterface):
         """Core execution logic for Docker operations."""
         # Pre-processing for RUN operations
-        if self.op == DockerOpType.RUN:
-            if hasattr(driver, 'ps') and self.container:
+        if self.op == DockerOpType.RUN and hasattr(driver, 'ps') and self.container:
                 # Check if container exists
                 container_names = driver.ps(all=True, show_output=False, names_only=True)
                 if self.container not in container_names:

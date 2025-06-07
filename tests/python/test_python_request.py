@@ -59,8 +59,8 @@ def test_python_request_execute_exception(monkeypatch):
     assert result.returncode == 1
 
 def test_python_request_code_string_with_patch(monkeypatch):
-    with unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.is_script_file", lambda arg: False):
-        with unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.run_code_string", lambda code, cwd=None: ("ok", "", 0)):
+    with (unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.is_script_file", lambda arg: False),
+          unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.run_code_string", lambda code, cwd=None: ("ok", "", 0))):
             req = PythonRequest(["print('ok')"])
             result = req._execute_core()
             assert isinstance(result, OperationResult)
@@ -70,24 +70,24 @@ def test_python_request_code_string_with_patch(monkeypatch):
 def test_python_request_script_file_with_patch(monkeypatch, tmp_path):
     script_path = tmp_path / "test.py"
     script_path.write_text("print('ok')")
-    with unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.is_script_file", lambda arg: True):
-        with unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.run_script_file", lambda path, cwd=None: ("script", "", 0)):
+    with (unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.is_script_file", lambda arg: True),
+          unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.run_script_file", lambda path, cwd=None: ("script", "", 0))):
             req = PythonRequest([str(script_path)])
             result = req._execute_core()
             assert result.stdout == "script"
             assert result.returncode == 0
 
 def test_python_request_with_cwd_with_patch(monkeypatch, tmp_path):
-    with unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.is_script_file", lambda arg: False):
-        with unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.run_code_string", lambda code, cwd=None: ("cwd", "", 0)):
+    with (unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.is_script_file", lambda arg: False),
+          unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.run_code_string", lambda code, cwd=None: ("cwd", "", 0))):
             req = PythonRequest(["print('cwd')"], cwd=str(tmp_path))
             result = req._execute_core()
             assert result.stdout == "cwd"
             assert result.returncode == 0
 
 def test_python_request_execute_exception_with_patch(monkeypatch):
-    with unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.is_script_file", lambda arg: False):
-        with unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.run_code_string", lambda code, cwd=None: (_ for _ in ()).throw(Exception("fail"))):
+    with (unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.is_script_file", lambda arg: False),
+          unittest.mock.patch("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.run_code_string", lambda code, cwd=None: (_ for _ in ()).throw(Exception("fail")))):
             req = PythonRequest(["raise Exception('fail')"])
             result = req._execute_core()
             assert isinstance(result, OperationResult)

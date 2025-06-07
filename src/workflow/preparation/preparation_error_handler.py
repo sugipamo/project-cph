@@ -97,8 +97,7 @@ class PreparationErrorHandler:
         if not error.retry_possible:
             return False
 
-        if self.retry_strategy.retry_on_categories:
-            if error.category not in self.retry_strategy.retry_on_categories:
+        if self.retry_strategy.retry_on_categories and error.category not in self.retry_strategy.retry_on_categories:
                 return False
 
         # Don't retry critical errors

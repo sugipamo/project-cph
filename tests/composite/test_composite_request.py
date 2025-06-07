@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
+from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
 from src.domain.requests.base.base_request import BaseRequest
 from src.domain.requests.composite.composite_request import CompositeRequest
 from src.domain.results.result import OperationResult
@@ -71,14 +72,14 @@ class TestCompositeRequest:
 
         def check_failure_side_effect(req, result):
             if not result.success:
-                raise Exception("Execution failed")
+                raise CompositeStepFailureError("Execution failed")
 
         mock_execution_controller._check_failure = Mock(side_effect=check_failure_side_effect)
 
         composite = CompositeRequest([req1, req2, req3], execution_controller=mock_execution_controller)
         driver = Mock()
 
-        with pytest.raises(Exception):  # ExecutionController raises on failure
+        with pytest.raises(CompositeStepFailureError):  # ExecutionController raises on failure
             composite.execute(driver)
 
         assert req1.executed

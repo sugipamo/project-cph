@@ -36,9 +36,11 @@ from .docker_naming import (
     get_oj_container_name,
     get_oj_image_name,
 )
-from .docker_utils import *
+from .docker_utils import DockerUtils
 
 __all__ = [
+    # Utils
+    "DockerUtils",
     "build_docker_build_command",
     "build_docker_build_command_pure",
     "build_docker_cp_command",

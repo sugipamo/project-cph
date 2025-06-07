@@ -114,7 +114,7 @@ class FileRequest(BaseRequest):
                     error_message=f"FileRequest failed: {e!s}",
                     request=self
                 )
-            raise RuntimeError(f"FileRequest failed: {e!s}")
+            raise RuntimeError(f"FileRequest failed: {e!s}") from e
 
     def __repr__(self) -> str:
         """String representation of the request."""

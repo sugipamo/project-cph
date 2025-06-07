@@ -1,4 +1,4 @@
 """Exceptions module - Common exception classes."""
-from .composite_step_failure import CompositeStepFailure
+from .composite_step_failure import CompositeStepFailureError
 
-__all__ = ["CompositeStepFailure"]
+__all__ = ["CompositeStepFailureError"]

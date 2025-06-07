@@ -202,12 +202,12 @@ class TestGraphBasedWorkflowBuilder:
         mock_request1 = Mock()
         mock_request2 = Mock()
 
-        with patch.object(builder, '_step_to_request', side_effect=[mock_request1, mock_request2]):
-            with patch.object(builder, '_extract_resource_info_from_step',
-                            return_value=([], [], [], [])):
-                with patch.object(builder, '_build_dependencies', return_value=None):
-                    # Execute
-                    graph = builder._build_graph_from_steps(steps)
+        with (patch.object(builder, '_step_to_request', side_effect=[mock_request1, mock_request2]),
+              patch.object(builder, '_extract_resource_info_from_step',
+                          return_value=([], [], [], [])),
+              patch.object(builder, '_build_dependencies', return_value=None)):
+            # Execute
+            graph = builder._build_graph_from_steps(steps)
 
         # Verify
         assert isinstance(graph, RequestExecutionGraph)
@@ -233,12 +233,12 @@ class TestGraphBasedWorkflowBuilder:
         step.type = StepType.SHELL
         step.cmd = ["ls"]
 
-        with patch.object(builder, '_step_to_request', return_value=Mock()):
-            with patch.object(builder, '_extract_resource_info_from_step',
-                            return_value=([], [], [], [])):
-                with patch.object(builder, '_build_dependencies', return_value=None):
-                    # Execute
-                    graph = builder._build_graph_from_steps([step])
+        with (patch.object(builder, '_step_to_request', return_value=Mock()),
+              patch.object(builder, '_extract_resource_info_from_step',
+                          return_value=([], [], [], [])),
+              patch.object(builder, '_build_dependencies', return_value=None)):
+            # Execute
+            graph = builder._build_graph_from_steps([step])
 
         # Verify debug config was passed to graph
         assert graph.debug_logger.config == {"enabled": True, "level": "detailed"}

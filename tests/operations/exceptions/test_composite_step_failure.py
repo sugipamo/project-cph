@@ -1,16 +1,16 @@
 """
-Tests for CompositeStepFailure exception
+Tests for CompositeStepFailureError exception
 """
 import pytest
 
-from src.domain.exceptions.composite_step_failure import CompositeStepFailure
+from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
 
 
-class TestCompositeStepFailure:
+class TestCompositeStepFailureError:
 
     def test_init_with_message_only(self):
         """Test initialization with message only"""
-        exc = CompositeStepFailure("Test error message")
+        exc = CompositeStepFailureError("Test error message")
 
         assert str(exc) == "Test error message"
         assert exc.result is None
@@ -19,7 +19,7 @@ class TestCompositeStepFailure:
     def test_init_with_result(self):
         """Test initialization with result"""
         mock_result = {"status": "failed", "error": "Command not found"}
-        exc = CompositeStepFailure("Step failed", result=mock_result)
+        exc = CompositeStepFailureError("Step failed", result=mock_result)
 
         assert str(exc) == "Step failed"
         assert exc.result == mock_result
@@ -28,7 +28,7 @@ class TestCompositeStepFailure:
     def test_init_with_original_exception(self):
         """Test initialization with original exception"""
         original = ValueError("Original error")
-        exc = CompositeStepFailure("Wrapper error", original_exception=original)
+        exc = CompositeStepFailureError("Wrapper error", original_exception=original)
 
         assert str(exc) == "Wrapper error"
         assert exc.result is None
@@ -38,7 +38,7 @@ class TestCompositeStepFailure:
         """Test initialization with all parameters"""
         mock_result = {"status": "failed"}
         original = RuntimeError("Runtime error")
-        exc = CompositeStepFailure(
+        exc = CompositeStepFailureError(
             "Complete failure",
             result=mock_result,
             original_exception=original
@@ -49,18 +49,18 @@ class TestCompositeStepFailure:
         assert exc.original_exception is original
 
     def test_inheritance(self):
-        """Test that CompositeStepFailure inherits from Exception"""
-        exc = CompositeStepFailure("Test")
+        """Test that CompositeStepFailureError inherits from Exception"""
+        exc = CompositeStepFailureError("Test")
 
         assert isinstance(exc, Exception)
-        assert isinstance(exc, CompositeStepFailure)
+        assert isinstance(exc, CompositeStepFailureError)
 
     def test_raise_and_catch(self):
         """Test raising and catching the exception"""
         mock_result = {"returncode": 1}
 
-        with pytest.raises(CompositeStepFailure) as exc_info:
-            raise CompositeStepFailure(
+        with pytest.raises(CompositeStepFailureError) as exc_info:
+            raise CompositeStepFailureError(
                 "Command failed",
                 result=mock_result
             )
@@ -75,12 +75,12 @@ class TestCompositeStepFailure:
             # Simulate original error
             raise ValueError("Original error")
         except ValueError as e:
-            # Wrap in CompositeStepFailure
-            with pytest.raises(CompositeStepFailure) as exc_info:
-                raise CompositeStepFailure(
+            # Wrap in CompositeStepFailureError
+            with pytest.raises(CompositeStepFailureError) as exc_info:
+                raise CompositeStepFailureError(
                     "Step failed due to value error",
                     original_exception=e
-                )
+                ) from e
 
             caught_exc = exc_info.value
             assert caught_exc.original_exception is e
@@ -88,7 +88,7 @@ class TestCompositeStepFailure:
 
     def test_empty_message(self):
         """Test with empty message"""
-        exc = CompositeStepFailure("")
+        exc = CompositeStepFailureError("")
 
         assert str(exc) == ""
         assert exc.result is None
@@ -104,7 +104,7 @@ class TestCompositeStepFailure:
         mock_result.stderr = "Error output"
         mock_result.returncode = 1
 
-        exc = CompositeStepFailure(
+        exc = CompositeStepFailureError(
             "Execution failed",
             result=mock_result
         )

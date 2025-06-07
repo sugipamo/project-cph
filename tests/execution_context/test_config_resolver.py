@@ -275,14 +275,15 @@ def test_aliases_invalid_type():
         }
     }
     # from_dictでエラーになるか
-    with pytest.raises(Exception):
+    with pytest.raises(TypeError):
         create_config_root_from_dict(config)
 
 
 def test_confignode_lt_invalid_type():
     node = ConfigNode("a")
+    # Comparison with string should raise TypeError
     with pytest.raises(TypeError):
-        node < "notanode"
+        result = node < "notanode"  # noqa: F841
 
 def test_add_edge_self_reference():
     node = ConfigNode("self")

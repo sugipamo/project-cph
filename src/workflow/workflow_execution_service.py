@@ -131,8 +131,7 @@ class WorkflowExecutionService:
                 allow_failure = getattr(request, 'allow_failure', False) if request else False
 
                 # Temporary workaround for TEST steps allow_failure issue
-                if hasattr(request, '__class__') and 'Shell' in request.__class__.__name__:
-                    if hasattr(request, 'cmd') and request.cmd and len(request.cmd) > 0:
+                if hasattr(request, '__class__') and 'Shell' in request.__class__.__name__ and hasattr(request, 'cmd') and request.cmd and len(request.cmd) > 0:
                         full_cmd_str = str(request.cmd)
                         if 'python3' in full_cmd_str and 'workspace/main.py' in full_cmd_str:
                             allow_failure = True

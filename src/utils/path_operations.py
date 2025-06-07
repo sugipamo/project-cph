@@ -162,7 +162,7 @@ class PathOperations:
                     warnings=[],
                     metadata={"base_dir": str(base_dir), "path": str(path)}
                 )
-            raise ValueError(error_msg)
+            raise ValueError(error_msg) from e
 
     @staticmethod
     def normalize_path(path: Union[str, Path],
@@ -201,7 +201,7 @@ class PathOperations:
                     warnings=[],
                     metadata={"original": str(path)}
                 )
-            raise ValueError(error_msg)
+            raise ValueError(error_msg) from e
 
     @staticmethod
     def safe_path_join(*paths: Union[str, Path],
@@ -263,7 +263,7 @@ class PathOperations:
                     warnings=[],
                     metadata={"paths": [str(p) for p in paths]}
                 )
-            raise ValueError(error_msg)
+            raise ValueError(error_msg) from e
 
     @staticmethod
     def get_relative_path(path: Union[str, Path],
@@ -307,7 +307,7 @@ class PathOperations:
                     warnings=[],
                     metadata={"path": str(path), "base": str(base)}
                 )
-            raise ValueError(error_msg)
+            raise ValueError(error_msg) from e
 
     @staticmethod
     def is_subdirectory(path: Union[str, Path],
@@ -407,7 +407,7 @@ class PathOperations:
                     warnings=[],
                     metadata={"path": str(path)}
                 )
-            raise ValueError(error_msg)
+            raise ValueError(error_msg) from e
 
     @staticmethod
     def change_extension(path: Union[str, Path],
@@ -458,7 +458,7 @@ class PathOperations:
                     warnings=[],
                     metadata={"path": str(path), "new_extension": new_extension}
                 )
-            raise ValueError(error_msg)
+            raise ValueError(error_msg) from e
 
 
 class DockerPathOperations:
@@ -497,11 +497,7 @@ class DockerPathOperations:
             return False
 
         # Simple image names without tag (e.g., python, ubuntu, alpine)
-        if '/' not in image_name and '@' not in image_name:
-            return False
-
-        # Everything else is considered custom
-        return True
+        return '/' in image_name or '@' in image_name
 
     @staticmethod
     def convert_path_to_docker_mount(path: str,

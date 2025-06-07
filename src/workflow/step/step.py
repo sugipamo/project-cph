@@ -96,8 +96,7 @@ class Step:
         if self.type in [StepType.COPY, StepType.MOVE, StepType.MOVETREE] and len(self.cmd) < 2:
             raise ValueError(f"Step {self.type} requires at least 2 arguments (src, dst)")
 
-        if self.type in [StepType.MKDIR, StepType.TOUCH, StepType.REMOVE, StepType.RMTREE]:
-            if len(self.cmd) < 1:
+        if self.type in [StepType.MKDIR, StepType.TOUCH, StepType.REMOVE, StepType.RMTREE] and len(self.cmd) < 1:
                 raise ValueError(f"Step {self.type} requires at least 1 argument (path)")
 
         if self.type == StepType.DOCKER_EXEC and len(self.cmd) < 2:

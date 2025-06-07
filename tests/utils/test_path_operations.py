@@ -421,7 +421,7 @@ class TestPathOperationResult:
         )
 
         # frozen=Trueなので、属性変更はエラーになる
-        with pytest.raises(Exception):  # FrozenInstanceError or AttributeError
+        with pytest.raises((AttributeError, TypeError)):  # AttributeError for frozen dataclass
             result.success = False
 
 

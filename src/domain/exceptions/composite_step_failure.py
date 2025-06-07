@@ -2,7 +2,7 @@
 from typing import Any, Optional
 
 
-class CompositeStepFailure(Exception):
+class CompositeStepFailureError(Exception):
     """Exception raised when a composite step fails."""
 
     def __init__(self, message: str, result: Optional[Any] = None, original_exception: Optional[Exception] = None):

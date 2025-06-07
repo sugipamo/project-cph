@@ -8,7 +8,7 @@ from typing import Optional
 
 from src.application.orchestration.workflow_result_presenter import WorkflowResultPresenter, get_output_config
 from src.context.user_input_parser import parse_user_input
-from src.domain.exceptions.composite_step_failure import CompositeStepFailure
+from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
 from src.infrastructure.build_infrastructure import build_operations
 from src.workflow.workflow_execution_service import WorkflowExecutionService
 from src.workflow.workflow_result import WorkflowExecutionResult
@@ -83,7 +83,7 @@ class CLIApplication:
         Returns:
             Exit code (1 for failure)
         """
-        if isinstance(exception, CompositeStepFailure):
+        if isinstance(exception, CompositeStepFailureError):
             print(f"ユーザー定義コマンドでエラーが発生しました: {exception}")
             if hasattr(exception, 'result') and exception.result is not None:
                 with contextlib.suppress(Exception):

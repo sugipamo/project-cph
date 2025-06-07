@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from src.application.cli_application import main
-from src.domain.exceptions.composite_step_failure import CompositeStepFailure
+from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
 from src.domain.results.result import OperationResult
 from src.workflow.workflow_result import WorkflowExecutionResult
 
@@ -428,8 +428,8 @@ class TestCLIEntryPoint:
                 print(f"エラー: {e}")
                 return 1
             except Exception as e:
-                from src.domain.exceptions.composite_step_failure import CompositeStepFailure
-                if isinstance(e, CompositeStepFailure):
+                from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
+                if isinstance(e, CompositeStepFailureError):
                     print(f"ユーザー定義コマンドでエラーが発生しました: {e}")
                     if hasattr(e, 'result') and e.result is not None:
                         with contextlib.suppress(Exception):
@@ -522,19 +522,19 @@ class TestCLIEntryPoint:
     @patch('src.context.user_input_parser.parse_user_input')
     @patch('builtins.print')
     def test_cli_composite_step_failure_handling(self, mock_print, mock_parse, mock_build, mock_service_class):
-        """Test CLI handling of CompositeStepFailure"""
+        """Test CLI handling of CompositeStepFailureError"""
         mock_operations = Mock()
         mock_context = Mock()
         mock_context.env_json = {'shared': {'output': {}}}
         mock_build.return_value = mock_operations
         mock_parse.return_value = mock_context
 
-        # Mock workflow execution service to raise CompositeStepFailure
+        # Mock workflow execution service to raise CompositeStepFailureError
         mock_service = Mock()
         mock_service_class.return_value = mock_service
         mock_result = Mock()
         mock_result.get_error_output.return_value = "Step error details"
-        composite_error = CompositeStepFailure("Step failed", mock_result)
+        composite_error = CompositeStepFailureError("Step failed", mock_result)
         mock_service.execute_workflow.side_effect = composite_error
 
         cli_wrapper = self.create_cli_wrapper()
@@ -549,17 +549,17 @@ class TestCLIEntryPoint:
     @patch('src.context.user_input_parser.parse_user_input')
     @patch('builtins.print')
     def test_cli_composite_step_failure_without_result(self, mock_print, mock_parse, mock_build, mock_service_class):
-        """Test CLI handling of CompositeStepFailure without result"""
+        """Test CLI handling of CompositeStepFailureError without result"""
         mock_operations = Mock()
         mock_context = Mock()
         mock_context.env_json = {'shared': {'output': {}}}
         mock_build.return_value = mock_operations
         mock_parse.return_value = mock_context
 
-        # Mock workflow execution service to raise CompositeStepFailure without result
+        # Mock workflow execution service to raise CompositeStepFailureError without result
         mock_service = Mock()
         mock_service_class.return_value = mock_service
-        composite_error = CompositeStepFailure("Step failed", None)
+        composite_error = CompositeStepFailureError("Step failed", None)
         mock_service.execute_workflow.side_effect = composite_error
 
         cli_wrapper = self.create_cli_wrapper()
