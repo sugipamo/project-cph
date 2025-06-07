@@ -6,11 +6,11 @@ from typing import Any, Optional, Union
 from src.domain.requests.shell.shell_request import ShellRequest
 from src.infrastructure.drivers.base.base_driver import BaseDriver
 from src.infrastructure.drivers.docker.utils import (
-    build_docker_build_command_pure,
-    build_docker_remove_command_pure,
-    build_docker_run_command_pure,
-    build_docker_stop_command_pure,
-    parse_container_names_pure,
+    build_docker_build_command,
+    build_docker_remove_command,
+    build_docker_run_command,
+    build_docker_stop_command,
+    parse_container_names,
 )
 
 
@@ -81,19 +81,19 @@ class LocalDockerDriver(DockerDriver):
         return True
 
     def run_container(self, image: str, name: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
-        cmd = build_docker_run_command_pure(image, name, options)
+        cmd = build_docker_run_command(image, name, options)
         req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=self.shell_driver)
         return result
 
     def stop_container(self, name: str, show_output: bool = True):
-        cmd = build_docker_stop_command_pure(name)
+        cmd = build_docker_stop_command(name)
         req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=self.shell_driver)
         return result
 
     def remove_container(self, name: str, force: bool = False, show_output: bool = True):
-        cmd = build_docker_remove_command_pure(name, force=force)
+        cmd = build_docker_remove_command(name, force=force)
         req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=self.shell_driver)
         return result
@@ -123,7 +123,7 @@ class LocalDockerDriver(DockerDriver):
         if not dockerfile_text or dockerfile_text is None:
             raise ValueError("dockerfile_text is None. Dockerfile内容が正しく渡っていません。")
 
-        cmd = build_docker_build_command_pure(tag, dockerfile_text, options)
+        cmd = build_docker_build_command(tag, dockerfile_text, options)
         req = ShellRequest(cmd, show_output=show_output, inputdata=dockerfile_text)
         result = req.execute(driver=self.shell_driver)
         return result
@@ -145,7 +145,7 @@ class LocalDockerDriver(DockerDriver):
             cmd = ["docker", "ps", "-a", "--format", "{{.Names}}"]
             req = ShellRequest(cmd, show_output=show_output)
             result = req.execute(driver=self.shell_driver)
-            return parse_container_names_pure(result.stdout or "")
+            return parse_container_names(result.stdout or "")
         cmd = ["docker", "ps"]
         if all:
             cmd.append("-a")

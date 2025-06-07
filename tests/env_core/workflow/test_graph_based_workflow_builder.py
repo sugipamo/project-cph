@@ -243,8 +243,8 @@ class TestGraphBasedWorkflowBuilder:
         # Verify debug config was passed to graph
         assert graph.debug_logger.config == {"enabled": True, "level": "detailed"}
 
-    def test_build_graph_pure_method(self):
-        """Test pure function based graph building"""
+    def test_build_graph_with_utils_method(self):
+        """Test utility-based graph building"""
         # Setup
         context = Mock(spec=StepContext)
         context.env_json = None
@@ -258,7 +258,7 @@ class TestGraphBasedWorkflowBuilder:
         # Mock the step to request conversion
         with patch.object(builder, '_step_to_request', side_effect=[Mock(), Mock()]):
             # Execute
-            graph, errors, warnings = builder.build_graph_pure(steps)
+            graph, errors, warnings = builder.build_graph_with_utils(steps)
 
         # Verify
         assert isinstance(graph, RequestExecutionGraph)

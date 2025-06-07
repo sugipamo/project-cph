@@ -9,8 +9,7 @@ from src.infrastructure.drivers.docker.utils.docker_naming import (
     get_oj_container_name,
     get_oj_image_name,
 )
-from src.utils.formatters import format_string_simple as format_string_pure
-from src.utils.formatters import format_with_missing_keys
+from src.utils.formatters import format_string_simple, format_with_missing_keys
 
 
 @dataclass(frozen=True)
@@ -134,7 +133,7 @@ def format_values_with_context_dict(values: list, context_dict: dict) -> list:
     result = []
     for value in values:
         if isinstance(value, str):
-            formatted = format_string_pure(value, context_dict)
+            formatted = format_string_simple(value, context_dict)
             result.append(formatted)
         else:
             result.append(str(value))

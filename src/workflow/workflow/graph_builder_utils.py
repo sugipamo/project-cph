@@ -40,7 +40,7 @@ class GraphBuildResult:
     warnings: list[str]
 
 
-def extract_node_resource_info_pure(step: Step) -> tuple[set[str], set[str], set[str], set[str]]:
+def extract_node_resource_info(step: Step) -> tuple[set[str], set[str], set[str], set[str]]:
     """ステップからリソース情報を抽出する純粋関数
 
     Args:
@@ -121,7 +121,7 @@ def extract_node_resource_info_pure(step: Step) -> tuple[set[str], set[str], set
     return creates_files, creates_dirs, reads_files, requires_dirs
 
 
-def build_node_info_list_pure(steps: list[Step], context: Optional[StepContext] = None) -> list[NodeInfo]:
+def build_node_info_list(steps: list[Step], context: Optional[StepContext] = None) -> list[NodeInfo]:
     """ステップリストからノード情報リストを構築する純粋関数
 
     Args:
@@ -135,7 +135,7 @@ def build_node_info_list_pure(steps: list[Step], context: Optional[StepContext] 
 
     for i, step in enumerate(steps):
         # リソース情報を抽出
-        creates_files, creates_dirs, reads_files, requires_dirs = extract_node_resource_info_pure(step)
+        creates_files, creates_dirs, reads_files, requires_dirs = extract_node_resource_info(step)
 
         # メタデータを作成
         metadata = {
@@ -159,7 +159,7 @@ def build_node_info_list_pure(steps: list[Step], context: Optional[StepContext] 
     return node_infos
 
 
-def analyze_node_dependencies_pure(node_infos: list[NodeInfo]) -> list[DependencyInfo]:
+def analyze_node_dependencies(node_infos: list[NodeInfo]) -> list[DependencyInfo]:
     """ノード間の依存関係を分析する純粋関数
 
     Args:
@@ -240,7 +240,7 @@ def analyze_node_dependencies_pure(node_infos: list[NodeInfo]) -> list[Dependenc
             # 必要な親ディレクトリを作成するノードを検索
             for parent_dir in parent_dirs:
                 for check_dir, creators in dir_creators.items():
-                    if is_parent_directory_pure(check_dir, parent_dir) or check_dir == parent_dir:
+                    if is_parent_directory(check_dir, parent_dir) or check_dir == parent_dir:
                         for creator_idx, creator_info in creators:
                             if creator_idx < idx:
                                 dependency = DependencyInfo(
@@ -266,7 +266,7 @@ def analyze_node_dependencies_pure(node_infos: list[NodeInfo]) -> list[Dependenc
             continue
 
         # リソースの競合がある場合のみ順序依存を追加
-        if has_resource_conflict_pure(from_node, to_node):
+        if has_resource_conflict(from_node, to_node):
             dependency = DependencyInfo(
                 from_node_id=from_node.id,
                 to_node_id=to_node.id,
@@ -279,7 +279,7 @@ def analyze_node_dependencies_pure(node_infos: list[NodeInfo]) -> list[Dependenc
     return dependencies
 
 
-def is_parent_directory_pure(parent_path: str, child_path: str) -> bool:
+def is_parent_directory(parent_path: str, child_path: str) -> bool:
     """parent_pathがchild_pathの親ディレクトリかどうかを判定する純粋関数
 
     Args:
@@ -298,7 +298,7 @@ def is_parent_directory_pure(parent_path: str, child_path: str) -> bool:
         return child_path.startswith(parent_path + '/')
 
 
-def has_resource_conflict_pure(node1: NodeInfo, node2: NodeInfo) -> bool:
+def has_resource_conflict(node1: NodeInfo, node2: NodeInfo) -> bool:
     """2つのノード間でリソースの競合があるかどうかを判定する純粋関数
 
     Args:
@@ -320,7 +320,7 @@ def has_resource_conflict_pure(node1: NodeInfo, node2: NodeInfo) -> bool:
     return bool(node1.creates_files & node2.reads_files or node2.creates_files & node1.reads_files)
 
 
-def build_execution_graph_pure(steps: list[Step], context: Optional[StepContext] = None) -> GraphBuildResult:
+def build_execution_graph(steps: list[Step], context: Optional[StepContext] = None) -> GraphBuildResult:
     """ステップリストから実行グラフを構築する純粋関数
 
     Args:
@@ -339,13 +339,13 @@ def build_execution_graph_pure(steps: list[Step], context: Optional[StepContext]
         return GraphBuildResult([], [], errors, warnings)
 
     # ノード情報を構築
-    node_infos = build_node_info_list_pure(steps, context)
+    node_infos = build_node_info_list(steps, context)
 
     # 依存関係を分析
-    dependencies = analyze_node_dependencies_pure(node_infos)
+    dependencies = analyze_node_dependencies(node_infos)
 
     # バリデーション
-    validation_errors = validate_graph_structure_pure(node_infos, dependencies)
+    validation_errors = validate_graph_structure(node_infos, dependencies)
     errors.extend(validation_errors)
 
     return GraphBuildResult(
@@ -356,7 +356,7 @@ def build_execution_graph_pure(steps: list[Step], context: Optional[StepContext]
     )
 
 
-def validate_graph_structure_pure(nodes: list[NodeInfo], dependencies: list[DependencyInfo]) -> list[str]:
+def validate_graph_structure(nodes: list[NodeInfo], dependencies: list[DependencyInfo]) -> list[str]:
     """グラフ構造の妥当性を検証する純粋関数
 
     Args:
@@ -397,7 +397,7 @@ def validate_graph_structure_pure(nodes: list[NodeInfo], dependencies: list[Depe
     return errors
 
 
-def calculate_graph_metrics_pure(result: GraphBuildResult) -> dict[str, Any]:
+def calculate_graph_metrics(result: GraphBuildResult) -> dict[str, Any]:
     """グラフ構築結果のメトリクスを計算する純粋関数
 
     Args:
@@ -441,3 +441,5 @@ def calculate_graph_metrics_pure(result: GraphBuildResult) -> dict[str, Any]:
         "total_files_read": total_files_read,
         "complexity_score": dependency_count / node_count if node_count > 0 else 0
     }
+
+

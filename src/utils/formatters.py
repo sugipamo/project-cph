@@ -107,6 +107,6 @@ def validate_template_keys(template: str, required_keys: list[str]) -> tuple[boo
 
 
 # Aliases for existing code compatibility
-format_string_pure = format_string_simple
+format_string_legacy = format_string_simple
 safe_format_template = format_with_missing_keys
 extract_template_keys = extract_format_keys

@@ -9,7 +9,7 @@ import pytest
 from src.application.factories.unified_request_factory import create_request
 from src.domain.requests.docker.docker_request import DockerOpType, DockerRequest
 from src.infrastructure.drivers.docker.docker_driver import LocalDockerDriver
-from src.utils.helpers import validate_file_path_format_pure
+from src.utils.helpers import validate_file_path_format
 from src.workflow.step.step import Step, StepType
 
 
@@ -44,7 +44,7 @@ class TestPathTraversalSecurity:
         ]
 
         for path in dangerous_paths:
-            valid, error = validate_file_path_format_pure(path)
+            valid, error = validate_file_path_format(path)
             assert not valid
             assert "Path traversal detected" in error
 
@@ -56,7 +56,7 @@ class TestPathTraversalSecurity:
         ]
 
         for path in dangerous_paths:
-            valid, error = validate_file_path_format_pure(path)
+            valid, error = validate_file_path_format(path)
             assert not valid
             assert "Absolute paths with '..' are not allowed" in error
 
@@ -74,7 +74,7 @@ class TestPathTraversalSecurity:
         ]
 
         for path in dangerous_paths:
-            valid, error = validate_file_path_format_pure(path)
+            valid, error = validate_file_path_format(path)
             assert not valid
             assert "dangerous characters" in error
 
@@ -90,7 +90,7 @@ class TestPathTraversalSecurity:
         ]
 
         for path in safe_paths:
-            valid, error = validate_file_path_format_pure(path)
+            valid, error = validate_file_path_format(path)
             assert valid
             assert error is None
 

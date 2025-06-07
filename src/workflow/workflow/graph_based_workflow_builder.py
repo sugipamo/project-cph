@@ -212,8 +212,8 @@ class GraphBasedWorkflowBuilder:
         Returns:
             (creates_files, creates_dirs, reads_files, requires_dirs)
         """
-        from src.workflow.workflow.graph_builder_utils import extract_node_resource_info_pure
-        return extract_node_resource_info_pure(step)
+        from src.workflow.workflow.graph_builder_utils import extract_node_resource_info
+        return extract_node_resource_info(step)
 
     def _build_dependencies(
         self,
@@ -327,8 +327,8 @@ class GraphBasedWorkflowBuilder:
     def _is_parent_directory(self, parent_path: str, child_path: str) -> bool:
         """parent_pathがchild_pathの親ディレクトリかどうかを判定（純粋関数版使用）
         """
-        from src.workflow.workflow.graph_builder_utils import is_parent_directory_pure
-        return is_parent_directory_pure(parent_path, child_path)
+        from src.workflow.workflow.graph_builder_utils import is_parent_directory
+        return is_parent_directory(parent_path, child_path)
 
     def _has_resource_conflict(
         self,
@@ -344,7 +344,7 @@ class GraphBasedWorkflowBuilder:
         Returns:
             bool: 競合がある場合True
         """
-        from src.workflow.workflow.graph_builder_utils import NodeInfo, has_resource_conflict_pure
+        from src.workflow.workflow.graph_builder_utils import NodeInfo, has_resource_conflict
 
         # RequestNodeからNodeInfoへの変換
         node_info1 = NodeInfo(
@@ -366,9 +366,9 @@ class GraphBasedWorkflowBuilder:
             metadata={}
         )
 
-        return has_resource_conflict_pure(node_info1, node_info2)
+        return has_resource_conflict(node_info1, node_info2)
 
-    def build_graph_pure(
+    def build_graph_with_utils(
         self,
         steps: list[Step]
     ) -> tuple[RequestExecutionGraph, list[str], list[str]]:
@@ -381,10 +381,10 @@ class GraphBasedWorkflowBuilder:
             Tuple[RequestExecutionGraph, List[str], List[str]]:
                 (実行グラフ, エラーリスト, 警告リスト)
         """
-        from src.workflow.workflow.graph_builder_utils import build_execution_graph_pure
+        from src.workflow.workflow.graph_builder_utils import build_execution_graph
 
         # 純粋関数でグラフ構築結果を取得
-        result = build_execution_graph_pure(steps, self.context)
+        result = build_execution_graph(steps, self.context)
 
         # RequestExecutionGraphを作成
         debug_config = None
@@ -461,3 +461,4 @@ class GraphBasedWorkflowBuilder:
             messages.append(f"Failed to determine execution groups: {e!s}")
 
         return is_valid, messages
+

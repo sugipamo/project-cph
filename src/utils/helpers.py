@@ -11,7 +11,7 @@ from typing import Any, Optional
 # String and Path Operation Pure Functions
 # =============================================================================
 
-def format_string_pure(template_string: str, context_dict: dict[str, str]) -> str:
+def format_template_string(template_string: str, context_dict: dict[str, str]) -> str:
     """Pure function version of string formatting
 
     Args:
@@ -32,7 +32,7 @@ def format_string_pure(template_string: str, context_dict: dict[str, str]) -> st
     return formatted_result
 
 
-def extract_missing_keys_pure(template: str, available_keys: set) -> list[str]:
+def extract_missing_template_keys(template: str, available_keys: set) -> list[str]:
     """Pure function to extract unresolved keys from template string
 
     Args:
@@ -47,7 +47,7 @@ def extract_missing_keys_pure(template: str, available_keys: set) -> list[str]:
     return [key for key in found_keys if key not in available_keys]
 
 
-def is_potential_script_path_pure(code_or_file: list[str], script_extensions: Optional[list[str]] = None) -> bool:
+def is_potential_script_path(code_or_file: list[str], script_extensions: Optional[list[str]] = None) -> bool:
     """Pure function to determine if input looks like a script file path
 
     Args:
@@ -64,7 +64,7 @@ def is_potential_script_path_pure(code_or_file: list[str], script_extensions: Op
             any(code_or_file[0].endswith(ext) for ext in script_extensions))
 
 
-def validate_file_path_format_pure(file_path: str) -> tuple[bool, Optional[str]]:
+def validate_file_path_format(file_path: str) -> tuple[bool, Optional[str]]:
     """Pure function for file path format validation
 
     Args:
@@ -99,7 +99,7 @@ def validate_file_path_format_pure(file_path: str) -> tuple[bool, Optional[str]]
 # Docker Command Building Pure Functions (for backward compatibility)
 # =============================================================================
 
-def build_docker_run_command_pure(image: str, **kwargs) -> list[str]:
+def build_docker_run_command_wrapper(image: str, **kwargs) -> list[str]:
     """Build docker run command (backward compatibility wrapper)
 
     Args:
@@ -114,7 +114,7 @@ def build_docker_run_command_pure(image: str, **kwargs) -> list[str]:
     return build_docker_run_command(image, **kwargs)
 
 
-def build_docker_build_command_pure(context_path: str, **kwargs) -> list[str]:
+def build_docker_build_command_wrapper(context_path: str, **kwargs) -> list[str]:
     """Build docker build command (backward compatibility wrapper)
 
     Args:
@@ -128,7 +128,7 @@ def build_docker_build_command_pure(context_path: str, **kwargs) -> list[str]:
     return build_docker_build_command(context_path, **kwargs)
 
 
-def build_docker_stop_command_pure(container: str, **kwargs) -> list[str]:
+def build_docker_stop_command_wrapper(container: str, **kwargs) -> list[str]:
     """Build docker stop command (backward compatibility wrapper)
 
     Args:
@@ -142,7 +142,7 @@ def build_docker_stop_command_pure(container: str, **kwargs) -> list[str]:
     return build_docker_stop_command(container, **kwargs)
 
 
-def build_docker_remove_command_pure(container: str, **kwargs) -> list[str]:
+def build_docker_remove_command_wrapper(container: str, **kwargs) -> list[str]:
     """Build docker rm command (backward compatibility wrapper)
 
     Args:
@@ -156,7 +156,7 @@ def build_docker_remove_command_pure(container: str, **kwargs) -> list[str]:
     return build_docker_remove_command(container, **kwargs)
 
 
-def build_docker_ps_command_pure(**kwargs) -> list[str]:
+def build_docker_ps_command_wrapper(**kwargs) -> list[str]:
     """Build docker ps command (backward compatibility wrapper)
 
     Args:
@@ -169,7 +169,7 @@ def build_docker_ps_command_pure(**kwargs) -> list[str]:
     return build_docker_ps_command(**kwargs)
 
 
-def build_docker_inspect_command_pure(container: str, **kwargs) -> list[str]:
+def build_docker_inspect_command_wrapper(container: str, **kwargs) -> list[str]:
     """Build docker inspect command (backward compatibility wrapper)
 
     Args:
@@ -183,7 +183,7 @@ def build_docker_inspect_command_pure(container: str, **kwargs) -> list[str]:
     return build_docker_inspect_command(container, **kwargs)
 
 
-def build_docker_cp_command_pure(source: str, destination: str, **kwargs) -> list[str]:
+def build_docker_cp_command_wrapper(source: str, destination: str, **kwargs) -> list[str]:
     """Build docker cp command (backward compatibility wrapper)
 
     Args:
@@ -198,7 +198,7 @@ def build_docker_cp_command_pure(source: str, destination: str, **kwargs) -> lis
     return build_docker_cp_command(source, destination, **kwargs)
 
 
-def validate_docker_image_name_pure(image_name: str) -> bool:
+def validate_docker_image_name_wrapper(image_name: str) -> bool:
     """Validate docker image name format (backward compatibility wrapper)
 
     Args:
@@ -211,7 +211,7 @@ def validate_docker_image_name_pure(image_name: str) -> bool:
     return validate_docker_image_name(image_name)
 
 
-def parse_container_names_pure(container_output: str) -> list[str]:
+def parse_container_names(container_output: str) -> list[str]:
     """Parse container names from docker ps output (pure function)
 
     Args:
@@ -238,7 +238,7 @@ def parse_container_names_pure(container_output: str) -> list[str]:
 # List and Data Processing Pure Functions
 # =============================================================================
 
-def filter_and_transform_pure(items: list[Any], filter_func, transform_func) -> list[Any]:
+def filter_and_transform_items(items: list[Any], filter_func, transform_func) -> list[Any]:
     """Pure function to filter and transform list items
 
     Args:
@@ -252,7 +252,7 @@ def filter_and_transform_pure(items: list[Any], filter_func, transform_func) -> 
     return [transform_func(item) for item in items if filter_func(item)]
 
 
-def group_by_pure(items: list[Any], key_func) -> dict[Any, list[Any]]:
+def group_items_by_key(items: list[Any], key_func) -> dict[Any, list[Any]]:
     """Pure function to group list items by key
 
     Args:
@@ -271,7 +271,7 @@ def group_by_pure(items: list[Any], key_func) -> dict[Any, list[Any]]:
     return groups
 
 
-def merge_dicts_pure(*dicts: dict[str, Any]) -> dict[str, Any]:
+def merge_dictionaries(*dicts: dict[str, Any]) -> dict[str, Any]:
     """Pure function to merge multiple dictionaries
 
     Args:
@@ -284,3 +284,5 @@ def merge_dicts_pure(*dicts: dict[str, Any]) -> dict[str, Any]:
     for d in dicts:
         merged_dict.update(d)
     return merged_dict
+
+
