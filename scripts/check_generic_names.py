@@ -14,12 +14,16 @@ GENERIC_PATTERNS = {
         # 本当に問題のある汎用名のみ
         r'^var$', r'^val$', r'^tmp$', r'^temp$', r'^thing$', r'^stuff$',
         r'^obj$', r'^item$', r'^elem$', r'^pure$',
+        # pureが含まれる変数名（末尾のpureを検出）
+        r'.*_pure$',
         # 単独の型名は避ける
         r'^list$', r'^dict$', r'^string$', r'^number$',
     ],
     'functions': [
         # 意味が全く不明な関数名のみ
         r'^do$', r'^func$', r'^method$', r'^action$', r'^pure$',
+        # pureが含まれる関数名（末尾のpureを検出）
+        r'.*_pure$',
         # 単独の動詞は文脈によって許可
         # r'^process$', r'^handle$', r'^run$' などは削除
     ],
@@ -186,9 +190,9 @@ def main():
             print(f"  ... and {len(all_errors) - 20} more")
 
         print("\n💡 改善例:")
-        print("  ❌ pure -> ✅ calculation_result, validated_data")
-        print("  ❌ pure() -> ✅ calculate_pure(), validate_input()")
-        print("  ❌ var, tmp -> ✅ user_data, temp_file")
+        print("  ❌ calculate_result_pure() -> ✅ calculate_result(), compute_total()")
+        print("  ❌ build_command_pure() -> ✅ build_docker_command(), create_command()")
+        print("  ❌ pure, var, tmp -> ✅ calculation_result, user_data, temp_file")
         print("  ❌ thing, stuff -> ✅ payment_info, config_data")
 
         sys.exit(1)
