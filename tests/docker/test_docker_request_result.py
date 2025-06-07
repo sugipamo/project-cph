@@ -1,7 +1,9 @@
 import pytest
-from src.domain.requests.docker.docker_request import DockerRequest, DockerOpType
-from src.infrastructure.mock.mock_docker_driver import MockDockerDriver
+
+from src.domain.requests.docker.docker_request import DockerOpType, DockerRequest
 from src.domain.results.result import OperationResult
+from src.infrastructure.mock.mock_docker_driver import MockDockerDriver
+
 
 def test_dockerrequest_with_mockdriver():
     driver = MockDockerDriver()
@@ -49,4 +51,4 @@ def test_dockerrequest_no_driver():
     req = DockerRequest(DockerOpType.RUN, image="img", container="c")
     with pytest.raises(ValueError) as excinfo:
         req.execute(None)
-    assert "requires a driver" in str(excinfo.value) 
+    assert "requires a driver" in str(excinfo.value)

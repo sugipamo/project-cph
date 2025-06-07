@@ -1,9 +1,8 @@
-"""
-純粋関数ベースのステップ生成のための核となるデータ構造
+"""純粋関数ベースのステップ生成のための核となるデータ構造
 """
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Any
 from enum import Enum
+from typing import Any, Optional
 
 
 class StepType(Enum):
@@ -35,7 +34,7 @@ class StepContext:
     language: str
     env_type: str
     command_type: str
-    
+
     # 環境設定
     workspace_path: str
     contest_current_path: str
@@ -46,8 +45,8 @@ class StepContext:
     language_id: Optional[str] = None
     previous_contest_name: Optional[str] = None
     previous_problem_name: Optional[str] = None
-    
-    def to_format_dict(self) -> Dict[str, str]:
+
+    def to_format_dict(self) -> dict[str, str]:
         """文字列フォーマット用の辞書を生成"""
         format_dict = {
             'contest_name': self.contest_name,
@@ -65,13 +64,13 @@ class StepContext:
             'source_file_name': self.source_file_name or '',
             'language_id': self.language_id or '',
         }
-        
+
         # previous変数を追加（Noneの場合はエラーになることを想定）
         format_dict.update({
             'previous_contest_name': self.previous_contest_name,
             'previous_problem_id': self.previous_problem_name,
         })
-        
+
         return format_dict
 
 
@@ -79,66 +78,62 @@ class StepContext:
 class Step:
     """実行可能な単一ステップを表現する不変データクラス"""
     type: StepType
-    cmd: List[str]
+    cmd: list[str]
     allow_failure: bool = False
     show_output: bool = False
     cwd: Optional[str] = None
     force_env_type: Optional[str] = None
-    format_options: Optional[Dict[str, Any]] = None
+    format_options: Optional[dict[str, Any]] = None
     output_format: Optional[str] = None
     format_preset: Optional[str] = None
-    
+
     def __post_init__(self):
         """データ検証"""
         if not self.cmd:
             raise ValueError(f"Step {self.type} must have non-empty cmd")
-        
+
         # 各ステップタイプの必要な引数をチェック
-        if self.type in [StepType.COPY, StepType.MOVE, StepType.MOVETREE]:
-            if len(self.cmd) < 2:
-                raise ValueError(f"Step {self.type} requires at least 2 arguments (src, dst)")
-        
+        if self.type in [StepType.COPY, StepType.MOVE, StepType.MOVETREE] and len(self.cmd) < 2:
+            raise ValueError(f"Step {self.type} requires at least 2 arguments (src, dst)")
+
         if self.type in [StepType.MKDIR, StepType.TOUCH, StepType.REMOVE, StepType.RMTREE]:
             if len(self.cmd) < 1:
                 raise ValueError(f"Step {self.type} requires at least 1 argument (path)")
-        
-        if self.type == StepType.DOCKER_EXEC:
-            if len(self.cmd) < 2:
-                raise ValueError(f"Step {self.type} requires at least 2 arguments (container, command)")
-        
-        if self.type == StepType.DOCKER_CP:
-            if len(self.cmd) < 2:
-                raise ValueError(f"Step {self.type} requires at least 2 arguments (src, dst)")
-        
-        if self.type == StepType.DOCKER_RUN:
-            if len(self.cmd) < 1:
-                raise ValueError(f"Step {self.type} requires at least 1 argument (image)")
+
+        if self.type == StepType.DOCKER_EXEC and len(self.cmd) < 2:
+            raise ValueError(f"Step {self.type} requires at least 2 arguments (container, command)")
+
+        if self.type == StepType.DOCKER_CP and len(self.cmd) < 2:
+            raise ValueError(f"Step {self.type} requires at least 2 arguments (src, dst)")
+
+        if self.type == StepType.DOCKER_RUN and len(self.cmd) < 1:
+            raise ValueError(f"Step {self.type} requires at least 1 argument (image)")
 
 
 @dataclass(frozen=True)
 class StepGenerationResult:
     """ステップ生成の結果を表現するクラス"""
-    steps: List[Step]
-    errors: List[str] = None
-    warnings: List[str] = None
-    
+    steps: list[Step]
+    errors: list[str] = None
+    warnings: list[str] = None
+
     def __post_init__(self):
         if self.errors is None:
             object.__setattr__(self, 'errors', [])
         if self.warnings is None:
             object.__setattr__(self, 'warnings', [])
-    
+
     @property
     def is_success(self) -> bool:
         """エラーがない場合はTrue"""
         return len(self.errors) == 0
-    
+
     def add_error(self, error: str) -> 'StepGenerationResult':
         """エラーを追加した新しいインスタンスを返す"""
-        new_errors = list(self.errors) + [error]
+        new_errors = [*list(self.errors), error]
         return StepGenerationResult(self.steps, new_errors, self.warnings)
-    
+
     def add_warning(self, warning: str) -> 'StepGenerationResult':
         """警告を追加した新しいインスタンスを返す"""
-        new_warnings = list(self.warnings) + [warning]
+        new_warnings = [*list(self.warnings), warning]
         return StepGenerationResult(self.steps, self.errors, new_warnings)

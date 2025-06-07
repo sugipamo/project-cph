@@ -1,7 +1,8 @@
 """Repository for session management."""
-from datetime import datetime
-from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Optional
+
 from src.infrastructure.persistence.base.base_repository import BaseRepository
 from src.infrastructure.persistence.sqlite.sqlite_manager import SQLiteManager
 
@@ -23,21 +24,21 @@ class Session:
 
 class SessionRepository(BaseRepository):
     """Repository for managing work sessions."""
-    
+
     def __init__(self, db_manager: SQLiteManager):
         """Initialize repository with database manager.
-        
+
         Args:
             db_manager: SQLite database manager
         """
         self.db_manager = db_manager
-    
+
     def create(self, session: Session) -> Session:
         """Create a new session record.
-        
+
         Args:
             session: Session to create
-            
+
         Returns:
             Created session with ID
         """
@@ -47,7 +48,7 @@ class SessionRepository(BaseRepository):
             total_operations, successful_operations
         ) VALUES (?, ?, ?, ?, ?, ?, ?)
         """
-        
+
         params = (
             session.session_start or datetime.now(),
             session.session_end,
@@ -57,79 +58,79 @@ class SessionRepository(BaseRepository):
             session.total_operations,
             session.successful_operations
         )
-        
+
         self.db_manager.execute_command(query, params)
-        
+
         # Get the created session
         last_id = self.db_manager.get_last_insert_id("sessions")
         if last_id:
             return self.find_by_id(last_id)
-        
+
         return session
-    
+
     def find_by_id(self, session_id: int) -> Optional[Session]:
         """Find session by ID.
-        
+
         Args:
             session_id: Session ID
-            
+
         Returns:
             Session if found, None otherwise
         """
         query = "SELECT * FROM sessions WHERE id = ?"
         results = self.db_manager.execute_query(query, (session_id,))
-        
+
         if results:
             return self._row_to_session(results[0])
         return None
-    
-    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Session]:
+
+    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> list[Session]:
         """Find all sessions with optional pagination.
-        
+
         Args:
             limit: Maximum number of sessions to return
             offset: Number of sessions to skip
-            
+
         Returns:
             List of sessions
         """
         query = "SELECT * FROM sessions ORDER BY session_start DESC"
         params = ()
-        
+
         if limit is not None:
             query += " LIMIT ?"
             params += (limit,)
-            
+
             if offset is not None:
                 query += " OFFSET ?"
                 params += (offset,)
-        
+
         results = self.db_manager.execute_query(query, params)
         return [self._row_to_session(row) for row in results]
-    
+
     def find_active_session(self) -> Optional[Session]:
         """Find the current active session (session_end is NULL).
-        
+
         Returns:
             Active session if found, None otherwise
         """
         query = "SELECT * FROM sessions WHERE session_end IS NULL ORDER BY session_start DESC LIMIT 1"
         results = self.db_manager.execute_query(query)
-        
+
         if results:
             return self._row_to_session(results[0])
         return None
-    
-    def start_new_session(self, language: Optional[str] = None, 
-                         contest_name: Optional[str] = None, 
+
+    def start_new_session(self, language: Optional[str] = None,
+                         contest_name: Optional[str] = None,
                          problem_name: Optional[str] = None) -> Session:
         """Start a new session, ending any active session first.
-        
+
         Args:
             language: Programming language for this session
             contest_name: Contest name
             problem_name: Problem name
-            
+
         Returns:
             New session
         """
@@ -137,7 +138,7 @@ class SessionRepository(BaseRepository):
         active_session = self.find_active_session()
         if active_session:
             self.end_session(active_session.id)
-        
+
         # Create new session
         new_session = Session(
             session_start=datetime.now(),
@@ -145,94 +146,94 @@ class SessionRepository(BaseRepository):
             contest_name=contest_name,
             problem_name=problem_name
         )
-        
+
         return self.create(new_session)
-    
+
     def end_session(self, session_id: int) -> bool:
         """End a session by setting session_end timestamp.
-        
+
         Args:
             session_id: ID of session to end
-            
+
         Returns:
             True if session was ended, False otherwise
         """
         query = """
-        UPDATE sessions 
-        SET session_end = ?, updated_at = CURRENT_TIMESTAMP 
+        UPDATE sessions
+        SET session_end = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND session_end IS NULL
         """
-        
+
         affected_rows = self.db_manager.execute_command(query, (datetime.now(), session_id))
         return affected_rows > 0
-    
+
     def update_session_stats(self, session_id: int, total_ops: int, successful_ops: int) -> bool:
         """Update session operation statistics.
-        
+
         Args:
             session_id: Session ID
             total_ops: Total number of operations
             successful_ops: Number of successful operations
-            
+
         Returns:
             True if updated, False otherwise
         """
         query = """
-        UPDATE sessions 
+        UPDATE sessions
         SET total_operations = ?, successful_operations = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
         """
-        
+
         affected_rows = self.db_manager.execute_command(query, (total_ops, successful_ops, session_id))
         return affected_rows > 0
-    
-    def get_recent_sessions(self, limit: int = 10) -> List[Session]:
+
+    def get_recent_sessions(self, limit: int = 10) -> list[Session]:
         """Get recent sessions.
-        
+
         Args:
             limit: Number of recent sessions to return
-            
+
         Returns:
             List of recent sessions
         """
         return self.find_all(limit=limit)
-    
-    def get_session_statistics(self) -> Dict[str, Any]:
+
+    def get_session_statistics(self) -> dict[str, Any]:
         """Get session statistics.
-        
+
         Returns:
             Dictionary containing session statistics
         """
         total_sessions = self.db_manager.execute_query("SELECT COUNT(*) as count FROM sessions")[0]["count"]
-        
+
         avg_duration = self.db_manager.execute_query("""
             SELECT AVG(
                 (julianday(session_end) - julianday(session_start)) * 24 * 60
             ) as avg_minutes
-            FROM sessions 
+            FROM sessions
             WHERE session_end IS NOT NULL
         """)[0]["avg_minutes"]
-        
+
         language_sessions = self.db_manager.execute_query("""
-            SELECT language, COUNT(*) as count 
-            FROM sessions 
-            WHERE language IS NOT NULL 
-            GROUP BY language 
+            SELECT language, COUNT(*) as count
+            FROM sessions
+            WHERE language IS NOT NULL
+            GROUP BY language
             ORDER BY count DESC
         """)
-        
+
         return {
             "total_sessions": total_sessions,
             "average_duration_minutes": avg_duration or 0,
             "language_sessions": language_sessions
         }
-    
+
     def update(self, session: Session) -> Session:
         """Update an existing session.
-        
+
         Args:
             session: Session to update
-            
+
         Returns:
             Updated session
         """
@@ -243,7 +244,7 @@ class SessionRepository(BaseRepository):
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
         """
-        
+
         params = (
             session.session_start,
             session.session_end,
@@ -254,29 +255,29 @@ class SessionRepository(BaseRepository):
             session.successful_operations,
             session.id
         )
-        
+
         self.db_manager.execute_command(query, params)
         return session
-    
+
     def delete(self, session_id: int) -> bool:
         """Delete session by ID.
-        
+
         Args:
             session_id: ID of session to delete
-            
+
         Returns:
             True if deleted, False if not found
         """
         query = "DELETE FROM sessions WHERE id = ?"
         affected_rows = self.db_manager.execute_command(query, (session_id,))
         return affected_rows > 0
-    
-    def _row_to_session(self, row: Dict[str, Any]) -> Session:
+
+    def _row_to_session(self, row: dict[str, Any]) -> Session:
         """Convert database row to Session object.
-        
+
         Args:
             row: Database row as dictionary
-            
+
         Returns:
             Session object
         """

@@ -1,30 +1,24 @@
-"""
-Docker driver implementation for container operations.
+"""Docker driver implementation for container operations.
 """
 from abc import abstractmethod
-from typing import Any, Dict, Union, List
-from src.infrastructure.drivers.base.base_driver import BaseDriver
-from src.infrastructure.drivers.shell.shell_driver import ShellDriver
+from typing import Any, Optional, Union
+
 from src.domain.requests.shell.shell_request import ShellRequest
-from src.infrastructure.drivers.docker.utils.docker_utils import DockerUtils
+from src.infrastructure.drivers.base.base_driver import BaseDriver
 from src.infrastructure.drivers.docker.utils import (
-    build_docker_run_command_pure,
     build_docker_build_command_pure,
-    build_docker_stop_command_pure,
     build_docker_remove_command_pure,
-    build_docker_ps_command_pure,
-    build_docker_inspect_command_pure,
-    build_docker_cp_command_pure,
+    build_docker_run_command_pure,
+    build_docker_stop_command_pure,
     parse_container_names_pure,
-    validate_docker_image_name_pure
 )
 
 
 class DockerDriver(BaseDriver):
     """Abstract base class for Docker operations."""
-    
+
     @abstractmethod
-    def run_container(self, image: str, name: str = None, options: Dict[str, Any] = None):
+    def run_container(self, image: str, name: Optional[str] = None, options: Optional[dict[str, Any]] = None):
         pass
 
     @abstractmethod
@@ -36,7 +30,7 @@ class DockerDriver(BaseDriver):
         pass
 
     @abstractmethod
-    def exec_in_container(self, name: str, command: Union[str, List[str]]):
+    def exec_in_container(self, name: str, command: Union[str, list[str]]):
         pass
 
     @abstractmethod
@@ -44,7 +38,7 @@ class DockerDriver(BaseDriver):
         pass
 
     @abstractmethod
-    def build(self, tag: str = None, options: Dict[str, Any] = None, show_output: bool = True, dockerfile_text: str = None):
+    def build(self, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True, dockerfile_text: Optional[str] = None):
         pass
 
     @abstractmethod
@@ -60,7 +54,7 @@ class DockerDriver(BaseDriver):
         pass
 
     @abstractmethod
-    def inspect(self, target: str, type_: str = None):
+    def inspect(self, target: str, type_: Optional[str] = None):
         pass
 
     @abstractmethod
@@ -70,24 +64,23 @@ class DockerDriver(BaseDriver):
 
 class LocalDockerDriver(DockerDriver):
     """Local Docker driver implementation using shell commands."""
-    
+
     def __init__(self):
         super().__init__()
         from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
         self.shell_driver = LocalShellDriver()
-    
+
     def execute(self, request: Any) -> Any:
         """Execute a Docker request."""
         # This method is for compatibility with BaseDriver
         # Actual execution happens in specific methods
-        pass
-    
+
     def validate(self, request: Any) -> bool:
         """Validate if this driver can handle the request."""
         # For now, always return True for Docker requests
         return True
-    
-    def run_container(self, image: str, name: str = None, options: Dict[str, Any] = None, show_output: bool = True):
+
+    def run_container(self, image: str, name: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
         cmd = build_docker_run_command_pure(image, name, options)
         req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=self.shell_driver)
@@ -105,17 +98,17 @@ class LocalDockerDriver(DockerDriver):
         result = req.execute(driver=self.shell_driver)
         return result
 
-    def exec_in_container(self, name: str, command: Union[str, List[str]], show_output: bool = True):
+    def exec_in_container(self, name: str, command: Union[str, list[str]], show_output: bool = True):
         import shlex
-        
+
         if isinstance(command, list):
-            cmd = ["docker", "exec", name] + command
+            cmd = ["docker", "exec", name, *command]
         elif isinstance(command, str):
             cmd_parts = shlex.split(command)
-            cmd = ["docker", "exec", name] + cmd_parts
+            cmd = ["docker", "exec", name, *cmd_parts]
         else:
             raise ValueError(f"Invalid command type: {type(command)}")
-        
+
         req = ShellRequest(cmd, show_output=show_output)
         result = req.execute(driver=self.shell_driver)
         return result
@@ -126,10 +119,10 @@ class LocalDockerDriver(DockerDriver):
         result = req.execute(driver=self.shell_driver)
         return result
 
-    def build(self, dockerfile_text: str, tag: str = None, options: Dict[str, Any] = None, show_output: bool = True):
+    def build(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
         if not dockerfile_text or dockerfile_text is None:
             raise ValueError("dockerfile_text is None. Dockerfile内容が正しく渡っていません。")
-        
+
         cmd = build_docker_build_command_pure(tag, dockerfile_text, options)
         req = ShellRequest(cmd, show_output=show_output, inputdata=dockerfile_text)
         result = req.execute(driver=self.shell_driver)
@@ -153,15 +146,14 @@ class LocalDockerDriver(DockerDriver):
             req = ShellRequest(cmd, show_output=show_output)
             result = req.execute(driver=self.shell_driver)
             return parse_container_names_pure(result.stdout or "")
-        else:
-            cmd = ["docker", "ps"]
-            if all:
-                cmd.append("-a")
-            req = ShellRequest(cmd, show_output=show_output)
-            result = req.execute(driver=self.shell_driver)
-            return result
+        cmd = ["docker", "ps"]
+        if all:
+            cmd.append("-a")
+        req = ShellRequest(cmd, show_output=show_output)
+        result = req.execute(driver=self.shell_driver)
+        return result
 
-    def inspect(self, target: str, type_: str = None, show_output: bool = True):
+    def inspect(self, target: str, type_: Optional[str] = None, show_output: bool = True):
         cmd = ["docker", "inspect"]
         if type_:
             cmd += ["--type", type_]

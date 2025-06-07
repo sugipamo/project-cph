@@ -1,5 +1,7 @@
 import pytest
+
 from src.domain.results.shell_result import ShellResult
+
 
 def test_shell_result_success_and_to_dict():
     r = ShellResult(success=True, stdout="ok", stderr="", returncode=0, cmd=["ls"])
@@ -17,4 +19,4 @@ def test_shell_result_failure_and_exception():
     assert d["success"] is False
     assert d["exception"] == "fail"
     with pytest.raises(RuntimeError):
-        r.raise_if_error() 
+        r.raise_if_error()

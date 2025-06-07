@@ -1,37 +1,39 @@
 """
 セキュリティ脆弱性に対するテストケース
 """
-import pytest
 import shlex
-from unittest.mock import Mock, patch, MagicMock
-from src.infrastructure.drivers.docker.docker_driver import LocalDockerDriver
-from src.domain.requests.docker.docker_request import DockerRequest, DockerOpType
-from src.utils.helpers import validate_file_path_format_pure
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
 from src.application.factories.unified_request_factory import create_request
+from src.domain.requests.docker.docker_request import DockerOpType, DockerRequest
+from src.infrastructure.drivers.docker.docker_driver import LocalDockerDriver
+from src.utils.helpers import validate_file_path_format_pure
 from src.workflow.step.step import Step, StepType
 
 
 class TestDockerExecSecurity:
     """Docker execコマンドのセキュリティテスト"""
-    
+
     def test_docker_exec_command_type_validation(self):
         """Docker execのコマンド型検証"""
         driver = LocalDockerDriver()
-        
+
         # 文字列コマンドが受け入れられることを確認
         assert hasattr(driver, 'exec_in_container')
-        
+
         # 無効な型でエラーが発生することを確認
         try:
             driver.exec_in_container("test", 123)  # 数値型は無効
-            assert False, "Should have raised ValueError"
+            raise AssertionError("Should have raised ValueError")
         except ValueError as e:
             assert "Invalid command type" in str(e)
 
 
 class TestPathTraversalSecurity:
     """パストラバーサル攻撃に対するテスト"""
-    
+
     def test_reject_relative_path_traversal(self):
         """相対パスでの..使用を拒否"""
         dangerous_paths = [
@@ -40,24 +42,24 @@ class TestPathTraversalSecurity:
             "normal/../../../etc/passwd",
             "./../../etc/passwd"
         ]
-        
+
         for path in dangerous_paths:
             valid, error = validate_file_path_format_pure(path)
             assert not valid
             assert "Path traversal detected" in error
-    
+
     def test_reject_absolute_path_traversal(self):
         """絶対パスでの..使用を拒否"""
         dangerous_paths = [
             "/home/user/../../../etc/passwd",
             "/var/www/../../etc/passwd"
         ]
-        
+
         for path in dangerous_paths:
             valid, error = validate_file_path_format_pure(path)
             assert not valid
             assert "Absolute paths with '..' are not allowed" in error
-    
+
     def test_reject_dangerous_characters(self):
         """危険な文字を含むパスを拒否"""
         dangerous_paths = [
@@ -70,12 +72,12 @@ class TestPathTraversalSecurity:
             "file\rname.txt",
             "file\x00name.txt"
         ]
-        
+
         for path in dangerous_paths:
             valid, error = validate_file_path_format_pure(path)
             assert not valid
             assert "dangerous characters" in error
-    
+
     def test_accept_safe_paths(self):
         """安全なパスは受け入れる"""
         safe_paths = [
@@ -86,7 +88,7 @@ class TestPathTraversalSecurity:
             "/var/www/html/index.html",
             "file-name_with.special-chars.txt"
         ]
-        
+
         for path in safe_paths:
             valid, error = validate_file_path_format_pure(path)
             assert valid
@@ -95,30 +97,30 @@ class TestPathTraversalSecurity:
 
 class TestCommandStringSecurity:
     """コマンド文字列結合の脆弱性に対するテスト"""
-    
+
     def test_unified_factory_docker_exec_uses_list(self):
         """統一ファクトリーがコマンドをリスト形式で保持することの確認"""
         step = Step(
             type=StepType.DOCKER_EXEC,
             cmd=["container_name", "echo", "hello", "world"]
         )
-        
+
         request = create_request(step, context={})
-        
+
         # コマンドがリスト形式で保持されていることを確認
         if request:  # May return None if DOCKER_EXEC is not implemented
             assert isinstance(request.command, list)
             assert request.command == ["echo", "hello", "world"]
-        
+
     def test_docker_request_accepts_list_command(self):
         """DockerRequestがリスト形式のコマンドを受け入れることの確認"""
         command_list = ["bash", "-c", "echo 'test'"]
-        
+
         request = DockerRequest(
             op=DockerOpType.EXEC,
             container="test_container",
             command=command_list
         )
-        
+
         assert request.command == command_list
         assert isinstance(request.command, list)

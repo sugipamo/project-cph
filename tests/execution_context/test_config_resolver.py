@@ -1,9 +1,20 @@
 import pytest
-from src.context.resolver.config_resolver import create_config_root_from_dict, resolve_by_match_desc, resolve_best, resolve_format_string
+
 from src.context.resolver.config_node import ConfigNode
 from src.context.resolver.config_node_logic import (
-    find_nearest_key_node, init_matches, add_edge, next_nodes_with_key, path
+    add_edge,
+    find_nearest_key_node,
+    init_matches,
+    next_nodes_with_key,
+    path,
 )
+from src.context.resolver.config_resolver import (
+    create_config_root_from_dict,
+    resolve_best,
+    resolve_by_match_desc,
+    resolve_format_string,
+)
+
 
 @pytest.fixture
 def sample_config():
@@ -27,7 +38,7 @@ def sample_config():
 def test_resolve_wildcard_match(sample_config):
     root = create_config_root_from_dict(sample_config)
     results = resolve_by_match_desc(root, ["*"])
-    assert set([r.key for r in results]) == set(["python", "java"])
+    assert {r.key for r in results} == {"python", "java"}
 
 def test_resolve_python_match(sample_config):
     root = create_config_root_from_dict(sample_config)
@@ -292,7 +303,7 @@ def test_value_dict_not_destroyed():
     value = {"aliases": ["x"], "value": 1}
     import copy
     value_copy = copy.deepcopy(value)
-    node = ConfigNode("a", value_copy)
+    ConfigNode("a", value_copy)
     # value_copyのaliasesが消えていないこと
     assert "aliases" in value
 
@@ -433,7 +444,7 @@ def test_find_nearest_key_node_deep():
         }
     }
     root = create_config_root_from_dict(config)
-    py_node = [n for n in root.next_nodes if n.key == "python"][0]
+    py_node = next(n for n in root.next_nodes if n.key == "python")
     found = find_nearest_key_node(py_node, "target")
     assert found and found[0].value == 42
 
@@ -448,7 +459,7 @@ def test_find_nearest_key_node_multiple():
         }
     }
     root = create_config_root_from_dict(config)
-    py_node = [n for n in root.next_nodes if n.key == "python"][0]
+    py_node = next(n for n in root.next_nodes if n.key == "python")
     found = find_nearest_key_node(py_node, "target")
     # 最も近い（浅い）ノードのみ返る
     assert found and found[0].value == 1

@@ -1,3 +1,2 @@
-"""
-Input parsing components
+"""Input parsing components
 """

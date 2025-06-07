@@ -1,13 +1,12 @@
 """Docker request implementation for container operations."""
 from enum import Enum, auto
-from typing import Any, Dict, Optional, Union, List
-from src.domain.interfaces.docker_interface import DockerDriverInterface
-from src.domain.results.result import OperationResult
+from typing import Any, Optional, Union
+
 from src.domain.constants.operation_type import OperationType
-import inspect
-import os
+from src.domain.interfaces.docker_interface import DockerDriverInterface
 from src.domain.requests.base.base_request import BaseRequest
 from src.domain.requests.composite.composite_request import CompositeRequest
+from src.domain.results.result import OperationResult
 
 
 class DockerOpType(Enum):
@@ -24,12 +23,12 @@ class DockerOpType(Enum):
 
 class DockerRequest(BaseRequest):
     """Request for Docker container operations."""
-    
-    def __init__(self, op: DockerOpType, image: str = None, container: str = None, 
-                 command: Union[str, List[str]] = None, options: Optional[Dict[str, Any]] = None, 
+
+    def __init__(self, op: DockerOpType, image: Optional[str] = None, container: Optional[str] = None,
+                 command: Optional[Union[str, list[str]]] = None, options: Optional[dict[str, Any]] = None,
                  debug_tag=None, name=None, show_output=True, dockerfile_text=None):
         """Initialize Docker request.
-        
+
         Args:
             op: Docker operation type
             image: Docker image name
@@ -71,7 +70,7 @@ class DockerRequest(BaseRequest):
                 if self.container not in container_names:
                     # If doesn't exist, just run
                     return driver.run_container(self.image, self.container, self.options, show_output=self.show_output)
-                
+
                 # Check container status
                 inspect_result = driver.inspect(self.container, show_output=False)
                 import json
@@ -84,7 +83,7 @@ class DockerRequest(BaseRequest):
                         if status == "running":
                             # Already running, reuse
                             return OperationResult(success=True, op=self.op, stdout="already running", stderr=None, returncode=0)
-                        elif status in ("exited", "created", "dead", "paused"):
+                        if status in ("exited", "created", "dead", "paused"):
                             # Stopped, remove first
                             reqs.append(DockerRequest(DockerOpType.REMOVE, container=self.container, show_output=False))
                         # Run container
@@ -96,7 +95,7 @@ class DockerRequest(BaseRequest):
                 except Exception:
                     # If inspect fails, just run
                     return driver.run_container(self.image, self.container, self.options, show_output=self.show_output)
-        
+
         # Normal single request operations
         try:
             if self.op == DockerOpType.RUN:
@@ -127,7 +126,7 @@ class DockerRequest(BaseRequest):
                     result = driver.cp(remote_path, local_path, self.container, to_container=False, show_output=self.show_output)
             else:
                 raise ValueError(f"Unknown DockerOpType: {self.op}")
-                
+
             return OperationResult(
                 op=self.op,
                 stdout=getattr(result, 'stdout', None),

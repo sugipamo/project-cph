@@ -3,12 +3,13 @@ import inspect
 import os
 from abc import ABC, abstractmethod
 from typing import Any, Optional
+
 from src.domain.constants.operation_type import OperationType
 
 
 class BaseRequest(ABC):
     """Abstract base class for all operation requests."""
-    
+
     def __init__(self, name: Optional[str] = None, debug_tag: Optional[str] = None):
         self.name = name
         self._set_debug_info(debug_tag)
@@ -37,17 +38,16 @@ class BaseRequest(ABC):
     @abstractmethod
     def operation_type(self) -> OperationType:
         """Return the operation type of this request."""
-        pass
 
     def execute(self, driver: Optional[Any] = None) -> Any:
         """Execute this request using the provided driver.
-        
+
         Args:
             driver: The driver to use for execution
-            
+
         Returns:
             The execution result
-            
+
         Raises:
             RuntimeError: If request has already been executed
             ValueError: If driver is required but not provided
@@ -66,11 +66,10 @@ class BaseRequest(ABC):
     @abstractmethod
     def _execute_core(self, driver: Optional[Any]) -> Any:
         """Core execution logic to be implemented by subclasses.
-        
+
         Args:
             driver: The driver to use for execution
-            
+
         Returns:
             The execution result
         """
-        pass

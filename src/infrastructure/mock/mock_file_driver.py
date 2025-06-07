@@ -1,30 +1,30 @@
 """Mock file driver for testing behavior verification."""
 from pathlib import Path
-from typing import Dict, Set, Any, Optional, List, Tuple
+from typing import Any, Optional
+
 from src.infrastructure.drivers.file.file_driver import FileDriver
 
 
 class MockFileDriver(FileDriver):
-    """
-    Mock driver for behavior verification
+    """Mock driver for behavior verification
     - Detailed operation history recording
     - Return expected values
     - Internal state simulation
     """
-    
+
     def __init__(self, base_dir: Path = Path(".")):
         super().__init__(base_dir)
         # Operation history (for behavior verification)
-        self.operations: List[Tuple[str, ...]] = []
-        self.call_count: Dict[str, int] = {}
-        
+        self.operations: list[tuple[str, ...]] = []
+        self.call_count: dict[str, int] = {}
+
         # Internal state simulation
-        self.files: Set[Path] = set()
-        self.contents: Dict[Path, str] = {}
-        
+        self.files: set[Path] = set()
+        self.contents: dict[Path, str] = {}
+
         # Expected value settings
-        self.expected_results: Dict[str, Any] = {}
-        self.file_exists_map: Dict[Path, bool] = {}
+        self.expected_results: dict[str, Any] = {}
+        self.file_exists_map: dict[Path, bool] = {}
 
     def _record_operation(self, operation: str, *args) -> None:
         """Record operation and count calls"""
@@ -70,7 +70,7 @@ class MockFileDriver(FileDriver):
         self._record_operation("copy", src_path, dst_path)
         if src_path in self.files:
             self.files.add(dst_path)
-            self.contents[dst_path] = self.contents[src_path] if src_path in self.contents else ""
+            self.contents[dst_path] = self.contents.get(src_path, "")
 
     def _exists_impl(self, path: Path) -> bool:
         # If already absolute path, don't add base_dir
@@ -111,17 +111,17 @@ class MockFileDriver(FileDriver):
 
     def open(self, path: str, mode: str = "r", encoding: Optional[str] = None):
         """Mock file open"""
-        from io import StringIO
         from contextlib import contextmanager
-        
+        from io import StringIO
+
         # Convert to absolute path
         if isinstance(path, str):
             path_obj = self.base_dir / Path(path)
         else:
             path_obj = path
-            
+
         self._record_operation("open", path_obj, mode)
-        
+
         @contextmanager
         def mock_file():
             if mode.startswith('r'):
@@ -138,7 +138,7 @@ class MockFileDriver(FileDriver):
                 self.contents[path_obj] = written_content
             else:
                 raise NotImplementedError(f"Mode '{mode}' not implemented in MockFileDriver")
-        
+
         return mock_file()
 
     def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver: Any = None):
@@ -149,7 +149,7 @@ class MockFileDriver(FileDriver):
         if src_path not in self.files:
             raise FileNotFoundError(f"MockFileDriver: {src_path} does not exist")
         return f"mock_docker_cp_{container}_{src}_{dst}"
-    
+
     def hash_file(self, path: Path) -> str:
         """Mock file hash calculation"""
         self._record_operation("hash_file", path)
@@ -159,7 +159,7 @@ class MockFileDriver(FileDriver):
         content = self.contents.get(path, "")
         return f"mock_hash_{hash(content)}"
 
-    def list_files(self, base_dir: Path) -> List[Path]:
+    def list_files(self, base_dir: Path) -> list[Path]:
         """List all files under directory"""
         self._record_operation("list_files", base_dir)
         base = self.base_dir / base_dir

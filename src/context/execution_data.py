@@ -1,14 +1,12 @@
-"""
-Execution data holder
+"""Execution data holder
 """
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Optional
 
 
 @dataclass
 class ExecutionData:
-    """
-    純粋な実行データを保持するクラス
+    """純粋な実行データを保持するクラス
     バリデーションや設定解決などの責務は持たない
     """
     command_type: str

@@ -1,8 +1,10 @@
-from typing import Any, List, Optional, Union
 from collections import deque
+from typing import Any, Optional, Union
+
 from src.context.resolver.config_node import ConfigNode
-from src.context.resolver.config_node_logic import init_matches, add_edge
+from src.context.resolver.config_node_logic import add_edge, init_matches
 from src.utils.formatters import format_with_missing_keys
+
 
 def create_config_root_from_dict(data: Any) -> ConfigNode:
     if not isinstance(data, dict):
@@ -46,34 +48,33 @@ def resolve_best(root: ConfigNode, path: Union[list, tuple]) -> Optional[ConfigN
 def resolve_values(root: ConfigNode, path: Union[list, tuple]) -> list:
     return [x.value for x in resolve_by_match_desc(root, path)]
 
-def resolve_formatted_string(s: str, root: ConfigNode, initial_values: dict = None) -> str:
-    """
-    文字列sの{key}形式の変数をフォーマットする純粋関数。
-    
+def resolve_formatted_string(s: str, root: ConfigNode, initial_values: Optional[dict] = None) -> str:
+    """文字列sの{key}形式の変数をフォーマットする純粋関数。
+
     Args:
         s: フォーマットする文字列
         root: ConfigNodeのルート
         initial_values: 初期値（ユーザーインプットなど）
-        
+
     Returns:
         フォーマット済みの文字列
     """
     key_values = dict(initial_values) if initial_values else {}
     formatted, missing_keys = format_with_missing_keys(s, **key_values)
-    
+
     if not missing_keys:
         return formatted
-    
+
     # BFSで未解決のキーを探す
     queue = deque([root])
     visited = set()
-    
+
     while queue and missing_keys:
         current = queue.popleft()
         if id(current) in visited:
             continue
         visited.add(id(current))
-        
+
         # 現在のノードが未解決のキーに該当するかチェック
         for key in list(missing_keys):
             if key in key_values:
@@ -85,16 +86,16 @@ def resolve_formatted_string(s: str, root: ConfigNode, initial_values: dict = No
                 elif v is not None:
                     key_values[key] = str(v)
                 missing_keys.remove(key)
-        
+
         # 親ノードと子ノードをキューに追加
         if current.parent:
             queue.append(current.parent)
         queue.extend(current.next_nodes)
-    
+
     formatted, _ = format_with_missing_keys(s, **key_values)
     return formatted
 
-def resolve_format_string(node: 'ConfigNode', initial_values: dict = None) -> str:
+def resolve_format_string(node: 'ConfigNode', initial_values: Optional[dict] = None) -> str:
     if isinstance(node.value, str):
         s = node.value
     elif isinstance(node.value, dict) and "value" in node.value:
@@ -122,7 +123,7 @@ def resolve_format_string(node: 'ConfigNode', initial_values: dict = None) -> st
                 v = current.value
                 if isinstance(v, dict) and "value" in v:
                     key_values[key] = v["value"]
-                elif isinstance(v, str) or isinstance(v, int):
+                elif isinstance(v, (str, int)):
                     key_values[key] = v
                 missing_keys.remove(key)
 
@@ -157,4 +158,4 @@ def _resolve_by_match_desc(root: ConfigNode, path: tuple) -> list:
     results = list(results)
     results.sort(key=lambda x: x[0], reverse=True)
     results = [x[1] for x in results]
-    return results 
+    return results

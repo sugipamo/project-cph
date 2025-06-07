@@ -1,5 +1,6 @@
-from typing import Any, List, TYPE_CHECKING
 from collections import deque
+from typing import TYPE_CHECKING, Any
+
 if TYPE_CHECKING:
     from src.context.resolver.config_node import ConfigNode
 
@@ -19,7 +20,7 @@ def add_edge(parent: 'ConfigNode', to_node: 'ConfigNode'):
     parent.next_nodes.append(to_node)
     to_node.parent = parent
 
-def path(node: 'ConfigNode') -> List[str]:
+def path(node: 'ConfigNode') -> list[str]:
     path = []
     n = node
     while n.parent:
@@ -27,10 +28,10 @@ def path(node: 'ConfigNode') -> List[str]:
         n = n.parent
     return path[::-1]
 
-def next_nodes_with_key(node: 'ConfigNode', key: str) -> List['ConfigNode']:
+def next_nodes_with_key(node: 'ConfigNode', key: str) -> list['ConfigNode']:
     return [n for n in node.next_nodes if key in n.matches]
 
-def find_nearest_key_node(node: 'ConfigNode', key: str) -> List['ConfigNode']:
+def find_nearest_key_node(node: 'ConfigNode', key: str) -> list['ConfigNode']:
     que = deque([(0, node)])
     visited = set()
     find_depth = 1 << 31
@@ -47,4 +48,4 @@ def find_nearest_key_node(node: 'ConfigNode', key: str) -> List['ConfigNode']:
             results.append(n)
         for next_node in n.next_nodes:
             que.append((depth + 1, next_node))
-    return results 
+    return results

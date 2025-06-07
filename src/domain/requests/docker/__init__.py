@@ -1,4 +1,4 @@
 """Docker request module."""
-from .docker_request import DockerRequest, DockerOpType
+from .docker_request import DockerOpType, DockerRequest
 
-__all__ = ["DockerRequest", "DockerOpType"]
+__all__ = ["DockerOpType", "DockerRequest"]

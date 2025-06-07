@@ -1,12 +1,15 @@
-import pytest
-from src.domain.results.shell_result import ShellResult
-from src.domain.results.result import OperationResult
-from src.domain.constants.operation_type import OperationType
-from src.domain.requests.shell.shell_request import ShellRequest
-from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
-from src.infrastructure.di_container import DIContainer
 import os
 import unittest.mock
+
+import pytest
+
+from src.domain.constants.operation_type import OperationType
+from src.domain.requests.shell.shell_request import ShellRequest
+from src.domain.results.result import OperationResult
+from src.domain.results.shell_result import ShellResult
+from src.infrastructure.di_container import DIContainer
+from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
+
 
 def test_shell_request_echo():
     """Test shell request using mock driver instead of MockShellRequest"""
@@ -14,7 +17,7 @@ def test_shell_request_echo():
         mock_run.return_value.stdout = "hello\n"
         mock_run.return_value.stderr = ""
         mock_run.return_value.returncode = 0
-        
+
         req = ShellRequest(["echo", "hello"])
         driver = LocalShellDriver()
         result = req.execute(driver=driver)
@@ -29,7 +32,7 @@ def test_shell_request_fail():
         mock_run.return_value.stdout = ""
         mock_run.return_value.stderr = "fail"
         mock_run.return_value.returncode = 1
-        
+
         req = ShellRequest(["false"])
         driver = LocalShellDriver()
         result = req.execute(driver=driver)
@@ -81,7 +84,7 @@ def test_shell_request_with_inputdata_env_cwd(tmp_path):
     # run_subprocessの呼び出し内容を検証
     called = {}
     def fake_run_subprocess(cmd, cwd=None, env=None, inputdata=None, timeout=None):
-        called.update(dict(cmd=cmd, cwd=cwd, env=env, inputdata=inputdata, timeout=timeout))
+        called.update({'cmd': cmd, 'cwd': cwd, 'env': env, 'inputdata': inputdata, 'timeout': timeout})
         class Completed:
             stdout = "ok"
             stderr = ""
@@ -111,4 +114,4 @@ def test_shell_request_show_output(capsys):
         result = req._execute_core(driver)
     # show_outputの分岐は本体でprintしていないが、今後の拡張用にカバレッジ確保
     assert result.stdout == "out"
-    assert result.stderr == "err" 
+    assert result.stderr == "err"

@@ -1,6 +1,9 @@
-import pytest
 from pathlib import Path
+
+import pytest
+
 from src.infrastructure.mock.mock_file_driver import MockFileDriver
+
 
 def test_create_and_exists():
     driver = MockFileDriver()
@@ -13,32 +16,32 @@ def test_create_and_exists():
 def test_behavior_verification():
     """MockFileDriverの振る舞い検証機能をテスト"""
     driver = MockFileDriver()
-    
+
     # 操作を実行
     test_path = driver.base_dir / Path("test.txt")
     copy_path = driver.base_dir / Path("copy.txt")
     moved_path = driver.base_dir / Path("moved.txt")
-    
+
     driver._create_impl(test_path, "content")
     driver._copy_impl(test_path, copy_path)
     driver._move_impl(copy_path, moved_path)
-    
+
     # 振る舞い検証
     driver.assert_operation_called("create")
     driver.assert_operation_called("copy", times=1)
     driver.assert_operation_called("move", times=1)
-    
+
     # 特定の引数での呼び出し検証
     driver.assert_operation_called_with("create", test_path, "content")
 
 def test_file_exists_setup():
     """ファイル存在状態の設定機能をテスト"""
     driver = MockFileDriver()
-    
+
     # ファイルの存在状態を設定
     driver.set_file_exists("existing_file.txt", exists=True)
     driver.set_file_exists("non_existing_file.txt", exists=False)
-    
+
     # 確認
     assert driver._exists_impl(driver.base_dir / "existing_file.txt")
     assert not driver._exists_impl(driver.base_dir / "non_existing_file.txt")
@@ -93,9 +96,8 @@ def test_open_read_and_write():
 def test_open_unsupported_mode():
     driver = MockFileDriver()
     driver.path = Path("a.txt")
-    with pytest.raises(NotImplementedError):
-        with driver.open("a.txt", "x") as f:
-            pass
+    with pytest.raises(NotImplementedError), driver.open("a.txt", "x"):
+        pass
 
 def test_docker_cp_and_hash_file():
     driver = MockFileDriver()
@@ -108,4 +110,4 @@ def test_docker_cp_and_hash_file():
     assert isinstance(h, str) and len(h) > 0
     # docker_cpでFileNotFoundError
     with pytest.raises(FileNotFoundError):
-        driver.docker_cp("notfound.txt", "dst", "container") 
+        driver.docker_cp("notfound.txt", "dst", "container")

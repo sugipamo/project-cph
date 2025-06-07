@@ -1,13 +1,14 @@
 """Base composite request class."""
-from typing import List, Any
-from src.domain.requests.base.base_request import BaseRequest
+from typing import Optional
+
 from src.domain.constants.operation_type import OperationType
+from src.domain.requests.base.base_request import BaseRequest
 
 
 class BaseCompositeRequest(BaseRequest):
     """Base class for composite requests that contain multiple sub-requests."""
-    
-    def __init__(self, requests: List[BaseRequest], debug_tag: str = None, name: str = None):
+
+    def __init__(self, requests: list[BaseRequest], debug_tag: Optional[str] = None, name: Optional[str] = None):
         super().__init__(name=name, debug_tag=debug_tag)
         if not all(isinstance(r, BaseRequest) for r in requests):
             raise TypeError("All elements of 'requests' must be BaseRequest (or its subclass)")
@@ -18,7 +19,7 @@ class BaseCompositeRequest(BaseRequest):
     def set_name(self, name: str) -> 'BaseCompositeRequest':
         self.name = name
         return self
-    
+
     def __len__(self) -> int:
         return len(self.requests)
 
@@ -31,8 +32,8 @@ class BaseCompositeRequest(BaseRequest):
         return f"<{self.__class__.__name__} name={self.name} [\n  {reqs_str}\n]>"
 
     @classmethod
-    def make_composite_request(cls, requests: List[BaseRequest], debug_tag: str = None, 
-                             name: str = None) -> BaseRequest:
+    def make_composite_request(cls, requests: list[BaseRequest], debug_tag: Optional[str] = None,
+                             name: Optional[str] = None) -> BaseRequest:
         if len(requests) == 1:
             req = requests[0]
             if name is not None:

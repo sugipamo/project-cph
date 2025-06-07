@@ -1,7 +1,10 @@
+import unittest.mock
+
 import pytest
+
 from src.domain.requests.python.python_request import PythonRequest
 from src.domain.results import OperationResult
-import unittest.mock
+
 
 class DummyPythonUtils:
     @staticmethod
@@ -89,4 +92,4 @@ def test_python_request_execute_exception_with_patch(monkeypatch):
             result = req._execute_core()
             assert isinstance(result, OperationResult)
             assert result.stderr == "fail"
-            assert result.returncode == 1 
+            assert result.returncode == 1

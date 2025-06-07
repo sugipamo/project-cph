@@ -1,13 +1,13 @@
 """Exception for composite step failures."""
-from typing import Optional, Any
+from typing import Any, Optional
 
 
 class CompositeStepFailure(Exception):
     """Exception raised when a composite step fails."""
-    
+
     def __init__(self, message: str, result: Optional[Any] = None, original_exception: Optional[Exception] = None):
         """Initialize composite step failure exception.
-        
+
         Args:
             message: Error message
             result: Result object from failed step

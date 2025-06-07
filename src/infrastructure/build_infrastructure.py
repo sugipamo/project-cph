@@ -1,16 +1,14 @@
-"""
-Infrastructure builder with improved dependency management.
+"""Infrastructure builder with improved dependency management.
 Uses lazy loading to reduce coupling and startup time.
 """
-from src.infrastructure.di_container import DIContainer
 from src.infrastructure.config.di_config import configure_production_dependencies, configure_test_dependencies
+from src.infrastructure.di_container import DIContainer
 
 
 def build_infrastructure() -> DIContainer:
-    """
-    Setup and return infrastructure (DIContainer) with essential dependencies.
+    """Setup and return infrastructure (DIContainer) with essential dependencies.
     Uses lazy loading to minimize coupling and improve startup performance.
-    
+
     Returns:
         Configured DIContainer with all infrastructure components
     """
@@ -20,10 +18,9 @@ def build_infrastructure() -> DIContainer:
 
 
 def build_mock_infrastructure() -> DIContainer:
-    """
-    Setup and return mock infrastructure (DIContainer) for testing.
+    """Setup and return mock infrastructure (DIContainer) for testing.
     Uses lazy loading and mock implementations where available.
-    
+
     Returns:
         Configured DIContainer with mock implementations
     """

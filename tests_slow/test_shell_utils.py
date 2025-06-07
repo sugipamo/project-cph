@@ -1,10 +1,12 @@
-import pytest
 import subprocess
 import sys
-import os
 import threading
 from queue import Queue
+
+import pytest
+
 from src.infrastructure.drivers.shell.utils.shell_utils import ShellUtils
+
 
 def test_run_subprocess_echo():
     result = ShellUtils.run_subprocess([sys.executable, "-c", "print('hello')"])
@@ -38,4 +40,4 @@ def test_enforce_timeout():
         proc.terminate()
     ShellUtils.enforce_timeout(proc, timeout=0.1, stop_func=stop_func)
     assert called["stopped"]
-    proc.wait() 
+    proc.wait()

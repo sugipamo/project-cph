@@ -1,6 +1,7 @@
 """Dependency injection configuration with lazy loading."""
 from pathlib import Path
-from typing import Callable, Any
+from typing import Any
+
 from src.infrastructure.di_container import DIContainer, DIKey
 
 
@@ -83,21 +84,21 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.DOCKER_DRIVER, _create_docker_driver)
     container.register(DIKey.FILE_DRIVER, _create_file_driver)
     container.register(DIKey.PYTHON_DRIVER, _create_python_driver)
-    
+
     # Register persistence layer
     container.register(DIKey.SQLITE_MANAGER, _create_sqlite_manager)
     container.register(DIKey.OPERATION_REPOSITORY, _create_operation_repository)
     container.register(DIKey.SESSION_REPOSITORY, _create_session_repository)
-    
+
     # Register orchestration layer
     container.register(DIKey.UNIFIED_DRIVER, lambda: _create_unified_driver(container))
     container.register(DIKey.EXECUTION_CONTROLLER, _create_execution_controller)
     container.register(DIKey.OUTPUT_MANAGER, _create_output_manager)
-    
+
     # Register environment and factory
     container.register(DIKey.ENVIRONMENT_MANAGER, _create_environment_manager)
     container.register(DIKey.UNIFIED_REQUEST_FACTORY, _create_request_factory)
-    
+
     # Register string-based aliases for backward compatibility
     container.register('shell_driver', lambda: container.resolve(DIKey.SHELL_DRIVER))
     container.register('docker_driver', lambda: container.resolve(DIKey.DOCKER_DRIVER))
@@ -112,43 +113,43 @@ def configure_test_dependencies(container: DIContainer) -> None:
     def _create_mock_file_driver():
         from src.infrastructure.mock.mock_file_driver import MockFileDriver
         return MockFileDriver(base_dir=Path('.'))
-    
+
     def _create_mock_shell_driver():
         from src.infrastructure.mock.mock_shell_driver import MockShellDriver
         return MockShellDriver()
-    
+
     def _create_mock_docker_driver():
         from src.infrastructure.mock.mock_docker_driver import MockDockerDriver
         return MockDockerDriver()
-    
+
     def _create_mock_python_driver():
         from src.infrastructure.mock.mock_python_driver import MockPythonDriver
         return MockPythonDriver()
-    
+
     def _create_test_sqlite_manager():
         from src.infrastructure.persistence.sqlite.sqlite_manager import SQLiteManager
         return SQLiteManager("test_cph_history.db")
-    
+
     # Register mock drivers
     container.register(DIKey.SHELL_DRIVER, _create_mock_shell_driver)
     container.register(DIKey.DOCKER_DRIVER, _create_mock_docker_driver)
     container.register(DIKey.FILE_DRIVER, _create_mock_file_driver)
     container.register(DIKey.PYTHON_DRIVER, _create_mock_python_driver)
-    
+
     # Register test persistence layer
     container.register(DIKey.SQLITE_MANAGER, _create_test_sqlite_manager)
     container.register(DIKey.OPERATION_REPOSITORY, _create_operation_repository)
     container.register(DIKey.SESSION_REPOSITORY, _create_session_repository)
-    
+
     # Register orchestration layer
     container.register(DIKey.UNIFIED_DRIVER, lambda: _create_unified_driver(container))
     container.register(DIKey.EXECUTION_CONTROLLER, _create_execution_controller)
     container.register(DIKey.OUTPUT_MANAGER, _create_output_manager)
-    
+
     # Register environment and factory
     container.register(DIKey.ENVIRONMENT_MANAGER, _create_environment_manager)
     container.register(DIKey.UNIFIED_REQUEST_FACTORY, _create_request_factory)
-    
+
     # Register string-based aliases for backward compatibility
     container.register('shell_driver', lambda: container.resolve(DIKey.SHELL_DRIVER))
     container.register('docker_driver', lambda: container.resolve(DIKey.DOCKER_DRIVER))

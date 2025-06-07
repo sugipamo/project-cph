@@ -5,19 +5,18 @@ pure_functions.pyモジュールの関数をテストして、
 純粋関数としての動作（同一入力→同一出力、副作用なし）を確認。
 """
 import pytest
+
 from src.utils.helpers import (
-    format_string_pure,
-    extract_missing_keys_pure,
-    is_potential_script_path_pure,
-    validate_file_path_format_pure,
-    build_docker_run_command_pure,
     build_docker_build_command_pure,
-    build_docker_stop_command_pure,
-    build_docker_remove_command_pure,
-    build_docker_ps_command_pure,
-    build_docker_inspect_command_pure,
     build_docker_cp_command_pure,
-    validate_docker_image_name_pure,
+    build_docker_inspect_command_pure,
+    build_docker_ps_command_pure,
+    build_docker_remove_command_pure,
+    build_docker_run_command_pure,
+    build_docker_stop_command_pure,
+    extract_missing_keys_pure,
+    format_string_pure,
+    is_potential_script_path_pure,
     parse_container_names_pure,
     # validate_step_configuration_pure,  # Not available
     # merge_configurations_pure,  # Not available
@@ -29,6 +28,8 @@ from src.utils.helpers import (
     # filter_by_criteria_pure,  # Not available
     # compose,  # Not available
     # pipe  # Not available
+    validate_docker_image_name_pure,
+    validate_file_path_format_pure,
 )
 
 
@@ -106,12 +107,12 @@ class TestPureFunctionProperties:
         """純粋関数は決定的である（同じ入力→同じ出力）"""
         template = "Hello {name}"
         context = {"name": "World"}
-        
+
         # 同じ入力で複数回実行
         result1 = format_string_pure(template, context)
         result2 = format_string_pure(template, context)
         result3 = format_string_pure(template, context)
-        
+
         # 結果はすべて同じ
         assert result1 == result2 == result3 == "Hello World"
 
@@ -119,9 +120,9 @@ class TestPureFunctionProperties:
         """純粋関数は副作用がない（入力を変更しない）"""
         original_context = {"name": "Alice", "age": "25"}
         context_copy = original_context.copy()
-        
+
         format_string_pure("Hello {name}", context_copy)
-        
+
         # 元の辞書は変更されていない
         assert context_copy == original_context
 
@@ -133,6 +134,6 @@ class TestPureFunctionProperties:
             formatted = format_string_pure(template, context)
             # さらに別の変換を適用
             return formatted.upper()
-        
+
         result = complex_format("Hello {name}", {"name": "world"})
         assert result == "HELLO WORLD"

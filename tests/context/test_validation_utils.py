@@ -1,6 +1,8 @@
-import pytest
 from unittest.mock import Mock, patch
-from src.context.utils.validation_utils import validate_execution_context_data, get_steps_from_resolver
+
+import pytest
+
+from src.context.utils.validation_utils import get_steps_from_resolver, validate_execution_context_data
 
 
 def test_validate_execution_context_data_success():
@@ -91,22 +93,22 @@ def test_get_steps_from_resolver_success():
             self.key = key
             self.value = value
             self.next_nodes = []
-    
+
     # Create mock structure
     step1 = MockNode(0, {"type": "shell", "cmd": ["echo", "test1"]})
     step2 = MockNode(1, {"type": "shell", "cmd": ["echo", "test2"]})
     steps_node = MockNode("steps", None)
     steps_node.next_nodes = [step1, step2]
-    
+
     def mock_resolve_best(resolver, path):
         if path == ["python", "commands", "test", "steps"]:
             return steps_node
         return None
-    
+
     with patch('src.context.resolver.config_resolver.resolve_best', side_effect=mock_resolve_best):
         mock_resolver = Mock()
         result = get_steps_from_resolver(mock_resolver, "python", "test")
-        
+
         assert len(result) == 2
         assert result[0].key == 0
         assert result[1].key == 1
@@ -116,10 +118,10 @@ def test_get_steps_from_resolver_no_steps():
     """Test steps retrieval when steps are not found"""
     def mock_resolve_best(resolver, path):
         return None
-    
+
     with patch('src.context.resolver.config_resolver.resolve_best', side_effect=mock_resolve_best):
         mock_resolver = Mock()
-        
+
         with pytest.raises(ValueError) as excinfo:
             get_steps_from_resolver(mock_resolver, "python", "test")
         assert "stepsが見つかりません" in str(excinfo.value)

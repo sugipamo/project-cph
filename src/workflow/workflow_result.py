@@ -1,8 +1,7 @@
+"""Workflow execution result data structures
 """
-Workflow execution result data structures
-"""
-from typing import List
 from dataclasses import dataclass
+
 from src.domain.results.result import OperationResult
 
 
@@ -10,7 +9,7 @@ from src.domain.results.result import OperationResult
 class WorkflowExecutionResult:
     """Result of workflow execution"""
     success: bool
-    results: List[OperationResult]
-    preparation_results: List[OperationResult]
-    errors: List[str]
-    warnings: List[str]
+    results: list[OperationResult]
+    preparation_results: list[OperationResult]
+    errors: list[str]
+    warnings: list[str]

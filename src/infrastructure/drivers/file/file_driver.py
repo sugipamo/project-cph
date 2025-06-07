@@ -1,21 +1,20 @@
+"""Abstract base class for file operations.
 """
-Abstract base class for file operations.
-"""
-from pathlib import Path
 from abc import abstractmethod
-from typing import Optional, List, Any
+from pathlib import Path
+from typing import Any, Optional
+
 from src.infrastructure.drivers.base.base_driver import BaseDriver
 
 
 class FileDriver(BaseDriver):
-    """
-    Abstract base class for file operations.
-    
+    """Abstract base class for file operations.
+
     Uses template method pattern:
     - Common operations (path resolution, parent directory creation) in base class
     - Actual file operations in concrete classes (_*_impl methods)
     """
-    
+
     def __init__(self, base_dir: Path = Path(".")):
         self.base_dir = Path(base_dir)
         # path and dst_path are set dynamically during operations
@@ -26,8 +25,7 @@ class FileDriver(BaseDriver):
         """Execute a file operation request."""
         # This method is for compatibility with BaseDriver
         # Actual execution happens through specific methods
-        pass
-    
+
     def validate(self, request: Any) -> bool:
         """Validate if this driver can handle the request."""
         # For now, always return True for file requests
@@ -50,7 +48,7 @@ class FileDriver(BaseDriver):
         target_path = self.resolve_path(path)
         return target_path.is_dir()
 
-    def glob(self, pattern: str) -> List[Path]:
+    def glob(self, pattern: str) -> list[Path]:
         """Find files matching pattern."""
         return list(self.base_dir.glob(pattern))
 
@@ -61,7 +59,7 @@ class FileDriver(BaseDriver):
             src_path = self.path
         if dst_path is None:
             dst_path = self.dst_path
-            
+
         resolved_src = self.resolve_path(src_path)
         resolved_dst = self.resolve_path(dst_path)
         self.ensure_parent_dir(resolved_dst)
@@ -70,7 +68,6 @@ class FileDriver(BaseDriver):
     @abstractmethod
     def _move_impl(self, src_path: Path, dst_path: Path) -> None:
         """File move implementation (implement in concrete class)."""
-        pass
 
     def copy(self, src_path: Optional[Path] = None, dst_path: Optional[Path] = None) -> None:
         """Copy file (template method)."""
@@ -79,7 +76,7 @@ class FileDriver(BaseDriver):
             src_path = self.path
         if dst_path is None:
             dst_path = self.dst_path
-            
+
         resolved_src = self.resolve_path(src_path)
         resolved_dst = self.resolve_path(dst_path)
         self.ensure_parent_dir(resolved_dst)
@@ -88,7 +85,6 @@ class FileDriver(BaseDriver):
     @abstractmethod
     def _copy_impl(self, src_path: Path, dst_path: Path) -> None:
         """File copy implementation (implement in concrete class)."""
-        pass
 
     def exists(self, path: Optional[Path] = None) -> bool:
         """Check file existence (template method)."""
@@ -101,7 +97,6 @@ class FileDriver(BaseDriver):
     @abstractmethod
     def _exists_impl(self, path: Path) -> bool:
         """File existence check implementation (implement in concrete class)."""
-        pass
 
     def create(self, path: Path, content: str = "") -> None:
         """Create file (template method)."""
@@ -112,7 +107,6 @@ class FileDriver(BaseDriver):
     @abstractmethod
     def _create_impl(self, path: Path, content: str) -> None:
         """File creation implementation (implement in concrete class)."""
-        pass
 
     def copytree(self, src_path: Path, dst_path: Path) -> None:
         """Copy directory tree (template method)."""
@@ -126,7 +120,6 @@ class FileDriver(BaseDriver):
     @abstractmethod
     def _copytree_impl(self, src_path: Path, dst_path: Path) -> None:
         """Directory tree copy implementation (implement in concrete class)."""
-        pass
 
     def rmtree(self, path: Path) -> None:
         """Remove directory tree (template method)."""
@@ -136,7 +129,6 @@ class FileDriver(BaseDriver):
     @abstractmethod
     def _rmtree_impl(self, path: Path) -> None:
         """Directory tree removal implementation (implement in concrete class)."""
-        pass
 
     def remove(self, path: Path) -> None:
         """Remove file (template method)."""
@@ -146,12 +138,10 @@ class FileDriver(BaseDriver):
     @abstractmethod
     def _remove_impl(self, path: Path) -> None:
         """File removal implementation (implement in concrete class)."""
-        pass
 
     @abstractmethod
     def open(self, path: Path, mode: str = "r", encoding: Optional[str] = None):
         """Open file (implement in concrete class)."""
-        pass
 
     def ensure_parent_dir(self, path: Path) -> None:
         """Ensure parent directory exists."""
@@ -174,7 +164,6 @@ class FileDriver(BaseDriver):
     @abstractmethod
     def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver=None):
         """Copy files to/from Docker container (implement in concrete class)."""
-        pass
 
     def mkdir(self, path: Path) -> None:
         """Create directory."""
@@ -188,6 +177,5 @@ class FileDriver(BaseDriver):
         resolved_path.touch(exist_ok=True)
 
     @abstractmethod
-    def list_files(self, base_dir: Path) -> List[Path]:
+    def list_files(self, base_dir: Path) -> list[Path]:
         """List all files under specified directory (implement in concrete class)."""
-        pass

@@ -1,22 +1,21 @@
 """Base result class for operation results."""
-import time
 import json
-from typing import Optional, Any, Dict
+from typing import Any, Optional
 
 
 class OperationResult:
     """Base class for operation results."""
-    
-    def __init__(self, success: Optional[bool] = None, returncode: Optional[int] = None, 
-                 stdout: Optional[str] = None, stderr: Optional[str] = None, 
-                 content: Optional[str] = None, exists: Optional[bool] = None, 
-                 path: Optional[str] = None, op: Optional[Any] = None, 
-                 cmd: Optional[str] = None, request: Optional[Any] = None, 
-                 start_time: Optional[float] = None, end_time: Optional[float] = None, 
-                 error_message: Optional[str] = None, exception: Optional[Exception] = None, 
-                 metadata: Optional[Dict[str, Any]] = None):
+
+    def __init__(self, success: Optional[bool] = None, returncode: Optional[int] = None,
+                 stdout: Optional[str] = None, stderr: Optional[str] = None,
+                 content: Optional[str] = None, exists: Optional[bool] = None,
+                 path: Optional[str] = None, op: Optional[Any] = None,
+                 cmd: Optional[str] = None, request: Optional[Any] = None,
+                 start_time: Optional[float] = None, end_time: Optional[float] = None,
+                 error_message: Optional[str] = None, exception: Optional[Exception] = None,
+                 metadata: Optional[dict[str, Any]] = None):
         """Initialize operation result.
-        
+
         Args:
             success: Whether the operation was successful
             returncode: Process return code
@@ -38,7 +37,7 @@ class OperationResult:
             self.success = success
         else:
             self.success = (returncode == 0) if returncode is not None else False
-        
+
         self.returncode = returncode
         self.stdout = stdout
         self.stderr = stderr
@@ -83,7 +82,7 @@ class OperationResult:
                 f"error={self.error_message}"
             )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary."""
         return {
             'success': self.success,

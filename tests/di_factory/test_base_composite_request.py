@@ -1,6 +1,8 @@
 import pytest
-from src.domain.requests.composite.base_composite_request import BaseCompositeRequest
+
 from src.domain.requests.base.base_request import BaseRequest
+from src.domain.requests.composite.base_composite_request import BaseCompositeRequest
+
 
 class DummyRequest(BaseRequest):
     def __init__(self, name=None):
@@ -51,4 +53,4 @@ def test_count_leaf_requests_nested():
 def test_operation_type():
     reqs = [DummyRequest("a")]
     composite = DummyCompositeRequest(reqs)
-    assert composite.operation_type.name == "COMPOSITE" 
+    assert composite.operation_type.name == "COMPOSITE"

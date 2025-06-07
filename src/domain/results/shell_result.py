@@ -1,19 +1,20 @@
 """Shell operation result class."""
-from typing import Optional, Any, Dict
+from typing import Any, Optional
+
 from src.domain.results.result import OperationResult
 
 
 class ShellResult(OperationResult):
     """Result class for shell operations."""
-    
-    def __init__(self, success: Optional[bool] = None, stdout: Optional[str] = None, 
-                 stderr: Optional[str] = None, returncode: Optional[int] = None, 
-                 cmd: Optional[str] = None, error_message: Optional[str] = None, 
-                 exception: Optional[Exception] = None, start_time: Optional[float] = None, 
-                 end_time: Optional[float] = None, request: Optional[Any] = None, 
-                 metadata: Optional[Dict[str, Any]] = None):
+
+    def __init__(self, success: Optional[bool] = None, stdout: Optional[str] = None,
+                 stderr: Optional[str] = None, returncode: Optional[int] = None,
+                 cmd: Optional[str] = None, error_message: Optional[str] = None,
+                 exception: Optional[Exception] = None, start_time: Optional[float] = None,
+                 end_time: Optional[float] = None, request: Optional[Any] = None,
+                 metadata: Optional[dict[str, Any]] = None):
         """Initialize shell result.
-        
+
         Args:
             success: Whether the operation was successful
             stdout: Standard output
@@ -41,7 +42,7 @@ class ShellResult(OperationResult):
         self.returncode = returncode
         self.cmd = cmd
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary."""
         base = super().to_dict()
         base.update({

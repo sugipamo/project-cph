@@ -1,15 +1,16 @@
 """Local file system driver implementation."""
+import os
+import shutil
 from pathlib import Path
 from shutil import copy2
-import shutil
-import os
-from typing import Optional, List, Any, TextIO
+from typing import Any, Optional, TextIO
+
 from src.infrastructure.drivers.file.file_driver import FileDriver
 
 
 class LocalFileDriver(FileDriver):
     """Local file system driver using Python's built-in file operations."""
-    
+
     def __init__(self, base_dir: Path = Path(".")):
         super().__init__(base_dir)
 
@@ -66,11 +67,11 @@ class LocalFileDriver(FileDriver):
             raise ValueError("docker_driver is required")
         return docker_driver.cp(src, dst, container, to_container=to_container)
 
-    def list_files(self, base_dir: Path) -> List[str]:
+    def list_files(self, base_dir: Path) -> list[str]:
         """List all files under specified directory."""
         base = self.base_dir / base_dir
         result = []
-        for root, dirs, files in os.walk(base):
+        for root, _dirs, files in os.walk(base):
             for file in files:
                 result.append(str(Path(root) / file))
         return result

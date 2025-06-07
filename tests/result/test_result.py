@@ -1,5 +1,7 @@
 import pytest
+
 from src.domain.results.result import OperationResult
+
 
 def test_operation_result_success_and_failure():
     r = OperationResult(success=True, returncode=0, stdout="ok", stderr="", content="c", exists=True, path="a.txt", op="WRITE", cmd=["echo"], start_time=1.0, end_time=2.0)
@@ -37,4 +39,4 @@ def test_operation_result_exception():
     ex = ValueError("bad")
     r = OperationResult(success=False, exception=ex)
     with pytest.raises(ValueError):
-        r.raise_if_error() 
+        r.raise_if_error()

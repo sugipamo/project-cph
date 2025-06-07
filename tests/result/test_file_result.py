@@ -1,5 +1,7 @@
 import pytest
+
 from src.domain.results.file_result import FileResult
+
 
 def test_file_result_success_and_to_dict():
     r = FileResult(success=True, content="abc", path="a.txt", exists=True, op="WRITE")
@@ -17,4 +19,4 @@ def test_file_result_failure_and_exception():
     assert d["success"] is False
     assert d["exception"] == "fail"
     with pytest.raises(ValueError):
-        r.raise_if_error() 
+        r.raise_if_error()

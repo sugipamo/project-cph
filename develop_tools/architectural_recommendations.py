@@ -4,23 +4,21 @@
 """
 
 import json
-from pathlib import Path
-from typing import Dict, List, Set
-from collections import defaultdict
+
 
 class ArchitecturalRecommendations:
     def __init__(self, analysis_report_path: str):
-        with open(analysis_report_path, 'r', encoding='utf-8') as f:
+        with open(analysis_report_path, encoding='utf-8') as f:
             self.analysis = json.load(f)
-    
-    def get_ideal_layer_structure(self) -> Dict[str, Dict]:
+
+    def get_ideal_layer_structure(self) -> dict[str, dict]:
         """理想的なレイヤー構造を定義"""
         return {
             "Level 0 - Foundation": {
                 "description": "最も基本的なユーティリティ、型定義、定数",
                 "modules": [
                     "src.domain.constants",
-                    "src.domain.types", 
+                    "src.domain.types",
                     "src.shared.exceptions",
                     "src.utils"
                 ],
@@ -42,7 +40,7 @@ class ArchitecturalRecommendations:
                 "description": "具体的なドメインリクエスト実装",
                 "modules": [
                     "src.domain.requests.file",
-                    "src.domain.requests.shell", 
+                    "src.domain.requests.shell",
                     "src.domain.requests.python",
                     "src.domain.requests.docker",
                     "src.shared.utils.docker",
@@ -131,12 +129,11 @@ class ArchitecturalRecommendations:
                 "principles": ["全体調整", "外部インターフェース"]
             }
         }
-    
-    def analyze_current_violations(self) -> List[Dict]:
+
+    def analyze_current_violations(self) -> list[dict]:
         """現在の違反を分析"""
-        violations = []
-        ideal_structure = self.get_ideal_layer_structure()
-        
+        self.get_ideal_layer_structure()
+
         # 既知の問題を構造化
         known_issues = [
             {
@@ -147,7 +144,7 @@ class ArchitecturalRecommendations:
                 "recommendation": "Move unified_formatter to application layer or create interface"
             },
             {
-                "type": "Architecture Violation", 
+                "type": "Architecture Violation",
                 "severity": "Critical",
                 "module": "src.domain.requests.file.file_request",
                 "issue": "Domain depends on application.orchestration",
@@ -155,7 +152,7 @@ class ArchitecturalRecommendations:
             },
             {
                 "type": "Architecture Violation",
-                "severity": "Critical", 
+                "severity": "Critical",
                 "module": "src.domain.requests.docker.docker_request",
                 "issue": "Domain depends on infrastructure.drivers",
                 "recommendation": "Use interface abstraction instead of direct implementation dependency"
@@ -170,15 +167,15 @@ class ArchitecturalRecommendations:
             {
                 "type": "High Coupling",
                 "severity": "Medium",
-                "module": "src.infrastructure.config.di_config", 
+                "module": "src.infrastructure.config.di_config",
                 "issue": "Too many dependencies (17)",
                 "recommendation": "Split into smaller configuration modules"
             }
         ]
-        
+
         return known_issues
-    
-    def generate_migration_plan(self) -> List[Dict]:
+
+    def generate_migration_plan(self) -> list[dict]:
         """段階的な移行計画を生成"""
         return [
             {
@@ -247,7 +244,7 @@ class ArchitecturalRecommendations:
             {
                 "phase": "Phase 3 - Layer Optimization",
                 "priority": "Medium",
-                "duration": "1-2 weeks", 
+                "duration": "1-2 weeks",
                 "tasks": [
                     {
                         "task": "Reduce di_config coupling",
@@ -298,8 +295,8 @@ class ArchitecturalRecommendations:
                 ]
             }
         ]
-    
-    def generate_specific_recommendations(self) -> Dict:
+
+    def generate_specific_recommendations(self) -> dict:
         """具体的な改善提案を生成"""
         return {
             "immediate_actions": [
@@ -340,7 +337,7 @@ class ArchitecturalRecommendations:
                     "coverage": "Each layer tested in isolation"
                 },
                 {
-                    "level": "Integration Tests", 
+                    "level": "Integration Tests",
                     "focus": "Layer interactions and dependency injection",
                     "coverage": "Cross-layer communication"
                 },
@@ -351,14 +348,14 @@ class ArchitecturalRecommendations:
                 }
             ]
         }
-    
+
     def generate_full_report(self):
         """完全な改善レポートを生成"""
         ideal_structure = self.get_ideal_layer_structure()
         violations = self.analyze_current_violations()
         migration_plan = self.generate_migration_plan()
         recommendations = self.generate_specific_recommendations()
-        
+
         report = {
             "ideal_layer_structure": ideal_structure,
             "current_violations": violations,
@@ -366,35 +363,35 @@ class ArchitecturalRecommendations:
             "specific_recommendations": recommendations,
             "success_metrics": {
                 "dependency_violations": "Reduce to 0",
-                "circular_dependencies": "Eliminate completely", 
+                "circular_dependencies": "Eliminate completely",
                 "max_layer_depth": "Keep under 10",
                 "high_coupling_modules": "Reduce modules with >8 dependencies to <3"
             }
         }
-        
+
         return report
 
 def main():
     # 分析レポートを読み込み
     analyzer = ArchitecturalRecommendations("/home/cphelper/project-cph/detailed_dependency_report.json")
     report = analyzer.generate_full_report()
-    
+
     # レポートを保存
     with open("/home/cphelper/project-cph/architectural_recommendations.json", "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
-    
+
     # 主要な推奨事項を表示
     print("="*80)
     print("🏗️  アーキテクチャ改善提案レポート")
     print("="*80)
-    
+
     print("\n🎯 理想的なレイヤー構造:")
     for level_name, level_info in report["ideal_layer_structure"].items():
         print(f"\n  📊 {level_name}:")
         print(f"    📝 {level_info['description']}")
         print(f"    📦 代表モジュール: {level_info['modules'][:3]}{'...' if len(level_info['modules']) > 3 else ''}")
         print(f"    🔗 依存: {level_info['dependencies']}")
-    
+
     print(f"\n⚠️  現在の問題 ({len(report['current_violations'])} 個):")
     for violation in report["current_violations"]:
         severity_emoji = {"Critical": "🚨", "High": "⚠️", "Medium": "⚡"}
@@ -402,7 +399,7 @@ def main():
         print(f"  {emoji} {violation['severity']}: {violation['module']}")
         print(f"    問題: {violation['issue']}")
         print(f"    推奨: {violation['recommendation']}")
-    
+
     print(f"\n📋 移行計画 ({len(report['migration_plan'])} フェーズ):")
     for phase in report["migration_plan"]:
         priority_emoji = {"Critical": "🚨", "High": "⚠️", "Medium": "⚡", "Low": "ℹ️"}
@@ -411,12 +408,12 @@ def main():
         for task in phase["tasks"][:2]:  # 最初の2つのタスクのみ表示
             print(f"    ✅ {task['task']}")
             print(f"      {task['actions'][0]}")
-    
-    print(f"\n🎯 成功指標:")
+
+    print("\n🎯 成功指標:")
     for metric, target in report["success_metrics"].items():
         print(f"  📈 {metric}: {target}")
-    
-    print(f"\n💾 完全なレポートを architectural_recommendations.json に保存しました")
+
+    print("\n💾 完全なレポートを architectural_recommendations.json に保存しました")
 
 if __name__ == "__main__":
     main()

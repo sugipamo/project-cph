@@ -1,6 +1,5 @@
+"""Context utilities
 """
-Context utilities
-"""
-from .validation_utils import validate_execution_context_data, get_steps_from_resolver
+from .validation_utils import get_steps_from_resolver, validate_execution_context_data
 
-__all__ = ['validate_execution_context_data', 'get_steps_from_resolver']
+__all__ = ['get_steps_from_resolver', 'validate_execution_context_data']

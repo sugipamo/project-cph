@@ -1,25 +1,27 @@
+"""Preparation executor for generating pre-workflow tasks
 """
-Preparation executor for generating pre-workflow tasks
-"""
-from typing import List, Dict, Optional, Tuple
-from dataclasses import dataclass
 import logging
 import os
 import shutil
+from dataclasses import dataclass
+from typing import Optional
 
-from src.workflow.preparation.environment_inspector import (
-    EnvironmentInspector, ResourceStatus, ResourceType, ResourceRequirement
-)
-from src.workflow.preparation.docker_state_manager import DockerStateManager
-from src.workflow.preparation.preparation_error_handler import (
-    PreparationErrorHandler, RobustPreparationExecutor, ErrorSeverity, ErrorCategory
-)
-from src.domain.requests.docker.docker_request import DockerRequest, DockerOpType
-from src.domain.requests.file.file_request import FileRequest
-from src.domain.requests.file.file_op_type import FileOpType
-from src.domain.requests.shell.shell_request import ShellRequest
 from src.context.execution_context import ExecutionContext
+from src.domain.requests.docker.docker_request import DockerOpType, DockerRequest
+from src.domain.requests.file.file_op_type import FileOpType
+from src.domain.requests.file.file_request import FileRequest
+from src.domain.requests.shell.shell_request import ShellRequest
 from src.utils.path_operations import DockerPathOperations
+from src.workflow.preparation.docker_state_manager import DockerStateManager
+from src.workflow.preparation.environment_inspector import (
+    EnvironmentInspector,
+    ResourceStatus,
+    ResourceType,
+)
+from src.workflow.preparation.preparation_error_handler import (
+    PreparationErrorHandler,
+    RobustPreparationExecutor,
+)
 
 
 @dataclass
@@ -28,7 +30,7 @@ class PreparationTask:
     task_id: str
     task_type: str  # "docker_run", "mkdir", "docker_remove", etc.
     request_object: object  # The actual request object to execute
-    dependencies: List[str]  # Task IDs this task depends on
+    dependencies: list[str]  # Task IDs this task depends on
     description: str
     parallel_group: Optional[str] = None  # Group ID for parallel execution
 
@@ -46,10 +48,10 @@ class ContainerConfig:
 
 class PreparationExecutor:
     """Generates preparation tasks based on environment inspection results"""
-    
+
     def __init__(self, operations, context: ExecutionContext):
         """Initialize with operations container and execution context
-        
+
         Args:
             operations: Operations container for creating requests
             context: Execution context with configuration and Docker names
@@ -61,13 +63,13 @@ class PreparationExecutor:
         self.error_handler = PreparationErrorHandler()
         self.logger = logging.getLogger(__name__)
         self._task_counter = 0
-    
-    def analyze_and_prepare(self, workflow_tasks: List) -> Tuple[List[PreparationTask], Dict[str, ResourceStatus]]:
+
+    def analyze_and_prepare(self, workflow_tasks: list) -> tuple[list[PreparationTask], dict[str, ResourceStatus]]:
         """Analyze workflow tasks and generate preparation tasks
-        
+
         Args:
             workflow_tasks: List of workflow task objects
-            
+
         Returns:
             Tuple of (preparation_tasks, resource_status_map)
         """
@@ -78,40 +80,40 @@ class PreparationExecutor:
                 self.logger.warning(f"Environment validation found {len(validation_errors)} issues")
                 for error in validation_errors:
                     self.logger.warning(f"Validation: {error}")
-            
+
             # Extract requirements from workflow
             requirements = self.inspector.extract_requirements_from_workflow_tasks(workflow_tasks)
-            
+
             # Group requirements by type
             container_requirements = [r for r in requirements if r.resource_type == ResourceType.DOCKER_CONTAINER]
             directory_requirements = [r for r in requirements if r.resource_type == ResourceType.DIRECTORY]
             image_requirements = [r for r in requirements if r.resource_type == ResourceType.DOCKER_IMAGE]
-            
+
             # Inspect current environment state
             container_statuses = {}
             directory_statuses = {}
             image_statuses = {}
-            
+
             if container_requirements:
                 container_names = [r.identifier for r in container_requirements]
                 container_statuses = self.inspector.inspect_docker_containers(container_names)
-            
+
             if directory_requirements:
                 directory_paths = [r.identifier for r in directory_requirements]
                 directory_statuses = self.inspector.inspect_directories(directory_paths)
-            
+
             if image_requirements:
                 image_names = [r.identifier for r in image_requirements]
                 image_statuses = self.inspector.inspect_docker_images(image_names)
-            
+
             # Combine all statuses
             all_statuses = {**container_statuses, **directory_statuses, **image_statuses}
-            
+
             # Generate preparation tasks
             preparation_tasks = self._generate_preparation_tasks(all_statuses)
-            
+
             return preparation_tasks, all_statuses
-            
+
         except Exception as e:
             context = {
                 "workflow_tasks_count": len(workflow_tasks),
@@ -121,13 +123,13 @@ class PreparationExecutor:
             self.logger.error(f"Preparation analysis failed: {prep_error.message}")
             # Return empty results on failure
             return [], {}
-    
-    def _generate_preparation_tasks(self, statuses: Dict[str, ResourceStatus]) -> List[PreparationTask]:
+
+    def _generate_preparation_tasks(self, statuses: dict[str, ResourceStatus]) -> list[PreparationTask]:
         """Generate preparation tasks based on resource statuses
-        
+
         Args:
             statuses: Dict mapping resource identifier to ResourceStatus
-            
+
         Returns:
             List of PreparationTask objects
         """
@@ -137,20 +139,20 @@ class PreparationExecutor:
             ResourceType.DIRECTORY: self._create_mkdir_preparation_task,
             ResourceType.DOCKER_IMAGE: self._create_image_preparation_task,
         }
-        
+
         # Parallel group assignments
         parallel_group_map = {
             ResourceType.DOCKER_CONTAINER: "docker_preparation",
-            ResourceType.DIRECTORY: "mkdir_preparation", 
+            ResourceType.DIRECTORY: "mkdir_preparation",
             ResourceType.DOCKER_IMAGE: "image_preparation",
         }
-        
+
         tasks = []
-        
+
         for identifier, status in statuses.items():
             if not status.needs_preparation:
                 continue
-            
+
             # Generate tasks using pure function dispatch
             generator = task_generators.get(status.resource_type)
             if generator:
@@ -164,59 +166,59 @@ class PreparationExecutor:
                     else:
                         generated_tasks.parallel_group = parallel_group_map[status.resource_type]
                         tasks.append(generated_tasks)
-        
+
         return tasks
-    
-    def _create_container_preparation_tasks(self, container_name: str, status: ResourceStatus) -> List[PreparationTask]:
+
+    def _create_container_preparation_tasks(self, container_name: str, status: ResourceStatus) -> list[PreparationTask]:
         """Create preparation tasks for Docker container
-        
+
         Args:
             container_name: Name of the container
             status: Current status of the container
-            
+
         Returns:
             List of PreparationTask objects
         """
         tasks = []
-        
+
         if "remove_stopped_container" in status.preparation_actions:
             # Remove stopped container first
             remove_task = self._create_docker_remove_task(container_name)
             tasks.append(remove_task)
-        
+
         if "run_new_container" in status.preparation_actions:
             # Run new container (now returns multiple tasks for build/remove/run)
             run_tasks = self._create_docker_run_task(container_name)
-            
+
             # If we're removing first, first run task depends on remove
             if tasks and run_tasks:
                 run_tasks[0].dependencies.append(tasks[-1].task_id)
-            
+
             tasks.extend(run_tasks)
-        
+
         return tasks
-    
+
     def _create_mkdir_preparation_task(self, directory_path: str, status: ResourceStatus) -> Optional[PreparationTask]:
         """Create mkdir preparation task
-        
+
         Args:
             directory_path: Path to the directory
             status: Current status of the directory
-            
+
         Returns:
             PreparationTask object or None
         """
         if "create_directory" not in status.preparation_actions:
             return None
-        
+
         task_id = self._next_task_id("mkdir")
-        
+
         # Create mkdir request
         mkdir_request = FileRequest(
             op=FileOpType.MKDIR,
             path=directory_path
         )
-        
+
         return PreparationTask(
             task_id=task_id,
             task_type="mkdir",
@@ -224,27 +226,27 @@ class PreparationExecutor:
             dependencies=[],
             description=f"Create directory: {directory_path}"
         )
-    
+
     def _create_image_preparation_task(self, image_name: str, status: ResourceStatus) -> Optional[PreparationTask]:
         """Create image preparation task
-        
+
         Args:
             image_name: Name of the Docker image
             status: Current status of the image
-            
+
         Returns:
             PreparationTask object or None
         """
         if "build_or_pull_image" not in status.preparation_actions:
             return None
-        
+
         task_id = self._next_task_id("image_prepare")
-        
+
         # Check if this is a custom image that needs to be built
         if DockerPathOperations.should_build_custom_docker_image(image_name):
             # Determine which Dockerfile to use
             dockerfile_content = None
-            
+
             if image_name.startswith("ojtools"):
                 # OJ-specific image
                 dockerfile_content = self.context.oj_dockerfile
@@ -257,14 +259,14 @@ class PreparationExecutor:
                 if not dockerfile_content:
                     self.logger.error(f"Dockerfile content not found for image: {image_name}")
                     return None
-            
+
             build_request = DockerRequest(
                 op=DockerOpType.BUILD,
                 image=image_name,
                 dockerfile_text=dockerfile_content,
                 options={"t": image_name}
             )
-            
+
             return PreparationTask(
                 task_id=task_id,
                 task_type="docker_build",
@@ -272,12 +274,12 @@ class PreparationExecutor:
                 dependencies=[],
                 description=f"Build custom Docker image: {image_name}"
             )
-        
+
         # For standard images that can be pulled from registry
         pull_request = ShellRequest([
             "docker", "pull", image_name
         ])
-        
+
         return PreparationTask(
             task_id=task_id,
             task_type="image_pull",
@@ -285,18 +287,18 @@ class PreparationExecutor:
             dependencies=[],
             description=f"Pull Docker image: {image_name}"
         )
-    
+
     def _create_docker_remove_task(self, container_name: str) -> PreparationTask:
         """Create Docker container removal task with force option"""
         task_id = self._next_task_id("docker_remove")
-        
+
         # Use force remove to handle running containers
         remove_request = DockerRequest(
             op=DockerOpType.REMOVE,
             container=container_name,
             options={"f": ""}  # Force remove flag
         )
-        
+
         return PreparationTask(
             task_id=task_id,
             task_type="docker_remove",
@@ -304,82 +306,82 @@ class PreparationExecutor:
             dependencies=[],
             description=f"Remove stopped container: {container_name}"
         )
-    
-    def _create_docker_run_task(self, container_name: str) -> List[PreparationTask]:
+
+    def _create_docker_run_task(self, container_name: str) -> list[PreparationTask]:
         """Create Docker container run task (with rebuild/recreate logic)"""
         # Determine container configuration
         container_config = _determine_container_config(container_name, self.context, self.state_manager)
-        
+
         # Generate tasks based on configuration
         tasks = _generate_docker_tasks(
-            container_config, 
+            container_config,
             self._next_task_id,
             self.operations,
             self.state_manager,
             self.context
         )
-        
+
         # Update state after successful preparation
         _update_container_state(self.state_manager, self.context)
-        
+
         return tasks
-    
+
     def _next_task_id(self, prefix: str) -> str:
         """Generate next task ID"""
         self._task_counter += 1
         return f"{prefix}_{self._task_counter:03d}"
-    
-    def convert_to_workflow_requests(self, preparation_tasks: List[PreparationTask]) -> List:
+
+    def convert_to_workflow_requests(self, preparation_tasks: list[PreparationTask]) -> list:
         """Convert preparation tasks to workflow-compatible request objects
-        
+
         Args:
             preparation_tasks: List of PreparationTask objects
-            
+
         Returns:
             List of request objects ready for workflow execution
         """
         # Sort tasks by dependencies and parallel groups
         sorted_tasks = self._sort_tasks_by_dependencies(preparation_tasks)
-        
+
         # Extract request objects
         return [task.request_object for task in sorted_tasks]
-    
-    def _sort_tasks_by_dependencies(self, tasks: List[PreparationTask]) -> List[PreparationTask]:
+
+    def _sort_tasks_by_dependencies(self, tasks: list[PreparationTask]) -> list[PreparationTask]:
         """Sort tasks by dependencies using topological sort
-        
+
         Args:
             tasks: List of PreparationTask objects
-            
+
         Returns:
             List of sorted PreparationTask objects
         """
         # Create task lookup
-        task_map = {task.task_id: task for task in tasks}
-        
+        {task.task_id: task for task in tasks}
+
         # Simple dependency resolution (could be enhanced with graph algorithms)
         sorted_tasks = []
         remaining_tasks = tasks.copy()
-        
+
         while remaining_tasks:
             # Find tasks with no unresolved dependencies
             ready_tasks = []
             for task in remaining_tasks:
                 deps_satisfied = all(
-                    dep_id in [t.task_id for t in sorted_tasks] 
+                    dep_id in [t.task_id for t in sorted_tasks]
                     for dep_id in task.dependencies
                 )
                 if deps_satisfied:
                     ready_tasks.append(task)
-            
+
             if not ready_tasks:
                 # Circular dependency or error - add remaining tasks
                 sorted_tasks.extend(remaining_tasks)
                 break
-            
+
             # Group parallel tasks together
             parallel_groups = {}
             non_parallel_tasks = []
-            
+
             for task in ready_tasks:
                 if task.parallel_group:
                     if task.parallel_group not in parallel_groups:
@@ -387,26 +389,26 @@ class PreparationExecutor:
                     parallel_groups[task.parallel_group].append(task)
                 else:
                     non_parallel_tasks.append(task)
-            
+
             # Add parallel groups first, then non-parallel tasks
             for group_tasks in parallel_groups.values():
                 sorted_tasks.extend(group_tasks)
             sorted_tasks.extend(non_parallel_tasks)
-            
+
             # Remove processed tasks
             for task in ready_tasks:
                 remaining_tasks.remove(task)
-        
+
         return sorted_tasks
-    
-    def _validate_environment(self) -> List[str]:
+
+    def _validate_environment(self) -> list[str]:
         """Validate the execution environment for common issues
-        
+
         Returns:
             List of validation error messages
         """
         errors = []
-        
+
         try:
             # Check Docker daemon accessibility
             docker_driver = self.operations.resolve("docker_driver")
@@ -415,7 +417,7 @@ class PreparationExecutor:
                 errors.append("Docker daemon may not be accessible")
         except Exception:
             errors.append("Failed to access Docker driver")
-        
+
         try:
             # Check basic file system access
             current_dir = os.getcwd()
@@ -423,7 +425,7 @@ class PreparationExecutor:
                 errors.append(f"Insufficient permissions for current directory: {current_dir}")
         except Exception:
             errors.append("Failed to validate file system access")
-        
+
         try:
             # Check available disk space (basic check)
             total, used, free = shutil.disk_usage(".")
@@ -431,11 +433,11 @@ class PreparationExecutor:
                 errors.append("Low disk space available")
         except Exception:
             errors.append("Failed to check disk space")
-        
+
         # Validate context configuration
         if not hasattr(self.context, 'env_type') or not self.context.env_type:
             errors.append("Environment type not specified in context")
-        
+
         if hasattr(self.context, 'env_type') and self.context.env_type == 'docker':
             try:
                 docker_names = self.context.get_docker_names()
@@ -445,21 +447,21 @@ class PreparationExecutor:
                     errors.append("Docker container name not configured")
             except Exception:
                 errors.append("Failed to get Docker configuration from context")
-        
+
         return errors
 
 
 def _determine_container_config(container_name: str, context, state_manager) -> ContainerConfig:
     """Determine container configuration based on name and state"""
     # Check if rebuilds/recreates are needed
-    (image_rebuild_needed, oj_image_rebuild_needed, 
+    (image_rebuild_needed, oj_image_rebuild_needed,
      container_recreate_needed, oj_container_recreate_needed) = (
         state_manager.check_rebuild_needed(context)
     )
-    
+
     # Get Docker names from context
     docker_names = context.get_docker_names()
-    
+
     # Determine which image to use based on container name
     is_oj_container = container_name.startswith("cph_ojtools")
     if is_oj_container:
@@ -472,7 +474,7 @@ def _determine_container_config(container_name: str, context, state_manager) -> 
         needs_image_rebuild = image_rebuild_needed
         needs_container_recreate = container_recreate_needed
         dockerfile_content = context.dockerfile
-    
+
     return ContainerConfig(
         container_name=container_name,
         image_name=image_name,
@@ -483,10 +485,10 @@ def _determine_container_config(container_name: str, context, state_manager) -> 
     )
 
 
-def _generate_docker_tasks(config: ContainerConfig, task_id_generator, operations, state_manager, context) -> List[PreparationTask]:
+def _generate_docker_tasks(config: ContainerConfig, task_id_generator, operations, state_manager, context) -> list[PreparationTask]:
     """Generate Docker tasks based on configuration"""
     tasks = []
-    
+
     # Additional compatibility check for existing containers
     if not config.needs_container_recreate:
         compatible = state_manager.inspect_container_compatibility(
@@ -494,7 +496,7 @@ def _generate_docker_tasks(config: ContainerConfig, task_id_generator, operation
         )
         if not compatible:
             config.needs_container_recreate = True
-    
+
     # Create image build task if needed
     build_task_id = None
     if config.needs_image_rebuild and config.dockerfile_content:
@@ -505,7 +507,7 @@ def _generate_docker_tasks(config: ContainerConfig, task_id_generator, operation
             dockerfile_text=config.dockerfile_content,
             options={"t": config.image_name}
         )
-        
+
         build_task = PreparationTask(
             task_id=build_task_id,
             task_type="docker_build",
@@ -515,7 +517,7 @@ def _generate_docker_tasks(config: ContainerConfig, task_id_generator, operation
             parallel_group="docker_preparation"
         )
         tasks.append(build_task)
-    
+
     # Create container remove task if recreation needed
     rebuild_remove_task_id = None
     if config.needs_container_recreate:
@@ -530,7 +532,7 @@ def _generate_docker_tasks(config: ContainerConfig, task_id_generator, operation
                 container=config.container_name,
                 options={"f": ""}  # Force remove flag
             )
-            
+
             remove_task = PreparationTask(
                 task_id=rebuild_remove_task_id,
                 task_type="docker_remove",
@@ -540,24 +542,24 @@ def _generate_docker_tasks(config: ContainerConfig, task_id_generator, operation
                 parallel_group="docker_preparation"
             )
             tasks.append(remove_task)
-    
+
     # Create container run task
     run_task_id = task_id_generator("docker_run")
     run_dependencies = []
-    
+
     # Add dependencies based on what needs to be done first
     if config.needs_image_rebuild and build_task_id:
         run_dependencies.append(build_task_id)
     if config.needs_container_recreate and rebuild_remove_task_id:
         run_dependencies.append(rebuild_remove_task_id)
-    
+
     # Add volume mount options to make project files accessible in container
     project_path = os.getcwd()
     mount_path = context.get_docker_mount_path() if context else '/workspace'
     volume_options = {
         "v": f"{project_path}:{mount_path}"
     }
-    
+
     run_request = DockerRequest(
         op=DockerOpType.RUN,
         image=config.image_name,
@@ -565,7 +567,7 @@ def _generate_docker_tasks(config: ContainerConfig, task_id_generator, operation
         command="tail -f /dev/null",  # Keep container running
         options=volume_options
     )
-    
+
     run_task = PreparationTask(
         task_id=run_task_id,
         task_type="docker_run",
@@ -575,7 +577,7 @@ def _generate_docker_tasks(config: ContainerConfig, task_id_generator, operation
         parallel_group="docker_preparation"
     )
     tasks.append(run_task)
-    
+
     return tasks
 
 
@@ -585,24 +587,24 @@ def _update_container_state(state_manager, context):
 
 
 # Add execute_preparation_with_retry method back to PreparationExecutor
-def execute_preparation_with_retry(self, preparation_tasks: List[PreparationTask]) -> Tuple[bool, List[str]]:
+def execute_preparation_with_retry(self, preparation_tasks: list[PreparationTask]) -> tuple[bool, list[str]]:
     """Execute preparation tasks with robust error handling"""
     if not preparation_tasks:
         return True, []
-    
+
     robust_executor = RobustPreparationExecutor(self, self.error_handler)
     success, successful_tasks, failed_tasks = robust_executor.execute_with_retry(preparation_tasks)
-    
+
     error_messages = []
     if failed_tasks:
         for task in failed_tasks:
             error_messages.append(f"Task {task.task_id} ({task.description}) failed")
-    
+
     error_report = self.error_handler.generate_error_report()
     if error_report.get("status") == "errors_found":
         self.logger.warning(f"Preparation completed with {len(failed_tasks)} failures")
         self.logger.info(f"Error report: {error_report}")
-    
+
     return success, error_messages
 
 PreparationExecutor.execute_preparation_with_retry = execute_preparation_with_retry

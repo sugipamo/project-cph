@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 import json
-from io import StringIO
 import sys
+from io import StringIO
 
-from src.main import main
-from src.infrastructure.build_infrastructure import build_mock_operations
 from src.context.user_input_parser import parse_user_input
+from src.infrastructure.build_infrastructure import build_mock_operations
+from src.main import main
 
 # Create mock operations
 operations = build_mock_operations()
@@ -81,18 +81,18 @@ try:
     print(f"Number of results: {len(result.results)}")
     for i, res in enumerate(result.results):
         print(f"Result {i}: success={res.success}, returncode={getattr(res, 'returncode', 'N/A')}")
-    
+
     # Check what commands were actually called
     print(f"Shell calls made: {len(mock_shell_driver.calls)}")
     for i, call in enumerate(mock_shell_driver.calls):
         print(f"Call {i}: {call}")
-        
+
 except Exception as e:
     print(f"Exception raised: {e}")
-    
+
 finally:
     sys.stdout = old_stdout
-    
+
 output = captured_output.getvalue()
 print("Captured output:")
 print(output)

@@ -1,0 +1,130 @@
+[tool.ruff]
+# 除外するファイル・ディレクトリ
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "target",
+]
+
+# 1行の最大文字数
+line-length = 120
+
+# 対象Pythonバージョン
+target-version = "py38"
+
+[tool.ruff.lint]
+# 有効にするルールセット
+select = [
+    # pycodestyle
+    "E",  # エラー
+    "W",  # 警告
+    # Pyflakes
+    "F",  # インポート、未使用変数等
+    # isort
+    "I",  # インポート順序
+    # pydocstyle
+    "D",  # ドキュメント文字列
+    # pyupgrade
+    "UP", # 古いPython構文の更新
+    # flake8-bugbear
+    "B",  # バグになりやすいパターン
+    # flake8-bandit
+    "S",  # セキュリティ問題
+    # flake8-comprehensions
+    "C4", # リスト内包表記の改善
+    # flake8-pie
+    "PIE", # 不要なコードの検出
+    # flake8-simplify
+    "SIM", # コードの簡素化
+    # pylint
+    "PL", # 様々なコード品質チェック
+    # McCabe complexity
+    "C90", # 循環複雑度
+    # Naming conventions
+    "N",  # 命名規約
+    # flake8-return
+    "RET", # return文の改善
+    # flake8-raise
+    "RSE", # raise文の改善
+    # flake8-self
+    "SLF", # private member access
+    # flake8-type-checking
+    "TCH", # TYPE_CHECKING最適化
+    # tryceratops
+    "TRY", # 例外処理の改善
+    # perflint
+    "PERF", # パフォーマンス改善
+    # Ruff-specific
+    "RUF", # Ruff固有のルール
+]
+
+# 無視するルール
+ignore = [
+    "D100",  # docstring in public module
+    "D101",  # docstring in public class
+    "D102",  # docstring in public method
+    "D103",  # docstring in public function
+    "D104",  # docstring in public package
+    "D105",  # docstring in magic method
+    "D107",  # docstring in __init__
+    "S101",  # assert文の使用（テストで必要）
+    "PLR0913", # too many arguments (関数の引数が多すぎる)
+    "PLR2004", # magic value used in comparison
+]
+
+# 1つの関数の最大行数
+[tool.ruff.lint.pylint]
+max-args = 8
+max-branches = 15
+max-returns = 8
+max-statements = 50
+
+# McCabe complexity (循環複雑度)
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+# 命名規約
+[tool.ruff.lint.pep8-naming]
+# クラス名: PascalCase
+classmethod-decorators = ["classmethod"]
+staticmethod-decorators = ["staticmethod"]
+
+# docstring の設定
+[tool.ruff.lint.pydocstyle]
+convention = "google"  # Google style docstring
+
+# インポート設定
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+split-on-trailing-comma = true
+
+# 禁止ワード・パターンの設定
+[tool.ruff.lint.flake8-bandit]
+check-typed-exception = true
+
+[tool.ruff.lint.per-file-ignores]
+# テストファイルでは一部のルールを緩和
+"tests/**/*.py" = [
+    "S101",    # assert文
+    "PLR2004", # magic values
+    "D",       # docstring requirements
+]

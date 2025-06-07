@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import os
 
+
 def count_lines_of_code(file_path):
     """Count non-empty, non-comment lines in a Python file"""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             lines = f.readlines()
-        
+
         loc = 0
         for line in lines:
             stripped = line.strip()
@@ -19,19 +20,19 @@ def count_lines_of_code(file_path):
 # Analyze complexity of modules
 module_complexity = {}
 
-for root, dirs, files in os.walk('src'):
+for root, _dirs, files in os.walk('src'):
     for file in files:
         if file.endswith('.py') and file != '__init__.py':
             file_path = os.path.join(root, file)
             rel_path = os.path.relpath(file_path, 'src')
             module_path = rel_path.replace('/', '.').replace('.py', '')
-            
+
             loc = count_lines_of_code(file_path)
             module_complexity[module_path] = loc
 
 # Get tested modules
 tested_modules = set()
-for root, dirs, files in os.walk('tests'):
+for root, _dirs, files in os.walk('tests'):
     for file in files:
         if file.startswith('test_') and file.endswith('.py'):
             test_name = file[5:-3]
@@ -59,13 +60,13 @@ for module, loc in sorted(module_complexity.items(), key=lambda x: x[1], reverse
             '_'.join(module_parts[-2:]) if len(module_parts) > 1 else module_parts[-1],
             '_'.join(module_parts),
         ]
-        
+
         has_test = any(candidate in tested_modules for candidate in test_candidates)
         status = "✓ TESTED" if has_test else "✗ UNTESTED"
-        
+
         if not has_test:
             high_complexity_untested.append((module, loc))
-        
+
         print(f"  {status:12} {module:50} ({loc:3d} LOC)")
 
 print(f"\nHigh complexity untested modules: {len(high_complexity_untested)}")
@@ -87,17 +88,16 @@ for module, loc in sorted(p1_modules, key=lambda x: x[1], reverse=True):
 # Priority 2: Critical + Medium Complexity + No Tests
 p2_modules = []
 for module, loc in module_complexity.items():
-    if 50 <= loc <= 200:
-        if any(crit in module for crit in CRITICAL_MODULES) or module in CRITICAL_MODULES:
-            module_parts = module.split('.')
-            test_candidates = [
-                module_parts[-1],
-                '_'.join(module_parts[-2:]) if len(module_parts) > 1 else module_parts[-1],
-                '_'.join(module_parts),
-            ]
-            has_test = any(candidate in tested_modules for candidate in test_candidates)
-            if not has_test:
-                p2_modules.append((module, loc))
+    if 50 <= loc <= 200 and (any(crit in module for crit in CRITICAL_MODULES) or module in CRITICAL_MODULES):
+        module_parts = module.split('.')
+        test_candidates = [
+            module_parts[-1],
+            '_'.join(module_parts[-2:]) if len(module_parts) > 1 else module_parts[-1],
+            '_'.join(module_parts),
+        ]
+        has_test = any(candidate in tested_modules for candidate in test_candidates)
+        if not has_test:
+            p2_modules.append((module, loc))
 
 print(f"\nPRIORITY 2 - Critical Medium-Complexity Modules (No Tests): {len(p2_modules)}")
 for module, loc in sorted(p2_modules, key=lambda x: x[1], reverse=True)[:10]:
@@ -114,7 +114,7 @@ for module, loc in sorted(p3_modules, key=lambda x: x[1], reverse=True)[:10]:
     print(f"  🟠 {module:50} ({loc:3d} LOC)")
 
 # Dead code analysis
-print(f"\n" + "="*60)
+print("\n" + "="*60)
 print("POTENTIAL DEAD CODE ANALYSIS")
 print("="*60)
 
@@ -139,13 +139,13 @@ for module, loc in sorted(small_untested, key=lambda x: x[1]):
 # Summary
 total_modules = len(module_complexity)
 total_loc = sum(module_complexity.values())
-tested_count = sum(1 for module in module_complexity.keys() 
-                  if any(candidate in tested_modules 
-                        for candidate in [module.split('.')[-1], 
+tested_count = sum(1 for module in module_complexity
+                  if any(candidate in tested_modules
+                        for candidate in [module.split('.')[-1],
                                         '_'.join(module.split('.')[-2:]) if len(module.split('.')) > 1 else module.split('.')[-1],
                                         '_'.join(module.split('.'))]))
 
-print(f"\n" + "="*60)
+print("\n" + "="*60)
 print("COVERAGE SUMMARY")
 print("="*60)
 print(f"Total modules: {total_modules}")

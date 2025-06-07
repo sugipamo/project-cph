@@ -1,5 +1,6 @@
 from src.infrastructure.drivers.docker.utils.docker_utils import DockerUtils
 
+
 def test_build_docker_cmd_basic():
     cmd = DockerUtils.build_docker_cmd(["docker", "run"], options={"name": "mycontainer", "d": None}, positional_args=["ubuntu:latest"])
     assert "--name" in cmd
@@ -27,4 +28,4 @@ def test_parse_image_tag_with_tag():
 def test_parse_image_tag_without_tag():
     image, tag = DockerUtils.parse_image_tag("ubuntu")
     assert image == "ubuntu"
-    assert tag is None 
+    assert tag is None

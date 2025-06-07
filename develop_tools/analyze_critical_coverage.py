@@ -39,7 +39,7 @@ CRITICAL_MODULES = {
 
 # Get all tested modules
 tested_modules = set()
-for root, dirs, files in os.walk('tests'):
+for root, _dirs, files in os.walk('tests'):
     for file in files:
         if file.startswith('test_') and file.endswith('.py'):
             test_name = file[5:-3]  # Remove 'test_' and '.py'
@@ -47,7 +47,7 @@ for root, dirs, files in os.walk('tests'):
 
 # Also check for module-based tests
 src_files = set()
-for root, dirs, files in os.walk('src'):
+for root, _dirs, files in os.walk('src'):
     for file in files:
         if file.endswith('.py') and file != '__init__.py':
             rel_path = os.path.relpath(os.path.join(root, file), 'src')
@@ -63,14 +63,14 @@ for category, modules in CRITICAL_MODULES.items():
     print(f"{category}:")
     category_critical = 0
     category_tested = 0
-    
+
     for module in modules:
         category_critical += 1
         total_critical += 1
-        
+
         # Check if module exists
         exists = module in src_files
-        
+
         # Check various test naming patterns
         module_parts = module.split('.')
         test_candidates = [
@@ -78,21 +78,21 @@ for category, modules in CRITICAL_MODULES.items():
             '_'.join(module_parts[-2:]) if len(module_parts) > 1 else module_parts[-1],  # parent_file
             '_'.join(module_parts),  # full_path
         ]
-        
+
         has_test = any(candidate in tested_modules for candidate in test_candidates)
-        
+
         if has_test:
             category_tested += 1
             total_tested += 1
             status = "✓ TESTED"
         else:
             status = "✗ NOT TESTED"
-        
+
         if not exists:
             status += " (MISSING)"
-        
+
         print(f"  {status:15} {module}")
-    
+
     coverage_pct = (category_tested / category_critical * 100) if category_critical > 0 else 0
     print(f"  Category Coverage: {category_tested}/{category_critical} ({coverage_pct:.1f}%)\n")
 
@@ -111,7 +111,7 @@ for category, modules in CRITICAL_MODULES.items():
                 '_'.join(module_parts[-2:]) if len(module_parts) > 1 else module_parts[-1],
                 '_'.join(module_parts),
             ]
-            
+
             has_test = any(candidate in tested_modules for candidate in test_candidates)
             if not has_test:
                 high_impact_missing.append((category, module))

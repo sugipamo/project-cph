@@ -1,5 +1,4 @@
-"""
-Main entry point for the CPH application
+"""Main entry point for the CPH application
 """
 from src.application.cli_application import main
 

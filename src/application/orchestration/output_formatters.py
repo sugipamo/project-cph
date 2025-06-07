@@ -1,9 +1,8 @@
-"""
-OutputManager のシンプルな出力処理を純粋関数として実装
+"""OutputManager のシンプルな出力処理を純粋関数として実装
 既存のAPIとの互換性を保つための軽量実装
 """
-from typing import Optional, Tuple
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -14,12 +13,11 @@ class SimpleOutputData:
 
 
 def extract_output_data(result) -> SimpleOutputData:
-    """
-    結果オブジェクトから出力データを抽出する純粋関数
-    
+    """結果オブジェクトから出力データを抽出する純粋関数
+
     Args:
         result: 実行結果オブジェクト
-        
+
     Returns:
         SimpleOutputData: 抽出された出力データ
     """
@@ -29,12 +27,11 @@ def extract_output_data(result) -> SimpleOutputData:
 
 
 def should_show_output(request) -> bool:
-    """
-    リクエストオブジェクトから出力表示フラグを抽出する純粋関数
-    
+    """リクエストオブジェクトから出力表示フラグを抽出する純粋関数
+
     Args:
         request: リクエストオブジェクト
-        
+
     Returns:
         bool: 出力を表示するかどうか
     """
@@ -42,42 +39,40 @@ def should_show_output(request) -> bool:
 
 
 def format_output_content(output_data: SimpleOutputData) -> str:
-    """
-    出力データから実際の出力テキストを生成する純粋関数
-    
+    """出力データから実際の出力テキストを生成する純粋関数
+
     Args:
         output_data: 出力データ
-        
+
     Returns:
         str: フォーマットされた出力テキスト
     """
     parts = []
-    
+
     if output_data.stdout:
         parts.append(output_data.stdout)
-    
+
     if output_data.stderr:
         parts.append(output_data.stderr)
-    
+
     return "".join(parts)
 
 
-def decide_output_action(show_output: bool, output_data: SimpleOutputData) -> Tuple[bool, str]:
-    """
-    出力アクションを決定する純粋関数
-    
+def decide_output_action(show_output: bool, output_data: SimpleOutputData) -> tuple[bool, str]:
+    """出力アクションを決定する純粋関数
+
     Args:
         show_output: 出力表示フラグ
         output_data: 出力データ
-        
+
     Returns:
         Tuple[bool, str]: (出力すべきか, 出力内容)
     """
     if not show_output:
         return False, ""
-    
+
     if not output_data.stdout and not output_data.stderr:
         return False, ""
-    
+
     output_text = format_output_content(output_data)
     return bool(output_text), output_text

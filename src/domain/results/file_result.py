@@ -1,20 +1,21 @@
 """File operation result class."""
-from typing import Optional, Any, Dict
-from src.domain.results.result import OperationResult
+from typing import Any, Optional
+
 from src.domain.constants.operation_type import OperationType
+from src.domain.results.result import OperationResult
 
 
 class FileResult(OperationResult):
     """Result class for file operations."""
-    
-    def __init__(self, success: Optional[bool] = None, content: Optional[str] = None, 
-                 path: Optional[str] = None, exists: Optional[bool] = None, 
-                 op: Optional[Any] = None, error_message: Optional[str] = None, 
-                 exception: Optional[Exception] = None, start_time: Optional[float] = None, 
-                 end_time: Optional[float] = None, request: Optional[Any] = None, 
-                 metadata: Optional[Dict[str, Any]] = None):
+
+    def __init__(self, success: Optional[bool] = None, content: Optional[str] = None,
+                 path: Optional[str] = None, exists: Optional[bool] = None,
+                 op: Optional[Any] = None, error_message: Optional[str] = None,
+                 exception: Optional[Exception] = None, start_time: Optional[float] = None,
+                 end_time: Optional[float] = None, request: Optional[Any] = None,
+                 metadata: Optional[dict[str, Any]] = None):
         """Initialize file result.
-        
+
         Args:
             success: Whether the operation was successful
             content: File content (for read operations)
@@ -41,13 +42,13 @@ class FileResult(OperationResult):
         self.path = path
         self.exists = exists
         self.op = op
-    
-    @property 
+
+    @property
     def operation_type(self) -> OperationType:
         """Return the operation type for file operations."""
         return OperationType.FILE
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary."""
         base = super().to_dict()
         base.update({

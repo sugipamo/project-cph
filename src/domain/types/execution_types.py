@@ -1,9 +1,8 @@
+"""Execution types for test results
 """
-Execution types for test results
-"""
-from typing import Optional
 from dataclasses import dataclass
 from enum import Enum
+from typing import Optional
 
 
 class ExecutionStatus(Enum):

@@ -1,18 +1,19 @@
 """Shell command execution request."""
 import time
-from typing import Optional, Union, List, Dict, Any
-from src.domain.requests.base.base_request import BaseRequest
+from typing import Any, Optional, Union
+
 from src.domain.constants.operation_type import OperationType
+from src.domain.requests.base.base_request import BaseRequest
 from src.domain.results.result import OperationResult
 
 
 class ShellRequest(BaseRequest):
     """Request for executing shell commands."""
-    
-    def __init__(self, cmd: Union[str, List[str]], cwd: Optional[str] = None, 
-                 env: Optional[Dict[str, str]] = None, inputdata: Optional[str] = None, 
-                 timeout: Optional[int] = None, debug_tag: Optional[str] = None, 
-                 name: Optional[str] = None, show_output: bool = True, 
+
+    def __init__(self, cmd: Union[str, list[str]], cwd: Optional[str] = None,
+                 env: Optional[dict[str, str]] = None, inputdata: Optional[str] = None,
+                 timeout: Optional[int] = None, debug_tag: Optional[str] = None,
+                 name: Optional[str] = None, show_output: bool = True,
                  allow_failure: bool = False):
         super().__init__(name=name, debug_tag=debug_tag)
         self.cmd = cmd
@@ -30,7 +31,7 @@ class ShellRequest(BaseRequest):
 
     def _execute_core(self, driver: Any) -> OperationResult:
         """Core execution logic for shell commands.
-        
+
         Performance optimizations:
         - More precise timing with perf_counter
         - Optimized imports
@@ -39,9 +40,9 @@ class ShellRequest(BaseRequest):
         try:
             # Handle unified driver case using duck typing
             actual_driver = driver
-            if hasattr(driver, '_get_cached_driver') and callable(getattr(driver, '_get_cached_driver')):
+            if hasattr(driver, '_get_cached_driver') and callable(driver._get_cached_driver):
                 actual_driver = driver._get_cached_driver("shell_driver")
-            
+
             # Use the shell driver to run the command
             completed = actual_driver.run(
                 self.cmd,

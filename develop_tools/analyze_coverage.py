@@ -3,7 +3,7 @@ import os
 
 # Get all source modules
 src_files = set()
-for root, dirs, files in os.walk('src'):
+for root, _dirs, files in os.walk('src'):
     for file in files:
         if file.endswith('.py') and file != '__init__.py':
             rel_path = os.path.relpath(os.path.join(root, file), 'src')
@@ -12,7 +12,7 @@ for root, dirs, files in os.walk('src'):
 
 # Get all test modules
 test_files = set()
-for root, dirs, files in os.walk('tests'):
+for root, _dirs, files in os.walk('tests'):
     for file in files:
         if file.startswith('test_') and file.endswith('.py'):
             # Extract what this test is testing
@@ -28,7 +28,7 @@ for module in sorted(src_files):
         '_'.join(module_parts[-2:]) if len(module_parts) > 1 else module_parts[-1],  # parent_file
         '_'.join(module_parts),  # full_path
     ]
-    
+
     has_test = any(candidate in test_files for candidate in test_candidates)
     if not has_test:
         modules_without_tests.append(module)
