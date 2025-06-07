@@ -8,47 +8,70 @@ import sys
 from pathlib import Path
 from typing import List, Set
 
-# 汎用的すぎる名前のパターン
+# 汎用的すぎる名前のパターン（実用的なレベルに緩和）
 GENERIC_PATTERNS = {
     'variables': [
-        r'^data$', r'^info$', r'^obj$', r'^item$', r'^value$',
-        r'^result$', r'^output$', r'^input$', r'^content$',
-        r'^text$', r'^string$', r'^number$', r'^count$',
-        r'^list$', r'^dict$', r'^config$', r'^params$',
-        r'^var$', r'^val$', r'^elem$', r'^node$',
-        r'^file$', r'^path$', r'^name$', r'^id$',
+        # 本当に問題のある汎用名のみ
+        r'^var$', r'^val$', r'^tmp$', r'^temp$', r'^thing$', r'^stuff$',
+        r'^obj$', r'^item$', r'^elem$',
+        # 単独の型名は避ける
+        r'^list$', r'^dict$', r'^string$', r'^number$',
     ],
     'functions': [
-        r'^process$', r'^handle$', r'^execute$', r'^run$',
-        r'^do$', r'^get$', r'^set$', r'^create$', r'^make$',
-        r'^build$', r'^parse$', r'^load$', r'^save$',
-        r'^update$', r'^check$', r'^validate$',
-        r'^convert$', r'^transform$',
+        # 意味が全く不明な関数名のみ
+        r'^do$', r'^func$', r'^method$', r'^action$',
+        # 単独の動詞は文脈によって許可
+        # r'^process$', r'^handle$', r'^run$' などは削除
     ],
     'classes': [
-        r'^Data$', r'^Info$', r'^Object$', r'^Item$',
-        r'^Manager$', r'^Handler$', r'^Processor$',
-        r'^Helper$', r'^Utility$', r'^Utils$',
+        # 意味のないクラス名のみ
+        r'^Object$', r'^Thing$', r'^Item$', r'^Stuff$',
+        # Manager, Handler, Processor などは一般的なパターンなので許可
     ]
 }
 
-# 許可される名前（例外）
+# 許可される名前（例外） - 大幅に拡充
 ALLOWED_NAMES = {
     'variables': {
-        'i', 'j', 'k',  # ループカウンター
-        'x', 'y', 'z',  # 座標
+        # ループ変数
+        'i', 'j', 'k', 'n', 'm',
+        # 座標・数学
+        'x', 'y', 'z', 'w', 'h',
+        # 標準的な短縮形
         'f',  # ファイルオブジェクト
         'e',  # 例外
         '_',  # 未使用変数
-        'args', 'kwargs',  # 標準的な引数名
+        'p',  # パス（文脈で明確）
+        # 引数
+        'args', 'kwargs',
+        # 一般的で文脈が明確な名前
+        'path', 'file', 'name', 'id', 'key', 'value',
+        'data', 'info', 'config', 'params', 'content',
+        'result', 'output', 'input', 'text', 'count',
+        'node', 'root', 'parent', 'child',
     },
     'functions': {
-        'main',  # エントリーポイント
-        'setUp', 'tearDown',  # テストメソッド
-        '__init__', '__str__', '__repr__',  # 特殊メソッド
+        # エントリーポイント
+        'main',
+        # テストメソッド
+        'setUp', 'tearDown',
+        # 特殊メソッド
+        '__init__', '__str__', '__repr__', '__call__',
+        '__enter__', '__exit__', '__iter__', '__next__',
+        # 一般的な動詞（文脈で意味が明確）
+        'run', 'get', 'set', 'put', 'post', 'delete',
+        'create', 'update', 'read', 'write', 'open', 'close',
+        'start', 'stop', 'build', 'parse', 'load', 'save',
+        'check', 'validate', 'process', 'handle', 'execute',
+        'convert', 'transform', 'format', 'render',
     },
     'classes': {
-        'Meta',  # Django等のメタクラス
+        # メタクラス
+        'Meta',
+        # 一般的なパターン（意味が明確）
+        'Manager', 'Handler', 'Processor', 'Helper',
+        'Service', 'Controller', 'Factory', 'Builder',
+        'Parser', 'Formatter', 'Validator', 'Converter',
     }
 }
 
