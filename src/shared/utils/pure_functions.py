@@ -4,8 +4,7 @@ Pure function utility module
 Aggregates pure functions with no side effects that always return the same output for the same input.
 Follows functional programming principles to improve testability and reusability.
 """
-from typing import Dict, List, Optional, Tuple, Any, Union
-from functools import reduce
+from typing import Dict, List, Optional, Tuple, Any
 import re
 import os
 from pathlib import Path
@@ -104,81 +103,8 @@ def validate_file_path_format_pure(path: str) -> Tuple[bool, Optional[str]]:
     return True, None
 
 
-def validate_docker_image_name_pure(image_name: str) -> bool:
-    """
-    DEPRECATED: Use src.shared.utils.docker.validate_docker_image_name instead
-    """
-    from src.shared.utils.docker.docker_command_builder import validate_docker_image_name
-    return validate_docker_image_name(image_name)
-
-
-# =============================================================================
-# Docker Command Construction Pure Functions
-# DEPRECATED: Use src.shared.utils.docker.docker_command_builder instead
-# =============================================================================
-
-def build_docker_run_command_pure(image: str, name: str = None, options: Dict[str, Any] = None) -> List[str]:
-    """
-    DEPRECATED: Use src.shared.utils.docker.build_docker_run_command instead
-    """
-    from src.shared.utils.docker.docker_command_builder import build_docker_run_command
-    return build_docker_run_command(image, name, options)
-
-
-def build_docker_stop_command_pure(name: str) -> List[str]:
-    """
-    DEPRECATED: Use src.shared.utils.docker.build_docker_stop_command instead
-    """
-    from src.shared.utils.docker.docker_command_builder import build_docker_stop_command
-    return build_docker_stop_command(name)
-
-
-def build_docker_remove_command_pure(name: str, force: bool = False) -> List[str]:
-    """
-    DEPRECATED: Use src.shared.utils.docker.build_docker_remove_command instead
-    """
-    from src.shared.utils.docker.docker_command_builder import build_docker_remove_command
-    return build_docker_remove_command(name, force)
-
-
-def build_docker_build_command_pure(tag: str = None, dockerfile_text: str = None, options: Dict[str, Any] = None) -> List[str]:
-    """
-    DEPRECATED: Use src.shared.utils.docker.build_docker_build_command instead
-    """
-    from src.shared.utils.docker.docker_command_builder import build_docker_build_command
-    return build_docker_build_command(tag, dockerfile_text, options=options)
-
-
-def build_docker_ps_command_pure(all: bool = False) -> List[str]:
-    """
-    DEPRECATED: Use src.shared.utils.docker.build_docker_ps_command instead
-    """
-    from src.shared.utils.docker.docker_command_builder import build_docker_ps_command
-    return build_docker_ps_command(all)
-
-
-def build_docker_inspect_command_pure(target: str, type_: str = None) -> List[str]:
-    """
-    DEPRECATED: Use src.shared.utils.docker.build_docker_inspect_command instead
-    """
-    from src.shared.utils.docker.docker_command_builder import build_docker_inspect_command
-    return build_docker_inspect_command(target, type_)
-
-
-def build_docker_cp_command_pure(src: str, dst: str, container: str, to_container: bool = True) -> List[str]:
-    """
-    DEPRECATED: Use src.shared.utils.docker.build_docker_cp_command instead
-    """
-    from src.shared.utils.docker.docker_command_builder import build_docker_cp_command
-    return build_docker_cp_command(src, dst, container, to_container)
-
-
-def parse_container_names_pure(output: str) -> List[str]:
-    """
-    DEPRECATED: Use src.shared.utils.docker.parse_container_names instead
-    """
-    from src.shared.utils.docker.docker_command_builder import parse_container_names
-    return parse_container_names(output)
+# Docker functions have been moved to src.shared.utils.docker.docker_command_builder
+# Use that module directly for all Docker command building functionality
 
 
 # =============================================================================

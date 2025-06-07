@@ -7,7 +7,7 @@ from src.infrastructure.drivers.base.base_driver import BaseDriver
 from src.infrastructure.drivers.shell.shell_driver import ShellDriver
 from src.domain.requests.shell.shell_request import ShellRequest
 from src.shared.utils.docker.docker_utils import DockerUtils
-from src.shared.utils.pure_functions import (
+from src.shared.utils.docker import (
     build_docker_run_command_pure,
     build_docker_build_command_pure,
     build_docker_stop_command_pure,
