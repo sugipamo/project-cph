@@ -25,16 +25,15 @@ def format_string_pure(value: str, context_dict: Dict[str, str]) -> str:
     Returns:
         Formatted string
     
-    Note: This function now delegates to the unified formatter for consistency
+    Note: This function uses basic formatter to avoid circular dependencies
     """
     # Import here to avoid circular dependencies
-    from src.shared.utils.unified_formatter import get_unified_formatter
+    from src.shared.utils.basic_formatter import format_string_simple
     
     if not isinstance(value, str):
         return value
     
-    formatter = get_unified_formatter()
-    return formatter.format_string_simple(value, context_dict)
+    return format_string_simple(value, context_dict)
 
 
 def extract_missing_keys_pure(template: str, available_keys: set) -> List[str]:
@@ -103,8 +102,152 @@ def validate_file_path_format_pure(path: str) -> Tuple[bool, Optional[str]]:
     return True, None
 
 
-# Docker functions have been moved to src.shared.utils.docker.docker_command_builder
-# Use that module directly for all Docker command building functionality
+# =============================================================================
+# Docker Command Building Pure Functions (for backward compatibility)
+# =============================================================================
+
+def build_docker_run_command_pure(image: str, **kwargs) -> List[str]:
+    """
+    Build docker run command (backward compatibility wrapper)
+    
+    Args:
+        image: Docker image name
+        **kwargs: Additional docker run options
+        
+    Returns:
+        Docker run command as list
+    """
+    # Import here to avoid circular dependencies
+    from src.shared.utils.docker.docker_command_builder import build_docker_run_command
+    return build_docker_run_command(image, **kwargs)
+
+
+def build_docker_build_command_pure(context_path: str, **kwargs) -> List[str]:
+    """
+    Build docker build command (backward compatibility wrapper)
+    
+    Args:
+        context_path: Build context path
+        **kwargs: Additional docker build options
+        
+    Returns:
+        Docker build command as list
+    """
+    from src.shared.utils.docker.docker_command_builder import build_docker_build_command
+    return build_docker_build_command(context_path, **kwargs)
+
+
+def build_docker_stop_command_pure(container: str, **kwargs) -> List[str]:
+    """
+    Build docker stop command (backward compatibility wrapper)
+    
+    Args:
+        container: Container name or ID
+        **kwargs: Additional docker stop options
+        
+    Returns:
+        Docker stop command as list
+    """
+    from src.shared.utils.docker.docker_command_builder import build_docker_stop_command
+    return build_docker_stop_command(container, **kwargs)
+
+
+def build_docker_remove_command_pure(container: str, **kwargs) -> List[str]:
+    """
+    Build docker rm command (backward compatibility wrapper)
+    
+    Args:
+        container: Container name or ID
+        **kwargs: Additional docker rm options
+        
+    Returns:
+        Docker rm command as list
+    """
+    from src.shared.utils.docker.docker_command_builder import build_docker_remove_command
+    return build_docker_remove_command(container, **kwargs)
+
+
+def build_docker_ps_command_pure(**kwargs) -> List[str]:
+    """
+    Build docker ps command (backward compatibility wrapper)
+    
+    Args:
+        **kwargs: Additional docker ps options
+        
+    Returns:
+        Docker ps command as list
+    """
+    from src.shared.utils.docker.docker_command_builder import build_docker_ps_command
+    return build_docker_ps_command(**kwargs)
+
+
+def build_docker_inspect_command_pure(container: str, **kwargs) -> List[str]:
+    """
+    Build docker inspect command (backward compatibility wrapper)
+    
+    Args:
+        container: Container name or ID
+        **kwargs: Additional docker inspect options
+        
+    Returns:
+        Docker inspect command as list
+    """
+    from src.shared.utils.docker.docker_command_builder import build_docker_inspect_command
+    return build_docker_inspect_command(container, **kwargs)
+
+
+def build_docker_cp_command_pure(source: str, destination: str, **kwargs) -> List[str]:
+    """
+    Build docker cp command (backward compatibility wrapper)
+    
+    Args:
+        source: Source path
+        destination: Destination path
+        **kwargs: Additional docker cp options
+        
+    Returns:
+        Docker cp command as list
+    """
+    from src.shared.utils.docker.docker_command_builder import build_docker_cp_command
+    return build_docker_cp_command(source, destination, **kwargs)
+
+
+def validate_docker_image_name_pure(image_name: str) -> bool:
+    """
+    Validate docker image name format (backward compatibility wrapper)
+    
+    Args:
+        image_name: Docker image name to validate
+        
+    Returns:
+        True if valid, False otherwise
+    """
+    from src.shared.utils.docker.docker_utils import validate_docker_image_name
+    return validate_docker_image_name(image_name)
+
+
+def parse_container_names_pure(container_output: str) -> List[str]:
+    """
+    Parse container names from docker ps output (pure function)
+    
+    Args:
+        container_output: Output from docker ps command
+        
+    Returns:
+        List of container names
+    """
+    lines = container_output.strip().split('\n')
+    if not lines or len(lines) < 2:  # Header + at least one container
+        return []
+    
+    container_names = []
+    for line in lines[1:]:  # Skip header
+        parts = line.split()
+        if len(parts) >= 1:
+            # Container name is typically the last column
+            container_names.append(parts[-1])
+    
+    return container_names
 
 
 # =============================================================================

@@ -49,6 +49,60 @@ def format_with_missing_keys(s: str, **kwargs) -> Tuple[str, List[str]]:
     return formatted, missing
 
 
+# Import additional function from basic_formatter for backward compatibility
+from src.shared.utils.basic_formatter import format_with_context
+
+
+def build_path_template(base_path: str, *parts: str) -> str:
+    """
+    Build path template by combining base path and path parts.
+    
+    Args:
+        base_path: Base directory path
+        *parts: Path parts to join
+        
+    Returns:
+        Combined path template with normalized slashes
+    """
+    import os
+    
+    if not parts:
+        return base_path.rstrip('/')
+    
+    # Normalize base path (remove trailing slash)
+    normalized_base = base_path.rstrip('/')
+    
+    # Normalize parts (remove leading/trailing slashes, but preserve empty strings)
+    normalized_parts = []
+    for part in parts:
+        if part == "":
+            normalized_parts.append("")  # Preserve empty strings
+        else:
+            normalized_parts.append(part.strip('/'))
+    
+    # Join all parts
+    if normalized_parts:
+        return normalized_base + '/' + '/'.join(normalized_parts)
+    else:
+        return normalized_base
+
+
+def validate_template_keys(template: str, required_keys: List[str]) -> Tuple[bool, List[str]]:
+    """
+    Validate that template contains required keys.
+    
+    Args:
+        template: Template string to validate
+        required_keys: List of required keys
+        
+    Returns:
+        Tuple of (is_valid, missing_keys)
+    """
+    template_keys = set(extract_format_keys(template))
+    missing_keys = [key for key in required_keys if key not in template_keys]
+    return len(missing_keys) == 0, missing_keys
+
+
 # Backward compatibility aliases
 extract_template_keys = extract_format_keys
 safe_format_template = format_with_missing_keys
