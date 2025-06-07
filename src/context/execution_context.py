@@ -11,7 +11,8 @@ from src.context.formatters.context_formatter import (
     get_docker_naming_from_data,
     validate_execution_data,
 )
-from src.utils.path_operations import DockerPathOperations
+
+# Avoid circular imports - import DockerPathOperations locally when needed
 
 
 class ExecutionContext:
@@ -43,56 +44,56 @@ class ExecutionContext:
         return self._data.command_type
 
     @command_type.setter
-    def command_type(self, value):
-        self._data.command_type = value
+    def command_type(self, command_type_value):
+        self._data.command_type = command_type_value
 
     @property
     def language(self):
         return self._data.language
 
     @language.setter
-    def language(self, value):
-        self._data.language = value
+    def language(self, language_value):
+        self._data.language = language_value
 
     @property
     def contest_name(self):
         return self._data.contest_name
 
     @contest_name.setter
-    def contest_name(self, value):
-        self._data.contest_name = value
+    def contest_name(self, contest_name_value):
+        self._data.contest_name = contest_name_value
 
     @property
     def problem_name(self):
         return self._data.problem_name
 
     @problem_name.setter
-    def problem_name(self, value):
-        self._data.problem_name = value
+    def problem_name(self, problem_name_value):
+        self._data.problem_name = problem_name_value
 
     @property
     def env_type(self):
         return self._data.env_type
 
     @env_type.setter
-    def env_type(self, value):
-        self._data.env_type = value
+    def env_type(self, env_type_value):
+        self._data.env_type = env_type_value
 
     @property
     def env_json(self):
         return self._data.env_json
 
     @env_json.setter
-    def env_json(self, value):
-        self._data.env_json = value
+    def env_json(self, env_json_value):
+        self._data.env_json = env_json_value
 
     @property
     def resolver(self):
         return self._data.resolver
 
     @resolver.setter
-    def resolver(self, value):
-        self._data.resolver = value
+    def resolver(self, resolver_value):
+        self._data.resolver = resolver_value
         self._config_resolver = ConfigResolverProxy(self._data)
 
     @property
@@ -101,9 +102,9 @@ class ExecutionContext:
         return self._dockerfile_resolver
 
     @dockerfile_resolver.setter
-    def dockerfile_resolver(self, value: Optional[DockerfileResolver]):
+    def dockerfile_resolver(self, dockerfile_resolver_value: Optional[DockerfileResolver]):
         """Set the Dockerfile resolver"""
-        self._dockerfile_resolver = value
+        self._dockerfile_resolver = dockerfile_resolver_value
 
     @property
     def dockerfile(self):
@@ -113,7 +114,7 @@ class ExecutionContext:
         return None
 
     @dockerfile.setter
-    def dockerfile(self, value):
+    def dockerfile(self, dockerfile_content):
         """Set dockerfile content (backward compatibility - discouraged)"""
         # For backward compatibility only - consider deprecating
         # Content should be managed via resolver
@@ -126,13 +127,13 @@ class ExecutionContext:
         return None
 
     @oj_dockerfile.setter
-    def oj_dockerfile(self, value):
+    def oj_dockerfile(self, oj_dockerfile_content):
         """Set OJ dockerfile content (backward compatibility - discouraged)"""
         # For backward compatibility only - consider deprecating
         # Content should be managed via resolver
 
 
-    def validate(self) -> tuple[bool, Optional[str]]:
+    def validate_execution_data(self) -> tuple[bool, Optional[str]]:
         """基本的なバリデーションを行う
 
         Returns:
@@ -151,10 +152,10 @@ class ExecutionContext:
         )
         return validate_execution_data(format_data)
 
-    def resolve(self, path: list[str]):
+    def resolve(self, config_path: list[str]):
         """resolverを使ってパスで設定値ノードを解決する
         """
-        return self._config_resolver.resolve(path)
+        return self._config_resolver.resolve(config_path)
 
     def to_format_dict(self) -> dict[str, str]:
         """フォーマット用の辞書を返す
@@ -207,8 +208,8 @@ class ExecutionContext:
 
     @property
     def contest_stock_path(self):
-        node = self.resolve([self.language, "contest_stock_path"])
-        return node.value if node else None
+        config_node = self.resolve([self.language, "contest_stock_path"])
+        return config_node.value if config_node else None
 
     @property
     def contest_template_path(self):
@@ -230,8 +231,8 @@ class ExecutionContext:
 
     @property
     def language_id(self):
-        node = self.resolve([self.language, "language_id"])
-        return node.value if node else None
+        language_node = self.resolve([self.language, "language_id"])
+        return language_node.value if language_node else None
 
     @property
     def previous_contest_name(self):
@@ -278,6 +279,7 @@ class ExecutionContext:
         Returns:
             Docker mount path (default: /workspace)
         """
+        from src.utils.path_operations import DockerPathOperations
         return DockerPathOperations.get_docker_mount_path_from_config(
             self.env_json,
             self.language,

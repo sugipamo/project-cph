@@ -70,13 +70,13 @@ class PathOperations:
 
     @staticmethod
     def resolve_path(base_dir: Union[str, Path],
-                    path: Union[str, Path],
+                    target_path: Union[str, Path],
                     strict: bool = False) -> Union[str, PathOperationResult]:
         """パスを解決する
 
         Args:
             base_dir: ベースディレクトリ
-            path: 対象パス
+            target_path: 対象パス
             strict: Trueの場合、詳細な結果型を返す
 
         Returns:
@@ -93,9 +93,9 @@ class PathOperations:
 
             if base_dir is None:
                 errors.append("Base directory cannot be None")
-            if path is None:
+            if target_path is None:
                 errors.append("Path cannot be None")
-            if path is not None and not str(path).strip():
+            if target_path is not None and not str(target_path).strip():
                 errors.append("Path cannot be empty")
             if base_dir is not None and not str(base_dir).strip():
                 errors.append("Base directory cannot be empty")
@@ -108,12 +108,12 @@ class PathOperations:
                         errors=errors,
                         warnings=warnings,
                         metadata={"base_dir": str(base_dir) if base_dir is not None else "None",
-                                "path": str(path) if path is not None else "None"}
+                                "target_path": str(target_path) if target_path is not None else "None"}
                     )
                 raise ValueError(errors[0])
 
             base = Path(base_dir)
-            target = Path(path)
+            target = Path(target_path)
 
             if not base.exists() and not base.is_absolute():
                 warnings.append(f"Base directory may not exist: {base}")
@@ -125,7 +125,7 @@ class PathOperations:
                         result=None,
                         errors=errors,
                         warnings=warnings,
-                        metadata={"base_dir": str(base_dir), "path": str(path)}
+                        metadata={"base_dir": str(base_dir), "target_path": str(target_path)}
                     )
                 raise ValueError(errors[0])
 
@@ -145,7 +145,7 @@ class PathOperations:
                     warnings=warnings,
                     metadata={
                         "base_dir": str(base_dir),
-                        "path": str(path),
+                        "target_path": str(target_path),
                         "is_absolute": target.is_absolute(),
                         "resolution_method": "absolute" if target.is_absolute() else "relative"
                     }
@@ -160,17 +160,17 @@ class PathOperations:
                     result=None,
                     errors=[error_msg],
                     warnings=[],
-                    metadata={"base_dir": str(base_dir), "path": str(path)}
+                    metadata={"base_dir": str(base_dir), "target_path": str(target_path)}
                 )
             raise ValueError(error_msg) from e
 
     @staticmethod
-    def normalize_path(path: Union[str, Path],
+    def normalize_path(input_path: Union[str, Path],
                       strict: bool = False) -> Union[str, PathOperationResult]:
         """パスを正規化する
 
         Args:
-            path: 対象パス
+            input_path: 対象パス
             strict: Trueの場合、詳細な結果型を返す
 
         Returns:
@@ -178,18 +178,18 @@ class PathOperations:
             strict=Trueの場合: PathOperationResult
         """
         try:
-            p = Path(path)
-            normalized = str(p.resolve())
+            path_obj = Path(input_path)
+            normalized_path = str(path_obj.resolve())
 
             if strict:
                 return PathOperationResult(
                     success=True,
-                    result=normalized,
+                    result=normalized_path,
                     errors=[],
                     warnings=[],
-                    metadata={"original": str(path), "normalized": normalized}
+                    metadata={"original": str(input_path), "normalized": normalized_path}
                 )
-            return normalized
+            return normalized_path
 
         except Exception as e:
             error_msg = f"Failed to normalize path: {e}"
@@ -199,17 +199,17 @@ class PathOperations:
                     result=None,
                     errors=[error_msg],
                     warnings=[],
-                    metadata={"original": str(path)}
+                    metadata={"original": str(input_path)}
                 )
             raise ValueError(error_msg) from e
 
     @staticmethod
-    def safe_path_join(*paths: Union[str, Path],
+    def safe_path_join(*path_components: Union[str, Path],
                       strict: bool = False) -> Union[str, PathOperationResult]:
         """安全にパスを結合する（パストラバーサル対策）
 
         Args:
-            *paths: 結合するパス要素
+            *path_components: 結合するパス要素
             strict: Trueの場合、詳細な結果型を返す
 
         Returns:
@@ -217,7 +217,7 @@ class PathOperations:
             strict=Trueの場合: PathOperationResult
         """
         try:
-            if not paths:
+            if not path_components:
                 error_msg = "At least one path must be provided"
                 if strict:
                     return PathOperationResult(
@@ -231,27 +231,27 @@ class PathOperations:
 
             # セキュリティチェック
             warnings = []
-            for path in paths:
-                path_str = str(path)
-                if ".." in path_str or path_str.startswith("/"):
-                    warnings.append(f"Potentially unsafe path component: {path_str}")
+            for component_path in path_components:
+                component_str = str(component_path)
+                if ".." in component_str or component_str.startswith("/"):
+                    warnings.append(f"Potentially unsafe path component: {component_str}")
 
             # パス結合
-            result = Path(paths[0])
-            for path in paths[1:]:
-                result = result / path
+            combined_path = Path(path_components[0])
+            for component_path in path_components[1:]:
+                combined_path = combined_path / component_path
 
-            result_str = str(result)
+            combined_path_str = str(combined_path)
 
             if strict:
                 return PathOperationResult(
                     success=True,
-                    result=result_str,
+                    result=combined_path_str,
                     errors=[],
                     warnings=warnings,
-                    metadata={"paths": [str(p) for p in paths]}
+                    metadata={"paths": [str(p) for p in path_components]}
                 )
-            return result_str
+            return combined_path_str
 
         except Exception as e:
             error_msg = f"Failed to join paths: {e}"
@@ -261,19 +261,19 @@ class PathOperations:
                     result=None,
                     errors=[error_msg],
                     warnings=[],
-                    metadata={"paths": [str(p) for p in paths]}
+                    metadata={"paths": [str(p) for p in path_components]}
                 )
             raise ValueError(error_msg) from e
 
     @staticmethod
-    def get_relative_path(path: Union[str, Path],
-                         base: Union[str, Path],
+    def get_relative_path(target_path: Union[str, Path],
+                         base_path: Union[str, Path],
                          strict: bool = False) -> Union[str, PathOperationResult]:
         """ベースパスからの相対パスを取得する
 
         Args:
-            path: 対象パス
-            base: ベースパス
+            input_path: 対象パス
+            base_path: ベースパス
             strict: Trueの場合、詳細な結果型を返す
 
         Returns:
@@ -281,21 +281,21 @@ class PathOperations:
             strict=Trueの場合: PathOperationResult
         """
         try:
-            path_obj = Path(path)
-            base_obj = Path(base)
+            target_path_obj = Path(target_path)
+            base_path_obj = Path(base_path)
 
-            relative = path_obj.relative_to(base_obj)
-            result_str = str(relative)
+            relative_path = target_path_obj.relative_to(base_path_obj)
+            relative_path_str = str(relative_path)
 
             if strict:
                 return PathOperationResult(
                     success=True,
-                    result=result_str,
+                    result=relative_path_str,
                     errors=[],
                     warnings=[],
-                    metadata={"path": str(path), "base": str(base)}
+                    metadata={"target_path": str(target_path), "base_path": str(base_path)}
                 )
-            return result_str
+            return relative_path_str
 
         except ValueError as e:
             error_msg = f"Cannot compute relative path: {e}"
@@ -305,19 +305,19 @@ class PathOperations:
                     result=None,
                     errors=[error_msg],
                     warnings=[],
-                    metadata={"path": str(path), "base": str(base)}
+                    metadata={"target_path": str(target_path), "base_path": str(base_path)}
                 )
             raise ValueError(error_msg) from e
 
     @staticmethod
-    def is_subdirectory(path: Union[str, Path],
-                       parent: Union[str, Path],
+    def is_subdirectory(child_path: Union[str, Path],
+                       parent_path: Union[str, Path],
                        strict: bool = False) -> Union[bool, tuple[bool, PathOperationResult]]:
         """パスが指定された親ディレクトリのサブディレクトリかチェック
 
         Args:
             path: チェック対象パス
-            parent: 親ディレクトリパス
+            parent_path: 親ディレクトリパス
             strict: Trueの場合、詳細な結果も返す
 
         Returns:
@@ -325,58 +325,58 @@ class PathOperations:
             strict=Trueの場合: (bool, PathOperationResult)
         """
         try:
-            path_obj = Path(path).resolve()
-            parent_obj = Path(parent).resolve()
+            child_path_obj = Path(child_path).resolve()
+            parent_path_obj = Path(parent_path).resolve()
 
-            is_sub = str(path_obj).startswith(str(parent_obj))
+            is_subdirectory_result = str(child_path_obj).startswith(str(parent_path_obj))
 
             if strict:
-                result = PathOperationResult(
+                operation_result = PathOperationResult(
                     success=True,
-                    result=str(is_sub),
+                    result=str(is_subdirectory_result),
                     errors=[],
                     warnings=[],
                     metadata={
-                        "path": str(path_obj),
-                        "parent": str(parent_obj),
-                        "is_subdirectory": is_sub
+                        "child_path": str(child_path_obj),
+                        "parent_path": str(parent_path_obj),
+                        "is_subdirectory": is_subdirectory_result
                     }
                 )
-                return is_sub, result
-            return is_sub
+                return is_subdirectory_result, operation_result
+            return is_subdirectory_result
 
         except Exception as e:
             if strict:
-                result = PathOperationResult(
+                error_result = PathOperationResult(
                     success=False,
                     result=None,
                     errors=[f"Failed to check subdirectory: {e}"],
                     warnings=[],
-                    metadata={"path": str(path), "parent": str(parent)}
+                    metadata={"child_path": str(child_path), "parent_path": str(parent_path)}
                 )
-                return False, result
+                return False, error_result
             return False
 
     @staticmethod
-    def ensure_parent_dir(path: Union[str, Path]) -> None:
+    def ensure_parent_dir(target_path: Union[str, Path]) -> None:
         """指定されたパスの親ディレクトリを作成する
 
         Args:
-            path: 対象パス
+            input_path: 対象パス
 
         Raises:
             OSError: ディレクトリ作成に失敗した場合
         """
-        parent = Path(path).parent
-        parent.mkdir(parents=True, exist_ok=True)
+        parent_dir = Path(target_path).parent
+        parent_dir.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
-    def get_file_extension(path: Union[str, Path],
+    def get_file_extension(file_path: Union[str, Path],
                           strict: bool = False) -> Union[str, PathOperationResult]:
         """ファイルの拡張子を取得する
 
         Args:
-            path: 対象パス
+            input_path: 対象パス
             strict: Trueの場合、詳細な結果型を返す
 
         Returns:
@@ -384,18 +384,18 @@ class PathOperations:
             strict=Trueの場合: PathOperationResult
         """
         try:
-            p = Path(path)
-            extension = p.suffix
+            path_obj = Path(file_path)
+            file_extension = path_obj.suffix
 
             if strict:
                 return PathOperationResult(
                     success=True,
-                    result=extension,
+                    result=file_extension,
                     errors=[],
                     warnings=[],
-                    metadata={"path": str(path), "name": p.name, "stem": p.stem}
+                    metadata={"file_path": str(file_path), "name": path_obj.name, "stem": path_obj.stem}
                 )
-            return extension
+            return file_extension
 
         except Exception as e:
             error_msg = f"Failed to get file extension: {e}"
@@ -405,18 +405,18 @@ class PathOperations:
                     result=None,
                     errors=[error_msg],
                     warnings=[],
-                    metadata={"path": str(path)}
+                    metadata={"file_path": str(file_path)}
                 )
             raise ValueError(error_msg) from e
 
     @staticmethod
-    def change_extension(path: Union[str, Path],
+    def change_extension(file_path: Union[str, Path],
                         new_extension: str,
                         strict: bool = False) -> Union[str, PathOperationResult]:
         """ファイルの拡張子を変更する
 
         Args:
-            path: 対象パス
+            input_path: 対象パス
             new_extension: 新しい拡張子（ドットありなし両対応）
             strict: Trueの場合、詳細な結果型を返す
 
@@ -425,28 +425,28 @@ class PathOperations:
             strict=Trueの場合: PathOperationResult
         """
         try:
-            p = Path(path)
+            path_obj = Path(file_path)
 
             # 拡張子にドットを追加（必要に応じて）
             if new_extension and not new_extension.startswith('.'):
                 new_extension = '.' + new_extension
 
-            new_path = p.with_suffix(new_extension)
-            result_str = str(new_path)
+            modified_path = path_obj.with_suffix(new_extension)
+            modified_path_str = str(modified_path)
 
             if strict:
                 return PathOperationResult(
                     success=True,
-                    result=result_str,
+                    result=modified_path_str,
                     errors=[],
                     warnings=[],
                     metadata={
-                        "original": str(path),
-                        "original_extension": p.suffix,
+                        "original": str(file_path),
+                        "original_extension": path_obj.suffix,
                         "new_extension": new_extension
                     }
                 )
-            return result_str
+            return modified_path_str
 
         except Exception as e:
             error_msg = f"Failed to change extension: {e}"
@@ -456,7 +456,7 @@ class PathOperations:
                     result=None,
                     errors=[error_msg],
                     warnings=[],
-                    metadata={"path": str(path), "new_extension": new_extension}
+                    metadata={"file_path": str(file_path), "new_extension": new_extension}
                 )
             raise ValueError(error_msg) from e
 
@@ -500,7 +500,7 @@ class DockerPathOperations:
         return '/' in image_name or '@' in image_name
 
     @staticmethod
-    def convert_path_to_docker_mount(path: str,
+    def convert_path_to_docker_mount(host_path: str,
                                    workspace_path: str,
                                    mount_path: str) -> str:
         """ホストパスをDockerコンテナマウントパスに変換
@@ -514,14 +514,14 @@ class DockerPathOperations:
             Dockerコンテナ内で使用するパス
         """
         # パスがワークスペースパスそのものか./workspaceの場合、マウントパスを返す
-        if path == "./workspace" or path == workspace_path:
+        if host_path == "./workspace" or host_path == workspace_path:
             return mount_path
 
         # パスにワークスペースパスが含まれている場合、置換する
-        if workspace_path in path:
-            return path.replace(workspace_path, mount_path)
+        if workspace_path in host_path:
+            return host_path.replace(workspace_path, mount_path)
 
-        return path
+        return host_path
 
     @staticmethod
     def get_docker_mount_path_from_config(env_json: dict,
@@ -558,48 +558,48 @@ class DockerPathOperations:
 
 def get_workspace_path(resolver: ConfigNode, language: str) -> Path:
     """Get workspace path from configuration."""
-    node = resolve_best(resolver, [language, "workspace_path"])
-    if node is None or node.value is None or node.key != "workspace_path":
+    config_node = resolve_best(resolver, [language, "workspace_path"])
+    if config_node is None or config_node.value is None or config_node.key != "workspace_path":
         raise TypeError("workspace_pathが設定されていません")
-    return Path(node.value)
+    return Path(config_node.value)
 
 
 def get_contest_current_path(resolver: ConfigNode, language: str) -> Path:
     """Get contest current path from configuration."""
-    node = resolve_best(resolver, [language, "contest_current_path"])
-    if node is None or node.value is None or node.key != "contest_current_path":
+    config_node = resolve_best(resolver, [language, "contest_current_path"])
+    if config_node is None or config_node.value is None or config_node.key != "contest_current_path":
         raise TypeError("contest_current_pathが設定されていません")
-    return Path(node.value)
+    return Path(config_node.value)
 
 
 def get_contest_env_path() -> Path:
     """Get contest_env path by searching up directory tree."""
-    cur = os.path.abspath(os.getcwd())
+    current_dir = os.path.abspath(os.getcwd())
     while True:
-        candidate = os.path.join(cur, "contest_env")
-        if os.path.isdir(candidate):
-            return Path(candidate)
-        parent = os.path.dirname(cur)
-        if parent == cur:
+        candidate_path = os.path.join(current_dir, "contest_env")
+        if os.path.isdir(candidate_path):
+            return Path(candidate_path)
+        parent_dir = os.path.dirname(current_dir)
+        if parent_dir == current_dir:
             break
-        cur = parent
+        current_dir = parent_dir
     raise ValueError("contest_env_pathが自動検出できませんでした。contest_envディレクトリが見つかりません。")
 
 
 def get_contest_template_path(resolver: ConfigNode, language: str) -> Path:
     """Get contest template path from configuration."""
-    node = resolve_best(resolver, [language, "contest_template_path"])
-    if node is None or node.key != "contest_template_path" or node.value is None:
+    config_node = resolve_best(resolver, [language, "contest_template_path"])
+    if config_node is None or config_node.key != "contest_template_path" or config_node.value is None:
         raise TypeError("contest_template_pathが設定されていません")
-    return Path(node.value)
+    return Path(config_node.value)
 
 
 def get_contest_temp_path(resolver: ConfigNode, language: str) -> Path:
     """Get contest temp path from configuration."""
-    node = resolve_best(resolver, [language, "contest_temp_path"])
-    if node is None or node.key != "contest_temp_path" or node.value is None:
+    config_node = resolve_best(resolver, [language, "contest_temp_path"])
+    if config_node is None or config_node.key != "contest_temp_path" or config_node.value is None:
         raise TypeError("contest_temp_pathが設定されていません")
-    return Path(node.value)
+    return Path(config_node.value)
 
 
 def get_test_case_path(contest_current_path: Path) -> Path:
@@ -619,7 +619,7 @@ def get_test_case_out_path(contest_current_path: Path) -> Path:
 
 def get_source_file_name(resolver: ConfigNode, language: str) -> str:
     """Get source file name from configuration using resolve."""
-    node = resolve_best(resolver, [language, "source_file_name"])
-    if node is None or node.key != "source_file_name" or node.value is None:
+    config_node = resolve_best(resolver, [language, "source_file_name"])
+    if config_node is None or config_node.key != "source_file_name" or config_node.value is None:
         raise ValueError("source_file_nameが設定されていません")
-    return str(node.value)
+    return str(config_node.value)

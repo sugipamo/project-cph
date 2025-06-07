@@ -9,7 +9,7 @@ class ContextValidator:
     """実行コンテキストのバリデーションを担当"""
 
     @staticmethod
-    def validate(execution_data) -> tuple[bool, Optional[str]]:
+    def validate_execution_context(execution_data) -> tuple[bool, Optional[str]]:
         """基本的なバリデーションを行う
 
         Args:

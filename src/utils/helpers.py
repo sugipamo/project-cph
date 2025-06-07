@@ -11,11 +11,11 @@ from typing import Any, Optional
 # String and Path Operation Pure Functions
 # =============================================================================
 
-def format_string_pure(value: str, context_dict: dict[str, str]) -> str:
+def format_string_pure(template_string: str, context_dict: dict[str, str]) -> str:
     """Pure function version of string formatting
 
     Args:
-        value: String to format
+        template_string: String to format
         context_dict: Variable dictionary for formatting
 
     Returns:
@@ -23,13 +23,13 @@ def format_string_pure(value: str, context_dict: dict[str, str]) -> str:
 
     Note: Self-contained implementation without external dependencies
     """
-    if not isinstance(value, str):
-        return value
+    if not isinstance(template_string, str):
+        return template_string
 
-    result = value
+    formatted_result = template_string
     for key, val in context_dict.items():
-        result = result.replace(f"{{{key}}}", str(val))
-    return result
+        formatted_result = formatted_result.replace(f"{{{key}}}", str(val))
+    return formatted_result
 
 
 def extract_missing_keys_pure(template: str, available_keys: set) -> list[str]:
@@ -64,33 +64,33 @@ def is_potential_script_path_pure(code_or_file: list[str], script_extensions: Op
             any(code_or_file[0].endswith(ext) for ext in script_extensions))
 
 
-def validate_file_path_format_pure(path: str) -> tuple[bool, Optional[str]]:
+def validate_file_path_format_pure(file_path: str) -> tuple[bool, Optional[str]]:
     """Pure function for file path format validation
 
     Args:
-        path: Path to validate
+        file_path: Path to validate
 
     Returns:
         Tuple of (is_valid, error_message)
     """
-    if not path:
+    if not file_path:
         return False, "Path cannot be empty"
 
     # Normalize path to detect traversal attacks
-    normalized = os.path.normpath(path)
+    normalized = os.path.normpath(file_path)
 
     # Check if normalized path contains parent directory references
     if normalized.startswith('..') or '/..' in normalized:
         return False, "Path traversal detected"
 
     # Reject absolute paths containing '..'
-    if os.path.isabs(path) and '..' in path:
+    if os.path.isabs(file_path) and '..' in file_path:
         return False, "Absolute paths with '..' are not allowed"
 
     # Check for dangerous characters (extended version)
     dangerous_chars = ['|', ';', '&', '$', '`', '\n', '\r', '\0']
-    if any(char in path for char in dangerous_chars):
-        return False, f"Path contains dangerous characters: {path}"
+    if any(char in file_path for char in dangerous_chars):
+        return False, f"Path contains dangerous characters: {file_path}"
 
     return True, None
 
@@ -280,7 +280,7 @@ def merge_dicts_pure(*dicts: dict[str, Any]) -> dict[str, Any]:
     Returns:
         Merged dictionary
     """
-    result = {}
+    merged_dict = {}
     for d in dicts:
-        result.update(d)
-    return result
+        merged_dict.update(d)
+    return merged_dict

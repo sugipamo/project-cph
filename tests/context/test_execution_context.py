@@ -201,7 +201,7 @@ class TestExecutionContext:
         )
 
         # Execute
-        is_valid, error = context.validate()
+        is_valid, error = context.validate_execution_data()
 
         # Verify
         assert is_valid is True
@@ -217,7 +217,7 @@ class TestExecutionContext:
             env_json={}
         )
 
-        is_valid2, error2 = context2.validate()
+        is_valid2, error2 = context2.validate_execution_data()
         assert is_valid2 is False
         assert error2 == "command_type is required"
 
@@ -527,7 +527,7 @@ class TestExecutionContextAdvanced:
 
         mock_validate.return_value = (True, None)
 
-        is_valid, error = context.validate()
+        is_valid, error = context.validate_execution_data()
 
         assert is_valid is True
         assert error is None
@@ -550,7 +550,7 @@ class TestExecutionContextAdvanced:
 
         mock_validate.return_value = (False, "Multiple validation errors")
 
-        is_valid, error = context.validate()
+        is_valid, error = context.validate_execution_data()
 
         assert is_valid is False
         assert error == "Multiple validation errors"

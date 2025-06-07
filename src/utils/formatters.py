@@ -58,10 +58,10 @@ def format_string_simple(template: str, context_dict: dict[str, Any]) -> str:
     if not isinstance(template, str):
         return template
 
-    result = template
+    formatted_string = template
     for key, val in context_dict.items():
-        result = result.replace(f"{{{key}}}", str(val))
-    return result
+        formatted_string = formatted_string.replace(f"{{{key}}}", str(val))
+    return formatted_string
 
 
 def format_with_context(template: str, context: dict[str, Any]) -> str:
