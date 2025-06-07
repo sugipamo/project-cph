@@ -8,6 +8,12 @@ from src.workflow.step.step import Step, StepType
 from src.domain.requests.base.base_request import BaseRequest
 from src.infrastructure.environment.environment_manager import EnvironmentManager
 from src.context.commands.base_command import Command
+from src.domain.requests.file.file_request import FileRequest
+from src.domain.requests.file.file_op_type import FileOpType
+from src.domain.requests.shell.shell_request import ShellRequest
+from src.domain.requests.python.python_request import PythonRequest
+from src.domain.requests.composite.composite_request import CompositeRequest
+from src.context.formatters.context_formatter import format_values_with_context_dict
 
 
 class RequestCreationStrategy(ABC):
@@ -54,8 +60,6 @@ class FileRequestStrategy(RequestCreationStrategy):
         ]
     
     def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
-        from src.domain.requests.file.file_request import FileRequest
-        from src.domain.requests.file.file_op_type import FileOpType
         
         # Map step type to file operation type
         op_mapping = {
@@ -96,7 +100,6 @@ class FileRequestStrategy(RequestCreationStrategy):
     
     def _format_step_values(self, cmd: List[str], context: Any) -> List[str]:
         """Format step command values with context variables."""
-        from src.context.formatters.context_formatter import format_values_with_context_dict
         context_dict = context.to_dict() if hasattr(context, 'to_dict') else {}
         return format_values_with_context_dict(cmd, context_dict)
 
@@ -108,7 +111,6 @@ class ShellRequestStrategy(RequestCreationStrategy):
         return step_type in [StepType.SHELL, StepType.TEST, StepType.BUILD, StepType.OJ]
     
     def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
-        from src.domain.requests.shell.shell_request import ShellRequest
         
         # Format command with context
         formatted_cmd = self._format_step_values(step.cmd, context)
@@ -158,7 +160,6 @@ done
     
     def _format_step_values(self, cmd: List[str], context: Any) -> List[str]:
         """Format step command values with context variables."""
-        from src.context.formatters.context_formatter import format_values_with_context_dict
         context_dict = context.to_dict() if hasattr(context, 'to_dict') else {}
         return format_values_with_context_dict(cmd, context_dict)
 
@@ -172,7 +173,6 @@ class PythonRequestStrategy(RequestCreationStrategy):
         return step_type == StepType.PYTHON
     
     def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
-        from src.domain.requests.python.python_request import PythonRequest
         
         # Format command with context
         formatted_cmd = self._format_step_values(step.cmd, context)
@@ -186,7 +186,6 @@ class PythonRequestStrategy(RequestCreationStrategy):
     
     def _format_step_values(self, cmd: List[str], context: Any) -> List[str]:
         """Format step command values with context variables."""
-        from src.context.formatters.context_formatter import format_values_with_context_dict
         context_dict = context.to_dict() if hasattr(context, 'to_dict') else {}
         return format_values_with_context_dict(cmd, context_dict)
 
@@ -266,7 +265,6 @@ def create_composite_request(steps: List[Step], context: Any = None) -> "Composi
     Returns:
         CompositeRequest containing all converted steps
     """
-    from src.domain.requests.composite.composite_request import CompositeRequest
     
     factory = UnifiedRequestFactory()
     requests = []

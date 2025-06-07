@@ -8,6 +8,8 @@ from enum import Enum
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict, deque
 import re
+import os
+import traceback
 from src.domain.requests.base.base_request import BaseRequest
 from src.domain.results.result import OperationResult
 from src.utils.debug_logger import DebugLogger
@@ -390,7 +392,6 @@ class RequestExecutionGraph:
         Returns:
             List[OperationResult]: 実行結果のリスト
         """
-        import os
         
         # CPUコア数に基づいてmax_workersを調整
         cpu_count = os.cpu_count() or 1
@@ -495,7 +496,6 @@ class RequestExecutionGraph:
             return node.request.execute(driver=driver)
         except Exception as e:
             # 例外をキャッチしてエラー結果を返す
-            import traceback
             error_msg = f"{str(e)}\n{traceback.format_exc()}"
             return OperationResult(success=False, error_message=error_msg)
     

@@ -1,19 +1,21 @@
 import os
 import copy
+import json
+import glob
 from typing import List
 from .execution_context import ExecutionContext
 from .parsers.validation_service import ValidationService
 # Note: SystemInfoManager and InputParser removed - using direct implementation
-from src.context.resolver.config_resolver import create_config_root_from_dict
+from src.context.resolver.config_resolver import create_config_root_from_dict, resolve_by_match_desc
+from src.domain.requests.file.file_request import FileRequest
+from src.domain.requests.file.file_op_type import FileOpType
+from src.context.dockerfile_resolver import DockerfileResolver
 
 CONTEST_ENV_DIR = "contest_env"
 
 
 def _load_system_info_direct(operations, path="system_info.json"):
     """システム情報を直接読み込む"""
-    import json
-    from src.domain.requests.file.file_request import FileRequest
-    from src.domain.requests.file.file_op_type import FileOpType
     
     file_driver = operations.resolve("file_driver")
     
@@ -43,9 +45,6 @@ def _load_system_info_direct(operations, path="system_info.json"):
 
 def _save_system_info_direct(operations, info, path="system_info.json"):
     """システム情報を直接保存する"""
-    import json
-    from src.domain.requests.file.file_request import FileRequest
-    from src.domain.requests.file.file_op_type import FileOpType
     
     file_driver = operations.resolve("file_driver")
     
@@ -59,7 +58,6 @@ def _save_system_info_direct(operations, info, path="system_info.json"):
 
 def _parse_command_line_direct(args, context, root):
     """コマンドライン引数を直接解析する"""
-    from src.context.resolver.config_resolver import resolve_by_match_desc
     
     # 順次処理を適用
     args, context = _apply_language_direct(args, context, root)
@@ -87,7 +85,6 @@ def _apply_language_direct(args, context, root):
 
 def _apply_env_type_direct(args, context, root):
     """環境タイプの適用 - 引数で指定された場合のみ更新、なければ既存設定を保持"""
-    from src.context.resolver.config_resolver import resolve_by_match_desc
     
     if context.language:
         env_type_nodes = resolve_by_match_desc(root, [context.language, "env_types"])
@@ -105,7 +102,6 @@ def _apply_env_type_direct(args, context, root):
 
 def _apply_command_direct(args, context, root):
     """コマンドの適用"""
-    from src.context.resolver.config_resolver import resolve_by_match_desc
     
     if context.language:
         command_nodes = resolve_by_match_desc(root, [context.language, "commands"])
@@ -138,9 +134,6 @@ def _apply_contest_name_direct(args, context):
 
 def _load_shared_config(base_dir: str, operations):
     """共有設定を読み込む"""
-    import json
-    from src.domain.requests.file.file_request import FileRequest
-    from src.domain.requests.file.file_op_type import FileOpType
     
     file_driver = operations.resolve("file_driver")
     shared_path = os.path.join(base_dir, "shared", "env.json")
@@ -157,16 +150,11 @@ def _load_all_env_jsons(base_dir: str, operations) -> list:
     """環境設定JSONファイルを全て読み込む"""
     env_jsons = []
     file_driver = operations.resolve("file_driver")
-    from src.domain.requests.file.file_request import FileRequest
-    from src.domain.requests.file.file_op_type import FileOpType
     
     req = FileRequest(FileOpType.EXISTS, base_dir)
     result = req.execute(driver=file_driver)
     if not result.exists:
         return env_jsons
-    
-    import glob
-    import json
     
     # 共有設定を読み込み
     shared_config = _load_shared_config(base_dir, operations)
@@ -263,8 +251,6 @@ def _apply_env_json(context, env_jsons, base_dir=None, operations=None):
 def make_dockerfile_loader(operations):
     def loader(path: str) -> str:
         file_driver = operations.resolve("file_driver")
-        from src.infrastructure.file.file_request import FileRequest
-        from src.infrastructure.file.file_op_type import FileOpType
         req = FileRequest(FileOpType.READ, path)
         result = req.execute(driver=file_driver)
         return result.content
@@ -339,7 +325,6 @@ def parse_user_input(
     })
     
     # Dockerfile resolver setup
-    from src.context.dockerfile_resolver import DockerfileResolver
     
     # Default OJ Dockerfile path
     oj_dockerfile_path = os.path.join(os.path.dirname(__file__), "oj.Dockerfile")
@@ -360,11 +345,3 @@ def parse_user_input(
         raise ValueError(error_message)
     
     return context
-
-
-
-
-if __name__ == "__main__":
-    from src.infrastructure.build_operations import build_operations
-    operations = build_operations()
-    print(parse_user_input(["py", "local", "t", "abc300", "a"], operations))

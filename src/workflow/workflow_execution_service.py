@@ -8,21 +8,13 @@ from dataclasses import dataclass
 from src.workflow.step.step import Step, StepType
 from src.workflow.step.core import generate_steps_from_json
 from src.workflow.workflow.graph_based_workflow_builder import GraphBasedWorkflowBuilder
-from src.application.factories.unified_request_factory import create_composite_request
+from src.application.factories.unified_request_factory import create_composite_request, create_request
 from src.workflow.preparation.preparation_executor import PreparationExecutor
 from src.context.execution_context import ExecutionContext
 from src.domain.results.result import OperationResult
 from src.domain.requests.composite.composite_request import CompositeRequest
-
-
-@dataclass
-class WorkflowExecutionResult:
-    """Result of workflow execution"""
-    success: bool
-    results: List[OperationResult]
-    preparation_results: List[OperationResult]
-    errors: List[str]
-    warnings: List[str]
+from src.application.orchestration.unified_driver import UnifiedDriver
+from src.workflow.workflow_result import WorkflowExecutionResult
 
 
 class WorkflowExecutionService:
@@ -110,7 +102,6 @@ class WorkflowExecutionService:
                 preparation_requests = self.preparation_executor.convert_to_workflow_requests(preparation_tasks)
                 
                 # Execute preparation tasks
-                from src.application.orchestration.unified_driver import UnifiedDriver
                 unified_driver = UnifiedDriver(self.operations)
                 
                 for request in preparation_requests:
@@ -127,7 +118,6 @@ class WorkflowExecutionService:
                         )
         
         # Execute main workflow
-        from src.application.orchestration.unified_driver import UnifiedDriver
         unified_driver = UnifiedDriver(self.operations)
         
         # Execute the operations requests directly
@@ -194,7 +184,6 @@ class WorkflowExecutionService:
         
         for step in steps:
             # Create request from step using unified factory
-            from src.application.factories.unified_request_factory import create_request
             request = create_request(step, self.context)
             if request:
                 # Determine request type based on actual request class
