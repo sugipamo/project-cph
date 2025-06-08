@@ -10,3 +10,5 @@ class OperationType(Enum):
     DOCKER = auto()
     COMPOSITE = auto()
     PYTHON = auto()
+    STATE_TRANSITION = auto()
+    STATE_SHOW = auto()
