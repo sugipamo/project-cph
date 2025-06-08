@@ -2,7 +2,7 @@
 import hashlib
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 from src.infrastructure.di_container import DIKey
 
@@ -54,7 +54,7 @@ class DockerStateManagerSQLite:
 
     def __init__(self, container):
         """Initialize DockerStateManager with SQLite backend.
-        
+
         Args:
             container: DI container to resolve repositories
         """
@@ -91,7 +91,7 @@ class DockerStateManagerSQLite:
 
     def check_rebuild_needed(self, context) -> tuple[bool, bool, bool, bool]:
         """Check if image rebuild or container recreate is needed.
-        
+
         Returns:
             Tuple[bool, bool, bool, bool]: (
                 image_rebuild_needed,
@@ -102,48 +102,48 @@ class DockerStateManagerSQLite:
         """
         state_key = self.get_state_key(context.language, context.env_type)
         self._ensure_initial_state(context, state_key)
-        
+
         current_state = DockerStateInfo.from_context(context)
-        
+
         # Check main image
         image_record = self.image_repo.find_image(current_state.image_name)
         image_rebuild_needed = True
-        
+
         if image_record:
             # Image exists, check if Dockerfile changed
             image_rebuild_needed = (
                 image_record.get("dockerfile_hash") != current_state.dockerfile_hash
             )
-        
+
         # Check OJ image
         oj_image_record = self.image_repo.find_image(current_state.oj_image_name)
         oj_image_rebuild_needed = True
-        
+
         if oj_image_record:
             oj_image_rebuild_needed = (
                 oj_image_record.get("dockerfile_hash") != current_state.oj_dockerfile_hash
             )
-        
+
         # Check containers
         container_record = self.container_repo.find_container_by_name(current_state.container_name)
         container_recreate_needed = True
-        
+
         if container_record and not image_rebuild_needed:
             # Container exists and image hasn't changed
             container_recreate_needed = (
                 container_record.get("image_name") != current_state.image_name or
                 container_record.get("status") == "removed"
             )
-        
+
         oj_container_record = self.container_repo.find_container_by_name(current_state.oj_container_name)
         oj_container_recreate_needed = True
-        
+
         if oj_container_record and not oj_image_rebuild_needed:
             oj_container_recreate_needed = (
                 oj_container_record.get("image_name") != current_state.oj_image_name or
                 oj_container_record.get("status") == "removed"
             )
-        
+
         return (
             image_rebuild_needed,
             oj_image_rebuild_needed,
@@ -154,7 +154,7 @@ class DockerStateManagerSQLite:
     def update_state(self, context) -> None:
         """Update stored state with current context information."""
         current_state = DockerStateInfo.from_context(context)
-        
+
         # Update image records
         if current_state.dockerfile_hash:
             self.image_repo.create_or_update_image(
@@ -162,14 +162,14 @@ class DockerStateManagerSQLite:
                 dockerfile_hash=current_state.dockerfile_hash,
                 build_status="success"
             )
-        
+
         if current_state.oj_dockerfile_hash:
             self.image_repo.create_or_update_image(
                 name=current_state.oj_image_name,
                 dockerfile_hash=current_state.oj_dockerfile_hash,
                 build_status="success"
             )
-        
+
         # Update/create container records
         container_record = self.container_repo.find_container_by_name(current_state.container_name)
         if not container_record:
@@ -181,7 +181,7 @@ class DockerStateManagerSQLite:
                 problem_name=context.problem_name,
                 env_type=context.env_type
             )
-        
+
         oj_container_record = self.container_repo.find_container_by_name(current_state.oj_container_name)
         if not oj_container_record:
             self.container_repo.create_container(
@@ -209,12 +209,12 @@ class DockerStateManagerSQLite:
 
     def inspect_container_compatibility(self, operations, container_name: str, expected_image: str) -> bool:
         """Check if existing container was created from expected image.
-        
+
         Args:
             operations: Operations container for Docker driver
             container_name: Name of container to inspect
             expected_image: Expected image name that container should be based on
-            
+
         Returns:
             bool: True if container is compatible, False if recreation needed
         """
@@ -222,48 +222,48 @@ class DockerStateManagerSQLite:
         container_record = self.container_repo.find_container_by_name(container_name)
         if not container_record or container_record.get("status") == "removed":
             return False
-        
+
         # Check if the container was created from the expected image
         if container_record.get("image_name") != expected_image:
             return False
-        
+
         # Then verify with actual Docker state
         try:
             docker_driver = operations.resolve("docker_driver")
-            
+
             # Check if container exists
             ps_result = docker_driver.ps(all=True, show_output=False, names_only=True)
             if container_name not in ps_result:
                 # Container doesn't exist in Docker but exists in DB - mark as removed
                 self.container_repo.mark_container_removed(container_name)
                 return False
-            
+
             # Inspect container to get image information
             inspect_result = docker_driver.inspect(container_name, show_output=False)
             if not inspect_result.success:
                 return False
-            
+
             import json
             inspect_data = json.loads(inspect_result.stdout)
             if not isinstance(inspect_data, list) or len(inspect_data) == 0:
                 return False
-            
+
             container_info = inspect_data[0]
             container_image = container_info.get("Config", {}).get("Image", "")
-            
+
             # Check if container was created from expected image
             # Note: Docker may store image with tag or hash, so we check if expected name is contained
             is_compatible = expected_image in container_image or container_image.startswith(expected_image)
-            
+
             # Update container status based on Docker state
             container_state = container_info.get("State", {})
             if container_state.get("Running"):
                 self.container_repo.update_container_status(container_name, "running", "started_at")
             elif container_state.get("Status") == "exited":
                 self.container_repo.update_container_status(container_name, "stopped", "stopped_at")
-            
+
             return is_compatible
-            
+
         except Exception:
             # If inspection fails, assume recreation is needed
             return False

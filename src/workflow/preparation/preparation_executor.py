@@ -12,7 +12,6 @@ from src.domain.requests.file.file_op_type import FileOpType
 from src.domain.requests.file.file_request import FileRequest
 from src.domain.requests.shell.shell_request import ShellRequest
 from src.utils.path_operations import DockerPathOperations
-from src.workflow.preparation.docker_state_manager import DockerStateManager
 from src.workflow.preparation.docker_state_manager_sqlite import DockerStateManagerSQLite
 from src.workflow.preparation.environment_inspector import (
     EnvironmentInspector,
@@ -60,10 +59,10 @@ class PreparationExecutor:
         self.operations = operations
         self.context = context
         self.inspector = EnvironmentInspector(operations)
-        
+
         # Use SQLite-based state manager
         self.state_manager = DockerStateManagerSQLite(operations)
-            
+
         self.error_handler = PreparationErrorHandler()
         self.logger = logging.getLogger(__name__)
         self._task_counter = 0

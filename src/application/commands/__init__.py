@@ -1,4 +1,4 @@
 """Application commands."""
-from .docker_cleanup_command import DockerCleanupCommand, CleanupResult
+from .docker_cleanup_command import CleanupResult, DockerCleanupCommand
 
-__all__ = ["DockerCleanupCommand", "CleanupResult"]
+__all__ = ["CleanupResult", "DockerCleanupCommand"]

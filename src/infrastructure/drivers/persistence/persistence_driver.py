@@ -1,10 +1,10 @@
 """Persistence driver implementation following infrastructure patterns."""
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from abc import abstractmethod
 from contextlib import contextmanager
+from typing import Any, Dict, List
 
-from src.infrastructure.drivers.base.base_driver import BaseDriver
 from src.domain.interfaces.persistence_interface import PersistenceInterface
+from src.infrastructure.drivers.base.base_driver import BaseDriver
 
 
 class PersistenceDriver(BaseDriver, PersistenceInterface):
@@ -38,26 +38,25 @@ class PersistenceDriver(BaseDriver, PersistenceInterface):
     # BaseDriver abstract methods
     def execute(self, request: Any) -> Any:
         """Execute a persistence request.
-        
+
         Args:
             request: The persistence request to execute
-            
+
         Returns:
             The execution result
         """
         if hasattr(request, 'query'):
             return self.execute_query(request.query, getattr(request, 'params', ()))
-        elif hasattr(request, 'command'):
+        if hasattr(request, 'command'):
             return self.execute_command(request.command, getattr(request, 'params', ()))
-        else:
-            raise ValueError(f"Unsupported request type: {type(request)}")
+        raise ValueError(f"Unsupported request type: {type(request)}")
 
     def validate(self, request: Any) -> bool:
         """Validate if the driver can handle the persistence request.
-        
+
         Args:
             request: The request object to validate
-            
+
         Returns:
             True if the driver can handle the request, False otherwise
         """
@@ -69,7 +68,7 @@ class SQLitePersistenceDriver(PersistenceDriver):
 
     def __init__(self, db_path: str = "cph_history.db"):
         """Initialize SQLite persistence driver.
-        
+
         Args:
             db_path: Path to the SQLite database file
         """
@@ -107,18 +106,18 @@ class SQLitePersistenceDriver(PersistenceDriver):
 
     def get_repository(self, repository_class: type) -> Any:
         """Get a repository instance.
-        
+
         Args:
             repository_class: Repository class to instantiate
-            
+
         Returns:
             Repository instance
         """
         repo_name = repository_class.__name__
-        
+
         if repo_name not in self._repositories:
             self._repositories[repo_name] = repository_class(self._sqlite_manager)
-        
+
         return self._repositories[repo_name]
 
     def initialize(self) -> None:

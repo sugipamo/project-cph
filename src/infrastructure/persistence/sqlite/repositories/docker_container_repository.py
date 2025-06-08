@@ -1,13 +1,13 @@
 """Repository for managing Docker container records in SQLite."""
-from datetime import datetime
-from typing import List, Optional, Dict, Any
 import json
+from typing import Any, Dict, List, Optional
+
 from src.infrastructure.persistence.base.base_repository import BaseRepository
 
 
 class DockerContainerRepository(BaseRepository):
     """Repository for Docker container operations."""
-    
+
     def __init__(self, sqlite_manager):
         """Initialize with SQLite manager."""
         super().__init__(sqlite_manager)
@@ -16,11 +16,11 @@ class DockerContainerRepository(BaseRepository):
     def create(self, entity: Dict[str, Any]) -> Any:
         """Create a new container entity."""
         return self.create_container(**entity)
-        
+
     def find_by_id(self, entity_id: Any) -> Optional[Dict[str, Any]]:
         """Find container by ID."""
         return self.find_container_by_name(str(entity_id))
-        
+
     def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Dict[str, Any]]:
         """Find all containers."""
         containers = self.get_active_containers()
@@ -29,23 +29,23 @@ class DockerContainerRepository(BaseRepository):
         if limit:
             containers = containers[:limit]
         return containers
-        
+
     def update(self, entity_id: Any, updates: Dict[str, Any]) -> bool:
         """Update a container."""
         container = self.find_container_by_name(str(entity_id))
         if not container:
             return False
-        
+
         if 'status' in updates:
             self.update_container_status(str(entity_id), updates['status'])
         return True
-        
+
     def delete(self, entity_id: Any) -> bool:
         """Delete container by ID."""
         container = self.find_container_by_name(str(entity_id))
         if not container:
             return False
-        
+
         self.mark_container_removed(str(entity_id))
         return True
 
@@ -70,7 +70,7 @@ class DockerContainerRepository(BaseRepository):
                 volumes, environment, ports
             ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?)
         """
-        
+
         params = (
             container_name,
             image_name,
@@ -83,7 +83,7 @@ class DockerContainerRepository(BaseRepository):
             json.dumps(environment) if environment else None,
             json.dumps(ports) if ports else None,
         )
-        
+
         with self.connection as conn:
             return conn.execute(query, params).lastrowid
 
@@ -98,21 +98,21 @@ class DockerContainerRepository(BaseRepository):
             conn.execute(query, (container_id, container_name))
 
     def update_container_status(
-        self, 
-        container_name: str, 
+        self,
+        container_name: str,
         status: str,
         timestamp_field: Optional[str] = None
     ) -> None:
         """Update container status and related timestamp."""
         query = "UPDATE docker_containers SET status = ?, last_used_at = CURRENT_TIMESTAMP"
         params = [status]
-        
+
         if timestamp_field:
             query += f", {timestamp_field} = CURRENT_TIMESTAMP"
-        
+
         query += " WHERE container_name = ?"
         params.append(container_name)
-        
+
         with self.connection as conn:
             conn.execute(query, params)
 
@@ -179,9 +179,9 @@ class DockerContainerRepository(BaseRepository):
         """Parse a database row into a dictionary."""
         if not row:
             return None
-        
+
         result = dict(row)
-        
+
         # Parse JSON fields
         for field in ['volumes', 'environment', 'ports']:
             if result.get(field):
@@ -189,13 +189,13 @@ class DockerContainerRepository(BaseRepository):
                     result[field] = json.loads(result[field])
                 except json.JSONDecodeError:
                     result[field] = None
-        
+
         return result
 
     def add_lifecycle_event(
-        self, 
-        container_name: str, 
-        event_type: str, 
+        self,
+        container_name: str,
+        event_type: str,
         event_data: Optional[Dict[str, Any]] = None
     ) -> None:
         """Add a lifecycle event for a container."""
@@ -213,7 +213,7 @@ class DockerContainerRepository(BaseRepository):
             conn.execute(query, params)
 
     def get_container_events(
-        self, 
+        self,
         container_name: str,
         limit: int = 100
     ) -> List[Dict[str, Any]]:
@@ -226,7 +226,7 @@ class DockerContainerRepository(BaseRepository):
         """
         with self.connection as conn:
             cursor = conn.execute(query, (container_name, limit))
-        
+
         events = []
         for row in cursor.fetchall():
             event = dict(row)
@@ -236,5 +236,5 @@ class DockerContainerRepository(BaseRepository):
                 except json.JSONDecodeError:
                     event['event_data'] = None
             events.append(event)
-        
+
         return events

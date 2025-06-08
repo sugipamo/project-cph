@@ -6,7 +6,7 @@ except ImportError:
     _has_docker_interface = False
 
 try:
-    from .execution_interface import ExecutionInterface  
+    from .execution_interface import ExecutionInterface
     _has_execution_interface = True
 except ImportError:
     _has_execution_interface = False

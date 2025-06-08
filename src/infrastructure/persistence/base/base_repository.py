@@ -1,6 +1,5 @@
 """Base repository interface for data persistence."""
-from abc import ABC
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.domain.interfaces.persistence_interface import RepositoryInterface
 
@@ -10,7 +9,7 @@ class BaseRepository(RepositoryInterface):
 
     def __init__(self, persistence_manager: Any):
         """Initialize repository with persistence manager.
-        
+
         Args:
             persistence_manager: Database manager instance
         """
@@ -23,7 +22,7 @@ class BaseRepository(RepositoryInterface):
 
     def count(self) -> int:
         """Count total number of entities.
-        
+
         Returns:
             Total count of entities
         """
