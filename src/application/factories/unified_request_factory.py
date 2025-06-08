@@ -191,28 +191,28 @@ class StateTransitionRequestStrategy(RequestCreationStrategy):
 
     def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
         from src.workflow.preparation.command_processor import StateTransitionRequest
-        
+
         # Extract state transition parameters from step
         # Handle both cmd-based and attribute-based formats
-        
+
         # Check if step has target_state and context attributes (new format)
-        if hasattr(step, 'target_state') and hasattr(step, 'context'):
+        if hasattr(step, 'target_state') and step.target_state is not None:
             target_state = step.target_state
-            context_params = step.context or {}
+            context_params = getattr(step, 'context', {}) or {}
         else:
             # Fallback to cmd-based format: [target_state, context_param1=value1, ...]
             if not step.cmd or len(step.cmd) < 1:
                 return None
-            
+
             target_state = step.cmd[0]
             context_params = {}
-            
+
             # Parse context parameters from remaining cmd arguments
             for param in step.cmd[1:]:
                 if '=' in param:
                     key, value = param.split('=', 1)
                     context_params[key] = value
-        
+
         # Format context parameters with execution context
         context_dict = context.to_dict() if hasattr(context, 'to_dict') else {}
         formatted_context = {}
@@ -222,7 +222,7 @@ class StateTransitionRequestStrategy(RequestCreationStrategy):
                 formatted_context[key] = formatted_value[0] if formatted_value else value
             else:
                 formatted_context[key] = value
-        
+
         return StateTransitionRequest(
             target_state=target_state,
             context_params=formatted_context,

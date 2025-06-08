@@ -62,7 +62,7 @@ class SystemConfigLoader:
     def get_env_config(self) -> Dict[str, Any]:
         """Get environment configuration (env.json equivalent)."""
         env_config = {}
-        
+
         # Get language configurations
         for lang_config in self.config_repo.get_configs_by_category("language"):
             key = lang_config["config_key"]
@@ -70,7 +70,7 @@ class SystemConfigLoader:
                 # This is a top-level language config
                 lang_name = key.split(".", 1)[1]
                 env_config[lang_name] = lang_config["config_value"]
-        
+
         # If no language configs found, return default structure
         if not env_config:
             env_config = {
@@ -78,7 +78,7 @@ class SystemConfigLoader:
                 "python": {},
                 "rust": {}
             }
-        
+
         return env_config
 
     def save_config(self, key: str, value: Any, category: Optional[str] = None) -> None:
@@ -109,8 +109,8 @@ class SystemConfigLoader:
         """Get execution context with specification status."""
         return self.config_repo.get_execution_context_summary()
 
-    def update_current_context(self, contest_name: Optional[str] = None, 
-                              problem_name: Optional[str] = None, 
+    def update_current_context(self, contest_name: Optional[str] = None,
+                              problem_name: Optional[str] = None,
                               language: Optional[str] = None,
                               command: Optional[str] = None,
                               env_type: Optional[str] = None) -> None:

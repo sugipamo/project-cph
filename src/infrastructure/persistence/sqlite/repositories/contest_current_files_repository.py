@@ -1,7 +1,7 @@
 """Repository for managing contest_current file structure tracking."""
-from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 from datetime import datetime
+from typing import List, Optional, Tuple
 
 from src.infrastructure.persistence.base.base_repository import BaseRepository
 
@@ -26,7 +26,7 @@ class ContestCurrentFilesRepository(BaseRepository):
     def track_file(self, language_name: str, contest_name: str, problem_name: str,
                    relative_path: str, source_type: str, source_path: str) -> bool:
         """Track a file in contest_current directory.
-        
+
         Args:
             language_name: Programming language
             contest_name: Contest name
@@ -34,14 +34,14 @@ class ContestCurrentFilesRepository(BaseRepository):
             relative_path: Path relative to contest_current
             source_type: 'template' or 'stock'
             source_path: Original source file path
-            
+
         Returns:
             True if successful, False otherwise
         """
         try:
             self.manager.execute_query(
                 """
-                INSERT OR REPLACE INTO contest_current_files 
+                INSERT OR REPLACE INTO contest_current_files
                 (language_name, contest_name, problem_name, relative_path, source_type, source_path, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """,
@@ -51,30 +51,30 @@ class ContestCurrentFilesRepository(BaseRepository):
         except Exception:
             return False
 
-    def get_files_for_contest(self, language_name: str, contest_name: str, 
+    def get_files_for_contest(self, language_name: str, contest_name: str,
                              problem_name: str) -> List[ContestCurrentFile]:
         """Get all tracked files for a specific contest context.
-        
+
         Args:
             language_name: Programming language
             contest_name: Contest name
             problem_name: Problem name
-            
+
         Returns:
             List of ContestCurrentFile objects
         """
         try:
             rows = self.manager.fetch_all(
                 """
-                SELECT id, language_name, contest_name, problem_name, relative_path, 
+                SELECT id, language_name, contest_name, problem_name, relative_path,
                        source_type, source_path, created_at, updated_at
-                FROM contest_current_files 
+                FROM contest_current_files
                 WHERE language_name = ? AND contest_name = ? AND problem_name = ?
                 ORDER BY relative_path
                 """,
                 (language_name, contest_name, problem_name)
             )
-            
+
             return [
                 ContestCurrentFile(
                     id=row[0],
@@ -92,22 +92,22 @@ class ContestCurrentFilesRepository(BaseRepository):
         except Exception:
             return []
 
-    def clear_contest_tracking(self, language_name: str, contest_name: str, 
+    def clear_contest_tracking(self, language_name: str, contest_name: str,
                               problem_name: str) -> bool:
         """Clear all file tracking for a specific contest context.
-        
+
         Args:
             language_name: Programming language
             contest_name: Contest name
             problem_name: Problem name
-            
+
         Returns:
             True if successful, False otherwise
         """
         try:
             self.manager.execute_query(
                 """
-                DELETE FROM contest_current_files 
+                DELETE FROM contest_current_files
                 WHERE language_name = ? AND contest_name = ? AND problem_name = ?
                 """,
                 (language_name, contest_name, problem_name)
@@ -119,48 +119,48 @@ class ContestCurrentFilesRepository(BaseRepository):
     def get_file_paths_by_source_type(self, language_name: str, contest_name: str,
                                      problem_name: str, source_type: str) -> List[str]:
         """Get relative paths of files by source type.
-        
+
         Args:
             language_name: Programming language
             contest_name: Contest name
             problem_name: Problem name
             source_type: 'template' or 'stock'
-            
+
         Returns:
             List of relative paths
         """
         try:
             rows = self.manager.fetch_all(
                 """
-                SELECT relative_path 
-                FROM contest_current_files 
+                SELECT relative_path
+                FROM contest_current_files
                 WHERE language_name = ? AND contest_name = ? AND problem_name = ? AND source_type = ?
                 ORDER BY relative_path
                 """,
                 (language_name, contest_name, problem_name, source_type)
             )
-            
+
             return [row[0] for row in rows]
         except Exception:
             return []
 
-    def has_files_for_contest(self, language_name: str, contest_name: str, 
+    def has_files_for_contest(self, language_name: str, contest_name: str,
                              problem_name: str) -> bool:
         """Check if any files are tracked for a contest context.
-        
+
         Args:
             language_name: Programming language
             contest_name: Contest name
             problem_name: Problem name
-            
+
         Returns:
             True if files exist, False otherwise
         """
         try:
             result = self.manager.fetch_one(
                 """
-                SELECT COUNT(*) 
-                FROM contest_current_files 
+                SELECT COUNT(*)
+                FROM contest_current_files
                 WHERE language_name = ? AND contest_name = ? AND problem_name = ?
                 """,
                 (language_name, contest_name, problem_name)
@@ -171,18 +171,18 @@ class ContestCurrentFilesRepository(BaseRepository):
 
     def track_multiple_files(self, files: List[Tuple[str, str, str, str, str, str]]) -> bool:
         """Track multiple files in a single transaction.
-        
+
         Args:
-            files: List of tuples (language_name, contest_name, problem_name, 
+            files: List of tuples (language_name, contest_name, problem_name,
                                   relative_path, source_type, source_path)
-            
+
         Returns:
             True if successful, False otherwise
         """
         try:
             self.manager.execute_many(
                 """
-                INSERT OR REPLACE INTO contest_current_files 
+                INSERT OR REPLACE INTO contest_current_files
                 (language_name, contest_name, problem_name, relative_path, source_type, source_path, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """,

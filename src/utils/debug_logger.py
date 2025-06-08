@@ -110,29 +110,29 @@ class DebugLogger:
         mode = "並列" if parallel else "順次"
         print(f"\n{icon} ワークフロー実行開始: {step_count}ステップ ({mode}実行)")
 
-    def log_environment_info(self, language_name: str = None, contest_name: str = None, 
-                           problem_name: str = None, env_type: str = None, 
-                           env_logging_config: dict = None):
+    def log_environment_info(self, language_name: Optional[str] = None, contest_name: Optional[str] = None,
+                           problem_name: Optional[str] = None, env_type: Optional[str] = None,
+                           env_logging_config: Optional[dict] = None):
         """Log environment information if enabled in configuration"""
         if not env_logging_config:
             return
-            
+
         enabled = env_logging_config.get("enabled", False)
         if not enabled:
             return
-            
+
         # Check if all required flags are False
         show_language = env_logging_config.get("show_language_name", True)
         show_contest = env_logging_config.get("show_contest_name", True)
         show_problem = env_logging_config.get("show_problem_name", True)
         show_env_type = env_logging_config.get("show_env_type", True)
-        
+
         if not any([show_language, show_contest, show_problem, show_env_type]):
             return
-            
+
         icon = self.icons.get("start", "🚀")
         env_info_parts = []
-        
+
         if show_language and language_name:
             env_info_parts.append(f"Language: {language_name}")
         if show_contest and contest_name:
@@ -141,7 +141,7 @@ class DebugLogger:
             env_info_parts.append(f"Problem: {problem_name}")
         if show_env_type and env_type:
             env_info_parts.append(f"Environment: {env_type}")
-            
+
         if env_info_parts:
             env_info = " | ".join(env_info_parts)
             print(f"{icon} 実行環境: {env_info}")

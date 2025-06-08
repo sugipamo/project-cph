@@ -8,6 +8,7 @@ from src.application.factories.unified_request_factory import (
     PythonRequestStrategy,
     RequestCreationStrategy,
     ShellRequestStrategy,
+    StateTransitionRequestStrategy,
     UnifiedRequestFactory,
     create_composite_request,
     create_request,
@@ -32,6 +33,15 @@ class MockContext:
     def format_string(self, template: str) -> str:
         """Simple formatting for testing"""
         return template.replace("{contest_name}", self.contest_name).replace("{problem_name}", self.problem_name)
+
+    def to_dict(self):
+        """Convert context to dictionary for formatting"""
+        return {
+            "env_type": self.env_type,
+            "language_name": self.language,
+            "contest_name": self.contest_name,
+            "problem_name": self.problem_name
+        }
 
 
 class TestRequestCreationStrategies:
@@ -99,6 +109,48 @@ class TestRequestCreationStrategies:
         assert "print('hello')" in request.code_or_file
         assert "print('world')" in request.code_or_file
 
+    def test_state_transition_request_strategy(self):
+        """Test StateTransitionRequestStrategy"""
+        strategy = StateTransitionRequestStrategy()
+
+        # Test can_handle
+        assert strategy.can_handle(StepType.STATE_TRANSITION)
+        assert not strategy.can_handle(StepType.SHELL)
+
+        # Test create_request with attribute-based format (new format)
+        step = Step(
+            type=StepType.STATE_TRANSITION,
+            cmd=[],  # Empty cmd for state transition
+            target_state="working",
+            context={
+                "contest_name": "{contest_name}",
+                "problem_id": "{problem_name}",
+                "language": "{language_name}"
+            }
+        )
+        context = MockContext()
+        env_manager = EnvironmentManager("local")
+
+        request = strategy.create_request(step, context, env_manager)
+        assert request is not None
+        assert request.target_state == "working"
+        assert request.context_params["contest_name"] == "abc300"
+        assert request.context_params["problem_id"] == "a"
+        assert request.context_params["language"] == "python"
+
+        # Test create_request with cmd-based format (legacy format)
+        step = Step(type=StepType.STATE_TRANSITION, cmd=["working", "contest_name=abc123", "problem_id=b"])
+        request = strategy.create_request(step, context, env_manager)
+        assert request is not None
+        assert request.target_state == "working"
+        assert request.context_params["contest_name"] == "abc123"
+        assert request.context_params["problem_id"] == "b"
+
+        # Test with empty cmd
+        step = Step(type=StepType.STATE_TRANSITION, cmd=[])
+        request = strategy.create_request(step, context, env_manager)
+        assert request is None
+
 
 class TestUnifiedRequestFactory:
 
@@ -112,6 +164,7 @@ class TestUnifiedRequestFactory:
         assert "FileRequestStrategy" in strategy_types
         assert "ShellRequestStrategy" in strategy_types
         assert "PythonRequestStrategy" in strategy_types
+        assert "StateTransitionRequestStrategy" in strategy_types
 
     def test_create_file_request(self):
         """Test creating file requests"""
@@ -145,6 +198,23 @@ class TestUnifiedRequestFactory:
         step = Step(type=StepType.PYTHON, cmd=["print('test')"])
         request = factory.create_request_from_step(step, context, EnvironmentManager("local"))
         assert isinstance(request, PythonRequest)
+
+    def test_create_state_transition_request(self):
+        """Test creating state transition requests"""
+        factory = UnifiedRequestFactory()
+        context = MockContext()
+
+        # Test with attribute-based format
+        step = Step(
+            type=StepType.STATE_TRANSITION,
+            cmd=[],
+            target_state="working",
+            context={"contest_name": "{contest_name}"}
+        )
+
+        request = factory.create_request_from_step(step, context, EnvironmentManager("local"))
+        assert request is not None
+        assert request.target_state == "working"
 
     def test_force_local_execution(self):
         """Test force local execution"""

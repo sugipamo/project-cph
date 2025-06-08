@@ -1,7 +1,7 @@
 """State definitions for the problem-focused workflow system."""
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
 from enum import Enum
+from typing import Any, Dict, Optional
 
 
 class WorkflowState(Enum):
@@ -16,15 +16,15 @@ class WorkflowContext:
     contest_name: Optional[str] = None
     problem_id: Optional[str] = None
     language: Optional[str] = None
-    
+
     def is_valid_working_context(self) -> bool:
         """Check if context is valid for working state."""
         return all([
             self.contest_name,
-            self.problem_id, 
+            self.problem_id,
             self.language
         ])
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for storage."""
         return {
@@ -32,7 +32,7 @@ class WorkflowContext:
             "problem_id": self.problem_id,
             "language": self.language
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "WorkflowContext":
         """Create from dictionary."""
@@ -41,7 +41,7 @@ class WorkflowContext:
             problem_id=data.get("problem_id"),
             language=data.get("language")
         )
-    
+
     def matches(self, other: "WorkflowContext") -> bool:
         """Check if contexts match for transition optimization."""
         return (
@@ -58,7 +58,7 @@ class StateDefinition:
     description: str
     required_context: bool
     working_directory_type: str
-    
+
     def validate_context(self, context: WorkflowContext) -> bool:
         """Validate if context is appropriate for this state."""
         if self.required_context:
@@ -95,8 +95,8 @@ def validate_state_transition(
 ) -> tuple[bool, str]:
     """Validate if state transition is possible."""
     to_definition = get_state_definition(to_state)
-    
+
     if not to_definition.validate_context(context):
         return False, f"Invalid context for {to_state.value} state"
-    
+
     return True, "Valid transition"

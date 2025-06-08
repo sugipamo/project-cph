@@ -73,7 +73,9 @@ def _create_system_config_repository(sqlite_manager: Any) -> Any:
 
 def _create_contest_current_files_repository(sqlite_manager: Any) -> Any:
     """Lazy factory for contest current files repository."""
-    from src.infrastructure.persistence.sqlite.repositories.contest_current_files_repository import ContestCurrentFilesRepository
+    from src.infrastructure.persistence.sqlite.repositories.contest_current_files_repository import (
+        ContestCurrentFilesRepository,
+    )
     return ContestCurrentFilesRepository(sqlite_manager)
 
 
@@ -116,20 +118,20 @@ def _create_system_config_loader(container: Any) -> Any:
 def _create_state_manager(container: Any) -> Any:
     """Lazy factory for state manager."""
     from src.workflow.preparation.state_manager import StateManager
-    
+
     # Get dependencies from container
     config_loader = container.resolve("system_config_loader")
-    
+
     # Load env.json from system config
     env_json = config_loader.get_env_config()
-    
+
     return StateManager(container, config_loader, env_json)
 
 
 def _create_command_processor(container: Any) -> Any:
     """Lazy factory for command processor."""
     from src.workflow.preparation.command_processor import CommandProcessor
-    
+
     state_manager = container.resolve("state_manager")
     return CommandProcessor(container, state_manager)
 
@@ -137,7 +139,7 @@ def _create_command_processor(container: Any) -> Any:
 def _create_state_transition_driver(container: Any) -> Any:
     """Lazy factory for state transition driver."""
     from src.workflow.preparation.command_processor import StateTransitionDriver
-    
+
     state_manager = container.resolve("state_manager")
     return StateTransitionDriver(state_manager)
 
@@ -145,7 +147,7 @@ def _create_state_transition_driver(container: Any) -> Any:
 def _create_contest_manager(container: Any) -> Any:
     """Lazy factory for contest manager."""
     from src.infrastructure.persistence.sqlite.contest_manager import ContestManager
-    
+
     # For now, pass container and let ContestManager load env_json as needed
     # This avoids circular dependency issues
     return ContestManager(container, {})
@@ -177,7 +179,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     # Register environment and factory
     container.register(DIKey.ENVIRONMENT_MANAGER, _create_environment_manager)
     container.register(DIKey.UNIFIED_REQUEST_FACTORY, _create_request_factory)
-    
+
     # Register state management components
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("state_manager", lambda: _create_state_manager(container))
@@ -240,7 +242,7 @@ def configure_test_dependencies(container: DIContainer) -> None:
     # Register environment and factory
     container.register(DIKey.ENVIRONMENT_MANAGER, _create_environment_manager)
     container.register(DIKey.UNIFIED_REQUEST_FACTORY, _create_request_factory)
-    
+
     # Register state management components
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("state_manager", lambda: _create_state_manager(container))

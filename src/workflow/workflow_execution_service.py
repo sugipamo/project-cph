@@ -41,7 +41,7 @@ class WorkflowExecutionService:
         """
         # Log environment information if configured
         self._log_environment_info()
-        
+
         # Get workflow steps from context
         json_steps = self._get_workflow_steps()
         if not json_steps:
@@ -225,17 +225,17 @@ class WorkflowExecutionService:
         """Log environment information based on configuration"""
         if not self.context.env_json:
             return
-            
+
         # Get environment logging configuration from shared config
         shared_config = self.context.env_json.get('shared', {})
         env_logging_config = shared_config.get('environment_logging', {})
-        
+
         if not env_logging_config.get('enabled', False):
             return
-            
+
         # Create a basic debug logger instance just for environment logging
         debug_logger = DebugLogger({})
-        
+
         # Log environment information
         debug_logger.log_environment_info(
             language_name=self.context.language,

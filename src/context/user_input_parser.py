@@ -298,21 +298,21 @@ def parse_user_input(
     if context.language and context.contest_name and context.problem_name:
         try:
             contest_manager = operations.resolve("contest_manager")
-            
+
             # Handle backup if needed
             contest_manager.handle_contest_change(
-                context.language, 
-                context.contest_name, 
+                context.language,
+                context.contest_name,
                 context.problem_name
             )
-            
+
             # Initialize contest_current (stock -> template priority)
             contest_manager.initialize_contest_current(
                 context.language,
                 context.contest_name,
                 context.problem_name
             )
-            
+
         except Exception as e:
             print(f"Warning: Contest management failed: {e}")
 
