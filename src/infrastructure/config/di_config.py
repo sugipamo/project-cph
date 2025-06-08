@@ -156,8 +156,8 @@ def configure_test_dependencies(container: DIContainer) -> None:
         return MockPythonDriver()
 
     def _create_test_sqlite_manager():
-        from src.infrastructure.persistence.sqlite.sqlite_manager import SQLiteManager
-        return SQLiteManager("test_cph_history.db")
+        from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
+        return FastSQLiteManager(":memory:", skip_migrations=False)
 
     # Register mock drivers
     container.register(DIKey.SHELL_DRIVER, _create_mock_shell_driver)
