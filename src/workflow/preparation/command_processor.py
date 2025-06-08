@@ -103,8 +103,9 @@ class StateTransitionDriver:
 class CommandProcessor:
     """Processes commands with state_transition support."""
     
-    def __init__(self, state_manager: StateManager):
-        """Initialize command processor."""
+    def __init__(self, operations, state_manager: StateManager):
+        """Initialize command processor with DI container."""
+        self.operations = operations
         self.state_manager = state_manager
         self.state_driver = StateTransitionDriver(state_manager)
         self.logger = logging.getLogger(__name__)

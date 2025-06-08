@@ -6,20 +6,28 @@ from .state_definitions import WorkflowState, WorkflowContext, validate_state_tr
 from .folder_mapping import FolderMapper, create_folder_mapper_from_env
 from .transition_engine import TransitionEngine, TransitionStep
 from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
-from src.infrastructure.drivers.file.file_driver import FileDriver
+from src.infrastructure.di_container import DIKey
 
 
 class StateManager:
     """Manages workflow state and executes transitions."""
     
-    def __init__(self, config_loader: SystemConfigLoader, env_json: Dict[str, Any], file_driver: FileDriver):
-        """Initialize state manager."""
+    def __init__(self, operations, config_loader: SystemConfigLoader, env_json: Dict[str, Any]):
+        """Initialize state manager with DI container."""
+        self.operations = operations
         self.config_loader = config_loader
         self.env_json = env_json
-        self.file_driver = file_driver
         self.logger = logging.getLogger(__name__)
         self._folder_mapper = None
         self._transition_engine = None
+        self._file_driver = None
+    
+    @property
+    def file_driver(self):
+        """Lazy loading of file driver from DI container."""
+        if self._file_driver is None:
+            self._file_driver = self.operations.resolve("file_driver")
+        return self._file_driver
     
     def get_current_state(self) -> Tuple[WorkflowState, WorkflowContext]:
         """Get current workflow state and context."""

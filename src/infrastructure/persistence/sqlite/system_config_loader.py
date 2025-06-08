@@ -59,6 +59,28 @@ class SystemConfigLoader:
 
         return config
 
+    def get_env_config(self) -> Dict[str, Any]:
+        """Get environment configuration (env.json equivalent)."""
+        env_config = {}
+        
+        # Get language configurations
+        for lang_config in self.config_repo.get_configs_by_category("language"):
+            key = lang_config["config_key"]
+            if key.startswith("language.") and key.count(".") == 1:
+                # This is a top-level language config
+                lang_name = key.split(".", 1)[1]
+                env_config[lang_name] = lang_config["config_value"]
+        
+        # If no language configs found, return default structure
+        if not env_config:
+            env_config = {
+                "cpp": {},
+                "python": {},
+                "rust": {}
+            }
+        
+        return env_config
+
     def save_config(self, key: str, value: Any, category: Optional[str] = None) -> None:
         """Save a configuration value.
 
@@ -87,6 +109,17 @@ class SystemConfigLoader:
         """Get execution context with specification status."""
         return self.config_repo.get_execution_context_summary()
 
+    def update_current_context(self, contest_name: Optional[str] = None, 
+                              problem_name: Optional[str] = None, 
+                              language: Optional[str] = None) -> None:
+        """Update current execution context."""
+        if contest_name is not None:
+            self.config_repo.set_config("contest_name", contest_name)
+        if problem_name is not None:
+            self.config_repo.set_config("problem_name", problem_name)
+        if language is not None:
+            self.config_repo.set_config("language", language)
+
     def clear_context_value(self, key: str) -> None:
         """Clear a specific context value (set to NULL)."""
         self.config_repo.set_config(key, None)
@@ -95,16 +128,3 @@ class SystemConfigLoader:
         """Check if a configuration was user-specified (not NULL)."""
         value = self.config_repo.get_config(key)
         return value is not None
-
-    def update_current_context(self, **kwargs) -> None:
-        """Update current execution context. Only save non-None values."""
-        if "command" in kwargs and kwargs["command"] is not None:
-            self.save_config("command", kwargs["command"], "execution")
-        if "language" in kwargs and kwargs["language"] is not None:
-            self.save_config("language", kwargs["language"], "execution")
-        if "env_type" in kwargs and kwargs["env_type"] is not None:
-            self.save_config("env_type", kwargs["env_type"], "execution")
-        if "contest_name" in kwargs and kwargs["contest_name"] is not None:
-            self.save_config("contest_name", kwargs["contest_name"], "contest")
-        if "problem_name" in kwargs and kwargs["problem_name"] is not None:
-            self.save_config("problem_name", kwargs["problem_name"], "contest")
