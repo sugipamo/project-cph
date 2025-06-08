@@ -332,7 +332,7 @@ def parse_user_input(
     context.dockerfile_resolver = resolver
 
     # バリデーション
-    is_valid, error_message = context.validate()
+    is_valid, error_message = context.validate_execution_data()
     if not is_valid:
         raise ValueError(error_message)
 
