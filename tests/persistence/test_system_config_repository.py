@@ -116,8 +116,8 @@ class TestSystemConfigRepository:
             'description': 'new description'
         }
 
-        with patch.object(self.repository, 'get_config_with_metadata', return_value=existing_config):
-            with patch.object(self.repository, 'set_config') as mock_set:
+        with patch.object(self.repository, 'get_config_with_metadata', return_value=existing_config), \
+             patch.object(self.repository, 'set_config') as mock_set:
                 result = self.repository.update('test', updates)
 
         assert result is True

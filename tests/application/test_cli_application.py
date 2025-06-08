@@ -234,8 +234,9 @@ class TestMainFunction:
         """Test main function with only one parameter."""
         mock_context = MagicMock()
 
-        with patch('sys.argv', ['program', 'test']), patch('sys.exit') as mock_exit:
-            with patch.object(CLIApplication, 'run') as mock_run:
+        with patch('sys.argv', ['program', 'test']), \
+             patch('sys.exit') as mock_exit, \
+             patch.object(CLIApplication, 'run') as mock_run:
                 mock_run.return_value = 1
 
                 # Should call CLI application since operations is None

@@ -322,8 +322,8 @@ class TestUserInputParserHelpers:
 
             mock_file_request.side_effect = side_effect
 
-            with patch('src.context.user_input_parser._load_shared_config', return_value=None):
-                with patch('src.context.user_input_parser.ValidationService'):
+            with patch('src.context.user_input_parser._load_shared_config', return_value=None), \
+                 patch('src.context.user_input_parser.ValidationService'):
                     result = _load_all_env_jsons("base_dir", mock_operations)
 
         assert len(result) == 1
@@ -465,10 +465,10 @@ class TestParseUserInputIntegration:
         mock_load_env_jsons.return_value = []
         mock_create_root.return_value = MagicMock()
 
-        with patch('src.context.user_input_parser.ValidationService'):
-            with patch.object(ExecutionContext, 'validate_execution_data', return_value=(False, "Validation error")):
-                with pytest.raises(ValueError, match="Validation error"):
-                    parse_user_input([], mock_operations)
+        with patch('src.context.user_input_parser.ValidationService'), \
+             patch.object(ExecutionContext, 'validate_execution_data', return_value=(False, "Validation error")), \
+             pytest.raises(ValueError, match="Validation error"):
+            parse_user_input([], mock_operations)
 
     @patch('src.context.user_input_parser._load_current_context_sqlite')
     @patch('src.context.user_input_parser._load_all_env_jsons')
@@ -492,8 +492,8 @@ class TestParseUserInputIntegration:
         mock_load_env_jsons.return_value = [{"python": {"test": "value"}}]
         mock_create_root.return_value = mock_root
 
-        with patch('src.context.user_input_parser.ValidationService'):
-            with patch('src.context.user_input_parser.DockerfileResolver'):
+        with patch('src.context.user_input_parser.ValidationService'), \
+             patch('src.context.user_input_parser.DockerfileResolver'):
                 # Mock _parse_command_line_args to return args unchanged with a valid context
                 mock_context_with_args = ExecutionContext(
                     command_type="test",
@@ -503,15 +503,15 @@ class TestParseUserInputIntegration:
                     env_type="local",
                     env_json={"python": {"test": "value"}}
                 )
-                with patch('src.context.user_input_parser._parse_command_line_args', return_value=(["extra", "args"], mock_context_with_args)):
-                    with patch('src.context.user_input_parser._apply_env_json', return_value=ExecutionContext(
+                with patch('src.context.user_input_parser._parse_command_line_args', return_value=(["extra", "args"], mock_context_with_args)), \
+                     patch('src.context.user_input_parser._apply_env_json', return_value=ExecutionContext(
                         command_type="test",
                         language="python",
                         contest_name="abc123",
                         problem_name="a",
                         env_type="local",
                         env_json={"python": {"test": "value"}}
-                    )):
-                        with patch.object(ExecutionContext, 'validate_execution_data', return_value=(True, None)):
-                            with pytest.raises(ValueError, match="引数が多すぎます"):
-                                parse_user_input(["extra", "args"], mock_operations)
+                    )), \
+                     patch.object(ExecutionContext, 'validate_execution_data', return_value=(True, None)), \
+                     pytest.raises(ValueError, match="引数が多すぎます"):
+                    parse_user_input(["extra", "args"], mock_operations)
