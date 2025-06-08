@@ -21,8 +21,6 @@ class ExecutionFormatData:
     problem_name: str
     env_type: str
     env_json: dict
-    previous_contest_name: Optional[str] = None
-    previous_problem_name: Optional[str] = None
 
 
 def create_format_dict(data: ExecutionFormatData) -> dict[str, str]:
@@ -43,11 +41,6 @@ def create_format_dict(data: ExecutionFormatData) -> dict[str, str]:
         "env_type": data.env_type,
     }
 
-    # previous情報を追加（Noneの場合もそのまま設定）
-    format_dict.update({
-        "previous_contest_name": data.previous_contest_name,
-        "previous_problem_name": data.previous_problem_name,
-    })
 
     # env_jsonから追加の値を取得
     if data.env_json and data.language in data.env_json:

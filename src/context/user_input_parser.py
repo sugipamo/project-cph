@@ -291,9 +291,7 @@ def parse_user_input(
         contest_name=current_context_info["contest_name"],
         problem_name=current_context_info["problem_name"],
         env_type=current_context_info["env_type"],
-        env_json=final_env_json,
-        previous_contest_name=current_context_info["contest_name"],  # previous情報として保存
-        previous_problem_name=current_context_info["problem_name"]   # previous情報として保存
+        env_json=final_env_json
     )
 
     # レゾルバー設定

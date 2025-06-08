@@ -158,35 +158,6 @@ class TestExecutionContext:
         # Access oj_dockerfile
         assert context.oj_dockerfile == "FROM ojtools:latest"
 
-    def test_previous_context_properties(self):
-        """Test previous_contest_name and previous_problem_name properties"""
-        context = ExecutionContext(
-            command_type="build",
-            language="python",
-            contest_name="abc123",
-            problem_name="a",
-            env_type="docker",
-            env_json={},
-            previous_contest_name="abc122",
-            previous_problem_name="z"
-        )
-
-        # Test previous properties
-        assert context.previous_contest_name == "abc122"
-        assert context.previous_problem_name == "z"
-
-        # Test None case
-        context2 = ExecutionContext(
-            command_type="build",
-            language="python",
-            contest_name="abc123",
-            problem_name="a",
-            env_type="docker",
-            env_json={}
-        )
-
-        assert context2.previous_contest_name is None
-        assert context2.previous_problem_name is None
 
     def test_validate(self):
         """Test validate method"""

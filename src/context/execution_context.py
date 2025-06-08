@@ -21,8 +21,7 @@ class ExecutionContext:
     """
 
     def __init__(self, command_type: str, language: str, contest_name: str,
-                 problem_name: str, env_type: str, env_json: dict, resolver=None,
-                 previous_contest_name: Optional[str] = None, previous_problem_name: Optional[str] = None):
+                 problem_name: str, env_type: str, env_json: dict, resolver=None):
         self._data = ExecutionData(
             command_type=command_type,
             language=language,
@@ -30,9 +29,7 @@ class ExecutionContext:
             problem_name=problem_name,
             env_type=env_type,
             env_json=env_json,
-            resolver=resolver,
-            previous_contest_name=previous_contest_name,
-            previous_problem_name=previous_problem_name
+            resolver=resolver
         )
         self._validator = ContextValidator()
         self._config_resolver = ConfigResolverProxy(self._data)
@@ -146,9 +143,7 @@ class ExecutionContext:
             contest_name=self.contest_name,
             problem_name=self.problem_name,
             env_type=self.env_type,
-            env_json=self.env_json,
-            previous_contest_name=self.previous_contest_name,
-            previous_problem_name=self.previous_problem_name
+            env_json=self.env_json
         )
         return validate_execution_data(format_data)
 
@@ -170,9 +165,7 @@ class ExecutionContext:
             contest_name=self.contest_name,
             problem_name=self.problem_name,
             env_type=self.env_type,
-            env_json=self.env_json,
-            previous_contest_name=self.previous_contest_name,
-            previous_problem_name=self.previous_problem_name
+            env_json=self.env_json
         )
         return create_format_dict(format_data)
 
@@ -192,9 +185,7 @@ class ExecutionContext:
             contest_name=self.contest_name,
             problem_name=self.problem_name,
             env_type=self.env_type,
-            env_json=self.env_json,
-            previous_contest_name=self.previous_contest_name,
-            previous_problem_name=self.previous_problem_name
+            env_json=self.env_json
         )
         return format_template_string(template, format_data)[0]
 
@@ -234,13 +225,6 @@ class ExecutionContext:
         language_node = self.resolve([self.language, "language_id"])
         return language_node.value if language_node else None
 
-    @property
-    def previous_contest_name(self):
-        return self._data.previous_contest_name
-
-    @property
-    def previous_problem_name(self):
-        return self._data.previous_problem_name
 
     def get_docker_names(self) -> dict:
         """Get Docker naming for current context
@@ -255,9 +239,7 @@ class ExecutionContext:
             contest_name=self.contest_name,
             problem_name=self.problem_name,
             env_type=self.env_type,
-            env_json=self.env_json,
-            previous_contest_name=self.previous_contest_name,
-            previous_problem_name=self.previous_problem_name
+            env_json=self.env_json
         )
 
         dockerfile_content = None

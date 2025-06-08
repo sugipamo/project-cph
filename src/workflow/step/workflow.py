@@ -123,9 +123,7 @@ def create_step_context_from_env_context(env_context) -> StepContext:
         contest_template_path=getattr(env_context, 'contest_template_path', None),
         contest_temp_path=getattr(env_context, 'contest_temp_path', None),
         source_file_name=getattr(env_context, 'source_file_name', None),
-        language_id=getattr(env_context, 'language_id', None),
-        previous_contest_name=getattr(env_context, 'previous_contest_name', None),
-        previous_problem_name=getattr(env_context, 'previous_problem_name', None)
+        language_id=getattr(env_context, 'language_id', None)
     )
 
 

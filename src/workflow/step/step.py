@@ -44,8 +44,6 @@ class StepContext:
     contest_temp_path: Optional[str] = None
     source_file_name: Optional[str] = None
     language_id: Optional[str] = None
-    previous_contest_name: Optional[str] = None
-    previous_problem_name: Optional[str] = None
 
     def to_format_dict(self) -> dict[str, str]:
         """文字列フォーマット用の辞書を生成"""
@@ -65,11 +63,6 @@ class StepContext:
             'language_id': self.language_id or '',
         }
 
-        # previous変数を追加（Noneの場合はエラーになることを想定）
-        format_dict.update({
-            'previous_contest_name': self.previous_contest_name,
-            'previous_problem_name': self.previous_problem_name,
-        })
 
         return format_dict
 
