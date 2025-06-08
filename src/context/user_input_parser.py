@@ -6,7 +6,6 @@ from src.context.dockerfile_resolver import DockerfileResolver
 from src.context.resolver.config_resolver import create_config_root_from_dict, resolve_by_match_desc
 from src.domain.requests.file.file_op_type import FileOpType
 from src.domain.requests.file.file_request import FileRequest
-from src.infrastructure.di_container import DIKey
 from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
 
 from .execution_context import ExecutionContext
