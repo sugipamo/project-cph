@@ -8,33 +8,59 @@ class DockerImageRepository(BaseRepository):
     
     def __init__(self, sqlite_manager):
         """Initialize with SQLite manager."""
-        self.sqlite_manager = sqlite_manager
-        
-    @property 
-    def connection(self):
-        """Get database connection."""
-        return self.sqlite_manager.get_connection()
+        super().__init__(sqlite_manager)
     
-    # Abstract method implementations
-    def create(self, entity: Any) -> Any:
-        """Create a new entity."""
-        return None
+    # RepositoryInterface implementations
+    def create(self, entity: Dict[str, Any]) -> Any:
+        """Create a new image entity."""
+        return self.create_or_update_image(**entity)
         
-    def find_by_id(self, entity_id: Any) -> Optional[Any]:
-        """Find entity by ID."""
-        return None
+    def find_by_id(self, entity_id: Any) -> Optional[Dict[str, Any]]:
+        """Find image by ID (name:tag format)."""
+        if ':' in str(entity_id):
+            name, tag = str(entity_id).split(':', 1)
+        else:
+            name, tag = str(entity_id), 'latest'
+        return self.find_image(name, tag)
         
-    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> list[Any]:
-        """Find all entities."""
-        return []
+    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Find all images."""
+        images = self.get_all_images()
+        if offset:
+            images = images[offset:]
+        if limit:
+            images = images[:limit]
+        return images
         
-    def update(self, entity: Any) -> Any:
-        """Update an entity."""
-        return None
+    def update(self, entity_id: Any, updates: Dict[str, Any]) -> bool:
+        """Update an image."""
+        if ':' in str(entity_id):
+            name, tag = str(entity_id).split(':', 1)
+        else:
+            name, tag = str(entity_id), 'latest'
+        
+        image = self.find_image(name, tag)
+        if not image:
+            return False
+        
+        # Update specific fields
+        if 'build_status' in updates:
+            self.update_image_build_result(
+                name=name,
+                tag=tag,
+                build_status=updates['build_status'],
+                **{k: v for k, v in updates.items() if k != 'build_status'}
+            )
+        return True
         
     def delete(self, entity_id: Any) -> bool:
-        """Delete entity by ID."""
-        return False
+        """Delete image by ID."""
+        if ':' in str(entity_id):
+            name, tag = str(entity_id).split(':', 1)
+        else:
+            name, tag = str(entity_id), 'latest'
+        
+        return self.delete_image(name, tag)
 
     def create_or_update_image(
         self,

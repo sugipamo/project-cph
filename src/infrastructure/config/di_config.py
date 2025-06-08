@@ -29,8 +29,14 @@ def _create_python_driver() -> Any:
     return LocalPythonDriver()
 
 
+def _create_persistence_driver() -> Any:
+    """Lazy factory for persistence driver."""
+    from src.infrastructure.drivers.persistence.persistence_driver import SQLitePersistenceDriver
+    return SQLitePersistenceDriver()
+
+
 def _create_sqlite_manager() -> Any:
-    """Lazy factory for SQLite manager."""
+    """Lazy factory for SQLite manager (legacy)."""
     from src.infrastructure.persistence.sqlite.sqlite_manager import SQLiteManager
     return SQLiteManager()
 
@@ -102,8 +108,9 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.DOCKER_DRIVER, _create_docker_driver)
     container.register(DIKey.FILE_DRIVER, _create_file_driver)
     container.register(DIKey.PYTHON_DRIVER, _create_python_driver)
+    container.register(DIKey.PERSISTENCE_DRIVER, _create_persistence_driver)
 
-    # Register persistence layer
+    # Register persistence layer (legacy support)
     container.register(DIKey.SQLITE_MANAGER, _create_sqlite_manager)
     container.register(DIKey.OPERATION_REPOSITORY, _create_operation_repository)
     container.register(DIKey.SESSION_REPOSITORY, _create_session_repository)
@@ -125,6 +132,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register('docker_driver', lambda: container.resolve(DIKey.DOCKER_DRIVER))
     container.register('file_driver', lambda: container.resolve(DIKey.FILE_DRIVER))
     container.register('python_driver', lambda: container.resolve(DIKey.PYTHON_DRIVER))
+    container.register('persistence_driver', lambda: container.resolve(DIKey.PERSISTENCE_DRIVER))
     container.register('unified_driver', lambda: container.resolve(DIKey.UNIFIED_DRIVER))
 
 
@@ -179,4 +187,5 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register('docker_driver', lambda: container.resolve(DIKey.DOCKER_DRIVER))
     container.register('file_driver', lambda: container.resolve(DIKey.FILE_DRIVER))
     container.register('python_driver', lambda: container.resolve(DIKey.PYTHON_DRIVER))
+    container.register('persistence_driver', lambda: container.resolve(DIKey.PERSISTENCE_DRIVER))
     container.register('unified_driver', lambda: container.resolve(DIKey.UNIFIED_DRIVER))

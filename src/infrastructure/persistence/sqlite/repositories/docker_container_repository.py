@@ -10,38 +10,44 @@ class DockerContainerRepository(BaseRepository):
     
     def __init__(self, sqlite_manager):
         """Initialize with SQLite manager."""
-        self.sqlite_manager = sqlite_manager
-        
-    @property 
-    def connection(self):
-        """Get database connection."""
-        return self.sqlite_manager.get_connection()
+        super().__init__(sqlite_manager)
 
-    # Abstract method implementations
-    def create(self, entity: Any) -> Any:
-        """Create a new entity."""
-        # For compatibility with base class
-        return None
+    # RepositoryInterface implementations
+    def create(self, entity: Dict[str, Any]) -> Any:
+        """Create a new container entity."""
+        return self.create_container(**entity)
         
-    def find_by_id(self, entity_id: Any) -> Optional[Any]:
-        """Find entity by ID."""
-        # For compatibility with base class
-        return None
+    def find_by_id(self, entity_id: Any) -> Optional[Dict[str, Any]]:
+        """Find container by ID."""
+        return self.find_container_by_name(str(entity_id))
         
-    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> list[Any]:
-        """Find all entities."""
-        # For compatibility with base class
-        return []
+    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Find all containers."""
+        containers = self.get_active_containers()
+        if offset:
+            containers = containers[offset:]
+        if limit:
+            containers = containers[:limit]
+        return containers
         
-    def update(self, entity: Any) -> Any:
-        """Update an entity."""
-        # For compatibility with base class
-        return None
+    def update(self, entity_id: Any, updates: Dict[str, Any]) -> bool:
+        """Update a container."""
+        container = self.find_container_by_name(str(entity_id))
+        if not container:
+            return False
+        
+        if 'status' in updates:
+            self.update_container_status(str(entity_id), updates['status'])
+        return True
         
     def delete(self, entity_id: Any) -> bool:
-        """Delete entity by ID."""
-        # For compatibility with base class
-        return False
+        """Delete container by ID."""
+        container = self.find_container_by_name(str(entity_id))
+        if not container:
+            return False
+        
+        self.mark_container_removed(str(entity_id))
+        return True
 
     def create_container(
         self,

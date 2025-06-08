@@ -1,71 +1,38 @@
 """Base repository interface for data persistence."""
-from abc import ABC, abstractmethod
-from typing import Any, Optional
+from abc import ABC
+from typing import Any, Dict, List, Optional
+
+from src.domain.interfaces.persistence_interface import RepositoryInterface
 
 
-class BaseRepository(ABC):
-    """Abstract base class for all repositories."""
+class BaseRepository(RepositoryInterface):
+    """Base class for all repositories with common functionality."""
 
-    @abstractmethod
-    def create(self, entity: Any) -> Any:
-        """Create a new entity.
-
+    def __init__(self, persistence_manager: Any):
+        """Initialize repository with persistence manager.
+        
         Args:
-            entity: The entity to create
-
-        Returns:
-            The created entity with ID
+            persistence_manager: Database manager instance
         """
+        self.persistence_manager = persistence_manager
 
-    @abstractmethod
-    def find_by_id(self, entity_id: Any) -> Optional[Any]:
-        """Find entity by ID.
-
-        Args:
-            entity_id: The ID to search for
-
-        Returns:
-            The entity if found, None otherwise
-        """
-
-    @abstractmethod
-    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> list[Any]:
-        """Find all entities with optional pagination.
-
-        Args:
-            limit: Maximum number of entities to return
-            offset: Number of entities to skip
-
-        Returns:
-            List of entities
-        """
-
-    @abstractmethod
-    def update(self, entity: Any) -> Any:
-        """Update an existing entity.
-
-        Args:
-            entity: The entity to update
-
-        Returns:
-            The updated entity
-        """
-
-    @abstractmethod
-    def delete(self, entity_id: Any) -> bool:
-        """Delete entity by ID.
-
-        Args:
-            entity_id: The ID of entity to delete
-
-        Returns:
-            True if deleted, False if not found
-        """
+    @property
+    def connection(self):
+        """Get database connection context manager."""
+        return self.persistence_manager.get_connection()
 
     def count(self) -> int:
         """Count total number of entities.
-
+        
         Returns:
             Total count of entities
         """
+        # Default implementation - can be overridden for efficiency
         return len(self.find_all())
+
+    # Note: Concrete repositories must implement the abstract methods from RepositoryInterface:
+    # - create(self, entity: Dict[str, Any]) -> Any
+    # - find_by_id(self, entity_id: Any) -> Optional[Dict[str, Any]]
+    # - find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Dict[str, Any]]
+    # - update(self, entity_id: Any, updates: Dict[str, Any]) -> bool
+    # - delete(self, entity_id: Any) -> bool

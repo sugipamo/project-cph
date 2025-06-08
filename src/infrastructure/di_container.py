@@ -11,8 +11,9 @@ class DIKey(Enum):
     SHELL_DRIVER = "shell_driver"
     DOCKER_DRIVER = "docker_driver"
     PYTHON_DRIVER = "python_driver"
+    PERSISTENCE_DRIVER = "persistence_driver"
 
-    # Persistence
+    # Persistence (legacy keys for backward compatibility)
     SQLITE_MANAGER = "sqlite_manager"
     OPERATION_REPOSITORY = "operation_repository"
     SESSION_REPOSITORY = "session_repository"

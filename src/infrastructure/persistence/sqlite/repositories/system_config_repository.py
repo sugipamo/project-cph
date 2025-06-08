@@ -9,33 +9,48 @@ class SystemConfigRepository(BaseRepository):
     
     def __init__(self, sqlite_manager):
         """Initialize with SQLite manager."""
-        self.sqlite_manager = sqlite_manager
-        
-    @property 
-    def connection(self):
-        """Get database connection."""
-        return self.sqlite_manager.get_connection()
+        super().__init__(sqlite_manager)
     
-    # Abstract method implementations
-    def create(self, entity: Any) -> Any:
-        """Create a new entity."""
-        return None
+    # RepositoryInterface implementations
+    def create(self, entity: Dict[str, Any]) -> Any:
+        """Create a new config entity."""
+        key = entity.get('config_key') or entity.get('key')
+        value = entity.get('config_value') or entity.get('value')
+        category = entity.get('category')
+        description = entity.get('description')
         
-    def find_by_id(self, entity_id: Any) -> Optional[Any]:
-        """Find entity by ID."""
-        return None
+        self.set_config(key, value, category, description)
+        return key
         
-    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> list[Any]:
-        """Find all entities."""
-        return []
+    def find_by_id(self, entity_id: Any) -> Optional[Dict[str, Any]]:
+        """Find config by key."""
+        return self.get_config_with_metadata(str(entity_id))
         
-    def update(self, entity: Any) -> Any:
-        """Update an entity."""
-        return None
+    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Find all configs."""
+        configs = self.get_all_configs_with_metadata()
+        if offset:
+            configs = configs[offset:]
+        if limit:
+            configs = configs[:limit]
+        return configs
+        
+    def update(self, entity_id: Any, updates: Dict[str, Any]) -> bool:
+        """Update a config."""
+        existing = self.get_config_with_metadata(str(entity_id))
+        if not existing:
+            return False
+        
+        value = updates.get('config_value') or updates.get('value')
+        category = updates.get('category') or existing.get('category')
+        description = updates.get('description') or existing.get('description')
+        
+        self.set_config(str(entity_id), value, category, description)
+        return True
         
     def delete(self, entity_id: Any) -> bool:
-        """Delete entity by ID."""
-        return False
+        """Delete config by key."""
+        return self.delete_config(str(entity_id))
 
     def set_config(
         self,
