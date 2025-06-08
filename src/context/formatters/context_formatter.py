@@ -40,14 +40,13 @@ def create_format_dict(data: ExecutionFormatData) -> dict[str, str]:
         "language": data.language,
         "contest_name": data.contest_name,
         "problem_name": data.problem_name,
-        "problem_id": data.problem_name,  # 互換性のため
         "env_type": data.env_type,
     }
 
     # previous情報を追加（Noneの場合もそのまま設定）
     format_dict.update({
         "previous_contest_name": data.previous_contest_name,
-        "previous_problem_id": data.previous_problem_name,
+        "previous_problem_name": data.previous_problem_name,
     })
 
     # env_jsonから追加の値を取得

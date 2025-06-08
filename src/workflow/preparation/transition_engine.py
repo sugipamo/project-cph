@@ -68,8 +68,8 @@ class TransitionContext:
             parts = condition.split(".")
             if len(parts) >= 4:
                 contest_name = parts[1]
-                problem_id = parts[2]
-                archive_context = WorkflowContext(contest_name=contest_name, problem_id=problem_id, language="dummy")
+                problem_name = parts[2]
+                archive_context = WorkflowContext(contest_name=contest_name, problem_name=problem_name, language="dummy")
                 return self.folder_mapper.area_exists("archive_area", archive_context)
         elif condition == "workspace_area.test.exists":
             test_path = self.folder_mapper.get_area_path("workspace_area", self.current_context) / "test"
@@ -169,11 +169,11 @@ class TransitionEngine:
 
                 # Resolve variables
                 contest_name = self._resolve_variable(contest_var, context)
-                problem_id = self._resolve_variable(problem_var, context)
+                problem_name = self._resolve_variable(problem_var, context)
 
                 archive_context = WorkflowContext(
                     contest_name=contest_name,
-                    problem_id=problem_id,
+                    problem_name=problem_name,
                     language=context.current_context.language
                 )
                 to_path = self.folder_mapper.get_area_path("archive_area", archive_context)
@@ -338,10 +338,10 @@ class TransitionEngine:
             if var_name == "current_contest":
                 return context.current_context.contest_name or ""
             if var_name == "current_problem":
-                return context.current_context.problem_id or ""
+                return context.current_context.problem_name or ""
             if var_name == "contest_name":
                 return context.target_context.contest_name or ""
-            if var_name == "problem_id":
-                return context.target_context.problem_id or ""
+            if var_name == "problem_name":
+                return context.target_context.problem_name or ""
 
         return variable

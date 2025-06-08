@@ -119,7 +119,7 @@ class TestContestManager:
             "shared": {
                 "paths": {
                     "contest_current_path": "./contest_current",
-                    "contest_stock_path": "./contest_stock/{language_name}/{contest_name}/{problem_id}"
+                    "contest_stock_path": "./contest_stock/{language_name}/{contest_name}/{problem_name}"
                 }
             }
         }

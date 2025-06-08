@@ -14,14 +14,14 @@ class WorkflowState(Enum):
 class WorkflowContext:
     """Context information for workflow state."""
     contest_name: Optional[str] = None
-    problem_id: Optional[str] = None
+    problem_name: Optional[str] = None
     language: Optional[str] = None
 
     def is_valid_working_context(self) -> bool:
         """Check if context is valid for working state."""
         return all([
             self.contest_name,
-            self.problem_id,
+            self.problem_name,
             self.language
         ])
 
@@ -29,7 +29,7 @@ class WorkflowContext:
         """Convert to dictionary for storage."""
         return {
             "contest_name": self.contest_name,
-            "problem_id": self.problem_id,
+            "problem_name": self.problem_name,
             "language": self.language
         }
 
@@ -38,7 +38,7 @@ class WorkflowContext:
         """Create from dictionary."""
         return cls(
             contest_name=data.get("contest_name"),
-            problem_id=data.get("problem_id"),
+            problem_name=data.get("problem_name"),
             language=data.get("language")
         )
 
@@ -46,7 +46,7 @@ class WorkflowContext:
         """Check if contexts match for transition optimization."""
         return (
             self.contest_name == other.contest_name and
-            self.problem_id == other.problem_id and
+            self.problem_name == other.problem_name and
             self.language == other.language
         )
 

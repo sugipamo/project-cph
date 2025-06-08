@@ -51,7 +51,6 @@ class StepContext:
         """文字列フォーマット用の辞書を生成"""
         format_dict = {
             'contest_name': self.contest_name,
-            'problem_id': self.problem_name,
             'problem_name': self.problem_name,
             'language': self.language,
             'language_name': self.language,
@@ -69,7 +68,7 @@ class StepContext:
         # previous変数を追加（Noneの場合はエラーになることを想定）
         format_dict.update({
             'previous_contest_name': self.previous_contest_name,
-            'previous_problem_id': self.previous_problem_name,
+            'previous_problem_name': self.previous_problem_name,
         })
 
         return format_dict

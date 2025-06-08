@@ -20,8 +20,8 @@ class FolderArea:
         all_vars = {**path_vars}
         if context.contest_name:
             all_vars["contest_name"] = context.contest_name
-        if context.problem_id:
-            all_vars["problem_id"] = context.problem_id
+        if context.problem_name:
+            all_vars["problem_name"] = context.problem_name
         if context.language:
             all_vars["language"] = context.language
             all_vars["language_name"] = context.language
@@ -50,7 +50,7 @@ class FolderMapper:
             ),
             "archive_area": FolderArea(
                 name="archive_area",
-                path_template="{contest_stock_path}/{contest_name}/{problem_id}",
+                path_template="{contest_stock_path}/{contest_name}/{problem_name}",
                 purpose="completed_work_storage",
                 description="Archived completed work"
             ),
@@ -110,17 +110,17 @@ class FolderMapper:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def get_archive_path(self, contest_name: str, problem_id: str) -> Path:
+    def get_archive_path(self, contest_name: str, problem_name: str) -> Path:
         """Get archive path for specific contest/problem."""
         archive_context = WorkflowContext(
             contest_name=contest_name,
-            problem_id=problem_id,
+            problem_name=problem_name,
             language="dummy"  # Not used in archive path
         )
         return self.get_area_path("archive_area", archive_context)
 
     def list_archives(self) -> List[tuple[str, str]]:
-        """List all available archives as (contest_name, problem_id) tuples."""
+        """List all available archives as (contest_name, problem_name) tuples."""
         base_path = Path(self.path_vars.get("contest_stock_path", "./contest_stock"))
         archives = []
 

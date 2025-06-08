@@ -36,7 +36,7 @@ class StateManager:
 
         context = WorkflowContext(
             contest_name=context_data.get("contest_name"),
-            problem_id=context_data.get("problem_name"),  # Note: using problem_name from DB
+            problem_name=context_data.get("problem_name"),  # Note: using problem_name from DB
             language=context_data.get("language")
         )
 
@@ -107,7 +107,7 @@ class StateManager:
                         "to": "working_area",
                         "source_priority": [
                             {
-                                "from": "archive_area.{contest_name}.{problem_id}",
+                                "from": "archive_area.{contest_name}.{problem_name}",
                                 "condition": "exists",
                                 "priority": 1,
                                 "description": "既存作業を復元"
@@ -158,7 +158,7 @@ class StateManager:
             # Store working context
             self.config_loader.update_current_context(
                 contest_name=context.contest_name,
-                problem_name=context.problem_id,  # Note: using problem_name for DB
+                problem_name=context.problem_name,  # Note: using problem_name for DB
                 language=context.language
             )
         elif state == WorkflowState.IDLE:
@@ -180,8 +180,8 @@ class StateManager:
 
         if current_state == WorkflowState.WORKING and current_context.language:
             # 現在作業中の問題
-            if current_context.contest_name and current_context.problem_id:
-                summary["current_problem"] = f"{current_context.contest_name}/{current_context.problem_id}"
+            if current_context.contest_name and current_context.problem_name:
+                summary["current_problem"] = f"{current_context.contest_name}/{current_context.problem_name}"
 
             folder_mapper = self._get_folder_mapper(current_context.language)
 

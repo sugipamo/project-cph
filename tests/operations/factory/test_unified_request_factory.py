@@ -124,7 +124,7 @@ class TestRequestCreationStrategies:
             target_state="working",
             context={
                 "contest_name": "{contest_name}",
-                "problem_id": "{problem_name}",
+                "problem_name": "{problem_name}",
                 "language": "{language_name}"
             }
         )
@@ -135,16 +135,16 @@ class TestRequestCreationStrategies:
         assert request is not None
         assert request.target_state == "working"
         assert request.context_params["contest_name"] == "abc300"
-        assert request.context_params["problem_id"] == "a"
+        assert request.context_params["problem_name"] == "a"
         assert request.context_params["language"] == "python"
 
         # Test create_request with cmd-based format (legacy format)
-        step = Step(type=StepType.STATE_TRANSITION, cmd=["working", "contest_name=abc123", "problem_id=b"])
+        step = Step(type=StepType.STATE_TRANSITION, cmd=["working", "contest_name=abc123", "problem_name=b"])
         request = strategy.create_request(step, context, env_manager)
         assert request is not None
         assert request.target_state == "working"
         assert request.context_params["contest_name"] == "abc123"
-        assert request.context_params["problem_id"] == "b"
+        assert request.context_params["problem_name"] == "b"
 
         # Test with empty cmd
         step = Step(type=StepType.STATE_TRANSITION, cmd=[])

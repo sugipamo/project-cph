@@ -80,7 +80,7 @@ class StateTransitionDriver:
             # Create target context
             target_context = WorkflowContext(
                 contest_name=request.context_params.get("contest_name"),
-                problem_id=request.context_params.get("problem_id"),
+                problem_name=request.context_params.get("problem_name"),
                 language=request.context_params.get("language")
             )
 

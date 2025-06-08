@@ -167,13 +167,13 @@ class ContestManager:
 
             contest_current_path = paths.get("contest_current_path", "./contest_current")
             contest_stock_path_template = paths.get("contest_stock_path",
-                                                   "./contest_stock/{language_name}/{contest_name}/{problem_id}")
+                                                   "./contest_stock/{language_name}/{contest_name}/{problem_name}")
 
             # Resolve contest_stock path
             contest_stock_path = contest_stock_path_template.format(
                 language_name=language,
                 contest_name=contest,
-                problem_id=problem
+                problem_name=problem
             )
 
 
@@ -461,13 +461,13 @@ class ContestManager:
 
             contest_current_path = paths.get("contest_current_path", "./contest_current")
             contest_stock_path_template = paths.get("contest_stock_path",
-                                                   "./contest_stock/{language_name}/{contest_name}/{problem_id}")
+                                                   "./contest_stock/{language_name}/{contest_name}/{problem_name}")
 
             # Resolve contest_stock path
             contest_stock_path = contest_stock_path_template.format(
                 language_name=language,
                 contest_name=contest,
-                problem_id=problem
+                problem_name=problem
             )
 
             # Check if contest_stock directory exists and has content
