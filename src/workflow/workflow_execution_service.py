@@ -5,6 +5,7 @@ Integrates workflow building, fitting, and execution
 from src.application.factories.unified_request_factory import create_composite_request, create_request
 from src.application.orchestration.unified_driver import UnifiedDriver
 from src.context.execution_context import ExecutionContext
+from src.utils.debug_logger import DebugLogger
 from src.workflow.preparation.preparation_executor import PreparationExecutor
 from src.workflow.step.core import generate_steps_from_json
 from src.workflow.step.step import Step, StepType
@@ -38,6 +39,9 @@ class WorkflowExecutionService:
         Returns:
             WorkflowExecutionResult with execution results
         """
+        # Log environment information if configured
+        self._log_environment_info()
+        
         # Get workflow steps from context
         json_steps = self._get_workflow_steps()
         if not json_steps:
@@ -234,4 +238,28 @@ class WorkflowExecutionService:
                 workflow_tasks.append(task)
 
         return workflow_tasks
+
+    def _log_environment_info(self):
+        """Log environment information based on configuration"""
+        if not self.context.env_json:
+            return
+            
+        # Get environment logging configuration from shared config
+        shared_config = self.context.env_json.get('shared', {})
+        env_logging_config = shared_config.get('environment_logging', {})
+        
+        if not env_logging_config.get('enabled', False):
+            return
+            
+        # Create a basic debug logger instance just for environment logging
+        debug_logger = DebugLogger({})
+        
+        # Log environment information
+        debug_logger.log_environment_info(
+            language_name=self.context.language,
+            contest_name=self.context.contest_name,
+            problem_name=self.context.problem_name,
+            env_type=self.context.env_type,
+            env_logging_config=env_logging_config
+        )
 
