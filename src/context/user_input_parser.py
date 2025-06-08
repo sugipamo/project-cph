@@ -3,11 +3,11 @@ import json
 import os
 
 from src.context.dockerfile_resolver import DockerfileResolver
-
-# Note: SystemInfoManager and InputParser removed - using direct implementation
 from src.context.resolver.config_resolver import create_config_root_from_dict, resolve_by_match_desc
 from src.domain.requests.file.file_op_type import FileOpType
 from src.domain.requests.file.file_request import FileRequest
+from src.infrastructure.di_container import DIKey
+from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
 
 from .execution_context import ExecutionContext
 from .parsers.validation_service import ValidationService
@@ -15,44 +15,41 @@ from .parsers.validation_service import ValidationService
 CONTEST_ENV_DIR = "contest_env"
 
 
-def _load_system_info_direct(operations, path="system_info.json"):
-    """システム情報を直接読み込む"""
-    file_driver = operations.resolve("file_driver")
+def _load_system_info_sqlite(operations):
+    """SQLiteからシステム情報を読み込む"""
+    # operations IS the container in this context
+    config_loader = SystemConfigLoader(operations)
 
-    req = FileRequest(FileOpType.EXISTS, path)
-    result = req.execute(driver=file_driver)
+    context = config_loader.get_current_context()
+    config = config_loader.load_config()
 
-    if not result.exists:
-        return {
-            "command": None,
-            "language": None,
-            "env_type": None,
-            "contest_name": None,
-            "problem_name": None,
-            "env_json": None,
-        }
-
-    req = FileRequest(FileOpType.READ, path)
-    result = req.execute(driver=file_driver)
-    loaded_info = json.loads(result.content)
-
-    # env_jsonフィールドがない場合はNoneを設定
-    if "env_json" not in loaded_info:
-        loaded_info["env_json"] = None
-
-    return loaded_info
+    return {
+        "command": context.get("command"),
+        "language": context.get("language"),
+        "env_type": context.get("env_type"),
+        "contest_name": context.get("contest_name"),
+        "problem_name": context.get("problem_name"),
+        "env_json": config.get("env_json"),
+    }
 
 
-def _save_system_info_direct(operations, info, path="system_info.json"):
-    """システム情報を直接保存する"""
-    file_driver = operations.resolve("file_driver")
+def _save_system_info_sqlite(operations, info):
+    """SQLiteにシステム情報を保存する"""
+    # operations IS the container in this context
+    config_loader = SystemConfigLoader(operations)
 
-    req = FileRequest(
-        FileOpType.WRITE,
-        path,
-        content=json.dumps(info, ensure_ascii=False, indent=2)
+    # 実行コンテキストを更新
+    config_loader.update_current_context(
+        command=info.get("command"),
+        language=info.get("language"),
+        env_type=info.get("env_type"),
+        contest_name=info.get("contest_name"),
+        problem_name=info.get("problem_name")
     )
-    req.execute(driver=file_driver)
+
+    # env_jsonがある場合は保存
+    if info.get("env_json"):
+        config_loader.save_config("env_json", info["env_json"], "environment")
 
 
 def _parse_command_line_direct(args, context, root):
@@ -260,8 +257,8 @@ def parse_user_input(
     # システム情報管理とバリデーション初期化
     ValidationService()
 
-    # システム情報読み込み (direct implementation)
-    system_info = _load_system_info_direct(operations)
+    # システム情報読み込み (SQLite implementation)
+    system_info = _load_system_info_sqlite(operations)
 
     # 環境設定読み込みと設定ルート作成
     env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, operations)
@@ -306,8 +303,8 @@ def parse_user_input(
         raise ValueError(f"引数が多すぎます: {args}")
 
 
-    # システム情報保存 (direct implementation)
-    _save_system_info_direct(operations, {
+    # システム情報保存 (SQLite implementation)
+    _save_system_info_sqlite(operations, {
         "command": context.command_type,
         "language": context.language,
         "env_type": context.env_type,

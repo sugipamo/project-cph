@@ -1,7 +1,7 @@
 """Tests for SessionRepository - session management functionality."""
 import os
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytest
 

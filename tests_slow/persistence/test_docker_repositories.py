@@ -1,8 +1,6 @@
 """Tests for Docker repositories - container and image management."""
-import json
 import os
 import tempfile
-from datetime import datetime
 
 import pytest
 

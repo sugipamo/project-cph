@@ -1,9 +1,7 @@
 """Tests for OperationRepository - operation history management."""
-import json
 import os
 import tempfile
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
