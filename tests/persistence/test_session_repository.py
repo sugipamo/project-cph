@@ -1,6 +1,4 @@
 """Tests for SessionRepository - session management functionality."""
-import os
-import tempfile
 from datetime import datetime
 
 import pytest
@@ -9,25 +7,15 @@ from src.infrastructure.persistence.sqlite.repositories.session_repository impor
     Session,
     SessionRepository,
 )
-from src.infrastructure.persistence.sqlite.sqlite_manager import SQLiteManager
 
 
 class TestSessionRepository:
     """Test SessionRepository functionality."""
 
     @pytest.fixture
-    def temp_db_path(self):
-        """Create temporary database file."""
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-            temp_path = f.name
-        yield temp_path
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
-
-    @pytest.fixture
-    def sqlite_manager(self, temp_db_path):
-        """Create SQLiteManager with temporary database."""
-        return SQLiteManager(temp_db_path)
+    def sqlite_manager(self, clean_sqlite_manager):
+        """Use FastSQLiteManager for testing."""
+        return clean_sqlite_manager
 
     @pytest.fixture
     def session_repo(self, sqlite_manager):

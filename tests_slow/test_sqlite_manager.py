@@ -17,7 +17,6 @@ class TestSQLiteManager:
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             temp_path = f.name
         yield temp_path
-        # Clean up
         if os.path.exists(temp_path):
             os.unlink(temp_path)
 

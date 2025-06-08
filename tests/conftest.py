@@ -130,3 +130,24 @@ def clean_mock_state(mock_drivers):
         python_driver.clear_history()
 
     yield mock_drivers
+
+
+@pytest.fixture(scope="module")
+def fast_sqlite_manager():
+    """Shared FastSQLiteManager for persistence tests with in-memory database."""
+    from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
+
+    manager = FastSQLiteManager(db_path=":memory:", skip_migrations=False)
+    yield manager
+    # Cleanup after module
+    FastSQLiteManager.reset_shared_connection()
+
+
+@pytest.fixture
+def clean_sqlite_manager(fast_sqlite_manager):
+    """Clean FastSQLiteManager for each test."""
+    # Clean data before test
+    fast_sqlite_manager.cleanup_test_data()
+    yield fast_sqlite_manager
+    # Clean data after test
+    fast_sqlite_manager.cleanup_test_data()
