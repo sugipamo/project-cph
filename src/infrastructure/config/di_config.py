@@ -101,10 +101,10 @@ def _create_request_factory() -> Any:
     return UnifiedRequestFactory()
 
 
-def _create_system_config_loader(sqlite_manager: Any) -> Any:
+def _create_system_config_loader(container: Any) -> Any:
     """Lazy factory for system config loader."""
     from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
-    return SystemConfigLoader(sqlite_manager)
+    return SystemConfigLoader(container)
 
 
 def _create_state_manager(container: Any) -> Any:
@@ -126,6 +126,14 @@ def _create_command_processor(container: Any) -> Any:
     
     state_manager = container.resolve("state_manager")
     return CommandProcessor(container, state_manager)
+
+
+def _create_state_transition_driver(container: Any) -> Any:
+    """Lazy factory for state transition driver."""
+    from src.workflow.preparation.command_processor import StateTransitionDriver
+    
+    state_manager = container.resolve("state_manager")
+    return StateTransitionDriver(state_manager)
 
 
 def configure_production_dependencies(container: DIContainer) -> None:
@@ -155,10 +163,10 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.UNIFIED_REQUEST_FACTORY, _create_request_factory)
     
     # Register state management components
-    container.register("system_config_loader", lambda: _create_system_config_loader(container.resolve(DIKey.SQLITE_MANAGER)))
+    container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("state_manager", lambda: _create_state_manager(container))
     container.register("command_processor", lambda: _create_command_processor(container))
-    container.register("state_transition_driver", lambda: _create_command_processor(container).get_state_driver())
+    container.register("state_transition_driver", lambda: _create_state_transition_driver(container))
 
     # Register string-based aliases for backward compatibility
     container.register('shell_driver', lambda: container.resolve(DIKey.SHELL_DRIVER))
@@ -216,10 +224,10 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register(DIKey.UNIFIED_REQUEST_FACTORY, _create_request_factory)
     
     # Register state management components
-    container.register("system_config_loader", lambda: _create_system_config_loader(container.resolve(DIKey.SQLITE_MANAGER)))
+    container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("state_manager", lambda: _create_state_manager(container))
     container.register("command_processor", lambda: _create_command_processor(container))
-    container.register("state_transition_driver", lambda: _create_command_processor(container).get_state_driver())
+    container.register("state_transition_driver", lambda: _create_state_transition_driver(container))
 
     # Register string-based aliases for backward compatibility
     container.register('shell_driver', lambda: container.resolve(DIKey.SHELL_DRIVER))

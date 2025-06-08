@@ -40,7 +40,27 @@ class StateTransitionRequest(BaseRequest):
                 error_message="State transition requires a StateTransitionDriver"
             )
         
-        return driver.execute_state_transition(self)
+        # If driver is UnifiedDriver, resolve the actual StateTransitionDriver
+        if hasattr(driver, '_get_cached_driver'):
+            try:
+                actual_driver = driver._get_cached_driver("state_transition_driver")
+                return actual_driver.execute_state_transition(self)
+            except Exception as e:
+                return OperationResult(
+                    op=self.operation_type,
+                    success=False,
+                    error_message=f"Failed to resolve state_transition_driver: {str(e)}"
+                )
+        
+        # Check if driver has execute_state_transition method
+        if hasattr(driver, 'execute_state_transition'):
+            return driver.execute_state_transition(self)
+        else:
+            return OperationResult(
+                op=self.operation_type,
+                success=False,
+                error_message=f"Driver {type(driver).__name__} does not support state transitions"
+            )
 
 
 class StateTransitionDriver:

@@ -111,7 +111,9 @@ class SystemConfigLoader:
 
     def update_current_context(self, contest_name: Optional[str] = None, 
                               problem_name: Optional[str] = None, 
-                              language: Optional[str] = None) -> None:
+                              language: Optional[str] = None,
+                              command: Optional[str] = None,
+                              env_type: Optional[str] = None) -> None:
         """Update current execution context."""
         if contest_name is not None:
             self.config_repo.set_config("contest_name", contest_name)
@@ -119,6 +121,10 @@ class SystemConfigLoader:
             self.config_repo.set_config("problem_name", problem_name)
         if language is not None:
             self.config_repo.set_config("language", language)
+        if command is not None:
+            self.config_repo.set_config("command", command)
+        if env_type is not None:
+            self.config_repo.set_config("env_type", env_type)
 
     def clear_context_value(self, key: str) -> None:
         """Clear a specific context value (set to NULL)."""
