@@ -71,6 +71,12 @@ def _create_system_config_repository(sqlite_manager: Any) -> Any:
     return SystemConfigRepository(sqlite_manager)
 
 
+def _create_contest_current_files_repository(sqlite_manager: Any) -> Any:
+    """Lazy factory for contest current files repository."""
+    from src.infrastructure.persistence.sqlite.repositories.contest_current_files_repository import ContestCurrentFilesRepository
+    return ContestCurrentFilesRepository(sqlite_manager)
+
+
 def _create_unified_driver(container: DIContainer) -> Any:
     """Lazy factory for unified driver."""
     from src.application.orchestration.unified_driver import UnifiedDriver
@@ -136,6 +142,15 @@ def _create_state_transition_driver(container: Any) -> Any:
     return StateTransitionDriver(state_manager)
 
 
+def _create_contest_manager(container: Any) -> Any:
+    """Lazy factory for contest manager."""
+    from src.infrastructure.persistence.sqlite.contest_manager import ContestManager
+    
+    # For now, pass container and let ContestManager load env_json as needed
+    # This avoids circular dependency issues
+    return ContestManager(container, {})
+
+
 def configure_production_dependencies(container: DIContainer) -> None:
     """Configure production dependencies with lazy loading."""
     # Register core drivers
@@ -152,6 +167,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.DOCKER_CONTAINER_REPOSITORY, _create_docker_container_repository)
     container.register(DIKey.DOCKER_IMAGE_REPOSITORY, _create_docker_image_repository)
     container.register(DIKey.SYSTEM_CONFIG_REPOSITORY, _create_system_config_repository)
+    container.register("contest_current_files_repository", lambda: _create_contest_current_files_repository(container.resolve(DIKey.SQLITE_MANAGER)))
 
     # Register orchestration layer
     container.register(DIKey.UNIFIED_DRIVER, lambda: _create_unified_driver(container))
@@ -167,6 +183,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register("state_manager", lambda: _create_state_manager(container))
     container.register("command_processor", lambda: _create_command_processor(container))
     container.register("state_transition_driver", lambda: _create_state_transition_driver(container))
+    container.register("contest_manager", lambda: _create_contest_manager(container))
 
     # Register string-based aliases for backward compatibility
     container.register('shell_driver', lambda: container.resolve(DIKey.SHELL_DRIVER))
@@ -213,6 +230,7 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register(DIKey.DOCKER_CONTAINER_REPOSITORY, _create_docker_container_repository)
     container.register(DIKey.DOCKER_IMAGE_REPOSITORY, _create_docker_image_repository)
     container.register(DIKey.SYSTEM_CONFIG_REPOSITORY, _create_system_config_repository)
+    container.register("contest_current_files_repository", lambda: _create_contest_current_files_repository(container.resolve(DIKey.SQLITE_MANAGER)))
 
     # Register orchestration layer
     container.register(DIKey.UNIFIED_DRIVER, lambda: _create_unified_driver(container))
@@ -228,6 +246,7 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register("state_manager", lambda: _create_state_manager(container))
     container.register("command_processor", lambda: _create_command_processor(container))
     container.register("state_transition_driver", lambda: _create_state_transition_driver(container))
+    container.register("contest_manager", lambda: _create_contest_manager(container))
 
     # Register string-based aliases for backward compatibility
     container.register('shell_driver', lambda: container.resolve(DIKey.SHELL_DRIVER))
