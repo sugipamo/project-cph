@@ -49,9 +49,10 @@ class SessionRepository(BaseRepository):
         ) VALUES (?, ?, ?, ?, ?, ?, ?)
         """
 
+        session_start = session.session_start or datetime.now()
         params = (
-            session.session_start or datetime.now(),
-            session.session_end,
+            session_start.isoformat() if session_start else None,
+            session.session_end.isoformat() if session.session_end else None,
             session.language,
             session.contest_name,
             session.problem_name,
@@ -59,10 +60,10 @@ class SessionRepository(BaseRepository):
             session.successful_operations
         )
 
-        self.db_manager.execute_command(query, params)
+        with self.db_manager.get_connection() as conn:
+            cursor = conn.execute(query, params)
+            last_id = cursor.lastrowid
 
-        # Get the created session
-        last_id = self.db_manager.get_last_insert_id("sessions")
         if last_id:
             return self.find_by_id(last_id)
 
@@ -164,7 +165,7 @@ class SessionRepository(BaseRepository):
         WHERE id = ? AND session_end IS NULL
         """
 
-        affected_rows = self.db_manager.execute_command(query, (datetime.now(), session_id))
+        affected_rows = self.db_manager.execute_command(query, (datetime.now().isoformat(), session_id))
         return affected_rows > 0
 
     def update_session_stats(self, session_id: int, total_ops: int, successful_ops: int) -> bool:
@@ -246,8 +247,8 @@ class SessionRepository(BaseRepository):
         """
 
         params = (
-            session.session_start,
-            session.session_end,
+            session.session_start.isoformat() if session.session_start else None,
+            session.session_end.isoformat() if session.session_end else None,
             session.language,
             session.contest_name,
             session.problem_name,

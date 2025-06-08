@@ -181,7 +181,8 @@ class DockerImageRepository(BaseRepository):
             SET last_used_at = CURRENT_TIMESTAMP
             WHERE name = ? AND tag = ?
         """
-        self.connection.execute(query, (name, tag))
+        with self.connection as conn:
+            conn.execute(query, (name, tag))
 
     def delete_image(self, name: str, tag: str = "latest") -> bool:
         """Delete an image record."""

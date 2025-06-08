@@ -55,8 +55,9 @@ class OperationRepository(BaseRepository):
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
+        timestamp = operation.timestamp or datetime.now()
         params = (
-            operation.timestamp or datetime.now(),
+            timestamp.isoformat() if timestamp else None,
             operation.command,
             operation.language,
             operation.contest_name,
@@ -70,10 +71,10 @@ class OperationRepository(BaseRepository):
             json.dumps(operation.details) if operation.details else None
         )
 
-        self.db_manager.execute_command(query, params)
+        with self.db_manager.get_connection() as conn:
+            cursor = conn.execute(query, params)
+            last_id = cursor.lastrowid
 
-        # Get the created operation
-        last_id = self.db_manager.get_last_insert_id("operations")
         if last_id:
             return self.find_by_id(last_id)
 
@@ -251,7 +252,7 @@ class OperationRepository(BaseRepository):
         """
 
         params = (
-            operation.timestamp,
+            operation.timestamp.isoformat() if operation.timestamp else None,
             operation.command,
             operation.language,
             operation.contest_name,

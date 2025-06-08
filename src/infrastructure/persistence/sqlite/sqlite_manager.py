@@ -142,4 +142,4 @@ class SQLiteManager:
         with self.get_connection() as conn:
             cursor = conn.execute("SELECT last_insert_rowid() as id")
             result = cursor.fetchone()
-            return result["id"] if result else None
+            return result["id"] if result and result["id"] > 0 else None
