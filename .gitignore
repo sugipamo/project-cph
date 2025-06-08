@@ -3,6 +3,7 @@
 .local/
 .claude/
 .temp/
+./ruff_cache/
 
 .coverage
 .pytest_cache/
