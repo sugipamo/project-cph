@@ -78,19 +78,19 @@ class SystemConfigLoader:
             "contest_name": self.config_repo.get_config("contest_name"),
             "problem_name": self.config_repo.get_config("problem_name"),
         }
-    
+
     def get_user_specified_context(self) -> Dict[str, Any]:
         """Get only user-specified execution context values."""
         return self.config_repo.get_user_specified_configs()
-    
+
     def get_context_summary(self) -> Dict[str, Any]:
         """Get execution context with specification status."""
         return self.config_repo.get_execution_context_summary()
-    
+
     def clear_context_value(self, key: str) -> None:
         """Clear a specific context value (set to NULL)."""
         self.config_repo.set_config(key, None)
-    
+
     def has_user_specified(self, key: str) -> bool:
         """Check if a configuration was user-specified (not NULL)."""
         value = self.config_repo.get_config(key)
