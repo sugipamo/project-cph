@@ -73,17 +73,36 @@ def create_step_from_json(json_step: dict[str, Any], context: StepContext) -> St
     output_format = json_step.get('output_format')
     format_preset = json_step.get('format_preset')
 
-    return Step(
-        type=step_type,
-        cmd=formatted_cmd,
-        allow_failure=allow_failure,
-        show_output=show_output,
-        cwd=cwd,
-        force_env_type=force_env_type,
-        format_options=format_options,
-        output_format=output_format,
-        format_preset=format_preset
-    )
+    # Handle state_transition specific attributes
+    step_kwargs = {
+        'type': step_type,
+        'cmd': formatted_cmd,
+        'allow_failure': allow_failure,
+        'show_output': show_output,
+        'cwd': cwd,
+        'force_env_type': force_env_type,
+        'format_options': format_options,
+        'output_format': output_format,
+        'format_preset': format_preset
+    }
+    
+    # Add state_transition specific fields
+    if step_type == StepType.STATE_TRANSITION:
+        target_state = json_step.get('target_state')
+        context_data = json_step.get('context', {})
+        
+        # Format context values
+        formatted_context = {}
+        for key, value in context_data.items():
+            if isinstance(value, str):
+                formatted_context[key] = format_template(value, context)
+            else:
+                formatted_context[key] = value
+        
+        step_kwargs['target_state'] = target_state
+        step_kwargs['context'] = formatted_context
+        
+    return Step(**step_kwargs)
 
 
 def format_template(template: Any, context: StepContext) -> str:

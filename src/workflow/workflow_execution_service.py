@@ -164,8 +164,26 @@ class WorkflowExecutionService:
         commands = language_config.get('commands', {})
         command_config = commands.get(self.context.command_type, {})
 
-        steps = command_config.get('steps', [])
+        steps = []
 
+        # Check if this is a state_transition command
+        if 'state_transition' in command_config:
+            # Create a state_transition step from the configuration
+            state_transition_step = {
+                "type": "state_transition",
+                "allow_failure": False,
+                "show_output": True,
+                "target_state": command_config['state_transition'].get('target', 'working'),
+                "context": command_config['state_transition'].get('context', {})
+            }
+            steps.append(state_transition_step)
+            
+            # Add additional actions if any
+            additional_actions = command_config.get('additional_actions', [])
+            steps.extend(additional_actions)
+        else:
+            # Traditional steps-based command
+            steps = command_config.get('steps', [])
 
         return steps
 
@@ -184,11 +202,15 @@ class WorkflowExecutionService:
                     request_type = "file"
                 elif request.__class__.__name__ == "ShellRequest":
                     request_type = "shell"
+                elif request.__class__.__name__ == "StateTransitionRequest":
+                    request_type = "state_transition"
                 elif step.type.value.startswith("docker"):
                     request_type = "docker"
                 elif step.type in [StepType.MKDIR, StepType.TOUCH, StepType.COPY,
                                  StepType.MOVE, StepType.REMOVE, StepType.RMTREE]:
                     request_type = "file"
+                elif step.type == StepType.STATE_TRANSITION:
+                    request_type = "state_transition"
                 else:
                     request_type = "other"
 

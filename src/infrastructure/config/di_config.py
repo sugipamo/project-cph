@@ -158,6 +158,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register("system_config_loader", lambda: _create_system_config_loader(container.resolve(DIKey.SQLITE_MANAGER)))
     container.register("state_manager", lambda: _create_state_manager(container))
     container.register("command_processor", lambda: _create_command_processor(container))
+    container.register("state_transition_driver", lambda: _create_command_processor(container).get_state_driver())
 
     # Register string-based aliases for backward compatibility
     container.register('shell_driver', lambda: container.resolve(DIKey.SHELL_DRIVER))
@@ -218,6 +219,7 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register("system_config_loader", lambda: _create_system_config_loader(container.resolve(DIKey.SQLITE_MANAGER)))
     container.register("state_manager", lambda: _create_state_manager(container))
     container.register("command_processor", lambda: _create_command_processor(container))
+    container.register("state_transition_driver", lambda: _create_command_processor(container).get_state_driver())
 
     # Register string-based aliases for backward compatibility
     container.register('shell_driver', lambda: container.resolve(DIKey.SHELL_DRIVER))

@@ -50,6 +50,10 @@ class UnifiedDriver:
             return self._get_cached_driver("docker_driver")
         if operation_type == OperationType.PYTHON:
             return self._get_cached_driver("python_driver")
+        if operation_type == OperationType.STATE_TRANSITION:
+            return self._get_cached_driver("state_transition_driver")
+        if operation_type == OperationType.STATE_SHOW:
+            return self._get_cached_driver("state_transition_driver")
         # Fallback: return self for composite/unknown types
         return self
 

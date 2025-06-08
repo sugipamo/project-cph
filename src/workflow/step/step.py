@@ -23,6 +23,7 @@ class StepType(Enum):
     DOCKER_EXEC = "docker_exec"
     DOCKER_CP = "docker_cp"
     DOCKER_RUN = "docker_run"
+    STATE_TRANSITION = "state_transition"
 
 
 @dataclass(frozen=True)
@@ -86,10 +87,14 @@ class Step:
     format_options: Optional[dict[str, Any]] = None
     output_format: Optional[str] = None
     format_preset: Optional[str] = None
+    # State transition specific fields
+    target_state: Optional[str] = None
+    context: Optional[dict[str, Any]] = None
 
     def __post_init__(self):
         """データ検証"""
-        if not self.cmd:
+        # State transition steps don't require cmd
+        if self.type != StepType.STATE_TRANSITION and not self.cmd:
             raise ValueError(f"Step {self.type} must have non-empty cmd")
 
         # 各ステップタイプの必要な引数をチェック
