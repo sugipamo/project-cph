@@ -90,7 +90,8 @@ class TestSQLiteManager:
             conn.execute("INSERT INTO test_table (id) VALUES (1)")
 
         # Try to insert duplicate (should fail and rollback)
-        with pytest.raises(Exception), sqlite_manager.get_connection() as conn:
+        import sqlite3
+        with pytest.raises(sqlite3.IntegrityError), sqlite_manager.get_connection() as conn:
             conn.execute("INSERT INTO test_table (id) VALUES (2)")  # This should succeed
             conn.execute("INSERT INTO test_table (id) VALUES (1)")  # This should fail (duplicate)
 

@@ -65,7 +65,10 @@ class SQLiteManager:
             version = int(migration_file.name.split("_")[0])
 
             if version > current_version:
-                print(f"Running migration {migration_file.name}")
+                # Only print migration info in debug mode or if explicitly enabled
+                if hasattr(self, '_debug_migrations') and self._debug_migrations:
+                    print(f"Running migration {migration_file.name}")
+
                 with migration_file.open("r", encoding="utf-8") as f:
                     migration_sql = f.read()
 
