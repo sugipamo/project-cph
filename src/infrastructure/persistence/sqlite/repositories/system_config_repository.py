@@ -62,11 +62,14 @@ class SystemConfigRepository(BaseRepository):
         description: Optional[str] = None,
     ) -> None:
         """Set or update a configuration value."""
-        # Convert value to JSON string
-        json_value = json.dumps(value, ensure_ascii=False, indent=2)
+        # Handle None values - store as NULL in database
+        if value is None:
+            json_value = None
+        else:
+            json_value = json.dumps(value, ensure_ascii=False, indent=2)
 
         # Check if key exists
-        existing = self.get_config(key)
+        existing = self.get_config_with_metadata(key)
 
         if existing is not None:
             query = """
@@ -99,7 +102,7 @@ class SystemConfigRepository(BaseRepository):
             cursor = conn.execute(query, (key,))
             row = cursor.fetchone()
 
-        if row:
+        if row and row[0] is not None:
             try:
                 return json.loads(row[0])
             except json.JSONDecodeError:
@@ -193,6 +196,61 @@ class SystemConfigRepository(BaseRepository):
         for key, value in configs.items():
             self.set_config(key, value, category)
 
+    def get_user_specified_configs(self) -> Dict[str, Any]:
+        """Get only user-specified configuration values (non-NULL)."""
+        query = """
+            SELECT config_key, config_value FROM system_config 
+            WHERE config_key IN ('command', 'language', 'env_type', 'contest_name', 'problem_name')
+            AND config_value IS NOT NULL
+            ORDER BY config_key
+        """
+        with self.connection as conn:
+            cursor = conn.execute(query)
+            
+            configs = {}
+            for key, value in cursor.fetchall():
+                try:
+                    configs[key] = json.loads(value)
+                except json.JSONDecodeError:
+                    configs[key] = value
+            
+            return configs
+
+    def get_execution_context_summary(self) -> Dict[str, Any]:
+        """Get execution context with user specification status."""
+        query = """
+            SELECT config_key, 
+                   config_value,
+                   CASE WHEN config_value IS NULL THEN 0 ELSE 1 END as user_specified
+            FROM system_config 
+            WHERE config_key IN ('command', 'language', 'env_type', 'contest_name', 'problem_name')
+            ORDER BY config_key
+        """
+        with self.connection as conn:
+            cursor = conn.execute(query)
+            
+            result = {
+                'values': {},
+                'user_specified': {}
+            }
+            
+            for row in cursor.fetchall():
+                key = row[0]
+                value = row[1]
+                user_specified = bool(row[2])
+                
+                if value is not None:
+                    try:
+                        result['values'][key] = json.loads(value)
+                    except json.JSONDecodeError:
+                        result['values'][key] = value
+                else:
+                    result['values'][key] = None
+                    
+                result['user_specified'][key] = user_specified
+            
+            return result
+
     def search_configs(self, search_term: str) -> List[Dict[str, Any]]:
         """Search configurations by key or description."""
         query = """
@@ -207,8 +265,9 @@ class SystemConfigRepository(BaseRepository):
             results = []
             for row in cursor.fetchall():
                 config = dict(row)
-                with contextlib.suppress(json.JSONDecodeError):
-                    config['config_value'] = json.loads(config['config_value'])
+                if config['config_value'] is not None:
+                    with contextlib.suppress(json.JSONDecodeError):
+                        config['config_value'] = json.loads(config['config_value'])
                 results.append(config)
 
         return results

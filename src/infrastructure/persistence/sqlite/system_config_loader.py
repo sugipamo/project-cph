@@ -78,16 +78,33 @@ class SystemConfigLoader:
             "contest_name": self.config_repo.get_config("contest_name"),
             "problem_name": self.config_repo.get_config("problem_name"),
         }
+    
+    def get_user_specified_context(self) -> Dict[str, Any]:
+        """Get only user-specified execution context values."""
+        return self.config_repo.get_user_specified_configs()
+    
+    def get_context_summary(self) -> Dict[str, Any]:
+        """Get execution context with specification status."""
+        return self.config_repo.get_execution_context_summary()
+    
+    def clear_context_value(self, key: str) -> None:
+        """Clear a specific context value (set to NULL)."""
+        self.config_repo.set_config(key, None)
+    
+    def has_user_specified(self, key: str) -> bool:
+        """Check if a configuration was user-specified (not NULL)."""
+        value = self.config_repo.get_config(key)
+        return value is not None
 
     def update_current_context(self, **kwargs) -> None:
-        """Update current execution context."""
-        if "command" in kwargs:
+        """Update current execution context. Only save non-None values."""
+        if "command" in kwargs and kwargs["command"] is not None:
             self.save_config("command", kwargs["command"], "execution")
-        if "language" in kwargs:
+        if "language" in kwargs and kwargs["language"] is not None:
             self.save_config("language", kwargs["language"], "execution")
-        if "env_type" in kwargs:
+        if "env_type" in kwargs and kwargs["env_type"] is not None:
             self.save_config("env_type", kwargs["env_type"], "execution")
-        if "contest_name" in kwargs:
+        if "contest_name" in kwargs and kwargs["contest_name"] is not None:
             self.save_config("contest_name", kwargs["contest_name"], "contest")
-        if "problem_name" in kwargs:
+        if "problem_name" in kwargs and kwargs["problem_name"] is not None:
             self.save_config("problem_name", kwargs["problem_name"], "contest")
