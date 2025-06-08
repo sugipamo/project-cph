@@ -81,44 +81,13 @@ class DockerStateManagerSQLite:
         """Generate unique key for state tracking."""
         return f"{language}_{env_type}"
 
-    def _migrate_from_json_if_needed(self, context, state_key: str) -> None:
-        """Migrate data from JSON file if it exists and hasn't been migrated yet."""
+    def _ensure_initial_state(self, context, state_key: str) -> None:
+        """Ensure initial state exists for new installations."""
         if state_key in self._migrated_states:
             return
 
-        # Try to load from JSON file for backward compatibility
-        import os
-        import json
-        
-        json_path = os.path.join(os.path.dirname(context.base_dir), "docker_state.json")
-        if os.path.exists(json_path):
-            try:
-                with open(json_path) as f:
-                    json_state = json.load(f)
-                    
-                if state_key in json_state:
-                    old_state = json_state[state_key]
-                    current_state = DockerStateInfo.from_context(context)
-                    
-                    # Create image records
-                    if old_state.get("dockerfile_hash"):
-                        self.image_repo.create_or_update_image(
-                            name=current_state.image_name,
-                            dockerfile_hash=old_state.get("dockerfile_hash"),
-                            build_status="migrated"
-                        )
-                    
-                    if old_state.get("oj_dockerfile_hash"):
-                        self.image_repo.create_or_update_image(
-                            name=current_state.oj_image_name,
-                            dockerfile_hash=old_state.get("oj_dockerfile_hash"),
-                            build_status="migrated"
-                        )
-                    
-                    # Mark as migrated
-                    self._migrated_states.add(state_key)
-            except Exception:
-                pass
+        # Mark as initialized to avoid repeated checks
+        self._migrated_states.add(state_key)
 
     def check_rebuild_needed(self, context) -> tuple[bool, bool, bool, bool]:
         """Check if image rebuild or container recreate is needed.
@@ -132,7 +101,7 @@ class DockerStateManagerSQLite:
             )
         """
         state_key = self.get_state_key(context.language, context.env_type)
-        self._migrate_from_json_if_needed(context, state_key)
+        self._ensure_initial_state(context, state_key)
         
         current_state = DockerStateInfo.from_context(context)
         

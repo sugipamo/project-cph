@@ -61,13 +61,8 @@ class PreparationExecutor:
         self.context = context
         self.inspector = EnvironmentInspector(operations)
         
-        # Use SQLite-based state manager if available, fallback to JSON-based
-        try:
-            self.state_manager = DockerStateManagerSQLite(operations)
-        except Exception:
-            # Fallback to JSON-based state manager for backward compatibility
-            state_file_path = os.path.join(os.path.dirname(context.base_dir), "docker_state.json")
-            self.state_manager = DockerStateManager.from_filepath(state_file_path)
+        # Use SQLite-based state manager
+        self.state_manager = DockerStateManagerSQLite(operations)
             
         self.error_handler = PreparationErrorHandler()
         self.logger = logging.getLogger(__name__)
