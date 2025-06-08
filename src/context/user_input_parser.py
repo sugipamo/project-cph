@@ -14,8 +14,8 @@ from .parsers.validation_service import ValidationService
 CONTEST_ENV_DIR = "contest_env"
 
 
-def _load_system_info_sqlite(operations):
-    """SQLiteからシステム情報を読み込む"""
+def _load_current_context_sqlite(operations):
+    """SQLiteから現在のコンテキスト情報を読み込む"""
     # operations IS the container in this context
     config_loader = SystemConfigLoader(operations)
 
@@ -32,38 +32,38 @@ def _load_system_info_sqlite(operations):
     }
 
 
-def _save_system_info_sqlite(operations, info):
-    """SQLiteにシステム情報を保存する"""
+def _save_current_context_sqlite(operations, context_info):
+    """SQLiteに現在のコンテキスト情報を保存する"""
     # operations IS the container in this context
     config_loader = SystemConfigLoader(operations)
 
     # 実行コンテキストを更新
     config_loader.update_current_context(
-        command=info.get("command"),
-        language=info.get("language"),
-        env_type=info.get("env_type"),
-        contest_name=info.get("contest_name"),
-        problem_name=info.get("problem_name")
+        command=context_info.get("command"),
+        language=context_info.get("language"),
+        env_type=context_info.get("env_type"),
+        contest_name=context_info.get("contest_name"),
+        problem_name=context_info.get("problem_name")
     )
 
     # env_jsonがある場合は保存
-    if info.get("env_json"):
-        config_loader.save_config("env_json", info["env_json"], "environment")
+    if context_info.get("env_json"):
+        config_loader.save_config("env_json", context_info["env_json"], "environment")
 
 
-def _parse_command_line_direct(args, context, root):
-    """コマンドライン引数を直接解析する"""
+def _parse_command_line_args(args, context, root):
+    """コマンドライン引数を解析する"""
     # 順次処理を適用
-    args, context = _apply_language_direct(args, context, root)
-    args, context = _apply_env_type_direct(args, context, root)
-    args, context = _apply_command_direct(args, context, root)
-    args, context = _apply_problem_name_direct(args, context)
-    args, context = _apply_contest_name_direct(args, context)
+    args, context = _apply_language(args, context, root)
+    args, context = _apply_env_type(args, context, root)
+    args, context = _apply_command(args, context, root)
+    args, context = _apply_problem_name(args, context)
+    args, context = _apply_contest_name(args, context)
 
     return args, context
 
 
-def _apply_language_direct(args, context, root):
+def _apply_language(args, context, root):
     """言語の適用 - 引数で指定された場合のみ更新、なければ既存設定を保持"""
     for idx, arg in enumerate(args):
         # 第1レベルのノード（言語）のみをチェック
@@ -77,7 +77,7 @@ def _apply_language_direct(args, context, root):
     return args, context
 
 
-def _apply_env_type_direct(args, context, root):
+def _apply_env_type(args, context, root):
     """環境タイプの適用 - 引数で指定された場合のみ更新、なければ既存設定を保持"""
     if context.language:
         env_type_nodes = resolve_by_match_desc(root, [context.language, "env_types"])
@@ -93,7 +93,7 @@ def _apply_env_type_direct(args, context, root):
     return args, context
 
 
-def _apply_command_direct(args, context, root):
+def _apply_command(args, context, root):
     """コマンドの適用"""
     if context.language:
         command_nodes = resolve_by_match_desc(root, [context.language, "commands"])
@@ -108,7 +108,7 @@ def _apply_command_direct(args, context, root):
     return args, context
 
 
-def _apply_problem_name_direct(args, context):
+def _apply_problem_name(args, context):
     """問題名の適用"""
     if args:
         context.problem_name = args.pop()
@@ -116,7 +116,7 @@ def _apply_problem_name_direct(args, context):
     return args, context
 
 
-def _apply_contest_name_direct(args, context):
+def _apply_contest_name(args, context):
     """コンテスト名の適用"""
     if args:
         context.contest_name = args.pop()
@@ -218,9 +218,7 @@ def _merge_with_shared_config(env_json, shared_config):
 
 def _apply_env_json(context, env_jsons, base_dir=None, operations=None):
     """環境JSONをコンテキストに適用"""
-    # Always reprocess to ensure latest shared config is applied
-    # if context.env_json:
-    #     return context
+    # 最新のshared設定が適用されるよう常に再処理
     if context.language:
         # shared設定を読み込み
         shared_config = None
@@ -251,13 +249,23 @@ def parse_user_input(
     args: list[str],
     operations
 ) -> ExecutionContext:
-    """引数リストからExecutionContextを生成するトップレベル関数。
+    """ユーザー入力を解析してExecutionContextを生成する。
+
+    Args:
+        args: コマンドライン引数のリスト
+        operations: DIコンテナで、必要なサービスを解決する
+
+    Returns:
+        ExecutionContext: 解析結果と設定情報を含むコンテキスト
+
+    Raises:
+        ValueError: 引数が不正、またはバリデーションエラーの場合
     """
-    # システム情報管理とバリデーション初期化
+    # バリデーションサービス初期化
     ValidationService()
 
-    # システム情報読み込み (SQLite implementation)
-    system_info = _load_system_info_sqlite(operations)
+    # 現在のコンテキスト情報を読み込み (SQLite)
+    current_context_info = _load_current_context_sqlite(operations)
 
     # 環境設定読み込みと設定ルート作成
     env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, operations)
@@ -266,47 +274,47 @@ def parse_user_input(
         merged_env_json.update(env_json)
     root = create_config_root_from_dict(merged_env_json)
 
-    # system_info.env_jsonが存在しない場合は、読み込んだenv_jsonを使用
-    final_env_json = system_info["env_json"]
-    if final_env_json is None and system_info["language"]:
+    # env_jsonが存在しない場合は、読み込んだenv_jsonを使用
+    final_env_json = current_context_info["env_json"]
+    if final_env_json is None and current_context_info["language"]:
         # shared設定を読み込み
         shared_config = _load_shared_config(CONTEST_ENV_DIR, operations)
         for env_json in env_jsons:
-            if system_info["language"] in env_json:
+            if current_context_info["language"] in env_json:
                 # shared設定とマージ
                 final_env_json = _merge_with_shared_config(env_json, shared_config)
                 break
 
     context = ExecutionContext(
-        command_type=system_info["command"],
-        language=system_info["language"],
-        contest_name=system_info["contest_name"],
-        problem_name=system_info["problem_name"],
-        env_type=system_info["env_type"],
+        command_type=current_context_info["command"],
+        language=current_context_info["language"],
+        contest_name=current_context_info["contest_name"],
+        problem_name=current_context_info["problem_name"],
+        env_type=current_context_info["env_type"],
         env_json=final_env_json,
-        previous_contest_name=system_info["contest_name"],  # previous情報として保存
-        previous_problem_name=system_info["problem_name"]   # previous情報として保存
+        previous_contest_name=current_context_info["contest_name"],  # previous情報として保存
+        previous_problem_name=current_context_info["problem_name"]   # previous情報として保存
     )
 
     # レゾルバー設定
     context.resolver = root
 
-    # コマンドライン引数解析 (direct implementation)
-    args, context = _parse_command_line_direct(args, context, root)
+    # コマンドライン引数解析
+    args, context = _parse_command_line_args(args, context, root)
 
-    # Contest backup and initialization handling
+    # コンテストのバックアップと初期化処理
     if context.language and context.contest_name and context.problem_name:
         try:
             contest_manager = operations.resolve("contest_manager")
 
-            # Handle backup if needed
+            # 必要に応じてバックアップを実行
             contest_manager.handle_contest_change(
                 context.language,
                 context.contest_name,
                 context.problem_name
             )
 
-            # Initialize contest_current (stock -> template priority)
+            # contest_currentを初期化 (stock -> templateの優先度)
             contest_manager.initialize_contest_current(
                 context.language,
                 context.contest_name,
@@ -316,7 +324,7 @@ def parse_user_input(
         except Exception as e:
             print(f"Warning: Contest management failed: {e}")
 
-    # 環境JSON適用（shared設定とマージ）- 最終的な調整
+    # 環境JSON適用（shared設定とマージ）
     context = _apply_env_json(context, env_jsons, CONTEST_ENV_DIR, operations)
 
     # 残り引数チェック
@@ -324,8 +332,8 @@ def parse_user_input(
         raise ValueError(f"引数が多すぎます: {args}")
 
 
-    # システム情報保存 (SQLite implementation)
-    _save_system_info_sqlite(operations, {
+    # 現在のコンテキスト情報を保存 (SQLite)
+    _save_current_context_sqlite(operations, {
         "command": context.command_type,
         "language": context.language,
         "env_type": context.env_type,
@@ -334,15 +342,13 @@ def parse_user_input(
         "env_json": context.env_json
     })
 
-    # Dockerfile resolver setup
-
-    # Default OJ Dockerfile path
+    # Dockerfileリゾルバーの設定
     oj_dockerfile_path = os.path.join(os.path.dirname(__file__), "oj.Dockerfile")
 
-    # Create Dockerfile resolver with loader
+    # ローダー付きDockerfileリゾルバーを作成
     dockerfile_loader = make_dockerfile_loader(operations)
     resolver = DockerfileResolver(
-        dockerfile_path=None,  # No language-specific Dockerfile for now
+        dockerfile_path=None,  # 現在は言語固有のDockerfileはなし
         oj_dockerfile_path=oj_dockerfile_path,
         dockerfile_loader=dockerfile_loader
     )
