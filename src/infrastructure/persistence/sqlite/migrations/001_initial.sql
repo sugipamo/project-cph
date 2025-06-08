@@ -75,3 +75,13 @@ CREATE INDEX IF NOT EXISTS idx_language_stats_last_used ON language_stats(last_u
 CREATE INDEX IF NOT EXISTS idx_contest_progress_contest ON contest_progress(contest_name, problem_name);
 CREATE INDEX IF NOT EXISTS idx_contest_progress_language ON contest_progress(language);
 CREATE INDEX IF NOT EXISTS idx_contest_progress_status ON contest_progress(status);
+
+-- Schema version tracking
+CREATE TABLE IF NOT EXISTS schema_version (
+    id INTEGER PRIMARY KEY,
+    version INTEGER NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert initial version
+INSERT OR REPLACE INTO schema_version (id, version) VALUES (1, 1);

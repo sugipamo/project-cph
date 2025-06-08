@@ -70,5 +70,4 @@ CREATE INDEX IF NOT EXISTS idx_container_events_container ON container_lifecycle
 CREATE INDEX IF NOT EXISTS idx_container_events_timestamp ON container_lifecycle_events(timestamp);
 CREATE INDEX IF NOT EXISTS idx_system_config_category ON system_config(category);
 
--- Update schema version
-UPDATE schema_version SET version = 2 WHERE id = 1;
+-- Schema version will be updated automatically by SQLiteManager

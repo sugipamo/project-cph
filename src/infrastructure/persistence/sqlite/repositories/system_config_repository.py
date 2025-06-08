@@ -6,6 +6,36 @@ from src.infrastructure.persistence.base.base_repository import BaseRepository
 
 class SystemConfigRepository(BaseRepository):
     """Repository for system configuration operations."""
+    
+    def __init__(self, sqlite_manager):
+        """Initialize with SQLite manager."""
+        self.sqlite_manager = sqlite_manager
+        
+    @property 
+    def connection(self):
+        """Get database connection."""
+        return self.sqlite_manager.get_connection()
+    
+    # Abstract method implementations
+    def create(self, entity: Any) -> Any:
+        """Create a new entity."""
+        return None
+        
+    def find_by_id(self, entity_id: Any) -> Optional[Any]:
+        """Find entity by ID."""
+        return None
+        
+    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> list[Any]:
+        """Find all entities."""
+        return []
+        
+    def update(self, entity: Any) -> Any:
+        """Update an entity."""
+        return None
+        
+    def delete(self, entity_id: Any) -> bool:
+        """Delete entity by ID."""
+        return False
 
     def set_config(
         self,
@@ -39,7 +69,8 @@ class SystemConfigRepository(BaseRepository):
             """
             params = (key, json_value, category, description)
         
-        self.connection.execute(query, params)
+        with self.connection as conn:
+            conn.execute(query, params)
 
     def get_config(self, key: str) -> Optional[Any]:
         """Get a configuration value by key."""
@@ -47,8 +78,9 @@ class SystemConfigRepository(BaseRepository):
             SELECT config_value FROM system_config
             WHERE config_key = ?
         """
-        cursor = self.connection.execute(query, (key,))
-        row = cursor.fetchone()
+        with self.connection as conn:
+            cursor = conn.execute(query, (key,))
+            row = cursor.fetchone()
         
         if row:
             try:
@@ -63,8 +95,9 @@ class SystemConfigRepository(BaseRepository):
             SELECT * FROM system_config
             WHERE config_key = ?
         """
-        cursor = self.connection.execute(query, (key,))
-        row = cursor.fetchone()
+        with self.connection as conn:
+            cursor = conn.execute(query, (key,))
+            row = cursor.fetchone()
         
         if row:
             result = dict(row)
@@ -82,16 +115,17 @@ class SystemConfigRepository(BaseRepository):
             WHERE category = ?
             ORDER BY config_key
         """
-        cursor = self.connection.execute(query, (category,))
-        
-        results = []
-        for row in cursor.fetchall():
-            config = dict(row)
-            try:
-                config['config_value'] = json.loads(config['config_value'])
-            except json.JSONDecodeError:
-                pass
-            results.append(config)
+        with self.connection as conn:
+            cursor = conn.execute(query, (category,))
+            
+            results = []
+            for row in cursor.fetchall():
+                config = dict(row)
+                try:
+                    config['config_value'] = json.loads(config['config_value'])
+                except json.JSONDecodeError:
+                    pass
+                results.append(config)
         
         return results
 
@@ -101,14 +135,15 @@ class SystemConfigRepository(BaseRepository):
             SELECT config_key, config_value FROM system_config
             ORDER BY category, config_key
         """
-        cursor = self.connection.execute(query)
-        
-        configs = {}
-        for key, value in cursor.fetchall():
-            try:
-                configs[key] = json.loads(value)
-            except json.JSONDecodeError:
-                configs[key] = value
+        with self.connection as conn:
+            cursor = conn.execute(query)
+            
+            configs = {}
+            for key, value in cursor.fetchall():
+                try:
+                    configs[key] = json.loads(value)
+                except json.JSONDecodeError:
+                    configs[key] = value
         
         return configs
 
@@ -118,16 +153,17 @@ class SystemConfigRepository(BaseRepository):
             SELECT * FROM system_config
             ORDER BY category, config_key
         """
-        cursor = self.connection.execute(query)
-        
-        results = []
-        for row in cursor.fetchall():
-            config = dict(row)
-            try:
-                config['config_value'] = json.loads(config['config_value'])
-            except json.JSONDecodeError:
-                pass
-            results.append(config)
+        with self.connection as conn:
+            cursor = conn.execute(query)
+            
+            results = []
+            for row in cursor.fetchall():
+                config = dict(row)
+                try:
+                    config['config_value'] = json.loads(config['config_value'])
+                except json.JSONDecodeError:
+                    pass
+                results.append(config)
         
         return results
 
@@ -137,7 +173,8 @@ class SystemConfigRepository(BaseRepository):
             DELETE FROM system_config
             WHERE config_key = ?
         """
-        cursor = self.connection.execute(query, (key,))
+        with self.connection as conn:
+            cursor = conn.execute(query, (key,))
         return cursor.rowcount > 0
 
     def bulk_set_configs(self, configs: Dict[str, Any], category: Optional[str] = None) -> None:
@@ -153,16 +190,17 @@ class SystemConfigRepository(BaseRepository):
             ORDER BY config_key
         """
         search_pattern = f"%{search_term}%"
-        cursor = self.connection.execute(query, (search_pattern, search_pattern))
-        
-        results = []
-        for row in cursor.fetchall():
-            config = dict(row)
-            try:
-                config['config_value'] = json.loads(config['config_value'])
-            except json.JSONDecodeError:
-                pass
-            results.append(config)
+        with self.connection as conn:
+            cursor = conn.execute(query, (search_pattern, search_pattern))
+            
+            results = []
+            for row in cursor.fetchall():
+                config = dict(row)
+                try:
+                    config['config_value'] = json.loads(config['config_value'])
+                except json.JSONDecodeError:
+                    pass
+                results.append(config)
         
         return results
 
@@ -173,5 +211,6 @@ class SystemConfigRepository(BaseRepository):
             WHERE category IS NOT NULL
             ORDER BY category
         """
-        cursor = self.connection.execute(query)
-        return [row[0] for row in cursor.fetchall()]
+        with self.connection as conn:
+            cursor = conn.execute(query)
+            return [row[0] for row in cursor.fetchall()]

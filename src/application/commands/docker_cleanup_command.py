@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from src.context.commands.base_command import BaseCommand
+# No base command needed for this utility class
 from src.infrastructure.di_container import DIKey
 
 
@@ -16,7 +16,7 @@ class CleanupResult:
     space_freed_bytes: int = 0
 
 
-class DockerCleanupCommand(BaseCommand):
+class DockerCleanupCommand:
     """Command to clean up old Docker containers and images."""
     
     def __init__(self, container):

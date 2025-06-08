@@ -28,14 +28,17 @@ class SQLiteManager:
             # Create schema_version table if it doesn't exist
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS schema_version (
-                    version INTEGER PRIMARY KEY,
+                    id INTEGER PRIMARY KEY,
+                    version INTEGER NOT NULL,
                     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            conn.commit()
 
             # Check current schema version
             cursor = conn.execute("SELECT MAX(version) FROM schema_version")
-            current_version = cursor.fetchone()[0] or 0
+            row = cursor.fetchone()
+            current_version = row[0] if row and row[0] is not None else 0
 
             # Run migrations
             self._run_migrations(conn, current_version)
@@ -71,8 +74,8 @@ class SQLiteManager:
 
                 # Record migration
                 conn.execute(
-                    "INSERT INTO schema_version (version) VALUES (?)",
-                    (version,)
+                    "INSERT OR REPLACE INTO schema_version (id, version) VALUES (?, ?)",
+                    (1, version)
                 )
 
                 conn.commit()
@@ -91,6 +94,7 @@ class SQLiteManager:
         conn.row_factory = sqlite3.Row
         try:
             yield conn
+            conn.commit()  # Auto-commit successful operations
         except Exception:
             conn.rollback()
             raise

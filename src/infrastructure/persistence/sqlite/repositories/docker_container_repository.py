@@ -7,6 +7,41 @@ from src.infrastructure.persistence.base.base_repository import BaseRepository
 
 class DockerContainerRepository(BaseRepository):
     """Repository for Docker container operations."""
+    
+    def __init__(self, sqlite_manager):
+        """Initialize with SQLite manager."""
+        self.sqlite_manager = sqlite_manager
+        
+    @property 
+    def connection(self):
+        """Get database connection."""
+        return self.sqlite_manager.get_connection()
+
+    # Abstract method implementations
+    def create(self, entity: Any) -> Any:
+        """Create a new entity."""
+        # For compatibility with base class
+        return None
+        
+    def find_by_id(self, entity_id: Any) -> Optional[Any]:
+        """Find entity by ID."""
+        # For compatibility with base class
+        return None
+        
+    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> list[Any]:
+        """Find all entities."""
+        # For compatibility with base class
+        return []
+        
+    def update(self, entity: Any) -> Any:
+        """Update an entity."""
+        # For compatibility with base class
+        return None
+        
+    def delete(self, entity_id: Any) -> bool:
+        """Delete entity by ID."""
+        # For compatibility with base class
+        return False
 
     def create_container(
         self,
@@ -43,7 +78,8 @@ class DockerContainerRepository(BaseRepository):
             json.dumps(ports) if ports else None,
         )
         
-        return self.connection.execute(query, params).lastrowid
+        with self.connection as conn:
+            return conn.execute(query, params).lastrowid
 
     def update_container_id(self, container_name: str, container_id: str) -> None:
         """Update the Docker container ID after creation."""
@@ -52,7 +88,8 @@ class DockerContainerRepository(BaseRepository):
             SET container_id = ?
             WHERE container_name = ?
         """
-        self.connection.execute(query, (container_id, container_name))
+        with self.connection as conn:
+            conn.execute(query, (container_id, container_name))
 
     def update_container_status(
         self, 
@@ -70,7 +107,8 @@ class DockerContainerRepository(BaseRepository):
         query += " WHERE container_name = ?"
         params.append(container_name)
         
-        self.connection.execute(query, params)
+        with self.connection as conn:
+            conn.execute(query, params)
 
     def find_container_by_name(self, container_name: str) -> Optional[Dict[str, Any]]:
         """Find a container by its name."""
@@ -78,8 +116,9 @@ class DockerContainerRepository(BaseRepository):
             SELECT * FROM docker_containers
             WHERE container_name = ?
         """
-        cursor = self.connection.execute(query, (container_name,))
-        return self._parse_result(cursor.fetchone())
+        with self.connection as conn:
+            cursor = conn.execute(query, (container_name,))
+            return self._parse_result(cursor.fetchone())
 
     def find_containers_by_status(self, status: str) -> List[Dict[str, Any]]:
         """Find all containers with a specific status."""
@@ -88,8 +127,9 @@ class DockerContainerRepository(BaseRepository):
             WHERE status = ?
             ORDER BY last_used_at DESC
         """
-        cursor = self.connection.execute(query, (status,))
-        return [self._parse_result(row) for row in cursor.fetchall()]
+        with self.connection as conn:
+            cursor = conn.execute(query, (status,))
+            return [self._parse_result(row) for row in cursor.fetchall()]
 
     def find_containers_by_language(self, language: str) -> List[Dict[str, Any]]:
         """Find all containers for a specific language."""
@@ -98,8 +138,9 @@ class DockerContainerRepository(BaseRepository):
             WHERE language = ?
             ORDER BY last_used_at DESC
         """
-        cursor = self.connection.execute(query, (language,))
-        return [self._parse_result(row) for row in cursor.fetchall()]
+        with self.connection as conn:
+            cursor = conn.execute(query, (language,))
+            return [self._parse_result(row) for row in cursor.fetchall()]
 
     def find_unused_containers(self, days: int = 7) -> List[Dict[str, Any]]:
         """Find containers not used for specified number of days."""
@@ -109,8 +150,9 @@ class DockerContainerRepository(BaseRepository):
             AND status != 'removed'
             ORDER BY last_used_at ASC
         """
-        cursor = self.connection.execute(query, (days,))
-        return [self._parse_result(row) for row in cursor.fetchall()]
+        with self.connection as conn:
+            cursor = conn.execute(query, (days,))
+            return [self._parse_result(row) for row in cursor.fetchall()]
 
     def get_active_containers(self) -> List[Dict[str, Any]]:
         """Get all active (running or created) containers."""
@@ -119,8 +161,9 @@ class DockerContainerRepository(BaseRepository):
             WHERE status IN ('running', 'created', 'started')
             ORDER BY last_used_at DESC
         """
-        cursor = self.connection.execute(query)
-        return [self._parse_result(row) for row in cursor.fetchall()]
+        with self.connection as conn:
+            cursor = conn.execute(query)
+            return [self._parse_result(row) for row in cursor.fetchall()]
 
     def mark_container_removed(self, container_name: str) -> None:
         """Mark a container as removed."""
@@ -160,7 +203,8 @@ class DockerContainerRepository(BaseRepository):
             event_type,
             json.dumps(event_data) if event_data else None
         )
-        self.connection.execute(query, params)
+        with self.connection as conn:
+            conn.execute(query, params)
 
     def get_container_events(
         self, 
@@ -174,7 +218,8 @@ class DockerContainerRepository(BaseRepository):
             ORDER BY timestamp DESC
             LIMIT ?
         """
-        cursor = self.connection.execute(query, (container_name, limit))
+        with self.connection as conn:
+            cursor = conn.execute(query, (container_name, limit))
         
         events = []
         for row in cursor.fetchall():
