@@ -47,6 +47,24 @@ def _create_session_repository(sqlite_manager: Any) -> Any:
     return SessionRepository(sqlite_manager)
 
 
+def _create_docker_container_repository(sqlite_manager: Any) -> Any:
+    """Lazy factory for docker container repository."""
+    from src.infrastructure.persistence.sqlite.repositories.docker_container_repository import DockerContainerRepository
+    return DockerContainerRepository(sqlite_manager)
+
+
+def _create_docker_image_repository(sqlite_manager: Any) -> Any:
+    """Lazy factory for docker image repository."""
+    from src.infrastructure.persistence.sqlite.repositories.docker_image_repository import DockerImageRepository
+    return DockerImageRepository(sqlite_manager)
+
+
+def _create_system_config_repository(sqlite_manager: Any) -> Any:
+    """Lazy factory for system config repository."""
+    from src.infrastructure.persistence.sqlite.repositories.system_config_repository import SystemConfigRepository
+    return SystemConfigRepository(sqlite_manager)
+
+
 def _create_unified_driver(container: DIContainer) -> Any:
     """Lazy factory for unified driver."""
     from src.application.orchestration.unified_driver import UnifiedDriver
@@ -89,6 +107,9 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.SQLITE_MANAGER, _create_sqlite_manager)
     container.register(DIKey.OPERATION_REPOSITORY, _create_operation_repository)
     container.register(DIKey.SESSION_REPOSITORY, _create_session_repository)
+    container.register(DIKey.DOCKER_CONTAINER_REPOSITORY, _create_docker_container_repository)
+    container.register(DIKey.DOCKER_IMAGE_REPOSITORY, _create_docker_image_repository)
+    container.register(DIKey.SYSTEM_CONFIG_REPOSITORY, _create_system_config_repository)
 
     # Register orchestration layer
     container.register(DIKey.UNIFIED_DRIVER, lambda: _create_unified_driver(container))
@@ -140,6 +161,9 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register(DIKey.SQLITE_MANAGER, _create_test_sqlite_manager)
     container.register(DIKey.OPERATION_REPOSITORY, _create_operation_repository)
     container.register(DIKey.SESSION_REPOSITORY, _create_session_repository)
+    container.register(DIKey.DOCKER_CONTAINER_REPOSITORY, _create_docker_container_repository)
+    container.register(DIKey.DOCKER_IMAGE_REPOSITORY, _create_docker_image_repository)
+    container.register(DIKey.SYSTEM_CONFIG_REPOSITORY, _create_system_config_repository)
 
     # Register orchestration layer
     container.register(DIKey.UNIFIED_DRIVER, lambda: _create_unified_driver(container))

@@ -16,6 +16,9 @@ class DIKey(Enum):
     SQLITE_MANAGER = "sqlite_manager"
     OPERATION_REPOSITORY = "operation_repository"
     SESSION_REPOSITORY = "session_repository"
+    DOCKER_CONTAINER_REPOSITORY = "docker_container_repository"
+    DOCKER_IMAGE_REPOSITORY = "docker_image_repository"
+    SYSTEM_CONFIG_REPOSITORY = "system_config_repository"
 
     # Orchestration
     UNIFIED_DRIVER = "unified_driver"

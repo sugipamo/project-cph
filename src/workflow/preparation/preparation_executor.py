@@ -13,6 +13,7 @@ from src.domain.requests.file.file_request import FileRequest
 from src.domain.requests.shell.shell_request import ShellRequest
 from src.utils.path_operations import DockerPathOperations
 from src.workflow.preparation.docker_state_manager import DockerStateManager
+from src.workflow.preparation.docker_state_manager_sqlite import DockerStateManagerSQLite
 from src.workflow.preparation.environment_inspector import (
     EnvironmentInspector,
     ResourceStatus,
@@ -59,7 +60,15 @@ class PreparationExecutor:
         self.operations = operations
         self.context = context
         self.inspector = EnvironmentInspector(operations)
-        self.state_manager = DockerStateManager()
+        
+        # Use SQLite-based state manager if available, fallback to JSON-based
+        try:
+            self.state_manager = DockerStateManagerSQLite(operations)
+        except Exception:
+            # Fallback to JSON-based state manager for backward compatibility
+            state_file_path = os.path.join(os.path.dirname(context.base_dir), "docker_state.json")
+            self.state_manager = DockerStateManager.from_filepath(state_file_path)
+            
         self.error_handler = PreparationErrorHandler()
         self.logger = logging.getLogger(__name__)
         self._task_counter = 0
