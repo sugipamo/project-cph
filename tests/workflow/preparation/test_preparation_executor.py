@@ -9,8 +9,8 @@ from src.domain.requests.docker.docker_request import DockerOpType, DockerReques
 from src.domain.requests.file.file_request import FileOpType, FileRequest
 from src.domain.requests.shell.shell_request import ShellRequest
 from src.workflow.preparation.docker.docker_state_manager_sqlite import DockerStateManagerSQLite
-from src.workflow.preparation.execution.environment_inspector import EnvironmentInspector, ResourceStatus, ResourceType
-from src.workflow.preparation.execution.preparation_executor import (
+from src.workflow.preparation.executor.environment_inspector import EnvironmentInspector, ResourceStatus, ResourceType
+from src.workflow.preparation.executor.preparation_executor import (
     ContainerConfig,
     PreparationExecutor,
     PreparationTask,
@@ -88,9 +88,9 @@ class TestPreparationExecutor:
         self.mock_context.problem_name = "a"
         self.mock_context.env_type = "local"
 
-        with patch('src.workflow.preparation.execution.preparation_executor.EnvironmentInspector'), \
-             patch('src.workflow.preparation.execution.preparation_executor.DockerStateManagerSQLite'), \
-             patch('src.workflow.preparation.execution.preparation_executor.PreparationErrorHandler'):
+        with patch('src.workflow.preparation.executor.preparation_executor.EnvironmentInspector'), \
+             patch('src.workflow.preparation.executor.preparation_executor.DockerStateManagerSQLite'), \
+             patch('src.workflow.preparation.executor.preparation_executor.PreparationErrorHandler'):
             self.executor = PreparationExecutor(self.mock_operations, self.mock_context)
 
     def test_init(self):
@@ -279,7 +279,7 @@ class TestPreparationExecutor:
         preparation_tasks = [MagicMock()]
 
         # Mock the RobustPreparationExecutor's execute_with_retry method
-        with patch('src.workflow.preparation.execution.preparation_executor.RobustPreparationExecutor') as mock_robust_executor_class:
+        with patch('src.workflow.preparation.executor.preparation_executor.RobustPreparationExecutor') as mock_robust_executor_class:
             mock_robust_executor = MagicMock()
             mock_robust_executor.execute_with_retry.return_value = (True, preparation_tasks, [])
             mock_robust_executor_class.return_value = mock_robust_executor

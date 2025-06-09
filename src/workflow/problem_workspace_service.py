@@ -1,7 +1,7 @@
 """Problem workspace management service - simplified replacement for complex state system."""
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from src.domain.interfaces.logger_interface import LoggerInterface
 from src.infrastructure.drivers.file.file_driver import FileDriver
@@ -58,7 +58,7 @@ class ProblemWorkspaceService:
         repository: FilePreparationRepository,
         logger: LoggerInterface,
         base_paths: dict,
-        file_preparation_service: Optional['FilePreparationService'] = None
+        file_preparation_service: Optional[Any] = None
     ):
         """Initialize the workspace service.
 

@@ -6,7 +6,7 @@ from unittest.mock import Mock
 import pytest
 
 from src.domain.requests.base.base_request import BaseRequest
-from src.workflow.workflow.request_execution_graph import RequestNode
+from src.workflow.builder.request_execution_graph import RequestNode
 
 
 class TestRequestNode:

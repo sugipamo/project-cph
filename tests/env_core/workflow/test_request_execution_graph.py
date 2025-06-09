@@ -10,7 +10,7 @@ import pytest
 
 from src.domain.requests.base.base_request import BaseRequest
 from src.domain.results.result import OperationResult
-from src.workflow.workflow.request_execution_graph import (
+from src.workflow.builder.request_execution_graph import (
     DependencyEdge,
     DependencyType,
     RequestExecutionGraph,

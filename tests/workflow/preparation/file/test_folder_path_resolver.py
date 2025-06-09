@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from src.workflow.preparation.core.state_definitions import WorkflowContext
+from src.workflow.preparation.error_handling.state_definitions import WorkflowContext
 from src.workflow.preparation.file.folder_path_resolver import (
     FolderArea,
     define_standard_areas,

@@ -7,9 +7,9 @@ import pytest
 
 from src.context.resolver.config_node import ConfigNode
 from src.domain.requests.composite.composite_request import CompositeRequest
+from src.workflow.builder.graph_based_workflow_builder import GraphBasedWorkflowBuilder
+from src.workflow.builder.request_execution_graph import RequestExecutionGraph, RequestNode
 from src.workflow.step.step import Step, StepContext, StepGenerationResult, StepType
-from src.workflow.workflow.graph_based_workflow_builder import GraphBasedWorkflowBuilder
-from src.workflow.workflow.request_execution_graph import RequestExecutionGraph, RequestNode
 
 
 class TestGraphBasedWorkflowBuilder:
@@ -29,7 +29,7 @@ class TestGraphBasedWorkflowBuilder:
         assert isinstance(builder, GraphBasedWorkflowBuilder)
         assert builder.context == context
 
-    @patch('src.workflow.workflow.graph_based_workflow_builder.create_step_context_from_env_context')
+    @patch('src.workflow.builder.graph_based_workflow_builder.create_step_context_from_env_context')
     def test_from_controller(self, mock_create_context):
         """Test creating builder from controller"""
         # Setup
@@ -48,9 +48,9 @@ class TestGraphBasedWorkflowBuilder:
         assert builder.context is step_context
         mock_create_context.assert_called_once_with(controller.env_context)
 
-    @patch('src.workflow.workflow.graph_based_workflow_builder.generate_steps_from_json')
-    @patch('src.workflow.workflow.graph_based_workflow_builder.resolve_dependencies')
-    @patch('src.workflow.workflow.graph_based_workflow_builder.optimize_workflow_steps')
+    @patch('src.workflow.builder.graph_based_workflow_builder.generate_steps_from_json')
+    @patch('src.workflow.builder.graph_based_workflow_builder.resolve_dependencies')
+    @patch('src.workflow.builder.graph_based_workflow_builder.optimize_workflow_steps')
     def test_build_graph_from_json_steps_success(self, mock_optimize, mock_resolve, mock_generate):
         """Test successful graph building from JSON steps"""
         # Setup
@@ -89,7 +89,7 @@ class TestGraphBasedWorkflowBuilder:
         mock_resolve.assert_called_once_with([test_step], context)
         mock_optimize.assert_called_once_with([test_step])
 
-    @patch('src.workflow.workflow.graph_based_workflow_builder.generate_steps_from_json')
+    @patch('src.workflow.builder.graph_based_workflow_builder.generate_steps_from_json')
     def test_build_graph_from_json_steps_failure(self, mock_generate):
         """Test graph building with step generation failure"""
         # Setup
@@ -112,7 +112,7 @@ class TestGraphBasedWorkflowBuilder:
         assert warnings == []
 
     @patch('src.workflow.step.step.StepContext')
-    @patch('src.workflow.workflow.graph_based_workflow_builder.generate_steps_from_json')
+    @patch('src.workflow.builder.graph_based_workflow_builder.generate_steps_from_json')
     def test_build_graph_with_default_context(self, mock_generate, mock_step_context_class):
         """Test graph building with default context when none provided"""
         # Setup

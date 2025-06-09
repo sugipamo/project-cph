@@ -212,7 +212,7 @@ class GraphBasedWorkflowBuilder:
         Returns:
             (creates_files, creates_dirs, reads_files, requires_dirs)
         """
-        from src.workflow.workflow.graph_builder_utils import extract_node_resource_info
+        from src.workflow.builder.graph_builder_utils import extract_node_resource_info
         return extract_node_resource_info(step)
 
     def _build_dependencies(
@@ -327,7 +327,7 @@ class GraphBasedWorkflowBuilder:
     def _is_parent_directory(self, parent_path: str, child_path: str) -> bool:
         """parent_pathがchild_pathの親ディレクトリかどうかを判定（純粋関数版使用）
         """
-        from src.workflow.workflow.graph_builder_utils import is_parent_directory
+        from src.workflow.builder.graph_builder_utils import is_parent_directory
         return is_parent_directory(parent_path, child_path)
 
     def _has_resource_conflict(
@@ -344,7 +344,7 @@ class GraphBasedWorkflowBuilder:
         Returns:
             bool: 競合がある場合True
         """
-        from src.workflow.workflow.graph_builder_utils import NodeInfo, has_resource_conflict
+        from src.workflow.builder.graph_builder_utils import NodeInfo, has_resource_conflict
 
         # RequestNodeからNodeInfoへの変換
         node_info1 = NodeInfo(
@@ -381,7 +381,7 @@ class GraphBasedWorkflowBuilder:
             Tuple[RequestExecutionGraph, List[str], List[str]]:
                 (実行グラフ, エラーリスト, 警告リスト)
         """
-        from src.workflow.workflow.graph_builder_utils import build_execution_graph
+        from src.workflow.builder.graph_builder_utils import build_execution_graph
 
         # 純粋関数でグラフ構築結果を取得
         result = build_execution_graph(steps, self.context)

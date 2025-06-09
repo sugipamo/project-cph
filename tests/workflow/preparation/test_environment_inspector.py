@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.workflow.preparation.execution.environment_inspector import (
+from src.workflow.preparation.executor.environment_inspector import (
     EnvironmentInspector,
     ResourceRequirement,
     ResourceStatus,

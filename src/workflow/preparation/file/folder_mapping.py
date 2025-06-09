@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 from src.domain.interfaces.filesystem_interface import FileSystemInterface
 
-from ..core.state_definitions import WorkflowContext
+from ..error_handling.state_definitions import WorkflowContext
 from .folder_path_resolver import define_standard_areas, get_area_path
 
 

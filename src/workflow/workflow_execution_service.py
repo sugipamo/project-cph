@@ -6,10 +6,10 @@ from src.application.factories.unified_request_factory import create_composite_r
 from src.application.orchestration.unified_driver import UnifiedDriver
 from src.context.execution_context import ExecutionContext
 from src.utils.debug_logger import DebugLogger
-from src.workflow.preparation.execution.preparation_executor import PreparationExecutor
+from src.workflow.builder.graph_based_workflow_builder import GraphBasedWorkflowBuilder
+from src.workflow.preparation.executor.preparation_executor import PreparationExecutor
 from src.workflow.step.core import generate_steps_from_json
 from src.workflow.step.step import Step, StepType
-from src.workflow.workflow.graph_based_workflow_builder import GraphBasedWorkflowBuilder
 from src.workflow.workflow_result import WorkflowExecutionResult
 
 
