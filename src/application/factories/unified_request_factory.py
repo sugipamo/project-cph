@@ -183,14 +183,14 @@ class PythonRequestStrategy(RequestCreationStrategy):
         return format_values_with_context_dict(cmd, context_dict)
 
 
-class StateTransitionRequestStrategy(RequestCreationStrategy):
+class FilePreparationRequestStrategy(RequestCreationStrategy):
     """Strategy for creating state transition requests"""
 
     def can_handle(self, step_type: StepType) -> bool:
-        return step_type == StepType.STATE_TRANSITION
+        return step_type == StepType.FILE_PREPARATION
 
     def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
-        from src.workflow.preparation.command_processor import StateTransitionRequest
+        from src.workflow.preparation.command_processor import FilePreparationRequest
 
         # Extract state transition parameters from step
         # Handle both cmd-based and attribute-based formats
@@ -223,7 +223,7 @@ class StateTransitionRequestStrategy(RequestCreationStrategy):
             else:
                 formatted_context[key] = value
 
-        return StateTransitionRequest(
+        return FilePreparationRequest(
             target_state=target_state,
             context_params=formatted_context,
             dry_run=getattr(step, 'dry_run', False)
@@ -240,7 +240,7 @@ class UnifiedRequestFactory:
             FileRequestStrategy(),
             ShellRequestStrategy(),
             PythonRequestStrategy(),
-            StateTransitionRequestStrategy(),
+            FilePreparationRequestStrategy(),
         ]
 
     def create_requests_from_steps(self, steps: list[Step], context: Any,

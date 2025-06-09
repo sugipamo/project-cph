@@ -23,7 +23,7 @@ class StepType(Enum):
     DOCKER_EXEC = "docker_exec"
     DOCKER_CP = "docker_cp"
     DOCKER_RUN = "docker_run"
-    STATE_TRANSITION = "state_transition"
+    FILE_PREPARATION = "file_preparation"
 
 
 @dataclass(frozen=True)
@@ -85,8 +85,8 @@ class Step:
 
     def __post_init__(self):
         """データ検証"""
-        # State transition steps don't require cmd
-        if self.type != StepType.STATE_TRANSITION and not self.cmd:
+        # File preparation steps don't require cmd
+        if self.type != StepType.FILE_PREPARATION and not self.cmd:
             raise ValueError(f"Step {self.type} must have non-empty cmd")
 
         # 各ステップタイプの必要な引数をチェック

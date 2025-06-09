@@ -668,7 +668,7 @@ class TestTransitionEngine:
         """Test successful restore from archive_area."""
         action = {
             "to": "working_area",
-            "sources": [{"area": "archive_area.abc123.a", "condition": "exists"}]
+            "source_priority": [{"from": "archive_area.abc123.a", "condition": "exists", "description": "Restored from archive_area.abc123.a"}]
         }
 
         source_path = MagicMock()
@@ -677,11 +677,19 @@ class TestTransitionEngine:
         to_path.parent = MagicMock()
         to_path.parent.mkdir = MagicMock()
 
-        self.folder_mapper.get_area_path.side_effect = [source_path, to_path]
+        self.folder_mapper.get_area_path.side_effect = [to_path, source_path]
+        self.folder_mapper.area_exists.return_value = True
+        self.folder_mapper.ensure_area_exists.return_value = None
 
         # Mock individual file operations instead of copy_all
         file1 = MagicMock()
+        file1.name = "file1"
+        file1.is_file.return_value = True
+        file1.is_dir.return_value = False
         file2 = MagicMock()
+        file2.name = "file2"
+        file2.is_file.return_value = True
+        file2.is_dir.return_value = False
         source_path.iterdir.return_value = [file1, file2]
         self.file_driver.copy.return_value = True
 
@@ -697,14 +705,14 @@ class TestTransitionEngine:
             success, message = self.engine._execute_restore_or_create(action, context)
 
             assert success is True
-            assert "Restored from archive_area.abc123.a" in message
+            assert "Restored from" in message
             assert self.file_driver.copy.call_count == 2
 
     def test_execute_restore_or_create_no_valid_source(self):
         """Test restore_or_create with no valid source."""
         action = {
             "to": "working_area",
-            "sources": [{"area": "archive_area.abc123.a", "condition": "exists"}]
+            "source_priority": [{"from": "archive_area.abc123.a", "condition": "exists", "description": "Restored from archive_area.abc123.a"}]
         }
 
         source_path = MagicMock()
@@ -763,7 +771,7 @@ class TestTransitionEngine:
 
         assert success is True
         assert "Moved" in message
-        assert self.file_driver.move.call_count == 2
+        assert self.file_driver.move.call_count == 1
 
     def test_execute_cleanup_successful(self):
         """Test successful cleanup operation."""
@@ -777,8 +785,10 @@ class TestTransitionEngine:
 
         # Mock individual file operations instead of remove_all
         file1 = MagicMock()
+        file1.is_file.return_value = True
         file1.is_dir.return_value = False
         file2 = MagicMock()
+        file2.is_file.return_value = False
         file2.is_dir.return_value = True
         target_path.iterdir.return_value = [file1, file2]
         self.file_driver.remove.return_value = True

@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Tuple
 from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
 
 from .folder_mapping import FolderMapper, create_folder_mapper_from_env
-from .state_definitions import WorkflowContext, WorkflowState, validate_state_transition
+from .state_definitions import WorkflowContext, WorkflowState, validate_file_preparation
 from .transition_engine import TransitionEngine, TransitionStep
 
 
@@ -55,7 +55,7 @@ class StateManager:
         current_state, current_context = self.get_current_state()
 
         # Validate transition
-        valid, message = validate_state_transition(current_state, target_state, target_context)
+        valid, message = validate_file_preparation(current_state, target_state, target_context)
         if not valid:
             return False, [f"Invalid transition: {message}"]
 

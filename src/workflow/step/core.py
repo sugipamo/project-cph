@@ -73,7 +73,7 @@ def create_step_from_json(json_step: dict[str, Any], context: StepContext) -> St
     output_format = json_step.get('output_format')
     format_preset = json_step.get('format_preset')
 
-    # Handle state_transition specific attributes
+    # Handle file_preparation specific attributes
     step_kwargs = {
         'type': step_type,
         'cmd': formatted_cmd,
@@ -86,8 +86,8 @@ def create_step_from_json(json_step: dict[str, Any], context: StepContext) -> St
         'format_preset': format_preset
     }
 
-    # Add state_transition specific fields
-    if step_type == StepType.STATE_TRANSITION:
+    # Add file_preparation specific fields
+    if step_type == StepType.FILE_PREPARATION:
         target_state = json_step.get('target_state')
         context_data = json_step.get('context', {})
 

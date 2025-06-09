@@ -88,7 +88,7 @@ def get_state_definition(state: WorkflowState) -> StateDefinition:
     return STATE_DEFINITIONS[state]
 
 
-def validate_state_transition(
+def validate_file_preparation(
     from_state: WorkflowState,
     to_state: WorkflowState,
     context: WorkflowContext

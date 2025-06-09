@@ -1,4 +1,4 @@
-"""Command processor for handling state_transition commands."""
+"""Command processor for handling file_preparation commands."""
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -10,7 +10,7 @@ from .state_definitions import WorkflowContext, WorkflowState
 from .state_manager import StateManager
 
 
-class StateTransitionRequest(BaseRequest):
+class FilePreparationRequest(BaseRequest):
     """Request for executing state transitions."""
 
     def __init__(
@@ -30,7 +30,7 @@ class StateTransitionRequest(BaseRequest):
     @property
     def operation_type(self) -> OperationType:
         """Return the operation type."""
-        return OperationType.STATE_TRANSITION
+        return OperationType.FILE_PREPARATION
 
     def _execute_core(self, driver) -> OperationResult:
         """Execute the state transition."""
@@ -38,24 +38,24 @@ class StateTransitionRequest(BaseRequest):
             return OperationResult(
                 op=self.operation_type,
                 success=False,
-                error_message="State transition requires a StateTransitionDriver"
+                error_message="State transition requires a FilePreparationDriver"
             )
 
-        # If driver is UnifiedDriver, resolve the actual StateTransitionDriver
+        # If driver is UnifiedDriver, resolve the actual FilePreparationDriver
         if hasattr(driver, '_get_cached_driver'):
             try:
-                actual_driver = driver._get_cached_driver("state_transition_driver")
-                return actual_driver.execute_state_transition(self)
+                actual_driver = driver._get_cached_driver("file_preparation_driver")
+                return actual_driver.execute_file_preparation(self)
             except Exception as e:
                 return OperationResult(
                     op=self.operation_type,
                     success=False,
-                    error_message=f"Failed to resolve state_transition_driver: {e!s}"
+                    error_message=f"Failed to resolve file_preparation_driver: {e!s}"
                 )
 
-        # Check if driver has execute_state_transition method
-        if hasattr(driver, 'execute_state_transition'):
-            return driver.execute_state_transition(self)
+        # Check if driver has execute_file_preparation method
+        if hasattr(driver, 'execute_file_preparation'):
+            return driver.execute_file_preparation(self)
         return OperationResult(
             op=self.operation_type,
             success=False,
@@ -63,7 +63,7 @@ class StateTransitionRequest(BaseRequest):
         )
 
 
-class StateTransitionDriver:
+class FilePreparationDriver:
     """Driver for executing state transitions."""
 
     def __init__(self, state_manager: StateManager):
@@ -71,7 +71,7 @@ class StateTransitionDriver:
         self.state_manager = state_manager
         self.logger = logging.getLogger(__name__)
 
-    def execute_state_transition(self, request: StateTransitionRequest) -> OperationResult:
+    def execute_file_preparation(self, request: FilePreparationRequest) -> OperationResult:
         """Execute a state transition request."""
         try:
             # Parse target state
@@ -121,13 +121,13 @@ class StateTransitionDriver:
 
 
 class CommandProcessor:
-    """Processes commands with state_transition support."""
+    """Processes commands with file_preparation support."""
 
     def __init__(self, operations, state_manager: StateManager):
         """Initialize command processor with DI container."""
         self.operations = operations
         self.state_manager = state_manager
-        self.state_driver = StateTransitionDriver(state_manager)
+        self.state_driver = FilePreparationDriver(state_manager)
         self.logger = logging.getLogger(__name__)
 
     def process_command(self, command_config: Dict[str, Any], context_vars: Dict[str, str]) -> Tuple[List[BaseRequest], Dict[str, Any]]:
@@ -135,19 +135,19 @@ class CommandProcessor:
         requests = []
         metadata = {
             "command_type": "unknown",
-            "has_state_transition": False,
+            "has_file_preparation": False,
             "additional_actions": 0
         }
 
         # Check if this is a state transition command
-        if "state_transition" in command_config:
-            state_transition = command_config["state_transition"]
-            metadata["command_type"] = "state_transition"
-            metadata["has_state_transition"] = True
+        if "file_preparation" in command_config:
+            file_preparation = command_config["file_preparation"]
+            metadata["command_type"] = "file_preparation"
+            metadata["has_file_preparation"] = True
 
             # Create state transition request
-            target_state = state_transition.get("target", "working")
-            context_params = state_transition.get("context", {})
+            target_state = file_preparation.get("target", "working")
+            context_params = file_preparation.get("context", {})
 
             # Resolve context parameters using context_vars
             resolved_context = {}
@@ -163,7 +163,7 @@ class CommandProcessor:
             metadata["additional_actions"] = len(additional_actions)
 
             # Create the state transition request
-            transition_request = StateTransitionRequest(
+            transition_request = FilePreparationRequest(
                 target_state=target_state,
                 context_params=resolved_context,
                 additional_actions=additional_actions
@@ -246,7 +246,7 @@ class CommandProcessor:
         # This maintains compatibility with existing step-based commands
         return self._create_action_request(step, context_vars)
 
-    def get_state_driver(self) -> StateTransitionDriver:
+    def get_state_driver(self) -> FilePreparationDriver:
         """Get the state transition driver."""
         return self.state_driver
 
@@ -269,7 +269,7 @@ class StateShowRequest(BaseRequest):
             return OperationResult(
                 op=self.operation_type,
                 success=False,
-                error_message="State show requires a StateTransitionDriver"
+                error_message="State show requires a FilePreparationDriver"
             )
 
         try:

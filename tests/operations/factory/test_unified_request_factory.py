@@ -4,11 +4,11 @@ Test unified request factory implementation
 import pytest
 
 from src.application.factories.unified_request_factory import (
+    FilePreparationRequestStrategy,
     FileRequestStrategy,
     PythonRequestStrategy,
     RequestCreationStrategy,
     ShellRequestStrategy,
-    StateTransitionRequestStrategy,
     UnifiedRequestFactory,
     create_composite_request,
     create_request,
@@ -109,17 +109,17 @@ class TestRequestCreationStrategies:
         assert "print('hello')" in request.code_or_file
         assert "print('world')" in request.code_or_file
 
-    def test_state_transition_request_strategy(self):
-        """Test StateTransitionRequestStrategy"""
-        strategy = StateTransitionRequestStrategy()
+    def test_file_preparation_request_strategy(self):
+        """Test FilePreparationRequestStrategy"""
+        strategy = FilePreparationRequestStrategy()
 
         # Test can_handle
-        assert strategy.can_handle(StepType.STATE_TRANSITION)
+        assert strategy.can_handle(StepType.FILE_PREPARATION)
         assert not strategy.can_handle(StepType.SHELL)
 
         # Test create_request with attribute-based format (new format)
         step = Step(
-            type=StepType.STATE_TRANSITION,
+            type=StepType.FILE_PREPARATION,
             cmd=[],  # Empty cmd for state transition
             target_state="working",
             context={
@@ -139,7 +139,7 @@ class TestRequestCreationStrategies:
         assert request.context_params["language"] == "python"
 
         # Test create_request with cmd-based format (legacy format)
-        step = Step(type=StepType.STATE_TRANSITION, cmd=["working", "contest_name=abc123", "problem_name=b"])
+        step = Step(type=StepType.FILE_PREPARATION, cmd=["working", "contest_name=abc123", "problem_name=b"])
         request = strategy.create_request(step, context, env_manager)
         assert request is not None
         assert request.target_state == "working"
@@ -147,7 +147,7 @@ class TestRequestCreationStrategies:
         assert request.context_params["problem_name"] == "b"
 
         # Test with empty cmd
-        step = Step(type=StepType.STATE_TRANSITION, cmd=[])
+        step = Step(type=StepType.FILE_PREPARATION, cmd=[])
         request = strategy.create_request(step, context, env_manager)
         assert request is None
 
@@ -164,7 +164,7 @@ class TestUnifiedRequestFactory:
         assert "FileRequestStrategy" in strategy_types
         assert "ShellRequestStrategy" in strategy_types
         assert "PythonRequestStrategy" in strategy_types
-        assert "StateTransitionRequestStrategy" in strategy_types
+        assert "FilePreparationRequestStrategy" in strategy_types
 
     def test_create_file_request(self):
         """Test creating file requests"""
@@ -199,14 +199,14 @@ class TestUnifiedRequestFactory:
         request = factory.create_request_from_step(step, context, EnvironmentManager("local"))
         assert isinstance(request, PythonRequest)
 
-    def test_create_state_transition_request(self):
+    def test_create_file_preparation_request(self):
         """Test creating state transition requests"""
         factory = UnifiedRequestFactory()
         context = MockContext()
 
         # Test with attribute-based format
         step = Step(
-            type=StepType.STATE_TRANSITION,
+            type=StepType.FILE_PREPARATION,
             cmd=[],
             target_state="working",
             context={"contest_name": "{contest_name}"}

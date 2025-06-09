@@ -5,8 +5,8 @@ import pytest
 from src.infrastructure.config.di_config import (
     _create_command_processor,
     _create_contest_manager,
+    _create_file_preparation_driver,
     _create_state_manager,
-    _create_state_transition_driver,
     _create_system_config_loader,
     configure_production_dependencies,
     configure_test_dependencies,
@@ -76,9 +76,9 @@ class TestDIConfigFactories:
         assert result == mock_processor_instance
         mock_command_processor_class.assert_called_once_with(container, mock_state_manager)
 
-    @patch('src.workflow.preparation.command_processor.StateTransitionDriver')
-    def test_create_state_transition_driver(self, mock_driver_class):
-        """Test _create_state_transition_driver factory"""
+    @patch('src.workflow.preparation.command_processor.FilePreparationDriver')
+    def test_create_file_preparation_driver(self, mock_driver_class):
+        """Test _create_file_preparation_driver factory"""
         container = Mock()
         mock_state_manager = Mock()
         container.resolve.return_value = mock_state_manager
@@ -86,7 +86,7 @@ class TestDIConfigFactories:
         mock_driver_instance = Mock()
         mock_driver_class.return_value = mock_driver_instance
 
-        result = _create_state_transition_driver(container)
+        result = _create_file_preparation_driver(container)
 
         assert result == mock_driver_instance
         mock_driver_class.assert_called_once_with(mock_state_manager)
@@ -114,7 +114,7 @@ class TestDIConfigFactories:
         assert "system_config_loader" in container._providers
         assert "state_manager" in container._providers
         assert "command_processor" in container._providers
-        assert "state_transition_driver" in container._providers
+        assert "file_preparation_driver" in container._providers
         assert "contest_manager" in container._providers
 
     def test_configure_test_dependencies_includes_new_factories(self):
@@ -127,7 +127,7 @@ class TestDIConfigFactories:
         assert "system_config_loader" in container._providers
         assert "state_manager" in container._providers
         assert "command_processor" in container._providers
-        assert "state_transition_driver" in container._providers
+        assert "file_preparation_driver" in container._providers
         assert "contest_manager" in container._providers
 
     @patch('src.infrastructure.config.di_config._create_system_config_loader')

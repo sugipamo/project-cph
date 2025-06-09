@@ -188,15 +188,15 @@ class WorkflowExecutionService:
                     request_type = "file"
                 elif request.__class__.__name__ == "ShellRequest":
                     request_type = "shell"
-                elif request.__class__.__name__ == "StateTransitionRequest":
-                    request_type = "state_transition"
+                elif request.__class__.__name__ == "FilePreparationRequest":
+                    request_type = "file_preparation"
                 elif step.type.value.startswith("docker"):
                     request_type = "docker"
                 elif step.type in [StepType.MKDIR, StepType.TOUCH, StepType.COPY,
                                  StepType.MOVE, StepType.REMOVE, StepType.RMTREE]:
                     request_type = "file"
-                elif step.type == StepType.STATE_TRANSITION:
-                    request_type = "state_transition"
+                elif step.type == StepType.FILE_PREPARATION:
+                    request_type = "file_preparation"
                 else:
                     request_type = "other"
 

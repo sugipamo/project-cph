@@ -136,12 +136,12 @@ def _create_command_processor(container: Any) -> Any:
     return CommandProcessor(container, state_manager)
 
 
-def _create_state_transition_driver(container: Any) -> Any:
+def _create_file_preparation_driver(container: Any) -> Any:
     """Lazy factory for state transition driver."""
-    from src.workflow.preparation.command_processor import StateTransitionDriver
+    from src.workflow.preparation.command_processor import FilePreparationDriver
 
     state_manager = container.resolve("state_manager")
-    return StateTransitionDriver(state_manager)
+    return FilePreparationDriver(state_manager)
 
 
 def _create_contest_manager(container: Any) -> Any:
@@ -184,7 +184,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("state_manager", lambda: _create_state_manager(container))
     container.register("command_processor", lambda: _create_command_processor(container))
-    container.register("state_transition_driver", lambda: _create_state_transition_driver(container))
+    container.register("file_preparation_driver", lambda: _create_file_preparation_driver(container))
     container.register("contest_manager", lambda: _create_contest_manager(container))
 
     # Register string-based aliases for backward compatibility
@@ -247,7 +247,7 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("state_manager", lambda: _create_state_manager(container))
     container.register("command_processor", lambda: _create_command_processor(container))
-    container.register("state_transition_driver", lambda: _create_state_transition_driver(container))
+    container.register("file_preparation_driver", lambda: _create_file_preparation_driver(container))
     container.register("contest_manager", lambda: _create_contest_manager(container))
 
     # Register string-based aliases for backward compatibility
