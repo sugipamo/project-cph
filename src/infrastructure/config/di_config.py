@@ -5,10 +5,10 @@ from typing import Any
 from src.infrastructure.di_container import DIContainer, DIKey
 
 
-def _create_shell_driver() -> Any:
+def _create_shell_driver(file_driver: Any) -> Any:
     """Lazy factory for shell driver."""
     from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
-    return LocalShellDriver()
+    return LocalShellDriver(file_driver=file_driver)
 
 
 def _create_docker_driver() -> Any:
@@ -183,7 +183,7 @@ def _create_contest_manager(container: Any) -> Any:
 def configure_production_dependencies(container: DIContainer) -> None:
     """Configure production dependencies with lazy loading."""
     # Register core drivers
-    container.register(DIKey.SHELL_DRIVER, _create_shell_driver)
+    container.register(DIKey.SHELL_DRIVER, lambda: _create_shell_driver(container.resolve(DIKey.FILE_DRIVER)))
     container.register(DIKey.DOCKER_DRIVER, _create_docker_driver)
     container.register(DIKey.FILE_DRIVER, _create_file_driver)
     container.register(DIKey.PYTHON_DRIVER, _create_python_driver)
@@ -235,9 +235,9 @@ def configure_test_dependencies(container: DIContainer) -> None:
         from src.infrastructure.mock.mock_file_driver import MockFileDriver
         return MockFileDriver(base_dir=Path('.'))
 
-    def _create_mock_shell_driver():
+    def _create_mock_shell_driver(file_driver):
         from src.infrastructure.mock.mock_shell_driver import MockShellDriver
-        return MockShellDriver()
+        return MockShellDriver(file_driver=file_driver)
 
     def _create_mock_docker_driver():
         from src.infrastructure.mock.mock_docker_driver import MockDockerDriver
@@ -260,7 +260,7 @@ def configure_test_dependencies(container: DIContainer) -> None:
         return MockFileSystem()
 
     # Register mock drivers
-    container.register(DIKey.SHELL_DRIVER, _create_mock_shell_driver)
+    container.register(DIKey.SHELL_DRIVER, lambda: _create_mock_shell_driver(container.resolve(DIKey.FILE_DRIVER)))
     container.register(DIKey.DOCKER_DRIVER, _create_mock_docker_driver)
     container.register(DIKey.FILE_DRIVER, _create_mock_file_driver)
     container.register(DIKey.PYTHON_DRIVER, _create_mock_python_driver)

@@ -65,10 +65,13 @@ class DockerDriver(BaseDriver):
 class LocalDockerDriver(DockerDriver):
     """Local Docker driver implementation using shell commands."""
 
-    def __init__(self):
+    def __init__(self, file_driver=None):
         super().__init__()
         from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
-        self.shell_driver = LocalShellDriver()
+        if file_driver is None:
+            from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
+            file_driver = LocalFileDriver()
+        self.shell_driver = LocalShellDriver(file_driver)
 
     def execute(self, request: Any) -> Any:
         """Execute a Docker request."""

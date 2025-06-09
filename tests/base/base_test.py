@@ -27,7 +27,7 @@ class BaseTest:
         di = DIContainer()
         # Create singleton instances to maintain state across multiple resolve() calls
         mock_file_driver = MockFileDriver(base_dir=Path.cwd())
-        mock_shell_driver = MockShellDriver()
+        mock_shell_driver = MockShellDriver(file_driver=mock_file_driver)
         mock_docker_driver = MockDockerDriver()
 
         di.register("file_driver", lambda: mock_file_driver)

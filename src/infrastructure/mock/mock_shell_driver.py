@@ -8,7 +8,7 @@ from src.infrastructure.drivers.shell.shell_driver import ShellDriver
 class MockShellDriver(ShellDriver):
     """Mock implementation of shell driver for testing."""
 
-    def __init__(self):
+    def __init__(self, file_driver=None):
         """Initialize mock shell driver."""
         self._commands_executed = []
         self._responses = {}
@@ -17,6 +17,7 @@ class MockShellDriver(ShellDriver):
             stderr="",
             returncode=0
         )
+        self.file_driver = file_driver
 
     def run(self, cmd: Union[str, list[str]], cwd: Optional[str] = None,
             env: Optional[dict[str, str]] = None, inputdata: Optional[str] = None,

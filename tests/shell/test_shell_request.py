@@ -19,7 +19,8 @@ def test_shell_request_echo():
         mock_run.return_value.returncode = 0
 
         req = ShellRequest(["echo", "hello"])
-        driver = LocalShellDriver()
+        from src.infrastructure.mock.mock_file_driver import MockFileDriver
+        driver = LocalShellDriver(MockFileDriver())
         result = req.execute(driver=driver)
         assert result.operation_type == OperationType.SHELL
     assert result.success
@@ -34,7 +35,8 @@ def test_shell_request_fail():
         mock_run.return_value.returncode = 1
 
         req = ShellRequest(["false"])
-        driver = LocalShellDriver()
+        from src.infrastructure.mock.mock_file_driver import MockFileDriver
+        driver = LocalShellDriver(MockFileDriver())
         result = req.execute(driver=driver)
         assert not result.success
         with pytest.raises(RuntimeError):
@@ -50,7 +52,8 @@ def test_shell_request_no_driver():
 def test_shell_request_echo():
     di = DIContainer()
     from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
-    di.register('shell_driver', lambda: LocalShellDriver())
+    from src.infrastructure.mock.mock_file_driver import MockFileDriver
+    di.register('shell_driver', lambda: LocalShellDriver(MockFileDriver()))
     req = ShellRequest(["echo", "hello"])
     driver = di.resolve('shell_driver')
     result = req.execute(driver)
@@ -59,7 +62,8 @@ def test_shell_request_echo():
 def test_shell_request_timeout():
     di = DIContainer()
     from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
-    di.register('shell_driver', lambda: LocalShellDriver())
+    from src.infrastructure.mock.mock_file_driver import MockFileDriver
+    di.register('shell_driver', lambda: LocalShellDriver(MockFileDriver()))
     req = ShellRequest(["echo", "timeout"])
     driver = di.resolve('shell_driver')
     result = req.execute(driver)
@@ -73,7 +77,8 @@ def test_shell_request_repr():
 def test_shell_request_execute_exception():
     # ShellUtils.run_subprocessで例外を投げるようにする
     req = ShellRequest(["false"])
-    driver = LocalShellDriver()
+    from src.infrastructure.mock.mock_file_driver import MockFileDriver
+    driver = LocalShellDriver(MockFileDriver())
     with unittest.mock.patch("src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess", side_effect=Exception("fail")):
         result = req._execute_core(driver)
     assert isinstance(result, OperationResult)
@@ -92,7 +97,8 @@ def test_shell_request_with_inputdata_env_cwd(tmp_path):
         return Completed()
     with unittest.mock.patch("src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess", fake_run_subprocess):
         req = ShellRequest(["echo", "x"], cwd=str(tmp_path), env={"A": "B"}, inputdata="in", timeout=1)
-        driver = LocalShellDriver()
+        from src.infrastructure.mock.mock_file_driver import MockFileDriver
+        driver = LocalShellDriver(MockFileDriver())
         result = req._execute_core(driver)
     assert called["cwd"] == str(tmp_path)
     assert called["env"] == {"A": "B"}
@@ -110,7 +116,8 @@ def test_shell_request_show_output(capsys):
         return Completed()
     with unittest.mock.patch("src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess", fake_run_subprocess):
         req = ShellRequest(["echo", "x"], show_output=True)
-        driver = LocalShellDriver()
+        from src.infrastructure.mock.mock_file_driver import MockFileDriver
+        driver = LocalShellDriver(MockFileDriver())
         result = req._execute_core(driver)
     # show_outputの分岐は本体でprintしていないが、今後の拡張用にカバレッジ確保
     assert result.stdout == "out"

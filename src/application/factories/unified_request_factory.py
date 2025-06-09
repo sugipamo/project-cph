@@ -202,7 +202,7 @@ class WorkspaceRequestStrategy(RequestCreationStrategy):
             # Extract force parameter from step context
             step_context = getattr(step, 'context', {}) or {}
             force_param = step_context.get('force', False)
-            
+
             # Create request for test file movement only
             return WorkspaceRequest(
                 operation_type='move_test_files',

@@ -109,6 +109,13 @@ class MockFileDriver(FileDriver):
         if path in self.contents:
             del self.contents[path]
 
+    def makedirs(self, path: Optional[Path] = None, exist_ok: bool = True) -> None:
+        """Create directories (mock implementation)."""
+        target_path = self.resolve_path(path) if path is not None else self.resolve_path(self.path)
+        self._record_operation("makedirs", target_path, exist_ok)
+        # Mock implementation - just add to files set to indicate it exists
+        self.files.add(target_path)
+
     def open(self, path: str, mode: str = "r", encoding: Optional[str] = None):
         """Mock file open"""
         from contextlib import contextmanager

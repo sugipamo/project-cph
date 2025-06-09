@@ -30,7 +30,9 @@ class TestLocalShellDriver(BaseTest):
 
     def setup_test(self):
         """Setup test data"""
-        self.driver = LocalShellDriver()
+        from src.infrastructure.mock.mock_file_driver import MockFileDriver
+        self.mock_file_driver = MockFileDriver()
+        self.driver = LocalShellDriver(self.mock_file_driver)
 
         # Mock successful shell result
         self.mock_success_result = Mock()
@@ -216,7 +218,9 @@ class TestLocalShellDriverIntegration(BaseTest):
 
     def setup_test(self):
         """Setup test data"""
-        self.driver = LocalShellDriver()
+        from src.infrastructure.mock.mock_file_driver import MockFileDriver
+        self.mock_file_driver = MockFileDriver()
+        self.driver = LocalShellDriver(self.mock_file_driver)
 
     @patch('src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess')
     def test_multiple_sequential_commands(self, mock_run_subprocess):
@@ -287,7 +291,9 @@ class TestLocalShellDriverEdgeCases(BaseTest):
 
     def setup_test(self):
         """Setup test data"""
-        self.driver = LocalShellDriver()
+        from src.infrastructure.mock.mock_file_driver import MockFileDriver
+        self.mock_file_driver = MockFileDriver()
+        self.driver = LocalShellDriver(self.mock_file_driver)
 
     @patch('src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess')
     def test_run_with_none_parameters(self, mock_run_subprocess):
@@ -423,7 +429,9 @@ class TestShellDriverParameterValidation(BaseTest):
 
     def setup_test(self):
         """Setup test data"""
-        self.driver = LocalShellDriver()
+        from src.infrastructure.mock.mock_file_driver import MockFileDriver
+        self.mock_file_driver = MockFileDriver()
+        self.driver = LocalShellDriver(self.mock_file_driver)
 
     @patch('src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess')
     def test_run_parameter_types(self, mock_run_subprocess):
