@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from src.infrastructure.drivers.file.file_driver import FileDriver
 
-from .folder_mapping import FolderMapper
-from .state_definitions import WorkflowContext, WorkflowState
+from ..core.state_definitions import WorkflowContext, WorkflowState
+from ..file.folder_mapping import FolderMapper
 
 
 @dataclass

@@ -5,9 +5,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.infrastructure.drivers.file.file_driver import FileDriver
-from src.workflow.preparation.folder_mapping import FolderMapper
-from src.workflow.preparation.state_definitions import WorkflowContext, WorkflowState
-from src.workflow.preparation.transition_engine import TransitionContext, TransitionEngine, TransitionStep
+from src.workflow.preparation.core.state_definitions import WorkflowContext, WorkflowState
+from src.workflow.preparation.file.folder_mapping import FolderMapper
+from src.workflow.preparation.state.transition_engine import TransitionContext, TransitionEngine, TransitionStep
 
 
 class TestTransitionStep:

@@ -6,25 +6,41 @@ from src.domain.constants.operation_type import OperationType
 from src.domain.requests.base.base_request import BaseRequest
 from src.domain.results.result import OperationResult
 
-from .state_definitions import WorkflowContext, WorkflowState
-from .state_manager import StateManager
+from ..core.state_definitions import WorkflowContext, WorkflowState
+from ..state.state_manager import StateManager
 
 
 class FilePreparationRequest(BaseRequest):
-    """Request for executing state transitions."""
+    """Request for executing file preparation operations like state transitions and test file movements."""
 
     def __init__(
         self,
-        target_state: str,
-        context_params: Dict[str, str],
+        target_state: Optional[str] = None,
+        context_params: Optional[Dict[str, str]] = None,
         additional_actions: Optional[List[Dict[str, Any]]] = None,
+        operation_type: str = "state_transition",
+        workspace_path: Optional[str] = None,
+        contest_current_path: Optional[str] = None,
         dry_run: bool = False
     ):
-        """Initialize state transition request."""
+        """Initialize file preparation request.
+
+        Args:
+            target_state: Target state for state transition (optional)
+            context_params: Context parameters (contest_name, problem_name, language)
+            additional_actions: Additional actions to perform
+            operation_type: Type of operation ('state_transition', 'move_test_files')
+            workspace_path: Path to workspace directory (for test file movement)
+            contest_current_path: Path to contest_current directory (for test file movement)
+            dry_run: Whether to perform a dry run
+        """
         super().__init__()
         self.target_state = target_state
-        self.context_params = context_params
+        self.context_params = context_params or {}
         self.additional_actions = additional_actions or []
+        self.operation_type_name = operation_type
+        self.workspace_path = workspace_path
+        self.contest_current_path = contest_current_path
         self.dry_run = dry_run
 
     @property
@@ -64,16 +80,88 @@ class FilePreparationRequest(BaseRequest):
 
 
 class FilePreparationDriver:
-    """Driver for executing state transitions."""
+    """Driver for executing file preparation operations like state transitions and test file movements."""
 
-    def __init__(self, state_manager: StateManager):
-        """Initialize with state manager."""
+    def __init__(self, state_manager: StateManager, file_preparation_service=None):
+        """Initialize with state manager and optional file preparation service.
+
+        Args:
+            state_manager: State manager for state transitions
+            file_preparation_service: Service for file operations (injected via DI)
+        """
         self.state_manager = state_manager
+        self.file_preparation_service = file_preparation_service
         self.logger = logging.getLogger(__name__)
 
     def execute_file_preparation(self, request: FilePreparationRequest) -> OperationResult:
+        """Execute a file preparation request."""
+        try:
+            if request.operation_type_name == "move_test_files":
+                return self._execute_test_file_movement(request)
+            if request.operation_type_name == "state_transition":
+                return self._execute_state_transition(request)
+            return OperationResult(
+                op=request.operation_type,
+                success=False,
+                error_message=f"Unknown operation type: {request.operation_type_name}"
+            )
+
+        except Exception as e:
+            self.logger.error(f"File preparation failed: {e}")
+            return OperationResult(
+                op=request.operation_type,
+                success=False,
+                error_message=f"File preparation failed: {e!s}"
+            )
+
+    def _execute_test_file_movement(self, request: FilePreparationRequest) -> OperationResult:
+        """Execute test file movement from workspace to contest_current."""
+        if not self.file_preparation_service:
+            return OperationResult(
+                op=request.operation_type,
+                success=False,
+                error_message="File preparation service not available"
+            )
+
+        if not request.workspace_path or not request.contest_current_path:
+            return OperationResult(
+                op=request.operation_type,
+                success=False,
+                error_message="workspace_path and contest_current_path are required for test file movement"
+            )
+
+        # Extract context information
+        language_name = request.context_params.get("language", "unknown")
+        contest_name = request.context_params.get("contest_name", "unknown")
+        problem_name = request.context_params.get("problem_name", "unknown")
+
+        # Move test files
+        success, message, file_count = self.file_preparation_service.move_test_files(
+            language_name=language_name,
+            contest_name=contest_name,
+            problem_name=problem_name,
+            workspace_path=request.workspace_path,
+            contest_current_path=request.contest_current_path,
+            force=False
+        )
+
+        return OperationResult(
+            op=request.operation_type,
+            success=success,
+            content=message,
+            error_message=None if success else message
+        )
+
+    def _execute_state_transition(self, request: FilePreparationRequest) -> OperationResult:
         """Execute a state transition request."""
         try:
+            if not request.target_state:
+                return OperationResult(
+                    op=request.operation_type,
+                    success=False,
+                    error_message="target_state is required for state transition"
+                )
+
             # Parse target state
             target_state = WorkflowState(request.target_state)
 

@@ -117,7 +117,7 @@ def _create_system_config_loader(container: Any) -> Any:
 
 def _create_state_manager(container: Any) -> Any:
     """Lazy factory for state manager."""
-    from src.workflow.preparation.state_manager import StateManager
+    from src.workflow.preparation.state.state_manager import StateManager
 
     # Get dependencies from container
     config_loader = container.resolve("system_config_loader")
@@ -130,18 +130,36 @@ def _create_state_manager(container: Any) -> Any:
 
 def _create_command_processor(container: Any) -> Any:
     """Lazy factory for command processor."""
-    from src.workflow.preparation.command_processor import CommandProcessor
+    from src.workflow.preparation.execution.command_processor import CommandProcessor
 
     state_manager = container.resolve("state_manager")
     return CommandProcessor(container, state_manager)
 
 
+def _create_file_preparation_repository(container: Any) -> Any:
+    """Lazy factory for file preparation repository."""
+    from src.infrastructure.persistence.sqlite.repositories.file_preparation_repository import FilePreparationRepository
+
+    sqlite_manager = container.resolve("sqlite_manager")
+    return FilePreparationRepository(sqlite_manager)
+
+
+def _create_file_preparation_service(container: Any) -> Any:
+    """Lazy factory for file preparation service."""
+    from src.workflow.preparation.file.file_preparation_service import FilePreparationService
+
+    file_driver = container.resolve("file_driver")
+    repository = container.resolve("file_preparation_repository")
+    return FilePreparationService(file_driver, repository)
+
+
 def _create_file_preparation_driver(container: Any) -> Any:
-    """Lazy factory for state transition driver."""
-    from src.workflow.preparation.command_processor import FilePreparationDriver
+    """Lazy factory for file preparation driver."""
+    from src.workflow.preparation.execution.command_processor import FilePreparationDriver
 
     state_manager = container.resolve("state_manager")
-    return FilePreparationDriver(state_manager)
+    file_preparation_service = container.resolve("file_preparation_service")
+    return FilePreparationDriver(state_manager, file_preparation_service)
 
 
 def _create_contest_manager(container: Any) -> Any:
@@ -184,6 +202,8 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("state_manager", lambda: _create_state_manager(container))
     container.register("command_processor", lambda: _create_command_processor(container))
+    container.register("file_preparation_repository", lambda: _create_file_preparation_repository(container))
+    container.register("file_preparation_service", lambda: _create_file_preparation_service(container))
     container.register("file_preparation_driver", lambda: _create_file_preparation_driver(container))
     container.register("contest_manager", lambda: _create_contest_manager(container))
 
@@ -194,6 +214,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register('python_driver', lambda: container.resolve(DIKey.PYTHON_DRIVER))
     container.register('persistence_driver', lambda: container.resolve(DIKey.PERSISTENCE_DRIVER))
     container.register('unified_driver', lambda: container.resolve(DIKey.UNIFIED_DRIVER))
+    container.register('sqlite_manager', lambda: container.resolve(DIKey.SQLITE_MANAGER))
 
 
 def configure_test_dependencies(container: DIContainer) -> None:
@@ -247,6 +268,8 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("state_manager", lambda: _create_state_manager(container))
     container.register("command_processor", lambda: _create_command_processor(container))
+    container.register("file_preparation_repository", lambda: _create_file_preparation_repository(container))
+    container.register("file_preparation_service", lambda: _create_file_preparation_service(container))
     container.register("file_preparation_driver", lambda: _create_file_preparation_driver(container))
     container.register("contest_manager", lambda: _create_contest_manager(container))
 
@@ -257,3 +280,4 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register('python_driver', lambda: container.resolve(DIKey.PYTHON_DRIVER))
     container.register('persistence_driver', lambda: container.resolve(DIKey.PERSISTENCE_DRIVER))
     container.register('unified_driver', lambda: container.resolve(DIKey.UNIFIED_DRIVER))
+    container.register('sqlite_manager', lambda: container.resolve(DIKey.SQLITE_MANAGER))

@@ -43,6 +43,16 @@ class MockContext:
             "problem_name": self.problem_name
         }
 
+    def to_format_dict(self):
+        """Convert context to dictionary for formatting (new interface)"""
+        return {
+            "env_type": self.env_type,
+            "language_name": self.language,
+            "language": self.language,
+            "contest_name": self.contest_name,
+            "problem_name": self.problem_name
+        }
+
 
 class TestRequestCreationStrategies:
 

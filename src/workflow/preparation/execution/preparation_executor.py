@@ -12,15 +12,15 @@ from src.domain.requests.file.file_op_type import FileOpType
 from src.domain.requests.file.file_request import FileRequest
 from src.domain.requests.shell.shell_request import ShellRequest
 from src.utils.path_operations import DockerPathOperations
-from src.workflow.preparation.docker_state_manager_sqlite import DockerStateManagerSQLite
-from src.workflow.preparation.environment_inspector import (
+from src.workflow.preparation.core.preparation_error_handler import (
+    PreparationErrorHandler,
+    RobustPreparationExecutor,
+)
+from src.workflow.preparation.docker.docker_state_manager_sqlite import DockerStateManagerSQLite
+from src.workflow.preparation.execution.environment_inspector import (
     EnvironmentInspector,
     ResourceStatus,
     ResourceType,
-)
-from src.workflow.preparation.preparation_error_handler import (
-    PreparationErrorHandler,
-    RobustPreparationExecutor,
 )
 
 

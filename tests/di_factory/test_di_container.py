@@ -43,7 +43,7 @@ class TestDIConfigFactories:
         # Should be SystemConfigLoader instance
         assert hasattr(loader, 'get_env_config')
 
-    @patch('src.workflow.preparation.state_manager.StateManager')
+    @patch('src.workflow.preparation.state.state_manager.StateManager')
     def test_create_state_manager(self, mock_state_manager_class):
         """Test _create_state_manager factory"""
         container = Mock()
@@ -61,7 +61,7 @@ class TestDIConfigFactories:
             container, mock_config_loader, {"test": "config"}
         )
 
-    @patch('src.workflow.preparation.command_processor.CommandProcessor')
+    @patch('src.workflow.preparation.execution.command_processor.CommandProcessor')
     def test_create_command_processor(self, mock_command_processor_class):
         """Test _create_command_processor factory"""
         container = Mock()
@@ -76,12 +76,22 @@ class TestDIConfigFactories:
         assert result == mock_processor_instance
         mock_command_processor_class.assert_called_once_with(container, mock_state_manager)
 
-    @patch('src.workflow.preparation.command_processor.FilePreparationDriver')
+    @patch('src.workflow.preparation.execution.command_processor.FilePreparationDriver')
     def test_create_file_preparation_driver(self, mock_driver_class):
         """Test _create_file_preparation_driver factory"""
         container = Mock()
         mock_state_manager = Mock()
-        container.resolve.return_value = mock_state_manager
+        mock_file_preparation_service = Mock()
+
+        # Mock container.resolve to return different values based on the key
+        def mock_resolve(key):
+            if key == "state_manager":
+                return mock_state_manager
+            if key == "file_preparation_service":
+                return mock_file_preparation_service
+            return Mock()
+
+        container.resolve.side_effect = mock_resolve
 
         mock_driver_instance = Mock()
         mock_driver_class.return_value = mock_driver_instance
@@ -89,7 +99,7 @@ class TestDIConfigFactories:
         result = _create_file_preparation_driver(container)
 
         assert result == mock_driver_instance
-        mock_driver_class.assert_called_once_with(mock_state_manager)
+        mock_driver_class.assert_called_once_with(mock_state_manager, mock_file_preparation_service)
 
     @patch('src.infrastructure.persistence.sqlite.contest_manager.ContestManager')
     def test_create_contest_manager(self, mock_contest_manager_class):

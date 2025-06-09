@@ -79,9 +79,10 @@ class Step:
     format_options: Optional[dict[str, Any]] = None
     output_format: Optional[str] = None
     format_preset: Optional[str] = None
-    # State transition specific fields
+    # File preparation specific fields
     target_state: Optional[str] = None
     context: Optional[dict[str, Any]] = None
+    operation_type: Optional[str] = None
 
     def __post_init__(self):
         """データ検証"""

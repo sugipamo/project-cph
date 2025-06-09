@@ -93,7 +93,7 @@ class FileRequestStrategy(RequestCreationStrategy):
 
     def _format_step_values(self, cmd: list[str], context: Any) -> list[str]:
         """Format step command values with context variables."""
-        context_dict = context.to_dict() if hasattr(context, 'to_dict') else {}
+        context_dict = context.to_format_dict() if hasattr(context, 'to_format_dict') else {}
         return format_values_with_context_dict(cmd, context_dict)
 
 
@@ -125,7 +125,7 @@ class ShellRequestStrategy(RequestCreationStrategy):
     def _create_test_script_command(self, cmd: list[str], context: Any) -> list[str]:
         """Create a bash script that runs tests with input files"""
         # Get contest_current_path from context
-        context_dict = context.to_dict() if hasattr(context, 'to_dict') else {}
+        context_dict = context.to_format_dict() if hasattr(context, 'to_format_dict') else {}
         contest_current_path = context_dict.get('contest_current_path', './contest_current')
 
         # Create a bash script that runs the program with test inputs
@@ -153,7 +153,7 @@ done
 
     def _format_step_values(self, cmd: list[str], context: Any) -> list[str]:
         """Format step command values with context variables."""
-        context_dict = context.to_dict() if hasattr(context, 'to_dict') else {}
+        context_dict = context.to_format_dict() if hasattr(context, 'to_format_dict') else {}
         return format_values_with_context_dict(cmd, context_dict)
 
 
@@ -179,7 +179,7 @@ class PythonRequestStrategy(RequestCreationStrategy):
 
     def _format_step_values(self, cmd: list[str], context: Any) -> list[str]:
         """Format step command values with context variables."""
-        context_dict = context.to_dict() if hasattr(context, 'to_dict') else {}
+        context_dict = context.to_format_dict() if hasattr(context, 'to_format_dict') else {}
         return format_values_with_context_dict(cmd, context_dict)
 
 
@@ -190,7 +190,27 @@ class FilePreparationRequestStrategy(RequestCreationStrategy):
         return step_type == StepType.FILE_PREPARATION
 
     def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
-        from src.workflow.preparation.command_processor import FilePreparationRequest
+        from src.workflow.preparation.execution.command_processor import FilePreparationRequest
+
+        # Determine operation type based on step context or default to state_transition
+        operation_type = getattr(step, 'operation_type', 'state_transition')
+
+        # Extract context information
+        context_dict = context.to_format_dict() if hasattr(context, 'to_format_dict') else {}
+
+        # For test file movement operations
+        if operation_type == 'move_test_files':
+            return FilePreparationRequest(
+                operation_type='move_test_files',
+                context_params={
+                    'language': context_dict.get('language', 'unknown'),
+                    'contest_name': context_dict.get('contest_name', 'unknown'),
+                    'problem_name': context_dict.get('problem_name', 'unknown')
+                },
+                workspace_path=context_dict.get('workspace_path'),
+                contest_current_path=context_dict.get('contest_current_path'),
+                dry_run=getattr(step, 'dry_run', False)
+            )
 
         # Extract state transition parameters from step
         # Handle both cmd-based and attribute-based formats
@@ -214,7 +234,6 @@ class FilePreparationRequestStrategy(RequestCreationStrategy):
                     context_params[key] = value
 
         # Format context parameters with execution context
-        context_dict = context.to_dict() if hasattr(context, 'to_dict') else {}
         formatted_context = {}
         for key, value in context_params.items():
             if isinstance(value, str):
@@ -226,6 +245,7 @@ class FilePreparationRequestStrategy(RequestCreationStrategy):
         return FilePreparationRequest(
             target_state=target_state,
             context_params=formatted_context,
+            operation_type='state_transition',
             dry_run=getattr(step, 'dry_run', False)
         )
 

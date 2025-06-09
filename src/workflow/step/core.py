@@ -90,6 +90,7 @@ def create_step_from_json(json_step: dict[str, Any], context: StepContext) -> St
     if step_type == StepType.FILE_PREPARATION:
         target_state = json_step.get('target_state')
         context_data = json_step.get('context', {})
+        operation_type = json_step.get('operation_type', 'state_transition')
 
         # Format context values
         formatted_context = {}
@@ -101,6 +102,7 @@ def create_step_from_json(json_step: dict[str, Any], context: StepContext) -> St
 
         step_kwargs['target_state'] = target_state
         step_kwargs['context'] = formatted_context
+        step_kwargs['operation_type'] = operation_type
 
     return Step(**step_kwargs)
 

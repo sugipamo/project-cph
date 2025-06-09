@@ -4,8 +4,8 @@ from typing import Any, Dict, List, Tuple
 
 from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
 
-from .folder_mapping import FolderMapper, create_folder_mapper_from_env
-from .state_definitions import WorkflowContext, WorkflowState, validate_file_preparation
+from ..core.state_definitions import WorkflowContext, WorkflowState, validate_file_preparation
+from ..file.folder_mapping import FolderMapper, create_folder_mapper_from_env
 from .transition_engine import TransitionEngine, TransitionStep
 
 

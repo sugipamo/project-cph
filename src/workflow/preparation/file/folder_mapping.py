@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
-from .state_definitions import WorkflowContext
+from ..core.state_definitions import WorkflowContext
 
 
 @dataclass

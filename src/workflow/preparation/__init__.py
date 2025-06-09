@@ -3,17 +3,17 @@
 
 # Legacy compatibility - maintains existing interface
 # Core module removed, using direct imports
-from .command_processor import CommandProcessor, FilePreparationDriver, FilePreparationRequest
-from .docker_state_manager import DockerStateManager
-from .environment_inspector import EnvironmentInspector
-from .folder_mapping import FolderMapper, create_folder_mapper_from_env
-from .preparation_error_handler import PreparationErrorHandler
-from .preparation_executor import PreparationExecutor
+from .core.preparation_error_handler import PreparationErrorHandler
 
 # State management components
-from .state_definitions import WorkflowContext, WorkflowState, validate_file_preparation
-from .state_manager import StateManager
-from .transition_engine import TransitionEngine, TransitionStep
+from .core.state_definitions import WorkflowContext, WorkflowState, validate_file_preparation
+from .docker.docker_state_manager import DockerStateManager
+from .execution.command_processor import CommandProcessor, FilePreparationDriver, FilePreparationRequest
+from .execution.environment_inspector import EnvironmentInspector
+from .execution.preparation_executor import PreparationExecutor
+from .file.folder_mapping import FolderMapper, create_folder_mapper_from_env
+from .state.state_manager import StateManager
+from .state.transition_engine import TransitionEngine, TransitionStep
 
 __all__ = [
     "CommandProcessor",
