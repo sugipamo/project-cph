@@ -45,72 +45,151 @@ class FilePreparationService:
         Returns:
             Tuple of (success, message, file_count)
         """
-        # Check if already done and not forcing
-        if not force and self.repository.has_successful_operation(
-            language_name, contest_name, problem_name, 'move_test_files'
-        ):
+        # Check if operation was already completed
+        already_done, done_message = self._check_operation_already_done(
+            language_name, contest_name, problem_name, 'move_test_files', force
+        )
+        if already_done:
             return True, "Test files already moved", 0
 
         source_test_dir = Path(workspace_path) / "test"
         dest_test_dir = Path(contest_current_path) / "test"
 
+        # Validate source directory exists
+        is_valid, validation_message = self._validate_test_file_operation(
+            source_test_dir, 'move_test_files'
+        )
+        if not is_valid:
+            self.logger.info(validation_message)
+            self._record_operation_result(
+                language_name, contest_name, problem_name, 'move_test_files',
+                source_test_dir, dest_test_dir, 0, True, "No source directory"
+            )
+            return True, validation_message, 0
+
+        # Perform the file move operation
+        success, message, file_count = self._perform_test_file_move(
+            source_test_dir, dest_test_dir
+        )
+
+        # Record the operation result
+        self._record_operation_result(
+            language_name, contest_name, problem_name, 'move_test_files',
+            source_test_dir, dest_test_dir, file_count, success,
+            message if not success else ""
+        )
+
+        return success, message, file_count
+
+    def _check_operation_already_done(
+        self,
+        language_name: str,
+        contest_name: str,
+        problem_name: str,
+        operation_name: str,
+        force: bool
+    ) -> Tuple[bool, str]:
+        """Check if operation was already completed.
+        
+        Args:
+            language_name: Programming language name
+            contest_name: Contest identifier
+            problem_name: Problem identifier
+            operation_name: Name of the operation
+            force: Whether to force execution even if already done
+            
+        Returns:
+            Tuple of (already_done, message)
+        """
+        if not force and self.repository.has_successful_operation(
+            language_name, contest_name, problem_name, operation_name
+        ):
+            return True, f"{operation_name} already completed"
+        return False, ""
+
+    def _validate_test_file_operation(self, source_path: Path, operation_name: str) -> Tuple[bool, str]:
+        """Validate preconditions for test file operations.
+        
+        Args:
+            source_path: Source directory path
+            operation_name: Name of the operation for error messages
+            
+        Returns:
+            Tuple of (is_valid, message)
+        """
+        if not self.file_driver.exists(source_path):
+            return False, f"Source directory does not exist: {source_path}"
+        return True, ""
+
+    def _perform_test_file_move(
+        self,
+        source_path: Path,
+        dest_path: Path
+    ) -> Tuple[bool, str, int]:
+        """Perform the actual file move operation.
+        
+        Args:
+            source_path: Source directory path
+            dest_path: Destination directory path
+            
+        Returns:
+            Tuple of (success, message, file_count)
+        """
         try:
-            # Check if source directory exists
-            if not self.file_driver.exists(source_test_dir):
-                message = f"Source test directory does not exist: {source_test_dir}"
-                self.logger.info(message)
-                self.repository.record_operation(
-                    language_name, contest_name, problem_name, 'move_test_files',
-                    str(source_test_dir), str(dest_test_dir), 0, True, "No source directory"
-                )
-                return True, message, 0
-
-            # For mock testing, we'll skip the empty directory check
-            # In real usage, the source_test_dir.iterdir() would work fine
-            # The mock file driver doesn't implement iterdir() properly
-            try:
-                if hasattr(source_test_dir, 'iterdir'):
-                    list(source_test_dir.iterdir())
-            except (OSError, FileNotFoundError, AttributeError):
-                # For mock or when can't iterate, assume files exist if directory exists
-                pass  # Non-empty to proceed with move
-
-            # Ensure destination directory exists
-            dest_test_dir.parent.mkdir(parents=True, exist_ok=True)
+            # Ensure destination directory exists using file driver
+            if not self.file_driver.exists(dest_path.parent):
+                self.file_driver.makedirs(dest_path.parent, exist_ok=True)
 
             # Remove existing destination if it exists
-            if self.file_driver.exists(dest_test_dir):
-                self.file_driver.rmtree(dest_test_dir)
-                self.logger.info(f"Removed existing destination: {dest_test_dir}")
+            if self.file_driver.exists(dest_path):
+                self.file_driver.rmtree(dest_path)
+                self.logger.info(f"Removed existing destination: {dest_path}")
 
             # Move the entire test directory
-            self.file_driver.move(source_test_dir, dest_test_dir)
+            self.file_driver.move(source_path, dest_path)
 
             # Count files that were moved
-            file_count = self._count_files_recursively(dest_test_dir)
+            file_count = self._count_files_recursively(dest_path)
 
-            message = f"Moved {file_count} test files from {source_test_dir} to {dest_test_dir}"
+            message = f"Moved {file_count} test files from {source_path} to {dest_path}"
             self.logger.info(message)
-
-            # Record successful operation
-            self.repository.record_operation(
-                language_name, contest_name, problem_name, 'move_test_files',
-                str(source_test_dir), str(dest_test_dir), file_count, True
-            )
 
             return True, message, file_count
 
         except Exception as e:
             error_message = f"Failed to move test files: {e!s}"
             self.logger.error(error_message)
-
-            # Record failed operation
-            self.repository.record_operation(
-                language_name, contest_name, problem_name, 'move_test_files',
-                str(source_test_dir), str(dest_test_dir), 0, False, error_message
-            )
-
             return False, error_message, 0
+
+    def _record_operation_result(
+        self,
+        language_name: str,
+        contest_name: str,
+        problem_name: str,
+        operation_name: str,
+        source_path: Path,
+        dest_path: Path,
+        file_count: int,
+        success: bool,
+        message: str = ""
+    ) -> None:
+        """Record operation result in repository.
+        
+        Args:
+            language_name: Programming language name
+            contest_name: Contest identifier
+            problem_name: Problem identifier
+            operation_name: Name of the operation
+            source_path: Source directory path
+            dest_path: Destination directory path
+            file_count: Number of files processed
+            success: Whether operation succeeded
+            message: Error message if operation failed
+        """
+        self.repository.record_operation(
+            language_name, contest_name, problem_name, operation_name,
+            str(source_path), str(dest_path), file_count, success, message
+        )
 
     def cleanup_workspace_test(
         self,
