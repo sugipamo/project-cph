@@ -114,8 +114,8 @@ class ProblemWorkspaceService:
         try:
             total_files_moved = 0
 
-            # Step 1: Archive current work if any exists
-            if current_info.is_working:
+            # Step 1: Archive current work if any exists and we know what it is
+            if current_info.is_working and current_info.current_contest and current_info.current_problem:
                 archive_result = self.archive_current_work()
                 if not archive_result.success:
                     return SwitchResult(
@@ -123,6 +123,12 @@ class ProblemWorkspaceService:
                         message=f"Failed to archive current work: {archive_result.message}"
                     )
                 self.logger.info(f"Archived current work: {archive_result.message}")
+            elif current_info.is_working:
+                # Files exist but we don't know what problem they're for - just clear them
+                self.logger.warning("Current workspace has files but no problem information - clearing without archiving")
+                contest_current_path = Path(self.base_paths["contest_current_path"])
+                if self.file_driver.exists(contest_current_path):
+                    self.file_driver.rmtree(contest_current_path)
 
             # Step 2: Restore or create workspace for target problem
             restore_result = self.restore_or_create_workspace(contest, problem, language)

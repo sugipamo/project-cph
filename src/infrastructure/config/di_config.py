@@ -149,6 +149,7 @@ def _create_file_preparation_service(container: Any) -> Any:
 
 def _create_problem_workspace_service(container: Any) -> Any:
     """Lazy factory for problem workspace service."""
+    from src.infrastructure.config.json_config_loader import JsonConfigLoader
     from src.workflow.problem_workspace_service import ProblemWorkspaceService
 
     file_driver = container.resolve("file_driver")
@@ -156,25 +157,12 @@ def _create_problem_workspace_service(container: Any) -> Any:
     logger = container.resolve("logger")
     file_preparation_service = container.resolve("file_preparation_service")
 
-    # Extract base paths from system config
-    config_loader = container.resolve("system_config_loader")
-    env_json = config_loader.get_env_config()
+    # Use JSON config loader to get paths
+    json_loader = JsonConfigLoader()
 
-    # Use python paths as default - this will be configurable later
+    # Use python as default language for now
     default_language = "python"
-    lang_config = env_json.get("languages", {}).get(default_language, {}).get("paths", {})
-
-    base_paths = {}
-    for key in ["contest_current_path", "contest_stock_path", "contest_template_path", "workspace_path"]:
-        if key in lang_config:
-            base_paths[key] = lang_config[key]
-
-    # Fallback to shared paths
-    if "shared" in env_json and "paths" in env_json["shared"]:
-        shared_paths = env_json["shared"]["paths"]
-        for key, value in shared_paths.items():
-            if key not in base_paths:
-                base_paths[key] = value
+    base_paths = json_loader.get_paths_for_language(default_language)
 
     return ProblemWorkspaceService(
         file_driver, repository, logger, base_paths, file_preparation_service
