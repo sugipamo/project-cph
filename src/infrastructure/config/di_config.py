@@ -71,12 +71,6 @@ def _create_system_config_repository(sqlite_manager: Any) -> Any:
     return SystemConfigRepository(sqlite_manager)
 
 
-def _create_contest_current_files_repository(sqlite_manager: Any) -> Any:
-    """Lazy factory for contest current files repository."""
-    from src.infrastructure.persistence.sqlite.repositories.contest_current_files_repository import (
-        ContestCurrentFilesRepository,
-    )
-    return ContestCurrentFilesRepository(sqlite_manager)
 
 
 def _create_unified_driver(container: DIContainer) -> Any:
@@ -202,7 +196,6 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.DOCKER_CONTAINER_REPOSITORY, _create_docker_container_repository)
     container.register(DIKey.DOCKER_IMAGE_REPOSITORY, _create_docker_image_repository)
     container.register(DIKey.SYSTEM_CONFIG_REPOSITORY, _create_system_config_repository)
-    container.register("contest_current_files_repository", lambda: _create_contest_current_files_repository(container.resolve(DIKey.SQLITE_MANAGER)))
 
     # Register orchestration layer
     container.register(DIKey.UNIFIED_DRIVER, lambda: _create_unified_driver(container))
@@ -279,7 +272,6 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register(DIKey.DOCKER_CONTAINER_REPOSITORY, _create_docker_container_repository)
     container.register(DIKey.DOCKER_IMAGE_REPOSITORY, _create_docker_image_repository)
     container.register(DIKey.SYSTEM_CONFIG_REPOSITORY, _create_system_config_repository)
-    container.register("contest_current_files_repository", lambda: _create_contest_current_files_repository(container.resolve(DIKey.SQLITE_MANAGER)))
 
     # Register orchestration layer
     container.register(DIKey.UNIFIED_DRIVER, lambda: _create_unified_driver(container))
