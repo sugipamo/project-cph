@@ -103,6 +103,18 @@ def _create_environment_manager() -> Any:
     return EnvironmentManager()
 
 
+def _create_logger() -> Any:
+    """Lazy factory for logger."""
+    from src.infrastructure.drivers.logging.python_logger import PythonLogger
+    return PythonLogger()
+
+
+def _create_filesystem() -> Any:
+    """Lazy factory for filesystem."""
+    from src.infrastructure.drivers.filesystem.local_filesystem import LocalFileSystem
+    return LocalFileSystem()
+
+
 def _create_request_factory() -> Any:
     """Lazy factory for request factory."""
     from src.application.factories.unified_request_factory import UnifiedRequestFactory
@@ -150,7 +162,8 @@ def _create_file_preparation_service(container: Any) -> Any:
 
     file_driver = container.resolve("file_driver")
     repository = container.resolve("file_preparation_repository")
-    return FilePreparationService(file_driver, repository)
+    logger = container.resolve("logger")
+    return FilePreparationService(file_driver, repository, logger)
 
 
 def _create_file_preparation_driver(container: Any) -> Any:
@@ -198,6 +211,10 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.ENVIRONMENT_MANAGER, _create_environment_manager)
     container.register(DIKey.UNIFIED_REQUEST_FACTORY, _create_request_factory)
 
+    # Register interfaces
+    container.register("logger", _create_logger)
+    container.register("filesystem", _create_filesystem)
+
     # Register state management components
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("state_manager", lambda: _create_state_manager(container))
@@ -240,6 +257,14 @@ def configure_test_dependencies(container: DIContainer) -> None:
         from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
         return FastSQLiteManager(":memory:", skip_migrations=False)
 
+    def _create_mock_logger():
+        from tests.base.mock_logger import MockLogger
+        return MockLogger()
+
+    def _create_mock_filesystem():
+        from tests.base.mock_filesystem import MockFileSystem
+        return MockFileSystem()
+
     # Register mock drivers
     container.register(DIKey.SHELL_DRIVER, _create_mock_shell_driver)
     container.register(DIKey.DOCKER_DRIVER, _create_mock_docker_driver)
@@ -263,6 +288,10 @@ def configure_test_dependencies(container: DIContainer) -> None:
     # Register environment and factory
     container.register(DIKey.ENVIRONMENT_MANAGER, _create_environment_manager)
     container.register(DIKey.UNIFIED_REQUEST_FACTORY, _create_request_factory)
+
+    # Register mock interfaces
+    container.register("logger", _create_mock_logger)
+    container.register("filesystem", _create_mock_filesystem)
 
     # Register state management components
     container.register("system_config_loader", lambda: _create_system_config_loader(container))

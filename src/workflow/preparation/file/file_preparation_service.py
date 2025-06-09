@@ -1,9 +1,9 @@
 """Service for handling file preparation operations like test file movements."""
 
-import logging
 from pathlib import Path
 from typing import List, Tuple
 
+from src.domain.interfaces.logger_interface import LoggerInterface
 from src.infrastructure.drivers.file.file_driver import FileDriver
 from src.infrastructure.persistence.sqlite.repositories.file_preparation_repository import FilePreparationRepository
 
@@ -11,16 +11,17 @@ from src.infrastructure.persistence.sqlite.repositories.file_preparation_reposit
 class FilePreparationService:
     """Service for managing file preparation operations."""
 
-    def __init__(self, file_driver: FileDriver, repository: FilePreparationRepository):
-        """Initialize with file driver and repository.
+    def __init__(self, file_driver: FileDriver, repository: FilePreparationRepository, logger: LoggerInterface):
+        """Initialize with file driver, repository and logger.
 
         Args:
             file_driver: File driver for file operations
             repository: Repository for tracking operations
+            logger: Logger for logging operations
         """
         self.file_driver = file_driver
         self.repository = repository
-        self.logger = logging.getLogger(__name__)
+        self.logger = logger
 
     def move_test_files(
         self,

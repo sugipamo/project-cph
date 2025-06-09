@@ -1,113 +1,59 @@
 """Folder mapping system for state transitions."""
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
+from src.domain.interfaces.filesystem_interface import FileSystemInterface
+
 from ..core.state_definitions import WorkflowContext
-
-
-@dataclass
-class FolderArea:
-    """Definition of a folder area."""
-    name: str
-    path_template: str
-    purpose: str
-    description: str
-
-    def resolve_path(self, context: WorkflowContext, path_vars: Dict[str, str]) -> Path:
-        """Resolve the actual path using context and variables."""
-        # Combine context and path variables
-        all_vars = {**path_vars}
-        if context.contest_name:
-            all_vars["contest_name"] = context.contest_name
-        if context.problem_name:
-            all_vars["problem_name"] = context.problem_name
-        if context.language:
-            all_vars["language"] = context.language
-            all_vars["language_name"] = context.language
-
-        # Format the path template
-        resolved_path = self.path_template.format(**all_vars)
-        return Path(resolved_path)
+from .folder_path_resolver import define_standard_areas, get_area_path
 
 
 class FolderMapper:
     """Maps logical areas to physical folder structures."""
 
-    def __init__(self, path_vars: Dict[str, str]):
-        """Initialize with path variables from env.json."""
-        self.path_vars = path_vars
-        self._areas = self._define_areas()
+    def __init__(self, path_vars: Dict[str, str], filesystem: FileSystemInterface):
+        """Initialize with path variables and filesystem interface.
 
-    def _define_areas(self) -> Dict[str, FolderArea]:
-        """Define the standard folder areas."""
-        return {
-            "working_area": FolderArea(
-                name="working_area",
-                path_template="{contest_current_path}",
-                purpose="active_work",
-                description="Current active problem work"
-            ),
-            "archive_area": FolderArea(
-                name="archive_area",
-                path_template="{contest_stock_path}/{contest_name}/{problem_name}",
-                purpose="completed_work_storage",
-                description="Archived completed work"
-            ),
-            "template_area": FolderArea(
-                name="template_area",
-                path_template="{contest_template_path}/{language}",
-                purpose="clean_starting_files",
-                description="Template files for new problems"
-            ),
-            "workspace_area": FolderArea(
-                name="workspace_area",
-                path_template="{workspace_path}",
-                purpose="temporary_execution",
-                description="Temporary execution workspace"
-            )
-        }
+        Args:
+            path_vars: Path variables from env.json
+            filesystem: File system interface for operations
+        """
+        self.path_vars = path_vars
+        self.filesystem = filesystem
+        self._areas = define_standard_areas()
+
 
     def get_area_path(self, area_name: str, context: WorkflowContext) -> Path:
         """Get the resolved path for an area."""
-        if area_name not in self._areas:
-            raise ValueError(f"Unknown area: {area_name}")
-
-        area = self._areas[area_name]
-        return area.resolve_path(context, self.path_vars)
+        return get_area_path(area_name, self._areas, context, self.path_vars)
 
     def area_exists(self, area_name: str, context: WorkflowContext) -> bool:
         """Check if area path exists."""
         path = self.get_area_path(area_name, context)
-        return path.exists()
+        return self.filesystem.exists(path)
 
     def area_has_files(self, area_name: str, context: WorkflowContext) -> bool:
         """Check if area has any files."""
         path = self.get_area_path(area_name, context)
-        if not path.exists():
+        if not self.filesystem.exists(path):
             return False
 
-        try:
-            # Check if directory has any files (not just subdirectories)
-            return any(item.is_file() for item in path.iterdir())
-        except (OSError, PermissionError):
-            return False
+        items = self.filesystem.iterdir(path)
+        return any(self.filesystem.is_file(item) for item in items)
 
     def list_area_files(self, area_name: str, context: WorkflowContext) -> List[Path]:
         """List all files in an area."""
         path = self.get_area_path(area_name, context)
-        if not path.exists():
+        if not self.filesystem.exists(path):
             return []
 
-        try:
-            return [item for item in path.iterdir() if item.is_file()]
-        except (OSError, PermissionError):
-            return []
+        items = self.filesystem.iterdir(path)
+        return [item for item in items if self.filesystem.is_file(item)]
 
     def ensure_area_exists(self, area_name: str, context: WorkflowContext) -> Path:
         """Ensure area directory exists, create if needed."""
         path = self.get_area_path(area_name, context)
-        path.mkdir(parents=True, exist_ok=True)
+        self.filesystem.mkdir(path, parents=True, exist_ok=True)
         return path
 
     def get_archive_path(self, contest_name: str, problem_name: str) -> Path:
@@ -124,41 +70,23 @@ class FolderMapper:
         base_path = Path(self.path_vars.get("contest_stock_path", "./contest_stock"))
         archives = []
 
-        if not base_path.exists():
+        if not self.filesystem.exists(base_path):
             return archives
 
-        try:
-            for contest_dir in base_path.iterdir():
-                if contest_dir.is_dir():
-                    for problem_dir in contest_dir.iterdir():
-                        if problem_dir.is_dir():
-                            archives.append((contest_dir.name, problem_dir.name))
-        except (OSError, PermissionError):
-            pass
+        contest_dirs = self.filesystem.iterdir(base_path)
+        for contest_dir in contest_dirs:
+            if self.filesystem.is_dir(contest_dir):
+                problem_dirs = self.filesystem.iterdir(contest_dir)
+                for problem_dir in problem_dirs:
+                    if self.filesystem.is_dir(problem_dir):
+                        archives.append((contest_dir.name, problem_dir.name))
 
         return sorted(archives)
 
 
-def create_folder_mapper_from_env(env_json: Dict[str, Any], language: str) -> FolderMapper:
+def create_folder_mapper_from_env(env_json: Dict[str, Any], language: str, filesystem: FileSystemInterface) -> FolderMapper:
     """Create FolderMapper from env.json configuration."""
-    if language not in env_json:
-        raise ValueError(f"Language {language} not found in env.json")
+    from .config_parser import create_folder_mapper_config
 
-    lang_config = env_json[language]
-
-    # Extract path variables
-    path_vars = {}
-
-    # Language-specific paths
-    for key in ["contest_current_path", "contest_stock_path", "contest_template_path", "workspace_path"]:
-        if key in lang_config:
-            path_vars[key] = lang_config[key]
-
-    # Shared paths (fallback)
-    if "shared" in env_json and "paths" in env_json["shared"]:
-        shared_paths = env_json["shared"]["paths"]
-        for key, value in shared_paths.items():
-            if key not in path_vars:
-                path_vars[key] = value
-
-    return FolderMapper(path_vars)
+    path_vars = create_folder_mapper_config(env_json, language)
+    return FolderMapper(path_vars, filesystem)
