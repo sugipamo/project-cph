@@ -43,7 +43,7 @@ class TestDIConfigFactories:
         # Should be SystemConfigLoader instance
         assert hasattr(loader, 'get_env_config')
 
-    @patch('src.workflow.preparation.state.state_manager.StateManager')
+    @patch('src.workflow.preparation.state.management.state_manager.StateManager')
     def test_create_state_manager(self, mock_state_manager_class):
         """Test _create_state_manager factory"""
         container = Mock()

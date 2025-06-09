@@ -117,7 +117,7 @@ def _create_system_config_loader(container: Any) -> Any:
 
 def _create_state_manager(container: Any) -> Any:
     """Lazy factory for state manager."""
-    from src.workflow.preparation.state.state_manager import StateManager
+    from src.workflow.preparation.state.management.state_manager import StateManager
 
     # Get dependencies from container
     config_loader = container.resolve("system_config_loader")

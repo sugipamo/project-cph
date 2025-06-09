@@ -1,0 +1,1 @@
+"""State management core functionality."""

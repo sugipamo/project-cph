@@ -12,8 +12,9 @@ from .execution.command_processor import CommandProcessor, FilePreparationDriver
 from .execution.environment_inspector import EnvironmentInspector
 from .execution.preparation_executor import PreparationExecutor
 from .file.folder_mapping import FolderMapper, create_folder_mapper_from_env
-from .state.state_manager import StateManager
-from .state.transition_engine import TransitionEngine, TransitionStep
+from .state.conditions.condition_evaluator import TransitionStep
+from .state.management.state_manager import StateManager
+from .state.transition.transition_engine import TransitionEngine
 
 __all__ = [
     "CommandProcessor",

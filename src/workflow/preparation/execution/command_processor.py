@@ -7,7 +7,7 @@ from src.domain.requests.base.base_request import BaseRequest
 from src.domain.results.result import OperationResult
 
 from ..core.state_definitions import WorkflowContext, WorkflowState
-from ..state.state_manager import StateManager
+from ..state.management.state_manager import StateManager
 
 
 class FilePreparationRequest(BaseRequest):

@@ -4,9 +4,10 @@ from typing import Any, Dict, List, Tuple
 
 from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
 
-from ..core.state_definitions import WorkflowContext, WorkflowState, validate_file_preparation
-from ..file.folder_mapping import FolderMapper, create_folder_mapper_from_env
-from .transition_engine import TransitionEngine, TransitionStep
+from ...core.state_definitions import WorkflowContext, WorkflowState, validate_file_preparation
+from ...file.folder_mapping import FolderMapper, create_folder_mapper_from_env
+from ..transition.step_builder import StepBuilder
+from ..transition.transition_engine import TransitionEngine
 
 
 class StateManager:
@@ -64,7 +65,7 @@ class StateManager:
             return True, [f"Already in {target_state.value} state with same context"]
 
         # Get transition steps
-        transition_steps = self._get_transition_steps(current_state, target_state)
+        transition_steps = StepBuilder.build_transition_steps(target_state)
 
         # Execute transition
         engine = self._get_transition_engine(target_context.language)
@@ -83,59 +84,6 @@ class StateManager:
 
         return success, results
 
-    def _get_transition_steps(self, from_state: WorkflowState, to_state: WorkflowState) -> List[TransitionStep]:
-        """Get transition steps for a state change."""
-        if to_state == WorkflowState.WORKING:
-            # 常にworking状態なので、問題切り替えのステップのみ
-            return [
-                TransitionStep(
-                    name="preserve_current_work",
-                    condition="current_state=working AND working_area.has_changes",
-                    action={
-                        "type": "archive",
-                        "from": "working_area",
-                        "to": "archive_area.{current_contest}.{current_problem}",
-                        "mode": "move_all"
-                    },
-                    description="現在の作業を保存してから切り替え"
-                ),
-                TransitionStep(
-                    name="initialize_work_area",
-                    condition=None,  # Always execute
-                    action={
-                        "type": "restore_or_create",
-                        "to": "working_area",
-                        "source_priority": [
-                            {
-                                "from": "archive_area.{contest_name}.{problem_name}",
-                                "condition": "exists",
-                                "priority": 1,
-                                "description": "既存作業を復元"
-                            },
-                            {
-                                "from": "template_area",
-                                "condition": "always",
-                                "priority": 2,
-                                "description": "テンプレートから新規作成"
-                            }
-                        ]
-                    },
-                    description="作業エリアを初期化（既存作業またはテンプレート）"
-                ),
-                TransitionStep(
-                    name="setup_test_environment",
-                    condition="workspace_area.test.exists",
-                    action={
-                        "type": "move",
-                        "from": "workspace_area.test",
-                        "to": "working_area.test"
-                    },
-                    description="テストファイルを作業エリアに移動"
-                )
-            ]
-
-        # IDLE状態への遷移は基本的に使わない（常にworking）
-        return []
 
     def _get_folder_mapper(self, language: str) -> FolderMapper:
         """Get folder mapper for a language."""
