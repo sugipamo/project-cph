@@ -127,25 +127,6 @@ def _create_system_config_loader(container: Any) -> Any:
     return SystemConfigLoader(container)
 
 
-def _create_state_manager(container: Any) -> Any:
-    """Lazy factory for state manager."""
-    from src.workflow.preparation.state.management.state_manager import StateManager
-
-    # Get dependencies from container
-    config_loader = container.resolve("system_config_loader")
-
-    # Load env.json from system config
-    env_json = config_loader.get_env_config()
-
-    return StateManager(container, config_loader, env_json)
-
-
-def _create_command_processor(container: Any) -> Any:
-    """Lazy factory for command processor."""
-    from src.workflow.preparation.execution.command_processor import CommandProcessor
-
-    state_manager = container.resolve("state_manager")
-    return CommandProcessor(container, state_manager)
 
 
 def _create_file_preparation_repository(container: Any) -> Any:
@@ -166,13 +147,46 @@ def _create_file_preparation_service(container: Any) -> Any:
     return FilePreparationService(file_driver, repository, logger)
 
 
-def _create_file_preparation_driver(container: Any) -> Any:
-    """Lazy factory for file preparation driver."""
-    from src.workflow.preparation.execution.command_processor import FilePreparationDriver
+def _create_problem_workspace_service(container: Any) -> Any:
+    """Lazy factory for problem workspace service."""
+    from src.workflow.problem_workspace_service import ProblemWorkspaceService
 
-    state_manager = container.resolve("state_manager")
+    file_driver = container.resolve("file_driver")
+    repository = container.resolve("file_preparation_repository")
+    logger = container.resolve("logger")
     file_preparation_service = container.resolve("file_preparation_service")
-    return FilePreparationDriver(state_manager, file_preparation_service)
+
+    # Extract base paths from system config
+    config_loader = container.resolve("system_config_loader")
+    env_json = config_loader.get_env_config()
+
+    # Use python paths as default - this will be configurable later
+    default_language = "python"
+    lang_config = env_json.get("languages", {}).get(default_language, {}).get("paths", {})
+
+    base_paths = {}
+    for key in ["contest_current_path", "contest_stock_path", "contest_template_path", "workspace_path"]:
+        if key in lang_config:
+            base_paths[key] = lang_config[key]
+
+    # Fallback to shared paths
+    if "shared" in env_json and "paths" in env_json["shared"]:
+        shared_paths = env_json["shared"]["paths"]
+        for key, value in shared_paths.items():
+            if key not in base_paths:
+                base_paths[key] = value
+
+    return ProblemWorkspaceService(
+        file_driver, repository, logger, base_paths, file_preparation_service
+    )
+
+
+def _create_workspace_driver(container: Any) -> Any:
+    """Lazy factory for workspace driver."""
+    from src.infrastructure.drivers.workspace.workspace_driver import WorkspaceDriver
+
+    workspace_service = container.resolve("problem_workspace_service")
+    return WorkspaceDriver(workspace_service)
 
 
 def _create_contest_manager(container: Any) -> Any:
@@ -215,13 +229,12 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register("logger", _create_logger)
     container.register("filesystem", _create_filesystem)
 
-    # Register state management components
+    # Register simplified workspace management
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
-    container.register("state_manager", lambda: _create_state_manager(container))
-    container.register("command_processor", lambda: _create_command_processor(container))
     container.register("file_preparation_repository", lambda: _create_file_preparation_repository(container))
     container.register("file_preparation_service", lambda: _create_file_preparation_service(container))
-    container.register("file_preparation_driver", lambda: _create_file_preparation_driver(container))
+    container.register("problem_workspace_service", lambda: _create_problem_workspace_service(container))
+    container.register("workspace_driver", lambda: _create_workspace_driver(container))
     container.register("contest_manager", lambda: _create_contest_manager(container))
 
     # Register string-based aliases for backward compatibility
@@ -293,13 +306,12 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register("logger", _create_mock_logger)
     container.register("filesystem", _create_mock_filesystem)
 
-    # Register state management components
+    # Register simplified workspace management
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
-    container.register("state_manager", lambda: _create_state_manager(container))
-    container.register("command_processor", lambda: _create_command_processor(container))
     container.register("file_preparation_repository", lambda: _create_file_preparation_repository(container))
     container.register("file_preparation_service", lambda: _create_file_preparation_service(container))
-    container.register("file_preparation_driver", lambda: _create_file_preparation_driver(container))
+    container.register("problem_workspace_service", lambda: _create_problem_workspace_service(container))
+    container.register("workspace_driver", lambda: _create_workspace_driver(container))
     container.register("contest_manager", lambda: _create_contest_manager(container))
 
     # Register string-based aliases for backward compatibility

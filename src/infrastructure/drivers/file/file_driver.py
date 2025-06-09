@@ -48,6 +48,42 @@ class FileDriver(BaseDriver):
         target_path = self.resolve_path(path)
         return target_path.is_dir()
 
+    def copytree(self, src_path: Path, dst_path: Path) -> None:
+        """Copy directory tree."""
+        resolved_src = self.resolve_path(src_path)
+        resolved_dst = self.resolve_path(dst_path)
+        self._copytree_impl(resolved_src, resolved_dst)
+
+    def rmtree(self, path: Path) -> None:
+        """Remove directory tree."""
+        resolved_path = self.resolve_path(path)
+        self._rmtree_impl(resolved_path)
+
+    def list_files_recursive(self, path: Path) -> list[Path]:
+        """List all files recursively in directory."""
+        resolved_path = self.resolve_path(path)
+        return self._list_files_recursive_impl(resolved_path)
+
+    def is_file(self, path: Path) -> bool:
+        """Check if path is a file."""
+        resolved_path = self.resolve_path(path)
+        return resolved_path.is_file()
+
+    @abstractmethod
+    def _copytree_impl(self, src_path: Path, dst_path: Path) -> None:
+        """Implementation for copying directory tree."""
+        pass
+
+    @abstractmethod
+    def _rmtree_impl(self, path: Path) -> None:
+        """Implementation for removing directory tree."""
+        pass
+
+    @abstractmethod
+    def _list_files_recursive_impl(self, path: Path) -> list[Path]:
+        """Implementation for listing files recursively."""
+        pass
+
     def glob(self, pattern: str) -> list[Path]:
         """Find files matching pattern."""
         return list(self.base_dir.glob(pattern))

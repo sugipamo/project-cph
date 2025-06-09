@@ -75,3 +75,11 @@ class LocalFileDriver(FileDriver):
             for file in files:
                 result.append(str(Path(root) / file))
         return result
+
+    def _list_files_recursive_impl(self, path: Path) -> list[Path]:
+        """Implementation for listing files recursively."""
+        result = []
+        for root, _dirs, files in os.walk(path):
+            for file in files:
+                result.append(Path(root) / file)
+        return result

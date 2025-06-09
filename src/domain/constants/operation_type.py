@@ -12,3 +12,4 @@ class OperationType(Enum):
     PYTHON = auto()
     FILE_PREPARATION = auto()
     STATE_SHOW = auto()
+    WORKSPACE = auto()

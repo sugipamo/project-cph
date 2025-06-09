@@ -164,3 +164,9 @@ class MockFileDriver(FileDriver):
         self._record_operation("list_files", base_dir)
         base = self.base_dir / base_dir
         return [f for f in self.files if str(f).startswith(str(base))]
+
+    def _list_files_recursive_impl(self, path: Path) -> list[Path]:
+        """Mock implementation for listing files recursively"""
+        self._record_operation("list_files_recursive", path)
+        # Return files that are under the given path
+        return [f for f in self.files if str(f).startswith(str(path))]

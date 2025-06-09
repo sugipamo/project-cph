@@ -183,57 +183,54 @@ class PythonRequestStrategy(RequestCreationStrategy):
         return format_values_with_context_dict(cmd, context_dict)
 
 
-class FilePreparationRequestStrategy(RequestCreationStrategy):
-    """Strategy for creating state transition requests"""
+class WorkspaceRequestStrategy(RequestCreationStrategy):
+    """Strategy for creating workspace transition requests using ProblemWorkspaceService"""
 
     def can_handle(self, step_type: StepType) -> bool:
         return step_type == StepType.FILE_PREPARATION
 
     def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
-        from src.workflow.preparation.execution.command_processor import FilePreparationRequest
-
-        # Determine operation type based on step context or default to state_transition
-        operation_type = getattr(step, 'operation_type', 'state_transition')
+        from src.workflow.workspace_request import WorkspaceRequest
 
         # Extract context information
         context_dict = context.to_format_dict() if hasattr(context, 'to_format_dict') else {}
 
-        # For test file movement operations
+        # Determine operation type based on step context or default to workspace_switch
+        operation_type = getattr(step, 'operation_type', 'workspace_switch')
+
         if operation_type == 'move_test_files':
-            return FilePreparationRequest(
+            # Create request for test file movement only
+            return WorkspaceRequest(
                 operation_type='move_test_files',
-                context_params={
-                    'language': context_dict.get('language', 'unknown'),
-                    'contest_name': context_dict.get('contest_name', 'unknown'),
-                    'problem_name': context_dict.get('problem_name', 'unknown')
-                },
-                workspace_path=context_dict.get('workspace_path'),
-                contest_current_path=context_dict.get('contest_current_path'),
-                dry_run=getattr(step, 'dry_run', False)
+                contest=context_dict.get('contest_name', 'unknown'),
+                problem=context_dict.get('problem_name', 'unknown'),
+                language=context_dict.get('language', 'unknown'),
+                allow_failure=step.allow_failure,
+                name=f"move_test_files_{context_dict.get('contest_name')}_{context_dict.get('problem_name')}"
             )
 
-        # Extract state transition parameters from step
-        # Handle both cmd-based and attribute-based formats
-
-        # Check if step has target_state and context attributes (new format)
+        # Default: workspace switch operation
+        # Extract parameters from step
         if hasattr(step, 'target_state') and step.target_state is not None:
-            target_state = step.target_state
+            # New format: use target_state as operation and context for parameters
             context_params = getattr(step, 'context', {}) or {}
         else:
-            # Fallback to cmd-based format: [target_state, context_param1=value1, ...]
-            if not step.cmd or len(step.cmd) < 1:
-                return None
+            # Fallback to cmd-based format: [contest, problem, language] or parse from cmd
+            if not step.cmd or len(step.cmd) < 3:
+                # Use context if cmd is insufficient
+                context_params = {
+                    'contest': context_dict.get('contest_name', 'unknown'),
+                    'problem': context_dict.get('problem_name', 'unknown'),
+                    'language': context_dict.get('language', 'unknown')
+                }
+            else:
+                context_params = {
+                    'contest': step.cmd[0],
+                    'problem': step.cmd[1],
+                    'language': step.cmd[2]
+                }
 
-            target_state = step.cmd[0]
-            context_params = {}
-
-            # Parse context parameters from remaining cmd arguments
-            for param in step.cmd[1:]:
-                if '=' in param:
-                    key, value = param.split('=', 1)
-                    context_params[key] = value
-
-        # Format context parameters with execution context
+        # Format parameters with execution context
         formatted_context = {}
         for key, value in context_params.items():
             if isinstance(value, str):
@@ -242,11 +239,15 @@ class FilePreparationRequestStrategy(RequestCreationStrategy):
             else:
                 formatted_context[key] = value
 
-        return FilePreparationRequest(
-            target_state=target_state,
-            context_params=formatted_context,
-            operation_type='state_transition',
-            dry_run=getattr(step, 'dry_run', False)
+        # Create workspace switch request
+        return WorkspaceRequest(
+            operation_type='workspace_switch',
+            contest=formatted_context.get('contest', context_dict.get('contest_name', 'unknown')),
+            problem=formatted_context.get('problem', context_dict.get('problem_name', 'unknown')),
+            language=formatted_context.get('language', context_dict.get('language', 'unknown')),
+            force=formatted_context.get('force', False),
+            allow_failure=step.allow_failure,
+            name=f"workspace_switch_{formatted_context.get('contest')}_{formatted_context.get('problem')}"
         )
 
 
@@ -260,7 +261,7 @@ class UnifiedRequestFactory:
             FileRequestStrategy(),
             ShellRequestStrategy(),
             PythonRequestStrategy(),
-            FilePreparationRequestStrategy(),
+            WorkspaceRequestStrategy(),
         ]
 
     def create_requests_from_steps(self, steps: list[Step], context: Any,

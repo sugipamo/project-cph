@@ -1,1 +1,0 @@
-"""Condition evaluation system."""

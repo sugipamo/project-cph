@@ -4,12 +4,12 @@ Test unified request factory implementation
 import pytest
 
 from src.application.factories.unified_request_factory import (
-    FilePreparationRequestStrategy,
     FileRequestStrategy,
     PythonRequestStrategy,
     RequestCreationStrategy,
     ShellRequestStrategy,
     UnifiedRequestFactory,
+    WorkspaceRequestStrategy,
     create_composite_request,
     create_request,
 )
@@ -19,6 +19,7 @@ from src.domain.requests.python.python_request import PythonRequest
 from src.domain.requests.shell.shell_request import ShellRequest
 from src.infrastructure.environment.environment_manager import EnvironmentManager
 from src.workflow.step.step import Step, StepType
+from src.workflow.workspace_request import WorkspaceRequest
 
 
 class MockContext:
@@ -119,47 +120,49 @@ class TestRequestCreationStrategies:
         assert "print('hello')" in request.code_or_file
         assert "print('world')" in request.code_or_file
 
-    def test_file_preparation_request_strategy(self):
-        """Test FilePreparationRequestStrategy"""
-        strategy = FilePreparationRequestStrategy()
+    def test_workspace_request_strategy(self):
+        """Test WorkspaceRequestStrategy"""
+        strategy = WorkspaceRequestStrategy()
 
         # Test can_handle
         assert strategy.can_handle(StepType.FILE_PREPARATION)
         assert not strategy.can_handle(StepType.SHELL)
 
-        # Test create_request with attribute-based format (new format)
+        # Test create_request with workspace_switch (default operation)
         step = Step(
             type=StepType.FILE_PREPARATION,
-            cmd=[],  # Empty cmd for state transition
-            target_state="working",
-            context={
-                "contest_name": "{contest_name}",
-                "problem_name": "{problem_name}",
-                "language": "{language_name}"
-            }
+            cmd=["abc300", "a", "python"]  # contest, problem, language
         )
         context = MockContext()
         env_manager = EnvironmentManager("local")
 
         request = strategy.create_request(step, context, env_manager)
-        assert request is not None
-        assert request.target_state == "working"
-        assert request.context_params["contest_name"] == "abc300"
-        assert request.context_params["problem_name"] == "a"
-        assert request.context_params["language"] == "python"
+        assert isinstance(request, WorkspaceRequest)
+        assert request.workspace_operation == "workspace_switch"
+        assert request.contest == "abc300"
+        assert request.problem == "a"
+        assert request.language == "python"
 
-        # Test create_request with cmd-based format (legacy format)
-        step = Step(type=StepType.FILE_PREPARATION, cmd=["working", "contest_name=abc123", "problem_name=b"])
+        # Test create_request with move_test_files operation
+        step = Step(
+            type=StepType.FILE_PREPARATION,
+            cmd=[],
+            operation_type="move_test_files"
+        )
         request = strategy.create_request(step, context, env_manager)
-        assert request is not None
-        assert request.target_state == "working"
-        assert request.context_params["contest_name"] == "abc123"
-        assert request.context_params["problem_name"] == "b"
+        assert isinstance(request, WorkspaceRequest)
+        assert request.workspace_operation == "move_test_files"
+        assert request.contest == "abc300"  # from context
+        assert request.problem == "a"  # from context
 
-        # Test with empty cmd
-        step = Step(type=StepType.FILE_PREPARATION, cmd=[])
+        # Test with insufficient cmd
+        step = Step(type=StepType.FILE_PREPARATION, cmd=["abc300"])  # Missing problem/language
         request = strategy.create_request(step, context, env_manager)
-        assert request is None
+        assert isinstance(request, WorkspaceRequest)
+        # Should use context to fill in missing values
+        assert request.contest == "abc300"
+        assert request.problem == "a"  # from context
+        assert request.language == "python"  # from context
 
 
 class TestUnifiedRequestFactory:
@@ -174,7 +177,7 @@ class TestUnifiedRequestFactory:
         assert "FileRequestStrategy" in strategy_types
         assert "ShellRequestStrategy" in strategy_types
         assert "PythonRequestStrategy" in strategy_types
-        assert "FilePreparationRequestStrategy" in strategy_types
+        assert "WorkspaceRequestStrategy" in strategy_types
 
     def test_create_file_request(self):
         """Test creating file requests"""
@@ -209,22 +212,20 @@ class TestUnifiedRequestFactory:
         request = factory.create_request_from_step(step, context, EnvironmentManager("local"))
         assert isinstance(request, PythonRequest)
 
-    def test_create_file_preparation_request(self):
-        """Test creating state transition requests"""
+    def test_create_workspace_request(self):
+        """Test creating workspace requests"""
         factory = UnifiedRequestFactory()
         context = MockContext()
 
-        # Test with attribute-based format
+        # Test with workspace switch
         step = Step(
             type=StepType.FILE_PREPARATION,
-            cmd=[],
-            target_state="working",
-            context={"contest_name": "{contest_name}"}
+            cmd=["abc300", "a", "python"]
         )
 
         request = factory.create_request_from_step(step, context, EnvironmentManager("local"))
-        assert request is not None
-        assert request.target_state == "working"
+        assert isinstance(request, WorkspaceRequest)
+        assert request.workspace_operation == "workspace_switch"
 
     def test_force_local_execution(self):
         """Test force local execution"""

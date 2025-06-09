@@ -90,14 +90,14 @@ class FilePreparationService:
         force: bool
     ) -> Tuple[bool, str]:
         """Check if operation was already completed.
-        
+
         Args:
             language_name: Programming language name
             contest_name: Contest identifier
             problem_name: Problem identifier
             operation_name: Name of the operation
             force: Whether to force execution even if already done
-            
+
         Returns:
             Tuple of (already_done, message)
         """
@@ -109,11 +109,11 @@ class FilePreparationService:
 
     def _validate_test_file_operation(self, source_path: Path, operation_name: str) -> Tuple[bool, str]:
         """Validate preconditions for test file operations.
-        
+
         Args:
             source_path: Source directory path
             operation_name: Name of the operation for error messages
-            
+
         Returns:
             Tuple of (is_valid, message)
         """
@@ -127,11 +127,11 @@ class FilePreparationService:
         dest_path: Path
     ) -> Tuple[bool, str, int]:
         """Perform the actual file move operation.
-        
+
         Args:
             source_path: Source directory path
             dest_path: Destination directory path
-            
+
         Returns:
             Tuple of (success, message, file_count)
         """
@@ -174,7 +174,7 @@ class FilePreparationService:
         message: str = ""
     ) -> None:
         """Record operation result in repository.
-        
+
         Args:
             language_name: Programming language name
             contest_name: Contest identifier

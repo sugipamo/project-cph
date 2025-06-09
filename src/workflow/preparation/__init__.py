@@ -1,36 +1,27 @@
-"""Fitting functionality for environment preparation - New pluggable architecture
+"""Fitting functionality for environment preparation - Simplified architecture
 """
 
-# Legacy compatibility - maintains existing interface
-# Core module removed, using direct imports
+# Core preparation components still in use
 from .core.preparation_error_handler import PreparationErrorHandler
-
-# State management components
 from .core.state_definitions import WorkflowContext, WorkflowState, validate_file_preparation
+
+# Docker state management (still needed for Docker operations)
 from .docker.docker_state_manager import DockerStateManager
-from .execution.command_processor import CommandProcessor, FilePreparationDriver, FilePreparationRequest
+
+# Environment preparation (still needed for Docker setup)
 from .execution.environment_inspector import EnvironmentInspector
 from .execution.preparation_executor import PreparationExecutor
+
+# File operations (still needed by ProblemWorkspaceService)
 from .file.folder_mapping import FolderMapper, create_folder_mapper_from_env
-from .state.conditions.condition_evaluator import TransitionStep
-from .state.management.state_manager import StateManager
-from .state.transition.transition_engine import TransitionEngine
 
 __all__ = [
-    "CommandProcessor",
     "DockerStateManager",
-    # Legacy compatibility (existing interfaces)
     "EnvironmentInspector",
-    "FilePreparationDriver",
-    "FilePreparationRequest",
     "FolderMapper",
     "PreparationErrorHandler",
     "PreparationExecutor",
-    "StateManager",
-    "TransitionEngine",
-    "TransitionStep",
     "WorkflowContext",
-    # State management
     "WorkflowState",
     "create_folder_mapper_from_env",
     "validate_file_preparation"
