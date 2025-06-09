@@ -56,7 +56,11 @@ class ContestManager:
     def files_repo(self):
         """Lazy load contest current files repository."""
         if not hasattr(self, '_files_repo'):
-            self._files_repo = self.container.resolve("contest_current_files_repository")
+            try:
+                self._files_repo = self.container.resolve("contest_current_files_repository")
+            except ValueError:
+                # If repository not available, use None (simpler approach)
+                self._files_repo = None
         return self._files_repo
 
     def get_current_contest_state(self) -> Dict[str, Optional[str]]:
@@ -311,8 +315,8 @@ class ContestManager:
             success = self._copy_template_recursive(template_path, dest_path, "",
                                                   language, contest, problem, tracked_files)
 
-            if success and tracked_files:
-                # Track all files in SQLite
+            if success and tracked_files and self.files_repo:
+                # Track all files in SQLite if repository is available
                 self.files_repo.track_multiple_files(tracked_files)
 
             return success
@@ -370,8 +374,8 @@ class ContestManager:
             self._track_files_recursive(stock_path, current_path, "",
                                       language, contest, problem, tracked_files)
 
-            if tracked_files:
-                # Clear previous tracking and add new
+            if tracked_files and self.files_repo:
+                # Clear previous tracking and add new if repository is available
                 self.files_repo.clear_contest_tracking(language, contest, problem)
                 self.files_repo.track_multiple_files(tracked_files)
 
@@ -481,9 +485,10 @@ class ContestManager:
             success = self._copy_directory_contents(contest_stock_path, contest_current_path)
 
             if success:
-                # Track all copied files in SQLite
-                self._track_files_from_stock(contest_stock_path, contest_current_path,
-                                           language, contest, problem)
+                # Track all copied files in SQLite if repository is available
+                if self.files_repo:
+                    self._track_files_from_stock(contest_stock_path, contest_current_path,
+                                               language, contest, problem)
                 print(f"📁 Restored from contest_stock: {language} {contest} {problem}")
 
             return success

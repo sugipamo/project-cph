@@ -259,6 +259,12 @@ class ProblemWorkspaceService:
             if self.file_driver.exists(archive_path):
                 self.file_driver.copytree(archive_path, contest_current_path)
                 restored_files = self._count_files_in_directory(contest_current_path)
+                
+                # Create workspace directory for oj operations if configured
+                workspace_path = self.base_paths.get("workspace_path", "")
+                if workspace_path:
+                    workspace_dir = Path(workspace_path)
+                    self.file_driver.makedirs(workspace_dir, exist_ok=True)
 
                 message = f"Restored {restored_files} files from archive"
                 self.logger.info(message)
@@ -274,6 +280,12 @@ class ProblemWorkspaceService:
             if self.file_driver.exists(template_path):
                 self.file_driver.copytree(template_path, contest_current_path)
                 created_files = self._count_files_in_directory(contest_current_path)
+                
+                # Create workspace directory for oj operations if configured
+                workspace_path = self.base_paths.get("workspace_path", "")
+                if workspace_path:
+                    workspace_dir = Path(workspace_path)
+                    self.file_driver.makedirs(workspace_dir, exist_ok=True)
 
                 message = f"Created {created_files} files from template"
                 self.logger.info(message)
@@ -287,6 +299,12 @@ class ProblemWorkspaceService:
 
             # Create empty workspace if no template exists
             self.file_driver.makedirs(contest_current_path, exist_ok=True)
+            
+            # Create workspace directory for oj operations if configured
+            workspace_path = self.base_paths.get("workspace_path", "")
+            if workspace_path:
+                workspace_dir = Path(workspace_path)
+                self.file_driver.makedirs(workspace_dir, exist_ok=True)
 
             message = "Created empty workspace (no template available)"
             self.logger.warning(message)

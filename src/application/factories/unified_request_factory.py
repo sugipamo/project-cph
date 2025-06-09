@@ -199,12 +199,17 @@ class WorkspaceRequestStrategy(RequestCreationStrategy):
         operation_type = getattr(step, 'operation_type', 'workspace_switch')
 
         if operation_type == 'move_test_files':
+            # Extract force parameter from step context
+            step_context = getattr(step, 'context', {}) or {}
+            force_param = step_context.get('force', False)
+            
             # Create request for test file movement only
             return WorkspaceRequest(
                 operation_type='move_test_files',
                 contest=context_dict.get('contest_name', 'unknown'),
                 problem=context_dict.get('problem_name', 'unknown'),
                 language=context_dict.get('language', 'unknown'),
+                force=force_param,
                 allow_failure=step.allow_failure,
                 name=f"move_test_files_{context_dict.get('contest_name')}_{context_dict.get('problem_name')}"
             )
