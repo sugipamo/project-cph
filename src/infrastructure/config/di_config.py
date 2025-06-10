@@ -123,6 +123,16 @@ def _create_system_config_loader(container: Any) -> Any:
 
 
 
+def _create_file_pattern_service(container: Any) -> Any:
+    """Lazy factory for file pattern service."""
+    from src.workflow.preparation.file.file_pattern_service import FilePatternService
+
+    config_loader = container.resolve("json_config_loader")
+    file_driver = container.resolve("file_driver")
+    logger = container.resolve("logger")
+    return FilePatternService(config_loader, file_driver, logger)
+
+
 def _create_file_preparation_repository(container: Any) -> Any:
     """Lazy factory for file preparation repository."""
     from src.infrastructure.persistence.sqlite.repositories.file_preparation_repository import FilePreparationRepository
@@ -139,7 +149,8 @@ def _create_file_preparation_service(container: Any) -> Any:
     repository = container.resolve("file_preparation_repository")
     logger = container.resolve("logger")
     config_loader = container.resolve("json_config_loader")
-    return FilePreparationService(file_driver, repository, logger, config_loader)
+    file_pattern_service = container.resolve("file_pattern_service")
+    return FilePreparationService(file_driver, repository, logger, config_loader, file_pattern_service)
 
 
 def _create_problem_workspace_service(container: Any) -> Any:
@@ -220,6 +231,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     # Register simplified workspace management
     container.register("json_config_loader", _create_json_config_loader)
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
+    container.register("file_pattern_service", lambda: _create_file_pattern_service(container))
     container.register("file_preparation_repository", lambda: _create_file_preparation_repository(container))
     container.register("file_preparation_service", lambda: _create_file_preparation_service(container))
     container.register("problem_workspace_service", lambda: _create_problem_workspace_service(container))
@@ -297,6 +309,7 @@ def configure_test_dependencies(container: DIContainer) -> None:
     # Register simplified workspace management
     container.register("json_config_loader", _create_json_config_loader)
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
+    container.register("file_pattern_service", lambda: _create_file_pattern_service(container))
     container.register("file_preparation_repository", lambda: _create_file_preparation_repository(container))
     container.register("file_preparation_service", lambda: _create_file_preparation_service(container))
     container.register("problem_workspace_service", lambda: _create_problem_workspace_service(container))

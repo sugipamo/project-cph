@@ -1,6 +1,5 @@
 """File pattern service for configuration-driven file operations."""
 import glob
-import os
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -188,26 +187,22 @@ class FilePatternService:
         # Get base path for the location
         base_path = self._get_base_path_for_location(location, context)
         if not base_path:
-            raise PatternResolutionError(f"Base path not found for location '{location}'")
+            raise PatternResolutionError(f"Location '{location}' not found in pattern group '{pattern_group}'")
 
         # Resolve patterns to actual paths
         resolved_paths = []
-        original_cwd = os.getcwd()
+        base_path_obj = Path(base_path)
 
-        try:
-            os.chdir(base_path)
+        for pattern in pattern_list:
+            normalized_pattern = self._normalize_pattern(pattern)
+            # Use absolute pattern path to avoid directory changes
+            full_pattern = str(base_path_obj / normalized_pattern)
+            matching_files = glob.glob(full_pattern, recursive=True)
 
-            for pattern in pattern_list:
-                normalized_pattern = self._normalize_pattern(pattern)
-                matching_files = glob.glob(normalized_pattern, recursive=True)
-
-                for file_path in matching_files:
-                    full_path = Path(base_path) / file_path
-                    if full_path.exists() and not self._is_file_excluded(full_path):
-                        resolved_paths.append(full_path.resolve())
-
-        finally:
-            os.chdir(original_cwd)
+            for file_path in matching_files:
+                full_path = Path(file_path)
+                if full_path.exists() and not self._is_file_excluded(full_path):
+                    resolved_paths.append(full_path.resolve())
 
         return resolved_paths
 

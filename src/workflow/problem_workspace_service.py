@@ -142,11 +142,12 @@ class ProblemWorkspaceService:
 
             # Step 3: Move test files from workspace to current
             if self.file_preparation_service:
-                # Use the refined FilePreparationService method
-                success, message, file_count = self.file_preparation_service.move_test_files(
-                    language, contest, problem,
+                # Use pattern-based file preparation service
+                success, message, file_count = self.file_preparation_service.move_files_by_patterns(
+                    "move_test_files", language, contest, problem,
                     self.base_paths.get("workspace_path", ""),
-                    self.base_paths["contest_current_path"]
+                    self.base_paths["contest_current_path"],
+                    self.base_paths.get("contest_stock_path", "")
                 )
                 if success:
                     total_files_moved += file_count

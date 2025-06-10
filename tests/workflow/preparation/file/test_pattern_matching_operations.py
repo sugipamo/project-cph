@@ -233,9 +233,9 @@ class TestPatternMatching:
         }
 
         with pytest.raises(PatternResolutionError) as exc_info:
-            service.resolve_pattern_paths("nonexistent_location.test_files", context)
+            service.resolve_pattern_paths("workspace.nonexistent_group", context)
 
-        assert "Location 'nonexistent_location' not found" in str(exc_info.value)
+        assert "Pattern group 'nonexistent_group' not found" in str(exc_info.value)
 
 
 class TestFileOperations:
