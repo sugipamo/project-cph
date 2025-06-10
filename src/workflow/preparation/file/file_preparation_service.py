@@ -6,22 +6,25 @@ from typing import List, Tuple
 from src.domain.interfaces.logger_interface import LoggerInterface
 from src.infrastructure.drivers.file.file_driver import FileDriver
 from src.infrastructure.persistence.sqlite.repositories.file_preparation_repository import FilePreparationRepository
+from src.infrastructure.config.json_config_loader import JsonConfigLoader
 
 
 class FilePreparationService:
     """Service for managing file preparation operations."""
 
-    def __init__(self, file_driver: FileDriver, repository: FilePreparationRepository, logger: LoggerInterface):
-        """Initialize with file driver, repository and logger.
+    def __init__(self, file_driver: FileDriver, repository: FilePreparationRepository, logger: LoggerInterface, config_loader: JsonConfigLoader):
+        """Initialize with file driver, repository, logger and config loader.
 
         Args:
             file_driver: File driver for file operations
             repository: Repository for tracking operations
             logger: Logger for logging operations
+            config_loader: Configuration loader for accessing constants
         """
         self.file_driver = file_driver
         self.repository = repository
         self.logger = logger
+        self.config_loader = config_loader
 
     def move_test_files(
         self,
@@ -46,24 +49,28 @@ class FilePreparationService:
             Tuple of (success, message, file_count)
         """
         # Check if operation was already completed
+        operation_type = self.config_loader.get_operation_type('move_test_files')
         already_done, done_message = self._check_operation_already_done(
-            language_name, contest_name, problem_name, 'move_test_files', force
+            language_name, contest_name, problem_name, operation_type, force
         )
         if already_done:
-            return True, "Test files already moved", 0
+            message = self.config_loader.get_message('test_files_already_moved')
+            return True, message, 0
 
-        source_test_dir = Path(workspace_path) / "test"
-        dest_test_dir = Path(contest_current_path) / "test"
+        test_dir_name = self.config_loader.get_directory_name('test')
+        source_test_dir = Path(workspace_path) / test_dir_name
+        dest_test_dir = Path(contest_current_path) / test_dir_name
 
         # Validate source directory exists
         is_valid, validation_message = self._validate_test_file_operation(
-            source_test_dir, 'move_test_files'
+            source_test_dir, operation_type
         )
         if not is_valid:
             self.logger.info(validation_message)
+            no_source_message = self.config_loader.get_message('no_source_directory')
             self._record_operation_result(
-                language_name, contest_name, problem_name, 'move_test_files',
-                source_test_dir, dest_test_dir, 0, True, "No source directory"
+                language_name, contest_name, problem_name, operation_type,
+                source_test_dir, dest_test_dir, 0, True, no_source_message
             )
             return True, validation_message, 0
 
@@ -74,7 +81,7 @@ class FilePreparationService:
 
         # Record the operation result
         self._record_operation_result(
-            language_name, contest_name, problem_name, 'move_test_files',
+            language_name, contest_name, problem_name, operation_type,
             source_test_dir, dest_test_dir, file_count, success,
             message if not success else ""
         )

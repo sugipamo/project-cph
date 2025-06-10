@@ -140,13 +140,17 @@ class TestFilePreparationSideEffects:
         from src.infrastructure.persistence.sqlite.repositories.file_preparation_repository import FilePreparationRepository
         from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
         from src.workflow.preparation.file.file_preparation_service import FilePreparationService
+        from src.infrastructure.config.json_config_loader import JsonConfigLoader
         
         file_driver = LocalFileDriver(base_dir=temp_path)
         sqlite_manager = FastSQLiteManager(":memory:", skip_migrations=False)
         repository = FilePreparationRepository(sqlite_manager)
         logger = PythonLogger()
         
-        service = FilePreparationService(file_driver, repository, logger)
+        # Create config loader
+        config_loader = JsonConfigLoader()
+        
+        service = FilePreparationService(file_driver, repository, logger, config_loader)
         
         # Test move_test_files operation
         success, message, file_count = service.move_test_files(
@@ -280,13 +284,17 @@ class TestFilePreparationServiceIntegration:
             from src.infrastructure.persistence.sqlite.repositories.file_preparation_repository import FilePreparationRepository
             from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
             from src.workflow.preparation.file.file_preparation_service import FilePreparationService
+            from src.infrastructure.config.json_config_loader import JsonConfigLoader
             
             file_driver = LocalFileDriver(base_dir=temp_path)
             sqlite_manager = FastSQLiteManager(":memory:", skip_migrations=False)
             repository = FilePreparationRepository(sqlite_manager)
             logger = PythonLogger()
             
-            service = FilePreparationService(file_driver, repository, logger)
+            # Create config loader
+            config_loader = JsonConfigLoader()
+            
+            service = FilePreparationService(file_driver, repository, logger, config_loader)
             
             # Create test files
             workspace_test = temp_path / "workspace" / "test"

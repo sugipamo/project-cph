@@ -91,3 +91,67 @@ class JsonConfigLoader:
         """
         config = self.get_env_config()
         return config.get(language, {})
+
+    def get_shared_config(self) -> Dict[str, Any]:
+        """Get shared configuration from shared/env.json.
+
+        Returns:
+            Dictionary with shared configuration
+        """
+        return self._load_config_file("shared").get("shared", {})
+
+    def get_constants(self) -> Dict[str, Any]:
+        """Get constants from shared configuration.
+
+        Returns:
+            Dictionary with constants configuration
+        """
+        shared_config = self.get_shared_config()
+        return shared_config.get("constants", {})
+
+    def get_constant_value(self, category: str, key: str, default: Any = None) -> Any:
+        """Get a specific constant value.
+
+        Args:
+            category: Constant category (e.g., 'directories', 'operation_types')
+            key: Constant key within category
+            default: Default value if not found
+
+        Returns:
+            Constant value or default
+        """
+        constants = self.get_constants()
+        return constants.get(category, {}).get(key, default)
+
+    def get_directory_name(self, key: str) -> str:
+        """Get directory name constant.
+
+        Args:
+            key: Directory key (e.g., 'test', 'workspace')
+
+        Returns:
+            Directory name
+        """
+        return self.get_constant_value("directories", key, key)
+
+    def get_operation_type(self, key: str) -> str:
+        """Get operation type constant.
+
+        Args:
+            key: Operation key (e.g., 'move_test_files')
+
+        Returns:
+            Operation type string
+        """
+        return self.get_constant_value("operation_types", key, key)
+
+    def get_message(self, key: str) -> str:
+        """Get message constant.
+
+        Args:
+            key: Message key
+
+        Returns:
+            Message string
+        """
+        return self.get_constant_value("messages", key, key)
