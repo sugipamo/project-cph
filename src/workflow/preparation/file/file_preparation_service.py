@@ -1,19 +1,20 @@
 """Service for handling file preparation operations like test file movements."""
 
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from src.domain.constants.operation_type import DirectoryName, WorkspaceOperationType
 from src.domain.interfaces.logger_interface import LoggerInterface
 from src.infrastructure.config.json_config_loader import JsonConfigLoader
 from src.infrastructure.drivers.file.file_driver import FileDriver
 from src.infrastructure.persistence.sqlite.repositories.file_preparation_repository import FilePreparationRepository
+from .file_pattern_service import FilePatternService, FileOperationResult
 
 
 class FilePreparationService:
     """Service for managing file preparation operations."""
 
-    def __init__(self, file_driver: FileDriver, repository: FilePreparationRepository, logger: LoggerInterface, config_loader: JsonConfigLoader):
+    def __init__(self, file_driver: FileDriver, repository: FilePreparationRepository, logger: LoggerInterface, config_loader: JsonConfigLoader, file_pattern_service: Optional[FilePatternService] = None):
         """Initialize with file driver, repository, logger and config loader.
 
         Args:
@@ -21,11 +22,13 @@ class FilePreparationService:
             repository: Repository for tracking operations
             logger: Logger for logging operations
             config_loader: Configuration loader for accessing constants
+            file_pattern_service: Optional file pattern service for advanced operations
         """
         self.file_driver = file_driver
         self.repository = repository
         self.logger = logger
         self.config_loader = config_loader
+        self.file_pattern_service = file_pattern_service
 
     def move_test_files(
         self,
@@ -88,6 +91,148 @@ class FilePreparationService:
         )
 
         return success, message, file_count
+
+    def move_files_by_patterns(
+        self,
+        operation_name: str,
+        language_name: str,
+        contest_name: str,
+        problem_name: str,
+        workspace_path: str,
+        contest_current_path: str,
+        contest_stock_path: str = "",
+        force: bool = False
+    ) -> Tuple[bool, str, int]:
+        """Move files based on pattern configuration.
+
+        Args:
+            operation_name: Name of the operation to execute
+            language_name: Programming language name
+            contest_name: Contest identifier
+            problem_name: Problem identifier
+            workspace_path: Path to workspace directory
+            contest_current_path: Path to contest_current directory
+            contest_stock_path: Path to contest_stock directory
+            force: Force move even if already done
+
+        Returns:
+            Tuple of (success, message, file_count)
+        """
+        # Check if pattern service is available
+        if not self.file_pattern_service:
+            self.logger.warning("FilePatternService not available, falling back to legacy implementation")
+            return self.move_test_files(language_name, contest_name, problem_name, workspace_path, contest_current_path, force)
+
+        # Check if feature is enabled
+        if not self._is_file_patterns_enabled():
+            self.logger.info("File patterns feature disabled, using legacy implementation")
+            return self.move_test_files(language_name, contest_name, problem_name, workspace_path, contest_current_path, force)
+
+        # Check if operation was already completed
+        already_done, done_message = self._check_operation_already_done(
+            language_name, contest_name, problem_name, operation_name, force
+        )
+        if already_done:
+            return True, done_message, 0
+
+        # Prepare context for pattern service
+        context = {
+            "workspace_path": workspace_path,
+            "contest_current_path": contest_current_path,
+            "contest_stock_path": contest_stock_path,
+            "language": language_name
+        }
+
+        try:
+            # Execute pattern-based file operations
+            result = self.file_pattern_service.execute_with_fallback(operation_name, context)
+
+            # Record the operation result
+            self._record_pattern_operation_result(
+                language_name, contest_name, problem_name, operation_name, result
+            )
+
+            return result.success, result.message, result.files_processed
+
+        except Exception as e:
+            error_message = f"Pattern-based operation failed: {e}"
+            self.logger.error(error_message)
+            
+            # Record failed operation
+            self._record_operation_result(
+                language_name, contest_name, problem_name, operation_name,
+                Path(workspace_path), Path(contest_current_path), 0, False, error_message
+            )
+            
+            return False, error_message, 0
+
+    def _is_file_patterns_enabled(self) -> bool:
+        """Check if file patterns feature is enabled.
+
+        Returns:
+            True if file patterns feature is enabled
+        """
+        try:
+            shared_config = self.config_loader.get_shared_config()
+            feature_flags = shared_config.get("feature_flags", {})
+            return feature_flags.get("use_file_patterns", False)
+        except Exception as e:
+            self.logger.warning(f"Failed to check file patterns feature flag: {e}")
+            return False
+
+    def _record_pattern_operation_result(
+        self,
+        language_name: str,
+        contest_name: str,
+        problem_name: str,
+        operation_name: str,
+        result: FileOperationResult
+    ) -> None:
+        """Record pattern operation result in repository.
+
+        Args:
+            language_name: Programming language name
+            contest_name: Contest identifier
+            problem_name: Problem identifier
+            operation_name: Name of the operation
+            result: FileOperationResult from pattern service
+        """
+        # Create summary message
+        if result.success:
+            message = f"Pattern operation successful: {result.message}"
+        else:
+            error_summary = "; ".join([f"{err['file']}: {err['error']}" for err in result.error_details[:3]])
+            if len(result.error_details) > 3:
+                error_summary += f" (and {len(result.error_details) - 3} more)"
+            message = f"Pattern operation failed: {result.message}. Errors: {error_summary}"
+
+        self.repository.record_operation(
+            language_name, contest_name, problem_name, operation_name,
+            "pattern-based", "pattern-based", result.files_processed, result.success, message
+        )
+
+    def get_pattern_diagnosis(self, language_name: str) -> dict:
+        """Get configuration diagnosis for pattern-based operations.
+
+        Args:
+            language_name: Programming language name
+
+        Returns:
+            Dictionary with diagnosis information
+        """
+        if not self.file_pattern_service:
+            return {
+                "status": "unavailable",
+                "message": "FilePatternService not initialized"
+            }
+
+        try:
+            return self.file_pattern_service.diagnose_config_issues(language_name)
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Diagnosis failed: {e}"
+            }
 
     def _check_operation_already_done(
         self,

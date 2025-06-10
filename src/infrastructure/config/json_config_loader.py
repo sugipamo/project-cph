@@ -1,7 +1,7 @@
 """JSON-based configuration loader for environment files."""
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 class JsonConfigLoader:
@@ -23,17 +23,25 @@ class JsonConfigLoader:
         """
         config = {}
 
+        # Check if base path exists
+        if not self.base_path.exists():
+            return config
+
         # Load shared configuration first
         shared_config = self._load_config_file("shared")
         if shared_config:
             config.update(shared_config)
 
         # Load language-specific configurations
-        for lang_dir in self.base_path.iterdir():
-            if lang_dir.is_dir() and lang_dir.name != "shared":
-                lang_config = self._load_config_file(lang_dir.name)
-                if lang_config:
-                    config.update(lang_config)
+        try:
+            for lang_dir in self.base_path.iterdir():
+                if lang_dir.is_dir() and lang_dir.name != "shared":
+                    lang_config = self._load_config_file(lang_dir.name)
+                    if lang_config:
+                        config.update(lang_config)
+        except (OSError, PermissionError):
+            # Handle cases where directory doesn't exist or can't be read
+            pass
 
         return config
 
@@ -179,3 +187,73 @@ class JsonConfigLoader:
             Message string
         """
         return self.get_constant_value("messages", key, key)
+
+    def get_file_patterns(self, language: str) -> Dict[str, Dict[str, List[str]]]:
+        """Get file patterns configuration for a specific language.
+
+        Args:
+            language: Language name (e.g., 'cpp', 'python')
+
+        Returns:
+            Dictionary containing file patterns for the language.
+            Format: {pattern_group: {location: [patterns]}}
+            where location is one of: workspace, contest_current, contest_stock
+        """
+        lang_config = self.get_language_config(language)
+        return lang_config.get("file_patterns", {})
+
+    def get_file_operations(self) -> Dict[str, List[List[str]]]:
+        """Get file operations configuration from shared config.
+
+        Returns:
+            Dictionary containing file operations definitions.
+            Format: {operation_name: [[source_ref, dest_ref], ...]}
+            where references are in format "location.pattern_group"
+        """
+        shared_config = self.get_shared_config()
+        return shared_config.get("file_operations", {})
+
+    def get_default_patterns(self) -> Dict[str, Dict[str, List[str]]]:
+        """Get default file patterns from shared configuration.
+
+        Returns:
+            Dictionary containing default file patterns that can be
+            used as fallback when language-specific patterns are not available.
+        """
+        shared_config = self.get_shared_config()
+        return shared_config.get("default_patterns", {})
+
+    def has_file_patterns_support(self, language: str) -> bool:
+        """Check if a language has file patterns configuration.
+
+        Args:
+            language: Language name to check
+
+        Returns:
+            True if the language has file_patterns defined, False otherwise
+        """
+        patterns = self.get_file_patterns(language)
+        return len(patterns) > 0
+
+    def get_supported_languages(self) -> List[str]:
+        """Get list of languages that have file patterns support.
+
+        Returns:
+            List of language names that have file_patterns defined
+        """
+        supported = []
+        
+        # Check if base path exists
+        if not self.base_path.exists():
+            return supported
+            
+        try:
+            for lang_dir in self.base_path.iterdir():
+                if lang_dir.is_dir() and lang_dir.name != "shared":
+                    if self.has_file_patterns_support(lang_dir.name):
+                        supported.append(lang_dir.name)
+        except (OSError, PermissionError):
+            # Handle cases where directory doesn't exist or can't be read
+            pass
+        
+        return supported
