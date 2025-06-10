@@ -1,19 +1,17 @@
 """Tests for pattern matching and file operations functionality."""
-import pytest
-import tempfile
-import os
-from pathlib import Path
-from unittest.mock import Mock, patch, call
 import glob
+import os
+import tempfile
+from pathlib import Path
+from unittest.mock import Mock, call, patch
 
-from src.workflow.preparation.file.file_pattern_service import (
-    FilePatternService,
-    FileOperationResult
-)
-from src.workflow.preparation.file.exceptions import PatternResolutionError
-from src.infrastructure.config.json_config_loader import JsonConfigLoader
+import pytest
+
 from src.domain.interfaces.filesystem_interface import FileSystemInterface
 from src.domain.interfaces.logger_interface import LoggerInterface
+from src.infrastructure.config.json_config_loader import JsonConfigLoader
+from src.workflow.preparation.file.exceptions import PatternResolutionError
+from src.workflow.preparation.file.file_pattern_service import FileOperationResult, FilePatternService
 
 
 class TestPatternMatching:
@@ -24,11 +22,11 @@ class TestPatternMatching:
         """Create temporary workspace with test files."""
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = Path(temp_dir)
-            
+
             # Create test directory structure
             test_dir = workspace / "test"
             test_dir.mkdir()
-            
+
             # Create test files
             (test_dir / "sample1.txt").write_text("test data 1")
             (test_dir / "sample2.txt").write_text("test data 2")
@@ -36,24 +34,24 @@ class TestPatternMatching:
             (test_dir / "input2.in").write_text("input data 2")
             (test_dir / "output1.out").write_text("output data 1")
             (test_dir / "output2.out").write_text("output data 2")
-            
+
             # Create subdirectory with files
             subdir = test_dir / "subdir"
             subdir.mkdir()
             (subdir / "nested.txt").write_text("nested test data")
             (subdir / "nested.in").write_text("nested input data")
-            
+
             # Create main files
             (workspace / "main.cpp").write_text("int main() { return 0; }")
             (workspace / "helper.h").write_text("#ifndef HELPER_H")
             (workspace / "utils.hpp").write_text("#pragma once")
-            
+
             # Create build artifacts
             build_dir = workspace / "build"
             build_dir.mkdir()
             (build_dir / "main.o").write_text("object file")
             (workspace / "main.exe").write_text("executable")
-            
+
             yield workspace
 
     @pytest.fixture
@@ -102,12 +100,12 @@ class TestPatternMatching:
             "workspace_path": str(temp_workspace),
             "language": "cpp"
         }
-        
+
         with patch('os.getcwd', return_value=str(temp_workspace)):
             paths = service.resolve_pattern_paths("workspace.test_files", context)
-        
+
         path_strings = [str(p) for p in paths]
-        
+
         # Should find all test files including nested ones
         assert any("sample1.txt" in p for p in path_strings)
         assert any("sample2.txt" in p for p in path_strings)
@@ -124,12 +122,12 @@ class TestPatternMatching:
             "workspace_path": str(temp_workspace),
             "language": "cpp"
         }
-        
+
         with patch('os.getcwd', return_value=str(temp_workspace)):
             paths = service.resolve_pattern_paths("workspace.contest_files", context)
-        
+
         path_strings = [str(p) for p in paths]
-        
+
         # Should find main.cpp and header files
         assert any("main.cpp" in p for p in path_strings)
         assert any("helper.h" in p for p in path_strings)
@@ -141,12 +139,12 @@ class TestPatternMatching:
             "workspace_path": str(temp_workspace),
             "language": "cpp"
         }
-        
+
         with patch('os.getcwd', return_value=str(temp_workspace)):
             paths = service.resolve_pattern_paths("workspace.build_files", context)
-        
+
         path_strings = [str(p) for p in paths]
-        
+
         # Should find build artifacts
         assert any("main.o" in p for p in path_strings)
         assert any("main.exe" in p for p in path_strings)
@@ -162,14 +160,14 @@ class TestPatternMatching:
                 }
             }
         }
-        
+
         context = {
             "workspace_path": "/workspace",
             "language": "cpp"
         }
-        
+
         paths = service.resolve_pattern_paths("workspace.empty_group", context)
-        
+
         assert paths == []
 
     def test_resolve_pattern_paths_no_matches(self, service, temp_workspace):
@@ -184,15 +182,15 @@ class TestPatternMatching:
                 }
             }
         }
-        
+
         context = {
             "workspace_path": str(temp_workspace),
             "language": "cpp"
         }
-        
+
         with patch('os.getcwd', return_value=str(temp_workspace)):
             paths = service.resolve_pattern_paths("workspace.nonexistent_files", context)
-        
+
         assert paths == []
 
     def test_resolve_pattern_paths_invalid_reference_format(self, service):
@@ -201,7 +199,7 @@ class TestPatternMatching:
             "workspace_path": "/workspace",
             "language": "cpp"
         }
-        
+
         invalid_refs = [
             "workspace",  # Missing pattern group
             "workspace.test_files.extra",  # Too many parts
@@ -209,7 +207,7 @@ class TestPatternMatching:
             "",  # Empty reference
             "workspace."  # Empty pattern group
         ]
-        
+
         for ref in invalid_refs:
             with pytest.raises(PatternResolutionError) as exc_info:
                 service.resolve_pattern_paths(ref, context)
@@ -221,10 +219,10 @@ class TestPatternMatching:
             "workspace_path": "/workspace",
             "language": "cpp"
         }
-        
+
         with pytest.raises(PatternResolutionError) as exc_info:
             service.resolve_pattern_paths("workspace.nonexistent_group", context)
-        
+
         assert "Pattern group 'nonexistent_group' not found" in str(exc_info.value)
 
     def test_resolve_pattern_paths_nonexistent_location(self, service):
@@ -233,10 +231,10 @@ class TestPatternMatching:
             "workspace_path": "/workspace",
             "language": "cpp"
         }
-        
+
         with pytest.raises(PatternResolutionError) as exc_info:
             service.resolve_pattern_paths("nonexistent_location.test_files", context)
-        
+
         assert "Location 'nonexistent_location' not found" in str(exc_info.value)
 
 
@@ -307,23 +305,23 @@ class TestFileOperations:
             "contest_stock_path": "/contest_stock",
             "language": "cpp"
         }
-        
+
         # Mock pattern resolution
         with patch.object(service, 'resolve_pattern_paths') as mock_resolve:
             mock_resolve.side_effect = [
                 [Path("/workspace/test/file1.txt"), Path("/workspace/test/file2.in")],  # workspace.test_files
                 [Path("/workspace/main.cpp"), Path("/workspace/helper.h")]  # workspace.contest_files
             ]
-            
+
             result = service.execute_file_operations("move_test_files", context)
-        
+
         assert result.success is True
         assert result.files_processed == 4
         assert result.files_failed == 0
-        
+
         # Check that file operations were called
         assert service.file_driver.copy_file.call_count == 4
-        
+
         # Verify the calls
         expected_calls = [
             call(Path("/workspace/test/file1.txt"), Path("/contest_current/test/file1.txt")),
@@ -341,19 +339,19 @@ class TestFileOperations:
             "contest_stock_path": "/contest_stock",
             "language": "cpp"
         }
-        
+
         with patch.object(service, 'resolve_pattern_paths') as mock_resolve:
             mock_resolve.return_value = [
                 Path("/workspace/build/main.o"),
                 Path("/workspace/temp.o")
             ]
-            
+
             result = service.execute_file_operations("cleanup_workspace", context)
-        
+
         assert result.success is True
         assert result.files_processed == 2
         assert result.files_failed == 0
-        
+
         # Check file operations
         assert service.file_driver.copy_file.call_count == 2
 
@@ -361,27 +359,27 @@ class TestFileOperations:
         """Test executing operations with partial failures."""
         # Setup file driver to fail some operations
         mock_file_driver.copy_file.side_effect = [True, False, True, False]
-        
+
         context = {
             "workspace_path": "/workspace",
             "contest_current_path": "/contest_current",
             "contest_stock_path": "/contest_stock",
             "language": "cpp"
         }
-        
+
         with patch.object(service, 'resolve_pattern_paths') as mock_resolve:
             mock_resolve.side_effect = [
                 [Path("/workspace/test/file1.txt"), Path("/workspace/test/file2.in")],
                 [Path("/workspace/main.cpp"), Path("/workspace/helper.h")]
             ]
-            
+
             result = service.execute_file_operations("move_test_files", context)
-        
+
         assert result.success is False  # Overall failure due to partial failures
         assert result.files_processed == 2  # 2 successful operations
         assert result.files_failed == 2  # 2 failed operations
         assert len(result.error_details) == 2
-        
+
         # Check error details
         error_files = [error["file"] for error in result.error_details]
         assert "/workspace/test/file2.in" in error_files
@@ -393,9 +391,9 @@ class TestFileOperations:
             "workspace_path": "/workspace",
             "language": "cpp"
         }
-        
+
         result = service.execute_file_operations("nonexistent_operation", context)
-        
+
         assert result.success is False
         assert "Operation 'nonexistent_operation' not found" in result.message
 
@@ -406,12 +404,12 @@ class TestFileOperations:
             "contest_current_path": "/contest_current",
             "language": "cpp"
         }
-        
+
         with patch.object(service, 'resolve_pattern_paths') as mock_resolve:
             mock_resolve.side_effect = PatternResolutionError("Pattern not found")
-            
+
             result = service.execute_file_operations("move_test_files", context)
-        
+
         assert result.success is False
         assert "Pattern not found" in result.message
 
@@ -423,12 +421,12 @@ class TestFileOperations:
             "contest_stock_path": "/contest_stock",
             "language": "cpp"
         }
-        
+
         with patch.object(service, 'resolve_pattern_paths') as mock_resolve:
             mock_resolve.return_value = []  # No files found
-            
+
             result = service.execute_file_operations("move_test_files", context)
-        
+
         assert result.success is True
         assert result.files_processed == 0
         assert result.files_failed == 0
@@ -442,15 +440,15 @@ class TestFileOperations:
             "contest_stock_path": "/contest_stock",
             "language": "cpp"
         }
-        
+
         with patch.object(service, 'resolve_pattern_paths') as mock_resolve:
             mock_resolve.side_effect = [
                 [Path("/workspace/test/nested/file.txt")],
                 []
             ]
-            
+
             result = service.execute_file_operations("move_test_files", context)
-        
+
         # Should create parent directory
         mock_file_driver.create_directory.assert_called_with(Path("/contest_current/test/nested"))
         assert result.success is True
@@ -462,15 +460,15 @@ class TestFileOperations:
             "contest_current_path": "/contest_current",
             "language": "cpp"
         }
-        
+
         with patch.object(service, 'resolve_pattern_paths') as mock_resolve:
             mock_resolve.side_effect = [
                 [Path("/workspace/test/file.txt")],
                 []
             ]
-            
+
             result = service.execute_file_operations("move_test_files", context)
-        
+
         # Check that operations were logged
         assert len(result.operation_log) > 0
         assert any("Started operation: move_test_files" in log for log in result.operation_log)
@@ -484,7 +482,7 @@ class TestPatternUtilities:
     def service(self):
         """Create minimal service for utility testing."""
         mock_config = Mock(spec=JsonConfigLoader)
-        mock_file = Mock(spec=FilesystemInterface)
+        mock_file = Mock(spec=FileSystemInterface)
         mock_logger = Mock(spec=LoggerInterface)
         return FilePatternService(mock_config, mock_file, mock_logger)
 
@@ -498,7 +496,7 @@ class TestPatternUtilities:
             ("test//*.txt", "test/*.txt"),  # Double slashes
             ("test/", "test/"),  # Directory pattern
         ]
-        
+
         for input_pattern, expected in test_cases:
             normalized = service._normalize_pattern(input_pattern)
             assert normalized == expected, f"Expected {expected}, got {normalized} for input {input_pattern}"
@@ -525,7 +523,7 @@ class TestPatternUtilities:
                 Path("/contest_current/nested/deep/file.h")
             ),
         ]
-        
+
         for source, source_base, dest_base, expected in test_cases:
             result = service._get_destination_path(source, source_base, dest_base)
             assert result == expected
@@ -534,7 +532,7 @@ class TestPatternUtilities:
         """Test file exclusion logic."""
         # Mock common exclusion patterns
         excluded_patterns = ["*.tmp", "*.log", "__pycache__/**/*", ".git/**/*"]
-        
+
         test_cases = [
             ("file.txt", False),
             ("temp.tmp", True),
@@ -544,7 +542,7 @@ class TestPatternUtilities:
             ("test/__pycache__/cache.pyc", True),
             ("regular_file.py", False),
         ]
-        
+
         with patch.object(service, '_get_exclusion_patterns', return_value=excluded_patterns):
             for file_path, should_be_excluded in test_cases:
                 result = service._is_file_excluded(Path(file_path))

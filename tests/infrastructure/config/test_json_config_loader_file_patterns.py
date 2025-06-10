@@ -1,10 +1,11 @@
 """Tests for JsonConfigLoader file patterns and operations functionality."""
-import pytest
 import json
-import tempfile
 import os
+import tempfile
 from pathlib import Path
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
+
+import pytest
 
 from src.infrastructure.config.json_config_loader import JsonConfigLoader
 
@@ -18,7 +19,7 @@ class TestJsonConfigLoaderFilePatterns:
         with tempfile.TemporaryDirectory() as temp_dir:
             config_dir = Path(temp_dir) / "contest_env"
             config_dir.mkdir()
-            
+
             # Create shared config
             shared_dir = config_dir / "shared"
             shared_dir.mkdir()
@@ -44,7 +45,7 @@ class TestJsonConfigLoaderFilePatterns:
             }
             with open(shared_dir / "env.json", 'w', encoding='utf-8') as f:
                 json.dump(shared_config, f, indent=2)
-            
+
             # Create cpp config
             cpp_dir = config_dir / "cpp"
             cpp_dir.mkdir()
@@ -71,7 +72,7 @@ class TestJsonConfigLoaderFilePatterns:
             }
             with open(cpp_dir / "env.json", 'w', encoding='utf-8') as f:
                 json.dump(cpp_config, f, indent=2)
-            
+
             # Create python config
             python_dir = config_dir / "python"
             python_dir.mkdir()
@@ -93,7 +94,7 @@ class TestJsonConfigLoaderFilePatterns:
             }
             with open(python_dir / "env.json", 'w', encoding='utf-8') as f:
                 json.dump(python_config, f, indent=2)
-            
+
             yield str(config_dir)
 
     @pytest.fixture
@@ -104,11 +105,11 @@ class TestJsonConfigLoaderFilePatterns:
     def test_get_file_patterns_cpp(self, loader):
         """Test getting file patterns for cpp."""
         patterns = loader.get_file_patterns("cpp")
-        
+
         assert "test_files" in patterns
         assert "contest_files" in patterns
         assert "build_files" in patterns
-        
+
         # Check test_files patterns
         test_files = patterns["test_files"]
         assert "workspace" in test_files
@@ -117,7 +118,7 @@ class TestJsonConfigLoaderFilePatterns:
         assert "test/**/*.txt" in test_files["workspace"]
         assert "test/**/*.in" in test_files["workspace"]
         assert "test/**/*.out" in test_files["workspace"]
-        
+
         # Check contest_files patterns
         contest_files = patterns["contest_files"]
         assert "main.cpp" in contest_files["workspace"]
@@ -127,11 +128,11 @@ class TestJsonConfigLoaderFilePatterns:
     def test_get_file_patterns_python(self, loader):
         """Test getting file patterns for python."""
         patterns = loader.get_file_patterns("python")
-        
+
         assert "test_files" in patterns
         assert "contest_files" in patterns
         assert "build_files" not in patterns  # Not defined for python
-        
+
         contest_files = patterns["contest_files"]
         assert "main.py" in contest_files["workspace"]
         assert "*.py" in contest_files["workspace"]
@@ -139,7 +140,7 @@ class TestJsonConfigLoaderFilePatterns:
     def test_get_file_patterns_nonexistent_language(self, loader):
         """Test getting file patterns for non-existent language."""
         patterns = loader.get_file_patterns("nonexistent")
-        
+
         assert patterns == {}
 
     def test_get_file_patterns_missing_file_patterns_key(self, temp_config_dir):
@@ -154,24 +155,24 @@ class TestJsonConfigLoaderFilePatterns:
         }
         with open(rust_dir / "env.json", 'w', encoding='utf-8') as f:
             json.dump(rust_config, f, indent=2)
-        
+
         loader = JsonConfigLoader(temp_config_dir)
         patterns = loader.get_file_patterns("rust")
-        
+
         assert patterns == {}
 
     def test_get_file_operations(self, loader):
         """Test getting file operations from shared config."""
         operations = loader.get_file_operations()
-        
+
         assert "move_test_files" in operations
         assert "cleanup_workspace" in operations
-        
+
         move_test_files = operations["move_test_files"]
         assert len(move_test_files) == 2
         assert move_test_files[0] == ["workspace.test_files", "contest_current.test_files"]
         assert move_test_files[1] == ["workspace.contest_files", "contest_stock.contest_files"]
-        
+
         cleanup_workspace = operations["cleanup_workspace"]
         assert len(cleanup_workspace) == 1
         assert cleanup_workspace[0] == ["workspace.temp_files", "contest_stock.temp_files"]
@@ -181,10 +182,10 @@ class TestJsonConfigLoaderFilePatterns:
         with tempfile.TemporaryDirectory() as temp_dir:
             config_dir = Path(temp_dir) / "contest_env"
             config_dir.mkdir()
-            
+
             loader = JsonConfigLoader(str(config_dir))
             operations = loader.get_file_operations()
-            
+
             assert operations == {}
 
     def test_get_file_operations_missing_file_operations_key(self, temp_config_dir):
@@ -198,16 +199,16 @@ class TestJsonConfigLoaderFilePatterns:
         }
         with open(shared_dir / "env.json", 'w', encoding='utf-8') as f:
             json.dump(shared_config, f, indent=2)
-        
+
         loader = JsonConfigLoader(temp_config_dir)
         operations = loader.get_file_operations()
-        
+
         assert operations == {}
 
     def test_get_default_patterns(self, loader):
         """Test getting default patterns from shared config."""
         default_patterns = loader.get_default_patterns()
-        
+
         assert "test_files" in default_patterns
         test_files = default_patterns["test_files"]
         assert "workspace" in test_files
@@ -226,10 +227,10 @@ class TestJsonConfigLoaderFilePatterns:
         }
         with open(shared_dir / "env.json", 'w', encoding='utf-8') as f:
             json.dump(shared_config, f, indent=2)
-        
+
         loader = JsonConfigLoader(temp_config_dir)
         default_patterns = loader.get_default_patterns()
-        
+
         assert default_patterns == {}
 
     def test_has_file_patterns_support(self, loader):
@@ -250,14 +251,14 @@ class TestJsonConfigLoaderFilePatterns:
         }
         with open(rust_dir / "env.json", 'w', encoding='utf-8') as f:
             json.dump(rust_config, f, indent=2)
-        
+
         loader = JsonConfigLoader(temp_config_dir)
         assert loader.has_file_patterns_support("rust") is False
 
     def test_get_supported_languages(self, loader):
         """Test getting list of languages with file patterns support."""
         supported = loader.get_supported_languages()
-        
+
         assert "cpp" in supported
         assert "python" in supported
         assert "shared" not in supported  # shared is not a language
@@ -267,10 +268,10 @@ class TestJsonConfigLoaderFilePatterns:
         with tempfile.TemporaryDirectory() as temp_dir:
             config_dir = Path(temp_dir) / "contest_env"
             config_dir.mkdir()
-            
+
             loader = JsonConfigLoader(str(config_dir))
             supported = loader.get_supported_languages()
-            
+
             assert supported == []
 
     def test_integration_with_existing_methods(self, loader):
@@ -280,11 +281,11 @@ class TestJsonConfigLoaderFilePatterns:
         assert "shared" in env_config
         assert "cpp" in env_config
         assert "python" in env_config
-        
+
         # Test language-specific config still works
         cpp_config = loader.get_language_config("cpp")
         assert "file_patterns" in cpp_config
-        
+
         # Test shared config still works
         shared_config = loader.get_shared_config()
         assert "file_operations" in shared_config
@@ -295,13 +296,13 @@ class TestJsonConfigLoaderFilePatterns:
         cpp_dir = Path(temp_config_dir) / "cpp"
         with open(cpp_dir / "env.json", 'w', encoding='utf-8') as f:
             f.write('{"invalid": json}')  # Invalid JSON
-        
+
         loader = JsonConfigLoader(temp_config_dir)
-        
+
         # Should handle corrupted file gracefully
         patterns = loader.get_file_patterns("cpp")
         assert patterns == {}
-        
+
         # Other languages should still work
         patterns = loader.get_file_patterns("python")
         assert len(patterns) > 0
@@ -309,12 +310,12 @@ class TestJsonConfigLoaderFilePatterns:
     def test_error_handling_missing_directory(self):
         """Test error handling with missing config directory."""
         loader = JsonConfigLoader("/nonexistent/path")
-        
+
         patterns = loader.get_file_patterns("cpp")
         assert patterns == {}
-        
+
         operations = loader.get_file_operations()
         assert operations == {}
-        
+
         supported = loader.get_supported_languages()
         assert supported == []

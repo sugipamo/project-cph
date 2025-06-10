@@ -6,9 +6,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from src.infrastructure.config.json_config_loader import JsonConfigLoader
 from src.domain.interfaces.filesystem_interface import FileSystemInterface
 from src.domain.interfaces.logger_interface import LoggerInterface
+from src.infrastructure.config.json_config_loader import JsonConfigLoader
+
 from .exceptions import ConfigValidationError, PatternResolutionError
 
 
@@ -77,7 +78,7 @@ class FilePatternService:
             Tuple of (is_valid, error_list)
         """
         errors = []
-        
+
         if not isinstance(patterns, dict):
             errors.append("Patterns must be a dictionary")
             return False, errors
@@ -110,7 +111,7 @@ class FilePatternService:
             Tuple of (is_valid, error_list)
         """
         errors = []
-        
+
         if not isinstance(operations, dict):
             errors.append("Operations must be a dictionary")
             return False, errors
@@ -195,11 +196,11 @@ class FilePatternService:
 
         try:
             os.chdir(base_path)
-            
+
             for pattern in pattern_list:
                 normalized_pattern = self._normalize_pattern(pattern)
                 matching_files = glob.glob(normalized_pattern, recursive=True)
-                
+
                 for file_path in matching_files:
                     full_path = Path(base_path) / file_path
                     if full_path.exists() and not self._is_file_excluded(full_path):
@@ -238,15 +239,15 @@ class FilePatternService:
         """
         # Convert backslashes to forward slashes
         normalized = pattern.replace("\\", "/")
-        
+
         # Remove leading ./
         if normalized.startswith("./"):
             normalized = normalized[2:]
-        
+
         # Handle double slashes
         while "//" in normalized:
             normalized = normalized.replace("//", "/")
-        
+
         return normalized
 
     def _is_file_excluded(self, file_path: Path) -> bool:
@@ -260,12 +261,8 @@ class FilePatternService:
         """
         exclusion_patterns = self._get_exclusion_patterns()
         file_str = str(file_path)
-        
-        for pattern in exclusion_patterns:
-            if self._matches_exclusion_pattern(file_str, pattern):
-                return True
-        
-        return False
+
+        return any(self._matches_exclusion_pattern(file_str, pattern) for pattern in exclusion_patterns)
 
     def _get_exclusion_patterns(self) -> List[str]:
         """Get list of exclusion patterns.
@@ -309,7 +306,7 @@ class FilePatternService:
         else:
             # Exact match
             return pattern in file_str
-        
+
         return False
 
     def execute_file_operations(self, operation_name: str, context: Dict[str, Any]) -> FileOperationResult:
@@ -323,7 +320,7 @@ class FilePatternService:
             FileOperationResult with execution details
         """
         operation_log = [f"Started operation: {operation_name}"]
-        
+
         try:
             # Get operation definition
             operations = self.get_file_operations()
@@ -345,11 +342,11 @@ class FilePatternService:
             # Execute each step
             for i, (source_ref, dest_ref) in enumerate(operation_steps, 1):
                 operation_log.append(f"Processing step {i}/{len(operation_steps)}: {source_ref} -> {dest_ref}")
-                
+
                 try:
                     # Resolve source patterns
                     source_paths = self.resolve_pattern_paths(source_ref, context)
-                    
+
                     if not source_paths:
                         operation_log.append(f"No files found for pattern: {source_ref}")
                         continue
@@ -358,12 +355,12 @@ class FilePatternService:
                     for source_path in source_paths:
                         try:
                             dest_path = self._calculate_destination_path(source_path, source_ref, dest_ref, context)
-                            
+
                             # Create destination directory if needed
                             dest_dir = dest_path.parent
                             if not dest_dir.exists():
                                 self.file_driver.create_directory(dest_dir)
-                            
+
                             # Copy file
                             if self.file_driver.copy_file(source_path, dest_path):
                                 files_processed += 1
@@ -418,7 +415,7 @@ class FilePatternService:
         except Exception as e:
             self.logger.error(f"Operation {operation_name} failed: {e}")
             operation_log.append(f"Operation failed with error: {e}")
-            
+
             return FileOperationResult(
                 success=False,
                 message=str(e),
@@ -443,13 +440,13 @@ class FilePatternService:
         # Get source and destination base paths
         source_location = source_ref.split('.')[0]
         dest_location = dest_ref.split('.')[0]
-        
+
         source_base = Path(self._get_base_path_for_location(source_location, context))
         dest_base = Path(self._get_base_path_for_location(dest_location, context))
-        
+
         # Calculate relative path from source base
         relative_path = source_path.relative_to(source_base)
-        
+
         # Return destination path
         return dest_base / relative_path
 
@@ -481,20 +478,20 @@ class FilePatternService:
             # Validate configuration first
             patterns = self.get_file_patterns(context.get("language", ""))
             operations = self.get_file_operations()
-            
+
             patterns_valid, pattern_errors = self.validate_patterns(patterns)
             operations_valid, operation_errors = self.validate_operations(operations)
-            
+
             if not patterns_valid or not operations_valid:
                 raise ConfigValidationError(f"Config validation failed: {pattern_errors + operation_errors}")
-            
+
             # Execute with new implementation
             return self.execute_file_operations(operation_name, context)
-            
+
         except ConfigValidationError as e:
             self.logger.warning(f"Config validation failed, falling back to legacy: {e}")
             return self._execute_legacy_fallback(context)
-        
+
         except PatternResolutionError as e:
             self.logger.error(f"Pattern resolution failed: {e}")
             return FileOperationResult(
@@ -518,7 +515,7 @@ class FilePatternService:
         # This would call the existing move_test_files implementation
         # For now, return a placeholder result
         self.logger.info("Executing legacy fallback implementation")
-        
+
         return FileOperationResult(
             success=True,
             message="Legacy fallback successful",
@@ -549,7 +546,7 @@ class FilePatternService:
             # Check pattern configuration
             patterns = self.get_file_patterns(language)
             patterns_valid, pattern_errors = self.validate_patterns(patterns)
-            
+
             if not patterns_valid:
                 diagnosis["issues"].extend(pattern_errors)
                 diagnosis["suggestions"].append("Fix pattern validation errors")
@@ -557,7 +554,7 @@ class FilePatternService:
             # Check operation configuration
             operations = self.get_file_operations()
             operations_valid, operation_errors = self.validate_operations(operations)
-            
+
             if not operations_valid:
                 diagnosis["issues"].extend(operation_errors)
                 diagnosis["suggestions"].append("Fix operation validation errors")
@@ -572,7 +569,7 @@ class FilePatternService:
             diagnosis["config_status"] = "valid" if len(diagnosis["issues"]) == 0 else "invalid"
 
         except Exception as e:
-            diagnosis["issues"].append(f"Diagnosis failed: {str(e)}")
+            diagnosis["issues"].append(f"Diagnosis failed: {e!s}")
             diagnosis["config_status"] = "error"
 
         return diagnosis
@@ -587,17 +584,17 @@ class FilePatternService:
             List of missing file paths
         """
         missing_files = []
-        
+
         # Check if language config file exists
         lang_config_path = self.config_loader.base_path / language / "env.json"
         if not lang_config_path.exists():
             missing_files.append(str(lang_config_path))
-        
+
         # Check if shared config file exists
         shared_config_path = self.config_loader.base_path / "shared" / "env.json"
         if not shared_config_path.exists():
             missing_files.append(str(shared_config_path))
-        
+
         return missing_files
 
     def get_fallback_patterns(self, language: str) -> Dict[str, Dict[str, List[str]]]:
@@ -617,7 +614,7 @@ class FilePatternService:
                 "contest_stock": ["test/"]
             }
         }
-        
+
         if language == "cpp":
             fallback_patterns["contest_files"] = {
                 "workspace": ["main.cpp", "*.h", "*.hpp"],
@@ -636,5 +633,5 @@ class FilePatternService:
                 "contest_current": ["main.rs"],
                 "contest_stock": ["main.rs", "*.rs"]
             }
-        
+
         return fallback_patterns

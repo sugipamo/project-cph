@@ -1,14 +1,15 @@
 """Service for handling file preparation operations like test file movements."""
 
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
 from src.domain.constants.operation_type import DirectoryName, WorkspaceOperationType
 from src.domain.interfaces.logger_interface import LoggerInterface
 from src.infrastructure.config.json_config_loader import JsonConfigLoader
 from src.infrastructure.drivers.file.file_driver import FileDriver
 from src.infrastructure.persistence.sqlite.repositories.file_preparation_repository import FilePreparationRepository
-from .file_pattern_service import FilePatternService, FileOperationResult
+
+from .file_pattern_service import FileOperationResult, FilePatternService
 
 
 class FilePreparationService:
@@ -157,13 +158,13 @@ class FilePreparationService:
         except Exception as e:
             error_message = f"Pattern-based operation failed: {e}"
             self.logger.error(error_message)
-            
+
             # Record failed operation
             self._record_operation_result(
                 language_name, contest_name, problem_name, operation_name,
                 Path(workspace_path), Path(contest_current_path), 0, False, error_message
             )
-            
+
             return False, error_message, 0
 
     def _is_file_patterns_enabled(self) -> bool:

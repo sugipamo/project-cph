@@ -242,18 +242,17 @@ class JsonConfigLoader:
             List of language names that have file_patterns defined
         """
         supported = []
-        
+
         # Check if base path exists
         if not self.base_path.exists():
             return supported
-            
+
         try:
             for lang_dir in self.base_path.iterdir():
-                if lang_dir.is_dir() and lang_dir.name != "shared":
-                    if self.has_file_patterns_support(lang_dir.name):
-                        supported.append(lang_dir.name)
+                if lang_dir.is_dir() and lang_dir.name != "shared" and self.has_file_patterns_support(lang_dir.name):
+                    supported.append(lang_dir.name)
         except (OSError, PermissionError):
             # Handle cases where directory doesn't exist or can't be read
             pass
-        
+
         return supported

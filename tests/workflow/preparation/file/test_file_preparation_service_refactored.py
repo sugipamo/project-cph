@@ -4,8 +4,8 @@ from unittest.mock import Mock
 
 import pytest
 
+from src.workflow.preparation.file.file_pattern_service import FileOperationResult, FilePatternService
 from src.workflow.preparation.file.file_preparation_service import FilePreparationService
-from src.workflow.preparation.file.file_pattern_service import FilePatternService, FileOperationResult
 from tests.base.mock_logger import MockLogger
 
 
@@ -333,7 +333,7 @@ class TestFilePatternIntegration:
 
         # Act
         success, message, file_count = self.service.move_files_by_patterns(
-            "move_test_files", "cpp", "abc300", "a", 
+            "move_test_files", "cpp", "abc300", "a",
             "/workspace", "/contest_current", "/contest_stock", False
         )
 
@@ -352,7 +352,7 @@ class TestFilePatternIntegration:
             self.mock_config_loader,
             None  # No pattern service
         )
-        
+
         self.mock_repository.has_successful_operation.return_value = False
         self.mock_file_driver.exists.return_value = True
         self.mock_file_driver.makedirs.return_value = None
@@ -368,7 +368,7 @@ class TestFilePatternIntegration:
         # Assert - should fall back to legacy implementation
         assert success is True
         assert file_count == 2
-        self.mock_logger.has_warning("FilePatternService not available")
+        assert self.mock_logger.has_message("warning", "FilePatternService not available, falling back to legacy implementation")
 
     def test_move_files_by_patterns_feature_enabled_success(self):
         """Test move_files_by_patterns when feature is enabled and successful."""
@@ -377,7 +377,7 @@ class TestFilePatternIntegration:
             "feature_flags": {"use_file_patterns": True}
         }
         self.mock_repository.has_successful_operation.return_value = False
-        
+
         # Mock successful pattern service result
         pattern_result = FileOperationResult(
             success=True,
@@ -495,7 +495,7 @@ class TestFilePatternIntegration:
         assert file_count == 0
 
         # Verify error was logged and recorded
-        self.mock_logger.has_error("Pattern-based operation failed")
+        assert self.mock_logger.has_message("error", "Pattern-based operation failed: Unexpected error")
         self.mock_repository.record_operation.assert_called_once()
 
     def test_get_pattern_diagnosis_service_available(self):
@@ -593,4 +593,4 @@ class TestFilePatternIntegration:
 
         # Assert
         assert result is False
-        self.mock_logger.has_warning("Failed to check file patterns feature flag")
+        assert self.mock_logger.has_message("warning", "Failed to check file patterns feature flag: Config error")

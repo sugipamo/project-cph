@@ -35,11 +35,11 @@ class FileSystemInterface(ABC):
     @abstractmethod
     def copy_file(self, source: Path, destination: Path) -> bool:
         """Copy a file from source to destination.
-        
+
         Args:
             source: Source file path
             destination: Destination file path
-            
+
         Returns:
             True if copy was successful, False otherwise
         """
@@ -48,11 +48,11 @@ class FileSystemInterface(ABC):
     @abstractmethod
     def move_file(self, source: Path, destination: Path) -> bool:
         """Move a file from source to destination.
-        
+
         Args:
             source: Source file path
             destination: Destination file path
-            
+
         Returns:
             True if move was successful, False otherwise
         """
@@ -61,10 +61,10 @@ class FileSystemInterface(ABC):
     @abstractmethod
     def delete_file(self, path: Path) -> bool:
         """Delete a file.
-        
+
         Args:
             path: File path to delete
-            
+
         Returns:
             True if deletion was successful, False otherwise
         """
@@ -73,10 +73,10 @@ class FileSystemInterface(ABC):
     @abstractmethod
     def create_directory(self, path: Path) -> bool:
         """Create a directory.
-        
+
         Args:
             path: Directory path to create
-            
+
         Returns:
             True if creation was successful, False otherwise
         """
