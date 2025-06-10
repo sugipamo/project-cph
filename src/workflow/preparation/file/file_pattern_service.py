@@ -5,9 +5,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from src.domain.interfaces.filesystem_interface import FileSystemInterface
 from src.domain.interfaces.logger_interface import LoggerInterface
 from src.infrastructure.config.json_config_loader import JsonConfigLoader
+from src.infrastructure.drivers.file.file_driver import FileDriver
 
 from .exceptions import ConfigValidationError, PatternResolutionError
 
@@ -26,7 +26,7 @@ class FileOperationResult:
 class FilePatternService:
     """Service for pattern-based file operations."""
 
-    def __init__(self, config_loader: JsonConfigLoader, file_driver: FileSystemInterface, logger: LoggerInterface):
+    def __init__(self, config_loader: JsonConfigLoader, file_driver: FileDriver, logger: LoggerInterface):
         """Initialize FilePatternService.
 
         Args:
@@ -354,17 +354,18 @@ class FilePatternService:
                             # Create destination directory if needed
                             dest_dir = dest_path.parent
                             if not dest_dir.exists():
-                                self.file_driver.create_directory(dest_dir)
+                                self.file_driver.makedirs(dest_dir, exist_ok=True)
 
                             # Copy file
-                            if self.file_driver.copy_file(source_path, dest_path):
+                            try:
+                                self.file_driver.copy(source_path, dest_path)
                                 files_processed += 1
                                 operation_log.append(f"Copied: {source_path} -> {dest_path}")
-                            else:
+                            except Exception as copy_error:
                                 files_failed += 1
                                 error_details.append({
                                     "file": str(source_path),
-                                    "error": "Copy operation failed"
+                                    "error": f"Copy operation failed: {copy_error}"
                                 })
 
                         except Exception as e:

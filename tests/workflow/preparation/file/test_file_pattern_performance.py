@@ -6,9 +6,9 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.domain.interfaces.filesystem_interface import FileSystemInterface
 from src.domain.interfaces.logger_interface import LoggerInterface
 from src.infrastructure.config.json_config_loader import JsonConfigLoader
+from src.infrastructure.drivers.file.file_driver import FileDriver
 from src.workflow.preparation.file.file_pattern_service import FilePatternService
 
 
@@ -78,9 +78,9 @@ class TestFilePatternPerformance:
     @pytest.fixture
     def mock_file_driver_perf(self):
         """Mock FileDriver for performance testing."""
-        mock = Mock(spec=FileSystemInterface)
-        mock.copy_file.return_value = True
-        mock.create_directory.return_value = True
+        mock = Mock(spec=FileDriver)
+        mock.copy.return_value = True
+        mock.makedirs.return_value = True
         return mock
 
     @pytest.fixture
@@ -284,10 +284,10 @@ class TestFilePatternBenchmarks:
     def test_benchmark_pattern_types(self, temp_workspace_large):
         """Benchmark different pattern types."""
         mock_config = Mock(spec=JsonConfigLoader)
-        mock_file_driver = Mock(spec=FileSystemInterface)
+        mock_file_driver = Mock(spec=FileDriver)
         mock_logger = Mock(spec=LoggerInterface)
-        mock_file_driver.copy_file.return_value = True
-        mock_file_driver.create_directory.return_value = True
+        mock_file_driver.copy.return_value = True
+        mock_file_driver.makedirs.return_value = True
 
         service = FilePatternService(mock_config, mock_file_driver, mock_logger)
 
@@ -351,7 +351,7 @@ class TestFilePatternBenchmarks:
     def test_scalability_benchmark(self):
         """Test scalability with increasing file counts."""
         mock_config = Mock(spec=JsonConfigLoader)
-        mock_file_driver = Mock(spec=FileSystemInterface)
+        mock_file_driver = Mock(spec=FileDriver)
         mock_logger = Mock(spec=LoggerInterface)
 
         service = FilePatternService(mock_config, mock_file_driver, mock_logger)

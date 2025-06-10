@@ -7,9 +7,9 @@ from unittest.mock import Mock, call, patch
 
 import pytest
 
-from src.domain.interfaces.filesystem_interface import FileSystemInterface
 from src.domain.interfaces.logger_interface import LoggerInterface
 from src.infrastructure.config.json_config_loader import JsonConfigLoader
+from src.infrastructure.drivers.file.file_driver import FileDriver
 from src.workflow.preparation.file.exceptions import PatternResolutionError
 from src.workflow.preparation.file.file_pattern_service import FileOperationResult, FilePatternService
 
@@ -82,7 +82,7 @@ class TestPatternMatching:
     @pytest.fixture
     def mock_file_driver(self):
         """Mock FileDriver."""
-        return Mock(spec=FileSystemInterface)
+        return Mock(spec=FileDriver)
 
     @pytest.fixture
     def mock_logger(self):
@@ -280,11 +280,11 @@ class TestFileOperations:
     @pytest.fixture
     def mock_file_driver(self):
         """Mock FileDriver with successful operations."""
-        mock = Mock(spec=FileSystemInterface)
-        mock.copy_file.return_value = True
-        mock.move_file.return_value = True
-        mock.create_directory.return_value = True
-        mock.delete_file.return_value = True
+        mock = Mock(spec=FileDriver)
+        mock.copy.return_value = True
+        mock.move.return_value = True
+        mock.makedirs.return_value = True
+        mock.remove.return_value = True
         return mock
 
     @pytest.fixture
@@ -320,7 +320,7 @@ class TestFileOperations:
         assert result.files_failed == 0
 
         # Check that file operations were called
-        assert service.file_driver.copy_file.call_count == 4
+        assert service.file_driver.copy.call_count == 4
 
         # Verify the calls
         expected_calls = [
@@ -329,7 +329,7 @@ class TestFileOperations:
             call(Path("/workspace/main.cpp"), Path("/contest_stock/main.cpp")),
             call(Path("/workspace/helper.h"), Path("/contest_stock/helper.h"))
         ]
-        service.file_driver.copy_file.assert_has_calls(expected_calls, any_order=True)
+        service.file_driver.copy.assert_has_calls(expected_calls, any_order=True)
 
     def test_execute_file_operations_cleanup_workspace(self, service):
         """Test executing cleanup_workspace operation."""
@@ -353,12 +353,18 @@ class TestFileOperations:
         assert result.files_failed == 0
 
         # Check file operations
-        assert service.file_driver.copy_file.call_count == 2
+        assert service.file_driver.copy.call_count == 2
 
     def test_execute_file_operations_partial_failure(self, service, mock_file_driver):
         """Test executing operations with partial failures."""
         # Setup file driver to fail some operations
-        mock_file_driver.copy_file.side_effect = [True, False, True, False]
+        def copy_side_effect(src, dst):
+            # Simulate failures for file2.in and helper.h
+            if "file2.in" in str(src) or "helper.h" in str(src):
+                raise Exception("Simulated copy failure")
+            return True
+
+        mock_file_driver.copy.side_effect = copy_side_effect
 
         context = {
             "workspace_path": "/workspace",
@@ -450,7 +456,7 @@ class TestFileOperations:
             result = service.execute_file_operations("move_test_files", context)
 
         # Should create parent directory
-        mock_file_driver.create_directory.assert_called_with(Path("/contest_current/test/nested"))
+        mock_file_driver.makedirs.assert_called_with(Path("/contest_current/test/nested"), exist_ok=True)
         assert result.success is True
 
     def test_file_operation_logging(self, service, mock_logger):
@@ -482,7 +488,7 @@ class TestPatternUtilities:
     def service(self):
         """Create minimal service for utility testing."""
         mock_config = Mock(spec=JsonConfigLoader)
-        mock_file = Mock(spec=FileSystemInterface)
+        mock_file = Mock(spec=FileDriver)
         mock_logger = Mock(spec=LoggerInterface)
         return FilePatternService(mock_config, mock_file, mock_logger)
 

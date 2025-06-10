@@ -305,18 +305,23 @@ class TestOpenCommandWorkflow:
         repository = FilePreparationRepository(sqlite_manager)
         logger = PythonLogger()
 
-        # Create config loader
+        # Create config loader and file pattern service
         config_loader = JsonConfigLoader()
 
-        service = FilePreparationService(file_driver, repository, logger, config_loader)
+        from src.workflow.preparation.file.file_pattern_service import FilePatternService
+        file_pattern_service = FilePatternService(config_loader, file_driver, logger)
 
-        # Execute move_test_files
-        success, message, file_count = service.move_test_files(
+        service = FilePreparationService(file_driver, repository, logger, config_loader, file_pattern_service)
+
+        # Execute move_files_by_patterns
+        success, message, file_count = service.move_files_by_patterns(
+            operation_name="move_test_files",
             language_name="python",
             contest_name="abc302",
             problem_name="a",
             workspace_path=base_paths["workspace_path"],
-            contest_current_path=base_paths["contest_current_path"]
+            contest_current_path=base_paths["contest_current_path"],
+            contest_stock_path=base_paths["contest_stock_path"]
         )
 
         assert success, f"move_test_files failed: {message}"

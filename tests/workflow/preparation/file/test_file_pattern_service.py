@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from src.domain.interfaces.filesystem_interface import FileSystemInterface
 from src.domain.interfaces.logger_interface import LoggerInterface
 from src.infrastructure.config.json_config_loader import JsonConfigLoader
+from src.infrastructure.drivers.file.file_driver import FileDriver
 from src.workflow.preparation.file.exceptions import ConfigValidationError, PatternResolutionError
 from src.workflow.preparation.file.file_pattern_service import FileOperationResult, FilePatternService
 
@@ -25,7 +25,7 @@ class TestFilePatternService:
     @pytest.fixture
     def mock_file_driver(self):
         """Mock FileDriver."""
-        return Mock(spec=FileSystemInterface)
+        return Mock(spec=FileDriver)
 
     @pytest.fixture
     def mock_logger(self):
@@ -227,8 +227,8 @@ class TestFilePatternService:
         }
 
         # Mock file operations
-        mock_file_driver.copy_file.return_value = True
-        mock_file_driver.create_directory.return_value = True
+        mock_file_driver.copy.return_value = True
+        mock_file_driver.makedirs.return_value = True
 
         context = {
             "workspace_path": "/workspace",

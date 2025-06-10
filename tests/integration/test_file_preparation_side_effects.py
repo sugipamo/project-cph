@@ -152,18 +152,23 @@ class TestFilePreparationSideEffects:
         repository = FilePreparationRepository(sqlite_manager)
         logger = PythonLogger()
 
-        # Create config loader
+        # Create config loader and file pattern service
         config_loader = JsonConfigLoader()
 
-        service = FilePreparationService(file_driver, repository, logger, config_loader)
+        from src.workflow.preparation.file.file_pattern_service import FilePatternService
+        file_pattern_service = FilePatternService(config_loader, file_driver, logger)
 
-        # Test move_test_files operation
-        success, message, file_count = service.move_test_files(
+        service = FilePreparationService(file_driver, repository, logger, config_loader, file_pattern_service)
+
+        # Test move_files_by_patterns operation
+        success, message, file_count = service.move_files_by_patterns(
+            operation_name="move_test_files",
             language_name="python",
             contest_name="abc302",
             problem_name="a",
             workspace_path=base_paths["workspace_path"],
-            contest_current_path=base_paths["contest_current_path"]
+            contest_current_path=base_paths["contest_current_path"],
+            contest_stock_path=base_paths["contest_stock_path"]
         )
 
         assert success, f"move_test_files failed: {message}"
@@ -298,10 +303,13 @@ class TestFilePreparationServiceIntegration:
             repository = FilePreparationRepository(sqlite_manager)
             logger = PythonLogger()
 
-            # Create config loader
+            # Create config loader and file pattern service
             config_loader = JsonConfigLoader()
 
-            service = FilePreparationService(file_driver, repository, logger, config_loader)
+            from src.workflow.preparation.file.file_pattern_service import FilePatternService
+            file_pattern_service = FilePatternService(config_loader, file_driver, logger)
+
+            service = FilePreparationService(file_driver, repository, logger, config_loader, file_pattern_service)
 
             # Create test files
             workspace_test = temp_path / "workspace" / "test"
@@ -312,27 +320,34 @@ class TestFilePreparationServiceIntegration:
             contest_current = temp_path / "contest_current"
             contest_current.mkdir(parents=True)
 
-            # Execute move_test_files
-            success, message, file_count = service.move_test_files(
+            contest_stock = temp_path / "contest_stock"
+            contest_stock.mkdir(parents=True)
+
+            # Execute move_files_by_patterns
+            success, message, file_count = service.move_files_by_patterns(
+                operation_name="move_test_files",
                 language_name="python",
                 contest_name="test_contest",
                 problem_name="test_problem",
                 workspace_path=str(temp_path / "workspace"),
-                contest_current_path=str(contest_current)
+                contest_current_path=str(contest_current),
+                contest_stock_path=str(contest_stock)
             )
 
             assert success, "First move should succeed"
             assert file_count == 2, "Should move 2 files"
 
             # Execute again (should detect already done)
-            success2, message2, file_count2 = service.move_test_files(
+            success2, message2, file_count2 = service.move_files_by_patterns(
+                operation_name="move_test_files",
                 language_name="python",
                 contest_name="test_contest",
                 problem_name="test_problem",
                 workspace_path=str(temp_path / "workspace"),
-                contest_current_path=str(contest_current)
+                contest_current_path=str(contest_current),
+                contest_stock_path=str(contest_stock)
             )
 
             assert success2, "Second move should succeed"
             assert file_count2 == 0, "Should not move files again"
-            assert "already moved" in message2.lower(), "Should indicate files already moved"
+            assert "already completed" in message2.lower(), "Should indicate files already moved"
