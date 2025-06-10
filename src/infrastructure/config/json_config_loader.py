@@ -126,16 +126,31 @@ class JsonConfigLoader:
     def get_directory_name(self, key: str) -> str:
         """Get directory name constant.
 
+        DEPRECATED: Use DirectoryName enum instead.
+
         Args:
             key: Directory key (e.g., 'test', 'workspace')
 
         Returns:
             Directory name
         """
-        return self.get_constant_value("directories", key, key)
+        from src.domain.constants.operation_type import DirectoryName
+
+        # Map keys to enum values
+        directory_map = {
+            'test': DirectoryName.TEST.value,
+            'template': DirectoryName.TEMPLATE.value,
+            'stock': DirectoryName.STOCK.value,
+            'current': DirectoryName.CURRENT.value,
+            'workspace': DirectoryName.WORKSPACE.value,
+            'contest_env': DirectoryName.CONTEST_ENV.value,
+        }
+        return directory_map.get(key, key)
 
     def get_operation_type(self, key: str) -> str:
         """Get operation type constant.
+
+        DEPRECATED: Use WorkspaceOperationType enum instead.
 
         Args:
             key: Operation key (e.g., 'move_test_files')
@@ -143,7 +158,16 @@ class JsonConfigLoader:
         Returns:
             Operation type string
         """
-        return self.get_constant_value("operation_types", key, key)
+        from src.domain.constants.operation_type import WorkspaceOperationType
+
+        # Map keys to enum values
+        operation_map = {
+            'workspace_switch': WorkspaceOperationType.WORKSPACE_SWITCH.value,
+            'move_test_files': WorkspaceOperationType.MOVE_TEST_FILES.value,
+            'cleanup_workspace': WorkspaceOperationType.CLEANUP_WORKSPACE.value,
+            'archive_current': WorkspaceOperationType.ARCHIVE_CURRENT.value,
+        }
+        return operation_map.get(key, key)
 
     def get_message(self, key: str) -> str:
         """Get message constant.

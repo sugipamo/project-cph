@@ -16,11 +16,13 @@ class TestFilePreparationServiceHelpers:
         self.mock_file_driver = Mock()
         self.mock_repository = Mock()
         self.mock_logger = MockLogger()
+        self.mock_config_loader = Mock()
 
         self.service = FilePreparationService(
             self.mock_file_driver,
             self.mock_repository,
-            self.mock_logger
+            self.mock_logger,
+            self.mock_config_loader
         )
 
     def test_check_operation_already_done_when_force_false_and_operation_exists(self):
@@ -220,17 +222,20 @@ class TestMoveTestFilesRefactored:
         self.mock_file_driver = Mock()
         self.mock_repository = Mock()
         self.mock_logger = MockLogger()
+        self.mock_config_loader = Mock()
 
         self.service = FilePreparationService(
             self.mock_file_driver,
             self.mock_repository,
-            self.mock_logger
+            self.mock_logger,
+            self.mock_config_loader
         )
 
     def test_move_test_files_already_done(self):
         """Test move_test_files when operation already completed."""
         # Arrange
         self.mock_repository.has_successful_operation.return_value = True
+        self.mock_config_loader.get_message.return_value = "Test files already moved"
 
         # Act
         success, message, file_count = self.service.move_test_files(
@@ -247,6 +252,7 @@ class TestMoveTestFilesRefactored:
         # Arrange
         self.mock_repository.has_successful_operation.return_value = False
         self.mock_file_driver.exists.return_value = False
+        self.mock_config_loader.get_message.return_value = "No source directory"
 
         # Act
         success, message, file_count = self.service.move_test_files(

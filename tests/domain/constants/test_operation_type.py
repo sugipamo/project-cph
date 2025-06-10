@@ -123,8 +123,8 @@ class TestConstantIntegration:
         workspace_values = {op.value for op in WorkspaceOperationType}
         file_values = {op.value for op in FileOperationType}
         directory_values = {op.value for op in DirectoryName}
-        pattern_values = {op.value for op in FilePattern}
-        preparation_values = {op.value for op in PreparationAction}
+        {op.value for op in FilePattern}
+        {op.value for op in PreparationAction}
 
         # Check for overlaps between different categories
         assert not workspace_values & file_values

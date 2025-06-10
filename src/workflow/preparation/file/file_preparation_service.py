@@ -3,10 +3,11 @@
 from pathlib import Path
 from typing import List, Tuple
 
+from src.domain.constants.operation_type import DirectoryName, WorkspaceOperationType
 from src.domain.interfaces.logger_interface import LoggerInterface
+from src.infrastructure.config.json_config_loader import JsonConfigLoader
 from src.infrastructure.drivers.file.file_driver import FileDriver
 from src.infrastructure.persistence.sqlite.repositories.file_preparation_repository import FilePreparationRepository
-from src.infrastructure.config.json_config_loader import JsonConfigLoader
 
 
 class FilePreparationService:
@@ -49,7 +50,7 @@ class FilePreparationService:
             Tuple of (success, message, file_count)
         """
         # Check if operation was already completed
-        operation_type = self.config_loader.get_operation_type('move_test_files')
+        operation_type = WorkspaceOperationType.MOVE_TEST_FILES.value
         already_done, done_message = self._check_operation_already_done(
             language_name, contest_name, problem_name, operation_type, force
         )
@@ -57,7 +58,7 @@ class FilePreparationService:
             message = self.config_loader.get_message('test_files_already_moved')
             return True, message, 0
 
-        test_dir_name = self.config_loader.get_directory_name('test')
+        test_dir_name = DirectoryName.TEST.value
         source_test_dir = Path(workspace_path) / test_dir_name
         dest_test_dir = Path(contest_current_path) / test_dir_name
 
@@ -216,7 +217,7 @@ class FilePreparationService:
         Returns:
             Tuple of (success, message)
         """
-        workspace_test_dir = Path(workspace_path) / "test"
+        workspace_test_dir = Path(workspace_path) / DirectoryName.TEST.value
 
         try:
             if self.file_driver.exists(workspace_test_dir):
@@ -226,7 +227,7 @@ class FilePreparationService:
 
                 # Record cleanup operation
                 self.repository.record_operation(
-                    language_name, contest_name, problem_name, 'cleanup_workspace',
+                    language_name, contest_name, problem_name, WorkspaceOperationType.CLEANUP_WORKSPACE.value,
                     str(workspace_test_dir), "", 0, True
                 )
 
@@ -241,7 +242,7 @@ class FilePreparationService:
 
             # Record failed cleanup
             self.repository.record_operation(
-                language_name, contest_name, problem_name, 'cleanup_workspace',
+                language_name, contest_name, problem_name, WorkspaceOperationType.CLEANUP_WORKSPACE.value,
                 str(workspace_test_dir), "", 0, False, error_message
             )
 

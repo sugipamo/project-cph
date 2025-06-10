@@ -138,7 +138,8 @@ def _create_file_preparation_service(container: Any) -> Any:
     file_driver = container.resolve("file_driver")
     repository = container.resolve("file_preparation_repository")
     logger = container.resolve("logger")
-    return FilePreparationService(file_driver, repository, logger)
+    config_loader = container.resolve("json_config_loader")
+    return FilePreparationService(file_driver, repository, logger, config_loader)
 
 
 def _create_problem_workspace_service(container: Any) -> Any:
@@ -169,6 +170,12 @@ def _create_workspace_driver(container: Any) -> Any:
 
     workspace_service = container.resolve("problem_workspace_service")
     return WorkspaceDriver(workspace_service)
+
+
+def _create_json_config_loader() -> Any:
+    """Lazy factory for JSON config loader."""
+    from src.infrastructure.config.json_config_loader import JsonConfigLoader
+    return JsonConfigLoader()
 
 
 def _create_contest_manager(container: Any) -> Any:
@@ -211,6 +218,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register("filesystem", _create_filesystem)
 
     # Register simplified workspace management
+    container.register("json_config_loader", _create_json_config_loader)
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("file_preparation_repository", lambda: _create_file_preparation_repository(container))
     container.register("file_preparation_service", lambda: _create_file_preparation_service(container))
@@ -287,6 +295,7 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register("filesystem", _create_mock_filesystem)
 
     # Register simplified workspace management
+    container.register("json_config_loader", _create_json_config_loader)
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("file_preparation_repository", lambda: _create_file_preparation_repository(container))
     container.register("file_preparation_service", lambda: _create_file_preparation_service(container))
