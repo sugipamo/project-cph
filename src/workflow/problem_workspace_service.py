@@ -125,23 +125,13 @@ class ProblemWorkspaceService:
             total_files_moved += restore_result.restored_files
 
             # Step 3: Move test files from workspace to current
-            if self.file_preparation_service:
-                # Use pattern-based file preparation service
-                success, message, file_count = self.file_preparation_service.move_files_by_patterns(
-                    "move_test_files", language, contest, problem,
-                    self.base_paths.get("workspace_path", ""),
-                    self.base_paths["contest_current_path"],
-                    self.base_paths.get("contest_stock_path", "")
-                )
-                if success:
-                    total_files_moved += file_count
-                    self.logger.info(f"Test files moved: {message}")
+            # Use internal implementation directly for more reliable file movement
+            move_result = self._move_test_files(contest, problem, language)
+            if move_result[0]:  # success
+                total_files_moved += move_result[2]  # file_count
+                self.logger.info(f"Test files moved: {move_result[1]}")
             else:
-                # Fallback to internal implementation
-                move_result = self._move_test_files(contest, problem, language)
-                if move_result[0]:  # success
-                    total_files_moved += move_result[2]  # file_count
-                    self.logger.info(f"Test files moved: {move_result[1]}")
+                self.logger.warning(f"Failed to move test files: {move_result[1]}")
 
             # Step 4: Update workspace info
             new_info = WorkspaceInfo(
@@ -182,11 +172,7 @@ class ProblemWorkspaceService:
 
         try:
             contest_current_path = Path(self.base_paths["contest_current_path"])
-            archive_base_path = Path(self.base_paths["contest_stock_path"])
-
-            archive_path = (archive_base_path /
-                          current_info.current_contest /
-                          current_info.current_problem)
+            archive_path = Path(self.base_paths["contest_stock_path"])
 
             if not self.file_driver.exists(contest_current_path):
                 return ArchiveResult(
@@ -233,7 +219,7 @@ class ProblemWorkspaceService:
         """Restore workspace from archive or create from template."""
         try:
             contest_current_path = Path(self.base_paths["contest_current_path"])
-            archive_path = Path(self.base_paths["contest_stock_path"]) / contest / problem
+            archive_path = Path(self.base_paths["contest_stock_path"])
             template_path = Path(self.base_paths["contest_template_path"]) / language
 
             # Clear current workspace

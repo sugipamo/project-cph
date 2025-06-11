@@ -492,6 +492,8 @@ class FilePatternService:
 
         except ConfigValidationError as e:
             self.logger.warning(f"Config validation failed, falling back to legacy: {e}")
+            self.logger.warning(f"Pattern errors: {pattern_errors if 'pattern_errors' in locals() else 'N/A'}")
+            self.logger.warning(f"Operation errors: {operation_errors if 'operation_errors' in locals() else 'N/A'}")
             return self._execute_legacy_fallback(context)
 
         except PatternResolutionError as e:
@@ -515,17 +517,65 @@ class FilePatternService:
             FileOperationResult from legacy implementation
         """
         # This would call the existing move_test_files implementation
-        # For now, return a placeholder result
+        # For now, implement simple test file movement
         self.logger.info("Executing legacy fallback implementation")
-
-        return FileOperationResult(
-            success=True,
-            message="Legacy fallback successful",
-            files_processed=1,
-            files_failed=0,
-            error_details=[],
-            operation_log=["Legacy operation completed"]
-        )
+        self.logger.info(f"Context: {context}")
+        
+        try:
+            workspace_path = Path(context.get("workspace_path", ""))
+            contest_current_path = Path(context.get("contest_current_path", ""))
+            
+            source_test_dir = workspace_path / "test"
+            dest_test_dir = contest_current_path / "test"
+            
+            self.logger.info(f"Legacy fallback: source_test_dir = {source_test_dir}")
+            self.logger.info(f"Legacy fallback: dest_test_dir = {dest_test_dir}")
+            self.logger.info(f"Legacy fallback: source exists = {self.file_driver.exists(source_test_dir)}")
+            
+            if not self.file_driver.exists(source_test_dir):
+                return FileOperationResult(
+                    success=True,
+                    message="No test files to move",
+                    files_processed=0,
+                    files_failed=0,
+                    error_details=[],
+                    operation_log=["No test directory found in workspace"]
+                )
+            
+            # Remove existing destination if it exists
+            if self.file_driver.exists(dest_test_dir):
+                self.file_driver.rmtree(dest_test_dir)
+            
+            # Move test directory
+            self.file_driver.move(source_test_dir, dest_test_dir)
+            
+            # Count moved files
+            file_count = 0
+            for item in self.file_driver.list_files_recursive(dest_test_dir):
+                if self.file_driver.is_file(item):
+                    file_count += 1
+            
+            self.logger.info(f"Legacy fallback moved {file_count} test files")
+            
+            return FileOperationResult(
+                success=True,
+                message=f"Legacy fallback moved {file_count} test files",
+                files_processed=file_count,
+                files_failed=0,
+                error_details=[],
+                operation_log=[f"Legacy operation moved {file_count} files"]
+            )
+            
+        except Exception as e:
+            self.logger.error(f"Legacy fallback failed: {e}")
+            return FileOperationResult(
+                success=False,
+                message=f"Legacy fallback failed: {e}",
+                files_processed=0,
+                files_failed=0,
+                error_details=[{"error": str(e)}],
+                operation_log=[f"Legacy operation failed: {e}"]
+            )
 
     def diagnose_config_issues(self, language: str) -> Dict[str, Any]:
         """Diagnose configuration issues and provide suggestions.
