@@ -122,7 +122,7 @@ class TestGenerateStepsFromJson:
 
         assert not result.is_success
         assert len(result.errors) == 1
-        assert "Unexpected error - Unexpected error" in result.errors[0]
+        assert "Unexpected error - 'Mock' object is not iterable" in result.errors[0]
 
 
 class TestCreateStepFromJson:

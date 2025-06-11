@@ -3,16 +3,14 @@
 from typing import Any
 
 from .step import Step, StepContext, StepGenerationResult, StepType
-import glob
-import os
 
 
 def create_step_context_from_execution_context(execution_context) -> StepContext:
     """ExecutionContextからStepContextを作成するヘルパー関数
-    
+
     Args:
         execution_context: ExecutionContextオブジェクト
-        
+
     Returns:
         StepContext: ステップ生成用コンテキスト
     """
@@ -21,7 +19,7 @@ def create_step_context_from_execution_context(execution_context) -> StepContext
     if hasattr(execution_context, 'env_json') and execution_context.env_json:
         language_config = execution_context.env_json.get(execution_context.language, {})
         file_patterns = language_config.get('file_patterns', {})
-    
+
     return StepContext(
         contest_name=execution_context.contest_name,
         problem_name=execution_context.problem_name,
@@ -162,37 +160,35 @@ def format_template(template: Any, context: StepContext) -> str:
 
 def expand_file_patterns(template: str, context: StepContext, step_type: StepType = None) -> str:
     """ファイルパターンを展開して文字列を返す純粋関数
-    
+
     Args:
         template: パターンを含むテンプレート文字列
         context: ステップ生成コンテキスト
         step_type: ステップタイプ（ディレクトリ操作の判定用）
-        
+
     Returns:
         str: 展開されたパターン文字列（ワイルドカード形式）
     """
     if not context.file_patterns:
         return format_template(template, context)
-    
+
     # ファイルパターンプレースホルダーを検出
     for pattern_name, patterns in context.file_patterns.items():
         placeholder = f'{{{pattern_name}}}'
-        if placeholder in template:
-            if patterns:
-                pattern = patterns[0]  # 最初のパターンを使用
-                
-                # ディレクトリ操作（movetree, copytree, rmtree）の場合は、ディレクトリ部分のみを抽出
-                if step_type in [StepType.MOVETREE, StepType.RMTREE]:
-                    if '/' in pattern:
-                        # パターンからディレクトリ部分を抽出 (例: "test/*.in" -> "test")
-                        directory_part = pattern.split('/')[0]
-                        result = template.replace(placeholder, directory_part)
-                        return format_template(result, context)
-                
-                # 通常のファイル操作やその他の場合は元のパターンを使用
-                result = template.replace(placeholder, pattern)
+        if placeholder in template and patterns:
+            pattern = patterns[0]  # 最初のパターンを使用
+
+            # ディレクトリ操作（movetree, copytree, rmtree）の場合は、ディレクトリ部分のみを抽出
+            if step_type in [StepType.MOVETREE, StepType.RMTREE] and '/' in pattern:
+                # パターンからディレクトリ部分を抽出 (例: "test/*.in" -> "test")
+                directory_part = pattern.split('/')[0]
+                result = template.replace(placeholder, directory_part)
                 return format_template(result, context)
-    
+
+            # 通常のファイル操作やその他の場合は元のパターンを使用
+            result = template.replace(placeholder, pattern)
+            return format_template(result, context)
+
     # パターンプレースホルダーがない場合は通常のフォーマット
     return format_template(template, context)
 
