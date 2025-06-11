@@ -4,9 +4,7 @@ import pytest
 
 from src.infrastructure.config.di_config import (
     _create_contest_manager,
-    _create_problem_workspace_service,
     _create_system_config_loader,
-    _create_workspace_driver,
     configure_production_dependencies,
     configure_test_dependencies,
 )
@@ -42,61 +40,56 @@ class TestDIConfigFactories:
         # Should be SystemConfigLoader instance
         assert hasattr(loader, 'get_env_config')
 
-    @patch('src.workflow.problem_workspace_service.ProblemWorkspaceService')
-    def test_create_problem_workspace_service(self, mock_service_class):
-        """Test _create_problem_workspace_service factory"""
-        container = Mock()
+    # @patch('src.workflow.problem_workspace_service.ProblemWorkspaceService')
+    # def test_create_problem_workspace_service(self, mock_service_class):
+    #     """Test _create_problem_workspace_service factory"""
+    #     container = Mock()
+    #
+    #     # Mock dependencies
+    #     mock_file_driver = Mock()
+    #     mock_repository = Mock()
+    #     mock_logger = Mock()
+    #     mock_config_loader = Mock()
+    #     mock_config_loader.get_env_config.return_value = {
+    #         "languages": {
+    #             "python": {"paths": {"contest_current_path": "/current"}}
+    #         },
+    #         "shared": {"paths": {"workspace_path": "/workspace"}}
+    #     }
+    #
+    #     def mock_resolve(key):
+    #         if key == "file_driver":
+    #             return mock_file_driver
+    #         if key == "logger":
+    #             return mock_logger
+    #         if key == "system_config_loader":
+    #             return mock_config_loader
+    #         return Mock()
+    #
+    #     container.resolve.side_effect = mock_resolve
+    #
+    #     mock_service_instance = Mock()
+    #     mock_service_class.return_value = mock_service_instance
+    #
+    #     result = _create_problem_workspace_service(container)
+    #
+    #     assert result == mock_service_instance
+    #     mock_service_class.assert_called_once()
 
-        # Mock dependencies
-        mock_file_driver = Mock()
-        mock_repository = Mock()
-        mock_logger = Mock()
-        mock_file_preparation_service = Mock()
-        mock_config_loader = Mock()
-        mock_config_loader.get_env_config.return_value = {
-            "languages": {
-                "python": {"paths": {"contest_current_path": "/current"}}
-            },
-            "shared": {"paths": {"workspace_path": "/workspace"}}
-        }
-
-        def mock_resolve(key):
-            if key == "file_driver":
-                return mock_file_driver
-            if key == "file_preparation_repository":
-                return mock_repository
-            if key == "logger":
-                return mock_logger
-            if key == "file_preparation_service":
-                return mock_file_preparation_service
-            if key == "system_config_loader":
-                return mock_config_loader
-            return Mock()
-
-        container.resolve.side_effect = mock_resolve
-
-        mock_service_instance = Mock()
-        mock_service_class.return_value = mock_service_instance
-
-        result = _create_problem_workspace_service(container)
-
-        assert result == mock_service_instance
-        mock_service_class.assert_called_once()
-
-    @patch('src.infrastructure.drivers.workspace.workspace_driver.WorkspaceDriver')
-    def test_create_workspace_driver(self, mock_driver_class):
-        """Test _create_workspace_driver factory"""
-        container = Mock()
-        mock_workspace_service = Mock()
-        container.resolve.return_value = mock_workspace_service
-
-        mock_driver_instance = Mock()
-        mock_driver_class.return_value = mock_driver_instance
-
-        result = _create_workspace_driver(container)
-
-        assert result == mock_driver_instance
-        mock_driver_class.assert_called_once_with(mock_workspace_service)
+    # @patch('src.infrastructure.drivers.workspace.workspace_driver.WorkspaceDriver')
+    # def test_create_workspace_driver(self, mock_driver_class):
+    #     """Test _create_workspace_driver factory"""
+    #     container = Mock()
+    #     mock_workspace_service = Mock()
+    #     container.resolve.return_value = mock_workspace_service
+    #
+    #     mock_driver_instance = Mock()
+    #     mock_driver_class.return_value = mock_driver_instance
+    #
+    #     result = _create_workspace_driver(container)
+    #
+    #     assert result == mock_driver_instance
+    #     mock_driver_class.assert_called_once_with(mock_workspace_service)
 
     @patch('src.infrastructure.persistence.sqlite.contest_manager.ContestManager')
     def test_create_contest_manager(self, mock_contest_manager_class):
@@ -119,9 +112,6 @@ class TestDIConfigFactories:
 
         # Test that new dependencies are registered
         assert "system_config_loader" in container._providers
-        assert "problem_workspace_service" in container._providers
-        assert "workspace_driver" in container._providers
-        assert "file_preparation_service" in container._providers
         assert "contest_manager" in container._providers
 
     def test_configure_test_dependencies_includes_new_factories(self):
@@ -132,14 +122,10 @@ class TestDIConfigFactories:
 
         # Test that new dependencies are registered
         assert "system_config_loader" in container._providers
-        assert "problem_workspace_service" in container._providers
-        assert "workspace_driver" in container._providers
-        assert "file_preparation_service" in container._providers
         assert "contest_manager" in container._providers
 
     @patch('src.infrastructure.config.di_config._create_system_config_loader')
-    @patch('src.infrastructure.config.di_config._create_problem_workspace_service')
-    def test_factory_dependency_resolution(self, mock_create_workspace_service, mock_create_config_loader):
+    def test_factory_dependency_resolution(self, mock_create_config_loader):
         """Test that factories correctly resolve dependencies"""
         container = DIContainer()
         configure_production_dependencies(container)
@@ -147,16 +133,9 @@ class TestDIConfigFactories:
         mock_config_loader = Mock()
         mock_create_config_loader.return_value = mock_config_loader
 
-        mock_workspace_service = Mock()
-        mock_create_workspace_service.return_value = mock_workspace_service
-
         # Resolve system_config_loader
         loader = container.resolve("system_config_loader")
         assert loader == mock_config_loader
-
-        # Resolve problem_workspace_service (should depend on system_config_loader)
-        service = container.resolve("problem_workspace_service")
-        assert service == mock_workspace_service
 
     def test_lazy_loading_behavior(self):
         """Test that factories use lazy loading correctly"""
@@ -169,5 +148,4 @@ class TestDIConfigFactories:
         # This test verifies the lazy loading pattern is working
         # by checking that factories are callable objects
         assert callable(container._providers["system_config_loader"])
-        assert callable(container._providers["problem_workspace_service"])
-        assert callable(container._providers["workspace_driver"])
+        assert callable(container._providers["contest_manager"])

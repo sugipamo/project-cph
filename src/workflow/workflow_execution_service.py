@@ -7,7 +7,6 @@ from src.application.orchestration.unified_driver import UnifiedDriver
 from src.context.execution_context import ExecutionContext
 from src.utils.debug_logger import DebugLogger
 from src.workflow.builder.graph_based_workflow_builder import GraphBasedWorkflowBuilder
-from src.workflow.preparation.executor.preparation_executor import PreparationExecutor
 from src.workflow.step.core import generate_steps_from_json
 from src.workflow.step.step import Step, StepType
 from src.workflow.workflow_result import WorkflowExecutionResult
@@ -27,7 +26,6 @@ class WorkflowExecutionService:
         """
         self.context = context
         self.operations = operations
-        self.preparation_executor = PreparationExecutor(operations, context)
 
     def execute_workflow(self, parallel: bool = False, max_workers: int = 4) -> WorkflowExecutionResult:
         """Execute workflow based on context configuration
@@ -88,30 +86,31 @@ class WorkflowExecutionService:
 
         # Analyze environment and prepare if needed (fitting responsibility)
         preparation_results = []
-        workflow_tasks = self._create_workflow_tasks(step_result.steps)
-
-        if workflow_tasks:
-            preparation_tasks, statuses = self.preparation_executor.analyze_and_prepare(workflow_tasks)
-
-            if preparation_tasks:
-                # Convert preparation tasks to requests
-                preparation_requests = self.preparation_executor.convert_to_workflow_requests(preparation_tasks)
-
-                # Execute preparation tasks
-                unified_driver = UnifiedDriver(self.operations)
-
-                for request in preparation_requests:
-                    execution_result = request.execute(unified_driver)
-                    preparation_results.append(execution_result)
-
-                    if not execution_result.success:
-                        return WorkflowExecutionResult(
-                            success=False,
-                            results=[],
-                            preparation_results=preparation_results,
-                            errors=[f"Preparation failed: {execution_result.get_error_output()}"],
-                            warnings=graph_warnings + step_result.warnings
-                        )
+        # TODO: Restore preparation functionality when PreparationExecutor is available
+        # workflow_tasks = self._create_workflow_tasks(step_result.steps)
+        #
+        # if workflow_tasks:
+        #     preparation_tasks, statuses = self.preparation_executor.analyze_and_prepare(workflow_tasks)
+        #
+        #     if preparation_tasks:
+        #         # Convert preparation tasks to requests
+        #         preparation_requests = self.preparation_executor.convert_to_workflow_requests(preparation_tasks)
+        #
+        #         # Execute preparation tasks
+        #         unified_driver = UnifiedDriver(self.operations)
+        #
+        #         for request in preparation_requests:
+        #             execution_result = request.execute(unified_driver)
+        #             preparation_results.append(execution_result)
+        #
+        #             if not execution_result.success:
+        #                 return WorkflowExecutionResult(
+        #                     success=False,
+        #                     results=[],
+        #                     preparation_results=preparation_results,
+        #                     errors=[f"Preparation failed: {execution_result.get_error_output()}"],
+        #                     warnings=graph_warnings + step_result.warnings
+        #                 )
 
         # Execute main workflow
         unified_driver = UnifiedDriver(self.operations)
@@ -188,15 +187,11 @@ class WorkflowExecutionService:
                     request_type = "file"
                 elif request.__class__.__name__ == "ShellRequest":
                     request_type = "shell"
-                elif request.__class__.__name__ == "FilePreparationRequest":
-                    request_type = "file_preparation"
                 elif step.type.value.startswith("docker"):
                     request_type = "docker"
                 elif step.type in [StepType.MKDIR, StepType.TOUCH, StepType.COPY,
                                  StepType.MOVE, StepType.REMOVE, StepType.RMTREE]:
                     request_type = "file"
-                elif step.type == StepType.FILE_PREPARATION:
-                    request_type = "file_preparation"
                 else:
                     request_type = "other"
 

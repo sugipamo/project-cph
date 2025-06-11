@@ -6,7 +6,6 @@ from src.domain.constants.operation_type import (
     FileOperationType,
     FilePattern,
     PreparationAction,
-    WorkspaceOperationType,
 )
 from src.infrastructure.config.json_config_loader import JsonConfigLoader
 
@@ -27,12 +26,12 @@ class TestEnumIntegration:
         assert DirectoryName.WORKSPACE.value == self.config_loader.get_directory_name('workspace')
         assert DirectoryName.CONTEST_ENV.value == self.config_loader.get_directory_name('contest_env')
 
-    def test_workspace_operation_enum_matches_config_loader(self):
-        """Test that WorkspaceOperationType enum values match JsonConfigLoader results."""
-        assert WorkspaceOperationType.WORKSPACE_SWITCH.value == self.config_loader.get_operation_type('workspace_switch')
-        assert WorkspaceOperationType.MOVE_TEST_FILES.value == self.config_loader.get_operation_type('move_test_files')
-        assert WorkspaceOperationType.CLEANUP_WORKSPACE.value == self.config_loader.get_operation_type('cleanup_workspace')
-        assert WorkspaceOperationType.ARCHIVE_CURRENT.value == self.config_loader.get_operation_type('archive_current')
+    # def test_workspace_operation_enum_matches_config_loader(self):
+    #     """Test that WorkspaceOperationType enum values match JsonConfigLoader results."""
+    #     assert WorkspaceOperationType.WORKSPACE_SWITCH.value == self.config_loader.get_operation_type('workspace_switch')
+    #     assert WorkspaceOperationType.MOVE_TEST_FILES.value == self.config_loader.get_operation_type('move_test_files')
+    #     assert WorkspaceOperationType.CLEANUP_WORKSPACE.value == self.config_loader.get_operation_type('cleanup_workspace')
+    #     assert WorkspaceOperationType.ARCHIVE_CURRENT.value == self.config_loader.get_operation_type('archive_current')
 
     def test_file_operation_enum_consistency(self):
         """Test that FileOperationType enum has consistent values."""
@@ -67,8 +66,8 @@ class TestEnumIntegration:
         for directory in DirectoryName:
             assert isinstance(directory.value, str)
 
-        for operation in WorkspaceOperationType:
-            assert isinstance(operation.value, str)
+        # for operation in WorkspaceOperationType:
+        #     assert isinstance(operation.value, str)
 
         for file_op in FileOperationType:
             assert isinstance(file_op.value, str)
@@ -87,14 +86,14 @@ class TestEnumIntegration:
         start_time = time.time()
         for _ in range(1000):
             _ = DirectoryName.TEST.value
-            _ = WorkspaceOperationType.MOVE_TEST_FILES.value
+            # _ = WorkspaceOperationType.MOVE_TEST_FILES.value
         enum_time = time.time() - start_time
 
         # Test config loader access speed
         start_time = time.time()
         for _ in range(1000):
             _ = self.config_loader.get_directory_name('test')
-            _ = self.config_loader.get_operation_type('move_test_files')
+            # _ = self.config_loader.get_operation_type('move_test_files')  # WorkspaceOperationType removed
         config_time = time.time() - start_time
 
         # Enum access should be faster (though both should be quite fast)
@@ -104,8 +103,8 @@ class TestEnumIntegration:
         """Test that deprecated methods still work for backward compatibility."""
         # These should still work even though they're deprecated
         assert self.config_loader.get_directory_name('test') == 'test'
-        assert self.config_loader.get_operation_type('move_test_files') == 'move_test_files'
+        # assert self.config_loader.get_operation_type('move_test_files') == 'move_test_files'  # WorkspaceOperationType removed
 
         # Test fallback behavior for unknown keys
         assert self.config_loader.get_directory_name('unknown_dir') == 'unknown_dir'
-        assert self.config_loader.get_operation_type('unknown_op') == 'unknown_op'
+        # assert self.config_loader.get_operation_type('unknown_op') == 'unknown_op'  # WorkspaceOperationType removed

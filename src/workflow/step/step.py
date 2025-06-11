@@ -78,15 +78,10 @@ class Step:
     format_options: Optional[dict[str, Any]] = None
     output_format: Optional[str] = None
     format_preset: Optional[str] = None
-    # File preparation specific fields
-    target_state: Optional[str] = None
-    context: Optional[dict[str, Any]] = None
-    operation_type: Optional[str] = None
 
     def __post_init__(self):
         """データ検証"""
-        # File preparation steps don't require cmd
-        if self.type != StepType.FILE_PREPARATION and not self.cmd:
+        if not self.cmd:
             raise ValueError(f"Step {self.type} must have non-empty cmd")
 
         # 各ステップタイプの必要な引数をチェック

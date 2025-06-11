@@ -50,10 +50,8 @@ class UnifiedDriver:
             return self._get_cached_driver("docker_driver")
         if operation_type == OperationType.PYTHON:
             return self._get_cached_driver("python_driver")
-        if operation_type == OperationType.FILE_PREPARATION:
-            return self._get_cached_driver("file_preparation_driver")
         if operation_type == OperationType.STATE_SHOW:
-            return self._get_cached_driver("file_preparation_driver")
+            return self._get_cached_driver("file_driver")
         if operation_type == OperationType.WORKSPACE:
             return self._get_cached_driver("workspace_driver")
         # Fallback: return self for composite/unknown types

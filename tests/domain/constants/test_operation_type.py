@@ -7,7 +7,6 @@ from src.domain.constants.operation_type import (
     FilePattern,
     OperationType,
     PreparationAction,
-    WorkspaceOperationType,
 )
 
 
@@ -22,7 +21,7 @@ class TestOperationType:
         assert OperationType.DOCKER
         assert OperationType.COMPOSITE
         assert OperationType.PYTHON
-        assert OperationType.FILE_PREPARATION
+        # assert OperationType.FILE_PREPARATION  # Removed
         assert OperationType.STATE_SHOW
         assert OperationType.WORKSPACE
 
@@ -32,19 +31,19 @@ class TestOperationType:
         assert len(values) == len(set(values))  # All values should be unique
 
 
-class TestWorkspaceOperationType:
-    """Tests for WorkspaceOperationType enum."""
-
-    def test_workspace_operation_values(self):
-        """Test workspace operation type string values."""
-        assert WorkspaceOperationType.WORKSPACE_SWITCH.value == "workspace_switch"
-        assert WorkspaceOperationType.MOVE_TEST_FILES.value == "move_test_files"
-        assert WorkspaceOperationType.CLEANUP_WORKSPACE.value == "cleanup_workspace"
-        assert WorkspaceOperationType.ARCHIVE_CURRENT.value == "archive_current"
-
-    def test_workspace_operation_count(self):
-        """Test expected number of workspace operations."""
-        assert len(WorkspaceOperationType) == 4
+# class TestWorkspaceOperationType:
+#     """Tests for WorkspaceOperationType enum."""
+#
+#     def test_workspace_operation_values(self):
+#         """Test workspace operation type string values."""
+#         assert WorkspaceOperationType.WORKSPACE_SWITCH.value == "workspace_switch"
+#         assert WorkspaceOperationType.MOVE_TEST_FILES.value == "move_test_files"
+#         assert WorkspaceOperationType.CLEANUP_WORKSPACE.value == "cleanup_workspace"
+#         assert WorkspaceOperationType.ARCHIVE_CURRENT.value == "archive_current"
+#
+#     def test_workspace_operation_count(self):
+#         """Test expected number of workspace operations."""
+#         assert len(WorkspaceOperationType) == 4
 
 
 class TestFileOperationType:
@@ -120,21 +119,21 @@ class TestConstantIntegration:
 
     def test_no_duplicate_values_across_enums(self):
         """Test that string values don't conflict across different enums."""
-        workspace_values = {op.value for op in WorkspaceOperationType}
+        # workspace_values = {op.value for op in WorkspaceOperationType}
         file_values = {op.value for op in FileOperationType}
         directory_values = {op.value for op in DirectoryName}
         {op.value for op in FilePattern}
         {op.value for op in PreparationAction}
 
         # Check for overlaps between different categories
-        assert not workspace_values & file_values
-        assert not workspace_values & directory_values
+        # assert not workspace_values & file_values
+        # assert not workspace_values & directory_values
         assert not file_values & directory_values
 
     def test_enum_accessibility(self):
         """Test that all enums can be imported and accessed correctly."""
         # Test that we can access enum members
-        assert hasattr(WorkspaceOperationType, 'MOVE_TEST_FILES')
+        # assert hasattr(WorkspaceOperationType, 'MOVE_TEST_FILES')
         assert hasattr(FileOperationType, 'COPY')
         assert hasattr(DirectoryName, 'TEST')
         assert hasattr(FilePattern, 'CONFIG_FILE')
