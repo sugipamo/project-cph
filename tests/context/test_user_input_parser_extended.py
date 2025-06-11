@@ -375,10 +375,17 @@ class TestUserInputParserHelpers:
             {"cpp": {"test": "value2"}}
         ]
 
-        with patch('src.context.user_input_parser._load_shared_config', return_value=None):
+        # Mock JsonConfigLoader to return the expected merged configuration
+        with patch('src.context.user_input_parser.JsonConfigLoader') as mock_loader:
+            mock_instance = MagicMock()
+            mock_loader.return_value = mock_instance
+            mock_instance.get_language_config.return_value = {"test": "value1", "other": "merged_value"}
+
             result_context = _apply_env_json(context, env_jsons, "base_dir", MagicMock())
 
-        assert result_context.env_json["python"]["test"] == "value1"
+        # New implementation returns merged config directly (no language wrapper)
+        assert result_context.env_json["test"] == "value1"
+        assert result_context.env_json["other"] == "merged_value"
 
     def test_make_dockerfile_loader(self):
         """Test dockerfile loader creation."""

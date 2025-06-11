@@ -160,10 +160,17 @@ class WorkflowExecutionService:
 
     def _get_workflow_steps(self) -> list[dict]:
         """Get workflow steps from context configuration"""
-        if not self.context.env_json or self.context.language not in self.context.env_json:
+        if not self.context.env_json:
             return []
 
-        language_config = self.context.env_json[self.context.language]
+        # JsonConfigLoader.get_language_config()使用時は、マージ済み設定から直接取得
+        if self.context.language in self.context.env_json:
+            # 従来形式（言語がトップレベルキー）
+            language_config = self.context.env_json[self.context.language]
+        else:
+            # JsonConfigLoader形式（マージ済み設定）
+            language_config = self.context.env_json
+
         commands = language_config.get('commands', {})
         command_config = commands.get(self.context.command_type, {})
 

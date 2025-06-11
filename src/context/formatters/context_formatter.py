@@ -43,16 +43,23 @@ def create_format_dict(data: ExecutionFormatData) -> dict[str, str]:
 
 
     # env_jsonから追加の値を取得
-    if data.env_json and data.language in data.env_json:
-        lang_config = data.env_json[data.language]
+    # JsonConfigLoader.get_language_config()使用時はマージ済み設定なので直接アクセス
+    if data.env_json:
+        # 言語名がキーとして存在する場合（従来形式）
+        if data.language in data.env_json:
+            lang_config = data.env_json[data.language]
+        else:
+            # マージ済み設定の場合（JsonConfigLoader形式）
+            lang_config = data.env_json
 
-        # パス関連
+        # パス関連 - pathsの下にある場合とトップレベルにある場合の両方に対応
+        paths_config = lang_config.get("paths", lang_config)
         format_dict.update({
-            "contest_current_path": lang_config.get("contest_current_path", "./contest_current"),
-            "contest_stock_path": lang_config.get("contest_stock_path", "./contest_stock"),
-            "contest_template_path": lang_config.get("contest_template_path", "./contest_template"),
-            "contest_temp_path": lang_config.get("contest_temp_path", "./.temp"),
-            "workspace_path": lang_config.get("workspace_path", "./workspace"),
+            "contest_current_path": paths_config.get("contest_current_path", "./contest_current"),
+            "contest_stock_path": paths_config.get("contest_stock_path", "./contest_stock"),
+            "contest_template_path": paths_config.get("contest_template_path", "./contest_template"),
+            "contest_temp_path": paths_config.get("contest_temp_path", "./.temp"),
+            "workspace_path": paths_config.get("workspace_path", "./workspace"),
         })
 
         # その他の値
@@ -106,8 +113,8 @@ def validate_execution_data(data: ExecutionFormatData) -> tuple[bool, Optional[s
         return False, "env_type is required"
 
     # env_jsonの検証
-    if data.env_json and data.language and data.language not in data.env_json:
-        return False, f"Language '{data.language}' not found in env_json"
+    # Note: JsonConfigLoader.get_language_config()を使用している場合、
+    # env_jsonは既に言語固有にマージされた設定なので、言語キーの存在チェックは不要
 
     return True, None
 

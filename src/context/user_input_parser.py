@@ -6,6 +6,7 @@ from src.context.dockerfile_resolver import DockerfileResolver
 from src.context.resolver.config_resolver import create_config_root_from_dict, resolve_by_match_desc
 from src.domain.requests.file.file_op_type import FileOpType
 from src.domain.requests.file.file_request import FileRequest
+from src.infrastructure.config.json_config_loader import JsonConfigLoader
 from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
 
 from .execution_context import ExecutionContext
@@ -218,19 +219,10 @@ def _merge_with_shared_config(env_json, shared_config):
 
 def _apply_env_json(context, env_jsons, base_dir=None, operations=None):
     """環境JSONをコンテキストに適用"""
-    # 最新のshared設定が適用されるよう常に再処理
-    if context.language:
-        # shared設定を読み込み
-        shared_config = None
-        if base_dir and operations:
-            shared_config = _load_shared_config(base_dir, operations)
-
-        for env_json in env_jsons:
-            if context.language in env_json:
-                # shared設定とマージ
-                merged_env_json = _merge_with_shared_config(env_json, shared_config)
-                context.env_json = merged_env_json
-                break
+    # JsonConfigLoaderを使用して正しい設定を取得
+    if context.language and base_dir:
+        json_config_loader = JsonConfigLoader(base_dir)
+        context.env_json = json_config_loader.get_language_config(context.language)
     return context
 
 
@@ -268,22 +260,18 @@ def parse_user_input(
     current_context_info = _load_current_context_sqlite(operations)
 
     # 環境設定読み込みと設定ルート作成
+    json_config_loader = JsonConfigLoader(CONTEST_ENV_DIR)
+    env_config = json_config_loader.get_env_config()
+    root = create_config_root_from_dict(env_config)
+
+    # 後続処理のために従来のenv_jsonsも取得（一時的な互換性のため）
     env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, operations)
-    merged_env_json = {}
-    for env_json in env_jsons:
-        merged_env_json.update(env_json)
-    root = create_config_root_from_dict(merged_env_json)
 
     # env_jsonが存在しない場合は、読み込んだenv_jsonを使用
     final_env_json = current_context_info["env_json"]
     if final_env_json is None and current_context_info["language"]:
-        # shared設定を読み込み
-        shared_config = _load_shared_config(CONTEST_ENV_DIR, operations)
-        for env_json in env_jsons:
-            if current_context_info["language"] in env_json:
-                # shared設定とマージ
-                final_env_json = _merge_with_shared_config(env_json, shared_config)
-                break
+        # JsonConfigLoaderを使用して言語固有の設定を取得
+        final_env_json = json_config_loader.get_language_config(current_context_info["language"])
 
     context = ExecutionContext(
         command_type=current_context_info["command"],
