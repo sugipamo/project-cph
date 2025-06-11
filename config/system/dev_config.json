@@ -16,7 +16,7 @@
       }
     },
     "feature_flags": {
-      "use_file_patterns": false
+      "use_file_patterns": true
     }
   }
 }

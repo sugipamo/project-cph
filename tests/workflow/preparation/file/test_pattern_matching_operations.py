@@ -319,8 +319,8 @@ class TestFileOperations:
         assert result.files_processed == 4
         assert result.files_failed == 0
 
-        # Check that file operations were called
-        assert service.file_driver.copy.call_count == 4
+        # Check that file operations were called (move operations since operation name starts with "move_")
+        assert service.file_driver.move.call_count == 4
 
         # Verify the calls
         expected_calls = [
@@ -329,7 +329,7 @@ class TestFileOperations:
             call(Path("/workspace/main.cpp"), Path("/contest_stock/main.cpp")),
             call(Path("/workspace/helper.h"), Path("/contest_stock/helper.h"))
         ]
-        service.file_driver.copy.assert_has_calls(expected_calls, any_order=True)
+        service.file_driver.move.assert_has_calls(expected_calls, any_order=True)
 
     def test_execute_file_operations_cleanup_workspace(self, service):
         """Test executing cleanup_workspace operation."""
@@ -358,13 +358,13 @@ class TestFileOperations:
     def test_execute_file_operations_partial_failure(self, service, mock_file_driver):
         """Test executing operations with partial failures."""
         # Setup file driver to fail some operations
-        def copy_side_effect(src, dst):
+        def move_side_effect(src, dst):
             # Simulate failures for file2.in and helper.h
             if "file2.in" in str(src) or "helper.h" in str(src):
-                raise Exception("Simulated copy failure")
+                raise Exception("Simulated move failure")
             return True
 
-        mock_file_driver.copy.side_effect = copy_side_effect
+        mock_file_driver.move.side_effect = move_side_effect
 
         context = {
             "workspace_path": "/workspace",

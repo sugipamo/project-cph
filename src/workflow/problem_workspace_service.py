@@ -147,7 +147,8 @@ class ProblemWorkspaceService:
                     "move_test_files", language, contest, problem,
                     self.base_paths.get("workspace_path", ""),
                     self.base_paths["contest_current_path"],
-                    self.base_paths.get("contest_stock_path", "")
+                    self.base_paths.get("contest_stock_path", ""),
+                    force
                 )
                 if success:
                     total_files_moved += file_count

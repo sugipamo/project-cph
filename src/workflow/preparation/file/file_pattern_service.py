@@ -356,16 +356,22 @@ class FilePatternService:
                             if not dest_dir.exists():
                                 self.file_driver.makedirs(dest_dir, exist_ok=True)
 
-                            # Copy file
+                            # Copy or move file based on operation name
                             try:
-                                self.file_driver.copy(source_path, dest_path)
-                                files_processed += 1
-                                operation_log.append(f"Copied: {source_path} -> {dest_path}")
-                            except Exception as copy_error:
+                                if operation_name.startswith("move_"):
+                                    self.file_driver.move(source_path, dest_path)
+                                    files_processed += 1
+                                    operation_log.append(f"Moved: {source_path} -> {dest_path}")
+                                else:
+                                    self.file_driver.copy(source_path, dest_path)
+                                    files_processed += 1
+                                    operation_log.append(f"Copied: {source_path} -> {dest_path}")
+                            except Exception as file_error:
                                 files_failed += 1
+                                operation_type = "Move" if operation_name.startswith("move_") else "Copy"
                                 error_details.append({
                                     "file": str(source_path),
-                                    "error": f"Copy operation failed: {copy_error}"
+                                    "error": f"{operation_type} operation failed: {file_error}"
                                 })
 
                         except Exception as e:
