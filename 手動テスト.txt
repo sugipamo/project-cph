@@ -1,0 +1,15 @@
+contest_current/, contest_stock/, workspace/を削除
+
+./cph.sh abc300 open a python
+    contest_current/testが作成されて中にテストファイルがある
+    contets_currentにmain.pyがあり、contest_template/python/main.pyのものと同一になっている
+    main.pyの中身を編集する、末尾にraise Exception()を追加
+
+./cph.sh abc301 open a python
+    contest_current/testが作成されて中にテストファイルがある
+    contets_currentにmain.pyがあり、contest_template/python/main.pyのものと同一になっている
+
+./cph.sh abc300 open a python
+    contest_stock/python/abc300/a/testのデータがcontest_currentに移動される
+    contest_stock/python/abc300/a/main.pyのデータがcontest_currentに移動される
+
