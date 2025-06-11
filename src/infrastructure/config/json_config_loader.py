@@ -98,14 +98,24 @@ class JsonConfigLoader:
     def get_language_config(self, language: str) -> Dict[str, Any]:
         """Get full configuration for a specific language.
 
+        Language configuration inherits from shared configuration as a base,
+        with language-specific settings overriding shared ones.
+
         Args:
             language: Language name
 
         Returns:
-            Dictionary with language configuration
+            Dictionary with language configuration (shared + language-specific)
         """
+        # Get shared configuration as base
+        shared_config = self.get_shared_config()
+
+        # Get language-specific configuration
         config = self.get_env_config()
-        return config.get(language, {})
+        language_config = config.get(language, {})
+
+        # Merge shared config as base with language config overriding
+        return self._deep_merge(shared_config, language_config)
 
     def get_shared_config(self) -> Dict[str, Any]:
         """Get shared configuration from shared/env.json.
