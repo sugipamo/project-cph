@@ -65,12 +65,11 @@ class TestFilePreparationSideEffects:
 
         file_driver = LocalFileDriver(base_dir=temp_path)
         sqlite_manager = FastSQLiteManager(":memory:", skip_migrations=False)
-        repository = FilePreparationRepository(sqlite_manager)
+        FilePreparationRepository(sqlite_manager)
         logger = PythonLogger()
 
         return ProblemWorkspaceService(
             file_driver=file_driver,
-            repository=repository,
             logger=logger,
             base_paths=base_paths
         )

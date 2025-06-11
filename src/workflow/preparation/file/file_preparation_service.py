@@ -7,20 +7,19 @@ from src.domain.constants.operation_type import DirectoryName, WorkspaceOperatio
 from src.domain.interfaces.logger_interface import LoggerInterface
 from src.infrastructure.config.json_config_loader import JsonConfigLoader
 from src.infrastructure.drivers.file.file_driver import FileDriver
-from src.infrastructure.persistence.sqlite.repositories.file_preparation_repository import FilePreparationRepository
 
-from .file_pattern_service import FileOperationResult, FilePatternService
+from .file_pattern_service import FilePatternService
 
 
 class FilePreparationService:
     """Service for managing file preparation operations."""
 
-    def __init__(self, file_driver: FileDriver, repository: FilePreparationRepository, logger: LoggerInterface, config_loader: JsonConfigLoader, file_pattern_service: FilePatternService):
+    def __init__(self, file_driver: FileDriver, repository, logger: LoggerInterface, config_loader: JsonConfigLoader, file_pattern_service: FilePatternService):
         """Initialize with file driver, repository, logger and config loader.
 
         Args:
             file_driver: File driver for file operations
-            repository: Repository for tracking operations
+            repository: Repository for operation tracking
             logger: Logger for logging operations
             config_loader: Configuration loader for accessing constants
             file_pattern_service: File pattern service for pattern-based operations
@@ -31,6 +30,33 @@ class FilePreparationService:
         self.config_loader = config_loader
         self.file_pattern_service = file_pattern_service
 
+    def _check_operation_already_done(
+        self,
+        language_name: str,
+        contest_name: str,
+        problem_name: str,
+        operation_name: str,
+        force: bool
+    ) -> Tuple[bool, str]:
+        """Check if operation was already completed.
+
+        Args:
+            language_name: Programming language name
+            contest_name: Contest identifier
+            problem_name: Problem identifier
+            operation_name: Name of the operation
+            force: Whether to force re-execution
+
+        Returns:
+            Tuple of (already_done, message)
+        """
+        if force:
+            return False, ""
+
+        if self.repository.has_successful_operation(language_name, contest_name, problem_name, operation_name):
+            return True, f"{operation_name} already completed"
+
+        return False, ""
 
     def move_files_by_patterns(
         self,
@@ -40,8 +66,7 @@ class FilePreparationService:
         problem_name: str,
         workspace_path: str,
         contest_current_path: str,
-        contest_stock_path: str = "",
-        force: bool = False
+        contest_stock_path: str = ""
     ) -> Tuple[bool, str, int]:
         """Move files based on pattern configuration.
 
@@ -53,18 +78,16 @@ class FilePreparationService:
             workspace_path: Path to workspace directory
             contest_current_path: Path to contest_current directory
             contest_stock_path: Path to contest_stock directory
-            force: Force move even if already done
 
         Returns:
             Tuple of (success, message, file_count)
         """
-
         # Check if operation was already completed
-        already_done, done_message = self._check_operation_already_done(
-            language_name, contest_name, problem_name, operation_name, force
+        already_done, message = self._check_operation_already_done(
+            language_name, contest_name, problem_name, operation_name, False
         )
         if already_done:
-            return True, done_message, 0
+            return True, message, 0
 
         # Prepare context for pattern service
         context = {
@@ -78,10 +101,12 @@ class FilePreparationService:
             # Execute pattern-based file operations
             result = self.file_pattern_service.execute_with_fallback(operation_name, context)
 
-            # Record the operation result
-            self._record_pattern_operation_result(
-                language_name, contest_name, problem_name, operation_name, result
-            )
+            # Record the operation if successful
+            if result.success:
+                self.repository.record_operation(
+                    language_name, contest_name, problem_name, operation_name,
+                    workspace_path, contest_current_path, result.files_processed, True
+                )
 
             return result.success, result.message, result.files_processed
 
@@ -89,45 +114,15 @@ class FilePreparationService:
             error_message = f"Pattern-based operation failed: {e}"
             self.logger.error(error_message)
 
-            # Record failed operation
-            self._record_operation_result(
+            # Record the failed operation
+            self.repository.record_operation(
                 language_name, contest_name, problem_name, operation_name,
-                Path(workspace_path), Path(contest_current_path), 0, False, error_message
+                workspace_path, contest_current_path, 0, False, str(e)
             )
 
             return False, error_message, 0
 
 
-    def _record_pattern_operation_result(
-        self,
-        language_name: str,
-        contest_name: str,
-        problem_name: str,
-        operation_name: str,
-        result: FileOperationResult
-    ) -> None:
-        """Record pattern operation result in repository.
-
-        Args:
-            language_name: Programming language name
-            contest_name: Contest identifier
-            problem_name: Problem identifier
-            operation_name: Name of the operation
-            result: FileOperationResult from pattern service
-        """
-        # Create summary message
-        if result.success:
-            message = f"Pattern operation successful: {result.message}"
-        else:
-            error_summary = "; ".join([f"{err['file']}: {err['error']}" for err in result.error_details[:3]])
-            if len(result.error_details) > 3:
-                error_summary += f" (and {len(result.error_details) - 3} more)"
-            message = f"Pattern operation failed: {result.message}. Errors: {error_summary}"
-
-        self.repository.record_operation(
-            language_name, contest_name, problem_name, operation_name,
-            "pattern-based", "pattern-based", result.files_processed, result.success, message
-        )
 
     def get_pattern_diagnosis(self, language_name: str) -> dict:
         """Get configuration diagnosis for pattern-based operations.
@@ -147,63 +142,9 @@ class FilePreparationService:
                 "message": f"Diagnosis failed: {e}"
             }
 
-    def _check_operation_already_done(
-        self,
-        language_name: str,
-        contest_name: str,
-        problem_name: str,
-        operation_name: str,
-        force: bool
-    ) -> Tuple[bool, str]:
-        """Check if operation was already completed.
-
-        Args:
-            language_name: Programming language name
-            contest_name: Contest identifier
-            problem_name: Problem identifier
-            operation_name: Name of the operation
-            force: Whether to force execution even if already done
-
-        Returns:
-            Tuple of (already_done, message)
-        """
-        if not force and self.repository.has_successful_operation(
-            language_name, contest_name, problem_name, operation_name
-        ):
-            return True, f"{operation_name} already completed"
-        return False, ""
 
 
 
-    def _record_operation_result(
-        self,
-        language_name: str,
-        contest_name: str,
-        problem_name: str,
-        operation_name: str,
-        source_path: Path,
-        dest_path: Path,
-        file_count: int,
-        success: bool,
-        message: str = ""
-    ) -> None:
-        """Record operation result in repository.
-
-        Args:
-            language_name: Programming language name
-            contest_name: Contest identifier
-            problem_name: Problem identifier
-            operation_name: Name of the operation
-            source_path: Source directory path
-            dest_path: Destination directory path
-            file_count: Number of files processed
-            success: Whether operation succeeded
-            message: Error message if operation failed
-        """
-        self.repository.record_operation(
-            language_name, contest_name, problem_name, operation_name,
-            str(source_path), str(dest_path), file_count, success, message
-        )
 
     def cleanup_workspace_test(
         self,

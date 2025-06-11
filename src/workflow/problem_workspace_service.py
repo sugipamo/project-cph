@@ -5,7 +5,6 @@ from typing import Any, Optional, Tuple
 
 from src.domain.interfaces.logger_interface import LoggerInterface
 from src.infrastructure.drivers.file.file_driver import FileDriver
-from src.infrastructure.persistence.sqlite.repositories.file_preparation_repository import FilePreparationRepository
 
 
 @dataclass
@@ -55,7 +54,6 @@ class ProblemWorkspaceService:
     def __init__(
         self,
         file_driver: FileDriver,
-        repository: FilePreparationRepository,
         logger: LoggerInterface,
         base_paths: dict,
         file_preparation_service: Optional[Any] = None
@@ -64,7 +62,6 @@ class ProblemWorkspaceService:
 
         Args:
             file_driver: File driver for file operations
-            repository: Repository for tracking operations
             logger: Logger for logging operations
             base_paths: Dictionary with paths like:
                 - contest_current_path: Current working directory
@@ -74,7 +71,6 @@ class ProblemWorkspaceService:
             file_preparation_service: Optional service for file operations integration
         """
         self.file_driver = file_driver
-        self.repository = repository
         self.logger = logger
         self.base_paths = base_paths
         self.file_preparation_service = file_preparation_service
@@ -83,8 +79,7 @@ class ProblemWorkspaceService:
         self,
         contest: str,
         problem: str,
-        language: str,
-        force: bool = False
+        language: str
     ) -> SwitchResult:
         """Switch to working on a specific problem.
 
@@ -94,22 +89,11 @@ class ProblemWorkspaceService:
             contest: Contest name (e.g. "abc300")
             problem: Problem name (e.g. "a")
             language: Language name (e.g. "python")
-            force: Force switch even if already working on this problem
 
         Returns:
             SwitchResult with success status and details
         """
         current_info = self.get_current_workspace_info()
-
-        # Check if already working on this problem
-        if not force and current_info.is_working and (current_info.current_contest == contest and
-            current_info.current_problem == problem and
-            current_info.current_language == language):
-            return SwitchResult(
-                success=True,
-                message=f"Already working on {contest}/{problem} in {language}",
-                workspace_info=current_info
-            )
 
         try:
             total_files_moved = 0
@@ -147,8 +131,7 @@ class ProblemWorkspaceService:
                     "move_test_files", language, contest, problem,
                     self.base_paths.get("workspace_path", ""),
                     self.base_paths["contest_current_path"],
-                    self.base_paths.get("contest_stock_path", ""),
-                    force
+                    self.base_paths.get("contest_stock_path", "")
                 )
                 if success:
                     total_files_moved += file_count
@@ -419,23 +402,8 @@ class ProblemWorkspaceService:
 
     def _save_workspace_info(self, info: WorkspaceInfo) -> None:
         """Save workspace info to persistent storage."""
-        # This could save to repository or a simple JSON file
-        # For now, we'll use the repository system
-        try:
-            if info.is_working:
-                self.repository.record_operation(
-                    info.current_language or "",
-                    info.current_contest or "",
-                    info.current_problem or "",
-                    "workspace_switch",
-                    "",
-                    "",
-                    info.workspace_files_count,
-                    True,
-                    "Workspace switched"
-                )
-        except Exception as e:
-            self.logger.error(f"Failed to save workspace info: {e!s}")
+        # Workspace info persistence removed - operation history tracking disabled
+        pass
 
     def _load_workspace_info(self) -> Optional[WorkspaceInfo]:
         """Load workspace info from persistent storage."""

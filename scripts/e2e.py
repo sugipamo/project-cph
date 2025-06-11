@@ -98,6 +98,12 @@ class E2ETestRunner:
         """テスト環境のクリーンアップ"""
         self.log("=== 環境クリーンアップ ===")
 
+        # データベースファイルを削除（初期化のため）
+        db_file = self.project_root / "cph_history.db"
+        if db_file.exists():
+            db_file.unlink()
+            self.log(f"削除: {db_file}")
+
         dirs_to_remove = [self.contest_current, self.contest_stock, self.workspace]
         for dir_path in dirs_to_remove:
             if dir_path.exists():
@@ -110,7 +116,7 @@ class E2ETestRunner:
         """新しいコンテスト問題を開くテスト"""
         self.log(f"=== {self.contest1} {self.problem}問題を{self.language}で開く ===")
 
-        self.run_command(["./cph.sh", self.contest1, "open", self.problem, self.language])
+        self.run_command(["./cph.sh", self.contest1, "open", self.problem, self.language, "local"])
 
         # ファイル生成確認
         main_py = self.contest_current / "main.py"
@@ -166,7 +172,7 @@ class E2ETestRunner:
         """別のコンテストに切り替え"""
         self.log(f"=== {self.contest2} {self.problem}問題に切り替え ===")
 
-        self.run_command(["./cph.sh", self.contest2, "open", self.problem])
+        self.run_command(["./cph.sh", self.contest2, "open", self.problem, "local"])
 
         # バックアップが作成されたかチェック
         backup_path = self.contest_stock / self.language / self.contest1 / self.problem / "main.py"
@@ -196,7 +202,7 @@ class E2ETestRunner:
         """テスト実行"""
         self.log("=== テスト実行 ===")
 
-        result = self.run_command(["./cph.sh", "test"])
+        result = self.run_command(["./cph.sh", "test", "local"])
 
         # テストが実行されたかどうかを出力で判断
         # 具体的な成功/失敗は問題ないが、実行自体は成功すべき
@@ -206,7 +212,7 @@ class E2ETestRunner:
         """元のコンテストに復元"""
         self.log(f"=== {self.contest1} {self.problem}問題に復元 ===")
 
-        self.run_command(["./cph.sh", self.contest1, "open", self.problem, self.language])
+        self.run_command(["./cph.sh", self.contest1, "open", self.problem, self.language, "local"])
 
         # 復元されたファイルにエラーが含まれているかチェック
         main_py = self.contest_current / "main.py"
@@ -238,7 +244,7 @@ class E2ETestRunner:
         """エラーありでのテスト実行"""
         self.log("=== エラーありでのテスト実行 ===")
 
-        result = self.run_command(["./cph.sh", "test", self.problem])
+        result = self.run_command(["./cph.sh", "test", self.problem, "local"])
 
         # エラーがあってもテストコマンド自体は実行される
         return result.returncode == 0

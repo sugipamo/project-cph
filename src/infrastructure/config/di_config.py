@@ -133,23 +133,17 @@ def _create_file_pattern_service(container: Any) -> Any:
     return FilePatternService(config_loader, file_driver, logger)
 
 
-def _create_file_preparation_repository(container: Any) -> Any:
-    """Lazy factory for file preparation repository."""
-    from src.infrastructure.persistence.sqlite.repositories.file_preparation_repository import FilePreparationRepository
-
-    sqlite_manager = container.resolve("sqlite_manager")
-    return FilePreparationRepository(sqlite_manager)
-
-
 def _create_file_preparation_service(container: Any) -> Any:
     """Lazy factory for file preparation service."""
+    from src.infrastructure.persistence.sqlite.repositories.file_preparation_repository import FilePreparationRepository
     from src.workflow.preparation.file.file_preparation_service import FilePreparationService
 
     file_driver = container.resolve("file_driver")
-    repository = container.resolve("file_preparation_repository")
     logger = container.resolve("logger")
     config_loader = container.resolve("json_config_loader")
     file_pattern_service = container.resolve("file_pattern_service")
+    sqlite_manager = container.resolve("sqlite_manager")
+    repository = FilePreparationRepository(sqlite_manager)
     return FilePreparationService(file_driver, repository, logger, config_loader, file_pattern_service)
 
 
@@ -159,7 +153,6 @@ def _create_problem_workspace_service(container: Any) -> Any:
     from src.workflow.problem_workspace_service import ProblemWorkspaceService
 
     file_driver = container.resolve("file_driver")
-    repository = container.resolve("file_preparation_repository")
     logger = container.resolve("logger")
     file_preparation_service = container.resolve("file_preparation_service")
 
@@ -171,7 +164,7 @@ def _create_problem_workspace_service(container: Any) -> Any:
     base_paths = json_loader.get_paths_for_language(default_language)
 
     return ProblemWorkspaceService(
-        file_driver, repository, logger, base_paths, file_preparation_service
+        file_driver, logger, base_paths, file_preparation_service
     )
 
 
@@ -232,7 +225,6 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register("json_config_loader", _create_json_config_loader)
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("file_pattern_service", lambda: _create_file_pattern_service(container))
-    container.register("file_preparation_repository", lambda: _create_file_preparation_repository(container))
     container.register("file_preparation_service", lambda: _create_file_preparation_service(container))
     container.register("problem_workspace_service", lambda: _create_problem_workspace_service(container))
     container.register("workspace_driver", lambda: _create_workspace_driver(container))
@@ -310,7 +302,6 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register("json_config_loader", _create_json_config_loader)
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("file_pattern_service", lambda: _create_file_pattern_service(container))
-    container.register("file_preparation_repository", lambda: _create_file_preparation_repository(container))
     container.register("file_preparation_service", lambda: _create_file_preparation_service(container))
     container.register("problem_workspace_service", lambda: _create_problem_workspace_service(container))
     container.register("workspace_driver", lambda: _create_workspace_driver(container))

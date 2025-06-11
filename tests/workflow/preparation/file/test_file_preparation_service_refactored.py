@@ -112,8 +112,7 @@ class TestMoveFilesByPatterns:
         success, message, file_count = self.service.move_files_by_patterns(
             "move_test_files",
             "python", "abc300", "a",
-            "/workspace", "/contest_current", "/contest_stock",
-            False
+            "/workspace", "/contest_current", "/contest_stock"
         )
 
         # Assert
@@ -130,8 +129,7 @@ class TestMoveFilesByPatterns:
         success, message, file_count = self.service.move_files_by_patterns(
             "move_test_files",
             "python", "abc300", "a",
-            "/workspace", "/contest_current", "/contest_stock",
-            False
+            "/workspace", "/contest_current", "/contest_stock"
         )
 
         # Assert
@@ -149,8 +147,7 @@ class TestMoveFilesByPatterns:
         success, message, file_count = self.service.move_files_by_patterns(
             "move_test_files",
             "python", "abc300", "a",
-            "/workspace", "/contest_current", "/contest_stock",
-            False
+            "/workspace", "/contest_current", "/contest_stock"
         )
 
         # Assert
