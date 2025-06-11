@@ -84,13 +84,39 @@ class CLIApplication:
             Exit code (1 for failure)
         """
         if isinstance(exception, CompositeStepFailureError):
-            print(f"ユーザー定義コマンドでエラーが発生しました: {exception}")
+            # Use the enhanced error formatting
+            print("=" * 60)
+            print("🚨 実行エラーが発生しました")
+            print("=" * 60)
+            print(exception.get_formatted_message())
+
             if hasattr(exception, 'result') and exception.result is not None:
                 with contextlib.suppress(Exception):
+                    print("\n詳細:")
                     print(exception.result.get_error_output())
+
+            if exception.original_exception:
+                print(f"\n元の例外: {type(exception.original_exception).__name__}")
+
+            print("=" * 60)
         else:
-            print(f"予期せぬエラーが発生しました: {exception}")
-            traceback.print_exc()
+            print("=" * 60)
+            print("🚨 予期せぬエラーが発生しました")
+            print("=" * 60)
+            print(f"エラー内容: {exception}")
+
+            # Try to provide some context-based suggestions
+            from src.domain.exceptions.error_codes import ErrorSuggestion, classify_error
+            error_code = classify_error(exception)
+            suggestion = ErrorSuggestion.get_suggestion(error_code)
+            print(f"分類: {error_code.value}")
+            print(f"提案: {suggestion}")
+            print("=" * 60)
+
+            # Show traceback for debugging
+            if "--debug" in sys.argv:
+                print("\nデバッグ情報:")
+                traceback.print_exc()
 
         return 1
 

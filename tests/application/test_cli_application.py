@@ -144,9 +144,18 @@ class TestCLIApplication:
         result = self.app._handle_general_exception(exception)
 
         assert result == 1
-        assert mock_print.call_count == 2
-        mock_print.assert_any_call("ユーザー定義コマンドでエラーが発生しました: Step failed")
-        mock_print.assert_any_call("Error output")
+        # Check that the enhanced error formatting is used
+        assert mock_print.call_count >= 5  # Header, title, formatted message, details section, error output, footer, etc.
+
+        # Verify key components of the enhanced error display
+        print_calls = [call.args[0] for call in mock_print.call_args_list]
+        '\n'.join(str(call) for call in print_calls)
+
+        assert any("🚨 実行エラーが発生しました" in str(call) for call in print_calls)
+        assert any("=" * 60 in str(call) for call in print_calls)
+        assert any("UNKNOWN_ERROR" in str(call) for call in print_calls)
+        assert any("詳細:" in str(call) for call in print_calls)
+        assert any("Error output" in str(call) for call in print_calls)
 
     @patch('builtins.print')
     def test_handle_general_exception_composite_step_failure_no_result(self, mock_print):
@@ -156,7 +165,13 @@ class TestCLIApplication:
         result = self.app._handle_general_exception(exception)
 
         assert result == 1
-        mock_print.assert_called_once_with("ユーザー定義コマンドでエラーが発生しました: Step failed")
+        # Check that the enhanced error formatting is used even without result
+        assert mock_print.call_count >= 3  # Header, title, formatted message, footer
+
+        print_calls = [call.args[0] for call in mock_print.call_args_list]
+        assert any("🚨 実行エラーが発生しました" in str(call) for call in print_calls)
+        assert any("=" * 60 in str(call) for call in print_calls)
+        assert any("UNKNOWN_ERROR" in str(call) for call in print_calls)
 
     @patch('builtins.print')
     @patch('traceback.print_exc')
@@ -167,8 +182,18 @@ class TestCLIApplication:
         result = self.app._handle_general_exception(exception)
 
         assert result == 1
-        mock_print.assert_called_once_with("予期せぬエラーが発生しました: Unexpected error")
-        mock_traceback.assert_called_once()
+        # Check that the enhanced error formatting is used for general exceptions
+        assert mock_print.call_count >= 5  # Header, title, error content, classification, suggestion, footer
+
+        print_calls = [call.args[0] for call in mock_print.call_args_list]
+        assert any("🚨 予期せぬエラーが発生しました" in str(call) for call in print_calls)
+        assert any("=" * 60 in str(call) for call in print_calls)
+        assert any("エラー内容: Unexpected error" in str(call) for call in print_calls)
+        assert any("分類: UNKNOWN_ERROR" in str(call) for call in print_calls)
+        assert any("提案:" in str(call) for call in print_calls)
+
+        # Debug traceback is not called by default (only with --debug flag)
+        mock_traceback.assert_not_called()
 
     @patch('builtins.print')
     def test_handle_general_exception_composite_step_failure_with_exception_in_result(self, mock_print):
@@ -182,8 +207,15 @@ class TestCLIApplication:
         result = self.app._handle_general_exception(exception)
 
         assert result == 1
-        # Should only print the main error message, suppressing the secondary exception
-        mock_print.assert_called_once_with("ユーザー定義コマンドでエラーが発生しました: Step failed")
+        # Should print the main error message with enhanced formatting, suppressing the secondary exception
+        assert mock_print.call_count >= 3  # Header, title, formatted message, footer
+
+        print_calls = [call.args[0] for call in mock_print.call_args_list]
+        assert any("🚨 実行エラーが発生しました" in str(call) for call in print_calls)
+        assert any("=" * 60 in str(call) for call in print_calls)
+        assert any("UNKNOWN_ERROR" in str(call) for call in print_calls)
+        # Should not contain error output due to suppressed exception
+        assert not any("Error getting output" in str(call) for call in print_calls)
 
 
 class TestMainFunction:

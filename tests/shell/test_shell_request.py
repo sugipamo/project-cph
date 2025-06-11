@@ -82,7 +82,10 @@ def test_shell_request_execute_exception():
     with unittest.mock.patch("src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess", side_effect=Exception("fail")):
         result = req._execute_core(driver)
     assert isinstance(result, OperationResult)
-    assert result.stderr == "fail"
+    # The new error handling includes structured error format with code and suggestion
+    assert "Shell command failed: fail" in result.stderr
+    assert "Error Code: UNKNOWN_ERROR" in result.stderr
+    assert "Suggestion: Contact support for assistance" in result.stderr
     assert result.returncode is None
 
 def test_shell_request_with_inputdata_env_cwd(tmp_path):

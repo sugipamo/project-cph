@@ -133,7 +133,12 @@ class DockerRequest(BaseRequest):
                 returncode=getattr(result, 'returncode', None)
             )
         except Exception as e:
-            return OperationResult(success=False, op=self.op, stdout=None, stderr=str(e), returncode=None)
+            from src.domain.exceptions.error_codes import ErrorSuggestion, classify_error
+            error_code = classify_error(e, "docker operation")
+            suggestion = ErrorSuggestion.get_suggestion(error_code)
+            formatted_error = f"Docker operation failed: {e}\nError Code: {error_code.value}\nSuggestion: {suggestion}"
+
+            return OperationResult(success=False, op=self.op, stdout=None, stderr=formatted_error, returncode=None)
 
     def __repr__(self):
         """String representation."""

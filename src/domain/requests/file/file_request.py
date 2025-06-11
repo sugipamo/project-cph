@@ -106,15 +106,27 @@ class FileRequest(BaseRequest):
             raise ValueError(f"Unsupported file operation: {self.op}")
 
         except Exception as e:
+            from src.domain.exceptions.error_codes import ErrorSuggestion, classify_error
+            error_code = classify_error(e, "file operation")
+            suggestion = ErrorSuggestion.get_suggestion(error_code)
+            formatted_error = f"File operation failed: {e}\nError Code: {error_code.value}\nSuggestion: {suggestion}"
+
             # If allow_failure is True, return a failure result instead of raising exception
             if self.allow_failure:
                 return FileResult(
                     path=self.path,
                     success=False,
-                    error_message=f"FileRequest failed: {e!s}",
+                    error_message=formatted_error,
                     request=self
                 )
-            raise RuntimeError(f"FileRequest failed: {e!s}") from e
+
+            from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
+            raise CompositeStepFailureError(
+                formatted_error,
+                original_exception=e,
+                error_code=error_code,
+                context="file operation"
+            ) from e
 
     def __repr__(self) -> str:
         """String representation of the request."""

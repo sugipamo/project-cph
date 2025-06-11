@@ -64,7 +64,7 @@ class TestJsonConfigLoaderEdgeCases:
     def test_case_sensitivity_in_language_names(self, loader):
         """Test that language names are case sensitive."""
         cpp_config = loader.get_language_config("cpp")
-        CPP_config = loader.get_language_config("CPP")  # Different case
+        cpp_upper_config = loader.get_language_config("CPP")  # Different case
         shared_config = loader.get_shared_config()
 
         # cpp should have language-specific settings
@@ -73,8 +73,8 @@ class TestJsonConfigLoaderEdgeCases:
         assert len(cpp_config) > len(shared_config)
 
         # CPP (uppercase) should only have shared settings
-        assert CPP_config == shared_config
-        assert "aliases" not in CPP_config
+        assert cpp_upper_config == shared_config
+        assert "aliases" not in cpp_upper_config
 
     def test_language_config_with_missing_shared_config(self, loader):
         """Test behavior when shared config is missing or empty."""

@@ -57,5 +57,13 @@ def test_file_request_unknown_operation():
     class FakeOpType:
         pass
     req = FileRequest(FakeOpType(), path)
-    with pytest.raises(RuntimeError):
+    # The new error handling now raises CompositeStepFailureError instead of RuntimeError
+    from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
+    with pytest.raises(CompositeStepFailureError) as exc_info:
         req.execute(driver=driver)
+
+    # Verify the error contains structured information
+    error = exc_info.value
+    assert "Unsupported file operation" in str(error)
+    assert error.error_code.value == "UNKNOWN_ERROR"
+    assert "Contact support for assistance" in error.get_suggestion()
