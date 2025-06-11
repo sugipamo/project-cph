@@ -5,40 +5,47 @@ from typing import Any, Dict, List
 
 
 class JsonConfigLoader:
-    """Loads configuration from JSON files in contest_env directory."""
+    """Loads configuration from JSON files in contest_env directory and system config."""
 
-    def __init__(self, base_path: str = "./contest_env"):
+    def __init__(self, base_path: str = "./contest_env", system_config_path: str = "./config/system"):
         """Initialize with base path to configuration directory.
 
         Args:
             base_path: Path to contest_env directory
+            system_config_path: Path to system configuration directory
         """
         self.base_path = Path(base_path)
+        self.system_config_path = Path(system_config_path)
 
     def get_env_config(self) -> Dict[str, Any]:
         """Load environment configuration from JSON files.
 
         Returns:
-            Dictionary containing merged configuration from all env.json files
+            Dictionary containing merged configuration from all env.json files and system config
         """
         config = {}
+
+        # Load system configuration first (lowest priority)
+        system_config = self._load_system_config()
+        if system_config:
+            config = self._deep_merge(config, system_config)
 
         # Check if base path exists
         if not self.base_path.exists():
             return config
 
-        # Load shared configuration first
+        # Load shared configuration
         shared_config = self._load_config_file("shared")
         if shared_config:
-            config.update(shared_config)
+            config = self._deep_merge(config, shared_config)
 
-        # Load language-specific configurations
+        # Load language-specific configurations (highest priority)
         try:
             for lang_dir in self.base_path.iterdir():
                 if lang_dir.is_dir() and lang_dir.name != "shared":
                     lang_config = self._load_config_file(lang_dir.name)
                     if lang_config:
-                        config.update(lang_config)
+                        config = self._deep_merge(config, lang_config)
         except (OSError, PermissionError):
             # Handle cases where directory doesn't exist or can't be read
             pass
@@ -256,3 +263,56 @@ class JsonConfigLoader:
             pass
 
         return supported
+
+    def _load_system_config(self) -> Dict[str, Any]:
+        """Load system configuration from system config directory.
+
+        Returns:
+            Dictionary containing merged system configuration
+        """
+        system_config = {}
+
+        if not self.system_config_path.exists():
+            return system_config
+
+        # Load all system config files
+        system_files = [
+            "docker_security.json",
+            "docker_defaults.json",
+            "system_constants.json",
+            "dev_config.json"
+        ]
+
+        for config_file in system_files:
+            file_path = self.system_config_path / config_file
+            if file_path.exists():
+                try:
+                    with open(file_path, encoding='utf-8') as f:
+                        config_data = json.load(f)
+                        # Merge system config data
+                        system_config.update(config_data)
+                except (OSError, json.JSONDecodeError) as e:
+                    print(f"Warning: Failed to load system config {file_path}: {e}")
+
+        # Wrap in 'shared' key to match expected structure
+        return {"shared": system_config} if system_config else {}
+
+    def _deep_merge(self, base_dict: Dict[str, Any], update_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """Deep merge two dictionaries, with update_dict taking priority.
+
+        Args:
+            base_dict: The base dictionary
+            update_dict: The dictionary to merge in (higher priority)
+
+        Returns:
+            A new dictionary with merged values
+        """
+        result = base_dict.copy()
+
+        for key, value in update_dict.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = self._deep_merge(result[key], value)
+            else:
+                result[key] = value
+
+        return result

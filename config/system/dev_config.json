@@ -1,0 +1,22 @@
+{
+  "dev_config": {
+    "debug": {
+      "enabled": false,
+      "level": "detailed",
+      "format": {
+        "icons": {
+          "start": "🚀",
+          "file_mkdir": "📁",
+          "file_copy": "📋",
+          "shell": "🔧",
+          "test": "🧪",
+          "success": "✅",
+          "failure": "❌"
+        }
+      }
+    },
+    "feature_flags": {
+      "use_file_patterns": false
+    }
+  }
+}
