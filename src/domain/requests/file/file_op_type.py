@@ -10,6 +10,7 @@ class FileOpType(Enum):
     MOVE = auto()
     COPY = auto()
     COPYTREE = auto()
+    MOVETREE = auto()
     REMOVE = auto()
     RMTREE = auto()
     MKDIR = auto()

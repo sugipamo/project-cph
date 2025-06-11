@@ -45,6 +45,12 @@ class LocalFileDriver(FileDriver):
         """Copy directory tree."""
         shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
 
+    def _movetree_impl(self, src_path: Path, dst_path: Path) -> None:
+        """Move directory tree."""
+        if dst_path.exists():
+            shutil.rmtree(dst_path)
+        shutil.move(str(src_path), str(dst_path))
+
     def _rmtree_impl(self, p: Path) -> None:
         """Remove directory tree or file."""
         if p.is_dir():

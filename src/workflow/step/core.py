@@ -3,21 +3,58 @@
 from typing import Any
 
 from .step import Step, StepContext, StepGenerationResult, StepType
+import glob
+import os
+
+
+def create_step_context_from_execution_context(execution_context) -> StepContext:
+    """ExecutionContextからStepContextを作成するヘルパー関数
+    
+    Args:
+        execution_context: ExecutionContextオブジェクト
+        
+    Returns:
+        StepContext: ステップ生成用コンテキスト
+    """
+    # ExecutionContextからfile_patternsを取得
+    file_patterns = None
+    if hasattr(execution_context, 'env_json') and execution_context.env_json:
+        language_config = execution_context.env_json.get(execution_context.language, {})
+        file_patterns = language_config.get('file_patterns', {})
+    
+    return StepContext(
+        contest_name=execution_context.contest_name,
+        problem_name=execution_context.problem_name,
+        language=execution_context.language,
+        env_type=execution_context.env_type,
+        command_type=execution_context.command_type,
+        workspace_path=getattr(execution_context, 'workspace_path', ''),
+        contest_current_path=getattr(execution_context, 'contest_current_path', ''),
+        contest_stock_path=getattr(execution_context, 'contest_stock_path', None),
+        contest_template_path=getattr(execution_context, 'contest_template_path', None),
+        contest_temp_path=getattr(execution_context, 'contest_temp_path', None),
+        source_file_name=getattr(execution_context, 'source_file_name', None),
+        language_id=getattr(execution_context, 'language_id', None),
+        file_patterns=file_patterns
+    )
 
 
 def generate_steps_from_json(
     json_steps: list[dict[str, Any]],
-    context: StepContext
+    context
 ) -> StepGenerationResult:
     """JSONステップリストから実行可能ステップを生成する純粋関数
 
     Args:
         json_steps: JSONから読み込んだステップのリスト
-        context: ステップ生成に必要なコンテキスト情報
+        context: ステップ生成に必要なコンテキスト情報（StepContextまたはExecutionContext）
 
     Returns:
         StepGenerationResult: 生成されたステップとエラー/警告情報
     """
+    # ExecutionContextの場合はStepContextに変換
+    if not isinstance(context, StepContext):
+        context = create_step_context_from_execution_context(context)
     steps = []
     errors = []
     warnings = []
@@ -60,8 +97,18 @@ def create_step_from_json(json_step: dict[str, Any], context: StepContext) -> St
     if not isinstance(raw_cmd, list):
         raise ValueError("Step 'cmd' must be a list")
 
-    # コマンドの文字列フォーマット
-    formatted_cmd = [format_template(arg, context) for arg in raw_cmd]
+    # ファイル操作ステップの場合はパターン展開を適用
+    if step_type in [StepType.COPY, StepType.MOVE, StepType.MOVETREE] and len(raw_cmd) >= 2:
+        # ソースとデスティネーションでパターン展開
+        formatted_cmd = [
+            expand_file_patterns(raw_cmd[0], context, step_type),
+            expand_file_patterns(raw_cmd[1], context, step_type)
+        ]
+        # 残りの引数は通常のフォーマット
+        formatted_cmd.extend([format_template(arg, context) for arg in raw_cmd[2:]])
+    else:
+        # コマンドの文字列フォーマット
+        formatted_cmd = [format_template(arg, context) for arg in raw_cmd]
 
     # オプション属性の処理
     allow_failure = json_step.get('allow_failure', False)
@@ -111,6 +158,43 @@ def format_template(template: Any, context: StepContext) -> str:
             result = result.replace(placeholder, str(value))
 
     return result
+
+
+def expand_file_patterns(template: str, context: StepContext, step_type: StepType = None) -> str:
+    """ファイルパターンを展開して文字列を返す純粋関数
+    
+    Args:
+        template: パターンを含むテンプレート文字列
+        context: ステップ生成コンテキスト
+        step_type: ステップタイプ（ディレクトリ操作の判定用）
+        
+    Returns:
+        str: 展開されたパターン文字列（ワイルドカード形式）
+    """
+    if not context.file_patterns:
+        return format_template(template, context)
+    
+    # ファイルパターンプレースホルダーを検出
+    for pattern_name, patterns in context.file_patterns.items():
+        placeholder = f'{{{pattern_name}}}'
+        if placeholder in template:
+            if patterns:
+                pattern = patterns[0]  # 最初のパターンを使用
+                
+                # ディレクトリ操作（movetree, copytree, rmtree）の場合は、ディレクトリ部分のみを抽出
+                if step_type in [StepType.MOVETREE, StepType.RMTREE]:
+                    if '/' in pattern:
+                        # パターンからディレクトリ部分を抽出 (例: "test/*.in" -> "test")
+                        directory_part = pattern.split('/')[0]
+                        result = template.replace(placeholder, directory_part)
+                        return format_template(result, context)
+                
+                # 通常のファイル操作やその他の場合は元のパターンを使用
+                result = template.replace(placeholder, pattern)
+                return format_template(result, context)
+    
+    # パターンプレースホルダーがない場合は通常のフォーマット
+    return format_template(template, context)
 
 
 def validate_step_sequence(steps: list[Step]) -> list[str]:

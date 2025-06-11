@@ -43,6 +43,7 @@ class StepContext:
     contest_temp_path: Optional[str] = None
     source_file_name: Optional[str] = None
     language_id: Optional[str] = None
+    file_patterns: Optional[dict[str, list[str]]] = None
 
     def to_format_dict(self) -> dict[str, str]:
         """文字列フォーマット用の辞書を生成"""
@@ -61,6 +62,12 @@ class StepContext:
             'source_file_name': self.source_file_name or '',
             'language_id': self.language_id or '',
         }
+
+        # Add file patterns to format dict
+        if self.file_patterns:
+            for pattern_name, patterns in self.file_patterns.items():
+                # Convert list of patterns to comma-separated string for simple templates
+                format_dict[pattern_name] = ','.join(patterns)
 
 
         return format_dict

@@ -143,9 +143,22 @@ class FileDriver(BaseDriver):
         self.ensure_parent_dir(resolved_dst)
         self._copytree_impl(resolved_src, resolved_dst)
 
+    def movetree(self, src_path: Path, dst_path: Path) -> None:
+        """Move directory tree (template method)."""
+        resolved_src = self.resolve_path(src_path)
+        resolved_dst = self.resolve_path(dst_path)
+        if resolved_src == resolved_dst:
+            return
+        self.ensure_parent_dir(resolved_dst)
+        self._movetree_impl(resolved_src, resolved_dst)
+
     @abstractmethod
     def _copytree_impl(self, src_path: Path, dst_path: Path) -> None:
         """Directory tree copy implementation (implement in concrete class)."""
+
+    @abstractmethod
+    def _movetree_impl(self, src_path: Path, dst_path: Path) -> None:
+        """Directory tree move implementation (implement in concrete class)."""
 
     def rmtree(self, path: Path) -> None:
         """Remove directory tree (template method)."""

@@ -558,18 +558,22 @@ class DockerPathOperations:
 
 def get_workspace_path(resolver: ConfigNode, language: str) -> Path:
     """Get workspace path from configuration."""
-    config_node = resolve_best(resolver, [language, "workspace_path"])
-    if config_node is None or config_node.value is None or config_node.key != "workspace_path":
-        raise TypeError("workspace_pathが設定されていません")
-    return Path(config_node.value)
+    # Try multiple resolution paths to find workspace_path
+    for path in [[language, "paths", "workspace_path"], [language, "workspace_path"], ["shared", "paths", "workspace_path"], ["workspace_path"]]:
+        config_node = resolve_best(resolver, path)
+        if config_node is not None and config_node.value is not None and config_node.key == "workspace_path":
+            return Path(config_node.value)
+    raise TypeError("workspace_pathが設定されていません")
 
 
 def get_contest_current_path(resolver: ConfigNode, language: str) -> Path:
     """Get contest current path from configuration."""
-    config_node = resolve_best(resolver, [language, "contest_current_path"])
-    if config_node is None or config_node.value is None or config_node.key != "contest_current_path":
-        raise TypeError("contest_current_pathが設定されていません")
-    return Path(config_node.value)
+    # Try multiple resolution paths to find contest_current_path
+    for path in [[language, "paths", "contest_current_path"], [language, "contest_current_path"], ["shared", "paths", "contest_current_path"], ["contest_current_path"]]:
+        config_node = resolve_best(resolver, path)
+        if config_node is not None and config_node.value is not None and config_node.key == "contest_current_path":
+            return Path(config_node.value)
+    raise TypeError("contest_current_pathが設定されていません")
 
 
 def get_contest_env_path() -> Path:
@@ -588,18 +592,22 @@ def get_contest_env_path() -> Path:
 
 def get_contest_template_path(resolver: ConfigNode, language: str) -> Path:
     """Get contest template path from configuration."""
-    config_node = resolve_best(resolver, [language, "contest_template_path"])
-    if config_node is None or config_node.key != "contest_template_path" or config_node.value is None:
-        raise TypeError("contest_template_pathが設定されていません")
-    return Path(config_node.value)
+    # Try multiple resolution paths to find contest_template_path
+    for path in [[language, "paths", "contest_template_path"], [language, "contest_template_path"], ["shared", "paths", "contest_template_path"], ["contest_template_path"]]:
+        config_node = resolve_best(resolver, path)
+        if config_node is not None and config_node.value is not None and config_node.key == "contest_template_path":
+            return Path(config_node.value)
+    raise TypeError("contest_template_pathが設定されていません")
 
 
 def get_contest_temp_path(resolver: ConfigNode, language: str) -> Path:
     """Get contest temp path from configuration."""
-    config_node = resolve_best(resolver, [language, "contest_temp_path"])
-    if config_node is None or config_node.key != "contest_temp_path" or config_node.value is None:
-        raise TypeError("contest_temp_pathが設定されていません")
-    return Path(config_node.value)
+    # Try multiple resolution paths to find contest_temp_path
+    for path in [[language, "paths", "contest_temp_path"], [language, "contest_temp_path"], ["shared", "paths", "contest_temp_path"], ["contest_temp_path"]]:
+        config_node = resolve_best(resolver, path)
+        if config_node is not None and config_node.value is not None and config_node.key == "contest_temp_path":
+            return Path(config_node.value)
+    raise TypeError("contest_temp_pathが設定されていません")
 
 
 def get_test_case_path(contest_current_path: Path) -> Path:
@@ -619,7 +627,9 @@ def get_test_case_out_path(contest_current_path: Path) -> Path:
 
 def get_source_file_name(resolver: ConfigNode, language: str) -> str:
     """Get source file name from configuration using resolve."""
-    config_node = resolve_best(resolver, [language, "source_file_name"])
-    if config_node is None or config_node.key != "source_file_name" or config_node.value is None:
-        raise ValueError("source_file_nameが設定されていません")
-    return str(config_node.value)
+    # Try multiple resolution paths to find source_file_name
+    for path in [[language, "source_file_name"], ["shared", "source_file_name"], ["source_file_name"]]:
+        config_node = resolve_best(resolver, path)
+        if config_node is not None and config_node.value is not None and config_node.key == "source_file_name":
+            return str(config_node.value)
+    raise ValueError("source_file_nameが設定されていません")

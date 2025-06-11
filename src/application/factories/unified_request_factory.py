@@ -60,7 +60,7 @@ class FileRequestStrategy(RequestCreationStrategy):
             StepType.TOUCH: FileOpType.TOUCH,
             StepType.COPY: FileOpType.COPY,
             StepType.MOVE: FileOpType.MOVE,
-            StepType.MOVETREE: FileOpType.COPYTREE,
+            StepType.MOVETREE: FileOpType.MOVETREE,
             StepType.REMOVE: FileOpType.REMOVE,
         }
 

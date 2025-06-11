@@ -93,6 +93,16 @@ class MockFileDriver(FileDriver):
         # Simplified implementation for mock
         self.files.add(dst_path)
 
+    def _movetree_impl(self, src_path: Path, dst_path: Path) -> None:
+        """Move directory tree"""
+        self._record_operation("movetree", src_path, dst_path)
+        # Simplified implementation for mock
+        if src_path in self.files:
+            self.files.remove(src_path)
+        if src_path in self.contents:
+            self.contents[dst_path] = self.contents.pop(src_path)
+        self.files.add(dst_path)
+
     def _rmtree_impl(self, path: Path) -> None:
         """Remove directory tree"""
         self._record_operation("rmtree", path)

@@ -87,6 +87,10 @@ class FileRequest(BaseRequest):
                 actual_driver.copytree(self.path, self.dst_path)
                 return FileResult(path=self.dst_path, success=True, request=self)
 
+            if self.op == FileOpType.MOVETREE:
+                actual_driver.movetree(self.path, self.dst_path)
+                return FileResult(path=self.dst_path, success=True, request=self)
+
             if self.op == FileOpType.REMOVE:
                 actual_driver.remove(self.path)
                 return FileResult(path=self.path, success=True, request=self)

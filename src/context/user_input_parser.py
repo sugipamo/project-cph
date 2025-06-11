@@ -325,6 +325,10 @@ def parse_user_input(
     # 環境JSON適用（shared設定とマージ）
     context = _apply_env_json(context, env_jsons, CONTEST_ENV_DIR, operations)
 
+    # Update resolver with properly merged env_json
+    if context.env_json:
+        context.resolver = create_config_root_from_dict(context.env_json)
+
     # 残り引数チェック
     if args:
         raise ValueError(f"引数が多すぎます: {args}")
