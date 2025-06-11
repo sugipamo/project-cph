@@ -133,47 +133,6 @@ def _create_file_pattern_service(container: Any) -> Any:
     return FilePatternService(config_loader, file_driver, logger)
 
 
-def _create_file_preparation_service(container: Any) -> Any:
-    """Lazy factory for file preparation service."""
-    from src.infrastructure.persistence.sqlite.repositories.file_preparation_repository import FilePreparationRepository
-    from src.workflow.preparation.file.file_preparation_service import FilePreparationService
-
-    file_driver = container.resolve("file_driver")
-    logger = container.resolve("logger")
-    config_loader = container.resolve("json_config_loader")
-    file_pattern_service = container.resolve("file_pattern_service")
-    sqlite_manager = container.resolve("sqlite_manager")
-    repository = FilePreparationRepository(sqlite_manager)
-    return FilePreparationService(file_driver, repository, logger, config_loader, file_pattern_service)
-
-
-def _create_problem_workspace_service(container: Any) -> Any:
-    """Lazy factory for problem workspace service."""
-    from src.infrastructure.config.json_config_loader import JsonConfigLoader
-    from src.workflow.problem_workspace_service import ProblemWorkspaceService
-
-    file_driver = container.resolve("file_driver")
-    logger = container.resolve("logger")
-    file_preparation_service = container.resolve("file_preparation_service")
-
-    # Use JSON config loader to get paths
-    json_loader = JsonConfigLoader()
-
-    # Use python as default language for now
-    default_language = "python"
-    base_paths = json_loader.get_paths_for_language(default_language)
-
-    return ProblemWorkspaceService(
-        file_driver, logger, base_paths, file_preparation_service
-    )
-
-
-def _create_workspace_driver(container: Any) -> Any:
-    """Lazy factory for workspace driver."""
-    from src.infrastructure.drivers.workspace.workspace_driver import WorkspaceDriver
-
-    workspace_service = container.resolve("problem_workspace_service")
-    return WorkspaceDriver(workspace_service)
 
 
 def _create_json_config_loader() -> Any:
@@ -225,9 +184,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register("json_config_loader", _create_json_config_loader)
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("file_pattern_service", lambda: _create_file_pattern_service(container))
-    container.register("file_preparation_service", lambda: _create_file_preparation_service(container))
     container.register("problem_workspace_service", lambda: _create_problem_workspace_service(container))
-    container.register("workspace_driver", lambda: _create_workspace_driver(container))
     container.register("contest_manager", lambda: _create_contest_manager(container))
 
     # Register string-based aliases for backward compatibility
@@ -302,9 +259,7 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register("json_config_loader", _create_json_config_loader)
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("file_pattern_service", lambda: _create_file_pattern_service(container))
-    container.register("file_preparation_service", lambda: _create_file_preparation_service(container))
     container.register("problem_workspace_service", lambda: _create_problem_workspace_service(container))
-    container.register("workspace_driver", lambda: _create_workspace_driver(container))
     container.register("contest_manager", lambda: _create_contest_manager(container))
 
     # Register string-based aliases for backward compatibility

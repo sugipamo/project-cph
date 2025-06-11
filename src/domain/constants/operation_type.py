@@ -10,17 +10,10 @@ class OperationType(Enum):
     DOCKER = auto()
     COMPOSITE = auto()
     PYTHON = auto()
-    FILE_PREPARATION = auto()
     STATE_SHOW = auto()
     WORKSPACE = auto()
 
 
-class WorkspaceOperationType(Enum):
-    """Workspace operation types."""
-    WORKSPACE_SWITCH = "workspace_switch"
-    MOVE_TEST_FILES = "move_test_files"
-    CLEANUP_WORKSPACE = "cleanup_workspace"
-    ARCHIVE_CURRENT = "archive_current"
 
 
 class FileOperationType(Enum):

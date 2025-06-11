@@ -23,7 +23,6 @@ class StepType(Enum):
     DOCKER_EXEC = "docker_exec"
     DOCKER_CP = "docker_cp"
     DOCKER_RUN = "docker_run"
-    FILE_PREPARATION = "file_preparation"
 
 
 @dataclass(frozen=True)

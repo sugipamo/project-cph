@@ -183,77 +183,6 @@ class PythonRequestStrategy(RequestCreationStrategy):
         return format_values_with_context_dict(cmd, context_dict)
 
 
-class WorkspaceRequestStrategy(RequestCreationStrategy):
-    """Strategy for creating workspace transition requests using ProblemWorkspaceService"""
-
-    def can_handle(self, step_type: StepType) -> bool:
-        return step_type == StepType.FILE_PREPARATION
-
-    def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
-        from src.workflow.workspace_request import WorkspaceRequest
-
-        # Extract context information
-        context_dict = context.to_format_dict() if hasattr(context, 'to_format_dict') else {}
-
-        # Determine operation type based on step context or default to workspace_switch
-        operation_type = getattr(step, 'operation_type', 'workspace_switch')
-
-        if operation_type == 'move_test_files':
-            # Extract force parameter from step context
-            step_context = getattr(step, 'context', {}) or {}
-            force_param = step_context.get('force', False)
-
-            # Create request for test file movement only
-            return WorkspaceRequest(
-                operation_type='move_test_files',
-                contest=context_dict.get('contest_name', 'unknown'),
-                problem=context_dict.get('problem_name', 'unknown'),
-                language=context_dict.get('language', 'unknown'),
-                force=force_param,
-                allow_failure=step.allow_failure,
-                name=f"move_test_files_{context_dict.get('contest_name')}_{context_dict.get('problem_name')}"
-            )
-
-        # Default: workspace switch operation
-        # Extract parameters from step
-        if hasattr(step, 'target_state') and step.target_state is not None:
-            # New format: use target_state as operation and context for parameters
-            context_params = getattr(step, 'context', {}) or {}
-        else:
-            # Fallback to cmd-based format: [contest, problem, language] or parse from cmd
-            if not step.cmd or len(step.cmd) < 3:
-                # Use context if cmd is insufficient
-                context_params = {
-                    'contest': context_dict.get('contest_name', 'unknown'),
-                    'problem': context_dict.get('problem_name', 'unknown'),
-                    'language': context_dict.get('language', 'unknown')
-                }
-            else:
-                context_params = {
-                    'contest': step.cmd[0],
-                    'problem': step.cmd[1],
-                    'language': step.cmd[2]
-                }
-
-        # Format parameters with execution context
-        formatted_context = {}
-        for key, value in context_params.items():
-            if isinstance(value, str):
-                formatted_value = format_values_with_context_dict([value], context_dict)
-                formatted_context[key] = formatted_value[0] if formatted_value else value
-            else:
-                formatted_context[key] = value
-
-        # Create workspace switch request
-        return WorkspaceRequest(
-            operation_type='workspace_switch',
-            contest=formatted_context.get('contest', context_dict.get('contest_name', 'unknown')),
-            problem=formatted_context.get('problem', context_dict.get('problem_name', 'unknown')),
-            language=formatted_context.get('language', context_dict.get('language', 'unknown')),
-            force=formatted_context.get('force', False),
-            allow_failure=step.allow_failure,
-            name=f"workspace_switch_{formatted_context.get('contest')}_{formatted_context.get('problem')}"
-        )
 
 
 class UnifiedRequestFactory:
@@ -266,7 +195,6 @@ class UnifiedRequestFactory:
             FileRequestStrategy(),
             ShellRequestStrategy(),
             PythonRequestStrategy(),
-            WorkspaceRequestStrategy(),
         ]
 
     def create_requests_from_steps(self, steps: list[Step], context: Any,

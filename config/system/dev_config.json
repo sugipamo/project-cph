@@ -16,7 +16,6 @@
       }
     },
     "feature_flags": {
-      "use_file_patterns": true
     }
   }
 }
