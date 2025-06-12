@@ -47,3 +47,15 @@ class ConfigurationPropertyProvider:
     @property
     def contest_temp_path(self) -> str:
         return str(self.config.paths.contest_temp)
+
+    @property
+    def source_file_name(self) -> str:
+        return self.config.runtime_config.source_file_name
+
+    @property
+    def language_id(self) -> str:
+        return self.config.runtime_config.language_id
+
+    @property
+    def run_command(self) -> str:
+        return self.config.runtime_config.run_command

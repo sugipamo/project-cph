@@ -54,7 +54,15 @@ class TemplateExpander:
 
         Returns:
             すべての変数が展開された文字列
+
+        Raises:
+            ValueError: 未知のテンプレートキーが含まれている場合
         """
+        # 0. テンプレートバリデーション
+        is_valid, unresolved_keys = self.validate_template(template)
+        if not is_valid:
+            raise ValueError(f"未知のテンプレートキーが見つかりました: {unresolved_keys}")
+
         # 1. 基本変数を展開
         result = self.expand_basic_variables(template)
         # 2. ファイルパターンを展開

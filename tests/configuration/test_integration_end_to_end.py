@@ -147,14 +147,16 @@ class TestEndToEndIntegration(unittest.TestCase):
 
     def test_error_handling_scenario(self):
         """エラーハンドリングのシナリオテスト"""
-        try:
-            # 存在しない変数を含むテンプレート
-            template = "Invalid {nonexistent_variable}"
-            result = expand_template_with_new_system(template, self.config)
-            # 未解決の変数はそのまま残る
-            self.assertEqual(result, "Invalid {nonexistent_variable}")
-        except Exception as e:
-            self.fail(f"Unexpected exception raised: {e}")
+        # 存在しない変数を含むテンプレート
+        template = "Invalid {nonexistent_variable}"
+
+        # 未知の変数がある場合はValueErrorが発生することを確認
+        with self.assertRaises(ValueError) as context:
+            expand_template_with_new_system(template, self.config)
+
+        # エラーメッセージに未知のキー名が含まれることを確認
+        self.assertIn("nonexistent_variable", str(context.exception))
+        self.assertIn("未知のテンプレートキーが見つかりました", str(context.exception))
 
     def test_performance_scenario(self):
         """パフォーマンステストシナリオ"""

@@ -76,6 +76,18 @@ class ExecutionContextAdapterV2:
     def contest_temp_path(self) -> str:
         return self._property_provider.contest_temp_path
 
+    @property
+    def source_file_name(self) -> str:
+        return self._property_provider.source_file_name
+
+    @property
+    def language_id(self) -> str:
+        return self._property_provider.language_id
+
+    @property
+    def run_command(self) -> str:
+        return self._property_provider.run_command
+
     # === 互換性レイヤー（委譲） ===
     @property
     def resolver(self):
