@@ -11,6 +11,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from .step import Step, StepType
 
+# 新設定システムとの統合
+from src.configuration import ExecutionConfiguration as NewExecutionConfiguration
+from src.configuration.expansion.template_expander import TemplateExpander
+
 
 @dataclass
 class ExecutionContext:
@@ -26,20 +30,43 @@ class ExecutionContext:
     contest_stock_path: str = ""
     contest_template_path: str = ""
 
+    # ファイル情報
+    source_file_name: str = ""
+    language_id: str = ""
+    run_command: str = ""
+
     # その他
     file_patterns: Dict[str, List[str]] = None
 
     def to_dict(self) -> Dict[str, str]:
         """文字列置換用の辞書を返す"""
-        return {
+        result = {
             'contest_name': self.contest_name,
             'problem_name': self.problem_name,
             'language': self.language,
+            'language_name': self.language,  # エイリアス
             'workspace_path': self.workspace_path,
             'contest_current_path': self.contest_current_path,
             'contest_stock_path': self.contest_stock_path,
             'contest_template_path': self.contest_template_path,
+            'source_file_name': self.source_file_name,
+            'language_id': self.language_id,
+            'run_command': self.run_command,
         }
+
+        # ファイルパターンをテンプレート変数として追加
+        if self.file_patterns:
+            for pattern_name, patterns in self.file_patterns.items():
+                if patterns:
+                    # 最初のパターンを使用（ディレクトリ部分を抽出）
+                    pattern = patterns[0]
+                    if '/' in pattern:
+                        # "test/*.in" -> "test"
+                        result[pattern_name] = pattern.split('/')[0]
+                    else:
+                        result[pattern_name] = pattern
+
+        return result
 
 
 @dataclass
@@ -100,14 +127,20 @@ def create_step(json_step: Dict[str, Any], context: ExecutionContext) -> Step:
     expanded_cmd = [expand_template(arg, context) for arg in raw_cmd]
 
     # ファイルパターンがある場合は展開
-    if context.file_patterns and step_type in [StepType.COPY, StepType.MOVE, StepType.MOVETREE]:
+    if context.file_patterns and step_type in [StepType.COPY, StepType.COPYTREE, StepType.MOVE, StepType.MOVETREE]:
         expanded_cmd = expand_file_patterns_in_cmd(expanded_cmd, context.file_patterns, step_type)
+
+    # cwdを展開
+    cwd = json_step.get('cwd')
+    if cwd:
+        cwd = expand_template(cwd, context)
 
     return Step(
         type=step_type,
         cmd=expanded_cmd,
         allow_failure=json_step.get('allow_failure', False),
         show_output=json_step.get('show_output', False),
+        cwd=cwd,
         when=json_step.get('when'),  # 展開せずそのまま保持
         name=expand_template(json_step.get('name', ''), context)
     )
@@ -130,13 +163,24 @@ def check_when_condition(when_clause: Optional[str], context: ExecutionContext) 
 
 
 def expand_template(template: str, context: ExecutionContext) -> str:
-    """テンプレート文字列の{variable}を置換する"""
+    """テンプレート文字列の{variable}を置換する
+    
+    新設定システムと旧システムの両方に対応
+    """
     if not template:
         return ""
-
+    
+    # 新設定システム（NewExecutionConfiguration）の場合
+    if isinstance(context, NewExecutionConfiguration):
+        expander = TemplateExpander(context)
+        return expander.expand_all(template)
+    
+    # 従来システム（ExecutionContext）の場合
     result = template
     for key, value in context.to_dict().items():
-        result = result.replace(f'{{{key}}}', value)
+        # Pathオブジェクトも文字列に変換
+        str_value = str(value) if value is not None else ""
+        result = result.replace(f'{{{key}}}', str_value)
 
     return result
 
@@ -156,7 +200,10 @@ def expand_file_patterns_in_when(when_text: str, file_patterns: Dict[str, List[s
 
 
 def expand_file_patterns_in_text(text: str, file_patterns: Dict[str, List[str]], step_type: Optional[StepType]) -> str:
-    """テキスト内のファイルパターンを展開する"""
+    """テキスト内のファイルパターンを展開する
+    
+    新設定システムに対応したファイルパターン展開
+    """
     result = text
 
     for pattern_name, patterns in file_patterns.items():
@@ -165,12 +212,27 @@ def expand_file_patterns_in_text(text: str, file_patterns: Dict[str, List[str]],
             pattern = patterns[0]  # 最初のパターンを使用
 
             # ディレクトリ操作の場合はディレクトリ部分のみ
-            if step_type == StepType.MOVETREE and '/' in pattern:
+            if step_type in [StepType.MOVETREE, StepType.COPYTREE] and '/' in pattern:
                 pattern = pattern.split('/')[0]
 
             result = result.replace(placeholder, pattern)
 
     return result
+
+
+def expand_template_with_new_system(template: str, new_config: NewExecutionConfiguration, operation_type: Optional[str] = None) -> str:
+    """新設定システムを使用したテンプレート展開
+    
+    Args:
+        template: 展開するテンプレート
+        new_config: 新設定システムの設定
+        operation_type: 操作タイプ（ファイルパターン展開用）
+        
+    Returns:
+        展開された文字列
+    """
+    expander = TemplateExpander(new_config)
+    return expander.expand_all(template, operation_type)
 
 
 def evaluate_test_condition(test_command: str) -> Tuple[bool, Optional[str]]:

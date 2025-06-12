@@ -12,6 +12,12 @@ from src.infrastructure.persistence.sqlite.system_config_loader import SystemCon
 from .execution_context import ExecutionContext
 from .parsers.validation_service import ValidationService
 
+# 新設定システムの統合
+from src.configuration.integration.user_input_parser_integration import (
+    UserInputParserIntegration,
+    create_new_execution_context
+)
+
 CONTEST_ENV_DIR = "contest_env"
 
 
@@ -273,14 +279,50 @@ def parse_user_input(
         # JsonConfigLoaderを使用して言語固有の設定を取得
         final_env_json = json_config_loader.get_language_config(current_context_info["language"])
 
-    context = ExecutionContext(
-        command_type=current_context_info["command"],
-        language=current_context_info["language"],
-        contest_name=current_context_info["contest_name"],
-        problem_name=current_context_info["problem_name"],
-        env_type=current_context_info["env_type"],
-        env_json=final_env_json
-    )
+    # 新設定システムの統合テスト（段階的移行）
+    try:
+        # 新システムで ExecutionContext の互換実装を作成
+        new_context = create_new_execution_context(
+            command_type=current_context_info["command"],
+            language=current_context_info["language"],
+            contest_name=current_context_info["contest_name"],
+            problem_name=current_context_info["problem_name"],
+            env_type=current_context_info["env_type"],
+            env_json=final_env_json
+        )
+        
+        # 互換性検証用の従来システム
+        old_context = ExecutionContext(
+            command_type=current_context_info["command"],
+            language=current_context_info["language"],
+            contest_name=current_context_info["contest_name"],
+            problem_name=current_context_info["problem_name"],
+            env_type=current_context_info["env_type"],
+            env_json=final_env_json
+        )
+        
+        # 互換性チェック
+        integration = UserInputParserIntegration()
+        if integration.validate_new_system_compatibility(old_context, new_context):
+            # 新システムを使用（段階的移行）
+            context = new_context
+            print("DEBUG: Using new configuration system")
+        else:
+            # 従来システムにフォールバック
+            context = old_context
+            print("DEBUG: Fallback to old system due to compatibility issue")
+            
+    except Exception as e:
+        # エラー時は従来システムを使用
+        print(f"DEBUG: Fallback to old system due to error: {e}")
+        context = ExecutionContext(
+            command_type=current_context_info["command"],
+            language=current_context_info["language"],
+            contest_name=current_context_info["contest_name"],
+            problem_name=current_context_info["problem_name"],
+            env_type=current_context_info["env_type"],
+            env_json=final_env_json
+        )
 
     # レゾルバー設定
     context.resolver = root
