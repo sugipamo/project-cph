@@ -220,109 +220,29 @@ class GraphBasedWorkflowBuilder:
         graph: RequestExecutionGraph,
         nodes: list[RequestNode]
     ) -> None:
-        """ノード間の依存関係を構築（最適化版）
+        """ノード間の依存関係を構築（純粋関数版）
 
         Args:
             graph: 依存関係を追加するグラフ
             nodes: ノードのリスト
         """
-        from collections import defaultdict
-
-        # リソースからノードへのインデックスを構築（O(n)）
-        file_creators = defaultdict(list)  # file_path -> [(node_idx, node)]
-        dir_creators = defaultdict(list)   # dir_path -> [(node_idx, node)]
-        file_readers = defaultdict(list)   # file_path -> [(node_idx, node)]
-        dir_requirers = defaultdict(list)  # dir_path -> [(node_idx, node)]
-
-        for idx, node in enumerate(nodes):
-            for file_path in node.creates_files:
-                file_creators[file_path].append((idx, node))
-            for dir_path in node.creates_dirs:
-                dir_creators[dir_path].append((idx, node))
-            for file_path in node.reads_files:
-                file_readers[file_path].append((idx, node))
-            for dir_path in node.requires_dirs:
-                dir_requirers[dir_path].append((idx, node))
-
-        # ファイル作成依存を検出（O(m)、mは依存関係数）
-        for file_path, creators in file_creators.items():
-            if file_path in file_readers:
-                for creator_idx, creator in creators:
-                    for reader_idx, reader in file_readers[file_path]:
-                        if creator_idx < reader_idx:  # 順序を保持
-                            edge = DependencyEdge(
-                                from_node=creator.id,
-                                to_node=reader.id,
-                                dependency_type=DependencyType.FILE_CREATION,
-                                resource_path=file_path,
-                                description=f"File {file_path} must be created before being read"
-                            )
-                            graph.add_dependency(edge)
-
-        # ディレクトリ作成依存を検出
-        for dir_path, creators in dir_creators.items():
-            if dir_path in dir_requirers:
-                for creator_idx, creator in creators:
-                    for requirer_idx, requirer in dir_requirers[dir_path]:
-                        if creator_idx < requirer_idx:
-                            edge = DependencyEdge(
-                                from_node=creator.id,
-                                to_node=requirer.id,
-                                dependency_type=DependencyType.DIRECTORY_CREATION,
-                                resource_path=dir_path,
-                                description=f"Directory {dir_path} must be created before being used"
-                            )
-                            graph.add_dependency(edge)
-
-        # ディレクトリ内のファイル作成依存（最適化：必要な場合のみチェック）
-        for idx, node in enumerate(nodes):
-            if node.creates_files:
-                # このノードが作成するファイルの親ディレクトリを収集
-                parent_dirs = set()
-                for file_path in node.creates_files:
-                    parent = str(Path(file_path).parent)
-                    if parent != '.':
-                        parent_dirs.add(parent)
-
-                # 必要な親ディレクトリを作成するノードを検索
-                for parent_dir in parent_dirs:
-                    # 完全一致または親ディレクトリを作成するノードを探す
-                    for check_dir, creators in dir_creators.items():
-                        if self._is_parent_directory(check_dir, parent_dir) or check_dir == parent_dir:
-                            for creator_idx, creator in creators:
-                                if creator_idx < idx:
-                                    edge = DependencyEdge(
-                                        from_node=creator.id,
-                                        to_node=node.id,
-                                        dependency_type=DependencyType.DIRECTORY_CREATION,
-                                        resource_path=check_dir,
-                                        description=f"Directory {check_dir} must exist for files in {parent_dir}"
-                                    )
-                                    graph.add_dependency(edge)
-                                    break  # 同じディレクトリに対して複数の依存を追加しない
-
-        # 明示的な順序依存を追加（競合がある場合のみ）
-        for i in range(len(nodes) - 1):
-            from_node = nodes[i]
-            to_node = nodes[i + 1]
-
-            # すでに依存関係がある場合はスキップ
-            if to_node.id in graph.adjacency_list.get(from_node.id, set()):
-                continue
-
-            # 逆方向の依存関係がある場合もスキップ
-            if from_node.id in graph.adjacency_list.get(to_node.id, set()):
-                continue
-
-            # リソースの競合がある場合のみ順序依存を追加
-            if self._has_resource_conflict(from_node, to_node):
-                edge = DependencyEdge(
-                    from_node=from_node.id,
-                    to_node=to_node.id,
-                    dependency_type=DependencyType.EXECUTION_ORDER,
-                    description="Preserve original execution order due to resource conflict"
-                )
-                graph.add_dependency(edge)
+        from .functional_utils import pipe
+        from .graph_ops.metadata_extraction import extract_request_metadata
+        from .graph_ops.dependency_mapping import build_dependency_mapping
+        from .graph_ops.cycle_detection import validate_no_circular_dependencies
+        from .graph_ops.graph_optimization import optimize_dependency_order
+        
+        # 関数型パイプライン
+        result = pipe(
+            nodes,
+            extract_request_metadata,           # 純粋関数
+            build_dependency_mapping,           # 純粋関数  
+            validate_no_circular_dependencies,  # 純粋関数
+            optimize_dependency_order           # 純粋関数
+        )
+        
+        # 副作用: グラフに依存関係を追加
+        self._apply_dependencies_to_graph(graph, result)
 
     def _is_parent_directory(self, parent_path: str, child_path: str) -> bool:
         """parent_pathがchild_pathの親ディレクトリかどうかを判定（純粋関数版使用）
@@ -461,4 +381,37 @@ class GraphBasedWorkflowBuilder:
             messages.append(f"Failed to determine execution groups: {e!s}")
 
         return is_valid, messages
+
+    def _apply_dependencies_to_graph(self, graph: RequestExecutionGraph, result: dict) -> None:
+        """純粋関数の結果をグラフに適用（副作用を集約）
+        
+        Args:
+            graph: 適用先グラフ
+            result: 最適化結果辞書
+        """
+        from .request_execution_graph import DependencyEdge, DependencyType
+        
+        # 結果の形式を確認して適用
+        if 'mappings' in result:
+            # 最適化結果の場合
+            for mapping_dict in result['mappings']:
+                edge = DependencyEdge(
+                    from_node=mapping_dict['from_node'],
+                    to_node=mapping_dict['to_node'],
+                    dependency_type=DependencyType(mapping_dict['type']),
+                    resource_path=mapping_dict.get('resource', ''),
+                    description=mapping_dict.get('description', '')
+                )
+                graph.add_dependency(edge)
+        elif hasattr(result, 'mappings'):
+            # DependencyGraphオブジェクトの場合
+            for mapping in result.mappings:
+                edge = DependencyEdge(
+                    from_node=mapping.from_node_id,
+                    to_node=mapping.to_node_id,
+                    dependency_type=mapping.dependency_type,
+                    resource_path=mapping.resource_path,
+                    description=mapping.description
+                )
+                graph.add_dependency(edge)
 

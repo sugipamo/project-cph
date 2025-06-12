@@ -379,7 +379,7 @@ class RequestExecutionGraph:
 
     def execute_parallel(self, driver=None, max_workers: int = 4,
                         executor_class: type = ThreadPoolExecutor) -> list[OperationResult]:
-        """並行実行（最適化版）
+        """並行実行（純粋関数版）
 
         Args:
             driver: 実行に使用するドライバー
@@ -389,62 +389,24 @@ class RequestExecutionGraph:
         Returns:
             List[OperationResult]: 実行結果のリスト
         """
-        # CPUコア数に基づいてmax_workersを調整
+        from .execution_planning import create_execution_plan, calculate_optimal_workers
+        from .result_processing import collect_workflow_result, create_legacy_operation_results
+        
+        # 純粋関数による計算
+        dependencies = {node_id: set(self.get_dependencies(node_id)) for node_id in self.nodes}
         cpu_count = os.cpu_count() or 1
-        optimal_workers = min(max_workers, cpu_count * 2)  # CPUコア数の2倍まで
-
-        parallel_groups = self.get_parallel_groups()
-        all_results = {}
-        failed_nodes = set()
-
-        # グローバルスレッドプールを使用
-        with executor_class(max_workers=optimal_workers) as executor:
-            for group in parallel_groups:
-                # 失敗したノードに依存するノードをスキップ
-                executable_nodes = []
-                for node_id in group:
-                    dependencies = set(self.get_dependencies(node_id))
-                    if not dependencies.intersection(failed_nodes):
-                        executable_nodes.append(node_id)
-                    else:
-                        self.nodes[node_id].status = "skipped"
-
-                if not executable_nodes:
-                    continue
-
-                # バッチ処理で効率化
-                futures_batch = self._submit_batch(executor, executable_nodes, driver)
-
-                # 結果を収集
-                for future, node_id in futures_batch:
-                    node = self.nodes[node_id]
-
-                    try:
-                        result = future.result(timeout=300)  # 5分のタイムアウト
-                        node.result = result
-                        node.status = "completed" if result.success else "failed"
-                        all_results[node_id] = result
-
-                        # 実行結果を蓄積
-                        self.execution_results[node_id] = result
-
-                        if not result.success and not getattr(node.request, 'allow_failure', False):
-                            failed_nodes.add(node_id)
-
-                    except Exception as e:
-                        node.status = "failed"
-                        error_result = OperationResult(success=False, error_message=str(e))
-                        node.result = error_result
-                        all_results[node_id] = error_result
-
-                        # エラー結果も蓄積
-                        self.execution_results[node_id] = error_result
-
-                        if not getattr(node.request, 'allow_failure', False):
-                            failed_nodes.add(node_id)
-
-        # 結果を実行順序に従って並べ替え
-        return self._collect_results(all_results)
+        optimal_workers = calculate_optimal_workers(max_workers, cpu_count)
+        execution_plan = create_execution_plan(self.nodes, dependencies, optimal_workers)
+        
+        # 副作用 (実際の実行) のみここで実行
+        execution_results = self._execute_plan(execution_plan, driver, executor_class)
+        
+        # 純粋関数による結果処理
+        node_statuses = {node_id: node.status for node_id, node in self.nodes.items()}
+        workflow_result = collect_workflow_result(execution_results, execution_plan, node_statuses)
+        
+        # レガシーAPI互換性のためOperationResultリストを返却
+        return create_legacy_operation_results(workflow_result)
 
     def _submit_batch(self, executor, node_ids: list[str], driver) -> list[tuple]:
         """ノードをバッチでスレッドプールに送信
@@ -663,3 +625,76 @@ class RequestExecutionGraph:
             request.path = self.substitute_result_placeholders(request.path)
         if hasattr(request, 'dst_path') and request.dst_path:
             request.dst_path = self.substitute_result_placeholders(request.dst_path)
+
+    def _execute_plan(self, execution_plan, driver, executor_class) -> dict:
+        """実行計画を実際に実行（副作用を集約）
+        
+        Args:
+            execution_plan: 実行計画
+            driver: 実行ドライバー
+            executor_class: Executorクラス
+            
+        Returns:
+            実行結果辞書
+        """
+        from .execution_planning import filter_executable_nodes, NodeExecutionStatus
+        
+        all_results = {}
+        failed_nodes = set()
+        
+        # グローバルスレッドプールを使用（副作用）
+        with executor_class(max_workers=execution_plan.max_workers) as executor:
+            for group in execution_plan.parallel_groups:
+                # 純粋関数で実行可能ノードをフィルタ
+                node_statuses = [
+                    NodeExecutionStatus(
+                        node_id=node_id,
+                        status=self.nodes[node_id].status,
+                        allow_failure=getattr(self.nodes[node_id].request, 'allow_failure', False)
+                    )
+                    for node_id in group
+                ]
+                
+                executable_nodes = filter_executable_nodes(
+                    node_statuses, failed_nodes, execution_plan.node_dependencies
+                )
+                
+                if not executable_nodes:
+                    # 実行可能ノードなし、スキップ（副作用）
+                    for node_id in group:
+                        if self.nodes[node_id].status == "pending":
+                            self.nodes[node_id].status = "skipped"
+                    continue
+                
+                # バッチ処理で効率化（副作用）
+                futures_batch = self._submit_batch(executor, executable_nodes, driver)
+                
+                # 結果を収集（副作用）
+                for future, node_id in futures_batch:
+                    node = self.nodes[node_id]
+                    
+                    try:
+                        result = future.result(timeout=300)  # 5分のタイムアウト
+                        node.result = result
+                        node.status = "completed" if result.success else "failed"
+                        all_results[node_id] = result
+                        
+                        # 実行結果を蓄積（副作用）
+                        self.execution_results[node_id] = result
+                        
+                        if not result.success and not getattr(node.request, 'allow_failure', False):
+                            failed_nodes.add(node_id)
+                    
+                    except Exception as e:
+                        node.status = "failed"
+                        error_result = OperationResult(success=False, error_message=str(e))
+                        node.result = error_result
+                        all_results[node_id] = error_result
+                        
+                        # エラー結果も蓄積（副作用）
+                        self.execution_results[node_id] = error_result
+                        
+                        if not getattr(node.request, 'allow_failure', False):
+                            failed_nodes.add(node_id)
+        
+        return all_results
