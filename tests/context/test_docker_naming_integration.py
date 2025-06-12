@@ -4,6 +4,7 @@ Test Docker naming integration with ExecutionContextAdapter
 from unittest.mock import MagicMock
 
 import pytest
+
 from src.configuration.integration.user_input_parser_integration import create_new_execution_context
 
 

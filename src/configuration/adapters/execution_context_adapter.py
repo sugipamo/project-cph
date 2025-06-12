@@ -127,11 +127,11 @@ class ExecutionContextAdapterV2:
             get_oj_container_name,
             get_oj_image_name,
         )
-        
+
         # dockerfile_resolverから内容を取得
         dockerfile_content = None
         oj_dockerfile_content = None
-        
+
         # 複数の場所からdockerfile_resolverを取得を試みる
         resolver = None
         if hasattr(self, '_dockerfile_resolver') and self._dockerfile_resolver:
@@ -140,11 +140,11 @@ class ExecutionContextAdapterV2:
             resolver = self.dockerfile_resolver
         elif hasattr(self._compatibility_layer, 'dockerfile_resolver') and self._compatibility_layer.dockerfile_resolver:
             resolver = self._compatibility_layer.dockerfile_resolver
-            
+
         if resolver:
             dockerfile_content = getattr(resolver, 'dockerfile', None)
             oj_dockerfile_content = getattr(resolver, 'oj_dockerfile', None)
-        
+
         # Docker命名情報を生成
         return {
             "image_name": get_docker_image_name(self.language, dockerfile_content),

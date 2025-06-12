@@ -122,10 +122,8 @@ class TemplateExpander:
 
         for key in keys:
             # 基本変数辞書をチェック
-            if key not in self._template_dict:
-                # ファイルパターンをチェック
-                if key not in self.config.file_patterns:
-                    unresolved_keys.append(key)
+            if key not in self._template_dict and key not in self.config.file_patterns:
+                unresolved_keys.append(key)
 
         return len(unresolved_keys) == 0, unresolved_keys
 

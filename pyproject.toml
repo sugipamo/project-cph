@@ -135,6 +135,7 @@ check-typed-exception = true
     "S101",    # assert文
     "PLR2004", # magic values
     "D",       # docstring requirements
+    "N802",    # unittest setUp method names
 ]
 # __init__.pyファイル（ruff.tomlから）
 "**/__init__.py" = [

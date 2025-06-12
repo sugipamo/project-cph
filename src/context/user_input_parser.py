@@ -74,9 +74,17 @@ def _apply_language(args, context, root):
         # 第1レベルのノード（言語）のみをチェック
         for lang_node in root.next_nodes:
             if arg in lang_node.matches:
-                context.language = lang_node.key
+                # 新しいコンテキストを作成
+                new_context = create_new_execution_context(
+                    command_type=context.command_type,
+                    language=lang_node.key,
+                    contest_name=context.contest_name,
+                    problem_name=context.problem_name,
+                    env_type=context.env_type,
+                    env_json=context.env_json
+                )
                 new_args = args[:idx] + args[idx+1:]
-                return new_args, context
+                return new_args, new_context
 
     # 引数に言語指定がない場合は既存設定を保持
     return args, context
@@ -90,9 +98,17 @@ def _apply_env_type(args, context, root):
             for env_type_node in env_type_nodes:
                 for node in env_type_node.next_nodes:
                     if arg in node.matches:
-                        context.env_type = node.key
+                        # 新しいコンテキストを作成
+                        new_context = create_new_execution_context(
+                            command_type=context.command_type,
+                            language=context.language,
+                            contest_name=context.contest_name,
+                            problem_name=context.problem_name,
+                            env_type=node.key,
+                            env_json=context.env_json
+                        )
                         new_args = args[:idx] + args[idx+1:]
-                        return new_args, context
+                        return new_args, new_context
 
     # 引数にenv_type指定がない場合は既存設定を保持
     return args, context
@@ -106,9 +122,17 @@ def _apply_command(args, context, root):
             for command_node in command_nodes:
                 for node in command_node.next_nodes:
                     if arg in node.matches:
-                        context.command_type = node.key
+                        # 新しいコンテキストを作成
+                        new_context = create_new_execution_context(
+                            command_type=node.key,
+                            language=context.language,
+                            contest_name=context.contest_name,
+                            problem_name=context.problem_name,
+                            env_type=context.env_type,
+                            env_json=context.env_json
+                        )
                         new_args = args[:idx] + args[idx+1:]
-                        return new_args, context
+                        return new_args, new_context
 
     return args, context
 
@@ -116,7 +140,17 @@ def _apply_command(args, context, root):
 def _apply_problem_name(args, context):
     """問題名の適用"""
     if args:
-        context.problem_name = args.pop()
+        problem_name = args.pop()
+        # 新しいコンテキストを作成
+        new_context = create_new_execution_context(
+            command_type=context.command_type,
+            language=context.language,
+            contest_name=context.contest_name,
+            problem_name=problem_name,
+            env_type=context.env_type,
+            env_json=context.env_json
+        )
+        return args, new_context
 
     return args, context
 
@@ -124,7 +158,17 @@ def _apply_problem_name(args, context):
 def _apply_contest_name(args, context):
     """コンテスト名の適用"""
     if args:
-        context.contest_name = args.pop()
+        contest_name = args.pop()
+        # 新しいコンテキストを作成
+        new_context = create_new_execution_context(
+            command_type=context.command_type,
+            language=context.language,
+            contest_name=contest_name,
+            problem_name=context.problem_name,
+            env_type=context.env_type,
+            env_json=context.env_json
+        )
+        return args, new_context
 
     return args, context
 
