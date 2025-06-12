@@ -9,11 +9,11 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
-from .step import Step, StepType
-
 # 新設定システムとの統合
 from src.configuration import ExecutionConfiguration as NewExecutionConfiguration
 from src.configuration.expansion.template_expander import TemplateExpander
+
+from .step import Step, StepType
 
 
 @dataclass
@@ -164,17 +164,17 @@ def check_when_condition(when_clause: Optional[str], context: ExecutionContext) 
 
 def expand_template(template: str, context: ExecutionContext) -> str:
     """テンプレート文字列の{variable}を置換する
-    
+
     新設定システムと旧システムの両方に対応
     """
     if not template:
         return ""
-    
+
     # 新設定システム（NewExecutionConfiguration）の場合
     if isinstance(context, NewExecutionConfiguration):
         expander = TemplateExpander(context)
         return expander.expand_all(template)
-    
+
     # 従来システム（ExecutionContext）の場合
     result = template
     for key, value in context.to_dict().items():
@@ -201,7 +201,7 @@ def expand_file_patterns_in_when(when_text: str, file_patterns: Dict[str, List[s
 
 def expand_file_patterns_in_text(text: str, file_patterns: Dict[str, List[str]], step_type: Optional[StepType]) -> str:
     """テキスト内のファイルパターンを展開する
-    
+
     新設定システムに対応したファイルパターン展開
     """
     result = text
@@ -222,12 +222,12 @@ def expand_file_patterns_in_text(text: str, file_patterns: Dict[str, List[str]],
 
 def expand_template_with_new_system(template: str, new_config: NewExecutionConfiguration, operation_type: Optional[str] = None) -> str:
     """新設定システムを使用したテンプレート展開
-    
+
     Args:
         template: 展開するテンプレート
         new_config: 新設定システムの設定
         operation_type: 操作タイプ（ファイルパターン展開用）
-        
+
     Returns:
         展開された文字列
     """

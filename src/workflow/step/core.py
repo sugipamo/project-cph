@@ -12,7 +12,13 @@ def create_step_context_from_execution_context(execution_context) -> StepContext
     # ExecutionContextからfile_patternsを取得
     file_patterns = None
     if hasattr(execution_context, 'env_json') and execution_context.env_json:
-        language_config = execution_context.env_json.get(execution_context.language, {})
+        # JsonConfigLoaderを使用している場合はマージ済み設定なので直接アクセス
+        if execution_context.language in execution_context.env_json:
+            # 従来形式（言語がトップレベルキー）
+            language_config = execution_context.env_json[execution_context.language]
+        else:
+            # JsonConfigLoader形式（マージ済み設定）
+            language_config = execution_context.env_json
         file_patterns = language_config.get('file_patterns', {})
 
     return StepContext(
@@ -36,7 +42,13 @@ def execution_context_to_simple_context(execution_context) -> SimpleExecutionCon
     """ExecutionContextをSimpleExecutionContextに変換"""
     file_patterns = {}
     if hasattr(execution_context, 'env_json') and execution_context.env_json:
-        language_config = execution_context.env_json.get(execution_context.language, {})
+        # JsonConfigLoaderを使用している場合はマージ済み設定なので直接アクセス
+        if execution_context.language in execution_context.env_json:
+            # 従来形式（言語がトップレベルキー）
+            language_config = execution_context.env_json[execution_context.language]
+        else:
+            # JsonConfigLoader形式（マージ済み設定）
+            language_config = execution_context.env_json
         file_patterns = language_config.get('file_patterns', {})
 
     return SimpleExecutionContext(
@@ -47,6 +59,9 @@ def execution_context_to_simple_context(execution_context) -> SimpleExecutionCon
         contest_current_path=getattr(execution_context, 'contest_current_path', ''),
         contest_stock_path=getattr(execution_context, 'contest_stock_path', ''),
         contest_template_path=getattr(execution_context, 'contest_template_path', ''),
+        source_file_name=getattr(execution_context, 'source_file_name', ''),
+        language_id=getattr(execution_context, 'language_id', ''),
+        run_command=language_config.get('run_command', ''),
         file_patterns=file_patterns
     )
 
@@ -79,7 +94,7 @@ def generate_steps_from_json(json_steps: List[Dict[str, Any]], context) -> StepG
         # when条件でスキップされていないステップは全て含める（後方互換性）
         steps.append(result.step)
 
-    return StepGenerationResult(executed_steps, errors, [])
+    return StepGenerationResult(steps, errors, [])
 
 
 def create_step_from_json(json_step: Dict[str, Any], context) -> Step:
@@ -133,7 +148,7 @@ def validate_single_step(step: Step) -> List[str]:
         return errors
 
     # 各ステップタイプ固有の検証
-    if step.type in [StepType.COPY, StepType.MOVE, StepType.MOVETREE]:
+    if step.type in [StepType.COPY, StepType.COPYTREE, StepType.MOVE, StepType.MOVETREE]:
         if len(step.cmd) < 2:
             errors.append(f"Requires at least 2 arguments (src, dst), got {len(step.cmd)}")
         elif not step.cmd[0] or not step.cmd[1]:

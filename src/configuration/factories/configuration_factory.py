@@ -5,45 +5,45 @@ from typing import Any, Dict, List
 
 from ..core.execution_configuration import ExecutionConfiguration
 from ..core.execution_paths import ExecutionPaths
-from ..core.runtime_config import RuntimeConfig
 from ..core.output_config import OutputConfig
+from ..core.runtime_config import RuntimeConfig
 from ..loaders.configuration_loader import ConfigurationLoader
 from ..registries.language_registry import get_language_registry
 
 
 class ExecutionConfigurationFactory:
     """ExecutionConfiguration生成の一元化"""
-    
+
     def __init__(self, config_loader: ConfigurationLoader):
         self.config_loader = config_loader
-    
+
     def create_from_args(self, args: List[str]) -> ExecutionConfiguration:
         """コマンドライン引数からExecutionConfigurationを生成
-        
+
         Args:
             args: コマンドライン引数のリスト
-            
+
         Returns:
             ExecutionConfiguration: 生成された実行設定
         """
         # 1. 引数解析
         parsed_args = self._parse_arguments(args)
-        
+
         # 2. 設定読み込み
         config_source = self.config_loader.load_source(
-            parsed_args.language, 
+            parsed_args.language,
             parsed_args.__dict__
         )
-        
+
         # 3. ExecutionConfiguration構築
         return self._build_configuration(config_source.get_merged_config(), parsed_args)
-    
+
     def create_from_context(self, context) -> ExecutionConfiguration:
         """既存ExecutionContextから変換（移行用）
-        
+
         Args:
             context: 既存のExecutionContext
-            
+
         Returns:
             ExecutionConfiguration: 変換された実行設定
         """
@@ -53,7 +53,7 @@ class ExecutionConfigurationFactory:
         language = getattr(context, 'language', '')
         env_type = getattr(context, 'env_type', 'local')
         command_type = getattr(context, 'command_type', '')
-        
+
         # パス情報を構築
         paths = ExecutionPaths(
             workspace=Path('./workspace'),
@@ -62,16 +62,16 @@ class ExecutionConfigurationFactory:
             contest_template=Path('./contest_template'),
             contest_temp=Path('./contest_temp')
         )
-        
+
         # ファイルパターンを抽出（存在する場合）
         file_patterns = {}
         if hasattr(context, 'env_json') and context.env_json:
             lang_config = context.env_json.get(language, {})
             file_patterns = lang_config.get('file_patterns', {})
-        
+
         # 言語レジストリから設定を取得
         language_registry = get_language_registry()
-        
+
         # 実行設定を構築
         runtime_config = RuntimeConfig(
             language_id=language,
@@ -80,7 +80,7 @@ class ExecutionConfigurationFactory:
             timeout_seconds=30,
             retry_settings={}
         )
-        
+
         # 出力設定を構築
         output_config = OutputConfig(
             show_workflow_summary=True,
@@ -88,7 +88,7 @@ class ExecutionConfigurationFactory:
             show_execution_completion=True,
             format_preset='default'
         )
-        
+
         return ExecutionConfiguration(
             contest_name=contest_name,
             problem_name=problem_name,
@@ -100,13 +100,13 @@ class ExecutionConfigurationFactory:
             runtime_config=runtime_config,
             output_config=output_config
         )
-    
+
     def _parse_arguments(self, args: List[str]) -> argparse.Namespace:
         """コマンドライン引数を解析
-        
+
         Args:
             args: 引数リスト
-            
+
         Returns:
             解析結果
         """
@@ -116,16 +116,16 @@ class ExecutionConfigurationFactory:
         parser.add_argument('--contest', '-c', default='', help='Contest name')
         parser.add_argument('--problem', '-p', default='', help='Problem name')
         parser.add_argument('--env-type', '-e', default='local', help='Environment type')
-        
+
         return parser.parse_args(args)
-    
+
     def _build_configuration(self, merged_config: Dict[str, Any], parsed_args: argparse.Namespace) -> ExecutionConfiguration:
         """マージされた設定からExecutionConfigurationを構築
-        
+
         Args:
             merged_config: マージされた設定
             parsed_args: 解析済み引数
-            
+
         Returns:
             ExecutionConfiguration: 構築された設定
         """
@@ -135,7 +135,7 @@ class ExecutionConfigurationFactory:
         language = parsed_args.language
         env_type = getattr(parsed_args, 'env_type', 'local')
         command_type = parsed_args.command_type
-        
+
         # パス情報（設定から取得、デフォルト値で補完）
         paths_config = merged_config.get('paths', {})
         paths = ExecutionPaths(
@@ -145,13 +145,13 @@ class ExecutionConfigurationFactory:
             contest_template=Path(paths_config.get('contest_template', './contest_template')),
             contest_temp=Path(paths_config.get('contest_temp', './contest_temp'))
         )
-        
+
         # ファイルパターン
         file_patterns = merged_config.get('file_patterns', {})
-        
+
         # 言語レジストリから設定を取得
         language_registry = get_language_registry()
-        
+
         # 実行設定
         runtime_settings = merged_config.get('runtime', {})
         runtime_config = RuntimeConfig(
@@ -161,7 +161,7 @@ class ExecutionConfigurationFactory:
             timeout_seconds=runtime_settings.get('timeout_seconds', 30),
             retry_settings=runtime_settings.get('retry_settings', {})
         )
-        
+
         # 出力設定
         output_settings = merged_config.get('output', {})
         output_config = OutputConfig(
@@ -170,7 +170,7 @@ class ExecutionConfigurationFactory:
             show_execution_completion=output_settings.get('show_execution_completion', True),
             format_preset=output_settings.get('format_preset', 'default')
         )
-        
+
         return ExecutionConfiguration(
             contest_name=contest_name,
             problem_name=problem_name,
@@ -182,4 +182,4 @@ class ExecutionConfigurationFactory:
             runtime_config=runtime_config,
             output_config=output_config
         )
-    
+

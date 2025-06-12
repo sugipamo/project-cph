@@ -10,6 +10,7 @@ class StepType(Enum):
     SHELL = "shell"
     PYTHON = "python"
     COPY = "copy"
+    COPYTREE = "copytree"
     MOVE = "move"
     MOVETREE = "movetree"
     MKDIR = "mkdir"

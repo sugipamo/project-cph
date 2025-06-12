@@ -56,8 +56,15 @@ class BaseTest:
         }
         default_context.update(kwargs)
 
-        from src.context.execution_context import ExecutionContext
-        return ExecutionContext(**default_context)
+        from src.configuration.integration.user_input_parser_integration import create_new_execution_context
+        return create_new_execution_context(
+            command_type=default_context["command_type"],
+            language=default_context["language"],
+            contest_name=default_context["contest_name"],
+            problem_name=default_context["problem_name"],
+            env_type=default_context["env_type"],
+            env_json=default_context["env_json"]
+        )
 
     def assert_request_type(self, request, expected_type):
         """Assert that request is of expected type"""

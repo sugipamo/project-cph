@@ -1,25 +1,26 @@
 """
-Test Docker naming integration with ExecutionContext
+Test Docker naming integration with ExecutionContextAdapter
 """
 from unittest.mock import MagicMock
 
 import pytest
+from src.configuration.integration.user_input_parser_integration import create_new_execution_context
 
 
 class TestDockerNamingIntegration:
-    """Test Docker naming integration with ExecutionContext"""
+    """Test Docker naming integration with ExecutionContextAdapter"""
 
     def test_get_docker_names_without_dockerfile(self):
         """Test get_docker_names without custom dockerfile"""
-        # Create mock context
-        context = MagicMock()
-        context.language = "python"
-        context._dockerfile_resolver = None
-
-        # Add the method to the mock
-        from src.context.execution_context import ExecutionContext
-        real_method = ExecutionContext.get_docker_names
-        context.get_docker_names = lambda: real_method(context)
+        # Create new system context
+        context = create_new_execution_context(
+            command_type="test",
+            language="python",
+            contest_name="test_contest",
+            problem_name="a",
+            env_type="local",
+            env_json={"python": {"test": "value"}}
+        )
 
         result = context.get_docker_names()
 
@@ -30,21 +31,21 @@ class TestDockerNamingIntegration:
 
     def test_get_docker_names_with_dockerfile(self):
         """Test get_docker_names with custom dockerfile"""
-        # Create mock context
-        context = MagicMock()
-        context.language = "rust"
-        context._dockerfile_resolver = None  # No resolver (fallback mode)
+        # Create new system context
+        context = create_new_execution_context(
+            command_type="test",
+            language="rust",
+            contest_name="test_contest",
+            problem_name="a",
+            env_type="local",
+            env_json={"rust": {"test": "value"}}
+        )
 
         # Mock dockerfile_resolver to return content
         mock_resolver = MagicMock()
         mock_resolver.dockerfile = "FROM rust:1.70\nRUN cargo install --version"
         mock_resolver.oj_dockerfile = "FROM python:3.9\nRUN pip install online-judge-tools"
-        context._dockerfile_resolver = mock_resolver
-
-        # Add the method to the mock
-        from src.context.execution_context import ExecutionContext
-        real_method = ExecutionContext.get_docker_names
-        context.get_docker_names = lambda: real_method(context)
+        context.dockerfile_resolver = mock_resolver
 
         result = context.get_docker_names()
 
@@ -56,20 +57,21 @@ class TestDockerNamingIntegration:
 
     def test_get_docker_names_empty_dockerfile(self):
         """Test get_docker_names with empty dockerfile"""
-        # Create mock context
-        context = MagicMock()
-        context.language = "python"
+        # Create new system context
+        context = create_new_execution_context(
+            command_type="test",
+            language="python",
+            contest_name="test_contest",
+            problem_name="a",
+            env_type="local",
+            env_json={"python": {"test": "value"}}
+        )
 
         # Mock dockerfile_resolver to return empty content
         mock_resolver = MagicMock()
         mock_resolver.dockerfile = ""
         mock_resolver.oj_dockerfile = "   "
-        context._dockerfile_resolver = mock_resolver
-
-        # Add the method to the mock
-        from src.context.execution_context import ExecutionContext
-        real_method = ExecutionContext.get_docker_names
-        context.get_docker_names = lambda: real_method(context)
+        context.dockerfile_resolver = mock_resolver
 
         result = context.get_docker_names()
 

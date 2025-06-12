@@ -4,7 +4,7 @@ Integrates workflow building, fitting, and execution
 
 from src.application.factories.unified_request_factory import create_composite_request, create_request
 from src.application.orchestration.unified_driver import UnifiedDriver
-from src.context.execution_context import ExecutionContext
+from src.configuration.adapters.execution_context_adapter import ExecutionContextAdapter
 from src.utils.debug_logger import DebugLogger
 from src.workflow.builder.graph_based_workflow_builder import GraphBasedWorkflowBuilder
 from src.workflow.step.core import generate_steps_from_json
@@ -17,11 +17,11 @@ class WorkflowExecutionService:
     Replaces the removed EnvWorkflowService
     """
 
-    def __init__(self, context: ExecutionContext, operations):
+    def __init__(self, context: ExecutionContextAdapter, operations):
         """Initialize workflow execution service
 
         Args:
-            context: Execution context with configuration
+            context: Execution context adapter with configuration
             operations: Operations container for drivers
         """
         self.context = context

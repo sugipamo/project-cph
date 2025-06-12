@@ -5,7 +5,8 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from src.context.execution_context import ExecutionContext
+from src.configuration.adapters.execution_context_adapter import ExecutionContextAdapter
+from src.configuration.integration.user_input_parser_integration import create_new_execution_context
 from src.context.user_input_parser import (
     _apply_command,
     _apply_contest_name,
@@ -106,7 +107,7 @@ class TestUserInputParserHelpers:
         mock_lang_node.key = "python"
         mock_root.next_nodes = [mock_lang_node]
 
-        context = ExecutionContext(
+        context = create_new_execution_context(
             command_type=None,
             language=None,
             contest_name=None,
@@ -129,7 +130,7 @@ class TestUserInputParserHelpers:
         mock_lang_node.key = "cpp"
         mock_root.next_nodes = [mock_lang_node]
 
-        context = ExecutionContext(
+        context = create_new_execution_context(
             command_type=None,
             language="existing",
             contest_name=None,
@@ -147,7 +148,7 @@ class TestUserInputParserHelpers:
     def test_apply_env_type(self):
         """Test env_type application."""
         mock_root = MagicMock()
-        context = ExecutionContext(
+        context = create_new_execution_context(
             command_type=None,
             language="python",
             contest_name=None,
@@ -171,7 +172,7 @@ class TestUserInputParserHelpers:
     def test_apply_env_type_no_language(self):
         """Test env_type application with no language set."""
         mock_root = MagicMock()
-        context = ExecutionContext(
+        context = create_new_execution_context(
             command_type=None,
             language=None,
             contest_name=None,
@@ -189,7 +190,7 @@ class TestUserInputParserHelpers:
     def test_apply_command(self):
         """Test command application."""
         mock_root = MagicMock()
-        context = ExecutionContext(
+        context = create_new_execution_context(
             command_type=None,
             language="python",
             contest_name=None,
@@ -212,7 +213,7 @@ class TestUserInputParserHelpers:
 
     def test_apply_problem_name(self):
         """Test problem name application."""
-        context = ExecutionContext(
+        context = create_new_execution_context(
             command_type=None,
             language=None,
             contest_name=None,
@@ -229,7 +230,7 @@ class TestUserInputParserHelpers:
 
     def test_apply_problem_name_empty_args(self):
         """Test problem name application with empty args."""
-        context = ExecutionContext(
+        context = create_new_execution_context(
             command_type=None,
             language=None,
             contest_name=None,
@@ -246,7 +247,7 @@ class TestUserInputParserHelpers:
 
     def test_apply_contest_name(self):
         """Test contest name application."""
-        context = ExecutionContext(
+        context = create_new_execution_context(
             command_type=None,
             language=None,
             contest_name=None,
@@ -361,7 +362,7 @@ class TestUserInputParserHelpers:
 
     def test_apply_env_json(self):
         """Test applying env JSON to context."""
-        context = ExecutionContext(
+        context = create_new_execution_context(
             command_type=None,
             language="python",
             contest_name=None,
@@ -446,10 +447,10 @@ class TestParseUserInputIntegration:
         mock_dockerfile_resolver.return_value = mock_resolver_instance
 
         # Mock ExecutionContext validation
-        with patch.object(ExecutionContext, 'validate_execution_data', return_value=(True, None)):
+        with patch.object(ExecutionContextAdapter, 'validate_execution_data', return_value=(True, None)):
             result = parse_user_input([], mock_operations)
 
-        assert isinstance(result, ExecutionContext)
+        assert isinstance(result, ExecutionContextAdapter)
         assert result.dockerfile_resolver == mock_resolver_instance
         mock_save_context.assert_called_once()
 
@@ -473,7 +474,7 @@ class TestParseUserInputIntegration:
         mock_create_root.return_value = MagicMock()
 
         with patch('src.context.user_input_parser.ValidationService'), \
-             patch.object(ExecutionContext, 'validate_execution_data', return_value=(False, "Validation error")), \
+             patch.object(ExecutionContextAdapter, 'validate_execution_data', return_value=(False, "Validation error")), \
              pytest.raises(ValueError, match="Validation error"):
             parse_user_input([], mock_operations)
 
@@ -502,7 +503,7 @@ class TestParseUserInputIntegration:
         with patch('src.context.user_input_parser.ValidationService'), \
              patch('src.context.user_input_parser.DockerfileResolver'):
                 # Mock _parse_command_line_args to return args unchanged with a valid context
-                mock_context_with_args = ExecutionContext(
+                mock_context_with_args = create_new_execution_context(
                     command_type="test",
                     language="python",
                     contest_name="abc123",
@@ -511,7 +512,7 @@ class TestParseUserInputIntegration:
                     env_json={"python": {"test": "value"}}
                 )
                 with patch('src.context.user_input_parser._parse_command_line_args', return_value=(["extra", "args"], mock_context_with_args)), \
-                     patch('src.context.user_input_parser._apply_env_json', return_value=ExecutionContext(
+                     patch('src.context.user_input_parser._apply_env_json', return_value=create_new_execution_context(
                         command_type="test",
                         language="python",
                         contest_name="abc123",
@@ -519,6 +520,6 @@ class TestParseUserInputIntegration:
                         env_type="local",
                         env_json={"python": {"test": "value"}}
                     )), \
-                     patch.object(ExecutionContext, 'validate_execution_data', return_value=(True, None)), \
+                     patch.object(ExecutionContextAdapter, 'validate_execution_data', return_value=(True, None)), \
                      pytest.raises(ValueError, match="引数が多すぎます"):
                     parse_user_input(["extra", "args"], mock_operations)
