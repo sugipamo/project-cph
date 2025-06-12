@@ -1,20 +1,14 @@
-"""純粋関数ベースのステップ生成の核となる関数群
-"""
-from typing import Any
+"""ステップ生成・実行の核となる関数群（新しいシンプル設計）"""
+from typing import Any, Dict, List
 
-from .condition_evaluator import evaluate_when_condition, validate_when_clause
+from .simple_step_runner import ExecutionContext as SimpleExecutionContext
+from .simple_step_runner import create_step as create_step_simple
+from .simple_step_runner import expand_template, run_steps
 from .step import Step, StepContext, StepGenerationResult, StepType
 
 
 def create_step_context_from_execution_context(execution_context) -> StepContext:
-    """ExecutionContextからStepContextを作成するヘルパー関数
-
-    Args:
-        execution_context: ExecutionContextオブジェクト
-
-    Returns:
-        StepContext: ステップ生成用コンテキスト
-    """
+    """ExecutionContextからStepContextを作成するヘルパー関数（後方互換性）"""
     # ExecutionContextからfile_patternsを取得
     file_patterns = None
     if hasattr(execution_context, 'env_json') and execution_context.env_json:
@@ -38,224 +32,102 @@ def create_step_context_from_execution_context(execution_context) -> StepContext
     )
 
 
-def generate_steps_from_json(
-    json_steps: list[dict[str, Any]],
-    context
-) -> StepGenerationResult:
-    """JSONステップリストから実行可能ステップを生成する純粋関数
+def execution_context_to_simple_context(execution_context) -> SimpleExecutionContext:
+    """ExecutionContextをSimpleExecutionContextに変換"""
+    file_patterns = {}
+    if hasattr(execution_context, 'env_json') and execution_context.env_json:
+        language_config = execution_context.env_json.get(execution_context.language, {})
+        file_patterns = language_config.get('file_patterns', {})
+
+    return SimpleExecutionContext(
+        contest_name=execution_context.contest_name,
+        problem_name=execution_context.problem_name,
+        language=execution_context.language,
+        workspace_path=getattr(execution_context, 'workspace_path', ''),
+        contest_current_path=getattr(execution_context, 'contest_current_path', ''),
+        contest_stock_path=getattr(execution_context, 'contest_stock_path', ''),
+        contest_template_path=getattr(execution_context, 'contest_template_path', ''),
+        file_patterns=file_patterns
+    )
+
+
+def generate_steps_from_json(json_steps: List[Dict[str, Any]], context) -> StepGenerationResult:
+    """JSONステップリストから実行可能ステップを生成する（新設計使用）
 
     Args:
         json_steps: JSONから読み込んだステップのリスト
-        context: ステップ生成に必要なコンテキスト情報（StepContextまたはExecutionContext）
+        context: ステップ生成に必要なコンテキスト情報
 
     Returns:
         StepGenerationResult: 生成されたステップとエラー/警告情報
     """
-    # ExecutionContextの場合はStepContextに変換
-    if not isinstance(context, StepContext):
-        context = create_step_context_from_execution_context(context)
+    # 新しいシンプル設計を使用
+    simple_context = execution_context_to_simple_context(context)
+    step_results = run_steps(json_steps, simple_context)
+
+    # 結果を旧形式に変換
     steps = []
     errors = []
-    warnings = []
+    executed_steps = []
 
-    # フォーマット用の辞書を準備
-    format_dict = context.to_format_dict()
+    for i, result in enumerate(step_results):
+        if not result.success and result.error_message:
+            errors.append(f"Step {i}: {result.error_message}")
+        elif not result.skipped:
+            executed_steps.append(result.step)
 
-    for i, json_step in enumerate(json_steps):
-        try:
-            # when条件の評価
-            when_clause = json_step.get('when')
-            if when_clause:
-                # when条件の検証
-                validation_error = validate_when_clause(when_clause)
-                if validation_error:
-                    errors.append(f"Step {i}: Invalid when clause - {validation_error}")
-                    continue
-                
-                # when条件でもfilepatternを展開
-                expanded_when_clause = expand_file_patterns(when_clause, context)
-                
-                # 条件を評価
-                try:
-                    if not evaluate_when_condition(expanded_when_clause, format_dict):
-                        # 条件が偽の場合、このステップをスキップ
-                        continue
-                except Exception as e:
-                    errors.append(f"Step {i}: Error evaluating when condition - {e!s}")
-                    continue
-            
-            step = create_step_from_json(json_step, context)
-            steps.append(step)
-        except ValueError as e:
-            errors.append(f"Step {i}: {e!s}")
-        except Exception as e:
-            errors.append(f"Step {i}: Unexpected error - {e!s}")
+        # when条件でスキップされていないステップは全て含める（後方互換性）
+        steps.append(result.step)
 
-    return StepGenerationResult(steps, errors, warnings)
+    return StepGenerationResult(executed_steps, errors, [])
 
 
-def create_step_from_json(json_step: dict[str, Any], context: StepContext) -> Step:
-    """単一のJSONステップから実行可能ステップを生成する純粋関数
-
-    Args:
-        json_step: JSONステップの辞書
-        context: ステップ生成コンテキスト
-
-    Returns:
-        Step: 生成されたステップ
-
-    Raises:
-        ValueError: 無効なステップ定義の場合
-    """
-    step_type_str = json_step.get('type')
-    if not step_type_str:
-        raise ValueError("Step must have 'type' field")
-
-    try:
-        step_type = StepType(step_type_str)
-    except ValueError as e:
-        raise ValueError(f"Unknown step type: {step_type_str}") from e
-
-    raw_cmd = json_step.get('cmd', [])
-    if not isinstance(raw_cmd, list):
-        raise ValueError("Step 'cmd' must be a list")
-
-    # ファイル操作ステップの場合はパターン展開を適用
-    if step_type in [StepType.COPY, StepType.MOVE, StepType.MOVETREE] and len(raw_cmd) >= 2:
-        # ソースとデスティネーションでパターン展開
-        formatted_cmd = [
-            expand_file_patterns(raw_cmd[0], context, step_type),
-            expand_file_patterns(raw_cmd[1], context, step_type)
-        ]
-        # 残りの引数は通常のフォーマット
-        formatted_cmd.extend([format_template(arg, context) for arg in raw_cmd[2:]])
-    else:
-        # コマンドの文字列フォーマット
-        formatted_cmd = [format_template(arg, context) for arg in raw_cmd]
-
-    # オプション属性の処理
-    allow_failure = json_step.get('allow_failure', False)
-    show_output = json_step.get('show_output', False)
-
-    cwd = format_template(json_step.get('cwd'), context) if json_step.get('cwd') else None
-    force_env_type = json_step.get('force_env_type')
-    format_options = json_step.get('format_options')
-    output_format = json_step.get('output_format')
-    format_preset = json_step.get('format_preset')
-    
-    # when と name の処理
-    when = json_step.get('when')
-    name = format_template(json_step.get('name'), context) if json_step.get('name') else None
-
-    # Handle file_preparation specific attributes
-    step_kwargs = {
-        'type': step_type,
-        'cmd': formatted_cmd,
-        'allow_failure': allow_failure,
-        'show_output': show_output,
-        'cwd': cwd,
-        'force_env_type': force_env_type,
-        'format_options': format_options,
-        'output_format': output_format,
-        'format_preset': format_preset,
-        'when': when,
-        'name': name
-    }
-
-    return Step(**step_kwargs)
+def create_step_from_json(json_step: Dict[str, Any], context) -> Step:
+    """単一のJSONステップから実行可能ステップを生成する（後方互換性）"""
+    simple_context = execution_context_to_simple_context(context)
+    return create_step_simple(json_step, simple_context)
 
 
-def format_template(template: Any, context: StepContext) -> str:
-    """テンプレート文字列をコンテキスト情報でフォーマットする純粋関数
-
-    Args:
-        template: フォーマット対象の値
-        context: フォーマット用のコンテキスト
-
-    Returns:
-        str: フォーマット済みの文字列
-    """
+# 後方互換性のための関数（旧APIのエミュレーション）
+def format_template(template: Any, context) -> str:
+    """テンプレート文字列をフォーマットする（後方互換性）"""
     if not isinstance(template, str):
         return str(template) if template is not None else ""
 
-    format_dict = context.to_format_dict()
-
-    result = template
-    for key, value in format_dict.items():
-        placeholder = f'{{{key}}}'
-        if placeholder in result:
-            result = result.replace(placeholder, str(value))
-
-    return result
+    simple_context = execution_context_to_simple_context(context)
+    return expand_template(template, simple_context)
 
 
-def expand_file_patterns(template: str, context: StepContext, step_type: StepType = None) -> str:
-    """ファイルパターンを展開して文字列を返す純粋関数
+def expand_file_patterns(template: str, context, step_type=None, for_when_clause: bool = False) -> str:
+    """ファイルパターンを展開する（後方互換性）"""
+    from .simple_step_runner import expand_file_patterns_in_text
 
-    Args:
-        template: パターンを含むテンプレート文字列
-        context: ステップ生成コンテキスト
-        step_type: ステップタイプ（ディレクトリ操作の判定用）
+    simple_context = execution_context_to_simple_context(context)
 
-    Returns:
-        str: 展開されたパターン文字列（ワイルドカード形式）
-    """
-    if not context.file_patterns:
-        return format_template(template, context)
+    # まずテンプレート変数を展開
+    expanded = expand_template(template, simple_context)
 
-    # ファイルパターンプレースホルダーを検出
-    for pattern_name, patterns in context.file_patterns.items():
-        placeholder = f'{{{pattern_name}}}'
-        if placeholder in template and patterns:
-            pattern = patterns[0]  # 最初のパターンを使用
+    # ファイルパターンを展開
+    if simple_context.file_patterns:
+        expanded = expand_file_patterns_in_text(expanded, simple_context.file_patterns, step_type)
 
-            # ディレクトリ操作（movetree, copytree, rmtree）の場合は、ディレクトリ部分のみを抽出
-            if step_type in [StepType.MOVETREE, StepType.RMTREE] and '/' in pattern:
-                # パターンからディレクトリ部分を抽出 (例: "test/*.in" -> "test")
-                directory_part = pattern.split('/')[0]
-                result = template.replace(placeholder, directory_part)
-                return format_template(result, context)
-
-            # 通常のファイル操作やその他の場合は元のパターンを使用
-            result = template.replace(placeholder, pattern)
-            return format_template(result, context)
-
-    # パターンプレースホルダーがない場合は通常のフォーマット
-    return format_template(template, context)
+    return expanded
 
 
-def validate_step_sequence(steps: list[Step]) -> list[str]:
-    """ステップシーケンスの妥当性を検証する純粋関数
-
-    Args:
-        steps: 検証対象のステップリスト
-
-    Returns:
-        List[str]: 検証エラーのリスト（空の場合は妥当）
-    """
+def validate_step_sequence(steps: List[Step]) -> List[str]:
+    """ステップシーケンスの妥当性を検証する（後方互換性）"""
     errors = []
-
     for i, step in enumerate(steps):
-        # 各ステップの基本検証
         step_errors = validate_single_step(step)
         for error in step_errors:
             errors.append(f"Step {i} ({step.type.value}): {error}")
-
     return errors
 
 
-def validate_single_step(step: Step) -> list[str]:
-    """単一ステップの妥当性を検証する純粋関数
-
-    Args:
-        step: 検証対象のステップ
-
-    Returns:
-        List[str]: 検証エラーのリスト
-    """
+def validate_single_step(step: Step) -> List[str]:
+    """単一ステップの妥当性を検証する（後方互換性）"""
     errors = []
 
-    # コマンドの空チェック
     if not step.cmd:
         errors.append("Command cannot be empty")
         return errors
@@ -274,21 +146,14 @@ def validate_single_step(step: Step) -> list[str]:
             errors.append("Path cannot be empty")
 
     elif step.type in [StepType.SHELL, StepType.PYTHON, StepType.OJ, StepType.TEST, StepType.BUILD] and not step.cmd[0]:
-            errors.append("Command cannot be empty")
+        errors.append("Command cannot be empty")
 
     return errors
 
 
-def optimize_step_sequence(steps: list[Step]) -> list[Step]:
-    """ステップシーケンスを最適化する純粋関数
-
-    Args:
-        steps: 最適化対象のステップリスト
-
-    Returns:
-        List[Step]: 最適化されたステップリスト
-    """
-    # 連続する同じディレクトリのmkdirを統合
+def optimize_step_sequence(steps: List[Step]) -> List[Step]:
+    """ステップシーケンスを最適化する（後方互換性）"""
+    # 簡単な最適化: 連続するmkdirを統合
     optimized = []
     i = 0
 
@@ -305,7 +170,7 @@ def optimize_step_sequence(steps: list[Step]) -> list[Step]:
                 j += 1
 
             # 重複を除去して追加
-            unique_paths = list(dict.fromkeys(mkdir_paths))  # 順序を保持して重複除去
+            unique_paths = list(dict.fromkeys(mkdir_paths))
             for path in unique_paths:
                 optimized.append(Step(
                     type=StepType.MKDIR,
