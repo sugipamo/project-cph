@@ -2,6 +2,7 @@
 """
 from typing import Any
 
+from .condition_evaluator import evaluate_when_condition, validate_when_clause
 from .step import Step, StepContext, StepGenerationResult, StepType
 
 
@@ -57,8 +58,32 @@ def generate_steps_from_json(
     errors = []
     warnings = []
 
+    # フォーマット用の辞書を準備
+    format_dict = context.to_format_dict()
+
     for i, json_step in enumerate(json_steps):
         try:
+            # when条件の評価
+            when_clause = json_step.get('when')
+            if when_clause:
+                # when条件の検証
+                validation_error = validate_when_clause(when_clause)
+                if validation_error:
+                    errors.append(f"Step {i}: Invalid when clause - {validation_error}")
+                    continue
+                
+                # when条件でもfilepatternを展開
+                expanded_when_clause = expand_file_patterns(when_clause, context)
+                
+                # 条件を評価
+                try:
+                    if not evaluate_when_condition(expanded_when_clause, format_dict):
+                        # 条件が偽の場合、このステップをスキップ
+                        continue
+                except Exception as e:
+                    errors.append(f"Step {i}: Error evaluating when condition - {e!s}")
+                    continue
+            
             step = create_step_from_json(json_step, context)
             steps.append(step)
         except ValueError as e:
@@ -117,6 +142,10 @@ def create_step_from_json(json_step: dict[str, Any], context: StepContext) -> St
     format_options = json_step.get('format_options')
     output_format = json_step.get('output_format')
     format_preset = json_step.get('format_preset')
+    
+    # when と name の処理
+    when = json_step.get('when')
+    name = format_template(json_step.get('name'), context) if json_step.get('name') else None
 
     # Handle file_preparation specific attributes
     step_kwargs = {
@@ -128,7 +157,9 @@ def create_step_from_json(json_step: dict[str, Any], context: StepContext) -> St
         'force_env_type': force_env_type,
         'format_options': format_options,
         'output_format': output_format,
-        'format_preset': format_preset
+        'format_preset': format_preset,
+        'when': when,
+        'name': name
     }
 
     return Step(**step_kwargs)

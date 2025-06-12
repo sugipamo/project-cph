@@ -232,7 +232,11 @@ class UnifiedRequestFactory:
         """
         for strategy in self._strategies:
             if strategy.can_handle(step.type):
-                return strategy.create_request(step, context, env_manager)
+                request = strategy.create_request(step, context, env_manager)
+                if request and step.name:
+                    # Attach step name to request for display during execution
+                    request._step_name = step.name
+                return request
 
         return None
 

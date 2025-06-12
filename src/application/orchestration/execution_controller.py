@@ -19,7 +19,11 @@ class ExecutionController:
             List of execution results
         """
         results = []
-        for req in requests:
+        for i, req in enumerate(requests):
+            # Display step name if available
+            if hasattr(req, '_step_name') and req._step_name:
+                print(f"\n▶ {req._step_name}")
+            
             result = req.execute(driver=driver)
             results.append(result)
             self._check_failure(req, result)

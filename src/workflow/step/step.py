@@ -85,6 +85,8 @@ class Step:
     format_options: Optional[dict[str, Any]] = None
     output_format: Optional[str] = None
     format_preset: Optional[str] = None
+    when: Optional[str] = None
+    name: Optional[str] = None
 
     def __post_init__(self):
         """データ検証"""

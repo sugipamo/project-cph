@@ -11,6 +11,7 @@
 - 包括的な検証とエラーハンドリング
 """
 
+from .condition_evaluator import evaluate_when_condition, validate_when_clause
 from .core import (
     create_step_from_json,
     format_template,
@@ -37,6 +38,7 @@ __all__ = [
     'create_step_context_from_env_context',
     'create_step_from_json',
     'debug_workflow_generation',
+    'evaluate_when_condition',
     'format_template',
     # Core step generation
     'generate_steps_from_json',
@@ -47,5 +49,6 @@ __all__ = [
     # Dependency resolution
     'resolve_dependencies',
     'validate_step_sequence',
+    'validate_when_clause',
     'validate_workflow_execution',
 ]
