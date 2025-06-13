@@ -131,11 +131,13 @@ class RequestExecutionGraph:
 
     def get_dependencies(self, node_id: str) -> list[str]:
         """指定ノードが依存するノードのリストを取得"""
-        return list(self.reverse_adjacency_list.get(node_id, set()))
+        from .graph_query import get_dependencies_pure
+        return get_dependencies_pure(self.reverse_adjacency_list, node_id)
 
     def get_dependents(self, node_id: str) -> list[str]:
         """指定ノードに依存するノードのリストを取得"""
-        return list(self.adjacency_list.get(node_id, set()))
+        from .graph_query import get_dependents_pure
+        return get_dependents_pure(self.adjacency_list, node_id)
 
     def detect_cycles(self) -> list[list[str]]:
         """循環依存を検出（DFSベース）"""
@@ -275,55 +277,13 @@ class RequestExecutionGraph:
             cycle_error = self.format_cycle_error()
             raise ValueError(cycle_error)
 
-        # 入次数を計算
-        in_degree = dict.fromkeys(self.nodes, 0)
-        for node in self.nodes:
-            for neighbor in self.adjacency_list.get(node, set()):
-                in_degree[neighbor] += 1
-
-        # 入次数が0のノードをキューに追加
-        queue = deque([node for node in self.nodes if in_degree[node] == 0])
-        result = []
-
-        while queue:
-            node = queue.popleft()
-            result.append(node)
-
-            # 隣接ノードの入次数を減らす
-            for neighbor in self.adjacency_list.get(node, set()):
-                in_degree[neighbor] -= 1
-                if in_degree[neighbor] == 0:
-                    queue.append(neighbor)
-
-        # すべてのノードが処理されたか確認
-        if len(result) != len(self.nodes):
-            raise ValueError("Graph has cycles or disconnected components")
-
-        return result
+        from .graph_query import calculate_execution_order
+        return calculate_execution_order(self.nodes, self.adjacency_list)
 
     def get_parallel_groups(self) -> list[list[str]]:
         """並行実行可能なノードグループを取得"""
-        execution_order = self.get_execution_order()
-        groups = []
-        remaining = set(execution_order)
-        completed = set()
-
-        while remaining:
-            # 依存関係が満たされているノードを見つける
-            ready_nodes = []
-            for node_id in remaining:
-                dependencies = set(self.get_dependencies(node_id))
-                if dependencies.issubset(completed):
-                    ready_nodes.append(node_id)
-
-            if not ready_nodes:
-                raise ValueError("Unable to find executable nodes - possible deadlock")
-
-            groups.append(ready_nodes)
-            completed.update(ready_nodes)
-            remaining -= set(ready_nodes)
-
-        return groups
+        from .graph_query import calculate_parallel_groups
+        return calculate_parallel_groups(self.nodes, self.adjacency_list, self.reverse_adjacency_list)
 
     def execute_sequential(self, driver=None) -> list[OperationResult]:
         """順次実行"""
@@ -490,30 +450,14 @@ class RequestExecutionGraph:
 
     def visualize(self) -> str:
         """グラフの可視化用文字列を生成"""
-        lines = ["Request Execution Graph:"]
-        lines.append(f"Nodes: {len(self.nodes)}")
-        lines.append(f"Edges: {len(self.edges)}")
-
-        # ノード情報
-        lines.append("\nNodes:")
-        for node_id, node in self.nodes.items():
-            lines.append(f"  {node_id}: {node.request.__class__.__name__} (status: {node.status})")
-
-        # エッジ情報
-        lines.append("\nDependencies:")
-        for edge in self.edges:
-            lines.append(f"  {edge.from_node} -> {edge.to_node} ({edge.dependency_type.value})")
-
-        # 実行グループ
+        from .graph_visualization import create_graph_visualization
+        
         try:
-            groups = self.get_parallel_groups()
-            lines.append("\nParallel Execution Groups:")
-            for i, group in enumerate(groups):
-                lines.append(f"  Group {i+1}: {', '.join(group)}")
-        except ValueError as e:
-            lines.append(f"\nError: {e!s}")
-
-        return '\n'.join(lines)
+            execution_groups = self.get_parallel_groups()
+        except ValueError:
+            execution_groups = None
+        
+        return create_graph_visualization(self.nodes, self.edges, execution_groups)
 
     def _debug_request_before_execution(self, node: RequestNode, node_id: str):
         """リクエスト実行前のデバッグ出力
@@ -570,33 +514,8 @@ class RequestExecutionGraph:
         Returns:
             str: 置換済みのテキスト
         """
-        # 文字列でない場合はそのまま返す（テスト用のMockオブジェクト等）
-        if not isinstance(text, str):
-            return text
-
-        # {{step_X.result.Y}}形式のパターンを検索
-        pattern1 = r'\{\{step_(\w+)\.result\.(\w+)\}\}'
-        # {{step_X.Y}}形式のパターンも対応
-        pattern2 = r'\{\{step_(\w+)\.(\w+)\}\}'
-
-        def replacer(match):
-            step_id = match.group(1)
-            field_name = match.group(2)
-
-            if step_id in self.execution_results:
-                result = self.execution_results[step_id]
-                if hasattr(result, field_name):
-                    value = getattr(result, field_name)
-                    return str(value) if value is not None else ""
-
-            # 置換できない場合は元のまま
-            return match.group(0)
-
-        # 両方のパターンを置換
-        text = re.sub(pattern1, replacer, text)
-        text = re.sub(pattern2, replacer, text)
-
-        return text
+        from .result_substitution import substitute_placeholders
+        return substitute_placeholders(text, self.execution_results)
 
     def apply_result_substitution_to_request(self, request, node_id: str) -> None:
         """リクエストのコマンドに結果置換を適用
@@ -605,26 +524,8 @@ class RequestExecutionGraph:
             request: 置換対象のリクエスト
             node_id: リクエストのノードID
         """
-        # ShellRequestのcmdを置換
-        if hasattr(request, 'cmd') and request.cmd:
-            if isinstance(request.cmd, list):
-                # リスト内の各要素が文字列の場合のみ置換
-                new_cmd = []
-                for cmd in request.cmd:
-                    new_cmd.append(self.substitute_result_placeholders(cmd))
-                request.cmd = new_cmd
-            else:
-                request.cmd = self.substitute_result_placeholders(request.cmd)
-
-        # DockerRequestのcommandを置換
-        if hasattr(request, 'command') and request.command:
-            request.command = self.substitute_result_placeholders(request.command)
-
-        # その他のテキストフィールドも置換
-        if hasattr(request, 'path') and request.path:
-            request.path = self.substitute_result_placeholders(request.path)
-        if hasattr(request, 'dst_path') and request.dst_path:
-            request.dst_path = self.substitute_result_placeholders(request.dst_path)
+        from .result_substitution import apply_substitution_to_request
+        apply_substitution_to_request(request, self.execution_results, node_id)
 
     def _execute_plan(self, execution_plan, driver, executor_class) -> dict:
         """実行計画を実際に実行（副作用を集約）

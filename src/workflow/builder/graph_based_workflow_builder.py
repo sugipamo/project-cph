@@ -198,10 +198,9 @@ class GraphBasedWorkflowBuilder:
         Returns:
             生成されたリクエスト、または None
         """
-        from src.application.factories.unified_request_factory import create_request
-
-        # 統一ファクトリを使用してリクエストを生成
-        return create_request(step, context=self.context)
+        from .step_conversion import convert_step_to_request
+        result = convert_step_to_request(step, self.context)
+        return result.request
 
     def _extract_resource_info_from_step(
         self,
@@ -212,8 +211,8 @@ class GraphBasedWorkflowBuilder:
         Returns:
             (creates_files, creates_dirs, reads_files, requires_dirs)
         """
-        from src.workflow.builder.graph_builder_utils import extract_node_resource_info
-        return extract_node_resource_info(step)
+        from .step_conversion import extract_step_resource_info
+        return extract_step_resource_info(step)
 
     def _build_dependencies(
         self,
@@ -301,11 +300,14 @@ class GraphBasedWorkflowBuilder:
             Tuple[RequestExecutionGraph, List[str], List[str]]:
                 (実行グラフ, エラーリスト, 警告リスト)
         """
-        from src.workflow.builder.graph_builder_utils import build_execution_graph
-
-        # 純粋関数でグラフ構築結果を取得
-        result = build_execution_graph(steps, self.context)
-
+        from .graph_construction import construct_graph_from_steps
+        
+        # 純粋関数でグラフ構築
+        construction_result = construct_graph_from_steps(steps, self.context)
+        
+        if not construction_result.is_success:
+            return RequestExecutionGraph(), construction_result.errors, construction_result.warnings
+        
         # RequestExecutionGraphを作成
         debug_config = None
         if self.context and hasattr(self.context, 'env_json') and self.context.env_json:
@@ -315,14 +317,13 @@ class GraphBasedWorkflowBuilder:
         graph = RequestExecutionGraph(debug_config)
 
         # ノード情報からRequestNodeを作成
-        for node_info in result.nodes:
-            request = self._step_to_request(node_info.step)
-            if not request:
+        for node_info in construction_result.nodes:
+            if not node_info.request:
                 continue
 
             request_node = RequestNode(
-                id=node_info.id,
-                request=request,
+                id=node_info.node_id,
+                request=node_info.request,
                 creates_files=node_info.creates_files,
                 creates_dirs=node_info.creates_dirs,
                 reads_files=node_info.reads_files,
@@ -332,17 +333,10 @@ class GraphBasedWorkflowBuilder:
             graph.add_request_node(request_node)
 
         # 依存関係を追加
-        for dep_info in result.dependencies:
-            edge = DependencyEdge(
-                from_node=dep_info.from_node_id,
-                to_node=dep_info.to_node_id,
-                dependency_type=getattr(DependencyType, dep_info.dependency_type, DependencyType.EXECUTION_ORDER),
-                resource_path=dep_info.resource_path,
-                description=dep_info.description
-            )
-            graph.add_dependency(edge)
+        for dependency in construction_result.dependencies:
+            graph.add_dependency(dependency)
 
-        return graph, result.errors, result.warnings
+        return graph, construction_result.errors, construction_result.warnings
 
     def validate_graph(
         self,
@@ -356,30 +350,20 @@ class GraphBasedWorkflowBuilder:
         Returns:
             Tuple[bool, List[str]]: (有効かどうか, メッセージリスト)
         """
-        messages = []
-        is_valid = True
-
-        # 循環依存のチェック
-        cycles = graph.detect_cycles()
-        if cycles:
-            is_valid = False
-            messages.append(f"Circular dependencies detected: {cycles}")
-
-        # ノードが空でないかチェック
-        if not graph.nodes:
-            is_valid = False
-            messages.append("No executable nodes in graph")
-
-        # 並列実行グループの確認
-        try:
-            groups = graph.get_parallel_groups()
-            messages.append(f"Graph has {len(groups)} execution groups")
-            for i, group in enumerate(groups):
-                messages.append(f"  Group {i+1}: {len(group)} nodes can run in parallel")
-        except ValueError as e:
-            is_valid = False
-            messages.append(f"Failed to determine execution groups: {e!s}")
-
+        from .builder_validation import validate_graph_structure, validate_execution_feasibility
+        
+        # 構造検証
+        structure_result = validate_graph_structure(graph.nodes, graph.edges)
+        
+        # 実行可能性検証
+        feasibility_result = validate_execution_feasibility(graph)
+        
+        # 結果をマージ
+        is_valid = structure_result.is_valid and feasibility_result.is_valid
+        messages = (structure_result.errors + structure_result.warnings + 
+                   feasibility_result.errors + feasibility_result.warnings +
+                   structure_result.suggestions + feasibility_result.suggestions)
+        
         return is_valid, messages
 
     def _apply_dependencies_to_graph(self, graph: RequestExecutionGraph, result: dict) -> None:
