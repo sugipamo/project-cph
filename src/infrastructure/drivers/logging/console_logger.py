@@ -1,7 +1,6 @@
 """コンソールログ統合 - print文とDebugLoggerを統合"""
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Optional
 
 
 class LogLevel(Enum):
@@ -57,11 +56,11 @@ class SystemConsoleLogger(ConsoleLogger):
     def __init__(self, enabled: bool = True, level: LogLevel = LogLevel.INFO):
         self.enabled = enabled
         self.level = level
-        
+
         # アイコン設定（DebugLoggerから移行）
         self.icons = {
             "start": "🚀",
-            "success": "✅", 
+            "success": "✅",
             "failure": "❌",
             "warning": "⚠️",
             "executing": "⏱️",
@@ -98,10 +97,10 @@ class SystemConsoleLogger(ConsoleLogger):
         """ステップ開始ログ（副作用）"""
         if not self.enabled:
             return
-            
+
         icon = self.icons.get("start", "🚀")
         print(f"\n{icon} 実行開始: {step_name}")
-        
+
         executing_icon = self.icons.get("executing", "⏱️")
         print(f"  {executing_icon} 実行中...")
 
@@ -109,7 +108,7 @@ class SystemConsoleLogger(ConsoleLogger):
         """ステップ成功ログ（副作用）"""
         if not self.enabled:
             return
-            
+
         icon = self.icons.get("success", "✅")
         success_message = f"{icon} 完了: {step_name}"
         if message:
@@ -120,14 +119,14 @@ class SystemConsoleLogger(ConsoleLogger):
         """ステップ失敗ログ（副作用）"""
         if not self.enabled:
             return
-            
+
         if allow_failure:
             icon = self.icons.get("warning", "⚠️")
             status = "失敗許可"
         else:
             icon = self.icons.get("failure", "❌")
             status = "失敗"
-            
+
         print(f"{icon} {status}: {step_name}")
         if error:
             print(f"  エラー: {error}")
@@ -140,7 +139,7 @@ class SystemConsoleLogger(ConsoleLogger):
         """ログレベルチェック（純粋関数）"""
         level_order = {
             LogLevel.DEBUG: 0,
-            LogLevel.INFO: 1, 
+            LogLevel.INFO: 1,
             LogLevel.WARNING: 2,
             LogLevel.ERROR: 3
         }

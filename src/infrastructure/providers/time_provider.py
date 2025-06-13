@@ -1,7 +1,6 @@
 """時刻プロバイダー - 時刻取得の副作用を集約"""
 import time
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class TimeProvider(ABC):
@@ -77,11 +76,11 @@ class FixedTimeProvider(TimeProvider):
 # ユーティリティ関数（純粋関数）
 def calculate_duration(start_time: float, end_time: float) -> float:
     """実行時間を計算（純粋関数）
-    
+
     Args:
         start_time: 開始時刻
         end_time: 終了時刻
-        
+
     Returns:
         実行時間（秒）
     """
@@ -90,31 +89,30 @@ def calculate_duration(start_time: float, end_time: float) -> float:
 
 def format_duration(duration: float) -> str:
     """実行時間を人間可読形式にフォーマット（純粋関数）
-    
+
     Args:
         duration: 実行時間（秒）
-        
+
     Returns:
         フォーマットされた時間文字列
     """
     if duration < 1.0:
         return f"{duration * 1000:.1f}ms"
-    elif duration < 60.0:
+    if duration < 60.0:
         return f"{duration:.2f}s"
-    else:
-        minutes = int(duration // 60)
-        seconds = duration % 60
-        return f"{minutes}m {seconds:.1f}s"
+    minutes = int(duration // 60)
+    seconds = duration % 60
+    return f"{minutes}m {seconds:.1f}s"
 
 
 def is_timeout_exceeded(start_time: float, current_time: float, timeout_seconds: float) -> bool:
     """タイムアウト判定（純粋関数）
-    
+
     Args:
         start_time: 開始時刻
-        current_time: 現在時刻  
+        current_time: 現在時刻
         timeout_seconds: タイムアウト時間（秒）
-        
+
     Returns:
         タイムアウトしている場合True
     """

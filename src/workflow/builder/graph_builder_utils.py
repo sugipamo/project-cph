@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
-from src.workflow.step.step import Step, StepContext, StepType
+from src.workflow.step.step import Step, StepContext
 
 # Note: request_builder_pure removed - using direct implementation
 
@@ -41,13 +41,13 @@ class GraphBuildResult:
 
 
 # extract_node_resource_info関数は resource_analysis モジュールに移動されました
-from .resource_analysis.step_resource_extractor import extract_node_resource_info
-from .resource_analysis.resource_mapper import build_resource_mappings
 from .resource_analysis.dependency_detector import (
-    detect_file_creation_dependencies,
     detect_directory_creation_dependencies,
-    detect_parent_directory_dependencies
+    detect_file_creation_dependencies,
+    detect_parent_directory_dependencies,
 )
+from .resource_analysis.resource_mapper import build_resource_mappings
+from .resource_analysis.step_resource_extractor import extract_node_resource_info
 
 
 def build_node_info_list(steps: list[Step], context: Optional[StepContext] = None) -> list[NodeInfo]:
@@ -99,14 +99,14 @@ def analyze_node_dependencies(node_infos: list[NodeInfo]) -> list[DependencyInfo
     """
     # リソースマッピングを構築
     resource_mappings = build_resource_mappings(node_infos)
-    
+
     # 各種依存関係を検出
     dependencies = []
     dependencies.extend(detect_file_creation_dependencies(resource_mappings))
     dependencies.extend(detect_directory_creation_dependencies(resource_mappings))
     dependencies.extend(detect_parent_directory_dependencies(node_infos, resource_mappings))
     dependencies.extend(detect_execution_order_dependencies(node_infos, dependencies))
-    
+
     return dependencies
 
 
@@ -120,19 +120,19 @@ def analyze_node_dependencies(node_infos: list[NodeInfo]) -> list[DependencyInfo
 # detect_parent_directory_dependencies関数は resource_analysis.dependency_detector モジュールに移動されました
 
 
-def detect_execution_order_dependencies(node_infos: list[NodeInfo], 
+def detect_execution_order_dependencies(node_infos: list[NodeInfo],
                                        existing_dependencies: list[DependencyInfo]) -> list[DependencyInfo]:
     """実行順序依存関係を検出する純粋関数
-    
+
     Args:
         node_infos: ノード情報のリスト
         existing_dependencies: 既存の依存関係リスト
-        
+
     Returns:
         実行順序依存関係のリスト
     """
     dependencies = []
-    
+
     for i in range(len(node_infos) - 1):
         from_node = node_infos[i]
         to_node = node_infos[i + 1]
@@ -154,7 +154,7 @@ def detect_execution_order_dependencies(node_infos: list[NodeInfo],
                 description="Preserve original execution order due to resource conflict"
             )
             dependencies.append(dependency)
-    
+
     return dependencies
 
 

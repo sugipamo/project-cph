@@ -9,7 +9,7 @@ from typing import Set
 @dataclass(frozen=True)
 class ResourceInfo:
     """ステップのリソース情報を表現する不変データ構造
-    
+
     Attributes:
         creates_files: 作成するファイルのセット
         creates_dirs: 作成するディレクトリのセット
@@ -20,7 +20,7 @@ class ResourceInfo:
     creates_dirs: Set[str]
     reads_files: Set[str]
     requires_dirs: Set[str]
-    
+
     @classmethod
     def empty(cls) -> 'ResourceInfo':
         """空のリソース情報を作成"""
@@ -30,7 +30,7 @@ class ResourceInfo:
             reads_files=set(),
             requires_dirs=set()
         )
-    
+
     def merge(self, other: 'ResourceInfo') -> 'ResourceInfo':
         """他のリソース情報とマージして新しいインスタンスを作成"""
         return ResourceInfo(

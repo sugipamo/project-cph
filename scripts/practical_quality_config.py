@@ -14,7 +14,7 @@ FUNCTION_QUALITY_CONFIG = {
         'circular_imports': True,        # 循環インポート禁止
         'side_effects_in_pure': True,    # 純粋関数での副作用禁止
     },
-    
+
     # 実用的に緩和（警告）
     'practical_limits': {
         'max_function_lines': 25,        # 15→25行に緩和
@@ -22,7 +22,7 @@ FUNCTION_QUALITY_CONFIG = {
         'max_function_params': 5,        # 引数数制限
         'max_nesting_depth': 4,          # ネスト深度制限
     },
-    
+
     # 推奨レベル（情報）
     'recommendations': {
         'prefer_dataclass': True,        # dataclass推奨
@@ -30,7 +30,7 @@ FUNCTION_QUALITY_CONFIG = {
         'avoid_mutable_defaults': True,  # 可変デフォルト引数回避
         'prefer_typing': True,           # 型ヒント推奨
     },
-    
+
     # 例外許可
     'exceptions': {
         'test_files': {
@@ -54,13 +54,13 @@ ARCHITECTURE_CONFIG = {
     'module_structure': {
         'required_modules': [
             'resource_analysis',
-            'validation', 
+            'validation',
             'graph_ops',
             'execution'
         ],
         'optional_modules': ['debug'],   # デバッグは任意
     },
-    
+
     'dependency_rules': {
         'max_import_depth': 3,           # インポート階層制限
         'allow_sibling_imports': True,   # 同レベルモジュール間OK

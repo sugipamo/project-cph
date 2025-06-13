@@ -1,7 +1,7 @@
 """ファイル操作プロバイダー - 副作用を集約"""
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Dict, List
 
 
 class FileProvider(ABC):
@@ -80,8 +80,8 @@ class MockFileProvider(FileProvider):
         """モックディレクトリ一覧（副作用なし）"""
         dir_path = dir_path.rstrip('/') + '/'
         return [
-            Path(path).name 
-            for path in self._files.keys() 
+            Path(path).name
+            for path in self._files
             if path.startswith(dir_path) and '/' not in path[len(dir_path):]
         ]
 

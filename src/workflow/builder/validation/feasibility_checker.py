@@ -2,29 +2,30 @@
 
 ワークフローの実行可能性を検証する純粋関数群
 """
-from typing import Any, List, Dict
+from typing import Any, Dict, List
+
 from ..builder_validation import ValidationResult
 
 
 def validate_execution_feasibility(graph: Any) -> ValidationResult:
     """実行可能性を検証（純粋関数）
-    
+
     Args:
         graph: RequestExecutionGraph
-        
+
     Returns:
         検証結果
     """
     errors = []
     warnings = []
     suggestions = []
-    
+
     try:
         # 各種検証を個別の関数で実行
         cycle_errors, cycle_suggestions = _validate_cycles(graph)
         order_errors, order_warnings, order_suggestions = _validate_execution_order(graph)
         parallel_warnings, parallel_suggestions, max_parallelism = _validate_parallel_execution(graph)
-        
+
         # 結果をマージ
         errors.extend(cycle_errors)
         errors.extend(order_errors)
@@ -33,30 +34,29 @@ def validate_execution_feasibility(graph: Any) -> ValidationResult:
         suggestions.extend(cycle_suggestions)
         suggestions.extend(order_suggestions)
         suggestions.extend(parallel_suggestions)
-        
+
         # 統計情報を作成
         statistics = _create_feasibility_statistics(graph, max_parallelism)
-        
+
     except Exception as e:
-        errors.append(f"Validation failed with exception: {str(e)}")
+        errors.append(f"Validation failed with exception: {e!s}")
         statistics = {}
-    
+
     if errors:
         return ValidationResult.failure(errors, warnings, suggestions, statistics)
-    else:
-        return ValidationResult.success(warnings, suggestions, statistics)
+    return ValidationResult.success(warnings, suggestions, statistics)
 
 
 def _validate_cycles(graph: Any) -> tuple[List[str], List[str]]:
     """循環依存の検証"""
     errors = []
     suggestions = []
-    
+
     cycles = graph.detect_cycles() if hasattr(graph, 'detect_cycles') else []
     if cycles:
         errors.append(f"Circular dependencies detected: {cycles}")
         suggestions.append("Remove circular dependencies to enable execution")
-    
+
     return errors, suggestions
 
 
@@ -65,7 +65,7 @@ def _validate_execution_order(graph: Any) -> tuple[List[str], List[str], List[st
     errors = []
     warnings = []
     suggestions = []
-    
+
     try:
         execution_order = graph.get_execution_order() if hasattr(graph, 'get_execution_order') else []
         if not execution_order:
@@ -73,8 +73,8 @@ def _validate_execution_order(graph: Any) -> tuple[List[str], List[str], List[st
         else:
             suggestions.append(f"Execution order determined with {len(execution_order)} steps")
     except Exception as e:
-        errors.append(f"Cannot determine execution order: {str(e)}")
-    
+        errors.append(f"Cannot determine execution order: {e!s}")
+
     return errors, warnings, suggestions
 
 
@@ -83,19 +83,19 @@ def _validate_parallel_execution(graph: Any) -> tuple[List[str], List[str], int]
     warnings = []
     suggestions = []
     max_parallelism = 0
-    
+
     try:
         parallel_groups = graph.get_parallel_groups() if hasattr(graph, 'get_parallel_groups') else []
         max_parallelism = max(len(group) for group in parallel_groups) if parallel_groups else 0
-        
+
         if max_parallelism == 1:
             warnings.append("No parallelism possible - all steps must run sequentially")
             suggestions.append("Consider reducing dependencies to enable parallelism")
         else:
             suggestions.append(f"Maximum parallelism: {max_parallelism} concurrent steps")
     except Exception as e:
-        warnings.append(f"Cannot determine parallel execution groups: {str(e)}")
-    
+        warnings.append(f"Cannot determine parallel execution groups: {e!s}")
+
     return warnings, suggestions, max_parallelism
 
 
@@ -104,7 +104,7 @@ def _create_feasibility_statistics(graph: Any, max_parallelism: int) -> Dict[str
     try:
         cycles = graph.detect_cycles() if hasattr(graph, 'detect_cycles') else []
         parallel_groups = graph.get_parallel_groups() if hasattr(graph, 'get_parallel_groups') else []
-        
+
         return {
             'has_cycles': len(cycles) > 0,
             'cycle_count': len(cycles),

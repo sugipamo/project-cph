@@ -1,7 +1,7 @@
 """環境変数プロバイダー - 環境変数読み取りの副作用を集約"""
 import os
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
 
 class EnvironmentProvider(ABC):
@@ -151,10 +151,10 @@ class MockWorkingDirectoryProvider(WorkingDirectoryProvider):
 # ユーティリティ関数（純粋関数）
 def parse_debug_flag(debug_value: Optional[str]) -> bool:
     """デバッグフラグをパース（純粋関数）
-    
+
     Args:
         debug_value: 環境変数の値
-        
+
     Returns:
         デバッグ有効かどうか
     """
@@ -165,10 +165,10 @@ def parse_debug_flag(debug_value: Optional[str]) -> bool:
 
 def create_env_context(env_provider: EnvironmentProvider) -> Dict[str, Any]:
     """環境変数から実行コンテキストを作成（副作用をプロバイダーに委譲）
-    
+
     Args:
         env_provider: 環境変数プロバイダー
-        
+
     Returns:
         実行コンテキスト辞書
     """
@@ -183,29 +183,29 @@ def create_env_context(env_provider: EnvironmentProvider) -> Dict[str, Any]:
 
 def validate_env_context(context: Dict[str, Any]) -> Dict[str, str]:
     """環境コンテキストをバリデーション（純粋関数）
-    
+
     Args:
         context: 環境コンテキスト
-        
+
     Returns:
         バリデーションエラー辞書
     """
     errors = {}
-    
+
     if "timeout_seconds" in context:
         timeout = context["timeout_seconds"]
         if timeout is not None and (timeout <= 0 or timeout > 3600):
             errors["timeout_seconds"] = "Timeout must be between 1 and 3600 seconds"
-    
+
     if "max_workers" in context:
         workers = context["max_workers"]
         if workers is not None and (workers <= 0 or workers > 32):
             errors["max_workers"] = "Max workers must be between 1 and 32"
-    
+
     if "log_level" in context:
         level = context["log_level"]
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR"]
         if level not in valid_levels:
             errors["log_level"] = f"Log level must be one of: {', '.join(valid_levels)}"
-    
+
     return errors

@@ -1,6 +1,6 @@
 """レジストリプロバイダー - グローバル状態管理の副作用を集約"""
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, TypeVar, Generic
+from typing import Any, Dict, Generic, Optional, TypeVar
 
 T = TypeVar('T')
 
@@ -119,7 +119,7 @@ class LanguageRegistryProvider:
         """カスタム言語を登録（副作用をプロバイダーに委譲）"""
         registry = self.get_language_registry()
         from src.configuration.registries.language_registry import LanguageConfig
-        
+
         config = LanguageConfig(
             extension=extension,
             run_command=run_command,
@@ -137,16 +137,16 @@ class LanguageRegistryProvider:
 # ユーティリティ関数（純粋関数）
 def validate_registry_name(name: str) -> bool:
     """レジストリ名をバリデーション（純粋関数）
-    
+
     Args:
         name: レジストリ名
-        
+
     Returns:
         有効な名前かどうか
     """
     if not name or not isinstance(name, str):
         return False
-    
+
     # 英数字、アンダースコア、ハイフンのみ許可
     import re
     return bool(re.match(r'^[a-zA-Z0-9_-]+$', name))
@@ -154,11 +154,11 @@ def validate_registry_name(name: str) -> bool:
 
 def create_registry_key(prefix: str, identifier: str) -> str:
     """レジストリキーを生成（純粋関数）
-    
+
     Args:
         prefix: プレフィックス
         identifier: 識別子
-        
+
     Returns:
         レジストリキー
     """
@@ -167,15 +167,15 @@ def create_registry_key(prefix: str, identifier: str) -> str:
 
 def parse_registry_key(key: str) -> tuple:
     """レジストリキーをパース（純粋関数）
-    
+
     Args:
         key: レジストリキー
-        
+
     Returns:
         (prefix, identifier)のタプル
     """
     if ':' not in key:
         return (key, '')
-    
+
     parts = key.split(':', 1)
     return (parts[0], parts[1])

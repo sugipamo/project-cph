@@ -1,15 +1,15 @@
 """Graph operations - 純粋関数によるグラフ操作"""
 
 from .metadata_extraction import (
-    RequestMetadata, 
+    RequestMetadata,
     extract_request_metadata,
+    find_implicit_directory_dependencies,
     group_metadata_by_resource,
-    find_implicit_directory_dependencies
 )
 
 __all__ = [
     'RequestMetadata',
-    'extract_request_metadata', 
-    'group_metadata_by_resource',
-    'find_implicit_directory_dependencies'
+    'extract_request_metadata',
+    'find_implicit_directory_dependencies',
+    'group_metadata_by_resource'
 ]

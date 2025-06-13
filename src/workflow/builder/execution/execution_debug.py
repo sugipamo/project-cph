@@ -51,52 +51,52 @@ def debug_request_before_execution(debug_logger, node: RequestNode, node_id: str
 
 class ExecutionDebugger:
     """実行デバッグ専用クラス"""
-    
+
     def __init__(self, debug_logger):
         """
         Args:
             debug_logger: デバッグロガー
         """
         self.debug_logger = debug_logger
-    
+
     def debug_request_before_execution(self, node: RequestNode, node_id: str):
         """リクエスト実行前のデバッグ出力"""
         debug_request_before_execution(self.debug_logger, node, node_id)
-    
+
     def debug_execution_plan(self, execution_plan):
         """実行計画のデバッグ出力"""
         if not self.debug_logger.is_enabled():
             return
-        
+
         self.debug_logger.log_workflow_start(
-            len(execution_plan.parallel_groups), 
+            len(execution_plan.parallel_groups),
             parallel=True
         )
-        
+
         for i, group in enumerate(execution_plan.parallel_groups):
             self.debug_logger.debug(f"Group {i}: {group}")
-    
+
     def debug_node_status(self, nodes: dict[str, RequestNode]):
         """ノード状態のデバッグ出力"""
         if not self.debug_logger.is_enabled():
             return
-        
+
         status_counts = {}
         for node in nodes.values():
             status = node.status
             status_counts[status] = status_counts.get(status, 0) + 1
-        
+
         self.debug_logger.debug(f"Node status summary: {status_counts}")
-    
+
     def debug_execution_results(self, execution_results: dict[str, Any]):
         """実行結果のデバッグ出力"""
         if not self.debug_logger.is_enabled():
             return
-        
-        success_count = sum(1 for result in execution_results.values() 
+
+        success_count = sum(1 for result in execution_results.values()
                           if hasattr(result, 'success') and result.success)
         total_count = len(execution_results)
-        
+
         self.debug_logger.debug(
             f"Execution results: {success_count}/{total_count} successful"
         )

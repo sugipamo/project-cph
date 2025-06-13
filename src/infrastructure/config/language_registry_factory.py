@@ -1,18 +1,18 @@
 """言語レジストリファクトリー - 副作用を分離した言語レジストリ作成"""
-from src.configuration.registries.language_registry import LanguageRegistry, LanguageConfig
+from src.configuration.registries.language_registry import LanguageConfig, LanguageRegistry
 
 
 def create_default_language_registry() -> LanguageRegistry:
     """デフォルト言語レジストリを作成（純粋関数）
-    
+
     副作用なしで言語レジストリを作成。
     既存のLanguageRegistry._load_default_languages()の副作用を分離。
-    
+
     Returns:
         設定済み言語レジストリ
     """
     registry = LanguageRegistry()
-    
+
     # デフォルト言語設定（純粋データ）
     default_languages = {
         'python': LanguageConfig(
@@ -60,8 +60,8 @@ def create_default_language_registry() -> LanguageRegistry:
             aliases=['kt']
         )
     }
-    
+
     for name, config in default_languages.items():
         registry.register_language(name, config)
-    
+
     return registry

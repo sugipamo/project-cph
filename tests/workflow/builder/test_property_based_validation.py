@@ -1,22 +1,19 @@
 """Property-based tests for workflow builder validation functions"""
-import pytest
-from hypothesis import given, strategies as st, assume, settings
 from dataclasses import dataclass
-from typing import Dict, List, Set, Any
+from typing import Any, Dict, List, Set
 
-from src.workflow.builder.builder_validation import (
-    validate_graph_structure,
-    check_graph_connectivity,
-    ValidationResult
-)
+import pytest
+from hypothesis import assume, given, settings
+from hypothesis import strategies as st
+
+from src.workflow.builder.builder_validation import ValidationResult, check_graph_connectivity, validate_graph_structure
 from src.workflow.builder.graph_builder_utils import (
-    build_resource_mappings,
-    detect_file_creation_dependencies,
-    detect_directory_creation_dependencies,
+    DependencyInfo,
     NodeInfo,
-    DependencyInfo
+    build_resource_mappings,
+    detect_directory_creation_dependencies,
+    detect_file_creation_dependencies,
 )
-
 
 # Test data generators for property-based testing
 
@@ -26,13 +23,13 @@ class MockRequest:
     allow_failure: bool = False
 
 
-@dataclass  
+@dataclass
 class MockNode:
     """Mock node for testing"""
     id: str
     request: MockRequest
     status: str = "pending"
-    
+
 
 def mock_nodes_strategy(min_nodes=1, max_nodes=10):
     """Generate a dictionary of mock nodes"""
@@ -53,13 +50,13 @@ def mock_edges_strategy(node_ids):
     """Generate edges between existing nodes"""
     if len(node_ids) < 2:
         return st.lists(st.nothing(), max_size=0)
-    
+
     @dataclass
     class MockEdge:
         from_node: str
         to_node: str
         dependency_type: str = "file_creation"
-    
+
     return st.lists(
         st.builds(
             MockEdge,
@@ -97,9 +94,9 @@ class TestGraphValidationProperties:
         nodes = data.draw(mock_nodes_strategy(min_nodes=2))
         node_ids = list(nodes.keys())
         edges = data.draw(mock_edges_strategy(node_ids))
-        
+
         result = validate_graph_structure(nodes, edges)
-        
+
         # Should not have any "references unknown" errors
         ref_errors = [e for e in result.errors if 'references unknown' in e]
         assert len(ref_errors) == 0
@@ -116,10 +113,10 @@ class TestGraphValidationProperties:
         nodes = data.draw(mock_nodes_strategy())
         node_ids = list(nodes.keys()) if nodes else []
         edges = data.draw(mock_edges_strategy(node_ids))
-        
+
         result1 = validate_graph_structure(nodes, edges)
         result2 = validate_graph_structure(nodes, edges)
-        
+
         assert result1.is_valid == result2.is_valid
         assert result1.errors == result2.errors
         assert result1.warnings == result2.warnings
@@ -133,7 +130,7 @@ class TestConnectivityProperties:
         """Generate adjacency list for given nodes"""
         if not node_ids:
             return st.just({})
-        
+
         return st.dictionaries(
             keys=st.sampled_from(node_ids),
             values=st.sets(st.sampled_from(node_ids), max_size=len(node_ids)),
@@ -146,7 +143,7 @@ class TestConnectivityProperties:
         """Connectivity check should always return a ValidationResult"""
         # Create a simple adjacency list
         adjacency_list = {node_id: set() for node_id in node_ids}
-        
+
         result = check_graph_connectivity(adjacency_list)
         assert isinstance(result, ValidationResult)
         assert 'connected_components' in result.statistics
@@ -156,12 +153,12 @@ class TestConnectivityProperties:
         """A fully connected graph should have exactly one component"""
         if len(node_ids) < 2:
             return
-        
+
         # Create fully connected adjacency list
         adjacency_list = {}
         for node_id in node_ids:
             adjacency_list[node_id] = set(node_ids) - {node_id}
-        
+
         result = check_graph_connectivity(adjacency_list)
         assert result.statistics['connected_components'] == 1
 
@@ -170,7 +167,7 @@ class TestConnectivityProperties:
         """Isolated nodes should each be their own component"""
         # Create adjacency list with no connections (all isolated)
         adjacency_list = {node_id: set() for node_id in node_ids}
-        
+
         result = check_graph_connectivity(adjacency_list)
         assert result.statistics['connected_components'] == len(node_ids)
 
@@ -200,26 +197,26 @@ class TestResourceMappingProperties:
     def test_resource_mapping_preserves_all_resources(self, node_infos):
         """Resource mapping should preserve all resource information"""
         mappings = build_resource_mappings(node_infos)
-        
+
         # Check that all mappings are dictionaries
         assert isinstance(mappings, dict)
         assert 'file_creators' in mappings
         assert 'dir_creators' in mappings
         assert 'file_readers' in mappings
         assert 'dir_requirers' in mappings
-        
+
         # Count total resources in input vs output
         total_creates_files = sum(len(node.creates_files) for node in node_infos)
         total_creates_dirs = sum(len(node.creates_dirs) for node in node_infos)
         total_reads_files = sum(len(node.reads_files) for node in node_infos)
         total_requires_dirs = sum(len(node.requires_dirs) for node in node_infos)
-        
+
         # Check that mapping preserves the count
         mapped_creates_files = sum(len(creators) for creators in mappings['file_creators'].values())
         mapped_creates_dirs = sum(len(creators) for creators in mappings['dir_creators'].values())
         mapped_reads_files = sum(len(readers) for readers in mappings['file_readers'].values())
         mapped_requires_dirs = sum(len(requirers) for requirers in mappings['dir_requirers'].values())
-        
+
         assert mapped_creates_files == total_creates_files
         assert mapped_creates_dirs == total_creates_dirs
         assert mapped_reads_files == total_reads_files
@@ -230,22 +227,22 @@ class TestResourceMappingProperties:
         """File creation dependencies should follow logical rules"""
         mappings = build_resource_mappings(node_infos)
         dependencies = detect_file_creation_dependencies(mappings)
-        
+
         for dep in dependencies:
             assert isinstance(dep, DependencyInfo)
             assert dep.dependency_type == "FILE_CREATION"
             assert dep.resource_path  # Should have a resource path
-            
+
             # Find the creator and reader nodes
             creator_found = False
             reader_found = False
-            
+
             for node in node_infos:
                 if node.id == dep.from_node_id and dep.resource_path in node.creates_files:
                     creator_found = True
                 if node.id == dep.to_node_id and dep.resource_path in node.reads_files:
                     reader_found = True
-            
+
             assert creator_found, f"Creator node {dep.from_node_id} should create {dep.resource_path}"
             assert reader_found, f"Reader node {dep.to_node_id} should read {dep.resource_path}"
 
@@ -254,22 +251,22 @@ class TestResourceMappingProperties:
         """Directory creation dependencies should follow logical rules"""
         mappings = build_resource_mappings(node_infos)
         dependencies = detect_directory_creation_dependencies(mappings)
-        
+
         for dep in dependencies:
             assert isinstance(dep, DependencyInfo)
             assert dep.dependency_type == "DIRECTORY_CREATION"
             assert dep.resource_path  # Should have a resource path
-            
+
             # Find the creator and requirer nodes
             creator_found = False
             requirer_found = False
-            
+
             for node in node_infos:
                 if node.id == dep.from_node_id and dep.resource_path in node.creates_dirs:
                     creator_found = True
                 if node.id == dep.to_node_id and dep.resource_path in node.requires_dirs:
                     requirer_found = True
-            
+
             assert creator_found, f"Creator node {dep.from_node_id} should create {dep.resource_path}"
             assert requirer_found, f"Requirer node {dep.to_node_id} should require {dep.resource_path}"
 
@@ -283,11 +280,11 @@ class TestLargeGraphProperties:
     def test_validation_scales_with_graph_size(self, nodes):
         """Validation should handle larger graphs without issues"""
         result = validate_graph_structure(nodes, [])
-        
+
         # Should still return valid result structure
         assert isinstance(result, ValidationResult)
         assert result.statistics['total_nodes'] == len(nodes)
-        
+
         # Density should be reasonable for empty edge list
         assert result.statistics.get('density', 0) == 0
 
@@ -296,25 +293,25 @@ class TestLargeGraphProperties:
     def test_large_graph_connectivity_analysis(self, data):
         """Connectivity analysis should work for larger graphs"""
         node_ids = data.draw(st.lists(
-            st.text(alphabet='abcdefghijklmnopqrstuvwxyz', min_size=1, max_size=3), 
-            min_size=20, 
-            max_size=50, 
+            st.text(alphabet='abcdefghijklmnopqrstuvwxyz', min_size=1, max_size=3),
+            min_size=20,
+            max_size=50,
             unique=True
         ))
-        
+
         # Create random adjacency list
         adjacency_list = {}
         for node_id in node_ids:
             # Each node connects to 0-3 other random nodes
             connections = data.draw(st.sets(
-                st.sampled_from(node_ids), 
+                st.sampled_from(node_ids),
                 max_size=min(3, len(node_ids)-1)
             ))
             connections.discard(node_id)  # Remove self-connection
             adjacency_list[node_id] = connections
-        
+
         result = check_graph_connectivity(adjacency_list)
-        
+
         # Should have reasonable component count
         components = result.statistics['connected_components']
         assert 1 <= components <= len(node_ids)

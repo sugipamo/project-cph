@@ -1,13 +1,12 @@
 """実行グラフのコア機能 - request_execution_graph.pyから分離"""
-import os
 from collections import defaultdict
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Optional
-from dataclasses import dataclass
 
 from src.domain.requests.base.base_request import BaseRequest
 from src.domain.results.result import OperationResult
-from src.utils.debug_logger import DebugLogger
+
 from ..debug.debug_logger_adapter import create_workflow_debug_adapter
 
 
@@ -291,12 +290,12 @@ class RequestExecutionGraph:
     def visualize(self) -> str:
         """グラフの可視化用文字列を生成"""
         from ..graph_visualization import create_graph_visualization
-        
+
         try:
             execution_groups = self.get_parallel_groups()
         except ValueError:
             execution_groups = None
-        
+
         return create_graph_visualization(self.nodes, self.edges, execution_groups)
 
     def substitute_result_placeholders(self, text) -> str:

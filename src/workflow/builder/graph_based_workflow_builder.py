@@ -3,7 +3,6 @@
 ConfigNodeからRequestExecutionGraphを生成し、
 依存関係を考慮した実行計画を構築する
 """
-from pathlib import Path
 from typing import Any, Optional
 
 from src.context.resolver.config_node import ConfigNode
@@ -226,20 +225,20 @@ class GraphBasedWorkflowBuilder:
             nodes: ノードのリスト
         """
         from .functional_utils import pipe
-        from .graph_ops.metadata_extraction import extract_request_metadata
-        from .graph_ops.dependency_mapping import build_dependency_mapping
         from .graph_ops.cycle_detection import validate_no_circular_dependencies
+        from .graph_ops.dependency_mapping import build_dependency_mapping
         from .graph_ops.graph_optimization import optimize_dependency_order
-        
+        from .graph_ops.metadata_extraction import extract_request_metadata
+
         # 関数型パイプライン
         result = pipe(
             nodes,
             extract_request_metadata,           # 純粋関数
-            build_dependency_mapping,           # 純粋関数  
+            build_dependency_mapping,           # 純粋関数
             validate_no_circular_dependencies,  # 純粋関数
             optimize_dependency_order           # 純粋関数
         )
-        
+
         # 副作用: グラフに依存関係を追加
         self._apply_dependencies_to_graph(graph, result)
 
@@ -301,13 +300,13 @@ class GraphBasedWorkflowBuilder:
                 (実行グラフ, エラーリスト, 警告リスト)
         """
         from .graph_construction import construct_graph_from_steps
-        
+
         # 純粋関数でグラフ構築
         construction_result = construct_graph_from_steps(steps, self.context)
-        
+
         if not construction_result.is_success:
             return RequestExecutionGraph(), construction_result.errors, construction_result.warnings
-        
+
         # RequestExecutionGraphを作成
         debug_config = None
         if self.context and hasattr(self.context, 'env_json') and self.context.env_json:
@@ -350,31 +349,30 @@ class GraphBasedWorkflowBuilder:
         Returns:
             Tuple[bool, List[str]]: (有効かどうか, メッセージリスト)
         """
-        from .builder_validation import validate_graph_structure, validate_execution_feasibility
-        
+        from .builder_validation import validate_execution_feasibility, validate_graph_structure
+
         # 構造検証
         structure_result = validate_graph_structure(graph.nodes, graph.edges)
-        
+
         # 実行可能性検証
         feasibility_result = validate_execution_feasibility(graph)
-        
+
         # 結果をマージ
         is_valid = structure_result.is_valid and feasibility_result.is_valid
-        messages = (structure_result.errors + structure_result.warnings + 
+        messages = (structure_result.errors + structure_result.warnings +
                    feasibility_result.errors + feasibility_result.warnings +
                    structure_result.suggestions + feasibility_result.suggestions)
-        
+
         return is_valid, messages
 
     def _apply_dependencies_to_graph(self, graph: RequestExecutionGraph, result: dict) -> None:
         """純粋関数の結果をグラフに適用（副作用を集約）
-        
+
         Args:
             graph: 適用先グラフ
             result: 最適化結果辞書
         """
-        from .request_execution_graph import DependencyEdge, DependencyType
-        
+
         # 結果の形式を確認して適用
         if 'mappings' in result:
             # 最適化結果の場合
