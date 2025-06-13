@@ -84,6 +84,22 @@ if [ "$NO_RUFF" = false ]; then
             fi
         fi
         
+        # 関数型プログラミング品質チェック
+        if [ -f "scripts/functional_quality_check.py" ]; then
+            echo "🎯 関数型品質チェック中..."
+            if ! python3 scripts/functional_quality_check.py src/; then
+                echo "関数型品質基準の修正が必要です"
+            fi
+        fi
+        
+        # アーキテクチャ品質チェック
+        if [ -f "scripts/architecture_quality_check.py" ]; then
+            echo "🏗️  アーキテクチャ品質チェック中..."
+            if ! python3 scripts/architecture_quality_check.py src/; then
+                echo "アーキテクチャ改善が必要です"
+            fi
+        fi
+        
         echo ""
     else
         echo "警告: ruffがインストールされていません"
