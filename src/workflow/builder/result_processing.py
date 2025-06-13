@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from .functional_utils import filter_pure
+from .functional_utils import filter_data_collection
 
 
 @dataclass(frozen=True)
@@ -145,9 +145,9 @@ def filter_results_by_status(results: List[ExecutionResult],
         フィルタされた結果リスト
     """
     if status_filter == "success":
-        return filter_pure(lambda r: r.success, results)
+        return filter_data_collection(lambda r: r.success, results)
     if status_filter == "failed":
-        return filter_pure(lambda r: r.failed, results)
+        return filter_data_collection(lambda r: r.failed, results)
     # "all"
     return results.copy()
 

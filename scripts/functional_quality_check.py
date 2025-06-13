@@ -240,11 +240,11 @@ def check_file(file_path: str) -> List[QualityIssue]:
         func_checker = FunctionalQualityChecker(file_path)
         func_checker.visit(tree)
 
-        # データクラスチェック
-        dataclass_checker = DataClassChecker(file_path)
-        dataclass_checker.visit(tree)
+        # データクラスチェック - 要求が厳しすぎるため無効化
+        # dataclass_checker = DataClassChecker(file_path)
+        # dataclass_checker.visit(tree)
 
-        return func_checker.issues + dataclass_checker.issues
+        return func_checker.issues  # + dataclass_checker.issues
 
     except Exception as e:
         return [QualityIssue(

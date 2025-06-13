@@ -133,13 +133,13 @@ class RequestExecutionGraph:
 
     def get_dependencies(self, node_id: str) -> list[str]:
         """指定ノードが依存するノードのリストを取得"""
-        from ..graph_query import get_dependencies_pure
-        return get_dependencies_pure(self.reverse_adjacency_list, node_id)
+        from ..graph_query import extract_node_dependencies
+        return extract_node_dependencies(self.reverse_adjacency_list, node_id)
 
     def get_dependents(self, node_id: str) -> list[str]:
         """指定ノードに依存するノードのリストを取得"""
-        from ..graph_query import get_dependents_pure
-        return get_dependents_pure(self.adjacency_list, node_id)
+        from ..graph_query import extract_node_dependents
+        return extract_node_dependents(self.adjacency_list, node_id)
 
     def detect_cycles(self) -> list[list[str]]:
         """循環依存を検出（DFSベース）"""

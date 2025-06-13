@@ -49,7 +49,7 @@ def compose(*functions: Callable[[Any], Any]) -> Callable[[Any], Any]:
     return composed_function
 
 
-def map_pure(func: Callable[[T], U], iterable: Iterable[T]) -> list[U]:
+def transform_data_collection(func: Callable[[T], U], iterable: Iterable[T]) -> list[U]:
     """純粋関数版map - 新しいリストを返却
 
     Args:
@@ -62,7 +62,7 @@ def map_pure(func: Callable[[T], U], iterable: Iterable[T]) -> list[U]:
     return [func(item) for item in iterable]
 
 
-def filter_pure(predicate: Callable[[T], bool], iterable: Iterable[T]) -> list[T]:
+def filter_data_collection(predicate: Callable[[T], bool], iterable: Iterable[T]) -> list[T]:
     """純粋関数版filter - 新しいリストを返却
 
     Args:
@@ -75,7 +75,7 @@ def filter_pure(predicate: Callable[[T], bool], iterable: Iterable[T]) -> list[T
     return [item for item in iterable if predicate(item)]
 
 
-def reduce_pure(func: Callable[[T, U], T], iterable: Iterable[U], initial: T) -> T:
+def aggregate_data_collection(func: Callable[[T, U], T], iterable: Iterable[U], initial: T) -> T:
     """純粋関数版reduce
 
     Args:

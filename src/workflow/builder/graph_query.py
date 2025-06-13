@@ -3,7 +3,7 @@ from collections import deque
 from typing import Any, Dict, List, Set
 
 
-def get_dependencies_pure(reverse_adjacency_list: Dict[str, Set[str]], node_id: str) -> List[str]:
+def extract_node_dependencies(reverse_adjacency_list: Dict[str, Set[str]], node_id: str) -> List[str]:
     """指定ノードが依存するノードのリストを取得（純粋関数）
 
     Args:
@@ -16,7 +16,7 @@ def get_dependencies_pure(reverse_adjacency_list: Dict[str, Set[str]], node_id: 
     return list(reverse_adjacency_list.get(node_id, set()))
 
 
-def get_dependents_pure(adjacency_list: Dict[str, Set[str]], node_id: str) -> List[str]:
+def extract_node_dependents(adjacency_list: Dict[str, Set[str]], node_id: str) -> List[str]:
     """指定ノードに依存するノードのリストを取得（純粋関数）
 
     Args:
@@ -98,7 +98,7 @@ def calculate_parallel_groups(nodes: Dict[str, Any],
         # 依存関係が満たされているノードを見つける
         ready_nodes = []
         for node_id in remaining:
-            dependencies = set(get_dependencies_pure(reverse_adjacency_list, node_id))
+            dependencies = set(extract_node_dependencies(reverse_adjacency_list, node_id))
             if dependencies.issubset(completed):
                 ready_nodes.append(node_id)
 
@@ -152,7 +152,7 @@ def calculate_node_levels(nodes: Dict[str, Any],
     execution_order = calculate_execution_order(nodes, reverse_adjacency_list)
 
     for node_id in execution_order:
-        dependencies = get_dependencies_pure(reverse_adjacency_list, node_id)
+        dependencies = extract_node_dependencies(reverse_adjacency_list, node_id)
 
         if not dependencies:
             # 依存関係なし（レベル0）
@@ -196,7 +196,7 @@ def find_critical_path(nodes: Dict[str, Any],
         critical_path.append(current_node)
 
         # 依存ノードの中で最も深いものを選択
-        dependencies = get_dependencies_pure(reverse_adjacency_list, current_node)
+        dependencies = extract_node_dependencies(reverse_adjacency_list, current_node)
         if not dependencies:
             break
 

@@ -1,5 +1,6 @@
 """Abstract base class for file operations.
 """
+import hashlib
 from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Optional
@@ -189,7 +190,6 @@ class FileDriver(BaseDriver):
 
     def hash_file(self, path: Path, algo: str = 'sha256') -> str:
         """Calculate file hash."""
-        import hashlib
         h = hashlib.new(algo)
         resolved_path = self.resolve_path(path)
         with open(resolved_path, 'rb') as f:
