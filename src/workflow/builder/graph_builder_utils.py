@@ -40,85 +40,14 @@ class GraphBuildResult:
     warnings: list[str]
 
 
-def extract_node_resource_info(step: Step) -> tuple[set[str], set[str], set[str], set[str]]:
-    """ステップからリソース情報を抽出する純粋関数
-
-    Args:
-        step: 分析対象のステップ
-
-    Returns:
-        Tuple[creates_files, creates_dirs, reads_files, requires_dirs]
-    """
-    creates_files = set()
-    creates_dirs = set()
-    reads_files = set()
-    requires_dirs = set()
-
-    if step.type == StepType.MKDIR:
-        if step.cmd:
-            creates_dirs.add(step.cmd[0])
-
-    elif step.type == StepType.TOUCH:
-        if step.cmd:
-            file_path = step.cmd[0]
-            creates_files.add(file_path)
-            # 親ディレクトリが必要
-            parent = str(Path(file_path).parent)
-            if parent != '.':
-                requires_dirs.add(parent)
-
-    elif step.type in [StepType.COPY, StepType.MOVE]:
-        if len(step.cmd) >= 2:
-            source_path = step.cmd[0]
-            dest_path = step.cmd[1]
-
-            reads_files.add(source_path)
-            creates_files.add(dest_path)
-
-            # 宛先の親ディレクトリが必要
-            dest_parent = str(Path(dest_path).parent)
-            if dest_parent != '.':
-                requires_dirs.add(dest_parent)
-
-    elif step.type == StepType.MOVETREE:
-        if len(step.cmd) >= 2:
-            source_dir = step.cmd[0]
-            dest_dir = step.cmd[1]
-
-            reads_files.add(source_dir)  # ソースディレクトリ
-            creates_dirs.add(dest_dir)   # 宛先ディレクトリ
-
-    elif step.type in [StepType.REMOVE, StepType.RMTREE]:
-        if step.cmd:
-            target_path = step.cmd[0]
-            reads_files.add(target_path)  # 削除対象
-
-    elif step.type == StepType.BUILD:
-        # ビルドコマンドは特定のディレクトリで実行される可能性
-        if step.cmd and step.cmd[0]:
-            requires_dirs.add(step.cmd[0])
-        else:
-            requires_dirs.add("./workspace")
-
-    elif step.type == StepType.TEST:
-        # TESTステップは実行対象ファイルを読み取る
-        if len(step.cmd) >= 2:
-            target_file = step.cmd[1]
-            reads_files.add(target_file)
-            # 実行ファイルの親ディレクトリも必要
-            parent = str(Path(target_file).parent)
-            if parent != '.':
-                requires_dirs.add(parent)
-
-    elif step.type in [StepType.PYTHON, StepType.SHELL]:
-        # 基本的なワークスペースディレクトリを要求
-        requires_dirs.add("./workspace")
-
-    elif step.type in [StepType.DOCKER_RUN, StepType.DOCKER_EXEC, StepType.DOCKER_CP]:
-        # Dockerコマンドは基本的にワークスペースを使用
-        requires_dirs.add("./workspace")
-
-    return creates_files, creates_dirs, reads_files, requires_dirs
+# extract_node_resource_info関数は resource_analysis モジュールに移動されました
+from .resource_analysis.step_resource_extractor import extract_node_resource_info
+from .resource_analysis.resource_mapper import build_resource_mappings
+from .resource_analysis.dependency_detector import (
+    detect_file_creation_dependencies,
+    detect_directory_creation_dependencies,
+    detect_parent_directory_dependencies
+)
 
 
 def build_node_info_list(steps: list[Step], context: Optional[StepContext] = None) -> list[NodeInfo]:
@@ -168,98 +97,48 @@ def analyze_node_dependencies(node_infos: list[NodeInfo]) -> list[DependencyInfo
     Returns:
         依存関係情報のリスト
     """
+    # リソースマッピングを構築
+    resource_mappings = build_resource_mappings(node_infos)
+    
+    # 各種依存関係を検出
     dependencies = []
+    dependencies.extend(detect_file_creation_dependencies(resource_mappings))
+    dependencies.extend(detect_directory_creation_dependencies(resource_mappings))
+    dependencies.extend(detect_parent_directory_dependencies(node_infos, resource_mappings))
+    dependencies.extend(detect_execution_order_dependencies(node_infos, dependencies))
+    
+    return dependencies
 
-    # インデックスによる効率的な検索用マッピング
-    file_creators = {}  # file_path -> [(index, node_info)]
-    dir_creators = {}   # dir_path -> [(index, node_info)]
-    file_readers = {}   # file_path -> [(index, node_info)]
-    dir_requirers = {}  # dir_path -> [(index, node_info)]
 
-    for idx, node_info in enumerate(node_infos):
-        for file_path in node_info.creates_files:
-            if file_path not in file_creators:
-                file_creators[file_path] = []
-            file_creators[file_path].append((idx, node_info))
+# build_resource_mappings関数は resource_analysis.resource_mapper モジュールに移動されました
 
-        for dir_path in node_info.creates_dirs:
-            if dir_path not in dir_creators:
-                dir_creators[dir_path] = []
-            dir_creators[dir_path].append((idx, node_info))
 
-        for file_path in node_info.reads_files:
-            if file_path not in file_readers:
-                file_readers[file_path] = []
-            file_readers[file_path].append((idx, node_info))
+# detect_file_creation_dependencies と detect_directory_creation_dependencies は
+# resource_analysis.dependency_detector モジュールに移動されました
 
-        for dir_path in node_info.requires_dirs:
-            if dir_path not in dir_requirers:
-                dir_requirers[dir_path] = []
-            dir_requirers[dir_path].append((idx, node_info))
 
-    # ファイル作成依存を検出
-    for file_path, creators in file_creators.items():
-        if file_path in file_readers:
-            for creator_idx, creator_info in creators:
-                for reader_idx, reader_info in file_readers[file_path]:
-                    if creator_idx < reader_idx:  # 順序を保持
-                        dependency = DependencyInfo(
-                            from_node_id=creator_info.id,
-                            to_node_id=reader_info.id,
-                            dependency_type="FILE_CREATION",
-                            resource_path=file_path,
-                            description=f"File {file_path} must be created before being read"
-                        )
-                        dependencies.append(dependency)
+# detect_parent_directory_dependencies関数は resource_analysis.dependency_detector モジュールに移動されました
 
-    # ディレクトリ作成依存を検出
-    for dir_path, creators in dir_creators.items():
-        if dir_path in dir_requirers:
-            for creator_idx, creator_info in creators:
-                for requirer_idx, requirer_info in dir_requirers[dir_path]:
-                    if creator_idx < requirer_idx:
-                        dependency = DependencyInfo(
-                            from_node_id=creator_info.id,
-                            to_node_id=requirer_info.id,
-                            dependency_type="DIRECTORY_CREATION",
-                            resource_path=dir_path,
-                            description=f"Directory {dir_path} must be created before being used"
-                        )
-                        dependencies.append(dependency)
 
-    # ディレクトリ内のファイル作成依存
-    for idx, node_info in enumerate(node_infos):
-        if node_info.creates_files:
-            # このノードが作成するファイルの親ディレクトリを収集
-            parent_dirs = set()
-            for file_path in node_info.creates_files:
-                parent = str(Path(file_path).parent)
-                if parent != '.':
-                    parent_dirs.add(parent)
-
-            # 必要な親ディレクトリを作成するノードを検索
-            for parent_dir in parent_dirs:
-                for check_dir, creators in dir_creators.items():
-                    if is_parent_directory(check_dir, parent_dir) or check_dir == parent_dir:
-                        for creator_idx, creator_info in creators:
-                            if creator_idx < idx:
-                                dependency = DependencyInfo(
-                                    from_node_id=creator_info.id,
-                                    to_node_id=node_info.id,
-                                    dependency_type="DIRECTORY_CREATION",
-                                    resource_path=check_dir,
-                                    description=f"Directory {check_dir} must exist for files in {parent_dir}"
-                                )
-                                dependencies.append(dependency)
-                                break  # 同じディレクトリに対して複数の依存を追加しない
-
-    # リソース競合による順序依存
+def detect_execution_order_dependencies(node_infos: list[NodeInfo], 
+                                       existing_dependencies: list[DependencyInfo]) -> list[DependencyInfo]:
+    """実行順序依存関係を検出する純粋関数
+    
+    Args:
+        node_infos: ノード情報のリスト
+        existing_dependencies: 既存の依存関係リスト
+        
+    Returns:
+        実行順序依存関係のリスト
+    """
+    dependencies = []
+    
     for i in range(len(node_infos) - 1):
         from_node = node_infos[i]
         to_node = node_infos[i + 1]
 
         # すでに依存関係がある場合はスキップ
-        existing_deps = [d for d in dependencies
+        existing_deps = [d for d in existing_dependencies
                         if (d.from_node_id == from_node.id and d.to_node_id == to_node.id) or
                            (d.from_node_id == to_node.id and d.to_node_id == from_node.id)]
         if existing_deps:
@@ -275,7 +154,7 @@ def analyze_node_dependencies(node_infos: list[NodeInfo]) -> list[DependencyInfo
                 description="Preserve original execution order due to resource conflict"
             )
             dependencies.append(dependency)
-
+    
     return dependencies
 
 
