@@ -58,7 +58,7 @@ def analyze_imports(file_path: str) -> Tuple[List[str], List[Tuple[str, List[str
         analyzer.visit(tree)
 
         return analyzer.imports, analyzer.from_imports
-    except:
+    except Exception:
         return [], []
 
 
@@ -69,7 +69,8 @@ def check_file_size_limits(directory: str) -> List[ArchitectureIssue]:
 
     for file_path in python_files:
         try:
-            line_count = sum(1 for _ in open(file_path, encoding='utf-8'))
+            with open(file_path, encoding='utf-8') as f:
+                line_count = sum(1 for _ in f)
 
             # Phase 3 目標: 150行以下（現在440行まで改善済み）
             if line_count > 150:
@@ -81,7 +82,7 @@ def check_file_size_limits(directory: str) -> List[ArchitectureIssue]:
                     severity=severity,
                     details=f'目標の150行を {line_count - 150} 行超過'
                 ))
-        except:
+        except Exception:
             continue
 
     return issues
@@ -264,7 +265,8 @@ def calculate_module_metrics(directory: str) -> Dict[str, any]:
 
     for file_path in python_files:
         try:
-            line_count = sum(1 for _ in open(file_path, encoding='utf-8'))
+            with open(file_path, encoding='utf-8') as f:
+                line_count = sum(1 for _ in f)
             total_lines += line_count
 
             if line_count > max_file_size:
@@ -276,7 +278,7 @@ def calculate_module_metrics(directory: str) -> Dict[str, any]:
             if '/' in rel_path:
                 module = rel_path.split('/')[0]
                 module_counts[module] += 1
-        except:
+        except Exception:
             continue
 
     return {

@@ -238,9 +238,8 @@ def validate_step_conversion(step: Any, request: Any) -> List[str]:
         errors.append("Request doesn't have execute method")
 
     # ステップとリクエストの一貫性チェック
-    if hasattr(step, 'allow_failure') and hasattr(request, 'allow_failure'):
-        if step.allow_failure != request.allow_failure:
-            errors.append("allow_failure mismatch between step and request")
+    if hasattr(step, 'allow_failure') and hasattr(request, 'allow_failure') and step.allow_failure != request.allow_failure:
+        errors.append("allow_failure mismatch between step and request")
 
     # コマンド系ステップの特別な検証
     if hasattr(step, 'cmd') and step.cmd:

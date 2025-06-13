@@ -176,7 +176,7 @@ class FunctionalQualityChecker(ast.NodeVisitor):
             return f"{base}.{node.attr}"
         try:
             return ast.unparse(node)
-        except:
+        except Exception:
             return "unknown"
 
 
@@ -195,8 +195,7 @@ class DataClassChecker(ast.NodeVisitor):
         for decorator in node.decorator_list:
             if isinstance(decorator, ast.Name) and decorator.id == 'dataclass':
                 has_dataclass = True
-            elif isinstance(decorator, ast.Call):
-                if isinstance(decorator.func, ast.Name) and decorator.func.id == 'dataclass':
+            elif isinstance(decorator, ast.Call) and isinstance(decorator.func, ast.Name) and decorator.func.id == 'dataclass':
                     has_dataclass = True
                     # frozen=True をチェック
                     for keyword in decorator.keywords:

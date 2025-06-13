@@ -2,9 +2,42 @@
 
 グラフの連結性を分析する純粋関数群
 """
-from typing import Dict, List, Set
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Set
 
-from ..builder_validation import ValidationResult
+
+@dataclass(frozen=True)
+class ValidationResult:
+    """検証結果を表現する不変データ構造"""
+    is_valid: bool
+    errors: List[str]
+    warnings: List[str]
+    suggestions: List[str]
+    statistics: Dict[str, Any]
+
+    @classmethod
+    def success(cls, warnings: Optional[List[str]] = None, suggestions: Optional[List[str]] = None,
+                statistics: Optional[Dict[str, Any]] = None) -> 'ValidationResult':
+        """成功結果を作成"""
+        return cls(
+            is_valid=True,
+            errors=[],
+            warnings=warnings or [],
+            suggestions=suggestions or [],
+            statistics=statistics or {}
+        )
+
+    @classmethod
+    def failure(cls, errors: List[str], warnings: Optional[List[str]] = None,
+                suggestions: Optional[List[str]] = None, statistics: Optional[Dict[str, Any]] = None) -> 'ValidationResult':
+        """失敗結果を作成"""
+        return cls(
+            is_valid=False,
+            errors=errors,
+            warnings=warnings or [],
+            suggestions=suggestions or [],
+            statistics=statistics or {}
+        )
 
 
 def check_graph_connectivity(adjacency_list: Dict[str, Set[str]]) -> ValidationResult:

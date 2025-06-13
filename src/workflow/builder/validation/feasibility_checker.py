@@ -4,7 +4,7 @@
 """
 from typing import Any, Dict, List
 
-from ..builder_validation import ValidationResult
+from .connectivity_analyzer import ValidationResult
 
 
 def validate_execution_feasibility(graph: Any) -> ValidationResult:

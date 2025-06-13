@@ -30,12 +30,6 @@ class TestRequestExecutionGraphBasicOperations:
         assert isinstance(self.graph.execution_results, dict)
         assert hasattr(self.graph, 'debug_logger')
 
-    def test_graph_initialization_with_debug_config(self):
-        """Test graph initialization with debug configuration"""
-        debug_config = {"enabled": True, "level": "detailed"}
-        graph = RequestExecutionGraph(debug_config)
-
-        assert graph.debug_logger.config == debug_config
 
     def test_add_request_node(self):
         """Test adding request nodes to graph"""

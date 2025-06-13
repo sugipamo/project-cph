@@ -2,10 +2,31 @@
 
 リソースマッピングから各種依存関係を検出する純粋関数群
 """
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
-from ..graph_builder_utils import DependencyInfo, NodeInfo
+
+@dataclass(frozen=True)
+class DependencyInfo:
+    """依存関係情報の不変データクラス"""
+    from_node_id: str
+    to_node_id: str
+    dependency_type: str
+    resource_path: str
+    description: str
+
+
+@dataclass(frozen=True)
+class NodeInfo:
+    """ノード情報の不変データクラス"""
+    id: str
+    step: Any
+    creates_files: set[str]
+    creates_dirs: set[str]
+    reads_files: set[str]
+    requires_dirs: set[str]
+    metadata: dict[str, Any]
 
 
 def detect_file_creation_dependencies(resource_mappings: Dict[str, Any]) -> List[DependencyInfo]:

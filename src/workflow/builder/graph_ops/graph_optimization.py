@@ -272,9 +272,7 @@ def _identify_removable_dependencies(graph: DependencyGraph, critical_paths: Lis
     removable = []
     for mapping in graph.mappings:
         edge = (mapping.from_node_id, mapping.to_node_id)
-        if edge not in critical_edges:
-            # 安全性チェック：削除してもグラフの連結性が保たれるか
-            if _is_safe_to_remove(edge, graph):
+        if edge not in critical_edges and _is_safe_to_remove(edge, graph):
                 removable.append(mapping)
 
     return removable

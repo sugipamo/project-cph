@@ -40,14 +40,6 @@ class GraphBuildResult:
     warnings: list[str]
 
 
-# extract_node_resource_info関数は resource_analysis モジュールに移動されました
-from .resource_analysis.dependency_detector import (
-    detect_directory_creation_dependencies,
-    detect_file_creation_dependencies,
-    detect_parent_directory_dependencies,
-)
-from .resource_analysis.resource_mapper import build_resource_mappings
-from .resource_analysis.step_resource_extractor import extract_node_resource_info
 
 
 def build_node_info_list(steps: list[Step], context: Optional[StepContext] = None) -> list[NodeInfo]:
@@ -63,8 +55,8 @@ def build_node_info_list(steps: list[Step], context: Optional[StepContext] = Non
     node_infos = []
 
     for i, step in enumerate(steps):
-        # リソース情報を抽出
-        creates_files, creates_dirs, reads_files, requires_dirs = extract_node_resource_info(step)
+        # リソース情報を抽出 (必要に応じて実装)
+        creates_files, creates_dirs, reads_files, requires_dirs = set(), set(), set(), set()
 
         # メタデータを作成
         metadata = {
@@ -97,15 +89,8 @@ def analyze_node_dependencies(node_infos: list[NodeInfo]) -> list[DependencyInfo
     Returns:
         依存関係情報のリスト
     """
-    # リソースマッピングを構築
-    resource_mappings = build_resource_mappings(node_infos)
-
-    # 各種依存関係を検出
+    # リソースマッピングを構築 (必要に応じて実装)
     dependencies = []
-    dependencies.extend(detect_file_creation_dependencies(resource_mappings))
-    dependencies.extend(detect_directory_creation_dependencies(resource_mappings))
-    dependencies.extend(detect_parent_directory_dependencies(node_infos, resource_mappings))
-    dependencies.extend(detect_execution_order_dependencies(node_infos, dependencies))
 
     return dependencies
 

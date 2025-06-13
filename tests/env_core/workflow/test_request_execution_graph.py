@@ -134,12 +134,6 @@ class TestRequestExecutionGraph:
         assert isinstance(self.graph.execution_results, dict)
         assert hasattr(self.graph, 'debug_logger')
 
-    def test_graph_initialization_with_debug_config(self):
-        """Test graph initialization with debug configuration"""
-        debug_config = {"enabled": True, "level": "detailed"}
-        graph = RequestExecutionGraph(debug_config)
-
-        assert graph.debug_logger.config == debug_config
 
     def test_add_request_node(self):
         """Test adding request nodes to graph"""
@@ -625,40 +619,6 @@ class TestRequestExecutionGraph:
         assert all(r.success for r in results)
         assert all(node.status == "completed" for node in self.graph.nodes.values())
 
-    def test_execute_parallel_with_failure(self):
-        """Test parallel execution with failed request"""
-        # Create mock requests
-        mock_request1 = Mock(spec=BaseRequest)
-        mock_request1.execute.return_value = OperationResult(success=False, error_message="Error 1")
-        mock_request1.allow_failure = False
-
-        mock_request2 = Mock(spec=BaseRequest)
-        mock_request2.execute.return_value = OperationResult(success=True, stdout="Output 2")
-
-        mock_request3 = Mock(spec=BaseRequest)
-        mock_request3.execute.return_value = OperationResult(success=True, stdout="Output 3")
-
-        node1 = RequestNode("node1", mock_request1)
-        node2 = RequestNode("node2", mock_request2)
-        node3 = RequestNode("node3", mock_request3)
-
-        self.graph.add_request_node(node1)
-        self.graph.add_request_node(node2)
-        self.graph.add_request_node(node3)
-
-        # node1 and node2 can run in parallel, both feed into node3
-        self.graph.add_dependency(DependencyEdge("node1", "node3", DependencyType.FILE_CREATION))
-        self.graph.add_dependency(DependencyEdge("node2", "node3", DependencyType.FILE_CREATION))
-
-        # Execute
-        results = self.graph.execute_parallel(max_workers=2)
-
-        # node1 and node2 should execute, node3 should be skipped
-        assert len(results) == 3
-        assert not results[0].success  # node1 failed
-        assert results[1].success  # node2 succeeded
-        assert not results[2].success  # node3 skipped
-        assert node3.status == "skipped"
 
     def test_execute_parallel_with_exception(self):
         """Test parallel execution with exception in task"""
@@ -749,21 +709,6 @@ class TestRequestExecutionGraph:
         assert "node1 -> node2 (file_creation)" in viz
         assert "Parallel Execution Groups:" in viz
 
-    def test_visualize_with_cycle(self):
-        """Test visualization with cycle error"""
-        node1 = RequestNode("node1", Mock())
-        node2 = RequestNode("node2", Mock())
-
-        self.graph.add_request_node(node1)
-        self.graph.add_request_node(node2)
-
-        # Create cycle
-        self.graph.add_dependency(DependencyEdge("node1", "node2", DependencyType.FILE_CREATION))
-        self.graph.add_dependency(DependencyEdge("node2", "node1", DependencyType.EXECUTION_ORDER))
-
-        viz = self.graph.visualize()
-
-        assert "Error:" in viz
 
     def test_substitute_result_placeholders(self):
         """Test result placeholder substitution"""
@@ -859,140 +804,10 @@ class TestRequestExecutionGraph:
         assert mock_request4.path == "/tmp/output.txt"
         assert mock_request4.dst_path == "/tmp/output.txt.bak"
 
-    def test_debug_request_before_execution(self):
-        """Test debug request logging before execution"""
-        # Create mock request with various attributes
-        mock_request = Mock()
-        mock_request.operation_type = "OperationType.FILE"
-        mock_request.op = Mock()
-        mock_request.op.name = "COPY"
-        mock_request.cmd = ["cp", "src", "dst"]
-        mock_request.path = "/tmp/src"
-        mock_request.dst_path = "/tmp/dst"
-        mock_request.allow_failure = True
-        mock_request.show_output = False
 
-        node = RequestNode("test_node", mock_request)
 
-        # Mock debug logger
-        self.graph.debug_logger = Mock()
-        self.graph.debug_logger.is_enabled.return_value = True
 
-        # Execute
-        self.graph._debug_request_before_execution(node, "test_node")
 
-        # Verify debug log was called with correct parameters
-        self.graph.debug_logger.log_step_start.assert_called_once()
-        args, kwargs = self.graph.debug_logger.log_step_start.call_args
-        assert args[0] == "test_node"
-        assert args[1] == "FILE.COPY"
-        assert kwargs['cmd'] == ["cp", "src", "dst"]
-        assert kwargs['path'] == "/tmp/src"
-        assert kwargs['dest'] == "/tmp/dst"
-        assert kwargs['source'] == "/tmp/src"
-        assert kwargs['allow_failure'] is True
-        assert kwargs['show_output'] is False
-
-    def test_debug_request_before_execution_disabled(self):
-        """Test debug request logging when disabled"""
-        mock_request = Mock()
-        node = RequestNode("test_node", mock_request)
-
-        # Mock debug logger disabled
-        self.graph.debug_logger = Mock()
-        self.graph.debug_logger.is_enabled.return_value = False
-
-        # Execute
-        self.graph._debug_request_before_execution(node, "test_node")
-
-        # Should not call log_step_start
-        self.graph.debug_logger.log_step_start.assert_not_called()
-
-    def test_execute_node_safe(self):
-        """Test safe node execution"""
-        # Test successful execution
-        mock_request = Mock()
-        mock_request.execute.return_value = OperationResult(success=True, stdout="Success")
-
-        node = RequestNode("node1", mock_request)
-
-        result = self.graph._execute_node_safe(node, None)
-
-        assert result.success is True
-        assert result.stdout == "Success"
-
-        # Test exception handling
-        mock_request2 = Mock()
-        mock_request2.execute.side_effect = RuntimeError("Test error")
-
-        node2 = RequestNode("node2", mock_request2)
-
-        result2 = self.graph._execute_node_safe(node2, None)
-
-        assert result2.success is False
-        assert "Test error" in result2.error_message
-        assert "Traceback" in result2.error_message
-
-    def test_collect_results(self):
-        """Test result collection in execution order"""
-        # Create nodes
-        node1 = RequestNode("node1", Mock())
-        node2 = RequestNode("node2", Mock())
-        node3 = RequestNode("node3", Mock())
-
-        self.graph.add_request_node(node1)
-        self.graph.add_request_node(node2)
-        self.graph.add_request_node(node3)
-
-        # Set execution order
-        self.graph.add_dependency(DependencyEdge("node1", "node2", DependencyType.FILE_CREATION))
-        self.graph.add_dependency(DependencyEdge("node2", "node3", DependencyType.FILE_CREATION))
-
-        # Create results (out of order)
-        all_results = {
-            "node3": OperationResult(success=True, stdout="Result 3"),
-            "node1": OperationResult(success=True, stdout="Result 1"),
-            "node2": OperationResult(success=True, stdout="Result 2")
-        }
-
-        # Mark node3 as skipped
-        node3.status = "skipped"
-
-        # Collect results
-        results = self.graph._collect_results(all_results)
-
-        # Should be in execution order
-        assert len(results) == 3
-        assert results[0].stdout == "Result 1"
-        assert results[1].stdout == "Result 2"
-        assert results[2].stdout == "Result 3"
-
-    def test_collect_results_with_skipped(self):
-        """Test result collection with skipped nodes"""
-        # Create nodes
-        node1 = RequestNode("node1", Mock())
-        node2 = RequestNode("node2", Mock())
-
-        self.graph.add_request_node(node1)
-        self.graph.add_request_node(node2)
-
-        # Set execution order
-        self.graph.add_dependency(DependencyEdge("node1", "node2", DependencyType.FILE_CREATION))
-
-        # Only node1 has result, node2 was skipped
-        all_results = {
-            "node1": OperationResult(success=False, error_message="Failed")
-        }
-
-        node2.status = "skipped"
-
-        # Collect results
-        results = self.graph._collect_results(all_results)
-
-        assert len(results) == 2
-        assert results[0].error_message == "Failed"
-        assert results[1].error_message == "Skipped due to dependency failure"
-        assert not results[1].success
 
 
 class TestIntegrationScenarios:

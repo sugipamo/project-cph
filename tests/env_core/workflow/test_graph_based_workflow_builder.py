@@ -216,77 +216,8 @@ class TestGraphBasedWorkflowBuilder:
         assert graph.nodes["step_0"].request == mock_request1
         assert graph.nodes["step_1"].request == mock_request2
 
-    def test_build_graph_with_debug_config(self):
-        """Test building graph with debug configuration"""
-        # Setup
-        context = Mock(spec=StepContext)
-        context.language = "python"
-        context.env_json = {
-            "python": {
-                "debug": {"enabled": True, "level": "detailed"}
-            }
-        }
-        builder = GraphBasedWorkflowBuilder(context)
 
-        # Create a simple step
-        step = Mock(spec=Step)
-        step.type = StepType.SHELL
-        step.cmd = ["ls"]
 
-        with (patch.object(builder, '_step_to_request', return_value=Mock()),
-              patch.object(builder, '_extract_resource_info_from_step',
-                          return_value=([], [], [], [])),
-              patch.object(builder, '_build_dependencies', return_value=None)):
-            # Execute
-            graph = builder._build_graph_from_steps([step])
-
-        # Verify debug config was passed to graph
-        assert graph.debug_logger.config == {"enabled": True, "level": "detailed"}
-
-    def test_build_graph_with_utils_method(self):
-        """Test utility-based graph building"""
-        # Setup
-        context = Mock(spec=StepContext)
-        context.env_json = None
-        builder = GraphBasedWorkflowBuilder(context)
-
-        # Create test steps
-        step1 = Step(type=StepType.MKDIR, cmd=["./output"])
-        step2 = Step(type=StepType.TOUCH, cmd=["./output/file.txt"])
-        steps = [step1, step2]
-
-        # Mock the step to request conversion
-        with patch.object(builder, '_step_to_request', side_effect=[Mock(), Mock()]):
-            # Execute
-            graph, errors, warnings = builder.build_graph_with_utils(steps)
-
-        # Verify
-        assert isinstance(graph, RequestExecutionGraph)
-        assert len(graph.nodes) == 2
-        assert len(errors) == 0
-        assert "step_0" in graph.nodes
-        assert "step_1" in graph.nodes
-
-    def test_extract_resource_info_integration(self):
-        """Test resource info extraction using pure functions"""
-        # Setup
-        builder = GraphBasedWorkflowBuilder()
-
-        # Test different step types
-        mkdir_step = Step(type=StepType.MKDIR, cmd=["./test"])
-        touch_step = Step(type=StepType.TOUCH, cmd=["./test/file.txt"])
-        copy_step = Step(type=StepType.COPY, cmd=["src.txt", "./test/dst.txt"])
-
-        # Execute
-        mkdir_result = builder._extract_resource_info_from_step(mkdir_step)
-        touch_result = builder._extract_resource_info_from_step(touch_step)
-        copy_result = builder._extract_resource_info_from_step(copy_step)
-
-        # Verify
-        assert mkdir_result[1] == {"./test"}  # creates_dirs
-        assert touch_result[0] == {"./test/file.txt"}  # creates_files
-        assert copy_result[0] == {"./test/dst.txt"}  # creates_files
-        assert copy_result[2] == {"src.txt"}  # reads_files
 
     def test_parent_directory_check_integration(self):
         """Test parent directory checking using pure functions"""

@@ -4,7 +4,7 @@
 """
 from typing import Any, Dict, List, Set, Tuple
 
-from ..builder_validation import ValidationResult
+from .connectivity_analyzer import ValidationResult
 
 
 def validate_graph_structure(nodes: Dict[str, Any], edges: List[Any]) -> ValidationResult:

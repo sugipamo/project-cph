@@ -5,3 +5,4 @@ coverage==7.8.0
 ruff==0.11.13
 iniconfig==2.1.0
 pluggy==1.5.0
+hypothesis==6.120.0
