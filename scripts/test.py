@@ -213,21 +213,65 @@ class TestRunner:
 
         success, output = self.run_command(cmd, "テスト実行")
 
-        # カバレッジが低い場合は警告
-        if success and not no_coverage and "TOTAL" in output:
-            lines = output.split('\n')
-            for line in lines:
-                if "TOTAL" in line and "%" in line:
-                    # カバレッジパーセンテージを抽出
-                    parts = line.split()
-                    for part in parts:
-                        if part.endswith('%'):
-                            coverage = int(part[:-1])
-                            if coverage < 80:
-                                self.warnings.append(f"テストカバレッジが低いです: {coverage}%")
-                            break
+        # カバレッジ詳細分析
+        if success and not no_coverage and output:
+            self._analyze_coverage(output)
 
         return success
+
+    def _analyze_coverage(self, output: str) -> None:
+        """カバレッジ詳細分析"""
+        lines = output.split('\n')
+        total_coverage = None
+        low_coverage_files = []
+
+        # カバレッジ情報を解析
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith('-') or line.startswith('='):
+                continue
+
+            # TOTALライン（総合カバレッジ）
+            if line.startswith('TOTAL'):
+                parts = line.split()
+                for part in parts:
+                    if part.endswith('%'):
+                        try:
+                            total_coverage = int(part[:-1])
+                        except ValueError:
+                            continue
+                        break
+            # 個別ファイルのカバレッジ
+            elif line.startswith('src/') and '%' in line:
+                parts = line.split()
+                if len(parts) >= 4:
+                    file_path = parts[0]
+                    # パーセンテージを探す
+                    for part in parts[1:]:
+                        if part.endswith('%'):
+                            try:
+                                coverage = int(part[:-1])
+                                if coverage < 80:  # 80%未満は低カバレッジ
+                                    low_coverage_files.append((file_path, coverage))
+                            except ValueError:
+                                continue
+                            break
+
+        # 警告メッセージを生成
+        if total_coverage is not None and total_coverage < 80:
+            self.warnings.append(f"テストカバレッジが低いです: {total_coverage}%")
+
+        if low_coverage_files:
+            # カバレッジが低い順にソート
+            low_coverage_files.sort(key=lambda x: x[1])
+            self.warnings.append("カバレッジが低いファイル:")
+            for file_path, coverage in low_coverage_files[:10]:  # 最大10件
+                # ファイル名を短縮表示
+                short_path = file_path.replace('src/', '')
+                self.warnings.append(f"  {short_path}: {coverage}%")
+
+            if len(low_coverage_files) > 10:
+                self.warnings.append(f"  ... 他{len(low_coverage_files) - 10}件")
 
     def print_summary(self):
         """実行結果のサマリーを表示"""
@@ -253,6 +297,7 @@ def main():
     parser.add_argument("--html", action="store_true", help="HTMLカバレッジレポート生成")
     parser.add_argument("--no-ruff", action="store_true", help="Ruffスキップ")
     parser.add_argument("--check-only", action="store_true", help="高速チェック（テストなし）")
+    parser.add_argument("--coverage-only", action="store_true", help="カバレッジレポートのみ表示")
     parser.add_argument("--verbose", "-v", action="store_true", help="詳細出力")
     parser.add_argument("pytest_args", nargs="*", help="pytestに渡す引数")
 
@@ -263,7 +308,17 @@ def main():
         print("エラー: --no-cov と --html は同時に使用できません")
         sys.exit(1)
 
+    if args.coverage_only and args.no_cov:
+        print("エラー: --coverage-only と --no-cov は同時に使用できません")
+        sys.exit(1)
+
     runner = TestRunner(verbose=args.verbose)
+
+    # カバレッジレポートのみモード
+    if args.coverage_only:
+        runner.run_tests(args.pytest_args, False, args.html)
+        runner.print_summary()
+        return
 
     # コード品質チェック
     if not args.no_ruff:
