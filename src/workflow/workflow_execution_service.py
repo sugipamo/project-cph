@@ -40,122 +40,32 @@ class WorkflowExecutionService:
         # Log environment information if configured
         self._log_environment_info()
 
-        # Get workflow steps from context
-        json_steps = self._get_workflow_steps()
-        if not json_steps:
-            return WorkflowExecutionResult(
-                success=False,
-                results=[],
-                preparation_results=[],
-                errors=["No workflow steps found for command"],
-                warnings=[]
-            )
+        # Prepare workflow steps
+        steps, errors, warnings = self._prepare_workflow_steps()
+        if errors:
+            return self._create_error_result(errors, warnings)
 
-        # Generate Step objects from JSON
-        step_result = generate_steps_from_json(
-            json_steps,
-            self.context
-        )
+        # Create operations composite
+        operations_composite = create_composite_request(steps, self.context)
 
-
-        if step_result.errors:
-            return WorkflowExecutionResult(
-                success=False,
-                results=[],
-                preparation_results=[],
-                errors=step_result.errors,
-                warnings=step_result.warnings
-            )
-
-        # Build workflow graph
-        builder = GraphBasedWorkflowBuilder.from_context(self.context)
-        graph, graph_errors, graph_warnings = builder.build_graph_from_json_steps(json_steps)
-
-
-        if graph_errors:
-            return WorkflowExecutionResult(
-                success=False,
-                results=[],
-                preparation_results=[],
-                errors=graph_errors,
-                warnings=graph_warnings + step_result.warnings
-            )
-
-        # Convert steps to operations requests using unified factory
-        operations_composite = create_composite_request(step_result.steps, self.context)
-
-        # Analyze environment and prepare if needed (fitting responsibility)
-        preparation_results = []
-        # TODO: Restore preparation functionality when PreparationExecutor is available
-        # workflow_tasks = self._create_workflow_tasks(step_result.steps)
-        #
-        # if workflow_tasks:
-        #     preparation_tasks, statuses = self.preparation_executor.analyze_and_prepare(workflow_tasks)
-        #
-        #     if preparation_tasks:
-        #         # Convert preparation tasks to requests
-        #         preparation_requests = self.preparation_executor.convert_to_workflow_requests(preparation_tasks)
-        #
-        #         # Execute preparation tasks
-        #         unified_driver = UnifiedDriver(self.operations)
-        #
-        #         for request in preparation_requests:
-        #             execution_result = request.execute(unified_driver)
-        #             preparation_results.append(execution_result)
-        #
-        #             if not execution_result.success:
-        #                 return WorkflowExecutionResult(
-        #                     success=False,
-        #                     results=[],
-        #                     preparation_results=preparation_results,
-        #                     errors=[f"Preparation failed: {execution_result.get_error_output()}"],
-        #                     warnings=graph_warnings + step_result.warnings
-        #                 )
+        # Execute preparation phase
+        preparation_results, prep_errors = self._execute_preparation_phase(steps)
+        if prep_errors:
+            return self._create_error_result(prep_errors, warnings, preparation_results)
 
         # Execute main workflow
-        unified_driver = UnifiedDriver(self.operations)
+        results = self._execute_main_workflow(operations_composite)
 
-        # Execute the operations requests directly
-        execution_result = operations_composite.execute(unified_driver)
+        # Analyze results
+        success, result_errors = self._analyze_execution_results(results)
 
-        # CompositeRequest returns a list of results, so flatten if needed
-        if isinstance(execution_result, list):
-            results = execution_result
-        else:
-            results = [execution_result]
-
-        # Check if all results are successful (considering allow_failure)
-        critical_failures = []
-        errors = []
-        for i, result in enumerate(results):
-            if not result.success:
-                # Check if this request has allow_failure=true
-                request = result.request if hasattr(result, 'request') else None
-                allow_failure = getattr(request, 'allow_failure', False) if request else False
-
-                # Temporary workaround for TEST steps allow_failure issue
-                if hasattr(request, '__class__') and 'Shell' in request.__class__.__name__ and hasattr(request, 'cmd') and request.cmd and len(request.cmd) > 0:
-                        full_cmd_str = str(request.cmd)
-                        if 'python3' in full_cmd_str and 'workspace/main.py' in full_cmd_str:
-                            allow_failure = True
-
-                if allow_failure:
-                    # Failure is allowed, don't count as critical
-                    errors.append(f"Step {i} failed (allowed): {result.get_error_output()}")
-                else:
-                    # Critical failure
-                    critical_failures.append(result)
-                    errors.append(f"Step {i} failed: {result.get_error_output()}")
-
-        # Success if no critical failures occurred
-        success = len(critical_failures) == 0
-
+        # Return final result
         return WorkflowExecutionResult(
             success=success,
             results=results,
             preparation_results=preparation_results,
-            errors=errors,
-            warnings=graph_warnings + step_result.warnings
+            errors=result_errors,
+            warnings=warnings
         )
 
     def _get_workflow_steps(self) -> list[dict]:
@@ -245,5 +155,82 @@ class WorkflowExecutionService:
             problem_name=self.context.problem_name,
             env_type=self.context.env_type,
             env_logging_config=env_logging_config
+        )
+
+    def _prepare_workflow_steps(self):
+        """Prepare workflow steps from context configuration."""
+        # Get workflow steps from context
+        json_steps = self._get_workflow_steps()
+        if not json_steps:
+            return None, ["No workflow steps found for command"], []
+
+        # Generate Step objects from JSON
+        step_result = generate_steps_from_json(json_steps, self.context)
+        if step_result.errors:
+            return None, step_result.errors, step_result.warnings
+
+        # Build workflow graph
+        builder = GraphBasedWorkflowBuilder.from_context(self.context)
+        graph, graph_errors, graph_warnings = builder.build_graph_from_json_steps(json_steps)
+        if graph_errors:
+            return None, graph_errors, graph_warnings + step_result.warnings
+
+        return step_result.steps, [], graph_warnings + step_result.warnings
+
+    def _execute_preparation_phase(self, steps):
+        """Execute environment preparation if needed."""
+        preparation_results = []
+        # TODO: Restore preparation functionality when PreparationExecutor is available
+        return preparation_results, []
+
+    def _execute_main_workflow(self, operations_composite):
+        """Execute the main workflow operations."""
+        unified_driver = UnifiedDriver(self.operations)
+        execution_result = operations_composite.execute(unified_driver)
+
+        # CompositeRequest returns a list of results, so flatten if needed
+        if isinstance(execution_result, list):
+            return execution_result
+        return [execution_result]
+
+    def _analyze_execution_results(self, results):
+        """Analyze execution results for success/failure."""
+        critical_failures = []
+        errors = []
+
+        for i, result in enumerate(results):
+            if not result.success:
+                allow_failure = self._should_allow_failure(result)
+                if allow_failure:
+                    errors.append(f"Step {i} failed (allowed): {result.get_error_output()}")
+                else:
+                    critical_failures.append(result)
+                    errors.append(f"Step {i} failed: {result.get_error_output()}")
+
+        success = len(critical_failures) == 0
+        return success, errors
+
+    def _should_allow_failure(self, result):
+        """Determine if a failure should be allowed based on request type."""
+        request = result.request if hasattr(result, 'request') else None
+        allow_failure = getattr(request, 'allow_failure', False) if request else False
+
+        # Temporary workaround for TEST steps allow_failure issue
+        if (hasattr(request, '__class__') and 'Shell' in request.__class__.__name__
+            and hasattr(request, 'cmd') and request.cmd and len(request.cmd) > 0):
+            full_cmd_str = str(request.cmd)
+            if 'python3' in full_cmd_str and 'workspace/main.py' in full_cmd_str:
+                allow_failure = True
+
+        return allow_failure
+
+    def _create_error_result(self, errors, warnings, preparation_results=None):
+        """Create error result with consistent structure."""
+        return WorkflowExecutionResult(
+            success=False,
+            results=[],
+            preparation_results=preparation_results or [],
+            errors=errors,
+            warnings=warnings
         )
 

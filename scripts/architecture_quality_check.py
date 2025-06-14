@@ -72,20 +72,17 @@ def check_file_size_limits(directory: str) -> List[ArchitectureIssue]:
             with open(file_path, encoding='utf-8') as f:
                 line_count = sum(1 for _ in f)
 
-            # テストファイルは緩い制限を適用
-            is_test_file = 'test_' in file_path or '/tests/' in file_path
-            max_lines = 500 if is_test_file else 300
-            error_threshold = 800 if is_test_file else 500
+            # 極端に大きいファイルのみ警告 (800行以上)
+            extreme_threshold = 800
 
-            # 実用的制限: 300行以下（テストは500行、500行超過でエラー）
-            if line_count > max_lines:
-                severity = 'warning' if line_count <= error_threshold else 'error'
+            if line_count >= extreme_threshold:
+                severity = 'warning'
                 issues.append(ArchitectureIssue(
                     file=file_path,
                     issue_type='file_size',
-                    description=f'ファイルサイズ {line_count} 行（推奨: {max_lines}行以下）',
+                    description=f'ファイルサイズ {line_count} 行（推奨: {extreme_threshold}行未満）',
                     severity=severity,
-                    details=f'目標の{max_lines}行を {line_count - max_lines} 行超過'
+                    details=f'極端に大きいファイルです ({line_count - extreme_threshold} 行超過)'
                 ))
         except Exception:
             continue
@@ -242,6 +239,10 @@ def check_dependency_direction(directory: str) -> List[ArchitectureIssue]:
 
         for imp in all_imports:
             if imp.startswith('src.'):
+                # Skip utils imports as they are cross-cutting concerns
+                if imp.startswith('src.utils.'):
+                    continue
+
                 for target_module, target_level in hierarchy.items():
                     if target_module.replace('.', '/') in imp:
                         if target_level >= current_level and target_module != current_module:

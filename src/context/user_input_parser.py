@@ -301,77 +301,106 @@ def parse_user_input(
     Raises:
         ValueError: 引数が不正、またはバリデーションエラーの場合
     """
-    # バリデーションサービス初期化
+    # 1. Initialize services and load base data
+    context_data = _initialize_and_load_base_data(operations)
+
+    # 2. Resolve environment configuration
+    env_config = _resolve_environment_configuration(context_data, operations)
+
+    # 3. Create and configure initial context
+    context = _create_initial_context(context_data, env_config)
+
+    # 4. Parse command line arguments
+    args, context = _parse_command_line_args(args, context, env_config['root'])
+
+    # 5. Handle contest management
+    context = _handle_contest_management(context, operations)
+
+    # 6. Finalize environment configuration
+    context = _finalize_environment_configuration(context, env_config, operations)
+
+    # 7. Setup persistence and docker
+    _setup_context_persistence_and_docker(context, args, operations)
+
+    # 8. Validate and return
+    return _validate_and_return_context(context)
+
+
+def _initialize_and_load_base_data(operations):
+    """Initialize services and load base context data."""
     ValidationService()
-
-    # 現在のコンテキスト情報を読み込み (SQLite)
     current_context_info = _load_current_context_sqlite(operations)
+    return current_context_info
 
-    # 環境設定読み込みと設定ルート作成
+
+def _resolve_environment_configuration(context_data, operations):
+    """Load and resolve environment configuration."""
     json_config_loader = JsonConfigLoader(CONTEST_ENV_DIR)
     env_config = json_config_loader.get_env_config()
     root = create_config_root_from_dict(env_config)
-
-    # 後続処理のために従来のenv_jsonsも取得（一時的な互換性のため）
     env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, operations)
 
-    # env_jsonが存在しない場合は、読み込んだenv_jsonを使用
-    final_env_json = current_context_info["env_json"]
-    if final_env_json is None and current_context_info["language"]:
-        # JsonConfigLoaderを使用して言語固有の設定を取得
-        final_env_json = json_config_loader.get_language_config(current_context_info["language"])
+    # Resolve final env_json
+    final_env_json = context_data["env_json"]
+    if final_env_json is None and context_data["language"]:
+        final_env_json = json_config_loader.get_language_config(context_data["language"])
 
-    # 新設定システムの統合（フォールバック除去）
+    return {
+        'json_config_loader': json_config_loader,
+        'env_config': env_config,
+        'root': root,
+        'env_jsons': env_jsons,
+        'final_env_json': final_env_json
+    }
+
+
+def _create_initial_context(context_data, env_config):
+    """Create and configure initial execution context."""
     context = create_new_execution_context(
-        command_type=current_context_info["command"],
-        language=current_context_info["language"],
-        contest_name=current_context_info["contest_name"],
-        problem_name=current_context_info["problem_name"],
-        env_type=current_context_info["env_type"],
-        env_json=final_env_json
+        command_type=context_data["command"],
+        language=context_data["language"],
+        contest_name=context_data["contest_name"],
+        problem_name=context_data["problem_name"],
+        env_type=context_data["env_type"],
+        env_json=env_config['final_env_json']
     )
+    context.resolver = env_config['root']
+    return context
 
-    # レゾルバー設定
-    context.resolver = root
 
-    # コマンドライン引数解析
-    args, context = _parse_command_line_args(args, context, root)
-
-    # コンテストのバックアップと初期化処理
+def _handle_contest_management(context, operations):
+    """Handle contest backup and initialization."""
     if context.language and context.contest_name and context.problem_name:
         try:
             contest_manager = operations.resolve("contest_manager")
-
-            # 必要に応じてバックアップを実行
             contest_manager.handle_contest_change(
                 context.language,
                 context.contest_name,
                 context.problem_name
             )
-
-            # contest_currentを初期化 (stock -> templateの優先度)
             contest_manager.initialize_contest_current(
                 context.language,
                 context.contest_name,
                 context.problem_name
             )
-
         except Exception as e:
             print(f"Warning: Contest management failed: {e}")
+    return context
 
-    # 環境JSON適用（shared設定とマージ）
-    context = _apply_env_json(context, env_jsons, CONTEST_ENV_DIR, operations)
 
-    # Update resolver with properly merged env_json
+def _finalize_environment_configuration(context, env_config, operations):
+    """Apply environment JSON and finalize configuration."""
+    context = _apply_env_json(context, env_config['env_jsons'], CONTEST_ENV_DIR, operations)
     if context.env_json:
         context.resolver = create_config_root_from_dict(context.env_json)
+    return context
 
-    # 残り引数チェック
+
+def _setup_context_persistence_and_docker(context, args, operations):
+    """Setup context persistence and Docker configuration."""
     if args:
         raise ValueError(f"引数が多すぎます: {args}")
 
-
-    # 現在のコンテキスト情報を保存 (SQLite)
     _save_current_context_sqlite(operations, {
         "command": context.command_type,
         "language": context.language,
@@ -381,22 +410,19 @@ def parse_user_input(
         "env_json": context.env_json
     })
 
-    # Dockerfileリゾルバーの設定
     oj_dockerfile_path = os.path.join(os.path.dirname(__file__), "oj.Dockerfile")
-
-    # ローダー付きDockerfileリゾルバーを作成
     dockerfile_loader = make_dockerfile_loader(operations)
     resolver = DockerfileResolver(
-        dockerfile_path=None,  # 現在は言語固有のDockerfileはなし
+        dockerfile_path=None,
         oj_dockerfile_path=oj_dockerfile_path,
         dockerfile_loader=dockerfile_loader
     )
-
     context.dockerfile_resolver = resolver
 
-    # バリデーション
+
+def _validate_and_return_context(context):
+    """Validate execution data and return context."""
     is_valid, error_message = context.validate_execution_data()
     if not is_valid:
         raise ValueError(error_message)
-
     return context
