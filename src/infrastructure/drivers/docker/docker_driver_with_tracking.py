@@ -1,5 +1,7 @@
 """Docker driver with SQLite tracking for container operations."""
 import contextlib
+import hashlib
+import time
 from typing import Any, Optional
 
 from src.infrastructure.di_container import DIKey
@@ -86,8 +88,6 @@ class LocalDockerDriverWithTracking(LocalDockerDriver):
 
     def build(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
         """Build image and track in database."""
-        import hashlib
-
         # Calculate Dockerfile hash
         dockerfile_hash = hashlib.sha256(dockerfile_text.encode('utf-8')).hexdigest()[:12]
 
@@ -102,7 +102,6 @@ class LocalDockerDriverWithTracking(LocalDockerDriver):
                 )
 
         # Execute build
-        import time
         start_time = time.time()
         result = super().build(dockerfile_text, tag, options, show_output)
         build_time_ms = int((time.time() - start_time) * 1000)

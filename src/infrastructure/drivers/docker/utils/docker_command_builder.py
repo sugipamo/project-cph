@@ -26,6 +26,58 @@ def validate_docker_image_name(image_name: str) -> bool:
     return bool(re.match(pattern, image_name, re.IGNORECASE))
 
 
+def _add_docker_run_flags(cmd: list[str], options: dict[str, Any]) -> None:
+    """Add basic docker run flags to command."""
+    if options.get("detach", False):
+        cmd.append("-d")
+    if options.get("interactive", False):
+        cmd.append("-i")
+    if options.get("tty", False):
+        cmd.append("-t")
+    if options.get("remove", False):
+        cmd.append("--rm")
+
+
+def _add_docker_run_ports(cmd: list[str], options: dict[str, Any]) -> None:
+    """Add port mappings to docker run command."""
+    if "ports" in options:
+        for port in options["ports"]:
+            cmd.extend(["-p", port])
+
+
+def _add_docker_run_volumes(cmd: list[str], options: dict[str, Any]) -> None:
+    """Add volume mounts to docker run command."""
+    if "volumes" in options:
+        for volume in options["volumes"]:
+            cmd.extend(["-v", volume])
+
+
+def _add_docker_run_environment(cmd: list[str], options: dict[str, Any]) -> None:
+    """Add environment variables to docker run command."""
+    if "environment" in options:
+        for env in options["environment"]:
+            cmd.extend(["-e", env])
+
+
+def _add_docker_run_misc_options(cmd: list[str], options: dict[str, Any]) -> None:
+    """Add miscellaneous options to docker run command."""
+    # Working directory
+    if "workdir" in options:
+        cmd.extend(["-w", options["workdir"]])
+
+    # User
+    if "user" in options:
+        cmd.extend(["-u", options["user"]])
+
+    # Network
+    if "network" in options:
+        cmd.extend(["--network", options["network"]])
+
+    # Additional arguments
+    if "extra_args" in options:
+        cmd.extend(options["extra_args"])
+
+
 def build_docker_run_command(image: str, name: Optional[str] = None, options: Optional[dict[str, Any]] = None) -> list[str]:
     """Build docker run command
 
@@ -43,56 +95,25 @@ def build_docker_run_command(image: str, name: Optional[str] = None, options: Op
         cmd.extend(["--name", name])
 
     if options:
-        if options.get("detach", False):
-            cmd.append("-d")
-        if options.get("interactive", False):
-            cmd.append("-i")
-        if options.get("tty", False):
-            cmd.append("-t")
-        if options.get("remove", False):
-            cmd.append("--rm")
+        _add_docker_run_flags(cmd, options)
+        _add_docker_run_ports(cmd, options)
+        _add_docker_run_volumes(cmd, options)
 
-        # Port mappings
-        if "ports" in options:
-            for port in options["ports"]:
-                cmd.extend(["-p", port])
-
-        # Volume mounts
-        if "volumes" in options:
-            for volume in options["volumes"]:
-                cmd.extend(["-v", volume])
-
-        # Environment variables
-        if "environment" in options:
-            for env in options["environment"]:
-                cmd.extend(["-e", env])
-
-        # Working directory
-        if "workdir" in options:
-            cmd.extend(["-w", options["workdir"]])
-
-        # User
-        if "user" in options:
-            cmd.extend(["-u", options["user"]])
-
-        # Network
-        if "network" in options:
-            cmd.extend(["--network", options["network"]])
-
-        # Additional arguments
-        if "extra_args" in options:
-            cmd.extend(options["extra_args"])
+        _add_docker_run_environment(cmd, options)
+        _add_docker_run_misc_options(cmd, options)
 
     cmd.append(image)
+    _add_docker_run_command(cmd, options)
+    return cmd
 
-    # Command to run inside container
+
+def _add_docker_run_command(cmd: list[str], options: Optional[dict[str, Any]]) -> None:
+    """Add container command to docker run command."""
     if options and "command" in options:
         if isinstance(options["command"], list):
             cmd.extend(options["command"])
         else:
             cmd.append(options["command"])
-
-    return cmd
 
 
 def build_docker_stop_command(name: str, timeout: Optional[int] = None) -> list[str]:

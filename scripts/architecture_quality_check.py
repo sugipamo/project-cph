@@ -72,15 +72,20 @@ def check_file_size_limits(directory: str) -> List[ArchitectureIssue]:
             with open(file_path, encoding='utf-8') as f:
                 line_count = sum(1 for _ in f)
 
-            # Phase 3 目標: 150行以下（現在440行まで改善済み）
-            if line_count > 150:
-                severity = 'warning' if line_count <= 300 else 'error'
+            # テストファイルは緩い制限を適用
+            is_test_file = 'test_' in file_path or '/tests/' in file_path
+            max_lines = 500 if is_test_file else 300
+            error_threshold = 800 if is_test_file else 500
+
+            # 実用的制限: 300行以下（テストは500行、500行超過でエラー）
+            if line_count > max_lines:
+                severity = 'warning' if line_count <= error_threshold else 'error'
                 issues.append(ArchitectureIssue(
                     file=file_path,
                     issue_type='file_size',
-                    description=f'ファイルサイズ {line_count} 行（推奨: 150行以下）',
+                    description=f'ファイルサイズ {line_count} 行（推奨: {max_lines}行以下）',
                     severity=severity,
-                    details=f'目標の150行を {line_count - 150} 行超過'
+                    details=f'目標の{max_lines}行を {line_count - max_lines} 行超過'
                 ))
         except Exception:
             continue

@@ -1,8 +1,11 @@
 """Python code execution driver."""
+import subprocess
+import sys
 from abc import abstractmethod
 from typing import Any, Optional
 
 from src.infrastructure.drivers.base.base_driver import BaseDriver
+from src.infrastructure.drivers.python.utils.python_utils import PythonUtils
 
 
 class PythonDriver(BaseDriver):
@@ -35,8 +38,6 @@ class PythonDriver(BaseDriver):
     def execute(self, request: Any) -> Any:
         """Execute a Python request."""
         if hasattr(request, 'code_or_file'):
-            from src.infrastructure.drivers.python.utils.python_utils import PythonUtils
-
             if PythonUtils.is_script_file(request.code_or_file):
                 return self.run_script_file(
                     request.code_or_file[0],
@@ -62,9 +63,6 @@ class LocalPythonDriver(PythonDriver):
 
     def run_code_string(self, code: str, cwd: Optional[str] = None) -> tuple[str, str, int]:
         """Execute Python code string using subprocess."""
-        import subprocess
-        import sys
-
         result = subprocess.run(
             [sys.executable, '-c', code],
             cwd=cwd,

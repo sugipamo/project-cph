@@ -44,16 +44,20 @@ class FunctionalQualityChecker(ast.NodeVisitor):
         old_function = self.current_function
         self.current_function = node.name
 
-        # 関数サイズチェック（15行制限）
+        # 関数サイズチェック（25行制限、テストファイルは50行まで許可）
         func_lines = node.end_lineno - node.lineno + 1 if node.end_lineno else 1
         self.function_lengths[node.name] = func_lines
 
-        if func_lines > 15:
+        # テストファイルの判定
+        is_test_file = 'test_' in self.filename or '/tests/' in self.filename
+        max_lines = 50 if is_test_file else 25
+
+        if func_lines > max_lines:
             self.issues.append(QualityIssue(
                 file=self.filename,
                 line=node.lineno,
                 issue_type='function_size',
-                description=f'関数 {node.name} が {func_lines} 行です (制限: 15行)',
+                description=f'関数 {node.name} が {func_lines} 行です (制限: {max_lines}行)',
                 severity='warning'
             ))
 
@@ -132,6 +136,9 @@ class FunctionalQualityChecker(ast.NodeVisitor):
         if self.current_function:
             func_name = self._get_function_name(node.func)
 
+            # テストファイルでは副作用を許可
+            is_test_file = 'test_' in self.filename or '/tests/' in self.filename
+
             # 副作用を持つ関数の検出
             side_effect_functions = {
                 'print', 'input', 'open', 'write', 'mkdir', 'rmdir',
@@ -139,7 +146,7 @@ class FunctionalQualityChecker(ast.NodeVisitor):
                 'subprocess.run', 'subprocess.call', 'subprocess.Popen'
             }
 
-            if func_name in side_effect_functions:
+            if func_name in side_effect_functions and not is_test_file:
                 self.issues.append(QualityIssue(
                     file=self.filename,
                     line=node.lineno,

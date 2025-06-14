@@ -1,5 +1,5 @@
 """プロバイダーファクトリー - DIコンテナで副作用プロバイダーを管理"""
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from src.infrastructure.config.unified_config_loader import UnifiedConfigLoader
 from src.infrastructure.drivers.logging import ConsoleLogger, SystemConsoleLogger
@@ -134,22 +134,14 @@ class ProviderFactory:
         self._initialize_providers()
 
 
-# グローバルファクトリーインスタンス（アプリケーション起動時に初期化）
-_global_factory: Optional[ProviderFactory] = None
+def initialize_providers(use_mocks: bool = False) -> ProviderFactory:
+    """プロバイダーファクトリーを初期化して返す"""
+    return ProviderFactory(use_mocks=use_mocks)
 
 
-def initialize_providers(use_mocks: bool = False) -> None:
-    """グローバルプロバイダーファクトリーを初期化"""
-    global _global_factory
-    _global_factory = ProviderFactory(use_mocks=use_mocks)
-
-
-def get_provider_factory() -> ProviderFactory:
-    """グローバルプロバイダーファクトリーを取得"""
-    global _global_factory
-    if _global_factory is None:
-        _global_factory = ProviderFactory()
-    return _global_factory
+def get_provider_factory(use_mocks: bool = False) -> ProviderFactory:
+    """新しいプロバイダーファクトリーを取得"""
+    return ProviderFactory(use_mocks=use_mocks)
 
 
 # 便利関数

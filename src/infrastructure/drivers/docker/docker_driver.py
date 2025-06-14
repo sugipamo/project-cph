@@ -1,5 +1,6 @@
 """Docker driver implementation for container operations.
 """
+import shlex
 from abc import abstractmethod
 from typing import Any, Optional, Union
 
@@ -12,6 +13,8 @@ from src.infrastructure.drivers.docker.utils import (
     build_docker_stop_command,
     parse_container_names,
 )
+from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
+from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
 
 
 class DockerDriver(BaseDriver):
@@ -67,9 +70,7 @@ class LocalDockerDriver(DockerDriver):
 
     def __init__(self, file_driver=None):
         super().__init__()
-        from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
         if file_driver is None:
-            from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
             file_driver = LocalFileDriver()
         self.shell_driver = LocalShellDriver(file_driver)
 
@@ -102,8 +103,6 @@ class LocalDockerDriver(DockerDriver):
         return result
 
     def exec_in_container(self, name: str, command: Union[str, list[str]], show_output: bool = True):
-        import shlex
-
         if isinstance(command, list):
             cmd = ["docker", "exec", name, *command]
         elif isinstance(command, str):
