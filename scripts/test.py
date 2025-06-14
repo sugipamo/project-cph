@@ -7,8 +7,40 @@
 import argparse
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 from typing import List, Tuple
+
+
+class ProgressSpinner:
+    """プログレスを表示するスピナー"""
+
+    def __init__(self, message: str):
+        self.message = message
+        self.spinner_chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+        self.running = False
+        self.thread = None
+
+    def start(self):
+        self.running = True
+        self.thread = threading.Thread(target=self._spin)
+        self.thread.daemon = True
+        self.thread.start()
+
+    def stop(self, success: bool = True):
+        self.running = False
+        if self.thread:
+            self.thread.join()
+        # スピナーを消去して結果を表示
+        print(f"\r{'✅' if success else '❌'} {self.message}", flush=True)
+
+    def _spin(self):
+        i = 0
+        while self.running:
+            print(f"\r{self.spinner_chars[i % len(self.spinner_chars)]} {self.message}...", end="", flush=True)
+            i += 1
+            time.sleep(0.1)
 
 
 class TestRunner:
@@ -19,6 +51,11 @@ class TestRunner:
 
     def run_command(self, cmd: List[str], description: str) -> Tuple[bool, str]:
         """コマンドを実行し、結果を返す"""
+        spinner = None
+        if not self.verbose:
+            spinner = ProgressSpinner(description)
+            spinner.start()
+
         try:
             result = subprocess.run(
                 cmd,
@@ -27,7 +64,12 @@ class TestRunner:
                 cwd=Path(__file__).parent.parent
             )
 
-            if result.returncode != 0:
+            success = result.returncode == 0
+
+            if spinner:
+                spinner.stop(success)
+
+            if not success:
                 if self.verbose:
                     print(f"❌ {description}")
                     print(f"   コマンド: {' '.join(cmd)}")
@@ -36,9 +78,13 @@ class TestRunner:
                 return False, result.stderr
             if self.verbose:
                 print(f"✅ {description}")
+
             return True, result.stdout
 
         except Exception as e:
+            if spinner:
+                spinner.stop(False)
+
             error_msg = f"{description}: {e!s}"
             self.issues.append(error_msg)
             if self.verbose:
@@ -103,14 +149,16 @@ class TestRunner:
         try:
             subprocess.run(["mypy", "--version"], capture_output=True, check=True)
         except (subprocess.CalledProcessError, FileNotFoundError):
-            if self.verbose:
+            if not self.verbose:
+                print("⚠️  mypyがインストールされていません（推奨）")
+            else:
                 print("⚠️  mypyがインストールされていません（推奨）")
             self.warnings.append("mypyがインストールされていません（推奨）")
             return True  # 型チェックなしでも続行
 
         return self.run_command(
             ["mypy", "src/", "--no-error-summary"],
-            "型チェック (mypy)"
+            "型チェック"
         )[0]
 
     def check_syntax(self) -> bool:
@@ -118,20 +166,39 @@ class TestRunner:
         import ast
         import glob
 
-        syntax_errors = []
-        for file_path in glob.glob('src/**/*.py', recursive=True):
-            try:
-                with open(file_path, encoding='utf-8') as f:
-                    ast.parse(f.read(), filename=file_path)
-            except SyntaxError as e:
-                syntax_errors.append(f'{file_path}:{e.lineno}: {e.msg}')
-            except Exception as e:
-                syntax_errors.append(f'{file_path}: {e}')
+        spinner = None
+        if not self.verbose:
+            spinner = ProgressSpinner("構文チェック")
+            spinner.start()
 
-        if syntax_errors:
-            self.issues.extend(syntax_errors)
+        try:
+            syntax_errors = []
+            for file_path in glob.glob('src/**/*.py', recursive=True):
+                try:
+                    with open(file_path, encoding='utf-8') as f:
+                        ast.parse(f.read(), filename=file_path)
+                except SyntaxError as e:
+                    syntax_errors.append(f'{file_path}:{e.lineno}: {e.msg}')
+                except Exception as e:
+                    syntax_errors.append(f'{file_path}: {e}')
+
+            success = len(syntax_errors) == 0
+
+            if spinner:
+                spinner.stop(success)
+            elif self.verbose:
+                print(f"{'✅' if success else '❌'} 構文チェック")
+
+            if syntax_errors:
+                self.issues.extend(syntax_errors)
+                return False
+            return True
+
+        except Exception as e:
+            if spinner:
+                spinner.stop(False)
+            self.issues.append(f"構文チェック: {e}")
             return False
-        return True
 
     def run_tests(self, pytest_args: List[str], no_coverage: bool = False, html_coverage: bool = False) -> bool:
         """pytest実行"""
