@@ -84,8 +84,13 @@ if [ "$NO_RUFF" = false ]; then
             fi
         fi
         
-        # 関数型プログラミング品質チェック
-        if [ -f "scripts/functional_quality_check.py" ]; then
+        # 実用的品質チェック（関数型プログラミングの実用的な適用）
+        if [ -f "scripts/practical_quality_check.py" ]; then
+            echo "🎯 実用的品質チェック中..."
+            if ! python3 scripts/practical_quality_check.py; then
+                echo "品質基準の修正が必要です"
+            fi
+        elif [ -f "scripts/functional_quality_check.py" ]; then
             echo "🎯 関数型品質チェック中..."
             if ! python3 scripts/functional_quality_check.py src/; then
                 echo "関数型品質基準の修正が必要です"

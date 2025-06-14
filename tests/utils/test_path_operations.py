@@ -9,7 +9,9 @@ from unittest.mock import patch
 
 import pytest
 
-from src.utils.path_operations import DockerPathOperations, PathInfo, PathOperationResult, PathOperations
+from src.utils.docker_path_ops import DockerPathOperations
+from src.utils.path_operations import PathOperations
+from src.utils.path_types import PathInfo, PathOperationResult
 
 
 class TestPathOperations:

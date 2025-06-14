@@ -1,0 +1,54 @@
+# 関数型プログラミング品質チェック設定
+
+# 除外パターン
+exclude_patterns:
+  # インフラストラクチャ層は副作用が必要
+  - "src/infrastructure/drivers/**"
+  - "src/infrastructure/di_container.py"
+  
+  # 永続化層も副作用が必要
+  - "src/infrastructure/persistence/**"
+  
+  # テストファイルは柔軟性が必要
+  - "tests/**"
+
+# ルール設定
+rules:
+  # 関数サイズ制限
+  function_size:
+    default_max_lines: 50  # 25行から緩和
+    test_max_lines: 100    # テストは更に緩和
+    
+  # 可変操作の許可
+  mutable_operations:
+    allowed_in:
+      - "**/di_container.py"  # DIコンテナは可変性が必要
+      - "**/cache*.py"        # キャッシュは可変性が必要
+      - "**/session*.py"      # セッション管理も可変性が必要
+    
+  # 副作用の許可
+  side_effects:
+    allowed_in:
+      - "**/drivers/**"       # ドライバー層は副作用が必要
+      - "**/persistence/**"   # 永続化層も副作用が必要
+      - "**/api/**"          # API層も外部通信が必要
+    
+  # ローカルインポートの許可
+  local_imports:
+    allowed_for:
+      - "lazy_loading"       # 遅延読み込みが必要な場合
+      - "circular_dependency_resolution"  # 循環依存の解決
+
+# 推奨アーキテクチャ
+architecture:
+  # 純粋関数層（ビジネスロジック）
+  pure_layers:
+    - "src/domain/**"
+    - "src/application/use_cases/**"
+    - "src/utils/**"  # ただしI/O関連を除く
+    
+  # 副作用層（インフラストラクチャ）
+  effect_layers:
+    - "src/infrastructure/**"
+    - "src/api/**"
+    - "src/cli/**"

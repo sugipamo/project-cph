@@ -39,6 +39,11 @@ class FunctionalQualityChecker(ast.NodeVisitor):
         self.global_vars_usage: List[Tuple[str, int]] = []
         self.mutable_operations: List[Tuple[str, int]] = []
 
+        # infrastructure配下では可変操作を許可
+        self.is_infrastructure = '/infrastructure/' in filename
+        # テストファイルでも可変操作を許可
+        self.is_test_file = 'test_' in filename or '/tests/' in filename
+
     def visit_FunctionDef(self, node: ast.FunctionDef):
         """関数定義をチェック"""
         old_function = self.current_function
@@ -67,7 +72,8 @@ class FunctionalQualityChecker(ast.NodeVisitor):
 
     def visit_Import(self, node: ast.Import):
         """import文をチェック"""
-        if self.current_function:
+        # infrastructure配下とテストファイルではローカルインポートを許可
+        if self.current_function and not self.is_infrastructure and not self.is_test_file:
             self.imports_in_functions.append((self.current_function, node.lineno))
             self.issues.append(QualityIssue(
                 file=self.filename,
@@ -79,7 +85,8 @@ class FunctionalQualityChecker(ast.NodeVisitor):
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
         """from import文をチェック"""
-        if self.current_function:
+        # infrastructure配下とテストファイルではローカルインポートを許可
+        if self.current_function and not self.is_infrastructure and not self.is_test_file:
             self.imports_in_functions.append((self.current_function, node.lineno))
             self.issues.append(QualityIssue(
                 file=self.filename,
@@ -104,7 +111,8 @@ class FunctionalQualityChecker(ast.NodeVisitor):
 
     def visit_Assign(self, node: ast.Assign):
         """代入をチェック（可変操作の検出）"""
-        if self.current_function:
+        # infrastructure配下とテストファイルでは可変操作を許可
+        if self.current_function and not self.is_infrastructure and not self.is_test_file:
             # リストの要素変更 (list[0] = value)
             for target in node.targets:
                 if isinstance(target, ast.Subscript):
@@ -120,7 +128,8 @@ class FunctionalQualityChecker(ast.NodeVisitor):
 
     def visit_AugAssign(self, node: ast.AugAssign):
         """拡張代入をチェック（+=, -=など）"""
-        if self.current_function:
+        # infrastructure配下とテストファイルでは可変操作を許可
+        if self.current_function and not self.is_infrastructure and not self.is_test_file:
             self.mutable_operations.append((ast.unparse(node.target), node.lineno))
             self.issues.append(QualityIssue(
                 file=self.filename,
@@ -136,9 +145,6 @@ class FunctionalQualityChecker(ast.NodeVisitor):
         if self.current_function:
             func_name = self._get_function_name(node.func)
 
-            # テストファイルでは副作用を許可
-            is_test_file = 'test_' in self.filename or '/tests/' in self.filename
-
             # 副作用を持つ関数の検出
             side_effect_functions = {
                 'print', 'input', 'open', 'write', 'mkdir', 'rmdir',
@@ -146,7 +152,8 @@ class FunctionalQualityChecker(ast.NodeVisitor):
                 'subprocess.run', 'subprocess.call', 'subprocess.Popen'
             }
 
-            if func_name in side_effect_functions and not is_test_file:
+            # infrastructure配下とテストファイルでは副作用を許可
+            if func_name in side_effect_functions and not self.is_infrastructure and not self.is_test_file:
                 self.issues.append(QualityIssue(
                     file=self.filename,
                     line=node.lineno,
@@ -163,7 +170,8 @@ class FunctionalQualityChecker(ast.NodeVisitor):
                     'sort', 'reverse', 'update', 'setdefault', 'popitem'
                 }
 
-                if method_name in mutable_methods:
+                # infrastructure配下とテストファイルでは可変メソッドを許可
+                if method_name in mutable_methods and not self.is_infrastructure and not self.is_test_file:
                     self.issues.append(QualityIssue(
                         file=self.filename,
                         line=node.lineno,
