@@ -47,15 +47,37 @@ class ExecutionConfigurationFactory:
         Returns:
             ExecutionConfiguration: 変換された実行設定
         """
-        # 基本情報を抽出
-        contest_name = getattr(context, 'contest_name', '')
-        problem_name = getattr(context, 'problem_name', '')
-        language = getattr(context, 'language', '')
-        env_type = getattr(context, 'env_type', 'local')
-        command_type = getattr(context, 'command_type', '')
+        basic_info = self._extract_basic_info(context)
+        paths = self._create_execution_paths()
+        file_patterns = self._extract_file_patterns(context, basic_info['language'])
+        runtime_config = self._create_runtime_config(basic_info['language'])
+        output_config = self._create_output_config()
 
-        # パス情報を構築
-        paths = ExecutionPaths(
+        return ExecutionConfiguration(
+            contest_name=basic_info['contest_name'],
+            problem_name=basic_info['problem_name'],
+            language=basic_info['language'],
+            env_type=basic_info['env_type'],
+            command_type=basic_info['command_type'],
+            paths=paths,
+            file_patterns=file_patterns,
+            runtime_config=runtime_config,
+            output_config=output_config
+        )
+
+    def _extract_basic_info(self, context) -> dict:
+        """Extract basic information from context."""
+        return {
+            'contest_name': getattr(context, 'contest_name', ''),
+            'problem_name': getattr(context, 'problem_name', ''),
+            'language': getattr(context, 'language', ''),
+            'env_type': getattr(context, 'env_type', 'local'),
+            'command_type': getattr(context, 'command_type', '')
+        }
+
+    def _create_execution_paths(self) -> ExecutionPaths:
+        """Create default execution paths."""
+        return ExecutionPaths(
             workspace=Path('./workspace'),
             contest_current=Path('./contest_current'),
             contest_stock=Path('./contest_stock'),
@@ -63,17 +85,17 @@ class ExecutionConfigurationFactory:
             contest_temp=Path('./contest_temp')
         )
 
-        # ファイルパターンを抽出（存在する場合）
-        file_patterns = {}
+    def _extract_file_patterns(self, context, language: str) -> dict:
+        """Extract file patterns from context."""
         if hasattr(context, 'env_json') and context.env_json:
             lang_config = context.env_json.get(language, {})
-            file_patterns = lang_config.get('file_patterns', {})
+            return lang_config.get('file_patterns', {})
+        return {}
 
-        # 言語レジストリから設定を取得
+    def _create_runtime_config(self, language: str) -> RuntimeConfig:
+        """Create runtime configuration for language."""
         language_registry = get_language_registry()
-
-        # 実行設定を構築
-        runtime_config = RuntimeConfig(
+        return RuntimeConfig(
             language_id=language,
             source_file_name=f'main.{language_registry.get_file_extension(language)}',
             run_command=language_registry.get_run_command(language),
@@ -81,24 +103,13 @@ class ExecutionConfigurationFactory:
             retry_settings={}
         )
 
-        # 出力設定を構築
-        output_config = OutputConfig(
+    def _create_output_config(self) -> OutputConfig:
+        """Create default output configuration."""
+        return OutputConfig(
             show_workflow_summary=True,
             show_step_details=True,
             show_execution_completion=True,
             format_preset='default'
-        )
-
-        return ExecutionConfiguration(
-            contest_name=contest_name,
-            problem_name=problem_name,
-            language=language,
-            env_type=env_type,
-            command_type=command_type,
-            paths=paths,
-            file_patterns=file_patterns,
-            runtime_config=runtime_config,
-            output_config=output_config
         )
 
     def _parse_arguments(self, args: List[str]) -> argparse.Namespace:

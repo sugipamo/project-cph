@@ -77,17 +77,14 @@ class PracticalQualityChecker(ast.NodeVisitor):
 
         # 属性への代入をチェック
         for target in node.targets:
-            if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name):
-                if target.value.id == 'self':
-                    # __init__メソッド内は許可
-                    if self.current_function != '__init__':
-                        self.issues.append(QualityIssue(
-                            file=self.filename,
-                            line=node.lineno,
-                            issue_type='mutable_state',
-                            description=f'ドメイン層での可変状態: self.{target.attr} への代入',
-                            severity='warning'
-                        ))
+            if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == 'self' and self.current_function != '__init__':
+                self.issues.append(QualityIssue(
+                    file=self.filename,
+                    line=node.lineno,
+                    issue_type='mutable_state',
+                    description=f'ドメイン層での可変状態: self.{target.attr} への代入',
+                    severity='warning'
+                ))
 
     def visit_Call(self, node: ast.Call):
         """関数呼び出しをチェック"""

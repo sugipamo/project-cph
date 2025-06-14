@@ -49,8 +49,10 @@ class PathOperations:
 
             if target.is_absolute():
                 resolved_path = target.resolve()
+                resolution_method = "absolute"
             else:
                 resolved_path = (base_path / target).resolve()
+                resolution_method = "relative"
 
             result = str(resolved_path)
 
@@ -60,7 +62,7 @@ class PathOperations:
                     result=result,
                     errors=errors,
                     warnings=warnings,
-                    metadata={"base_dir": str(base_path), "target_path": str(target)}
+                    metadata={"base_dir": str(base_path), "target_path": str(target), "resolution_method": resolution_method}
                 )
             return result
 
@@ -148,12 +150,18 @@ class PathOperations:
             result = os.path.join(*str_paths)
             result = os.path.normpath(result)
 
+            # Check for potentially unsafe paths
+            warnings = []
+            for path in str_paths:
+                if ".." in path:
+                    warnings.append(f"Potentially unsafe path component: {path}")
+
             if strict:
                 return PathOperationResult(
                     success=True,
                     result=result,
                     errors=[],
-                    warnings=[],
+                    warnings=warnings,
                     metadata={"input_paths": str_paths}
                 )
             return result
@@ -177,6 +185,21 @@ class PathOperations:
         try:
             target_path = Path(target).resolve()
             base_path = Path(base).resolve()
+
+            # Check if target is actually relative to base
+            try:
+                target_path.relative_to(base_path)
+            except ValueError as err:
+                error_msg = f"Cannot compute relative path: {target} is not relative to {base}"
+                if strict:
+                    return PathOperationResult(
+                        success=False,
+                        result=None,
+                        errors=[error_msg],
+                        warnings=[],
+                        metadata={"target": str(target_path), "base": str(base_path)}
+                    )
+                raise ValueError(error_msg) from err
 
             relative_path = os.path.relpath(str(target_path), str(base_path))
 
@@ -204,7 +227,7 @@ class PathOperations:
     @staticmethod
     def is_subdirectory(child: Union[str, Path],
                        parent: Union[str, Path],
-                       strict: bool = False) -> Union[bool, PathOperationResult]:
+                       strict: bool = False) -> Union[bool, tuple]:
         """childがparentのサブディレクトリかどうかチェック"""
         try:
             child_path = Path(child).resolve()
@@ -217,24 +240,26 @@ class PathOperations:
                 result = False
 
             if strict:
-                return PathOperationResult(
+                operation_result = PathOperationResult(
                     success=True,
                     result=result,
                     errors=[],
                     warnings=[],
-                    metadata={"child": str(child_path), "parent": str(parent_path)}
+                    metadata={"child": str(child_path), "parent": str(parent_path), "is_subdirectory": result}
                 )
+                return result, operation_result
             return result
 
         except Exception as e:
             if strict:
-                return PathOperationResult(
+                operation_result = PathOperationResult(
                     success=False,
                     result=None,
                     errors=[str(e)],
                     warnings=[],
                     metadata={"error_type": type(e).__name__}
                 )
+                return False, operation_result
             raise
 
     @staticmethod
@@ -259,6 +284,79 @@ class PathOperations:
                     metadata={"file_path": str(path_obj), "created": not parent_dir.exists()}
                 )
             return result
+
+        except Exception as e:
+            if strict:
+                return PathOperationResult(
+                    success=False,
+                    result=None,
+                    errors=[str(e)],
+                    warnings=[],
+                    metadata={"error_type": type(e).__name__}
+                )
+            raise
+
+    @staticmethod
+    def get_file_extension(file_path: Union[str, Path],
+                          strict: bool = False) -> Union[str, PathOperationResult]:
+        """ファイルの拡張子を取得"""
+        try:
+            path_obj = Path(file_path)
+            extension = path_obj.suffix
+
+            if strict:
+                return PathOperationResult(
+                    success=True,
+                    result=extension,
+                    errors=[],
+                    warnings=[],
+                    metadata={"stem": path_obj.stem, "name": path_obj.name}
+                )
+            return extension
+
+        except Exception as e:
+            if strict:
+                return PathOperationResult(
+                    success=False,
+                    result=None,
+                    errors=[str(e)],
+                    warnings=[],
+                    metadata={"error_type": type(e).__name__}
+                )
+            raise
+
+    @staticmethod
+    def change_extension(file_path: Union[str, Path],
+                        new_extension: str,
+                        strict: bool = False) -> Union[str, PathOperationResult]:
+        """ファイルの拡張子を変更"""
+        try:
+            path_obj = Path(file_path)
+            original_extension = path_obj.suffix
+
+            # Ensure new_extension starts with . if it's not empty
+            if new_extension and not new_extension.startswith('.'):
+                new_extension = '.' + new_extension
+
+            # Create new path by replacing the suffix
+            if original_extension:
+                new_path = str(path_obj).replace(original_extension, new_extension)
+            else:
+                new_path = str(path_obj) + new_extension
+
+            if strict:
+                return PathOperationResult(
+                    success=True,
+                    result=new_path,
+                    errors=[],
+                    warnings=[],
+                    metadata={
+                        "original_extension": original_extension,
+                        "new_extension": new_extension,
+                        "original_path": str(path_obj)
+                    }
+                )
+            return new_path
 
         except Exception as e:
             if strict:

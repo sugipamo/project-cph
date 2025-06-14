@@ -10,24 +10,23 @@ from src.domain.constants.operation_type import OperationType
 class BaseRequest(ABC):
     """Abstract base class for all operation requests."""
 
-    def __init__(self, name: Optional[str] = None, debug_tag: Optional[str] = None):
+    def __init__(self, name: Optional[str] = None, debug_tag: Optional[str] = None, _executed: bool = False, _result: Any = None, _debug_info: Optional[dict] = None):
         self.name = name
-        self._set_debug_info(debug_tag)
-        self._executed = False
-        self._result = None
+        self._executed = _executed
+        self._result = _result
+        self.debug_info = _debug_info if _debug_info is not None else self._create_debug_info(debug_tag)
 
     def set_name(self, name: str) -> 'BaseRequest':
         """Set the name of this request."""
         self.name = name
         return self
 
-    def _set_debug_info(self, debug_tag: Optional[str] = None) -> None:
-        """Set debug information for request tracking."""
+    def _create_debug_info(self, debug_tag: Optional[str] = None) -> Optional[dict]:
+        """Create debug information for request tracking."""
         if os.environ.get("CPH_DEBUG_REQUEST_INFO", "1") != "1":
-            self.debug_info = None
-            return
+            return None
         frame = inspect.stack()[3]
-        self.debug_info = {
+        return {
             "file": frame.filename,
             "line": frame.lineno,
             "function": frame.function,

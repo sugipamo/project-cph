@@ -113,50 +113,102 @@ def classify_error(exception: Exception, context: str = "") -> ErrorCode:
     error_message = str(exception).lower()
 
     # File-related errors
+    file_error = _classify_file_errors(error_message, context)
+    if file_error:
+        return file_error
+
+    # Command-related errors
+    command_error = _classify_command_errors(error_message, context)
+    if command_error:
+        return command_error
+
+    # Docker-related errors
+    docker_error = _classify_docker_errors(error_message)
+    if docker_error:
+        return docker_error
+
+    # Python-related errors
+    python_error = _classify_python_errors(exception, error_message)
+    if python_error:
+        return python_error
+
+    # Configuration errors
+    config_error = _classify_config_errors(error_message)
+    if config_error:
+        return config_error
+
+    # Network errors
+    network_error = _classify_network_errors(error_message)
+    if network_error:
+        return network_error
+
+    return ErrorCode.UNKNOWN_ERROR
+
+
+def _classify_file_errors(error_message: str, context: str) -> ErrorCode:
+    """Classify file-related errors."""
     if "no such file or directory" in error_message or "file not found" in error_message:
         return ErrorCode.FILE_NOT_FOUND
     if "permission denied" in error_message and "file" in context.lower():
         return ErrorCode.FILE_PERMISSION_DENIED
+    return None
 
-    # Command-related errors
+
+def _classify_command_errors(error_message: str, context: str) -> ErrorCode:
+    """Classify command-related errors."""
     if "command not found" in error_message or "no such file or directory" in error_message:
         return ErrorCode.COMMAND_NOT_FOUND
     if "timeout" in error_message:
         return ErrorCode.COMMAND_TIMEOUT
     if "permission denied" in error_message and "command" in context.lower():
         return ErrorCode.COMMAND_PERMISSION_DENIED
+    return None
 
-    # Docker-related errors
-    if "docker" in error_message:
-        if "not found" in error_message:
-            if "container" in error_message:
-                return ErrorCode.CONTAINER_NOT_FOUND
-            if "image" in error_message:
-                return ErrorCode.IMAGE_NOT_FOUND
-        if "permission denied" in error_message:
-            return ErrorCode.DOCKER_PERMISSION_DENIED
-        if "already running" in error_message:
-            return ErrorCode.CONTAINER_ALREADY_RUNNING
 
-    # Python-related errors
+def _classify_docker_errors(error_message: str) -> ErrorCode:
+    """Classify Docker-related errors."""
+    if "docker" not in error_message:
+        return None
+
+    if "not found" in error_message:
+        if "container" in error_message:
+            return ErrorCode.CONTAINER_NOT_FOUND
+        if "image" in error_message:
+            return ErrorCode.IMAGE_NOT_FOUND
+    if "permission denied" in error_message:
+        return ErrorCode.DOCKER_PERMISSION_DENIED
+    if "already running" in error_message:
+        return ErrorCode.CONTAINER_ALREADY_RUNNING
+    return None
+
+
+def _classify_python_errors(exception: Exception, error_message: str) -> ErrorCode:
+    """Classify Python-related errors."""
     if isinstance(exception, SyntaxError):
         return ErrorCode.PYTHON_SYNTAX_ERROR
     if isinstance(exception, ModuleNotFoundError):
         return ErrorCode.PYTHON_MODULE_NOT_FOUND
     if "python" in error_message and "not found" in error_message:
         return ErrorCode.PYTHON_NOT_FOUND
+    return None
 
-    # Configuration errors
-    if "config" in error_message or "configuration" in error_message:
-        if "not found" in error_message:
-            return ErrorCode.CONFIG_NOT_FOUND
-        if "parse" in error_message or "syntax" in error_message:
-            return ErrorCode.CONFIG_PARSE_ERROR
 
-    # Network errors
+def _classify_config_errors(error_message: str) -> ErrorCode:
+    """Classify configuration-related errors."""
+    if "config" not in error_message and "configuration" not in error_message:
+        return None
+
+    if "not found" in error_message:
+        return ErrorCode.CONFIG_NOT_FOUND
+    if "parse" in error_message or "syntax" in error_message:
+        return ErrorCode.CONFIG_PARSE_ERROR
+    return None
+
+
+def _classify_network_errors(error_message: str) -> ErrorCode:
+    """Classify network-related errors."""
     if "timeout" in error_message and ("network" in error_message or "connection" in error_message):
         return ErrorCode.NETWORK_TIMEOUT
     if "connection" in error_message and "failed" in error_message:
         return ErrorCode.NETWORK_CONNECTION_FAILED
-
-    return ErrorCode.UNKNOWN_ERROR
+    return None

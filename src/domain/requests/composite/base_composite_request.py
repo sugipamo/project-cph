@@ -8,15 +8,15 @@ from src.domain.requests.base.base_request import BaseRequest
 class BaseCompositeRequest(BaseRequest):
     """Base class for composite requests that contain multiple sub-requests."""
 
-    def __init__(self, requests: list[BaseRequest], debug_tag: Optional[str] = None, name: Optional[str] = None):
-        super().__init__(name=name, debug_tag=debug_tag)
+    def __init__(self, requests: list[BaseRequest], debug_tag: Optional[str] = None, name: Optional[str] = None, _executed: bool = False, _results = None, _debug_info: Optional[dict] = None):
+        super().__init__(name=name, debug_tag=debug_tag, _executed=_executed, _result=None, _debug_info=_debug_info)
         if not all(isinstance(r, BaseRequest) for r in requests):
             raise TypeError("All elements of 'requests' must be BaseRequest (or its subclass)")
         self.requests = requests
-        self._executed = False
-        self._results = None
+        self._results = _results
 
     def set_name(self, name: str) -> 'BaseCompositeRequest':
+        """Set the name of this request."""
         self.name = name
         return self
 

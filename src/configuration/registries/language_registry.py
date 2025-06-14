@@ -112,7 +112,13 @@ class LanguageRegistry:
 
     def _load_default_languages(self) -> None:
         """デフォルト言語設定を読み込み"""
-        default_languages = {
+        default_languages = self._get_default_language_configs()
+        for name, config in default_languages.items():
+            self.register_language(name, config)
+
+    def _get_default_language_configs(self) -> dict:
+        """デフォルト言語設定の辞書を取得"""
+        return {
             'python': LanguageConfig(
                 extension='py',
                 run_command='python3',
@@ -158,9 +164,6 @@ class LanguageRegistry:
                 aliases=['kt']
             )
         }
-
-        for name, config in default_languages.items():
-            self.register_language(name, config)
 
 
 # グローバルレジストリインスタンス

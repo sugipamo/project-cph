@@ -76,53 +76,63 @@ class DockerCleanupCommand:
             errors=[]
         )
 
-        # Find unused containers
+        unused_containers = self._get_filtered_unused_containers(days_unused, exclude_patterns)
+
+        for container in unused_containers:
+            self._process_container_removal(container, dry_run, result)
+
+        return result
+
+    def _get_filtered_unused_containers(self, days_unused: int, exclude_patterns: Optional[List[str]]) -> list:
+        """Get unused containers filtered by exclude patterns."""
         unused_containers = self.find_unused_containers(days_unused)
 
-        # Filter out excluded patterns
         if exclude_patterns:
             unused_containers = [
                 c for c in unused_containers
                 if not any(pattern in c['container_name'] for pattern in exclude_patterns)
             ]
 
-        # Remove containers
-        for container in unused_containers:
-            container_name = container['container_name']
+        return unused_containers
 
-            if dry_run:
-                print(f"Would remove container: {container_name} (last used: {container['last_used_at']})")
+    def _process_container_removal(self, container: dict, dry_run: bool, result: CleanupResult) -> None:
+        """Process removal of a single container."""
+        container_name = container['container_name']
+
+        if dry_run:
+            print(f"Would remove container: {container_name} (last used: {container['last_used_at']})")
+            result.containers_removed.append(container_name)
+            return
+
+        try:
+            # Check if container exists in Docker
+            ps_result = self.docker_driver.ps(all=True, show_output=False, names_only=True)
+            if container_name in ps_result:
+                self._remove_docker_container(container_name, result)
+            else:
+                # Container doesn't exist in Docker but exists in DB
+                self.container_repo.mark_container_removed(container_name)
                 result.containers_removed.append(container_name)
-                continue
+                print(f"Marked container as removed (not in Docker): {container_name}")
 
-            try:
-                # Check if container exists in Docker
-                ps_result = self.docker_driver.ps(all=True, show_output=False, names_only=True)
-                if container_name in ps_result:
-                    # Remove from Docker
-                    remove_result = self.docker_driver.remove_container(
-                        container_name,
-                        force=True,
-                        show_output=False
-                    )
+        except Exception as e:
+            result.errors.append(f"Error removing container {container_name}: {e!s}")
 
-                    if remove_result.success:
-                        result.containers_removed.append(container_name)
-                        print(f"Removed container: {container_name}")
-                    else:
-                        result.errors.append(
-                            f"Failed to remove container {container_name}: {remove_result.stderr}"
-                        )
-                else:
-                    # Container doesn't exist in Docker but exists in DB
-                    self.container_repo.mark_container_removed(container_name)
-                    result.containers_removed.append(container_name)
-                    print(f"Marked container as removed (not in Docker): {container_name}")
+    def _remove_docker_container(self, container_name: str, result: CleanupResult) -> None:
+        """Remove container from Docker."""
+        remove_result = self.docker_driver.remove_container(
+            container_name,
+            force=True,
+            show_output=False
+        )
 
-            except Exception as e:
-                result.errors.append(f"Error removing container {container_name}: {e!s}")
-
-        return result
+        if remove_result.success:
+            result.containers_removed.append(container_name)
+            print(f"Removed container: {container_name}")
+        else:
+            result.errors.append(
+                f"Failed to remove container {container_name}: {remove_result.stderr}"
+            )
 
     def cleanup_images(
         self,
@@ -146,56 +156,61 @@ class DockerCleanupCommand:
             errors=[]
         )
 
-        # Find unused images
+        unused_images = self._get_filtered_unused_images(days_unused, exclude_patterns)
+
+        for image in unused_images:
+            if not self._is_image_in_use(image):
+                self._process_image_removal(image, dry_run, result)
+
+        return result
+
+    def _get_filtered_unused_images(self, days_unused: int, exclude_patterns: Optional[List[str]]) -> list:
+        """Get unused images filtered by exclude patterns."""
         unused_images = self.find_unused_images(days_unused)
 
-        # Filter out excluded patterns
         if exclude_patterns:
             unused_images = [
                 img for img in unused_images
                 if not any(pattern in img['name'] for pattern in exclude_patterns)
             ]
 
-        # Check if any containers are using these images
-        for image in unused_images:
-            image_name = f"{image['name']}:{image['tag']}"
+        return unused_images
 
-            # Check if any containers use this image
-            containers_using = self.container_repo.find_containers_by_status("running")
-            containers_using.extend(self.container_repo.find_containers_by_status("stopped"))
+    def _is_image_in_use(self, image: dict) -> bool:
+        """Check if image is currently in use by any containers."""
+        containers_using = self.container_repo.find_containers_by_status("running")
+        containers_using.extend(self.container_repo.find_containers_by_status("stopped"))
 
-            image_in_use = any(
-                c['image_name'] == image['name']
-                for c in containers_using
-                if c['status'] != 'removed'
-            )
+        return any(
+            c['image_name'] == image['name']
+            for c in containers_using
+            if c['status'] != 'removed'
+        )
 
-            if image_in_use:
-                continue
+    def _process_image_removal(self, image: dict, dry_run: bool, result: CleanupResult) -> None:
+        """Process removal of a single image."""
+        image_name = f"{image['name']}:{image['tag']}"
 
-            if dry_run:
-                print(f"Would remove image: {image_name} (last used: {image['last_used_at']})")
+        if dry_run:
+            print(f"Would remove image: {image_name} (last used: {image['last_used_at']})")
+            result.images_removed.append(image_name)
+            return
+
+        try:
+            remove_result = self.docker_driver.image_rm(image_name, show_output=False)
+
+            if remove_result.success:
                 result.images_removed.append(image_name)
-                continue
+                if image.get('size_bytes'):
+                    result.space_freed_bytes += image['size_bytes']
+                print(f"Removed image: {image_name}")
+            else:
+                result.errors.append(
+                    f"Failed to remove image {image_name}: {remove_result.stderr}"
+                )
 
-            try:
-                # Remove from Docker
-                remove_result = self.docker_driver.image_rm(image_name, show_output=False)
-
-                if remove_result.success:
-                    result.images_removed.append(image_name)
-                    if image.get('size_bytes'):
-                        result.space_freed_bytes += image['size_bytes']
-                    print(f"Removed image: {image_name}")
-                else:
-                    result.errors.append(
-                        f"Failed to remove image {image_name}: {remove_result.stderr}"
-                    )
-
-            except Exception as e:
-                result.errors.append(f"Error removing image {image_name}: {e!s}")
-
-        return result
+        except Exception as e:
+            result.errors.append(f"Error removing image {image_name}: {e!s}")
 
     def cleanup_all(
         self,

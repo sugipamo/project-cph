@@ -11,14 +11,12 @@ class CompositeRequest(BaseCompositeRequest):
     """Composite request that contains multiple sub-requests."""
 
     def __init__(self, requests: list[BaseRequest], debug_tag: Optional[str] = None, name: Optional[str] = None,
-                 execution_controller: Optional[ExecutionInterface] = None):
+                 execution_controller: Optional[ExecutionInterface] = None, _executed: bool = False, _results = None, _debug_info: Optional[dict] = None):
         # Initialize structure first before calling super().__init__
         self.structure = CompositeStructure(requests)
         self.execution_controller = execution_controller  # Will be injected from infrastructure
-        self._executed = False
-        self._results = None
         # Now call super().__init__ which tries to set self.requests
-        super().__init__(requests, name=name, debug_tag=debug_tag)
+        super().__init__(requests, name=name, debug_tag=debug_tag, _executed=_executed, _results=_results, _debug_info=_debug_info)
 
     def __len__(self) -> int:
         return len(self.structure)
@@ -55,7 +53,6 @@ class CompositeRequest(BaseCompositeRequest):
             if self.execution_controller and hasattr(self.execution_controller, '_check_failure'):
                 self.execution_controller._check_failure(req, result)
 
-        self._results = results
         return results
 
     def __repr__(self) -> str:

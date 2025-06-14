@@ -31,25 +31,24 @@ class ShellRequest(BaseRequest):
         return OperationType.SHELL
 
     def _execute_core(self, driver: Any) -> OperationResult:
-        """Core execution logic for shell commands.
-
-        Performance optimizations:
-        - More precise timing with perf_counter
-        - Optimized imports
-        - Retry logic for transient failures
-        """
+        """Core execution logic for shell commands."""
         start_time = time.perf_counter()
 
-        # Apply retry logic for network/timeout related commands
+        try:
+            completed = self._execute_shell_command(driver)
+            end_time = time.perf_counter()
+            return self._create_success_result(completed, start_time, end_time)
+        except Exception as e:
+            end_time = time.perf_counter()
+            return self._create_error_result(e, driver, start_time, end_time)
+
+    def _execute_shell_command(self, driver: Any):
+        """Execute the shell command with retry logic."""
         from src.utils.retry_decorator import COMMAND_RETRY_CONFIG, RetryableOperation
         retryable = RetryableOperation(COMMAND_RETRY_CONFIG)
-        def execute_command():
-            # Handle unified driver case using duck typing
-            actual_driver = driver
-            if hasattr(driver, '_get_cached_driver') and callable(driver._get_cached_driver):
-                actual_driver = driver._get_cached_driver("shell_driver")
 
-            # Use the shell driver to run the command
+        def execute_command():
+            actual_driver = self._get_actual_driver(driver)
             return actual_driver.run(
                 self.cmd,
                 cwd=self.cwd,
@@ -58,49 +57,57 @@ class ShellRequest(BaseRequest):
                 timeout=self.timeout
             )
 
+        return retryable.execute_with_retry(execute_command)
+
+    def _get_actual_driver(self, driver: Any):
+        """Get the actual driver, handling unified driver case."""
+        if hasattr(driver, '_get_cached_driver') and callable(driver._get_cached_driver):
+            return driver._get_cached_driver("shell_driver")
+        return driver
+
+    def _create_success_result(self, completed, start_time: float, end_time: float) -> OperationResult:
+        """Create a successful operation result."""
+        return OperationResult(
+            stdout=completed.stdout,
+            stderr=completed.stderr,
+            returncode=completed.returncode,
+            request=self,
+            cmd=self.cmd,
+            start_time=start_time,
+            end_time=end_time
+        )
+
+    def _create_error_result(self, e: Exception, driver: Any, start_time: float, end_time: float) -> OperationResult:
+        """Create an error operation result with proper logging."""
+        from src.domain.exceptions.error_codes import ErrorSuggestion, classify_error
+        error_code = classify_error(e, "shell command")
+        suggestion = ErrorSuggestion.get_suggestion(error_code)
+        formatted_error = f"Shell command failed: {e}\nError Code: {error_code.value}\nSuggestion: {suggestion}"
+
+        self._log_error(driver, e, error_code)
+
+        return OperationResult(
+            stdout="",
+            stderr=formatted_error,
+            returncode=None,
+            request=self,
+            cmd=self.cmd,
+            start_time=start_time,
+            end_time=end_time
+        )
+
+    def _log_error(self, driver: Any, e: Exception, error_code):
+        """Log error with correlation ID."""
+        error_id = str(uuid.uuid4())[:8]
         try:
-            # Execute with retry logic for transient failures
-            completed = retryable.execute_with_retry(execute_command)
-            end_time = time.perf_counter()
-            return OperationResult(
-                stdout=completed.stdout,
-                stderr=completed.stderr,
-                returncode=completed.returncode,
-                request=self,
-                cmd=self.cmd,
-                start_time=start_time,
-                end_time=end_time
-            )
-        except Exception as e:
-            end_time = time.perf_counter()
-            from src.domain.exceptions.error_codes import ErrorSuggestion, classify_error
-            error_code = classify_error(e, "shell command")
-            suggestion = ErrorSuggestion.get_suggestion(error_code)
-            formatted_error = f"Shell command failed: {e}\nError Code: {error_code.value}\nSuggestion: {suggestion}"
-
-            # Log error with correlation ID
-            error_id = str(uuid.uuid4())[:8]
-            try:
-                # Try to get logger from driver if available
-                if hasattr(driver, 'logger') and hasattr(driver.logger, 'log_error_with_correlation'):
-                    driver.logger.log_error_with_correlation(
-                        error_id, error_code.value, str(e),
-                        {'command': self.cmd, 'cwd': self.cwd}
-                    )
-            except Exception:
-                # Fallback logging if structured logging fails
-                import logging
-                logging.error(f"Shell command failed [{error_id}]: {e}")
-
-            return OperationResult(
-                stdout="",
-                stderr=formatted_error,
-                returncode=None,
-                request=self,
-                cmd=self.cmd,
-                start_time=start_time,
-                end_time=end_time
-            )
+            if hasattr(driver, 'logger') and hasattr(driver.logger, 'log_error_with_correlation'):
+                driver.logger.log_error_with_correlation(
+                    error_id, error_code.value, str(e),
+                    {'command': self.cmd, 'cwd': self.cwd}
+                )
+        except Exception:
+            import logging
+            logging.error(f"Shell command failed [{error_id}]: {e}")
 
     def __repr__(self) -> str:
         """String representation of the request."""

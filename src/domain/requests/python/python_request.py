@@ -34,77 +34,9 @@ class PythonRequest(BaseRequest):
             if self.cwd:
                 os.chdir(self.cwd)
 
-            # Check if we have a mock python driver
-            if driver and hasattr(driver, 'python_driver'):
-                python_driver = driver.python_driver
-                if hasattr(python_driver, 'is_script_file'):
-                    is_script = python_driver.is_script_file(self.code_or_file)
-                else:
-                    is_script = PythonUtils.is_script_file(self.code_or_file)
-
-                if is_script:
-                    stdout, stderr, returncode = python_driver.run_script_file(
-                        self.code_or_file[0], cwd=self.cwd
-                    )
-                else:
-                    if isinstance(self.code_or_file, list):
-                        code = "\n".join(self.code_or_file)
-                    else:
-                        code = self.code_or_file
-                    stdout, stderr, returncode = python_driver.run_code_string(
-                        code, cwd=self.cwd
-                    )
-
-            # Check if we have a unified driver that can resolve python_driver
-            elif driver and hasattr(driver, 'resolve') and callable(driver.resolve):
-                try:
-                    python_driver = driver.resolve('python_driver')
-                    if hasattr(python_driver, 'is_script_file'):
-                        is_script = python_driver.is_script_file(self.code_or_file)
-                    else:
-                        is_script = PythonUtils.is_script_file(self.code_or_file)
-
-                    if is_script:
-                        stdout, stderr, returncode = python_driver.run_script_file(
-                            self.code_or_file[0], cwd=self.cwd
-                        )
-                    else:
-                        if isinstance(self.code_or_file, list):
-                            code = "\n".join(self.code_or_file)
-                        else:
-                            code = self.code_or_file
-                        stdout, stderr, returncode = python_driver.run_code_string(
-                            code, cwd=self.cwd
-                        )
-                except Exception:
-                    # Fallback to PythonUtils if driver resolution fails
-                    if PythonUtils.is_script_file(self.code_or_file):
-                        stdout, stderr, returncode = PythonUtils.run_script_file(
-                            self.code_or_file[0], cwd=self.cwd
-                        )
-                    else:
-                        if isinstance(self.code_or_file, list):
-                            code = "\n".join(self.code_or_file)
-                        else:
-                            code = self.code_or_file
-                        stdout, stderr, returncode = PythonUtils.run_code_string(
-                            code, cwd=self.cwd
-                        )
-            # Fallback to PythonUtils for backward compatibility
-            elif PythonUtils.is_script_file(self.code_or_file):
-                stdout, stderr, returncode = PythonUtils.run_script_file(
-                    self.code_or_file[0], cwd=self.cwd
-                )
-            else:
-                if isinstance(self.code_or_file, list):
-                    code = "\n".join(self.code_or_file)
-                else:
-                    code = self.code_or_file
-                stdout, stderr, returncode = PythonUtils.run_code_string(
-                    code, cwd=self.cwd
-                )
-
+            stdout, stderr, returncode = self._execute_python_code(driver)
             end_time = time.time()
+
             return OperationResult(
                 stdout=stdout,
                 stderr=stderr,
@@ -128,6 +60,52 @@ class PythonRequest(BaseRequest):
         finally:
             if self.cwd:
                 os.chdir(old_cwd)
+
+    def _execute_python_code(self, driver: Any) -> tuple[str, str, int]:
+        """Execute Python code using appropriate driver or fallback."""
+        # Try different driver resolution strategies
+        if driver and hasattr(driver, 'python_driver'):
+            return self._execute_with_direct_driver(driver.python_driver)
+        if driver and hasattr(driver, 'resolve') and callable(driver.resolve):
+            return self._execute_with_unified_driver(driver)
+        return self._execute_with_utils_fallback()
+
+    def _execute_with_direct_driver(self, python_driver: Any) -> tuple[str, str, int]:
+        """Execute Python code using direct python driver."""
+        is_script = self._determine_script_type(python_driver)
+
+        if is_script:
+            return python_driver.run_script_file(self.code_or_file[0], cwd=self.cwd)
+        code = self._prepare_code_string()
+        return python_driver.run_code_string(code, cwd=self.cwd)
+
+    def _execute_with_unified_driver(self, driver: Any) -> tuple[str, str, int]:
+        """Execute Python code using unified driver with fallback."""
+        try:
+            python_driver = driver.resolve('python_driver')
+            return self._execute_with_direct_driver(python_driver)
+        except Exception:
+            # Fallback to PythonUtils if driver resolution fails
+            return self._execute_with_utils_fallback()
+
+    def _execute_with_utils_fallback(self) -> tuple[str, str, int]:
+        """Execute Python code using PythonUtils as fallback."""
+        if PythonUtils.is_script_file(self.code_or_file):
+            return PythonUtils.run_script_file(self.code_or_file[0], cwd=self.cwd)
+        code = self._prepare_code_string()
+        return PythonUtils.run_code_string(code, cwd=self.cwd)
+
+    def _determine_script_type(self, python_driver: Any) -> bool:
+        """Determine if the code_or_file represents a script file."""
+        if hasattr(python_driver, 'is_script_file'):
+            return python_driver.is_script_file(self.code_or_file)
+        return PythonUtils.is_script_file(self.code_or_file)
+
+    def _prepare_code_string(self) -> str:
+        """Prepare code string from code_or_file input."""
+        if isinstance(self.code_or_file, list):
+            return "\n".join(self.code_or_file)
+        return self.code_or_file
 
     def __repr__(self) -> str:
         return f"<PythonRequest code_or_file={self.code_or_file}>"
