@@ -4,11 +4,11 @@ import sys
 from abc import abstractmethod
 from typing import Any, Optional
 
-from src.infrastructure.drivers.base.base_driver import BaseDriver
+from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
 from src.infrastructure.drivers.python.utils.python_utils import PythonUtils
 
 
-class PythonDriver(BaseDriver):
+class PythonDriver(ExecutionDriverInterface):
     """Abstract base class for Python code execution."""
 
     @abstractmethod
@@ -35,7 +35,7 @@ class PythonDriver(BaseDriver):
             Tuple of (stdout, stderr, return_code)
         """
 
-    def execute(self, request: Any) -> Any:
+    def execute_command(self, request: Any) -> Any:
         """Execute a Python request."""
         if hasattr(request, 'code_or_file'):
             if PythonUtils.is_script_file(request.code_or_file):

@@ -7,8 +7,8 @@ from src.application.orchestration.unified_driver import UnifiedDriver
 from src.configuration.adapters.execution_context_adapter import ExecutionContextAdapter
 from src.utils.debug_logger import DebugLogger
 from src.workflow.builder.graph_based_workflow_builder import GraphBasedWorkflowBuilder
-from src.workflow.step.core import generate_steps_from_json
 from src.workflow.step.step import Step, StepType
+from src.workflow.step.step_generation_service import generate_steps_from_json
 from src.workflow.workflow_result import WorkflowExecutionResult
 
 

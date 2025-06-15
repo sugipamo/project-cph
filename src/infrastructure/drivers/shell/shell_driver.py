@@ -2,10 +2,10 @@
 from abc import abstractmethod
 from typing import Any, Optional, Union
 
-from src.infrastructure.drivers.base.base_driver import BaseDriver
+from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
 
 
-class ShellDriver(BaseDriver):
+class ShellDriver(ExecutionDriverInterface):
     """Abstract base class for shell command execution."""
 
     @abstractmethod
@@ -25,7 +25,7 @@ class ShellDriver(BaseDriver):
             Command execution result
         """
 
-    def execute(self, request: Any) -> Any:
+    def execute_command(self, request: Any) -> Any:
         """Execute a shell request."""
         # Delegate to run method for backward compatibility
         if hasattr(request, 'cmd'):

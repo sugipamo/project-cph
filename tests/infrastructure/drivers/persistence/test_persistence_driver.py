@@ -21,7 +21,7 @@ class MockPersistenceDriver(PersistenceDriver):
     def execute_query(self, query: str, params: tuple = ()):
         return self.query_results
 
-    def execute_command(self, command: str, params: tuple = ()):
+    def execute_persistence_command(self, command: str, params: tuple = ()):
         return self.command_result
 
     def begin_transaction(self):
@@ -49,7 +49,7 @@ class TestPersistenceDriver:
         request.query = "SELECT * FROM test"
         request.params = (1,)
 
-        result = driver.execute(request)
+        result = driver.execute_command(request)
         assert result == [{"id": 1, "name": "test"}]
 
     def test_execute_with_command_request(self):
@@ -59,7 +59,7 @@ class TestPersistenceDriver:
         # Create a mock request with command attribute
         request = type('Request', (), {'command': "INSERT INTO test VALUES (?)", 'params': ("value",)})()
 
-        result = driver.execute(request)
+        result = driver.execute_command(request)
         assert result == 5
 
     def test_execute_with_unsupported_request(self):
@@ -69,7 +69,7 @@ class TestPersistenceDriver:
         request = type('Request', (), {})()
 
         with pytest.raises(ValueError, match="Unsupported request type"):
-            driver.execute(request)
+            driver.execute_command(request)
 
     def test_validate_with_query_request(self):
         driver = MockPersistenceDriver()
@@ -152,7 +152,7 @@ class TestSQLitePersistenceDriver:
         mock_sqlite_manager_class.return_value = mock_manager
 
         driver = SQLitePersistenceDriver()
-        rows_affected = driver.execute_command("UPDATE test SET value = ?", ("new",))
+        rows_affected = driver.execute_persistence_command("UPDATE test SET value = ?", ("new",))
 
         assert rows_affected == 3
         mock_manager.execute_command.assert_called_once_with("UPDATE test SET value = ?", ("new",))

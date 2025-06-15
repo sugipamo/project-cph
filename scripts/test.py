@@ -187,6 +187,101 @@ class TestRunner:
 
         return True  # 警告レベルなので常にTrueを返す
 
+    def check_naming_conventions(self) -> bool:
+        """命名規則チェック"""
+        import ast
+        import glob
+        import re
+        from pathlib import Path
+
+        spinner = None
+        if not self.verbose:
+            spinner = ProgressSpinner("命名規則チェック")
+            spinner.start()
+
+        try:
+            naming_issues = []
+
+            # 汎用的すぎるファイル名を検出
+            generic_filenames = [
+                'helpers.py', 'utils.py', 'core.py', 'base.py', 'common.py',
+                'misc.py', 'tools.py', 'generic.py', 'data.py', 'info.py'
+            ]
+
+            # 抽象的すぎる関数名パターン
+            abstract_function_patterns = [
+                r'^handle$', r'^process$', r'^manage$', r'^execute$', r'^create$',
+                r'^build$', r'^run$', r'^do_', r'^perform_', r'^get$', r'^set$'
+            ]
+
+            # 汎用的すぎるクラス名パターン
+            generic_class_patterns = [
+                r'^Base[A-Z]', r'^Abstract[A-Z]', r'^Generic[A-Z]',
+                r'^Manager$', r'^Handler$', r'^Processor$', r'^Helper$'
+            ]
+
+            for file_path in glob.glob('src/**/*.py', recursive=True):
+                file_name = Path(file_path).name
+                relative_path = file_path.replace('src/', '')
+
+                # ファイル名チェック
+                if file_name in generic_filenames:
+                    naming_issues.append(f"汎用的ファイル名: {relative_path}")
+
+                # 長すぎるファイル名チェック（35文字以上）
+                if len(file_name) > 35:
+                    naming_issues.append(f"長すぎるファイル名: {relative_path} ({len(file_name)}文字)")
+
+                try:
+                    with open(file_path, encoding='utf-8') as f:
+                        content = f.read()
+                        tree = ast.parse(content, filename=file_path)
+
+                    # クラス名チェック
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.ClassDef):
+                            class_name = node.name
+                            for pattern in generic_class_patterns:
+                                if re.match(pattern, class_name):
+                                    naming_issues.append(f"汎用的クラス名: {relative_path}:{node.lineno} class {class_name}")
+
+                        # 関数名チェック
+                        elif isinstance(node, ast.FunctionDef):
+                            func_name = node.name
+                            # プライベートメソッドやspecialメソッドはスキップ
+                            if not func_name.startswith('_'):
+                                for pattern in abstract_function_patterns:
+                                    if re.match(pattern, func_name):
+                                        naming_issues.append(f"抽象的関数名: {relative_path}:{node.lineno} def {func_name}")
+
+                except (SyntaxError, UnicodeDecodeError):
+                    # 構文エラーやエンコードエラーは無視
+                    continue
+
+            if spinner:
+                spinner.stop(True)
+
+            if self.verbose:
+                print("✅ 命名規則チェック")
+
+            # 問題が見つかった場合は警告として追加
+            if naming_issues:
+                self.warnings.append("命名規則の問題が検出されました:")
+                for issue in naming_issues[:15]:  # 最大15件表示
+                    self.warnings.append(f"  {issue}")
+
+                if len(naming_issues) > 15:
+                    self.warnings.append(f"  ... 他{len(naming_issues) - 15}件")
+
+        except Exception as e:
+            if spinner:
+                spinner.stop(False)
+            self.warnings.append(f"命名規則チェックでエラー: {e}")
+            if self.verbose:
+                print(f"❌ 命名規則チェックでエラー: {e}")
+
+        return True  # 警告レベルなので常にTrueを返す
+
     def check_types(self) -> bool:
         """型チェック (mypy)"""
         # mypyが利用可能かチェック
@@ -341,6 +436,7 @@ def main():
     parser.add_argument("--html", action="store_true", help="HTMLカバレッジレポート生成")
     parser.add_argument("--no-ruff", action="store_true", help="Ruffスキップ")
     parser.add_argument("--no-deadcode", action="store_true", help="未使用コード検出スキップ")
+    parser.add_argument("--no-naming", action="store_true", help="命名規則チェックスキップ")
     parser.add_argument("--check-only", action="store_true", help="高速チェック（テストなし）")
     parser.add_argument("--coverage-only", action="store_true", help="カバレッジレポートのみ表示")
     parser.add_argument("--verbose", "-v", action="store_true", help="詳細出力")
@@ -373,6 +469,10 @@ def main():
     # 未使用コード検出
     if not args.no_deadcode:
         runner.check_dead_code()
+
+    # 命名規則チェック
+    if not args.no_naming:
+        runner.check_naming_conventions()
 
     # check-onlyモード
     if args.check_only:

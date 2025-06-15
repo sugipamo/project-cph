@@ -4,11 +4,11 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 
-class BaseDriver(ABC):
+class ExecutionDriverInterface(ABC):
     """Abstract base class for all drivers."""
 
     @abstractmethod
-    def execute(self, request: Any) -> Any:
+    def execute_command(self, request: Any) -> Any:
         """Execute a request and return the result.
 
         Args:

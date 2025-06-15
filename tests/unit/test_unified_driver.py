@@ -128,7 +128,7 @@ class TestUnifiedDriver:
         mock_request.operation_type = OperationType.FILE
         mock_request.execute.return_value = MagicMock(success=True)
 
-        result = driver.execute(mock_request)
+        result = driver.execute_command(mock_request)
 
         # Should call execute with file driver
         mock_request.execute.assert_called_once_with(driver=self.mock_file_driver)
@@ -151,7 +151,7 @@ class TestUnifiedDriver:
             mock_request.operation_type = op_type
             mock_request.execute.return_value = MagicMock(success=True)
 
-            result = driver.execute(mock_request)
+            result = driver.execute_command(mock_request)
 
             mock_request.execute.assert_called_once_with(driver=expected_driver)
             assert result.success is True
@@ -176,7 +176,7 @@ class TestUnifiedDriver:
             mock_request.operation_type = OperationType.FILE
             mock_request.execute.return_value = MagicMock(success=True)
 
-            driver.execute(mock_request)
+            driver.execute_command(mock_request)
 
         # resolve should be called only once for file_driver
         resolve_calls = [call for call in self.mock_operations.resolve.call_args_list

@@ -268,7 +268,7 @@ class MockDockerDriver(DockerDriver):
             returncode=0
         )
 
-    def execute(self, request: Any) -> Any:
+    def execute_command(self, request: Any) -> Any:
         """Execute a Docker request (mocked)."""
         self._operations_executed.append({
             'operation': 'execute',

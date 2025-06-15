@@ -16,7 +16,7 @@ class UnifiedDriver:
         self.operations = operations
         self._driver_cache = {}
 
-    def execute(self, request) -> Any:
+    def execute_command(self, request) -> Any:
         """Execute request (automatically select appropriate driver)
 
         Args:

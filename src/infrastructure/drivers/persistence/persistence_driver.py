@@ -4,10 +4,10 @@ from contextlib import contextmanager
 from typing import Any, Dict, List
 
 from src.domain.interfaces.persistence_interface import PersistenceInterface
-from src.infrastructure.drivers.base.base_driver import BaseDriver
+from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
 
 
-class PersistenceDriver(BaseDriver, PersistenceInterface):
+class PersistenceDriver(ExecutionDriverInterface, PersistenceInterface):
     """Abstract base class for persistence drivers."""
 
     @abstractmethod
@@ -21,7 +21,7 @@ class PersistenceDriver(BaseDriver, PersistenceInterface):
         pass
 
     @abstractmethod
-    def execute_command(self, command: str, params: tuple = ()) -> int:
+    def execute_persistence_command(self, command: str, params: tuple = ()) -> int:
         """Execute an INSERT/UPDATE/DELETE command."""
         pass
 
@@ -35,8 +35,8 @@ class PersistenceDriver(BaseDriver, PersistenceInterface):
         """Get a repository instance."""
         pass
 
-    # BaseDriver abstract methods
-    def execute(self, request: Any) -> Any:
+    # ExecutionDriverInterface abstract methods
+    def execute_command(self, request: Any) -> Any:
         """Execute a persistence request.
 
         Args:
@@ -48,7 +48,7 @@ class PersistenceDriver(BaseDriver, PersistenceInterface):
         if hasattr(request, 'query'):
             return self.execute_query(request.query, getattr(request, 'params', ()))
         if hasattr(request, 'command'):
-            return self.execute_command(request.command, getattr(request, 'params', ()))
+            return self.execute_persistence_command(request.command, getattr(request, 'params', ()))
         raise ValueError(f"Unsupported request type: {type(request)}")
 
     def validate(self, request: Any) -> bool:
@@ -89,7 +89,7 @@ class SQLitePersistenceDriver(PersistenceDriver):
         """Execute a SELECT query and return results."""
         return self._sqlite_manager.execute_query(query, params)
 
-    def execute_command(self, command: str, params: tuple = ()) -> int:
+    def execute_persistence_command(self, command: str, params: tuple = ()) -> int:
         """Execute an INSERT/UPDATE/DELETE command."""
         return self._sqlite_manager.execute_command(command, params)
 

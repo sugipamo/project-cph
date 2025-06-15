@@ -9,9 +9,9 @@ from src.context.resolver.config_node import ConfigNode
 
 # from .graph_to_composite_adapter import GraphToCompositeAdapter  # Temporarily disabled
 from src.domain.requests.composite.composite_request import CompositeRequest
-from src.workflow.step.core import generate_steps_from_json
 from src.workflow.step.dependency import resolve_dependencies
 from src.workflow.step.step import Step
+from src.workflow.step.step_generation_service import generate_steps_from_json
 from src.workflow.step.workflow import create_step_context_from_env_context, optimize_workflow_steps
 
 from .request_execution_graph import DependencyEdge, DependencyType, RequestExecutionGraph, RequestNode

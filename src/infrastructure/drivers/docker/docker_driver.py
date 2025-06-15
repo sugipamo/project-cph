@@ -5,7 +5,7 @@ from abc import abstractmethod
 from typing import Any, Optional, Union
 
 from src.domain.requests.shell.shell_request import ShellRequest
-from src.infrastructure.drivers.base.base_driver import BaseDriver
+from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
 from src.infrastructure.drivers.docker.utils import (
     build_docker_build_command,
     build_docker_remove_command,
@@ -17,7 +17,7 @@ from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
 from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
 
 
-class DockerDriver(BaseDriver):
+class DockerDriver(ExecutionDriverInterface):
     """Abstract base class for Docker operations."""
 
     @abstractmethod
@@ -41,7 +41,7 @@ class DockerDriver(BaseDriver):
         pass
 
     @abstractmethod
-    def build(self, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True, dockerfile_text: Optional[str] = None):
+    def build_docker_image(self, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True, dockerfile_text: Optional[str] = None):
         pass
 
     @abstractmethod
@@ -74,7 +74,7 @@ class LocalDockerDriver(DockerDriver):
             file_driver = LocalFileDriver()
         self.shell_driver = LocalShellDriver(file_driver)
 
-    def execute(self, request: Any) -> Any:
+    def execute_command(self, request: Any) -> Any:
         """Execute a Docker request."""
         # This method is for compatibility with BaseDriver
         # Actual execution happens in specific methods

@@ -5,10 +5,10 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Optional
 
-from src.infrastructure.drivers.base.base_driver import BaseDriver
+from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
 
 
-class FileDriver(BaseDriver):
+class FileDriver(ExecutionDriverInterface):
     """Abstract base class for file operations.
 
     Uses template method pattern:
@@ -22,7 +22,7 @@ class FileDriver(BaseDriver):
         self.path = None
         self.dst_path = None
 
-    def execute(self, request: Any) -> Any:
+    def execute_command(self, request: Any) -> Any:
         """Execute a file operation request."""
         # This method is for compatibility with BaseDriver
         # Actual execution happens through specific methods
@@ -125,7 +125,7 @@ class FileDriver(BaseDriver):
     def _exists_impl(self, path: Path) -> bool:
         """File existence check implementation (implement in concrete class)."""
 
-    def create(self, path: Path, content: str = "") -> None:
+    def create_file(self, path: Path, content: str = "") -> None:
         """Create file (template method)."""
         resolved_path = self.resolve_path(path)
         self.ensure_parent_dir(resolved_path)

@@ -4,9 +4,9 @@ from typing import Any
 
 from src.domain.requests.composite.composite_request import CompositeRequest
 
-from .core import generate_steps_from_json, optimize_step_sequence, validate_step_sequence
 from .dependency import optimize_mkdir_steps, resolve_dependencies
 from .step import Step, StepContext
+from .step_generation_service import generate_steps_from_json, optimize_step_sequence, validate_step_sequence
 
 
 def steps_to_requests(steps: list[Step], operations) -> CompositeRequest:
