@@ -2,6 +2,7 @@
 from typing import Optional
 
 from src.domain.constants.operation_type import OperationType
+from src.domain.constants.request_types import RequestType
 from src.domain.requests.base.base_request import OperationRequestFoundation
 
 
@@ -31,9 +32,14 @@ class CompositeRequestFoundation(OperationRequestFoundation):
     def operation_type(self) -> OperationType:
         return OperationType.COMPOSITE
 
+    @property
+    def request_type(self) -> RequestType:
+        """Return the request type for type-safe identification."""
+        return RequestType.COMPOSITE_REQUEST_FOUNDATION
+
     def __repr__(self) -> str:
         reqs_str = ",\n  ".join(repr(r) for r in self.requests)
-        return f"<{self.__class__.__name__} name={self.name} [\n  {reqs_str}\n]>"
+        return f"<{self.request_type.short_name} name={self.name} [\n  {reqs_str}\n]>"
 
     @classmethod
     def make_composite_request(cls, requests: list[OperationRequestFoundation], debug_tag: Optional[str] = None,

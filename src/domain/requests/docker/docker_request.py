@@ -3,6 +3,7 @@ from enum import Enum, auto
 from typing import Any, Optional, Union
 
 from src.domain.constants.operation_type import OperationType
+from src.domain.constants.request_types import RequestType
 from src.domain.interfaces.docker_interface import DockerDriverInterface
 from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.domain.requests.composite.composite_request import CompositeRequest
@@ -55,6 +56,11 @@ class DockerRequest(OperationRequestFoundation):
     def operation_type(self):
         """Get operation type."""
         return OperationType.DOCKER
+
+    @property
+    def request_type(self) -> RequestType:
+        """Return the request type for type-safe identification."""
+        return RequestType.DOCKER_REQUEST
 
     def execute_docker_operation(self, driver):
         """Execute the Docker operation request."""

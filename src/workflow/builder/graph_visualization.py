@@ -284,8 +284,8 @@ def _count_node_types(nodes: Dict[str, Any]) -> Dict[str, int]:
     type_counts = {}
 
     for node in nodes.values():
-        if hasattr(node, 'request') and hasattr(node.request, '__class__'):
-            node_type = node.request.__class__.__name__
+        if hasattr(node, 'request') and hasattr(node.request, 'request_type'):
+            node_type = node.request.request_type.short_name
         else:
             node_type = "Unknown"
 
@@ -347,8 +347,8 @@ def generate_dot_format(nodes: Dict[str, Any], edges: List[Any]) -> str:
 
 def _create_dot_node_label(node: Any) -> str:
     """DOT形式用ノードラベルを作成（純粋関数）"""
-    if hasattr(node, 'request') and hasattr(node.request, '__class__'):
-        class_name = node.request.__class__.__name__
+    if hasattr(node, 'request') and hasattr(node.request, 'request_type'):
+        class_name = node.request.request_type.short_name
     else:
         class_name = "Unknown"
 

@@ -5,6 +5,7 @@ Integrates workflow building, fitting, and execution
 from src.application.factories.unified_request_factory import create_composite_request, create_request
 from src.application.orchestration.unified_driver import UnifiedDriver
 from src.configuration.adapters.execution_context_adapter import ExecutionContextAdapter
+from src.domain.constants.request_types import RequestType
 from src.utils.debug_logger import DebugLogger
 from src.workflow.builder.graph_based_workflow_builder import GraphBasedWorkflowBuilder
 from src.workflow.step.step import Step, StepType
@@ -97,13 +98,16 @@ class WorkflowExecutionService:
             # Create request from step using unified factory
             request = create_request(step, self.context)
             if request:
-                # Determine request type based on actual request class
-                if request.__class__.__name__ == "DockerRequest":
-                    request_type = "docker"
-                elif request.__class__.__name__ == "FileRequest":
-                    request_type = "file"
-                elif request.__class__.__name__ == "ShellRequest":
-                    request_type = "shell"
+                # Determine request type based on request_type property
+                if hasattr(request, 'request_type'):
+                    if request.request_type == RequestType.DOCKER_REQUEST:
+                        request_type = "docker"
+                    elif request.request_type == RequestType.FILE_REQUEST:
+                        request_type = "file"
+                    elif request.request_type == RequestType.SHELL_REQUEST:
+                        request_type = "shell"
+                    else:
+                        request_type = "unknown"
                 elif step.type.value.startswith("docker"):
                     request_type = "docker"
                 elif step.type in [StepType.MKDIR, StepType.TOUCH, StepType.COPY,
@@ -216,7 +220,7 @@ class WorkflowExecutionService:
         allow_failure = getattr(request, 'allow_failure', False) if request else False
 
         # Temporary workaround for TEST steps allow_failure issue
-        if (hasattr(request, '__class__') and 'Shell' in request.__class__.__name__
+        if (hasattr(request, 'request_type') and request.request_type == RequestType.SHELL_REQUEST
             and hasattr(request, 'cmd') and request.cmd and len(request.cmd) > 0):
             full_cmd_str = str(request.cmd)
             if 'python3' in full_cmd_str and 'workspace/main.py' in full_cmd_str:

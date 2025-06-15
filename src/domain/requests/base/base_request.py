@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 from src.domain.constants.operation_type import OperationType
+from src.domain.constants.request_types import RequestType
 
 
 class OperationRequestFoundation(ABC):
@@ -42,6 +43,11 @@ class OperationRequestFoundation(ABC):
     def operation_type(self) -> OperationType:
         """Return the operation type of this request."""
 
+    @property
+    def request_type(self) -> RequestType:
+        """Return the request type for type-safe identification."""
+        return RequestType.OPERATION_REQUEST_FOUNDATION
+
     def execute_operation(self, driver: Optional[Any] = None) -> Any:
         """Execute this operation request using the provided driver.
 
@@ -56,10 +62,10 @@ class OperationRequestFoundation(ABC):
             ValueError: If driver is required but not provided
         """
         if self._executed:
-            raise RuntimeError(f"This {self.__class__.__name__} has already been executed.")
+            raise RuntimeError(f"This {self.request_type.short_name} has already been executed.")
         # Driver requirement is controlled by subclasses
         if getattr(self, '_require_driver', True) and driver is None:
-            raise ValueError(f"{self.__class__.__name__}.execute_operation() requires a driver")
+            raise ValueError(f"{self.request_type.short_name}.execute_operation() requires a driver")
         try:
             self._result = self._execute_core(driver)
             return self._result

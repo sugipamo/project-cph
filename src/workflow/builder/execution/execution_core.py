@@ -241,8 +241,8 @@ class RequestExecutionGraph:
             node_names = []
             for node_id in cycle['nodes']:
                 node = self.nodes.get(node_id)
-                if node and hasattr(node.request, '__class__'):
-                    node_names.append(f"{node_id} ({node.request.__class__.__name__})")
+                if node and hasattr(node.request, 'request_type'):
+                    node_names.append(f"{node_id} ({node.request.request_type.short_name})")
                 else:
                     node_names.append(node_id)
 

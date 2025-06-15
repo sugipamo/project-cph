@@ -4,6 +4,7 @@ import uuid
 from typing import Any, Optional, Union
 
 from src.domain.constants.operation_type import OperationType
+from src.domain.constants.request_types import RequestType
 from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.domain.results.result import OperationResult
 
@@ -29,6 +30,11 @@ class ShellRequest(OperationRequestFoundation):
     def operation_type(self) -> OperationType:
         """Return the operation type."""
         return OperationType.SHELL
+
+    @property
+    def request_type(self) -> RequestType:
+        """Return the request type for type-safe identification."""
+        return RequestType.SHELL_REQUEST
 
     def _execute_core(self, driver: Any) -> OperationResult:
         """Core execution logic for shell commands."""

@@ -126,6 +126,45 @@ def main(args):
     # ステップ5: テスト実行(問題A指定)
     run_step(["./cph.sh", "test", "a", "local"])
 
+
+    # 以下はdockerでのテスト
+    print("テスト環境をクリーンアップ中...")
+    tester.cleanup_environment()
+
+    # ステップ1: ABC300問題A(Python)をオープン
+    run_step(["./cph.sh", "abc300", "open", "a", "python", "docker"])
+    if not tester.check_test_files_exist():
+        raise RuntimeError("テストファイルが存在しません (ABC300 問題A)")
+
+    with open("contest_current/main.py", "a") as f:
+        f.write("raise Exception('test')")
+
+    # ステップ2: ABC301問題A(前回値)をオープン
+    run_step(["./cph.sh", "abc301", "open", "a", "docker"])
+    if not tester.check_test_files_exist():
+        raise RuntimeError("テストファイルが存在しません (ABC301 問題A)")
+
+    # ステップ2直後: main.pyにraise Exception('test')が含まれていないことを確認
+    with open("contest_current/main.py") as f:
+        content = f.read()
+    assert "raise Exception('test')" not in content, "main.pyにraise Exception('test')が含まれています（ステップ2直後）"
+
+    # ステップ3: テスト実行(全問題)
+    run_step(["./cph.sh", "test", "docker"])
+
+    # ステップ4: ABC300問題A(Python)を再オープン
+    run_step(["./cph.sh", "abc300", "open", "a", "python", "docker"])
+    if not tester.check_test_files_exist():
+        raise RuntimeError("テストファイルが存在しません (ABC300 問題A 再オープン)")
+
+    # ステップ4直後: main.pyにraise Exception('test')が含まれていることを確認
+    with open("contest_current/main.py") as f:
+        content = f.read()
+    assert "raise Exception('test')" in content, "main.pyにraise Exception('test')が含まれていません（ステップ4直後）"
+
+    # ステップ5: テスト実行(問題A指定)
+    run_step(["./cph.sh", "test", "a", "docker"])
+
     print("\n=== テスト結果サマリー ===")
     print("=== E2E Test 成功 ===")
     sys.exit(0)

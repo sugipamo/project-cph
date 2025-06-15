@@ -1,6 +1,7 @@
 """Composite request implementation."""
 from typing import Any, Optional
 
+from src.domain.constants.request_types import RequestType
 from src.domain.interfaces.execution_interface import ExecutionInterface
 from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.domain.requests.composite.base_composite_request import CompositeRequestFoundation
@@ -33,6 +34,11 @@ class CompositeRequest(CompositeRequestFoundation):
         else:
             # This will be called during initialization
             pass
+
+    @property
+    def request_type(self) -> RequestType:
+        """Return the request type for type-safe identification."""
+        return RequestType.COMPOSITE_REQUEST
 
     def execute_composite_operation(self, driver: Any) -> list[Any]:
         return super().execute_operation(driver)

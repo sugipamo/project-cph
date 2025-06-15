@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from src.domain.constants.operation_type import OperationType
+from src.domain.constants.request_types import RequestType
 from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.domain.requests.file.file_op_type import FileOpType
 from src.domain.results.file_result import FileResult
@@ -26,6 +27,11 @@ class FileRequest(OperationRequestFoundation):
     def operation_type(self) -> OperationType:
         """Return the operation type."""
         return OperationType.FILE
+
+    @property
+    def request_type(self) -> RequestType:
+        """Return the request type for type-safe identification."""
+        return RequestType.FILE_REQUEST
 
     def _execute_core(self, driver: Any) -> FileResult:
         """Core execution logic for file operations."""
