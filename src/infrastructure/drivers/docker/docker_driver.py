@@ -15,6 +15,7 @@ from src.infrastructure.drivers.docker.utils import (
 )
 from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
 from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
+from src.utils.deprecated import deprecated
 
 
 class DockerDriver(ExecutionDriverInterface):
@@ -130,6 +131,7 @@ class LocalDockerDriver(DockerDriver):
         result = req.execute(driver=self.shell_driver)
         return result
 
+    @deprecated("Use build_docker_image instead")
     def build(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
         """Backward compatibility wrapper for build_docker_image"""
         return self.build_docker_image(dockerfile_text, tag, options, show_output)

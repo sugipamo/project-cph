@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 from src.infrastructure.persistence.base.base_repository import BaseRepository
 from src.infrastructure.persistence.sqlite.sqlite_manager import SQLiteManager
+from src.utils.deprecated import deprecated
 
 
 @dataclass
@@ -33,7 +34,7 @@ class SessionRepository(BaseRepository):
         """
         self.db_manager = db_manager
 
-    def create(self, session: Session) -> Session:
+    def create_session_record(self, session: Session) -> Session:
         """Create a new session record.
 
         Args:
@@ -68,6 +69,18 @@ class SessionRepository(BaseRepository):
             return self.find_by_id(last_id)
 
         return session
+
+    @deprecated("Use create_session_record() instead")
+    def create(self, session: Session) -> Session:
+        """Create a new session record.
+
+        Args:
+            session: Session to create
+
+        Returns:
+            Created session with ID
+        """
+        return self.create_session_record(session)
 
     def find_by_id(self, session_id: int) -> Optional[Session]:
         """Find session by ID.
@@ -148,7 +161,7 @@ class SessionRepository(BaseRepository):
             problem_name=problem_name
         )
 
-        return self.create(new_session)
+        return self.create_session_record(new_session)
 
     def end_session(self, session_id: int) -> bool:
         """End a session by setting session_end timestamp.

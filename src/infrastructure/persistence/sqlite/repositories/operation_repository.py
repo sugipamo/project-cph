@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from src.infrastructure.persistence.base.base_repository import BaseRepository
 from src.infrastructure.persistence.sqlite.sqlite_manager import SQLiteManager
+from src.utils.deprecated import deprecated
 
 
 @dataclass
@@ -38,8 +39,8 @@ class OperationRepository(BaseRepository):
         """
         self.db_manager = db_manager
 
-    def create(self, operation: Operation) -> Operation:
-        """Create a new operation record.
+    def create_operation_record(self, operation: Operation) -> Operation:
+        """Create a new operation record in the database.
 
         Args:
             operation: Operation to create
@@ -79,6 +80,18 @@ class OperationRepository(BaseRepository):
             return self.find_by_id(last_id)
 
         return operation
+
+    @deprecated("Use create_operation_record instead")
+    def create(self, operation: Operation) -> Operation:
+        """Create a new operation record.
+
+        Args:
+            operation: Operation to create
+
+        Returns:
+            Created operation with ID
+        """
+        return self.create_operation_record(operation)
 
     def find_by_id(self, operation_id: int) -> Optional[Operation]:
         """Find operation by ID.

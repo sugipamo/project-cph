@@ -4,6 +4,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 from src.infrastructure.persistence.base.base_repository import BaseRepository
+from src.utils.deprecated import deprecated
 
 
 class SystemConfigRepository(BaseRepository):
@@ -14,7 +15,7 @@ class SystemConfigRepository(BaseRepository):
         super().__init__(sqlite_manager)
 
     # RepositoryInterface implementations
-    def create(self, entity: Dict[str, Any]) -> Any:
+    def create_config_record(self, entity: Dict[str, Any]) -> Any:
         """Create a new config entity."""
         key = entity.get('config_key') or entity.get('key')
         value = entity.get('config_value') or entity.get('value')
@@ -23,6 +24,11 @@ class SystemConfigRepository(BaseRepository):
 
         self.set_config(key, value, category, description)
         return key
+
+    @deprecated("Use create_config_record() instead")
+    def create(self, entity: Dict[str, Any]) -> Any:
+        """Create a new config entity."""
+        return self.create_config_record(entity)
 
     def find_by_id(self, entity_id: Any) -> Optional[Dict[str, Any]]:
         """Find config by key."""

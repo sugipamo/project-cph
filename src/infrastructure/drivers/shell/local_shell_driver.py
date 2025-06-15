@@ -13,9 +13,9 @@ class LocalShellDriver(ShellDriver):
         super().__init__()
         self.file_driver = file_driver
 
-    def run(self, cmd: Union[str, list[str]], cwd: Optional[str] = None,
-            env: Optional[dict[str, str]] = None, inputdata: Optional[str] = None,
-            timeout: Optional[int] = None) -> Any:
+    def execute_shell_command(self, cmd: Union[str, list[str]], cwd: Optional[str] = None,
+                            env: Optional[dict[str, str]] = None, inputdata: Optional[str] = None,
+                            timeout: Optional[int] = None) -> Any:
         """Execute a shell command using subprocess.
 
         Args:

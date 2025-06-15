@@ -2,10 +2,15 @@
 from typing import Any
 
 from src.domain.interfaces.persistence_interface import RepositoryInterface
+from src.utils.deprecated import deprecated
 
 
-class BaseRepository(RepositoryInterface):
-    """Base class for all repositories with common functionality."""
+class AbstractDatabaseRepository(RepositoryInterface):
+    """Abstract base class for database repositories with common functionality.
+
+    This class provides a foundation for all concrete repository implementations,
+    offering common database connection management and basic operations.
+    """
 
     def __init__(self, persistence_manager: Any):
         """Initialize repository with persistence manager.
@@ -35,3 +40,13 @@ class BaseRepository(RepositoryInterface):
     # - find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Dict[str, Any]]
     # - update(self, entity_id: Any, updates: Dict[str, Any]) -> bool
     # - delete(self, entity_id: Any) -> bool
+
+
+@deprecated("Use AbstractDatabaseRepository instead")
+class BaseRepository(AbstractDatabaseRepository):
+    """Base class for all repositories with common functionality.
+
+    .. deprecated::
+        Use :class:`AbstractDatabaseRepository` instead.
+    """
+    pass

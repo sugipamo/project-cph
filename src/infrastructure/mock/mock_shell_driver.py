@@ -19,9 +19,9 @@ class MockShellDriver(ShellDriver):
         )
         self.file_driver = file_driver
 
-    def run(self, cmd: Union[str, list[str]], cwd: Optional[str] = None,
-            env: Optional[dict[str, str]] = None, inputdata: Optional[str] = None,
-            timeout: Optional[int] = None) -> ShellResult:
+    def execute_shell_command(self, cmd: Union[str, list[str]], cwd: Optional[str] = None,
+                            env: Optional[dict[str, str]] = None, inputdata: Optional[str] = None,
+                            timeout: Optional[int] = None) -> ShellResult:
         """Execute a shell command (mocked).
 
         Args:

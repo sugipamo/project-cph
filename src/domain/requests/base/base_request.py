@@ -5,10 +5,15 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 from src.domain.constants.operation_type import OperationType
+from src.utils.deprecated import deprecated
 
 
-class BaseRequest(ABC):
-    """Abstract base class for all operation requests."""
+class AbstractOperationRequest(ABC):
+    """Abstract base class for all operation requests.
+
+    This class provides the foundation for all concrete request implementations,
+    offering common execution patterns and debug tracking capabilities.
+    """
 
     def __init__(self, name: Optional[str] = None, debug_tag: Optional[str] = None, _executed: bool = False, _result: Any = None, _debug_info: Optional[dict] = None):
         self.name = name
@@ -72,3 +77,13 @@ class BaseRequest(ABC):
         Returns:
             The execution result
         """
+
+
+@deprecated("Use AbstractOperationRequest instead")
+class BaseRequest(AbstractOperationRequest):
+    """Abstract base class for all operation requests.
+
+    .. deprecated::
+        Use :class:`AbstractOperationRequest` instead.
+    """
+    pass
