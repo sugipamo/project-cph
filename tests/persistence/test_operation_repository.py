@@ -41,7 +41,7 @@ class TestOperationRepository:
 
     def test_create_operation(self, operation_repo, sample_operation):
         """Test creating a new operation."""
-        created_op = operation_repo.create(sample_operation)
+        created_op = operation_repo.create_operation_record(sample_operation)
 
         assert created_op.id is not None
         assert created_op.command == "test"
@@ -66,7 +66,7 @@ class TestOperationRepository:
             language="cpp"
         )
 
-        created_op = operation_repo.create(operation)
+        created_op = operation_repo.create_operation_record(operation)
         assert created_op.timestamp == timestamp
 
     def test_create_operation_with_none_details(self, operation_repo):
@@ -76,12 +76,12 @@ class TestOperationRepository:
             details=None
         )
 
-        created_op = operation_repo.create(operation)
+        created_op = operation_repo.create_operation_record(operation)
         assert created_op.details is None
 
     def test_find_by_id_existing(self, operation_repo, sample_operation):
         """Test finding operation by existing ID."""
-        created_op = operation_repo.create(sample_operation)
+        created_op = operation_repo.create_operation_record(sample_operation)
         found_op = operation_repo.find_by_id(created_op.id)
 
         assert found_op is not None
@@ -106,9 +106,9 @@ class TestOperationRepository:
         op2 = Operation(command="build", language="cpp")
         op3 = Operation(command="run", language="java")
 
-        operation_repo.create(op1)
-        operation_repo.create(op2)
-        operation_repo.create(op3)
+        operation_repo.create_operation_record(op1)
+        operation_repo.create_operation_record(op2)
+        operation_repo.create_operation_record(op3)
 
         operations = operation_repo.find_all()
         assert len(operations) == 3
@@ -122,7 +122,7 @@ class TestOperationRepository:
         # Create 5 operations
         for i in range(5):
             op = Operation(command=f"cmd{i}", language="python")
-            operation_repo.create(op)
+            operation_repo.create_operation_record(op)
 
         # Test limit
         limited = operation_repo.find_all(limit=3)
@@ -140,10 +140,10 @@ class TestOperationRepository:
     def test_find_by_command(self, operation_repo):
         """Test finding operations by command."""
         # Create operations with different commands
-        operation_repo.create(Operation(command="test", language="python"))
-        operation_repo.create(Operation(command="build", language="cpp"))
-        operation_repo.create(Operation(command="test", language="java"))
-        operation_repo.create(Operation(command="run", language="python"))
+        operation_repo.create_operation_record(Operation(command="test", language="python"))
+        operation_repo.create_operation_record(Operation(command="build", language="cpp"))
+        operation_repo.create_operation_record(Operation(command="test", language="java"))
+        operation_repo.create_operation_record(Operation(command="run", language="python"))
 
         test_ops = operation_repo.find_by_command("test")
         assert len(test_ops) == 2
@@ -161,7 +161,7 @@ class TestOperationRepository:
         """Test finding operations by command with limit."""
         # Create multiple operations with same command
         for i in range(5):
-            operation_repo.create(Operation(command="test", language=f"lang{i}"))
+            operation_repo.create_operation_record(Operation(command="test", language=f"lang{i}"))
 
         limited_ops = operation_repo.find_by_command("test", limit=3)
         assert len(limited_ops) == 3
@@ -169,10 +169,10 @@ class TestOperationRepository:
     def test_find_by_contest_with_problem(self, operation_repo):
         """Test finding operations by contest and problem."""
         # Create operations for different contests/problems
-        operation_repo.create(Operation(command="test", contest_name="abc123", problem_name="a"))
-        operation_repo.create(Operation(command="build", contest_name="abc123", problem_name="b"))
-        operation_repo.create(Operation(command="test", contest_name="abc123", problem_name="a"))
-        operation_repo.create(Operation(command="run", contest_name="def456", problem_name="a"))
+        operation_repo.create_operation_record(Operation(command="test", contest_name="abc123", problem_name="a"))
+        operation_repo.create_operation_record(Operation(command="build", contest_name="abc123", problem_name="b"))
+        operation_repo.create_operation_record(Operation(command="test", contest_name="abc123", problem_name="a"))
+        operation_repo.create_operation_record(Operation(command="run", contest_name="def456", problem_name="a"))
 
         ops = operation_repo.find_by_contest("abc123", "a")
         assert len(ops) == 2
@@ -181,9 +181,9 @@ class TestOperationRepository:
     def test_find_by_contest_without_problem(self, operation_repo):
         """Test finding operations by contest only."""
         # Create operations for different contests
-        operation_repo.create(Operation(command="test", contest_name="abc123", problem_name="a"))
-        operation_repo.create(Operation(command="build", contest_name="abc123", problem_name="b"))
-        operation_repo.create(Operation(command="run", contest_name="def456", problem_name="a"))
+        operation_repo.create_operation_record(Operation(command="test", contest_name="abc123", problem_name="a"))
+        operation_repo.create_operation_record(Operation(command="build", contest_name="abc123", problem_name="b"))
+        operation_repo.create_operation_record(Operation(command="run", contest_name="def456", problem_name="a"))
 
         ops = operation_repo.find_by_contest("abc123")
         assert len(ops) == 2
@@ -192,10 +192,10 @@ class TestOperationRepository:
     def test_find_by_language(self, operation_repo):
         """Test finding operations by language."""
         # Create operations with different languages
-        operation_repo.create(Operation(command="test", language="python"))
-        operation_repo.create(Operation(command="build", language="cpp"))
-        operation_repo.create(Operation(command="run", language="python"))
-        operation_repo.create(Operation(command="test", language="java"))
+        operation_repo.create_operation_record(Operation(command="test", language="python"))
+        operation_repo.create_operation_record(Operation(command="build", language="cpp"))
+        operation_repo.create_operation_record(Operation(command="run", language="python"))
+        operation_repo.create_operation_record(Operation(command="test", language="java"))
 
         python_ops = operation_repo.find_by_language("python")
         assert len(python_ops) == 2
@@ -209,7 +209,7 @@ class TestOperationRepository:
         """Test finding operations by language with limit."""
         # Create multiple operations with same language
         for i in range(4):
-            operation_repo.create(Operation(command=f"cmd{i}", language="python"))
+            operation_repo.create_operation_record(Operation(command=f"cmd{i}", language="python"))
 
         limited_ops = operation_repo.find_by_language("python", limit=2)
         assert len(limited_ops) == 2
@@ -218,7 +218,7 @@ class TestOperationRepository:
         """Test getting recent operations."""
         # Create operations
         for i in range(15):
-            operation_repo.create(Operation(command=f"cmd{i}", language="python"))
+            operation_repo.create_operation_record(Operation(command=f"cmd{i}", language="python"))
 
         # Default limit is 10
         recent = operation_repo.get_recent_operations()
@@ -241,11 +241,11 @@ class TestOperationRepository:
     def test_get_statistics_with_data(self, operation_repo):
         """Test statistics with data."""
         # Create test operations
-        operation_repo.create(Operation(command="test", language="python", result="success"))
-        operation_repo.create(Operation(command="build", language="python", result="failure"))
-        operation_repo.create(Operation(command="test", language="cpp", result="success"))
-        operation_repo.create(Operation(command="run", language="python", result="success"))
-        operation_repo.create(Operation(command="test", language="java", result="success"))
+        operation_repo.create_operation_record(Operation(command="test", language="python", result="success"))
+        operation_repo.create_operation_record(Operation(command="build", language="python", result="failure"))
+        operation_repo.create_operation_record(Operation(command="test", language="cpp", result="success"))
+        operation_repo.create_operation_record(Operation(command="run", language="python", result="success"))
+        operation_repo.create_operation_record(Operation(command="test", language="java", result="success"))
 
         stats = operation_repo.get_statistics()
 
@@ -267,7 +267,7 @@ class TestOperationRepository:
 
     def test_update_operation(self, operation_repo, sample_operation):
         """Test updating an existing operation."""
-        created_op = operation_repo.create(sample_operation)
+        created_op = operation_repo.create_operation_record(sample_operation)
 
         # Modify the operation
         created_op.result = "failure"
@@ -293,7 +293,7 @@ class TestOperationRepository:
 
     def test_delete_operation(self, operation_repo, sample_operation):
         """Test deleting an operation."""
-        created_op = operation_repo.create(sample_operation)
+        created_op = operation_repo.create_operation_record(sample_operation)
         operation_id = created_op.id
 
         # Verify it exists
@@ -326,7 +326,7 @@ class TestOperationRepository:
             details=complex_details
         )
 
-        created_op = operation_repo.create(operation)
+        created_op = operation_repo.create_operation_record(operation)
         found_op = operation_repo.find_by_id(created_op.id)
 
         assert found_op.details == complex_details
@@ -354,7 +354,7 @@ class TestOperationRepository:
             timestamp=specific_time
         )
 
-        created_op = operation_repo.create(operation)
+        created_op = operation_repo.create_operation_record(operation)
         found_op = operation_repo.find_by_id(created_op.id)
 
         # Should preserve the timestamp

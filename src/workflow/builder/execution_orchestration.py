@@ -259,7 +259,7 @@ def safe_execute_node(node: Any, driver: Any) -> Any:
         実行結果（成功またはエラー）
     """
     try:
-        return node.request.execute(driver=driver)
+        return node.request.execute_operation(driver=driver)
     except Exception as e:
         # 例外をキャッチしてエラー結果を返す
         from src.domain.results.result import OperationResult

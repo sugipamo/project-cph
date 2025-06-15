@@ -180,7 +180,7 @@ def _load_shared_config(base_dir: str, operations):
 
     try:
         req = FileRequest(FileOpType.READ, shared_path)
-        result = req.execute(driver=file_driver)
+        result = req.execute_operation(driver=file_driver)
         return json.loads(result.content)
     except Exception:
         return None
@@ -192,7 +192,7 @@ def _load_all_env_jsons(base_dir: str, operations) -> list:
     file_driver = operations.resolve("file_driver")
 
     req = FileRequest(FileOpType.EXISTS, base_dir)
-    result = req.execute(driver=file_driver)
+    result = req.execute_operation(driver=file_driver)
     if not result.exists:
         return env_jsons
 
@@ -211,7 +211,7 @@ def _load_all_env_jsons(base_dir: str, operations) -> list:
                 continue
 
             req = FileRequest(FileOpType.READ, path)
-            result = req.execute(driver=file_driver)
+            result = req.execute_operation(driver=file_driver)
             data = json.loads(result.content)
 
             # 共有設定を考慮してバリデーション
@@ -280,7 +280,7 @@ def make_dockerfile_loader(operations):
     def loader(path: str) -> str:
         file_driver = operations.resolve("file_driver")
         req = FileRequest(FileOpType.READ, path)
-        result = req.execute(driver=file_driver)
+        result = req.execute_operation(driver=file_driver)
         return result.content
     return loader
 

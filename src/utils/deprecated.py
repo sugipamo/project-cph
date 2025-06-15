@@ -15,29 +15,29 @@ def deprecated(message: str):
     Returns:
         Decorated function or class that shows deprecation warning
     """
-    def decorator(obj):
-        if isinstance(obj, type):
+    def decorator(deprecated_item):
+        if isinstance(deprecated_item, type):
             # For classes
-            original_init = obj.__init__
+            original_init = deprecated_item.__init__
 
             def new_init(self, *args, **kwargs):
                 warnings.warn(
-                    f"{obj.__name__} is deprecated. {message}",
+                    f"{deprecated_item.__name__} is deprecated. {message}",
                     category=DeprecationWarning,
                     stacklevel=2
                 )
                 return original_init(self, *args, **kwargs)
 
-            obj.__init__ = new_init
-            return obj
+            deprecated_item.__init__ = new_init
+            return deprecated_item
         # For functions/methods
-        @functools.wraps(obj)
+        @functools.wraps(deprecated_item)
         def wrapper(*args, **kwargs):
             warnings.warn(
-                f"{obj.__name__} is deprecated. {message}",
+                f"{deprecated_item.__name__} is deprecated. {message}",
                 category=DeprecationWarning,
                 stacklevel=2
             )
-            return obj(*args, **kwargs)
+            return deprecated_item(*args, **kwargs)
         return wrapper
     return decorator

@@ -1,5 +1,5 @@
 """
-Tests for BaseRequest abstract base class
+Tests for OperationRequestFoundation abstract base class
 """
 import os
 from unittest.mock import Mock, patch
@@ -7,10 +7,10 @@ from unittest.mock import Mock, patch
 import pytest
 
 from src.domain.constants.operation_type import OperationType
-from src.domain.requests.base.base_request import BaseRequest
+from src.domain.requests.base.base_request import OperationRequestFoundation
 
 
-class ConcreteRequest(BaseRequest):
+class ConcreteRequest(OperationRequestFoundation):
     """Concrete implementation for testing"""
     def __init__(self, name=None, debug_tag=None):
         super().__init__(name=name, debug_tag=debug_tag)
@@ -27,10 +27,10 @@ class ConcreteRequest(BaseRequest):
         return {"status": "success"}
 
 
-class TestBaseRequest:
+class TestOperationRequestFoundation:
 
     def test_init(self):
-        """Test BaseRequest initialization"""
+        """Test OperationRequestFoundation initialization"""
         request = ConcreteRequest(name="test_request", debug_tag="TEST")
 
         assert request.name == "test_request"
@@ -70,7 +70,7 @@ class TestBaseRequest:
         request = ConcreteRequest(name="test")
         driver = Mock()
 
-        result = request.execute(driver)
+        result = request.execute_operation(driver)
 
         assert result == {"status": "success"}
         assert request._executed is True
@@ -84,11 +84,11 @@ class TestBaseRequest:
         driver = Mock()
 
         # First execution succeeds
-        request.execute(driver)
+        request.execute_operation(driver)
 
         # Second execution should raise RuntimeError
         with pytest.raises(RuntimeError) as exc_info:
-            request.execute(driver)
+            request.execute_operation(driver)
 
         assert "has already been executed" in str(exc_info.value)
 
@@ -98,7 +98,7 @@ class TestBaseRequest:
         # Default behavior requires driver
 
         with pytest.raises(ValueError) as exc_info:
-            request.execute()
+            request.execute_operation()
 
         assert "requires a driver" in str(exc_info.value)
 
@@ -107,7 +107,7 @@ class TestBaseRequest:
         request = ConcreteRequest()
         request._require_driver = False
 
-        result = request.execute()
+        result = request.execute_operation()
 
         assert result == {"status": "success"}
         assert request.driver_used is None
@@ -119,9 +119,9 @@ class TestBaseRequest:
 
     def test_abstract_methods(self):
         """Test that abstract methods must be implemented"""
-        # Cannot instantiate BaseRequest directly
+        # Cannot instantiate OperationRequestFoundation directly
         with pytest.raises(TypeError) as exc_info:
-            BaseRequest()
+            OperationRequestFoundation()
 
         assert "Can't instantiate abstract class" in str(exc_info.value)
 
@@ -138,7 +138,7 @@ class TestBaseRequest:
 
     def test_execute_preserves_exception(self):
         """Test that exceptions in _execute_core are preserved"""
-        class FailingRequest(BaseRequest):
+        class FailingRequest(OperationRequestFoundation):
             @property
             def operation_type(self):
                 return OperationType.SHELL
@@ -150,7 +150,7 @@ class TestBaseRequest:
         driver = Mock()
 
         with pytest.raises(ValueError) as exc_info:
-            request.execute(driver)
+            request.execute_operation(driver)
 
         assert str(exc_info.value) == "Test error"
         # Request should still be marked as executed

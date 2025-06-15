@@ -4,12 +4,12 @@ from pathlib import Path
 from typing import Any, Optional
 
 from src.domain.constants.operation_type import OperationType
-from src.domain.requests.base.base_request import BaseRequest
+from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.domain.requests.file.file_op_type import FileOpType
 from src.domain.results.file_result import FileResult
 
 
-class FileRequest(BaseRequest):
+class FileRequest(OperationRequestFoundation):
     """Request for file operations."""
 
     def __init__(self, op: FileOpType, path: str, content: Optional[str] = None,

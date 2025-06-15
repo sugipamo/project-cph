@@ -4,9 +4,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
-from src.infrastructure.persistence.base.base_repository import BaseRepository
+from src.infrastructure.persistence.base.base_repository import DatabaseRepositoryFoundation
 from src.infrastructure.persistence.sqlite.sqlite_manager import SQLiteManager
-from src.utils.deprecated import deprecated
 
 
 @dataclass
@@ -28,7 +27,7 @@ class Operation:
     created_at: Optional[datetime] = None
 
 
-class OperationRepository(BaseRepository):
+class OperationRepository(DatabaseRepositoryFoundation):
     """Repository for managing operation history."""
 
     def __init__(self, db_manager: SQLiteManager):
@@ -38,6 +37,22 @@ class OperationRepository(BaseRepository):
             db_manager: SQLite database manager
         """
         self.db_manager = db_manager
+
+    def create(self, entity: dict[str, Any]) -> Any:
+        """Create method for RepositoryInterface compatibility.
+
+        Args:
+            entity: Operation data as dictionary
+
+        Returns:
+            Created operation
+        """
+        # Convert dict to Operation object if needed
+        if isinstance(entity, dict):
+            operation = Operation(**entity)
+        else:
+            operation = entity
+        return self.create_operation_record(operation)
 
     def create_operation_record(self, operation: Operation) -> Operation:
         """Create a new operation record in the database.
@@ -81,17 +96,6 @@ class OperationRepository(BaseRepository):
 
         return operation
 
-    @deprecated("Use create_operation_record instead")
-    def create(self, operation: Operation) -> Operation:
-        """Create a new operation record.
-
-        Args:
-            operation: Operation to create
-
-        Returns:
-            Created operation with ID
-        """
-        return self.create_operation_record(operation)
 
     def find_by_id(self, operation_id: int) -> Optional[Operation]:
         """Find operation by ID.

@@ -126,12 +126,12 @@ class TestUnifiedDriver:
         # Mock file request
         mock_request = MagicMock()
         mock_request.operation_type = OperationType.FILE
-        mock_request.execute.return_value = MagicMock(success=True)
+        mock_request.execute_operation.return_value = MagicMock(success=True)
 
         result = driver.execute_command(mock_request)
 
         # Should call execute with file driver
-        mock_request.execute.assert_called_once_with(driver=self.mock_file_driver)
+        mock_request.execute_operation.assert_called_once_with(driver=self.mock_file_driver)
         assert result.success is True
 
     def test_execute_with_multiple_request_types(self):
@@ -149,11 +149,11 @@ class TestUnifiedDriver:
         for op_type, expected_driver in requests:
             mock_request = MagicMock()
             mock_request.operation_type = op_type
-            mock_request.execute.return_value = MagicMock(success=True)
+            mock_request.execute_operation.return_value = MagicMock(success=True)
 
             result = driver.execute_command(mock_request)
 
-            mock_request.execute.assert_called_once_with(driver=expected_driver)
+            mock_request.execute_operation.assert_called_once_with(driver=expected_driver)
             assert result.success is True
 
     def test_direct_driver_methods(self):
@@ -174,7 +174,7 @@ class TestUnifiedDriver:
         for _i in range(3):
             mock_request = MagicMock()
             mock_request.operation_type = OperationType.FILE
-            mock_request.execute.return_value = MagicMock(success=True)
+            mock_request.execute_operation.return_value = MagicMock(success=True)
 
             driver.execute_command(mock_request)
 

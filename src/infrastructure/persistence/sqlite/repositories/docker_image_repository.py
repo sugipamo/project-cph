@@ -1,11 +1,10 @@
 """Repository for managing Docker image records in SQLite."""
 from typing import Any, Dict, List, Optional
 
-from src.infrastructure.persistence.base.base_repository import BaseRepository
-from src.utils.deprecated import deprecated
+from src.infrastructure.persistence.base.base_repository import DatabaseRepositoryFoundation
 
 
-class DockerImageRepository(BaseRepository):
+class DockerImageRepository(DatabaseRepositoryFoundation):
     """Repository for Docker image operations."""
 
     def __init__(self, sqlite_manager):
@@ -17,10 +16,6 @@ class DockerImageRepository(BaseRepository):
         """Create a new image entity."""
         return self.create_or_update_image(**entity)
 
-    @deprecated("Use create_image_record() instead")
-    def create(self, entity: Dict[str, Any]) -> Any:
-        """Create a new image entity."""
-        return self.create_image_record(entity)
 
     def find_by_id(self, entity_id: Any) -> Optional[Dict[str, Any]]:
         """Find image by ID (name:tag format)."""

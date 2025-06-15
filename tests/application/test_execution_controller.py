@@ -53,7 +53,7 @@ class TestExecutionController:
 
         # Configure failed result
         mock_result.success = False
-        mock_request.execute.return_value = mock_result
+        mock_request.execute_operation.return_value = mock_result
         mock_request.allow_failure = False
 
         requests = [mock_request]
@@ -103,7 +103,7 @@ class TestExecutionController:
 
         # Remove success attribute
         del mock_result.success
-        mock_request.execute.return_value = mock_result
+        mock_request.execute_operation.return_value = mock_result
         mock_request.allow_failure = False
 
         requests = [mock_request]
@@ -121,7 +121,7 @@ class TestExecutionController:
 
         # Configure failed result, no allow_failure attribute (defaults to False)
         mock_result.success = False
-        mock_request.execute.return_value = mock_result
+        mock_request.execute_operation.return_value = mock_result
         del mock_request.allow_failure  # Remove attribute
 
         requests = [mock_request]
@@ -236,7 +236,7 @@ class TestExecutionController:
         mock_result = MagicMock()
 
         mock_result.success = True
-        mock_request.execute.return_value = mock_result
+        mock_request.execute_operation.return_value = mock_result
         mock_request.allow_failure = False
 
         requests = [mock_request]
@@ -245,4 +245,4 @@ class TestExecutionController:
 
         assert len(results) == 1
         assert results[0] == mock_result
-        mock_request.execute.assert_called_once_with(driver=mock_driver)
+        mock_request.execute_operation.assert_called_once_with(driver=mock_driver)

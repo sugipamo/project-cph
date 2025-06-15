@@ -4,7 +4,7 @@ from typing import Any, Optional, Union
 
 from src.domain.constants.operation_type import OperationType
 from src.domain.interfaces.docker_interface import DockerDriverInterface
-from src.domain.requests.base.base_request import BaseRequest
+from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.domain.requests.composite.composite_request import CompositeRequest
 from src.domain.results.result import OperationResult
 
@@ -21,7 +21,7 @@ class DockerOpType(Enum):
     CP = auto()
 
 
-class DockerRequest(BaseRequest):
+class DockerRequest(OperationRequestFoundation):
     """Request for Docker container operations."""
 
     def __init__(self, op: DockerOpType, image: Optional[str] = None, container: Optional[str] = None,
@@ -56,9 +56,10 @@ class DockerRequest(BaseRequest):
         """Get operation type."""
         return OperationType.DOCKER
 
-    def execute(self, driver):
-        """Execute the Docker request."""
-        return super().execute(driver)
+    def execute_docker_operation(self, driver):
+        """Execute the Docker operation request."""
+        return super().execute_operation(driver)
+
 
     def _execute_core(self, driver: DockerDriverInterface):
         """Core execution logic for Docker operations."""
@@ -114,7 +115,7 @@ class DockerRequest(BaseRequest):
             DockerRequest(DockerOpType.RUN, image=self.image, container=self.container,
                          options=self.options, show_output=self.show_output)
         ]
-        results = CompositeRequest.make_composite_request(reqs).execute(driver)
+        results = CompositeRequest.make_composite_request(reqs).execute_operation(driver)
         if isinstance(results, list) and results:
             return results[-1]
         return results
@@ -151,7 +152,7 @@ class DockerRequest(BaseRequest):
     def _handle_build_operation(self, driver: DockerDriverInterface):
         """Handle Docker build operation."""
         tag = self.options.get('t')
-        return driver.build(self.dockerfile_text, tag=tag, options=self.options, show_output=self.show_output)
+        return driver.build_docker_image(self.dockerfile_text, tag=tag, options=self.options, show_output=self.show_output)
 
     def _handle_copy_operation(self, driver: DockerDriverInterface):
         """Handle Docker copy operation."""

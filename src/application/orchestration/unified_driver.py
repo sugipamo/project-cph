@@ -29,7 +29,7 @@ class UnifiedDriver:
         driver = self._get_driver_for_request(request)
 
         # Execute request with the driver
-        return request.execute(driver=driver)
+        return request.execute_operation(driver=driver)
 
     def _get_driver_for_request(self, request) -> Any:
         """Get appropriate driver based on request type
@@ -95,7 +95,7 @@ class UnifiedDriver:
     def run(self, *args, **kwargs):
         """Run shell command using shell driver"""
         shell_driver = self._get_cached_driver("shell_driver")
-        return shell_driver.run(*args, **kwargs)
+        return shell_driver.execute_shell_command(*args, **kwargs)
 
     # File driver methods
     def copy(self, *args, **kwargs):

@@ -58,7 +58,7 @@ class SequentialExecutor:
 
         try:
             # リクエストを実行
-            result = node.request.execute(driver=driver)
+            result = node.request.execute_operation(driver=driver)
             return self._handle_execution_success(node, node_id, result)
 
         except Exception as e:

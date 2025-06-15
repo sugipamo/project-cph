@@ -2,11 +2,10 @@
 import json
 from typing import Any, Dict, List, Optional
 
-from src.infrastructure.persistence.base.base_repository import BaseRepository
-from src.utils.deprecated import deprecated
+from src.infrastructure.persistence.base.base_repository import DatabaseRepositoryFoundation
 
 
-class DockerContainerRepository(BaseRepository):
+class DockerContainerRepository(DatabaseRepositoryFoundation):
     """Repository for Docker container operations."""
 
     def __init__(self, sqlite_manager):
@@ -18,10 +17,6 @@ class DockerContainerRepository(BaseRepository):
         """Create a new container entity."""
         return self.create_container(**entity)
 
-    @deprecated("Use create_container_record() instead")
-    def create(self, entity: Dict[str, Any]) -> Any:
-        """Create a new container entity."""
-        return self.create_container_record(entity)
 
     def find_by_id(self, entity_id: Any) -> Optional[Dict[str, Any]]:
         """Find container by ID."""

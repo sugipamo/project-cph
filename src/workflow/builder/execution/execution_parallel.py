@@ -183,7 +183,7 @@ class ParallelExecutor:
             OperationResult: 実行結果
         """
         try:
-            return node.request.execute(driver=driver)
+            return node.request.execute_operation(driver=driver)
         except Exception as e:
             # 例外をキャッチしてエラー結果を返す
             error_msg = f"{e!s}\n{traceback.format_exc()}"

@@ -6,7 +6,6 @@ from typing import Any, Optional
 
 from src.infrastructure.di_container import DIKey
 from src.infrastructure.drivers.docker.docker_driver import LocalDockerDriver
-from src.utils.deprecated import deprecated
 
 
 class LocalDockerDriverWithTracking(LocalDockerDriver):
@@ -140,10 +139,6 @@ class LocalDockerDriverWithTracking(LocalDockerDriver):
 
         return result
 
-    @deprecated("Use build_docker_image instead")
-    def build(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
-        """Backward compatibility wrapper for build_docker_image"""
-        return self.build_docker_image(dockerfile_text, tag, options, show_output)
 
     def image_rm(self, image: str, show_output: bool = True):
         """Remove image and update database."""

@@ -251,7 +251,7 @@ class TestLocalDockerDriverWithTracking:
         expected_hash = hashlib.sha256(dockerfile_text.encode('utf-8')).hexdigest()[:12]
 
         # Execute
-        result = self.driver.build(dockerfile_text, "test:latest")
+        result = self.driver.build_docker_image(dockerfile_text, "test:latest")
 
         # Assert
         assert result == mock_result
@@ -287,7 +287,7 @@ class TestLocalDockerDriverWithTracking:
         dockerfile_text = "FROM ubuntu"
 
         # Execute
-        result = self.driver.build(dockerfile_text, "test")
+        result = self.driver.build_docker_image(dockerfile_text, "test")
 
         # Assert
         assert result == mock_result
@@ -313,7 +313,7 @@ class TestLocalDockerDriverWithTracking:
         dockerfile_text = "FROM invalid"
 
         # Execute
-        result = self.driver.build(dockerfile_text, "test")
+        result = self.driver.build_docker_image(dockerfile_text, "test")
 
         # Assert
         assert result == mock_result
@@ -335,7 +335,7 @@ class TestLocalDockerDriverWithTracking:
         dockerfile_text = "FROM ubuntu"
 
         # Execute
-        result = self.driver.build(dockerfile_text, None)
+        result = self.driver.build_docker_image(dockerfile_text, None)
 
         # Assert
         assert result == mock_result
@@ -356,7 +356,7 @@ class TestLocalDockerDriverWithTracking:
         dockerfile_text = "FROM ubuntu"
 
         # Execute - should not raise exception
-        result = self.driver.build(dockerfile_text, "test")
+        result = self.driver.build_docker_image(dockerfile_text, "test")
 
         # Assert operation still succeeds
         assert result == mock_result

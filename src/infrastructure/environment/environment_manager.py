@@ -2,7 +2,7 @@
 """
 from typing import Any, Optional
 
-from src.domain.requests.base.base_request import BaseRequest
+from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.domain.results.result import OperationResult
 
 
@@ -43,7 +43,7 @@ class EnvironmentManager:
         # Simple direct implementation
         return OperationResult(success=True, error_message=f"Environment {self._env_type} cleaned up")
 
-    def execute_request(self, request: BaseRequest, driver: Any) -> OperationResult:
+    def execute_request(self, request: OperationRequestFoundation, driver: Any) -> OperationResult:
         """Execute a request using the appropriate environment.
 
         Args:
@@ -54,7 +54,7 @@ class EnvironmentManager:
             OperationResult with execution details
         """
         # Direct execution without strategy pattern
-        return request.execute(driver)
+        return request.execute_operation(driver)
 
     def should_force_local(self, step_config: dict[str, Any]) -> bool:
         """Check if a step should be forced to run locally.

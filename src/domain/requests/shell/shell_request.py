@@ -4,11 +4,11 @@ import uuid
 from typing import Any, Optional, Union
 
 from src.domain.constants.operation_type import OperationType
-from src.domain.requests.base.base_request import BaseRequest
+from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.domain.results.result import OperationResult
 
 
-class ShellRequest(BaseRequest):
+class ShellRequest(OperationRequestFoundation):
     """Request for executing shell commands."""
 
     def __init__(self, cmd: Union[str, list[str]], cwd: Optional[str] = None,
@@ -49,7 +49,7 @@ class ShellRequest(BaseRequest):
 
         def execute_command():
             actual_driver = self._get_actual_driver(driver)
-            return actual_driver.run(
+            return actual_driver.execute_shell_command(
                 self.cmd,
                 cwd=self.cwd,
                 env=self.env,

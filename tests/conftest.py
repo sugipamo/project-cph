@@ -66,7 +66,7 @@ def assert_no_driver_error(request_class, error_message, **kwargs):
     """ドライバー不在エラーのテストヘルパー"""
     req = request_class(**kwargs)
     with pytest.raises(ValueError) as excinfo:
-        req.execute(None)
+        req.execute_operation(None)
     assert str(excinfo.value) == error_message
 
 

@@ -292,12 +292,12 @@ class TestExecutionFunctions:
         node = Mock()
         driver = Mock()
         expected_result = Mock()
-        node.request.execute.return_value = expected_result
+        node.request.execute_operation.return_value = expected_result
 
         result = safe_execute_node(node, driver)
 
         assert result == expected_result
-        node.request.execute.assert_called_once_with(driver=driver)
+        node.request.execute_operation.assert_called_once_with(driver=driver)
         mock_operation_result_class.assert_not_called()
 
     @patch('src.domain.results.result.OperationResult')
@@ -309,7 +309,7 @@ class TestExecutionFunctions:
 
         node = Mock()
         driver = Mock()
-        node.request.execute.side_effect = Exception("Test error")
+        node.request.execute_operation.side_effect = Exception("Test error")
 
         result = safe_execute_node(node, driver)
 

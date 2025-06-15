@@ -190,7 +190,7 @@ class TestLocalDockerDriver(BaseTest):
         mock_shell_request.return_value = mock_request_instance
 
         dockerfile_content = "FROM python:3.9\\nRUN pip install pytest"
-        result = self.driver.build(
+        result = self.driver.build_docker_image(
             dockerfile_text=dockerfile_content,
             tag="test-image:latest"
         )
@@ -204,10 +204,10 @@ class TestLocalDockerDriver(BaseTest):
     def test_build_without_dockerfile_text(self):
         """Test build failure when dockerfile_text is None"""
         with pytest.raises(ValueError, match="dockerfile_text is None"):
-            self.driver.build(dockerfile_text=None)
+            self.driver.build_docker_image(dockerfile_text=None)
 
         with pytest.raises(ValueError, match="dockerfile_text is None"):
-            self.driver.build(dockerfile_text="")
+            self.driver.build_docker_image(dockerfile_text="")
 
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
     def test_build_with_options(self, mock_shell_request):
@@ -219,7 +219,7 @@ class TestLocalDockerDriver(BaseTest):
         dockerfile_content = "FROM python:3.9"
         options = {"no_cache": True, "build_args": {"VERSION": "1.0"}}
 
-        result = self.driver.build(
+        result = self.driver.build_docker_image(
             dockerfile_text=dockerfile_content,
             tag="test-image",
             options=options,
@@ -509,7 +509,7 @@ class TestDockerDriverEdgeCases(BaseTest):
         mock_shell_request.return_value = mock_request_instance
 
         minimal_dockerfile = "FROM scratch"
-        result = self.driver.build(dockerfile_text=minimal_dockerfile)
+        result = self.driver.build_docker_image(dockerfile_text=minimal_dockerfile)
 
         assert result.success is True
         call_kwargs = mock_shell_request.call_args[1]

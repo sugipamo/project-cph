@@ -21,7 +21,7 @@ def test_shell_request_echo():
         req = ShellRequest(["echo", "hello"])
         from src.infrastructure.mock.mock_file_driver import MockFileDriver
         driver = LocalShellDriver(MockFileDriver())
-        result = req.execute(driver=driver)
+        result = req.execute_operation(driver=driver)
         assert result.operation_type == OperationType.SHELL
     assert result.success
     assert "hello" in result.stdout
@@ -37,7 +37,7 @@ def test_shell_request_fail():
         req = ShellRequest(["false"])
         from src.infrastructure.mock.mock_file_driver import MockFileDriver
         driver = LocalShellDriver(MockFileDriver())
-        result = req.execute(driver=driver)
+        result = req.execute_operation(driver=driver)
         assert not result.success
         with pytest.raises(RuntimeError):
             result.raise_if_error()
@@ -46,7 +46,7 @@ def test_shell_request_fail():
 def test_shell_request_no_driver():
     req = ShellRequest(["echo", "hello"])
     with pytest.raises(ValueError) as excinfo:
-        req.execute(None)
+        req.execute_operation(None)
     assert "requires a driver" in str(excinfo.value)
 
 def test_shell_request_echo():
@@ -56,7 +56,7 @@ def test_shell_request_echo():
     di.register('shell_driver', lambda: LocalShellDriver(MockFileDriver()))
     req = ShellRequest(["echo", "hello"])
     driver = di.resolve('shell_driver')
-    result = req.execute(driver)
+    result = req.execute_operation(driver)
     assert result.stdout.strip() == "hello"
 
 def test_shell_request_timeout():
@@ -66,7 +66,7 @@ def test_shell_request_timeout():
     di.register('shell_driver', lambda: LocalShellDriver(MockFileDriver()))
     req = ShellRequest(["echo", "timeout"])
     driver = di.resolve('shell_driver')
-    result = req.execute(driver)
+    result = req.execute_operation(driver)
     assert result.returncode == 0
 
 def test_shell_request_repr():

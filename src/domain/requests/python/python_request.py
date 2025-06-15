@@ -3,12 +3,12 @@ import time
 from typing import Any, Optional, Union
 
 from src.domain.constants.operation_type import OperationType
-from src.domain.requests.base.base_request import BaseRequest
+from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.domain.results.result import OperationResult
 from src.infrastructure.drivers.python.utils.python_utils import PythonUtils
 
 
-class PythonRequest(BaseRequest):
+class PythonRequest(OperationRequestFoundation):
     """Request for executing Python code or scripts."""
 
     _require_driver = True

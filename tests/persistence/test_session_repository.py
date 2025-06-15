@@ -35,7 +35,7 @@ class TestSessionRepository:
 
     def test_create_session(self, session_repo, sample_session):
         """Test creating a new session."""
-        created_session = session_repo.create(sample_session)
+        created_session = session_repo.create_session_record(sample_session)
 
         assert created_session.id is not None
         assert created_session.language == "python"
@@ -57,13 +57,13 @@ class TestSessionRepository:
             language="cpp"
         )
 
-        created_session = session_repo.create(session)
+        created_session = session_repo.create_session_record(session)
         assert created_session.session_start == start_time
         assert created_session.session_end == end_time
 
     def test_find_by_id_existing(self, session_repo, sample_session):
         """Test finding session by existing ID."""
-        created_session = session_repo.create(sample_session)
+        created_session = session_repo.create_session_record(sample_session)
         found_session = session_repo.find_by_id(created_session.id)
 
         assert found_session is not None
@@ -88,9 +88,9 @@ class TestSessionRepository:
         session2 = Session(language="cpp", session_start=datetime(2023, 1, 1, 11, 0, 0))
         session3 = Session(language="java", session_start=datetime(2023, 1, 1, 12, 0, 0))
 
-        session_repo.create(session1)
-        session_repo.create(session2)
-        session_repo.create(session3)
+        session_repo.create_session_record(session1)
+        session_repo.create_session_record(session2)
+        session_repo.create_session_record(session3)
 
         sessions = session_repo.find_all()
         assert len(sessions) == 3
@@ -104,7 +104,7 @@ class TestSessionRepository:
         # Create 5 sessions
         for i in range(5):
             session = Session(language=f"lang{i}")
-            session_repo.create(session)
+            session_repo.create_session_record(session)
 
         # Test limit
         limited = session_repo.find_all(limit=3)
@@ -128,7 +128,7 @@ class TestSessionRepository:
         """Test finding active session when one exists."""
         # Create an active session (no end time)
         session = Session(language="python")
-        created_session = session_repo.create(session)
+        created_session = session_repo.create_session_record(session)
 
         active_session = session_repo.find_active_session()
         assert active_session is not None
@@ -140,7 +140,7 @@ class TestSessionRepository:
         # Create an ended session
         end_time = datetime.now()
         session = Session(language="python", session_end=end_time)
-        session_repo.create(session)
+        session_repo.create_session_record(session)
 
         active_session = session_repo.find_active_session()
         assert active_session is None
@@ -260,9 +260,9 @@ class TestSessionRepository:
         session2 = Session(language="python", session_start=start2, session_end=end2)
         session3 = Session(language="cpp")  # Active session (no end time)
 
-        session_repo.create(session1)
-        session_repo.create(session2)
-        session_repo.create(session3)
+        session_repo.create_session_record(session1)
+        session_repo.create_session_record(session2)
+        session_repo.create_session_record(session3)
 
         stats = session_repo.get_session_statistics()
 
@@ -277,7 +277,7 @@ class TestSessionRepository:
 
     def test_update_session(self, session_repo, sample_session):
         """Test updating an existing session."""
-        created_session = session_repo.create(sample_session)
+        created_session = session_repo.create_session_record(sample_session)
 
         # Modify the session
         created_session.language = "cpp"
@@ -301,7 +301,7 @@ class TestSessionRepository:
 
     def test_delete_session(self, session_repo, sample_session):
         """Test deleting a session."""
-        created_session = session_repo.create(sample_session)
+        created_session = session_repo.create_session_record(sample_session)
         session_id = created_session.id
 
         # Verify it exists
@@ -330,7 +330,7 @@ class TestSessionRepository:
             session_end=end_time
         )
 
-        created_session = session_repo.create(session)
+        created_session = session_repo.create_session_record(session)
         found_session = session_repo.find_by_id(created_session.id)
 
         # Should preserve the timestamps

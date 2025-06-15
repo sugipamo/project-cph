@@ -49,7 +49,7 @@ class TestSystemConfigRepository:
         }
 
         with patch.object(self.repository, 'set_config') as mock_set:
-            result = self.repository.create(entity)
+            result = self.repository.create_config_record(entity)
 
         assert result == 'test_key'
         mock_set.assert_called_once_with('test_key', 'test_value', 'test_category', 'test description')
@@ -62,7 +62,7 @@ class TestSystemConfigRepository:
         }
 
         with patch.object(self.repository, 'set_config') as mock_set:
-            result = self.repository.create(entity)
+            result = self.repository.create_config_record(entity)
 
         assert result == 'alt_key'
         mock_set.assert_called_once_with('alt_key', 'alt_value', None, None)

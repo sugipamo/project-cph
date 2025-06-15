@@ -2,15 +2,15 @@
 from typing import Any, Optional
 
 from src.domain.interfaces.execution_interface import ExecutionInterface
-from src.domain.requests.base.base_request import BaseRequest
-from src.domain.requests.composite.base_composite_request import BaseCompositeRequest
+from src.domain.requests.base.base_request import OperationRequestFoundation
+from src.domain.requests.composite.base_composite_request import CompositeRequestFoundation
 from src.domain.requests.composite.composite_structure import CompositeStructure
 
 
-class CompositeRequest(BaseCompositeRequest):
+class CompositeRequest(CompositeRequestFoundation):
     """Composite request that contains multiple sub-requests."""
 
-    def __init__(self, requests: list[BaseRequest], debug_tag: Optional[str] = None, name: Optional[str] = None,
+    def __init__(self, requests: list[OperationRequestFoundation], debug_tag: Optional[str] = None, name: Optional[str] = None,
                  execution_controller: Optional[ExecutionInterface] = None, _executed: bool = False, _results = None, _debug_info: Optional[dict] = None):
         # Initialize structure first before calling super().__init__
         self.structure = CompositeStructure(requests)
@@ -22,11 +22,11 @@ class CompositeRequest(BaseCompositeRequest):
         return len(self.structure)
 
     @property
-    def requests(self) -> list[BaseRequest]:
+    def requests(self) -> list[OperationRequestFoundation]:
         return self.structure.requests
 
     @requests.setter
-    def requests(self, value: list[BaseRequest]) -> None:
+    def requests(self, value: list[OperationRequestFoundation]) -> None:
         # Update the structure when requests is set
         if hasattr(self, 'structure'):
             self.structure = CompositeStructure(value)
@@ -34,13 +34,14 @@ class CompositeRequest(BaseCompositeRequest):
             # This will be called during initialization
             pass
 
-    def execute(self, driver: Any) -> list[Any]:
-        return super().execute(driver)
+    def execute_composite_operation(self, driver: Any) -> list[Any]:
+        return super().execute_operation(driver)
+
 
     def _execute_core(self, driver: Any) -> list[Any]:
         results = []
         for req in self.requests:
-            result = req.execute(driver=driver)
+            result = req.execute_operation(driver=driver)
 
             # Handle output directly using OutputManager static method
             if hasattr(req, 'show_output') and req.show_output:
@@ -59,8 +60,8 @@ class CompositeRequest(BaseCompositeRequest):
         return f"<CompositeRequest name={self.name} {self.structure}>"
 
     @classmethod
-    def make_composite_request(cls, requests: list[BaseRequest], debug_tag: Optional[str] = None,
-                             name: Optional[str] = None) -> BaseRequest:
+    def make_composite_request(cls, requests: list[OperationRequestFoundation], debug_tag: Optional[str] = None,
+                             name: Optional[str] = None) -> OperationRequestFoundation:
         """If requests has only one item, return it as-is; if two or more, wrap in CompositeRequest.
         However, if name is specified, call set_name.
         """
@@ -72,6 +73,6 @@ class CompositeRequest(BaseCompositeRequest):
         return cls(requests, debug_tag=debug_tag, name=name)
 
     def count_leaf_requests(self) -> int:
-        """Recursively count all leaves (BaseCompositeRequest that are not CompositeRequest).
+        """Recursively count all leaves (CompositeRequestFoundation that are not CompositeRequest).
         """
         return self.structure.count_leaf_requests()

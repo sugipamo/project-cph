@@ -5,11 +5,10 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 from src.domain.constants.operation_type import OperationType
-from src.utils.deprecated import deprecated
 
 
-class AbstractOperationRequest(ABC):
-    """Abstract base class for all operation requests.
+class OperationRequestFoundation(ABC):
+    """Foundation class for all operation requests.
 
     This class provides the foundation for all concrete request implementations,
     offering common execution patterns and debug tracking capabilities.
@@ -21,7 +20,7 @@ class AbstractOperationRequest(ABC):
         self._result = _result
         self.debug_info = _debug_info if _debug_info is not None else self._create_debug_info(debug_tag)
 
-    def set_name(self, name: str) -> 'BaseRequest':
+    def set_name(self, name: str) -> 'OperationRequestFoundation':
         """Set the name of this request."""
         self.name = name
         return self
@@ -43,8 +42,8 @@ class AbstractOperationRequest(ABC):
     def operation_type(self) -> OperationType:
         """Return the operation type of this request."""
 
-    def execute(self, driver: Optional[Any] = None) -> Any:
-        """Execute this request using the provided driver.
+    def execute_operation(self, driver: Optional[Any] = None) -> Any:
+        """Execute this operation request using the provided driver.
 
         Args:
             driver: The driver to use for execution
@@ -60,12 +59,13 @@ class AbstractOperationRequest(ABC):
             raise RuntimeError(f"This {self.__class__.__name__} has already been executed.")
         # Driver requirement is controlled by subclasses
         if getattr(self, '_require_driver', True) and driver is None:
-            raise ValueError(f"{self.__class__.__name__}.execute() requires a driver")
+            raise ValueError(f"{self.__class__.__name__}.execute_operation() requires a driver")
         try:
             self._result = self._execute_core(driver)
             return self._result
         finally:
             self._executed = True
+
 
     @abstractmethod
     def _execute_core(self, driver: Optional[Any]) -> Any:
@@ -79,11 +79,3 @@ class AbstractOperationRequest(ABC):
         """
 
 
-@deprecated("Use AbstractOperationRequest instead")
-class BaseRequest(AbstractOperationRequest):
-    """Abstract base class for all operation requests.
-
-    .. deprecated::
-        Use :class:`AbstractOperationRequest` instead.
-    """
-    pass

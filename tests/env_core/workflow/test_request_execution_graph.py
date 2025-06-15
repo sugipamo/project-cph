@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from src.domain.requests.base.base_request import BaseRequest
+from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.domain.results.result import OperationResult
 from src.workflow.builder.request_execution_graph import (
     DependencyEdge,
@@ -23,7 +23,7 @@ class TestRequestNode:
 
     def test_request_node_creation_minimal(self):
         """Test creating RequestNode with minimal parameters"""
-        request = Mock(spec=BaseRequest)
+        request = Mock(spec=OperationRequestFoundation)
         node = RequestNode("node1", request)
 
         assert node.id == "node1"
@@ -38,7 +38,7 @@ class TestRequestNode:
 
     def test_request_node_creation_with_resources(self):
         """Test creating RequestNode with resource information"""
-        request = Mock(spec=BaseRequest)
+        request = Mock(spec=OperationRequestFoundation)
         node = RequestNode(
             "node2",
             request,
@@ -57,8 +57,8 @@ class TestRequestNode:
 
     def test_request_node_hash_and_equality(self):
         """Test RequestNode hash and equality"""
-        request1 = Mock(spec=BaseRequest)
-        request2 = Mock(spec=BaseRequest)
+        request1 = Mock(spec=OperationRequestFoundation)
+        request2 = Mock(spec=OperationRequestFoundation)
 
         node1 = RequestNode("node1", request1)
         node2 = RequestNode("node1", request2)  # Same ID
@@ -75,7 +75,7 @@ class TestRequestNode:
 
     def test_request_node_resource_properties_none(self):
         """Test resource properties when _resource_info is None"""
-        request = Mock(spec=BaseRequest)
+        request = Mock(spec=OperationRequestFoundation)
         node = RequestNode("node1", request)
 
         # Ensure _resource_info is None
@@ -469,10 +469,10 @@ class TestRequestExecutionGraph:
     def test_execute_sequential_success(self):
         """Test sequential execution with successful requests"""
         # Create mock requests
-        mock_request1 = Mock(spec=BaseRequest)
+        mock_request1 = Mock(spec=OperationRequestFoundation)
         mock_request1.execute.return_value = OperationResult(success=True, stdout="Output 1")
 
-        mock_request2 = Mock(spec=BaseRequest)
+        mock_request2 = Mock(spec=OperationRequestFoundation)
         mock_request2.execute.return_value = OperationResult(success=True, stdout="Output 2")
 
         node1 = RequestNode("node1", mock_request1)
@@ -501,11 +501,11 @@ class TestRequestExecutionGraph:
     def test_execute_sequential_with_failure(self):
         """Test sequential execution with failed request"""
         # Create mock requests
-        mock_request1 = Mock(spec=BaseRequest)
+        mock_request1 = Mock(spec=OperationRequestFoundation)
         mock_request1.execute.return_value = OperationResult(success=False, error_message="Error 1")
         mock_request1.allow_failure = False
 
-        mock_request2 = Mock(spec=BaseRequest)
+        mock_request2 = Mock(spec=OperationRequestFoundation)
         mock_request2.execute.return_value = OperationResult(success=True, stdout="Output 2")
 
         node1 = RequestNode("node1", mock_request1)
@@ -531,11 +531,11 @@ class TestRequestExecutionGraph:
     def test_execute_sequential_with_allowed_failure(self):
         """Test sequential execution with allowed failure"""
         # Create mock requests
-        mock_request1 = Mock(spec=BaseRequest)
+        mock_request1 = Mock(spec=OperationRequestFoundation)
         mock_request1.execute.return_value = OperationResult(success=False, error_message="Error 1")
         mock_request1.allow_failure = True
 
-        mock_request2 = Mock(spec=BaseRequest)
+        mock_request2 = Mock(spec=OperationRequestFoundation)
         mock_request2.execute.return_value = OperationResult(success=True, stdout="Output 2")
 
         node1 = RequestNode("node1", mock_request1)
@@ -563,11 +563,11 @@ class TestRequestExecutionGraph:
     def test_execute_sequential_with_exception(self):
         """Test sequential execution with exception"""
         # Create mock requests
-        mock_request1 = Mock(spec=BaseRequest)
+        mock_request1 = Mock(spec=OperationRequestFoundation)
         mock_request1.execute.side_effect = RuntimeError("Execution failed")
         mock_request1.allow_failure = False
 
-        mock_request2 = Mock(spec=BaseRequest)
+        mock_request2 = Mock(spec=OperationRequestFoundation)
         mock_request2.execute.return_value = OperationResult(success=True)
 
         node1 = RequestNode("node1", mock_request1)
@@ -591,13 +591,13 @@ class TestRequestExecutionGraph:
     def test_execute_parallel_success(self):
         """Test parallel execution with successful requests"""
         # Create mock requests
-        mock_request1 = Mock(spec=BaseRequest)
+        mock_request1 = Mock(spec=OperationRequestFoundation)
         mock_request1.execute.return_value = OperationResult(success=True, stdout="Output 1")
 
-        mock_request2 = Mock(spec=BaseRequest)
+        mock_request2 = Mock(spec=OperationRequestFoundation)
         mock_request2.execute.return_value = OperationResult(success=True, stdout="Output 2")
 
-        mock_request3 = Mock(spec=BaseRequest)
+        mock_request3 = Mock(spec=OperationRequestFoundation)
         mock_request3.execute.return_value = OperationResult(success=True, stdout="Output 3")
 
         node1 = RequestNode("node1", mock_request1)
@@ -623,7 +623,7 @@ class TestRequestExecutionGraph:
     def test_execute_parallel_with_exception(self):
         """Test parallel execution with exception in task"""
         # Create mock requests
-        mock_request1 = Mock(spec=BaseRequest)
+        mock_request1 = Mock(spec=OperationRequestFoundation)
         mock_request1.execute.side_effect = RuntimeError("Execution error")
         mock_request1.allow_failure = False
 
@@ -825,8 +825,8 @@ class TestIntegrationScenarios:
 
         requests = {}
         for i in range(1, 6):
-            mock_request = Mock(spec=BaseRequest)
-            mock_request.execute.return_value = OperationResult(
+            mock_request = Mock(spec=OperationRequestFoundation)
+            mock_request.execute_operation.return_value = OperationResult(
                 success=True,
                 stdout=f"Output from node{i}"
             )
@@ -866,7 +866,7 @@ class TestIntegrationScenarios:
         graph = RequestExecutionGraph()
 
         # First request outputs a filename
-        mock_request1 = Mock(spec=BaseRequest)
+        mock_request1 = Mock(spec=OperationRequestFoundation)
         mock_request1.execute.return_value = OperationResult(
             success=True,
             stdout="/tmp/generated_file.txt"
@@ -874,7 +874,7 @@ class TestIntegrationScenarios:
         mock_request1.cmd = ["generate_filename"]
 
         # Second request uses the filename
-        mock_request2 = Mock(spec=BaseRequest)
+        mock_request2 = Mock(spec=OperationRequestFoundation)
         mock_request2.execute.return_value = OperationResult(success=True)
         mock_request2.cmd = ["process", "{{step_0.stdout}}"]
         mock_request2.allow_failure = False

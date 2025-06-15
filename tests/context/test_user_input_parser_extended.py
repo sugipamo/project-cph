@@ -273,7 +273,7 @@ class TestUserInputParserHelpers:
 
         with patch('src.context.user_input_parser.FileRequest') as mock_file_request:
             mock_request = MagicMock()
-            mock_request.execute.return_value = mock_result
+            mock_request.execute_operation.return_value = mock_result
             mock_file_request.return_value = mock_request
 
             result = _load_shared_config("base_dir", mock_operations)
@@ -288,7 +288,7 @@ class TestUserInputParserHelpers:
 
         with patch('src.context.user_input_parser.FileRequest') as mock_file_request:
             mock_request = MagicMock()
-            mock_request.execute.side_effect = Exception("File error")
+            mock_request.execute_operation.side_effect = Exception("File error")
             mock_file_request.return_value = mock_request
 
             result = _load_shared_config("base_dir", mock_operations)
@@ -316,9 +316,9 @@ class TestUserInputParserHelpers:
             def side_effect(*args, **kwargs):
                 mock_request = MagicMock()
                 if args[0].name == "EXISTS":
-                    mock_request.execute.return_value = mock_exists_result
+                    mock_request.execute_operation.return_value = mock_exists_result
                 else:  # READ
-                    mock_request.execute.return_value = mock_content_result
+                    mock_request.execute_operation.return_value = mock_content_result
                 return mock_request
 
             mock_file_request.side_effect = side_effect
@@ -399,7 +399,7 @@ class TestUserInputParserHelpers:
 
         with patch('src.context.user_input_parser.FileRequest') as mock_file_request:
             mock_request = MagicMock()
-            mock_request.execute.return_value = mock_result
+            mock_request.execute_operation.return_value = mock_result
             mock_file_request.return_value = mock_request
 
             loader = make_dockerfile_loader(mock_operations)

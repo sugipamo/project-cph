@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.domain.requests.base.base_request import BaseRequest
+from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.workflow.builder.request_execution_graph import (
     DependencyEdge,
     DependencyType,

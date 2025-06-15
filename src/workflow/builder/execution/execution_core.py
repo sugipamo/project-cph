@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Optional
 
-from src.domain.requests.base.base_request import BaseRequest
+from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.domain.results.result import OperationResult
 
 from ..debug.debug_logger_adapter import create_workflow_debug_adapter
@@ -32,7 +32,7 @@ class RequestNode:
     """
     __slots__ = ('_resource_info', 'id', 'metadata', 'request', 'result', 'status')
 
-    def __init__(self, id: str, request: BaseRequest,
+    def __init__(self, id: str, request: OperationRequestFoundation,
                  creates_files: Optional[set[str]] = None,
                  creates_dirs: Optional[set[str]] = None,
                  reads_files: Optional[set[str]] = None,

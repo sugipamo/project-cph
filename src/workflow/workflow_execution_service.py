@@ -186,7 +186,7 @@ class WorkflowExecutionService:
     def _execute_main_workflow(self, operations_composite):
         """Execute the main workflow operations."""
         unified_driver = UnifiedDriver(self.operations)
-        execution_result = operations_composite.execute(unified_driver)
+        execution_result = operations_composite.execute_operation(unified_driver)
 
         # CompositeRequest returns a list of results, so flatten if needed
         if isinstance(execution_result, list):

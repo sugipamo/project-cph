@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.domain.requests.base.base_request import BaseRequest
+from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.workflow.builder.request_execution_graph import RequestNode
 
 
@@ -14,7 +14,7 @@ class TestRequestNode:
 
     def test_request_node_creation_minimal(self):
         """Test creating RequestNode with minimal parameters"""
-        request = Mock(spec=BaseRequest)
+        request = Mock(spec=OperationRequestFoundation)
         node = RequestNode("node1", request)
 
         assert node.id == "node1"
@@ -29,7 +29,7 @@ class TestRequestNode:
 
     def test_request_node_creation_with_resources(self):
         """Test creating RequestNode with resource information"""
-        request = Mock(spec=BaseRequest)
+        request = Mock(spec=OperationRequestFoundation)
         node = RequestNode(
             "node2",
             request,
@@ -48,7 +48,7 @@ class TestRequestNode:
 
     def test_request_node_string_representation(self):
         """Test string representation of RequestNode"""
-        request = Mock(spec=BaseRequest)
+        request = Mock(spec=OperationRequestFoundation)
         node = RequestNode("test_node", request)
 
         # RequestNode doesn't have a custom __str__ method, so we'll test the object creation
@@ -57,7 +57,7 @@ class TestRequestNode:
 
     def test_request_node_equality(self):
         """Test RequestNode equality comparison"""
-        request = Mock(spec=BaseRequest)
+        request = Mock(spec=OperationRequestFoundation)
         node1 = RequestNode("node1", request)
         node2 = RequestNode("node1", request)
         node3 = RequestNode("node2", request)
@@ -67,7 +67,7 @@ class TestRequestNode:
 
     def test_request_node_hash(self):
         """Test RequestNode is hashable and can be used in sets"""
-        request = Mock(spec=BaseRequest)
+        request = Mock(spec=OperationRequestFoundation)
         node1 = RequestNode("node1", request)
         node2 = RequestNode("node2", request)
 
@@ -78,7 +78,7 @@ class TestRequestNode:
 
     def test_request_node_status_management(self):
         """Test request node status changes"""
-        request = Mock(spec=BaseRequest)
+        request = Mock(spec=OperationRequestFoundation)
         node = RequestNode("node1", request)
 
         # Initial status

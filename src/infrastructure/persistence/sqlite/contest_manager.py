@@ -31,7 +31,7 @@ class ContestManager:
 
                 shared_path = "contest_env/shared/env.json"
                 req = FileRequest(FileOpType.READ, shared_path)
-                result = req.execute(driver=self.file_driver)
+                result = req.execute_operation(driver=self.file_driver)
 
                 if result.success:
                     shared_config = json.loads(result.content)
@@ -201,7 +201,7 @@ class ContestManager:
         """Check if directory exists and has content."""
         try:
             req = FileRequest(FileOpType.EXISTS, directory_path)
-            result = req.execute(driver=self.file_driver)
+            result = req.execute_operation(driver=self.file_driver)
 
 
             # For now, assume directory has content if it exists
@@ -216,7 +216,7 @@ class ContestManager:
         """Ensure directory exists, create if necessary."""
         try:
             req = FileRequest(FileOpType.MKDIR, directory_path)
-            result = req.execute(driver=self.file_driver)
+            result = req.execute_operation(driver=self.file_driver)
             return result.success
         except Exception:
             return False
@@ -234,7 +234,7 @@ class ContestManager:
 
                 # Use move operation
                 req = FileRequest(FileOpType.MOVE, source_item, dst_path=dest_item)
-                move_result = req.execute(driver=self.file_driver)
+                move_result = req.execute_operation(driver=self.file_driver)
 
                 if not move_result.success:
                     return False
@@ -261,7 +261,7 @@ class ContestManager:
                     else:
                         req = FileRequest(FileOpType.REMOVE, item_path)
 
-                    result = req.execute(driver=self.file_driver)
+                    result = req.execute_operation(driver=self.file_driver)
                     if not result.success:
                         return False
 
@@ -290,7 +290,7 @@ class ContestManager:
                 else:
                     req = FileRequest(FileOpType.COPY, source_item, dst_path=dest_item)
 
-                copy_result = req.execute(driver=self.file_driver)
+                copy_result = req.execute_operation(driver=self.file_driver)
 
                 if not copy_result.success:
                     return False
@@ -346,7 +346,7 @@ class ContestManager:
                 else:
                     # Copy file
                     req = FileRequest(FileOpType.COPY, source_item, dst_path=dest_item)
-                    result = req.execute(driver=self.file_driver)
+                    result = req.execute_operation(driver=self.file_driver)
 
                     if not result.success:
                         return False

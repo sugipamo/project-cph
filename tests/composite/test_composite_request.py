@@ -6,12 +6,12 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
-from src.domain.requests.base.base_request import BaseRequest
+from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.domain.requests.composite.composite_request import CompositeRequest
 from src.domain.results.result import OperationResult
 
 
-class MockRequest(BaseRequest):
+class MockRequest(OperationRequestFoundation):
     """Mock request for testing"""
     def __init__(self, name=None, should_fail=False, allow_failure=False):
         super().__init__(name=name)
@@ -53,7 +53,7 @@ class TestCompositeRequest:
         composite = CompositeRequest([req1, req2, req3])
         driver = Mock()
 
-        results = composite.execute(driver)
+        results = composite.execute_operation(driver)
 
         assert len(results) == 3
         assert req1.executed
@@ -80,7 +80,7 @@ class TestCompositeRequest:
         driver = Mock()
 
         with pytest.raises(CompositeStepFailureError):  # ExecutionController raises on failure
-            composite.execute(driver)
+            composite.execute_operation(driver)
 
         assert req1.executed
         assert req2.executed
@@ -95,7 +95,7 @@ class TestCompositeRequest:
         composite = CompositeRequest([req1, req2, req3])
         driver = Mock()
 
-        results = composite.execute(driver)
+        results = composite.execute_operation(driver)
 
         assert len(results) == 3
         assert req1.executed
@@ -170,7 +170,7 @@ class TestCompositeRequest:
         composite = CompositeRequest([])
         driver = Mock()
 
-        results = composite.execute(driver)
+        results = composite.execute_operation(driver)
         assert results == []
         assert len(composite) == 0
 
@@ -192,7 +192,7 @@ class TestCompositeRequest:
         composite = CompositeRequest([req1, req2, req3])
 
         driver = Mock()
-        results = composite.execute(driver)
+        results = composite.execute_operation(driver)
 
         # Should execute all requests
         assert len(results) == 3

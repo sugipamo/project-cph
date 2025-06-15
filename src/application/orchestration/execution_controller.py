@@ -24,7 +24,7 @@ class ExecutionController:
             if hasattr(req, '_step_name') and req._step_name:
                 print(f"\n▶ {req._step_name}")
 
-            result = req.execute(driver=driver)
+            result = req.execute_operation(driver=driver)
             results.append(result)
             self._check_failure(req, result)
 

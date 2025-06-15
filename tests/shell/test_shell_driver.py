@@ -56,7 +56,7 @@ class TestLocalShellDriver(BaseTest):
         """Test running basic command"""
         mock_run_subprocess.return_value = self.mock_success_result
 
-        result = self.driver.run(["echo", "hello"])
+        result = self.driver.execute_shell_command(["echo", "hello"])
 
         assert result.stdout == "success output"
         assert result.returncode == 0
@@ -73,7 +73,7 @@ class TestLocalShellDriver(BaseTest):
         """Test running command with working directory"""
         mock_run_subprocess.return_value = self.mock_success_result
 
-        result = self.driver.run(["ls"], cwd="/tmp")
+        result = self.driver.execute_shell_command(["ls"], cwd="/tmp")
 
         assert result.stdout == "success output"
         mock_run_subprocess.assert_called_once_with(
@@ -90,7 +90,7 @@ class TestLocalShellDriver(BaseTest):
         mock_run_subprocess.return_value = self.mock_success_result
 
         env_vars = {"TEST_VAR": "test_value", "PATH": "/usr/bin"}
-        result = self.driver.run(["env"], env=env_vars)
+        result = self.driver.execute_shell_command(["env"], env=env_vars)
 
         assert result.stdout == "success output"
         mock_run_subprocess.assert_called_once_with(
@@ -107,7 +107,7 @@ class TestLocalShellDriver(BaseTest):
         mock_run_subprocess.return_value = self.mock_success_result
 
         input_text = "line1\\nline2\\nline3"
-        result = self.driver.run(["cat"], inputdata=input_text)
+        result = self.driver.execute_shell_command(["cat"], inputdata=input_text)
 
         assert result.stdout == "success output"
         mock_run_subprocess.assert_called_once_with(
@@ -123,7 +123,7 @@ class TestLocalShellDriver(BaseTest):
         """Test running command with timeout"""
         mock_run_subprocess.return_value = self.mock_success_result
 
-        result = self.driver.run(["sleep", "1"], timeout=5)
+        result = self.driver.execute_shell_command(["sleep", "1"], timeout=5)
 
         assert result.stdout == "success output"
         mock_run_subprocess.assert_called_once_with(
@@ -142,7 +142,7 @@ class TestLocalShellDriver(BaseTest):
         env_vars = {"VAR1": "value1"}
         input_data = "test input"
 
-        result = self.driver.run(
+        result = self.driver.execute_shell_command(
             cmd=["grep", "pattern"],
             cwd="/home/user",
             env=env_vars,
@@ -164,7 +164,7 @@ class TestLocalShellDriver(BaseTest):
         """Test handling of command execution failure"""
         mock_run_subprocess.return_value = self.mock_failure_result
 
-        result = self.driver.run(["false"])
+        result = self.driver.execute_shell_command(["false"])
 
         assert result.stdout == ""
         assert result.stderr == "error output"
@@ -177,14 +177,14 @@ class TestLocalShellDriver(BaseTest):
         mock_run_subprocess.side_effect = Exception("Shell execution failed")
 
         with pytest.raises(Exception, match="Shell execution failed"):
-            self.driver.run(["echo", "test"])
+            self.driver.execute_shell_command(["echo", "test"])
 
     @patch('src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess')
     def test_run_empty_command(self, mock_run_subprocess):
         """Test running empty command"""
         mock_run_subprocess.return_value = self.mock_success_result
 
-        result = self.driver.run([])
+        result = self.driver.execute_shell_command([])
 
         assert result.stdout == "success output"
         mock_run_subprocess.assert_called_once_with(
@@ -201,7 +201,7 @@ class TestLocalShellDriver(BaseTest):
         mock_run_subprocess.return_value = self.mock_success_result
 
         complex_cmd = ["find", "/tmp", "-name", "*.txt", "-type", "f", "-exec", "ls", "-l", "{}", ";"]
-        result = self.driver.run(complex_cmd)
+        result = self.driver.execute_shell_command(complex_cmd)
 
         assert result.stdout == "success output"
         mock_run_subprocess.assert_called_once_with(
@@ -241,7 +241,7 @@ class TestLocalShellDriverIntegration(BaseTest):
 
         actual_results = []
         for cmd in commands:
-            result = self.driver.run(cmd)
+            result = self.driver.execute_shell_command(cmd)
             actual_results.append(result.stdout)
 
         assert actual_results == ["result1", "result2", "result3"]
@@ -257,7 +257,7 @@ class TestLocalShellDriverIntegration(BaseTest):
         )
 
         input_data = "line1\\nline2\\nline3\\n"
-        result = self.driver.run(["grep", "line2"], inputdata=input_data)
+        result = self.driver.execute_shell_command(["grep", "line2"], inputdata=input_data)
 
         assert result.stdout == "filtered output"
         mock_run_subprocess.assert_called_once_with(
@@ -279,7 +279,7 @@ class TestLocalShellDriverIntegration(BaseTest):
 
         # Create large environment
         large_env = {f"VAR_{i}": f"value_{i}" for i in range(100)}
-        result = self.driver.run(["env"], env=large_env)
+        result = self.driver.execute_shell_command(["env"], env=large_env)
 
         assert result.stdout == "env output"
         call_args = mock_run_subprocess.call_args
@@ -304,7 +304,7 @@ class TestLocalShellDriverEdgeCases(BaseTest):
             returncode=0
         )
 
-        result = self.driver.run(
+        result = self.driver.execute_shell_command(
             cmd=["echo", "test"],
             cwd=None,
             env=None,
@@ -330,7 +330,7 @@ class TestLocalShellDriverEdgeCases(BaseTest):
             returncode=0
         )
 
-        result = self.driver.run(["echo", "fast"], timeout=0)
+        result = self.driver.execute_shell_command(["echo", "fast"], timeout=0)
 
         assert result.stdout == "quick output"
         mock_run_subprocess.assert_called_once_with(
@@ -350,7 +350,7 @@ class TestLocalShellDriverEdgeCases(BaseTest):
             returncode=0
         )
 
-        result = self.driver.run(["env"], env={})
+        result = self.driver.execute_shell_command(["env"], env={})
 
         assert result.stdout == "output"
         mock_run_subprocess.assert_called_once_with(
@@ -370,7 +370,7 @@ class TestLocalShellDriverEdgeCases(BaseTest):
             returncode=0
         )
 
-        result = self.driver.run(["cat"], inputdata="")
+        result = self.driver.execute_shell_command(["cat"], inputdata="")
 
         assert result.stdout == ""
         mock_run_subprocess.assert_called_once_with(
@@ -391,7 +391,7 @@ class TestLocalShellDriverEdgeCases(BaseTest):
         )
 
         unicode_input = "こんにちは世界\\n日本語テスト"
-        result = self.driver.run(["cat"], inputdata=unicode_input)
+        result = self.driver.execute_shell_command(["cat"], inputdata=unicode_input)
 
         assert "こんにちは" in result.stdout
         mock_run_subprocess.assert_called_once_with(
@@ -412,7 +412,7 @@ class TestLocalShellDriverEdgeCases(BaseTest):
         )
 
         special_cmd = ["echo", "test@#$%^&*()_+-={}[]|\\:;\"'<>?,."]
-        result = self.driver.run(special_cmd)
+        result = self.driver.execute_shell_command(special_cmd)
 
         assert result.stdout == "special output"
         mock_run_subprocess.assert_called_once_with(
@@ -443,19 +443,19 @@ class TestShellDriverParameterValidation(BaseTest):
         )
 
         # Test with string cwd
-        self.driver.run(["echo"], cwd="/path/to/dir")
+        self.driver.execute_shell_command(["echo"], cwd="/path/to/dir")
         call_args = mock_run_subprocess.call_args
         assert isinstance(call_args[1]['cwd'], str)
 
         # Test with integer timeout
         mock_run_subprocess.reset_mock()
-        self.driver.run(["echo"], timeout=30)
+        self.driver.execute_shell_command(["echo"], timeout=30)
         call_args = mock_run_subprocess.call_args
         assert isinstance(call_args[1]['timeout'], int)
 
         # Test with dict env
         mock_run_subprocess.reset_mock()
-        self.driver.run(["echo"], env={"KEY": "value"})
+        self.driver.execute_shell_command(["echo"], env={"KEY": "value"})
         call_args = mock_run_subprocess.call_args
         assert isinstance(call_args[1]['env'], dict)
 
@@ -469,7 +469,7 @@ class TestShellDriverParameterValidation(BaseTest):
         )
 
         # Test positional and keyword argument order
-        self.driver.run(
+        self.driver.execute_shell_command(
             ["test", "command"],
             "/working/dir",
             {"ENV": "test"},

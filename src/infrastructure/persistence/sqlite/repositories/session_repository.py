@@ -1,11 +1,10 @@
 """Repository for session management."""
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
-from src.infrastructure.persistence.base.base_repository import BaseRepository
+from src.infrastructure.persistence.base.base_repository import DatabaseRepositoryFoundation
 from src.infrastructure.persistence.sqlite.sqlite_manager import SQLiteManager
-from src.utils.deprecated import deprecated
 
 
 @dataclass
@@ -23,7 +22,7 @@ class Session:
     updated_at: Optional[datetime] = None
 
 
-class SessionRepository(BaseRepository):
+class SessionRepository(DatabaseRepositoryFoundation):
     """Repository for managing work sessions."""
 
     def __init__(self, db_manager: SQLiteManager):
@@ -70,17 +69,22 @@ class SessionRepository(BaseRepository):
 
         return session
 
-    @deprecated("Use create_session_record() instead")
-    def create(self, session: Session) -> Session:
-        """Create a new session record.
+    def create(self, entity: Dict[str, Any]) -> Any:
+        """Create method for RepositoryInterface compatibility.
 
         Args:
-            session: Session to create
+            entity: Session data as dictionary
 
         Returns:
-            Created session with ID
+            Created session
         """
+        # Convert dict to Session object if needed
+        if isinstance(entity, dict):
+            session = Session(**entity)
+        else:
+            session = entity
         return self.create_session_record(session)
+
 
     def find_by_id(self, session_id: int) -> Optional[Session]:
         """Find session by ID.

@@ -1,10 +1,10 @@
 import pytest
 
-from src.domain.requests.base.base_request import BaseRequest
-from src.domain.requests.composite.base_composite_request import BaseCompositeRequest
+from src.domain.requests.base.base_request import OperationRequestFoundation
+from src.domain.requests.composite.base_composite_request import CompositeRequestFoundation
 
 
-class DummyRequest(BaseRequest):
+class DummyRequest(OperationRequestFoundation):
     def __init__(self, name=None):
         super().__init__(name=name)
     @property
@@ -13,7 +13,7 @@ class DummyRequest(BaseRequest):
     def _execute_core(self, driver):
         return "ok"
 
-class DummyCompositeRequest(BaseCompositeRequest):
+class DummyCompositeRequest(CompositeRequestFoundation):
     def _execute_core(self, driver):
         return [r._execute_core(driver) for r in self.requests]
 

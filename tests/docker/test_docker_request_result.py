@@ -9,23 +9,23 @@ def test_dockerrequest_with_mockdriver():
     driver = MockDockerDriver()
     # RUN
     req = DockerRequest(DockerOpType.RUN, image="img", container="c")
-    result = req.execute(driver=driver)
+    result = req.execute_operation(driver=driver)
     assert "Started container c from img" in result.stdout
     # STOP
     req = DockerRequest(DockerOpType.STOP, container="c")
-    result = req.execute(driver=driver)
+    result = req.execute_operation(driver=driver)
     assert "Stopped container c" in result.stdout
     # REMOVE
     req = DockerRequest(DockerOpType.REMOVE, container="c")
-    result = req.execute(driver=driver)
+    result = req.execute_operation(driver=driver)
     assert "Removed container c" in result.stdout
     # EXEC
     req = DockerRequest(DockerOpType.EXEC, container="c", command="ls")
-    result = req.execute(driver=driver)
+    result = req.execute_operation(driver=driver)
     assert "Executed 'ls' in c" in result.stdout
     # LOGS
     req = DockerRequest(DockerOpType.LOGS, container="c")
-    result = req.execute(driver=driver)
+    result = req.execute_operation(driver=driver)
     assert result.stdout == "Mock logs for c"
 
 def test_dockerresult_methods():
@@ -50,5 +50,5 @@ def test_dockerresult_methods():
 def test_dockerrequest_no_driver():
     req = DockerRequest(DockerOpType.RUN, image="img", container="c")
     with pytest.raises(ValueError) as excinfo:
-        req.execute(None)
+        req.execute_operation(None)
     assert "requires a driver" in str(excinfo.value)

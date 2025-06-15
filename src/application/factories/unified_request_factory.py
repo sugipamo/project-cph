@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 from src.context.formatters.context_formatter import format_values_with_context_dict
-from src.domain.requests.base.base_request import BaseRequest
+from src.domain.requests.base.base_request import OperationRequestFoundation
 from src.domain.requests.composite.composite_request import CompositeRequest
 from src.domain.requests.file.file_op_type import FileOpType
 from src.domain.requests.file.file_request import FileRequest
@@ -30,7 +30,7 @@ class RequestCreationStrategy(ABC):
         """
 
     @abstractmethod
-    def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
+    def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[OperationRequestFoundation]:
         """Create a request from the given step.
 
         Args:
@@ -52,7 +52,7 @@ class FileRequestStrategy(RequestCreationStrategy):
             StepType.MOVE, StepType.MOVETREE, StepType.REMOVE
         ]
 
-    def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
+    def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[OperationRequestFoundation]:
 
         # Map step type to file operation type
         op_mapping = {
@@ -103,7 +103,7 @@ class ShellRequestStrategy(RequestCreationStrategy):
     def can_handle(self, step_type: StepType) -> bool:
         return step_type in [StepType.SHELL, StepType.TEST, StepType.BUILD, StepType.OJ]
 
-    def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
+    def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[OperationRequestFoundation]:
 
         # Format command with context
         formatted_cmd = self._format_step_values(step.cmd, context)
@@ -165,7 +165,7 @@ class PythonRequestStrategy(RequestCreationStrategy):
     def can_handle(self, step_type: StepType) -> bool:
         return step_type == StepType.PYTHON
 
-    def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[BaseRequest]:
+    def create_request(self, step: Step, context: Any, env_manager: EnvironmentManager) -> Optional[OperationRequestFoundation]:
 
         # Format command with context
         formatted_cmd = self._format_step_values(step.cmd, context)
@@ -198,7 +198,7 @@ class UnifiedRequestFactory:
         ]
 
     def create_requests_from_steps(self, steps: list[Step], context: Any,
-                                 env_manager: EnvironmentManager) -> list[BaseRequest]:
+                                 env_manager: EnvironmentManager) -> list[OperationRequestFoundation]:
         """Create requests from a list of steps.
 
         Args:
@@ -219,7 +219,7 @@ class UnifiedRequestFactory:
         return requests
 
     def create_request_from_step(self, step: Step, context: Any,
-                               env_manager: EnvironmentManager) -> Optional[BaseRequest]:
+                               env_manager: EnvironmentManager) -> Optional[OperationRequestFoundation]:
         """Create a single request from a step.
 
         Args:
@@ -270,7 +270,7 @@ def create_composite_request(steps: list[Step], context: Any = None) -> "Composi
     return CompositeRequest(requests)
 
 
-def create_request(step: Step, context: Any = None) -> Optional[BaseRequest]:
+def create_request(step: Step, context: Any = None) -> Optional[OperationRequestFoundation]:
     """Create a single request from a step.
 
     Args:

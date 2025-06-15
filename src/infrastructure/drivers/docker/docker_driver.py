@@ -15,7 +15,6 @@ from src.infrastructure.drivers.docker.utils import (
 )
 from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
 from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
-from src.utils.deprecated import deprecated
 
 
 class DockerDriver(ExecutionDriverInterface):
@@ -88,19 +87,19 @@ class LocalDockerDriver(DockerDriver):
     def run_container(self, image: str, name: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
         cmd = build_docker_run_command(image, name, options)
         req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute(driver=self.shell_driver)
+        result = req.execute_operation(driver=self.shell_driver)
         return result
 
     def stop_container(self, name: str, show_output: bool = True):
         cmd = build_docker_stop_command(name)
         req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute(driver=self.shell_driver)
+        result = req.execute_operation(driver=self.shell_driver)
         return result
 
     def remove_container(self, name: str, force: bool = False, show_output: bool = True):
         cmd = build_docker_remove_command(name, force=force)
         req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute(driver=self.shell_driver)
+        result = req.execute_operation(driver=self.shell_driver)
         return result
 
     def exec_in_container(self, name: str, command: Union[str, list[str]], show_output: bool = True):
@@ -113,13 +112,13 @@ class LocalDockerDriver(DockerDriver):
             raise ValueError(f"Invalid command type: {type(command)}")
 
         req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute(driver=self.shell_driver)
+        result = req.execute_operation(driver=self.shell_driver)
         return result
 
     def get_logs(self, name: str, show_output: bool = True):
         cmd = ["docker", "logs", name]
         req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute(driver=self.shell_driver)
+        result = req.execute_operation(driver=self.shell_driver)
         return result
 
     def build_docker_image(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
@@ -128,37 +127,33 @@ class LocalDockerDriver(DockerDriver):
 
         cmd = build_docker_build_command(tag, dockerfile_text, options)
         req = ShellRequest(cmd, show_output=show_output, inputdata=dockerfile_text)
-        result = req.execute(driver=self.shell_driver)
+        result = req.execute_operation(driver=self.shell_driver)
         return result
 
-    @deprecated("Use build_docker_image instead")
-    def build(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
-        """Backward compatibility wrapper for build_docker_image"""
-        return self.build_docker_image(dockerfile_text, tag, options, show_output)
 
     def image_ls(self, show_output: bool = True):
         cmd = ["docker", "image", "ls"]
         req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute(driver=self.shell_driver)
+        result = req.execute_operation(driver=self.shell_driver)
         return result
 
     def image_rm(self, image: str, show_output: bool = True):
         cmd = ["docker", "image", "rm", image]
         req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute(driver=self.shell_driver)
+        result = req.execute_operation(driver=self.shell_driver)
         return result
 
     def ps(self, all: bool = False, show_output: bool = True, names_only: bool = False):
         if names_only:
             cmd = ["docker", "ps", "-a", "--format", "{{.Names}}"]
             req = ShellRequest(cmd, show_output=show_output)
-            result = req.execute(driver=self.shell_driver)
+            result = req.execute_operation(driver=self.shell_driver)
             return parse_container_names(result.stdout or "")
         cmd = ["docker", "ps"]
         if all:
             cmd.append("-a")
         req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute(driver=self.shell_driver)
+        result = req.execute_operation(driver=self.shell_driver)
         return result
 
     def inspect(self, target: str, type_: Optional[str] = None, show_output: bool = True):
@@ -167,7 +162,7 @@ class LocalDockerDriver(DockerDriver):
             cmd += ["--type", type_]
         cmd.append(target)
         req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute(driver=self.shell_driver)
+        result = req.execute_operation(driver=self.shell_driver)
         return result
 
     def cp(self, src: str, dst: str, container: str, to_container: bool = True, show_output: bool = True):
@@ -179,5 +174,5 @@ class LocalDockerDriver(DockerDriver):
             cp_dst = str(dst)
         cmd = ["docker", "cp", cp_src, cp_dst]
         req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute(driver=self.shell_driver)
+        result = req.execute_operation(driver=self.shell_driver)
         return result
