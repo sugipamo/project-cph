@@ -6,7 +6,8 @@ pure_functions.pyモジュールの関数をテストして、
 """
 import pytest
 
-from src.utils.helpers import (
+# Docker wrapper functions
+from src.utils.docker_wrappers import (
     build_docker_build_command_wrapper,
     build_docker_cp_command_wrapper,
     build_docker_inspect_command_wrapper,
@@ -14,21 +15,16 @@ from src.utils.helpers import (
     build_docker_remove_command_wrapper,
     build_docker_run_command_wrapper,
     build_docker_stop_command_wrapper,
+    validate_docker_image_name_wrapper,
+)
+
+# String formatting functions
+# Additional functions from string_formatters
+from src.utils.string_formatters import (
     extract_missing_template_keys,
     format_template_string,
     is_potential_script_path,
     parse_container_names,
-    # validate_step_configuration_pure,  # Not available
-    # merge_configurations_pure,  # Not available
-    # calculate_duration_seconds_pure,  # Not available
-    # format_duration_human_readable_pure,  # Not available
-    # calculate_success_rate_pure,  # Not available
-    # flatten_nested_lists_pure,  # Not available
-    # group_by_key_pure,  # Not available
-    # filter_by_criteria_pure,  # Not available
-    # compose,  # Not available
-    # pipe  # Not available
-    validate_docker_image_name_wrapper,
     validate_file_path_format,
 )
 

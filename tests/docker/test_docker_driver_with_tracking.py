@@ -236,7 +236,7 @@ class TestLocalDockerDriverWithTracking:
         self.mock_container_repo.add_lifecycle_event.assert_not_called()
 
     @patch('time.time')
-    @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.build')
+    @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.build_docker_image')
     def test_build_success_with_image_id(self, mock_super_build, mock_time):
         """Test successful image build with tracking."""
         # Setup
@@ -273,7 +273,7 @@ class TestLocalDockerDriverWithTracking:
         )
 
     @patch('time.time')
-    @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.build')
+    @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.build_docker_image')
     def test_build_success_no_image_id(self, mock_super_build, mock_time):
         """Test successful image build without image ID."""
         # Setup
@@ -300,7 +300,7 @@ class TestLocalDockerDriverWithTracking:
         )
 
     @patch('time.time')
-    @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.build')
+    @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.build_docker_image')
     def test_build_failure(self, mock_super_build, mock_time):
         """Test failed image build."""
         # Setup
@@ -324,7 +324,7 @@ class TestLocalDockerDriverWithTracking:
             build_time_ms=1500
         )
 
-    @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.build')
+    @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.build_docker_image')
     def test_build_no_tag(self, mock_super_build):
         """Test image build without tag."""
         # Setup
@@ -342,7 +342,7 @@ class TestLocalDockerDriverWithTracking:
         self.mock_image_repo.create_or_update_image.assert_not_called()
         self.mock_image_repo.update_image_build_result.assert_not_called()
 
-    @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.build')
+    @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.build_docker_image')
     def test_build_tracking_exception(self, mock_super_build):
         """Test image build with tracking exception."""
         # Setup

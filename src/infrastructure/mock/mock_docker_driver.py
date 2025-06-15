@@ -220,7 +220,7 @@ class MockDockerDriver(DockerDriver):
         self._container_states[container_name] = state
 
     # Abstract methods from DockerDriver base class
-    def build(self, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True, dockerfile_text: Optional[str] = None):
+    def build_docker_image(self, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True, dockerfile_text: Optional[str] = None):
         """Build Docker image (mocked)."""
         self._operations_executed.append({
             'operation': 'build',
@@ -235,6 +235,10 @@ class MockDockerDriver(DockerDriver):
         """List Docker images (mocked)."""
         self._operations_executed.append({'operation': 'image_ls'})
         return self._default_result
+
+    def build(self, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True, dockerfile_text: Optional[str] = None):
+        """Backward compatibility wrapper for build_docker_image"""
+        return self.build_docker_image(tag, options, show_output, dockerfile_text)
 
     def image_rm(self, image: str):
         """Remove Docker image (mocked)."""

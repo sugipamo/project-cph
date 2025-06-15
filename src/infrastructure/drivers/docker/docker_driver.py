@@ -121,7 +121,7 @@ class LocalDockerDriver(DockerDriver):
         result = req.execute(driver=self.shell_driver)
         return result
 
-    def build(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
+    def build_docker_image(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
         if not dockerfile_text or dockerfile_text is None:
             raise ValueError("dockerfile_text is None. Dockerfile内容が正しく渡っていません。")
 
@@ -129,6 +129,10 @@ class LocalDockerDriver(DockerDriver):
         req = ShellRequest(cmd, show_output=show_output, inputdata=dockerfile_text)
         result = req.execute(driver=self.shell_driver)
         return result
+
+    def build(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
+        """Backward compatibility wrapper for build_docker_image"""
+        return self.build_docker_image(dockerfile_text, tag, options, show_output)
 
     def image_ls(self, show_output: bool = True):
         cmd = ["docker", "image", "ls"]

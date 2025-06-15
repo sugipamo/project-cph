@@ -86,7 +86,7 @@ class LocalDockerDriverWithTracking(LocalDockerDriver):
 
         return result
 
-    def build(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
+    def build_docker_image(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
         """Build image and track in database."""
         # Calculate Dockerfile hash
         dockerfile_hash = hashlib.sha256(dockerfile_text.encode('utf-8')).hexdigest()[:12]
@@ -103,7 +103,7 @@ class LocalDockerDriverWithTracking(LocalDockerDriver):
 
         # Execute build
         start_time = time.time()
-        result = super().build(dockerfile_text, tag, options, show_output)
+        result = super().build_docker_image(dockerfile_text, tag, options, show_output)
         build_time_ms = int((time.time() - start_time) * 1000)
 
         # Update build result
@@ -138,6 +138,10 @@ class LocalDockerDriverWithTracking(LocalDockerDriver):
                 pass
 
         return result
+
+    def build(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
+        """Backward compatibility wrapper for build_docker_image"""
+        return self.build_docker_image(dockerfile_text, tag, options, show_output)
 
     def image_rm(self, image: str, show_output: bool = True):
         """Remove image and update database."""

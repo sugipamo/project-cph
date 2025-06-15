@@ -23,7 +23,7 @@ class TestDockerDriverInterface(BaseTest):
         """Test that all required abstract methods are defined"""
         abstract_methods = [
             'run_container', 'stop_container', 'remove_container',
-            'exec_in_container', 'get_logs', 'build',
+            'exec_in_container', 'get_logs', 'build_docker_image',
             'image_ls', 'image_rm', 'ps', 'inspect', 'cp'
         ]
 
