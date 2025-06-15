@@ -58,7 +58,7 @@ class TestLocalDockerDriver(BaseTest):
         """Test basic container run operation"""
         # Setup mock
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         # Execute
@@ -68,13 +68,13 @@ class TestLocalDockerDriver(BaseTest):
         assert result.success is True
         assert result.stdout == "success output"
         mock_shell_request.assert_called_once()
-        mock_request_instance.execute.assert_called_once_with(driver=self.driver.shell_driver)
+        mock_request_instance.execute_operation.assert_called_once_with(driver=self.driver.shell_driver)
 
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
     def test_run_container_with_options(self, mock_shell_request):
         """Test container run with options"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         options = {"detach": True, "port_mapping": {"8080": "80"}}
@@ -95,20 +95,20 @@ class TestLocalDockerDriver(BaseTest):
     def test_stop_container(self, mock_shell_request):
         """Test container stop operation"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         result = self.driver.stop_container("test-container")
 
         assert result.success is True
         mock_shell_request.assert_called_once()
-        mock_request_instance.execute.assert_called_once_with(driver=self.driver.shell_driver)
+        mock_request_instance.execute_operation.assert_called_once_with(driver=self.driver.shell_driver)
 
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
     def test_remove_container_basic(self, mock_shell_request):
         """Test basic container removal"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         result = self.driver.remove_container("test-container")
@@ -120,7 +120,7 @@ class TestLocalDockerDriver(BaseTest):
     def test_remove_container_with_force(self, mock_shell_request):
         """Test container removal with force option"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         result = self.driver.remove_container("test-container", force=True)
@@ -132,7 +132,7 @@ class TestLocalDockerDriver(BaseTest):
     def test_exec_in_container_string_command(self, mock_shell_request):
         """Test exec with string command"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         result = self.driver.exec_in_container("test-container", "ls -la")
@@ -149,7 +149,7 @@ class TestLocalDockerDriver(BaseTest):
     def test_exec_in_container_list_command(self, mock_shell_request):
         """Test exec with list command"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         command = ["ls", "-la", "/tmp"]
@@ -171,7 +171,7 @@ class TestLocalDockerDriver(BaseTest):
     def test_get_logs(self, mock_shell_request):
         """Test getting container logs"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         result = self.driver.get_logs("test-container")
@@ -186,7 +186,7 @@ class TestLocalDockerDriver(BaseTest):
     def test_build_success(self, mock_shell_request):
         """Test successful docker build"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         dockerfile_content = "FROM python:3.9\\nRUN pip install pytest"
@@ -213,7 +213,7 @@ class TestLocalDockerDriver(BaseTest):
     def test_build_with_options(self, mock_shell_request):
         """Test build with additional options"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         dockerfile_content = "FROM python:3.9"
@@ -233,7 +233,7 @@ class TestLocalDockerDriver(BaseTest):
     def test_image_ls(self, mock_shell_request):
         """Test listing docker images"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         result = self.driver.image_ls()
@@ -247,7 +247,7 @@ class TestLocalDockerDriver(BaseTest):
     def test_image_rm(self, mock_shell_request):
         """Test removing docker image"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         result = self.driver.image_rm("test-image:latest")
@@ -261,7 +261,7 @@ class TestLocalDockerDriver(BaseTest):
     def test_ps_basic(self, mock_shell_request):
         """Test basic docker ps"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         result = self.driver.ps()
@@ -275,7 +275,7 @@ class TestLocalDockerDriver(BaseTest):
     def test_ps_with_all_flag(self, mock_shell_request):
         """Test docker ps with all flag"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         result = self.driver.ps(all=True)
@@ -293,7 +293,7 @@ class TestLocalDockerDriver(BaseTest):
         # Setup mocks
         mock_request_instance = Mock()
         self.mock_success_result.stdout = "container1\\ncontainer2\\n"
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
         mock_parse_names.return_value = ["container1", "container2"]
 
@@ -313,7 +313,7 @@ class TestLocalDockerDriver(BaseTest):
     def test_inspect_basic(self, mock_shell_request):
         """Test basic docker inspect"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         result = self.driver.inspect("test-container")
@@ -327,7 +327,7 @@ class TestLocalDockerDriver(BaseTest):
     def test_inspect_with_type(self, mock_shell_request):
         """Test docker inspect with type specification"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         result = self.driver.inspect("test-container", type_="container")
@@ -341,7 +341,7 @@ class TestLocalDockerDriver(BaseTest):
     def test_cp_to_container(self, mock_shell_request):
         """Test copying file to container"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         result = self.driver.cp(
@@ -361,7 +361,7 @@ class TestLocalDockerDriver(BaseTest):
     def test_cp_from_container(self, mock_shell_request):
         """Test copying file from container"""
         mock_request_instance = Mock()
-        mock_request_instance.execute.return_value = self.mock_success_result
+        mock_request_instance.execute_operation.return_value = self.mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         result = self.driver.cp(
@@ -394,7 +394,7 @@ class TestLocalDockerDriverIntegration(BaseTest):
         mock_success_result = Mock()
         mock_success_result.success = True
         mock_success_result.stdout = "container_id"
-        mock_request_instance.execute.return_value = mock_success_result
+        mock_request_instance.execute_operation.return_value = mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         # Test run
@@ -437,7 +437,7 @@ class TestDockerDriverErrorHandling(BaseTest):
         mock_failure_result.success = False
         mock_failure_result.stderr = "Container not found"
         mock_failure_result.returncode = 1
-        mock_request_instance.execute.return_value = mock_failure_result
+        mock_request_instance.execute_operation.return_value = mock_failure_result
         mock_shell_request.return_value = mock_request_instance
 
         result = self.driver.stop_container("nonexistent-container")
@@ -469,7 +469,7 @@ class TestDockerDriverEdgeCases(BaseTest):
         mock_request_instance = Mock()
         mock_success_result = Mock()
         mock_success_result.success = True
-        mock_request_instance.execute.return_value = mock_success_result
+        mock_request_instance.execute_operation.return_value = mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         complex_command = 'find /tmp -name "*.txt" -exec grep "pattern" {} \\;'
@@ -490,7 +490,7 @@ class TestDockerDriverEdgeCases(BaseTest):
         mock_empty_result = Mock()
         mock_empty_result.success = True
         mock_empty_result.stdout = ""
-        mock_request_instance.execute.return_value = mock_empty_result
+        mock_request_instance.execute_operation.return_value = mock_empty_result
         mock_shell_request.return_value = mock_request_instance
         mock_parse_names.return_value = []
 
@@ -505,7 +505,7 @@ class TestDockerDriverEdgeCases(BaseTest):
         mock_request_instance = Mock()
         mock_success_result = Mock()
         mock_success_result.success = True
-        mock_request_instance.execute.return_value = mock_success_result
+        mock_request_instance.execute_operation.return_value = mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         minimal_dockerfile = "FROM scratch"
@@ -521,7 +521,7 @@ class TestDockerDriverEdgeCases(BaseTest):
         mock_request_instance = Mock()
         mock_success_result = Mock()
         mock_success_result.success = True
-        mock_request_instance.execute.return_value = mock_success_result
+        mock_request_instance.execute_operation.return_value = mock_success_result
         mock_shell_request.return_value = mock_request_instance
 
         # Test multiple operations with show_output=False

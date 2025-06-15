@@ -19,10 +19,10 @@ class TestShellDriverInterface(BaseTest):
         with pytest.raises(TypeError):
             ShellDriver()
 
-    def test_abstract_method_run_defined(self):
-        """Test that run method is defined as abstract"""
-        assert hasattr(ShellDriver, 'run')
-        assert callable(ShellDriver.run)
+    def test_abstract_method_execute_shell_command_defined(self):
+        """Test that execute_shell_command method is defined as abstract"""
+        assert hasattr(ShellDriver, 'execute_shell_command')
+        assert callable(ShellDriver.execute_shell_command)
 
 
 class TestLocalShellDriver(BaseTest):
@@ -49,7 +49,7 @@ class TestLocalShellDriver(BaseTest):
     def test_driver_inheritance(self):
         """Test that LocalShellDriver properly inherits from ShellDriver"""
         assert isinstance(self.driver, ShellDriver)
-        assert hasattr(self.driver, 'run')
+        assert hasattr(self.driver, 'execute_shell_command')
 
     @patch('src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess')
     def test_run_basic_command(self, mock_run_subprocess):

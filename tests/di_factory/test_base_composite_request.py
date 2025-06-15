@@ -27,7 +27,7 @@ def test_base_composite_request_repr():
     reqs = [DummyRequest("a"), DummyRequest("b")]
     composite = DummyCompositeRequest(reqs, name="test")
     s = repr(composite)
-    assert "DummyCompositeRequest" in s
+    assert "CompositeFoundation" in s  # Updated to match new request_type.short_name
     assert "test" in s
     assert "a" in s and "b" in s
 

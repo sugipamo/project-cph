@@ -26,8 +26,8 @@ class TestExecutionController:
         # Configure success results
         mock_result1.success = True
         mock_result2.success = True
-        mock_request1.execute.return_value = mock_result1
-        mock_request2.execute.return_value = mock_result2
+        mock_request1.execute_operation.return_value = mock_result1
+        mock_request2.execute_operation.return_value = mock_result2
         mock_request1.allow_failure = False
         mock_request2.allow_failure = False
 
@@ -41,8 +41,8 @@ class TestExecutionController:
         assert results[0] == mock_result1
         assert results[1] == mock_result2
 
-        mock_request1.execute.assert_called_once_with(driver=mock_driver)
-        mock_request2.execute.assert_called_once_with(driver=mock_driver)
+        mock_request1.execute_operation.assert_called_once_with(driver=mock_driver)
+        mock_request2.execute_operation.assert_called_once_with(driver=mock_driver)
 
     def test_execute_requests_failure_not_allowed(self):
         """Test execution failure when allow_failure is False."""
@@ -76,12 +76,12 @@ class TestExecutionController:
 
         # First request fails but allows failure
         mock_result1.success = False
-        mock_request1.execute.return_value = mock_result1
+        mock_request1.execute_operation.return_value = mock_result1
         mock_request1.allow_failure = True
 
         # Second request succeeds
         mock_result2.success = True
-        mock_request2.execute.return_value = mock_result2
+        mock_request2.execute_operation.return_value = mock_result2
         mock_request2.allow_failure = False
 
         requests = [mock_request1, mock_request2]
@@ -142,12 +142,12 @@ class TestExecutionController:
 
         # First request succeeds
         mock_result1.success = True
-        mock_request1.execute.return_value = mock_result1
+        mock_request1.execute_operation.return_value = mock_result1
         mock_request1.allow_failure = False
 
         # Second request fails and doesn't allow failure
         mock_result2.success = False
-        mock_request2.execute.return_value = mock_result2
+        mock_request2.execute_operation.return_value = mock_result2
         mock_request2.allow_failure = False
 
         requests = [mock_request1, mock_request2, mock_request3]
@@ -157,9 +157,9 @@ class TestExecutionController:
             self.controller.execute_requests(requests, mock_driver)
 
         # Verify first request was executed, second failed, third was not executed
-        mock_request1.execute.assert_called_once_with(driver=mock_driver)
-        mock_request2.execute.assert_called_once_with(driver=mock_driver)
-        mock_request3.execute.assert_not_called()
+        mock_request1.execute_operation.assert_called_once_with(driver=mock_driver)
+        mock_request2.execute_operation.assert_called_once_with(driver=mock_driver)
+        mock_request3.execute_operation.assert_not_called()
 
     def test_check_failure_success(self):
         """Test _check_failure with successful result."""
