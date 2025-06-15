@@ -143,6 +143,41 @@ class TestRunner:
 
         return all_passed
 
+    def check_dead_code(self) -> bool:
+        """vultureを使用した未使用コード検出"""
+        # vultureが利用可能かチェック
+        try:
+            subprocess.run(["vulture", "--version"], capture_output=True, check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            if not self.verbose:
+                print("⚠️  vultureがインストールされていません（推奨）")
+            else:
+                print("⚠️  vultureがインストールされていません（推奨）")
+            self.warnings.append("vultureがインストールされていません（推奨）")
+            return True  # 未使用コード検出なしでも続行
+
+        success, output = self.run_command(
+            ["vulture", "src/", "--min-confidence", "80"],
+            "未使用コード検出"
+        )
+
+        # 未使用コードが検出された場合は警告として扱う（エラーではない）
+        if not success and output.strip():
+            # 出力を解析して警告として追加
+            dead_code_lines = [line.strip() for line in output.strip().split('\n') if line.strip()]
+            if dead_code_lines:
+                self.warnings.append("未使用コードが検出されました:")
+                for line in dead_code_lines[:10]:  # 最大10件表示
+                    # ファイルパスを短縮表示
+                    if line.startswith('src/'):
+                        line = line[4:]  # 'src/'を除去
+                    self.warnings.append(f"  {line}")
+
+                if len(dead_code_lines) > 10:
+                    self.warnings.append(f"  ... 他{len(dead_code_lines) - 10}件")
+
+        return True  # 警告レベルなので常にTrueを返す
+
     def check_types(self) -> bool:
         """型チェック (mypy)"""
         # mypyが利用可能かチェック
@@ -296,6 +331,7 @@ def main():
     parser.add_argument("--no-cov", action="store_true", help="カバレッジなしでテスト実行")
     parser.add_argument("--html", action="store_true", help="HTMLカバレッジレポート生成")
     parser.add_argument("--no-ruff", action="store_true", help="Ruffスキップ")
+    parser.add_argument("--no-deadcode", action="store_true", help="未使用コード検出スキップ")
     parser.add_argument("--check-only", action="store_true", help="高速チェック（テストなし）")
     parser.add_argument("--coverage-only", action="store_true", help="カバレッジレポートのみ表示")
     parser.add_argument("--verbose", "-v", action="store_true", help="詳細出力")
@@ -324,6 +360,10 @@ def main():
     if not args.no_ruff:
         runner.check_ruff()
         runner.check_quality_scripts()
+
+    # 未使用コード検出
+    if not args.no_deadcode:
+        runner.check_dead_code()
 
     # check-onlyモード
     if args.check_only:
