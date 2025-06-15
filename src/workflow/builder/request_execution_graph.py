@@ -22,13 +22,13 @@ class RequestExecutionGraph(CoreRequestExecutionGraph):
     def execute_sequential(self, driver=None) -> list[OperationResult]:
         """順次実行 - モジュール化されたExecutorを使用"""
         executor = SequentialExecutor(self)
-        return executor.execute(driver)
+        return executor.execute_sequential_workflow(driver)
 
     def execute_parallel(self, driver=None, max_workers: int = 4,
                         executor_class: type = ThreadPoolExecutor) -> list[OperationResult]:
         """並行実行 - モジュール化されたExecutorを使用"""
         executor = ParallelExecutor(self)
-        return executor.execute(driver, max_workers, executor_class)
+        return executor.execute_parallel_workflow(driver, max_workers, executor_class)
 
 
 # 後方互換性のためのエクスポート

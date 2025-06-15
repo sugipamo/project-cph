@@ -35,7 +35,7 @@ class TestCLIApplication:
         mock_execute.return_value = MagicMock()
 
         # Execute
-        result = self.app.run(['python', 'test', 'a'])
+        result = self.app.execute_cli_application(['python', 'test', 'a'])
 
         # Assert
         assert result == 0
@@ -54,7 +54,7 @@ class TestCLIApplication:
         mock_build.return_value = MagicMock()
         mock_parse.side_effect = ValueError("Invalid argument")
 
-        result = self.app.run(['invalid'])
+        result = self.app.execute_cli_application(['invalid'])
 
         assert result == 1
         mock_print.assert_called_once_with("エラー: Invalid argument")
@@ -67,7 +67,7 @@ class TestCLIApplication:
         mock_build.return_value = MagicMock()
         mock_parse.side_effect = FileNotFoundError("File not found")
 
-        result = self.app.run(['python'])
+        result = self.app.execute_cli_application(['python'])
 
         assert result == 1
         mock_print.assert_called_once_with("ファイルが見つかりません: File not found")
@@ -80,7 +80,7 @@ class TestCLIApplication:
         mock_build.return_value = MagicMock()
         mock_parse.side_effect = json.JSONDecodeError("Invalid JSON", "", 0)
 
-        result = self.app.run(['python'])
+        result = self.app.execute_cli_application(['python'])
 
         assert result == 1
         mock_print.assert_called_once_with("エラー: Invalid JSON: line 1 column 1 (char 0)")
@@ -94,7 +94,7 @@ class TestCLIApplication:
         mock_parse.side_effect = RuntimeError("Unexpected error")
         mock_handle.return_value = 1
 
-        result = self.app.run(['python'])
+        result = self.app.execute_cli_application(['python'])
 
         assert result == 1
         mock_handle.assert_called_once()
@@ -223,14 +223,14 @@ class TestMainFunction:
 
     @patch('sys.argv', ['program', 'python', 'test', 'a'])
     @patch('sys.exit')
-    @patch.object(CLIApplication, 'run')
-    def test_main_without_parameters(self, mock_run, mock_exit):
+    @patch.object(CLIApplication, 'execute_cli_application')
+    def test_main_without_parameters(self, mock_execute_cli_application, mock_exit):
         """Test main function without parameters."""
-        mock_run.return_value = 0
+        mock_execute_cli_application.return_value = 0
 
         main()
 
-        mock_run.assert_called_once_with(['python', 'test', 'a'])
+        mock_execute_cli_application.assert_called_once_with(['python', 'test', 'a'])
         mock_exit.assert_called_once_with(0)
 
     @patch('src.application.cli_application.get_output_config')
@@ -268,11 +268,11 @@ class TestMainFunction:
 
         with patch('sys.argv', ['program', 'test']), \
              patch('sys.exit') as mock_exit, \
-             patch.object(CLIApplication, 'run') as mock_run:
-                mock_run.return_value = 1
+             patch.object(CLIApplication, 'execute_cli_application') as mock_execute_cli_application:
+                mock_execute_cli_application.return_value = 1
 
                 # Should call CLI application since operations is None
                 main(context=mock_context)
 
-                mock_run.assert_called_once()
+                mock_execute_cli_application.assert_called_once()
                 mock_exit.assert_called_once_with(1)

@@ -92,8 +92,8 @@ class UnifiedDriver:
         return docker_driver.remove_container(*args, **kwargs)
 
     # Shell driver methods
-    def run(self, *args, **kwargs):
-        """Run shell command using shell driver"""
+    def execute_shell_command(self, *args, **kwargs):
+        """Execute shell command using shell driver"""
         shell_driver = self._get_cached_driver("shell_driver")
         return shell_driver.execute_shell_command(*args, **kwargs)
 

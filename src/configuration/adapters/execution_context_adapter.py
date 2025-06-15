@@ -1,175 +1,223 @@
-"""リファクタリングされた ExecutionContextAdapter"""
-from typing import Any, Dict
+"""既存ExecutionContextとの互換性を保つアダプター"""
+from typing import Any, Dict, Optional
 
 from ..core.execution_configuration import ExecutionConfiguration
 from ..expansion.template_expander import TemplateExpander
-from .compatibility_layer import BackwardCompatibilityLayer
-from .config_resolution_service import ConfigResolutionService
-from .property_provider import ConfigurationPropertyProvider
-from .validation_service import ConfigurationValidationService
+from ..resolvers.config_resolver import ConfigurationResolver, create_config_resolver
 
 
-class ExecutionContextAdapterV2:
-    """責務分離されたExecutionContextAdapter
-
-    既存のExecutionContextと同一のAPIを提供しながら、
-    内部的には責務ごとに分離されたコンポーネントを使用
-    """
+class ExecutionContextAdapter:
+    """既存ExecutionContextとの互換性を保つアダプター"""
 
     def __init__(self, config: ExecutionConfiguration, expander: TemplateExpander):
         self.config = config
         self.expander = expander
+        self._resolver = None  # 既存システムとの互換性のため
+        self._env_json = None  # env_json の mutable 状態
+        self._dockerfile_resolver = None  # dockerfile_resolver の mutable 状態
+        self._config_resolver: Optional[ConfigurationResolver] = None  # 新設定解決器
 
-        # 責務ごとに分離されたコンポーネント
-        self._property_provider = ConfigurationPropertyProvider(config)
-        self._compatibility_layer = BackwardCompatibilityLayer(config)
-        self._validation_service = ConfigurationValidationService(config)
-        self._config_resolution_service = ConfigResolutionService(config, self._compatibility_layer)
-
-    # === テンプレート展開機能 ===
     def format_string(self, template: str) -> str:
-        """既存のformat_stringメソッドの互換実装"""
+        """既存のformat_stringメソッドの互換実装
+
+        Args:
+            template: テンプレート文字列
+
+        Returns:
+            展開された文字列
+        """
         return self.expander.expand_all(template)
 
     def to_dict(self) -> Dict[str, str]:
-        """既存のto_dictメソッドの互換実装"""
+        """既存のto_dictメソッドの互換実装
+
+        Returns:
+            テンプレート変数辞書
+        """
         return self.config.to_template_dict()
 
-    # === プロパティアクセス（委譲） ===
+    # 既存ExecutionContextプロパティの互換実装
     @property
     def command_type(self) -> str:
-        return self._property_provider.command_type
+        return self.config.command_type
 
     @property
     def language(self) -> str:
-        return self._property_provider.language
+        return self.config.language
 
     @property
     def contest_name(self) -> str:
-        return self._property_provider.contest_name
+        return self.config.contest_name
 
     @property
     def problem_name(self) -> str:
-        return self._property_provider.problem_name
+        return self.config.problem_name
 
     @property
     def env_type(self) -> str:
-        return self._property_provider.env_type
+        return self.config.env_type
 
     @property
     def workspace_path(self) -> str:
-        return self._property_provider.workspace_path
+        return str(self.config.paths.workspace)
 
     @property
     def contest_current_path(self) -> str:
-        return self._property_provider.contest_current_path
+        return str(self.config.paths.contest_current)
 
     @property
     def contest_stock_path(self) -> str:
-        return self._property_provider.contest_stock_path
+        return str(self.config.paths.contest_stock)
 
     @property
     def contest_template_path(self) -> str:
-        return self._property_provider.contest_template_path
+        return str(self.config.paths.contest_template)
 
     @property
     def contest_temp_path(self) -> str:
-        return self._property_provider.contest_temp_path
+        return str(self.config.paths.contest_temp)
 
-    @property
-    def source_file_name(self) -> str:
-        return self._property_provider.source_file_name
-
-    @property
-    def language_id(self) -> str:
-        return self._property_provider.language_id
-
-    @property
-    def run_command(self) -> str:
-        return self._property_provider.run_command
-
-    # === 互換性レイヤー（委譲） ===
+    # 既存システムとの互換性のためのプロパティ
     @property
     def resolver(self):
-        return self._compatibility_layer.resolver
+        return self._resolver
 
     @resolver.setter
     def resolver(self, value):
-        self._compatibility_layer.resolver = value
+        self._resolver = value
+
+        # env_jsonが利用可能な場合、新設定解決器を初期化
+        if self._env_json and self._config_resolver is None:
+            self._config_resolver = create_config_resolver(self.config, self._env_json)
 
     @property
     def env_json(self) -> Dict[str, Any]:
-        return self._compatibility_layer.env_json
+        """env_jsonプロパティの互換実装"""
+        if self._env_json is not None:
+            return self._env_json
+
+        # ファイルパターンとその他の設定を統合した形で返す
+        result = {}
+        if self.config.language:
+            result[self.config.language] = {
+                'file_patterns': self.config.file_patterns,
+                'language_id': self.config.runtime_config.language_id,
+                'source_file_name': self.config.runtime_config.source_file_name,
+                'run_command': self.config.runtime_config.run_command,
+            }
+        return result
 
     @env_json.setter
     def env_json(self, value: Dict[str, Any]):
-        self._compatibility_layer.env_json = value
+        """env_jsonのsetter（既存システムとの互換性のため）"""
+        self._env_json = value
+
+        # 新設定解決器を初期化
+        if value:
+            self._config_resolver = create_config_resolver(self.config, value)
 
     @property
     def dockerfile_resolver(self):
-        return self._compatibility_layer.dockerfile_resolver
+        """dockerfile_resolverプロパティの互換実装"""
+        return self._dockerfile_resolver
 
     @dockerfile_resolver.setter
     def dockerfile_resolver(self, value):
-        self._compatibility_layer.dockerfile_resolver = value
+        """dockerfile_resolverのsetter"""
+        self._dockerfile_resolver = value
 
-    # === バリデーション機能（委譲） ===
     def validate_execution_data(self) -> tuple[bool, str]:
         """既存のvalidate_execution_dataメソッドの互換実装"""
-        return self._validation_service.validate_execution_data()
+        # 基本的な検証
+        if not self.config.language:
+            return False, "Language is required"
+        if not self.config.contest_name:
+            return False, "Contest name is required"
+        if not self.config.problem_name:
+            return False, "Problem name is required"
+        return True, ""
 
-    # === 設定解決機能（委譲） ===
+    # ConfigNode 統合機能
     def resolve_config_value(self, path: list, default: Any = None) -> Any:
-        """設定値をパスで解決"""
-        return self._config_resolution_service.resolve_config_value(path, default)
+        """設定値をパスで解決（ConfigNode機能の統合）
+
+        Args:
+            path: 設定パス（例: ['python', 'language_id']）
+            default: デフォルト値
+
+        Returns:
+            解決された設定値
+        """
+        if self._config_resolver:
+            return self._config_resolver.resolve_value(path, default)
+
+        # フォールバック：従来の解決方法
+        current = self._env_json or {}
+        for key in path:
+            if isinstance(current, dict) and key in current:
+                current = current[key]
+            else:
+                return default
+        return current
 
     def resolve_config_values(self, path: list) -> list[Any]:
-        """設定値のリストをパスで解決"""
-        return self._config_resolution_service.resolve_config_values(path)
+        """設定値のリストをパスで解決
 
-    def get_config_resolver(self):
+        Args:
+            path: 設定パス
+
+        Returns:
+            解決された設定値のリスト
+        """
+        if self._config_resolver:
+            return self._config_resolver.resolve_values(path)
+
+        # フォールバック
+        value = self.resolve_config_value(path)
+        return [value] if value is not None else []
+
+    def get_config_resolver(self) -> Optional[ConfigurationResolver]:
         """新設定解決器を取得（テスト・デバッグ用）"""
-        return self._compatibility_layer.get_config_resolver()
+        return self._config_resolver
 
     def get_docker_names(self) -> Dict[str, str]:
-        """Docker命名情報を取得（旧ExecutionContextとの互換性）"""
-        from src.infrastructure.drivers.docker.utils.docker_naming import (
-            get_docker_container_name,
-            get_docker_image_name,
-            get_oj_container_name,
-            get_oj_image_name,
-        )
+        """Dockerイメージ名とコンテナ名を取得
 
-        # dockerfile_resolverから内容を取得
-        dockerfile_content = None
-        oj_dockerfile_content = None
+        Returns:
+            Dict containing image_name, container_name, oj_image_name, oj_container_name
+        """
+        import hashlib
 
-        # 複数の場所からdockerfile_resolverを取得を試みる
-        resolver = None
-        if hasattr(self, '_dockerfile_resolver') and self._dockerfile_resolver:
-            resolver = self._dockerfile_resolver
-        elif hasattr(self, 'dockerfile_resolver') and self.dockerfile_resolver:
-            resolver = self.dockerfile_resolver
-        elif hasattr(self._compatibility_layer, 'dockerfile_resolver') and self._compatibility_layer.dockerfile_resolver:
-            resolver = self._compatibility_layer.dockerfile_resolver
+        language = self.config.language
+        base_image_name = language
+        base_container_name = f"cph_{language}"
+        base_oj_image_name = "ojtools"
+        base_oj_container_name = "cph_ojtools"
 
-        if resolver:
-            dockerfile_content = getattr(resolver, 'dockerfile', None)
-            oj_dockerfile_content = getattr(resolver, 'oj_dockerfile', None)
+        # Dockerfileが存在する場合はハッシュを追加
+        if hasattr(self, 'dockerfile_resolver') and self.dockerfile_resolver:
+            dockerfile_content = getattr(self.dockerfile_resolver, 'dockerfile', '')
+            oj_dockerfile_content = getattr(self.dockerfile_resolver, 'oj_dockerfile', '')
 
-        # Docker命名情報を生成
+            # 空でないDockerfileの場合のみハッシュを追加
+            if dockerfile_content and dockerfile_content.strip():
+                hash_suffix = hashlib.md5(dockerfile_content.encode()).hexdigest()[:8]
+                image_name = f"{base_image_name}_{hash_suffix}"
+            else:
+                image_name = base_image_name
+
+            if oj_dockerfile_content and oj_dockerfile_content.strip():
+                oj_hash_suffix = hashlib.md5(oj_dockerfile_content.encode()).hexdigest()[:8]
+                oj_image_name = f"{base_oj_image_name}_{oj_hash_suffix}"
+            else:
+                oj_image_name = base_oj_image_name
+        else:
+            image_name = base_image_name
+            oj_image_name = base_oj_image_name
+
         return {
-            "image_name": get_docker_image_name(self.language, dockerfile_content),
-            "container_name": get_docker_container_name(self.language),
-            "oj_image_name": get_oj_image_name(oj_dockerfile_content),
-            "oj_container_name": get_oj_container_name(),
+            "image_name": image_name,
+            "container_name": base_container_name,
+            "oj_image_name": oj_image_name,
+            "oj_container_name": base_oj_container_name
         }
-
-
-# 既存システムとの完全互換性のためのエイリアス
-class ExecutionContextAdapter(ExecutionContextAdapterV2):
-    """既存システムとの完全互換性を保つエイリアス
-
-    段階的移行期間中は既存の名前でも利用可能
-    """
-    pass

@@ -7,7 +7,7 @@ class TemplateExpanderFactory:
     """TemplateExpander生成"""
 
     @staticmethod
-    def create(config: ExecutionConfiguration) -> TemplateExpander:
+    def create_template_expander(config: ExecutionConfiguration) -> TemplateExpander:
         """設定に応じたTemplateExpanderを生成
 
         Args:

@@ -15,7 +15,7 @@ class SequentialExecutor:
         """
         self.graph = graph
 
-    def execute(self, driver=None) -> list[OperationResult]:
+    def execute_sequential_workflow(self, driver=None) -> list[OperationResult]:
         """順次実行"""
         execution_order = self.graph.get_execution_order()
         results = []

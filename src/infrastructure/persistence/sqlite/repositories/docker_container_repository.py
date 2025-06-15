@@ -13,6 +13,10 @@ class DockerContainerRepository(DatabaseRepositoryFoundation):
         super().__init__(sqlite_manager)
 
     # RepositoryInterface implementations
+    def create_entity_record(self, entity: Dict[str, Any]) -> Any:
+        """Create a new container entity."""
+        return self.create_container(**entity)
+
     def create_container_record(self, entity: Dict[str, Any]) -> Any:
         """Create a new container entity."""
         return self.create_container(**entity)

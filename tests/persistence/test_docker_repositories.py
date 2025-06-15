@@ -241,7 +241,7 @@ class TestDockerContainerRepository:
             "image_tag": "3.9",
             "language": "python"
         }
-        result = container_repo.create(entity)
+        result = container_repo.create_entity_record(entity)
         assert result is not None
 
         # Test find_by_id via interface (uses container name)
@@ -441,7 +441,7 @@ class TestDockerImageRepository:
             "tag": "1.0",
             "dockerfile_hash": "abc123"
         }
-        result = image_repo.create(entity)
+        result = image_repo.create_entity_record(entity)
         assert result is not None
 
         # Test find_by_id via interface (uses image name:tag format)

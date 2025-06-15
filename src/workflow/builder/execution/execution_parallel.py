@@ -19,7 +19,7 @@ class ParallelExecutor:
         """
         self.graph = graph
 
-    def execute(self, driver=None, max_workers: int = 4,
+    def execute_parallel_workflow(self, driver=None, max_workers: int = 4,
                 executor_class: type = ThreadPoolExecutor) -> list[OperationResult]:
         """並行実行（純粋関数版）
 

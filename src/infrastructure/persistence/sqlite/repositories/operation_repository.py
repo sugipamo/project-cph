@@ -38,7 +38,7 @@ class OperationRepository(DatabaseRepositoryFoundation):
         """
         self.db_manager = db_manager
 
-    def create(self, entity: dict[str, Any]) -> Any:
+    def create_entity_record(self, entity: dict[str, Any]) -> Any:
         """Create method for RepositoryInterface compatibility.
 
         Args:

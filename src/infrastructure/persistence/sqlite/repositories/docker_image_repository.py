@@ -12,6 +12,10 @@ class DockerImageRepository(DatabaseRepositoryFoundation):
         super().__init__(sqlite_manager)
 
     # RepositoryInterface implementations
+    def create_entity_record(self, entity: Dict[str, Any]) -> Any:
+        """Create a new image entity."""
+        return self.create_or_update_image(**entity)
+
     def create_image_record(self, entity: Dict[str, Any]) -> Any:
         """Create a new image entity."""
         return self.create_or_update_image(**entity)

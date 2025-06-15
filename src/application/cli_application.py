@@ -22,7 +22,7 @@ class CLIApplication:
         self.operations = None
         self.context = None
 
-    def run(self, args: list[str]) -> int:
+    def execute_cli_application(self, args: list[str]) -> int:
         """Run the CLI application with given arguments
 
         Args:
@@ -134,7 +134,7 @@ def main(context=None, operations=None) -> Optional[WorkflowExecutionResult]:
     if context is None or operations is None:
         # Called without parameters - run CLI application
         app = CLIApplication()
-        exit_code = app.run(sys.argv[1:])
+        exit_code = app.execute_cli_application(sys.argv[1:])
         sys.exit(exit_code)
     else:
         # Called with parameters - execute workflow directly (for testing)

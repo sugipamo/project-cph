@@ -34,7 +34,7 @@ class DatabaseRepositoryFoundation(RepositoryInterface):
         return len(self.find_all())
 
     # Note: Concrete repositories must implement the abstract methods from RepositoryInterface:
-    # - create(self, entity: Dict[str, Any]) -> Any
+    # - create_entity_record(self, entity: Dict[str, Any]) -> Any
     # - find_by_id(self, entity_id: Any) -> Optional[Dict[str, Any]]
     # - find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Dict[str, Any]]
     # - update(self, entity_id: Any, updates: Dict[str, Any]) -> bool

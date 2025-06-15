@@ -14,6 +14,16 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
         super().__init__(sqlite_manager)
 
     # RepositoryInterface implementations
+    def create_entity_record(self, entity: Dict[str, Any]) -> Any:
+        """Create a new config entity."""
+        key = entity.get('config_key') or entity.get('key')
+        value = entity.get('config_value') or entity.get('value')
+        category = entity.get('category')
+        description = entity.get('description')
+
+        self.set_config(key, value, category, description)
+        return key
+
     def create_config_record(self, entity: Dict[str, Any]) -> Any:
         """Create a new config entity."""
         key = entity.get('config_key') or entity.get('key')

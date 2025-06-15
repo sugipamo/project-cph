@@ -161,7 +161,7 @@ class TestUnifiedDriver:
         driver = UnifiedDriver(self.mock_operations)
 
         # Test that specific driver methods are available
-        assert hasattr(driver, 'run')  # Shell driver method
+        assert hasattr(driver, 'execute_shell_command')  # Shell driver method
         assert hasattr(driver, 'copy')  # File driver method
         assert hasattr(driver, 'run_container')  # Docker driver method
         assert hasattr(driver, 'exec_in_container')  # Docker driver method

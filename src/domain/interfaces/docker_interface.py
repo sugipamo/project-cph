@@ -12,7 +12,7 @@ class DockerDriverInterface(ABC):
     """Abstract interface for Docker operations."""
 
     @abstractmethod
-    def run(self, image: str, **kwargs) -> OperationResult:
+    def run_docker_container(self, image: str, **kwargs) -> OperationResult:
         """Run a Docker container."""
 
     @abstractmethod
@@ -36,7 +36,7 @@ class DockerDriverInterface(ABC):
         """Inspect a Docker container."""
 
     @abstractmethod
-    def build(self, context_path: str, **kwargs) -> OperationResult:
+    def build_docker_image(self, context_path: str, **kwargs) -> OperationResult:
         """Build a Docker image."""
 
     @abstractmethod

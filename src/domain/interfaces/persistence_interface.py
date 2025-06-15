@@ -62,8 +62,8 @@ class RepositoryInterface(ABC):
     """Abstract interface for repository operations."""
 
     @abstractmethod
-    def create(self, entity: Dict[str, Any]) -> Any:
-        """Create a new entity.
+    def create_entity_record(self, entity: Dict[str, Any]) -> Any:
+        """Create a new entity record.
 
         Args:
             entity: Entity data dictionary

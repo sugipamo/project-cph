@@ -13,7 +13,7 @@ class ExecutionInterface(ABC):
     """Abstract interface for request execution."""
 
     @abstractmethod
-    def execute(self, request: Any) -> OperationResult:
+    def execute_request_operation(self, request: Any) -> OperationResult:
         """Execute a request and return the result."""
 
 

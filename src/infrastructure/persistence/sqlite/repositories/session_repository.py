@@ -69,7 +69,7 @@ class SessionRepository(DatabaseRepositoryFoundation):
 
         return session
 
-    def create(self, entity: Dict[str, Any]) -> Any:
+    def create_entity_record(self, entity: Dict[str, Any]) -> Any:
         """Create method for RepositoryInterface compatibility.
 
         Args:
