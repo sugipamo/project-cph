@@ -175,6 +175,10 @@ def expand_template(template: str, context: ExecutionContext) -> str:
         expander = TemplateExpander(context)
         return expander.expand_all(template)
 
+    # ExecutionContextAdapterの場合（新設定システムアダプター）
+    if hasattr(context, 'format_string'):
+        return context.format_string(template)
+
     # 従来システム（ExecutionContext）の場合
     result = template
     for key, value in context.to_dict().items():

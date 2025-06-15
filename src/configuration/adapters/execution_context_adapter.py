@@ -1,5 +1,5 @@
 """既存ExecutionContextとの互換性を保つアダプター"""
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from ..core.execution_configuration import ExecutionConfiguration
 from ..expansion.template_expander import TemplateExpander
@@ -30,6 +30,14 @@ class ExecutionContextAdapter:
 
     def to_dict(self) -> Dict[str, str]:
         """既存のto_dictメソッドの互換実装
+
+        Returns:
+            テンプレート変数辞書
+        """
+        return self.config.to_template_dict()
+
+    def to_format_dict(self) -> Dict[str, str]:
+        """既存のto_format_dictメソッドの互換実装（unified_request_factoryで使用）
 
         Returns:
             テンプレート変数辞書
@@ -76,6 +84,18 @@ class ExecutionContextAdapter:
     @property
     def contest_temp_path(self) -> str:
         return str(self.config.paths.contest_temp)
+
+    @property
+    def file_patterns(self) -> Dict[str, List[str]]:
+        return self.config.file_patterns
+
+    @property
+    def source_file_name(self) -> str:
+        return self.config.runtime_config.source_file_name
+
+    @property
+    def language_id(self) -> str:
+        return self.config.runtime_config.language_id
 
     # 既存システムとの互換性のためのプロパティ
     @property

@@ -48,7 +48,7 @@ class FileRequestStrategy(RequestCreationStrategy):
 
     def can_handle(self, step_type: StepType) -> bool:
         return step_type in [
-            StepType.MKDIR, StepType.TOUCH, StepType.COPY,
+            StepType.MKDIR, StepType.TOUCH, StepType.COPY, StepType.COPYTREE,
             StepType.MOVE, StepType.MOVETREE, StepType.REMOVE
         ]
 
@@ -59,6 +59,7 @@ class FileRequestStrategy(RequestCreationStrategy):
             StepType.MKDIR: FileOpType.MKDIR,
             StepType.TOUCH: FileOpType.TOUCH,
             StepType.COPY: FileOpType.COPY,
+            StepType.COPYTREE: FileOpType.COPYTREE,
             StepType.MOVE: FileOpType.MOVE,
             StepType.MOVETREE: FileOpType.MOVETREE,
             StepType.REMOVE: FileOpType.REMOVE,

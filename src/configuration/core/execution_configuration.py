@@ -42,11 +42,19 @@ class ExecutionConfiguration:
             "language": self.language,
             "env_type": self.env_type,
             "command_type": self.command_type,
+            # Path variables with both formats for compatibility
             "workspace": str(self.paths.workspace),
             "contest_current": str(self.paths.contest_current),
             "contest_stock": str(self.paths.contest_stock),
             "contest_template": str(self.paths.contest_template),
             "contest_temp": str(self.paths.contest_temp),
+            # Path variables with _path suffix as expected by JSON configurations
+            "workspace_path": str(self.paths.workspace),
+            "contest_current_path": str(self.paths.contest_current),
+            "contest_stock_path": str(self.paths.contest_stock),
+            "contest_template_path": str(self.paths.contest_template),
+            "contest_temp_path": str(self.paths.contest_temp),
+            # Runtime configuration
             "language_id": self.runtime_config.language_id,
             "source_file_name": self.runtime_config.source_file_name,
             "run_command": self.runtime_config.run_command,
