@@ -23,6 +23,7 @@ exclude = [
     "node_modules",
     "venv",
     "target",
+    ".vulture_whitelist.py",
 ]
 
 # 1行の最大文字数

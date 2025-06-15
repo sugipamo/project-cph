@@ -66,14 +66,22 @@ class TestRunner:
 
             success = result.returncode == 0
 
-            if spinner:
-                spinner.stop(success)
+            # vultureの場合は特別処理
+            if cmd[0] == "vulture" and result.stdout.strip():
+                if spinner:
+                    spinner.stop(True)  # 未使用コード検出は成功として表示
+            else:
+                if spinner:
+                    spinner.stop(success)
 
             if not success:
                 if self.verbose:
                     print(f"❌ {description}")
                     print(f"   コマンド: {' '.join(cmd)}")
                     print(f"   エラー出力: {result.stderr}")
+                # vultureの場合は特別処理（未使用コード検出時は正常終了とみなす）
+                if cmd[0] == "vulture" and result.stdout.strip():
+                    return True, result.stdout
                 self.issues.append(f"{description}: {result.stderr.strip()}")
                 return False, result.stderr
             if self.verbose:
@@ -157,12 +165,13 @@ class TestRunner:
             return True  # 未使用コード検出なしでも続行
 
         success, output = self.run_command(
-            ["vulture", "src/", "--min-confidence", "80"],
+            ["vulture", "src/", ".vulture_whitelist.py", "--min-confidence", "80"],
             "未使用コード検出"
         )
 
         # 未使用コードが検出された場合は警告として扱う（エラーではない）
-        if not success and output.strip():
+        # vultureは未使用コード検出時に終了コード1を返すが、標準出力に結果があれば正常
+        if output.strip():
             # 出力を解析して警告として追加
             dead_code_lines = [line.strip() for line in output.strip().split('\n') if line.strip()]
             if dead_code_lines:

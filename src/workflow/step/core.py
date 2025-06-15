@@ -113,7 +113,7 @@ def format_template(template: Any, context) -> str:
     return expand_template(template, simple_context)
 
 
-def expand_file_patterns(template: str, context, step_type=None, for_when_clause: bool = False) -> str:
+def expand_file_patterns(template: str, context, step_type=None) -> str:
     """ファイルパターンを展開する（後方互換性）"""
     from .simple_step_runner import expand_file_patterns_in_text
 
