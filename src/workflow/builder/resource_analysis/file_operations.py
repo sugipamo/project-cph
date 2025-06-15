@@ -43,13 +43,13 @@ def _extract_touch_resources(step: Step) -> ResourceInfo:
         creates_files={file_path},
         creates_dirs=set(),
         reads_files=set(),
-        requires_dirs={parent_dir} if parent_dir != '.' else set()
+        requires_dirs={parent_dir}
     )
 
 
 def _extract_copy_resources(step: Step) -> ResourceInfo:
     """COPYステップのリソース情報を抽出"""
-    if len(step.cmd) < 2:
+    if not step.cmd or len(step.cmd) < 2:
         return ResourceInfo.empty()
 
     source_path = step.cmd[0]
@@ -60,13 +60,13 @@ def _extract_copy_resources(step: Step) -> ResourceInfo:
         creates_files={dest_path},
         creates_dirs=set(),
         reads_files={source_path},
-        requires_dirs={dest_parent} if dest_parent != '.' else set()
+        requires_dirs={dest_parent}
     )
 
 
 def _extract_move_resources(step: Step) -> ResourceInfo:
     """MOVEステップのリソース情報を抽出"""
-    if len(step.cmd) < 2:
+    if not step.cmd or len(step.cmd) < 2:
         return ResourceInfo.empty()
 
     source_path = step.cmd[0]
@@ -77,7 +77,7 @@ def _extract_move_resources(step: Step) -> ResourceInfo:
         creates_files={dest_path},
         creates_dirs=set(),
         reads_files={source_path},
-        requires_dirs={dest_parent} if dest_parent != '.' else set()
+        requires_dirs={dest_parent}
     )
 
 

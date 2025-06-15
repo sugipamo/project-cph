@@ -40,7 +40,7 @@ def _extract_mkdir_resources(step: Step) -> ResourceInfo:
 
 def _extract_movetree_resources(step: Step) -> ResourceInfo:
     """MOVETREEステップのリソース情報を抽出"""
-    if len(step.cmd) < 2:
+    if not step.cmd or len(step.cmd) < 2:
         return ResourceInfo.empty()
 
     source_dir = step.cmd[0]
