@@ -56,23 +56,35 @@ def _save_current_context_sqlite(operations, context_info):
 
 
 def _parse_command_line_args(args, context, root):
-    """コマンドライン引数を解析する"""
-    # 順次処理を適用
-    args, context = _apply_language(args, context, root)
-    args, context = _apply_env_type(args, context, root)
-    args, context = _apply_command(args, context, root)
+    """コマンドライン引数を解析する（柔軟な順序対応）"""
+    # 柔軟なスキャン方式で各タイプを検出・削除
+    args, context = _scan_and_apply_language(args, context, root)
+    args, context = _scan_and_apply_env_type(args, context, root)
+    args, context = _scan_and_apply_command(args, context, root)
     args, context = _apply_problem_name(args, context)
     args, context = _apply_contest_name(args, context)
 
     return args, context
 
 
-def _apply_language(args, context, root):
-    """言語の適用 - 引数で指定された場合のみ更新、なければ既存設定を保持"""
+def _scan_and_apply_language(args, context, root):
+    """言語を全引数からスキャンして適用 - 引数で指定された場合のみ更新、なければ既存設定を保持"""
+    # 実際の言語のみをターゲット（動的に取得）
+    from pathlib import Path
+
+    from src.configuration.loaders.configuration_loader import ConfigurationLoader
+
+    config_loader = ConfigurationLoader(
+        contest_env_dir=Path("contest_env"),
+        system_config_dir=Path("./config/system")
+    )
+    valid_languages = set(config_loader.get_available_languages())
+
     for idx, arg in enumerate(args):
         # 第1レベルのノード（言語）のみをチェック
         for lang_node in root.next_nodes:
-            if arg in lang_node.matches:
+            # 実際の言語ノードのみ処理
+            if lang_node.key in valid_languages and arg in lang_node.matches:
                 # 新しいコンテキストを作成
                 new_context = create_new_execution_context(
                     command_type=context.command_type,
@@ -89,8 +101,13 @@ def _apply_language(args, context, root):
     return args, context
 
 
-def _apply_env_type(args, context, root):
-    """環境タイプの適用 - 引数で指定された場合のみ更新、なければ既存設定を保持"""
+def _apply_language(args, context, root):
+    """後方互換性のための既存関数（非推奨）"""
+    return _scan_and_apply_language(args, context, root)
+
+
+def _scan_and_apply_env_type(args, context, root):
+    """環境タイプを全引数からスキャンして適用 - 引数で指定された場合のみ更新、なければ既存設定を保持"""
     if context.language:
         env_type_nodes = resolve_by_match_desc(root, [context.language, "env_types"])
         for idx, arg in enumerate(args):
@@ -113,8 +130,13 @@ def _apply_env_type(args, context, root):
     return args, context
 
 
-def _apply_command(args, context, root):
-    """コマンドの適用"""
+def _apply_env_type(args, context, root):
+    """後方互換性のための既存関数（非推奨）"""
+    return _scan_and_apply_env_type(args, context, root)
+
+
+def _scan_and_apply_command(args, context, root):
+    """コマンドを全引数からスキャンして適用"""
     if context.language:
         command_nodes = resolve_by_match_desc(root, [context.language, "commands"])
         for idx, arg in enumerate(args):
@@ -134,6 +156,11 @@ def _apply_command(args, context, root):
                         return new_args, new_context
 
     return args, context
+
+
+def _apply_command(args, context, root):
+    """後方互換性のための既存関数（非推奨）"""
+    return _scan_and_apply_command(args, context, root)
 
 
 def _apply_problem_name(args, context):
@@ -261,6 +288,16 @@ def _merge_with_shared_config(env_json, shared_config):
                     if output_key not in lang_config["output"]:
                         lang_config["output"][output_key] = output_value
 
+        # commands設定をマージ（重要：ワークフローに必要）
+        if "commands" in shared_data:
+            if "commands" not in lang_config:
+                lang_config["commands"] = shared_data["commands"].copy()
+            else:
+                # 既存のcommands設定と共有設定をマージ
+                for cmd_key, cmd_value in shared_data["commands"].items():
+                    if cmd_key not in lang_config["commands"]:
+                        lang_config["commands"][cmd_key] = cmd_value
+
     return merged_json
 
 
@@ -275,11 +312,16 @@ def _apply_env_json(context, env_jsons, base_dir=None, operations=None):
             contest_env_dir=Path(base_dir),
             system_config_dir=Path("./config/system")
         )
-        # マージされた設定を取得
+        # 完全なマージ設定を取得（共有設定をトップレベルで利用）
         merged_config = config_loader.load_merged_config(context.language, {})
-        # 言語固有設定を抽出
+        
+        # 言語固有設定に共有設定の重要項目を直接追加
         if context.language in merged_config:
-            context.env_json = {context.language: merged_config[context.language]}
+            lang_config = merged_config[context.language]
+            # commandsが共有設定にある場合は追加
+            if 'commands' in merged_config and 'commands' not in lang_config:
+                lang_config['commands'] = merged_config['commands']
+            context.env_json = {context.language: lang_config}
         else:
             context.env_json = merged_config
     return context
@@ -353,22 +395,31 @@ def _resolve_environment_configuration(context_data, operations):
         contest_env_dir=Path(CONTEST_ENV_DIR),
         system_config_dir=Path("./config/system")
     )
-    env_config = config_loader.load_merged_config("cpp", {})  # デフォルト言語で設定構造を取得
-    root = create_config_root_from_dict(env_config)
+
+    # 全言語の設定を統合して言語候補を作成
+    all_languages = config_loader.get_available_languages()
+    combined_config = {}
+
+    # 各言語の設定を統合
+    for lang in all_languages:
+        lang_config = config_loader.load_merged_config(lang, {})
+        combined_config.update(lang_config)
+
+    root = create_config_root_from_dict(combined_config)
     env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, operations)
 
     # Resolve final env_json
     final_env_json = context_data["env_json"]
     if final_env_json is None and context_data["language"]:
-        merged_config = config_loader.load_merged_config(context_data["language"], {})
-        if context_data["language"] in merged_config:
-            final_env_json = {context_data["language"]: merged_config[context_data["language"]]}
+        lang_merged_config = config_loader.load_merged_config(context_data["language"], {})
+        if context_data["language"] in lang_merged_config:
+            final_env_json = {context_data["language"]: lang_merged_config[context_data["language"]]}
         else:
-            final_env_json = merged_config
+            final_env_json = lang_merged_config
 
     return {
         'config_loader': config_loader,
-        'env_config': env_config,
+        'env_config': combined_config,
         'root': root,
         'env_jsons': env_jsons,
         'final_env_json': final_env_json
@@ -417,10 +468,31 @@ def _finalize_environment_configuration(context, env_config, operations):
     return context
 
 
+def _apply_remaining_arguments_flexibly(args, context):
+    """残った引数を柔軟に問題名・コンテスト名として適用"""
+    # 最大2つまでの引数を問題名・コンテスト名として処理
+    remaining_args = args[:2]  # 2つまでに制限
+
+    if len(remaining_args) >= 1:
+        # 最後の引数を問題名として設定（既存値がない場合のみ）
+        if not context.problem_name:
+            context.problem_name = remaining_args[-1]
+
+    if len(remaining_args) >= 2:
+        # 最初の引数をコンテスト名として設定（既存値がない場合のみ）
+        if not context.contest_name:
+            context.contest_name = remaining_args[0]
+
+    return context
+
+
 def _setup_context_persistence_and_docker(context, args, operations):
     """Setup context persistence and Docker configuration."""
+    # 引数が残っている場合は、より寛容に処理
     if args:
-        raise ValueError(f"引数が多すぎます: {args}")
+        # 未処理の引数を問題名・コンテスト名として最後の試行
+        context = _apply_remaining_arguments_flexibly(args, context)
+        args = []  # 処理済みとしてクリア
 
     _save_current_context_sqlite(operations, {
         "command": context.command_type,
