@@ -129,7 +129,7 @@ class TestCLIApplication:
         mock_get_config.assert_called_once_with(mock_context)
         mock_service_class.assert_called_once_with(mock_context, mock_operations)
         mock_service.execute_workflow.assert_called_once_with(parallel=False)
-        mock_presenter_class.assert_called_once_with(mock_config)
+        mock_presenter_class.assert_called_once_with(mock_config, mock_context)
         mock_presenter.present_results.assert_called_once_with(mock_result)
 
     @patch('builtins.print')
@@ -259,7 +259,7 @@ class TestMainFunction:
         mock_get_config.assert_called_once_with(mock_context)
         mock_service_class.assert_called_once_with(mock_context, mock_operations)
         mock_service.execute_workflow.assert_called_once_with(parallel=False)
-        mock_presenter_class.assert_called_once_with(mock_config)
+        mock_presenter_class.assert_called_once_with(mock_config, mock_context)
         mock_presenter.present_results.assert_called_once_with(mock_result)
 
     def test_main_with_partial_parameters(self):

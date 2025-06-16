@@ -484,11 +484,10 @@ class ContestManager:
             # Copy all files from contest_stock to contest_current
             success = self._copy_directory_contents(contest_stock_path, contest_current_path)
 
-            if success:
+            if success and self.files_repo:
                 # Track all copied files in SQLite if repository is available
-                if self.files_repo:
-                    self._track_files_from_stock(contest_stock_path, contest_current_path,
-                                               language, contest, problem)
+                self._track_files_from_stock(contest_stock_path, contest_current_path,
+                                           language, contest, problem)
                 # print(f"📁 Restored from contest_stock: {language} {contest} {problem}")
 
             return success

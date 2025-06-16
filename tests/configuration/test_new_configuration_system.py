@@ -214,9 +214,10 @@ class TestConfigurationLoader(unittest.TestCase):
 
         loader = ConfigurationLoader(mock_contest_env, mock_system_config)
 
-        # メソッドをモック
-        loader.load_system_configs = MagicMock(return_value={'system_key': 'system_value'})
-        loader.load_env_configs = MagicMock(return_value=({'shared_key': 'shared_value'}, {'lang_key': 'lang_value'}))
+        # 実際のローダーメソッドをモック
+        loader.system_loader.load_system_configs = MagicMock(return_value={'system_key': 'system_value'})
+        loader.env_loader.load_env_configs = MagicMock(return_value=({'shared_key': 'shared_value'}, {'lang_key': 'lang_value'}))
+        loader.merger.extract_shared_config = MagicMock(return_value={'shared_key': 'shared_value'})
 
         runtime_args = {'runtime_key': 'runtime_value'}
         source = loader.load_source('python', runtime_args)

@@ -1,7 +1,8 @@
 """プロバイダーファクトリー - DIコンテナで副作用プロバイダーを管理"""
+from pathlib import Path
 from typing import Any, Dict
 
-from src.infrastructure.config.unified_config_loader import UnifiedConfigLoader
+from src.configuration.loaders.configuration_loader import ConfigurationLoader
 from src.infrastructure.drivers.logging import ConsoleLogger, SystemConsoleLogger
 from src.infrastructure.providers import (
     EnvironmentProvider,
@@ -59,11 +60,9 @@ class ProviderFactory:
         self._providers['console_logger'] = SystemConsoleLogger()
 
         # 統合設定ローダー
-        from pathlib import Path
-        self._providers['config_loader'] = UnifiedConfigLoader(
+        self._providers['config_loader'] = ConfigurationLoader(
             contest_env_dir=Path("./contest_env"),
-            system_config_dir=Path("./config/system"),
-            file_provider=self._providers['file']
+            system_config_dir=Path("./config/system")
         )
 
     def _initialize_mock_providers(self) -> None:
@@ -89,11 +88,9 @@ class ProviderFactory:
         self._providers['console_logger'] = MockConsoleLogger()
 
         # モック設定ローダー
-        from pathlib import Path
-        self._providers['config_loader'] = UnifiedConfigLoader(
+        self._providers['config_loader'] = ConfigurationLoader(
             contest_env_dir=Path("./mock_contest_env"),
-            system_config_dir=Path("./mock_config/system"),
-            file_provider=self._providers['file']
+            system_config_dir=Path("./mock_config/system")
         )
 
     def get_file_provider(self) -> FileProvider:
@@ -124,7 +121,7 @@ class ProviderFactory:
         """コンソールロガーを取得"""
         return self._providers['console_logger']
 
-    def get_config_loader(self) -> UnifiedConfigLoader:
+    def get_config_loader(self) -> ConfigurationLoader:
         """統合設定ローダーを取得"""
         return self._providers['config_loader']
 

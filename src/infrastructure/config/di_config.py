@@ -139,8 +139,13 @@ def _create_file_pattern_service(container: Any) -> Any:
 
 def _create_json_config_loader() -> Any:
     """Lazy factory for JSON config loader."""
-    from src.infrastructure.config.json_config_loader import JsonConfigLoader
-    return JsonConfigLoader()
+    from pathlib import Path
+
+    from src.configuration.loaders.configuration_loader import ConfigurationLoader
+    return ConfigurationLoader(
+        contest_env_dir=Path("./contest_env"),
+        system_config_dir=Path("./config/system")
+    )
 
 
 def _create_contest_manager(container: Any) -> Any:

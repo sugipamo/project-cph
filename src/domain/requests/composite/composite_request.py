@@ -63,6 +63,30 @@ class CompositeRequest(CompositeRequestFoundation):
 
         return results
 
+    def execute_parallel(self, driver: Any, max_workers: int = 4) -> list[Any]:
+        """Execute requests in parallel using ThreadPoolExecutor"""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        def execute_request(req):
+            result = req.execute_operation(driver=driver)
+            # Check failure if execution controller is available
+            if self.execution_controller and hasattr(self.execution_controller, '_check_failure'):
+                self.execution_controller._check_failure(req, result)
+            return result
+
+        results = []
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all requests for parallel execution
+            future_to_index = {executor.submit(execute_request, req): i for i, req in enumerate(self.requests)}
+
+            # Collect results in original order
+            results = [None] * len(self.requests)
+            for future in as_completed(future_to_index):
+                index = future_to_index[future]
+                results[index] = future.result()
+
+        return results
+
     def __repr__(self) -> str:
         return f"<CompositeRequest name={self.name} {self.structure}>"
 

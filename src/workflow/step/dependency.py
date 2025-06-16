@@ -20,11 +20,28 @@ def resolve_dependencies(steps: list[Step], context: StepContext) -> list[Step]:
     existing_files = set()  # 存在確認済みファイルを追跡
 
     for step in steps:
-        # 現在のステップに必要な準備ステップを生成
-        prep_steps = generate_preparation_steps(step, existing_dirs, existing_files, context)
+        # when条件があるステップはスキップされる可能性があるため、準備ステップも条件付きで追加
+        should_generate_prep = True
+        if step.when:
+            # when条件がある場合は、条件が満たされる可能性が低い場合は準備ステップをスキップ
+            # TODO: より精密な条件評価が必要だが、暫定的に無効なパス（///）を含む場合はスキップ
+            from src.workflow.step.simple_step_runner import expand_template
+            from src.workflow.step.step_generation_service import execution_context_to_simple_context
+            try:
+                simple_context = execution_context_to_simple_context(context)
+                expanded_cmd = [expand_template(arg, simple_context) for arg in step.cmd]
+                # 無効なパス（連続スラッシュ）を含む場合は準備ステップをスキップ
+                if any('//' in str(arg) for arg in expanded_cmd):
+                    should_generate_prep = False
+            except Exception:
+                pass  # エラーが発生した場合は通常通り処理
 
-        # 準備ステップを追加
-        resolved_steps.extend(prep_steps)
+        prep_steps = []
+        if should_generate_prep:
+            # 現在のステップに必要な準備ステップを生成
+            prep_steps = generate_preparation_steps(step, existing_dirs, existing_files, context)
+            # 準備ステップを追加
+            resolved_steps.extend(prep_steps)
 
         # 準備ステップで作成されたディレクトリ/ファイルを記録
         for prep_step in prep_steps:
@@ -67,7 +84,8 @@ def generate_preparation_steps(step: Step, existing_dirs: set[str], existing_fil
                 mkdir_step = Step(
                     type=StepType.MKDIR,
                     cmd=[dst_dir],
-                    allow_failure=True  # ディレクトリが既に存在する場合は失敗を許可
+                    allow_failure=True,  # ディレクトリが既に存在する場合は失敗を許可
+                    auto_generated=True  # fitting/依存関係解決で自動生成されたステップ
                 )
                 prep_steps.append(mkdir_step)
 
@@ -80,7 +98,8 @@ def generate_preparation_steps(step: Step, existing_dirs: set[str], existing_fil
             mkdir_step = Step(
                 type=StepType.MKDIR,
                 cmd=[parent_dir],
-                allow_failure=True
+                allow_failure=True,
+                auto_generated=True  # fitting/依存関係解決で自動生成されたステップ
             )
             prep_steps.append(mkdir_step)
 
@@ -90,7 +109,8 @@ def generate_preparation_steps(step: Step, existing_dirs: set[str], existing_fil
         mkdir_step = Step(
             type=StepType.MKDIR,
             cmd=[step.cwd],
-            allow_failure=True
+            allow_failure=True,
+            auto_generated=True  # fitting/依存関係解決で自動生成されたステップ
         )
         prep_steps.append(mkdir_step)
 
@@ -238,5 +258,52 @@ def optimize_mkdir_steps(steps: list[Step]) -> list[Step]:
         else:
             optimized.append(step)
             i += 1
+
+    return optimized
+
+
+def optimize_copy_steps(steps: list[Step]) -> list[Step]:
+    """冗長なコピー操作を除去する純粋関数
+
+    Args:
+        steps: 最適化対象のステップリスト
+
+    Returns:
+        List[Step]: 最適化されたステップリスト
+    """
+    if not steps:
+        return steps
+
+    optimized = []
+    seen_operations = set()  # (type, src, dst) のタプルを記録
+
+    for step in steps:
+        if step.type in [StepType.COPY, StepType.MOVE, StepType.COPYTREE, StepType.MOVETREE]:
+            if len(step.cmd) >= 2:
+                # シンプルな文字列比較で重複チェック
+                operation_key = (step.type, step.cmd[0], step.cmd[1])
+
+                # 同じ操作が既に記録されているかチェック
+                if operation_key not in seen_operations:
+                    seen_operations.add(operation_key)
+                    optimized.append(step)
+                # 重複している場合は、より厳しい制約を持つものを優先
+                else:
+                    # 既存のステップを検索して比較
+                    for i, existing_step in enumerate(optimized):
+                        if (existing_step.type == step.type and
+                            len(existing_step.cmd) >= 2 and
+                            existing_step.cmd[0] == step.cmd[0] and
+                            existing_step.cmd[1] == step.cmd[1]):
+                            # より厳しい制約（allow_failure=False）を優先
+                            if not step.allow_failure and existing_step.allow_failure:
+                                optimized[i] = step
+                            break
+            else:
+                # cmdが不正な場合はそのまま追加
+                optimized.append(step)
+        else:
+            # コピー系以外のステップはそのまま追加
+            optimized.append(step)
 
     return optimized

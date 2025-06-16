@@ -38,9 +38,7 @@ FUNCTION_QUALITY_CONFIG = {
             'allow_side_effects': True,  # テストでは副作用OK
         },
         'legacy_files': [
-            # 段階的移行のため一時的に緩和するファイル
-            'src/workflow/builder/graph_based_workflow_builder.py',
-            'src/workflow/builder/builder_validation.py',
+            # 段階的移行のため一時的に緩和するファイル（workflow.builderは削除済み）
         ],
         'utility_functions': {
             'allow_local_mutable': True, # ローカル変数の変更は許可
@@ -53,12 +51,9 @@ FUNCTION_QUALITY_CONFIG = {
 ARCHITECTURE_CONFIG = {
     'module_structure': {
         'required_modules': [
-            'resource_analysis',
-            'validation',
-            'graph_ops',
-            'execution'
+            # workflow.builderは削除済みのため、モジュール構造要件なし
         ],
-        'optional_modules': ['debug'],   # デバッグは任意
+        'optional_modules': [],
     },
 
     'dependency_rules': {

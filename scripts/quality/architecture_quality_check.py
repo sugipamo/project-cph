@@ -15,7 +15,6 @@ import os
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Dict, List, Tuple
 
 
@@ -94,36 +93,9 @@ def check_module_structure(directory: str) -> List[ArchitectureIssue]:
     """モジュール構造チェック"""
     issues = []
 
-    # 期待されるモジュール構造
-    expected_modules = {
-        'resource_analysis': 'リソース分析モジュール',
-        'validation': 'バリデーションモジュール',
-        'graph_ops': 'グラフ操作モジュール',
-        'execution': '実行戦略モジュール',
-        'debug': 'デバッグモジュール'
-    }
+    # 期待されるモジュール構造（workflow.builderは削除済み）
 
-    builder_dir = Path(directory) / 'workflow' / 'builder'
-    if not builder_dir.exists():
-        return issues
-
-    for module_name, description in expected_modules.items():
-        module_path = builder_dir / module_name
-        if not module_path.exists():
-            issues.append(ArchitectureIssue(
-                file=str(module_path),
-                issue_type='missing_module',
-                description=f'期待されるモジュール {module_name} が見つかりません',
-                severity='warning',
-                details=description
-            ))
-        elif not (module_path / '__init__.py').exists():
-            issues.append(ArchitectureIssue(
-                file=str(module_path / '__init__.py'),
-                issue_type='missing_init',
-                description=f'モジュール {module_name} に __init__.py がありません',
-                severity='error'
-            ))
+    # workflow.builderディレクトリは削除済みのため、チェックをスキップ
 
     return issues
 
@@ -206,14 +178,11 @@ def check_dependency_direction(directory: str) -> List[ArchitectureIssue]:
     """依存関係の方向性チェック"""
     issues = []
 
-    # 期待される依存関係の階層
+    # 期待される依存関係の階層（workflow.builderは削除済み）
     hierarchy = {
-        'resource_analysis': 0,  # 最下層
-        'validation': 1,
-        'graph_ops': 1,
-        'execution': 2,
-        'debug': 2,
-        'workflow.builder': 3   # 最上層
+        'workflow.step': 0,  # ワークフローステップ
+        'domain.requests': 1,  # リクエストレイヤー
+        'application': 2   # アプリケーションレイヤー
     }
 
     python_files = glob.glob(f"{directory}/**/*.py", recursive=True)

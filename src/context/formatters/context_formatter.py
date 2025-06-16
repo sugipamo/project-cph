@@ -43,13 +43,13 @@ def create_format_dict(data: ExecutionFormatData) -> dict[str, str]:
 
 
     # env_jsonから追加の値を取得
-    # JsonConfigLoader.get_language_config()使用時はマージ済み設定なので直接アクセス
+    # ConfigurationLoader.get_language_config()使用時はマージ済み設定なので直接アクセス
     if data.env_json:
         # 言語名がキーとして存在する場合（従来形式）
         if data.language in data.env_json:
             lang_config = data.env_json[data.language]
         else:
-            # マージ済み設定の場合（JsonConfigLoader形式）
+            # マージ済み設定の場合（ConfigurationLoader形式）
             lang_config = data.env_json
 
         # パス関連 - pathsの下にある場合とトップレベルにある場合の両方に対応
@@ -113,7 +113,7 @@ def validate_execution_data(data: ExecutionFormatData) -> tuple[bool, Optional[s
         return False, "env_type is required"
 
     # env_jsonの検証
-    # Note: JsonConfigLoader.get_language_config()を使用している場合、
+    # Note: ConfigurationLoader.get_language_config()を使用している場合、
     # env_jsonは既に言語固有にマージされた設定なので、言語キーの存在チェックは不要
 
     return True, None

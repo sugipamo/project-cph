@@ -62,6 +62,14 @@ class ExecutionContextAdapter:
         return self.config.problem_name
 
     @property
+    def old_contest_name(self) -> str:
+        return self.config.old_contest_name
+
+    @property
+    def old_problem_name(self) -> str:
+        return self.config.old_problem_name
+
+    @property
     def env_type(self) -> str:
         return self.config.env_type
 
@@ -87,6 +95,18 @@ class ExecutionContextAdapter:
 
     @property
     def file_patterns(self) -> Dict[str, List[str]]:
+        # ConfigurationLoaderから直接file_patternsを取得
+        if self._env_json:
+            # マージ済み設定の場合、トップレベルにfile_patternsがある
+            if 'file_patterns' in self._env_json:
+                return self._env_json['file_patterns']
+            # 言語固有設定の場合
+            if self.language in self._env_json:
+                lang_config = self._env_json[self.language]
+                if isinstance(lang_config, dict) and 'file_patterns' in lang_config:
+                    return lang_config['file_patterns']
+
+        # フォールバック: ExecutionConfigurationから取得
         return self.config.file_patterns
 
     @property

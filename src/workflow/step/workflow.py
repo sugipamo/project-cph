@@ -4,7 +4,7 @@ from typing import Any
 
 from src.domain.requests.composite.composite_request import CompositeRequest
 
-from .dependency import optimize_mkdir_steps, resolve_dependencies
+from .dependency import optimize_copy_steps, optimize_mkdir_steps, resolve_dependencies
 from .step import Step, StepContext
 from .step_generation_service import generate_steps_from_json, optimize_step_sequence, validate_step_sequence
 
@@ -24,8 +24,11 @@ def steps_to_requests(steps: list[Step], operations) -> CompositeRequest:
     requests = []
     factory = UnifiedRequestFactory()
 
+    from src.infrastructure.di_container import DIKey
+    env_manager = operations.resolve(DIKey.ENVIRONMENT_MANAGER)
+
     for step in steps:
-        request = factory.create_request(step, context=operations)
+        request = factory.create_request_from_step(step, operations, env_manager)
         if request is not None:
             requests.append(request)
 
@@ -94,8 +97,10 @@ def optimize_workflow_steps(steps: list[Step]) -> list[Step]:
     # 2. mkdir ステップの最適化
     optimized = optimize_mkdir_steps(optimized)
 
-    # 3. 追加の最適化（将来拡張可能）
-    # - 冗長なコピー操作の除去
+    # 3. 冗長なコピー操作の除去
+    optimized = optimize_copy_steps(optimized)
+
+    # 4. 追加の最適化（将来拡張可能）
     # - 一時ファイルの最適化
     # - パラレル実行可能なステップの特定
 

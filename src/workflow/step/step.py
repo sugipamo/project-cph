@@ -88,6 +88,8 @@ class Step:
     format_preset: Optional[str] = None
     when: Optional[str] = None
     name: Optional[str] = None
+    auto_generated: bool = False  # fitting/依存関係解決で自動生成されたステップかどうか
+    max_workers: int = 1  # ステップの並列実行worker数（1=逐次実行、2以上=並列実行）
 
     def __post_init__(self):
         """データ検証"""

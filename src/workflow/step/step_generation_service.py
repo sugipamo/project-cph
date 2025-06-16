@@ -11,15 +11,32 @@ def create_step_context_from_execution_context(execution_context) -> StepContext
     """ExecutionContextからStepContextを作成するヘルパー関数（後方互換性）"""
     # ExecutionContextからfile_patternsを取得
     file_patterns = None
-    if hasattr(execution_context, 'env_json') and execution_context.env_json:
-        # JsonConfigLoaderを使用している場合はマージ済み設定なので直接アクセス
+
+    # ExecutionContextAdapterの場合、直接file_patternsプロパティから取得
+    if hasattr(execution_context, 'file_patterns'):
+        file_patterns = execution_context.file_patterns
+    elif hasattr(execution_context, 'env_json') and execution_context.env_json:
+        # ConfigurationLoaderを使用している場合はマージ済み設定なので直接アクセス
         if execution_context.language in execution_context.env_json:
             # 従来形式（言語がトップレベルキー）
             language_config = execution_context.env_json[execution_context.language]
         else:
-            # JsonConfigLoader形式（マージ済み設定）
+            # ConfigurationLoader形式（マージ済み設定）
             language_config = execution_context.env_json
-        file_patterns = language_config.get('file_patterns', {})
+        raw_patterns = language_config.get('file_patterns', {})
+
+        # ConfigurationLoaderの形式からシンプルな形式に変換（必要な場合）
+        file_patterns = {}
+        for pattern_name, pattern_data in raw_patterns.items():
+            if isinstance(pattern_data, dict):
+                # {"workspace": ["patterns"], ...} の形式の場合
+                for location in ['workspace', 'contest_current', 'contest_stock']:
+                    if pattern_data.get(location):
+                        file_patterns[pattern_name] = pattern_data[location]
+                        break
+            else:
+                # 既にシンプルな形式の場合
+                file_patterns[pattern_name] = pattern_data
 
     return StepContext(
         contest_name=execution_context.contest_name,
@@ -41,19 +58,52 @@ def create_step_context_from_execution_context(execution_context) -> StepContext
 def execution_context_to_simple_context(execution_context) -> SimpleExecutionContext:
     """ExecutionContextをSimpleExecutionContextに変換"""
     file_patterns = {}
-    if hasattr(execution_context, 'env_json') and execution_context.env_json:
-        # JsonConfigLoaderを使用している場合はマージ済み設定なので直接アクセス
+    language_config = {}
+
+    # ExecutionContextAdapterの場合、直接file_patternsプロパティから取得
+    if hasattr(execution_context, 'file_patterns'):
+        file_patterns = execution_context.file_patterns
+    elif hasattr(execution_context, 'env_json') and execution_context.env_json:
+        # ConfigurationLoaderを使用している場合はマージ済み設定なので直接アクセス
         if execution_context.language in execution_context.env_json:
             # 従来形式（言語がトップレベルキー）
             language_config = execution_context.env_json[execution_context.language]
         else:
-            # JsonConfigLoader形式（マージ済み設定）
+            # ConfigurationLoader形式（マージ済み設定）
             language_config = execution_context.env_json
-        file_patterns = language_config.get('file_patterns', {})
+        raw_patterns = language_config.get('file_patterns', {})
+
+        # ConfigurationLoaderの形式からシンプルな形式に変換（必要な場合）
+        file_patterns = {}
+        for pattern_name, pattern_data in raw_patterns.items():
+            if isinstance(pattern_data, dict):
+                # {"workspace": ["patterns"], ...} の形式の場合
+                for location in ['workspace', 'contest_current', 'contest_stock']:
+                    if pattern_data.get(location):
+                        file_patterns[pattern_name] = pattern_data[location]
+                        break
+            else:
+                # 既にシンプルな形式の場合
+                file_patterns[pattern_name] = pattern_data
+
+    # デバッグ: run_commandの値を確認
+    run_command = language_config.get('run_command', '')
+    if not run_command:
+        # ExecutionContextAdapterの場合、runtime_configから取得を試行
+        if hasattr(execution_context, 'config') and hasattr(execution_context.config, 'runtime_config'):
+            run_command = execution_context.config.runtime_config.run_command
+
+        # まだ空の場合は言語レジストリから取得
+        if not run_command:
+            from ...configuration.registries.language_registry import get_language_registry
+            language_registry = get_language_registry()
+            run_command = language_registry.get_run_command(execution_context.language)
 
     return SimpleExecutionContext(
         contest_name=execution_context.contest_name,
         problem_name=execution_context.problem_name,
+        old_contest_name=getattr(execution_context, 'old_contest_name', ''),
+        old_problem_name=getattr(execution_context, 'old_problem_name', ''),
         language=execution_context.language,
         workspace_path=getattr(execution_context, 'workspace_path', ''),
         contest_current_path=getattr(execution_context, 'contest_current_path', ''),
@@ -61,7 +111,7 @@ def execution_context_to_simple_context(execution_context) -> SimpleExecutionCon
         contest_template_path=getattr(execution_context, 'contest_template_path', ''),
         source_file_name=getattr(execution_context, 'source_file_name', ''),
         language_id=getattr(execution_context, 'language_id', ''),
-        run_command=language_config.get('run_command', ''),
+        run_command=run_command,
         file_patterns=file_patterns
     )
 

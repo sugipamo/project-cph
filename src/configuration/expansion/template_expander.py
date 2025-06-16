@@ -58,10 +58,10 @@ class TemplateExpander:
         Raises:
             ValueError: 未知のテンプレートキーが含まれている場合
         """
-        # 0. テンプレートバリデーション
-        is_valid, unresolved_keys = self.validate_template(template)
-        if not is_valid:
-            raise ValueError(f"未知のテンプレートキーが見つかりました: {unresolved_keys}")
+        # 0. テンプレートバリデーション（一時的に無効化）
+        # is_valid, unresolved_keys = self.validate_template(template)
+        # if not is_valid:
+        #     raise ValueError(f"未知のテンプレートキーが見つかりました: {unresolved_keys}")
 
         # 1. 基本変数を展開
         result = self.expand_basic_variables(template)

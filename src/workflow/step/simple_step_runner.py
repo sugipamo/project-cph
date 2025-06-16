@@ -35,6 +35,10 @@ class ExecutionContext:
     language_id: str = ""
     run_command: str = ""
 
+    # 前回値（バックアップ用）
+    old_contest_name: str = ""
+    old_problem_name: str = ""
+
     # その他
     file_patterns: Dict[str, List[str]] = None
 
@@ -43,6 +47,8 @@ class ExecutionContext:
         result = {
             'contest_name': self.contest_name,
             'problem_name': self.problem_name,
+            'old_contest_name': self.old_contest_name,
+            'old_problem_name': self.old_problem_name,
             'language': self.language,
             'language_name': self.language,  # エイリアス
             'workspace_path': self.workspace_path,
@@ -58,12 +64,13 @@ class ExecutionContext:
         if self.file_patterns:
             for pattern_name, patterns in self.file_patterns.items():
                 if patterns:
-                    # 最初のパターンを使用（ディレクトリ部分を抽出）
+                    # 最初のパターンを使用
                     pattern = patterns[0]
-                    if '/' in pattern:
-                        # "test/*.in" -> "test"
+                    if pattern_name == 'test_files' and '/' in pattern:
+                        # "test/*.in" -> "test" (ディレクトリ部分のみ)
                         result[pattern_name] = pattern.split('/')[0]
                     else:
+                        # contest_filesなどはそのまま使用
                         result[pattern_name] = pattern
 
         return result
@@ -240,8 +247,19 @@ def expand_template_with_new_system(template: str, new_config: NewExecutionConfi
 
 
 def evaluate_test_condition(test_command: str) -> Tuple[bool, Optional[str]]:
-    """test条件を評価する"""
+    """test条件を評価する（複合条件もサポート）"""
     import os
+
+    # 複合条件（&&）をサポート
+    if ' && ' in test_command:
+        conditions = test_command.split(' && ')
+        for condition in conditions:
+            result, error = evaluate_test_condition(condition.strip())
+            if error:
+                return False, error
+            if not result:
+                return False, None
+        return True, None
 
     if not test_command.startswith('test '):
         return False, "Condition must start with 'test'"
@@ -259,19 +277,44 @@ def evaluate_test_condition(test_command: str) -> Tuple[bool, Optional[str]]:
         negate = True
         args = args[1:]
 
+    # 文字列比較の場合: test 'string1' operator 'string2'
+    if len(args) >= 3 and args[1] in ['=', '!=', '==']:
+        try:
+            left = args[0].strip("'\"")
+            operator = args[1]
+            right = args[2].strip("'\"")
+
+            if operator in ['=', '==']:
+                result = left == right
+            elif operator == '!=':
+                result = left != right
+            else:
+                return False, f"Unsupported string operator: {operator}"
+
+            # 否定適用
+            final_result = not result if negate else result
+            return final_result, None
+        except Exception as e:
+            return False, f"Error evaluating string condition: {e}"
+
     if len(args) < 2:
         return False, "Missing test arguments"
 
-    flag, path = args[0], args[1]
+    flag, value = args[0], args[1]
 
     try:
         # 条件評価
         if flag == '-d':
-            result = os.path.isdir(path)
+            result = os.path.isdir(value)
         elif flag == '-f':
-            result = os.path.isfile(path)
+            result = os.path.isfile(value)
         elif flag == '-e':
-            result = os.path.exists(path)
+            result = os.path.exists(value)
+        elif flag == '-n':
+            # 文字列が非空かチェック
+            # シングルクォートを除去
+            clean_value = value.strip("'\"")
+            result = clean_value != ""
         else:
             return False, f"Unsupported test flag: {flag}"
 

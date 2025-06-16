@@ -116,8 +116,16 @@ class SystemConfigLoader:
                               env_type: Optional[str] = None) -> None:
         """Update current execution context."""
         if contest_name is not None:
+            # Save old contest name before updating
+            old_contest = self.config_repo.get_config("contest_name")
+            if old_contest:
+                self.config_repo.set_config("old_contest_name", old_contest)
             self.config_repo.set_config("contest_name", contest_name)
         if problem_name is not None:
+            # Save old problem name before updating
+            old_problem = self.config_repo.get_config("problem_name")
+            if old_problem:
+                self.config_repo.set_config("old_problem_name", old_problem)
             self.config_repo.set_config("problem_name", problem_name)
         if language is not None:
             self.config_repo.set_config("language", language)

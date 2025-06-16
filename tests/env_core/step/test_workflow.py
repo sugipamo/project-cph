@@ -134,17 +134,36 @@ class TestGenerateWorkflowFromJson:
 
 class TestOptimizeWorkflowSteps:
 
+    @patch('src.workflow.step.workflow.optimize_copy_steps')
     @patch('src.workflow.step.workflow.optimize_step_sequence')
     @patch('src.workflow.step.workflow.optimize_mkdir_steps')
-    def test_optimize_workflow_steps(self, mock_optimize_mkdir, mock_optimize_sequence):
+    def test_optimize_workflow_steps(self, mock_optimize_mkdir, mock_optimize_sequence, mock_optimize_copy):
         """Test workflow step optimization"""
-        # Setup
-        initial_steps = [Mock(spec=Step), Mock(spec=Step)]
-        sequence_optimized = [Mock(spec=Step)]
-        final_optimized = [Mock(spec=Step)]
+        from src.workflow.step.step import StepType
+
+        # Setup - Create mock steps with proper type attribute
+        step1 = Mock(spec=Step)
+        step1.type = StepType.SHELL
+        step2 = Mock(spec=Step)
+        step2.type = StepType.SHELL
+
+        initial_steps = [step1, step2]
+
+        sequence_optimized_step = Mock(spec=Step)
+        sequence_optimized_step.type = StepType.SHELL
+        sequence_optimized = [sequence_optimized_step]
+
+        mkdir_optimized_step = Mock(spec=Step)
+        mkdir_optimized_step.type = StepType.SHELL
+        mkdir_optimized = [mkdir_optimized_step]
+
+        final_optimized_step = Mock(spec=Step)
+        final_optimized_step.type = StepType.SHELL
+        final_optimized = [final_optimized_step]
 
         mock_optimize_sequence.return_value = sequence_optimized
-        mock_optimize_mkdir.return_value = final_optimized
+        mock_optimize_mkdir.return_value = mkdir_optimized
+        mock_optimize_copy.return_value = final_optimized
 
         # Execute
         result = optimize_workflow_steps(initial_steps)
@@ -153,6 +172,7 @@ class TestOptimizeWorkflowSteps:
         assert result == final_optimized
         mock_optimize_sequence.assert_called_once_with(initial_steps)
         mock_optimize_mkdir.assert_called_once_with(sequence_optimized)
+        mock_optimize_copy.assert_called_once_with(mkdir_optimized)
 
 
 class TestCreateStepContextFromEnvContext:

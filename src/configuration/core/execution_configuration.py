@@ -30,16 +30,23 @@ class ExecutionConfiguration:
     # 出力設定
     output_config: OutputConfig
 
+    # 前回値（バックアップ用）
+    old_contest_name: str = ""
+    old_problem_name: str = ""
+
     def to_template_dict(self) -> Dict[str, str]:
         """変数展開用辞書を生成
 
         Returns:
             変数展開用の辞書
         """
-        return {
+        template_dict = {
             "contest_name": self.contest_name,
             "problem_name": self.problem_name,
+            "old_contest_name": self.old_contest_name,
+            "old_problem_name": self.old_problem_name,
             "language": self.language,
+            "language_name": self.language,  # エイリアス
             "env_type": self.env_type,
             "command_type": self.command_type,
             # Path variables with both formats for compatibility
@@ -59,6 +66,8 @@ class ExecutionConfiguration:
             "source_file_name": self.runtime_config.source_file_name,
             "run_command": self.runtime_config.run_command,
         }
+
+        return template_dict
 
     def get_file_pattern(self, pattern_name: str) -> List[str]:
         """ファイルパターンの取得

@@ -94,6 +94,11 @@ class FileRequestStrategy(RequestCreationStrategy):
 
     def _format_step_values(self, cmd: list[str], context: Any) -> list[str]:
         """Format step command values with context variables."""
+        # 新設定システムのformat_stringメソッドを使用してファイルパターンも展開
+        if hasattr(context, 'format_string'):
+            return [context.format_string(arg) for arg in cmd]
+
+        # フォールバック: 従来の方法
         context_dict = context.to_format_dict() if hasattr(context, 'to_format_dict') else {}
         return format_values_with_context_dict(cmd, context_dict)
 
@@ -129,6 +134,11 @@ class ShellRequestStrategy(RequestCreationStrategy):
         context_dict = context.to_format_dict() if hasattr(context, 'to_format_dict') else {}
         contest_current_path = context_dict.get('contest_current_path', './contest_current')
 
+        # For parallel execution support, check if we should create individual test requests
+        parallel_config = getattr(context, '_parallel_config', None)
+        if parallel_config and parallel_config.get('enabled', False):
+            return self._create_parallel_test_requests(cmd, context, contest_current_path)
+
         # Create a bash script that runs the program with test inputs
         script = f'''
 for i in {contest_current_path}/test/sample-*.in; do
@@ -144,7 +154,7 @@ for i in {contest_current_path}/test/sample-*.in; do
             actual_output=$(cat "$temp_output")
             error_output=$(cat "$temp_error")
             expected=$(cat "$expected_output")
-            
+
             if [ $exit_code -ne 0 ]; then
                 echo "✗ ERROR: $basename_i (exit code: $exit_code)"
                 echo "  Error output:"
@@ -156,7 +166,7 @@ for i in {contest_current_path}/test/sample-*.in; do
                 echo "  Expected: $expected"
                 echo "  Got:      $actual_output"
             fi
-            
+
             rm -f "$temp_output" "$temp_error"
         fi
     fi
@@ -164,8 +174,19 @@ done
 '''
         return ["bash", "-c", script.strip()]
 
+    def _create_parallel_test_requests(self, cmd: list[str], context: Any, contest_current_path: str) -> list[str]:
+        """Create individual test case requests for parallel execution"""
+        # This is a marker that will be processed by WorkflowExecutionService
+        # to create individual test requests
+        return ["__PARALLEL_TEST_MARKER__", ' '.join(cmd), contest_current_path]
+
     def _format_step_values(self, cmd: list[str], context: Any) -> list[str]:
         """Format step command values with context variables."""
+        # 新設定システムのformat_stringメソッドを使用してファイルパターンも展開
+        if hasattr(context, 'format_string'):
+            return [context.format_string(arg) for arg in cmd]
+
+        # フォールバック: 従来の方法
         context_dict = context.to_format_dict() if hasattr(context, 'to_format_dict') else {}
         return format_values_with_context_dict(cmd, context_dict)
 
@@ -192,6 +213,11 @@ class PythonRequestStrategy(RequestCreationStrategy):
 
     def _format_step_values(self, cmd: list[str], context: Any) -> list[str]:
         """Format step command values with context variables."""
+        # 新設定システムのformat_stringメソッドを使用してファイルパターンも展開
+        if hasattr(context, 'format_string'):
+            return [context.format_string(arg) for arg in cmd]
+
+        # フォールバック: 従来の方法
         context_dict = context.to_format_dict() if hasattr(context, 'to_format_dict') else {}
         return format_values_with_context_dict(cmd, context_dict)
 

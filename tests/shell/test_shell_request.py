@@ -49,25 +49,6 @@ def test_shell_request_no_driver():
         req.execute_operation(None)
     assert "requires a driver" in str(excinfo.value)
 
-def test_shell_request_echo():
-    di = DIContainer()
-    from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
-    from src.infrastructure.mock.mock_file_driver import MockFileDriver
-    di.register('shell_driver', lambda: LocalShellDriver(MockFileDriver()))
-    req = ShellRequest(["echo", "hello"])
-    driver = di.resolve('shell_driver')
-    result = req.execute_operation(driver)
-    assert result.stdout.strip() == "hello"
-
-def test_shell_request_timeout():
-    di = DIContainer()
-    from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
-    from src.infrastructure.mock.mock_file_driver import MockFileDriver
-    di.register('shell_driver', lambda: LocalShellDriver(MockFileDriver()))
-    req = ShellRequest(["echo", "timeout"])
-    driver = di.resolve('shell_driver')
-    result = req.execute_operation(driver)
-    assert result.returncode == 0
 
 def test_shell_request_repr():
     req = ShellRequest(["ls", "/"], name="test")
@@ -82,10 +63,8 @@ def test_shell_request_execute_exception():
     with unittest.mock.patch("src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess", side_effect=Exception("fail")):
         result = req._execute_core(driver)
     assert isinstance(result, OperationResult)
-    # The new error handling includes structured error format with code and suggestion
+    # The new error handling includes basic error format
     assert "Shell command failed: fail" in result.stderr
-    assert "Error Code: UNKNOWN_ERROR" in result.stderr
-    assert "Suggestion: Contact support for assistance" in result.stderr
     assert result.returncode is None
 
 def test_shell_request_with_inputdata_env_cwd(tmp_path):

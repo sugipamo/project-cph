@@ -13,7 +13,7 @@ class OperationResult:
                  cmd: Optional[str] = None, request: Optional[Any] = None,
                  start_time: Optional[float] = None, end_time: Optional[float] = None,
                  error_message: Optional[str] = None, exception: Optional[Exception] = None,
-                 metadata: Optional[dict[str, Any]] = None):
+                 metadata: Optional[dict[str, Any]] = None, skipped: bool = False):
         """Initialize operation result.
 
         Args:
@@ -32,6 +32,7 @@ class OperationResult:
             error_message: Error message
             exception: Exception that occurred
             metadata: Additional metadata
+            skipped: Whether the operation was skipped
         """
         if success is not None:
             self.success = success
@@ -53,6 +54,7 @@ class OperationResult:
         self.error_message = error_message
         self.exception = exception
         self.metadata = metadata or {}
+        self.skipped = skipped
         # operation_type is set from request if available
         self._operation_type = getattr(request, "operation_type", None) if request is not None else None
 
@@ -102,6 +104,7 @@ class OperationResult:
             'error_message': self.error_message,
             'exception': str(self.exception) if self.exception else None,
             'metadata': self.metadata,
+            'skipped': self.skipped,
         }
 
     def to_json(self) -> str:

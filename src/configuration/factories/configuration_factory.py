@@ -50,7 +50,7 @@ class ExecutionConfigurationFactory:
         basic_info = self._extract_basic_info(context)
         paths = self._create_execution_paths()
         file_patterns = self._extract_file_patterns(context, basic_info['language'])
-        runtime_config = self._create_runtime_config(basic_info['language'])
+        runtime_config = self._create_runtime_config_from_context(context, basic_info['language'])
         output_config = self._create_output_config()
 
         return ExecutionConfiguration(
@@ -88,9 +88,36 @@ class ExecutionConfigurationFactory:
     def _extract_file_patterns(self, context, language: str) -> dict:
         """Extract file patterns from context."""
         if hasattr(context, 'env_json') and context.env_json:
+            # まずトップレベルのfile_patternsを確認（言語設定がマージされた場合）
+            if 'file_patterns' in context.env_json:
+                raw_patterns = context.env_json['file_patterns']
+                return self._convert_file_patterns(raw_patterns)
+
+            # 言語固有設定からfile_patternsを取得
             lang_config = context.env_json.get(language, {})
-            return lang_config.get('file_patterns', {})
+            if 'file_patterns' in lang_config:
+                raw_patterns = lang_config['file_patterns']
+                return self._convert_file_patterns(raw_patterns)
+
         return {}
+
+    def _convert_file_patterns(self, raw_patterns: dict) -> dict:
+        """Convert file patterns to simple format."""
+        # JsonConfigLoaderの形式からシンプルな形式に変換
+        # {"pattern_name": {"workspace": ["patterns"], ...}} -> {"pattern_name": ["patterns"]}
+        simple_patterns = {}
+        for pattern_name, pattern_locations in raw_patterns.items():
+            if isinstance(pattern_locations, dict):
+                # workspace, contest_current, contest_stockなどから最初に見つかったパターンを使用
+                for location in ['workspace', 'contest_current', 'contest_stock']:
+                    if pattern_locations.get(location):
+                        simple_patterns[pattern_name] = pattern_locations[location]
+                        break
+            else:
+                # 既にシンプルな形式の場合はそのまま使用
+                simple_patterns[pattern_name] = pattern_locations
+
+        return simple_patterns
 
     def _create_runtime_config(self, language: str) -> RuntimeConfig:
         """Create runtime configuration for language."""
@@ -101,6 +128,24 @@ class ExecutionConfigurationFactory:
             run_command=language_registry.get_run_command(language),
             timeout_seconds=30,
             retry_settings={}
+        )
+
+    def _create_runtime_config_from_context(self, context, language: str) -> RuntimeConfig:
+        """Create runtime configuration from context with env_json."""
+        language_registry = get_language_registry()
+
+        # Extract language-specific configuration from env_json
+        language_config = {}
+        if hasattr(context, 'env_json') and context.env_json:
+            lang_config = context.env_json.get(language, {})
+            language_config = lang_config
+
+        return RuntimeConfig(
+            language_id=language_config.get('language_id', language),
+            source_file_name=language_config.get('source_file_name', f'main.{language_registry.get_file_extension(language)}'),
+            run_command=language_config.get('run_command', language_registry.get_run_command(language)),
+            timeout_seconds=language_config.get('timeout_seconds', 30),
+            retry_settings=language_config.get('retry_settings', {})
         )
 
     def _create_output_config(self) -> OutputConfig:
@@ -166,11 +211,11 @@ class ExecutionConfigurationFactory:
         # 実行設定
         runtime_settings = merged_config.get('runtime', {})
         runtime_config = RuntimeConfig(
-            language_id=runtime_settings.get('language_id', language),
-            source_file_name=runtime_settings.get('source_file_name', f'main.{language_registry.get_file_extension(language)}'),
-            run_command=runtime_settings.get('run_command', language_registry.get_run_command(language)),
-            timeout_seconds=runtime_settings.get('timeout_seconds', 30),
-            retry_settings=runtime_settings.get('retry_settings', {})
+            language_id=runtime_settings.get('language_id', merged_config.get('language_id', language)),
+            source_file_name=runtime_settings.get('source_file_name', merged_config.get('source_file_name', f'main.{language_registry.get_file_extension(language)}')),
+            run_command=runtime_settings.get('run_command', merged_config.get('run_command', language_registry.get_run_command(language))),
+            timeout_seconds=runtime_settings.get('timeout_seconds', merged_config.get('timeout_seconds', 30)),
+            retry_settings=runtime_settings.get('retry_settings', merged_config.get('retry_settings', {}))
         )
 
         # 出力設定
@@ -182,9 +227,19 @@ class ExecutionConfigurationFactory:
             format_preset=output_settings.get('format_preset', 'default')
         )
 
+        # 前回値を取得（データアクセス層を使用）
+        from ...infrastructure.persistence.configuration_repository import ConfigurationRepository
+
+        config_repo = ConfigurationRepository()
+        previous_values = config_repo.load_previous_values()
+        old_contest_name = previous_values.get("old_contest_name", "")
+        old_problem_name = previous_values.get("old_problem_name", "")
+
         return ExecutionConfiguration(
             contest_name=contest_name,
             problem_name=problem_name,
+            old_contest_name=old_contest_name,
+            old_problem_name=old_problem_name,
             language=language,
             env_type=env_type,
             command_type=command_type,

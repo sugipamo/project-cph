@@ -2,14 +2,14 @@
 Integrates workflow building, fitting, and execution
 """
 
-from src.application.factories.unified_request_factory import create_composite_request, create_request
+from typing import Optional
+
+from src.application.factories.unified_request_factory import create_request
 from src.application.orchestration.unified_driver import UnifiedDriver
 from src.configuration.adapters.execution_context_adapter import ExecutionContextAdapter
 from src.domain.constants.request_types import RequestType
 from src.utils.debug_logger import DebugLogger
-from src.workflow.builder.graph_based_workflow_builder import GraphBasedWorkflowBuilder
 from src.workflow.step.step import Step, StepType
-from src.workflow.step.step_generation_service import generate_steps_from_json
 from src.workflow.workflow_result import WorkflowExecutionResult
 
 
@@ -28,34 +28,41 @@ class WorkflowExecutionService:
         self.context = context
         self.operations = operations
 
-    def execute_workflow(self, parallel: bool = False, max_workers: int = 4) -> WorkflowExecutionResult:
+    def execute_workflow(self, parallel: Optional[bool] = None, max_workers: Optional[int] = None) -> WorkflowExecutionResult:
         """Execute workflow based on context configuration
 
         Args:
-            parallel: Whether to execute in parallel
-            max_workers: Maximum number of parallel workers
+            parallel: Whether to execute in parallel (overrides configuration if specified)
+            max_workers: Maximum number of parallel workers (overrides configuration if specified)
 
         Returns:
             WorkflowExecutionResult with execution results
         """
+        # Get parallel configuration from context
+        parallel_config = self._get_parallel_config()
+
+        # Override with parameters if specified
+        use_parallel = parallel if parallel is not None else parallel_config["enabled"]
+        use_max_workers = max_workers if max_workers is not None else parallel_config["max_workers"]
+
+        # Store parallel config in context for request factories
+        self.context._parallel_config = parallel_config
+
         # Log environment information if configured
         self._log_environment_info()
 
-        # Prepare workflow steps
-        steps, errors, warnings = self._prepare_workflow_steps()
+        # Prepare workflow (now returns optimized composite request)
+        operations_composite, errors, warnings = self._prepare_workflow_steps()
         if errors:
             return self._create_error_result(errors, warnings)
 
-        # Create operations composite
-        operations_composite = create_composite_request(steps, self.context)
-
-        # Execute preparation phase
-        preparation_results, prep_errors = self._execute_preparation_phase(steps)
+        # Execute preparation phase (now using composite request)
+        preparation_results, prep_errors = self._execute_preparation_phase(operations_composite)
         if prep_errors:
             return self._create_error_result(prep_errors, warnings, preparation_results)
 
         # Execute main workflow
-        results = self._execute_main_workflow(operations_composite)
+        results = self._execute_main_workflow(operations_composite, use_parallel, use_max_workers)
 
         # Analyze results
         success, result_errors = self._analyze_execution_results(results)
@@ -89,6 +96,29 @@ class WorkflowExecutionService:
         steps = command_config.get('steps', [])
 
         return steps
+
+    def _get_parallel_config(self) -> dict:
+        """Get parallel execution configuration from context"""
+        if not self.context.env_json:
+            return {"enabled": False, "max_workers": 4}
+
+        # JsonConfigLoader.get_language_config()使用時は、マージ済み設定から直接取得
+        if self.context.language in self.context.env_json:
+            # 従来形式（言語がトップレベルキー）
+            language_config = self.context.env_json[self.context.language]
+        else:
+            # JsonConfigLoader形式（マージ済み設定）
+            language_config = self.context.env_json
+
+        commands = language_config.get('commands', {})
+        command_config = commands.get(self.context.command_type, {})
+
+        # Get parallel configuration with defaults
+        parallel_config = command_config.get('parallel', {})
+        return {
+            "enabled": parallel_config.get('enabled', False),
+            "max_workers": parallel_config.get('max_workers', 4)
+        }
 
     def _create_workflow_tasks(self, steps: list[Step]) -> list[dict]:
         """Convert steps to workflow tasks for fitting analysis"""
@@ -162,40 +192,69 @@ class WorkflowExecutionService:
         )
 
     def _prepare_workflow_steps(self):
-        """Prepare workflow steps from context configuration."""
+        """Prepare workflow steps from context configuration.
+
+        Returns the OPTIMIZED composite request instead of raw steps.
+        """
         # Get workflow steps from context
         json_steps = self._get_workflow_steps()
         if not json_steps:
             return None, ["No workflow steps found for command"], []
 
-        # Generate Step objects from JSON
-        step_result = generate_steps_from_json(json_steps, self.context)
-        if step_result.errors:
-            return None, step_result.errors, step_result.warnings
+        # Generate Step objects from JSON and get step results with skip information
+        from src.workflow.step.simple_step_runner import run_steps
+        from src.workflow.step.step_generation_service import execution_context_to_simple_context
+        simple_context = execution_context_to_simple_context(self.context)
+        step_results = run_steps(json_steps, simple_context)
 
-        # Build workflow graph
-        builder = GraphBasedWorkflowBuilder.from_context(self.context)
-        graph, graph_errors, graph_warnings = builder.build_graph_from_json_steps(json_steps)
-        if graph_errors:
-            return None, graph_errors, graph_warnings + step_result.warnings
+        # Note: step_results are no longer stored since we directly return CompositeRequest execution results
 
-        return step_result.steps, [], graph_warnings + step_result.warnings
+        # Check for errors in step results
+        errors = []
+        for i, result in enumerate(step_results):
+            if not result.success and result.error_message:
+                errors.append(f"Step {i}: {result.error_message}")
 
-    def _execute_preparation_phase(self, steps):
+        if errors:
+            return None, errors, []
+
+        # Use the OPTIMIZED workflow generation
+        from src.workflow.step.workflow import create_step_context_from_env_context, generate_workflow_from_json
+        step_context = create_step_context_from_env_context(self.context)
+        composite_request, workflow_errors, workflow_warnings = generate_workflow_from_json(json_steps, step_context, self.operations)
+
+        if workflow_errors:
+            return None, workflow_errors, workflow_warnings
+
+        # Return the optimized composite request directly
+        return composite_request, [], workflow_warnings
+
+    def _execute_preparation_phase(self, composite_request):
         """Execute environment preparation if needed."""
         preparation_results = []
         # TODO: Restore preparation functionality when PreparationExecutor is available
         return preparation_results, []
 
-    def _execute_main_workflow(self, operations_composite):
+    def _execute_main_workflow(self, operations_composite, use_parallel=False, max_workers=4):
         """Execute the main workflow operations."""
+
         unified_driver = UnifiedDriver(self.operations)
-        execution_result = operations_composite.execute_operation(unified_driver)
+
+        # Check if composite request supports parallel execution
+        if use_parallel and hasattr(operations_composite, 'execute_parallel'):
+            execution_result = operations_composite.execute_parallel(unified_driver, max_workers=max_workers)
+        else:
+            execution_result = operations_composite.execute_operation(unified_driver)
 
         # CompositeRequest returns a list of results, so flatten if needed
         if isinstance(execution_result, list):
-            return execution_result
-        return [execution_result]
+            results = execution_result
+        else:
+            results = [execution_result]
+
+        # Return the results directly since they include all executed steps
+        # (original JSON steps + dependency-resolved steps + optimized steps)
+        return results
 
     def _analyze_execution_results(self, results):
         """Analyze execution results for success/failure."""

@@ -149,7 +149,7 @@ class FileRequest(OperationRequestFoundation):
         raise CompositeStepFailureError(
             formatted_error,
             original_exception=e,
-            error_code=error_code,
+            error_code=f"FILE_ERROR_{type(e).__name__.upper()}",
             context="file operation"
         ) from e
 

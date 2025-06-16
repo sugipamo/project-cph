@@ -41,7 +41,7 @@ class WorkflowResultPresenter:
         """Present execution settings information"""
         if not self.execution_context:
             return
-        
+
         settings = []
         if hasattr(self.execution_context, 'command_type'):
             settings.append(f"command: {self.execution_context.command_type}")
@@ -51,7 +51,7 @@ class WorkflowResultPresenter:
             settings.append(f"contest: {self.execution_context.contest_name}")
         if hasattr(self.execution_context, 'problem_name'):
             settings.append(f"problem: {self.execution_context.problem_name}")
-        
+
         if settings:
             print(f"⚙️  実行設定: {', '.join(settings)}")
             print()
@@ -99,7 +99,24 @@ class WorkflowResultPresenter:
         """Present details for a single step"""
         # Determine step status
         status = self._get_step_status(step_result)
-        print(f"\nステップ {step_index + 1}: {status}")
+
+        # Get step name if available
+        step_name = ""
+        auto_generated_marker = ""
+
+        # Check if step is auto-generated
+        if (hasattr(step_result, 'request') and step_result.request and
+            ((hasattr(step_result.request, 'auto_generated') and step_result.request.auto_generated) or
+             (hasattr(step_result.request, 'step') and hasattr(step_result.request.step, 'auto_generated') and step_result.request.step.auto_generated))):
+            auto_generated_marker = " [自動生成]"
+
+        # Get step name
+        if hasattr(step_result, 'request') and step_result.request and hasattr(step_result.request, 'name'):
+            step_name = f" ({step_result.request.name})"
+        elif hasattr(step_result, 'request') and step_result.request and hasattr(step_result.request, 'step') and hasattr(step_result.request.step, 'name'):
+            step_name = f" ({step_result.request.step.name})"
+
+        print(f"\nステップ {step_index + 1}: {status}{step_name}{auto_generated_marker}")
 
         # Show step type and command if available
         if hasattr(step_result, 'request') and step_result.request:
@@ -115,7 +132,7 @@ class WorkflowResultPresenter:
             should_show = step_result.request.show_output
         elif config.get('show_stdout', True):
             should_show = True
-            
+
         if should_show:
             self._present_stdout(step_result)
 
@@ -129,6 +146,9 @@ class WorkflowResultPresenter:
 
     def _get_step_status(self, step_result: OperationResult) -> str:
         """Get formatted step status string"""
+        # Check if step was skipped
+        if hasattr(step_result, 'skipped') and step_result.skipped:
+            return "⏸️ スキップ"
         if step_result.success:
             return "✓ 成功"
         # Check if failure is allowed
@@ -170,10 +190,10 @@ class WorkflowResultPresenter:
                 print(f"  パス: {request.path}")
             if hasattr(request, 'dst_path') and request.dst_path:
                 print(f"  送信先: {request.dst_path}")
-        
+
         # Show Python code for OperationType.PYTHON
         if str(request.operation_type) == "OperationType.PYTHON" and hasattr(request, 'cmd'):
-            print(f"  コード:")
+            print("  コード:")
             for line in str(request.cmd).split('\n'):
                 print(f"    {line}")
 

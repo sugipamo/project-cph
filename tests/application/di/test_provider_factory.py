@@ -13,7 +13,7 @@ from src.application.di.provider_factory import (
     get_time_provider,
     initialize_providers,
 )
-from src.infrastructure.config.unified_config_loader import UnifiedConfigLoader
+from src.configuration.loaders.configuration_loader import ConfigurationLoader
 from src.infrastructure.providers import (
     EnvironmentProvider,
     FileProvider,
@@ -112,16 +112,16 @@ class TestProviderFactory:
     def test_get_config_loader_system(self):
         factory = ProviderFactory(use_mocks=False)
         loader = factory.get_config_loader()
-        assert isinstance(loader, UnifiedConfigLoader)
-        assert loader.contest_env_dir == Path("./contest_env")
-        assert loader.system_config_dir == Path("./config/system")
+        assert isinstance(loader, ConfigurationLoader)
+        assert loader.env_loader.contest_env_dir == Path("./contest_env")
+        assert loader.system_loader.system_config_dir == Path("./config/system")
 
     def test_get_config_loader_mock(self):
         factory = ProviderFactory(use_mocks=True)
         loader = factory.get_config_loader()
-        assert isinstance(loader, UnifiedConfigLoader)
-        assert loader.contest_env_dir == Path("./mock_contest_env")
-        assert loader.system_config_dir == Path("./mock_config/system")
+        assert isinstance(loader, ConfigurationLoader)
+        assert loader.env_loader.contest_env_dir == Path("./mock_contest_env")
+        assert loader.system_loader.system_config_dir == Path("./mock_config/system")
 
     def test_reset_providers(self):
         factory = ProviderFactory(use_mocks=False)
@@ -173,20 +173,20 @@ class TestProviderFactory:
         assert provider1 is provider2
 
     def test_system_providers_initialization_paths(self):
-        with patch('pathlib.Path') as mock_path:
-            factory = ProviderFactory(use_mocks=False)
-            factory.get_config_loader()
+        factory = ProviderFactory(use_mocks=False)
+        loader = factory.get_config_loader()
 
-            mock_path.assert_any_call("./contest_env")
-            mock_path.assert_any_call("./config/system")
+        # ConfigurationLoaderの内部ローダーが正しいパスを持っているかテスト
+        assert loader.env_loader.contest_env_dir == Path("./contest_env")
+        assert loader.system_loader.system_config_dir == Path("./config/system")
 
     def test_mock_providers_initialization_paths(self):
-        with patch('pathlib.Path') as mock_path:
-            factory = ProviderFactory(use_mocks=True)
-            factory.get_config_loader()
+        factory = ProviderFactory(use_mocks=True)
+        loader = factory.get_config_loader()
 
-            mock_path.assert_any_call("./mock_contest_env")
-            mock_path.assert_any_call("./mock_config/system")
+        # ConfigurationLoaderの内部ローダーが正しいパスを持っているかテスト
+        assert loader.env_loader.contest_env_dir == Path("./mock_contest_env")
+        assert loader.system_loader.system_config_dir == Path("./mock_config/system")
 
     def test_language_registry_provider_dependency(self):
         factory = ProviderFactory(use_mocks=False)

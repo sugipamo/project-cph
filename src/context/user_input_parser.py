@@ -10,7 +10,6 @@ from src.context.dockerfile_resolver import DockerfileResolver
 from src.context.resolver.config_resolver import create_config_root_from_dict, resolve_by_match_desc
 from src.domain.requests.file.file_op_type import FileOpType
 from src.domain.requests.file.file_request import FileRequest
-from src.infrastructure.config.json_config_loader import JsonConfigLoader
 from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
 
 # from .execution_context import ExecutionContext  # 新システムで置き換え済み
@@ -267,10 +266,22 @@ def _merge_with_shared_config(env_json, shared_config):
 
 def _apply_env_json(context, env_jsons, base_dir=None, operations=None):
     """環境JSONをコンテキストに適用"""
-    # JsonConfigLoaderを使用して正しい設定を取得
+    # ConfigurationLoaderを使用して正しい設定を取得
     if context.language and base_dir:
-        json_config_loader = JsonConfigLoader(base_dir)
-        context.env_json = json_config_loader.get_language_config(context.language)
+        from pathlib import Path
+
+        from src.configuration.loaders.configuration_loader import ConfigurationLoader
+        config_loader = ConfigurationLoader(
+            contest_env_dir=Path(base_dir),
+            system_config_dir=Path("./config/system")
+        )
+        # マージされた設定を取得
+        merged_config = config_loader.load_merged_config(context.language, {})
+        # 言語固有設定を抽出
+        if context.language in merged_config:
+            context.env_json = {context.language: merged_config[context.language]}
+        else:
+            context.env_json = merged_config
     return context
 
 
@@ -334,18 +345,29 @@ def _initialize_and_load_base_data(operations):
 
 def _resolve_environment_configuration(context_data, operations):
     """Load and resolve environment configuration."""
-    json_config_loader = JsonConfigLoader(CONTEST_ENV_DIR)
-    env_config = json_config_loader.get_env_config()
+    from pathlib import Path
+
+    from src.configuration.loaders.configuration_loader import ConfigurationLoader
+
+    config_loader = ConfigurationLoader(
+        contest_env_dir=Path(CONTEST_ENV_DIR),
+        system_config_dir=Path("./config/system")
+    )
+    env_config = config_loader.load_merged_config("cpp", {})  # デフォルト言語で設定構造を取得
     root = create_config_root_from_dict(env_config)
     env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, operations)
 
     # Resolve final env_json
     final_env_json = context_data["env_json"]
     if final_env_json is None and context_data["language"]:
-        final_env_json = json_config_loader.get_language_config(context_data["language"])
+        merged_config = config_loader.load_merged_config(context_data["language"], {})
+        if context_data["language"] in merged_config:
+            final_env_json = {context_data["language"]: merged_config[context_data["language"]]}
+        else:
+            final_env_json = merged_config
 
     return {
-        'json_config_loader': json_config_loader,
+        'config_loader': config_loader,
         'env_config': env_config,
         'root': root,
         'env_jsons': env_jsons,
