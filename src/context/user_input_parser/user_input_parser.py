@@ -3,6 +3,9 @@ import json
 import os
 
 from src.context.dockerfile_resolver import DockerfileResolver
+
+# from .execution_context import ExecutionContext  # 新システムで置き換え済み
+from src.context.parsers.validation_service import ValidationService
 from src.context.resolver.config_resolver import create_config_root_from_dict, resolve_by_match_desc
 
 # 新設定システムの統合
@@ -12,9 +15,6 @@ from src.context.user_input_parser.user_input_parser_integration import (
 from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
 from src.operations.requests.file.file_op_type import FileOpType
 from src.operations.requests.file.file_request import FileRequest
-
-# from .execution_context import ExecutionContext  # 新システムで置き換え済み
-from .parsers.validation_service import ValidationService
 
 CONTEST_ENV_DIR = "contest_env"
 

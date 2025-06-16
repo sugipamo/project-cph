@@ -2,11 +2,11 @@
 from pathlib import Path
 from typing import Any, Dict
 
-from ..adapters.execution_context_adapter import ExecutionContextAdapter
-from ..core.execution_configuration import ExecutionConfiguration
-from ..expansion.template_expander import TemplateExpander
-from ..factories.configuration_factory import ExecutionConfigurationFactory
-from ..loaders.configuration_loader import ConfigurationLoader
+from src.configuration.adapters.execution_context_adapter import ExecutionContextAdapter
+from src.configuration.core.execution_configuration import ExecutionConfiguration
+from src.configuration.expansion.template_expander import TemplateExpander
+from src.configuration.factories.configuration_factory import ExecutionConfigurationFactory
+from src.configuration.loaders.configuration_loader import ConfigurationLoader
 
 
 class UserInputParserIntegration:

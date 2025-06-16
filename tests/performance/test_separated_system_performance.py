@@ -174,6 +174,7 @@ class TestSeparatedSystemPerformance:
 
     def test_memory_usage_estimation(self, mock_settings_manager, mock_state_manager):
         """メモリ使用量の推定テスト"""
+        import gc
         import sys
 
         # ベースライン測定

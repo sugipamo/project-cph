@@ -7,7 +7,7 @@ import traceback
 from typing import Optional
 
 from src.application.orchestration.workflow_result_presenter import WorkflowResultPresenter, get_output_config
-from src.context.user_input_parser import parse_user_input
+from src.context.user_input_parser.user_input_parser import parse_user_input
 from src.infrastructure.build_infrastructure import build_operations
 from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
 from src.workflow.workflow_execution_service import WorkflowExecutionService

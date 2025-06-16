@@ -4,7 +4,7 @@ Tests various argument combinations to ensure no exceptions are thrown
 """
 import pytest
 
-from src.context.user_input_parser import parse_user_input
+from src.context.user_input_parser.user_input_parser import parse_user_input
 from src.infrastructure.build_infrastructure import build_mock_infrastructure
 
 
