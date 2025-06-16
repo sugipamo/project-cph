@@ -314,7 +314,7 @@ def _apply_env_json(context, env_jsons, base_dir=None, operations=None):
         )
         # 完全なマージ設定を取得（共有設定をトップレベルで利用）
         merged_config = config_loader.load_merged_config(context.language, {})
-        
+
         # 言語固有設定に共有設定の重要項目を直接追加
         if context.language in merged_config:
             lang_config = merged_config[context.language]
@@ -473,15 +473,13 @@ def _apply_remaining_arguments_flexibly(args, context):
     # 最大2つまでの引数を問題名・コンテスト名として処理
     remaining_args = args[:2]  # 2つまでに制限
 
-    if len(remaining_args) >= 1:
-        # 最後の引数を問題名として設定（既存値がない場合のみ）
-        if not context.problem_name:
-            context.problem_name = remaining_args[-1]
+    # 最後の引数を問題名として設定（既存値がない場合のみ）
+    if len(remaining_args) >= 1 and not context.problem_name:
+        context.problem_name = remaining_args[-1]
 
-    if len(remaining_args) >= 2:
-        # 最初の引数をコンテスト名として設定（既存値がない場合のみ）
-        if not context.contest_name:
-            context.contest_name = remaining_args[0]
+    # 最初の引数をコンテスト名として設定（既存値がない場合のみ）
+    if len(remaining_args) >= 2 and not context.contest_name:
+        context.contest_name = remaining_args[0]
 
     return context
 

@@ -273,7 +273,7 @@ def evaluate_test_condition(test_command: str) -> Tuple[bool, Optional[str]]:
 
     # 否定チェック
     negate = False
-    if args[0] == '!':
+    if args[0] == '!' or args[0] == '\\!':
         negate = True
         args = args[1:]
 

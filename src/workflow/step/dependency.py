@@ -30,8 +30,9 @@ def resolve_dependencies(steps: list[Step], context: StepContext) -> list[Step]:
             try:
                 simple_context = execution_context_to_simple_context(context)
                 expanded_cmd = [expand_template(arg, simple_context) for arg in step.cmd]
-                # 無効なパス（連続スラッシュ）を含む場合は準備ステップをスキップ
-                if any('//' in str(arg) for arg in expanded_cmd):
+                # 無効なパス（連続スラッシュや不正なパス）を含む場合は準備ステップをスキップ
+                invalid_paths = [str(arg) for arg in expanded_cmd if '//' in str(arg) or str(arg).endswith('/.')]
+                if invalid_paths:
                     should_generate_prep = False
             except Exception:
                 pass  # エラーが発生した場合は通常通り処理
