@@ -211,7 +211,7 @@ class TestSeparatedSystemIntegration:
         settings_manager = components["settings_manager"]
 
         # 初期化
-        settings_manager.initialize("abc300", "a", "python")
+        adapter.initialize("abc300", "a", "python")
 
         # ファイルパターンのテンプレート展開
         # Note: 実際のファイルパターン展開は複雑なので、基本的な変数展開をテスト
@@ -309,12 +309,15 @@ class TestSeparatedSystemVsLegacyComparison:
         assert hasattr(adapter, 'format_string')
         assert hasattr(adapter, 'to_dict')
         assert hasattr(adapter, 'to_format_dict')
-        assert hasattr(adapter, 'contest_name')
-        assert hasattr(adapter, 'problem_name')
-        assert hasattr(adapter, 'language')
+        assert hasattr(adapter, 'initialize')
 
         # 初期化後のAPI動作確認
         adapter.initialize("abc300", "a", "python")
+
+        # プロパティのアクセス確認（初期化後）
+        assert hasattr(adapter, 'contest_name')
+        assert hasattr(adapter, 'problem_name')
+        assert hasattr(adapter, 'language')
 
         # 既存システムと同様の形式でデータが取得できることを確認
         config_dict = adapter.to_dict()

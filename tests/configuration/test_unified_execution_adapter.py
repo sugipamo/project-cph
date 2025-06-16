@@ -66,11 +66,11 @@ class TestUnifiedExecutionAdapter:
 
         # 前回のセッションコンテキスト
         previous_context = SessionContext(
-            current_contest="abc299",
-            current_problem="b",
+            current_contest="abc298",
+            current_problem="a",
             current_language="python",
-            previous_contest="abc298",
-            previous_problem="a",
+            previous_contest="abc297",
+            previous_problem="z",
             user_specified_fields={}
         )
         mock_manager.load_session_context.return_value = previous_context
@@ -104,8 +104,8 @@ class TestUnifiedExecutionAdapter:
             language="python",
             env_type="local",
             command_type="open",
-            old_contest_name="abc299",  # 前回のコンテスト名
-            old_problem_name="b"        # 前回の問題名
+            old_contest_name="abc297",  # 前回のコンテスト名
+            old_problem_name="z"        # 前回の問題名
         )
 
         # 新しいセッションコンテキストの保存が呼ばれることを確認
@@ -113,8 +113,8 @@ class TestUnifiedExecutionAdapter:
         saved_context = mock_state_manager_with_context.save_session_context.call_args[0][0]
         assert saved_context.current_contest == "abc300"
         assert saved_context.current_problem == "a"
-        assert saved_context.previous_contest == "abc299"
-        assert saved_context.previous_problem == "b"
+        assert saved_context.previous_contest == "abc297"
+        assert saved_context.previous_problem == "z"
 
     def test_initialization_without_previous_context(self, mock_settings_manager_with_init):
         """前回のセッションがない場合の初期化テスト"""

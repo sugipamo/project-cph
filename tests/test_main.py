@@ -394,13 +394,13 @@ class TestCLIEntryPoint:
             import sys
 
             from src.application.cli_application import main
-            from src.context.user_input_parser import parse_user_input
-            from src.infrastructure.build_infrastructure import build_operations
+            from src.context.user_input_parser.user_input_parser import parse_user_input
+            from src.infrastructure.build_infrastructure import build_mock_infrastructure
 
             old_argv = sys.argv
             try:
                 sys.argv = argv
-                operations = build_operations()
+                operations = build_mock_infrastructure()
                 context = parse_user_input(sys.argv[1:], operations)
                 main(context, operations)
                 return 0
@@ -431,7 +431,7 @@ class TestCLIEntryPoint:
 
     @patch('src.application.cli_application.WorkflowExecutionService')
     @patch('src.infrastructure.build_infrastructure.build_operations')
-    @patch('src.context.user_input_parser.parse_user_input')
+    @patch('src.context.user_input_parser.user_input_parser.parse_user_input')
     def test_cli_successful_execution(self, mock_parse, mock_build, mock_service_class):
         """Test successful CLI execution"""
         mock_operations = Mock()
@@ -459,7 +459,7 @@ class TestCLIEntryPoint:
         mock_parse.assert_called_once_with(['py', 'local', 'test', 'abc300', 'a'], mock_operations)
 
     @patch('src.infrastructure.build_infrastructure.build_operations')
-    @patch('src.context.user_input_parser.parse_user_input')
+    @patch('src.context.user_input_parser.user_input_parser.parse_user_input')
     @patch('builtins.print')
     def test_cli_value_error_handling(self, mock_print, mock_parse, mock_build):
         """Test CLI handling of ValueError"""
@@ -474,7 +474,7 @@ class TestCLIEntryPoint:
         mock_print.assert_called_with("エラー: Invalid arguments")
 
     @patch('src.infrastructure.build_infrastructure.build_operations')
-    @patch('src.context.user_input_parser.parse_user_input')
+    @patch('src.context.user_input_parser.user_input_parser.parse_user_input')
     @patch('builtins.print')
     def test_cli_file_not_found_error_handling(self, mock_print, mock_parse, mock_build):
         """Test CLI handling of FileNotFoundError"""
@@ -489,7 +489,7 @@ class TestCLIEntryPoint:
         mock_print.assert_called_with("ファイルが見つかりません: Config file not found")
 
     @patch('src.infrastructure.build_infrastructure.build_operations')
-    @patch('src.context.user_input_parser.parse_user_input')
+    @patch('src.context.user_input_parser.user_input_parser.parse_user_input')
     @patch('builtins.print')
     def test_cli_json_decode_error_handling(self, mock_print, mock_parse, mock_build):
         """Test CLI handling of JSONDecodeError"""
@@ -505,7 +505,7 @@ class TestCLIEntryPoint:
 
     @patch('src.application.cli_application.WorkflowExecutionService')
     @patch('src.infrastructure.build_infrastructure.build_operations')
-    @patch('src.context.user_input_parser.parse_user_input')
+    @patch('src.context.user_input_parser.user_input_parser.parse_user_input')
     @patch('builtins.print')
     def test_cli_composite_step_failure_handling(self, mock_print, mock_parse, mock_build, mock_service_class):
         """Test CLI handling of CompositeStepFailureError"""
@@ -532,7 +532,7 @@ class TestCLIEntryPoint:
 
     @patch('src.application.cli_application.WorkflowExecutionService')
     @patch('src.infrastructure.build_infrastructure.build_operations')
-    @patch('src.context.user_input_parser.parse_user_input')
+    @patch('src.context.user_input_parser.user_input_parser.parse_user_input')
     @patch('builtins.print')
     def test_cli_composite_step_failure_without_result(self, mock_print, mock_parse, mock_build, mock_service_class):
         """Test CLI handling of CompositeStepFailureError without result"""
@@ -556,7 +556,7 @@ class TestCLIEntryPoint:
 
     @patch('src.application.cli_application.WorkflowExecutionService')
     @patch('src.infrastructure.build_infrastructure.build_operations')
-    @patch('src.context.user_input_parser.parse_user_input')
+    @patch('src.context.user_input_parser.user_input_parser.parse_user_input')
     @patch('builtins.print')
     @patch('traceback.print_exc')
     def test_cli_generic_exception_handling(self, mock_traceback, mock_print, mock_parse, mock_build, mock_service_class):

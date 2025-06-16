@@ -304,4 +304,4 @@ class TestPureSettingsManager:
         # Act & Assert - 設定システムでは状態管理は責務外
         settings_manager.save_execution_context(context)  # 例外が発生しないことを確認
         result = settings_manager.load_execution_context()
-        assert result == {}  # 空の辞書が返される
+        assert result is None  # Noneが返される（責務外）
