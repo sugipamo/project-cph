@@ -69,7 +69,7 @@ class CLIApplication:
         result = service.execute_workflow(parallel=False)
 
         # Present results
-        presenter = WorkflowResultPresenter(output_config)
+        presenter = WorkflowResultPresenter(output_config, self.context)
         presenter.present_results(result)
 
         return result
@@ -142,7 +142,7 @@ def main(context=None, operations=None) -> Optional[WorkflowExecutionResult]:
         service = WorkflowExecutionService(context, operations)
         result = service.execute_workflow(parallel=False)
 
-        presenter = WorkflowResultPresenter(output_config)
+        presenter = WorkflowResultPresenter(output_config, context)
         presenter.present_results(result)
 
         return result

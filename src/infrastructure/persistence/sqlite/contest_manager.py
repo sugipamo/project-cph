@@ -489,7 +489,7 @@ class ContestManager:
                 if self.files_repo:
                     self._track_files_from_stock(contest_stock_path, contest_current_path,
                                                language, contest, problem)
-                print(f"📁 Restored from contest_stock: {language} {contest} {problem}")
+                # print(f"📁 Restored from contest_stock: {language} {contest} {problem}")
 
             return success
 

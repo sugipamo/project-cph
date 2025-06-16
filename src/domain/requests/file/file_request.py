@@ -134,10 +134,7 @@ class FileRequest(OperationRequestFoundation):
 
     def _handle_file_error(self, e: Exception) -> FileResult:
         """Handle file operation errors."""
-        from src.domain.exceptions.error_codes import ErrorSuggestion, classify_error
-        error_code = classify_error(e, "file operation")
-        suggestion = ErrorSuggestion.get_suggestion(error_code)
-        formatted_error = f"File operation failed: {e}\nError Code: {error_code.value}\nSuggestion: {suggestion}"
+        formatted_error = f"File operation failed: {e}"
 
         # If allow_failure is True, return a failure result instead of raising exception
         if self.allow_failure:

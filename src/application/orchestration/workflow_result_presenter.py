@@ -9,13 +9,15 @@ from src.workflow.workflow_result import WorkflowExecutionResult
 class WorkflowResultPresenter:
     """Handles presentation of workflow execution results"""
 
-    def __init__(self, output_config: Optional[dict[str, Any]] = None):
+    def __init__(self, output_config: Optional[dict[str, Any]] = None, execution_context: Optional[Any] = None):
         """Initialize result presenter
 
         Args:
             output_config: Output configuration dictionary
+            execution_context: Execution context with settings information
         """
         self.output_config = output_config or {}
+        self.execution_context = execution_context
 
     def present_results(self, result: WorkflowExecutionResult) -> None:
         """Present complete workflow execution results
@@ -23,30 +25,34 @@ class WorkflowResultPresenter:
         Args:
             result: Workflow execution result to present
         """
-        # Show preparation results
-        if result.preparation_results:
-            self._present_preparation_results(result.preparation_results)
-
-        # Show warnings
-        if result.warnings:
-            self._present_warnings(result.warnings)
+        # Show execution settings if enabled
+        if self.output_config.get('show_execution_settings', True):
+            self._present_execution_settings()
 
         # Handle errors
         if not result.success:
             self._present_errors(result.errors)
             raise Exception("ワークフロー実行に失敗しました")
 
-        # Show results summary
-        if self.output_config.get('show_workflow_summary', True):
-            self._present_workflow_summary(result.results)
-
         # Show detailed step information
-        if self.output_config.get('show_step_details', True):
-            self._present_step_details(result.results)
+        self._present_step_details(result.results)
 
-        # Show completion message
-        if self.output_config.get('show_execution_completion', True):
-            print("\n=== 実行完了 ===")
+    def _present_execution_settings(self) -> None:
+        """Present execution settings information"""
+        if not self.execution_context:
+            return
+        
+        settings = []
+        if hasattr(self.execution_context, 'language'):
+            settings.append(f"language: {self.execution_context.language}")
+        if hasattr(self.execution_context, 'contest_name'):
+            settings.append(f"contest: {self.execution_context.contest_name}")
+        if hasattr(self.execution_context, 'problem_name'):
+            settings.append(f"problem: {self.execution_context.problem_name}")
+        
+        if settings:
+            print(f"⚙️  実行設定: {', '.join(settings)}")
+            print()
 
     def _present_preparation_results(self, prep_results: list[OperationResult]) -> None:
         """Present preparation task results"""
@@ -156,6 +162,12 @@ class WorkflowResultPresenter:
                 print(f"  パス: {request.path}")
             if hasattr(request, 'dst_path') and request.dst_path:
                 print(f"  送信先: {request.dst_path}")
+        
+        # Show Python code for OperationType.PYTHON
+        if str(request.operation_type) == "OperationType.PYTHON" and hasattr(request, 'cmd'):
+            print(f"  コード:")
+            for line in str(request.cmd).split('\n'):
+                print(f"    {line}")
 
     def _present_execution_time(self, step_result: OperationResult) -> None:
         """Present execution time if available"""

@@ -181,10 +181,7 @@ class DockerRequest(OperationRequestFoundation):
 
     def _handle_operation_error(self, e: Exception):
         """Handle operation errors with proper error classification."""
-        from src.domain.exceptions.error_codes import ErrorSuggestion, classify_error
-        error_code = classify_error(e, "docker operation")
-        suggestion = ErrorSuggestion.get_suggestion(error_code)
-        formatted_error = f"Docker operation failed: {e}\nError Code: {error_code.value}\nSuggestion: {suggestion}"
+        formatted_error = f"Docker operation failed: {e}"
 
         return OperationResult(success=False, op=self.op, stdout=None, stderr=formatted_error, returncode=None)
 

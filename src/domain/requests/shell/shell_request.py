@@ -85,12 +85,9 @@ class ShellRequest(OperationRequestFoundation):
 
     def _create_error_result(self, e: Exception, driver: Any, start_time: float, end_time: float) -> OperationResult:
         """Create an error operation result with proper logging."""
-        from src.domain.exceptions.error_codes import ErrorSuggestion, classify_error
-        error_code = classify_error(e, "shell command")
-        suggestion = ErrorSuggestion.get_suggestion(error_code)
-        formatted_error = f"Shell command failed: {e}\nError Code: {error_code.value}\nSuggestion: {suggestion}"
+        formatted_error = f"Shell command failed: {e}"
 
-        self._log_error(driver, e, error_code)
+        self._log_error(driver, e, None)
 
         return OperationResult(
             stdout="",
