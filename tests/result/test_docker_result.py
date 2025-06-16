@@ -1,6 +1,6 @@
 import pytest
 
-from src.domain.results.docker_result import DockerResult
+from src.operations.results.docker_result import DockerResult
 
 
 def test_docker_result_success_and_to_dict():

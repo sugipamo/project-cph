@@ -11,8 +11,8 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from src.application.cli_application import main
-from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
-from src.domain.results.result import OperationResult
+from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
+from src.operations.results.result import OperationResult
 from src.workflow.workflow_result import WorkflowExecutionResult
 
 
@@ -414,7 +414,7 @@ class TestCLIEntryPoint:
                 print(f"エラー: {e}")
                 return 1
             except Exception as e:
-                from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
+                from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
                 if isinstance(e, CompositeStepFailureError):
                     print(f"ユーザー定義コマンドでエラーが発生しました: {e}")
                     if hasattr(e, 'result') and e.result is not None:

@@ -2,8 +2,8 @@ import unittest.mock
 
 import pytest
 
-from src.domain.requests.python.python_request import PythonRequest
-from src.domain.results import OperationResult
+from src.operations.requests.python.python_request import PythonRequest
+from src.operations.results import OperationResult
 
 
 class DummyPythonUtils:

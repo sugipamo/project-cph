@@ -8,8 +8,8 @@ from typing import Optional
 
 from src.application.orchestration.workflow_result_presenter import WorkflowResultPresenter, get_output_config
 from src.context.user_input_parser import parse_user_input
-from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
 from src.infrastructure.build_infrastructure import build_operations
+from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
 from src.workflow.workflow_execution_service import WorkflowExecutionService
 from src.workflow.workflow_result import WorkflowExecutionResult
 
@@ -106,7 +106,7 @@ class CLIApplication:
             print(f"エラー内容: {exception}")
 
             # Try to provide some context-based suggestions
-            from src.domain.exceptions.error_codes import ErrorSuggestion, classify_error
+            from src.operations.exceptions.error_codes import ErrorSuggestion, classify_error
             error_code = classify_error(exception)
             suggestion = ErrorSuggestion.get_suggestion(error_code)
             print(f"分類: {error_code.value}")

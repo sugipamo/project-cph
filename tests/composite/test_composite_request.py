@@ -5,10 +5,10 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
-from src.domain.requests.base.base_request import OperationRequestFoundation
-from src.domain.requests.composite.composite_request import CompositeRequest
-from src.domain.results.result import OperationResult
+from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
+from src.operations.requests.base.base_request import OperationRequestFoundation
+from src.operations.requests.composite.composite_request import CompositeRequest
+from src.operations.results.result import OperationResult
 
 
 class MockRequest(OperationRequestFoundation):

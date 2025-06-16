@@ -2,7 +2,7 @@
 """
 from dataclasses import dataclass
 
-from src.domain.results.result import OperationResult
+from src.operations.results.result import OperationResult
 
 
 @dataclass

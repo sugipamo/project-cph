@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Dict, List, Set
 
-from src.domain.interfaces.filesystem_interface import FileSystemInterface
+from src.operations.interfaces.filesystem_interface import FileSystemInterface
 
 
 class MockFileSystem(FileSystemInterface):

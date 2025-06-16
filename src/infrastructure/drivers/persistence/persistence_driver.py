@@ -3,8 +3,8 @@ from abc import abstractmethod
 from contextlib import contextmanager
 from typing import Any, Dict, List
 
-from src.domain.interfaces.persistence_interface import PersistenceInterface
 from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
+from src.operations.interfaces.persistence_interface import PersistenceInterface
 
 
 class PersistenceDriver(ExecutionDriverInterface, PersistenceInterface):

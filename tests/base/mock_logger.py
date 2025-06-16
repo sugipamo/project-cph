@@ -1,7 +1,7 @@
 """Mock logger implementation for testing."""
 from typing import Any, List
 
-from src.domain.interfaces.logger_interface import LoggerInterface
+from src.operations.interfaces.logger_interface import LoggerInterface
 
 
 class MockLogger(LoggerInterface):

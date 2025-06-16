@@ -2,8 +2,8 @@
 import os
 from typing import Dict, List, Optional
 
-from src.domain.requests.file.file_op_type import FileOpType
-from src.domain.requests.file.file_request import FileRequest
+from src.operations.requests.file.file_op_type import FileOpType
+from src.operations.requests.file.file_request import FileRequest
 
 from .system_config_loader import SystemConfigLoader
 
@@ -26,8 +26,8 @@ class ContestManager:
                 # Load shared env.json directly to ensure we have shared paths
                 import json
 
-                from src.domain.requests.file.file_op_type import FileOpType
-                from src.domain.requests.file.file_request import FileRequest
+                from src.operations.requests.file.file_op_type import FileOpType
+                from src.operations.requests.file.file_request import FileRequest
 
                 shared_path = "contest_env/shared/env.json"
                 req = FileRequest(FileOpType.READ, shared_path)

@@ -3,7 +3,7 @@ import logging
 import uuid
 from typing import Any, Optional
 
-from src.domain.interfaces.logger_interface import LoggerInterface
+from src.operations.interfaces.logger_interface import LoggerInterface
 
 
 class PythonLogger(LoggerInterface):

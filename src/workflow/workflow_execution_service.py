@@ -7,7 +7,7 @@ from typing import Optional
 from src.application.factories.unified_request_factory import create_request
 from src.application.orchestration.unified_driver import UnifiedDriver
 from src.configuration.adapters.execution_context_adapter import ExecutionContextAdapter
-from src.domain.constants.request_types import RequestType
+from src.operations.constants.request_types import RequestType
 from src.utils.debug_logger import DebugLogger
 from src.workflow.step.step import Step, StepType
 from src.workflow.workflow_result import WorkflowExecutionResult

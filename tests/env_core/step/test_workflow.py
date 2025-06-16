@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from src.domain.requests.composite.composite_request import CompositeRequest
+from src.operations.requests.composite.composite_request import CompositeRequest
 from src.workflow.step.step import Step, StepContext, StepGenerationResult, StepType
 from src.workflow.step.workflow import (
     create_step_context_from_env_context,

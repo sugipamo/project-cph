@@ -1,6 +1,6 @@
 import pytest
 
-from src.domain.results.shell_result import ShellResult
+from src.operations.results.shell_result import ShellResult
 
 
 def test_shell_result_success_and_to_dict():

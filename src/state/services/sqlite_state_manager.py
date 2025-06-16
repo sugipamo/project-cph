@@ -3,25 +3,24 @@
 設定システムから分離された状態管理の具体実装
 """
 import json
-from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
-from ..interfaces.state_manager import IStateManager, ExecutionHistory, SessionContext
 from ...infrastructure.persistence.sqlite.repositories.system_config_repository import SystemConfigRepository
+from ..interfaces.state_manager import ExecutionHistory, IStateManager, SessionContext
 
 
 class SqliteStateManager(IStateManager):
     """SQLiteベースの状態管理実装
-    
+
     設定データではなく実行時状態を管理する専用システム
     """
-    
+
     def __init__(self, config_repo: SystemConfigRepository):
         self.config_repo = config_repo
         self._session_category = "session_state"
         self._history_category = "execution_history"
         self._user_values_category = "user_specified"
-    
+
     def save_execution_history(self, history: ExecutionHistory) -> None:
         """実行履歴の保存"""
         history_data = {
@@ -32,7 +31,7 @@ class SqliteStateManager(IStateManager):
             "timestamp": history.timestamp,
             "success": history.success
         }
-        
+
         key = f"history_{history.timestamp}"
         self.config_repo.save_config(
             key=key,
@@ -40,19 +39,19 @@ class SqliteStateManager(IStateManager):
             category=self._history_category,
             description=f"Execution history for {history.contest_name}_{history.problem_name}"
         )
-    
+
     def get_execution_history(self, limit: int = 10) -> list[ExecutionHistory]:
         """実行履歴の取得"""
         histories = self.config_repo.get_configs_by_category(self._history_category)
         result = []
-        
+
         for config in sorted(histories, key=lambda x: x.key, reverse=True)[:limit]:
             if config.value:
                 try:
                     data = json.loads(config.value)
                     history = ExecutionHistory(
                         contest_name=data["contest_name"],
-                        problem_name=data["problem_name"], 
+                        problem_name=data["problem_name"],
                         language=data["language"],
                         env_type=data["env_type"],
                         timestamp=data["timestamp"],
@@ -61,9 +60,9 @@ class SqliteStateManager(IStateManager):
                     result.append(history)
                 except (json.JSONDecodeError, KeyError):
                     continue
-        
+
         return result
-    
+
     def save_session_context(self, context: SessionContext) -> None:
         """セッションコンテキストの保存"""
         context_data = {
@@ -74,14 +73,14 @@ class SqliteStateManager(IStateManager):
             "previous_problem": context.previous_problem,
             "user_specified_fields": context.user_specified_fields
         }
-        
+
         self.config_repo.save_config(
             key="current_session",
             value=json.dumps(context_data),
             category=self._session_category,
             description="Current session context"
         )
-    
+
     def load_session_context(self) -> Optional[SessionContext]:
         """セッションコンテキストの読み込み"""
         config = self.config_repo.get_config("current_session")
@@ -98,9 +97,9 @@ class SqliteStateManager(IStateManager):
                 )
             except (json.JSONDecodeError, KeyError):
                 pass
-        
+
         return None
-    
+
     def save_user_specified_values(self, values: Dict[str, Any]) -> None:
         """ユーザー指定値の保存"""
         self.config_repo.save_config(
@@ -109,7 +108,7 @@ class SqliteStateManager(IStateManager):
             category=self._user_values_category,
             description="User specified values"
         )
-    
+
     def get_user_specified_values(self) -> Dict[str, Any]:
         """ユーザー指定値の取得"""
         config = self.config_repo.get_config("user_values")
@@ -118,9 +117,9 @@ class SqliteStateManager(IStateManager):
                 return json.loads(config.value)
             except json.JSONDecodeError:
                 pass
-        
+
         return {}
-    
+
     def clear_session(self) -> None:
         """セッション情報のクリア"""
         # セッション関連の設定を削除

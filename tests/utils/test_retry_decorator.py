@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.domain.exceptions.error_codes import ErrorCode
+from src.operations.exceptions.error_codes import ErrorCode
 from src.utils.retry_decorator import (
     COMMAND_RETRY_CONFIG,
     DOCKER_RETRY_CONFIG,

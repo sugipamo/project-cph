@@ -2,7 +2,7 @@
 """
 from typing import Any
 
-from src.domain.constants.operation_type import OperationType
+from src.operations.constants.operation_type import OperationType
 
 
 class UnifiedDriver:

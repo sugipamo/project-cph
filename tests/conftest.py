@@ -30,11 +30,11 @@ def mock_controller():
 @pytest.fixture
 def di_container():
     """基本的なDIコンテナを提供"""
-    from src.domain.requests.docker.docker_request import DockerOpType, DockerRequest
-    from src.domain.requests.file.file_op_type import FileOpType
-    from src.domain.requests.file.file_request import FileRequest
-    from src.domain.requests.python.python_request import PythonRequest
-    from src.domain.requests.shell.shell_request import ShellRequest
+    from src.operations.requests.docker.docker_request import DockerOpType, DockerRequest
+    from src.operations.requests.file.file_op_type import FileOpType
+    from src.operations.requests.file.file_request import FileRequest
+    from src.operations.requests.python.python_request import PythonRequest
+    from src.operations.requests.shell.shell_request import ShellRequest
 
     di = DIContainer()
     di.register("DockerRequest", lambda: DockerRequest)

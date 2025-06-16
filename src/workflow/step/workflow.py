@@ -2,7 +2,7 @@
 """
 from typing import Any
 
-from src.domain.requests.composite.composite_request import CompositeRequest
+from src.operations.requests.composite.composite_request import CompositeRequest
 
 from .dependency import optimize_copy_steps, optimize_mkdir_steps, resolve_dependencies
 from .step import Step, StepContext

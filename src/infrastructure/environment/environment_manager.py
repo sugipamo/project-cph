@@ -2,8 +2,8 @@
 """
 from typing import Any, Optional
 
-from src.domain.requests.base.base_request import OperationRequestFoundation
-from src.domain.results.result import OperationResult
+from src.operations.requests.base.base_request import OperationRequestFoundation
+from src.operations.results.result import OperationResult
 
 
 class EnvironmentManager:

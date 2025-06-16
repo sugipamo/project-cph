@@ -1,6 +1,6 @@
 import pytest
 
-from src.domain.results.result import OperationResult
+from src.operations.results.result import OperationResult
 
 
 def test_operation_result_success_and_failure():

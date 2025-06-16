@@ -3,12 +3,12 @@ import unittest.mock
 
 import pytest
 
-from src.domain.constants.operation_type import OperationType
-from src.domain.requests.shell.shell_request import ShellRequest
-from src.domain.results.result import OperationResult
-from src.domain.results.shell_result import ShellResult
 from src.infrastructure.di_container import DIContainer
 from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
+from src.operations.constants.operation_type import OperationType
+from src.operations.requests.shell.shell_request import ShellRequest
+from src.operations.results.result import OperationResult
+from src.operations.results.shell_result import ShellResult
 
 
 def test_shell_request_echo():

@@ -1,6 +1,6 @@
 import pytest
 
-from src.domain.results.file_result import FileResult
+from src.operations.results.file_result import FileResult
 
 
 def test_file_result_success_and_to_dict():

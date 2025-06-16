@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, call
 import pytest
 
 from src.application.orchestration.unified_driver import UnifiedDriver
-from src.domain.constants.operation_type import OperationType
+from src.operations.constants.operation_type import OperationType
 
 
 class TestUnifiedDriver:

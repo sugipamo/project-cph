@@ -2,7 +2,7 @@
 """
 from typing import Any, Optional
 
-from src.domain.results.result import OperationResult
+from src.operations.results.result import OperationResult
 from src.workflow.workflow_result import WorkflowExecutionResult
 
 

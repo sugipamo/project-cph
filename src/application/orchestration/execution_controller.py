@@ -2,7 +2,7 @@
 """
 from typing import Any
 
-from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
+from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
 
 
 class ExecutionController:

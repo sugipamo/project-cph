@@ -34,8 +34,8 @@ class MockFileDriver:
         response_key = f"{request.op.name}:{request.path}"
 
         # Create appropriate result object
-        from src.domain.constants.operation_type import OperationType
-        from src.domain.results.result import OperationResult
+        from src.operations.constants.operation_type import OperationType
+        from src.operations.results.result import OperationResult
 
         default_result = OperationResult(
             op=OperationType.FILE,

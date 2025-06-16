@@ -1,7 +1,7 @@
 import pytest
 
-from src.domain.requests.base.base_request import OperationRequestFoundation
-from src.domain.requests.composite.base_composite_request import CompositeRequestFoundation
+from src.operations.requests.base.base_request import OperationRequestFoundation
+from src.operations.requests.composite.base_composite_request import CompositeRequestFoundation
 
 
 class DummyRequest(OperationRequestFoundation):

@@ -2,11 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from src.domain.constants.operation_type import OperationType
-from src.domain.requests.file.file_op_type import FileOpType
-from src.domain.requests.file.file_request import FileRequest
-from src.domain.results.file_result import FileResult
 from src.infrastructure.mock.mock_file_driver import MockFileDriver
+from src.operations.constants.operation_type import OperationType
+from src.operations.requests.file.file_op_type import FileOpType
+from src.operations.requests.file.file_request import FileRequest
+from src.operations.results.file_result import FileResult
 
 
 def test_file_write_and_read_with_mock():
@@ -58,7 +58,7 @@ def test_file_request_unknown_operation():
         pass
     req = FileRequest(FakeOpType(), path)
     # The new error handling now raises CompositeStepFailureError instead of RuntimeError
-    from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
+    from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
     with pytest.raises(CompositeStepFailureError) as exc_info:
         req.execute_operation(driver=driver)
 

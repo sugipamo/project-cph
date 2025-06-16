@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from src.application.orchestration.execution_controller import ExecutionController
-from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
+from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
 
 
 class TestExecutionController:

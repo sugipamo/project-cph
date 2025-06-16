@@ -203,6 +203,117 @@ class TestRunner:
 
         return True  # 警告レベルなので常にTrueを返す
 
+    def check_import_resolution(self) -> bool:
+        """インポート解決チェック - ファイル移動・削除で破綻したインポートを検出"""
+        import ast
+        import glob
+        from pathlib import Path
+
+        spinner = None
+        if not self.verbose:
+            spinner = ProgressSpinner("インポート解決チェック")
+            spinner.start()
+
+        try:
+            import_issues = []
+
+            for file_path in glob.glob('src/**/*.py', recursive=True):
+                try:
+                    with open(file_path, encoding='utf-8') as f:
+                        content = f.read()
+                        tree = ast.parse(content, filename=file_path)
+
+                    # import文を解析
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.ImportFrom) and node.module:
+                            module = node.module
+                            if module.startswith('src.'):
+                                # モジュールパスの存在確認
+                                # src.context.user_input_parser -> src/context/user_input_parser.py
+                                module_path = module.replace('.', '/') + '.py'
+                                # または __init__.py での初期化
+                                init_path = module.replace('.', '/') + '/__init__.py'
+
+                                if not (Path(module_path).exists() or Path(init_path).exists()):
+                                    relative_file = file_path.replace('src/', '') if file_path.startswith('src/') else file_path
+                                    import_issues.append(f"{relative_file}: import {module} (モジュールが見つかりません)")
+
+                        elif isinstance(node, ast.Import):
+                            for alias in node.names:
+                                module = alias.name
+                                if module.startswith('src.'):
+                                    module_path = module.replace('.', '/') + '.py'
+                                    init_path = module.replace('.', '/') + '/__init__.py'
+
+                                    if not (Path(module_path).exists() or Path(init_path).exists()):
+                                        relative_file = file_path.replace('src/', '') if file_path.startswith('src/') else file_path
+                                        import_issues.append(f"{relative_file}: import {module} (モジュールが見つかりません)")
+
+                except (SyntaxError, UnicodeDecodeError, OSError):
+                    # 構文エラーやファイル読み込みエラーは無視
+                    continue
+
+            success = len(import_issues) == 0
+
+            if spinner:
+                spinner.stop(success)
+            elif self.verbose:
+                print(f"{'✅' if success else '❌'} インポート解決チェック")
+
+            if import_issues:
+                self.issues.append("インポート解決エラーが検出されました:")
+                for issue in import_issues[:15]:  # 最大15件表示
+                    self.issues.append(f"  {issue}")
+
+                if len(import_issues) > 15:
+                    self.issues.append(f"  ... 他{len(import_issues) - 15}件")
+
+            return success
+
+        except Exception as e:
+            if spinner:
+                spinner.stop(False)
+            self.issues.append(f"インポート解決チェックでエラー: {e}")
+            if self.verbose:
+                print(f"❌ インポート解決チェックでエラー: {e}")
+            return False
+
+    def quick_smoke_test(self) -> bool:
+        """クイックスモークテスト - 基本的な実行可能性をチェック"""
+        spinner = None
+        if not self.verbose:
+            spinner = ProgressSpinner("クイックスモークテスト")
+            spinner.start()
+
+        try:
+            # メインモジュールのインポートテスト
+            result = subprocess.run([
+                "python3", "-c",
+                "import sys; sys.path.insert(0, '.'); "
+                "from src.main import main; print('OK')"
+            ], capture_output=True, text=True, cwd=Path(__file__).parent.parent)
+
+            success = result.returncode == 0
+
+            if spinner:
+                spinner.stop(success)
+            elif self.verbose:
+                print(f"{'✅' if success else '❌'} クイックスモークテスト")
+
+            if not success:
+                error_output = result.stderr.strip() or result.stdout.strip() or f"終了コード: {result.returncode}"
+                self.issues.append(f"スモークテスト失敗: {error_output}")
+
+            return success
+
+        except Exception as e:
+            if spinner:
+                spinner.stop(False)
+            self.issues.append(f"スモークテストでエラー: {e}")
+            if self.verbose:
+                print(f"❌ スモークテストでエラー: {e}")
+            return False
+
     def check_naming_conventions(self) -> bool:
         """命名規則チェック"""
         import ast
@@ -521,6 +632,8 @@ def main():
     parser.add_argument("--no-ruff", action="store_true", help="Ruffスキップ")
     parser.add_argument("--no-deadcode", action="store_true", help="未使用コード検出スキップ")
     parser.add_argument("--no-naming", action="store_true", help="命名規則チェックスキップ")
+    parser.add_argument("--no-import-check", action="store_true", help="インポート解決チェックスキップ")
+    parser.add_argument("--no-smoke-test", action="store_true", help="スモークテストスキップ")
     parser.add_argument("--check-only", action="store_true", help="高速チェック（テストなし）")
     parser.add_argument("--coverage-only", action="store_true", help="カバレッジレポートのみ表示")
     parser.add_argument("--verbose", "-v", action="store_true", help="詳細出力")
@@ -545,6 +658,13 @@ def main():
         runner.print_summary()
         return
 
+    # 基本チェック（構文・インポート・スモークテスト）
+    runner.check_syntax()
+    if not args.no_import_check:
+        runner.check_import_resolution()
+    if not args.no_smoke_test:
+        runner.quick_smoke_test()
+
     # コード品質チェック
     if not args.no_ruff:
         runner.check_ruff()
@@ -561,7 +681,6 @@ def main():
     # check-onlyモード
     if args.check_only:
         runner.check_types()
-        runner.check_syntax()
         runner.print_summary()
         return
 

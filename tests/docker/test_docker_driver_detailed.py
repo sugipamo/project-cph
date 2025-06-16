@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from src.domain.results.result import OperationResult
 from src.infrastructure.drivers.docker.docker_driver import DockerDriver, LocalDockerDriver
+from src.operations.results.result import OperationResult
 from tests.base.base_test import BaseTest
 
 

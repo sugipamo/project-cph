@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import List
 
-from src.domain.interfaces.filesystem_interface import FileSystemInterface
+from src.operations.interfaces.filesystem_interface import FileSystemInterface
 
 
 class LocalFileSystem(FileSystemInterface):

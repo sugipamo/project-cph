@@ -4,7 +4,7 @@ import time
 from functools import wraps
 from typing import Any, Callable, Optional, Tuple, Type
 
-from src.domain.exceptions.error_codes import ErrorCode
+from src.operations.exceptions.error_codes import ErrorCode
 
 
 class RetryConfig:

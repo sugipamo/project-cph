@@ -4,7 +4,6 @@ import shlex
 from abc import abstractmethod
 from typing import Any, Optional, Union
 
-from src.domain.requests.shell.shell_request import ShellRequest
 from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
 from src.infrastructure.drivers.docker.utils import (
     build_docker_build_command,
@@ -15,6 +14,7 @@ from src.infrastructure.drivers.docker.utils import (
 )
 from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
 from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
+from src.operations.requests.shell.shell_request import ShellRequest
 
 
 class DockerDriver(ExecutionDriverInterface):

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 from src.application.cli_application import CLIApplication, main
-from src.domain.exceptions.composite_step_failure import CompositeStepFailureError
+from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
 from src.workflow.workflow_result import WorkflowExecutionResult
 
 

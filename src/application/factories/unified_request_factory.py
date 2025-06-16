@@ -4,13 +4,13 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 from src.context.formatters.context_formatter import format_values_with_context_dict
-from src.domain.requests.base.base_request import OperationRequestFoundation
-from src.domain.requests.composite.composite_request import CompositeRequest
-from src.domain.requests.file.file_op_type import FileOpType
-from src.domain.requests.file.file_request import FileRequest
-from src.domain.requests.python.python_request import PythonRequest
-from src.domain.requests.shell.shell_request import ShellRequest
 from src.infrastructure.environment.environment_manager import EnvironmentManager
+from src.operations.requests.base.base_request import OperationRequestFoundation
+from src.operations.requests.composite.composite_request import CompositeRequest
+from src.operations.requests.file.file_op_type import FileOpType
+from src.operations.requests.file.file_request import FileRequest
+from src.operations.requests.python.python_request import PythonRequest
+from src.operations.requests.shell.shell_request import ShellRequest
 from src.workflow.step.step import Step, StepType
 
 
