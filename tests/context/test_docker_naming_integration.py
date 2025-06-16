@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.configuration.integration.user_input_parser_integration import create_new_execution_context
+from src.context.user_input_parser.user_input_parser_integration import create_new_execution_context
 
 
 class TestDockerNamingIntegration:

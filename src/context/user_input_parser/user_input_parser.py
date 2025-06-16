@@ -3,7 +3,7 @@ import json
 import os
 
 # 新設定システムの統合
-from src.configuration.integration.user_input_parser_integration import (
+from src.context.user_input_parser.user_input_parser_integration import (
     create_new_execution_context,
 )
 from src.context.dockerfile_resolver import DockerfileResolver

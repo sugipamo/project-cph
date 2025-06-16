@@ -56,7 +56,7 @@ class BaseTest:
         }
         default_context.update(kwargs)
 
-        from src.configuration.integration.user_input_parser_integration import create_new_execution_context
+        from src.context.user_input_parser.user_input_parser_integration import create_new_execution_context
         return create_new_execution_context(
             command_type=default_context["command_type"],
             language=default_context["language"],

@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from src.configuration import ExecutionConfiguration, ExecutionPaths, OutputConfig, RuntimeConfig
-from src.configuration.integration.user_input_parser_integration import (
+from src.context.user_input_parser.user_input_parser_integration import (
     UserInputParserIntegration,
     create_new_execution_context,
 )
