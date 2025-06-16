@@ -313,8 +313,7 @@ def parse_user_input(
     # 4. Parse command line arguments
     args, context = _parse_command_line_args(args, context, env_config['root'])
 
-    # 5. Handle contest management
-    context = _handle_contest_management(context, operations)
+    # 5. Handle contest management (removed - backup should be handled by runstep)
 
     # 6. Finalize environment configuration
     context = _finalize_environment_configuration(context, env_config, operations)

@@ -43,6 +43,8 @@ class WorkflowResultPresenter:
             return
         
         settings = []
+        if hasattr(self.execution_context, 'command_type'):
+            settings.append(f"command: {self.execution_context.command_type}")
         if hasattr(self.execution_context, 'language'):
             settings.append(f"language: {self.execution_context.language}")
         if hasattr(self.execution_context, 'contest_name'):
@@ -107,8 +109,14 @@ class WorkflowResultPresenter:
         if config.get('show_execution_time', True):
             self._present_execution_time(step_result)
 
-        # Show output
-        if config.get('show_stdout', True):
+        # Show output based on request's show_output setting
+        should_show = True
+        if hasattr(step_result, 'request') and step_result.request and hasattr(step_result.request, 'show_output'):
+            should_show = step_result.request.show_output
+        elif config.get('show_stdout', True):
+            should_show = True
+            
+        if should_show:
             self._present_stdout(step_result)
 
         # Show errors

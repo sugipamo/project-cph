@@ -137,15 +137,27 @@ for i in {contest_current_path}/test/sample-*.in; do
         expected_output="{contest_current_path}/test/${{basename_i}}.out"
         if [ -f "$expected_output" ]; then
             echo "Running test: $basename_i"
-            actual_output=$({' '.join(cmd)} < "$i" 2>/dev/null)
+            temp_output=$(mktemp)
+            temp_error=$(mktemp)
+            {' '.join(cmd)} < "$i" > "$temp_output" 2> "$temp_error"
+            exit_code=$?
+            actual_output=$(cat "$temp_output")
+            error_output=$(cat "$temp_error")
             expected=$(cat "$expected_output")
-            if [ "$actual_output" = "$expected" ]; then
+            
+            if [ $exit_code -ne 0 ]; then
+                echo "✗ ERROR: $basename_i (exit code: $exit_code)"
+                echo "  Error output:"
+                echo "$error_output"
+            elif [ "$actual_output" = "$expected" ]; then
                 echo "✓ PASS: $basename_i"
             else
                 echo "✗ FAIL: $basename_i"
                 echo "  Expected: $expected"
                 echo "  Got:      $actual_output"
             fi
+            
+            rm -f "$temp_output" "$temp_error"
         fi
     fi
 done

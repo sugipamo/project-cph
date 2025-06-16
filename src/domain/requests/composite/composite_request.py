@@ -50,9 +50,10 @@ class CompositeRequest(CompositeRequestFoundation):
             result = req.execute_operation(driver=driver)
 
             # Handle output directly using OutputManager static method
-            if hasattr(req, 'show_output') and req.show_output:
-                from src.application.orchestration.output_manager import OutputManager
-                OutputManager.handle_request_output(req, result)
+            # Note: show_output is now used for step details display, not immediate output
+            # if hasattr(req, 'show_output') and req.show_output:
+            #     from src.application.orchestration.output_manager import OutputManager
+            #     OutputManager.handle_request_output(req, result)
 
             results.append(result)
 
