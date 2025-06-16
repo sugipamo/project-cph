@@ -45,7 +45,6 @@ class E2ETester:
         return len(test_files) > 0
 
     def run_step(self, step: TestStep, cmd_index: int) -> None:
-        print(f"\n[Step {cmd_index+1}]")
         print(f"実行: {' '.join(step.command)}")
         result = subprocess.run(
             step.command,
