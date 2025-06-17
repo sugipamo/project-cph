@@ -138,10 +138,8 @@ class TestPerformanceBenchmarks:
 
         for _ in range(iterations):
             for path, return_type in test_paths:
-                try:
+                with contextlib.suppress(KeyError):
                     manager.resolve_config(path, return_type)
-                except KeyError:
-                    pass  # 存在しないパスは無視
 
         first_run_time = time.time() - start_time
         first_run_per_op = first_run_time / (iterations * len(test_paths))
@@ -198,10 +196,8 @@ class TestPerformanceBenchmarks:
 
         for _ in range(iterations):
             for template in templates:
-                try:
+                with contextlib.suppress(KeyError, TypeError):
                     manager.resolve_template_typed(template, context)
-                except (KeyError, TypeError):
-                    pass  # エラーは無視
 
         first_run_time = time.time() - start_time
         first_run_per_op = first_run_time / (iterations * len(templates))
@@ -252,10 +248,8 @@ class TestPerformanceBenchmarks:
 
         for _ in range(iterations):
             for contest, problem, language in test_params:
-                try:
+                with contextlib.suppress(KeyError, TypeError):
                     manager.create_execution_config(contest, problem, language)
-                except (KeyError, TypeError):
-                    pass  # エラーは無視
 
         first_run_time = time.time() - start_time
         first_run_per_op = first_run_time / (iterations * len(test_params))
@@ -385,18 +379,14 @@ class TestPerformanceBenchmarks:
         # 3. キャッシュ効果目標: 初回より2倍以上高速
         # 初回解決（新しいキーなのでキャッシュされていない）
         start_time = time.time()
-        try:
+        with contextlib.suppress(KeyError):
             manager.resolve_config(["python", "source_file_name"], str)  # 初回アクセス
-        except KeyError:
-            pass
         first_time = time.time() - start_time
 
         # 2回目解決（既にキャッシュされている）
         start_time = time.time()
-        try:
+        with contextlib.suppress(KeyError):
             manager.resolve_config(["python", "source_file_name"], str)  # キャッシュからアクセス
-        except KeyError:
-            pass
         cached_time = time.time() - start_time
 
         cache_speedup = first_time / cached_time if cached_time > 0 else float('inf')

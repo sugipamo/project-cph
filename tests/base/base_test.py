@@ -1,6 +1,8 @@
 """
 Base test class with common utilities
 """
+import contextlib
+
 import pytest
 
 from src.infrastructure.di_container import DIContainer
@@ -60,15 +62,12 @@ class BaseTest:
 
         # 新設定システムを使用
         manager = TypeSafeConfigNodeManager()
-        try:
+        with contextlib.suppress(Exception):
             manager.load_from_files(
                 system_dir="./config/system",
                 env_dir="contest_env",
                 language=default_context["language"]
             )
-        except Exception:
-            # テスト環境では設定ファイルがない場合があるため、インメモリで作成
-            pass
 
         config = manager.create_execution_config(
             contest_name=default_context["contest_name"],

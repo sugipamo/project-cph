@@ -18,12 +18,12 @@ class WorkflowExecutionService:
     Replaces the removed EnvWorkflowService
     """
 
-    def __init__(self, context: TypedExecutionConfiguration, operations):
+    def __init__(self, context: TypedExecutionConfiguration, infrastructure):
         """Initialize workflow execution service
 
         Args:
             context: Typed execution configuration
-            operations: Operations container for drivers
+            infrastructure: Infrastructure container for drivers
         """
         self.context = context
         self.infrastructure = infrastructure
@@ -176,7 +176,7 @@ class WorkflowExecutionService:
         shared_config = self.context.env_json.get('shared', {})
         env_logging_config = shared_config.get('environment_logging', {})
 
-        if not env_logging_config.get('enabled', False):
+        if not (env_logging_config.get('enabled', False)):
             return
 
         # Create a basic debug logger instance just for environment logging
@@ -202,8 +202,8 @@ class WorkflowExecutionService:
             return None, ["No workflow steps found for command"], []
 
         # Generate Step objects from JSON and get step results with skip information
-        from src.workflow.step.simple_step_runner import run_steps
         from src.workflow.step.step_generation_service import execution_context_to_simple_context
+        from src.workflow.step.step_runner import run_steps
         simple_context = execution_context_to_simple_context(self.context)
         step_results = run_steps(json_steps, simple_context)
 

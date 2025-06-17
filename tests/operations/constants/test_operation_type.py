@@ -23,7 +23,7 @@ class TestOperationType:
         assert OperationType.PYTHON
         # assert OperationType.FILE_PREPARATION  # Removed
         assert OperationType.STATE_SHOW
-        assert OperationType.WORKSPACE
+        assert OperationType.LOCAL_WORKSPACE
 
     def test_operation_type_auto_values(self):
         """Test that auto() generates unique values."""

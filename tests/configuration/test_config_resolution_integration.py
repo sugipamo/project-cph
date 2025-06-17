@@ -2,6 +2,7 @@
 
 TypeSafeConfigNodeManagerがConfigurationResolverの機能を統合できることを検証
 """
+import contextlib
 import json
 import tempfile
 from pathlib import Path
@@ -225,13 +226,10 @@ class TestConfigResolutionIntegration:
 
         # 型変換は自動的に行われるため、この例は失敗しない
         # 実際の型エラーを発生させるテスト
-        try:
+        with contextlib.suppress(TypeError, ValueError):
             # 辞書を整数として解決しようとする
             manager.resolve_config(["python"], int)
             # エラーが発生しない場合は、実装が異なる
-        except (TypeError, ValueError):
-            # 期待される動作
-            pass
 
     def test_configuration_resolver_method_equivalence(self, manager_with_hierarchical_data):
         """ConfigurationResolverメソッド等価性テスト"""

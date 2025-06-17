@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from src.application.orchestration.output_formatters import (
-    SimpleOutputData,
+    OutputData,
     decide_output_action,
     extract_output_data,
     format_output_content,
@@ -13,40 +13,40 @@ from src.application.orchestration.output_formatters import (
 )
 
 
-class TestSimpleOutputData:
-    """Test cases for SimpleOutputData dataclass"""
+class TestOutputData:
+    """Test cases for OutputData dataclass"""
 
     def test_simple_output_data_creation(self):
-        """Test SimpleOutputData creation with default values"""
-        data = SimpleOutputData()
+        """Test OutputData creation with default values"""
+        data = OutputData()
 
         assert data.stdout is None
         assert data.stderr is None
 
     def test_simple_output_data_with_stdout(self):
-        """Test SimpleOutputData creation with stdout"""
-        data = SimpleOutputData(stdout="test output")
+        """Test OutputData creation with stdout"""
+        data = OutputData(stdout="test output")
 
         assert data.stdout == "test output"
         assert data.stderr is None
 
     def test_simple_output_data_with_stderr(self):
-        """Test SimpleOutputData creation with stderr"""
-        data = SimpleOutputData(stderr="error output")
+        """Test OutputData creation with stderr"""
+        data = OutputData(stderr="error output")
 
         assert data.stdout is None
         assert data.stderr == "error output"
 
     def test_simple_output_data_with_both(self):
-        """Test SimpleOutputData creation with both stdout and stderr"""
-        data = SimpleOutputData(stdout="output", stderr="error")
+        """Test OutputData creation with both stdout and stderr"""
+        data = OutputData(stdout="output", stderr="error")
 
         assert data.stdout == "output"
         assert data.stderr == "error"
 
     def test_simple_output_data_immutable(self):
-        """Test that SimpleOutputData is immutable (frozen=True)"""
-        data = SimpleOutputData(stdout="test")
+        """Test that OutputData is immutable (frozen=True)"""
+        data = OutputData(stdout="test")
 
         with pytest.raises(AttributeError):
             data.stdout = "modified"
@@ -63,7 +63,7 @@ class TestExtractOutputData:
 
         data = extract_output_data(result)
 
-        assert isinstance(data, SimpleOutputData)
+        assert isinstance(data, OutputData)
         assert data.stdout == "test output"
         assert data.stderr is None
 
@@ -173,7 +173,7 @@ class TestFormatOutputContent:
 
     def test_format_output_content_stdout_only(self):
         """Test formatting with stdout only"""
-        data = SimpleOutputData(stdout="test output")
+        data = OutputData(stdout="test output")
 
         result = format_output_content(data)
 
@@ -181,7 +181,7 @@ class TestFormatOutputContent:
 
     def test_format_output_content_stderr_only(self):
         """Test formatting with stderr only"""
-        data = SimpleOutputData(stderr="error output")
+        data = OutputData(stderr="error output")
 
         result = format_output_content(data)
 
@@ -189,7 +189,7 @@ class TestFormatOutputContent:
 
     def test_format_output_content_both(self):
         """Test formatting with both stdout and stderr"""
-        data = SimpleOutputData(stdout="output", stderr="error")
+        data = OutputData(stdout="output", stderr="error")
 
         result = format_output_content(data)
 
@@ -197,7 +197,7 @@ class TestFormatOutputContent:
 
     def test_format_output_content_neither(self):
         """Test formatting with neither stdout nor stderr"""
-        data = SimpleOutputData()
+        data = OutputData()
 
         result = format_output_content(data)
 
@@ -205,7 +205,7 @@ class TestFormatOutputContent:
 
     def test_format_output_content_empty_strings(self):
         """Test formatting with empty strings"""
-        data = SimpleOutputData(stdout="", stderr="")
+        data = OutputData(stdout="", stderr="")
 
         result = format_output_content(data)
 
@@ -213,7 +213,7 @@ class TestFormatOutputContent:
 
     def test_format_output_content_multiline(self):
         """Test formatting with multiline output"""
-        data = SimpleOutputData(
+        data = OutputData(
             stdout="line1\nline2\n",
             stderr="error1\nerror2\n"
         )
@@ -228,7 +228,7 @@ class TestDecideOutputAction:
 
     def test_decide_output_action_show_with_content(self):
         """Test deciding output action when show_output=True and has content"""
-        data = SimpleOutputData(stdout="test output")
+        data = OutputData(stdout="test output")
 
         should_output, content = decide_output_action(True, data)
 
@@ -237,7 +237,7 @@ class TestDecideOutputAction:
 
     def test_decide_output_action_no_show(self):
         """Test deciding output action when show_output=False"""
-        data = SimpleOutputData(stdout="test output")
+        data = OutputData(stdout="test output")
 
         should_output, content = decide_output_action(False, data)
 
@@ -246,7 +246,7 @@ class TestDecideOutputAction:
 
     def test_decide_output_action_show_no_content(self):
         """Test deciding output action when show_output=True but no content"""
-        data = SimpleOutputData()
+        data = OutputData()
 
         should_output, content = decide_output_action(True, data)
 
@@ -255,7 +255,7 @@ class TestDecideOutputAction:
 
     def test_decide_output_action_show_empty_content(self):
         """Test deciding output action when show_output=True but empty content"""
-        data = SimpleOutputData(stdout="", stderr="")
+        data = OutputData(stdout="", stderr="")
 
         should_output, content = decide_output_action(True, data)
 
@@ -264,7 +264,7 @@ class TestDecideOutputAction:
 
     def test_decide_output_action_show_with_stderr(self):
         """Test deciding output action with stderr only"""
-        data = SimpleOutputData(stderr="error message")
+        data = OutputData(stderr="error message")
 
         should_output, content = decide_output_action(True, data)
 
@@ -273,7 +273,7 @@ class TestDecideOutputAction:
 
     def test_decide_output_action_show_with_both(self):
         """Test deciding output action with both stdout and stderr"""
-        data = SimpleOutputData(stdout="output", stderr="error")
+        data = OutputData(stdout="output", stderr="error")
 
         should_output, content = decide_output_action(True, data)
 
@@ -282,7 +282,7 @@ class TestDecideOutputAction:
 
     def test_decide_output_action_whitespace_only(self):
         """Test deciding output action with whitespace-only content"""
-        data = SimpleOutputData(stdout="   \n  \t  ")
+        data = OutputData(stdout="   \n  \t  ")
 
         should_output, content = decide_output_action(True, data)
 

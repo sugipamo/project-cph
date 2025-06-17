@@ -217,12 +217,11 @@ def format_template(template: Any, context: Union['TypedExecutionConfiguration',
 def expand_file_patterns(template: str, context: Union['TypedExecutionConfiguration', Any], step_type=None) -> str:
     """ファイルパターンを展開する（後方互換性）"""
     # TypedExecutionConfigurationの場合は直接テンプレート展開を使用
-    if TypedExecutionConfiguration and isinstance(context, TypedExecutionConfiguration):
-        if hasattr(context, 'resolve_formatted_string'):
-            try:
-                return context.resolve_formatted_string(template)
-            except Exception:
-                pass  # フォールバック
+    if TypedExecutionConfiguration and isinstance(context, TypedExecutionConfiguration) and hasattr(context, 'resolve_formatted_string'):
+        try:
+            return context.resolve_formatted_string(template)
+        except Exception:
+            pass  # フォールバック
 
     # 従来のシステム用
     from .step_runner import expand_file_patterns_in_text

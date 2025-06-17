@@ -96,9 +96,9 @@ class TypedExecutionConfiguration:
                         node = resolve_best(self._root_node, path)
                         if node:
                             context[key] = str(node.value)
-                    except:
+                    except (KeyError, AttributeError, TypeError):
                         pass
-            except:
+            except (KeyError, AttributeError, TypeError):
                 pass
 
         try:
@@ -544,7 +544,7 @@ class TypeSafeConfigNodeManager:
         try:
             workspace = self.resolve_config_with_default(['paths', 'local_workspace_path'], str, './workspace')
             context['workspace'] = workspace
-        except:
+        except (KeyError, AttributeError, TypeError):
             context['workspace'] = './workspace'
 
         config = TypedExecutionConfiguration(
@@ -605,18 +605,6 @@ class TypeSafeConfigNodeManager:
         return value
 
 
-class LegacyAdapter:
-    """既存システムとの互換性維持
-
-    統合対象:
-    - ExecutionContextAdapter（最小限）
-    - BackwardCompatibilityLayer
-    """
-
-    def __init__(self, config_manager: TypeSafeConfigNodeManager):
-        self.config_manager = config_manager
-
-    def to_execution_context_adapter(self):
-        """既存APIとの互換性"""
-        # 既存のExecutionContextAdapterインターフェースを実装
-        raise NotImplementedError("Legacy adapter implementation pending")
+# LegacyAdapter クラスは削除されました。
+# TypedExecutionConfigurationとTypeSafeConfigNodeManagerが
+# すべての機能を直接提供します。

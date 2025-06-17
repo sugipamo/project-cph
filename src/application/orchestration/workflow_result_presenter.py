@@ -26,7 +26,11 @@ class WorkflowResultPresenter:
             result: Workflow execution result to present
         """
         # Show execution settings if enabled
-        if self.output_config.get('show_execution_settings', True):
+        if 'show_execution_settings' in self.output_config:
+            if self.output_config['show_execution_settings']:
+                self._present_execution_settings()
+        else:
+            # デフォルト値: True
             self._present_execution_settings()
 
         # Handle errors
@@ -137,7 +141,7 @@ class WorkflowResultPresenter:
             self._present_stdout(step_result)
 
         # Show errors
-        if config.get('show_stderr', True) and not step_result.success:
+        if (config.get('show_stderr', True)) and not step_result.success:
             self._present_stderr(step_result)
 
         # Show return code if available
@@ -166,7 +170,7 @@ class WorkflowResultPresenter:
     ) -> None:
         """Present request information for a step"""
         # Show request type
-        if config.get('show_type', True) and hasattr(request, 'operation_type'):
+        if (config.get('show_type', True)) and hasattr(request, 'operation_type'):
             # FileRequestの場合はより具体的なfile operation typeを表示
             if str(request.operation_type) == "OperationType.FILE" and hasattr(request, 'op'):
                 print(f"  タイプ: FILE.{request.op.name}")
@@ -174,7 +178,7 @@ class WorkflowResultPresenter:
                 print(f"  タイプ: {request.operation_type}")
 
         # Show command
-        if config.get('show_command', True) and hasattr(request, 'cmd') and request.cmd:
+        if (config.get('show_command', True)) and hasattr(request, 'cmd') and request.cmd:
             cmd_str = str(request.cmd)
             try:
                 if len(cmd_str) > max_command_length:

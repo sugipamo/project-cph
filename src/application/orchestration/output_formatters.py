@@ -6,24 +6,24 @@ from typing import Optional
 
 
 @dataclass(frozen=True)
-class SimpleOutputData:
-    """シンプルな出力データ構造"""
+class OutputData:
+    """出力データ構造"""
     stdout: Optional[str] = None
     stderr: Optional[str] = None
 
 
-def extract_output_data(result) -> SimpleOutputData:
+def extract_output_data(result) -> OutputData:
     """結果オブジェクトから出力データを抽出する純粋関数
 
     Args:
         result: 実行結果オブジェクト
 
     Returns:
-        SimpleOutputData: 抽出された出力データ
+        OutputData: 抽出された出力データ
     """
     stdout = getattr(result, 'stdout', None)
     stderr = getattr(result, 'stderr', None)
-    return SimpleOutputData(stdout=stdout, stderr=stderr)
+    return OutputData(stdout=stdout, stderr=stderr)
 
 
 def should_show_output(request) -> bool:
@@ -38,7 +38,7 @@ def should_show_output(request) -> bool:
     return hasattr(request, 'show_output') and bool(request.show_output)
 
 
-def format_output_content(output_data: SimpleOutputData) -> str:
+def format_output_content(output_data: OutputData) -> str:
     """出力データから実際の出力テキストを生成する純粋関数
 
     Args:
@@ -58,7 +58,7 @@ def format_output_content(output_data: SimpleOutputData) -> str:
     return "".join(parts)
 
 
-def decide_output_action(show_output: bool, output_data: SimpleOutputData) -> tuple[bool, str]:
+def decide_output_action(show_output: bool, output_data: OutputData) -> tuple[bool, str]:
     """出力アクションを決定する純粋関数
 
     Args:

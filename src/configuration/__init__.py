@@ -7,7 +7,8 @@
 - ConfigManager: 設定管理の中核（型安全・高性能）
 - ExecutionConfig: 実行設定とパス管理
 - OutputConfig: 出力設定
-- LegacyAdapter: 旧システムとの互換性
+
+移行完了により、レガシーアダプターは削除されました。
 """
 
 from .config_manager import (
