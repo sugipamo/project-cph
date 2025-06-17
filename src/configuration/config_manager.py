@@ -45,7 +45,7 @@ class TypedExecutionConfiguration:
             setattr(self, key, value)
 
         # ConfigNodeへの参照を保持（テンプレート解決用）
-        self._root_node = kwargs.get('_root_node')
+        self._root_node = kwargs['_root_node'] if '_root_node' in kwargs else None
 
     def resolve_formatted_string(self, template: str) -> str:
         """テンプレート文字列を解決"""

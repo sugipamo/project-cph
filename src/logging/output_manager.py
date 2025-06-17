@@ -1,10 +1,11 @@
 from typing import List, Optional, Union
 
 from .format_info import FormatInfo
+from .interfaces.output_manager_interface import OutputManagerInterface
 from .types import LogEntry, LogLevel
 
 
-class OutputManager:
+class OutputManager(OutputManagerInterface):
     def __init__(
         self,
         name: Optional[str] = None,
@@ -14,14 +15,14 @@ class OutputManager:
         self.level = level
         self.entries: List[LogEntry] = []
 
-    def add(self, item: Union[str, 'OutputManager'], level: LogLevel = LogLevel.INFO, formatinfo: Optional[FormatInfo] = None, realtime: bool = False):
-        entry = LogEntry(item, level, formatinfo=formatinfo)
+    def add(self, message: Union[str, 'OutputManager'], level: LogLevel = LogLevel.INFO, formatinfo: Optional[FormatInfo] = None, realtime: bool = False):
+        entry = LogEntry(message, level, formatinfo=formatinfo)
         self.entries.append(entry)
         if realtime:
-            if isinstance(item, OutputManager):
-                print(item.output())
+            if isinstance(message, OutputManager):
+                print(message.output())
             else:
-                print(item)
+                print(message)
 
     def _should_log(self, level: LogLevel):
         return level.value >= self.level.value

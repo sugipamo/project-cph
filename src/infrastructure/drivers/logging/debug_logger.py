@@ -25,9 +25,9 @@ class DebugLogger:
             logger_config: Debug configuration from env.json
         """
         self.config = logger_config or {}
-        self.enabled = self.config.get("enabled", False)
-        self.level = DebugLevel(self.config.get("level", "minimal"))
-        self.format_config = self.config.get("format", {})
+        self.enabled = "enabled" in self.config and self.config["enabled"] or False
+        self.level = DebugLevel(self.config["level"] if "level" in self.config else "minimal")
+        self.format_config = self.config["format"] if "format" in self.config else {}
 
         # Default emoji/icon mappings
         self.default_icons = {
@@ -49,21 +49,21 @@ class DebugLogger:
         }
 
         # Merge with user-provided icons
-        self.icons = {**self.default_icons, **self.format_config.get("icons", {})}
+        self.icons = {**self.default_icons, **(self.format_config["icons"] if "icons" in self.format_config else {})}
 
     def log_step_start(self, step_name: str, step_type: str, **kwargs):
         """Log step execution start"""
         if not self.enabled:
             return
 
-        icon = self.icons.get("start", "🚀")
+        icon = self.icons["start"] if "start" in self.icons else "🚀"
         print(f"\n{icon} 実行開始: {step_name}")
 
         # Log step details based on level
         if self.level in [DebugLevel.MINIMAL, DebugLevel.DETAILED]:
             self._log_step_details(step_type, **kwargs)
 
-        executing_icon = self.icons.get("executing", "⏱️")
+        executing_icon = self.icons["executing"] if "executing" in self.icons else "⏱️"
         print(f"  {executing_icon}  実行中...")
 
     def log_step_success(self, step_name: str, message: str = ""):
@@ -71,7 +71,7 @@ class DebugLogger:
         if not self.enabled:
             return
 
-        icon = self.icons.get("success", "✅")
+        icon = self.icons["success"] if "success" in self.icons else "✅"
         success_message = f"{icon} 完了: {step_name}"
         if message:
             success_message += f" - {message}"
@@ -83,10 +83,10 @@ class DebugLogger:
             return
 
         if allow_failure:
-            icon = self.icons.get("warning", "⚠️")
+            icon = self.icons["warning"] if "warning" in self.icons else "⚠️"
             status = "失敗許可"
         else:
-            icon = self.icons.get("failure", "❌")
+            icon = self.icons["failure"] if "failure" in self.icons else "❌"
             status = "失敗"
 
         print(f"{icon} {status}: {step_name}")
@@ -98,7 +98,7 @@ class DebugLogger:
         if not self.enabled:
             return
 
-        icon = self.icons.get("start", "🚀")
+        icon = self.icons["start"] if "start" in self.icons else "🚀"
         print(f"\n{icon} 環境準備開始: {task_count}タスク")
 
     def log_workflow_start(self, step_count: int, parallel: bool = False):
@@ -106,7 +106,7 @@ class DebugLogger:
         if not self.enabled:
             return
 
-        icon = self.icons.get("start", "🚀")
+        icon = self.icons["start"] if "start" in self.icons else "🚀"
         mode = "並列" if parallel else "順次"
         print(f"\n{icon} ワークフロー実行開始: {step_count}ステップ ({mode}実行)")
 
@@ -117,20 +117,20 @@ class DebugLogger:
         if not env_logging_config:
             return
 
-        enabled = env_logging_config.get("enabled", False)
+        enabled = "enabled" in env_logging_config and env_logging_config["enabled"] or False
         if not enabled:
             return
 
         # Check if all required flags are False
-        show_language = env_logging_config.get("show_language_name", True)
-        show_contest = env_logging_config.get("show_contest_name", True)
-        show_problem = env_logging_config.get("show_problem_name", True)
-        show_env_type = env_logging_config.get("show_env_type", True)
+        show_language = "show_language_name" in env_logging_config and env_logging_config["show_language_name"] or True
+        show_contest = "show_contest_name" in env_logging_config and env_logging_config["show_contest_name"] or True
+        show_problem = "show_problem_name" in env_logging_config and env_logging_config["show_problem_name"] or True
+        show_env_type = "show_env_type" in env_logging_config and env_logging_config["show_env_type"] or True
 
         if not any([show_language, show_contest, show_problem, show_env_type]):
             return
 
-        icon = self.icons.get("start", "🚀")
+        icon = self.icons["start"] if "start" in self.icons else "🚀"
         env_info_parts = []
 
         if show_language and language_name:
@@ -172,7 +172,7 @@ class DebugLogger:
 
         # Common properties
         if "allow_failure" in kwargs:
-            failure_icon = self.icons.get("warning", "⚠️")
+            failure_icon = self.icons["warning"] if "warning" in self.icons else "⚠️"
             print(f"  {failure_icon}  失敗許可: {kwargs['allow_failure']}")
 
         if "show_output" in kwargs:
@@ -182,19 +182,19 @@ class DebugLogger:
         """Get appropriate icon for step type"""
         if step_type.startswith("FILE."):
             file_op = step_type.split(".", 1)[1].lower()
-            return self.icons.get(f"file_{file_op}", self.icons.get("file_mkdir", "📁"))
+            return self.icons[f"file_{file_op}"] if f"file_{file_op}" in self.icons else (self.icons["file_mkdir"] if "file_mkdir" in self.icons else "📁")
         if "SHELL" in step_type:
-            return self.icons.get("shell", "🔧")
+            return self.icons["shell"] if "shell" in self.icons else "🔧"
         if "PYTHON" in step_type:
-            return self.icons.get("python", "🐍")
+            return self.icons["python"] if "python" in self.icons else "🐍"
         if "DOCKER" in step_type:
-            return self.icons.get("docker", "🐳")
+            return self.icons["docker"] if "docker" in self.icons else "🐳"
         if "TEST" in step_type:
-            return self.icons.get("test", "🧪")
+            return self.icons["test"] if "test" in self.icons else "🧪"
         if "BUILD" in step_type:
-            return self.icons.get("build", "🔨")
+            return self.icons["build"] if "build" in self.icons else "🔨"
         if "RESULT" in step_type:
-            return self.icons.get("result", "📊")
+            return self.icons["result"] if "result" in self.icons else "📊"
         return "🔧"
 
     def is_enabled(self) -> bool:

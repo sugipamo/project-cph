@@ -72,25 +72,25 @@ class SystemConsoleLogger(ConsoleLogger):
     def debug(self, message: str, **kwargs) -> None:
         """デバッグメッセージ出力（副作用）"""
         if self.enabled and self._should_log(LogLevel.DEBUG):
-            icon = self.icons.get("debug", "🔍")
+            icon = self.icons["debug"] if "debug" in self.icons else "🔍"
             print(f"{icon} DEBUG: {message}")
 
     def info(self, message: str, **kwargs) -> None:
         """情報メッセージ出力（副作用）"""
         if self.enabled and self._should_log(LogLevel.INFO):
-            icon = self.icons.get("info", "ℹ️")
+            icon = self.icons["info"] if "info" in self.icons else "ℹ️"
             print(f"{icon} {message}")
 
     def warning(self, message: str, **kwargs) -> None:
         """警告メッセージ出力（副作用）"""
         if self.enabled and self._should_log(LogLevel.WARNING):
-            icon = self.icons.get("warning", "⚠️")
+            icon = self.icons["warning"] if "warning" in self.icons else "⚠️"
             print(f"{icon} WARNING: {message}")
 
     def error(self, message: str, **kwargs) -> None:
         """エラーメッセージ出力（副作用）"""
         if self.enabled and self._should_log(LogLevel.ERROR):
-            icon = self.icons.get("error", "💥")
+            icon = self.icons["error"] if "error" in self.icons else "💥"
             print(f"{icon} ERROR: {message}")
 
     def step_start(self, step_name: str, **kwargs) -> None:
@@ -98,10 +98,10 @@ class SystemConsoleLogger(ConsoleLogger):
         if not self.enabled:
             return
 
-        icon = self.icons.get("start", "🚀")
+        icon = self.icons["start"] if "start" in self.icons else "🚀"
         print(f"\n{icon} 実行開始: {step_name}")
 
-        executing_icon = self.icons.get("executing", "⏱️")
+        executing_icon = self.icons["executing"] if "executing" in self.icons else "⏱️"
         print(f"  {executing_icon} 実行中...")
 
     def step_success(self, step_name: str, message: str = "") -> None:
@@ -109,7 +109,7 @@ class SystemConsoleLogger(ConsoleLogger):
         if not self.enabled:
             return
 
-        icon = self.icons.get("success", "✅")
+        icon = self.icons["success"] if "success" in self.icons else "✅"
         success_message = f"{icon} 完了: {step_name}"
         if message:
             success_message += f" - {message}"
@@ -121,10 +121,10 @@ class SystemConsoleLogger(ConsoleLogger):
             return
 
         if allow_failure:
-            icon = self.icons.get("warning", "⚠️")
+            icon = self.icons["warning"] if "warning" in self.icons else "⚠️"
             status = "失敗許可"
         else:
-            icon = self.icons.get("failure", "❌")
+            icon = self.icons["failure"] if "failure" in self.icons else "❌"
             status = "失敗"
 
         print(f"{icon} {status}: {step_name}")

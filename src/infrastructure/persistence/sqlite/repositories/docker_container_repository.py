@@ -189,7 +189,7 @@ class DockerContainerRepository(DatabaseRepositoryFoundation):
 
         # Parse JSON fields
         for field in ['volumes', 'environment', 'ports']:
-            if result.get(field):
+            if field in result and result[field]:
                 try:
                     result[field] = json.loads(result[field])
                 except json.JSONDecodeError:
@@ -235,7 +235,7 @@ class DockerContainerRepository(DatabaseRepositoryFoundation):
         events = []
         for row in cursor.fetchall():
             event = dict(row)
-            if event.get('event_data'):
+            if 'event_data' in event and event['event_data']:
                 try:
                     event['event_data'] = json.loads(event['event_data'])
                 except json.JSONDecodeError:

@@ -73,9 +73,9 @@ class ContestManager:
         current_context = self.config_loader.get_current_context()
 
         # Apply fallback logic for NULL values
-        language = current_context.get("language")
-        contest_name = current_context.get("contest_name")
-        problem_name = current_context.get("problem_name")
+        language = current_context["language"] if "language" in current_context else None
+        contest_name = current_context["contest_name"] if "contest_name" in current_context else None
+        problem_name = current_context["problem_name"] if "problem_name" in current_context else None
 
         # If any value is NULL, get latest non-NULL from history
         if language is None:
@@ -121,7 +121,7 @@ class ContestManager:
         # Fallback: check system config for any stored value
         try:
             user_configs = self.config_loader.config_repo.get_user_specified_configs()
-            return user_configs.get(key)
+            return user_configs[key] if key in user_configs else None
         except Exception:
             return None
 
@@ -138,9 +138,9 @@ class ContestManager:
         """
         current_state = self.get_current_contest_state()
 
-        current_language = current_state.get("language_name")
-        current_contest = current_state.get("contest_name")
-        current_problem = current_state.get("problem_name")
+        current_language = current_state["language_name"] if "language_name" in current_state else None
+        current_contest = current_state["contest_name"] if "contest_name" in current_state else None
+        current_problem = current_state["problem_name"] if "problem_name" in current_state else None
 
         # If any of the current values differ from new values, backup is needed
         return (current_language != new_language or
@@ -156,9 +156,9 @@ class ContestManager:
         Returns:
             True if backup successful, False otherwise
         """
-        language = current_state.get("language_name")
-        contest = current_state.get("contest_name")
-        problem = current_state.get("problem_name")
+        language = current_state["language_name"] if "language_name" in current_state else None
+        contest = current_state["contest_name"] if "contest_name" in current_state else None
+        problem = current_state["problem_name"] if "problem_name" in current_state else None
 
         # Skip backup if essential information is missing
         if not all([language, contest, problem]):
@@ -166,12 +166,12 @@ class ContestManager:
 
         try:
             # Get paths from env.json
-            shared_config = self.env_json.get("shared", {})
-            paths = shared_config.get("paths", {})
+            shared_config = self.env_json["shared"] if "shared" in self.env_json else {}
+            paths = shared_config["paths"] if "paths" in shared_config else {}
 
-            contest_current_path = paths.get("contest_current_path", "./contest_current")
-            contest_stock_path_template = paths.get("contest_stock_path",
-                                                   "./contest_stock/{language_name}/{contest_name}/{problem_name}")
+            contest_current_path = paths["contest_current_path"] if "contest_current_path" in paths else "./contest_current"
+            contest_stock_path_template = paths["contest_stock_path"] if "contest_stock_path" in paths else \
+                                                   "./contest_stock/{language_name}/{contest_name}/{problem_name}"
 
             # Resolve contest_stock path
             contest_stock_path = contest_stock_path_template.format(
@@ -435,7 +435,7 @@ class ContestManager:
 
                 if backup_success:
                     print("📦 Backed up contest_current to contest_stock")
-                    print(f"   From: {current_state.get('language_name')} {current_state.get('contest_name')} {current_state.get('problem_name')}")
+                    print(f"   From: {current_state['language_name'] if 'language_name' in current_state else None} {current_state['contest_name'] if 'contest_name' in current_state else None} {current_state['problem_name'] if 'problem_name' in current_state else None}")
                     print(f"   To: {new_language} {new_contest} {new_problem}")
                 else:
                     print("⚠️ Failed to backup contest_current")
@@ -460,12 +460,12 @@ class ContestManager:
         """
         try:
             # Get paths from env.json
-            shared_config = self.env_json.get("shared", {})
-            paths = shared_config.get("paths", {})
+            shared_config = self.env_json["shared"] if "shared" in self.env_json else {}
+            paths = shared_config["paths"] if "paths" in shared_config else {}
 
-            contest_current_path = paths.get("contest_current_path", "./contest_current")
-            contest_stock_path_template = paths.get("contest_stock_path",
-                                                   "./contest_stock/{language_name}/{contest_name}/{problem_name}")
+            contest_current_path = paths["contest_current_path"] if "contest_current_path" in paths else "./contest_current"
+            contest_stock_path_template = paths["contest_stock_path"] if "contest_stock_path" in paths else \
+                                                   "./contest_stock/{language_name}/{contest_name}/{problem_name}"
 
             # Resolve contest_stock path
             contest_stock_path = contest_stock_path_template.format(
@@ -509,11 +509,11 @@ class ContestManager:
         """
         try:
             # Get paths from env.json
-            shared_config = self.env_json.get("shared", {})
-            paths = shared_config.get("paths", {})
+            shared_config = self.env_json["shared"] if "shared" in self.env_json else {}
+            paths = shared_config["paths"] if "paths" in shared_config else {}
 
-            contest_current_path = paths.get("contest_current_path", "./contest_current")
-            contest_template_path = paths.get("contest_template_path", "./contest_template")
+            contest_current_path = paths["contest_current_path"] if "contest_current_path" in paths else "./contest_current"
+            contest_template_path = paths["contest_template_path"] if "contest_template_path" in paths else "./contest_template"
 
             # Language-specific template path
             template_language_path = os.path.join(contest_template_path, language)

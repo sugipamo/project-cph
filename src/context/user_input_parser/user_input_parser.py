@@ -50,12 +50,12 @@ def _load_current_context_sqlite(infrastructure):
     config = config_loader.load_config()
 
     return {
-        "command": context.get("command"),
-        "language": context.get("language"),
-        "env_type": context.get("env_type"),
-        "contest_name": context.get("contest_name"),
-        "problem_name": context.get("problem_name"),
-        "env_json": config.get("env_json"),
+        "command": context["command"] if "command" in context else None,
+        "language": context["language"] if "language" in context else None,
+        "env_type": context["env_type"] if "env_type" in context else None,
+        "contest_name": context["contest_name"] if "contest_name" in context else None,
+        "problem_name": context["problem_name"] if "problem_name" in context else None,
+        "env_json": config["env_json"] if "env_json" in config else None,
     }
 
 
@@ -66,15 +66,15 @@ def _save_current_context_sqlite(infrastructure, context_info):
 
     # 実行コンテキストを更新
     config_loader.update_current_context(
-        command=context_info.get("command"),
-        language=context_info.get("language"),
-        env_type=context_info.get("env_type"),
-        contest_name=context_info.get("contest_name"),
-        problem_name=context_info.get("problem_name")
+        command=context_info["command"] if "command" in context_info else None,
+        language=context_info["language"] if "language" in context_info else None,
+        env_type=context_info["env_type"] if "env_type" in context_info else None,
+        contest_name=context_info["contest_name"] if "contest_name" in context_info else None,
+        problem_name=context_info["problem_name"] if "problem_name" in context_info else None
     )
 
     # env_jsonがある場合は保存
-    if context_info.get("env_json"):
+    if "env_json" in context_info and context_info["env_json"]:
         config_loader.save_config("env_json", context_info["env_json"], "environment")
 
 
