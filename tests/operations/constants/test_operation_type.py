@@ -74,7 +74,7 @@ class TestDirectoryName:
         assert DirectoryName.TEMPLATE.value == "template"
         assert DirectoryName.STOCK.value == "stock"
         assert DirectoryName.CURRENT.value == "current"
-        assert DirectoryName.WORKSPACE.value == "workspace"
+        assert DirectoryName.LOCAL_WORKSPACE.value == "local_workspace"
         assert DirectoryName.CONTEST_ENV.value == "contest_env"
 
     def test_directory_name_count(self):
