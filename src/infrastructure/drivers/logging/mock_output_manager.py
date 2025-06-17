@@ -9,7 +9,7 @@ from .types import LogEntry, LogLevel
 
 class MockOutputManager(OutputManagerInterface):
     """Mock implementation of OutputManagerInterface for testing."""
-    
+
     def __init__(
         self,
         name: Optional[str] = None,
@@ -31,7 +31,7 @@ class MockOutputManager(OutputManagerInterface):
         """Add entry to mock (no side effects)."""
         entry = LogEntry(message, level, formatinfo=formatinfo)
         self.entries.append(entry)
-        
+
         if realtime:
             output_text = message.output() if isinstance(message, OutputManagerInterface) else str(message)
             self.captured_outputs.append(output_text)
@@ -52,7 +52,7 @@ class MockOutputManager(OutputManagerInterface):
                     else:
                         result.append(entry)
             return result
-            
+
         result = collect(self.entries)
         if sort:
             result.sort(key=lambda e: e.timestamp)

@@ -306,7 +306,7 @@ class TestTypeSafeConfigNodeManager:
         assert config.language == "python"
         assert config.env_type == "local"
         assert config.command_type == "open"
-        assert isinstance(config.workspace_path, Path)
+        assert isinstance(config.local_workspace_path, Path)
         assert config.timeout_seconds == 30  # timeout.default
         assert config.language_id == "4006"
         assert config.source_file_name == "main.py"
@@ -399,7 +399,7 @@ class TestTypedExecutionConfiguration:
         assert config.contest_name == "abc300"
         assert config.problem_name == "a"
         assert config.language == "python"
-        assert isinstance(config.workspace_path, Path)
+        assert isinstance(config.local_workspace_path, Path)
         assert config.timeout_seconds == 30
         assert config.debug_mode is False
 

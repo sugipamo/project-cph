@@ -25,11 +25,12 @@ class DIKey(Enum):
     UNIFIED_DRIVER = "unified_driver"
     EXECUTION_CONTROLLER = "execution_controller"
     OUTPUT_MANAGER = "output_manager"
-    
+
     # Logging
     LOGGING_OUTPUT_MANAGER = "logging_output_manager"
     APPLICATION_LOGGER = "application_logger"
     WORKFLOW_LOGGER = "workflow_logger"
+    UNIFIED_LOGGER = "unified_logger"
 
     # Environment and Factory
     ENVIRONMENT_MANAGER = "environment_manager"
@@ -65,7 +66,7 @@ class DIContainer:
         if key in self._overrides:
             provider = self._overrides[key]
         else:
-            provider = self._providers[key] if key in self._providers else None
+            provider = self._providers.get(key, None)
 
         if provider is None:
             raise ValueError(f"{key} is not registered")

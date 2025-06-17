@@ -45,7 +45,7 @@ class TypedExecutionConfiguration:
             setattr(self, key, value)
 
         # ConfigNodeへの参照を保持（テンプレート解決用）
-        self._root_node = kwargs['_root_node'] if '_root_node' in kwargs else None
+        self._root_node = kwargs.get('_root_node')
 
     def resolve_formatted_string(self, template: str) -> str:
         """テンプレート文字列を解決"""
@@ -154,6 +154,28 @@ class TypedExecutionConfiguration:
     def dockerfile_resolver(self, value):
         """dockerfile_resolverのsetter"""
         self._dockerfile_resolver = value
+
+    def get_docker_names(self) -> dict[str, str]:
+        """Generate Docker names using resolved Dockerfile content
+
+        Returns:
+            Dictionary with image_name, container_name, oj_image_name, oj_container_name
+        """
+        if hasattr(self, 'dockerfile_resolver') and self.dockerfile_resolver:
+            return self.dockerfile_resolver.get_docker_names(self.language)
+        # Fallback: generate default names when no dockerfile_resolver
+        from src.infrastructure.drivers.docker.utils.docker_naming import (
+            get_docker_container_name,
+            get_docker_image_name,
+            get_oj_container_name,
+            get_oj_image_name,
+        )
+        return {
+            "image_name": get_docker_image_name(self.language, None),
+            "container_name": get_docker_container_name(self.language, None),
+            "oj_image_name": get_oj_image_name(None),
+            "oj_container_name": get_oj_container_name(None)
+        }
 
 
 class FileLoader:

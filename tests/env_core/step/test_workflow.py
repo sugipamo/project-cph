@@ -186,7 +186,8 @@ class TestCreateStepContextFromEnvContext:
         env_context.language = "python"
         env_context.env_type = "docker"
         env_context.command_type = "build"
-        env_context.workspace_path = "/workspace"
+        env_context.local_workspace_path = "/workspace"
+        env_context.workspace_path = "/workspace"  # Keep for backward compatibility
         env_context.contest_current_path = "/current"
         env_context.contest_stock_path = "/stock"
         env_context.contest_template_path = "/template"
@@ -204,7 +205,7 @@ class TestCreateStepContextFromEnvContext:
         assert result.language == "python"
         assert result.env_type == "docker"
         assert result.command_type == "build"
-        assert result.workspace_path == "/workspace"
+        assert result.local_workspace_path == "/workspace"
         assert result.contest_current_path == "/current"
         assert result.contest_stock_path == "/stock"
         assert result.contest_template_path == "/template"
@@ -214,22 +215,23 @@ class TestCreateStepContextFromEnvContext:
 
     def test_create_step_context_missing_attributes(self):
         """Test creating StepContext with missing optional attributes"""
-        # Setup
-        env_context = Mock()
-        env_context.contest_name = "abc123"
-        env_context.problem_name = "a"
-        env_context.language = "python"
-        env_context.env_type = "docker"
-        env_context.command_type = "build"
-        # Remove optional attributes
-        delattr(env_context, 'workspace_path')
-        delattr(env_context, 'contest_stock_path')
+        # Setup - use a simple object to avoid Mock's auto-attribute creation
+        class MinimalContext:
+            def __init__(self):
+                self.contest_name = "abc123"
+                self.problem_name = "a"
+                self.language = "python"
+                self.env_type = "docker"
+                self.command_type = "build"
+                # Don't add optional attributes
+
+        env_context = MinimalContext()
 
         # Execute
         result = create_step_context_from_env_context(env_context)
 
         # Verify
-        assert result.workspace_path == ''
+        assert result.local_workspace_path == ''
         assert result.contest_stock_path is None
 
 

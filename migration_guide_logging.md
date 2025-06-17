@@ -102,9 +102,13 @@ workflow_logger = container.resolve(DIKey.WORKFLOW_LOGGER)
 - [x] ApplicationLoggerAdapter実装
 - [x] WorkflowLoggerAdapter実装  
 - [x] DIコンテナ統合
-- [ ] 既存4ファイルのimport変更
+- [x] UnifiedLogger実装（全機能統合）
+- [x] 既存4ファイルのimport変更
+- [x] 旧infrastructure/drivers/logging削除
+- [x] src/logging → infrastructure/drivers/logging移動
+- [x] インポートパス一括更新
+- [x] 新しいテスト作成
 - [ ] テスト実行・検証
-- [ ] 旧infrastructure/drivers/logging削除
 
 ### 🎯 **最終目標**
 

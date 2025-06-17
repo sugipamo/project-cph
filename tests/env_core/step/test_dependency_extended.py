@@ -24,7 +24,7 @@ class TestGeneratePreparationSteps:
             language="python",
             env_type="local",
             command_type="test",
-            workspace_path="./workspace",
+            local_workspace_path="./workspace",
             contest_current_path="./contest_current"
         )
         self.existing_dirs = set()
@@ -388,7 +388,7 @@ class TestResolveDependencies:
             language="python",
             env_type="local",
             command_type="test",
-            workspace_path="./workspace",
+            local_workspace_path="./workspace",
             contest_current_path="./contest_current"
         )
 

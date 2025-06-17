@@ -21,7 +21,7 @@ def test_context():
         language='python',
         env_type='local',
         command_type='open',
-        workspace_path='./workspace',
+        local_workspace_path='./workspace',
         contest_current_path='./contest_current'
     )
 

@@ -7,7 +7,8 @@ from typing import Optional
 from src.application.factories.unified_request_factory import create_request
 from src.application.orchestration.unified_driver import UnifiedDriver
 from src.configuration.config_manager import TypedExecutionConfiguration
-from src.infrastructure.drivers.logging.debug_logger import DebugLogger
+
+# DebugLogger functionality now handled by src/logging UnifiedLogger
 from src.operations.constants.request_types import RequestType
 from src.workflow.step.step import Step, StepType
 from src.workflow.workflow_result import WorkflowExecutionResult
@@ -179,11 +180,12 @@ class WorkflowExecutionService:
         if not (env_logging_config.get('enabled', False)):
             return
 
-        # Create a basic debug logger instance just for environment logging
-        debug_logger = DebugLogger({})
+        # Use unified logger from infrastructure container for environment logging
+        from src.infrastructure.di_container import DIKey
+        unified_logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
 
         # Log environment information
-        debug_logger.log_environment_info(
+        unified_logger.log_environment_info(
             language_name=self.context.language,
             contest_name=self.context.contest_name,
             problem_name=self.context.problem_name,

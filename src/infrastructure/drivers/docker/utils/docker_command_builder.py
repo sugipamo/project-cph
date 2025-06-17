@@ -28,13 +28,13 @@ def validate_docker_image_name(image_name: str) -> bool:
 
 def _add_docker_run_flags(cmd: list[str], options: dict[str, Any]) -> None:
     """Add basic docker run flags to command."""
-    if "detach" in options and options["detach"] or False:
+    if options.get("detach") or False:
         cmd.append("-d")
-    if "interactive" in options and options["interactive"] or False:
+    if options.get("interactive") or False:
         cmd.append("-i")
-    if "tty" in options and options["tty"] or False:
+    if options.get("tty") or False:
         cmd.append("-t")
-    if "remove" in options and options["remove"] or False:
+    if options.get("remove") or False:
         cmd.append("--rm")
 
 
@@ -175,11 +175,11 @@ def build_docker_build_command(tag: Optional[str] = None, dockerfile_text: Optio
         if "build_args" in options:
             for arg in options["build_args"]:
                 cmd.extend(["--build-arg", arg])
-        if "no_cache" in options and options["no_cache"]:
+        if options.get("no_cache"):
             cmd.append("--no-cache")
-        if "pull" in options and options["pull"]:
+        if options.get("pull"):
             cmd.append("--pull")
-        if "quiet" in options and options["quiet"]:
+        if options.get("quiet"):
             cmd.append("-q")
 
     # If dockerfile_text is provided, read from stdin

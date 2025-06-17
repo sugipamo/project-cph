@@ -2,7 +2,8 @@
 from typing import Any, Dict
 
 from src.configuration.config_manager import TypeSafeConfigNodeManager
-from src.infrastructure.drivers.logging import ConsoleLogger, SystemConsoleLogger
+
+# Console logging now handled by src/logging
 from src.infrastructure.providers import (
     EnvironmentProvider,
     FileProvider,
@@ -50,15 +51,14 @@ class ProviderFactory:
         self._providers['registry'] = SystemRegistryProvider()
 
 
-        # コンソールロガー
-        self._providers['console_logger'] = SystemConsoleLogger()
+        # コンソールロガー - 廃止予定 (DIコンテナのUNIFIED_LOGGERを使用)
 
         # 統合設定マネージャー
         self._providers['config_manager'] = TypeSafeConfigNodeManager()
 
     def _initialize_mock_providers(self) -> None:
         """モックプロバイダーを初期化（テスト用）"""
-        from src.infrastructure.drivers.logging import MockConsoleLogger
+        # Mock console logging now handled by src/logging
         from src.infrastructure.providers import (
             MockEnvironmentProvider,
             MockFileProvider,
@@ -73,7 +73,7 @@ class ProviderFactory:
         self._providers['environment'] = MockEnvironmentProvider()
         self._providers['working_directory'] = MockWorkingDirectoryProvider()
         self._providers['registry'] = MockRegistryProvider()
-        self._providers['console_logger'] = MockConsoleLogger()
+        # console_logger - 廃止予定 (DIコンテナのUNIFIED_LOGGERを使用)
 
         # モック設定マネージャー
         self._providers['config_manager'] = TypeSafeConfigNodeManager()
@@ -99,9 +99,12 @@ class ProviderFactory:
         return self._providers['registry']
 
 
-    def get_console_logger(self) -> ConsoleLogger:
-        """コンソールロガーを取得"""
-        return self._providers['console_logger']
+    def get_console_logger(self):
+        """コンソールロガーを取得 - 廃止予定
+
+        Note: DIコンテナのDIKey.UNIFIED_LOGGERを使用してください
+        """
+        raise DeprecationWarning("get_console_logger is deprecated. Use DIContainer.resolve(DIKey.UNIFIED_LOGGER) instead.")
 
     def get_config_manager(self) -> TypeSafeConfigNodeManager:
         """統合設定マネージャーを取得"""
@@ -139,6 +142,9 @@ def get_environment_provider() -> EnvironmentProvider:
     return get_provider_factory().get_environment_provider()
 
 
-def get_console_logger() -> ConsoleLogger:
-    """コンソールロガーを取得"""
-    return get_provider_factory().get_console_logger()
+def get_console_logger():
+    """コンソールロガーを取得 - 廃止予定
+
+    Note: DIコンテナのDIKey.UNIFIED_LOGGERを使用してください
+    """
+    raise DeprecationWarning("get_console_logger is deprecated. Use DIContainer.resolve(DIKey.UNIFIED_LOGGER) instead.")

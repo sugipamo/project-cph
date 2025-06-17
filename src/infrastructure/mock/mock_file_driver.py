@@ -29,11 +29,11 @@ class MockFileDriver(FileDriver):
     def _record_operation(self, operation: str, *args) -> None:
         """Record operation and count calls"""
         self.operations.append((operation, *args))
-        self.call_count[operation] = (self.call_count[operation] if operation in self.call_count else 0) + 1
+        self.call_count[operation] = (self.call_count.get(operation, 0)) + 1
 
     def assert_operation_called(self, operation: str, times: Optional[int] = None) -> None:
         """Verify that specified operation was called"""
-        count = self.call_count[operation] if operation in self.call_count else 0
+        count = self.call_count.get(operation, 0)
         if times is None:
             assert count > 0, f"Operation '{operation}' was not called"
         else:
@@ -70,7 +70,7 @@ class MockFileDriver(FileDriver):
         self._record_operation("copy", src_path, dst_path)
         if src_path in self.files:
             self.files.add(dst_path)
-            self.contents[dst_path] = self.contents[src_path] if src_path in self.contents else ""
+            self.contents[dst_path] = self.contents.get(src_path, "")
 
     def _exists_impl(self, path: Path) -> bool:
         # If already absolute path, don't add base_dir
@@ -144,7 +144,7 @@ class MockFileDriver(FileDriver):
             if mode.startswith('r'):
                 if path_obj not in self.files:
                     raise FileNotFoundError(f"MockFileDriver: {path_obj} does not exist")
-                content = self.contents[path_obj] if path_obj in self.contents else ""
+                content = self.contents.get(path_obj, "")
                 yield StringIO(content)
             elif mode.startswith('w'):
                 content_io = StringIO()
@@ -173,7 +173,7 @@ class MockFileDriver(FileDriver):
         if path not in self.files:
             raise FileNotFoundError(f"MockFileDriver: {path} does not exist")
         # Return mock hash based on file content
-        content = self.contents[path] if path in self.contents else ""
+        content = self.contents.get(path, "")
         return f"mock_hash_{hash(content)}"
 
     def list_files(self, base_dir: Path) -> list[Path]:

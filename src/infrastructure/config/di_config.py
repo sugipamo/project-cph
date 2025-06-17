@@ -97,36 +97,43 @@ def _create_environment_manager() -> Any:
     return EnvironmentManager()
 
 
-def _create_logger() -> Any:
-    """Lazy factory for logger."""
-    from src.infrastructure.drivers.logging.python_logger import PythonLogger
-    return PythonLogger()
+def _create_logger(container: Any) -> Any:
+    """Lazy factory for logger (backward compatibility)."""
+    # Use unified logger for compatibility with LoggerInterface
+    return _create_unified_logger(container)
 
 
 def _create_logging_output_manager() -> Any:
     """Lazy factory for logging output manager."""
-    from src.logging import OutputManager
+    from src.infrastructure.drivers.logging import OutputManager
     return OutputManager()
 
 
 def _create_mock_logging_output_manager() -> Any:
     """Lazy factory for mock logging output manager."""
-    from src.logging import MockOutputManager
+    from src.infrastructure.drivers.logging import MockOutputManager
     return MockOutputManager()
 
 
 def _create_application_logger_adapter(container: Any) -> Any:
     """Lazy factory for application logger adapter."""
-    from src.logging.adapters import ApplicationLoggerAdapter
+    from src.infrastructure.drivers.logging.adapters import ApplicationLoggerAdapter
     output_manager = container.resolve(DIKey.LOGGING_OUTPUT_MANAGER)
     return ApplicationLoggerAdapter(output_manager)
 
 
 def _create_workflow_logger_adapter(container: Any) -> Any:
     """Lazy factory for workflow logger adapter."""
-    from src.logging.adapters import WorkflowLoggerAdapter
+    from src.infrastructure.drivers.logging.adapters import WorkflowLoggerAdapter
     output_manager = container.resolve(DIKey.LOGGING_OUTPUT_MANAGER)
     return WorkflowLoggerAdapter(output_manager)
+
+
+def _create_unified_logger(container: Any) -> Any:
+    """Lazy factory for unified logger."""
+    from src.infrastructure.drivers.logging import UnifiedLogger
+    output_manager = container.resolve(DIKey.LOGGING_OUTPUT_MANAGER)
+    return UnifiedLogger(output_manager)
 
 
 def _create_filesystem() -> Any:
@@ -199,18 +206,19 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.UNIFIED_DRIVER, lambda: _create_unified_driver(container))
     container.register(DIKey.EXECUTION_CONTROLLER, _create_execution_controller)
     container.register(DIKey.OUTPUT_MANAGER, _create_output_manager)
-    
+
     # Register logging layer
     container.register(DIKey.LOGGING_OUTPUT_MANAGER, _create_logging_output_manager)
     container.register(DIKey.APPLICATION_LOGGER, lambda: _create_application_logger_adapter(container))
     container.register(DIKey.WORKFLOW_LOGGER, lambda: _create_workflow_logger_adapter(container))
+    container.register(DIKey.UNIFIED_LOGGER, lambda: _create_unified_logger(container))
 
     # Register environment and factory
     container.register(DIKey.ENVIRONMENT_MANAGER, _create_environment_manager)
     container.register(DIKey.UNIFIED_REQUEST_FACTORY, _create_request_factory)
 
     # Register interfaces
-    container.register("logger", _create_logger)
+    container.register("logger", lambda: _create_logger(container))
     container.register("filesystem", _create_filesystem)
 
     # Register simplified workspace management
@@ -252,8 +260,8 @@ def configure_test_dependencies(container: DIContainer) -> None:
         return FastSQLiteManager(":memory:", skip_migrations=False)
 
     def _create_mock_logger():
-        from tests.base.mock_logger import MockLogger
-        return MockLogger()
+        # Use unified logger with mock output manager for testing
+        return lambda: _create_unified_logger(container)
 
     def _create_mock_filesystem():
         from tests.base.mock_filesystem import MockFileSystem
@@ -277,18 +285,19 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register(DIKey.UNIFIED_DRIVER, lambda: _create_unified_driver(container))
     container.register(DIKey.EXECUTION_CONTROLLER, _create_execution_controller)
     container.register(DIKey.OUTPUT_MANAGER, _create_output_manager)
-    
+
     # Register test logging layer
     container.register(DIKey.LOGGING_OUTPUT_MANAGER, _create_mock_logging_output_manager)
     container.register(DIKey.APPLICATION_LOGGER, lambda: _create_application_logger_adapter(container))
     container.register(DIKey.WORKFLOW_LOGGER, lambda: _create_workflow_logger_adapter(container))
+    container.register(DIKey.UNIFIED_LOGGER, lambda: _create_unified_logger(container))
 
     # Register environment and factory
     container.register(DIKey.ENVIRONMENT_MANAGER, _create_environment_manager)
     container.register(DIKey.UNIFIED_REQUEST_FACTORY, _create_request_factory)
 
     # Register mock interfaces
-    container.register("logger", _create_mock_logger)
+    container.register("logger", _create_mock_logger())
     container.register("filesystem", _create_mock_filesystem)
 
     # Register simplified workspace management

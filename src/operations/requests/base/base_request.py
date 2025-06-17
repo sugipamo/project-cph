@@ -28,7 +28,7 @@ class OperationRequestFoundation(ABC):
 
     def _create_debug_info(self, debug_tag: Optional[str] = None) -> Optional[dict]:
         """Create debug information for request tracking."""
-        if ("CPH_DEBUG_REQUEST_INFO" in os.environ and os.environ["CPH_DEBUG_REQUEST_INFO"] or "1") != "1":
+        if (("CPH_DEBUG_REQUEST_INFO" in os.environ and os.environ["CPH_DEBUG_REQUEST_INFO"]) or "1") != "1":
             return None
         frame = inspect.stack()[3]
         return {

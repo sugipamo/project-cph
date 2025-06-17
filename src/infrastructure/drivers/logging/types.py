@@ -12,6 +12,7 @@ class LogLevel(Enum):
     INFO = auto()
     WARNING = auto()
     ERROR = auto()
+    CRITICAL = auto()
 
 class LogFormatType(Enum):
     RAW = auto()

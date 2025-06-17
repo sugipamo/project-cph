@@ -46,6 +46,13 @@ class TestDockerNamingIntegration:
         mock_resolver = MagicMock()
         mock_resolver.dockerfile = "FROM rust:1.70\nRUN cargo install --version"
         mock_resolver.oj_dockerfile = "FROM python:3.9\nRUN pip install online-judge-tools"
+        # Mock the get_docker_names method to return realistic values
+        mock_resolver.get_docker_names.return_value = {
+            "image_name": "rust_abcd1234",  # Hash-based name
+            "container_name": "cph_rust",   # Fixed container name
+            "oj_image_name": "ojtools_5678efgh",  # Hash-based name
+            "oj_container_name": "cph_ojtools"   # Fixed container name
+        }
         context.dockerfile_resolver = mock_resolver
 
         result = context.get_docker_names()
@@ -72,6 +79,13 @@ class TestDockerNamingIntegration:
         mock_resolver = MagicMock()
         mock_resolver.dockerfile = ""
         mock_resolver.oj_dockerfile = "   "
+        # Mock the get_docker_names method to return base names for empty dockerfiles
+        mock_resolver.get_docker_names.return_value = {
+            "image_name": "python",          # Base name without hash
+            "container_name": "cph_python",  # Fixed container name
+            "oj_image_name": "ojtools",      # Base name without hash
+            "oj_container_name": "cph_ojtools"  # Fixed container name
+        }
         context.dockerfile_resolver = mock_resolver
 
         result = context.get_docker_names()
