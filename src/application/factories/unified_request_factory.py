@@ -65,7 +65,7 @@ class FileRequestStrategy(RequestCreationStrategy):
             StepType.REMOVE: FileOpType.REMOVE,
         }
 
-        op_type = op_mapping.get(step.type)
+        op_type = op_mapping[step.type]
         if not op_type:
             return None
 
@@ -132,11 +132,11 @@ class ShellRequestStrategy(RequestCreationStrategy):
         """Create a bash script that runs tests with input files"""
         # Get contest_current_path from context
         context_dict = context.to_format_dict() if hasattr(context, 'to_format_dict') else {}
-        contest_current_path = context_dict.get('contest_current_path', './contest_current')
+        contest_current_path = context_dict['contest_current_path']
 
         # For parallel execution support, check if we should create individual test requests
         parallel_config = getattr(context, '_parallel_config', None)
-        if parallel_config and parallel_config.get('enabled', False):
+        if parallel_config and parallel_config['enabled']:
             return self._create_parallel_test_requests(cmd, context, contest_current_path)
 
         # Create a bash script that runs the program with test inputs

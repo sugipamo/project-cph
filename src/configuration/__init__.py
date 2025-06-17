@@ -1,28 +1,26 @@
-"""新設定管理システム - 統一された設定管理とテンプレート展開
+"""洗練された設定管理システム - シンプルで直感的な設定管理
 
-このモジュールは既存の分散した設定管理システムを統一し、
-TypeSafeConfigNodeManagerを中心とした簡潔な設定管理を提供します。
+このモジュールは統一された設定管理システムを提供し、
+名前から責務が直接わかる構造を実現しています。
 
 主要コンポーネント:
-- TypeSafeConfigNodeManager: 型安全な統一設定管理
-- ExecutionPaths: 実行パス設定
+- ConfigManager: 設定管理の中核（型安全・高性能）
+- ExecutionConfig: 実行設定とパス管理
 - OutputConfig: 出力設定
-- CompatibilityLayer: 既存システムとの互換性
+- LegacyAdapter: 旧システムとの互換性
 """
 
-from .core.execution_paths import ExecutionPaths
-from .core.output_config import OutputConfig
-from .registries.language_registry import LanguageRegistry
-from .typed_config_node_manager import (
+from .config_manager import (
     FileLoader,
     TypedExecutionConfiguration,
     TypeSafeConfigNodeManager,
 )
+from .execution_config import ExecutionPaths
+from .output_config import OutputConfig
 
 __all__ = [
     'ExecutionPaths',
     'FileLoader',
-    'LanguageRegistry',
     'OutputConfig',
     'TypeSafeConfigNodeManager',
     'TypedExecutionConfiguration',

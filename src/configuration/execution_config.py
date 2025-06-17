@@ -6,7 +6,7 @@ from pathlib import Path
 @dataclass(frozen=True)
 class ExecutionPaths:
     """パス情報の集約"""
-    workspace: Path
+    local_workspace: Path
     contest_current: Path
     contest_stock: Path
     contest_template: Path

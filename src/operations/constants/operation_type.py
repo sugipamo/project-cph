@@ -11,7 +11,7 @@ class OperationType(Enum):
     COMPOSITE = auto()
     PYTHON = auto()
     STATE_SHOW = auto()
-    WORKSPACE = auto()
+    LOCAL_WORKSPACE = auto()
 
 
 
@@ -34,7 +34,7 @@ class DirectoryName(Enum):
     TEMPLATE = "template"
     STOCK = "stock"
     CURRENT = "current"
-    WORKSPACE = "workspace"
+    LOCAL_WORKSPACE = "local_workspace"
     CONTEST_ENV = "contest_env"
 
 

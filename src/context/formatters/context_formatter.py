@@ -55,17 +55,17 @@ def create_format_dict(data: ExecutionFormatData) -> dict[str, str]:
         # パス関連 - pathsの下にある場合とトップレベルにある場合の両方に対応
         paths_config = lang_config.get("paths", lang_config)
         format_dict.update({
-            "contest_current_path": paths_config.get("contest_current_path", "./contest_current"),
-            "contest_stock_path": paths_config.get("contest_stock_path", "./contest_stock"),
-            "contest_template_path": paths_config.get("contest_template_path", "./contest_template"),
-            "contest_temp_path": paths_config.get("contest_temp_path", "./.temp"),
-            "workspace_path": paths_config.get("workspace_path", "./workspace"),
+            "contest_current_path": paths_config["contest_current_path"],
+            "contest_stock_path": paths_config["contest_stock_path"],
+            "contest_template_path": paths_config["contest_template_path"],
+            "contest_temp_path": paths_config["contest_temp_path"],
+            "local_workspace_path": paths_config["local_workspace_path"],
         })
 
         # その他の値
         format_dict.update({
-            "language_id": lang_config.get("language_id", ""),
-            "source_file_name": lang_config.get("source_file_name", "main.py"),
+            "language_id": lang_config["language_id"],
+            "source_file_name": lang_config["source_file_name"],
             "language_name": data.language,
         })
 

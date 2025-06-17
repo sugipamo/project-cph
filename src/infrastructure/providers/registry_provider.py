@@ -96,43 +96,6 @@ class MockRegistryProvider(RegistryProvider):
         self._access_log.clear()
 
 
-class LanguageRegistryProvider:
-    """言語レジストリ専用プロバイダー（既存LanguageRegistryの副作用を集約）"""
-
-    def __init__(self, registry_provider: RegistryProvider):
-        self.registry_provider = registry_provider
-        self._registry_name = "language_registry"
-
-    def get_language_registry(self):
-        """言語レジストリを取得（副作用をプロバイダーに委譲）"""
-        registry = self.registry_provider.get_registry(self._registry_name)
-        if registry is None:
-            # 遅延初期化
-            from ..config.language_registry_factory import create_default_language_registry
-            registry = create_default_language_registry()
-            self.registry_provider.set_registry(self._registry_name, registry)
-        return registry
-
-    def register_custom_language(self, name: str, extension: str, run_command: str,
-                                compile_command: Optional[str] = None,
-                                aliases: Optional[list] = None) -> None:
-        """カスタム言語を登録（副作用をプロバイダーに委譲）"""
-        registry = self.get_language_registry()
-        from src.configuration.registries.language_registry import LanguageConfig
-
-        config = LanguageConfig(
-            extension=extension,
-            run_command=run_command,
-            compile_command=compile_command,
-            aliases=aliases or []
-        )
-        registry.register_language(name, config)
-
-    def get_language_config(self, language: str):
-        """言語設定を取得（副作用をプロバイダーに委譲）"""
-        registry = self.get_language_registry()
-        return registry.get_language_config(language)
-
 
 # ユーティリティ関数（純粋関数）
 def validate_registry_name(name: str) -> bool:

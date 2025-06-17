@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.configuration.typed_config_node_manager import (
+from src.configuration.config_manager import (
     ConfigValidationError,
     FileLoader,
     TypedExecutionConfiguration,
@@ -68,7 +68,7 @@ class TestFileLoader:
                 json.dump(shared_config, f)
 
             # 言語設定（EnvConfigLoader統合）
-            lang_config = {"language_id": "4006", "source_file_name": "main.py", "timeout": 60}
+            lang_config = {"language_id": "4006", "source_file_name": "main.py", "timeout": 30}
             with open(python_dir / "env.json", 'w') as f:
                 json.dump(lang_config, f)
 
@@ -77,7 +77,7 @@ class TestFileLoader:
             # マージされた結果の確認（ConfigMerger統合）
             assert result["workspace"] == "/tmp/test"  # system
             assert result["debug"] is True  # shared > system
-            assert result["timeout"] == 60  # language > shared > system
+            assert result["timeout"] == 30  # language > shared > system
             assert result["language_id"] == "4006"  # language specific
             assert result["python"]["default_timeout"] == 30  # system languages
 
@@ -92,7 +92,7 @@ class TestFileLoader:
             configs = {
                 "config.json": {"workspace": "/tmp/test"},
                 "languages.json": {"python": {"timeout": 30}},
-                "timeout.json": {"default_timeout": 60},
+                "timeout.json": {"default_timeout": 30},
                 "file_patterns.json": {"source": ["*.py", "*.cpp"]}
             }
 
@@ -105,7 +105,7 @@ class TestFileLoader:
             # すべての設定がマージされていることを確認
             assert result["workspace"] == "/tmp/test"
             assert result["python"]["timeout"] == 30
-            assert result["default_timeout"] == 60
+            assert result["default_timeout"] == 30
             assert result["source"] == ["*.py", "*.cpp"]
 
     def test_load_env_configs_integration(self):
@@ -126,14 +126,14 @@ class TestFileLoader:
                 json.dump(shared_config, f)
 
             # 言語設定
-            lang_config = {"language_id": "4006", "timeout": 60}
+            lang_config = {"language_id": "4006", "timeout": 30}
             with open(python_dir / "env.json", 'w') as f:
                 json.dump(lang_config, f)
 
             shared_result, lang_result = loader._load_env_configs(env_dir, "python")
 
             assert shared_result == {"shared": {"workspace": "/tmp/shared", "debug": False}}
-            assert lang_result == {"language_id": "4006", "timeout": 60}
+            assert lang_result == {"language_id": "4006", "timeout": 30}
 
     def test_config_merging_priority(self):
         """ConfigMerger統合テスト - マージ優先度"""
@@ -216,7 +216,7 @@ class TestTypeSafeConfigNodeManager:
                 "language_id": "4006",
                 "source_file_name": "main.py",
                 "run_command": "python3 main.py",
-                "timeout": 60
+                "timeout": 30
             },
             "cpp": {
                 "language_id": "4003",
@@ -307,7 +307,7 @@ class TestTypeSafeConfigNodeManager:
         assert config.env_type == "local"
         assert config.command_type == "open"
         assert isinstance(config.workspace_path, Path)
-        assert config.timeout_seconds == 60  # python.timeout
+        assert config.timeout_seconds == 30  # timeout.default
         assert config.language_id == "4006"
         assert config.source_file_name == "main.py"
         assert config.run_command == "python3 main.py"
@@ -428,7 +428,7 @@ class TestIntegration:
                     "language_id": "4006",
                     "source_file_name": "main.py",
                     "run_command": "python3 main.py",
-                    "timeout": 60
+                    "timeout": 30
                 }
             }
             with open(env_dir / "env.json", 'w') as f:
@@ -443,9 +443,9 @@ class TestIntegration:
             assert language_id == "4006"
 
             timeout = manager.resolve_config(["python", "timeout"], int)
-            assert timeout == 60
+            assert timeout == 30
 
             # ExecutionConfiguration生成のテスト
             config = manager.create_execution_config("abc300", "a", "python")
             assert config.language_id == "4006"
-            assert config.timeout_seconds == 60
+            assert config.timeout_seconds == 30

@@ -9,7 +9,7 @@ from .environment_provider import (
     WorkingDirectoryProvider,
 )
 from .file_provider import FileProvider, MockFileProvider, SystemFileProvider
-from .registry_provider import LanguageRegistryProvider, MockRegistryProvider, RegistryProvider, SystemRegistryProvider
+from .registry_provider import MockRegistryProvider, RegistryProvider, SystemRegistryProvider
 from .time_provider import FixedTimeProvider, MockTimeProvider, SystemTimeProvider, TimeProvider
 
 __all__ = [
@@ -18,7 +18,6 @@ __all__ = [
     # File providers
     'FileProvider',
     'FixedTimeProvider',
-    'LanguageRegistryProvider',
     'MockEnvironmentProvider',
     'MockFileProvider',
     'MockRegistryProvider',

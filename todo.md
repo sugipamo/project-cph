@@ -9,15 +9,7 @@ context/utilsも責務が集中する命名になっており問題がある、�
 
 parserの配下にバリデーションの機能しかないのはおかしい。適切な場所に移動しparserフォルダは削除する
 
-language_registryはenv.jsonにより言語環境を設定する思想、デフォルト値を使用しない思想に反している。削除対象。
-
-cli_application.pyのoperationsは現在のsrc/operationsとは違うもの指している可能性が高い、命名の再検討が必要
-
-
 printの使用も副作用とみなして、infrastructure配下にログ管理システムを作成する　他の場所で使用されているprintは一時対応を除き許容しない
-
 
 filepatternを廃止し、source_file_nameなどと同階層で管理する。すべて統一的に扱うためリストでの管理とする。ただしenv.json上では文字列の記載を許容し、コード上でリストへの変換をする
 ConfigNodeの解決によりデータを取得する場合はlistで取得することとする。また、設定取得時のtype指定はlistの中身が何になっているかという意味とする
-
-/workspace指定が多い、変更時に意図しないバグが発生する可能性が高いため/workspaceのそれぞれの意味を言語化し、必要があればworkspaceを統一的に扱うか、命名を変更する

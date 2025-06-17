@@ -13,11 +13,10 @@ from src.application.di.provider_factory import (
     get_time_provider,
     initialize_providers,
 )
-from src.configuration.typed_config_node_manager import TypeSafeConfigNodeManager
+from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.infrastructure.providers import (
     EnvironmentProvider,
     FileProvider,
-    LanguageRegistryProvider,
     RegistryProvider,
     TimeProvider,
     WorkingDirectoryProvider,
@@ -87,15 +86,6 @@ class TestProviderFactory:
         provider = factory.get_registry_provider()
         assert isinstance(provider, RegistryProvider)
 
-    def test_get_language_registry_provider_system(self):
-        factory = ProviderFactory(use_mocks=False)
-        provider = factory.get_language_registry_provider()
-        assert isinstance(provider, LanguageRegistryProvider)
-
-    def test_get_language_registry_provider_mock(self):
-        factory = ProviderFactory(use_mocks=True)
-        provider = factory.get_language_registry_provider()
-        assert isinstance(provider, LanguageRegistryProvider)
 
     def test_get_console_logger_system(self):
         factory = ProviderFactory(use_mocks=False)
@@ -182,10 +172,4 @@ class TestProviderFactory:
         # TypeSafeConfigNodeManagerが正しく初期化されているかテスト
         assert isinstance(manager, TypeSafeConfigNodeManager)
 
-    def test_language_registry_provider_dependency(self):
-        factory = ProviderFactory(use_mocks=False)
 
-        registry_provider = factory.get_registry_provider()
-        language_registry_provider = factory.get_language_registry_provider()
-
-        assert language_registry_provider.registry_provider is registry_provider

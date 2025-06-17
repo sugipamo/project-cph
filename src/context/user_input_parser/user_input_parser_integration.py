@@ -1,7 +1,7 @@
 """user_input_parser.pyでの新設定システム統合"""
 from typing import Any, Dict
 
-from src.configuration.typed_config_node_manager import TypedExecutionConfiguration, TypeSafeConfigNodeManager
+from src.configuration.config_manager import TypedExecutionConfiguration, TypeSafeConfigNodeManager
 
 
 class UserInputParserIntegration:

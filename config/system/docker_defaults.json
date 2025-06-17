@@ -1,7 +1,7 @@
 {
   "docker_defaults": {
-    "mount_path": "/workspace",
-    "working_directory": "/workspace",
+    "docker_workspace_mount_path": "/workspace",
+    "docker_working_directory": "/workspace",
     "keep_alive_command": "tail -f /dev/null",
     "default_shell": "bash",
     "naming_conventions": {
@@ -15,7 +15,7 @@
       "host_current_directory": ".",
       "path_separator": "/",
       "temp_directory": "/tmp",
-      "workspace_alias": "./workspace"
+      "local_workspace_alias": "./workspace"
     },
     "docker_settings": {
       "dockerfile_hash_length": 12

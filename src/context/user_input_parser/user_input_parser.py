@@ -73,7 +73,7 @@ def _scan_and_apply_language(args, context, root):
     # 実際の言語のみをターゲット（動的に取得）
     from pathlib import Path
 
-    from src.configuration.typed_config_node_manager import FileLoader
+    from src.configuration.config_manager import FileLoader
 
     file_loader = FileLoader()
     valid_languages = set(file_loader.get_available_languages(Path("contest_env")))
@@ -304,7 +304,7 @@ def _apply_env_json(context, env_jsons, base_dir=None, operations=None):
     # ConfigurationLoaderを使用して正しい設定を取得
     if context.language and base_dir:
 
-        from src.configuration.typed_config_node_manager import FileLoader
+        from src.configuration.config_manager import FileLoader
         file_loader = FileLoader()
         # 完全なマージ設定を取得（共有設定をトップレベルで利用）
         merged_config = file_loader.load_and_merge_configs(
@@ -387,7 +387,7 @@ def _resolve_environment_configuration(context_data, operations):
     """Load and resolve environment configuration."""
     from pathlib import Path
 
-    from src.configuration.typed_config_node_manager import FileLoader
+    from src.configuration.config_manager import FileLoader
 
     file_loader = FileLoader()
 

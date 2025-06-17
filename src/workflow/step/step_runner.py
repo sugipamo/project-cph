@@ -22,7 +22,7 @@ class ExecutionContext:
     language: str
 
     # パス情報
-    workspace_path: str
+    local_workspace_path: str
     contest_current_path: str
     contest_stock_path: str = ""
     contest_template_path: str = ""
@@ -48,7 +48,7 @@ class ExecutionContext:
             'old_problem_name': self.old_problem_name,
             'language': self.language,
             'language_name': self.language,  # エイリアス
-            'workspace_path': self.workspace_path,
+            'local_workspace_path': self.local_workspace_path,
             'contest_current_path': self.contest_current_path,
             'contest_stock_path': self.contest_stock_path,
             'contest_template_path': self.contest_template_path,
@@ -127,7 +127,7 @@ def create_step(json_step: Dict[str, Any], context: ExecutionContext) -> Step:
     step_type = StepType(json_step['type'])
 
     # コマンドを展開
-    raw_cmd = json_step.get('cmd', [])
+    raw_cmd = json_step['cmd']
     expanded_cmd = [expand_template(arg, context) for arg in raw_cmd]
 
     # ファイルパターンがある場合は展開

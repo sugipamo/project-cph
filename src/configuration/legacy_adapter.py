@@ -1,7 +1,7 @@
 """既存システムとの互換性レイヤー"""
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-from ..typed_config_node_manager import TypedExecutionConfiguration
+from .config_manager import TypedExecutionConfiguration
 
 
 class BackwardCompatibilityLayer:
@@ -60,4 +60,4 @@ class BackwardCompatibilityLayer:
 
     def get_config_resolver(self):
         """新設定解決器を取得（テスト・デバッグ用）"""
-        return None  # TypeSafeConfigNodeManagerでは直接使用
+        return  # TypeSafeConfigNodeManagerでは直接使用

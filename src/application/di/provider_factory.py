@@ -1,12 +1,11 @@
 """プロバイダーファクトリー - DIコンテナで副作用プロバイダーを管理"""
 from typing import Any, Dict
 
-from src.configuration.typed_config_node_manager import TypeSafeConfigNodeManager
+from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.infrastructure.drivers.logging import ConsoleLogger, SystemConsoleLogger
 from src.infrastructure.providers import (
     EnvironmentProvider,
     FileProvider,
-    LanguageRegistryProvider,
     RegistryProvider,
     SystemEnvironmentProvider,
     SystemFileProvider,
@@ -50,10 +49,6 @@ class ProviderFactory:
         # レジストリプロバイダー
         self._providers['registry'] = SystemRegistryProvider()
 
-        # 言語レジストリプロバイダー
-        self._providers['language_registry'] = LanguageRegistryProvider(
-            self._providers['registry']
-        )
 
         # コンソールロガー
         self._providers['console_logger'] = SystemConsoleLogger()
@@ -78,9 +73,6 @@ class ProviderFactory:
         self._providers['environment'] = MockEnvironmentProvider()
         self._providers['working_directory'] = MockWorkingDirectoryProvider()
         self._providers['registry'] = MockRegistryProvider()
-        self._providers['language_registry'] = LanguageRegistryProvider(
-            self._providers['registry']
-        )
         self._providers['console_logger'] = MockConsoleLogger()
 
         # モック設定マネージャー
@@ -106,9 +98,6 @@ class ProviderFactory:
         """レジストリプロバイダーを取得"""
         return self._providers['registry']
 
-    def get_language_registry_provider(self) -> LanguageRegistryProvider:
-        """言語レジストリプロバイダーを取得"""
-        return self._providers['language_registry']
 
     def get_console_logger(self) -> ConsoleLogger:
         """コンソールロガーを取得"""

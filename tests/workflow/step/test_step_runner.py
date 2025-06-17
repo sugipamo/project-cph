@@ -28,7 +28,7 @@ class TestExecutionContext:
             contest_name="abc300",
             problem_name="a",
             language="python",
-            workspace_path="/tmp/workspace",
+            local_workspace_path="/tmp/workspace",
             contest_current_path="/tmp/current"
         )
 
@@ -37,7 +37,7 @@ class TestExecutionContext:
         assert result['contest_name'] == "abc300"
         assert result['problem_name'] == "a"
         assert result['language'] == "python"
-        assert result['workspace_path'] == "/tmp/workspace"
+        assert result['local_workspace_path'] == "/tmp/workspace"
         assert result['contest_current_path'] == "/tmp/current"
 
 
@@ -145,7 +145,7 @@ class TestCheckWhenCondition:
         with tempfile.TemporaryDirectory() as tmpdir:
             context = ExecutionContext("abc300", "a", "python", tmpdir, "/tmp/current")
 
-            result, error = check_when_condition("test -d {workspace_path}", context)
+            result, error = check_when_condition("test -d {local_workspace_path}", context)
 
             assert result is True
             assert error is None
@@ -161,7 +161,7 @@ class TestCheckWhenCondition:
                 file_patterns={"test_data": ["test"]}
             )
 
-            result, error = check_when_condition("test -d {workspace_path}/{test_data}", context)
+            result, error = check_when_condition("test -d {local_workspace_path}/{test_data}", context)
 
             assert result is True
             assert error is None
@@ -193,7 +193,7 @@ class TestCreateStep:
         )
         json_step = {
             "type": "movetree",
-            "cmd": ["{workspace_path}/{test_files}", "{contest_current_path}/{test_files}"]
+            "cmd": ["{local_workspace_path}/{test_files}", "{contest_current_path}/{test_files}"]
         }
 
         step = create_step(json_step, context)
@@ -227,7 +227,7 @@ class TestRunSteps:
                 {
                     "type": "mkdir",
                     "cmd": ["{contest_current_path}"],
-                    "when": "test -d {workspace_path}",  # 存在する
+                    "when": "test -d {local_workspace_path}",  # 存在する
                     "name": "Create if workspace exists"
                 },
                 {

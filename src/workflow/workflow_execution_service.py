@@ -6,7 +6,7 @@ from typing import Optional
 
 from src.application.factories.unified_request_factory import create_request
 from src.application.orchestration.unified_driver import UnifiedDriver
-from src.configuration.typed_config_node_manager import TypedExecutionConfiguration
+from src.configuration.config_manager import TypedExecutionConfiguration
 from src.operations.constants.request_types import RequestType
 from src.utils.debug_logger import DebugLogger
 from src.workflow.step.step import Step, StepType
@@ -89,11 +89,11 @@ class WorkflowExecutionService:
             # JsonConfigLoader形式（マージ済み設定）
             language_config = self.context.env_json
 
-        commands = language_config.get('commands', {})
-        command_config = commands.get(self.context.command_type, {})
+        commands = language_config['commands']
+        command_config = commands[self.context.command_type]
 
         # All commands now use unified steps structure
-        steps = command_config.get('steps', [])
+        steps = command_config['steps']
 
         return steps
 
@@ -110,14 +110,14 @@ class WorkflowExecutionService:
             # JsonConfigLoader形式（マージ済み設定）
             language_config = self.context.env_json
 
-        commands = language_config.get('commands', {})
-        command_config = commands.get(self.context.command_type, {})
+        commands = language_config['commands']
+        command_config = commands[self.context.command_type]
 
-        # Get parallel configuration with defaults
-        parallel_config = command_config.get('parallel', {})
+        # Get parallel configuration
+        parallel_config = command_config['parallel']
         return {
-            "enabled": parallel_config.get('enabled', False),
-            "max_workers": parallel_config.get('max_workers', 4)
+            "enabled": parallel_config['enabled'],
+            "max_workers": parallel_config['max_workers']
         }
 
     def _create_workflow_tasks(self, steps: list[Step]) -> list[dict]:

@@ -37,7 +37,7 @@ class StepContext:
     command_type: str
 
     # 環境設定
-    workspace_path: str
+    local_workspace_path: str
     contest_current_path: str
     contest_stock_path: Optional[str] = None
     contest_template_path: Optional[str] = None
@@ -55,7 +55,7 @@ class StepContext:
             'language_name': self.language,
             'env_type': self.env_type,
             'command_type': self.command_type,
-            'workspace_path': self.workspace_path or '',
+            'local_workspace_path': self.local_workspace_path or '',
             'contest_current_path': self.contest_current_path or '',
             'contest_stock_path': self.contest_stock_path or '',
             'contest_template_path': self.contest_template_path or '',

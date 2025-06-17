@@ -139,7 +139,7 @@ def _create_file_pattern_service(container: Any) -> Any:
 
 def _create_json_config_loader() -> Any:
     """Lazy factory for JSON config loader."""
-    from src.configuration.typed_config_node_manager import TypeSafeConfigNodeManager
+    from src.configuration.config_manager import TypeSafeConfigNodeManager
     return TypeSafeConfigNodeManager()
 
 

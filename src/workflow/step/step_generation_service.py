@@ -22,7 +22,7 @@ def create_step_context_from_execution_context(execution_context) -> StepContext
         else:
             # ConfigurationLoader形式（マージ済み設定）
             language_config = execution_context.env_json
-        raw_patterns = language_config.get('file_patterns', {})
+        raw_patterns = language_config['file_patterns']
 
         # ConfigurationLoaderの形式からシンプルな形式に変換（必要な場合）
         file_patterns = {}
@@ -30,7 +30,7 @@ def create_step_context_from_execution_context(execution_context) -> StepContext
             if isinstance(pattern_data, dict):
                 # {"workspace": ["patterns"], ...} の形式の場合
                 for location in ['workspace', 'contest_current', 'contest_stock']:
-                    if pattern_data.get(location):
+                    if location in pattern_data:
                         file_patterns[pattern_name] = pattern_data[location]
                         break
             else:
@@ -43,7 +43,7 @@ def create_step_context_from_execution_context(execution_context) -> StepContext
         language=execution_context.language,
         env_type=execution_context.env_type,
         command_type=execution_context.command_type,
-        workspace_path=getattr(execution_context, 'workspace_path', ''),
+        local_workspace_path=getattr(execution_context, 'local_workspace_path', ''),
         contest_current_path=getattr(execution_context, 'contest_current_path', ''),
         contest_stock_path=getattr(execution_context, 'contest_stock_path', None),
         contest_template_path=getattr(execution_context, 'contest_template_path', None),
@@ -70,7 +70,7 @@ def execution_context_to_simple_context(execution_context) -> ExecutionContext:
         else:
             # ConfigurationLoader形式（マージ済み設定）
             language_config = execution_context.env_json
-        raw_patterns = language_config.get('file_patterns', {})
+        raw_patterns = language_config['file_patterns']
 
         # ConfigurationLoaderの形式からシンプルな形式に変換（必要な場合）
         file_patterns = {}
@@ -78,7 +78,7 @@ def execution_context_to_simple_context(execution_context) -> ExecutionContext:
             if isinstance(pattern_data, dict):
                 # {"workspace": ["patterns"], ...} の形式の場合
                 for location in ['workspace', 'contest_current', 'contest_stock']:
-                    if pattern_data.get(location):
+                    if location in pattern_data:
                         file_patterns[pattern_name] = pattern_data[location]
                         break
             else:
@@ -86,17 +86,13 @@ def execution_context_to_simple_context(execution_context) -> ExecutionContext:
                 file_patterns[pattern_name] = pattern_data
 
     # デバッグ: run_commandの値を確認
-    run_command = language_config.get('run_command', '')
+    run_command = language_config['run_command']
     if not run_command:
         # ExecutionContextAdapterの場合、runtime_configから取得を試行
         if hasattr(execution_context, 'config') and hasattr(execution_context.config, 'runtime_config'):
             run_command = execution_context.config.runtime_config.run_command
 
-        # まだ空の場合は言語レジストリから取得
-        if not run_command:
-            from ...configuration.registries.language_registry import get_language_registry
-            language_registry = get_language_registry()
-            run_command = language_registry.get_run_command(execution_context.language)
+        # run_commandは必須 - env.jsonで設定されている必要がある
 
     return ExecutionContext(
         contest_name=execution_context.contest_name,
@@ -104,7 +100,7 @@ def execution_context_to_simple_context(execution_context) -> ExecutionContext:
         old_contest_name=getattr(execution_context, 'old_contest_name', ''),
         old_problem_name=getattr(execution_context, 'old_problem_name', ''),
         language=execution_context.language,
-        workspace_path=getattr(execution_context, 'workspace_path', ''),
+        local_workspace_path=getattr(execution_context, 'local_workspace_path', ''),
         contest_current_path=getattr(execution_context, 'contest_current_path', ''),
         contest_stock_path=getattr(execution_context, 'contest_stock_path', ''),
         contest_template_path=getattr(execution_context, 'contest_template_path', ''),

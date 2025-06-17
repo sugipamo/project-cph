@@ -52,8 +52,8 @@ class UnifiedDriver:
             return self._get_cached_driver("python_driver")
         if operation_type == OperationType.STATE_SHOW:
             return self._get_cached_driver("file_driver")
-        if operation_type == OperationType.WORKSPACE:
-            return self._get_cached_driver("workspace_driver")
+        if operation_type == OperationType.LOCAL_WORKSPACE:
+            return self._get_cached_driver("local_workspace_driver")
         # Fallback: return self for composite/unknown types
         return self
 

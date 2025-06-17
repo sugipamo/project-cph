@@ -4,7 +4,6 @@ ConfigNodeによる統一処理と型安全性を確保した設定管理シス�
 24ファイルから9ファイルへの大幅簡素化と1000倍のパフォーマンス向上を実現。
 """
 import json
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, TypeVar, overload
 
@@ -38,21 +37,83 @@ def _ensure_imports():
         resolve_formatted_string = _resolve_formatted_string
 
 
-@dataclass
 class TypedExecutionConfiguration:
     """型安全なExecutionConfiguration"""
-    contest_name: str
-    problem_name: str
-    language: str
-    env_type: str
-    command_type: str
-    workspace_path: Path
-    contest_current_path: Path
-    timeout_seconds: int
-    language_id: str
-    source_file_name: str
-    run_command: str
-    debug_mode: bool = False
+    def __init__(self, **kwargs):
+        """TypedExecutionConfigurationの初期化"""
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+        # ConfigNodeへの参照を保持（テンプレート解決用）
+        self._root_node = kwargs.get('_root_node')
+
+    def resolve_formatted_string(self, template: str) -> str:
+        """テンプレート文字列を解決"""
+        # ConfigNodeを使用した高度なテンプレート解決を優先
+        if self._root_node is not None:
+            try:
+                from src.context.resolver.config_resolver import resolve_formatted_string
+                context = {
+                    'contest_name': self.contest_name,
+                    'problem_name': self.problem_name,
+                    'language': self.language,
+                    'env_type': self.env_type,
+                    'command_type': self.command_type,
+                }
+                return resolve_formatted_string(template, self._root_node, context)
+            except Exception:
+                # ConfigNode解決に失敗した場合は基本解決にフォールバック
+                pass
+
+        # 基本的な変数置換のみ（フォールバック）
+        context = {
+            'contest_name': self.contest_name,
+            'problem_name': self.problem_name,
+            'language': self.language,
+            'env_type': self.env_type,
+            'command_type': self.command_type,
+            'local_workspace_path': str(self.local_workspace_path),
+            'contest_current_path': str(getattr(self, 'contest_current_path', '')),
+            'timeout_seconds': str(getattr(self, 'timeout_seconds', '')),
+            'language_id': getattr(self, 'language_id', ''),
+            'source_file_name': getattr(self, 'source_file_name', ''),
+            'run_command': getattr(self, 'run_command', ''),
+        }
+
+        # 設定ファイルから展開できるパターンも追加
+        if hasattr(self, '_root_node') and self._root_node:
+            try:
+                from src.context.resolver.config_resolver import resolve_best
+                # よく使われるパステンプレートを設定から解決
+                path_mappings = {
+                    'workspace': ['paths', 'local_workspace_path'],
+                    'contest_stock_path': ['paths', 'contest_stock_path'],
+                    'contest_template_path': ['paths', 'contest_template_path'],
+                }
+
+                for key, path in path_mappings.items():
+                    try:
+                        node = resolve_best(self._root_node, path)
+                        if node:
+                            context[key] = str(node.value)
+                    except:
+                        pass
+            except:
+                pass
+
+        try:
+            # 再帰的テンプレート展開（最大5回まで）
+            result = template
+            for _ in range(5):
+                prev_result = result
+                result = result.format(**context)
+                if result == prev_result:
+                    # 変化がなくなったら終了
+                    break
+            return result
+        except KeyError:
+            # 存在しないキーの場合はそのまま返す
+            return template
 
 
 class FileLoader:
@@ -397,6 +458,25 @@ class TypeSafeConfigNodeManager:
 
         return value
 
+    def _resolve_timeout_with_fallbacks(self) -> int:
+        """複数のパスでタイムアウト値を解決"""
+        timeout_paths = [
+            ['timeout', 'default'],
+            ['timeout'],
+            ['default_timeout'],
+            ['python', 'timeout'],
+            ['shared', 'timeout'],
+        ]
+        
+        for path in timeout_paths:
+            try:
+                return self.resolve_config(path, int)
+            except (KeyError, TypeError, ValueError):
+                continue
+        
+        # すべて失敗した場合はデフォルト値
+        return 30
+
     def create_execution_config(self, contest_name: str,
                               problem_name: str,
                               language: str,
@@ -420,6 +500,13 @@ class TypeSafeConfigNodeManager:
             'env_type': env_type
         }
 
+        # 設定からワークスペースパスなどを取得
+        try:
+            workspace = self.resolve_config_with_default(['paths', 'local_workspace_path'], str, './workspace')
+            context['workspace'] = workspace
+        except:
+            context['workspace'] = './workspace'
+
         config = TypedExecutionConfiguration(
             contest_name=contest_name,
             problem_name=problem_name,
@@ -428,19 +515,20 @@ class TypeSafeConfigNodeManager:
             command_type=command_type,
 
             # 型安全なパステンプレート展開
-            workspace_path=self.resolve_template_to_path("{workspace}", context),
+            local_workspace_path=self.resolve_template_to_path("{workspace}", context),
             contest_current_path=self.resolve_template_to_path(
                 "{workspace}/contest_current", context
             ),
 
-            # 型安全な設定解決
-            timeout_seconds=self.resolve_config_with_default(
-                [language, 'timeout'], int, 30
-            ),
-            language_id=self.resolve_config([language, 'language_id'], str),
-            source_file_name=self.resolve_config([language, 'source_file_name'], str),
-            run_command=self.resolve_config([language, 'run_command'], str),
-            debug_mode=self.resolve_config_with_default(['debug'], bool, False)
+            # 型安全な設定解決（複数のパスを試行）
+            timeout_seconds=self._resolve_timeout_with_fallbacks(),
+            language_id=self.resolve_config_with_default([language, 'language_id'], str, language),
+            source_file_name=self.resolve_config_with_default([language, 'source_file_name'], str, "main.py"),
+            run_command=self.resolve_config_with_default([language, 'run_command'], str, "python3 main.py"),
+            debug_mode=self.resolve_config_with_default(['debug'], bool, False),
+
+            # ConfigNodeの参照を渡す（テンプレート解決用）
+            _root_node=self.root_node
         )
 
         # キャッシュに保存（LRU制限）

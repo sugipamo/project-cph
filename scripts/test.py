@@ -347,6 +347,20 @@ class TestRunner:
                 r'^Manager$', r'^Handler$', r'^Processor$', r'^Helper$'
             ]
 
+            # 無駄なプレフィックスパターン（ファイル名、関数名用）
+            useless_prefix_patterns = [
+                r'^simple_', r'^pure_', r'^basic_', r'^plain_', r'^raw_',
+                r'^common_', r'^general_', r'^standard_', r'^default_',
+                r'^normal_', r'^regular_', r'^typical_', r'^ordinary_'
+            ]
+
+            # 無駄なプレフィックスパターン（クラス名用 - キャメルケース）
+            useless_class_prefix_patterns = [
+                r'^Simple[A-Z]', r'^Pure[A-Z]', r'^Basic[A-Z]', r'^Plain[A-Z]', r'^Raw[A-Z]',
+                r'^Common[A-Z]', r'^General[A-Z]', r'^Standard[A-Z]', r'^Default[A-Z]',
+                r'^Normal[A-Z]', r'^Regular[A-Z]', r'^Typical[A-Z]', r'^Ordinary[A-Z]'
+            ]
+
             for file_path in glob.glob('src/**/*.py', recursive=True):
                 file_name = Path(file_path).name
                 relative_path = file_path.replace('src/', '')
@@ -354,6 +368,13 @@ class TestRunner:
                 # ファイル名チェック
                 if file_name in generic_filenames:
                     naming_issues.append(f"汎用的ファイル名: {relative_path}")
+
+                # 無駄なプレフィックスファイル名チェック
+                base_filename = file_name.replace('.py', '')
+                for pattern in useless_prefix_patterns:
+                    if re.match(pattern, base_filename):
+                        naming_issues.append(f"無駄なプレフィックスファイル名: {relative_path}")
+                        break
 
                 # 長すぎるファイル名チェック（35文字以上）
                 if len(file_name) > 35:
@@ -368,18 +389,32 @@ class TestRunner:
                     for node in ast.walk(tree):
                         if isinstance(node, ast.ClassDef):
                             class_name = node.name
+                            # 汎用的クラス名チェック
                             for pattern in generic_class_patterns:
                                 if re.match(pattern, class_name):
                                     naming_issues.append(f"汎用的クラス名: {relative_path}:{node.lineno} class {class_name}")
+                                    break
+                            # 無駄なプレフィックスクラス名チェック
+                            for pattern in useless_class_prefix_patterns:
+                                if re.match(pattern, class_name):
+                                    naming_issues.append(f"無駄なプレフィックスクラス名: {relative_path}:{node.lineno} class {class_name}")
+                                    break
 
                         # 関数名チェック
                         elif isinstance(node, ast.FunctionDef):
                             func_name = node.name
                             # プライベートメソッドやspecialメソッドはスキップ
                             if not func_name.startswith('_'):
+                                # 抽象的関数名チェック
                                 for pattern in abstract_function_patterns:
                                     if re.match(pattern, func_name):
                                         naming_issues.append(f"抽象的関数名: {relative_path}:{node.lineno} def {func_name}")
+                                        break
+                                # 無駄なプレフィックス関数名チェック
+                                for pattern in useless_prefix_patterns:
+                                    if re.match(pattern, func_name):
+                                        naming_issues.append(f"無駄なプレフィックス関数名: {relative_path}:{node.lineno} def {func_name}")
+                                        break
 
                 except (SyntaxError, UnicodeDecodeError):
                     # 構文エラーやエンコードエラーは無視
@@ -408,6 +443,66 @@ class TestRunner:
                 print(f"❌ 命名規則チェックでエラー: {e}")
 
         return True  # 警告レベルなので常にTrueを返す
+
+    def check_dict_get_usage(self) -> bool:
+        """dict.get()使用チェック - エラー隠蔽の温床となるため禁止"""
+        import glob
+        import re
+
+        spinner = None
+        if not self.verbose:
+            spinner = ProgressSpinner("dict.get()使用チェック")
+            spinner.start()
+
+        try:
+            dict_get_issues = []
+
+            # .get( パターンを検索（コメント除く）
+            get_pattern = re.compile(r'\.get\(')
+            comment_pattern = re.compile(r'#.*$')
+
+            for file_path in glob.glob('src/**/*.py', recursive=True):
+                try:
+                    with open(file_path, encoding='utf-8') as f:
+                        lines = f.readlines()
+
+                    for line_num, line in enumerate(lines, 1):
+                        # コメントを除去
+                        clean_line = comment_pattern.sub('', line)
+
+                        # .get( パターンをチェック
+                        if get_pattern.search(clean_line):
+                            relative_path = file_path.replace('src/', '')
+                            dict_get_issues.append(f"{relative_path}:{line_num} {clean_line.strip()}")
+
+                except (UnicodeDecodeError, OSError):
+                    # ファイル読み込みエラーは無視
+                    continue
+
+            success = len(dict_get_issues) == 0
+
+            if spinner:
+                spinner.stop(success)
+            elif self.verbose:
+                print(f"{'✅' if success else '❌'} dict.get()使用チェック")
+
+            if dict_get_issues:
+                self.issues.append("dict.get()の使用が検出されました（エラー隠蔽防止のため禁止）:")
+                for issue in dict_get_issues[:20]:  # 最大20件表示
+                    self.issues.append(f"  {issue}")
+
+                if len(dict_get_issues) > 20:
+                    self.issues.append(f"  ... 他{len(dict_get_issues) - 20}件")
+
+            return success
+
+        except Exception as e:
+            if spinner:
+                spinner.stop(False)
+            self.issues.append(f"dict.get()使用チェックでエラー: {e}")
+            if self.verbose:
+                print(f"❌ dict.get()使用チェックでエラー: {e}")
+            return False
 
     def check_types(self) -> bool:
         """型チェック (mypy)"""
@@ -634,6 +729,7 @@ def main():
     parser.add_argument("--no-naming", action="store_true", help="命名規則チェックスキップ")
     parser.add_argument("--no-import-check", action="store_true", help="インポート解決チェックスキップ")
     parser.add_argument("--no-smoke-test", action="store_true", help="スモークテストスキップ")
+    parser.add_argument("--no-dict-get-check", action="store_true", help="dict.get()使用チェックスキップ")
     parser.add_argument("--check-only", action="store_true", help="高速チェック（テストなし）")
     parser.add_argument("--coverage-only", action="store_true", help="カバレッジレポートのみ表示")
     parser.add_argument("--verbose", "-v", action="store_true", help="詳細出力")
@@ -677,6 +773,10 @@ def main():
     # 命名規則チェック
     if not args.no_naming:
         runner.check_naming_conventions()
+
+    # dict.get()使用チェック
+    if not args.no_dict_get_check:
+        runner.check_dict_get_usage()
 
     # check-onlyモード
     if args.check_only:
