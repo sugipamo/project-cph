@@ -50,7 +50,7 @@ class ShellRequest(OperationRequestFoundation):
 
     def _execute_shell_command(self, driver: Any):
         """Execute the shell command with retry logic."""
-        from src.utils.retry_decorator import COMMAND_RETRY_CONFIG, RetryableOperation
+        from src.infrastructure.patterns.retry_decorator import COMMAND_RETRY_CONFIG, RetryableOperation
         retryable = RetryableOperation(COMMAND_RETRY_CONFIG)
 
         def execute_command():

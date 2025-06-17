@@ -3,7 +3,7 @@ from typing import Any, Optional, Union
 
 from src.context.resolver.config_node import ConfigNode
 from src.context.resolver.config_node_logic import add_edge, init_matches
-from src.utils.formatters import format_with_missing_keys
+from src.operations.pure.formatters import format_with_missing_keys
 
 
 def create_config_root_from_dict(data: Any) -> ConfigNode:

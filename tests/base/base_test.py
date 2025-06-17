@@ -56,15 +56,32 @@ class BaseTest:
         }
         default_context.update(kwargs)
 
-        from src.context.user_input_parser.user_input_parser_integration import create_new_execution_context
-        return create_new_execution_context(
-            command_type=default_context["command_type"],
-            language=default_context["language"],
+        from src.configuration.config_manager import TypeSafeConfigNodeManager
+
+        # 新設定システムを使用
+        manager = TypeSafeConfigNodeManager()
+        try:
+            manager.load_from_files(
+                system_dir="./config/system",
+                env_dir="contest_env",
+                language=default_context["language"]
+            )
+        except Exception:
+            # テスト環境では設定ファイルがない場合があるため、インメモリで作成
+            pass
+
+        config = manager.create_execution_config(
             contest_name=default_context["contest_name"],
             problem_name=default_context["problem_name"],
+            language=default_context["language"],
             env_type=default_context["env_type"],
-            env_json=default_context["env_json"]
+            command_type=default_context["command_type"]
         )
+
+        # レガシー互換のためのプロパティ設定
+        config.env_json = default_context["env_json"]
+
+        return config
 
     def assert_request_type(self, request, expected_type):
         """Assert that request is of expected type"""

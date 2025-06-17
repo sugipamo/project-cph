@@ -82,7 +82,7 @@ class StepResult:
     error_message: str = ""
 
 
-def run_steps(json_steps: List[Dict[str, Any]], context: ExecutionContext) -> List[StepResult]:
+def run_steps(json_steps: List[Dict[str, Any]], context) -> List[StepResult]:
     """JSONステップを順次実行する（メイン関数）
 
     Args:
@@ -122,7 +122,7 @@ def run_steps(json_steps: List[Dict[str, Any]], context: ExecutionContext) -> Li
     return results
 
 
-def create_step(json_step: Dict[str, Any], context: ExecutionContext) -> Step:
+def create_step(json_step: Dict[str, Any], context) -> Step:
     """JSONからStepオブジェクトを作成する"""
     step_type = StepType(json_step['type'])
 
@@ -150,7 +150,7 @@ def create_step(json_step: Dict[str, Any], context: ExecutionContext) -> Step:
     )
 
 
-def check_when_condition(when_clause: Optional[str], context: ExecutionContext) -> Tuple[bool, Optional[str]]:
+def check_when_condition(when_clause: Optional[str], context) -> Tuple[bool, Optional[str]]:
     """when条件をチェックする"""
     if not when_clause:
         return True, None
@@ -166,7 +166,7 @@ def check_when_condition(when_clause: Optional[str], context: ExecutionContext) 
     return evaluate_test_condition(expanded)
 
 
-def expand_template(template: str, context: ExecutionContext) -> str:
+def expand_template(template: str, context) -> str:
     """テンプレート文字列の{variable}を置換する
 
     新設定システムと旧システムの両方に対応
@@ -174,20 +174,48 @@ def expand_template(template: str, context: ExecutionContext) -> str:
     if not template:
         return ""
 
-    # TypeSafeConfigNodeManagerで展開
+    # TypeSafeConfigNodeManagerで展開（最優先）
     if hasattr(context, 'resolve_formatted_string'):
-        return context.resolve_formatted_string(template)
+        try:
+            return context.resolve_formatted_string(template)
+        except Exception:
+            # フォールバック処理に移行
+            pass
 
     # ExecutionContextAdapterの場合（新設定システムアダプター）
     if hasattr(context, 'format_string'):
-        return context.format_string(template)
+        try:
+            return context.format_string(template)
+        except Exception:
+            # フォールバック処理に移行
+            pass
 
-    # 従来システム（ExecutionContext）の場合
+    # SimpleExecutionContext（step_runner.py内のExecutionContext）の場合
+    if hasattr(context, 'to_dict'):
+        result = template
+        for key, value in context.to_dict().items():
+            # Pathオブジェクトも文字列に変換
+            str_value = str(value) if value is not None else ""
+            result = result.replace(f'{{{key}}}', str_value)
+        return result
+
+    # その他のコンテキストタイプの場合（基本的な属性ベース展開）
     result = template
-    for key, value in context.to_dict().items():
-        # Pathオブジェクトも文字列に変換
-        str_value = str(value) if value is not None else ""
-        result = result.replace(f'{{{key}}}', str_value)
+    context_dict = {}
+
+    # 共通属性を取得
+    common_attrs = ['contest_name', 'problem_name', 'language', 'env_type', 'command_type',
+                   'local_workspace_path', 'contest_current_path', 'contest_stock_path',
+                   'contest_template_path', 'source_file_name', 'language_id', 'run_command']
+
+    for attr in common_attrs:
+        if hasattr(context, attr):
+            value = getattr(context, attr)
+            context_dict[attr] = str(value) if value is not None else ""
+
+    # テンプレート置換
+    for key, value in context_dict.items():
+        result = result.replace(f'{{{key}}}', value)
 
     return result
 

@@ -2,16 +2,13 @@ import glob
 import json
 import os
 
+# 新設定システムの統合
+from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.context.dockerfile_resolver import DockerfileResolver
 
 # from .execution_context import ExecutionContext  # 新システムで置き換え済み
 from src.context.parsers.validation_service import ValidationService
 from src.context.resolver.config_resolver import create_config_root_from_dict, resolve_by_match_desc
-
-# 新設定システムの統合
-from src.context.user_input_parser.user_input_parser_integration import (
-    create_new_execution_context,
-)
 from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
 from src.operations.requests.file.file_op_type import FileOpType
 from src.operations.requests.file.file_request import FileRequest
@@ -19,10 +16,35 @@ from src.operations.requests.file.file_request import FileRequest
 CONTEST_ENV_DIR = "contest_env"
 
 
-def _load_current_context_sqlite(operations):
+def _create_execution_config(command_type=None, language=None, contest_name=None,
+                           problem_name=None, env_type=None, env_json=None):
+    """新設定システムを使用してExecutionConfigを作成するヘルパー関数"""
+    config_manager = TypeSafeConfigNodeManager()
+    config_manager.load_from_files(
+        system_dir="./config/system",
+        env_dir=CONTEST_ENV_DIR,
+        language=language or "python"
+    )
+
+    context = config_manager.create_execution_config(
+        contest_name=contest_name or "",
+        problem_name=problem_name or "",
+        language=language or "python",
+        env_type=env_type or "local",
+        command_type=command_type or "open"
+    )
+
+    # レガシー互換のためのプロパティ設定
+    if env_json:
+        context.env_json = env_json
+
+    return context
+
+
+def _load_current_context_sqlite(infrastructure):
     """SQLiteから現在のコンテキスト情報を読み込む"""
-    # operations IS the container in this context
-    config_loader = SystemConfigLoader(operations)
+    # infrastructure IS the container in this context
+    config_loader = SystemConfigLoader(infrastructure)
 
     context = config_loader.get_current_context()
     config = config_loader.load_config()
@@ -37,10 +59,10 @@ def _load_current_context_sqlite(operations):
     }
 
 
-def _save_current_context_sqlite(operations, context_info):
+def _save_current_context_sqlite(infrastructure, context_info):
     """SQLiteに現在のコンテキスト情報を保存する"""
-    # operations IS the container in this context
-    config_loader = SystemConfigLoader(operations)
+    # infrastructure IS the container in this context
+    config_loader = SystemConfigLoader(infrastructure)
 
     # 実行コンテキストを更新
     config_loader.update_current_context(
@@ -84,7 +106,7 @@ def _scan_and_apply_language(args, context, root):
             # 実際の言語ノードのみ処理
             if lang_node.key in valid_languages and arg in lang_node.matches:
                 # 新しいコンテキストを作成
-                new_context = create_new_execution_context(
+                new_context = _create_execution_config(
                     command_type=context.command_type,
                     language=lang_node.key,
                     contest_name=context.contest_name,
@@ -113,7 +135,7 @@ def _scan_and_apply_env_type(args, context, root):
                 for node in env_type_node.next_nodes:
                     if arg in node.matches:
                         # 新しいコンテキストを作成
-                        new_context = create_new_execution_context(
+                        new_context = _create_execution_config(
                             command_type=context.command_type,
                             language=context.language,
                             contest_name=context.contest_name,
@@ -142,7 +164,7 @@ def _scan_and_apply_command(args, context, root):
                 for node in command_node.next_nodes:
                     if arg in node.matches:
                         # 新しいコンテキストを作成
-                        new_context = create_new_execution_context(
+                        new_context = _create_execution_config(
                             command_type=node.key,
                             language=context.language,
                             contest_name=context.contest_name,
@@ -166,7 +188,7 @@ def _apply_problem_name(args, context):
     if args:
         problem_name = args.pop()
         # 新しいコンテキストを作成
-        new_context = create_new_execution_context(
+        new_context = _create_execution_config(
             command_type=context.command_type,
             language=context.language,
             contest_name=context.contest_name,
@@ -184,7 +206,7 @@ def _apply_contest_name(args, context):
     if args:
         contest_name = args.pop()
         # 新しいコンテキストを作成
-        new_context = create_new_execution_context(
+        new_context = _create_execution_config(
             command_type=context.command_type,
             language=context.language,
             contest_name=contest_name,
@@ -197,9 +219,9 @@ def _apply_contest_name(args, context):
     return args, context
 
 
-def _load_shared_config(base_dir: str, operations):
+def _load_shared_config(base_dir: str, infrastructure):
     """共有設定を読み込む"""
-    file_driver = operations.resolve("file_driver")
+    file_driver = infrastructure.resolve("file_driver")
     shared_path = os.path.join(base_dir, "shared", "env.json")
 
     try:
@@ -210,10 +232,10 @@ def _load_shared_config(base_dir: str, operations):
         return None
 
 
-def _load_all_env_jsons(base_dir: str, operations) -> list:
+def _load_all_env_jsons(base_dir: str, infrastructure) -> list:
     """環境設定JSONファイルを全て読み込む"""
     env_jsons = []
-    file_driver = operations.resolve("file_driver")
+    file_driver = infrastructure.resolve("file_driver")
 
     req = FileRequest(FileOpType.EXISTS, base_dir)
     result = req.execute_operation(driver=file_driver)
@@ -221,7 +243,7 @@ def _load_all_env_jsons(base_dir: str, operations) -> list:
         return env_jsons
 
     # 共有設定を読み込み
-    shared_config = _load_shared_config(base_dir, operations)
+    shared_config = _load_shared_config(base_dir, infrastructure)
 
     pattern = os.path.join(base_dir, "*", "env.json")
     env_json_paths = glob.glob(pattern)
@@ -299,7 +321,7 @@ def _merge_with_shared_config(env_json, shared_config):
     return merged_json
 
 
-def _apply_env_json(context, env_jsons, base_dir=None, operations=None):
+def _apply_env_json(context, env_jsons, base_dir=None, infrastructure=None):
     """環境JSONをコンテキストに適用"""
     # ConfigurationLoaderを使用して正しい設定を取得
     if context.language and base_dir:
@@ -327,9 +349,9 @@ def _apply_env_json(context, env_jsons, base_dir=None, operations=None):
 
 
 
-def make_dockerfile_loader(operations):
+def make_dockerfile_loader(infrastructure):
     def loader(path: str) -> str:
-        file_driver = operations.resolve("file_driver")
+        file_driver = infrastructure.resolve("file_driver")
         req = FileRequest(FileOpType.READ, path)
         result = req.execute_operation(driver=file_driver)
         return result.content
@@ -338,13 +360,13 @@ def make_dockerfile_loader(operations):
 
 def parse_user_input(
     args: list[str],
-    operations
+    infrastructure
 ):
     """ユーザー入力を解析してExecutionContextAdapterを生成する。
 
     Args:
         args: コマンドライン引数のリスト
-        operations: DIコンテナで、必要なサービスを解決する
+        infrastructure: DIコンテナで、必要なサービスを解決する
 
     Returns:
         ExecutionContextAdapter: 解析結果と設定情報を含むコンテキスト
@@ -353,10 +375,10 @@ def parse_user_input(
         ValueError: 引数が不正、またはバリデーションエラーの場合
     """
     # 1. Initialize services and load base data
-    context_data = _initialize_and_load_base_data(operations)
+    context_data = _initialize_and_load_base_data(infrastructure)
 
     # 2. Resolve environment configuration
-    env_config = _resolve_environment_configuration(context_data, operations)
+    env_config = _resolve_environment_configuration(context_data, infrastructure)
 
     # 3. Create and configure initial context
     context = _create_initial_context(context_data, env_config)
@@ -367,23 +389,23 @@ def parse_user_input(
     # 5. Handle contest management (removed - backup should be handled by runstep)
 
     # 6. Finalize environment configuration
-    context = _finalize_environment_configuration(context, env_config, operations)
+    context = _finalize_environment_configuration(context, env_config, infrastructure)
 
     # 7. Setup persistence and docker
-    _setup_context_persistence_and_docker(context, args, operations)
+    _setup_context_persistence_and_docker(context, args, infrastructure)
 
     # 8. Validate and return
     return _validate_and_return_context(context)
 
 
-def _initialize_and_load_base_data(operations):
+def _initialize_and_load_base_data(infrastructure):
     """Initialize services and load base context data."""
     ValidationService()
-    current_context_info = _load_current_context_sqlite(operations)
+    current_context_info = _load_current_context_sqlite(infrastructure)
     return current_context_info
 
 
-def _resolve_environment_configuration(context_data, operations):
+def _resolve_environment_configuration(context_data, infrastructure):
     """Load and resolve environment configuration."""
     from pathlib import Path
 
@@ -405,7 +427,7 @@ def _resolve_environment_configuration(context_data, operations):
         combined_config.update(lang_config)
 
     root = create_config_root_from_dict(combined_config)
-    env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, operations)
+    env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, infrastructure)
 
     # Resolve final env_json
     final_env_json = context_data["env_json"]
@@ -431,7 +453,7 @@ def _resolve_environment_configuration(context_data, operations):
 
 def _create_initial_context(context_data, env_config):
     """Create and configure initial execution context."""
-    context = create_new_execution_context(
+    context = _create_execution_config(
         command_type=context_data["command"],
         language=context_data["language"],
         contest_name=context_data["contest_name"],
@@ -443,11 +465,11 @@ def _create_initial_context(context_data, env_config):
     return context
 
 
-def _handle_contest_management(context, operations):
+def _handle_contest_management(context, infrastructure):
     """Handle contest backup and initialization."""
     if context.language and context.contest_name and context.problem_name:
         try:
-            contest_manager = operations.resolve("contest_manager")
+            contest_manager = infrastructure.resolve("contest_manager")
             contest_manager.handle_contest_change(
                 context.language,
                 context.contest_name,
@@ -463,9 +485,9 @@ def _handle_contest_management(context, operations):
     return context
 
 
-def _finalize_environment_configuration(context, env_config, operations):
+def _finalize_environment_configuration(context, env_config, infrastructure):
     """Apply environment JSON and finalize configuration."""
-    context = _apply_env_json(context, env_config['env_jsons'], CONTEST_ENV_DIR, operations)
+    context = _apply_env_json(context, env_config['env_jsons'], CONTEST_ENV_DIR, infrastructure)
     if context.env_json:
         context.resolver = create_config_root_from_dict(context.env_json)
     return context
@@ -487,7 +509,7 @@ def _apply_remaining_arguments_flexibly(args, context):
     return context
 
 
-def _setup_context_persistence_and_docker(context, args, operations):
+def _setup_context_persistence_and_docker(context, args, infrastructure):
     """Setup context persistence and Docker configuration."""
     # 引数が残っている場合は、より寛容に処理
     if args:
@@ -495,7 +517,7 @@ def _setup_context_persistence_and_docker(context, args, operations):
         context = _apply_remaining_arguments_flexibly(args, context)
         args = []  # 処理済みとしてクリア
 
-    _save_current_context_sqlite(operations, {
+    _save_current_context_sqlite(infrastructure, {
         "command": context.command_type,
         "language": context.language,
         "env_type": context.env_type,
@@ -505,7 +527,7 @@ def _setup_context_persistence_and_docker(context, args, operations):
     })
 
     oj_dockerfile_path = os.path.join(os.path.dirname(__file__), "oj.Dockerfile")
-    dockerfile_loader = make_dockerfile_loader(operations)
+    dockerfile_loader = make_dockerfile_loader(infrastructure)
     resolver = DockerfileResolver(
         dockerfile_path=None,
         oj_dockerfile_path=oj_dockerfile_path,

@@ -7,7 +7,7 @@ pure_functions.pyモジュールの関数をテストして、
 import pytest
 
 # Docker wrapper functions
-from src.utils.docker_wrappers import (
+from src.infrastructure.drivers.docker.legacy.docker_wrappers import (
     build_docker_build_command_wrapper,
     build_docker_cp_command_wrapper,
     build_docker_inspect_command_wrapper,
@@ -20,7 +20,7 @@ from src.utils.docker_wrappers import (
 
 # String formatting functions
 # Additional functions from string_formatters
-from src.utils.string_formatters import (
+from src.operations.pure.string_formatters import (
     extract_missing_template_keys,
     format_template_string,
     is_potential_script_path,

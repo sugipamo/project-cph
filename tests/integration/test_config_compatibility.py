@@ -272,11 +272,11 @@ class TestConfigCompatibility:
         )
 
         # モックoperationsを作成
-        mock_operations = Mock()
+        mock_infrastructure = Mock()
 
         # WorkflowExecutionServiceが新しい設定オブジェクトを受け入れることを確認
         try:
-            service = WorkflowExecutionService(config, mock_operations)
+            service = WorkflowExecutionService(config, mock_infrastructure)
             assert service is not None
             assert service.context == config
         except Exception as e:

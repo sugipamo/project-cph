@@ -1,18 +1,21 @@
 """SQLiteベースの状態管理実装
 
-設定システムから分離された状態管理の具体実装
+Infrastructure層での状態永続化の具体実装
 """
 import json
 from typing import Any, Dict, Optional
 
-from ...infrastructure.persistence.sqlite.repositories.system_config_repository import SystemConfigRepository
-from ..interfaces.state_manager import ExecutionHistory, IStateManager, SessionContext
+from ...sqlite.repositories.system_config_repository import SystemConfigRepository
+from ..interfaces.state_repository import IStateRepository
+from ..models.execution_history import ExecutionHistory
+from ..models.session_context import SessionContext
 
 
-class SqliteStateManager(IStateManager):
+class SqliteStateRepository(IStateRepository):
     """SQLiteベースの状態管理実装
 
     設定データではなく実行時状態を管理する専用システム
+    SystemConfigRepositoryを利用するが、明確に分離されたカテゴリを使用
     """
 
     def __init__(self, config_repo: SystemConfigRepository):

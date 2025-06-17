@@ -1,7 +1,7 @@
 """Tests for data_processors utility functions"""
 import pytest
 
-from src.utils.data_processors import filter_and_transform_items, group_items_by_key, merge_dictionaries
+from src.operations.pure.data_processors import filter_and_transform_items, group_items_by_key, merge_dictionaries
 
 
 class TestDataProcessors:

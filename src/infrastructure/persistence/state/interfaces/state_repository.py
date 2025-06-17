@@ -1,38 +1,18 @@
-"""状態管理システムのインターフェース
+"""状態管理リポジトリのインターフェース
 
 設定システムから分離された実行時状態管理
 """
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-
-@dataclass
-class ExecutionHistory:
-    """実行履歴データ"""
-    contest_name: str
-    problem_name: str
-    language: str
-    env_type: str
-    timestamp: str
-    success: bool
+from ..models.execution_history import ExecutionHistory
+from ..models.session_context import SessionContext
 
 
-@dataclass
-class SessionContext:
-    """セッションコンテキスト"""
-    current_contest: str
-    current_problem: str
-    current_language: str
-    previous_contest: str
-    previous_problem: str
-    user_specified_fields: Dict[str, bool]  # どのフィールドがユーザー指定か
+class IStateRepository(ABC):
+    """状態管理リポジトリのインターフェース
 
-
-class IStateManager(ABC):
-    """状態管理システムのインターフェース
-
-    runtimeレイヤーから分離された純粋な状態管理
+    Infrastructure層での状態永続化の抽象化
     設定データではなく実行時状態を管理
     """
 

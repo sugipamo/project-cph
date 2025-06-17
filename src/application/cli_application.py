@@ -8,7 +8,7 @@ from typing import Optional
 
 from src.application.orchestration.workflow_result_presenter import WorkflowResultPresenter, get_output_config
 from src.context.user_input_parser.user_input_parser import parse_user_input
-from src.infrastructure.build_infrastructure import build_operations
+from src.infrastructure.build_infrastructure import build_infrastructure
 from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
 from src.workflow.workflow_execution_service import WorkflowExecutionService
 from src.workflow.workflow_result import WorkflowExecutionResult
@@ -19,7 +19,7 @@ class CLIApplication:
 
     def __init__(self):
         """Initialize CLI application"""
-        self.operations = None
+        self.infrastructure = None
         self.context = None
 
     def execute_cli_application(self, args: list[str]) -> int:
@@ -33,8 +33,8 @@ class CLIApplication:
         """
         try:
             # Initialize infrastructure
-            self.operations = build_operations()
-            self.context = parse_user_input(args, self.operations)
+            self.infrastructure = build_infrastructure()
+            self.context = parse_user_input(args, self.infrastructure)
 
             # Execute main workflow
             self._execute_workflow()
@@ -63,7 +63,7 @@ class CLIApplication:
         output_config = get_output_config(self.context)
 
         # Create workflow execution service
-        service = WorkflowExecutionService(self.context, self.operations)
+        service = WorkflowExecutionService(self.context, self.infrastructure)
 
         # Execute workflow
         result = service.execute_workflow()
@@ -121,17 +121,17 @@ class CLIApplication:
         return 1
 
 
-def main(context=None, operations=None) -> Optional[WorkflowExecutionResult]:
+def main(context=None, infrastructure=None) -> Optional[WorkflowExecutionResult]:
     """Main entry point (for backward compatibility and testing)
 
     Args:
         context: Execution context (optional, for testing)
-        operations: Operations container (optional, for testing)
+        infrastructure: Infrastructure container (optional, for testing)
 
     Returns:
         Workflow execution result
     """
-    if context is None or operations is None:
+    if context is None or infrastructure is None:
         # Called without parameters - run CLI application
         app = CLIApplication()
         exit_code = app.execute_cli_application(sys.argv[1:])
@@ -139,7 +139,7 @@ def main(context=None, operations=None) -> Optional[WorkflowExecutionResult]:
     else:
         # Called with parameters - execute workflow directly (for testing)
         output_config = get_output_config(context)
-        service = WorkflowExecutionService(context, operations)
+        service = WorkflowExecutionService(context, infrastructure)
         result = service.execute_workflow()
 
         presenter = WorkflowResultPresenter(output_config, context)

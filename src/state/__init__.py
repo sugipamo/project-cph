@@ -1,1 +1,0 @@
-# State management system - separated from configuration system

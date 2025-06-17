@@ -115,6 +115,46 @@ class TypedExecutionConfiguration:
             # 存在しないキーの場合はそのまま返す
             return template
 
+    def validate_execution_data(self) -> tuple[bool, str]:
+        """実行データの検証（レガシー互換）"""
+        if not hasattr(self, 'contest_name') or not self.contest_name:
+            return False, "Contest name is required"
+        if not hasattr(self, 'problem_name') or not self.problem_name:
+            return False, "Problem name is required"
+        if not hasattr(self, 'language') or not self.language:
+            return False, "Language is required"
+        return True, ""
+
+    @property
+    def env_json(self):
+        """env_jsonプロパティ（レガシー互換）"""
+        return getattr(self, '_env_json', {})
+
+    @env_json.setter
+    def env_json(self, value):
+        """env_jsonのsetter（レガシー互換）"""
+        self._env_json = value
+
+    @property
+    def command_type(self):
+        """command_typeプロパティ（レガシー互換）"""
+        return getattr(self, '_command_type', 'open')
+
+    @command_type.setter
+    def command_type(self, value):
+        """command_typeのsetter"""
+        self._command_type = value
+
+    @property
+    def dockerfile_resolver(self):
+        """dockerfile_resolverプロパティ（レガシー互換）"""
+        return getattr(self, '_dockerfile_resolver', None)
+
+    @dockerfile_resolver.setter
+    def dockerfile_resolver(self, value):
+        """dockerfile_resolverのsetter"""
+        self._dockerfile_resolver = value
+
 
 class FileLoader:
     """ファイル読み込み専用クラス
@@ -467,13 +507,13 @@ class TypeSafeConfigNodeManager:
             ['python', 'timeout'],
             ['shared', 'timeout'],
         ]
-        
+
         for path in timeout_paths:
             try:
                 return self.resolve_config(path, int)
             except (KeyError, TypeError, ValueError):
                 continue
-        
+
         # すべて失敗した場合はデフォルト値
         return 30
 

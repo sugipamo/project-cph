@@ -1,13 +1,41 @@
 """ステップ生成・実行の核となる関数群（新しいシンプル設計）"""
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 from .step import Step, StepContext, StepGenerationResult, StepType
 from .step_runner import ExecutionContext, expand_template, run_steps
 from .step_runner import create_step as create_step_simple
 
+# 新設定システムをサポート
+try:
+    from src.configuration.config_manager import TypedExecutionConfiguration
+except ImportError:
+    TypedExecutionConfiguration = None
 
-def create_step_context_from_execution_context(execution_context) -> StepContext:
-    """ExecutionContextからStepContextを作成するヘルパー関数（後方互換性）"""
+
+def create_step_context_from_execution_context(execution_context: Union['TypedExecutionConfiguration', Any]) -> StepContext:
+    """実行コンテキストからStepContextを作成するヘルパー関数（新旧システム対応）"""
+    # TypedExecutionConfigurationの場合
+    if TypedExecutionConfiguration and isinstance(execution_context, TypedExecutionConfiguration):
+        # 新設定システムから直接値を取得
+        file_patterns = getattr(execution_context, 'file_patterns', {})
+
+        return StepContext(
+            contest_name=execution_context.contest_name,
+            problem_name=execution_context.problem_name,
+            language=execution_context.language,
+            env_type=execution_context.env_type,
+            command_type=execution_context.command_type,
+            local_workspace_path=str(execution_context.local_workspace_path),
+            contest_current_path=str(execution_context.contest_current_path),
+            contest_stock_path=str(getattr(execution_context, 'contest_stock_path', '')),
+            contest_template_path=str(getattr(execution_context, 'contest_template_path', '')),
+            contest_temp_path=str(getattr(execution_context, 'contest_temp_path', '')),
+            source_file_name=execution_context.source_file_name,
+            language_id=execution_context.language_id,
+            file_patterns=file_patterns
+        )
+
+    # 従来のExecutionContextの場合
     # ExecutionContextからfile_patternsを取得
     file_patterns = None
 
@@ -22,20 +50,22 @@ def create_step_context_from_execution_context(execution_context) -> StepContext
         else:
             # ConfigurationLoader形式（マージ済み設定）
             language_config = execution_context.env_json
-        raw_patterns = language_config['file_patterns']
 
-        # ConfigurationLoaderの形式からシンプルな形式に変換（必要な場合）
-        file_patterns = {}
-        for pattern_name, pattern_data in raw_patterns.items():
-            if isinstance(pattern_data, dict):
-                # {"workspace": ["patterns"], ...} の形式の場合
-                for location in ['workspace', 'contest_current', 'contest_stock']:
-                    if location in pattern_data:
-                        file_patterns[pattern_name] = pattern_data[location]
-                        break
-            else:
-                # 既にシンプルな形式の場合
-                file_patterns[pattern_name] = pattern_data
+        if 'file_patterns' in language_config:
+            raw_patterns = language_config['file_patterns']
+
+            # ConfigurationLoaderの形式からシンプルな形式に変換（必要な場合）
+            file_patterns = {}
+            for pattern_name, pattern_data in raw_patterns.items():
+                if isinstance(pattern_data, dict):
+                    # {"workspace": ["patterns"], ...} の形式の場合
+                    for location in ['workspace', 'contest_current', 'contest_stock']:
+                        if location in pattern_data:
+                            file_patterns[pattern_name] = pattern_data[location]
+                            break
+                else:
+                    # 既にシンプルな形式の場合
+                    file_patterns[pattern_name] = pattern_data
 
     return StepContext(
         contest_name=execution_context.contest_name,
@@ -54,8 +84,30 @@ def create_step_context_from_execution_context(execution_context) -> StepContext
     )
 
 
-def execution_context_to_simple_context(execution_context) -> ExecutionContext:
-    """ExecutionContextをSimpleExecutionContextに変換"""
+def execution_context_to_simple_context(execution_context: Union['TypedExecutionConfiguration', Any]) -> ExecutionContext:
+    """実行コンテキストをSimpleExecutionContextに変換（新旧システム対応）"""
+    # TypedExecutionConfigurationの場合
+    if TypedExecutionConfiguration and isinstance(execution_context, TypedExecutionConfiguration):
+        # 新設定システムから直接値を取得
+        file_patterns = getattr(execution_context, 'file_patterns', {})
+
+        return ExecutionContext(
+            contest_name=execution_context.contest_name,
+            problem_name=execution_context.problem_name,
+            old_contest_name=getattr(execution_context, 'old_contest_name', ''),
+            old_problem_name=getattr(execution_context, 'old_problem_name', ''),
+            language=execution_context.language,
+            local_workspace_path=str(execution_context.local_workspace_path),
+            contest_current_path=str(execution_context.contest_current_path),
+            contest_stock_path=str(getattr(execution_context, 'contest_stock_path', '')),
+            contest_template_path=str(getattr(execution_context, 'contest_template_path', '')),
+            source_file_name=execution_context.source_file_name,
+            language_id=execution_context.language_id,
+            run_command=execution_context.run_command,
+            file_patterns=file_patterns
+        )
+
+    # 従来のExecutionContextの場合
     file_patterns = {}
     language_config = {}
 
@@ -70,27 +122,31 @@ def execution_context_to_simple_context(execution_context) -> ExecutionContext:
         else:
             # ConfigurationLoader形式（マージ済み設定）
             language_config = execution_context.env_json
-        raw_patterns = language_config['file_patterns']
 
-        # ConfigurationLoaderの形式からシンプルな形式に変換（必要な場合）
-        file_patterns = {}
-        for pattern_name, pattern_data in raw_patterns.items():
-            if isinstance(pattern_data, dict):
-                # {"workspace": ["patterns"], ...} の形式の場合
-                for location in ['workspace', 'contest_current', 'contest_stock']:
-                    if location in pattern_data:
-                        file_patterns[pattern_name] = pattern_data[location]
-                        break
-            else:
-                # 既にシンプルな形式の場合
-                file_patterns[pattern_name] = pattern_data
+        if 'file_patterns' in language_config:
+            raw_patterns = language_config['file_patterns']
+
+            # ConfigurationLoaderの形式からシンプルな形式に変換（必要な場合）
+            file_patterns = {}
+            for pattern_name, pattern_data in raw_patterns.items():
+                if isinstance(pattern_data, dict):
+                    # {"workspace": ["patterns"], ...} の形式の場合
+                    for location in ['workspace', 'contest_current', 'contest_stock']:
+                        if location in pattern_data:
+                            file_patterns[pattern_name] = pattern_data[location]
+                            break
+                else:
+                    # 既にシンプルな形式の場合
+                    file_patterns[pattern_name] = pattern_data
 
     # デバッグ: run_commandの値を確認
-    run_command = language_config['run_command']
+    run_command = language_config.get('run_command', '')
     if not run_command:
         # ExecutionContextAdapterの場合、runtime_configから取得を試行
         if hasattr(execution_context, 'config') and hasattr(execution_context.config, 'runtime_config'):
             run_command = execution_context.config.runtime_config.run_command
+        elif hasattr(execution_context, 'run_command'):
+            run_command = execution_context.run_command
 
         # run_commandは必須 - env.jsonで設定されている必要がある
 
@@ -111,7 +167,7 @@ def execution_context_to_simple_context(execution_context) -> ExecutionContext:
     )
 
 
-def generate_steps_from_json(json_steps: List[Dict[str, Any]], context) -> StepGenerationResult:
+def generate_steps_from_json(json_steps: List[Dict[str, Any]], context: Union['TypedExecutionConfiguration', Any]) -> StepGenerationResult:
     """JSONステップリストから実行可能ステップを生成する（新設計使用）
 
     Args:
@@ -142,14 +198,14 @@ def generate_steps_from_json(json_steps: List[Dict[str, Any]], context) -> StepG
     return StepGenerationResult(steps, errors, [])
 
 
-def create_step_from_json(json_step: Dict[str, Any], context) -> Step:
+def create_step_from_json(json_step: Dict[str, Any], context: Union['TypedExecutionConfiguration', Any]) -> Step:
     """単一のJSONステップから実行可能ステップを生成する（後方互換性）"""
     simple_context = execution_context_to_simple_context(context)
     return create_step_simple(json_step, simple_context)
 
 
 # 後方互換性のための関数（旧APIのエミュレーション）
-def format_template(template: Any, context) -> str:
+def format_template(template: Any, context: Union['TypedExecutionConfiguration', Any]) -> str:
     """テンプレート文字列をフォーマットする（後方互換性）"""
     if not isinstance(template, str):
         return str(template) if template is not None else ""
@@ -158,9 +214,18 @@ def format_template(template: Any, context) -> str:
     return expand_template(template, simple_context)
 
 
-def expand_file_patterns(template: str, context, step_type=None) -> str:
+def expand_file_patterns(template: str, context: Union['TypedExecutionConfiguration', Any], step_type=None) -> str:
     """ファイルパターンを展開する（後方互換性）"""
-    from .simple_step_runner import expand_file_patterns_in_text
+    # TypedExecutionConfigurationの場合は直接テンプレート展開を使用
+    if TypedExecutionConfiguration and isinstance(context, TypedExecutionConfiguration):
+        if hasattr(context, 'resolve_formatted_string'):
+            try:
+                return context.resolve_formatted_string(template)
+            except Exception:
+                pass  # フォールバック
+
+    # 従来のシステム用
+    from .step_runner import expand_file_patterns_in_text
 
     simple_context = execution_context_to_simple_context(context)
 

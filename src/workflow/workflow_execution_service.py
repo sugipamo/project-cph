@@ -7,8 +7,8 @@ from typing import Optional
 from src.application.factories.unified_request_factory import create_request
 from src.application.orchestration.unified_driver import UnifiedDriver
 from src.configuration.config_manager import TypedExecutionConfiguration
+from src.infrastructure.drivers.logging.debug_logger import DebugLogger
 from src.operations.constants.request_types import RequestType
-from src.utils.debug_logger import DebugLogger
 from src.workflow.step.step import Step, StepType
 from src.workflow.workflow_result import WorkflowExecutionResult
 
@@ -26,7 +26,7 @@ class WorkflowExecutionService:
             operations: Operations container for drivers
         """
         self.context = context
-        self.operations = operations
+        self.infrastructure = infrastructure
 
     def execute_workflow(self, parallel: Optional[bool] = None, max_workers: Optional[int] = None) -> WorkflowExecutionResult:
         """Execute workflow based on context configuration
@@ -221,7 +221,7 @@ class WorkflowExecutionService:
         # Use the OPTIMIZED workflow generation
         from src.workflow.step.workflow import create_step_context_from_env_context, generate_workflow_from_json
         step_context = create_step_context_from_env_context(self.context)
-        composite_request, workflow_errors, workflow_warnings = generate_workflow_from_json(json_steps, step_context, self.operations)
+        composite_request, workflow_errors, workflow_warnings = generate_workflow_from_json(json_steps, step_context, self.infrastructure)
 
         if workflow_errors:
             return None, workflow_errors, workflow_warnings
@@ -238,7 +238,7 @@ class WorkflowExecutionService:
     def _execute_main_workflow(self, operations_composite, use_parallel=False, max_workers=4):
         """Execute the main workflow operations."""
 
-        unified_driver = UnifiedDriver(self.operations)
+        unified_driver = UnifiedDriver(self.infrastructure)
 
         # Check if composite request supports parallel execution
         if use_parallel and hasattr(operations_composite, 'execute_parallel'):

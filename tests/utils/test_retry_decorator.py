@@ -4,8 +4,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.operations.exceptions.error_codes import ErrorCode
-from src.utils.retry_decorator import (
+from src.infrastructure.patterns.retry_decorator import (
     COMMAND_RETRY_CONFIG,
     DOCKER_RETRY_CONFIG,
     NETWORK_RETRY_CONFIG,
@@ -13,6 +12,7 @@ from src.utils.retry_decorator import (
     RetryConfig,
     retry_on_failure,
 )
+from src.operations.exceptions.error_codes import ErrorCode
 
 
 class TestRetryConfig:

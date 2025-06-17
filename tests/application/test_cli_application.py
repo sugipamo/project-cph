@@ -19,18 +19,18 @@ class TestCLIApplication:
 
     def test_init(self):
         """Test CLIApplication initialization."""
-        assert self.app.operations is None
+        assert self.app.infrastructure is None
         assert self.app.context is None
 
-    @patch('src.application.cli_application.build_operations')
+    @patch('src.application.cli_application.build_infrastructure')
     @patch('src.application.cli_application.parse_user_input')
     @patch.object(CLIApplication, '_execute_workflow')
     def test_run_success(self, mock_execute, mock_parse, mock_build):
         """Test successful run."""
         # Setup mocks
-        mock_operations = MagicMock()
+        mock_infrastructure = MagicMock()
         mock_context = MagicMock()
-        mock_build.return_value = mock_operations
+        mock_build.return_value = mock_infrastructure
         mock_parse.return_value = mock_context
         mock_execute.return_value = MagicMock()
 
@@ -39,14 +39,14 @@ class TestCLIApplication:
 
         # Assert
         assert result == 0
-        assert self.app.operations == mock_operations
+        assert self.app.infrastructure == mock_infrastructure
         assert self.app.context == mock_context
 
         mock_build.assert_called_once()
-        mock_parse.assert_called_once_with(['python', 'test', 'a'], mock_operations)
+        mock_parse.assert_called_once_with(['python', 'test', 'a'], mock_infrastructure)
         mock_execute.assert_called_once()
 
-    @patch('src.application.cli_application.build_operations')
+    @patch('src.application.cli_application.build_infrastructure')
     @patch('src.application.cli_application.parse_user_input')
     @patch('builtins.print')
     def test_run_value_error(self, mock_print, mock_parse, mock_build):
@@ -59,7 +59,7 @@ class TestCLIApplication:
         assert result == 1
         mock_print.assert_called_once_with("エラー: Invalid argument")
 
-    @patch('src.application.cli_application.build_operations')
+    @patch('src.application.cli_application.build_infrastructure')
     @patch('src.application.cli_application.parse_user_input')
     @patch('builtins.print')
     def test_run_file_not_found_error(self, mock_print, mock_parse, mock_build):
@@ -72,7 +72,7 @@ class TestCLIApplication:
         assert result == 1
         mock_print.assert_called_once_with("ファイルが見つかりません: File not found")
 
-    @patch('src.application.cli_application.build_operations')
+    @patch('src.application.cli_application.build_infrastructure')
     @patch('src.application.cli_application.parse_user_input')
     @patch('builtins.print')
     def test_run_json_decode_error(self, mock_print, mock_parse, mock_build):
@@ -85,7 +85,7 @@ class TestCLIApplication:
         assert result == 1
         mock_print.assert_called_once_with("エラー: Invalid JSON: line 1 column 1 (char 0)")
 
-    @patch('src.application.cli_application.build_operations')
+    @patch('src.application.cli_application.build_infrastructure')
     @patch('src.application.cli_application.parse_user_input')
     @patch.object(CLIApplication, '_handle_general_exception')
     def test_run_general_exception(self, mock_handle, mock_parse, mock_build):
@@ -107,14 +107,14 @@ class TestCLIApplication:
         """Test _execute_workflow method."""
         # Setup mocks
         mock_context = MagicMock()
-        mock_operations = MagicMock()
+        mock_infrastructure = MagicMock()
         mock_config = {'format': 'json'}
         mock_service = MagicMock()
         mock_presenter = MagicMock()
         mock_result = MagicMock()
 
         self.app.context = mock_context
-        self.app.operations = mock_operations
+        self.app.infrastructure = mock_infrastructure
 
         mock_get_config.return_value = mock_config
         mock_service_class.return_value = mock_service
@@ -127,7 +127,7 @@ class TestCLIApplication:
         # Assert
         assert result == mock_result
         mock_get_config.assert_called_once_with(mock_context)
-        mock_service_class.assert_called_once_with(mock_context, mock_operations)
+        mock_service_class.assert_called_once_with(mock_context, mock_infrastructure)
         mock_service.execute_workflow.assert_called_once_with()
         mock_presenter_class.assert_called_once_with(mock_config, mock_context)
         mock_presenter.present_results.assert_called_once_with(mock_result)
@@ -240,7 +240,7 @@ class TestMainFunction:
         """Test main function with parameters (testing mode)."""
         # Setup mocks
         mock_context = MagicMock()
-        mock_operations = MagicMock()
+        mock_infrastructure = MagicMock()
         mock_config = {'format': 'json'}
         mock_service = MagicMock()
         mock_presenter = MagicMock()
@@ -252,12 +252,12 @@ class TestMainFunction:
         mock_service.execute_workflow.return_value = mock_result
 
         # Execute
-        result = main(context=mock_context, operations=mock_operations)
+        result = main(context=mock_context, infrastructure=mock_infrastructure)
 
         # Assert
         assert result == mock_result
         mock_get_config.assert_called_once_with(mock_context)
-        mock_service_class.assert_called_once_with(mock_context, mock_operations)
+        mock_service_class.assert_called_once_with(mock_context, mock_infrastructure)
         mock_service.execute_workflow.assert_called_once_with()
         mock_presenter_class.assert_called_once_with(mock_config, mock_context)
         mock_presenter.present_results.assert_called_once_with(mock_result)
@@ -271,7 +271,7 @@ class TestMainFunction:
              patch.object(CLIApplication, 'execute_cli_application') as mock_execute_cli_application:
                 mock_execute_cli_application.return_value = 1
 
-                # Should call CLI application since operations is None
+                # Should call CLI application since infrastructure is None
                 main(context=mock_context)
 
                 mock_execute_cli_application.assert_called_once()

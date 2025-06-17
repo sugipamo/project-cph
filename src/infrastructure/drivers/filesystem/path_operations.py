@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Union
 
-from src.utils.path_types import PathOperationResult
+from src.operations.types.path_types import PathOperationResult
 
 
 class PathOperations:

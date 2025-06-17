@@ -7,8 +7,11 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-# 削除されたインターフェースのため、モックを直接定義
-from src.state.interfaces.state_manager import ExecutionHistory, IStateManager, SessionContext
+# Infrastructure層に移動されたインターフェースをインポート
+from src.infrastructure.persistence.state import ExecutionHistory, IStateRepository, SessionContext
+
+# 互換性のためのエイリアス
+IStateManager = IStateRepository
 
 
 class MockExecutionSettings:

@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.utils.debug_logger import MAX_COMMAND_LENGTH, DebugLevel, DebugLogger
+from src.infrastructure.drivers.logging.debug_logger import MAX_COMMAND_LENGTH, DebugLevel, DebugLogger
 
 
 class TestDebugLevel:

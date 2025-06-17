@@ -8,8 +8,8 @@ import pytest
 
 from src.application.factories.unified_request_factory import create_request
 from src.infrastructure.drivers.docker.docker_driver import LocalDockerDriver
+from src.operations.pure.string_formatters import validate_file_path_format
 from src.operations.requests.docker.docker_request import DockerOpType, DockerRequest
-from src.utils.string_formatters import validate_file_path_format
 from src.workflow.step.step import Step, StepType
 
 
