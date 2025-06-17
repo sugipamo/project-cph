@@ -33,11 +33,9 @@ class PerformanceBenchmark:
 
         for _ in range(iterations):
             start_time = time.perf_counter()
-            try:
+            with contextlib.suppress(Exception):
                 func()
-            except Exception:
                 # エラーの場合も時間は測定
-                pass
             end_time = time.perf_counter()
             times.append(end_time - start_time)
 
@@ -381,7 +379,7 @@ class TestConfigPerformance:
                 try:
                     manager.resolve_config(["timeout", "default"], int)
                     manager.resolve_config(["paths", "local_workspace_path"], str)
-                except:
+                except Exception:
                     pass
 
             managers.append(manager)
@@ -420,7 +418,7 @@ class TestConfigPerformance:
                 try:
                     manager.resolve_config(["timeout", "default"], int)
                     manager.resolve_config(["paths", "local_workspace_path"], str)
-                except:
+                except Exception:
                     pass
             end_time = time.perf_counter()
             results_queue.put(end_time - start_time)
@@ -469,7 +467,7 @@ class TestConfigPerformance:
                     legacy.resolve_config(["paths", "workspace_path"], str)
                     legacy.resolve_config(["timeout", "default"], int)
                     legacy.resolve_config(["environment_logging", "enabled"], bool)
-                except:
+                except Exception:
                     pass
 
         def full_new_workflow():
@@ -484,7 +482,7 @@ class TestConfigPerformance:
                     manager.resolve_config(["paths", "local_workspace_path"], str)
                     manager.resolve_config(["timeout", "default"], int)
                     manager.resolve_config(["environment_logging", "enabled"], bool)
-                except:
+                except Exception:
                     pass
 
         comparison = PerformanceBenchmark.compare_performance(

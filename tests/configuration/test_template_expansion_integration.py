@@ -2,6 +2,7 @@
 
 TypeSafeConfigNodeManagerがTemplateExpanderの32個の関数を統合できることを検証
 """
+import contextlib
 import json
 import tempfile
 from pathlib import Path
@@ -209,13 +210,11 @@ class TestTemplateExpansionIntegration:
         # パターンを使ったテンプレート
         pattern_template = "Files to process: {test_files}"
         # ConfigNodeがfile_patternsをどう処理するかテスト
-        try:
+        with contextlib.suppress(KeyError, TypeError):
             manager.resolve_template_typed(pattern_template)
             # 結果の確認は実際のConfigNode実装による
-        except (KeyError, TypeError):
             # ConfigNodeがfile_patternsを直接サポートしていない場合
             # これは期待される動作
-            pass
 
     def test_template_error_handling(self, manager_with_comprehensive_data):
         """テンプレートエラーハンドリングテスト"""

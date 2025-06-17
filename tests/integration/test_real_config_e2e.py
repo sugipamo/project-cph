@@ -2,6 +2,7 @@
 
 実環境のcontest_env設定を使用した統合テスト
 """
+import contextlib
 from pathlib import Path
 
 import pytest
@@ -320,13 +321,11 @@ class TestRealConfigEndToEnd:
             manager.resolve_config(["definitely", "does", "not", "exist"], str)
 
         # 存在しない言語での設定読み込み（エラー耐性あり）
-        try:
+        with contextlib.suppress(Exception):
             manager.load_from_files(
                 system_dir=real_config_paths["system_config"],
                 env_dir=real_config_paths["contest_env"],
                 language="nonexistent_language"
             )
             # 正常に処理された場合はOK（エラー耐性機能）
-        except Exception:
             # エラーが発生しても期待される動作
-            pass
