@@ -62,7 +62,7 @@ class TestMainFunction:
 
         # Verify service creation
         mock_service_class.assert_called_once_with(self.mock_context, self.mock_operations)
-        mock_service.execute_workflow.assert_called_once_with(parallel=False)
+        mock_service.execute_workflow.assert_called_once_with()
 
         # Verify result returned
         assert result == mock_result

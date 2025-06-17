@@ -66,7 +66,7 @@ class CLIApplication:
         service = WorkflowExecutionService(self.context, self.operations)
 
         # Execute workflow
-        result = service.execute_workflow(parallel=False)
+        result = service.execute_workflow()
 
         # Present results
         presenter = WorkflowResultPresenter(output_config, self.context)
@@ -140,7 +140,7 @@ def main(context=None, operations=None) -> Optional[WorkflowExecutionResult]:
         # Called with parameters - execute workflow directly (for testing)
         output_config = get_output_config(context)
         service = WorkflowExecutionService(context, operations)
-        result = service.execute_workflow(parallel=False)
+        result = service.execute_workflow()
 
         presenter = WorkflowResultPresenter(output_config, context)
         presenter.present_results(result)

@@ -1,19 +1,18 @@
 """既存システムとの互換性レイヤー"""
 from typing import Any, Dict, Optional
 
-from ..core.execution_configuration import ExecutionConfiguration
-from ..resolvers.config_resolver import ConfigurationResolver, create_config_resolver
+from ..typed_config_node_manager import TypedExecutionConfiguration
 
 
 class BackwardCompatibilityLayer:
     """既存システムとの互換性のみに特化"""
 
-    def __init__(self, config: ExecutionConfiguration):
+    def __init__(self, config: TypedExecutionConfiguration):
         self.config = config
         self._resolver = None  # 既存システムとの互換性のため
         self._env_json = None  # env_json の mutable 状態
         self._dockerfile_resolver = None  # dockerfile_resolver の mutable 状態
-        self._config_resolver: Optional[ConfigurationResolver] = None  # 新設定解決器
+        # TypeSafeConfigNodeManagerは直接使用可能
 
     @property
     def resolver(self):
@@ -23,9 +22,7 @@ class BackwardCompatibilityLayer:
     def resolver(self, value):
         self._resolver = value
 
-        # env_jsonが利用可能な場合、新設定解決器を初期化
-        if self._env_json and self._config_resolver is None:
-            self._config_resolver = create_config_resolver(self.config, self._env_json)
+        # TypeSafeConfigNodeManagerは初期化不要
 
     @property
     def env_json(self) -> Dict[str, Any]:
@@ -49,9 +46,7 @@ class BackwardCompatibilityLayer:
         """env_jsonのsetter（既存システムとの互換性のため）"""
         self._env_json = value
 
-        # 新設定解決器を初期化
-        if value:
-            self._config_resolver = create_config_resolver(self.config, value)
+        # TypeSafeConfigNodeManagerでは初期化不要
 
     @property
     def dockerfile_resolver(self):
@@ -63,6 +58,6 @@ class BackwardCompatibilityLayer:
         """dockerfile_resolverのsetter"""
         self._dockerfile_resolver = value
 
-    def get_config_resolver(self) -> Optional[ConfigurationResolver]:
+    def get_config_resolver(self):
         """新設定解決器を取得（テスト・デバッグ用）"""
-        return self._config_resolver
+        return None  # TypeSafeConfigNodeManagerでは直接使用

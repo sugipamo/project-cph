@@ -10,14 +10,32 @@ from typing import Any, Dict, List, Optional, Type, TypeVar, overload
 
 import yaml
 
-from src.context.resolver.config_node import ConfigNode
-from src.context.resolver.config_resolver import (
-    create_config_root_from_dict,
-    resolve_best,
-    resolve_formatted_string,
-)
+# Avoid circular imports - these will be imported when needed
+ConfigNode = None
+create_config_root_from_dict = None
+resolve_best = None
+resolve_formatted_string = None
 
 T = TypeVar('T')
+
+def _ensure_imports():
+    """Ensure context imports are loaded when needed"""
+    global ConfigNode, create_config_root_from_dict, resolve_best, resolve_formatted_string
+    if ConfigNode is None:
+        from src.context.resolver.config_node import ConfigNode as _ConfigNode
+        from src.context.resolver.config_resolver import (
+            create_config_root_from_dict as _create_config_root_from_dict,
+        )
+        from src.context.resolver.config_resolver import (
+            resolve_best as _resolve_best,
+        )
+        from src.context.resolver.config_resolver import (
+            resolve_formatted_string as _resolve_formatted_string,
+        )
+        ConfigNode = _ConfigNode
+        create_config_root_from_dict = _create_config_root_from_dict
+        resolve_best = _resolve_best
+        resolve_formatted_string = _resolve_formatted_string
 
 
 @dataclass
@@ -219,6 +237,7 @@ class TypeSafeConfigNodeManager:
     """
 
     def __init__(self):
+        _ensure_imports()
         self.root_node: Optional[ConfigNode] = None
         self.file_loader = FileLoader()
 
@@ -239,6 +258,7 @@ class TypeSafeConfigNodeManager:
         merged_dict = self.file_loader.load_and_merge_configs(
             system_dir, env_dir, language
         )
+        _ensure_imports()
         self.root_node = create_config_root_from_dict(merged_dict)
 
     # 型安全なconfig解決（overload版）
@@ -282,6 +302,7 @@ class TypeSafeConfigNodeManager:
             return self._type_conversion_cache[cache_key]
 
         # ConfigNode解決（約1-5μs）
+        _ensure_imports()
         best_node = resolve_best(self.root_node, path)
 
         if best_node is None:
@@ -336,6 +357,7 @@ class TypeSafeConfigNodeManager:
             return self._convert_to_type(cached_result, return_type)
 
         # ConfigNodeでの展開
+        _ensure_imports()
         expanded = resolve_formatted_string(template, self.root_node, context)
         converted = self._convert_to_type(expanded, return_type)
 
@@ -431,13 +453,13 @@ class TypeSafeConfigNodeManager:
 
     def _convert_to_type(self, value: Any, target_type: Type[T]) -> T:
         """値を指定型に安全に変換"""
-        if target_type == str:
+        if target_type is str:
             return str(value)
-        if target_type == int:
+        if target_type is int:
             if isinstance(value, bool):
                 raise TypeError("Cannot convert bool to int")
             return int(value)
-        if target_type == bool:
+        if target_type is bool:
             if isinstance(value, bool):
                 return value
             if isinstance(value, str):
@@ -446,7 +468,7 @@ class TypeSafeConfigNodeManager:
                 if value.lower() in ('false', '0', 'no', 'off'):
                     return False
             raise TypeError(f"Cannot convert {value} to bool")
-        if target_type == float:
+        if target_type is float:
             return float(value)
         if target_type == Path:
             return Path(str(value))

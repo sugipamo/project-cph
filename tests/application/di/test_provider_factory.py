@@ -13,7 +13,7 @@ from src.application.di.provider_factory import (
     get_time_provider,
     initialize_providers,
 )
-from src.configuration.loaders.configuration_loader import ConfigurationLoader
+from src.configuration.typed_config_node_manager import TypeSafeConfigNodeManager
 from src.infrastructure.providers import (
     EnvironmentProvider,
     FileProvider,
@@ -109,19 +109,15 @@ class TestProviderFactory:
         assert hasattr(logger, 'info')
         assert hasattr(logger, 'error')
 
-    def test_get_config_loader_system(self):
+    def test_get_config_manager_system(self):
         factory = ProviderFactory(use_mocks=False)
-        loader = factory.get_config_loader()
-        assert isinstance(loader, ConfigurationLoader)
-        assert loader.env_loader.contest_env_dir == Path("./contest_env")
-        assert loader.system_loader.system_config_dir == Path("./config/system")
+        manager = factory.get_config_manager()
+        assert isinstance(manager, TypeSafeConfigNodeManager)
 
-    def test_get_config_loader_mock(self):
+    def test_get_config_manager_mock(self):
         factory = ProviderFactory(use_mocks=True)
-        loader = factory.get_config_loader()
-        assert isinstance(loader, ConfigurationLoader)
-        assert loader.env_loader.contest_env_dir == Path("./mock_contest_env")
-        assert loader.system_loader.system_config_dir == Path("./mock_config/system")
+        manager = factory.get_config_manager()
+        assert isinstance(manager, TypeSafeConfigNodeManager)
 
     def test_reset_providers(self):
         factory = ProviderFactory(use_mocks=False)
@@ -174,19 +170,17 @@ class TestProviderFactory:
 
     def test_system_providers_initialization_paths(self):
         factory = ProviderFactory(use_mocks=False)
-        loader = factory.get_config_loader()
+        manager = factory.get_config_manager()
 
-        # ConfigurationLoaderの内部ローダーが正しいパスを持っているかテスト
-        assert loader.env_loader.contest_env_dir == Path("./contest_env")
-        assert loader.system_loader.system_config_dir == Path("./config/system")
+        # TypeSafeConfigNodeManagerが正しく初期化されているかテスト
+        assert isinstance(manager, TypeSafeConfigNodeManager)
 
     def test_mock_providers_initialization_paths(self):
         factory = ProviderFactory(use_mocks=True)
-        loader = factory.get_config_loader()
+        manager = factory.get_config_manager()
 
-        # ConfigurationLoaderの内部ローダーが正しいパスを持っているかテスト
-        assert loader.env_loader.contest_env_dir == Path("./mock_contest_env")
-        assert loader.system_loader.system_config_dir == Path("./mock_config/system")
+        # TypeSafeConfigNodeManagerが正しく初期化されているかテスト
+        assert isinstance(manager, TypeSafeConfigNodeManager)
 
     def test_language_registry_provider_dependency(self):
         factory = ProviderFactory(use_mocks=False)

@@ -1,10 +1,9 @@
 """ステップ生成・実行の核となる関数群（新しいシンプル設計）"""
 from typing import Any, Dict, List
 
-from .simple_step_runner import ExecutionContext as SimpleExecutionContext
-from .simple_step_runner import create_step as create_step_simple
-from .simple_step_runner import expand_template, run_steps
 from .step import Step, StepContext, StepGenerationResult, StepType
+from .step_runner import ExecutionContext, expand_template, run_steps
+from .step_runner import create_step as create_step_simple
 
 
 def create_step_context_from_execution_context(execution_context) -> StepContext:
@@ -55,7 +54,7 @@ def create_step_context_from_execution_context(execution_context) -> StepContext
     )
 
 
-def execution_context_to_simple_context(execution_context) -> SimpleExecutionContext:
+def execution_context_to_simple_context(execution_context) -> ExecutionContext:
     """ExecutionContextをSimpleExecutionContextに変換"""
     file_patterns = {}
     language_config = {}
@@ -99,7 +98,7 @@ def execution_context_to_simple_context(execution_context) -> SimpleExecutionCon
             language_registry = get_language_registry()
             run_command = language_registry.get_run_command(execution_context.language)
 
-    return SimpleExecutionContext(
+    return ExecutionContext(
         contest_name=execution_context.contest_name,
         problem_name=execution_context.problem_name,
         old_contest_name=getattr(execution_context, 'old_contest_name', ''),

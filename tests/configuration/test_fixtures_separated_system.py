@@ -7,13 +7,11 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-from src.configuration.interfaces.execution_settings import IExecutionSettings
-from src.configuration.interfaces.runtime_settings import IRuntimeSettings
-from src.configuration.interfaces.settings_manager import ISettingsManager
+# 削除されたインターフェースのため、モックを直接定義
 from src.state.interfaces.state_manager import ExecutionHistory, IStateManager, SessionContext
 
 
-class MockExecutionSettings(IExecutionSettings):
+class MockExecutionSettings:
     """テスト用ExecutionSettings実装"""
 
     def __init__(self, contest_name: str = "abc300", problem_name: str = "a",
@@ -78,7 +76,7 @@ class MockExecutionSettings(IExecutionSettings):
         }
 
 
-class MockRuntimeSettings(IRuntimeSettings):
+class MockRuntimeSettings:
     """テスト用RuntimeSettings実装"""
 
     def __init__(self, language: str = "python"):
@@ -155,17 +153,17 @@ class MockStateManager(IStateManager):
         self._user_specified_values.clear()
 
 
-class MockSettingsManager(ISettingsManager):
+class MockSettingsManager:
     """テスト用SettingsManager実装"""
 
     def __init__(self):
         self._execution_settings = MockExecutionSettings()
         self._runtime_settings_cache = {}
 
-    def get_execution_settings(self) -> IExecutionSettings:
+    def get_execution_settings(self):
         return self._execution_settings
 
-    def get_runtime_settings(self, language: str) -> IRuntimeSettings:
+    def get_runtime_settings(self, language: str):
         if language not in self._runtime_settings_cache:
             self._runtime_settings_cache[language] = MockRuntimeSettings(language)
         return self._runtime_settings_cache[language]

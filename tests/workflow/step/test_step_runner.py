@@ -1,4 +1,4 @@
-"""simple_step_runnerのテスト
+"""step_runnerのテスト
 
 シンプルで読みやすいテストを目指す
 """
@@ -7,7 +7,8 @@ import tempfile
 
 import pytest
 
-from src.workflow.step.simple_step_runner import (
+from src.workflow.step.step import StepType
+from src.workflow.step.step_runner import (
     ExecutionContext,
     check_when_condition,
     create_step,
@@ -16,7 +17,6 @@ from src.workflow.step.simple_step_runner import (
     expand_template,
     run_steps,
 )
-from src.workflow.step.step import StepType
 
 
 class TestExecutionContext:

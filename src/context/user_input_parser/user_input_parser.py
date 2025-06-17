@@ -73,13 +73,10 @@ def _scan_and_apply_language(args, context, root):
     # 実際の言語のみをターゲット（動的に取得）
     from pathlib import Path
 
-    from src.configuration.loaders.configuration_loader import ConfigurationLoader
+    from src.configuration.typed_config_node_manager import FileLoader
 
-    config_loader = ConfigurationLoader(
-        contest_env_dir=Path("contest_env"),
-        system_config_dir=Path("./config/system")
-    )
-    valid_languages = set(config_loader.get_available_languages())
+    file_loader = FileLoader()
+    valid_languages = set(file_loader.get_available_languages(Path("contest_env")))
 
     for idx, arg in enumerate(args):
         # 第1レベルのノード（言語）のみをチェック
@@ -306,15 +303,15 @@ def _apply_env_json(context, env_jsons, base_dir=None, operations=None):
     """環境JSONをコンテキストに適用"""
     # ConfigurationLoaderを使用して正しい設定を取得
     if context.language and base_dir:
-        from pathlib import Path
 
-        from src.configuration.loaders.configuration_loader import ConfigurationLoader
-        config_loader = ConfigurationLoader(
-            contest_env_dir=Path(base_dir),
-            system_config_dir=Path("./config/system")
-        )
+        from src.configuration.typed_config_node_manager import FileLoader
+        file_loader = FileLoader()
         # 完全なマージ設定を取得（共有設定をトップレベルで利用）
-        merged_config = config_loader.load_merged_config(context.language, {})
+        merged_config = file_loader.load_and_merge_configs(
+            system_dir="./config/system",
+            env_dir=base_dir,
+            language=context.language
+        )
 
         # 言語固有設定に共有設定の重要項目を直接追加
         if context.language in merged_config:
@@ -390,20 +387,21 @@ def _resolve_environment_configuration(context_data, operations):
     """Load and resolve environment configuration."""
     from pathlib import Path
 
-    from src.configuration.loaders.configuration_loader import ConfigurationLoader
+    from src.configuration.typed_config_node_manager import FileLoader
 
-    config_loader = ConfigurationLoader(
-        contest_env_dir=Path(CONTEST_ENV_DIR),
-        system_config_dir=Path("./config/system")
-    )
+    file_loader = FileLoader()
 
     # 全言語の設定を統合して言語候補を作成
-    all_languages = config_loader.get_available_languages()
+    all_languages = file_loader.get_available_languages(Path(CONTEST_ENV_DIR))
     combined_config = {}
 
     # 各言語の設定を統合
     for lang in all_languages:
-        lang_config = config_loader.load_merged_config(lang, {})
+        lang_config = file_loader.load_and_merge_configs(
+            system_dir="./config/system",
+            env_dir=CONTEST_ENV_DIR,
+            language=lang
+        )
         combined_config.update(lang_config)
 
     root = create_config_root_from_dict(combined_config)
@@ -412,14 +410,18 @@ def _resolve_environment_configuration(context_data, operations):
     # Resolve final env_json
     final_env_json = context_data["env_json"]
     if final_env_json is None and context_data["language"]:
-        lang_merged_config = config_loader.load_merged_config(context_data["language"], {})
+        lang_merged_config = file_loader.load_and_merge_configs(
+            system_dir="./config/system",
+            env_dir=CONTEST_ENV_DIR,
+            language=context_data["language"]
+        )
         if context_data["language"] in lang_merged_config:
             final_env_json = {context_data["language"]: lang_merged_config[context_data["language"]]}
         else:
             final_env_json = lang_merged_config
 
     return {
-        'config_loader': config_loader,
+        'file_loader': file_loader,
         'env_config': combined_config,
         'root': root,
         'env_jsons': env_jsons,

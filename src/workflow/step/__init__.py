@@ -11,10 +11,8 @@
 - 包括的な検証とエラーハンドリング
 """
 
-# condition_evaluator は simple_step_runner に統合済み
+# condition_evaluator は step_runner に統合済み
 from .dependency import analyze_step_dependencies, optimize_mkdir_steps, resolve_dependencies
-from .simple_step_runner import ExecutionContext as SimpleExecutionContext
-from .simple_step_runner import check_when_condition, run_steps
 from .step import Step, StepContext, StepGenerationResult, StepType
 from .step_generation_service import (
     create_step_from_json,
@@ -23,6 +21,7 @@ from .step_generation_service import (
     optimize_step_sequence,
     validate_step_sequence,
 )
+from .step_runner import ExecutionContext, check_when_condition, run_steps
 from .workflow import (
     create_step_context_from_env_context,
     debug_workflow_generation,
@@ -31,7 +30,7 @@ from .workflow import (
 )
 
 __all__ = [
-    'SimpleExecutionContext',
+    'ExecutionContext',
     # Core data structures
     'Step',
     'StepContext',

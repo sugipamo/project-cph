@@ -6,7 +6,7 @@ from typing import Optional
 
 from src.application.factories.unified_request_factory import create_request
 from src.application.orchestration.unified_driver import UnifiedDriver
-from src.configuration.adapters.execution_context_adapter import ExecutionContextAdapter
+from src.configuration.typed_config_node_manager import TypedExecutionConfiguration
 from src.operations.constants.request_types import RequestType
 from src.utils.debug_logger import DebugLogger
 from src.workflow.step.step import Step, StepType
@@ -18,11 +18,11 @@ class WorkflowExecutionService:
     Replaces the removed EnvWorkflowService
     """
 
-    def __init__(self, context: ExecutionContextAdapter, operations):
+    def __init__(self, context: TypedExecutionConfiguration, operations):
         """Initialize workflow execution service
 
         Args:
-            context: Execution context adapter with configuration
+            context: Typed execution configuration
             operations: Operations container for drivers
         """
         self.context = context

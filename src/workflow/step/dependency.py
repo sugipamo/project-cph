@@ -25,8 +25,8 @@ def resolve_dependencies(steps: list[Step], context: StepContext) -> list[Step]:
         if step.when:
             # when条件がある場合は、条件が満たされる可能性が低い場合は準備ステップをスキップ
             # TODO: より精密な条件評価が必要だが、暫定的に無効なパス（///）を含む場合はスキップ
-            from src.workflow.step.simple_step_runner import expand_template
             from src.workflow.step.step_generation_service import execution_context_to_simple_context
+            from src.workflow.step.step_runner import expand_template
             try:
                 simple_context = execution_context_to_simple_context(context)
                 expanded_cmd = [expand_template(arg, simple_context) for arg in step.cmd]

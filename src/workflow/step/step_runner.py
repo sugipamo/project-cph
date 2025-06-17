@@ -10,9 +10,6 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 # 新設定システムとの統合
-from src.configuration import ExecutionConfiguration as NewExecutionConfiguration
-from src.configuration.expansion.template_expander import TemplateExpander
-
 from .step import Step, StepType
 
 
@@ -177,10 +174,9 @@ def expand_template(template: str, context: ExecutionContext) -> str:
     if not template:
         return ""
 
-    # 新設定システム（NewExecutionConfiguration）の場合
-    if isinstance(context, NewExecutionConfiguration):
-        expander = TemplateExpander(context)
-        return expander.expand_all(template)
+    # TypeSafeConfigNodeManagerで展開
+    if hasattr(context, 'resolve_formatted_string'):
+        return context.resolve_formatted_string(template)
 
     # ExecutionContextAdapterの場合（新設定システムアダプター）
     if hasattr(context, 'format_string'):
@@ -231,7 +227,7 @@ def expand_file_patterns_in_text(text: str, file_patterns: Dict[str, List[str]],
     return result
 
 
-def expand_template_with_new_system(template: str, new_config: NewExecutionConfiguration, operation_type: Optional[str] = None) -> str:
+def expand_template_with_new_system(template: str, new_config, operation_type: Optional[str] = None) -> str:
     """新設定システムを使用したテンプレート展開
 
     Args:
@@ -242,8 +238,11 @@ def expand_template_with_new_system(template: str, new_config: NewExecutionConfi
     Returns:
         展開された文字列
     """
-    expander = TemplateExpander(new_config)
-    return expander.expand_all(template, operation_type)
+    # TypeSafeConfigNodeManagerで展開
+    if hasattr(new_config, 'resolve_formatted_string'):
+        return new_config.resolve_formatted_string(template)
+    # 他の場合はそのまま返す
+    return template
 
 
 def evaluate_test_condition(test_command: str) -> Tuple[bool, Optional[str]]:
