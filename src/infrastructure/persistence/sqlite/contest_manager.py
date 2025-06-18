@@ -73,9 +73,9 @@ class ContestManager:
         current_context = self.config_loader.get_current_context()
 
         # Apply fallback logic for NULL values
-        language = current_context.get("language", None)
-        contest_name = current_context.get("contest_name", None)
-        problem_name = current_context.get("problem_name", None)
+        language = current_context["language"]
+        contest_name = current_context["contest_name"]
+        problem_name = current_context["problem_name"]
 
         # If any value is NULL, get latest non-NULL from history
         if language is None:
@@ -121,7 +121,7 @@ class ContestManager:
         # Fallback: check system config for any stored value
         try:
             user_configs = self.config_loader.config_repo.get_user_specified_configs()
-            return user_configs.get(key, None)
+            return user_configs[key]
         except Exception:
             return None
 
@@ -138,9 +138,9 @@ class ContestManager:
         """
         current_state = self.get_current_contest_state()
 
-        current_language = current_state.get("language_name", None)
-        current_contest = current_state.get("contest_name", None)
-        current_problem = current_state.get("problem_name", None)
+        current_language = current_state["language_name"]
+        current_contest = current_state["contest_name"]
+        current_problem = current_state["problem_name"]
 
         # If any of the current values differ from new values, backup is needed
         return (current_language != new_language or
@@ -156,9 +156,9 @@ class ContestManager:
         Returns:
             True if backup successful, False otherwise
         """
-        language = current_state.get("language_name")
-        contest = current_state.get("contest_name")
-        problem = current_state.get("problem_name")
+        language = current_state["language_name"]
+        contest = current_state["contest_name"]
+        problem = current_state["problem_name"]
 
         # Skip backup if essential information is missing
         if not all([language, contest, problem]):
@@ -434,7 +434,7 @@ class ContestManager:
 
                 if backup_success:
                     print("📦 Backed up contest_current to contest_stock")
-                    print(f"   From: {current_state.get('language_name', None)} {current_state.get('contest_name', None)} {current_state.get('problem_name', None)}")
+                    print(f"   From: {current_state['language_name']} {current_state['contest_name']} {current_state['problem_name']}")
                     print(f"   To: {new_language} {new_contest} {new_problem}")
                 else:
                     print("⚠️ Failed to backup contest_current")

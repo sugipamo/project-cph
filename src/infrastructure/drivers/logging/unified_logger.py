@@ -260,7 +260,7 @@ class UnifiedLogger(LoggerInterface):
         if not env_logging_config:
             return
 
-        enabled = env_logging_config.get("enabled", False)
+        enabled = env_logging_config["enabled"]
         if not enabled:
             return
 

@@ -98,7 +98,7 @@ class DockerRequest(OperationRequestFoundation):
             inspect_data = json.loads(inspect_result.stdout)
             if isinstance(inspect_data, list) and len(inspect_data) > 0:
                 state = inspect_data[0].get("State", {})
-                status = state.get("Status", "")
+                status = state["Status"]
                 return self._process_container_status(driver, status, logger)
         except Exception:
             # If inspect fails, just run
@@ -162,13 +162,13 @@ class DockerRequest(OperationRequestFoundation):
 
     def _handle_build_operation(self, driver: DockerDriverInterface):
         """Handle Docker build operation."""
-        tag = self.options.get('t', None)
+        tag = self.options['t']
         return driver.build_docker_image(self.dockerfile_text, tag=tag, options=self.options, show_output=self.show_output)
 
     def _handle_copy_operation(self, driver: DockerDriverInterface):
         """Handle Docker copy operation."""
-        local_path = self.options.get('local_path', None)
-        remote_path = self.options.get('remote_path', None)
+        local_path = self.options['local_path']
+        remote_path = self.options['remote_path']
         to_container = self.options.get('to_container', True)
 
         if to_container:

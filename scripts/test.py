@@ -444,8 +444,8 @@ class TestRunner:
 
         return True  # 警告レベルなので常にTrueを返す
 
-    def check_dict_get_usage(self) -> bool:
-        """dict.get()使用チェック - エラー隠蔽の温床となるため禁止"""
+    def check_dict_get_usage(self, auto_convert: bool = False) -> bool:
+        """dict.get()使用チェック - エラー隠蔽の温床となるため禁止（フォールバック対応禁止）"""
         import glob
         import re
 
@@ -487,12 +487,21 @@ class TestRunner:
                 print(f"{'✅' if success else '❌'} dict.get()使用チェック")
 
             if dict_get_issues:
-                self.issues.append("dict.get()の使用が検出されました（エラー隠蔽防止のため禁止）:")
+                # 自動変換を実行
+                if self._auto_convert_dict_get():
+                    # 変換成功時のみ再チェック（1回のみ）
+                    if not auto_convert:  # 無限ループ防止
+                        return self.check_dict_get_usage(auto_convert=True)
+
+                # 変換失敗または再チェック時は従来のエラー表示
+                self.issues.append("dict.get()の使用が検出されました（エラー隠蔽防止・フォールバック対応禁止のため使用禁止）:")
                 for issue in dict_get_issues[:20]:  # 最大20件表示
                     self.issues.append(f"  {issue}")
 
                 if len(dict_get_issues) > 20:
                     self.issues.append(f"  ... 他{len(dict_get_issues) - 20}件")
+
+                return False
 
             return success
 
@@ -502,6 +511,32 @@ class TestRunner:
             self.issues.append(f"dict.get()使用チェックでエラー: {e}")
             if self.verbose:
                 print(f"❌ dict.get()使用チェックでエラー: {e}")
+            return False
+
+    def _auto_convert_dict_get(self) -> bool:
+        """dict.get()を自動変換"""
+        print("🔧 dict.get()の自動変換を実行中...")
+
+        try:
+            result = subprocess.run([
+                "python3", "scripts/quality/convert_dict_get.py", "src/"
+            ], capture_output=True, text=True, cwd=Path(__file__).parent.parent)
+
+            if result.returncode == 0:
+                print("✅ dict.get()の自動変換が完了しました")
+                if result.stdout.strip():
+                    print("変換結果:")
+                    for line in result.stdout.strip().split('\n'):
+                        if line.strip():
+                            print(f"   {line}")
+                return True
+            print("❌ dict.get()の自動変換中にエラーが発生しました")
+            if result.stderr.strip():
+                print(f"エラー: {result.stderr}")
+            return False
+
+        except Exception as e:
+            print(f"❌ dict.get()の自動変換でエラー: {e}")
             return False
 
     def check_types(self) -> bool:
@@ -782,6 +817,7 @@ def main():
     parser.add_argument("--no-import-check", action="store_true", help="インポート解決チェックスキップ")
     parser.add_argument("--no-smoke-test", action="store_true", help="スモークテストスキップ")
     parser.add_argument("--no-dict-get-check", action="store_true", help="dict.get()使用チェックスキップ")
+    parser.add_argument("--auto-convert-dict-get", action="store_true", help="dict.get()検出時に自動変換実行")
     parser.add_argument("--check-only", action="store_true", help="高速チェック（テストなし）")
     parser.add_argument("--coverage-only", action="store_true", help="カバレッジレポートのみ表示")
     parser.add_argument("--verbose", "-v", action="store_true", help="詳細出力")
@@ -828,7 +864,7 @@ def main():
 
     # dict.get()使用チェック
     if not args.no_dict_get_check:
-        runner.check_dict_get_usage()
+        runner.check_dict_get_usage(auto_convert=args.auto_convert_dict_get)
 
     # check-onlyモード
     if args.check_only:
