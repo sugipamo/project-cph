@@ -166,11 +166,11 @@ class ContestManager:
 
         try:
             # Get paths from env.json
-            shared_config = self.env_json.get("shared", {})
-            paths = shared_config.get("paths", {})
+            shared_config = self.env_json["shared"]
+            paths = shared_config["paths"]
 
-            contest_current_path = paths.get("contest_current_path", "./contest_current")
-            contest_stock_path_template = paths.get("contest_stock_path", "./contest_stock/{language_name}/{contest_name}/{problem_name}")
+            contest_current_path = paths["contest_current_path"]
+            contest_stock_path_template = paths["contest_stock_path"]
 
             # Resolve contest_stock path
             contest_stock_path = contest_stock_path_template.format(
@@ -459,11 +459,11 @@ class ContestManager:
         """
         try:
             # Get paths from env.json
-            shared_config = self.env_json.get("shared", {})
-            paths = shared_config.get("paths", {})
+            shared_config = self.env_json["shared"]
+            paths = shared_config["paths"]
 
-            contest_current_path = paths.get("contest_current_path", "./contest_current")
-            contest_stock_path_template = paths.get("contest_stock_path", "./contest_stock/{language_name}/{contest_name}/{problem_name}")
+            contest_current_path = paths["contest_current_path"]
+            contest_stock_path_template = paths["contest_stock_path"]
 
             # Resolve contest_stock path
             contest_stock_path = contest_stock_path_template.format(
@@ -507,11 +507,11 @@ class ContestManager:
         """
         try:
             # Get paths from env.json
-            shared_config = self.env_json.get("shared", {})
-            paths = shared_config.get("paths", {})
+            shared_config = self.env_json["shared"]
+            paths = shared_config["paths"]
 
-            contest_current_path = paths.get("contest_current_path", "./contest_current")
-            contest_template_path = paths.get("contest_template_path", "./contest_template")
+            contest_current_path = paths["contest_current_path"]
+            contest_template_path = paths["contest_template_path"]
 
             # Language-specific template path
             template_language_path = os.path.join(contest_template_path, language)

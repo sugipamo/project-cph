@@ -32,17 +32,17 @@ class WorkflowLoggerAdapter:
         """
         self.output_manager = output_manager
         self.config = logger_config or {}
-        self.enabled = self.config.get("enabled", True)
+        self.enabled = self.config["enabled"]
 
         # Merge user icons with defaults
-        format_config = self.config.get("format", {})
-        user_icons = format_config.get("icons", {})
+        format_config = self.config["format"]
+        user_icons = format_config["icons"]
         self.icons = {**self.DEFAULT_ICONS, **user_icons}
 
     def debug(self, message: str, **kwargs) -> None:
         """デバッグメッセージ出力"""
         if self.enabled:
-            icon = self.icons.get("debug", "🔍")
+            icon = self.icons["debug"]
             formatted_message = f"{icon} DEBUG: {message}"
             self.output_manager.add(
                 formatted_message,
@@ -53,7 +53,7 @@ class WorkflowLoggerAdapter:
     def info(self, message: str, **kwargs) -> None:
         """情報メッセージ出力"""
         if self.enabled:
-            icon = self.icons.get("info", "ℹ️")
+            icon = self.icons["info"]
             formatted_message = f"{icon} {message}"
             self.output_manager.add(
                 formatted_message,
@@ -64,7 +64,7 @@ class WorkflowLoggerAdapter:
     def warning(self, message: str, **kwargs) -> None:
         """警告メッセージ出力"""
         if self.enabled:
-            icon = self.icons.get("warning", "⚠️")
+            icon = self.icons["warning"]
             formatted_message = f"{icon} WARNING: {message}"
             self.output_manager.add(
                 formatted_message,
@@ -75,7 +75,7 @@ class WorkflowLoggerAdapter:
     def error(self, message: str, **kwargs) -> None:
         """エラーメッセージ出力"""
         if self.enabled:
-            icon = self.icons.get("error", "💥")
+            icon = self.icons["error"]
             formatted_message = f"{icon} ERROR: {message}"
             self.output_manager.add(
                 formatted_message,
@@ -88,7 +88,7 @@ class WorkflowLoggerAdapter:
         if not self.enabled:
             return
 
-        icon = self.icons.get("start", "🚀")
+        icon = self.icons["start"]
         start_message = f"\n{icon} 実行開始: {step_name}"
         self.output_manager.add(
             start_message,
@@ -96,7 +96,7 @@ class WorkflowLoggerAdapter:
             formatinfo=FormatInfo(color="blue", bold=True)
         )
 
-        executing_icon = self.icons.get("executing", "⏱️")
+        executing_icon = self.icons["executing"]
         executing_message = f"  {executing_icon} 実行中..."
         self.output_manager.add(
             executing_message,
@@ -109,7 +109,7 @@ class WorkflowLoggerAdapter:
         if not self.enabled:
             return
 
-        icon = self.icons.get("success", "✅")
+        icon = self.icons["success"]
         success_message = f"{icon} 完了: {step_name}"
         if message:
             success_message += f" - {message}"
@@ -126,11 +126,11 @@ class WorkflowLoggerAdapter:
             return
 
         if allow_failure:
-            icon = self.icons.get("warning", "⚠️")
+            icon = self.icons["warning"]
             status = "失敗許可"
             color = "yellow"
         else:
-            icon = self.icons.get("failure", "❌")
+            icon = self.icons["failure"]
             status = "失敗"
             color = "red"
 
@@ -152,7 +152,7 @@ class WorkflowLoggerAdapter:
     def log_preparation_start(self, task_count: int) -> None:
         """環境準備開始ログ"""
         if self.enabled:
-            icon = self.icons.get("start", "🚀")
+            icon = self.icons["start"]
             message = f"\n{icon} 環境準備開始: {task_count}タスク"
             self.output_manager.add(
                 message,
@@ -163,7 +163,7 @@ class WorkflowLoggerAdapter:
     def log_workflow_start(self, step_count: int, parallel: bool = False) -> None:
         """ワークフロー実行開始ログ"""
         if self.enabled:
-            icon = self.icons.get("start", "🚀")
+            icon = self.icons["start"]
             mode = "並列" if parallel else "順次"
             message = f"\n{icon} ワークフロー実行開始: {step_count}ステップ ({mode}実行)"
             self.output_manager.add(

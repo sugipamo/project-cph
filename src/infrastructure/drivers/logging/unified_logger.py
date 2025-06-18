@@ -41,18 +41,18 @@ class UnifiedLogger(LoggerInterface):
 
         # Workflow configuration (backward compatible with DebugLogger)
         self.config = logger_config or {}
-        self.enabled = self.config.get("enabled", True)
+        self.enabled = self.config["enabled"]
 
         # Merge user icons with defaults
-        format_config = self.config.get("format", {})
-        user_icons = format_config.get("icons", {})
+        format_config = self.config["format"]
+        user_icons = format_config["icons"]
         self.icons = {**self.DEFAULT_ICONS, **user_icons}
 
     # LoggerInterface implementation
     def debug(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log a debug message."""
         formatted_message = self._format_message(message, args)
-        icon = self.icons.get("debug", "🔍")
+        icon = self.icons["debug"]
         display_message = f"{icon} DEBUG: {formatted_message}"
 
         self.output_manager.add(
@@ -64,7 +64,7 @@ class UnifiedLogger(LoggerInterface):
     def info(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log an info message."""
         formatted_message = self._format_message(message, args)
-        icon = self.icons.get("info", "ℹ️")
+        icon = self.icons["info"]
         display_message = f"{icon} {formatted_message}"
 
         self.output_manager.add(
@@ -76,7 +76,7 @@ class UnifiedLogger(LoggerInterface):
     def warning(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log a warning message."""
         formatted_message = self._format_message(message, args)
-        icon = self.icons.get("warning", "⚠️")
+        icon = self.icons["warning"]
         display_message = f"{icon} WARNING: {formatted_message}"
 
         self.output_manager.add(
@@ -88,7 +88,7 @@ class UnifiedLogger(LoggerInterface):
     def error(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log an error message."""
         formatted_message = self._format_message(message, args)
-        icon = self.icons.get("error", "💥")
+        icon = self.icons["error"]
         display_message = f"{icon} ERROR: {formatted_message}"
 
         self.output_manager.add(
@@ -100,7 +100,7 @@ class UnifiedLogger(LoggerInterface):
     def critical(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log a critical message."""
         formatted_message = self._format_message(message, args)
-        icon = self.icons.get("critical", "🔥")
+        icon = self.icons["critical"]
         display_message = f"{icon} CRITICAL: {formatted_message}"
 
         self.output_manager.add(
@@ -163,7 +163,7 @@ class UnifiedLogger(LoggerInterface):
         if not self.enabled:
             return
 
-        icon = self.icons.get("start", "🚀")
+        icon = self.icons["start"]
         start_message = f"\n{icon} 実行開始: {step_name}"
         self.output_manager.add(
             start_message,
@@ -171,7 +171,7 @@ class UnifiedLogger(LoggerInterface):
             formatinfo=FormatInfo(color="blue", bold=True)
         )
 
-        executing_icon = self.icons.get("executing", "⏱️")
+        executing_icon = self.icons["executing"]
         executing_message = f"  {executing_icon} 実行中..."
         self.output_manager.add(
             executing_message,
@@ -184,7 +184,7 @@ class UnifiedLogger(LoggerInterface):
         if not self.enabled:
             return
 
-        icon = self.icons.get("success", "✅")
+        icon = self.icons["success"]
         success_message = f"{icon} 完了: {step_name}"
         if message:
             success_message += f" - {message}"
@@ -201,12 +201,12 @@ class UnifiedLogger(LoggerInterface):
             return
 
         if allow_failure:
-            icon = self.icons.get("warning", "⚠️")
+            icon = self.icons["warning"]
             status = "失敗許可"
             color = "yellow"
             level = LogLevel.WARNING
         else:
-            icon = self.icons.get("failure", "❌")
+            icon = self.icons["failure"]
             status = "失敗"
             color = "red"
             level = LogLevel.ERROR
@@ -233,7 +233,7 @@ class UnifiedLogger(LoggerInterface):
     def log_preparation_start(self, task_count: int) -> None:
         """環境準備開始ログ"""
         if self.enabled:
-            icon = self.icons.get("start", "🚀")
+            icon = self.icons["start"]
             message = f"\n{icon} 環境準備開始: {task_count}タスク"
             self.output_manager.add(
                 message,
@@ -244,7 +244,7 @@ class UnifiedLogger(LoggerInterface):
     def log_workflow_start(self, step_count: int, parallel: bool = False) -> None:
         """ワークフロー実行開始ログ"""
         if self.enabled:
-            icon = self.icons.get("start", "🚀")
+            icon = self.icons["start"]
             mode = "並列" if parallel else "順次"
             message = f"\n{icon} ワークフロー実行開始: {step_count}ステップ ({mode}実行)"
             self.output_manager.add(
@@ -265,15 +265,15 @@ class UnifiedLogger(LoggerInterface):
             return
 
         # Check configuration flags
-        show_language = env_logging_config.get("show_language_name", True)
-        show_contest = env_logging_config.get("show_contest_name", True)
-        show_problem = env_logging_config.get("show_problem_name", True)
-        show_env_type = env_logging_config.get("show_env_type", True)
+        show_language = env_logging_config["show_language_name"]
+        show_contest = env_logging_config["show_contest_name"]
+        show_problem = env_logging_config["show_problem_name"]
+        show_env_type = env_logging_config["show_env_type"]
 
         if not any([show_language, show_contest, show_problem, show_env_type]):
             return
 
-        icon = self.icons.get("start", "🚀")
+        icon = self.icons["start"]
         env_info_parts = []
 
         if show_language and language_name:

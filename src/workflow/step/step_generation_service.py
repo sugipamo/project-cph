@@ -140,7 +140,7 @@ def execution_context_to_simple_context(execution_context: Union['TypedExecution
                     file_patterns[pattern_name] = pattern_data
 
     # デバッグ: run_commandの値を確認
-    run_command = language_config.get('run_command', '')
+    run_command = language_config['run_command']
     if not run_command:
         # ExecutionContextAdapterの場合、runtime_configから取得を試行
         if hasattr(execution_context, 'config') and hasattr(execution_context.config, 'runtime_config'):

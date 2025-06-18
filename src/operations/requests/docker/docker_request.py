@@ -169,7 +169,7 @@ class DockerRequest(OperationRequestFoundation):
         """Handle Docker copy operation."""
         local_path = self.options['local_path']
         remote_path = self.options['remote_path']
-        to_container = self.options.get('to_container', True)
+        to_container = self.options['to_container']
 
         if to_container:
             return driver.cp(local_path, remote_path, self.container, to_container=True, show_output=self.show_output)

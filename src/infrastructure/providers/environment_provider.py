@@ -33,7 +33,7 @@ class SystemEnvironmentProvider(EnvironmentProvider):
 
     def get_env(self, key: str, default: Optional[str] = None) -> Optional[str]:
         """環境変数を取得（副作用）"""
-        return os.environ.get(key, default)
+        return os.environ[key]
 
     def get_env_bool(self, key: str, default: bool = False) -> bool:
         """環境変数をbooleanとして取得（副作用）"""
@@ -65,7 +65,7 @@ class MockEnvironmentProvider(EnvironmentProvider):
 
     def get_env(self, key: str, default: Optional[str] = None) -> Optional[str]:
         """モック環境変数取得（副作用なし）"""
-        return self._env_vars.get(key, default)
+        return self._env_vars[key]
 
     def get_env_bool(self, key: str, default: bool = False) -> bool:
         """モック環境変数boolean取得（副作用なし）"""

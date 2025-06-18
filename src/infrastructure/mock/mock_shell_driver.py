@@ -45,7 +45,7 @@ class MockShellDriver(ShellDriver):
         })
 
         # Return predefined response if available, otherwise default
-        return self._responses.get(cmd_str, self._default_response)
+        return self._responses[cmd_str]
 
     def execute_command(self, command: str, cwd: Optional[str] = None,
                        timeout: Optional[int] = None, show_output: bool = True) -> ShellResult:
@@ -68,7 +68,7 @@ class MockShellDriver(ShellDriver):
         })
 
         # Return predefined response if available, otherwise default
-        return self._responses.get(command, self._default_response)
+        return self._responses[command]
 
     def set_response(self, command: str, response: ShellResult) -> None:
         """Set predefined response for a command.

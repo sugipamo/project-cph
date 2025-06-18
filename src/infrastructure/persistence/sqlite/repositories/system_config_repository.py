@@ -16,20 +16,20 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
     # RepositoryInterface implementations
     def create_entity_record(self, entity: Dict[str, Any]) -> Any:
         """Create a new config entity."""
-        key = entity['config_key'] if 'config_key' in entity else (entity.get('key'))
-        value = entity['config_value'] if 'config_value' in entity else (entity.get('value'))
-        category = entity.get('category')
-        description = entity.get('description')
+        key = entity['config_key'] if 'config_key' in entity else (entity['key'])
+        value = entity['config_value'] if 'config_value' in entity else (entity['value'])
+        category = entity['category']
+        description = entity['description']
 
         self.set_config(key, value, category, description)
         return key
 
     def create_config_record(self, entity: Dict[str, Any]) -> Any:
         """Create a new config entity."""
-        key = entity['config_key'] if 'config_key' in entity else (entity.get('key'))
-        value = entity['config_value'] if 'config_value' in entity else (entity.get('value'))
-        category = entity.get('category')
-        description = entity.get('description')
+        key = entity['config_key'] if 'config_key' in entity else (entity['key'])
+        value = entity['config_value'] if 'config_value' in entity else (entity['value'])
+        category = entity['category']
+        description = entity['description']
 
         self.set_config(key, value, category, description)
         return key
@@ -54,9 +54,9 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
         if not existing:
             return False
 
-        value = updates['config_value'] if 'config_value' in updates else (updates.get('value'))
-        category = updates['category'] if 'category' in updates else (existing.get('category', None))
-        description = updates['description'] if 'description' in updates else (existing.get('description', None))
+        value = updates['config_value'] if 'config_value' in updates else (updates['value'])
+        category = updates['category'] if 'category' in updates else (existing['category'])
+        description = updates['description'] if 'description' in updates else (existing['description'])
 
         self.set_config(str(entity_id), value, category, description)
         return True

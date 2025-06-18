@@ -174,10 +174,10 @@ class WorkflowExecutionService:
             return
 
         # Get environment logging configuration from shared config
-        shared_config = self.context.env_json.get('shared', {})
-        env_logging_config = shared_config.get('environment_logging', {})
+        shared_config = self.context.env_json['shared']
+        env_logging_config = shared_config['environment_logging']
 
-        if not (env_logging_config.get('enabled', False)):
+        if not (env_logging_config['enabled']):
             return
 
         # Use unified logger from infrastructure container for environment logging

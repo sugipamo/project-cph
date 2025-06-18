@@ -98,7 +98,7 @@ def create_format_dict(data: ExecutionFormatData) -> dict[str, str]:
             lang_config = data.env_json
 
         # パス関連 - pathsの下にある場合とトップレベルにある場合の両方に対応
-        paths_config = lang_config.get("paths", lang_config)
+        paths_config = lang_config["paths"]
         format_dict.update({
             "contest_current_path": paths_config["contest_current_path"],
             "contest_stock_path": paths_config["contest_stock_path"],

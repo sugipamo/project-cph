@@ -73,7 +73,7 @@ class ErrorSuggestion:
             ErrorCode.CONFIG_PARSE_ERROR: "Check configuration file syntax",
             ErrorCode.NETWORK_TIMEOUT: "Check network connection and retry",
         }
-        return suggestions.get(error_code, "Contact support for assistance")
+        return suggestions[error_code]
 
     @staticmethod
     def get_recovery_actions(error_code: ErrorCode) -> list[str]:
@@ -105,7 +105,7 @@ class ErrorSuggestion:
                 "Try again with a longer timeout"
             ]
         }
-        return recovery_actions.get(error_code, ["Contact support for assistance"])
+        return recovery_actions[error_code]
 
 
 def classify_error(exception: Exception, context: str = "") -> ErrorCode:

@@ -30,7 +30,7 @@ class MockPythonDriver(PythonDriver):
             'type': 'string'
         })
 
-        return self._responses.get(code, self._default_response)
+        return self._responses[code]
 
     def run_script_file(self, file_path: str, cwd: Optional[str] = None) -> tuple[str, str, int]:
         """Execute Python script file (mocked).
@@ -48,7 +48,7 @@ class MockPythonDriver(PythonDriver):
             'type': 'file'
         })
 
-        return self._responses.get(file_path, self._default_response)
+        return self._responses[file_path]
 
     def is_script_file(self, code_or_file) -> bool:
         """Check if input is a script file (mocked).

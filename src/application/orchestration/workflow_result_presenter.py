@@ -87,8 +87,8 @@ class WorkflowResultPresenter:
     def _present_step_details(self, results: list[OperationResult]) -> None:
         """Present detailed step execution information"""
         print("\n=== ステップ実行詳細 ===")
-        step_details_config = self.output_config.get('step_details', {})
-        max_command_length = step_details_config.get('max_command_length', 80)
+        step_details_config = self.output_config['step_details']
+        max_command_length = step_details_config['max_command_length']
 
         for i, step_result in enumerate(results):
             self._present_single_step(i, step_result, step_details_config, max_command_length)
@@ -148,12 +148,12 @@ class WorkflowResultPresenter:
             self._present_stdout(step_result)
 
         # Show errors
-        show_stderr = config.get('show_stderr', True)
+        show_stderr = config['show_stderr']
         if show_stderr and not step_result.success:
             self._present_stderr(step_result)
 
         # Show return code if available
-        show_return_code = config.get('show_return_code', True)
+        show_return_code = config['show_return_code']
         if show_return_code:
             self._present_return_code(step_result)
 
@@ -179,7 +179,7 @@ class WorkflowResultPresenter:
     ) -> None:
         """Present request information for a step"""
         # Show request type
-        show_type = config.get('show_type', True)
+        show_type = config['show_type']
         if show_type and hasattr(request, 'operation_type'):
             # FileRequestの場合はより具体的なfile operation typeを表示
             if str(request.operation_type) == "OperationType.FILE" and hasattr(request, 'op'):
@@ -188,7 +188,7 @@ class WorkflowResultPresenter:
                 print(f"  タイプ: {request.operation_type}")
 
         # Show command
-        show_command = config.get('show_command', True)
+        show_command = config['show_command']
         if show_command and hasattr(request, 'cmd') and request.cmd:
             cmd_str = str(request.cmd)
             try:
@@ -200,7 +200,7 @@ class WorkflowResultPresenter:
             print(f"  コマンド: {cmd_str}")
 
         # Show paths
-        show_path = config.get('show_path', True)
+        show_path = config['show_path']
         if show_path:
             if hasattr(request, 'path') and request.path:
                 print(f"  パス: {request.path}")
@@ -270,7 +270,7 @@ def get_output_config(context) -> dict[str, Any]:
         Output configuration dictionary
     """
     try:
-        shared_config = context.env_json.get('shared', {})
-        return shared_config.get('output', {})
+        shared_config = context.env_json['shared']
+        return shared_config['output']
     except (AttributeError, TypeError):
         return {}

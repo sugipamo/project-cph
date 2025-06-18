@@ -37,7 +37,7 @@ class SystemRegistryProvider(RegistryProvider):
 
     def get_registry(self, registry_name: str) -> Optional[Any]:
         """レジストリを取得（副作用）"""
-        return self._registries.get(registry_name, None)
+        return self._registries[registry_name]
 
     def set_registry(self, registry_name: str, registry: Any) -> None:
         """レジストリを設定（副作用）"""
@@ -70,7 +70,7 @@ class MockRegistryProvider(RegistryProvider):
     def get_registry(self, registry_name: str) -> Optional[Any]:
         """モックレジストリ取得（副作用なし）"""
         self._access_log.append(("GET", registry_name))
-        return self._registries.get(registry_name, None)
+        return self._registries[registry_name]
 
     def set_registry(self, registry_name: str, registry: Any) -> None:
         """モックレジストリ設定（副作用なし）"""

@@ -39,4 +39,4 @@ class RequestType(Enum):
             self.RUN_STEP: "Run",
             self.TEST_STEP: "Test",
         }
-        return name_map.get(self, self.name)
+        return name_map[self]

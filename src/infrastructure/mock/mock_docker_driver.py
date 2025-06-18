@@ -143,7 +143,7 @@ class MockDockerDriver(DockerDriver):
             'show_output': show_output
         })
 
-        state = self._container_states.get(container_name, 'not_found')
+        state = self._container_states[container_name]
         mock_inspect_data = [{
             "State": {
                 "Status": state,
