@@ -107,9 +107,11 @@ class TestMinimalCLIApp:
         # アサーション
         assert result == 1
 
-    def test_present_results_with_errors(self, capsys):
+    def test_present_results_with_errors(self):
         """エラー結果の表示テスト"""
-        app = MinimalCLIApp()
+        # モックロガーを設定
+        mock_logger = MagicMock()
+        app = MinimalCLIApp(logger=mock_logger)
         result = WorkflowExecutionResult(
             success=False,
             results=[],
@@ -121,11 +123,16 @@ class TestMinimalCLIApp:
         # テスト実行
         app._present_results(result)
 
-        # 出力確認
-        captured = capsys.readouterr()
-        assert "エラー: エラー1" in captured.out
-        assert "エラー: エラー2" in captured.out
-        assert "警告: 警告1" in captured.out
+        # ロガーの呼び出し確認
+        assert mock_logger.error.called
+        assert mock_logger.warning.called
+
+        error_calls = [call.args[0] for call in mock_logger.error.call_args_list]
+        warning_calls = [call.args[0] for call in mock_logger.warning.call_args_list]
+
+        assert "ワークフローエラー: エラー1" in error_calls
+        assert "ワークフローエラー: エラー2" in error_calls
+        assert "ワークフロー警告: 警告1" in warning_calls
 
     def test_present_results_success(self, capsys):
         """成功結果の表示テスト"""
