@@ -59,12 +59,34 @@ class MinimalCLIApp:
             else:
                 self.logger.error("CLI実行失敗")
 
+            # ログ出力をフラッシュして表示
+            if self.logger and hasattr(self.logger, 'output_manager'):
+                self.logger.output_manager.flush()
+
             return 0 if result.success else 1
 
         except CompositeStepFailureError as e:
-            return self._handle_composite_step_failure(e)
+            # ロガーが初期化されていない場合は標準エラー出力を使用
+            if self.logger is None:
+                print(f"エラー: {e}", file=sys.stderr)
+                return 1
+            result = self._handle_composite_step_failure(e)
+            # エラー時もログ出力をフラッシュ
+            if self.logger and hasattr(self.logger, 'output_manager'):
+                self.logger.output_manager.flush()
+            return result
         except Exception as e:
-            return self._handle_general_exception(e, args)
+            # ロガーが初期化されていない場合は標準エラー出力を使用
+            if self.logger is None:
+                print(f"エラー: {e}", file=sys.stderr)
+                if "--debug" in args:
+                    traceback.print_exc()
+                return 1
+            result = self._handle_general_exception(e, args)
+            # エラー時もログ出力をフラッシュ
+            if self.logger and hasattr(self.logger, 'output_manager'):
+                self.logger.output_manager.flush()
+            return result
 
     def _execute_workflow(self) -> WorkflowExecutionResult:
         """Construct and execute workflow using infrastructure dependencies

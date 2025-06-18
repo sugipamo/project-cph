@@ -634,36 +634,56 @@ class TestRunner:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                bufsize=1,
+                bufsize=0,
                 universal_newlines=True,
                 cwd=Path(__file__).parent.parent
             )
 
             output_lines = []
-            current_test_pattern = re.compile(r'(\S+::\S+)\s+')
+            # シンプルなテスト名検出パターン
+            test_pattern = re.compile(r'(\S+::\S+)\s+(PASSED|FAILED|SKIPPED|ERROR)')
 
             print("🧪 テスト実行", end="", flush=True)
 
+            last_test = ""
+
             for line in iter(process.stdout.readline, ''):
                 output_lines.append(line)
+                line_stripped = line.strip()
 
-                # 現在実行中のテストを検出
-                match = current_test_pattern.match(line.strip())
+                # テスト名検出
+                match = test_pattern.search(line_stripped)
                 if match:
                     test_name = match.group(1)
-                    # テスト名を短縮表示（パッケージ名を省略）
-                    short_name = test_name.split('::')[-1] if '::' in test_name else test_name
-                    # テスト名を40文字以内に制限
-                    if len(short_name) > 40:
-                        short_name = short_name[:37] + "..."
-                    print(f"\r🧪 テスト実行: {short_name}".ljust(80), end="", flush=True)
+
+                    # 重複を避ける
+                    if test_name == last_test:
+                        continue
+                    last_test = test_name
+
+                    # テスト名を短縮表示
+                    if '::' in test_name:
+                        parts = test_name.split('::')
+                        file_part = parts[0].split('/')[-1]
+                        if file_part.endswith('.py'):
+                            file_part = file_part[:-3]
+                        test_part = parts[-1]
+                        short_name = f"{file_part}::{test_part}"
+                    else:
+                        short_name = test_name
+
+                    # 長い名前を切り詰め
+                    if len(short_name) > 50:
+                        short_name = short_name[:47] + "..."
+
+                    print(f"\r🧪 テスト実行: {short_name}".ljust(90), end="", flush=True)
 
             process.wait()
             output = ''.join(output_lines)
             success = process.returncode == 0
 
             # 最終結果を表示
-            print(f"\r{'✅' if success else '❌'} テスト実行".ljust(80), flush=True)
+            print(f"\r{'✅' if success else '❌'} テスト実行".ljust(90), flush=True)
 
             return success, output
 
