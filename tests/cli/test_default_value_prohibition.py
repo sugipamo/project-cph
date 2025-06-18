@@ -157,8 +157,8 @@ class TestDefaultValueProhibition:
         with open(builder_path, encoding='utf-8') as f:
             content = f.read()
 
-        # .get()使用の回避確認
-        assert '_get_docker_option_with_default' in content, "docker設定取得ヘルパー関数が見つかりません"
+        # with_default廃止後の設定取得関数確認
+        assert '_get_docker_option' in content, "docker設定取得関数が見つかりません"
 
         # 互換性維持コメントの確認
         assert '互換性維持' in content, "互換性維持コメントが見つかりません"

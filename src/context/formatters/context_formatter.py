@@ -26,7 +26,6 @@ class ExecutionFormatData:
     contest_name: str
     problem_name: str
     env_type: str
-    env_json: dict
 
 
 def create_format_data_from_typed_config(config: 'TypedExecutionConfiguration') -> ExecutionFormatData:
@@ -36,8 +35,7 @@ def create_format_data_from_typed_config(config: 'TypedExecutionConfiguration') 
         language=config.language,
         contest_name=config.contest_name,
         problem_name=config.problem_name,
-        env_type=config.env_type,
-        env_json=config.env_json
+        env_type=config.env_type
     )
 
 
@@ -86,33 +84,11 @@ def create_format_dict(data: ExecutionFormatData) -> dict[str, str]:
         "env_type": data.env_type,
     }
 
-
-    # env_jsonから追加の値を取得
-    # ConfigurationLoader.get_language_config()使用時はマージ済み設定なので直接アクセス
-    if data.env_json:
-        # 言語名がキーとして存在する場合（従来形式）
-        if data.language in data.env_json:
-            lang_config = data.env_json[data.language]
-        else:
-            # マージ済み設定の場合（ConfigurationLoader形式）
-            lang_config = data.env_json
-
-        # パス関連 - pathsの下にある場合とトップレベルにある場合の両方に対応
-        paths_config = lang_config["paths"]
-        format_dict.update({
-            "contest_current_path": paths_config["contest_current_path"],
-            "contest_stock_path": paths_config["contest_stock_path"],
-            "contest_template_path": paths_config["contest_template_path"],
-            "contest_temp_path": paths_config["contest_temp_path"],
-            "local_workspace_path": paths_config["local_workspace_path"],
-        })
-
-        # その他の値
-        format_dict.update({
-            "language_id": lang_config["language_id"],
-            "source_file_name": lang_config["source_file_name"],
-            "language_name": data.language,
-        })
+    # TypedExecutionConfigurationから直接値を取得
+    # env_json依存を廃止し、設定システムから直接アクセス
+    format_dict.update({
+        "language_name": data.language,
+    })
 
     return format_dict
 

@@ -1,6 +1,4 @@
 """Base class for all operation requests."""
-import inspect
-import os
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
@@ -28,15 +26,8 @@ class OperationRequestFoundation(ABC):
 
     def _create_debug_info(self, debug_tag: Optional[str] = None) -> Optional[dict]:
         """Create debug information for request tracking."""
-        if (("CPH_DEBUG_REQUEST_INFO" in os.environ and os.environ["CPH_DEBUG_REQUEST_INFO"]) or "1") != "1":
-            return None
-        frame = inspect.stack()[3]
-        return {
-            "file": frame.filename,
-            "line": frame.lineno,
-            "function": frame.function,
-            "debug_tag": debug_tag,
-        }
+        # 環境変数依存を廃止 - デバッグ情報は常に作成しない
+        return None
 
     @property
     @abstractmethod

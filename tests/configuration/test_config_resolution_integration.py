@@ -121,23 +121,21 @@ class TestConfigResolutionIntegration:
         python_template_path = manager.resolve_config(["paths", "templates", "python"], str)
         assert python_template_path == "/templates/python"
 
-    def test_config_resolution_with_defaults(self, manager_with_hierarchical_data):
-        """デフォルト値付き設定解決テスト"""
+    def test_config_resolution_error_handling(self, manager_with_hierarchical_data):
+        """設定解決エラーハンドリングテスト（with_default廃止後）"""
         manager = manager_with_hierarchical_data
 
         # 存在する設定
-        existing_value = manager.resolve_config_with_default(["python", "timeout"], int, 99)
+        existing_value = manager.resolve_config(["python", "timeout"], int)
         assert existing_value == 30
 
-        # 存在しない設定（デフォルト値を使用）
-        missing_value = manager.resolve_config_with_default(["nonexistent"], str, "default")
-        assert missing_value == "default"
+        # 存在しない設定（KeyErrorが発生）
+        with pytest.raises(KeyError):
+            manager.resolve_config(["nonexistent"], str)
 
         # ネストした存在しない設定
-        missing_nested = manager.resolve_config_with_default(
-            ["completely", "nonexistent", "path"], int, 42
-        )
-        assert missing_nested == 42
+        with pytest.raises(KeyError):
+            manager.resolve_config(["completely", "nonexistent", "path"], int)
 
     def test_list_config_resolution(self, manager_with_hierarchical_data):
         """リスト設定解決テスト（ConfigurationResolver.resolve_values統合）"""
@@ -239,11 +237,9 @@ class TestConfigResolutionIntegration:
         python_id = manager.resolve_config(["python", "language_id"], str)
         assert python_id == "4006"
 
-        # resolve_value with default 等価テスト
-        missing_with_default = manager.resolve_config_with_default(
-            ["missing"], str, "default_value"
-        )
-        assert missing_with_default == "default_value"
+        # resolve_value エラーハンドリングテスト
+        with pytest.raises(KeyError):
+            manager.resolve_config(["missing"], str)
 
         # resolve_values (list) 等価テスト
         extensions = manager.resolve_config_list(["file_extensions", "python"], str)
@@ -313,7 +309,6 @@ class TestConfigurationResolverReplacement:
         # TypeSafeConfigNodeManagerが提供すべきメソッド
         required_methods = [
             'resolve_config',              # resolve_value の代替
-            'resolve_config_with_default', # resolve_value with default の代替
             'resolve_config_list',         # resolve_values の代替
         ]
 
@@ -355,6 +350,5 @@ class TestConfigurationResolverReplacement:
         with pytest.raises(KeyError):
             manager.resolve_config(["nonexistent"], str)
 
-        # デフォルト値での安全な解決
-        result = manager.resolve_config_with_default(["nonexistent"], str, "safe_default")
-        assert result == "safe_default"
+        # エラーハンドリングが必要（デフォルト値機能廃止）
+        # アプリケーション側でtry-catch処理を実装する必要がある

@@ -129,15 +129,6 @@ class TypedExecutionConfiguration:
             return False, "Language is required"
         return True, ""
 
-    @property
-    def env_json(self):
-        """env_jsonプロパティ（レガシー互換）"""
-        return getattr(self, '_env_json', {})
-
-    @env_json.setter
-    def env_json(self, value):
-        """env_jsonのsetter（レガシー互換）"""
-        self._env_json = value
 
     @property
     def command_type(self):
@@ -444,14 +435,6 @@ class TypeSafeConfigNodeManager:
         self._type_conversion_cache[cache_key] = converted_value
         return converted_value
 
-    def resolve_config_with_default(self, path: List[str],
-                                   return_type: Type[T],
-                                   default: T) -> T:
-        """デフォルト値付きの型安全解決"""
-        try:
-            return self.resolve_config(path, return_type)
-        except KeyError:
-            return default
 
     def resolve_config_list(self, path: List[str], item_type: Type[T]) -> List[T]:
         """リスト型の安全な解決"""
@@ -567,12 +550,9 @@ class TypeSafeConfigNodeManager:
         }
 
         # 設定からワークスペースパスなどを取得
-        try:
-            workspace = self.resolve_config_with_default(['paths', 'local_workspace_path'], str, './workspace')
-            context['workspace'] = workspace
-        except (KeyError, AttributeError, TypeError):
-            context['workspace'] = './workspace'
-
+        # デフォルト値禁止: 設定が存在しない場合はエラー
+        workspace = self.resolve_config(['paths', 'local_workspace_path'], str)
+        context['workspace'] = workspace
         config = TypedExecutionConfiguration(
             contest_name=contest_name,
             problem_name=problem_name,
@@ -588,16 +568,13 @@ class TypeSafeConfigNodeManager:
 
             # 型安全な設定解決（複数のパスを試行）
             timeout_seconds=self._resolve_timeout_with_fallbacks(),
-            language_id=self.resolve_config_with_default([language, 'language_id'], str, language),
-            source_file_name=self.resolve_config_with_default([language, 'source_file_name'], str, "main.py"),
-            run_command=self.resolve_config_with_default([language, 'run_command'], str, "python3 main.py"),
-            debug_mode=self.resolve_config_with_default(['debug'], bool, False),
+            language_id=self.resolve_config([language, 'language_id'], str),
+            source_file_name=self.resolve_config([language, 'source_file_name'], str),
+            run_command=self.resolve_config([language, 'run_command'], str),
+            debug_mode=self._resolve_debug_mode(),
 
             # ConfigNodeの参照を渡す（テンプレート解決用）
-            _root_node=self.root_node,
-
-            # 統合設定をenv_jsonとして設定（レガシー互換性のため）
-            _env_json=self._get_merged_config_as_dict()
+            _root_node=self.root_node
         )
 
         # キャッシュに保存（LRU制限）
@@ -608,14 +585,24 @@ class TypeSafeConfigNodeManager:
         self._execution_config_cache[cache_key] = config
         return config
 
-    def _get_merged_config_as_dict(self) -> dict:
-        """統合された設定を辞書形式で取得（env_json互換性のため）"""
-        if not hasattr(self, '_merged_config_dict'):
-            # FileLoaderから統合設定を再取得
-            self._merged_config_dict = self.file_loader.load_and_merge_configs(
-                "./config/system", "./contest_env", "python"  # デフォルト言語
-            )
-        return self._merged_config_dict
+    def _resolve_debug_mode(self) -> bool:
+        """デバッグモードの解決（複数パスを試行）"""
+        # 互換性維持：複数のパスを試行
+        debug_paths = [
+            ['debug'],
+            ['shared', 'debug'],
+            ['python', 'debug'],  # 言語固有のデバッグ設定があれば
+        ]
+
+        for path in debug_paths:
+            try:
+                return self.resolve_config(path, bool)
+            except (KeyError, TypeError):
+                continue
+
+        # すべて失敗した場合のデフォルト値
+        return False
+
 
     def _convert_to_type(self, value: Any, target_type: Type[T]) -> T:
         """値を指定型に安全に変換"""

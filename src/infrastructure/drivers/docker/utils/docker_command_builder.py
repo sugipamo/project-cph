@@ -19,32 +19,29 @@ def _get_config_manager():
         # Configuration should be loaded by the caller
     return _config_manager
 
-def _get_docker_option_with_default(option_name: str, user_options: Optional[dict[str, Any]], default_value: Any) -> Any:
-    """Get Docker option with fallback to configuration defaults
+def _get_docker_option(option_name: str, user_options: Optional[dict[str, Any]]) -> Any:
+    """Get Docker option from user options or configuration
 
     Args:
         option_name: Name of the Docker option
         user_options: User-provided options dictionary
-        default_value: Fallback default value
 
     Returns:
-        Option value from user options, configuration, or default
+        Option value from user options or configuration
+
+    Raises:
+        KeyError: If option not found in either user options or configuration
     """
     # First check user-provided options
     if user_options and option_name in user_options:
         return user_options[option_name]
 
     # Then check configuration system
-    try:
-        config_manager = _get_config_manager()
-        if config_manager.root_node is not None:
-            return config_manager.resolve_config(['docker_defaults', 'docker_options', option_name], type(default_value))
-    except (KeyError, TypeError, AttributeError):
-        # Configuration not available or option not found, use default
-        pass
+    config_manager = _get_config_manager()
+    if config_manager.root_node is not None:
+        return config_manager.resolve_config(['docker_defaults', 'docker_options', option_name], bool)
 
-    # Finally use provided default
-    return default_value
+    raise KeyError(f"Docker option '{option_name}' not found in user options or configuration")
 
 
 def validate_docker_image_name(image_name: str) -> bool:
@@ -68,13 +65,13 @@ def validate_docker_image_name(image_name: str) -> bool:
 def _add_docker_run_flags(cmd: list[str], options: dict[str, Any]) -> None:
     """Add basic docker run flags to command."""
     # 互換性維持: .get()使用の代替として設定システム経由でアクセス
-    if _get_docker_option_with_default("detach", options, False):
+    if _get_docker_option("detach", options):
         cmd.append("-d")
-    if _get_docker_option_with_default("interactive", options, True):
+    if _get_docker_option("interactive", options):
         cmd.append("-i")
-    if _get_docker_option_with_default("tty", options, True):
+    if _get_docker_option("tty", options):
         cmd.append("-t")
-    if _get_docker_option_with_default("remove", options, True):
+    if _get_docker_option("remove", options):
         cmd.append("--rm")
 
 

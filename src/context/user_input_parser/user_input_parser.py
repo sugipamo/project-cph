@@ -1,4 +1,3 @@
-import glob
 import json
 import os
 
@@ -17,7 +16,7 @@ CONTEST_ENV_DIR = "contest_env"
 
 
 def _create_execution_config(command_type=None, language=None, contest_name=None,
-                           problem_name=None, env_type=None, env_json=None):
+                           problem_name=None, env_type=None):
     """新設定システムを使用してExecutionConfigを作成するヘルパー関数"""
     config_manager = TypeSafeConfigNodeManager()
     config_manager.load_from_files(
@@ -34,12 +33,6 @@ def _create_execution_config(command_type=None, language=None, contest_name=None
         command_type=command_type or "open"
     )
 
-    # env_json依存を廃止（互換性維持のコメント）
-    # レガシーコードとの互換性のため、env_jsonが渡された場合は設定するが、
-    # 新設定システムを優先して使用する
-    if env_json:
-        context.env_json = env_json
-
     return context
 
 
@@ -49,7 +42,7 @@ def _load_current_context_sqlite(infrastructure):
     config_loader = SystemConfigLoader(infrastructure)
 
     context = config_loader.get_current_context()
-    config = config_loader.load_config()
+    config_loader.load_config()
 
     return {
         "command": context["command"],
@@ -57,7 +50,6 @@ def _load_current_context_sqlite(infrastructure):
         "env_type": context["env_type"],
         "contest_name": context["contest_name"],
         "problem_name": context["problem_name"],
-        "env_json": config["env_json"],
     }
 
 
@@ -75,9 +67,6 @@ def _save_current_context_sqlite(infrastructure, context_info):
         problem_name=context_info["problem_name"]
     )
 
-    # env_jsonがある場合は保存
-    if context_info["env_json"]:
-        config_loader.save_config("env_json", context_info["env_json"], "environment")
 
 
 def _parse_command_line_args(args, context, root):
@@ -114,7 +103,6 @@ def _scan_and_apply_language(args, context, root):
                     contest_name=context.contest_name,
                     problem_name=context.problem_name,
                     env_type=context.env_type,
-                    env_json=context.env_json
                 )
                 new_args = args[:idx] + args[idx+1:]
                 return new_args, new_context
@@ -143,8 +131,7 @@ def _scan_and_apply_env_type(args, context, root):
                             contest_name=context.contest_name,
                             problem_name=context.problem_name,
                             env_type=node.key,
-                            env_json=context.env_json
-                        )
+                                )
                         new_args = args[:idx] + args[idx+1:]
                         return new_args, new_context
 
@@ -172,8 +159,7 @@ def _scan_and_apply_command(args, context, root):
                             contest_name=context.contest_name,
                             problem_name=context.problem_name,
                             env_type=context.env_type,
-                            env_json=context.env_json
-                        )
+                                )
                         new_args = args[:idx] + args[idx+1:]
                         return new_args, new_context
 
@@ -196,7 +182,6 @@ def _apply_problem_name(args, context):
             contest_name=context.contest_name,
             problem_name=problem_name,
             env_type=context.env_type,
-            env_json=context.env_json
         )
         return args, new_context
 
@@ -214,7 +199,6 @@ def _apply_contest_name(args, context):
             contest_name=contest_name,
             problem_name=context.problem_name,
             env_type=context.env_type,
-            env_json=context.env_json
         )
         return args, new_context
 
@@ -234,119 +218,9 @@ def _load_shared_config(base_dir: str, infrastructure):
         return None
 
 
-def _load_all_env_jsons(base_dir: str, infrastructure) -> list:
-    """環境設定JSONファイルを全て読み込む"""
-    env_jsons = []
-    file_driver = infrastructure.resolve("file_driver")
-
-    req = FileRequest(FileOpType.EXISTS, base_dir)
-    result = req.execute_operation(driver=file_driver)
-    if not result.exists:
-        return env_jsons
-
-    # 共有設定を読み込み
-    shared_config = _load_shared_config(base_dir, infrastructure)
-
-    pattern = os.path.join(base_dir, "*", "env.json")
-    env_json_paths = glob.glob(pattern)
-
-    for path in env_json_paths:
-        try:
-            # 特殊フォルダは除外（バリデーション対象外）
-            dir_name = os.path.basename(os.path.dirname(path))
-            excluded_dirs = {'shared', '__common__', 'common', 'base'}
-            if dir_name in excluded_dirs:
-                continue
-
-            req = FileRequest(FileOpType.READ, path)
-            result = req.execute_operation(driver=file_driver)
-            data = json.loads(result.content)
-
-            # 共有設定を考慮してバリデーション
-            ValidationService.validate_env_json(data, path, shared_config)
-            env_jsons.append(data)
-        except Exception as e:
-            print(f"Warning: Failed to load {path}: {e}")
-
-    return env_jsons
 
 
-def _merge_with_shared_config(env_json, shared_config):
-    """env.jsonとshared設定をマージ"""
-    if not shared_config or "shared" not in shared_config:
-        return env_json
 
-    shared_data = shared_config["shared"]
-    merged_json = env_json.copy()
-
-    # shared設定を直接追加
-    merged_json["shared"] = shared_data
-
-    # 各言語設定に共有設定をマージ
-    for lang, lang_config in merged_json.items():
-        if not isinstance(lang_config, dict) or lang == "shared":
-            continue
-
-        # パス設定をマージ
-        paths_key = "paths" if "paths" in shared_data else "basic_paths"
-        if paths_key in shared_data:
-            for path_key, path_value in shared_data[paths_key].items():
-                if path_key not in lang_config:
-                    lang_config[path_key] = path_value
-
-        # env_typesにsharedのlocal設定をマージ
-        if "local" in shared_data and "env_types" not in lang_config:
-            lang_config["env_types"] = {"local": shared_data["local"]}
-        elif "local" in shared_data and "env_types" in lang_config and "local" not in lang_config["env_types"]:
-            lang_config["env_types"]["local"] = shared_data["local"]
-
-        # output設定をマージ
-        if "output" in shared_data:
-            if "output" not in lang_config:
-                lang_config["output"] = shared_data["output"].copy()
-            else:
-                # 既存のoutput設定と共有設定をマージ
-                for output_key, output_value in shared_data["output"].items():
-                    if output_key not in lang_config["output"]:
-                        lang_config["output"][output_key] = output_value
-
-        # commands設定をマージ（重要：ワークフローに必要）
-        if "commands" in shared_data:
-            if "commands" not in lang_config:
-                lang_config["commands"] = shared_data["commands"].copy()
-            else:
-                # 既存のcommands設定と共有設定をマージ
-                for cmd_key, cmd_value in shared_data["commands"].items():
-                    if cmd_key not in lang_config["commands"]:
-                        lang_config["commands"][cmd_key] = cmd_value
-
-    return merged_json
-
-
-def _apply_env_json(context, env_jsons, base_dir=None, infrastructure=None):
-    """環境JSONをコンテキストに適用"""
-    # ConfigurationLoaderを使用して正しい設定を取得
-    if context.language and base_dir:
-
-        from src.configuration.config_manager import FileLoader
-        file_loader = FileLoader()
-        # 完全なマージ設定を取得（共有設定をトップレベルで利用）
-        merged_config = file_loader.load_and_merge_configs(
-            system_dir="./config/system",
-            env_dir=base_dir,
-            language=context.language
-        )
-
-        # 言語固有設定に共有設定の重要項目を直接追加
-        if context.language in merged_config:
-            lang_config = merged_config[context.language]
-            # commandsが共有設定にある場合は追加
-            if 'commands' in merged_config and 'commands' not in lang_config:
-                lang_config['commands'] = merged_config['commands']
-            context.env_json = {context.language: lang_config}
-        else:
-            context.env_json = merged_config
-    return context
 
 
 
@@ -429,27 +303,10 @@ def _resolve_environment_configuration(context_data, infrastructure):
         combined_config.update(lang_config)
 
     root = create_config_root_from_dict(combined_config)
-    env_jsons = _load_all_env_jsons(CONTEST_ENV_DIR, infrastructure)
-
-    # Resolve final env_json
-    final_env_json = context_data["env_json"]
-    if final_env_json is None and context_data["language"]:
-        lang_merged_config = file_loader.load_and_merge_configs(
-            system_dir="./config/system",
-            env_dir=CONTEST_ENV_DIR,
-            language=context_data["language"]
-        )
-        if context_data["language"] in lang_merged_config:
-            final_env_json = {context_data["language"]: lang_merged_config[context_data["language"]]}
-        else:
-            final_env_json = lang_merged_config
-
     return {
         'file_loader': file_loader,
         'env_config': combined_config,
         'root': root,
-        'env_jsons': env_jsons,
-        'final_env_json': final_env_json
     }
 
 
@@ -461,7 +318,6 @@ def _create_initial_context(context_data, env_config):
         contest_name=context_data["contest_name"],
         problem_name=context_data["problem_name"],
         env_type=context_data["env_type"],
-        env_json=env_config['final_env_json']
     )
     context.resolver = env_config['root']
     return context
@@ -489,9 +345,6 @@ def _handle_contest_management(context, infrastructure):
 
 def _finalize_environment_configuration(context, env_config, infrastructure):
     """Apply environment JSON and finalize configuration."""
-    context = _apply_env_json(context, env_config['env_jsons'], CONTEST_ENV_DIR, infrastructure)
-    if context.env_json:
-        context.resolver = create_config_root_from_dict(context.env_json)
     return context
 
 
@@ -525,7 +378,6 @@ def _setup_context_persistence_and_docker(context, args, infrastructure):
         "env_type": context.env_type,
         "contest_name": context.contest_name,
         "problem_name": context.problem_name,
-        "env_json": context.env_json
     })
 
     oj_dockerfile_path = os.path.join(os.path.dirname(__file__), "oj.Dockerfile")
