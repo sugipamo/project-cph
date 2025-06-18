@@ -163,7 +163,10 @@ def classify_error(exception: Exception, context: str = "") -> ErrorCode:
 
 def _classify_file_errors(error_message: str, context: str) -> ErrorCode:
     """Classify file-related errors."""
-    if "no such file or directory" in error_message or "file not found" in error_message:
+    if ("no such file or directory" in error_message or 
+        "file not found" in error_message or
+        "ファイルが見つかりません" in error_message or
+        "ファイルが存在しません" in error_message):
         return ErrorCode.FILE_NOT_FOUND
     if "permission denied" in error_message and "file" in context.lower():
         return ErrorCode.FILE_PERMISSION_DENIED
