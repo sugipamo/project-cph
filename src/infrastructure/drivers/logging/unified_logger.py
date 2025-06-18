@@ -41,11 +41,21 @@ class UnifiedLogger(LoggerInterface):
 
         # Workflow configuration (backward compatible with DebugLogger)
         self.config = logger_config or {}
-        self.enabled = self.config["enabled"]
+        if "enabled" not in self.config:
+            self.enabled = True  # デフォルト値
+        else:
+            self.enabled = self.config["enabled"]
 
         # Merge user icons with defaults
-        format_config = self.config["format"]
-        user_icons = format_config["icons"]
+        if "format" not in self.config:
+            format_config = {}
+        else:
+            format_config = self.config["format"]
+
+        if "icons" not in format_config:
+            user_icons = {}
+        else:
+            user_icons = format_config["icons"]
         self.icons = {**self.DEFAULT_ICONS, **user_icons}
 
     # LoggerInterface implementation

@@ -97,7 +97,9 @@ class DockerRequest(OperationRequestFoundation):
         try:
             inspect_data = json.loads(inspect_result.stdout)
             if isinstance(inspect_data, list) and len(inspect_data) > 0:
-                state = inspect_data[0].get("State", {})
+                if "State" not in inspect_data[0]:
+                    return driver.run_container(self.image, self.container, self.options, show_output=self.show_output)
+                state = inspect_data[0]["State"]
                 status = state["Status"]
                 return self._process_container_status(driver, status, logger)
         except Exception:

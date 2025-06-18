@@ -488,10 +488,9 @@ class TestRunner:
 
             if dict_get_issues:
                 # 自動変換を実行
-                if self._auto_convert_dict_get():
+                if self._auto_convert_dict_get() and not auto_convert:  # 無限ループ防止
                     # 変換成功時のみ再チェック（1回のみ）
-                    if not auto_convert:  # 無限ループ防止
-                        return self.check_dict_get_usage(auto_convert=True)
+                    return self.check_dict_get_usage(auto_convert=True)
 
                 # 変換失敗または再チェック時は従来のエラー表示
                 self.issues.append("dict.get()の使用が検出されました（エラー隠蔽防止・フォールバック対応禁止のため使用禁止）:")

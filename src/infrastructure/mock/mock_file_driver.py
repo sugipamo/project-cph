@@ -29,11 +29,16 @@ class MockFileDriver(FileDriver):
     def _record_operation(self, operation: str, *args) -> None:
         """Record operation and count calls"""
         self.operations.append((operation, *args))
-        self.call_count[operation] = (self.call_count[operation]) + 1
+        if operation not in self.call_count:
+            self.call_count[operation] = 0
+        self.call_count[operation] = self.call_count[operation] + 1
 
     def assert_operation_called(self, operation: str, times: Optional[int] = None) -> None:
         """Verify that specified operation was called"""
-        count = self.call_count[operation]
+        if operation not in self.call_count:
+            count = 0
+        else:
+            count = self.call_count[operation]
         if times is None:
             assert count > 0, f"Operation '{operation}' was not called"
         else:
