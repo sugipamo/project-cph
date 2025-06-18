@@ -33,18 +33,18 @@ class SystemEnvironmentProvider(EnvironmentProvider):
 
     def get_env(self, key: str, default: Optional[str] = None) -> Optional[str]:
         """環境変数を取得（副作用）"""
-        return os.environ[key]
+        return os.environ.get(key, default)
 
     def get_env_bool(self, key: str, default: bool = False) -> bool:
         """環境変数をbooleanとして取得（副作用）"""
-        value = os.environ[key]
+        value = os.environ.get(key)
         if value is None:
             return default
         return value.lower() in ('1', 'true', 'yes', 'on')
 
     def get_env_int(self, key: str, default: Optional[int] = None) -> Optional[int]:
         """環境変数をintegerとして取得（副作用）"""
-        value = os.environ[key]
+        value = os.environ.get(key)
         if value is None:
             return default
         try:
@@ -65,18 +65,18 @@ class MockEnvironmentProvider(EnvironmentProvider):
 
     def get_env(self, key: str, default: Optional[str] = None) -> Optional[str]:
         """モック環境変数取得（副作用なし）"""
-        return self._env_vars[key]
+        return self._env_vars.get(key, default)
 
     def get_env_bool(self, key: str, default: bool = False) -> bool:
         """モック環境変数boolean取得（副作用なし）"""
-        value = self._env_vars[key]
+        value = self._env_vars.get(key)
         if value is None:
             return default
         return value.lower() in ('1', 'true', 'yes', 'on')
 
     def get_env_int(self, key: str, default: Optional[int] = None) -> Optional[int]:
         """モック環境変数integer取得（副作用なし）"""
-        value = self._env_vars[key]
+        value = self._env_vars.get(key)
         if value is None:
             return default
         try:

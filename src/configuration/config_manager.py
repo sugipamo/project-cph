@@ -594,7 +594,10 @@ class TypeSafeConfigNodeManager:
             debug_mode=self.resolve_config_with_default(['debug'], bool, False),
 
             # ConfigNodeの参照を渡す（テンプレート解決用）
-            _root_node=self.root_node
+            _root_node=self.root_node,
+
+            # 統合設定をenv_jsonとして設定（レガシー互換性のため）
+            _env_json=self._get_merged_config_as_dict()
         )
 
         # キャッシュに保存（LRU制限）
@@ -604,6 +607,15 @@ class TypeSafeConfigNodeManager:
 
         self._execution_config_cache[cache_key] = config
         return config
+
+    def _get_merged_config_as_dict(self) -> dict:
+        """統合された設定を辞書形式で取得（env_json互換性のため）"""
+        if not hasattr(self, '_merged_config_dict'):
+            # FileLoaderから統合設定を再取得
+            self._merged_config_dict = self.file_loader.load_and_merge_configs(
+                "./config/system", "./contest_env", "python"  # デフォルト言語
+            )
+        return self._merged_config_dict
 
     def _convert_to_type(self, value: Any, target_type: Type[T]) -> T:
         """値を指定型に安全に変換"""

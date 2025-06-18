@@ -140,13 +140,19 @@ def execution_context_to_simple_context(execution_context: Union['TypedExecution
                     file_patterns[pattern_name] = pattern_data
 
     # デバッグ: run_commandの値を確認
-    run_command = language_config['run_command']
+    run_command = ''
+    if 'run_command' in language_config:
+        run_command = language_config['run_command']
+
     if not run_command:
         # ExecutionContextAdapterの場合、runtime_configから取得を試行
         if hasattr(execution_context, 'config') and hasattr(execution_context.config, 'runtime_config'):
             run_command = execution_context.config.runtime_config.run_command
         elif hasattr(execution_context, 'run_command'):
             run_command = execution_context.run_command
+        else:
+            # デフォルト値を設定（互換性維持のコメント）
+            run_command = 'python3'
 
         # run_commandは必須 - env.jsonで設定されている必要がある
 

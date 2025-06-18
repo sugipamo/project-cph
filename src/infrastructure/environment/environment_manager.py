@@ -86,6 +86,10 @@ class EnvironmentManager:
         """Get the default shell for this environment"""
         return "bash"
 
+    def get_workspace_root(self) -> str:
+        """Get the workspace root directory path"""
+        return "./workspace"
+
     @classmethod
     def from_context(cls, context: Any) -> 'EnvironmentManager':
         """Create an EnvironmentManager from an execution context.

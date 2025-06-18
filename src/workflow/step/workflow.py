@@ -9,12 +9,13 @@ from .step import Step, StepContext
 from .step_generation_service import generate_steps_from_json, optimize_step_sequence, validate_step_sequence
 
 
-def steps_to_requests(steps: list[Step], operations) -> CompositeRequest:
+def steps_to_requests(steps: list[Step], context: StepContext, operations) -> CompositeRequest:
     """Convert a list of steps to a CompositeRequest using RequestFactoryV2
 
     Args:
         steps: List of Step objects to convert
-        operations: Operations object (contains context)
+        context: Step context for creating requests
+        operations: Operations object (DI container)
 
     Returns:
         CompositeRequest: Composite request containing all converted steps
@@ -27,8 +28,17 @@ def steps_to_requests(steps: list[Step], operations) -> CompositeRequest:
     from src.infrastructure.di_container import DIKey
     env_manager = operations.resolve(DIKey.ENVIRONMENT_MANAGER)
 
+    # Create a dummy execution context with the required attributes
+    execution_context = type('ExecutionContext', (), {
+        'problem_name': context.problem_name,
+        'contest_name': context.contest_name,
+        'language': context.language,
+        'env_type': context.env_type,
+        'command_type': context.command_type
+    })()
+
     for step in steps:
-        request = factory.create_request_from_step(step, operations, env_manager)
+        request = factory.create_request_from_step(step, execution_context, env_manager)
         if request is not None:
             requests.append(request)
 
@@ -77,7 +87,7 @@ def generate_workflow_from_json(
     optimized_steps = optimize_workflow_steps(resolved_steps)
 
     # 5. Step から Request への変換
-    composite_request = steps_to_requests(optimized_steps, operations)
+    composite_request = steps_to_requests(optimized_steps, context, operations)
 
     return composite_request, errors, warnings
 

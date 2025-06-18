@@ -34,7 +34,9 @@ def _create_execution_config(command_type=None, language=None, contest_name=None
         command_type=command_type or "open"
     )
 
-    # レガシー互換のためのプロパティ設定
+    # env_json依存を廃止（互換性維持のコメント）
+    # レガシーコードとの互換性のため、env_jsonが渡された場合は設定するが、
+    # 新設定システムを優先して使用する
     if env_json:
         context.env_json = env_json
 

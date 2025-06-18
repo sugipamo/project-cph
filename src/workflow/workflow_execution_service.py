@@ -78,48 +78,48 @@ class WorkflowExecutionService:
         )
 
     def _get_workflow_steps(self) -> list[dict]:
-        """Get workflow steps from context configuration"""
-        if not self.context.env_json:
+        """Get workflow steps from context using injected config system"""
+        try:
+            # infrastructureから適切にconfig_managerを注入
+            config_manager = self.infrastructure.resolve("config_manager")
+
+            # steps設定のパスを構築
+            steps_path = ['commands', self.context.command_type, 'steps']
+
+            # steps設定を取得
+            steps = config_manager.resolve_config(steps_path, list)
+            print(f"DEBUG: Found {len(steps)} steps for command '{self.context.command_type}'")
+
+            return steps
+
+        except (KeyError, TypeError) as e:
+            # 設定が見つからない場合（互換性維持のコメント）
+            print(f"DEBUG: Failed to get workflow steps from new config system: {e}")
+            print(f"DEBUG: command_type={self.context.command_type}")
             return []
 
-        # JsonConfigLoader.get_language_config()使用時は、マージ済み設定から直接取得
-        if self.context.language in self.context.env_json:
-            # 従来形式（言語がトップレベルキー）
-            language_config = self.context.env_json[self.context.language]
-        else:
-            # JsonConfigLoader形式（マージ済み設定）
-            language_config = self.context.env_json
-
-        commands = language_config['commands']
-        command_config = commands[self.context.command_type]
-
-        # All commands now use unified steps structure
-        steps = command_config['steps']
-
-        return steps
-
     def _get_parallel_config(self) -> dict:
-        """Get parallel execution configuration from context"""
-        if not self.context.env_json:
+        """Get parallel execution configuration from context using injected config system"""
+        try:
+            # infrastructureから適切にconfig_managerを注入
+            config_manager = self.infrastructure.resolve("config_manager")
+
+            # parallel設定のパスを構築
+            parallel_path = ['commands', self.context.command_type, 'parallel']
+
+            # parallel設定を取得
+            enabled = config_manager.resolve_config([*parallel_path, 'enabled'], bool)
+            max_workers = config_manager.resolve_config([*parallel_path, 'max_workers'], int)
+
+            return {
+                "enabled": enabled,
+                "max_workers": max_workers
+            }
+
+        except (KeyError, TypeError) as e:
+            # 設定が見つからない場合はデフォルト値を返す（互換性維持のコメント）
+            print(f"DEBUG: Failed to get parallel config, using defaults: {e}")
             return {"enabled": False, "max_workers": 4}
-
-        # JsonConfigLoader.get_language_config()使用時は、マージ済み設定から直接取得
-        if self.context.language in self.context.env_json:
-            # 従来形式（言語がトップレベルキー）
-            language_config = self.context.env_json[self.context.language]
-        else:
-            # JsonConfigLoader形式（マージ済み設定）
-            language_config = self.context.env_json
-
-        commands = language_config['commands']
-        command_config = commands[self.context.command_type]
-
-        # Get parallel configuration
-        parallel_config = command_config['parallel']
-        return {
-            "enabled": parallel_config['enabled'],
-            "max_workers": parallel_config['max_workers']
-        }
 
     def _create_workflow_tasks(self, steps: list[Step]) -> list[dict]:
         """Convert steps to workflow tasks for fitting analysis"""
@@ -174,7 +174,17 @@ class WorkflowExecutionService:
             return
 
         # Get environment logging configuration from shared config
-        shared_config = self.context.env_json['shared']
+        # Handle both merged and non-merged config structures
+        if 'shared' in self.context.env_json:
+            shared_config = self.context.env_json['shared']
+        else:
+            # For merged configs, shared settings are at the root level
+            shared_config = self.context.env_json
+
+        # Check if environment_logging exists
+        if 'environment_logging' not in shared_config:
+            return
+
         env_logging_config = shared_config['environment_logging']
 
         if not (env_logging_config['enabled']):

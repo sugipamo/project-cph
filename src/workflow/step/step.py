@@ -24,6 +24,12 @@ class StepType(Enum):
     DOCKER_EXEC = "docker_exec"
     DOCKER_CP = "docker_cp"
     DOCKER_RUN = "docker_run"
+    DOCKER_BUILD = "docker_build"
+    DOCKER_COMMIT = "docker_commit"
+    DOCKER_RM = "docker_rm"
+    DOCKER_RMI = "docker_rmi"
+    CHMOD = "chmod"
+    RUN = "run"
 
 
 @dataclass(frozen=True)
@@ -97,7 +103,7 @@ class Step:
             raise ValueError(f"Step {self.type} must have non-empty cmd")
 
         # 各ステップタイプの必要な引数をチェック
-        if self.type in [StepType.COPY, StepType.MOVE, StepType.MOVETREE] and len(self.cmd) < 2:
+        if self.type in [StepType.COPY, StepType.MOVE, StepType.MOVETREE, StepType.DOCKER_CP] and len(self.cmd) < 2:
             raise ValueError(f"Step {self.type} requires at least 2 arguments (src, dst)")
 
         if self.type in [StepType.MKDIR, StepType.TOUCH, StepType.REMOVE, StepType.RMTREE] and len(self.cmd) < 1:
@@ -106,11 +112,17 @@ class Step:
         if self.type == StepType.DOCKER_EXEC and len(self.cmd) < 2:
             raise ValueError(f"Step {self.type} requires at least 2 arguments (container, command)")
 
-        if self.type == StepType.DOCKER_CP and len(self.cmd) < 2:
-            raise ValueError(f"Step {self.type} requires at least 2 arguments (src, dst)")
+        if self.type in [StepType.DOCKER_RUN, StepType.DOCKER_BUILD] and len(self.cmd) < 1:
+            raise ValueError(f"Step {self.type} requires at least 1 argument")
 
-        if self.type == StepType.DOCKER_RUN and len(self.cmd) < 1:
-            raise ValueError(f"Step {self.type} requires at least 1 argument (image)")
+        if self.type == StepType.DOCKER_COMMIT and len(self.cmd) < 2:
+            raise ValueError(f"Step {self.type} requires at least 2 arguments (container, image)")
+
+        if self.type in [StepType.DOCKER_RM, StepType.DOCKER_RMI] and len(self.cmd) < 1:
+            raise ValueError(f"Step {self.type} requires at least 1 argument")
+
+        if self.type == StepType.CHMOD and len(self.cmd) < 2:
+            raise ValueError(f"Step {self.type} requires at least 2 arguments (mode, path)")
 
 
 @dataclass(frozen=True)

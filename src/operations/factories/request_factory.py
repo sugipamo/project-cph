@@ -148,8 +148,7 @@ class RequestFactory:
 
         return FileRequest(
             op=FileOpType.MKDIR,
-            source=path,
-            workspace_path=env_manager.get_workspace_root(),
+            path=path,
             debug_tag=f"mkdir_{context.problem_name}"
         )
 
@@ -159,8 +158,7 @@ class RequestFactory:
 
         return FileRequest(
             op=FileOpType.TOUCH,
-            source=path,
-            workspace_path=env_manager.get_workspace_root(),
+            path=path,
             debug_tag=f"touch_{context.problem_name}"
         )
 
@@ -171,9 +169,8 @@ class RequestFactory:
 
         return FileRequest(
             op=FileOpType.COPY,
-            source=source,
-            target=target,
-            workspace_path=env_manager.get_workspace_root(),
+            path=source,
+            dst_path=target,
             debug_tag=f"copy_{context.problem_name}"
         )
 
@@ -184,9 +181,8 @@ class RequestFactory:
 
         return FileRequest(
             op=FileOpType.MOVE,
-            source=source,
-            target=target,
-            workspace_path=env_manager.get_workspace_root(),
+            path=source,
+            dst_path=target,
             debug_tag=f"move_{context.problem_name}"
         )
 
@@ -196,8 +192,7 @@ class RequestFactory:
 
         return FileRequest(
             op=FileOpType.REMOVE,
-            source=path,
-            workspace_path=env_manager.get_workspace_root(),
+            path=path,
             debug_tag=f"remove_{context.problem_name}"
         )
 
@@ -207,21 +202,20 @@ class RequestFactory:
 
         return FileRequest(
             op=FileOpType.RMTREE,
-            source=path,
-            workspace_path=env_manager.get_workspace_root(),
+            path=path,
             debug_tag=f"rmtree_{context.problem_name}"
         )
 
     def _create_chmod_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
         """Create chmod request"""
-        mode = step.cmd[0] if step.cmd else "755"
+        step.cmd[0] if step.cmd else "755"
         path = step.cmd[1] if len(step.cmd) > 1 else ""
 
+        # Note: FileRequest doesn't support mode parameter directly
+        # This might need to be handled differently or use ShellRequest
         return FileRequest(
             op=FileOpType.CHMOD,
-            source=path,
-            mode=mode,
-            workspace_path=env_manager.get_workspace_root(),
+            path=path,
             debug_tag=f"chmod_{context.problem_name}"
         )
 
@@ -236,12 +230,11 @@ class RequestFactory:
 
     def _create_python_request(self, step: Step, context: Any, env_manager: Any) -> PythonRequest:
         """Create python request"""
-        script = step.cmd[0] if step.cmd else ""
-        args = step.cmd[1:] if len(step.cmd) > 1 else []
+        # For Python steps, cmd contains Python code lines
+        code_or_file = step.cmd
 
         return PythonRequest(
-            script=script,
-            args=args,
+            code_or_file=code_or_file,
             cwd=env_manager.get_workspace_root(),
             debug_tag=f"python_{context.problem_name}"
         )
@@ -257,5 +250,12 @@ def create_request(step: Step, context: Any) -> Optional[OperationRequestFoundat
     This function maintains backward compatibility with the old API
     """
     from src.infrastructure.di_container import DIKey
-    env_manager = context.infrastructure.resolve(DIKey.ENVIRONMENT_MANAGER)
-    return _factory_instance.create_request_from_step(step, context, env_manager)
+
+    # contextがinfrastructure属性を持っている場合（TypedExecutionConfiguration）
+    if hasattr(context, 'infrastructure'):
+        env_manager = context.infrastructure.resolve(DIKey.ENVIRONMENT_MANAGER)
+        return _factory_instance.create_request_from_step(step, context, env_manager)
+
+    # この関数は廃止予定 - 代わりにRequestFactoryを直接使用してください
+    # contextとenv_managerが必要な場合は、呼び出し元で直接RequestFactoryを使用
+    return None

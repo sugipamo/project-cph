@@ -44,8 +44,9 @@ class SystemConfigLoader:
                 lang_name = key.split(".", 1)[1]
                 env_json[lang_name] = lang_config["config_value"]
 
-        if env_json:
-            config["env_json"] = env_json
+        # env_json依存を廃止（互換性維持のコメント）
+        # レガシーシステムとの互換性のため、空の場合でもenv_jsonキーを設定
+        config["env_json"] = env_json
 
         # Get Docker configuration
         docker_config = self.config_repo.get_config("docker")
