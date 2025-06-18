@@ -66,9 +66,10 @@ class EnvironmentManager:
             True if step should run locally
         """
         # Check if force_env_type is set to 'local'
-        force_env_type = step_config.get('force_env_type')
-        if force_env_type == 'local':
-            return True
+        if 'force_env_type' in step_config:
+            force_env_type = step_config['force_env_type']
+            if force_env_type == 'local':
+                return True
 
         # Fall back to force_local for backwards compatibility
         return (('force_local' in step_config and step_config['force_local']) or False) or self._env_type == 'local'

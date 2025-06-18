@@ -146,7 +146,7 @@ class DockerRequest(OperationRequestFoundation):
         if self.op == DockerOpType.STOP:
             return driver.stop_container(self.container, show_output=self.show_output)
         if self.op == DockerOpType.REMOVE:
-            force = self.options.get('f') is not None if self.options else False
+            force = ('f' in self.options and self.options['f'] is not None) if self.options else False
             return driver.remove_container(self.container, force=force, show_output=self.show_output)
         if self.op == DockerOpType.INSPECT:
             return driver.inspect(self.container, show_output=self.show_output)
@@ -162,13 +162,13 @@ class DockerRequest(OperationRequestFoundation):
 
     def _handle_build_operation(self, driver: DockerDriverInterface):
         """Handle Docker build operation."""
-        tag = self.options.get('t')
+        tag = self.options.get('t', None)
         return driver.build_docker_image(self.dockerfile_text, tag=tag, options=self.options, show_output=self.show_output)
 
     def _handle_copy_operation(self, driver: DockerDriverInterface):
         """Handle Docker copy operation."""
-        local_path = self.options.get('local_path')
-        remote_path = self.options.get('remote_path')
+        local_path = self.options.get('local_path', None)
+        remote_path = self.options.get('remote_path', None)
         to_container = self.options.get('to_container', True)
 
         if to_container:

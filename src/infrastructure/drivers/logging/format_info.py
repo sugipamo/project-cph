@@ -24,7 +24,7 @@ class FormatInfo:
     def from_dict(cls, d):
         return cls(
             formattype=LogFormatType[d["formattype"]],
-            color=d.get("color"),
+            color=d.get("color", None),
             bold=d.get("bold", False)
         )
 

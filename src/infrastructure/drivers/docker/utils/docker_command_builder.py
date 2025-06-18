@@ -28,13 +28,13 @@ def validate_docker_image_name(image_name: str) -> bool:
 
 def _add_docker_run_flags(cmd: list[str], options: dict[str, Any]) -> None:
     """Add basic docker run flags to command."""
-    if options.get("detach") or False:
+    if options.get("detach"):
         cmd.append("-d")
-    if options.get("interactive") or False:
+    if options.get("interactive"):
         cmd.append("-i")
-    if options.get("tty") or False:
+    if options.get("tty"):
         cmd.append("-t")
-    if options.get("remove") or False:
+    if options.get("remove"):
         cmd.append("--rm")
 
 

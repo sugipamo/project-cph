@@ -65,8 +65,10 @@ class DIContainer:
         # Override takes priority
         if key in self._overrides:
             provider = self._overrides[key]
+        elif key in self._providers:
+            provider = self._providers[key]
         else:
-            provider = self._providers.get(key, None)
+            provider = None
 
         if provider is None:
             raise ValueError(f"{key} is not registered")

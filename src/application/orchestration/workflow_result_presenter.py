@@ -127,25 +127,34 @@ class WorkflowResultPresenter:
             self._present_step_request_info(step_result.request, config, max_command_length)
 
         # Show execution time if available
-        if config.get('show_execution_time', True):
+        if 'show_execution_time' in config:
+            if config['show_execution_time']:
+                self._present_execution_time(step_result)
+        else:
+            # Default: True
             self._present_execution_time(step_result)
 
         # Show output based on request's show_output setting
         should_show = True
         if hasattr(step_result, 'request') and step_result.request and hasattr(step_result.request, 'show_output'):
             should_show = step_result.request.show_output
-        elif config.get('show_stdout', True):
+        elif 'show_stdout' in config:
+            should_show = config['show_stdout']
+        else:
+            # Default: True
             should_show = True
 
         if should_show:
             self._present_stdout(step_result)
 
         # Show errors
-        if (config.get('show_stderr', True)) and not step_result.success:
+        show_stderr = config.get('show_stderr', True)
+        if show_stderr and not step_result.success:
             self._present_stderr(step_result)
 
         # Show return code if available
-        if config.get('show_return_code', True):
+        show_return_code = config.get('show_return_code', True)
+        if show_return_code:
             self._present_return_code(step_result)
 
     def _get_step_status(self, step_result: OperationResult) -> str:
@@ -170,7 +179,8 @@ class WorkflowResultPresenter:
     ) -> None:
         """Present request information for a step"""
         # Show request type
-        if (config.get('show_type', True)) and hasattr(request, 'operation_type'):
+        show_type = config.get('show_type', True)
+        if show_type and hasattr(request, 'operation_type'):
             # FileRequestの場合はより具体的なfile operation typeを表示
             if str(request.operation_type) == "OperationType.FILE" and hasattr(request, 'op'):
                 print(f"  タイプ: FILE.{request.op.name}")
@@ -178,7 +188,8 @@ class WorkflowResultPresenter:
                 print(f"  タイプ: {request.operation_type}")
 
         # Show command
-        if (config.get('show_command', True)) and hasattr(request, 'cmd') and request.cmd:
+        show_command = config.get('show_command', True)
+        if show_command and hasattr(request, 'cmd') and request.cmd:
             cmd_str = str(request.cmd)
             try:
                 if len(cmd_str) > max_command_length:
@@ -189,7 +200,8 @@ class WorkflowResultPresenter:
             print(f"  コマンド: {cmd_str}")
 
         # Show paths
-        if config.get('show_path', True):
+        show_path = config.get('show_path', True)
+        if show_path:
             if hasattr(request, 'path') and request.path:
                 print(f"  パス: {request.path}")
             if hasattr(request, 'dst_path') and request.dst_path:
