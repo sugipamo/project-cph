@@ -574,7 +574,11 @@ class TestRunner:
         cmd.extend(["--tb=short", "-v"])
         cmd.extend(pytest_args)
 
-        success, output = self.run_command(cmd, "テスト実行")
+        # 詳細モードでは従来通り、非詳細モードでは実行中テストを表示
+        if self.verbose:
+            success, output = self.run_command(cmd, "テスト実行")
+        else:
+            success, output = self._run_tests_with_live_progress(cmd)
 
         # テスト失敗時は失敗したテストのみを抽出して表示
         if not success and output:
@@ -585,6 +589,54 @@ class TestRunner:
             self._analyze_coverage(output)
 
         return success
+
+    def _run_tests_with_live_progress(self, cmd: List[str]) -> Tuple[bool, str]:
+        """テスト実行中に現在のテストを改行せずに表示"""
+        import re
+
+        try:
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                universal_newlines=True,
+                cwd=Path(__file__).parent.parent
+            )
+
+            output_lines = []
+            current_test_pattern = re.compile(r'(\S+::\S+)\s+')
+
+            print("🧪 テスト実行", end="", flush=True)
+
+            for line in iter(process.stdout.readline, ''):
+                output_lines.append(line)
+
+                # 現在実行中のテストを検出
+                match = current_test_pattern.match(line.strip())
+                if match:
+                    test_name = match.group(1)
+                    # テスト名を短縮表示（パッケージ名を省略）
+                    short_name = test_name.split('::')[-1] if '::' in test_name else test_name
+                    # テスト名を40文字以内に制限
+                    if len(short_name) > 40:
+                        short_name = short_name[:37] + "..."
+                    print(f"\r🧪 テスト実行: {short_name}".ljust(80), end="", flush=True)
+
+            process.wait()
+            output = ''.join(output_lines)
+            success = process.returncode == 0
+
+            # 最終結果を表示
+            print(f"\r{'✅' if success else '❌'} テスト実行".ljust(80), flush=True)
+
+            return success, output
+
+        except Exception as e:
+            print("\r❌ テスト実行", flush=True)
+            self.issues.append(f"テスト実行でエラー: {e}")
+            return False, str(e)
 
     def _extract_failed_tests(self, output: str) -> None:
         """失敗したテストの詳細を抽出して表示"""
