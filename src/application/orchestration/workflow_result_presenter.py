@@ -155,18 +155,12 @@ class WorkflowResultPresenter:
             self._present_stdout(step_result)
 
         # Show errors
-        if 'show_stderr' not in config:
-            show_stderr = True  # デフォルト値
-        else:
-            show_stderr = config['show_stderr']
+        show_stderr = config['show_stderr']
         if show_stderr and not step_result.success:
             self._present_stderr(step_result)
 
         # Show return code if available
-        if 'show_return_code' not in config:
-            show_return_code = True  # デフォルト値
-        else:
-            show_return_code = config['show_return_code']
+        show_return_code = config['show_return_code']
         if show_return_code:
             self._present_return_code(step_result)
 
@@ -192,10 +186,7 @@ class WorkflowResultPresenter:
     ) -> None:
         """Present request information for a step"""
         # Show request type
-        if 'show_type' not in config:
-            show_type = True  # デフォルト値
-        else:
-            show_type = config['show_type']
+        show_type = config['show_type']
         if show_type and hasattr(request, 'operation_type'):
             # FileRequestの場合はより具体的なfile operation typeを表示
             if str(request.operation_type) == "OperationType.FILE" and hasattr(request, 'op'):
@@ -204,10 +195,7 @@ class WorkflowResultPresenter:
                 print(f"  タイプ: {request.operation_type}")
 
         # Show command
-        if 'show_command' not in config:
-            show_command = True  # デフォルト値
-        else:
-            show_command = config['show_command']
+        show_command = config['show_command']
         if show_command and hasattr(request, 'cmd') and request.cmd:
             cmd_str = str(request.cmd)
             try:
@@ -219,10 +207,7 @@ class WorkflowResultPresenter:
             print(f"  コマンド: {cmd_str}")
 
         # Show paths
-        if 'show_path' not in config:
-            show_path = True  # デフォルト値
-        else:
-            show_path = config['show_path']
+        show_path = config['show_path']
         if show_path:
             if hasattr(request, 'path') and request.path:
                 print(f"  パス: {request.path}")
