@@ -33,11 +33,6 @@ timeout = config_manager.resolve_config(['timeout', 'default'], int)
 
 # ブール値の取得
 debug_mode = config_manager.resolve_config(['debug'], bool)
-
-# デフォルト値付きの取得
-workspace_path = config_manager.resolve_config_with_default(
-    ['paths', 'local_workspace_path'], str, './workspace'
-)
 ```
 
 ### 3. テンプレート変数の展開
@@ -150,9 +145,6 @@ option = options.get('detach')
 ```python
 # 設定システム経由での取得
 value = config_manager.resolve_config(['path', 'to', 'key'], str)
-
-# デフォルト値付きでの取得
-value = config_manager.resolve_config_with_default(['key'], str, 'default')
 ```
 
 ## パフォーマンス特徴
