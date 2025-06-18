@@ -135,18 +135,35 @@ def create_step(json_step: Dict[str, Any], context) -> Step:
         expanded_cmd = expand_file_patterns_in_cmd(expanded_cmd, context.file_patterns, step_type)
 
     # cwdを展開
-    cwd = json_step['cwd']
-    if cwd:
-        cwd = expand_template(cwd, context)
+    cwd = None
+    if 'cwd' in json_step:
+        cwd = expand_template(json_step['cwd'], context)
+
+    # オプショナルフィールドの安全な取得（.get()使用禁止のため条件分岐）
+    allow_failure = False
+    if 'allow_failure' in json_step:
+        allow_failure = json_step['allow_failure']
+
+    show_output = False
+    if 'show_output' in json_step:
+        show_output = json_step['show_output']
+
+    when_condition = None
+    if 'when' in json_step:
+        when_condition = json_step['when']
+
+    name = f"Step {step_type.value}"
+    if 'name' in json_step:
+        name = json_step['name']
 
     return Step(
         type=step_type,
         cmd=expanded_cmd,
-        allow_failure=json_step['allow_failure'],
-        show_output=json_step['show_output'],
+        allow_failure=allow_failure,
+        show_output=show_output,
         cwd=cwd,
-        when=json_step['when'],  # 展開せずそのまま保持
-        name=expand_template(json_step['name'], context)
+        when=when_condition,  # 展開せずそのまま保持
+        name=expand_template(name, context)
     )
 
 

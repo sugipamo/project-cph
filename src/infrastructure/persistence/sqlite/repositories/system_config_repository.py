@@ -9,17 +9,34 @@ from src.infrastructure.persistence.base.base_repository import DatabaseReposito
 class SystemConfigRepository(DatabaseRepositoryFoundation):
     """Repository for system configuration operations."""
 
-    def __init__(self, sqlite_manager):
-        """Initialize with SQLite manager."""
+    def __init__(self, sqlite_manager, config_manager=None):
+        """Initialize with SQLite manager and config manager."""
         super().__init__(sqlite_manager)
+        self.config_manager = config_manager
 
     # RepositoryInterface implementations
     def create_entity_record(self, entity: Dict[str, Any]) -> Any:
         """Create a new config entity."""
         key = entity['config_key'] if 'config_key' in entity else (entity['key'])
         value = entity['config_value'] if 'config_value' in entity else (entity['value'])
-        category = entity['category']
-        description = entity['description']
+
+        # Get category and description from entity or config manager
+        category = None
+        description = None
+
+        if 'category' in entity:
+            category = entity['category']
+        elif self.config_manager:
+            with contextlib.suppress(KeyError):
+                category = self.config_manager.resolve_config(['repository_defaults', 'category'], str)
+                # TODO: Add to {setting}.json as per CLAUDE.md
+
+        if 'description' in entity:
+            description = entity['description']
+        elif self.config_manager:
+            with contextlib.suppress(KeyError):
+                description = self.config_manager.resolve_config(['repository_defaults', 'description'], str)
+                # TODO: Add to {setting}.json as per CLAUDE.md
 
         self.set_config(key, value, category, description)
         return key
@@ -28,8 +45,24 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
         """Create a new config entity."""
         key = entity['config_key'] if 'config_key' in entity else (entity['key'])
         value = entity['config_value'] if 'config_value' in entity else (entity['value'])
-        category = entity['category']
-        description = entity['description']
+
+        # Get category and description from entity or config manager
+        category = None
+        description = None
+
+        if 'category' in entity:
+            category = entity['category']
+        elif self.config_manager:
+            with contextlib.suppress(KeyError):
+                category = self.config_manager.resolve_config(['repository_defaults', 'category'], str)
+                # TODO: Add to {setting}.json as per CLAUDE.md
+
+        if 'description' in entity:
+            description = entity['description']
+        elif self.config_manager:
+            with contextlib.suppress(KeyError):
+                description = self.config_manager.resolve_config(['repository_defaults', 'description'], str)
+                # TODO: Add to {setting}.json as per CLAUDE.md
 
         self.set_config(key, value, category, description)
         return key

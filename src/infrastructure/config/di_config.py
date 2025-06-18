@@ -65,10 +65,12 @@ def _create_docker_image_repository(sqlite_manager: Any) -> Any:
     return DockerImageRepository(sqlite_manager)
 
 
-def _create_system_config_repository(sqlite_manager: Any) -> Any:
+def _create_system_config_repository(container: Any) -> Any:
     """Lazy factory for system config repository."""
     from src.infrastructure.persistence.sqlite.repositories.system_config_repository import SystemConfigRepository
-    return SystemConfigRepository(sqlite_manager)
+    sqlite_manager = container.resolve(DIKey.SQLITE_MANAGER)
+    config_manager = container.resolve("json_config_loader")
+    return SystemConfigRepository(sqlite_manager, config_manager)
 
 
 
@@ -200,7 +202,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.SESSION_REPOSITORY, _create_session_repository)
     container.register(DIKey.DOCKER_CONTAINER_REPOSITORY, _create_docker_container_repository)
     container.register(DIKey.DOCKER_IMAGE_REPOSITORY, _create_docker_image_repository)
-    container.register(DIKey.SYSTEM_CONFIG_REPOSITORY, _create_system_config_repository)
+    container.register(DIKey.SYSTEM_CONFIG_REPOSITORY, lambda: _create_system_config_repository(container))
 
     # Register orchestration layer
     container.register(DIKey.UNIFIED_DRIVER, lambda: _create_unified_driver(container))
@@ -279,7 +281,7 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register(DIKey.SESSION_REPOSITORY, _create_session_repository)
     container.register(DIKey.DOCKER_CONTAINER_REPOSITORY, _create_docker_container_repository)
     container.register(DIKey.DOCKER_IMAGE_REPOSITORY, _create_docker_image_repository)
-    container.register(DIKey.SYSTEM_CONFIG_REPOSITORY, _create_system_config_repository)
+    container.register(DIKey.SYSTEM_CONFIG_REPOSITORY, lambda: _create_system_config_repository(container))
 
     # Register orchestration layer
     container.register(DIKey.UNIFIED_DRIVER, lambda: _create_unified_driver(container))
