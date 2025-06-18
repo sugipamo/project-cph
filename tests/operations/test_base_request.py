@@ -21,7 +21,7 @@ class ConcreteRequest(OperationRequestFoundation):
     def operation_type(self):
         return OperationType.SHELL
 
-    def _execute_core(self, driver):
+    def _execute_core(self, driver, logger=None):
         self.execute_called = True
         self.driver_used = driver
         return {"status": "success"}
@@ -143,7 +143,7 @@ class TestOperationRequestFoundation:
             def operation_type(self):
                 return OperationType.SHELL
 
-            def _execute_core(self, driver):
+            def _execute_core(self, driver, logger=None):
                 raise ValueError("Test error")
 
         request = FailingRequest()

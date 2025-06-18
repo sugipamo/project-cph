@@ -71,7 +71,7 @@ class DockerRequest(OperationRequestFoundation):
         """Core execution logic for Docker operations."""
         if logger:
             logger.debug(f"Executing Docker operation: {self.op} for container: {self.container}")
-        
+
         # Handle RUN operations with container state checking
         if self.op == DockerOpType.RUN and hasattr(driver, 'ps') and self.container:
             return self._handle_run_operation(driver, logger)

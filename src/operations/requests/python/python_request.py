@@ -73,7 +73,7 @@ class PythonRequest(OperationRequestFoundation):
         if driver and hasattr(driver, 'resolve') and callable(driver.resolve):
             python_driver = driver.resolve('python_driver')
             return self._execute_with_direct_driver(python_driver)
-        
+
         raise ValueError("No valid python driver found")
 
     def _execute_with_direct_driver(self, python_driver: Any) -> tuple[str, str, int]:
@@ -90,7 +90,7 @@ class PythonRequest(OperationRequestFoundation):
         """Determine if the code_or_file represents a script file."""
         if hasattr(python_driver, 'is_script_file'):
             return python_driver.is_script_file(self.code_or_file)
-        
+
         # Driver does not support is_script_file, use PythonUtils as last resort
         return PythonUtils.is_script_file(self.code_or_file)
 
