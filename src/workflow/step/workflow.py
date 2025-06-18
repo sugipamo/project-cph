@@ -19,10 +19,10 @@ def steps_to_requests(steps: list[Step], operations) -> CompositeRequest:
     Returns:
         CompositeRequest: Composite request containing all converted steps
     """
-    from src.application.factories.unified_request_factory import UnifiedRequestFactory
+    from src.operations.factories.request_factory import RequestFactory
 
     requests = []
-    factory = UnifiedRequestFactory()
+    factory = RequestFactory()
 
     from src.infrastructure.di_container import DIKey
     env_manager = operations.resolve(DIKey.ENVIRONMENT_MANAGER)

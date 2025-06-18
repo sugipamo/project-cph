@@ -4,12 +4,12 @@ Integrates workflow building, fitting, and execution
 
 from typing import Optional
 
-from src.application.factories.unified_request_factory import create_request
-from src.application.orchestration.unified_driver import UnifiedDriver
 from src.configuration.config_manager import TypedExecutionConfiguration
+from src.infrastructure.drivers.unified.unified_driver import UnifiedDriver
 
 # DebugLogger functionality now handled by src/logging UnifiedLogger
 from src.operations.constants.request_types import RequestType
+from src.operations.factories.request_factory import create_request
 from src.workflow.step.step import Step, StepType
 from src.workflow.workflow_result import WorkflowExecutionResult
 

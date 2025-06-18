@@ -77,20 +77,22 @@ def _create_system_config_repository(container: Any) -> Any:
 
 def _create_unified_driver(container: DIContainer) -> Any:
     """Lazy factory for unified driver."""
-    from src.application.orchestration.unified_driver import UnifiedDriver
+    from src.infrastructure.drivers.unified.unified_driver import UnifiedDriver
     return UnifiedDriver(container)
 
 
 def _create_execution_controller() -> Any:
     """Lazy factory for execution controller."""
-    from src.application.orchestration.execution_controller import ExecutionController
-    return ExecutionController()
+    # ExecutionController has been removed - returning None for now
+    # TODO: Implement if needed or remove this factory
+    return None
 
 
 def _create_output_manager() -> Any:
     """Lazy factory for output manager."""
-    from src.application.orchestration.output_manager import OutputManager
-    return OutputManager()
+    # OutputManager has been removed - returning None for now
+    # TODO: Implement if needed or remove this factory
+    return None
 
 
 def _create_environment_manager() -> Any:
@@ -146,8 +148,8 @@ def _create_filesystem() -> Any:
 
 def _create_request_factory() -> Any:
     """Lazy factory for request factory."""
-    from src.application.factories.unified_request_factory import UnifiedRequestFactory
-    return UnifiedRequestFactory()
+    from src.operations.factories.request_factory import RequestFactory
+    return RequestFactory()
 
 
 def _create_system_config_loader(container: Any) -> Any:
