@@ -45,7 +45,11 @@ class TypedExecutionConfiguration:
             setattr(self, key, value)
 
         # ConfigNodeへの参照を保持（テンプレート解決用）
-        self._root_node = kwargs['_root_node']
+        # 互換性維持: 内部実装でのオプショナルパラメータ取得
+        if '_root_node' in kwargs:  # noqa: SIM401
+            self._root_node = kwargs['_root_node']
+        else:
+            self._root_node = None
 
     def resolve_formatted_string(self, template: str) -> str:
         """テンプレート文字列を解決"""

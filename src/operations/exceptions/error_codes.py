@@ -72,6 +72,9 @@ class ErrorSuggestion:
             ErrorCode.CONFIG_NOT_FOUND: "Create configuration file or check file path",
             ErrorCode.CONFIG_PARSE_ERROR: "Check configuration file syntax",
             ErrorCode.NETWORK_TIMEOUT: "Check network connection and retry",
+            ErrorCode.UNKNOWN_ERROR: "An unexpected error occurred. Contact support for assistance",
+            ErrorCode.INTERNAL_ERROR: "Internal application error. Please report this issue",
+            ErrorCode.VALIDATION_ERROR: "Input validation failed. Check your input parameters",
         }
         return suggestions[error_code]
 
@@ -103,6 +106,19 @@ class ErrorSuggestion:
                 "Check internet connection",
                 "Verify firewall settings",
                 "Try again with a longer timeout"
+            ],
+            ErrorCode.UNKNOWN_ERROR: [
+                "Contact support for assistance"
+            ],
+            ErrorCode.INTERNAL_ERROR: [
+                "Restart the application",
+                "Check application logs",
+                "Report the issue to the development team"
+            ],
+            ErrorCode.VALIDATION_ERROR: [
+                "Review input parameters",
+                "Check parameter types and formats",
+                "Refer to documentation for valid input formats"
             ]
         }
         return recovery_actions[error_code]

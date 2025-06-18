@@ -24,7 +24,11 @@
       "process_termination_timeout": 3
     },
     "docker_options": {
-      "force_remove_flag": "f"
+      "force_remove_flag": "f",
+      "detach": false,
+      "interactive": true,
+      "tty": true,
+      "remove": true
     },
     "retry_settings": {
       "max_attempts": 3,

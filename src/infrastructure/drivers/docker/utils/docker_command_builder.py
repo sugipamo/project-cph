@@ -7,6 +7,45 @@ are centralized here.
 import re
 from typing import Any, Optional, Union
 
+# Configuration manager for type-safe access to Docker options
+_config_manager = None
+
+def _get_config_manager():
+    """Get configuration manager with lazy initialization"""
+    global _config_manager
+    if _config_manager is None:
+        from src.configuration.config_manager import TypeSafeConfigNodeManager
+        _config_manager = TypeSafeConfigNodeManager()
+        # Configuration should be loaded by the caller
+    return _config_manager
+
+def _get_docker_option_with_default(option_name: str, user_options: Optional[dict[str, Any]], default_value: Any) -> Any:
+    """Get Docker option with fallback to configuration defaults
+
+    Args:
+        option_name: Name of the Docker option
+        user_options: User-provided options dictionary
+        default_value: Fallback default value
+
+    Returns:
+        Option value from user options, configuration, or default
+    """
+    # First check user-provided options
+    if user_options and option_name in user_options:
+        return user_options[option_name]
+
+    # Then check configuration system
+    try:
+        config_manager = _get_config_manager()
+        if config_manager.root_node is not None:
+            return config_manager.resolve_config(['docker_defaults', 'docker_options', option_name], type(default_value))
+    except (KeyError, TypeError, AttributeError):
+        # Configuration not available or option not found, use default
+        pass
+
+    # Finally use provided default
+    return default_value
+
 
 def validate_docker_image_name(image_name: str) -> bool:
     """Validate Docker image name format
@@ -28,13 +67,14 @@ def validate_docker_image_name(image_name: str) -> bool:
 
 def _add_docker_run_flags(cmd: list[str], options: dict[str, Any]) -> None:
     """Add basic docker run flags to command."""
-    if options["detach"]:
+    # 互換性維持: .get()使用の代替として設定システム経由でアクセス
+    if _get_docker_option_with_default("detach", options, False):
         cmd.append("-d")
-    if options["interactive"]:
+    if _get_docker_option_with_default("interactive", options, True):
         cmd.append("-i")
-    if options["tty"]:
+    if _get_docker_option_with_default("tty", options, True):
         cmd.append("-t")
-    if options["remove"]:
+    if _get_docker_option_with_default("remove", options, True):
         cmd.append("--rm")
 
 
