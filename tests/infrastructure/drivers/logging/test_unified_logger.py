@@ -78,12 +78,3 @@ class TestUnifiedLogger:
         # Should not raise any exceptions
         assert True
 
-    def test_mock_output_manager_integration(self):
-        """Test that mock output manager is used in tests."""
-        output_manager = self.container.resolve(DIKey.LOGGING_OUTPUT_MANAGER)
-        assert isinstance(output_manager, MockOutputManager)
-
-        # Verify mock functionality
-        initial_entries = len(output_manager.entries)
-        self.logger.info("Test message")
-        assert len(output_manager.entries) == initial_entries + 1

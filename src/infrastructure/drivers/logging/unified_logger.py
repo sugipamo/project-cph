@@ -1,7 +1,7 @@
 """Unified logger that combines all logging functionality."""
 
 import uuid
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 from src.operations.interfaces.logger_interface import LoggerInterface
 
@@ -14,7 +14,7 @@ class UnifiedLogger(LoggerInterface):
     """Unified logger that provides all infrastructure/drivers/logging functionality."""
 
     # アイコン設定（DebugLoggerから移行）
-    DEFAULT_ICONS = {
+    DEFAULT_ICONS: ClassVar[dict[str, str]] = {
         "start": "🚀",
         "success": "✅",
         "failure": "❌",

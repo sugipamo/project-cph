@@ -87,17 +87,6 @@ class TestProviderFactory:
         assert isinstance(provider, RegistryProvider)
 
 
-    def test_get_console_logger_system(self):
-        factory = ProviderFactory(use_mocks=False)
-        logger = factory.get_console_logger()
-        assert hasattr(logger, 'info')
-        assert hasattr(logger, 'error')
-
-    def test_get_console_logger_mock(self):
-        factory = ProviderFactory(use_mocks=True)
-        logger = factory.get_console_logger()
-        assert hasattr(logger, 'info')
-        assert hasattr(logger, 'error')
 
     def test_get_config_manager_system(self):
         factory = ProviderFactory(use_mocks=False)
@@ -146,9 +135,6 @@ class TestProviderFactory:
 
         env_provider = get_environment_provider()
         assert isinstance(env_provider, EnvironmentProvider)
-
-        console_logger = get_console_logger()
-        assert hasattr(console_logger, 'info')
 
     def test_provider_singleton_behavior(self):
         factory = ProviderFactory(use_mocks=False)

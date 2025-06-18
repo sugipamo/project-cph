@@ -44,17 +44,17 @@ def test_python_request_code_string(monkeypatch):
 def test_python_request_script_file(monkeypatch, tmp_path):
     script_path = tmp_path / "test.py"
     script_path.write_text("print('ok')")
-    
+
     class MockPythonDriver:
         def is_script_file(self, arg):
             return True
         def run_script_file(self, path, cwd=None):
             return ("script", "", 0)
-    
+
     class MockUnifiedDriver:
         def __init__(self):
             self.python_driver = MockPythonDriver()
-    
+
     mock_driver = MockUnifiedDriver()
     req = PythonRequest([str(script_path)])
     result = req._execute_core(mock_driver)
@@ -67,11 +67,11 @@ def test_python_request_with_cwd(monkeypatch, tmp_path):
             return False
         def run_code_string(self, code, cwd=None):
             return ("cwd", "", 0)
-    
+
     class MockUnifiedDriver:
         def __init__(self):
             self.python_driver = MockPythonDriver()
-    
+
     mock_driver = MockUnifiedDriver()
     req = PythonRequest(["print('cwd')"], cwd=str(tmp_path))
     result = req._execute_core(mock_driver)
@@ -84,11 +84,11 @@ def test_python_request_execute_exception(monkeypatch):
             return False
         def run_code_string(self, code, cwd=None):
             raise Exception("fail")
-    
+
     class MockUnifiedDriver:
         def __init__(self):
             self.python_driver = MockPythonDriver()
-    
+
     mock_driver = MockUnifiedDriver()
     req = PythonRequest(["raise Exception('fail')"])
     result = req._execute_core(mock_driver)
@@ -103,11 +103,11 @@ def test_python_request_code_string_with_patch(monkeypatch):
             return False
         def run_code_string(self, code, cwd=None):
             return ("ok", "", 0)
-    
+
     class MockUnifiedDriver:
         def __init__(self):
             self.python_driver = MockPythonDriver()
-    
+
     mock_driver = MockUnifiedDriver()
     req = PythonRequest(["print('ok')"])
     result = req._execute_core(mock_driver)
@@ -118,17 +118,17 @@ def test_python_request_code_string_with_patch(monkeypatch):
 def test_python_request_script_file_with_patch(monkeypatch, tmp_path):
     script_path = tmp_path / "test.py"
     script_path.write_text("print('ok')")
-    
+
     class MockPythonDriver:
         def is_script_file(self, arg):
             return True
         def run_script_file(self, path, cwd=None):
             return ("script", "", 0)
-    
+
     class MockUnifiedDriver:
         def __init__(self):
             self.python_driver = MockPythonDriver()
-    
+
     mock_driver = MockUnifiedDriver()
     req = PythonRequest([str(script_path)])
     result = req._execute_core(mock_driver)
@@ -141,11 +141,11 @@ def test_python_request_with_cwd_with_patch(monkeypatch, tmp_path):
             return False
         def run_code_string(self, code, cwd=None):
             return ("cwd", "", 0)
-    
+
     class MockUnifiedDriver:
         def __init__(self):
             self.python_driver = MockPythonDriver()
-    
+
     mock_driver = MockUnifiedDriver()
     req = PythonRequest(["print('cwd')"], cwd=str(tmp_path))
     result = req._execute_core(mock_driver)
@@ -158,11 +158,11 @@ def test_python_request_execute_exception_with_patch(monkeypatch):
             return False
         def run_code_string(self, code, cwd=None):
             raise Exception("fail")
-    
+
     class MockUnifiedDriver:
         def __init__(self):
             self.python_driver = MockPythonDriver()
-    
+
     mock_driver = MockUnifiedDriver()
     req = PythonRequest(["raise Exception('fail')"])
     result = req._execute_core(mock_driver)

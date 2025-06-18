@@ -23,7 +23,7 @@ class MockRequest(OperationRequestFoundation):
     def operation_type(self):
         return "MOCK"
 
-    def _execute_core(self, driver):
+    def _execute_core(self, driver, logger=None):
         self.executed = True
         result = Mock(spec=OperationResult)
         result.success = not self.should_fail

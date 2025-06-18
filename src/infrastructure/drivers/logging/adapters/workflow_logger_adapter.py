@@ -1,6 +1,6 @@
 """Workflow Logger Adapter - bridges src/logging with workflow-specific logging."""
 
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 from ..format_info import FormatInfo
 from ..interfaces.output_manager_interface import OutputManagerInterface
@@ -11,7 +11,7 @@ class WorkflowLoggerAdapter:
     """Adapter that provides workflow-specific logging using src/logging OutputManager."""
 
     # アイコン設定（DebugLoggerから移行）
-    DEFAULT_ICONS = {
+    DEFAULT_ICONS: ClassVar[dict[str, str]] = {
         "start": "🚀",
         "success": "✅",
         "failure": "❌",
