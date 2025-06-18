@@ -33,13 +33,17 @@ class FileRequest(OperationRequestFoundation):
         """Return the request type for type-safe identification."""
         return RequestType.FILE_REQUEST
 
-    def _execute_core(self, driver: Any) -> FileResult:
+    def _execute_core(self, driver: Any, logger: Optional[Any] = None) -> FileResult:
         """Core execution logic for file operations."""
         self._start_time = time.time()
         try:
             actual_driver = self._resolve_driver(driver)
+            if logger:
+                logger.debug(f"Executing file operation: {self.op} on {self.path}")
             return self._dispatch_file_operation(actual_driver)
         except Exception as e:
+            if logger:
+                logger.error(f"File operation failed: {self.op} on {self.path}: {e}")
             return self._handle_file_error(e)
 
     def _resolve_driver(self, driver: Any) -> Any:

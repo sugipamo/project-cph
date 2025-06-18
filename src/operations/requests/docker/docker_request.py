@@ -67,16 +67,19 @@ class DockerRequest(OperationRequestFoundation):
         return super().execute_operation(driver)
 
 
-    def _execute_core(self, driver: DockerDriverInterface):
+    def _execute_core(self, driver: DockerDriverInterface, logger: Optional[Any] = None):
         """Core execution logic for Docker operations."""
+        if logger:
+            logger.debug(f"Executing Docker operation: {self.op} for container: {self.container}")
+        
         # Handle RUN operations with container state checking
         if self.op == DockerOpType.RUN and hasattr(driver, 'ps') and self.container:
-            return self._handle_run_operation(driver)
+            return self._handle_run_operation(driver, logger)
 
         # Handle normal single request operations
-        return self._execute_single_operation(driver)
+        return self._execute_single_operation(driver, logger)
 
-    def _handle_run_operation(self, driver: DockerDriverInterface):
+    def _handle_run_operation(self, driver: DockerDriverInterface, logger: Optional[Any] = None):
         """Handle RUN operation with container state checking."""
         # Check if container exists
         container_names = driver.ps(all=True, show_output=False, names_only=True)
@@ -85,9 +88,9 @@ class DockerRequest(OperationRequestFoundation):
             return driver.run_container(self.image, self.container, self.options, show_output=self.show_output)
 
         # Check container status and handle accordingly
-        return self._handle_existing_container(driver)
+        return self._handle_existing_container(driver, logger)
 
-    def _handle_existing_container(self, driver: DockerDriverInterface):
+    def _handle_existing_container(self, driver: DockerDriverInterface, logger: Optional[Any] = None):
         """Handle existing container based on its current status."""
         inspect_result = driver.inspect(self.container, show_output=False)
         import json
@@ -96,12 +99,12 @@ class DockerRequest(OperationRequestFoundation):
             if isinstance(inspect_data, list) and len(inspect_data) > 0:
                 state = inspect_data[0].get("State", {})
                 status = state.get("Status", "")
-                return self._process_container_status(driver, status)
+                return self._process_container_status(driver, status, logger)
         except Exception:
             # If inspect fails, just run
             return driver.run_container(self.image, self.container, self.options, show_output=self.show_output)
 
-    def _process_container_status(self, driver: DockerDriverInterface, status: str):
+    def _process_container_status(self, driver: DockerDriverInterface, status: str, logger: Optional[Any] = None):
         """Process container based on its current status."""
         if status == "running":
             # Already running, reuse
@@ -126,12 +129,14 @@ class DockerRequest(OperationRequestFoundation):
             return results[-1]
         return results
 
-    def _execute_single_operation(self, driver: DockerDriverInterface):
+    def _execute_single_operation(self, driver: DockerDriverInterface, logger: Optional[Any] = None):
         """Execute single Docker operation."""
         try:
             result = self._dispatch_operation(driver)
             return self._create_operation_result(result)
         except Exception as e:
+            if logger:
+                logger.error(f"Docker operation failed: {self.op} for container: {self.container}: {e}")
             return self._handle_operation_error(e)
 
     def _dispatch_operation(self, driver: DockerDriverInterface):

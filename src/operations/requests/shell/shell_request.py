@@ -36,22 +36,26 @@ class ShellRequest(OperationRequestFoundation):
         """Return the request type for type-safe identification."""
         return RequestType.SHELL_REQUEST
 
-    def _execute_core(self, driver: Any) -> OperationResult:
+    def _execute_core(self, driver: Any, logger: Optional[Any] = None) -> OperationResult:
         """Core execution logic for shell commands."""
         start_time = time.perf_counter()
 
         try:
-            completed = self._execute_shell_command(driver)
+            completed = self._execute_shell_command(driver, logger)
             end_time = time.perf_counter()
             return self._create_success_result(completed, start_time, end_time)
         except Exception as e:
             end_time = time.perf_counter()
-            return self._create_error_result(e, driver, start_time, end_time)
+            return self._create_error_result(e, driver, logger, start_time, end_time)
 
-    def _execute_shell_command(self, driver: Any):
+    def _execute_shell_command(self, driver: Any, logger: Optional[Any] = None):
         """Execute the shell command with retry logic."""
         from src.infrastructure.patterns.retry_decorator import COMMAND_RETRY_CONFIG, RetryableOperation
-        retryable = RetryableOperation(COMMAND_RETRY_CONFIG)
+        # Create a new config with logger if provided
+        config = COMMAND_RETRY_CONFIG
+        if logger:
+            config = RetryableOperation(config, logger).retry_config
+        retryable = RetryableOperation(config)
 
         def execute_command():
             actual_driver = self._get_actual_driver(driver)
@@ -83,11 +87,14 @@ class ShellRequest(OperationRequestFoundation):
             end_time=end_time
         )
 
-    def _create_error_result(self, e: Exception, driver: Any, start_time: float, end_time: float) -> OperationResult:
+    def _create_error_result(self, e: Exception, driver: Any, logger: Optional[Any], start_time: float, end_time: float) -> OperationResult:
         """Create an error operation result with proper logging."""
         formatted_error = f"Shell command failed: {e}"
 
-        self._log_error(driver, e, None)
+        if logger:
+            from src.operations.exceptions.error_codes import classify_error
+            error_code = classify_error(e)
+            self._log_error(driver, e, error_code, logger)
 
         return OperationResult(
             stdout="",
@@ -99,18 +106,16 @@ class ShellRequest(OperationRequestFoundation):
             end_time=end_time
         )
 
-    def _log_error(self, driver: Any, e: Exception, error_code):
+    def _log_error(self, driver: Any, e: Exception, error_code, logger: Any):
         """Log error with correlation ID."""
         error_id = str(uuid.uuid4())[:8]
-        try:
-            if hasattr(driver, 'logger') and hasattr(driver.logger, 'log_error_with_correlation'):
-                driver.logger.log_error_with_correlation(
-                    error_id, error_code.value, str(e),
-                    {'command': self.cmd, 'cwd': self.cwd}
-                )
-        except Exception:
-            import logging
-            logging.error(f"Shell command failed [{error_id}]: {e}")
+        if hasattr(logger, 'log_error_with_correlation'):
+            logger.log_error_with_correlation(
+                error_id, error_code.value, str(e),
+                {'command': self.cmd, 'cwd': self.cwd}
+            )
+        else:
+            logger.error(f"Shell command failed [{error_id}]: {e}")
 
     def __repr__(self) -> str:
         """String representation of the request."""

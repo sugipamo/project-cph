@@ -9,12 +9,28 @@ class UnifiedDriver:
     """Unified driver: resolves appropriate driver based on request type
     """
 
-    def __init__(self, operations):
+    def __init__(self, operations, logger=None):
         """Args:
         operations: DIContainer or operations object with resolve method
+        logger: Logger instance for request execution
         """
         self.operations = operations
         self._driver_cache = {}
+        self.logger = logger or self._resolve_logger()
+
+    def _resolve_logger(self):
+        """Resolve logger from DI container."""
+        from src.infrastructure.di_container import DIKey
+        if hasattr(self.operations, 'resolve'):
+            try:
+                return self.operations.resolve(DIKey.UNIFIED_LOGGER)
+            except (KeyError, ValueError, AttributeError):
+                # Fall back to string-based logger resolution for backward compatibility
+                try:
+                    return self.operations.resolve('logger')
+                except (KeyError, ValueError, AttributeError):
+                    return None
+        return None
 
     def execute_command(self, request) -> Any:
         """Execute request (automatically select appropriate driver)
@@ -28,8 +44,8 @@ class UnifiedDriver:
         # Get appropriate driver based on request type
         driver = self._get_driver_for_request(request)
 
-        # Execute request with the driver
-        return request.execute_operation(driver=driver)
+        # Execute request with the driver and logger
+        return request.execute_operation(driver=driver, logger=self.logger)
 
     def _get_driver_for_request(self, request) -> Any:
         """Get appropriate driver based on request type

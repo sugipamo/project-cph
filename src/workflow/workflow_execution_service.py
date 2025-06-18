@@ -239,14 +239,18 @@ class WorkflowExecutionService:
 
     def _execute_main_workflow(self, operations_composite, use_parallel=False, max_workers=4):
         """Execute the main workflow operations."""
-
-        unified_driver = UnifiedDriver(self.infrastructure)
+        
+        # Get logger from infrastructure
+        from src.infrastructure.di_container import DIKey
+        logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
+        
+        unified_driver = UnifiedDriver(self.infrastructure, logger)
 
         # Check if composite request supports parallel execution
         if use_parallel and hasattr(operations_composite, 'execute_parallel'):
-            execution_result = operations_composite.execute_parallel(unified_driver, max_workers=max_workers)
+            execution_result = operations_composite.execute_parallel(unified_driver, max_workers=max_workers, logger=logger)
         else:
-            execution_result = operations_composite.execute_operation(unified_driver)
+            execution_result = operations_composite.execute_operation(unified_driver, logger=logger)
 
         # CompositeRequest returns a list of results, so flatten if needed
         if isinstance(execution_result, list):

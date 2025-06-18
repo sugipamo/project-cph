@@ -23,10 +23,20 @@ def test_python_request_repr():
     assert "PythonRequest" in s
 
 def test_python_request_code_string(monkeypatch):
-    monkeypatch.setattr("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.is_script_file", lambda arg: False)
-    monkeypatch.setattr("src.infrastructure.drivers.python.utils.python_utils.PythonUtils.run_code_string", lambda code, cwd=None: ("ok", "", 0))
+    # Create a mock driver with python_driver attribute
+    class MockPythonDriver:
+        def is_script_file(self, arg):
+            return False
+        def run_code_string(self, code, cwd=None):
+            return ("ok", "", 0)
+    
+    class MockUnifiedDriver:
+        def __init__(self):
+            self.python_driver = MockPythonDriver()
+    
+    mock_driver = MockUnifiedDriver()
     req = PythonRequest(["print('ok')"])
-    result = req._execute_core()
+    result = req._execute_core(mock_driver)
     assert isinstance(result, OperationResult)
     assert result.stdout == "ok"
     assert result.returncode == 0

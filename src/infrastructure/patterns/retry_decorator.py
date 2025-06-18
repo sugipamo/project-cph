@@ -1,5 +1,4 @@
 """Retry mechanism for handling transient failures."""
-import logging
 import time
 from functools import wraps
 from typing import Any, Callable, Optional, Tuple, Type
@@ -13,7 +12,8 @@ class RetryConfig:
     def __init__(self, max_attempts: int = 3, base_delay: float = 1.0,
                  max_delay: float = 30.0, backoff_factor: float = 2.0,
                  retryable_errors: Optional[Tuple[Type[Exception], ...]] = None,
-                 retryable_error_codes: Optional[Tuple[ErrorCode, ...]] = None):
+                 retryable_error_codes: Optional[Tuple[ErrorCode, ...]] = None,
+                 logger: Optional[Any] = None):
         """Initialize retry configuration.
 
         Args:
@@ -23,6 +23,7 @@ class RetryConfig:
             backoff_factor: Exponential backoff factor
             retryable_errors: Exception types that should trigger retries
             retryable_error_codes: Error codes that should trigger retries
+            logger: Logger instance for logging retry attempts
         """
         self.max_attempts = max_attempts
         self.base_delay = base_delay
@@ -37,6 +38,7 @@ class RetryConfig:
             ErrorCode.COMMAND_TIMEOUT,
             ErrorCode.DOCKER_NOT_AVAILABLE,
         )
+        self.logger = logger
 
 
 def retry_on_failure(config: Optional[RetryConfig] = None):
@@ -80,10 +82,11 @@ def retry_on_failure(config: Optional[RetryConfig] = None):
                         config.max_delay
                     )
 
-                    logging.warning(
-                        f"Attempt {attempt + 1} failed for {func.__name__}: {e}. "
-                        f"Retrying in {delay:.1f} seconds..."
-                    )
+                    if config.logger:
+                        config.logger.warning(
+                            f"Attempt {attempt + 1} failed for {func.__name__}: {e}. "
+                            f"Retrying in {delay:.1f} seconds..."
+                        )
 
                     time.sleep(delay)
 
@@ -97,13 +100,16 @@ def retry_on_failure(config: Optional[RetryConfig] = None):
 class RetryableOperation:
     """Base class for operations that support retry logic."""
 
-    def __init__(self, retry_config: Optional[RetryConfig] = None):
+    def __init__(self, retry_config: Optional[RetryConfig] = None, logger: Optional[Any] = None):
         """Initialize retryable operation.
 
         Args:
             retry_config: Retry configuration
+            logger: Logger instance for logging retry attempts
         """
-        self.retry_config = retry_config or RetryConfig()
+        self.retry_config = retry_config or RetryConfig(logger=logger)
+        if logger and not self.retry_config.logger:
+            self.retry_config.logger = logger
 
     def execute_with_retry(self, operation: Callable, *args, **kwargs) -> Any:
         """Execute an operation with retry logic.

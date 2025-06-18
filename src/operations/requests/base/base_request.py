@@ -48,11 +48,12 @@ class OperationRequestFoundation(ABC):
         """Return the request type for type-safe identification."""
         return RequestType.OPERATION_REQUEST_FOUNDATION
 
-    def execute_operation(self, driver: Optional[Any] = None) -> Any:
+    def execute_operation(self, driver: Optional[Any] = None, logger: Optional[Any] = None) -> Any:
         """Execute this operation request using the provided driver.
 
         Args:
             driver: The driver to use for execution
+            logger: The logger to use for logging operations
 
         Returns:
             The execution result
@@ -67,18 +68,19 @@ class OperationRequestFoundation(ABC):
         if getattr(self, '_require_driver', True) and driver is None:
             raise ValueError(f"{self.request_type.short_name}.execute_operation() requires a driver")
         try:
-            self._result = self._execute_core(driver)
+            self._result = self._execute_core(driver, logger)
             return self._result
         finally:
             self._executed = True
 
 
     @abstractmethod
-    def _execute_core(self, driver: Optional[Any]) -> Any:
+    def _execute_core(self, driver: Optional[Any], logger: Optional[Any] = None) -> Any:
         """Core execution logic to be implemented by subclasses.
 
         Args:
             driver: The driver to use for execution
+            logger: The logger to use for logging operations
 
         Returns:
             The execution result

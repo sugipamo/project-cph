@@ -44,10 +44,10 @@ class CompositeRequest(CompositeRequestFoundation):
         return super().execute_operation(driver)
 
 
-    def _execute_core(self, driver: Any) -> list[Any]:
+    def _execute_core(self, driver: Any, logger: Optional[Any] = None) -> list[Any]:
         results = []
         for req in self.requests:
-            result = req.execute_operation(driver=driver)
+            result = req.execute_operation(driver=driver, logger=logger)
 
             # Handle output directly using OutputManager static method
             # Note: show_output is now used for step details display, not immediate output
@@ -63,12 +63,12 @@ class CompositeRequest(CompositeRequestFoundation):
 
         return results
 
-    def execute_parallel(self, driver: Any, max_workers: int = 4) -> list[Any]:
+    def execute_parallel(self, driver: Any, max_workers: int = 4, logger: Optional[Any] = None) -> list[Any]:
         """Execute requests in parallel using ThreadPoolExecutor"""
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
         def execute_request(req):
-            result = req.execute_operation(driver=driver)
+            result = req.execute_operation(driver=driver, logger=logger)
             # Check failure if execution controller is available
             if self.execution_controller and hasattr(self.execution_controller, '_check_failure'):
                 self.execution_controller._check_failure(req, result)

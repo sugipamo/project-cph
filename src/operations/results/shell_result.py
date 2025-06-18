@@ -30,6 +30,10 @@ class ShellResult(OperationResult):
         """
         super().__init__(
             success=success,
+            stdout=stdout,
+            stderr=stderr,
+            returncode=returncode,
+            cmd=cmd,
             exception=exception,
             error_message=error_message,
             start_time=start_time,
@@ -37,10 +41,6 @@ class ShellResult(OperationResult):
             request=request,
             metadata=metadata
         )
-        self.stdout = stdout
-        self.stderr = stderr
-        self.returncode = returncode
-        self.cmd = cmd
 
     def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary."""
