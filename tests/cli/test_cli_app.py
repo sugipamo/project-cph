@@ -1,6 +1,7 @@
 """CLI アプリケーションの統合テスト"""
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from src.cli.cli_app import MinimalCLIApp
 from src.workflow.workflow_result import WorkflowExecutionResult
@@ -31,16 +32,16 @@ class TestMinimalCLIApp:
             errors=[],
             warnings=[]
         )
-        
+
         mock_build_infra.return_value = mock_infrastructure
         mock_parse_input.return_value = mock_context
         mock_service_class.return_value = mock_service
         mock_service.execute_workflow.return_value = mock_result
-        
+
         # テスト実行
         app = MinimalCLIApp()
         result = app.run(["python", "test", "abc301", "a"])
-        
+
         # アサーション
         assert result == 0
         mock_build_infra.assert_called_once()
@@ -64,16 +65,16 @@ class TestMinimalCLIApp:
             errors=["テストエラー"],
             warnings=[]
         )
-        
+
         mock_build_infra.return_value = mock_infrastructure
         mock_parse_input.return_value = mock_context
         mock_service_class.return_value = mock_service
         mock_service.execute_workflow.return_value = mock_result
-        
+
         # テスト実行
         app = MinimalCLIApp()
         result = app.run(["python", "test", "abc301", "a"])
-        
+
         # アサーション
         assert result == 1
 
@@ -82,11 +83,11 @@ class TestMinimalCLIApp:
         """インフラストラクチャ初期化失敗のテスト"""
         # モックセットアップ
         mock_build_infra.side_effect = Exception("インフラストラクチャエラー")
-        
+
         # テスト実行
         app = MinimalCLIApp()
         result = app.run(["python", "test", "abc301", "a"])
-        
+
         # アサーション
         assert result == 1
 
@@ -98,11 +99,11 @@ class TestMinimalCLIApp:
         mock_infrastructure = MagicMock()
         mock_build_infra.return_value = mock_infrastructure
         mock_parse_input.side_effect = ValueError("解析エラー")
-        
+
         # テスト実行
         app = MinimalCLIApp()
         result = app.run(["invalid", "args"])
-        
+
         # アサーション
         assert result == 1
 
@@ -116,10 +117,10 @@ class TestMinimalCLIApp:
             errors=["エラー1", "エラー2"],
             warnings=["警告1"]
         )
-        
+
         # テスト実行
         app._present_results(result)
-        
+
         # 出力確認
         captured = capsys.readouterr()
         assert "エラー: エラー1" in captured.out
@@ -136,10 +137,10 @@ class TestMinimalCLIApp:
             errors=[],
             warnings=[]
         )
-        
+
         # テスト実行
         app._present_results(result)
-        
+
         # 出力確認（何も出力されないことを確認）
         captured = capsys.readouterr()
         assert captured.out == ""
@@ -153,7 +154,7 @@ class TestCLIIntegration:
         """モックインフラストラクチャを使用したCLI統合テスト"""
         with patch('src.cli.cli_app.build_infrastructure') as mock_build:
             mock_build.return_value = mock_infrastructure
-            
+
             with patch('src.cli.cli_app.parse_user_input') as mock_parse:
                 # 最小限のモックコンテキスト
                 mock_context = MagicMock()
@@ -171,11 +172,11 @@ class TestCLIIntegration:
                     }
                 }
                 mock_parse.return_value = mock_context
-                
+
                 # テスト実行
                 app = MinimalCLIApp()
                 result = app.run(["python", "test", "abc301", "a"])
-                
+
                 # DI注入とワークフロー構築が正常に動作することを確認
                 assert app.infrastructure is not None
                 assert app.context is not None

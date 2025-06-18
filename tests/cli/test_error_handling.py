@@ -1,8 +1,9 @@
 """エラーハンドリング強化のテスト"""
-import pytest
-from unittest.mock import patch, MagicMock
-from io import StringIO
 import sys
+from io import StringIO
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from src.cli.cli_app import MinimalCLIApp
 from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
@@ -16,11 +17,11 @@ class TestEnhancedErrorHandling:
     def test_composite_step_failure_handling(self, capsys):
         """CompositeStepFailureErrorの処理テスト"""
         app = MinimalCLIApp()
-        
+
         # モックの結果オブジェクト
         mock_result = MagicMock()
         mock_result.get_error_output.return_value = "詳細なエラー出力"
-        
+
         # CompositeStepFailureErrorを作成
         original_exception = FileNotFoundError("テストファイルが見つかりません")
         composite_error = CompositeStepFailureError(
@@ -29,13 +30,13 @@ class TestEnhancedErrorHandling:
             original_exception=original_exception,
             error_code=ErrorCode.FILE_NOT_FOUND
         )
-        
+
         # エラーハンドリングのテスト
         result = app._handle_composite_step_failure(composite_error)
-        
+
         # 戻り値の確認
         assert result == 1
-        
+
         # 出力の確認
         captured = capsys.readouterr()
         assert "🚨 実行エラーが発生しました" in captured.out
@@ -46,17 +47,17 @@ class TestEnhancedErrorHandling:
     def test_general_exception_handling(self, capsys):
         """一般的な例外の処理テスト"""
         app = MinimalCLIApp()
-        
+
         # 一般的な例外を作成
         exception = ValueError("無効な引数です")
         args = ["python", "test", "abc301", "a"]
-        
+
         # エラーハンドリングのテスト
         result = app._handle_general_exception(exception, args)
-        
+
         # 戻り値の確認
         assert result == 1
-        
+
         # 出力の確認
         captured = capsys.readouterr()
         assert "🚨 予期せぬエラーが発生しました" in captured.out
@@ -67,16 +68,16 @@ class TestEnhancedErrorHandling:
     def test_debug_mode_traceback(self, capsys):
         """デバッグモードでのトレースバック表示テスト"""
         app = MinimalCLIApp()
-        
+
         exception = RuntimeError("テストエラー")
         args = ["python", "test", "abc301", "a", "--debug"]
-        
+
         # エラーハンドリングのテスト
         result = app._handle_general_exception(exception, args)
-        
+
         # 戻り値の確認
         assert result == 1
-        
+
         # デバッグ情報が出力されることを確認
         captured = capsys.readouterr()
         assert "デバッグ情報:" in captured.out
@@ -84,11 +85,11 @@ class TestEnhancedErrorHandling:
     def test_error_classification(self, capsys):
         """エラー分類の動作テスト"""
         app = MinimalCLIApp()
-        
+
         # ファイル関連エラー
         file_error = FileNotFoundError("ファイルが見つかりません")
-        result = app._handle_general_exception(file_error, [])
-        
+        app._handle_general_exception(file_error, [])
+
         captured = capsys.readouterr()
         assert "FILE_NOT_FOUND" in captured.out
         assert "Check if the file path exists" in captured.out
@@ -98,10 +99,10 @@ class TestEnhancedErrorHandling:
         """インフラストラクチャエラーのハンドリングテスト"""
         # インフラストラクチャ構築でエラー発生
         mock_build_infra.side_effect = Exception("DI初期化エラー")
-        
+
         app = MinimalCLIApp()
         result = app.run(["test"])
-        
+
         # エラーが適切に処理されることを確認
         assert result == 1
         captured = capsys.readouterr()
@@ -113,10 +114,10 @@ class TestEnhancedErrorHandling:
         """入力解析エラーのハンドリングテスト"""
         mock_build_infra.return_value = MagicMock()
         mock_parse.side_effect = ValueError("無効な引数")
-        
+
         app = MinimalCLIApp()
         result = app.run(["invalid"])
-        
+
         # エラーが適切に処理されることを確認
         assert result == 1
         captured = capsys.readouterr()
@@ -134,25 +135,25 @@ class TestErrorHandlingIntegration:
         mock_infrastructure = MagicMock()
         mock_context = MagicMock()
         mock_service = MagicMock()
-        
+
         # CompositeStepFailureErrorを発生させる
         composite_error = CompositeStepFailureError(
             "ワークフロー実行失敗",
             error_code=ErrorCode.WORKFLOW_STEP_FAILED
         )
         mock_service.execute_workflow.side_effect = composite_error
-        
+
         mock_build_infra.return_value = mock_infrastructure
         mock_parse.return_value = mock_context
         mock_service_class.return_value = mock_service
-        
+
         # テスト実行
         app = MinimalCLIApp()
         with patch.object(app, '_handle_composite_step_failure') as mock_handle:
             mock_handle.return_value = 1
-            
+
             result = app.run(["test"])
-            
+
             # CompositeStepFailureErrorが適切に処理されることを確認
             assert result == 1
             mock_handle.assert_called_once_with(composite_error)
@@ -165,7 +166,7 @@ class TestErrorHandlingIntegration:
         mock_infrastructure = MagicMock()
         mock_context = MagicMock()
         mock_service = MagicMock()
-        
+
         # 失敗結果を返すワークフロー
         failed_result = WorkflowExecutionResult(
             success=False,
@@ -175,18 +176,18 @@ class TestErrorHandlingIntegration:
             warnings=["警告: リソース不足"]
         )
         mock_service.execute_workflow.return_value = failed_result
-        
+
         mock_build_infra.return_value = mock_infrastructure
         mock_parse.return_value = mock_context
         mock_service_class.return_value = mock_service
-        
+
         # テスト実行
         app = MinimalCLIApp()
         result = app.run(["test"])
-        
+
         # 失敗コードを返すことを確認
         assert result == 1
-        
+
         # エラーと警告が表示されることを確認
         captured = capsys.readouterr()
         assert "ステップ1が失敗しました" in captured.out
@@ -200,11 +201,11 @@ class TestErrorRecoveryActions:
     def test_recovery_actions_display(self, capsys):
         """回復手順の表示テスト"""
         app = MinimalCLIApp()
-        
+
         # ファイル未発見エラー（回復手順あり）
         file_error = FileNotFoundError("ファイルが見つかりません")
         app._handle_general_exception(file_error, [])
-        
+
         captured = capsys.readouterr()
         assert "回復手順:" in captured.out
         assert "1. Verify the file path is correct" in captured.out
@@ -213,11 +214,11 @@ class TestErrorRecoveryActions:
     def test_no_recovery_actions_for_unknown_error(self, capsys):
         """不明エラーの回復手順表示テスト"""
         app = MinimalCLIApp()
-        
+
         # 分類できないエラー
         unknown_error = Exception("不明なエラー")
         app._handle_general_exception(unknown_error, [])
-        
+
         captured = capsys.readouterr()
         assert "UNKNOWN_ERROR" in captured.out
         assert "Contact support for assistance" in captured.out
@@ -225,14 +226,14 @@ class TestErrorRecoveryActions:
     def test_error_id_generation(self, capsys):
         """エラーIDの生成テスト"""
         app = MinimalCLIApp()
-        
+
         composite_error = CompositeStepFailureError(
             "テストエラー",
             error_code=ErrorCode.FILE_NOT_FOUND
         )
-        
+
         app._handle_composite_step_failure(composite_error)
-        
+
         captured = capsys.readouterr()
         # エラーIDが含まれることを確認（8文字のハッシュ）
         assert "#" in captured.out

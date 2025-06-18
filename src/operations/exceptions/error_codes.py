@@ -163,7 +163,7 @@ def classify_error(exception: Exception, context: str = "") -> ErrorCode:
 
 def _classify_file_errors(error_message: str, context: str) -> ErrorCode:
     """Classify file-related errors."""
-    if ("no such file or directory" in error_message or 
+    if ("no such file or directory" in error_message or
         "file not found" in error_message or
         "ファイルが見つかりません" in error_message or
         "ファイルが存在しません" in error_message):

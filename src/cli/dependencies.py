@@ -7,7 +7,7 @@
 - build_infrastructure() によるDIコンテナ構築
 - インフラストラクチャ依存性の解決
 
-### 2. Workflow構築 ✓  
+### 2. Workflow構築 ✓
 - WorkflowExecutionService による workflow 実行
 - CompositeRequest による最適化されたワークフロー
 
