@@ -8,11 +8,12 @@ from src.operations.results.docker_result import DockerResult
 class MockDockerDriver(DockerDriver):
     """Mock implementation of docker driver for testing."""
 
-    def __init__(self):
+    def __init__(self, json_provider):
         """Initialize mock docker driver."""
         self._operations_executed = []
         self._container_states = {}  # container_name -> state
         self._images = set()
+        self._json_provider = json_provider
         self._default_result = DockerResult(
             stdout="mock docker output",
             stderr="",
@@ -156,9 +157,10 @@ class MockDockerDriver(DockerDriver):
             }
         }]
 
-        import json
+        json_output = self._json_provider.dumps(mock_inspect_data)
+
         return DockerResult(
-            stdout=json.dumps(mock_inspect_data),
+            stdout=json_output,
             stderr="",
             returncode=0
         )

@@ -88,14 +88,14 @@ class WorkflowExecutionService:
 
             # steps設定を取得
             steps = config_manager.resolve_config(steps_path, list)
-            print(f"DEBUG: Found {len(steps)} steps for command '{self.context.command_type}'")
+            self._debug_log(f"Found {len(steps)} steps for command '{self.context.command_type}'")
 
             return steps
 
         except (KeyError, TypeError) as e:
             # 設定が見つからない場合（互換性維持のコメント）
-            print(f"DEBUG: Failed to get workflow steps from new config system: {e}")
-            print(f"DEBUG: command_type={self.context.command_type}")
+            self._debug_log(f"Failed to get workflow steps from new config system: {e}")
+            self._debug_log(f"command_type={self.context.command_type}")
             return []
 
     def _get_parallel_config(self) -> dict:
@@ -118,7 +118,7 @@ class WorkflowExecutionService:
 
         except (KeyError, TypeError) as e:
             # 設定が見つからない場合はデフォルト値を返す（互換性維持のコメント）
-            print(f"DEBUG: Failed to get parallel config, using defaults: {e}")
+            self._debug_log(f"Failed to get parallel config, using defaults: {e}")
             return {"enabled": False, "max_workers": 4}
 
     def _create_workflow_tasks(self, steps: list[Step]) -> list[dict]:
@@ -312,4 +312,14 @@ class WorkflowExecutionService:
             errors=errors,
             warnings=warnings
         )
+
+    def _debug_log(self, message: str):
+        """Log debug message using infrastructure logger."""
+        try:
+            from src.infrastructure.di_container import DIKey
+            logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
+            logger.debug(message)
+        except Exception:
+            # Fallback if logger not available
+            pass
 

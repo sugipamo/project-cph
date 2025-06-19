@@ -35,16 +35,19 @@ def _create_persistence_driver() -> Any:
     return SQLitePersistenceDriver()
 
 
-def _create_sqlite_manager() -> Any:
+def _create_sqlite_manager(container: Any) -> Any:
     """Lazy factory for SQLite manager (legacy)."""
     from src.infrastructure.persistence.sqlite.sqlite_manager import SQLiteManager
-    return SQLiteManager()
+    sqlite_provider = container.resolve(DIKey.SQLITE_PROVIDER)
+    return SQLiteManager(sqlite_provider=sqlite_provider)
 
 
-def _create_operation_repository(sqlite_manager: Any) -> Any:
+def _create_operation_repository(container: Any) -> Any:
     """Lazy factory for operation repository."""
     from src.infrastructure.persistence.sqlite.repositories.operation_repository import OperationRepository
-    return OperationRepository(sqlite_manager)
+    sqlite_manager = container.resolve(DIKey.SQLITE_MANAGER)
+    json_provider = container.resolve(DIKey.JSON_PROVIDER)
+    return OperationRepository(sqlite_manager, json_provider=json_provider)
 
 
 def _create_session_repository(sqlite_manager: Any) -> Any:
@@ -196,8 +199,58 @@ def _create_contest_manager(container: Any) -> Any:
     return ContestManager(container, {})
 
 
+def _create_json_provider() -> Any:
+    """Lazy factory for JSON provider."""
+    from src.infrastructure.providers import SystemJsonProvider
+    return SystemJsonProvider()
+
+
+def _create_sqlite_provider() -> Any:
+    """Lazy factory for SQLite provider."""
+    from src.infrastructure.providers import SystemSQLiteProvider
+    return SystemSQLiteProvider()
+
+
+def _create_mock_json_provider() -> Any:
+    """Lazy factory for mock JSON provider."""
+    from src.infrastructure.providers import MockJsonProvider
+    return MockJsonProvider()
+
+
+def _create_mock_sqlite_provider() -> Any:
+    """Lazy factory for mock SQLite provider."""
+    from src.infrastructure.providers import MockSQLiteProvider
+    return MockSQLiteProvider()
+
+
+def _create_configuration_repository(container: Any) -> Any:
+    """Lazy factory for configuration repository."""
+    from src.infrastructure.persistence.configuration_repository import ConfigurationRepository
+    json_provider = container.resolve(DIKey.JSON_PROVIDER)
+    sqlite_provider = container.resolve(DIKey.SQLITE_PROVIDER)
+    return ConfigurationRepository(json_provider=json_provider, sqlite_provider=sqlite_provider)
+
+
+def _create_os_provider() -> Any:
+    """Lazy factory for OS provider."""
+    from src.infrastructure.providers import SystemOsProvider
+    return SystemOsProvider()
+
+
+def _create_mock_os_provider() -> Any:
+    """Lazy factory for mock OS provider."""
+    from src.infrastructure.providers import MockOsProvider
+    return MockOsProvider()
+
+
 def configure_production_dependencies(container: DIContainer) -> None:
     """Configure production dependencies with lazy loading."""
+    # Register providers (副作用集約)
+    container.register(DIKey.JSON_PROVIDER, _create_json_provider)
+    container.register(DIKey.SQLITE_PROVIDER, _create_sqlite_provider)
+    container.register(DIKey.OS_PROVIDER, _create_os_provider)
+    container.register(DIKey.CONFIGURATION_REPOSITORY, lambda: _create_configuration_repository(container))
+
     # Register core drivers
     container.register(DIKey.SHELL_DRIVER, lambda: _create_shell_driver(container.resolve(DIKey.FILE_DRIVER)))
     container.register(DIKey.DOCKER_DRIVER, _create_docker_driver)
@@ -206,8 +259,8 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.PERSISTENCE_DRIVER, _create_persistence_driver)
 
     # Register persistence layer (legacy support)
-    container.register(DIKey.SQLITE_MANAGER, _create_sqlite_manager)
-    container.register(DIKey.OPERATION_REPOSITORY, _create_operation_repository)
+    container.register(DIKey.SQLITE_MANAGER, lambda: _create_sqlite_manager(container))
+    container.register(DIKey.OPERATION_REPOSITORY, lambda: _create_operation_repository(container))
     container.register(DIKey.SESSION_REPOSITORY, _create_session_repository)
     container.register(DIKey.DOCKER_CONTAINER_REPOSITORY, _create_docker_container_repository)
     container.register(DIKey.DOCKER_IMAGE_REPOSITORY, _create_docker_image_repository)
@@ -261,7 +314,8 @@ def configure_test_dependencies(container: DIContainer) -> None:
 
     def _create_mock_docker_driver():
         from src.infrastructure.mock.mock_docker_driver import MockDockerDriver
-        return MockDockerDriver()
+        json_provider = container.resolve(DIKey.JSON_PROVIDER)
+        return MockDockerDriver(json_provider=json_provider)
 
     def _create_mock_python_driver():
         from src.infrastructure.mock.mock_python_driver import MockPythonDriver
@@ -269,7 +323,8 @@ def configure_test_dependencies(container: DIContainer) -> None:
 
     def _create_test_sqlite_manager():
         from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
-        return FastSQLiteManager(":memory:", skip_migrations=False)
+        sqlite_provider = container.resolve(DIKey.SQLITE_PROVIDER)
+        return FastSQLiteManager(":memory:", skip_migrations=False, sqlite_provider=sqlite_provider)
 
     def _create_mock_logger():
         # Use unified logger with mock output manager for testing
@@ -279,6 +334,12 @@ def configure_test_dependencies(container: DIContainer) -> None:
         from tests.base.mock_filesystem import MockFileSystem
         return MockFileSystem()
 
+    # Register mock providers (副作用集約)
+    container.register(DIKey.JSON_PROVIDER, _create_mock_json_provider)
+    container.register(DIKey.SQLITE_PROVIDER, _create_mock_sqlite_provider)
+    container.register(DIKey.OS_PROVIDER, _create_mock_os_provider)
+    container.register(DIKey.CONFIGURATION_REPOSITORY, lambda: _create_configuration_repository(container))
+
     # Register mock drivers
     container.register(DIKey.SHELL_DRIVER, lambda: _create_mock_shell_driver(container.resolve(DIKey.FILE_DRIVER)))
     container.register(DIKey.DOCKER_DRIVER, _create_mock_docker_driver)
@@ -286,8 +347,8 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register(DIKey.PYTHON_DRIVER, _create_mock_python_driver)
 
     # Register test persistence layer
-    container.register(DIKey.SQLITE_MANAGER, _create_test_sqlite_manager)
-    container.register(DIKey.OPERATION_REPOSITORY, _create_operation_repository)
+    container.register(DIKey.SQLITE_MANAGER, lambda: _create_test_sqlite_manager())
+    container.register(DIKey.OPERATION_REPOSITORY, lambda: _create_operation_repository(container))
     container.register(DIKey.SESSION_REPOSITORY, _create_session_repository)
     container.register(DIKey.DOCKER_CONTAINER_REPOSITORY, _create_docker_container_repository)
     container.register(DIKey.DOCKER_IMAGE_REPOSITORY, _create_docker_image_repository)

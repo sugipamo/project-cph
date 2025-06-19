@@ -1,5 +1,4 @@
 """Repository for operation history management."""
-import json
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
@@ -30,13 +29,22 @@ class Operation:
 class OperationRepository(DatabaseRepositoryFoundation):
     """Repository for managing operation history."""
 
-    def __init__(self, db_manager: SQLiteManager):
+    def __init__(self, db_manager: SQLiteManager, json_provider):
         """Initialize repository with database manager.
 
         Args:
             db_manager: SQLite database manager
+            json_provider: JSON操作プロバイダー
         """
         self.db_manager = db_manager
+        self._json_provider = json_provider
+
+    def _serialize_details(self, details: Optional[dict[str, Any]]) -> Optional[str]:
+        """Serialize details dictionary to JSON string."""
+        if not details:
+            return None
+
+        return self._json_provider.dumps(details)
 
     def create_entity_record(self, entity: dict[str, Any]) -> Any:
         """Create method for RepositoryInterface compatibility.
@@ -84,7 +92,7 @@ class OperationRepository(DatabaseRepositoryFoundation):
             operation.stdout,
             operation.stderr,
             operation.return_code,
-            json.dumps(operation.details) if operation.details else None
+            self._serialize_details(operation.details)
         )
 
         with self.db_manager.get_connection() as conn:
@@ -280,7 +288,7 @@ class OperationRepository(DatabaseRepositoryFoundation):
             operation.stdout,
             operation.stderr,
             operation.return_code,
-            json.dumps(operation.details) if operation.details else None,
+            self._serialize_details(operation.details),
             operation.id
         )
 
@@ -312,8 +320,8 @@ class OperationRepository(DatabaseRepositoryFoundation):
         details = None
         if row["details"]:
             try:
-                details = json.loads(row["details"])
-            except json.JSONDecodeError:
+                details = self._json_provider.loads(row["details"])
+            except Exception:
                 details = {"raw": row["details"]}
 
         return Operation(

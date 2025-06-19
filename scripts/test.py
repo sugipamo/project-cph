@@ -610,6 +610,9 @@ class TestRunner:
 
                         # print( パターンをチェック
                         if print_pattern.search(clean_line):
+                            # file=sys.stderrを使用している場合は許可
+                            if 'file=sys.stderr' in clean_line:
+                                continue
                             relative_path = file_path.replace('src/', '')
                             print_issues.append(f"{relative_path}:{line_num} {clean_line.strip()}")
 

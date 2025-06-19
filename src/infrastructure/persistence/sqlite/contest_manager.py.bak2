@@ -74,7 +74,24 @@ class ContestManager:
         """Lazy load OS provider."""
         if self._os_provider is None:
             from src.infrastructure.di_container import DIKey
-            self._os_provider = self.container.resolve(DIKey.OS_PROVIDER)
+            try:
+                self._os_provider = self.container.resolve(DIKey.OS_PROVIDER)
+            except ValueError:
+                # 互換性維持のためのコメント: os_providerが注入されていない場合のダミー実装
+                class DummyOsProvider:
+                    def exists(self, path): 
+                        import os
+                        return os.path.exists(path)
+                    def listdir(self, path): 
+                        import os
+                        return os.listdir(path)
+                    def path_join(self, *paths): 
+                        import os
+                        return os.path.join(*paths)
+                    def isdir(self, path): 
+                        import os
+                        return os.path.isdir(path)
+                self._os_provider = DummyOsProvider()
         return self._os_provider
 
     @property
@@ -82,7 +99,18 @@ class ContestManager:
         """Lazy load JSON provider."""
         if self._json_provider is None:
             from src.infrastructure.di_container import DIKey
-            self._json_provider = self.container.resolve(DIKey.JSON_PROVIDER)
+            try:
+                self._json_provider = self.container.resolve(DIKey.JSON_PROVIDER)
+            except ValueError:
+                # 互換性維持のためのコメント: json_providerが注入されていない場合のダミー実装
+                class DummyJsonProvider:
+                    def loads(self, s): 
+                        import json
+                        return json.loads(s)
+                    def dumps(self, obj): 
+                        import json
+                        return json.dumps(obj)
+                self._json_provider = DummyJsonProvider()
         return self._json_provider
 
     @property
@@ -257,12 +285,12 @@ class ContestManager:
         """Move all contents from source directory to destination directory."""
         try:
             # Use os.listdir to get directory contents
-            items = self.os_provider.listdir(source_path)
+            items = os.listdir(source_path)
 
             # Move each file/directory
             for item in items:
-                source_item = self.os_provider.path_join(source_path, item)
-                dest_item = self.os_provider.path_join(dest_path, item)
+                source_item = os.path.join(source_path, item)
+                dest_item = os.path.join(dest_path, item)
 
                 # Use move operation
                 req = FileRequest(FileOpType.MOVE, source_item, dst_path=dest_item)
@@ -281,14 +309,14 @@ class ContestManager:
         """Clear contest_current directory."""
         try:
             # Use os.listdir to avoid missing FileOpType.LIST
-            if self.os_provider.exists(contest_current_path):
-                items = self.os_provider.listdir(contest_current_path)
+            if os.path.exists(contest_current_path):
+                items = os.listdir(contest_current_path)
 
                 for item in items:
-                    item_path = self.os_provider.path_join(contest_current_path, item)
+                    item_path = os.path.join(contest_current_path, item)
 
                     # Remove file or directory
-                    if self.os_provider.isdir(item_path):
+                    if os.path.isdir(item_path):
                         req = FileRequest(FileOpType.RMTREE, item_path)
                     else:
                         req = FileRequest(FileOpType.REMOVE, item_path)
@@ -309,15 +337,15 @@ class ContestManager:
             self._ensure_directory_exists(dest_path)
 
             # Use os.listdir to get directory contents
-            items = self.os_provider.listdir(source_path)
+            items = os.listdir(source_path)
 
             # Copy each file/directory
             for item in items:
-                source_item = self.os_provider.path_join(source_path, item)
-                dest_item = self.os_provider.path_join(dest_path, item)
+                source_item = os.path.join(source_path, item)
+                dest_item = os.path.join(dest_path, item)
 
                 # Use copy operation (preserves structure)
-                if self.os_provider.isdir(source_item):
+                if os.path.isdir(source_item):
                     req = FileRequest(FileOpType.COPYTREE, source_item, dst_path=dest_item)
                 else:
                     req = FileRequest(FileOpType.COPY, source_item, dst_path=dest_item)
@@ -362,14 +390,14 @@ class ContestManager:
                                tracked_files: List) -> bool:
         """Recursively copy template files while tracking structure."""
         try:
-            items = self.os_provider.listdir(source_dir)
+            items = os.listdir(source_dir)
 
             for item in items:
-                source_item = self.os_provider.path_join(source_dir, item)
-                dest_item = self.os_provider.path_join(dest_dir, item)
-                item_relative_path = self.os_provider.path_join(relative_path, item) if relative_path else item
+                source_item = os.path.join(source_dir, item)
+                dest_item = os.path.join(dest_dir, item)
+                item_relative_path = os.path.join(relative_path, item) if relative_path else item
 
-                if self.os_provider.isdir(source_item):
+                if os.path.isdir(source_item):
                     # Create directory and recurse
                     self._ensure_directory_exists(dest_item)
                     if not self._copy_template_recursive(source_item, dest_item, item_relative_path,
@@ -421,20 +449,20 @@ class ContestManager:
                              tracked_files: List) -> None:
         """Recursively track files from source to destination."""
         try:
-            items = self.os_provider.listdir(dest_dir)  # Use destination as it now contains the files
+            items = os.listdir(dest_dir)  # Use destination as it now contains the files
 
             for item in items:
-                dest_item = self.os_provider.path_join(dest_dir, item)
-                item_relative_path = self.os_provider.path_join(relative_path, item) if relative_path else item
+                dest_item = os.path.join(dest_dir, item)
+                item_relative_path = os.path.join(relative_path, item) if relative_path else item
 
-                if self.os_provider.isdir(dest_item):
+                if os.path.isdir(dest_item):
                     # Recurse into directory
-                    source_subdir = self.os_provider.path_join(source_dir, item)
+                    source_subdir = os.path.join(source_dir, item)
                     self._track_files_recursive(source_subdir, dest_item, item_relative_path,
                                               language, contest, problem, tracked_files)
                 else:
                     # Track file
-                    source_item = self.os_provider.path_join(source_dir, item)
+                    source_item = os.path.join(source_dir, item)
                     tracked_files.append((
                         language, contest, problem,
                         item_relative_path,  # relative path in contest_current
@@ -519,6 +547,7 @@ class ContestManager:
                 # Track all copied files in SQLite if repository is available
                 self._track_files_from_stock(contest_stock_path, contest_current_path,
                                            language, contest, problem)
+                # print(f"📁 Restored from contest_stock: {language} {contest} {problem}")
 
             return success
 
@@ -546,7 +575,7 @@ class ContestManager:
             contest_template_path = paths["contest_template_path"]
 
             # Language-specific template path
-            template_language_path = self.os_provider.path_join(contest_template_path, language)
+            template_language_path = os.path.join(contest_template_path, language)
 
             # Check if template exists
             if not self._directory_has_content(template_language_path):

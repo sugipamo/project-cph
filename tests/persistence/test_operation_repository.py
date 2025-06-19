@@ -20,7 +20,9 @@ class TestOperationRepository:
     @pytest.fixture
     def operation_repo(self, sqlite_manager):
         """Create OperationRepository."""
-        return OperationRepository(sqlite_manager)
+        from src.infrastructure.providers import MockJsonProvider
+        json_provider = MockJsonProvider()
+        return OperationRepository(sqlite_manager, json_provider)
 
     @pytest.fixture
     def sample_operation(self):

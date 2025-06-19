@@ -1,5 +1,4 @@
 """Fast SQLite manager with in-memory support for tests."""
-import sqlite3
 import threading
 from contextlib import contextmanager
 from pathlib import Path
@@ -9,24 +8,34 @@ from typing import Any, Optional
 class FastSQLiteManager:
     """Fast SQLite manager with shared in-memory database for tests."""
 
-    _shared_connection: Optional[sqlite3.Connection] = None
+    _shared_connection: Optional[Any] = None
     _connection_lock = threading.RLock()
     _migration_applied = False
 
-    def __init__(self, db_path: str = ":memory:", skip_migrations: bool = False):
+    def __init__(self, db_path: str = ":memory:", skip_migrations: bool = False, sqlite_provider=None):
         """Initialize Fast SQLite manager.
 
         Args:
             db_path: Path to SQLite database or ":memory:" for in-memory
-            skip_migrations: Skip migration execution (for tests)
+            skip_migrations: Skip database migrations if True
+            sqlite_provider: SQLite操作プロバイダー
         """
         self.db_path = db_path
         self.skip_migrations = skip_migrations
+        self._sqlite_provider = sqlite_provider or self._get_default_sqlite_provider()
         self._is_memory_db = db_path == ":memory:"
+        self._initialize_setup()
 
+    def _get_default_sqlite_provider(self):
+        """Get default SQLite provider if none provided."""
+        from src.infrastructure.providers.sqlite_provider import SystemSQLiteProvider
+        return SystemSQLiteProvider()
+
+    def _initialize_setup(self):
+        """Initialize database setup."""
         if not self._is_memory_db:
             # For file databases, ensure directory exists
-            db_path_obj = Path(db_path)
+            db_path_obj = Path(self.db_path)
             db_path_obj.parent.mkdir(parents=True, exist_ok=True)
 
         self._initialize_database()
@@ -42,10 +51,7 @@ class FastSQLiteManager:
         """Initialize shared in-memory database."""
         with self._connection_lock:
             if self._shared_connection is None:
-                self._shared_connection = sqlite3.connect(
-                    ":memory:",
-                    check_same_thread=False
-                )
+                self._shared_connection = self._sqlite_provider.connect(":memory:", check_same_thread=False)
                 self._setup_connection(self._shared_connection)
 
                 if not self.skip_migrations:
@@ -77,12 +83,15 @@ class FastSQLiteManager:
                 # Run migrations
                 self._run_migrations(conn, current_version)
 
-    def _setup_connection(self, conn: sqlite3.Connection) -> None:
+    def _setup_connection(self, conn: Any) -> None:
         """Setup connection with required pragmas and settings."""
         conn.execute("PRAGMA foreign_keys = ON")
-        conn.row_factory = sqlite3.Row
+        # Set row_factory if supported
+        if hasattr(conn, 'row_factory'):
+            import sqlite3
+            conn.row_factory = sqlite3.Row
 
-    def _run_migrations(self, conn: sqlite3.Connection, current_version: int = 0) -> None:
+    def _run_migrations(self, conn: Any, current_version: int = 0) -> None:
         """Run database migrations.
 
         Args:
@@ -124,7 +133,7 @@ class FastSQLiteManager:
         """Get a database connection with proper cleanup.
 
         Yields:
-            sqlite3.Connection: Database connection
+            Database connection
         """
         if self._is_memory_db:
             # Use shared connection for in-memory database
@@ -134,7 +143,7 @@ class FastSQLiteManager:
                 yield self._shared_connection
         else:
             # Create new connection for file database
-            conn = sqlite3.connect(self.db_path)
+            conn = self._sqlite_provider.connect(self.db_path)
             self._setup_connection(conn)
             try:
                 yield conn
@@ -204,7 +213,7 @@ class FastSQLiteManager:
             for table in cleanup_order:
                 try:
                     conn.execute(f"DELETE FROM {table}")
-                except sqlite3.OperationalError:
+                except Exception:
                     # Table might not exist, continue
                     continue
 

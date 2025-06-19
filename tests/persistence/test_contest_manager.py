@@ -107,9 +107,17 @@ class TestContestManager:
         self.container = MockDIContainer()
         self.file_driver = MockFileDriver()
         self.files_repo = MockFilesRepository()
+
+        # Create mock providers
+        from src.infrastructure.providers import MockJsonProvider, MockOsProvider
+        self.mock_json_provider = MockJsonProvider()
+        self.mock_os_provider = MockOsProvider()
+
         from src.infrastructure.di_container import DIKey
         self.container.dependencies = {
             DIKey.FILE_DRIVER: self.file_driver,
+            DIKey.JSON_PROVIDER: self.mock_json_provider,
+            DIKey.OS_PROVIDER: self.mock_os_provider,
             "file_driver": self.file_driver,
             "contest_current_files_repository": self.files_repo
         }
@@ -136,19 +144,27 @@ class TestContestManager:
         result = self.contest_manager.env_json
         assert result == self.env_json
 
-    @patch('json.loads')
-    def test_env_json_property_lazy_loading(self, mock_json_loads):
+    def test_env_json_property_lazy_loading(self):
         """Test env_json property lazy loads from config"""
-        # Create manager without env_json
-        manager = ContestManager(self.container, {})
+        # Create manager without env_json - use None instead of {} so condition triggers
+        manager = ContestManager(self.container, None)
+        manager._env_json = {}  # Set to empty dict after init
 
-        # Mock file read response
+        # Mock file read response with valid JSON
         mock_result = Mock(success=True, content='{"shared": {"test": true}}')
         self.file_driver.mock_responses["READ:contest_env/shared/env.json"] = mock_result
 
-        mock_json_loads.return_value = {"shared": {"test": True}}
+        # Debug: Check that the file driver is correctly set
+        assert manager.file_driver == self.file_driver
 
         result = manager.env_json
+
+        # Debug: Check if the mock was called
+        executed_reads = [req for req in self.file_driver.executed_requests
+                         if hasattr(req, 'op') and req.op.name == "READ"]
+        print(f"Executed reads: {[req.path for req in executed_reads]}")
+
+        # The MockJsonProvider will parse the JSON correctly
         assert result == {"shared": {"test": True}}
 
     def test_file_driver_property(self):
@@ -226,17 +242,13 @@ class TestContestManager:
         result = self.contest_manager.backup_contest_current(current_state)
         assert result is False
 
-    @patch('os.listdir')
-    def test_backup_contest_current_success(self, mock_listdir):
+    def test_backup_contest_current_success(self):
         """Test successful backup_contest_current"""
         current_state = {
             "language_name": "python",
             "contest_name": "abc300",
             "problem_name": "a"
         }
-
-        # Mock directory contents
-        mock_listdir.return_value = ["main.py", "test/"]
 
         # Mock directory has content check
         with (patch.object(self.contest_manager, '_directory_has_content', return_value=True),
@@ -273,34 +285,28 @@ class TestContestManager:
                          if hasattr(req, 'op') and req.op.name == "MKDIR"]
         assert len(mkdir_requests) == 1
 
-    @patch('os.listdir')
-    @patch('os.path.join')
-    def test_move_directory_contents(self, mock_join, mock_listdir):
+    def test_move_directory_contents(self):
         """Test _move_directory_contents"""
-        mock_listdir.return_value = ["file1.py", "dir1"]
-        mock_join.side_effect = lambda *args: "/".join(args)
+        # Set up mock OS provider
+        self.mock_os_provider.add_directory("./source", ["file1.py", "dir1"])
 
         result = self.contest_manager._move_directory_contents("./source", "./dest")
         assert result is True
 
-    @patch('os.path.exists')
-    @patch('os.listdir')
-    @patch('os.path.isdir')
-    def test_clear_contest_current(self, mock_isdir, mock_listdir, mock_exists):
+    def test_clear_contest_current(self):
         """Test _clear_contest_current"""
-        mock_exists.return_value = True
-        mock_listdir.return_value = ["file1.py", "dir1"]
-        mock_isdir.side_effect = lambda path: path.endswith("dir1")
+        # Set up mock OS provider
+        self.mock_os_provider.add_directory("./contest_current", ["file1.py", "dir1"])
+        self.mock_os_provider.add_file("./contest_current/file1.py")
+        self.mock_os_provider.add_directory("./contest_current/dir1")
 
         result = self.contest_manager._clear_contest_current("./contest_current")
         assert result is True
 
-    @patch('os.listdir')
-    @patch('os.path.join')
-    def test_copy_directory_contents(self, mock_join, mock_listdir):
+    def test_copy_directory_contents(self):
         """Test _copy_directory_contents"""
-        mock_listdir.return_value = ["file1.py"]
-        mock_join.side_effect = lambda *args: "/".join(args)
+        # Set up mock OS provider
+        self.mock_os_provider.add_directory("./source", ["file1.py"])
 
         with patch.object(self.contest_manager, '_ensure_directory_exists', return_value=True):
             result = self.contest_manager._copy_directory_contents("./source", "./dest")

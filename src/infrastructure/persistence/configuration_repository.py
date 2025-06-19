@@ -1,6 +1,4 @@
 """設定データアクセス層"""
-import json
-import sqlite3
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -14,13 +12,27 @@ class ConfigurationRepository:
     - データベース操作の抽象化
     """
 
-    def __init__(self, db_path: str = "cph_history.db"):
+    def __init__(self, db_path: str = "cph_history.db", json_provider=None, sqlite_provider=None):
         """初期化
 
         Args:
             db_path: SQLiteデータベースのパス
+            json_provider: JSON操作プロバイダー
+            sqlite_provider: SQLite操作プロバイダー
         """
         self.db_path = db_path
+        self._json_provider = json_provider or self._get_default_json_provider()
+        self._sqlite_provider = sqlite_provider or self._get_default_sqlite_provider()
+
+    def _get_default_json_provider(self):
+        """Get default JSON provider if none provided."""
+        from src.infrastructure.providers.json_provider import SystemJsonProvider
+        return SystemJsonProvider()
+
+    def _get_default_sqlite_provider(self):
+        """Get default SQLite provider if none provided."""
+        from src.infrastructure.providers.sqlite_provider import SystemSQLiteProvider
+        return SystemSQLiteProvider()
 
     def load_previous_values(self) -> Dict[str, str]:
         """前回値の読み込み
@@ -37,20 +49,21 @@ class ConfigurationRepository:
             return result
 
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-
+            conn = self._sqlite_provider.connect(self.db_path)
+            try:
                 # old_contest_nameを取得
-                old_contest_name = self._get_config_value(cursor, "old_contest_name")
+                old_contest_name = self._get_config_value(conn, "old_contest_name")
                 if old_contest_name:
                     result["old_contest_name"] = old_contest_name
 
                 # old_problem_nameを取得
-                old_problem_name = self._get_config_value(cursor, "old_problem_name")
+                old_problem_name = self._get_config_value(conn, "old_problem_name")
                 if old_problem_name:
                     result["old_problem_name"] = old_problem_name
+            finally:
+                self._sqlite_provider.close(conn)
 
-        except (sqlite3.Error, json.JSONDecodeError):
+        except Exception:
             # エラー時は空文字列を返す
             pass
 
@@ -67,54 +80,55 @@ class ConfigurationRepository:
             return
 
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-
+            conn = self._sqlite_provider.connect(self.db_path)
+            try:
                 # 値を保存
-                self._save_config_value(cursor, "old_contest_name", contest_name)
-                self._save_config_value(cursor, "old_problem_name", problem_name)
+                self._save_config_value(conn, "old_contest_name", contest_name)
+                self._save_config_value(conn, "old_problem_name", problem_name)
+                self._sqlite_provider.commit(conn)
+            finally:
+                self._sqlite_provider.close(conn)
 
-                conn.commit()
-
-        except sqlite3.Error:
+        except Exception:
             # エラー時は無視
             pass
 
-    def _get_config_value(self, cursor: sqlite3.Cursor, key: str) -> Optional[str]:
+    def _get_config_value(self, conn, key: str) -> Optional[str]:
         """設定値を取得
 
         Args:
-            cursor: SQLiteカーソル
+            conn: SQLite接続
             key: 設定キー
 
         Returns:
             Optional[str]: 設定値（存在しない場合はNone）
         """
-        cursor.execute(
+        cursor = self._sqlite_provider.execute(
+            conn,
             "SELECT config_value FROM system_config WHERE config_key = ?",
             (key,)
         )
-        row = cursor.fetchone()
+        row = self._sqlite_provider.fetchone(cursor)
 
         if row and row[0]:
             try:
-                return json.loads(row[0])
-            except json.JSONDecodeError:
+                return self._json_provider.loads(row[0])
+            except Exception:
                 return None
 
         return None
 
-    def _save_config_value(self, cursor: sqlite3.Cursor, key: str, value: str) -> None:
+    def _save_config_value(self, conn, key: str, value: str) -> None:
         """設定値を保存
 
         Args:
-            cursor: SQLiteカーソル
+            conn: SQLite接続
             key: 設定キー
             value: 設定値
         """
-        json_value = json.dumps(value)
+        json_value = self._json_provider.dumps(value)
 
-        cursor.execute("""
+        self._sqlite_provider.execute(conn, """
             INSERT OR REPLACE INTO system_config (config_key, config_value)
             VALUES (?, ?)
         """, (key, json_value))
@@ -129,11 +143,13 @@ class ConfigurationRepository:
             return []
 
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT config_key FROM system_config")
-                rows = cursor.fetchall()
+            conn = self._sqlite_provider.connect(self.db_path)
+            try:
+                cursor = self._sqlite_provider.execute(conn, "SELECT config_key FROM system_config", ())
+                rows = self._sqlite_provider.fetchall(cursor)
                 return [row[0] for row in rows]
+            finally:
+                self._sqlite_provider.close(conn)
 
-        except sqlite3.Error:
+        except Exception:
             return []

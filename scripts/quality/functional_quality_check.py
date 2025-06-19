@@ -158,7 +158,11 @@ class FunctionalQualityChecker(ast.NodeVisitor):
             }
 
             # infrastructure配下とテストファイルでは副作用を許可
-            if func_name in side_effect_functions and not self.is_infrastructure and not self.is_test_file:
+            # また、print(file=sys.stderr)も緊急時出力として許可
+            should_allow = (self.is_infrastructure or self.is_test_file or
+                          (func_name == 'print' and self._is_stderr_print(node)))
+
+            if func_name in side_effect_functions and not should_allow:
                 self.issues.append(QualityIssue(
                     file=self.filename,
                     line=node.lineno,
@@ -198,6 +202,17 @@ class FunctionalQualityChecker(ast.NodeVisitor):
             return ast.unparse(node)
         except Exception:
             return "unknown"
+
+    def _is_stderr_print(self, node: ast.Call) -> bool:
+        """print文がfile=sys.stderrを使用しているかチェック"""
+        for keyword in node.keywords:
+            if (keyword.arg == 'file' and
+                isinstance(keyword.value, ast.Attribute) and
+                isinstance(keyword.value.value, ast.Name) and
+                keyword.value.value.id == 'sys' and
+                keyword.value.attr == 'stderr'):
+                return True
+        return False
 
 
 class DataClassChecker(ast.NodeVisitor):

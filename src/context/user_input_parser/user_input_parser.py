@@ -339,7 +339,12 @@ def _handle_contest_management(context, infrastructure):
                 context.problem_name
             )
         except Exception as e:
-            print(f"Warning: Contest management failed: {e}")
+            try:
+                logger = infrastructure.resolve("unified_logger")
+                logger.warning(f"Contest management failed: {e}")
+            except Exception:
+                # Fallback if logger not available
+                pass
     return context
 
 

@@ -13,6 +13,12 @@ class DIKey(Enum):
     PYTHON_DRIVER = "python_driver"
     PERSISTENCE_DRIVER = "persistence_driver"
 
+    # Providers (副作用集約)
+    JSON_PROVIDER = "json_provider"
+    SQLITE_PROVIDER = "sqlite_provider"
+    OS_PROVIDER = "os_provider"
+    CONFIGURATION_REPOSITORY = "configuration_repository"
+
     # Persistence (legacy keys for backward compatibility)
     SQLITE_MANAGER = "sqlite_manager"
     OPERATION_REPOSITORY = "operation_repository"

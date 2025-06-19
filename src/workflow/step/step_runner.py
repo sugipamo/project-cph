@@ -373,5 +373,4 @@ def evaluate_test_condition(test_command: str) -> Tuple[bool, Optional[str]]:
 def execute_step_mock(step: Step) -> Tuple[bool, str]:
     """ステップ実行のモック（テスト用）"""
     # TODO: 実際の実行ロジックに置き換える
-    # print(f"Executing: {step.name or step.type.value} - {' '.join(step.cmd)}")
     return True, ""

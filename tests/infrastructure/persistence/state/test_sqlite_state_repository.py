@@ -28,7 +28,9 @@ class TestSqliteStateRepository:
     @pytest.fixture
     def state_repository(self, mock_config_repo):
         """SqliteStateRepositoryのインスタンスを作成"""
-        return SqliteStateRepository(mock_config_repo)
+        from src.infrastructure.providers import MockJsonProvider
+        json_provider = MockJsonProvider()
+        return SqliteStateRepository(mock_config_repo, json_provider)
 
     def test_save_execution_history(self, state_repository, mock_config_repo, sample_execution_history):
         """実行履歴の保存をテスト"""

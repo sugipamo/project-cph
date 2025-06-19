@@ -2,7 +2,6 @@
 
 Infrastructure層での状態永続化の具体実装
 """
-import json
 from typing import Any, Dict, Optional
 
 from ...sqlite.repositories.system_config_repository import SystemConfigRepository
@@ -18,11 +17,12 @@ class SqliteStateRepository(IStateRepository):
     SystemConfigRepositoryを利用するが、明確に分離されたカテゴリを使用
     """
 
-    def __init__(self, config_repo: SystemConfigRepository):
+    def __init__(self, config_repo: SystemConfigRepository, json_provider):
         self.config_repo = config_repo
         self._session_category = "session_state"
         self._history_category = "execution_history"
         self._user_values_category = "user_specified"
+        self._json_provider = json_provider
 
     def save_execution_history(self, history: ExecutionHistory) -> None:
         """実行履歴の保存"""
@@ -36,9 +36,12 @@ class SqliteStateRepository(IStateRepository):
         }
 
         key = f"history_{history.timestamp}"
+
+        value = self._json_provider.dumps(history_data)
+
         self.config_repo.save_config(
             key=key,
-            value=json.dumps(history_data),
+            value=value,
             category=self._history_category,
             description=f"Execution history for {history.contest_name}_{history.problem_name}"
         )
@@ -51,7 +54,7 @@ class SqliteStateRepository(IStateRepository):
         for config in sorted(histories, key=lambda x: x.key, reverse=True)[:limit]:
             if config.value:
                 try:
-                    data = json.loads(config.value)
+                    data = self._json_provider.loads(config.value)
                     history = ExecutionHistory(
                         contest_name=data["contest_name"],
                         problem_name=data["problem_name"],
@@ -61,7 +64,7 @@ class SqliteStateRepository(IStateRepository):
                         success=data["success"]
                     )
                     result.append(history)
-                except (json.JSONDecodeError, KeyError):
+                except (Exception, KeyError):
                     continue
 
         return result
@@ -77,9 +80,11 @@ class SqliteStateRepository(IStateRepository):
             "user_specified_fields": context.user_specified_fields
         }
 
+        value = self._json_provider.dumps(context_data)
+
         self.config_repo.save_config(
             key="current_session",
-            value=json.dumps(context_data),
+            value=value,
             category=self._session_category,
             description="Current session context"
         )
@@ -89,7 +94,7 @@ class SqliteStateRepository(IStateRepository):
         config = self.config_repo.get_config("current_session")
         if config and config.value:
             try:
-                data = json.loads(config.value)
+                data = self._json_provider.loads(config.value)
                 return SessionContext(
                     current_contest=data["current_contest"],
                     current_problem=data["current_problem"],
@@ -98,16 +103,18 @@ class SqliteStateRepository(IStateRepository):
                     previous_problem=data["previous_problem"],
                     user_specified_fields=data["user_specified_fields"]
                 )
-            except (json.JSONDecodeError, KeyError):
+            except (Exception, KeyError):
                 pass
 
         return None
 
     def save_user_specified_values(self, values: Dict[str, Any]) -> None:
         """ユーザー指定値の保存"""
+        value = self._json_provider.dumps(values)
+
         self.config_repo.save_config(
             key="user_values",
-            value=json.dumps(values),
+            value=value,
             category=self._user_values_category,
             description="User specified values"
         )
@@ -117,8 +124,8 @@ class SqliteStateRepository(IStateRepository):
         config = self.config_repo.get_config("user_values")
         if config and config.value:
             try:
-                return json.loads(config.value)
-            except json.JSONDecodeError:
+                return self._json_provider.loads(config.value)
+            except Exception:
                 pass
 
         return {}

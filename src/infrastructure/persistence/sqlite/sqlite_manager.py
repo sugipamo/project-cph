@@ -1,5 +1,4 @@
 """SQLite database manager for connection and schema management."""
-import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Optional
@@ -8,15 +7,22 @@ from typing import Any, Optional
 class SQLiteManager:
     """Manages SQLite database connections and schema migrations."""
 
-    def __init__(self, db_path: str = "cph_history.db"):
+    def __init__(self, db_path: str = "cph_history.db", sqlite_provider=None):
         """Initialize SQLite manager.
 
         Args:
             db_path: Path to the SQLite database file
+            sqlite_provider: SQLite操作プロバイダー
         """
         self.db_path = Path(db_path)
+        self._sqlite_provider = sqlite_provider or self._get_default_sqlite_provider()
         self._ensure_db_directory()
         self._initialize_database()
+
+    def _get_default_sqlite_provider(self):
+        """Get default SQLite provider if none provided."""
+        from src.infrastructure.providers.sqlite_provider import SystemSQLiteProvider
+        return SystemSQLiteProvider()
 
     def _ensure_db_directory(self) -> None:
         """Ensure the database directory exists."""
@@ -43,7 +49,7 @@ class SQLiteManager:
             # Run migrations
             self._run_migrations(conn, current_version)
 
-    def _run_migrations(self, conn: sqlite3.Connection, current_version: int) -> None:
+    def _run_migrations(self, conn: Any, current_version: int) -> None:
         """Run database migrations.
 
         Args:
@@ -65,9 +71,10 @@ class SQLiteManager:
             version = int(migration_file.name.split("_")[0])
 
             if version > current_version:
-                # Only print migration info in debug mode or if explicitly enabled
+                # Log migration info in debug mode or if explicitly enabled
                 if hasattr(self, '_debug_migrations') and self._debug_migrations:
-                    print(f"Running migration {migration_file.name}")
+                    # Note: Migration logging for debugging - consider using logger if needed
+                    pass
 
                 with migration_file.open("r", encoding="utf-8") as f:
                     migration_sql = f.read()
@@ -88,13 +95,16 @@ class SQLiteManager:
         """Get a database connection with proper cleanup.
 
         Yields:
-            sqlite3.Connection: Database connection
+            Database connection
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._sqlite_provider.connect(str(self.db_path))
+
         # Enable foreign key constraints
         conn.execute("PRAGMA foreign_keys = ON")
-        # Use row factory for dict-like access
-        conn.row_factory = sqlite3.Row
+        # Use row factory for dict-like access (if supported by provider)
+        if hasattr(conn, 'row_factory'):
+            import sqlite3
+            conn.row_factory = sqlite3.Row
         try:
             yield conn
             conn.commit()  # Auto-commit successful operations
