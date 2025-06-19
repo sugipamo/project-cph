@@ -56,6 +56,31 @@ class OsProvider(ABC):
         """ファイル判定"""
         pass
 
+    @abstractmethod
+    def path_exists(self, path: str) -> bool:
+        """パス存在判定"""
+        pass
+
+    @abstractmethod
+    def path_isdir(self, path: str) -> bool:
+        """ディレクトリ判定（path.isdir用）"""
+        pass
+
+    @abstractmethod
+    def path_isfile(self, path: str) -> bool:
+        """ファイル判定（path.isfile用）"""
+        pass
+
+    @abstractmethod
+    def getcwd(self) -> str:
+        """現在のディレクトリ取得"""
+        pass
+
+    @abstractmethod
+    def chdir(self, path: str) -> None:
+        """ディレクトリ変更"""
+        pass
+
 
 class SystemOsProvider(OsProvider):
     """システムOS操作の実装 - 副作用はここに集約"""
@@ -110,6 +135,31 @@ class SystemOsProvider(OsProvider):
         import os
         return os.path.isfile(path)
 
+    def path_exists(self, path: str) -> bool:
+        """パス存在判定（副作用なし）"""
+        import os
+        return os.path.exists(path)
+
+    def path_isdir(self, path: str) -> bool:
+        """ディレクトリ判定（path.isdir用）（副作用なし）"""
+        import os
+        return os.path.isdir(path)
+
+    def path_isfile(self, path: str) -> bool:
+        """ファイル判定（path.isfile用）（副作用なし）"""
+        import os
+        return os.path.isfile(path)
+
+    def getcwd(self) -> str:
+        """現在のディレクトリ取得（副作用なし）"""
+        import os
+        return os.getcwd()
+
+    def chdir(self, path: str) -> None:
+        """ディレクトリ変更（副作用）"""
+        import os
+        os.chdir(path)
+
 
 class MockOsProvider(OsProvider):
     """テスト用モックOSプロバイダー - 副作用なし"""
@@ -117,6 +167,7 @@ class MockOsProvider(OsProvider):
     def __init__(self):
         self._filesystem = {}  # path -> "file" or "dir"
         self._dir_contents = {}  # dir_path -> List[str]
+        self._current_dir = "/mock_cwd"
 
     def exists(self, path: str) -> bool:
         """モック存在チェック（副作用なし）"""
@@ -182,3 +233,23 @@ class MockOsProvider(OsProvider):
         """テスト用ディレクトリ追加"""
         self._filesystem[path] = "dir"
         self._dir_contents[path] = contents or []
+
+    def path_exists(self, path: str) -> bool:
+        """モックパス存在判定（副作用なし）"""
+        return path in self._filesystem
+
+    def path_isdir(self, path: str) -> bool:
+        """モックディレクトリ判定（path.isdir用）（副作用なし）"""
+        return self.isdir(path)
+
+    def path_isfile(self, path: str) -> bool:
+        """モックファイル判定（path.isfile用）（副作用なし）"""
+        return self.isfile(path)
+
+    def getcwd(self) -> str:
+        """モック現在のディレクトリ取得（副作用なし）"""
+        return self._current_dir
+
+    def chdir(self, path: str) -> None:
+        """モックディレクトリ変更（副作用なし）"""
+        self._current_dir = path

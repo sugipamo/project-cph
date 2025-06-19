@@ -2,6 +2,7 @@
 import time
 from typing import Any, Optional, Union
 
+from src.infrastructure.di_container import DIKey
 from src.infrastructure.drivers.python.utils.python_utils import PythonUtils
 from src.operations.constants.operation_type import OperationType
 from src.operations.requests.base.base_request import OperationRequestFoundation
@@ -21,18 +22,26 @@ class PythonRequest(OperationRequestFoundation):
         self.cwd = cwd
         self.show_output = show_output
 
+    def _get_os_provider(self, driver):
+        """Get OS provider from driver infrastructure."""
+        if hasattr(driver, 'infrastructure'):
+            return driver.infrastructure.resolve(DIKey.OS_PROVIDER)
+        # Fallback: create a temporary provider if needed
+        from src.infrastructure.providers import SystemOsProvider
+        return SystemOsProvider()
+
     @property
     def operation_type(self) -> OperationType:
         return OperationType.PYTHON
 
     def _execute_core(self, driver: Any = None, logger: Optional[Any] = None) -> OperationResult:
-        import os
+        os_provider = self._get_os_provider(driver)
         start_time = time.time()
-        old_cwd = os.getcwd()
+        old_cwd = os_provider.getcwd()
 
         try:
             if self.cwd:
-                os.chdir(self.cwd)
+                os_provider.chdir(self.cwd)
 
             if logger:
                 logger.debug(f"Executing Python code: {self.code_or_file}")
@@ -63,7 +72,7 @@ class PythonRequest(OperationRequestFoundation):
             )
         finally:
             if self.cwd:
-                os.chdir(old_cwd)
+                os_provider.chdir(old_cwd)
 
     def _execute_python_code(self, driver: Any) -> tuple[str, str, int]:
         """Execute Python code using appropriate driver."""

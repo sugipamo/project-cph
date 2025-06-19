@@ -2,6 +2,7 @@
 from enum import Enum, auto
 from typing import Any, Optional, Union
 
+from src.infrastructure.di_container import DIKey
 from src.operations.constants.operation_type import OperationType
 from src.operations.constants.request_types import RequestType
 from src.operations.interfaces.docker_interface import DockerDriverInterface
@@ -52,6 +53,14 @@ class DockerRequest(OperationRequestFoundation):
         self._result = None
         self.dockerfile_text = dockerfile_text
 
+    def _get_json_provider(self, driver):
+        """Get JSON provider from driver infrastructure."""
+        if hasattr(driver, 'infrastructure'):
+            return driver.infrastructure.resolve(DIKey.JSON_PROVIDER)
+        # Fallback: create a temporary provider if needed
+        from src.infrastructure.providers import SystemJsonProvider
+        return SystemJsonProvider()
+
     @property
     def operation_type(self):
         """Get operation type."""
@@ -72,14 +81,17 @@ class DockerRequest(OperationRequestFoundation):
         if logger:
             logger.debug(f"Executing Docker operation: {self.op} for container: {self.container}")
 
+        # Get JSON provider for container status parsing
+        json_provider = self._get_json_provider(driver)
+
         # Handle RUN operations with container state checking
         if self.op == DockerOpType.RUN and hasattr(driver, 'ps') and self.container:
-            return self._handle_run_operation(driver, logger)
+            return self._handle_run_operation(driver, logger, json_provider)
 
         # Handle normal single request operations
         return self._execute_single_operation(driver, logger)
 
-    def _handle_run_operation(self, driver: DockerDriverInterface, logger: Optional[Any] = None):
+    def _handle_run_operation(self, driver: DockerDriverInterface, logger: Optional[Any] = None, json_provider=None):
         """Handle RUN operation with container state checking."""
         # Check if container exists
         container_names = driver.ps(all=True, show_output=False, names_only=True)
@@ -88,14 +100,13 @@ class DockerRequest(OperationRequestFoundation):
             return driver.run_container(self.image, self.container, self.options, show_output=self.show_output)
 
         # Check container status and handle accordingly
-        return self._handle_existing_container(driver, logger)
+        return self._handle_existing_container(driver, logger, json_provider)
 
-    def _handle_existing_container(self, driver: DockerDriverInterface, logger: Optional[Any] = None):
+    def _handle_existing_container(self, driver: DockerDriverInterface, logger: Optional[Any] = None, json_provider=None):
         """Handle existing container based on its current status."""
         inspect_result = driver.inspect(self.container, show_output=False)
-        import json
         try:
-            inspect_data = json.loads(inspect_result.stdout)
+            inspect_data = json_provider.loads(inspect_result.stdout)
             if isinstance(inspect_data, list) and len(inspect_data) > 0:
                 if "State" not in inspect_data[0]:
                     return driver.run_container(self.image, self.container, self.options, show_output=self.show_output)

@@ -243,12 +243,25 @@ def _create_mock_os_provider() -> Any:
     return MockOsProvider()
 
 
+def _create_sys_provider() -> Any:
+    """Lazy factory for sys provider."""
+    from src.infrastructure.providers import SystemSysProvider
+    return SystemSysProvider()
+
+
+def _create_mock_sys_provider() -> Any:
+    """Lazy factory for mock sys provider."""
+    from src.infrastructure.providers import MockSysProvider
+    return MockSysProvider()
+
+
 def configure_production_dependencies(container: DIContainer) -> None:
     """Configure production dependencies with lazy loading."""
     # Register providers (副作用集約)
     container.register(DIKey.JSON_PROVIDER, _create_json_provider)
     container.register(DIKey.SQLITE_PROVIDER, _create_sqlite_provider)
     container.register(DIKey.OS_PROVIDER, _create_os_provider)
+    container.register(DIKey.SYS_PROVIDER, _create_sys_provider)
     container.register(DIKey.CONFIGURATION_REPOSITORY, lambda: _create_configuration_repository(container))
 
     # Register core drivers
@@ -338,6 +351,7 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register(DIKey.JSON_PROVIDER, _create_mock_json_provider)
     container.register(DIKey.SQLITE_PROVIDER, _create_mock_sqlite_provider)
     container.register(DIKey.OS_PROVIDER, _create_mock_os_provider)
+    container.register(DIKey.SYS_PROVIDER, _create_mock_sys_provider)
     container.register(DIKey.CONFIGURATION_REPOSITORY, lambda: _create_configuration_repository(container))
 
     # Register mock drivers

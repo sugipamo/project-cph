@@ -17,6 +17,7 @@ class DIKey(Enum):
     JSON_PROVIDER = "json_provider"
     SQLITE_PROVIDER = "sqlite_provider"
     OS_PROVIDER = "os_provider"
+    SYS_PROVIDER = "sys_provider"
     CONFIGURATION_REPOSITORY = "configuration_repository"
 
     # Persistence (legacy keys for backward compatibility)

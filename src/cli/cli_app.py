@@ -77,11 +77,11 @@ class MinimalCLIApp:
                         return 1
                     except Exception:
                         # infrastructureも失敗した場合は致命的エラー
-                        raise RuntimeError(f"Logger and infrastructure initialization failed: {e}")
+                        raise RuntimeError(f"Logger and infrastructure initialization failed: {e}") from None
 
             if self.logger is None:
                 # infrastructureも利用できない場合は致命的エラー
-                raise RuntimeError(f"Logger initialization failed: {e}")
+                raise RuntimeError(f"Logger initialization failed: {e}") from None
 
             result = self._handle_composite_step_failure(e)
             # エラー時もログ出力をフラッシュ
@@ -103,11 +103,11 @@ class MinimalCLIApp:
                         return 1
                     except Exception:
                         # infrastructureも失敗した場合は致命的エラー
-                        raise RuntimeError(f"Logger and infrastructure initialization failed: {e}")
+                        raise RuntimeError(f"Logger and infrastructure initialization failed: {e}") from None
 
             if self.logger is None:
                 # infrastructureも利用できない場合は致命的エラー
-                raise RuntimeError(f"Logger initialization failed: {e}")
+                raise RuntimeError(f"Logger initialization failed: {e}") from None
 
             result = self._handle_general_exception(e, args)
             # エラー時もログ出力をフラッシュ
@@ -245,6 +245,5 @@ def main(argv: Optional[list[str]] = None, exit_func=None) -> int:
 
 
 if __name__ == "__main__":
-    # エントリーポイントでのみ副作用モジュールを使用
-    import sys
-    main(sys.argv[1:], sys.exit)
+    # エントリーポイントでのテストのみ - 実際の実行はmain.pyから
+    main([], lambda x: None)

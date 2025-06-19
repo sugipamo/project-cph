@@ -82,16 +82,21 @@ class StepResult:
     error_message: str = ""
 
 
-def run_steps(json_steps: List[Dict[str, Any]], context) -> List[StepResult]:
+def run_steps(json_steps: List[Dict[str, Any]], context, os_provider=None) -> List[StepResult]:
     """JSONステップを順次実行する（メイン関数）
 
     Args:
         json_steps: 実行するステップのJSONリスト
         context: 実行コンテキスト
+        os_provider: OSプロバイダー（依存性注入用）
 
     Returns:
         List[StepResult]: 各ステップの実行結果
     """
+    if os_provider is None:
+        from src.infrastructure.providers import SystemOsProvider
+        os_provider = SystemOsProvider()
+
     results = []
 
     for i, json_step in enumerate(json_steps):
@@ -100,7 +105,7 @@ def run_steps(json_steps: List[Dict[str, Any]], context) -> List[StepResult]:
             step = create_step(json_step, context)
 
             # when条件をチェック
-            should_run, check_error = check_when_condition(step.when, context)
+            should_run, check_error = check_when_condition(step.when, context, os_provider)
 
             if check_error:
                 results.append(StepResult(False, step, False, f"When condition error: {check_error}"))
@@ -167,7 +172,7 @@ def create_step(json_step: Dict[str, Any], context) -> Step:
     )
 
 
-def check_when_condition(when_clause: Optional[str], context) -> Tuple[bool, Optional[str]]:
+def check_when_condition(when_clause: Optional[str], context, os_provider=None) -> Tuple[bool, Optional[str]]:
     """when条件をチェックする"""
     if not when_clause:
         return True, None
@@ -180,7 +185,7 @@ def check_when_condition(when_clause: Optional[str], context) -> Tuple[bool, Opt
         expanded = expand_file_patterns_in_when(expanded, context.file_patterns)
 
     # test条件を評価
-    return evaluate_test_condition(expanded)
+    return evaluate_test_condition(expanded, os_provider)
 
 
 def expand_template(template: str, context) -> str:
@@ -290,15 +295,17 @@ def expand_template_with_new_system(template: str, new_config, operation_type: O
     return template
 
 
-def evaluate_test_condition(test_command: str) -> Tuple[bool, Optional[str]]:
+def evaluate_test_condition(test_command: str, os_provider=None) -> Tuple[bool, Optional[str]]:
     """test条件を評価する（複合条件もサポート）"""
-    import os
+    if os_provider is None:
+        from src.infrastructure.providers import SystemOsProvider
+        os_provider = SystemOsProvider()
 
     # 複合条件（&&）をサポート
     if ' && ' in test_command:
         conditions = test_command.split(' && ')
         for condition in conditions:
-            result, error = evaluate_test_condition(condition.strip())
+            result, error = evaluate_test_condition(condition.strip(), os_provider)
             if error:
                 return False, error
             if not result:
@@ -349,11 +356,11 @@ def evaluate_test_condition(test_command: str) -> Tuple[bool, Optional[str]]:
     try:
         # 条件評価
         if flag == '-d':
-            result = os.path.isdir(value)
+            result = os_provider.path_isdir(value)
         elif flag == '-f':
-            result = os.path.isfile(value)
+            result = os_provider.path_isfile(value)
         elif flag == '-e':
-            result = os.path.exists(value)
+            result = os_provider.path_exists(value)
         elif flag == '-n':
             # 文字列が非空かチェック
             # シングルクォートを除去
