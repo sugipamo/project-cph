@@ -2,7 +2,10 @@
 import threading
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    import sqlite3
 
 
 class FastSQLiteManager:
@@ -83,7 +86,7 @@ class FastSQLiteManager:
                 # Run migrations
                 self._run_migrations(conn, current_version)
 
-    def _setup_connection(self, conn: Any) -> None:
+    def _setup_connection(self, conn: 'sqlite3.Connection') -> None:
         """Setup connection with required pragmas and settings."""
         conn.execute("PRAGMA foreign_keys = ON")
         # Set row_factory if supported
@@ -91,7 +94,7 @@ class FastSQLiteManager:
             import sqlite3
             conn.row_factory = sqlite3.Row
 
-    def _run_migrations(self, conn: Any, current_version: int = 0) -> None:
+    def _run_migrations(self, conn: 'sqlite3.Connection', current_version: int = 0) -> None:
         """Run database migrations.
 
         Args:

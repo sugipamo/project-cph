@@ -478,11 +478,10 @@ class TestRunner:
                 'toml': ['dump']
             }
 
-            # 許可されたディレクトリ
+            # 許可されたディレクトリ（CLAUDE.mdに従い、infrastructure層全体を許可）
             allowed_dirs = [
-                'src/infrastructure/drivers/',
-                'tests/infrastructure/',
-                'src/infrastructure/config/'
+                'src/infrastructure/',
+                'tests/infrastructure/'
             ]
 
             for file_path in glob.glob('src/**/*.py', recursive=True):

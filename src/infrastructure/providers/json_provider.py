@@ -7,7 +7,7 @@ class JsonProvider(ABC):
     """JSON操作の抽象インターフェース"""
 
     @abstractmethod
-    def dumps(self, obj: Any, **kwargs) -> str:
+    def dumps(self, data: Any, **kwargs) -> str:
         """オブジェクトをJSON文字列に変換"""
         pass
 
@@ -17,7 +17,7 @@ class JsonProvider(ABC):
         pass
 
     @abstractmethod
-    def dump(self, obj: Any, fp, **kwargs) -> None:
+    def dump(self, data: Any, fp, **kwargs) -> None:
         """オブジェクトをファイルにJSON形式で書き込み"""
         pass
 
@@ -30,20 +30,20 @@ class JsonProvider(ABC):
 class SystemJsonProvider(JsonProvider):
     """システムJSON操作の実装 - 副作用はここに集約"""
 
-    def dumps(self, obj: Any, **kwargs) -> str:
+    def dumps(self, data: Any, **kwargs) -> str:
         """オブジェクトをJSON文字列に変換（副作用なし）"""
         import json
-        return json.dumps(obj, **kwargs)
+        return json.dumps(data, **kwargs)
 
     def loads(self, s: str, **kwargs) -> Any:
         """JSON文字列をオブジェクトに変換（副作用なし）"""
         import json
         return json.loads(s, **kwargs)
 
-    def dump(self, obj: Any, fp, **kwargs) -> None:
+    def dump(self, data: Any, fp, **kwargs) -> None:
         """オブジェクトをファイルにJSON形式で書き込み（副作用）"""
         import json
-        json.dump(obj, fp, **kwargs)
+        json.dump(data, fp, **kwargs)
 
     def load(self, fp, **kwargs) -> Any:
         """ファイルからJSONを読み込み（副作用）"""
@@ -57,11 +57,11 @@ class MockJsonProvider(JsonProvider):
     def __init__(self):
         self._mock_data: Dict[str, Any] = {}
 
-    def dumps(self, obj: Any, **kwargs) -> str:
+    def dumps(self, data: Any, **kwargs) -> str:
         """モックJSON文字列変換（副作用なし）"""
         # 実際のJSON変換を使用してテストの正確性を保つ
         import json
-        return json.dumps(obj, **kwargs)
+        return json.dumps(data, **kwargs)
 
     def loads(self, s: str, **kwargs) -> Any:
         """モックJSON読み込み（副作用なし）"""
@@ -69,11 +69,11 @@ class MockJsonProvider(JsonProvider):
         import json
         return json.loads(s)  # Let JSON exceptions propagate
 
-    def dump(self, obj: Any, fp, **kwargs) -> None:
+    def dump(self, data: Any, fp, **kwargs) -> None:
         """モックファイル書き込み（副作用なし）"""
         # ファイルパスをキーとして内部辞書に保存
         if hasattr(fp, 'name'):
-            self._mock_data[fp.name] = obj
+            self._mock_data[fp.name] = data
 
     def load(self, fp, **kwargs) -> Any:
         """モックファイル読み込み（副作用なし）"""

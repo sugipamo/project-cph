@@ -64,7 +64,8 @@ class SqliteStateRepository(IStateRepository):
                         success=data["success"]
                     )
                     result.append(history)
-                except (Exception, KeyError):
+                except (ValueError, TypeError, KeyError):
+                    # JSON parsing or data structure error - log but continue
                     continue
 
         return result
@@ -103,7 +104,8 @@ class SqliteStateRepository(IStateRepository):
                     previous_problem=data["previous_problem"],
                     user_specified_fields=data["user_specified_fields"]
                 )
-            except (Exception, KeyError):
+            except (ValueError, TypeError, KeyError):
+                # JSON parsing or data structure error - return None to indicate failure
                 pass
 
         return None
@@ -125,7 +127,8 @@ class SqliteStateRepository(IStateRepository):
         if config and config.value:
             try:
                 return self._json_provider.loads(config.value)
-            except Exception:
+            except (ValueError, TypeError):
+                # JSON parsing error - return empty dict as fallback
                 pass
 
         return {}

@@ -124,7 +124,9 @@ class MockOsProvider(OsProvider):
 
     def listdir(self, path: str) -> List[str]:
         """モックディレクトリ一覧（副作用なし）"""
-        return self._dir_contents.get(path, [])
+        if path in self._dir_contents:
+            return self._dir_contents[path]
+        return []
 
     def makedirs(self, path: str, exist_ok: bool = False) -> None:
         """モックディレクトリ作成（副作用なし）"""
@@ -162,11 +164,15 @@ class MockOsProvider(OsProvider):
 
     def isdir(self, path: str) -> bool:
         """モックディレクトリ判定（副作用なし）"""
-        return self._filesystem.get(path) == "dir"
+        if path in self._filesystem:
+            return self._filesystem[path] == "dir"
+        return False
 
     def isfile(self, path: str) -> bool:
         """モックファイル判定（副作用なし）"""
-        return self._filesystem.get(path) == "file"
+        if path in self._filesystem:
+            return self._filesystem[path] == "file"
+        return False
 
     def add_file(self, path: str) -> None:
         """テスト用ファイル追加"""

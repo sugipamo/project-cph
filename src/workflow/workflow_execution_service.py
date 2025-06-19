@@ -315,11 +315,7 @@ class WorkflowExecutionService:
 
     def _debug_log(self, message: str):
         """Log debug message using infrastructure logger."""
-        try:
-            from src.infrastructure.di_container import DIKey
-            logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
-            logger.debug(message)
-        except Exception:
-            # Fallback if logger not available
-            pass
+        from src.infrastructure.di_container import DIKey
+        logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
+        logger.debug(message)
 

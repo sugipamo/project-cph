@@ -1,7 +1,10 @@
 """SQLite database manager for connection and schema management."""
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    import sqlite3
 
 
 class SQLiteManager:
@@ -49,7 +52,7 @@ class SQLiteManager:
             # Run migrations
             self._run_migrations(conn, current_version)
 
-    def _run_migrations(self, conn: Any, current_version: int) -> None:
+    def _run_migrations(self, conn: 'sqlite3.Connection', current_version: int) -> None:
         """Run database migrations.
 
         Args:
