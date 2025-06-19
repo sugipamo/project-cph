@@ -25,7 +25,7 @@ class MinimalCLIApp:
         self.context = None
         self.logger = logger
 
-    def run(self, args: list[str]) -> int:
+    def run_cli_application(self, args: list[str]) -> int:
         """Run the CLI application with dependency injection
 
         Args:
@@ -37,11 +37,19 @@ class MinimalCLIApp:
         try:
             # Initialize infrastructure if not provided
             if self.infrastructure is None:
-                self.infrastructure = build_infrastructure()
+                try:
+                    self.infrastructure = build_infrastructure()
+                except Exception:
+                    # インフラストラクチャ初期化に失敗した場合は即座にエラー終了
+                    return 1
 
             # Initialize logger if not provided
             if self.logger is None:
-                self.logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
+                try:
+                    self.logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
+                except Exception:
+                    # ロガー初期化に失敗した場合も即座にエラー終了
+                    return 1
 
             # Parse user input with infrastructure context
             self.context = parse_user_input(args, self.infrastructure)
@@ -236,7 +244,7 @@ def main(argv: Optional[list[str]] = None, exit_func=None) -> int:
     if argv is None:
         raise ValueError("argv must be provided - no default values allowed")
 
-    exit_code = app.run(argv)
+    exit_code = app.run_cli_application(argv)
 
     if exit_func is not None:
         exit_func(exit_code)

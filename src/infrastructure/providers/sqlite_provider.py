@@ -12,8 +12,8 @@ class SQLiteProvider(ABC):
         pass
 
     @abstractmethod
-    def execute(self, connection: Any, sql: str, parameters: Tuple = ()) -> Any:
-        """SQL実行"""
+    def execute_sql_statement(self, connection: Any, sql: str, parameters: Tuple = ()) -> Any:
+        """SQL文の実行"""
         pass
 
     @abstractmethod
@@ -55,8 +55,8 @@ class SystemSQLiteProvider(SQLiteProvider):
         import sqlite3
         return sqlite3.connect(database, **kwargs)
 
-    def execute(self, connection: Any, sql: str, parameters: Tuple = ()) -> Any:
-        """SQL実行（副作用）"""
+    def execute_sql_statement(self, connection: Any, sql: str, parameters: Tuple = ()) -> Any:
+        """SQL文の実行（副作用）"""
         return connection.execute(sql, parameters)
 
     def executemany(self, connection: Any, sql: str, seq_of_parameters: Optional[List[Tuple]] = None) -> Any:
@@ -104,8 +104,8 @@ class MockSQLiteProvider(SQLiteProvider):
             self._data[database] = {}
         return MockSQLiteConnection(database, self)
 
-    def execute(self, connection: Any, sql: str, parameters: Tuple = ()) -> Any:
-        """モックSQL実行（副作用なし）"""
+    def execute_sql_statement(self, connection: Any, sql: str, parameters: Tuple = ()) -> Any:
+        """モックSQL文の実行（副作用なし）"""
         return MockSQLiteCursor(connection.database, sql, parameters, self)
 
     def executemany(self, connection: Any, sql: str, seq_of_parameters: Optional[List[Tuple]] = None) -> Any:
@@ -151,8 +151,8 @@ class MockSQLiteConnection:
         self.database = database
         self._provider = provider
 
-    def execute(self, sql: str, parameters: Tuple = ()) -> Any:
-        return self._provider.execute(self, sql, parameters)
+    def execute_sql_statement(self, sql: str, parameters: Tuple = ()) -> Any:
+        return self._provider.execute_sql_statement(self, sql, parameters)
 
     def executemany(self, sql: str, seq_of_parameters: Optional[List[Tuple]] = None) -> Any:
         return self._provider.executemany(self, sql, seq_of_parameters)

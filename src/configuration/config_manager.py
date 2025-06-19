@@ -231,6 +231,7 @@ class FileLoader:
             runtime_config={}  # 実行時設定は後で注入される
         )
 
+
         return merged_config
 
     def _load_system_configs(self, system_config_dir: Path) -> dict:
@@ -340,17 +341,18 @@ class FileLoader:
         """JSONファイル読み込み（共通機能）- 依存性注入版"""
         json_provider = self._get_json_provider()
         if json_provider is None:
-            # インフラストラクチャが利用できない場合は空辞書を返す
-            return {}
+            # インフラストラクチャが利用できない場合は適切なエラーを発生
+            raise RuntimeError("JSONプロバイダーが注入されていません。DIコンテナの設定を確認してください。")
 
         try:
-            if Path(file_path).exists():
-                with open(file_path, encoding='utf-8') as f:
-                    return json_provider.load(f)
-        except (FileNotFoundError, Exception):
-            # サイレントな失敗（既存loaderと同じ動作）
-            pass
-        return {}
+            if not Path(file_path).exists():
+                return {}
+
+            with open(file_path, encoding='utf-8') as f:
+                return json_provider.load(f)
+        except (FileNotFoundError, Exception) as e:
+            # エラーは適切に報告する
+            raise RuntimeError(f"JSONファイル読み込みエラー: {file_path} - {e}") from e
 
     def load_yaml_file(self, file_path: str) -> dict:
         """YAMLファイル読み込み（将来拡張用）- 現在は無効化"""

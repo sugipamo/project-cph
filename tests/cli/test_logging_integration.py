@@ -31,7 +31,7 @@ class TestLoggingIntegration:
 
         # テスト実行（インフラとログを注入）
         app = MinimalCLIApp(infrastructure=mock_infrastructure, logger=mock_logger)
-        result = app.run(["python", "test", "abc301", "a"])
+        result = app.run_cli_application(["python", "test", "abc301", "a"])
 
         # ログ注入の確認
         assert app.logger is mock_logger
@@ -66,7 +66,7 @@ class TestLoggingIntegration:
 
         # テスト実行
         app = MinimalCLIApp()
-        result = app.run(["python", "test", "abc301", "a"])
+        result = app.run_cli_application(["python", "test", "abc301", "a"])
 
         # 失敗ログの確認
         mock_logger.error.assert_any_call("CLI実行失敗")
@@ -167,7 +167,7 @@ class TestLoggingIntegration:
         with patch('src.cli.cli_app.parse_user_input') as mock_parse:
             mock_parse.side_effect = Exception("テスト例外")
 
-            result = app.run(["test"])
+            result = app.run_cli_application(["test"])
 
             # インフラストラクチャとログが自動設定されることを確認
             assert app.infrastructure is mock_infrastructure

@@ -40,7 +40,7 @@ class TestMinimalCLIApp:
 
         # テスト実行
         app = MinimalCLIApp()
-        result = app.run(["python", "test", "abc301", "a"])
+        result = app.run_cli_application(["python", "test", "abc301", "a"])
 
         # アサーション
         assert result == 0
@@ -73,7 +73,7 @@ class TestMinimalCLIApp:
 
         # テスト実行
         app = MinimalCLIApp()
-        result = app.run(["python", "test", "abc301", "a"])
+        result = app.run_cli_application(["python", "test", "abc301", "a"])
 
         # アサーション
         assert result == 1
@@ -86,7 +86,7 @@ class TestMinimalCLIApp:
 
         # テスト実行
         app = MinimalCLIApp()
-        result = app.run(["python", "test", "abc301", "a"])
+        result = app.run_cli_application(["python", "test", "abc301", "a"])
 
         # アサーション
         assert result == 1
@@ -102,7 +102,7 @@ class TestMinimalCLIApp:
 
         # テスト実行
         app = MinimalCLIApp()
-        result = app.run(["invalid", "args"])
+        result = app.run_cli_application(["invalid", "args"])
 
         # アサーション
         assert result == 1
@@ -182,7 +182,7 @@ class TestCLIIntegration:
 
                 # テスト実行
                 app = MinimalCLIApp()
-                result = app.run(["python", "test", "abc301", "a"])
+                result = app.run_cli_application(["python", "test", "abc301", "a"])
 
                 # DI注入とワークフロー構築が正常に動作することを確認
                 assert app.infrastructure is not None

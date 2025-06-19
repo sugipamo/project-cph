@@ -120,7 +120,7 @@ class TestEnhancedErrorHandling:
         mock_build_infra.side_effect = Exception("DI初期化エラー")
 
         app = MinimalCLIApp()
-        result = app.run(["test"])
+        result = app.run_cli_application(["test"])
 
         # エラーが適切に処理されることを確認
         assert result == 1
@@ -133,7 +133,7 @@ class TestEnhancedErrorHandling:
         mock_parse.side_effect = ValueError("無効な引数")
 
         app = MinimalCLIApp()
-        result = app.run(["invalid"])
+        result = app.run_cli_application(["invalid"])
 
         # エラーが適切に処理されることを確認
         assert result == 1
@@ -167,7 +167,7 @@ class TestErrorHandlingIntegration:
         with patch.object(app, '_handle_composite_step_failure') as mock_handle:
             mock_handle.return_value = 1
 
-            result = app.run(["test"])
+            result = app.run_cli_application(["test"])
 
             # CompositeStepFailureErrorが適切に処理されることを確認
             assert result == 1
@@ -201,7 +201,7 @@ class TestErrorHandlingIntegration:
 
         # テスト実行
         app = MinimalCLIApp()
-        result = app.run(["test"])
+        result = app.run_cli_application(["test"])
 
         # 失敗コードを返すことを確認
         assert result == 1

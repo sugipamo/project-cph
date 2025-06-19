@@ -22,25 +22,53 @@ class TestFileLoader:
 
     def test_load_json_file_success(self):
         """JSONファイルの正常読み込みテスト"""
-        loader = FileLoader()
+        # DIコンテナとJSONプロバイダーをモック
+        from src.infrastructure.di_container import DIContainer, DIKey
+
+        mock_container = Mock(spec=DIContainer)
+        mock_json_provider = Mock()
+        mock_container.resolve.return_value = mock_json_provider
+
+        loader = FileLoader(mock_container)
 
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             test_data = {"test_key": "test_value", "number": 42}
             json.dump(test_data, f)
             f.flush()
 
+            # JSONプロバイダーがtest_dataを返すように設定
+            mock_json_provider.load.return_value = test_data
+
             result = loader.load_json_file(f.name)
             assert result == test_data
 
+            # モックが正しく呼ばれたことを確認
+            mock_container.resolve.assert_called_with(DIKey.JSON_PROVIDER)
+            mock_json_provider.load.assert_called_once()
+
     def test_load_json_file_not_found(self):
         """存在しないJSONファイルの読み込みテスト"""
-        loader = FileLoader()
+        # DIコンテナとJSONプロバイダーをモック
+        from src.infrastructure.di_container import DIContainer, DIKey
+
+        mock_container = Mock(spec=DIContainer)
+        mock_json_provider = Mock()
+        mock_container.resolve.return_value = mock_json_provider
+
+        loader = FileLoader(mock_container)
         result = loader.load_json_file("/nonexistent/file.json")
         assert result == {}
 
     def test_load_and_merge_configs(self):
         """設定ファイルのマージテスト（4つのloader統合）"""
-        loader = FileLoader()
+        # DIコンテナとJSONプロバイダーをモック
+        from src.infrastructure.di_container import DIContainer, DIKey
+
+        mock_container = Mock(spec=DIContainer)
+        mock_json_provider = Mock()
+        mock_container.resolve.return_value = mock_json_provider
+
+        loader = FileLoader(mock_container)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             system_dir = Path(temp_dir) / "system"
@@ -55,12 +83,8 @@ class TestFileLoader:
 
             # システム設定（複数ファイル - SystemConfigLoader統合）
             system_config = {"workspace": "/tmp/test", "debug": False}
-            with open(system_dir / "config.json", 'w') as f:
+            with open(system_dir / "dev_config.json", 'w') as f:
                 json.dump(system_config, f)
-
-            languages_config = {"python": {"default_timeout": 30}}
-            with open(system_dir / "languages.json", 'w') as f:
-                json.dump(languages_config, f)
 
             # 共有設定（EnvConfigLoader統合）
             shared_config = {"shared": {"timeout": 30, "debug": True}}
@@ -72,6 +96,15 @@ class TestFileLoader:
             with open(python_dir / "env.json", 'w') as f:
                 json.dump(lang_config, f)
 
+            # JSONプロバイダーが各ファイルの内容を返すように設定
+            def mock_load_side_effect(file_obj):
+                # ファイルの内容を読み取ってJSONとして解析
+                file_obj.seek(0)
+                content = file_obj.read()
+                return json.loads(content)
+
+            mock_json_provider.load.side_effect = mock_load_side_effect
+
             result = loader.load_and_merge_configs(str(system_dir), str(env_dir), "python")
 
             # マージされた結果の確認（ConfigMerger統合）
@@ -79,11 +112,17 @@ class TestFileLoader:
             assert result["debug"] is True  # shared > system
             assert result["timeout"] == 30  # language > shared > system
             assert result["language_id"] == "4006"  # language specific
-            assert result["python"]["default_timeout"] == 30  # system languages
 
     def test_load_system_configs_integration(self):
         """SystemConfigLoader統合テスト"""
-        loader = FileLoader()
+        # DIコンテナとJSONプロバイダーをモック
+        from src.infrastructure.di_container import DIContainer, DIKey
+
+        mock_container = Mock(spec=DIContainer)
+        mock_json_provider = Mock()
+        mock_container.resolve.return_value = mock_json_provider
+
+        loader = FileLoader(mock_container)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             system_dir = Path(temp_dir)

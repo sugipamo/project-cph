@@ -73,14 +73,14 @@ def validate_file_path_format(file_path: str) -> tuple[bool, Optional[str]]:
         return False, "Path cannot be empty"
 
     # Normalize path to detect traversal attacks (simple string-based implementation)
-    normalized = _normalize_path_pure(file_path)
+    normalized = normalize_filesystem_path(file_path)
 
     # Check if normalized path contains parent directory references
     if normalized.startswith('..') or '/..' in normalized:
         return False, "Path traversal detected"
 
     # Reject absolute paths containing '..'
-    if _is_absolute_path_pure(file_path) and '..' in file_path:
+    if is_absolute_filesystem_path(file_path) and '..' in file_path:
         return False, "Absolute paths with '..' are not allowed"
 
     # Check for dangerous characters (extended version)
@@ -114,7 +114,7 @@ def parse_container_names(container_output: str) -> list[str]:
     return container_names
 
 
-def _normalize_path_pure(path: str) -> str:
+def normalize_filesystem_path(path: str) -> str:
     """Pure function implementation of path normalization
 
     Args:
@@ -150,7 +150,7 @@ def _normalize_path_pure(path: str) -> str:
     return result or '.'
 
 
-def _is_absolute_path_pure(path: str) -> bool:
+def is_absolute_filesystem_path(path: str) -> bool:
     """Pure function implementation of absolute path detection
 
     Args:

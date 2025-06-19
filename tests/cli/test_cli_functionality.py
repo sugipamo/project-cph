@@ -24,7 +24,7 @@ class TestCLIDIInjection:
             with patch.object(app, '_execute_workflow') as mock_execute:
                 mock_execute.return_value = MagicMock(success=True, errors=[], warnings=[])
 
-                app.run(["test"])
+                app.run_cli_application(["test"])
 
                 # DIコンテナが正しく設定されていることを確認
                 assert app.infrastructure is mock_container
@@ -43,7 +43,7 @@ class TestCLIDIInjection:
             mock_execute.return_value = MagicMock(success=True, errors=[], warnings=[])
 
             args = ["python", "test", "abc301", "a"]
-            app.run(args)
+            app.run_cli_application(args)
 
             # parse_user_inputにインフラストラクチャが渡されることを確認
             mock_parse.assert_called_once_with(args, mock_container)
@@ -67,7 +67,7 @@ class TestCLIWorkflowConstruction:
         mock_service.execute_workflow.return_value = MagicMock(success=True, errors=[], warnings=[])
 
         app = MinimalCLIApp()
-        app.run(["test"])
+        app.run_cli_application(["test"])
 
         # WorkflowExecutionServiceがコンテキストとインフラで作成されることを確認
         mock_service_class.assert_called_once_with(mock_context, mock_container)
@@ -88,7 +88,7 @@ class TestCLIWorkflowConstruction:
         mock_service.execute_workflow.return_value = mock_result
 
         app = MinimalCLIApp()
-        result = app.run(["test"])
+        result = app.run_cli_application(["test"])
 
         # ワークフローが実行されることを確認
         mock_service.execute_workflow.assert_called_once()
@@ -104,7 +104,7 @@ class TestCLIErrorHandling:
         mock_build_infra.side_effect = Exception("DI初期化エラー")
 
         app = MinimalCLIApp()
-        result = app.run(["test"])
+        result = app.run_cli_application(["test"])
 
         assert result == 1  # エラー時は1を返す
 
@@ -116,7 +116,7 @@ class TestCLIErrorHandling:
         mock_parse.side_effect = ValueError("引数解析エラー")
 
         app = MinimalCLIApp()
-        result = app.run(["invalid"])
+        result = app.run_cli_application(["invalid"])
 
         assert result == 1  # エラー時は1を返す
 
@@ -132,7 +132,7 @@ class TestCLIErrorHandling:
         mock_service_class.return_value = mock_service
 
         app = MinimalCLIApp()
-        result = app.run(["test"])
+        result = app.run_cli_application(["test"])
 
         assert result == 1  # エラー時は1を返す
 
@@ -145,10 +145,10 @@ class TestCLIMinimalFeatures:
         app = MinimalCLIApp()
 
         # 必要なメソッドの存在確認
-        assert hasattr(app, 'run')
+        assert hasattr(app, 'run_cli_application')
         assert hasattr(app, '_execute_workflow')
         assert hasattr(app, '_present_results')
-        assert callable(app.run)
+        assert callable(app.run_cli_application)
         assert callable(app._execute_workflow)
         assert callable(app._present_results)
 

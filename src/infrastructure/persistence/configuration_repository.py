@@ -103,7 +103,7 @@ class ConfigurationRepository:
         Returns:
             Optional[str]: 設定値（存在しない場合はNone）
         """
-        cursor = self._sqlite_provider.execute(
+        cursor = self._sqlite_provider.execute_sql_statement(
             conn,
             "SELECT config_value FROM system_config WHERE config_key = ?",
             (key,)
@@ -128,7 +128,7 @@ class ConfigurationRepository:
         """
         json_value = self._json_provider.dumps(value)
 
-        self._sqlite_provider.execute(conn, """
+        self._sqlite_provider.execute_sql_statement(conn, """
             INSERT OR REPLACE INTO system_config (config_key, config_value)
             VALUES (?, ?)
         """, (key, json_value))
@@ -145,7 +145,7 @@ class ConfigurationRepository:
         try:
             conn = self._sqlite_provider.connect(self.db_path)
             try:
-                cursor = self._sqlite_provider.execute(conn, "SELECT config_key FROM system_config", ())
+                cursor = self._sqlite_provider.execute_sql_statement(conn, "SELECT config_key FROM system_config", ())
                 rows = self._sqlite_provider.fetchall(cursor)
                 return [row[0] for row in rows]
             finally:

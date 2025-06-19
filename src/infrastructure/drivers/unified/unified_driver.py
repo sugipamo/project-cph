@@ -55,7 +55,7 @@ class UnifiedDriver:
             self._python_driver = self.infrastructure.resolve(DIKey.PYTHON_DRIVER)
         return self._python_driver
 
-    def execute(self, request: OperationRequestFoundation) -> OperationResult:
+    def execute_operation_request(self, request: OperationRequestFoundation) -> OperationResult:
         """Execute a request using the appropriate driver
 
         Args:

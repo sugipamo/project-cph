@@ -32,7 +32,7 @@ class TestConfigFileLoading:
 
         # テスト実行
         app = MinimalCLIApp(infrastructure=mock_infrastructure, logger=mock_logger)
-        result = app.run(["python", "test", "abc301", "a"])
+        result = app.run_cli_application(["python", "test", "abc301", "a"])
 
         # 設定システムを経由してparse_user_inputが呼ばれることを確認
         mock_parse.assert_called_once_with(["python", "test", "abc301", "a"], mock_infrastructure)
@@ -238,7 +238,7 @@ class TestConfigSystemIntegration:
 
         # CLI実行
         app = MinimalCLIApp(infrastructure=mock_infrastructure, logger=mock_logger)
-        result = app.run(["python", "test", "abc301", "a"])
+        result = app.run_cli_application(["python", "test", "abc301", "a"])
 
         # 成功することを確認
         assert result == 0

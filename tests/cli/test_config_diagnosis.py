@@ -9,7 +9,9 @@ class TestConfigSystemDiagnosis:
 
     def test_config_loading_diagnosis(self):
         """設定システムの読み込み診断"""
-        config_manager = TypeSafeConfigNodeManager()
+        from src.infrastructure.build_infrastructure import build_mock_infrastructure
+        infrastructure = build_mock_infrastructure()
+        config_manager = TypeSafeConfigNodeManager(infrastructure)
 
         # 設定ファイル読み込みの詳細診断
         try:
@@ -24,7 +26,9 @@ class TestConfigSystemDiagnosis:
 
     def test_root_node_structure(self):
         """ルートノード構造の診断"""
-        config_manager = TypeSafeConfigNodeManager()
+        from src.infrastructure.build_infrastructure import build_mock_infrastructure
+        infrastructure = build_mock_infrastructure()
+        config_manager = TypeSafeConfigNodeManager(infrastructure)
 
         try:
             config_manager.load_from_files(
@@ -46,7 +50,9 @@ class TestConfigSystemDiagnosis:
 
     def test_available_config_paths(self):
         """利用可能な設定パスの確認"""
-        config_manager = TypeSafeConfigNodeManager()
+        from src.infrastructure.build_infrastructure import build_mock_infrastructure
+        infrastructure = build_mock_infrastructure()
+        config_manager = TypeSafeConfigNodeManager(infrastructure)
 
         try:
             config_manager.load_from_files(
@@ -54,6 +60,7 @@ class TestConfigSystemDiagnosis:
                 env_dir="contest_env",
                 language="python"
             )
+
 
             # 既知の設定パスをテスト
             test_paths = [
@@ -101,7 +108,9 @@ class TestConfigSystemDiagnosis:
 
     def test_specific_config_values(self):
         """具体的な設定値の確認"""
-        config_manager = TypeSafeConfigNodeManager()
+        from src.infrastructure.build_infrastructure import build_mock_infrastructure
+        infrastructure = build_mock_infrastructure()
+        config_manager = TypeSafeConfigNodeManager(infrastructure)
 
         try:
             config_manager.load_from_files(
@@ -201,7 +210,9 @@ class TestConfigSystemDiagnosis:
 
     def test_minimal_config_resolution(self):
         """最小限の設定解決テスト"""
-        config_manager = TypeSafeConfigNodeManager()
+        from src.infrastructure.build_infrastructure import build_mock_infrastructure
+        infrastructure = build_mock_infrastructure()
+        config_manager = TypeSafeConfigNodeManager(infrastructure)
 
         try:
             config_manager.load_from_files(
