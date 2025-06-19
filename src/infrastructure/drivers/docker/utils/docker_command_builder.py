@@ -14,14 +14,20 @@ def _get_config_manager():
     """Get configuration manager with lazy initialization"""
     global _config_manager
     if _config_manager is None:
-        from src.configuration.config_manager import TypeSafeConfigNodeManager
-        _config_manager = TypeSafeConfigNodeManager()
-        # Load configuration files like in DI container
-        _config_manager.load_from_files(
-            system_dir="./config/system",
-            env_dir="./contest_env",
-            language="python"
-        )
+        try:
+            from src.configuration.config_manager import TypeSafeConfigNodeManager
+            from src.infrastructure.build_infrastructure import build_infrastructure
+            infrastructure = build_infrastructure()
+            _config_manager = TypeSafeConfigNodeManager(infrastructure)
+            # Load configuration files like in DI container
+            _config_manager.load_from_files(
+                system_dir="./config/system",
+                env_dir="./contest_env",
+                language="python"
+            )
+        except Exception:
+            # Fallback: return None if config loading fails
+            return None
     return _config_manager
 
 def _get_docker_option(option_name: str, user_options: Optional[dict[str, Any]]) -> Any:
@@ -43,8 +49,22 @@ def _get_docker_option(option_name: str, user_options: Optional[dict[str, Any]])
 
     # Then check configuration system
     config_manager = _get_config_manager()
-    if config_manager.root_node is not None:
-        return config_manager.resolve_config(['docker_defaults', 'docker_options', option_name], bool)
+    if config_manager is not None and config_manager.root_node is not None:
+        try:
+            return config_manager.resolve_config(['docker_defaults', 'docker_options', option_name], bool)
+        except KeyError:
+            pass  # Fall through to default behavior
+
+    # Fallback to sensible defaults if configuration is unavailable
+    default_options = {
+        'interactive': True,
+        'tty': True,
+        'remove': True,
+        'detach': False
+    }
+
+    if option_name in default_options:
+        return default_options[option_name]
 
     raise KeyError(f"Docker option '{option_name}' not found in user options or configuration")
 

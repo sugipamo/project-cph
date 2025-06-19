@@ -115,8 +115,10 @@ class TestFileLoader:
 
     def test_load_system_configs_integration(self):
         """SystemConfigLoader統合テスト"""
-        # 実際のJSONプロバイダーを使用（fallback動作のテスト）
-        loader = FileLoader()
+        # Mock infrastructureを使用
+        from src.infrastructure.build_infrastructure import build_mock_infrastructure
+        infrastructure = build_mock_infrastructure()
+        loader = FileLoader(infrastructure)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             system_dir = Path(temp_dir)
@@ -143,7 +145,10 @@ class TestFileLoader:
 
     def test_load_env_configs_integration(self):
         """EnvConfigLoader統合テスト"""
-        loader = FileLoader()
+        # Mock infrastructureを使用
+        from src.infrastructure.build_infrastructure import build_mock_infrastructure
+        infrastructure = build_mock_infrastructure()
+        loader = FileLoader(infrastructure)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             env_dir = Path(temp_dir)
@@ -497,7 +502,9 @@ class TestIntegration:
                 json.dump(env_config, f)
 
             # TypeSafeConfigNodeManagerで実際に処理
-            manager = TypeSafeConfigNodeManager()
+            from src.infrastructure.build_infrastructure import build_mock_infrastructure
+            infrastructure = build_mock_infrastructure()
+            manager = TypeSafeConfigNodeManager(infrastructure)
             manager.load_from_files(str(system_dir), str(env_dir), "python")
 
             # 設定解決のテスト

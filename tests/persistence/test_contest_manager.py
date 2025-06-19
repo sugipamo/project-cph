@@ -150,26 +150,27 @@ class TestContestManager:
         manager = ContestManager(self.container, None)
         manager._env_json = {}  # Set to empty dict after init
 
-        # Mock file read response with valid JSON
-        mock_result = Mock(success=True, content='{"shared": {"test": true}}')
-        self.file_driver.mock_responses["READ:contest_env/shared/env.json"] = mock_result
+        # Use proper MockFileDriver from infrastructure instead of custom mock
+        from pathlib import Path
 
-        # Set up mock data for JSON provider to override actual file reading
+        from src.infrastructure.mock.mock_file_driver import MockFileDriver
+
+        # Create a proper mock file driver with the expected attributes
+        mock_file_driver = MockFileDriver(base_dir=Path.cwd())
+
+        # Add the test file content to the mock filesystem
+        # Use the same path resolution that FileRequest will use
+        test_path = mock_file_driver.base_dir / Path("contest_env/shared/env.json")
+        mock_file_driver._create_impl(test_path, '{"shared": {"test": true}}')
+
+        # Replace the file driver in container
         from src.infrastructure.di_container import DIKey
-        json_provider = self.container.resolve(DIKey.JSON_PROVIDER)
-        json_provider.add_mock_data("contest_env/shared/env.json", {"shared": {"test": True}})
-
-        # Debug: Check that the file driver is correctly set
-        assert manager.file_driver == self.file_driver
+        self.container.dependencies[DIKey.FILE_DRIVER] = mock_file_driver
+        self.container.dependencies["file_driver"] = mock_file_driver
 
         result = manager.env_json
 
-        # Debug: Check if the mock was called
-        executed_reads = [req for req in self.file_driver.executed_requests
-                         if hasattr(req, 'op') and req.op.name == "READ"]
-        print(f"Executed reads: {[req.path for req in executed_reads]}")
-
-        # The MockJsonProvider will parse the JSON correctly
+        # The result should be the mocked JSON content
         assert result == {"shared": {"test": True}}
 
     def test_file_driver_property(self):
