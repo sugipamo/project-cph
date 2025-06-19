@@ -14,7 +14,12 @@ import ast
 import glob
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Tuple
+
+# scripts/infrastructure modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from infrastructure.logger import Logger, create_logger
 
 
 @dataclass(frozen=True)
@@ -271,10 +276,13 @@ def check_file(file_path: str) -> List[QualityIssue]:
         )]
 
 
-def main():
+def main(logger: Logger = None):
     """メイン関数"""
+    if logger is None:
+        logger = create_logger()
+
     if len(sys.argv) < 2:
-        print("使用方法: python3 functional_quality_check.py <directory>")
+        logger.error("使用方法: python3 functional_quality_check.py <directory>")
         sys.exit(1)
 
     directory = sys.argv[1]
@@ -285,9 +293,8 @@ def main():
     warning_count = 0
     info_count = 0
 
-    print("🔍 関数型プログラミング品質チェック開始...")
-    print(f"📁 チェック対象: {len(python_files)} ファイル")
-    print()
+    logger.info("🔍 関数型プログラミング品質チェック開始...")
+    logger.info(f"📁 チェック対象: {len(python_files)} ファイル")
 
     for file_path in python_files:
         issues = check_file(file_path)
@@ -303,8 +310,7 @@ def main():
 
     # 結果表示
     if all_issues:
-        print("📋 検出された問題:")
-        print()
+        logger.info("📋 検出された問題:")
 
         # 種類別にグループ化
         by_type = {}
@@ -314,33 +320,29 @@ def main():
             by_type[issue.issue_type].append(issue)
 
         for issue_type, issues in by_type.items():
-            print(f"📌 {issue_type.upper()}:")
+            logger.info(f"📌 {issue_type.upper()}:")
             for issue in issues[:5]:  # 最初の5個のみ表示
                 severity_icon = "❌" if issue.severity == "error" else "⚠️" if issue.severity == "warning" else "💡"
-                print(f"  {severity_icon} {issue.file}:{issue.line} - {issue.description}")
+                logger.info(f"  {severity_icon} {issue.file}:{issue.line} - {issue.description}")
 
             if len(issues) > 5:
-                print(f"  ... 他 {len(issues) - 5} 件")
-            print()
+                logger.info(f"  ... 他 {len(issues) - 5} 件")
 
     # サマリー
-    print("📊 品質チェック結果:")
-    print(f"  ❌ エラー: {error_count}")
-    print(f"  ⚠️  警告: {warning_count}")
-    print(f"  💡 情報: {info_count}")
-    print(f"  📁 チェック済みファイル: {len(python_files)}")
+    logger.info("📊 品質チェック結果:")
+    logger.info(f"  ❌ エラー: {error_count}")
+    logger.info(f"  ⚠️  警告: {warning_count}")
+    logger.info(f"  💡 情報: {info_count}")
+    logger.info(f"  📁 チェック済みファイル: {len(python_files)}")
 
     if error_count > 0:
-        print()
-        print("💥 エラーが見つかりました。修正が必要です。")
+        logger.error("💥 エラーが見つかりました。修正が必要です。")
         sys.exit(1)
     elif warning_count > 0:
-        print()
-        print("⚠️  警告があります。品質向上のため修正を推奨します。")
+        logger.warning("⚠️  警告があります。品質向上のため修正を推奨します。")
         sys.exit(0)
     else:
-        print()
-        print("✅ 関数型プログラミング品質基準をクリアしています！")
+        logger.info("✅ 関数型プログラミング品質基準をクリアしています！")
         sys.exit(0)
 
 

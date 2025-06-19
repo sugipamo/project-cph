@@ -4,12 +4,16 @@ E2E Tests for cph.sh - Contest Problem Helper
 極シンプルなコマンド実行テスト
 """
 
-import shutil
-import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, List
+
+# scripts/infrastructure modules
+sys.path.insert(0, str(Path(__file__).parent))
+from infrastructure.command_executor import CommandExecutor, create_command_executor
+from infrastructure.file_handler import FileHandler, create_file_handler
+from infrastructure.logger import Logger, create_logger
 
 
 @dataclass
@@ -21,38 +25,41 @@ class TestStep:
 class E2ETester:
     """E2Eテスト実行クラス"""
 
-    def __init__(self, project_root: Path):
+    def __init__(self, project_root: Path, command_executor: CommandExecutor = None, logger: Logger = None, file_handler: FileHandler = None):
         self.project_root = project_root
+        self.command_executor = command_executor or create_command_executor()
+        self.logger = logger or create_logger()
+        self.file_handler = file_handler or create_file_handler()
 
     def cleanup_environment(self):
         """テスト環境のクリーンアップ"""
         dirs = ["contest_current", "contest_stock", "workspace"]
         for d in dirs:
             dir_path = self.project_root / d
-            if dir_path.exists():
-                shutil.rmtree(dir_path)
+            if self.file_handler.exists(dir_path):
+                self.file_handler.remove_dir(dir_path, recursive=True)
 
         db_file = self.project_root / "cph_history.db"
-        if db_file.exists():
-            db_file.unlink()
+        if self.file_handler.exists(db_file):
+            self.file_handler.remove_file(db_file)
 
     def check_test_files_exist(self) -> bool:
         """テストファイルの存在チェック"""
         test_dir = self.project_root / "contest_current" / "test"
-        if not test_dir.exists():
+        if not self.file_handler.exists(test_dir):
             return False
-        test_files = list(test_dir.glob("*.in"))
+        test_files = self.file_handler.glob("*.in", test_dir)
         return len(test_files) > 0
 
     def run_step(self, step: TestStep, cmd_index: int) -> None:
-        print(f"実行: {' '.join(step.command)}")
-        result = subprocess.run(
+        self.logger.info(f"実行: {' '.join(step.command)}")
+        result = self.command_executor.run(
             step.command,
-            cwd=self.project_root,
+            cwd=str(self.project_root),
             capture_output=True,
             text=True
         )
-        if result.returncode != 0:
+        if not result.success:
             raise RuntimeError(f"コマンド失敗: {result.stderr}\n結果: FAIL")
         return
 
@@ -68,8 +75,8 @@ class E2ETester:
         # 結果サマリー
         passed = sum(1 for r in results if r)
         total = len(results)
-        print("\n=== テスト結果サマリー ===")
-        print(f"結果: {passed}/{total} PASS")
+        self.logger.info("\n=== テスト結果サマリー ===")
+        self.logger.info(f"結果: {passed}/{total} PASS")
 
         return passed == total
 
@@ -77,10 +84,15 @@ def main(args):
     """E2Eテストのメイン実行関数"""
     project_root = Path(args.project_root)
 
-    print("=== cph.sh E2E Test 開始 ===")
+    # インフラストラクチャコンポーネントを初期化
+    logger = create_logger()
+    command_executor = create_command_executor()
+    file_handler = create_file_handler()
+
+    logger.info("=== cph.sh E2E Test 開始 ===")
 
     # テスター初期化
-    tester = E2ETester(project_root)
+    tester = E2ETester(project_root, command_executor, logger, file_handler)
 
     # run_step実行 - 何を実行するかが一目でわかる
     def run_step(cmd):
@@ -88,7 +100,7 @@ def main(args):
         return tester.run_step(step, 0)
 
     # 環境クリーンアップ
-    print("テスト環境をクリーンアップ中...")
+    logger.info("テスト環境をクリーンアップ中...")
     tester.cleanup_environment()
 
     # ステップ1: ABC300問題A(Python)をオープン
@@ -96,8 +108,9 @@ def main(args):
     if not tester.check_test_files_exist():
         raise RuntimeError("テストファイルが存在しません (ABC300 問題A)")
 
-    with open("contest_current/main.py", "a") as f:
-        f.write("raise Exception('test')")
+    main_py_path = project_root / "contest_current" / "main.py"
+    existing_content = file_handler.read_text(main_py_path)
+    file_handler.write_text(main_py_path, existing_content + "raise Exception('test')")
 
     # ステップ2: ABC301問題A(前回値)をオープン
     run_step(["./cph.sh", "abc301", "open", "a", "local"])
@@ -105,8 +118,8 @@ def main(args):
         raise RuntimeError("テストファイルが存在しません (ABC301 問題A)")
 
     # ステップ2直後: main.pyにraise Exception('test')が含まれていないことを確認
-    with open("contest_current/main.py") as f:
-        content = f.read()
+    main_py_path = project_root / "contest_current" / "main.py"
+    content = file_handler.read_text(main_py_path)
     assert "raise Exception('test')" not in content, "main.pyにraise Exception('test')が含まれています（ステップ2直後）"
 
     # ステップ3: テスト実行(全問題)
@@ -118,8 +131,8 @@ def main(args):
         raise RuntimeError("テストファイルが存在しません (ABC300 問題A 再オープン)")
 
     # ステップ4直後: main.pyにraise Exception('test')が含まれていることを確認
-    with open("contest_current/main.py") as f:
-        content = f.read()
+    main_py_path = project_root / "contest_current" / "main.py"
+    content = file_handler.read_text(main_py_path)
     assert "raise Exception('test')" in content, "main.pyにraise Exception('test')が含まれていません（ステップ4直後）"
 
     # ステップ5: テスト実行(問題A指定)
@@ -127,7 +140,7 @@ def main(args):
 
 
     # 以下はdockerでのテスト
-    print("テスト環境をクリーンアップ中...")
+    logger.info("テスト環境をクリーンアップ中...")
     tester.cleanup_environment()
 
     # ステップ1: ABC300問題A(Python)をオープン
@@ -135,8 +148,9 @@ def main(args):
     if not tester.check_test_files_exist():
         raise RuntimeError("テストファイルが存在しません (ABC300 問題A)")
 
-    with open("contest_current/main.py", "a") as f:
-        f.write("raise Exception('test')")
+    main_py_path = project_root / "contest_current" / "main.py"
+    existing_content = file_handler.read_text(main_py_path)
+    file_handler.write_text(main_py_path, existing_content + "raise Exception('test')")
 
     # ステップ2: ABC301問題A(前回値)をオープン
     run_step(["./cph.sh", "abc301", "open", "a", "docker"])
@@ -144,8 +158,8 @@ def main(args):
         raise RuntimeError("テストファイルが存在しません (ABC301 問題A)")
 
     # ステップ2直後: main.pyにraise Exception('test')が含まれていないことを確認
-    with open("contest_current/main.py") as f:
-        content = f.read()
+    main_py_path = project_root / "contest_current" / "main.py"
+    content = file_handler.read_text(main_py_path)
     assert "raise Exception('test')" not in content, "main.pyにraise Exception('test')が含まれています（ステップ2直後）"
 
     # ステップ3: テスト実行(全問題)
@@ -157,15 +171,15 @@ def main(args):
         raise RuntimeError("テストファイルが存在しません (ABC300 問題A 再オープン)")
 
     # ステップ4直後: main.pyにraise Exception('test')が含まれていることを確認
-    with open("contest_current/main.py") as f:
-        content = f.read()
+    main_py_path = project_root / "contest_current" / "main.py"
+    content = file_handler.read_text(main_py_path)
     assert "raise Exception('test')" in content, "main.pyにraise Exception('test')が含まれていません（ステップ4直後）"
 
     # ステップ5: テスト実行(問題A指定)
     run_step(["./cph.sh", "test", "a", "docker"])
 
-    print("\n=== テスト結果サマリー ===")
-    print("=== E2E Test 成功 ===")
+    logger.info("\n=== テスト結果サマリー ===")
+    logger.info("=== E2E Test 成功 ===")
     sys.exit(0)
 
 

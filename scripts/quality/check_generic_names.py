@@ -8,6 +8,10 @@ import sys
 from pathlib import Path
 from typing import List, Set
 
+# scripts/infrastructure modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from infrastructure.logger import Logger, create_logger
+
 # 汎用的すぎる名前のパターン（実用的なレベルに緩和）
 GENERIC_PATTERNS = {
     'variables': [
@@ -159,15 +163,18 @@ def check_file(file_path: Path) -> List[str]:
     except Exception as e:
         return [f"{file_path}: Error parsing file - {e}"]
 
-def main():
+def main(logger: Logger = None):
     """メイン処理"""
+    if logger is None:
+        logger = create_logger()
+
     if len(sys.argv) < 2:
-        print("Usage: python check_generic_names.py <directory>")
+        logger.error("Usage: python check_generic_names.py <directory>")
         sys.exit(1)
 
     search_dir = Path(sys.argv[1])
     if not search_dir.exists():
-        print(f"Directory not found: {search_dir}")
+        logger.error(f"Directory not found: {search_dir}")
         sys.exit(1)
 
     all_errors = []
@@ -182,22 +189,22 @@ def main():
         all_errors.extend(errors)
 
     if all_errors:
-        print("🚨 汎用的すぎる名前が見つかりました:")
+        logger.error("🚨 汎用的すぎる名前が見つかりました:")
         for error in all_errors[:20]:  # 最初の20個のみ表示
-            print(f"  {error}")
+            logger.error(f"  {error}")
 
         if len(all_errors) > 20:
-            print(f"  ... and {len(all_errors) - 20} more")
+            logger.error(f"  ... and {len(all_errors) - 20} more")
 
-        print("\n💡 改善例:")
-        print("  ❌ calculate_result_pure() -> ✅ calculate_result(), compute_total()")
-        print("  ❌ build_command_pure() -> ✅ build_docker_command(), create_command()")
-        print("  ❌ pure, var, tmp -> ✅ calculation_result, user_data, temp_file")
-        print("  ❌ thing, stuff -> ✅ payment_info, config_data")
+        logger.info("\n💡 改善例:")
+        logger.info("  ❌ calculate_result_pure() -> ✅ calculate_result(), compute_total()")
+        logger.info("  ❌ build_command_pure() -> ✅ build_docker_command(), create_command()")
+        logger.info("  ❌ pure, var, tmp -> ✅ calculation_result, user_data, temp_file")
+        logger.info("  ❌ thing, stuff -> ✅ payment_info, config_data")
 
         sys.exit(1)
     else:
-        print("✅ 汎用名チェック完了")
+        logger.info("✅ 汎用名チェック完了")
 
 if __name__ == "__main__":
     main()
