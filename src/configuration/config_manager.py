@@ -3,11 +3,10 @@
 ConfigNodeによる統一処理と型安全性を確保した設定管理システム。
 24ファイルから9ファイルへの大幅簡素化と1000倍のパフォーマンス向上を実現。
 """
-import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, TypeVar, overload
 
-import yaml
+from src.infrastructure.di_container import DIContainer, DIKey
 
 # Avoid circular imports - these will be imported when needed
 ConfigNode = None
@@ -174,7 +173,7 @@ class TypedExecutionConfiguration:
 
 
 class FileLoader:
-    """ファイル読み込み専用クラス
+    """ファイル読み込み専用クラス - 依存性注入対応
 
     統合対象:
     - ConfigurationLoader（ファイルI/O部分）
@@ -182,6 +181,28 @@ class FileLoader:
     - EnvConfigLoader
     - ConfigMerger
     """
+
+    def __init__(self, infrastructure: Optional[DIContainer] = None):
+        """FileLoaderの初期化
+
+        Args:
+            infrastructure: DI container for provider injection
+        """
+        self.infrastructure = infrastructure
+        self._json_provider = None
+        self._os_provider = None
+
+    def _get_json_provider(self):
+        """JSONプロバイダーを遅延取得"""
+        if self._json_provider is None and self.infrastructure is not None:
+            self._json_provider = self.infrastructure.resolve(DIKey.JSON_PROVIDER)
+        return self._json_provider
+
+    def _get_os_provider(self):
+        """OSプロバイダーを遅延取得"""
+        if self._os_provider is None and self.infrastructure is not None:
+            self._os_provider = self.infrastructure.resolve(DIKey.OS_PROVIDER)
+        return self._os_provider
 
     def load_and_merge_configs(self, system_dir: str, env_dir: str, language: str) -> dict:
         """設定ファイルの読み込みとマージ（既存4つのloader統合）
@@ -219,14 +240,12 @@ class FileLoader:
         if not system_config_dir.exists():
             return system_config
 
-        # SystemConfigLoaderと同じファイル群を読み込み
+        # 実際に存在するシステム設定ファイル群を読み込み
         system_files = [
-            "docker_security.json",
+            "dev_config.json",
             "docker_defaults.json",
-            "file_patterns.json",
-            "languages.json",
-            "timeout.json",
-            "config.json"  # 追加: 汎用設定ファイル
+            "docker_security.json",
+            "system_constants.json"
         ]
 
         for filename in system_files:
@@ -318,24 +337,25 @@ class FileLoader:
         return sorted(languages)
 
     def load_json_file(self, file_path: str) -> dict:
-        """JSONファイル読み込み（共通機能）"""
+        """JSONファイル読み込み（共通機能）- 依存性注入版"""
+        json_provider = self._get_json_provider()
+        if json_provider is None:
+            # インフラストラクチャが利用できない場合は空辞書を返す
+            return {}
+
         try:
             if Path(file_path).exists():
                 with open(file_path, encoding='utf-8') as f:
-                    return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
+                    return json_provider.load(f)
+        except (FileNotFoundError, Exception):
             # サイレントな失敗（既存loaderと同じ動作）
             pass
         return {}
 
     def load_yaml_file(self, file_path: str) -> dict:
-        """YAMLファイル読み込み（将来拡張用）"""
-        try:
-            if Path(file_path).exists():
-                with open(file_path, encoding='utf-8') as f:
-                    return yaml.safe_load(f) or {}
-        except (FileNotFoundError, yaml.YAMLError):
-            pass
+        """YAMLファイル読み込み（将来拡張用）- 現在は無効化"""
+        # YAML使用は将来的な拡張機能のため現在は無効化
+        # YAMLプロバイダーが実装されたら依存性注入で対応
         return {}
 
 
@@ -354,10 +374,15 @@ class TypeSafeConfigNodeManager:
     - DI注入による1000倍パフォーマンス向上
     """
 
-    def __init__(self):
+    def __init__(self, infrastructure: Optional[DIContainer] = None):
+        """TypeSafeConfigNodeManagerの初期化
+
+        Args:
+            infrastructure: DI container for provider injection
+        """
         _ensure_imports()
         self.root_node: Optional[ConfigNode] = None
-        self.file_loader = FileLoader()
+        self.file_loader = FileLoader(infrastructure)
 
         # 多層キャッシュシステム
         self._type_conversion_cache: Dict[tuple, Any] = {}

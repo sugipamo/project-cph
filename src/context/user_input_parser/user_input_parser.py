@@ -1,6 +1,3 @@
-import json
-import os
-
 # 新設定システムの統合
 from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.context.dockerfile_resolver import DockerfileResolver
@@ -8,6 +5,7 @@ from src.context.dockerfile_resolver import DockerfileResolver
 # from .execution_context import ExecutionContext  # 新システムで置き換え済み
 from src.context.parsers.validation_service import ValidationService
 from src.context.resolver.config_resolver import create_config_root_from_dict, resolve_by_match_desc
+from src.infrastructure.di_container import DIKey
 from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
 from src.operations.requests.file.file_op_type import FileOpType
 from src.operations.requests.file.file_request import FileRequest
@@ -16,9 +14,9 @@ CONTEST_ENV_DIR = "contest_env"
 
 
 def _create_execution_config(command_type=None, language=None, contest_name=None,
-                           problem_name=None, env_type=None):
+                           problem_name=None, env_type=None, infrastructure=None):
     """新設定システムを使用してExecutionConfigを作成するヘルパー関数"""
-    config_manager = TypeSafeConfigNodeManager()
+    config_manager = TypeSafeConfigNodeManager(infrastructure)
     config_manager.load_from_files(
         system_dir="./config/system",
         env_dir=CONTEST_ENV_DIR,
@@ -69,26 +67,26 @@ def _save_current_context_sqlite(infrastructure, context_info):
 
 
 
-def _parse_command_line_args(args, context, root):
+def _parse_command_line_args(args, context, root, infrastructure):
     """コマンドライン引数を解析する（柔軟な順序対応）"""
     # 柔軟なスキャン方式で各タイプを検出・削除
-    args, context = _scan_and_apply_language(args, context, root)
-    args, context = _scan_and_apply_env_type(args, context, root)
-    args, context = _scan_and_apply_command(args, context, root)
-    args, context = _apply_problem_name(args, context)
-    args, context = _apply_contest_name(args, context)
+    args, context = _scan_and_apply_language(args, context, root, infrastructure)
+    args, context = _scan_and_apply_env_type(args, context, root, infrastructure)
+    args, context = _scan_and_apply_command(args, context, root, infrastructure)
+    args, context = _apply_problem_name(args, context, infrastructure)
+    args, context = _apply_contest_name(args, context, infrastructure)
 
     return args, context
 
 
-def _scan_and_apply_language(args, context, root):
+def _scan_and_apply_language(args, context, root, infrastructure):
     """言語を全引数からスキャンして適用 - 引数で指定された場合のみ更新、なければ既存設定を保持"""
     # 実際の言語のみをターゲット（動的に取得）
     from pathlib import Path
 
     from src.configuration.config_manager import FileLoader
 
-    file_loader = FileLoader()
+    file_loader = FileLoader(infrastructure)
     valid_languages = set(file_loader.get_available_languages(Path("contest_env")))
 
     for idx, arg in enumerate(args):
@@ -103,6 +101,7 @@ def _scan_and_apply_language(args, context, root):
                     contest_name=context.contest_name,
                     problem_name=context.problem_name,
                     env_type=context.env_type,
+                    infrastructure=infrastructure
                 )
                 new_args = args[:idx] + args[idx+1:]
                 return new_args, new_context
@@ -116,7 +115,7 @@ def _apply_language(args, context, root):
     return _scan_and_apply_language(args, context, root)
 
 
-def _scan_and_apply_env_type(args, context, root):
+def _scan_and_apply_env_type(args, context, root, infrastructure):
     """環境タイプを全引数からスキャンして適用 - 引数で指定された場合のみ更新、なければ既存設定を保持"""
     if context.language:
         env_type_nodes = resolve_by_match_desc(root, [context.language, "env_types"])
@@ -131,6 +130,7 @@ def _scan_and_apply_env_type(args, context, root):
                             contest_name=context.contest_name,
                             problem_name=context.problem_name,
                             env_type=node.key,
+                            infrastructure=infrastructure
                                 )
                         new_args = args[:idx] + args[idx+1:]
                         return new_args, new_context
@@ -144,7 +144,7 @@ def _apply_env_type(args, context, root):
     return _scan_and_apply_env_type(args, context, root)
 
 
-def _scan_and_apply_command(args, context, root):
+def _scan_and_apply_command(args, context, root, infrastructure):
     """コマンドを全引数からスキャンして適用"""
     if context.language:
         command_nodes = resolve_by_match_desc(root, [context.language, "commands"])
@@ -159,6 +159,7 @@ def _scan_and_apply_command(args, context, root):
                             contest_name=context.contest_name,
                             problem_name=context.problem_name,
                             env_type=context.env_type,
+                            infrastructure=infrastructure
                                 )
                         new_args = args[:idx] + args[idx+1:]
                         return new_args, new_context
@@ -171,7 +172,7 @@ def _apply_command(args, context, root):
     return _scan_and_apply_command(args, context, root)
 
 
-def _apply_problem_name(args, context):
+def _apply_problem_name(args, context, infrastructure):
     """問題名の適用"""
     if args:
         problem_name = args.pop()
@@ -182,13 +183,14 @@ def _apply_problem_name(args, context):
             contest_name=context.contest_name,
             problem_name=problem_name,
             env_type=context.env_type,
+            infrastructure=infrastructure
         )
         return args, new_context
 
     return args, context
 
 
-def _apply_contest_name(args, context):
+def _apply_contest_name(args, context, infrastructure):
     """コンテスト名の適用"""
     if args:
         contest_name = args.pop()
@@ -199,6 +201,7 @@ def _apply_contest_name(args, context):
             contest_name=contest_name,
             problem_name=context.problem_name,
             env_type=context.env_type,
+            infrastructure=infrastructure
         )
         return args, new_context
 
@@ -206,14 +209,17 @@ def _apply_contest_name(args, context):
 
 
 def _load_shared_config(base_dir: str, infrastructure):
-    """共有設定を読み込む"""
+    """共有設定を読み込む（依存性注入版）"""
     file_driver = infrastructure.resolve("file_driver")
-    shared_path = os.path.join(base_dir, "shared", "env.json")
+    os_provider = infrastructure.resolve(DIKey.OS_PROVIDER)
+    json_provider = infrastructure.resolve(DIKey.JSON_PROVIDER)
+
+    shared_path = os_provider.path_join(base_dir, "shared", "env.json")
 
     try:
         req = FileRequest(FileOpType.READ, shared_path)
         result = req.execute_operation(driver=file_driver)
-        return json.loads(result.content)
+        return json_provider.loads(result.content)
     except Exception:
         return None
 
@@ -257,10 +263,10 @@ def parse_user_input(
     env_config = _resolve_environment_configuration(context_data, infrastructure)
 
     # 3. Create and configure initial context
-    context = _create_initial_context(context_data, env_config)
+    context = _create_initial_context(context_data, env_config, infrastructure)
 
     # 4. Parse command line arguments
-    args, context = _parse_command_line_args(args, context, env_config['root'])
+    args, context = _parse_command_line_args(args, context, env_config['root'], infrastructure)
 
     # 5. Handle contest management (removed - backup should be handled by runstep)
 
@@ -310,7 +316,7 @@ def _resolve_environment_configuration(context_data, infrastructure):
     }
 
 
-def _create_initial_context(context_data, env_config):
+def _create_initial_context(context_data, env_config, infrastructure):
     """Create and configure initial execution context."""
     context = _create_execution_config(
         command_type=context_data["command"],
@@ -318,6 +324,7 @@ def _create_initial_context(context_data, env_config):
         contest_name=context_data["contest_name"],
         problem_name=context_data["problem_name"],
         env_type=context_data["env_type"],
+        infrastructure=infrastructure
     )
     context.resolver = env_config['root']
     return context
@@ -381,7 +388,10 @@ def _setup_context_persistence_and_docker(context, args, infrastructure):
         "problem_name": context.problem_name,
     })
 
-    oj_dockerfile_path = os.path.join(os.path.dirname(__file__), "oj.Dockerfile")
+    # oj.Dockerfileのパスを依存性注入で取得
+    os_provider = infrastructure.resolve(DIKey.OS_PROVIDER)
+    current_file_dir = os_provider.path_dirname(__file__)
+    oj_dockerfile_path = os_provider.path_join(current_file_dir, "oj.Dockerfile")
     dockerfile_loader = make_dockerfile_loader(infrastructure)
     resolver = DockerfileResolver(
         dockerfile_path=None,

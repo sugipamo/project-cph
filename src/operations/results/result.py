@@ -1,5 +1,4 @@
 """Base result class for operation results."""
-import json
 from typing import Any, Optional
 
 
@@ -107,9 +106,17 @@ class OperationResult:
             'skipped': self.skipped,
         }
 
-    def to_json(self) -> str:
-        """Convert result to JSON string."""
-        return json.dumps(self.to_dict(), ensure_ascii=False, indent=2)
+    def to_json(self, json_provider=None) -> str:
+        """Convert result to JSON string.
+
+        Args:
+            json_provider: JSON provider (injected for dependency inversion)
+        """
+        if json_provider is None:
+            # デフォルト値禁止のため、単純な文字列表現にフォールバック
+            return str(self.to_dict())
+
+        return json_provider.dumps(self.to_dict(), ensure_ascii=False, indent=2)
 
     def summary(self) -> str:
         """Get a summary of the result."""

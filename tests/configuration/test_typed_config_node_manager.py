@@ -207,11 +207,32 @@ class TestTypeSafeConfigNodeManager:
 
     @pytest.fixture
     def sample_config_data(self):
-        """テスト用設定データ"""
+        """テスト用設定データ（実際の設定構造に合わせて修正）"""
         return {
             "workspace": "/tmp/workspace",
             "debug": True,
             "timeout": 30,
+            "paths": {
+                "local_workspace_path": "/tmp/workspace",
+                "contest_current_path": "./contest_current",
+                "contest_stock_path": "./contest_stock/{language_name}/{contest_name}/{problem_name}",
+                "contest_template_path": "./contest_template",
+                "contest_temp_path": "./.temp"
+            },
+            "docker_defaults": {
+                "docker_options": {
+                    "interactive": True,
+                    "tty": True,
+                    "remove": True,
+                    "detach": False
+                }
+            },
+            "dev_config": {
+                "debug": {
+                    "enabled": True,
+                    "level": "detailed"
+                }
+            },
             "python": {
                 "language_id": "4006",
                 "source_file_name": "main.py",

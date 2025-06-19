@@ -3,7 +3,6 @@
 Pure functions for string manipulation, template processing, and path validation.
 All functions are stateless with no side effects.
 """
-import os
 import re
 from typing import Optional
 
@@ -73,15 +72,15 @@ def validate_file_path_format(file_path: str) -> tuple[bool, Optional[str]]:
     if not file_path:
         return False, "Path cannot be empty"
 
-    # Normalize path to detect traversal attacks
-    normalized = os.path.normpath(file_path)
+    # Normalize path to detect traversal attacks (simple string-based implementation)
+    normalized = _normalize_path_pure(file_path)
 
     # Check if normalized path contains parent directory references
     if normalized.startswith('..') or '/..' in normalized:
         return False, "Path traversal detected"
 
     # Reject absolute paths containing '..'
-    if os.path.isabs(file_path) and '..' in file_path:
+    if _is_absolute_path_pure(file_path) and '..' in file_path:
         return False, "Absolute paths with '..' are not allowed"
 
     # Check for dangerous characters (extended version)
@@ -113,3 +112,59 @@ def parse_container_names(container_output: str) -> list[str]:
             container_names.append(parts[-1])
 
     return container_names
+
+
+def _normalize_path_pure(path: str) -> str:
+    """Pure function implementation of path normalization
+
+    Args:
+        path: Path to normalize
+
+    Returns:
+        Normalized path string
+    """
+    if not path:
+        return path
+
+    # Split by both / and \ to handle cross-platform paths
+    parts = path.replace('\\', '/').split('/')
+    normalized_parts = []
+
+    for part in parts:
+        if part == '' or part == '.':
+            continue
+        if part == '..':
+            if normalized_parts and normalized_parts[-1] != '..':
+                normalized_parts.pop()
+            else:
+                normalized_parts.append('..')
+        else:
+            normalized_parts.append(part)
+
+    result = '/'.join(normalized_parts)
+
+    # Preserve leading slash for absolute paths
+    if path.startswith('/'):
+        result = '/' + result
+
+    return result or '.'
+
+
+def _is_absolute_path_pure(path: str) -> bool:
+    """Pure function implementation of absolute path detection
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if path is absolute
+    """
+    if not path:
+        return False
+
+    # Unix-style absolute path
+    if path.startswith('/'):
+        return True
+
+    # Windows-style absolute path (C:, D:, etc.)
+    return bool(len(path) >= 2 and path[1] == ':' and path[0].isalpha())

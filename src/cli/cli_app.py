@@ -1,5 +1,4 @@
 """Minimal CLI application with DI container injection and workflow construction"""
-import sys
 import traceback
 from typing import Optional
 
@@ -66,22 +65,50 @@ class MinimalCLIApp:
             return 0 if result.success else 1
 
         except CompositeStepFailureError as e:
-            # ロガーが初期化されていない場合は標準エラー出力を使用
+            # ロガーが初期化されていない場合でも依存性注入で対応
+            if self.logger is None and self.infrastructure is not None:
+                try:
+                    self.logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
+                except Exception:
+                    # 最後の手段: output_managerを使用
+                    try:
+                        output_manager = self.infrastructure.resolve(DIKey.OUTPUT_MANAGER)
+                        output_manager.error(f"エラー: {e}")
+                        return 1
+                    except Exception:
+                        # infrastructureも失敗した場合は致命的エラー
+                        raise RuntimeError(f"Logger and infrastructure initialization failed: {e}")
+
             if self.logger is None:
-                print(f"エラー: {e}", file=sys.stderr)
-                return 1
+                # infrastructureも利用できない場合は致命的エラー
+                raise RuntimeError(f"Logger initialization failed: {e}")
+
             result = self._handle_composite_step_failure(e)
             # エラー時もログ出力をフラッシュ
             if self.logger and hasattr(self.logger, 'output_manager'):
                 self.logger.output_manager.flush()
             return result
         except Exception as e:
-            # ロガーが初期化されていない場合は標準エラー出力を使用
+            # ロガーが初期化されていない場合でも依存性注入で対応
+            if self.logger is None and self.infrastructure is not None:
+                try:
+                    self.logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
+                except Exception:
+                    # 最後の手段: output_managerを使用
+                    try:
+                        output_manager = self.infrastructure.resolve(DIKey.OUTPUT_MANAGER)
+                        output_manager.error(f"エラー: {e}")
+                        if "--debug" in args:
+                            output_manager.error(f"スタックトレース: {traceback.format_exc()}")
+                        return 1
+                    except Exception:
+                        # infrastructureも失敗した場合は致命的エラー
+                        raise RuntimeError(f"Logger and infrastructure initialization failed: {e}")
+
             if self.logger is None:
-                print(f"エラー: {e}", file=sys.stderr)
-                if "--debug" in args:
-                    traceback.print_exc()
-                return 1
+                # infrastructureも利用できない場合は致命的エラー
+                raise RuntimeError(f"Logger initialization failed: {e}")
+
             result = self._handle_general_exception(e, args)
             # エラー時もログ出力をフラッシュ
             if self.logger and hasattr(self.logger, 'output_manager'):
@@ -193,12 +220,31 @@ class MinimalCLIApp:
         return 1
 
 
-def main() -> None:
-    """Main entry point for minimal CLI"""
+def main(argv: Optional[list[str]] = None, exit_func=None) -> int:
+    """Main entry point for minimal CLI
+
+    Args:
+        argv: Command line arguments (injected for testability)
+        exit_func: Exit function (injected for testability)
+
+    Returns:
+        Exit code
+    """
     app = MinimalCLIApp()
-    exit_code = app.run(sys.argv[1:])
-    sys.exit(exit_code)
+
+    # デフォルト引数の処理は呼び出し元で行う
+    if argv is None:
+        raise ValueError("argv must be provided - no default values allowed")
+
+    exit_code = app.run(argv)
+
+    if exit_func is not None:
+        exit_func(exit_code)
+
+    return exit_code
 
 
 if __name__ == "__main__":
-    main()
+    # エントリーポイントでのみ副作用モジュールを使用
+    import sys
+    main(sys.argv[1:], sys.exit)

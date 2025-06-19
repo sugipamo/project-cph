@@ -16,7 +16,12 @@ def _get_config_manager():
     if _config_manager is None:
         from src.configuration.config_manager import TypeSafeConfigNodeManager
         _config_manager = TypeSafeConfigNodeManager()
-        # Configuration should be loaded by the caller
+        # Load configuration files like in DI container
+        _config_manager.load_from_files(
+            system_dir="./config/system",
+            env_dir="./contest_env",
+            language="python"
+        )
     return _config_manager
 
 def _get_docker_option(option_name: str, user_options: Optional[dict[str, Any]]) -> Any:
