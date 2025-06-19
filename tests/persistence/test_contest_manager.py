@@ -154,6 +154,11 @@ class TestContestManager:
         mock_result = Mock(success=True, content='{"shared": {"test": true}}')
         self.file_driver.mock_responses["READ:contest_env/shared/env.json"] = mock_result
 
+        # Set up mock data for JSON provider to override actual file reading
+        from src.infrastructure.di_container import DIKey
+        json_provider = self.container.resolve(DIKey.JSON_PROVIDER)
+        json_provider.add_mock_data("contest_env/shared/env.json", {"shared": {"test": True}})
+
         # Debug: Check that the file driver is correctly set
         assert manager.file_driver == self.file_driver
 

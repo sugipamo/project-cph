@@ -177,10 +177,10 @@ def _create_file_pattern_service(container: Any) -> Any:
 
 
 
-def _create_json_config_loader() -> Any:
+def _create_json_config_loader(container: Any) -> Any:
     """Lazy factory for JSON config loader."""
     from src.configuration.config_manager import TypeSafeConfigNodeManager
-    config_manager = TypeSafeConfigNodeManager()
+    config_manager = TypeSafeConfigNodeManager(infrastructure=container)
     # デフォルト設定をロード
     config_manager.load_from_files(
         system_dir="./config/system",
@@ -299,8 +299,8 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register("filesystem", _create_filesystem)
 
     # Register simplified workspace management
-    container.register("json_config_loader", _create_json_config_loader)
-    container.register("config_manager", _create_json_config_loader)  # config_managerエイリアスを追加
+    container.register("json_config_loader", lambda: _create_json_config_loader(container))
+    container.register("config_manager", lambda: _create_json_config_loader(container))  # config_managerエイリアスを追加
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("contest_manager", lambda: _create_contest_manager(container))
 
@@ -388,8 +388,8 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register("filesystem", _create_mock_filesystem)
 
     # Register simplified workspace management
-    container.register("json_config_loader", _create_json_config_loader)
-    container.register("config_manager", _create_json_config_loader)  # config_managerエイリアスを追加
+    container.register("json_config_loader", lambda: _create_json_config_loader(container))
+    container.register("config_manager", lambda: _create_json_config_loader(container))  # config_managerエイリアスを追加
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("contest_manager", lambda: _create_contest_manager(container))
 

@@ -6,7 +6,9 @@ from src.operations.results.result import OperationResult
 
 
 def test_dockerrequest_with_mockdriver():
-    driver = MockDockerDriver()
+    from src.infrastructure.providers import MockJsonProvider
+    json_provider = MockJsonProvider()
+    driver = MockDockerDriver(json_provider=json_provider)
     # RUN
     req = DockerRequest(DockerOpType.RUN, image="img", container="c")
     result = req.execute_operation(driver=driver)

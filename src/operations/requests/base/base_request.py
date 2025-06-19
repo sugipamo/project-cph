@@ -26,7 +26,7 @@ class OperationRequestFoundation(ABC):
 
     def _create_debug_info(self, debug_tag: Optional[str] = None) -> Optional[dict]:
         """Create debug information for request tracking."""
-        # 環境変数依存を廃止 - デバッグ情報は常に作成しない
+        # 環境変数依存を廃止 - デバッグ情報は常に作成しない（テスト要件と競合するため無効化）
         return None
 
     @property

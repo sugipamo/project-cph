@@ -80,7 +80,21 @@ class MockJsonProvider(JsonProvider):
         # ファイルパスをキーとして内部辞書から取得
         if hasattr(fp, 'name') and fp.name in self._mock_data:
             return self._mock_data[fp.name]
-        return {}
+
+        # パスの正規化バリアント確認
+        if hasattr(fp, 'name'):
+            import os
+            normalized_path = os.path.normpath(fp.name)
+            for mock_path in self._mock_data:
+                if os.path.normpath(mock_path) == normalized_path:
+                    return self._mock_data[mock_path]
+
+        # テスト環境では実際のファイルも読み込めるように
+        try:
+            import json
+            return json.load(fp, **kwargs)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
 
     def add_mock_data(self, key: str, data: Any) -> None:
         """テスト用データ追加"""

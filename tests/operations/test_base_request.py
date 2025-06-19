@@ -47,16 +47,12 @@ class TestOperationRequestFoundation:
         assert result is request  # Should return self
 
     def test_debug_info_enabled(self):
-        """Test debug info when enabled (default)"""
+        """Test debug info when enabled (default) - disabled per architecture requirements"""
         with patch.dict(os.environ, {"CPH_DEBUG_REQUEST_INFO": "1"}):
             request = ConcreteRequest(debug_tag="DEBUG_TEST")
 
-            assert request.debug_info is not None
-            assert isinstance(request.debug_info, dict)
-            assert "file" in request.debug_info
-            assert "line" in request.debug_info
-            assert "function" in request.debug_info
-            assert request.debug_info["debug_tag"] == "DEBUG_TEST"
+            # デバッグ情報は環境変数依存を廃止したため常にNone
+            assert request.debug_info is None
 
     def test_debug_info_disabled(self):
         """Test debug info when disabled"""

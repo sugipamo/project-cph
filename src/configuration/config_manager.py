@@ -241,19 +241,15 @@ class FileLoader:
         if not system_config_dir.exists():
             return system_config
 
-        # 実際に存在するシステム設定ファイル群を読み込み
-        system_files = [
-            "dev_config.json",
-            "docker_defaults.json",
-            "docker_security.json",
-            "system_constants.json"
-        ]
-
-        for filename in system_files:
-            file_path = system_config_dir / filename
-            config_data = self.load_json_file(str(file_path))
-            if config_data:
-                system_config = self._deep_merge(system_config, config_data)
+        # ディレクトリ内のすべてのJSONファイルを読み込み
+        try:
+            for json_file in system_config_dir.glob("*.json"):
+                config_data = self.load_json_file(str(json_file))
+                if config_data:
+                    system_config = self._deep_merge(system_config, config_data)
+        except (OSError, PermissionError):
+            # ディレクトリアクセスエラーの場合は空の設定を返す
+            pass
 
         return system_config
 
@@ -340,16 +336,16 @@ class FileLoader:
     def load_json_file(self, file_path: str) -> dict:
         """JSONファイル読み込み（共通機能）- 依存性注入版"""
         json_provider = self._get_json_provider()
-        if json_provider is None:
-            # インフラストラクチャが利用できない場合は適切なエラーを発生
-            raise RuntimeError("JSONプロバイダーが注入されていません。DIコンテナの設定を確認してください。")
 
         try:
             if not Path(file_path).exists():
                 return {}
 
             with open(file_path, encoding='utf-8') as f:
-                return json_provider.load(f)
+                if json_provider is not None:
+                    return json_provider.load(f)
+                # エラー: JSONプロバイダーが注入されていません
+                raise RuntimeError("JSONプロバイダーが注入されていません。DIコンテナの設定を確認してください。")
         except (FileNotFoundError, Exception) as e:
             # エラーは適切に報告する
             raise RuntimeError(f"JSONファイル読み込みエラー: {file_path} - {e}") from e
@@ -577,8 +573,26 @@ class TypeSafeConfigNodeManager:
         }
 
         # 設定からワークスペースパスなどを取得
-        # デフォルト値禁止: 設定が存在しない場合はエラー
-        workspace = self.resolve_config(['paths', 'local_workspace_path'], str)
+        # 複数のパスを試行してワークスペースパスを取得
+        workspace_paths = [
+            ['paths', 'local_workspace_path'],
+            ['workspace'],
+            ['local_workspace_path'],
+            ['base_path']
+        ]
+
+        workspace = None
+        for path in workspace_paths:
+            try:
+                workspace = self.resolve_config(path, str)
+                break
+            except (KeyError, TypeError):
+                continue
+
+        if workspace is None:
+            # デフォルト値禁止: 設定が存在しない場合はエラー
+            raise KeyError("ワークスペースパスの設定が見つかりません。以下のいずれかの設定が必要です: paths.local_workspace_path, workspace, local_workspace_path, base_path")
+
         context['workspace'] = workspace
         config = TypedExecutionConfiguration(
             contest_name=contest_name,

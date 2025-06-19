@@ -66,7 +66,7 @@ class TestGenerateWorkflowFromJson:
         mock_validate.assert_called_once_with([test_step])
         mock_resolve.assert_called_once_with([test_step], context)
         mock_optimize.assert_called_once_with([test_step])
-        mock_steps_to_requests.assert_called_once_with([test_step], operations)
+        mock_steps_to_requests.assert_called_once_with([test_step], context, operations)
 
     @patch('src.workflow.step.workflow.generate_steps_from_json')
     @patch('src.workflow.step.workflow.CompositeRequest')

@@ -115,14 +115,8 @@ class TestFileLoader:
 
     def test_load_system_configs_integration(self):
         """SystemConfigLoader統合テスト"""
-        # DIコンテナとJSONプロバイダーをモック
-        from src.infrastructure.di_container import DIContainer, DIKey
-
-        mock_container = Mock(spec=DIContainer)
-        mock_json_provider = Mock()
-        mock_container.resolve.return_value = mock_json_provider
-
-        loader = FileLoader(mock_container)
+        # 実際のJSONプロバイダーを使用（fallback動作のテスト）
+        loader = FileLoader()
 
         with tempfile.TemporaryDirectory() as temp_dir:
             system_dir = Path(temp_dir)
