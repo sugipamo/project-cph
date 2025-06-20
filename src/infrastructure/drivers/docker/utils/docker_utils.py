@@ -64,13 +64,19 @@ class DockerUtils:
             Formatted container name
         """
         # Remove invalid characters and replace with underscores
+        if not name:
+            raise ValueError("Container name cannot be empty")
         formatted = "".join(c if c.isalnum() or c in "-_" else "_" for c in name)
 
         # Ensure it doesn't start with a number or special character
         if formatted and not formatted[0].isalpha():
             formatted = "container_" + formatted
 
-        return formatted or "default_container"
+        if not formatted:
+            # 設定から取得するか、適切なエラーを発生させる
+            raise ValueError(f"Invalid container name provided: '{name}'. Cannot generate valid container name.")
+
+        return formatted
 
     @staticmethod
     def validate_image_name(image: str) -> bool:

@@ -1,6 +1,9 @@
 """Mock output manager for testing."""
 
+import contextlib
 from typing import List, Optional, Union
+
+from src.infrastructure.di_container import DIContainer, DIKey
 
 from .format_info import FormatInfo
 from .interfaces.output_manager_interface import OutputManagerInterface
@@ -20,6 +23,11 @@ class MockOutputManager(OutputManagerInterface):
         self.entries: List[LogEntry] = []
         self.captured_outputs: List[str] = []
         self.flush_calls: int = 0
+        self._config_manager = None
+
+        # Get configuration through DI container
+        with contextlib.suppress(Exception):
+            self._config_manager = DIContainer.resolve("config_manager")
 
     def add(
         self,
@@ -33,7 +41,20 @@ class MockOutputManager(OutputManagerInterface):
         self.entries.append(entry)
 
         if realtime:
-            output_text = message.output() if isinstance(message, OutputManagerInterface) else str(message)
+            if isinstance(message, OutputManagerInterface):
+                output_text = message.output()
+            else:
+                # Get default output text from configuration
+                try:
+                    if self._config_manager:
+                        default_output = self._config_manager.resolve_config(
+                            ['logging_config', 'mock_output', 'default_output_text'], str
+                        )
+                        output_text = str(message) if str(message) else default_output
+                    else:
+                        raise KeyError("Config manager not available")
+                except (KeyError, Exception):
+                    raise ValueError("Mock output default text configuration not found")
             self.captured_outputs.append(output_text)
 
     def _should_log(self, level: LogLevel) -> bool:

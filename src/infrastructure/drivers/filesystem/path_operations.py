@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import Union
 
+from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.operations.types.path_types import PathOperationResult
 
 
@@ -14,8 +15,21 @@ class PathOperations:
     シンプルなAPI（例外ベース）と詳細なAPI（結果型ベース）の両方を提供
     """
 
-    @staticmethod
-    def resolve_path(base_dir: Union[str, Path],
+    def __init__(self, config_manager: TypeSafeConfigNodeManager):
+        """Initialize PathOperations with configuration manager."""
+        self.config_manager = config_manager
+
+    def _get_default_workspace_path(self) -> str:
+        """設定からデフォルトワークスペースパスを取得"""
+        try:
+            return self.config_manager.resolve_config(
+                ['filesystem_config', 'default_paths', 'workspace'],
+                str
+            )
+        except KeyError:
+            raise ValueError("No default workspace path configured")
+
+    def resolve_path(self, base_dir: Union[str, Path],
                     target_path: Union[str, Path],
                     strict: bool = False) -> Union[str, PathOperationResult]:
         """パスを解決する"""
@@ -39,8 +53,10 @@ class PathOperations:
                         result=None,
                         errors=errors,
                         warnings=warnings,
-                        metadata={"base_dir": str(base_dir) if base_dir is not None else "None",
-                                "target_path": str(target_path) if target_path is not None else "None"}
+                        metadata={
+                            "base_dir": str(base_dir) if base_dir is not None else self._get_default_workspace_path(),
+                            "target_path": str(target_path) if target_path is not None else self._get_default_workspace_path()
+                        }
                     )
                 raise ValueError(errors[0])
 
@@ -77,21 +93,26 @@ class PathOperations:
                 )
             raise
 
-    @staticmethod
-    def normalize_path(path: Union[str, Path], strict: bool = False) -> Union[str, PathOperationResult]:
+    def normalize_path(self, path: Union[str, Path], strict: bool = False) -> Union[str, PathOperationResult]:
         """パスを正規化する"""
         try:
             if path is None:
-                error_msg = "Path cannot be None"
-                if strict:
-                    return PathOperationResult(
-                        success=False,
-                        result=None,
-                        errors=[error_msg],
-                        warnings=[],
-                        metadata={}
+                try:
+                    path = self.config_manager.resolve_config(
+                        ['filesystem_config', 'default_paths', 'workspace'],
+                        str
                     )
-                raise ValueError(error_msg)
+                except KeyError:
+                    error_msg = "Path cannot be None and no default path configured"
+                    if strict:
+                        return PathOperationResult(
+                            success=False,
+                            result=None,
+                            errors=[error_msg],
+                            warnings=[],
+                            metadata={}
+                        )
+                    raise ValueError(error_msg)
 
             normalized = os.path.normpath(str(path))
 
@@ -116,8 +137,7 @@ class PathOperations:
                 )
             raise
 
-    @staticmethod
-    def safe_path_join(*paths: Union[str, Path], strict: bool = False) -> Union[str, PathOperationResult]:
+    def safe_path_join(self, *paths: Union[str, Path], strict: bool = False) -> Union[str, PathOperationResult]:
         """安全にパスを結合する"""
         try:
             if not paths:
@@ -177,8 +197,7 @@ class PathOperations:
                 )
             raise
 
-    @staticmethod
-    def get_relative_path(target: Union[str, Path],
+    def get_relative_path(self, target: Union[str, Path],
                          base: Union[str, Path],
                          strict: bool = False) -> Union[str, PathOperationResult]:
         """baseからtargetへの相対パスを取得"""
@@ -224,8 +243,7 @@ class PathOperations:
                 )
             raise
 
-    @staticmethod
-    def is_subdirectory(child: Union[str, Path],
+    def is_subdirectory(self, child: Union[str, Path],
                        parent: Union[str, Path],
                        strict: bool = False) -> Union[bool, tuple]:
         """childがparentのサブディレクトリかどうかチェック"""
@@ -262,8 +280,7 @@ class PathOperations:
                 return False, operation_result
             raise
 
-    @staticmethod
-    def ensure_parent_dir(file_path: Union[str, Path],
+    def ensure_parent_dir(self, file_path: Union[str, Path],
                          strict: bool = False) -> Union[str, PathOperationResult]:
         """ファイルの親ディレクトリを作成"""
         try:
@@ -296,8 +313,7 @@ class PathOperations:
                 )
             raise
 
-    @staticmethod
-    def get_file_extension(file_path: Union[str, Path],
+    def get_file_extension(self, file_path: Union[str, Path],
                           strict: bool = False) -> Union[str, PathOperationResult]:
         """ファイルの拡張子を取得"""
         try:
@@ -325,8 +341,7 @@ class PathOperations:
                 )
             raise
 
-    @staticmethod
-    def change_extension(file_path: Union[str, Path],
+    def change_extension(self, file_path: Union[str, Path],
                         new_extension: str,
                         strict: bool = False) -> Union[str, PathOperationResult]:
         """ファイルの拡張子を変更"""

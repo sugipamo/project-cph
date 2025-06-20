@@ -140,7 +140,7 @@ def _create_unified_logger(container: Any) -> Any:
     """Lazy factory for unified logger."""
     from src.infrastructure.drivers.logging import UnifiedLogger
     output_manager = container.resolve(DIKey.LOGGING_OUTPUT_MANAGER)
-    return UnifiedLogger(output_manager)
+    return UnifiedLogger(output_manager, di_container=container)
 
 
 def _create_filesystem() -> Any:

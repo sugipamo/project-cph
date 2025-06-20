@@ -6,12 +6,26 @@ import subprocess
 import traceback
 from typing import Optional
 
+from src.configuration.config_manager import TypeSafeConfigNodeManager
+from src.operations.exceptions import (
+    PythonConfigError,
+    PythonInterpreterError,
+)
+
 
 class PythonUtils:
     """Utility class for Python code operations."""
 
-    @staticmethod
-    def is_script_file(code_or_file: list[str]) -> bool:
+    def __init__(self, config_manager: Optional[TypeSafeConfigNodeManager] = None):
+        """Initialize PythonUtils with configuration manager.
+
+        Args:
+            config_manager: Optional configuration manager instance
+        """
+        self.config_manager = config_manager or TypeSafeConfigNodeManager()
+        self._python_interpreter = None
+
+    def is_script_file(self, code_or_file: list[str]) -> bool:
         """Determine if code_or_file is a script file.
 
         Args:
@@ -22,8 +36,7 @@ class PythonUtils:
         """
         return len(code_or_file) == 1 and pathlib.Path(code_or_file[0]).is_file()
 
-    @staticmethod
-    def run_script_file(filename: str, cwd: Optional[str] = None) -> tuple[str, str, int]:
+    def run_script_file(self, filename: str, cwd: Optional[str] = None) -> tuple[str, str, int]:
         """Run Python script file.
 
         Args:
@@ -33,13 +46,13 @@ class PythonUtils:
         Returns:
             Tuple of (stdout, stderr, return_code)
         """
+        python_interpreter = self._get_python_interpreter()
         result = subprocess.run([
-            subprocess.getoutput('which python3') or 'python3', filename
+            python_interpreter, filename
         ], capture_output=True, text=True, cwd=cwd, check=False)
         return result.stdout, result.stderr, result.returncode
 
-    @staticmethod
-    def run_code_string(code: str, cwd: Optional[str] = None) -> tuple[str, str, int]:
+    def run_code_string(self, code: str, cwd: Optional[str] = None) -> tuple[str, str, int]:
         """Run Python code string.
 
         Args:
@@ -55,7 +68,88 @@ class PythonUtils:
         with contextlib.redirect_stdout(buf_out), contextlib.redirect_stderr(buf_err):
             try:
                 exec(code, {})
-            except Exception:
+            except Exception as e:
                 traceback.print_exc(file=buf_err)
-                returncode = 1
+                returncode = self._get_error_return_code(e)
         return buf_out.getvalue(), buf_err.getvalue(), returncode
+
+    def _get_python_interpreter(self) -> str:
+        """Get the Python interpreter to use.
+
+        Returns:
+            Path to Python interpreter
+
+        Raises:
+            PythonInterpreterError: If no suitable interpreter is found
+        """
+        if self._python_interpreter is not None:
+            return self._python_interpreter
+
+        try:
+            default_interpreter = self.config_manager.resolve_config(
+                ['python_config', 'interpreters', 'default'], str
+            )
+        except KeyError:
+            raise PythonConfigError("No default Python interpreter configured")
+
+        try:
+            alternatives = self.config_manager.resolve_config(
+                ['python_config', 'interpreters', 'alternatives'], list
+            )
+        except KeyError:
+            alternatives = [default_interpreter]
+
+        # Try to find a working interpreter
+        for interpreter in [default_interpreter, *alternatives]:
+            if self._test_interpreter(interpreter):
+                self._python_interpreter = interpreter
+                return interpreter
+
+        raise PythonInterpreterError(
+            f"No working Python interpreter found. Tried: {[default_interpreter, *alternatives]}"
+        )
+
+    def _test_interpreter(self, interpreter: str) -> bool:
+        """Test if an interpreter is available and working.
+
+        Args:
+            interpreter: Path to interpreter to test
+
+        Returns:
+            True if interpreter is working, False otherwise
+        """
+        try:
+            result = subprocess.run(
+                [interpreter, '--version'],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False
+            )
+            return result.returncode == 0
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+            return False
+
+    def _get_error_return_code(self, exception: Exception) -> int:
+        """Get appropriate return code based on exception type.
+
+        Args:
+            exception: The exception that occurred
+
+        Returns:
+            Appropriate return code
+        """
+        try:
+            self.config_manager.resolve_config(
+                ['python_config', 'error_handling'], dict
+            )
+
+            if isinstance(exception, SyntaxError):
+                return 2  # Syntax error
+            if isinstance(exception, ImportError):
+                return 3  # Import error
+            if isinstance(exception, KeyboardInterrupt):
+                return 128 + 2  # SIGINT
+            return 1  # General error
+        except KeyError:
+            return 1  # Default error code

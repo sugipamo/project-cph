@@ -1,0 +1,51 @@
+{
+  "logging_config": {
+    "default_level": "INFO",
+    "default_format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "default_handlers": ["console"],
+    "fallback_behavior": {
+      "unknown_level": "INFO",
+      "missing_formatter": "simple",
+      "missing_handler": "console"
+    },
+    "adapters": {
+      "application": {
+        "default_prefix": "[APP]",
+        "default_context": "main",
+        "status_success": "completed",
+        "status_failure": "failed",
+        "color_success": "green",
+        "color_failure": "red"
+      },
+      "workflow": {
+        "default_prefix": "[WORKFLOW]",
+        "default_context": "execution",
+        "default_enabled": true,
+        "default_format": {
+          "icons": {}
+        }
+      }
+    },
+    "unified_logger": {
+      "default_enabled": true,
+      "default_format": {
+        "icons": {}
+      },
+      "defaults": {
+        "status_success": "completed",
+        "status_failure": "failed", 
+        "color_success": "green",
+        "color_failure": "red"
+      }
+    },
+    "mock_output": {
+      "default_output_text": ""
+    }
+  },
+  "workflow": {
+    "execution_modes": {
+      "parallel": "並列",
+      "sequential": "順次"
+    }
+  }
+}

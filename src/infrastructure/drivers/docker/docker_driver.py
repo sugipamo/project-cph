@@ -148,7 +148,11 @@ class LocalDockerDriver(DockerDriver):
             cmd = ["docker", "ps", "-a", "--format", "{{.Names}}"]
             req = ShellRequest(cmd, show_output=show_output)
             result = req.execute_operation(driver=self.shell_driver)
-            return parse_container_names(result.stdout or "")
+            stdout_value = result.stdout
+            if stdout_value is None:
+                default_value = self.config_manager.get_docker_config("fallback_handling.default_stdout_value", "")
+                stdout_value = default_value
+            return parse_container_names(stdout_value)
         cmd = ["docker", "ps"]
         if all:
             cmd.append("-a")

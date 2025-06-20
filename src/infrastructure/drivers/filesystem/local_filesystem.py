@@ -2,11 +2,21 @@
 from pathlib import Path
 from typing import List
 
+from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.operations.interfaces.filesystem_interface import FileSystemInterface
+
+
+class FileSystemError(Exception):
+    """ファイルシステム操作でのエラー"""
+    pass
 
 
 class LocalFileSystem(FileSystemInterface):
     """Local file system implementation of FileSystemInterface."""
+
+    def __init__(self, config_manager: TypeSafeConfigNodeManager):
+        """Initialize LocalFileSystem with configuration manager."""
+        self.config_manager = config_manager
 
     def exists(self, path: Path) -> bool:
         """Check if a path exists."""
@@ -24,7 +34,14 @@ class LocalFileSystem(FileSystemInterface):
         """List contents of a directory."""
         try:
             return list(path.iterdir())
-        except (OSError, PermissionError):
+        except (OSError, PermissionError) as e:
+            error_action = self.config_manager.resolve_config(
+                ['filesystem_config', 'error_handling', 'permission_denied_action'],
+                str
+            )
+            if error_action == 'error':
+                raise FileSystemError(f"Failed to list directory contents: {e}") from e
+            # 互換性維持のためのフォールバック処理
             return []
 
     def mkdir(self, path: Path, parents: bool = False, exist_ok: bool = False) -> None:

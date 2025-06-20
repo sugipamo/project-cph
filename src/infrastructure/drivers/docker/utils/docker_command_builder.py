@@ -25,9 +25,9 @@ def _get_config_manager():
                 env_dir="./contest_env",
                 language="python"
             )
-        except Exception:
-            # Fallback: return None if config loading fails
-            return None
+        except Exception as e:
+            # 設定読み込みエラーを適切に処理
+            raise RuntimeError(f"Failed to load Docker configuration: {e}") from e
     return _config_manager
 
 def _get_docker_option(option_name: str, user_options: Optional[dict[str, Any]]) -> Any:

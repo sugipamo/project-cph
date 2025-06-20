@@ -1,6 +1,9 @@
 """Workflow Logger Adapter - bridges src/logging with workflow-specific logging."""
 
+import contextlib
 from typing import Any, ClassVar, Optional
+
+from src.infrastructure.di_container import DIContainer, DIKey
 
 from ..format_info import FormatInfo
 from ..interfaces.output_manager_interface import OutputManagerInterface
@@ -31,13 +34,48 @@ class WorkflowLoggerAdapter:
             logger_config: Debug configuration (compatible with DebugLogger)
         """
         self.output_manager = output_manager
-        self.config = logger_config or {}
-        self.enabled = self.config["enabled"]
+        self._config_manager = None
+
+        # Get configuration through DI container
+        with contextlib.suppress(Exception):
+            self._config_manager = DIContainer.resolve("config_manager")
+
+        if logger_config is not None:
+            self.config = logger_config
+        else:
+            self.config = {}
+
+        # Get enabled status from configuration
+        try:
+            if self._config_manager:
+                self.enabled = self._config_manager.resolve_config(
+                    ['logging_config', 'adapters', 'workflow', 'default_enabled'], bool
+                )
+            else:
+                raise KeyError("Config manager not available")
+        except (KeyError, Exception):
+            if "enabled" not in self.config:
+                raise ValueError("Workflow logger enabled status not configured")
+            self.enabled = self.config["enabled"]
+
+        # Get icon configuration
+        try:
+            if self._config_manager:
+                config_icons = self._config_manager.resolve_config(
+                    ['logging_config', 'adapters', 'workflow', 'default_format', 'icons'], dict
+                )
+            else:
+                config_icons = {}
+        except (KeyError, Exception):
+            config_icons = {}
 
         # Merge user icons with defaults
-        format_config = self.config["format"]
-        user_icons = format_config["icons"]
-        self.icons = {**self.DEFAULT_ICONS, **user_icons}
+        try:
+            format_config = self.config["format"]
+            user_icons = format_config["icons"]
+        except KeyError:
+            user_icons = {}
+        self.icons = {**self.DEFAULT_ICONS, **config_icons, **user_icons}
 
     def debug(self, message: str, **kwargs) -> None:
         """デバッグメッセージ出力"""
@@ -164,7 +202,21 @@ class WorkflowLoggerAdapter:
         """ワークフロー実行開始ログ"""
         if self.enabled:
             icon = self.icons["start"]
-            mode = "並列" if parallel else "順次"
+            # Get execution mode from configuration
+            try:
+                if self._config_manager:
+                    mode_parallel = self._config_manager.resolve_config(
+                        ['workflow', 'execution_modes', 'parallel'], str
+                    )
+                    mode_sequential = self._config_manager.resolve_config(
+                        ['workflow', 'execution_modes', 'sequential'], str
+                    )
+                else:
+                    raise KeyError("Config manager not available")
+            except (KeyError, Exception):
+                raise ValueError("Workflow execution mode configuration not found")
+
+            mode = mode_parallel if parallel else mode_sequential
             message = f"\n{icon} ワークフロー実行開始: {step_count}ステップ ({mode}実行)"
             self.output_manager.add(
                 message,

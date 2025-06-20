@@ -41,6 +41,15 @@
       "state_file_format": "json",
       "auto_backup": true,
       "max_history": 100
+    },
+    "fallback_handling": {
+      "default_container_name": "default_container",
+      "default_stdout_value": "",
+      "error_handling": {
+        "retry_attempts": 3,
+        "retry_delay": 1.0,
+        "raise_on_config_error": true
+      }
     }
   }
 }

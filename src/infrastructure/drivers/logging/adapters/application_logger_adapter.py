@@ -3,6 +3,7 @@
 import uuid
 from typing import Any, Optional
 
+from src.infrastructure.di_container import DIContainer, DIKey
 from src.operations.interfaces.logger_interface import LoggerInterface
 
 from ..format_info import FormatInfo
@@ -23,6 +24,14 @@ class ApplicationLoggerAdapter(LoggerInterface):
         self.output_manager = output_manager
         self.name = name
         self.session_id = str(uuid.uuid4())[:8]
+        self._config_manager = None
+
+        # Get configuration through DI container
+        try:
+            self._config_manager = DIContainer.resolve("config_manager")
+        except Exception:
+            # Configuration will be required when needed, not during init
+            pass
 
     def debug(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log a debug message."""
@@ -102,13 +111,33 @@ class ApplicationLoggerAdapter(LoggerInterface):
     def log_operation_end(self, operation_id: str, operation_type: str,
                          success: bool, details: Optional[dict] = None) -> None:
         """Log the end of an operation with correlation tracking."""
-        status = "completed" if success else "failed"
+        # Get status from configuration
+        try:
+            if self._config_manager:
+                status_success = self._config_manager.resolve_config(
+                    ['logging_config', 'adapters', 'application', 'status_success'], str
+                )
+                status_failure = self._config_manager.resolve_config(
+                    ['logging_config', 'adapters', 'application', 'status_failure'], str
+                )
+                color_success = self._config_manager.resolve_config(
+                    ['logging_config', 'adapters', 'application', 'color_success'], str
+                )
+                color_failure = self._config_manager.resolve_config(
+                    ['logging_config', 'adapters', 'application', 'color_failure'], str
+                )
+            else:
+                raise KeyError("Config manager not available")
+        except (KeyError, Exception):
+            raise ValueError("Application adapter operation status configuration not found")
+
+        status = status_success if success else status_failure
         message = f"[OP#{operation_id}] {operation_type} {status} (session: {self.session_id})"
         if details:
             message += f" Details: {details}"
 
         level = LogLevel.INFO if success else LogLevel.ERROR
-        color = "green" if success else "red"
+        color = color_success if success else color_failure
 
         self.output_manager.add(
             message,

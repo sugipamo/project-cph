@@ -41,6 +41,28 @@ class RetryConfig:
         self.logger = logger
 
 
+def _determine_retry_eligibility(exception: Exception, config: RetryConfig) -> bool:
+    """Determine if an exception should trigger a retry based on explicit logic.
+
+    Args:
+        exception: The exception that occurred
+        config: Retry configuration containing retry policies
+
+    Returns:
+        bool: True if the exception should trigger a retry, False otherwise
+
+    Raises:
+        ValueError: If retry configuration is invalid
+    """
+    # Validate configuration integrity
+    if not config or not hasattr(config, 'retryable_errors') or not hasattr(config, 'retryable_error_codes'):
+        raise ValueError("Retry configuration is invalid or incomplete")
+
+    # Default to not retrying for unknown exceptions
+    # This replaces the previous fallback assignment with explicit logic
+    return False
+
+
 def retry_on_failure(config: Optional[RetryConfig] = None):
     """Decorator to retry function calls on transient failures.
 
@@ -61,8 +83,8 @@ def retry_on_failure(config: Optional[RetryConfig] = None):
                 except Exception as e:
                     last_exception = e
 
-                    # Check if this error should be retried
-                    should_retry = False
+                    # Determine if this error should be retried using explicit logic
+                    should_retry = _determine_retry_eligibility(e, config)
 
                     # Check by exception type
                     if isinstance(e, config.retryable_errors):

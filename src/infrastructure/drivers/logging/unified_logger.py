@@ -3,6 +3,12 @@
 import uuid
 from typing import Any, ClassVar, Optional
 
+from src.infrastructure.di_container import DIContainer, DIKey
+
+# Import for type annotation
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    pass
 from src.operations.interfaces.logger_interface import LoggerInterface
 
 from .format_info import FormatInfo
@@ -27,7 +33,8 @@ class UnifiedLogger(LoggerInterface):
     }
 
     def __init__(self, output_manager: OutputManagerInterface,
-                 name: str = __name__, logger_config: Optional[dict[str, Any]] = None):
+                 name: str = __name__, logger_config: Optional[dict[str, Any]] = None,
+                 di_container: Optional[DIContainer] = None):
         """Initialize unified logger.
 
         Args:
@@ -38,25 +45,48 @@ class UnifiedLogger(LoggerInterface):
         self.output_manager = output_manager
         self.name = name
         self.session_id = str(uuid.uuid4())[:8]
+        self._config_manager = None
+        self._di_container = di_container
 
         # Workflow configuration (backward compatible with DebugLogger)
-        self.config = logger_config or {}
-        if "enabled" not in self.config:
-            self.enabled = True  # デフォルト値
+        if logger_config is not None:
+            self.config = logger_config
         else:
+            self.config = {}
+
+        # Get configuration through DI container
+        try:
+            if self._di_container:
+                self._config_manager = self._di_container.resolve("config_manager")
+            else:
+                raise KeyError("DI container not available")
+            self.enabled = self._config_manager.resolve_config(
+                ['logging_config', 'unified_logger', 'default_enabled'], bool
+            )
+        except (KeyError, Exception):
+            # Fallback to local config if DI unavailable
+            if "enabled" not in self.config:
+                raise ValueError("Logger enabled status not configured")
             self.enabled = self.config["enabled"]
 
-        # Merge user icons with defaults
-        if "format" not in self.config:
-            format_config = {}
-        else:
-            format_config = self.config["format"]
+        # Get icon configuration
+        try:
+            if self._config_manager:
+                config_icons = self._config_manager.resolve_config(
+                    ['logging_config', 'unified_logger', 'default_format', 'icons'], dict
+                )
+            else:
+                config_icons = {}
+        except (KeyError, Exception):
+            config_icons = {}
 
-        if "icons" not in format_config:
-            user_icons = {}
-        else:
+        # Merge user icons with defaults
+        try:
+            format_config = self.config["format"]
             user_icons = format_config["icons"]
-        self.icons = {**self.DEFAULT_ICONS, **user_icons}
+        except KeyError:
+            user_icons = {}
+        self.icons = {**self.DEFAULT_ICONS, **config_icons, **user_icons}
 
     # LoggerInterface implementation
     def debug(self, message: str, *args: Any, **kwargs: Any) -> None:
@@ -153,13 +183,33 @@ class UnifiedLogger(LoggerInterface):
     def log_operation_end(self, operation_id: str, operation_type: str,
                          success: bool, details: Optional[dict] = None) -> None:
         """Log the end of an operation with correlation tracking."""
-        status = "completed" if success else "failed"
+        # Get status from configuration
+        try:
+            if self._config_manager:
+                status_success = self._config_manager.resolve_config(
+                    ['logging_config', 'unified_logger', 'defaults', 'status_success'], str
+                )
+                status_failure = self._config_manager.resolve_config(
+                    ['logging_config', 'unified_logger', 'defaults', 'status_failure'], str
+                )
+                color_success = self._config_manager.resolve_config(
+                    ['logging_config', 'unified_logger', 'defaults', 'color_success'], str
+                )
+                color_failure = self._config_manager.resolve_config(
+                    ['logging_config', 'unified_logger', 'defaults', 'color_failure'], str
+                )
+            else:
+                raise KeyError("Config manager not available")
+        except (KeyError, Exception):
+            raise ValueError("Operation status configuration not found")
+
+        status = status_success if success else status_failure
         message = f"[OP#{operation_id}] {operation_type} {status} (session: {self.session_id})"
         if details:
             message += f" Details: {details}"
 
         level = LogLevel.INFO if success else LogLevel.ERROR
-        color = "green" if success else "red"
+        color = color_success if success else color_failure
 
         self.output_manager.add(
             message,
@@ -255,7 +305,21 @@ class UnifiedLogger(LoggerInterface):
         """ワークフロー実行開始ログ"""
         if self.enabled:
             icon = self.icons["start"]
-            mode = "並列" if parallel else "順次"
+            # Get execution mode from configuration or raise error
+            try:
+                if self._config_manager:
+                    mode_parallel = self._config_manager.resolve_config(
+                        ['workflow', 'execution_modes', 'parallel'], str
+                    )
+                    mode_sequential = self._config_manager.resolve_config(
+                        ['workflow', 'execution_modes', 'sequential'], str
+                    )
+                else:
+                    raise KeyError("Config manager not available")
+            except (KeyError, Exception):
+                raise ValueError("Workflow execution mode configuration not found")
+
+            mode = mode_parallel if parallel else mode_sequential
             message = f"\n{icon} ワークフロー実行開始: {step_count}ステップ ({mode}実行)"
             self.output_manager.add(
                 message,

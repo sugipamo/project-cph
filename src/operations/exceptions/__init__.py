@@ -10,6 +10,12 @@ from .persistence_exceptions import (
     SchemaError,
     TransactionError,
 )
+from .python_exceptions import (
+    PythonConfigError,
+    PythonEnvironmentError,
+    PythonInterpreterError,
+    PythonVersionError,
+)
 
 __all__ = [
     "CompositeStepFailureError",
@@ -17,6 +23,10 @@ __all__ = [
     "IntegrityError",
     "MigrationError",
     "PersistenceError",
+    "PythonConfigError",
+    "PythonEnvironmentError",
+    "PythonInterpreterError",
+    "PythonVersionError",
     "QueryError",
     "RepositoryError",
     "SchemaError",

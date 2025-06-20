@@ -5,7 +5,27 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.infrastructure.drivers.python.python_driver import LocalPythonDriver, PythonDriver
+
+
+@pytest.fixture
+def mock_config_manager():
+    """Create a mock configuration manager."""
+    mock_config = Mock(spec=TypeSafeConfigNodeManager)
+
+    # Mock the configuration values
+    def mock_resolve_config(path, value_type):
+        if path == ['python_config', 'interpreters', 'default']:
+            return 'python3'
+        if path == ['python_config', 'interpreters', 'alternatives']:
+            return ['python3', 'python']
+        if path == ['python_config', 'error_handling']:
+            return {}
+        raise KeyError(f"Configuration path not found: {path}")
+
+    mock_config.resolve_config.side_effect = mock_resolve_config
+    return mock_config
 
 
 class TestPythonDriver:
@@ -17,7 +37,7 @@ class TestPythonDriver:
             # Can't instantiate abstract class directly
             PythonDriver()
 
-    def test_execute_command_with_code_string(self):
+    def test_execute_command_with_code_string(self, mock_config_manager):
         """Test executing command with code string request"""
         class TestPythonDriver(PythonDriver):
             def run_code_string(self, code, cwd=None):
@@ -26,7 +46,7 @@ class TestPythonDriver:
             def run_script_file(self, file_path, cwd=None):
                 return "file_output", "file_error", 0
 
-        driver = TestPythonDriver()
+        driver = TestPythonDriver(mock_config_manager)
 
         # Mock request with code_or_file as string
         request = Mock()

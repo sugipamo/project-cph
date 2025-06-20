@@ -1,15 +1,19 @@
 """Python code execution driver."""
-import subprocess
-import sys
 from abc import abstractmethod
 from typing import Any, Optional
 
+from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
 from src.infrastructure.drivers.python.utils.python_utils import PythonUtils
 
 
 class PythonDriver(ExecutionDriverInterface):
     """Abstract base class for Python code execution."""
+
+    def __init__(self, config_manager: Optional[TypeSafeConfigNodeManager] = None):
+        """Initialize PythonDriver with configuration manager."""
+        self.config_manager = config_manager or TypeSafeConfigNodeManager()
+        self.python_utils = PythonUtils(self.config_manager)
 
     @abstractmethod
     def run_code_string(self, code: str, cwd: Optional[str] = None) -> tuple[str, str, int]:
@@ -38,7 +42,7 @@ class PythonDriver(ExecutionDriverInterface):
     def execute_command(self, request: Any) -> Any:
         """Execute a Python request."""
         if hasattr(request, 'code_or_file'):
-            if PythonUtils.is_script_file(request.code_or_file):
+            if self.python_utils.is_script_file(request.code_or_file):
                 return self.run_script_file(
                     request.code_or_file[0],
                     cwd=getattr(request, 'cwd', None)
@@ -61,27 +65,14 @@ class PythonDriver(ExecutionDriverInterface):
 class LocalPythonDriver(PythonDriver):
     """Local Python execution driver using subprocess."""
 
+    def __init__(self, config_manager: Optional[TypeSafeConfigNodeManager] = None):
+        """Initialize LocalPythonDriver with configuration manager."""
+        super().__init__(config_manager)
+
     def run_code_string(self, code: str, cwd: Optional[str] = None) -> tuple[str, str, int]:
         """Execute Python code string using subprocess."""
-        result = subprocess.run(
-            [sys.executable, '-c', code],
-            cwd=cwd,
-            capture_output=True,
-            text=True, check=False
-        )
-
-        return result.stdout, result.stderr, result.returncode
+        return self.python_utils.run_code_string(code, cwd)
 
     def run_script_file(self, file_path: str, cwd: Optional[str] = None) -> tuple[str, str, int]:
         """Execute Python script file using subprocess."""
-        import subprocess
-        import sys
-
-        result = subprocess.run(
-            [sys.executable, file_path],
-            cwd=cwd,
-            capture_output=True,
-            text=True, check=False
-        )
-
-        return result.stdout, result.stderr, result.returncode
+        return self.python_utils.run_script_file(file_path, cwd)
