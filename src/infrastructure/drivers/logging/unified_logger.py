@@ -1,12 +1,12 @@
 """Unified logger that combines all logging functionality."""
 
 import uuid
-from typing import Any, ClassVar, Optional
-
-from src.infrastructure.di_container import DIContainer, DIKey
 
 # Import for type annotation
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, ClassVar, Optional
+
+from src.infrastructure.di_container import DIContainer
+
 if TYPE_CHECKING:
     pass
 from src.operations.interfaces.logger_interface import LoggerInterface
@@ -63,29 +63,24 @@ class UnifiedLogger(LoggerInterface):
             self.enabled = self._config_manager.resolve_config(
                 ['logging_config', 'unified_logger', 'default_enabled'], bool
             )
-        except (KeyError, Exception):
-            # Fallback to local config if DI unavailable
-            if "enabled" not in self.config:
-                raise ValueError("Logger enabled status not configured")
-            self.enabled = self.config["enabled"]
+        except (KeyError, Exception) as e:
+            raise ValueError(f"Logger enabled status configuration not available: {e}") from e
 
         # Get icon configuration
-        try:
-            if self._config_manager:
-                config_icons = self._config_manager.resolve_config(
-                    ['logging_config', 'unified_logger', 'default_format', 'icons'], dict
-                )
-            else:
-                config_icons = {}
-        except (KeyError, Exception):
-            config_icons = {}
+        if not self._config_manager:
+            raise ValueError("Config manager is required for unified logger initialization")
+
+        config_icons = self._config_manager.resolve_config(
+            ['logging_config', 'unified_logger', 'default_format', 'icons'], dict
+        )
 
         # Merge user icons with defaults
-        try:
-            format_config = self.config["format"]
-            user_icons = format_config["icons"]
-        except KeyError:
-            user_icons = {}
+        if "format" not in self.config:
+            raise ValueError("Format configuration is required")
+        format_config = self.config["format"]
+        if "icons" not in format_config:
+            raise ValueError("Icons configuration is required in format config")
+        user_icons = format_config["icons"]
         self.icons = {**self.DEFAULT_ICONS, **config_icons, **user_icons}
 
     # LoggerInterface implementation
@@ -200,8 +195,8 @@ class UnifiedLogger(LoggerInterface):
                 )
             else:
                 raise KeyError("Config manager not available")
-        except (KeyError, Exception):
-            raise ValueError("Operation status configuration not found")
+        except (KeyError, Exception) as e:
+            raise ValueError("Operation status configuration not found") from e
 
         status = status_success if success else status_failure
         message = f"[OP#{operation_id}] {operation_type} {status} (session: {self.session_id})"
@@ -316,8 +311,8 @@ class UnifiedLogger(LoggerInterface):
                     )
                 else:
                     raise KeyError("Config manager not available")
-            except (KeyError, Exception):
-                raise ValueError("Workflow execution mode configuration not found")
+            except (KeyError, Exception) as e:
+                raise ValueError("Workflow execution mode configuration not found") from e
 
             mode = mode_parallel if parallel else mode_sequential
             message = f"\n{icon} ワークフロー実行開始: {step_count}ステップ ({mode}実行)"
@@ -377,7 +372,7 @@ class UnifiedLogger(LoggerInterface):
         if args:
             try:
                 return message % args
-            except (TypeError, ValueError):
-                # Fallback if formatting fails
-                return f"{message} {args}"
+            except (TypeError, ValueError) as e:
+                # Proper error handling instead of fallback
+                raise ValueError(f"Message formatting failed: {e}. Message: '{message}', Args: {args}") from e
         return message

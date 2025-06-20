@@ -26,8 +26,8 @@ class PathOperations:
                 ['filesystem_config', 'default_paths', 'workspace'],
                 str
             )
-        except KeyError:
-            raise ValueError("No default workspace path configured")
+        except KeyError as e:
+            raise ValueError("No default workspace path configured") from e
 
     def resolve_path(self, base_dir: Union[str, Path],
                     target_path: Union[str, Path],
@@ -54,8 +54,8 @@ class PathOperations:
                         errors=errors,
                         warnings=warnings,
                         metadata={
-                            "base_dir": str(base_dir) if base_dir is not None else self._get_default_workspace_path(),
-                            "target_path": str(target_path) if target_path is not None else self._get_default_workspace_path()
+                            "base_dir": str(base_dir) if base_dir is not None else "None",
+                            "target_path": str(target_path) if target_path is not None else "None"
                         }
                     )
                 raise ValueError(errors[0])
@@ -97,22 +97,7 @@ class PathOperations:
         """パスを正規化する"""
         try:
             if path is None:
-                try:
-                    path = self.config_manager.resolve_config(
-                        ['filesystem_config', 'default_paths', 'workspace'],
-                        str
-                    )
-                except KeyError:
-                    error_msg = "Path cannot be None and no default path configured"
-                    if strict:
-                        return PathOperationResult(
-                            success=False,
-                            result=None,
-                            errors=[error_msg],
-                            warnings=[],
-                            metadata={}
-                        )
-                    raise ValueError(error_msg)
+                raise ValueError("Path parameter cannot be None")
 
             normalized = os.path.normpath(str(path))
 
@@ -255,6 +240,7 @@ class PathOperations:
                 child_path.relative_to(parent_path)
                 result = True
             except ValueError:
+                # Not a subdirectory - this is expected behavior, not an error to hide
                 result = False
 
             if strict:
@@ -354,10 +340,9 @@ class PathOperations:
                 new_extension = '.' + new_extension
 
             # Create new path by replacing the suffix
-            if original_extension:
-                new_path = str(path_obj).replace(original_extension, new_extension)
-            else:
-                new_path = str(path_obj) + new_extension
+            if not original_extension:
+                raise ValueError(f"File '{file_path}' has no extension to replace")
+            new_path = str(path_obj).replace(original_extension, new_extension)
 
             if strict:
                 return PathOperationResult(

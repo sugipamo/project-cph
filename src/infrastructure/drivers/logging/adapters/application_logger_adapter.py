@@ -1,9 +1,10 @@
 """Application Logger Adapter - bridges src/logging with LoggerInterface."""
 
+import contextlib
 import uuid
 from typing import Any, Optional
 
-from src.infrastructure.di_container import DIContainer, DIKey
+from src.infrastructure.di_container import DIContainer
 from src.operations.interfaces.logger_interface import LoggerInterface
 
 from ..format_info import FormatInfo
@@ -27,11 +28,8 @@ class ApplicationLoggerAdapter(LoggerInterface):
         self._config_manager = None
 
         # Get configuration through DI container
-        try:
+        with contextlib.suppress(Exception):
             self._config_manager = DIContainer.resolve("config_manager")
-        except Exception:
-            # Configuration will be required when needed, not during init
-            pass
 
     def debug(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Log a debug message."""
@@ -128,8 +126,8 @@ class ApplicationLoggerAdapter(LoggerInterface):
                 )
             else:
                 raise KeyError("Config manager not available")
-        except (KeyError, Exception):
-            raise ValueError("Application adapter operation status configuration not found")
+        except (KeyError, Exception) as e:
+            raise ValueError("Application adapter operation status configuration not found") from e
 
         status = status_success if success else status_failure
         message = f"[OP#{operation_id}] {operation_type} {status} (session: {self.session_id})"

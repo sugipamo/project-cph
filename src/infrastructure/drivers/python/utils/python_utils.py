@@ -89,8 +89,8 @@ class PythonUtils:
             default_interpreter = self.config_manager.resolve_config(
                 ['python_config', 'interpreters', 'default'], str
             )
-        except KeyError:
-            raise PythonConfigError("No default Python interpreter configured")
+        except KeyError as e:
+            raise PythonConfigError("No default Python interpreter configured") from e
 
         try:
             alternatives = self.config_manager.resolve_config(
@@ -127,8 +127,8 @@ class PythonUtils:
                 check=False
             )
             return result.returncode == 0
-        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-            return False
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
+            raise PythonConfigError(f"Failed to validate Python interpreter: {e}") from e
 
     def _get_error_return_code(self, exception: Exception) -> int:
         """Get appropriate return code based on exception type.
@@ -151,5 +151,5 @@ class PythonUtils:
             if isinstance(exception, KeyboardInterrupt):
                 return 128 + 2  # SIGINT
             return 1  # General error
-        except KeyError:
-            return 1  # Default error code
+        except KeyError as e:
+            raise PythonConfigError(f"Error code configuration not found: {e}") from e

@@ -20,6 +20,14 @@ class MockDockerDriver(DockerDriver):
             returncode=0
         )
 
+    def _get_exit_code_for_state(self, state: str) -> int:
+        """Get exit code based on container state."""
+        if state == 'running':
+            return 0
+        if state == 'exited':
+            return 1
+        raise ValueError(f"Unknown container state: {state}")
+
     def run_container(self, image: str, container_name: Optional[str] = None,
                      options: Optional[dict[str, Any]] = None,
                      show_output: bool = True) -> DockerResult:
@@ -42,11 +50,13 @@ class MockDockerDriver(DockerDriver):
             'show_output': show_output
         })
 
-        if container_name:
-            self._container_states[container_name] = 'running'
+        if not container_name:
+            raise ValueError("Container name cannot be empty")
+
+        self._container_states[container_name] = 'running'
 
         return DockerResult(
-            stdout=f"Mock: Started container {container_name or 'unnamed'} from {image}",
+            stdout=f"Mock: Started container {container_name} from {image}",
             stderr="",
             returncode=0
         )
@@ -149,7 +159,7 @@ class MockDockerDriver(DockerDriver):
             "State": {
                 "Status": state,
                 "Running": state == 'running',
-                "ExitCode": 0 if state == 'running' else 1
+                "ExitCode": self._get_exit_code_for_state(state)
             },
             "Name": f"/{container_name}",
             "Config": {
@@ -185,10 +195,13 @@ class MockDockerDriver(DockerDriver):
         })
 
         if names_only:
-            containers = list(self._container_states.keys()) if all else [
-                name for name, state in self._container_states.items()
-                if state == 'running'
-            ]
+            if all:
+                containers = list(self._container_states.keys())
+            else:
+                containers = [
+                    name for name, state in self._container_states.items()
+                    if state == 'running'
+                ]
             return containers
 
         # Return mock container list

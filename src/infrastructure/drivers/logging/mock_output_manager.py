@@ -3,7 +3,7 @@
 import contextlib
 from typing import List, Optional, Union
 
-from src.infrastructure.di_container import DIContainer, DIKey
+from src.infrastructure.di_container import DIContainer
 
 from .format_info import FormatInfo
 from .interfaces.output_manager_interface import OutputManagerInterface
@@ -47,14 +47,17 @@ class MockOutputManager(OutputManagerInterface):
                 # Get default output text from configuration
                 try:
                     if self._config_manager:
-                        default_output = self._config_manager.resolve_config(
+                        self._config_manager.resolve_config(
                             ['logging_config', 'mock_output', 'default_output_text'], str
                         )
-                        output_text = str(message) if str(message) else default_output
+                        message_str = str(message)
+                        if not message_str:
+                            raise ValueError("Message cannot be empty when no default output is specified")
+                        output_text = message_str
                     else:
                         raise KeyError("Config manager not available")
-                except (KeyError, Exception):
-                    raise ValueError("Mock output default text configuration not found")
+                except (KeyError, Exception) as e:
+                    raise ValueError("Mock output default text configuration not found") from e
             self.captured_outputs.append(output_text)
 
     def _should_log(self, level: LogLevel) -> bool:

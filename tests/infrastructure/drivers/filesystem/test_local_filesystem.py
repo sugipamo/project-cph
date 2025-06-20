@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.infrastructure.drivers.filesystem.local_filesystem import LocalFileSystem
+from src.infrastructure.drivers.filesystem.local_filesystem import FileSystemError, LocalFileSystem
 
 
 class TestLocalFileSystem:
@@ -94,8 +94,9 @@ class TestLocalFileSystem:
             mock_path = Mock()
             mock_path.iterdir.side_effect = PermissionError("Access denied")
 
-            result = fs.iterdir(mock_path)
-            assert result == []
+            # Should raise FileSystemError when permission denied
+            with pytest.raises(FileSystemError, match="Failed to list directory contents"):
+                fs.iterdir(mock_path)
 
     def test_iterdir_os_error(self, mock_config_manager):
         fs = LocalFileSystem(mock_config_manager)
@@ -104,8 +105,9 @@ class TestLocalFileSystem:
             mock_path = Mock()
             mock_path.iterdir.side_effect = OSError("IO error")
 
-            result = fs.iterdir(mock_path)
-            assert result == []
+            # Should raise FileSystemError when OS error occurs
+            with pytest.raises(FileSystemError, match="Failed to list directory contents"):
+                fs.iterdir(mock_path)
 
     def test_mkdir_basic(self, mock_config_manager):
         fs = LocalFileSystem(mock_config_manager)

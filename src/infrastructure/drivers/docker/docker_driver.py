@@ -150,8 +150,7 @@ class LocalDockerDriver(DockerDriver):
             result = req.execute_operation(driver=self.shell_driver)
             stdout_value = result.stdout
             if stdout_value is None:
-                default_value = self.config_manager.get_docker_config("fallback_handling.default_stdout_value", "")
-                stdout_value = default_value
+                raise ValueError("Docker command returned None stdout - this indicates a critical error")
             return parse_container_names(stdout_value)
         cmd = ["docker", "ps"]
         if all:

@@ -3,7 +3,7 @@
 import contextlib
 from typing import Any, ClassVar, Optional
 
-from src.infrastructure.di_container import DIContainer, DIKey
+from src.infrastructure.di_container import DIContainer
 
 from ..format_info import FormatInfo
 from ..interfaces.output_manager_interface import OutputManagerInterface
@@ -53,10 +53,8 @@ class WorkflowLoggerAdapter:
                 )
             else:
                 raise KeyError("Config manager not available")
-        except (KeyError, Exception):
-            if "enabled" not in self.config:
-                raise ValueError("Workflow logger enabled status not configured")
-            self.enabled = self.config["enabled"]
+        except (KeyError, Exception) as e:
+            raise ValueError(f"Workflow logger enabled status configuration not available: {e}") from e
 
         # Get icon configuration
         try:
@@ -65,16 +63,16 @@ class WorkflowLoggerAdapter:
                     ['logging_config', 'adapters', 'workflow', 'default_format', 'icons'], dict
                 )
             else:
-                config_icons = {}
-        except (KeyError, Exception):
-            config_icons = {}
+                raise KeyError("Config manager not available")
+        except (KeyError, Exception) as e:
+            raise ValueError(f"Workflow logger icon configuration not available: {e}") from e
 
         # Merge user icons with defaults
         try:
             format_config = self.config["format"]
             user_icons = format_config["icons"]
-        except KeyError:
-            user_icons = {}
+        except KeyError as e:
+            raise ValueError(f"User icon configuration not found in format config: {e}") from e
         self.icons = {**self.DEFAULT_ICONS, **config_icons, **user_icons}
 
     def debug(self, message: str, **kwargs) -> None:
@@ -213,8 +211,8 @@ class WorkflowLoggerAdapter:
                     )
                 else:
                     raise KeyError("Config manager not available")
-            except (KeyError, Exception):
-                raise ValueError("Workflow execution mode configuration not found")
+            except (KeyError, Exception) as e:
+                raise ValueError("Workflow execution mode configuration not found") from e
 
             mode = mode_parallel if parallel else mode_sequential
             message = f"\n{icon} ワークフロー実行開始: {step_count}ステップ ({mode}実行)"

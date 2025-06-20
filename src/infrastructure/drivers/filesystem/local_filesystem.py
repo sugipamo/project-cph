@@ -41,8 +41,7 @@ class LocalFileSystem(FileSystemInterface):
             )
             if error_action == 'error':
                 raise FileSystemError(f"Failed to list directory contents: {e}") from e
-            # 互換性維持のためのフォールバック処理
-            return []
+            raise FileSystemError(f"Invalid error action configured: {error_action}. Must be 'error'.") from e
 
     def mkdir(self, path: Path, parents: bool = False, exist_ok: bool = False) -> None:
         """Create a directory."""

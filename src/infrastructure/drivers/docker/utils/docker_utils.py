@@ -66,7 +66,15 @@ class DockerUtils:
         # Remove invalid characters and replace with underscores
         if not name:
             raise ValueError("Container name cannot be empty")
-        formatted = "".join(c if c.isalnum() or c in "-_" else "_" for c in name)
+
+        # Validate each character in the name
+        formatted_chars = []
+        for c in name:
+            if c.isalnum() or c in "-_":
+                formatted_chars.append(c)
+            else:
+                raise ValueError(f"Invalid character '{c}' in container name. Only alphanumeric characters, hyphens, and underscores are allowed.")
+        formatted = "".join(formatted_chars)
 
         # Ensure it doesn't start with a number or special character
         if formatted and not formatted[0].isalpha():
