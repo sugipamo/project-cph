@@ -1,7 +1,0 @@
-context.のenv_jsonの要素を廃止
-
-context.env_jsonを使用した設定読み込みの完全廃止
-
-scripts/test.pyでprintの使用を検知できるようにする。ただしloggingディレクトリ配下を除く
-
-デフォルト言語にpythonを使用するのは禁止

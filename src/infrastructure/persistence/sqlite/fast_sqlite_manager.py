@@ -220,6 +220,10 @@ class FastSQLiteManager:
                     # Table might not exist, continue
                     continue
 
+            # Ensure changes are committed for file databases
+            if not self._is_memory_db:
+                conn.commit()
+
     @classmethod
     def reset_shared_connection(cls) -> None:
         """Reset shared connection (for test isolation)."""

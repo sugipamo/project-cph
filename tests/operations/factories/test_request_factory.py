@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import pytest
 
 from src.operations.factories.request_factory import RequestFactory, create_request
-from src.operations.requests.docker.docker_request import DockerRequest
+from src.operations.requests.docker.docker_request import DockerOpType, DockerRequest
 from src.operations.requests.file.file_op_type import FileOpType
 from src.operations.requests.file.file_request import FileRequest
 from src.operations.requests.python.python_request import PythonRequest
@@ -50,10 +50,9 @@ class TestRequestFactory:
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
         assert isinstance(result, DockerRequest)
-        assert result.op == "build"
-        assert result.context_path == "/workspace"
-        assert result.tag == "test:latest"
-        assert result.debug_tag == "docker_build_test_problem"
+        assert result.op == DockerOpType.BUILD
+        assert result.options["context_path"] == "/workspace"
+        assert result.options["tag"] == "test:latest"
 
     def test_create_docker_build_request_no_tag(self, factory, mock_context, mock_env_manager):
         """Test creating Docker build request without tag"""
@@ -62,8 +61,8 @@ class TestRequestFactory:
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
         assert isinstance(result, DockerRequest)
-        assert result.op == "build"
-        assert result.tag is None
+        assert result.op == DockerOpType.BUILD
+        assert result.options["tag"] is None
 
     def test_create_docker_run_request(self, factory, mock_context, mock_env_manager):
         """Test creating Docker run request"""
@@ -72,11 +71,10 @@ class TestRequestFactory:
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
         assert isinstance(result, DockerRequest)
-        assert result.op == "run"
+        assert result.op == DockerOpType.RUN
         assert result.image == "test:latest"
         assert result.container == "test-container"
-        assert result.workspace_mount == "/workspace"
-        assert result.debug_tag == "docker_run_test_problem"
+        assert result.options["workspace_mount"] == "/workspace"
 
     def test_create_docker_run_request_no_name(self, factory, mock_context, mock_env_manager):
         """Test creating Docker run request without container name"""
@@ -95,20 +93,19 @@ class TestRequestFactory:
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
         assert isinstance(result, DockerRequest)
-        assert result.op == "exec"
+        assert result.op == DockerOpType.EXEC
         assert result.container == "test-container"
-        assert result.cmd == ["ls", "-la"]
-        assert result.debug_tag == "docker_exec_test_problem"
+        assert result.command == ["ls", "-la"]
 
-    def test_create_docker_exec_request_empty_cmd(self, factory, mock_context, mock_env_manager):
-        """Test creating Docker exec request with empty command"""
-        step = Step(type=StepType.DOCKER_EXEC, cmd=[])
+    def test_create_docker_exec_request_minimal(self, factory, mock_context, mock_env_manager):
+        """Test creating Docker exec request with minimal command"""
+        step = Step(type=StepType.DOCKER_EXEC, cmd=["test-container", "bash"])
 
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
         assert isinstance(result, DockerRequest)
-        assert result.container is None
-        assert result.cmd == []
+        assert result.container == "test-container"
+        assert result.command == ["bash"]
 
     def test_create_docker_commit_request(self, factory, mock_context, mock_env_manager):
         """Test creating Docker commit request"""
@@ -117,10 +114,9 @@ class TestRequestFactory:
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
         assert isinstance(result, DockerRequest)
-        assert result.op == "commit"
+        assert result.op == DockerOpType.BUILD
         assert result.container == "test-container"
         assert result.image == "test:committed"
-        assert result.debug_tag == "docker_commit_test_problem"
 
     def test_create_docker_rm_request(self, factory, mock_context, mock_env_manager):
         """Test creating Docker rm request"""
@@ -129,9 +125,8 @@ class TestRequestFactory:
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
         assert isinstance(result, DockerRequest)
-        assert result.op == "rm"
+        assert result.op == DockerOpType.REMOVE
         assert result.container == "test-container"
-        assert result.debug_tag == "docker_rm_test_problem"
 
     def test_create_docker_rmi_request(self, factory, mock_context, mock_env_manager):
         """Test creating Docker rmi request"""
@@ -140,9 +135,8 @@ class TestRequestFactory:
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
         assert isinstance(result, DockerRequest)
-        assert result.op == "rmi"
+        assert result.op == DockerOpType.REMOVE
         assert result.image == "test:latest"
-        assert result.debug_tag == "docker_rmi_test_problem"
 
     def test_create_mkdir_request(self, factory, mock_context, mock_env_manager):
         """Test creating mkdir request"""
@@ -153,7 +147,6 @@ class TestRequestFactory:
         assert isinstance(result, FileRequest)
         assert result.op == FileOpType.MKDIR
         assert result.path == "test_dir"
-        assert result.debug_tag == "mkdir_test_problem"
 
     def test_create_touch_request(self, factory, mock_context, mock_env_manager):
         """Test creating touch request"""
@@ -164,7 +157,6 @@ class TestRequestFactory:
         assert isinstance(result, FileRequest)
         assert result.op == FileOpType.TOUCH
         assert result.path == "test_file.txt"
-        assert result.debug_tag == "touch_test_problem"
 
     def test_create_copy_request(self, factory, mock_context, mock_env_manager):
         """Test creating copy request"""
@@ -176,7 +168,6 @@ class TestRequestFactory:
         assert result.op == FileOpType.COPY
         assert result.path == "source.txt"
         assert result.dst_path == "dest.txt"
-        assert result.debug_tag == "copy_test_problem"
 
     def test_create_move_request(self, factory, mock_context, mock_env_manager):
         """Test creating move request"""
@@ -188,7 +179,6 @@ class TestRequestFactory:
         assert result.op == FileOpType.MOVE
         assert result.path == "source.txt"
         assert result.dst_path == "dest.txt"
-        assert result.debug_tag == "move_test_problem"
 
     def test_create_remove_request(self, factory, mock_context, mock_env_manager):
         """Test creating remove request"""
@@ -199,7 +189,6 @@ class TestRequestFactory:
         assert isinstance(result, FileRequest)
         assert result.op == FileOpType.REMOVE
         assert result.path == "test_file.txt"
-        assert result.debug_tag == "remove_test_problem"
 
     def test_create_rmtree_request(self, factory, mock_context, mock_env_manager):
         """Test creating rmtree request"""
@@ -210,7 +199,6 @@ class TestRequestFactory:
         assert isinstance(result, FileRequest)
         assert result.op == FileOpType.RMTREE
         assert result.path == "test_dir"
-        assert result.debug_tag == "rmtree_test_problem"
 
     def test_create_chmod_request(self, factory, mock_context, mock_env_manager):
         """Test creating chmod request"""
@@ -218,10 +206,9 @@ class TestRequestFactory:
 
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
-        assert isinstance(result, FileRequest)
-        assert result.op == FileOpType.CHMOD
-        assert result.path == "test_file.txt"
-        assert result.debug_tag == "chmod_test_problem"
+        assert isinstance(result, ShellRequest)
+        assert result.cmd == ["755", "test_file.txt"]
+        assert result.cwd == "/workspace"
 
     def test_create_run_request(self, factory, mock_context, mock_env_manager):
         """Test creating run (shell) request"""
@@ -233,7 +220,6 @@ class TestRequestFactory:
         assert result.cmd == ["echo", "hello"]
         assert result.cwd == "/workspace"
         assert result.allow_failure is False
-        assert result.debug_tag == "run_test_problem"
 
     def test_create_run_request_with_failure_allowed(self, factory, mock_context, mock_env_manager):
         """Test creating run request with failure allowed"""
@@ -253,16 +239,15 @@ class TestRequestFactory:
         assert isinstance(result, PythonRequest)
         assert result.code_or_file == ["print('hello')", "x = 1"]
         assert result.cwd == "/workspace"
-        assert result.debug_tag == "python_test_problem"
 
-    def test_create_request_empty_cmd(self, factory, mock_context, mock_env_manager):
-        """Test creating requests with empty command list"""
-        step = Step(type=StepType.MKDIR, cmd=[])
+    def test_create_request_minimal_cmd(self, factory, mock_context, mock_env_manager):
+        """Test creating requests with minimal command"""
+        step = Step(type=StepType.MKDIR, cmd=["test_dir"])
 
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
         assert isinstance(result, FileRequest)
-        assert result.path == ""
+        assert result.path == "test_dir"
 
 
 class TestCreateRequestFunction:

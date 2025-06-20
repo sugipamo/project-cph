@@ -37,7 +37,6 @@ class TestUnifiedDriverSimple:
         assert driver._docker_driver is None
         assert driver._file_driver is None
         assert driver._shell_driver is None
-        assert driver._python_driver is None
 
     def test_initialization_without_logger(self, mock_infrastructure):
         """Test initialization without provided logger."""
@@ -90,16 +89,6 @@ class TestUnifiedDriverSimple:
         driver = unified_driver.shell_driver
         assert driver == mock_shell_driver
 
-    def test_python_driver_lazy_loading(self, unified_driver, mock_infrastructure):
-        """Test lazy loading of python driver."""
-        mock_python_driver = Mock()
-        mock_infrastructure.resolve.side_effect = lambda key: {
-            DIKey.PYTHON_DRIVER: mock_python_driver,
-            DIKey.UNIFIED_LOGGER: unified_driver.logger
-        }.get(key, Mock())
-
-        driver = unified_driver.python_driver
-        assert driver == mock_python_driver
 
     def test_request_logging(self, unified_driver, mock_logger):
         """Test that requests are logged properly."""
@@ -111,9 +100,9 @@ class TestUnifiedDriverSimple:
 
         unified_driver.execute_operation_request(request)
 
-        # Verify that debug logging occurred (enum value is the number)
-        expected_msg = f"Executing {RequestType.DOCKER_REQUEST.value} request"
-        mock_logger.debug.assert_called_once_with(expected_msg)
+        # Verify that debug logging occurred (enum name is used)
+        expected_msg = f"Executing {RequestType.DOCKER_REQUEST.name} request"
+        unified_driver.logger.debug.assert_called_once_with(expected_msg)
 
     def test_type_checking_in_handlers(self, unified_driver):
         """Test that handlers check for correct request types."""
@@ -129,9 +118,6 @@ class TestUnifiedDriverSimple:
         with pytest.raises(TypeError, match="Expected ShellRequest"):
             unified_driver._execute_shell_request(Mock())
 
-        # Test python handler type checking
-        with pytest.raises(TypeError, match="Expected PythonRequest"):
-            unified_driver._execute_python_request(Mock())
 
     def test_request_routing_logic(self, unified_driver, mock_logger):
         """Test the request routing logic without complex mocking."""
@@ -166,7 +152,6 @@ class TestUnifiedDriverSimple:
             DIKey.DOCKER_DRIVER: Mock(name="docker_driver"),
             DIKey.FILE_DRIVER: Mock(name="file_driver"),
             DIKey.SHELL_DRIVER: Mock(name="shell_driver"),
-            DIKey.PYTHON_DRIVER: Mock(name="python_driver"),
             DIKey.UNIFIED_LOGGER: unified_driver.logger
         }.get(key, Mock())
 
@@ -174,4 +159,3 @@ class TestUnifiedDriverSimple:
         assert unified_driver.docker_driver is not None
         assert unified_driver.file_driver is not None
         assert unified_driver.shell_driver is not None
-        assert unified_driver.python_driver is not None

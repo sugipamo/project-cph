@@ -311,7 +311,7 @@ class TestUnifiedDriverDockerOperations:
 
         return driver
 
-    @patch('src.infrastructure.drivers.unified.unified_driver.DockerResult')
+    @patch('src.operations.results.docker_result.DockerResult')
     def test_docker_run_operation(self, mock_docker_result, unified_driver_with_mocks):
         """Test Docker run operation execution"""
         mock_request = Mock()

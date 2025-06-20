@@ -87,3 +87,15 @@ class DockerUtils:
 
         # Basic validation - no spaces, valid characters
         return all(c.isalnum() or c in "._-:/" for c in image)
+
+
+def validate_docker_image_name(image: str) -> bool:
+    """Validate Docker image name format (backward compatibility function).
+
+    Args:
+        image: Image name to validate
+
+    Returns:
+        True if valid, False otherwise
+    """
+    return DockerUtils.validate_image_name(image)

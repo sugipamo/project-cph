@@ -300,6 +300,98 @@ class TestDockerContainerRepository:
         container = container_repo.find_container_by_name("invalid_json_test")
         assert container["volumes"] is None  # Should be parsed as None for invalid JSON
 
+    def test_create_container_record_alias(self, container_repo, image_repo):
+        """Test create_container_record method (alias for create_entity_record)."""
+        image_repo.create_or_update_image("python", "3.9", "abc123")
+
+        entity = {
+            "container_name": "alias_test",
+            "image_name": "python",
+            "image_tag": "3.9",
+            "language": "python"
+        }
+        result = container_repo.create_container_record(entity)
+        assert result is not None
+
+        # Verify container was created
+        container = container_repo.find_container_by_name("alias_test")
+        assert container is not None
+        assert container["container_name"] == "alias_test"
+        assert container["language"] == "python"
+
+    def test_find_all_with_pagination(self, container_repo, image_repo):
+        """Test find_all with limit and offset."""
+        image_repo.create_or_update_image("python", "3.9", "abc123")
+
+        # Create multiple containers
+        for i in range(5):
+            container_repo.create_container(f"container_{i}", "python", "3.9")
+
+        # Test with limit
+        limited = container_repo.find_all(limit=3)
+        assert len(limited) <= 3  # May be less due to filtering
+
+        # Test with offset
+        offset_results = container_repo.find_all(offset=2)
+        original_count = len(container_repo.get_active_containers())
+        assert len(offset_results) == max(0, original_count - 2)
+
+    def test_update_nonexistent_container(self, container_repo):
+        """Test updating non-existent container returns False."""
+        result = container_repo.update("nonexistent", {"status": "running"})
+        assert result is False
+
+    def test_delete_nonexistent_container(self, container_repo):
+        """Test deleting non-existent container returns False."""
+        result = container_repo.delete("nonexistent")
+        assert result is False
+
+    def test_create_container_with_minimal_params(self, container_repo, image_repo):
+        """Test creating container with minimal required parameters."""
+        image_repo.create_or_update_image("python", "latest", "abc123")
+
+        result = container_repo.create_container(
+            container_name="minimal_test",
+            image_name="python"
+            # Only required params, others should use defaults
+        )
+
+        assert result is not None
+        container = container_repo.find_container_by_name("minimal_test")
+        assert container["image_tag"] == "latest"  # Default value
+        assert container["status"] == "created"  # Default status
+
+    def test_create_container_with_all_params(self, container_repo, image_repo):
+        """Test creating container with all parameters."""
+        image_repo.create_or_update_image("python", "3.9", "abc123")
+
+        volumes = [{"host": "/host", "container": "/container"}]
+        environment = {"VAR1": "value1"}
+        ports = [{"host": 8080, "container": 80}]
+
+        result = container_repo.create_container(
+            container_name="full_test",
+            image_name="python",
+            image_tag="3.9",
+            language="python",
+            contest_name="atcoder",
+            problem_name="abc123_a",
+            env_type="competitive",
+            volumes=volumes,
+            environment=environment,
+            ports=ports
+        )
+
+        assert result is not None
+        container = container_repo.find_container_by_name("full_test")
+        assert container["language"] == "python"
+        assert container["contest_name"] == "atcoder"
+        assert container["problem_name"] == "abc123_a"
+        assert container["env_type"] == "competitive"
+        assert container["volumes"] == volumes
+        assert container["environment"] == environment
+        assert container["ports"] == ports
+
 
 class TestDockerImageRepository:
     """Test DockerImageRepository functionality."""
@@ -543,3 +635,68 @@ class TestDockerImageRepository:
         image = image_repo.find_image("python", "3.9")
         assert image["dockerfile_hash"] == "hash2"
         assert image["build_status"] == "success"
+
+    def test_create_image_record_alias(self, image_repo):
+        """Test create_image_record method (alias for create_entity_record)."""
+        entity = {
+            "name": "alias_test",
+            "tag": "latest",
+            "dockerfile_hash": "xyz789"
+        }
+        result = image_repo.create_image_record(entity)
+        assert result is not None
+
+        # Verify image was created
+        image = image_repo.find_image("alias_test", "latest")
+        assert image is not None
+        assert image["name"] == "alias_test"
+        assert image["dockerfile_hash"] == "xyz789"
+
+    def test_find_by_id_without_tag(self, image_repo):
+        """Test find_by_id with name only (defaults to latest)."""
+        image_repo.create_or_update_image("test_image", "latest", "abc123")
+
+        # Test finding by name only
+        image = image_repo.find_by_id("test_image")
+        assert image is not None
+        assert image["name"] == "test_image"
+        assert image["tag"] == "latest"
+
+    def test_find_all_with_pagination(self, image_repo):
+        """Test find_all with limit and offset."""
+        # Create multiple images
+        for i in range(5):
+            image_repo.create_or_update_image(f"image_{i}", "latest", f"hash_{i}")
+
+        # Test with limit
+        limited = image_repo.find_all(limit=3)
+        assert len(limited) == 3
+
+        # Test with offset
+        offset_results = image_repo.find_all(offset=2)
+        assert len(offset_results) == 3  # 5 total - 2 offset
+
+        # Test with both limit and offset
+        paginated = image_repo.find_all(limit=2, offset=1)
+        assert len(paginated) == 2
+
+    def test_update_nonexistent_image(self, image_repo):
+        """Test updating non-existent image returns False."""
+        result = image_repo.update("nonexistent:latest", {"build_status": "success"})
+        assert result is False
+
+    def test_delete_nonexistent_image(self, image_repo):
+        """Test deleting non-existent image returns False."""
+        result = image_repo.delete_image("nonexistent", "latest")
+        assert result is False
+
+    def test_delete_by_id_without_tag(self, image_repo):
+        """Test delete method using ID without tag."""
+        image_repo.create_or_update_image("test_delete", "latest", "abc123")
+
+        # Delete using name only (should default to latest)
+        result = image_repo.delete("test_delete")
+        assert result is True
+
+        # Verify it's gone
+        assert image_repo.find_image("test_delete", "latest") is None

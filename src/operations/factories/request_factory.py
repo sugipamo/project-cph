@@ -58,6 +58,8 @@ class RequestFactory:
 
     def _create_docker_build_request(self, step: Step, context: Any, env_manager: Any) -> DockerRequest:
         """Create docker build request"""
+        from src.operations.requests.docker.docker_request import DockerOpType
+
         # Extract tag from build command
         tag = None
         if "-t" in step.cmd:
@@ -66,14 +68,18 @@ class RequestFactory:
                 tag = step.cmd[tag_idx]
 
         return DockerRequest(
-            op="build",
-            context_path=env_manager.get_workspace_root(),
-            tag=tag,
+            op=DockerOpType.BUILD,
+            options={
+                "context_path": env_manager.get_workspace_root(),
+                "tag": tag
+            },
             debug_tag=f"docker_build_{context.problem_name}"
         )
 
     def _create_docker_run_request(self, step: Step, context: Any, env_manager: Any) -> DockerRequest:
         """Create docker run request"""
+        from src.operations.requests.docker.docker_request import DockerOpType
+
         # Extract container name and image from run command
         container_name = None
         image = None
@@ -88,35 +94,41 @@ class RequestFactory:
             image = step.cmd[-1]
 
         return DockerRequest(
-            op="run",
+            op=DockerOpType.RUN,
             image=image,
             container=container_name,
-            cmd=step.cmd,
-            workspace_mount=env_manager.get_workspace_root(),
+            command=step.cmd,
+            options={
+                "workspace_mount": env_manager.get_workspace_root()
+            },
             debug_tag=f"docker_run_{context.problem_name}"
         )
 
     def _create_docker_exec_request(self, step: Step, context: Any, env_manager: Any) -> DockerRequest:
         """Create docker exec request"""
+        from src.operations.requests.docker.docker_request import DockerOpType
+
         # Container name is typically the first argument after exec
         container_name = step.cmd[0] if step.cmd else None
         exec_cmd = step.cmd[1:] if len(step.cmd) > 1 else []
 
         return DockerRequest(
-            op="exec",
+            op=DockerOpType.EXEC,
             container=container_name,
-            cmd=exec_cmd,
+            command=exec_cmd,
             debug_tag=f"docker_exec_{context.problem_name}"
         )
 
     def _create_docker_commit_request(self, step: Step, context: Any) -> DockerRequest:
         """Create docker commit request"""
+        from src.operations.requests.docker.docker_request import DockerOpType
+
         # Container and image are typically the first two arguments
         container_name = step.cmd[0] if step.cmd else None
         image = step.cmd[1] if len(step.cmd) > 1 else None
 
         return DockerRequest(
-            op="commit",
+            op=DockerOpType.BUILD,  # Commit is similar to build in DockerOpType
             container=container_name,
             image=image,
             debug_tag=f"docker_commit_{context.problem_name}"
@@ -124,20 +136,24 @@ class RequestFactory:
 
     def _create_docker_rm_request(self, step: Step, context: Any) -> DockerRequest:
         """Create docker rm request"""
+        from src.operations.requests.docker.docker_request import DockerOpType
+
         container_name = step.cmd[0] if step.cmd else None
 
         return DockerRequest(
-            op="rm",
+            op=DockerOpType.REMOVE,
             container=container_name,
             debug_tag=f"docker_rm_{context.problem_name}"
         )
 
     def _create_docker_rmi_request(self, step: Step, context: Any) -> DockerRequest:
         """Create docker rmi request"""
+        from src.operations.requests.docker.docker_request import DockerOpType
+
         image = step.cmd[0] if step.cmd else None
 
         return DockerRequest(
-            op="rmi",
+            op=DockerOpType.REMOVE,  # Use REMOVE for image removal as well
             image=image,
             debug_tag=f"docker_rmi_{context.problem_name}"
         )
@@ -206,16 +222,12 @@ class RequestFactory:
             debug_tag=f"rmtree_{context.problem_name}"
         )
 
-    def _create_chmod_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
-        """Create chmod request"""
-        step.cmd[0] if step.cmd else "755"
-        path = step.cmd[1] if len(step.cmd) > 1 else ""
-
-        # Note: FileRequest doesn't support mode parameter directly
-        # This might need to be handled differently or use ShellRequest
-        return FileRequest(
-            op=FileOpType.CHMOD,
-            path=path,
+    def _create_chmod_request(self, step: Step, context: Any, env_manager: Any) -> ShellRequest:
+        """Create chmod request using shell command"""
+        # chmod is not supported by FileRequest, use ShellRequest instead
+        return ShellRequest(
+            cmd=step.cmd,
+            cwd=env_manager.get_workspace_root(),
             debug_tag=f"chmod_{context.problem_name}"
         )
 

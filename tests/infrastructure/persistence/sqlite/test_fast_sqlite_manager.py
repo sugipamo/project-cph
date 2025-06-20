@@ -301,7 +301,9 @@ class TestFastSQLiteManager:
         manager.cleanup_test_data()
 
         # Check that DELETE statements were called for each table in order
+        # First call is PRAGMA foreign_keys = ON from _setup_connection
         expected_calls = [
+            ("PRAGMA foreign_keys = ON",),
             ("DELETE FROM container_lifecycle_events",),
             ("DELETE FROM docker_containers",),
             ("DELETE FROM docker_images",),
@@ -316,7 +318,8 @@ class TestFastSQLiteManager:
         """Test cleanup_test_data method when table doesn't exist"""
         mock_provider = Mock()
         mock_connection = Mock()
-        mock_connection.execute.side_effect = [Exception("Table not found"), None, None, None, None]
+        # First exception for PRAGMA, then 5 for the DELETE statements
+        mock_connection.execute.side_effect = [None, Exception("Table not found"), None, None, None, None]
         mock_provider.connect.return_value = mock_connection
 
         manager = FastSQLiteManager(sqlite_provider=mock_provider, skip_migrations=True)
@@ -324,7 +327,7 @@ class TestFastSQLiteManager:
         # Should not raise exception
         manager.cleanup_test_data()
 
-        assert mock_connection.execute.call_count == 5
+        assert mock_connection.execute.call_count == 6  # PRAGMA + 5 DELETE statements
 
     def test_reset_shared_connection(self):
         """Test reset_shared_connection class method"""

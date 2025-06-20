@@ -12,6 +12,15 @@ from src.infrastructure.build_infrastructure import build_mock_infrastructure
 from src.infrastructure.di_container import DIContainer
 
 
+def pytest_sessionstart(session):
+    """Reset SQLite connection at the start of test session."""
+    try:
+        from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
+        FastSQLiteManager.reset_shared_connection()
+    except ImportError:
+        pass
+
+
 @pytest.fixture
 def mock_controller():
     """共通のMockControllerを提供"""
@@ -137,6 +146,8 @@ def fast_sqlite_manager():
     """Shared FastSQLiteManager for persistence tests with in-memory database."""
     from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
 
+    # Force reset before creating new manager
+    FastSQLiteManager.reset_shared_connection()
     manager = FastSQLiteManager(db_path=":memory:", skip_migrations=False)
     yield manager
     # Cleanup after module
@@ -147,7 +158,22 @@ def fast_sqlite_manager():
 def clean_sqlite_manager(fast_sqlite_manager):
     """Clean FastSQLiteManager for each test."""
     # Clean data before test
-    fast_sqlite_manager.cleanup_test_data()
+    try:
+        fast_sqlite_manager.cleanup_test_data()
+    except Exception:
+        # If cleanup fails, reset connection and try again
+        from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
+        FastSQLiteManager.reset_shared_connection()
+        # Reinitialize
+        fast_sqlite_manager._initialize_database()
+        fast_sqlite_manager.cleanup_test_data()
+
     yield fast_sqlite_manager
+
     # Clean data after test
-    fast_sqlite_manager.cleanup_test_data()
+    try:
+        fast_sqlite_manager.cleanup_test_data()
+    except Exception:
+        # If cleanup fails, reset the shared connection for next test
+        from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
+        FastSQLiteManager.reset_shared_connection()
