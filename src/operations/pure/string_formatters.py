@@ -147,7 +147,10 @@ def normalize_filesystem_path(path: str) -> str:
     if path.startswith('/'):
         result = '/' + result
 
-    return result or '.'
+    # Explicit check for empty result - don't mask normalization errors
+    if not result:
+        return '.'
+    return result
 
 
 def is_absolute_filesystem_path(path: str) -> bool:

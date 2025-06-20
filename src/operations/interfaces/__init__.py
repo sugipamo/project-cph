@@ -2,13 +2,21 @@
 try:
     from .docker_interface import DockerInterface
     _has_docker_interface = True
-except ImportError:
+except ImportError as e:
+    # Explicit import error handling - log the specific issue
+    # This is a configuration dependency, not a runtime fallback
+    import logging
+    logging.getLogger(__name__).debug(f"Docker interface not available: {e}")
     _has_docker_interface = False
 
 try:
     from .execution_interface import ExecutionInterface
     _has_execution_interface = True
-except ImportError:
+except ImportError as e:
+    # Explicit import error handling - log the specific issue
+    # This is a configuration dependency, not a runtime fallback
+    import logging
+    logging.getLogger(__name__).debug(f"Execution interface not available: {e}")
     _has_execution_interface = False
 
 from .persistence_interface import PersistenceInterface, RepositoryInterface
