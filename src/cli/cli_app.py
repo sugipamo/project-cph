@@ -3,7 +3,6 @@ import traceback
 from typing import Optional
 
 from src.context.user_input_parser.user_input_parser import parse_user_input
-from src.infrastructure.build_infrastructure import build_infrastructure
 from src.infrastructure.di_container import DIContainer, DIKey
 from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
 from src.operations.exceptions.error_codes import ErrorSuggestion, classify_error
@@ -14,13 +13,15 @@ from src.workflow.workflow_result import WorkflowExecutionResult
 class MinimalCLIApp:
     """Minimal CLI application with essential features"""
 
-    def __init__(self, infrastructure: Optional[DIContainer] = None, logger=None):
+    def __init__(self, infrastructure: DIContainer, logger=None):
         """Initialize minimal CLI application
 
         Args:
-            infrastructure: DI container (optional, for testing)
+            infrastructure: DI container (must be injected from main.py)
             logger: Logger instance (optional, for testing)
         """
+        if infrastructure is None:
+            raise ValueError("Infrastructure must be injected from main.py - no direct initialization allowed")
         self.infrastructure = infrastructure
         self.context = None
         self.logger = logger
@@ -35,20 +36,9 @@ class MinimalCLIApp:
             Exit code (0 for success, 1 for failure)
         """
         try:
-            # Initialize infrastructure if not provided
+            # Infrastructure must be injected from main.py - no direct initialization
             if self.infrastructure is None:
-                try:
-                    self.infrastructure = build_infrastructure()
-                except ImportError as e:
-                    # CLI initialization failure - infrastructure not available, exit immediately
-                    # 互換性維持: CLIでは初期化失敗時にエラーコードを返すのが正しい動作
-                    raise RuntimeError(f"Infrastructure module import failed: {e}") from e
-                except ValueError as e:
-                    # 互換性維持: CLIでは初期化失敗時にエラーコードを返すのが正しい動作
-                    raise RuntimeError(f"Infrastructure configuration invalid: {e}") from e
-                except Exception as e:
-                    # 互換性維持: CLIでは初期化失敗時にエラーコードを返すのが正しい動作
-                    raise RuntimeError(f"Infrastructure initialization failed: {e}") from e
+                raise RuntimeError("Infrastructure not injected - must be provided by main.py")
 
             # Initialize logger if not provided
             if self.logger is None:
@@ -242,17 +232,21 @@ class MinimalCLIApp:
         return 1
 
 
-def main(argv: Optional[list[str]] = None, exit_func=None) -> int:
+def main(argv: Optional[list[str]] = None, exit_func=None, infrastructure: Optional[DIContainer] = None) -> int:
     """Main entry point for minimal CLI
 
     Args:
         argv: Command line arguments (injected for testability)
         exit_func: Exit function (injected for testability)
+        infrastructure: DI container (must be injected from main.py)
 
     Returns:
         Exit code
     """
-    app = MinimalCLIApp()
+    if infrastructure is None:
+        raise ValueError("Infrastructure must be injected from main.py - no direct initialization allowed")
+
+    app = MinimalCLIApp(infrastructure)
 
     # デフォルト引数の処理は呼び出し元で行う
     if argv is None:
@@ -268,4 +262,5 @@ def main(argv: Optional[list[str]] = None, exit_func=None) -> int:
 
 if __name__ == "__main__":
     # エントリーポイントでのテストのみ - 実際の実行はmain.pyから
-    main([], lambda _: None)
+    # Note: This requires infrastructure injection - testing only
+    raise RuntimeError("Direct CLI execution not allowed - must run from main.py")

@@ -10,24 +10,20 @@ from typing import Any, Optional, Union
 # Configuration manager for type-safe access to Docker options
 _config_manager = None
 
+def set_config_manager(config_manager):
+    """Set configuration manager via dependency injection
+
+    Args:
+        config_manager: TypeSafeConfigNodeManager instance injected from main.py
+    """
+    global _config_manager
+    _config_manager = config_manager
+
 def _get_config_manager():
-    """Get configuration manager with lazy initialization"""
+    """Get configuration manager (must be injected from main.py)"""
     global _config_manager
     if _config_manager is None:
-        try:
-            from src.configuration.config_manager import TypeSafeConfigNodeManager
-            from src.infrastructure.build_infrastructure import build_infrastructure
-            infrastructure = build_infrastructure()
-            _config_manager = TypeSafeConfigNodeManager(infrastructure)
-            # Load configuration files like in DI container
-            _config_manager.load_from_files(
-                system_dir="./config/system",
-                env_dir="./contest_env",
-                language="python"
-            )
-        except Exception as e:
-            # 設定読み込みエラーを適切に処理
-            raise RuntimeError(f"Failed to load Docker configuration: {e}") from e
+        raise RuntimeError("Configuration manager not injected. Must be set via set_config_manager() from main.py")
     return _config_manager
 
 def _get_docker_option(option_name: str, user_options: Optional[dict[str, Any]]) -> Any:
