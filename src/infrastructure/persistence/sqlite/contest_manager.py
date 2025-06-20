@@ -155,8 +155,10 @@ class ContestManager:
         try:
             user_configs = self.config_loader.config_repo.get_user_specified_configs()
             return user_configs[key]
-        except Exception:
+        except KeyError:
             return None
+        except Exception as e:
+            raise RuntimeError(f"Failed to retrieve user config for key '{key}': {e}") from e
 
     def needs_backup(self, new_language: str, new_contest: str, new_problem: str) -> bool:
         """Check if contest_current needs to be backed up.
@@ -227,7 +229,7 @@ class ContestManager:
 
         except Exception as e:
             self.logger.error(f"Error during backup: {e}")
-            return False
+            raise RuntimeError(f"Backup operation failed: {e}") from e
 
     def _directory_has_content(self, directory_path: str) -> bool:
         """Check if directory exists and has content."""
@@ -242,7 +244,7 @@ class ContestManager:
 
         except Exception as e:
             self.logger.debug(f"Exception checking directory content: {e}")
-            return False
+            raise RuntimeError(f"Failed to check directory content: {e}") from e
 
     def _ensure_directory_exists(self, directory_path: str) -> bool:
         """Ensure directory exists, create if necessary."""
@@ -250,8 +252,8 @@ class ContestManager:
             req = FileRequest(FileOpType.MKDIR, directory_path)
             result = req.execute_operation(driver=self.file_driver)
             return result.success
-        except Exception:
-            return False
+        except Exception as e:
+            raise RuntimeError(f"Failed to ensure directory exists '{directory_path}': {e}") from e
 
     def _move_directory_contents(self, source_path: str, dest_path: str) -> bool:
         """Move all contents from source directory to destination directory."""

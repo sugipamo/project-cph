@@ -48,14 +48,22 @@ class PathOperations:
 
             if errors:
                 if strict:
+                    # Build metadata without conditional expressions
+                    base_dir_str = "None"
+                    if base_dir is not None:
+                        base_dir_str = str(base_dir)
+                    target_path_str = "None"
+                    if target_path is not None:
+                        target_path_str = str(target_path)
+
                     return PathOperationResult(
                         success=False,
                         result=None,
                         errors=errors,
                         warnings=warnings,
                         metadata={
-                            "base_dir": str(base_dir) if base_dir is not None else "None",
-                            "target_path": str(target_path) if target_path is not None else "None"
+                            "base_dir": base_dir_str,
+                            "target_path": target_path_str
                         }
                     )
                 raise ValueError(errors[0])
@@ -240,7 +248,8 @@ class PathOperations:
                 child_path.relative_to(parent_path)
                 result = True
             except ValueError:
-                # Not a subdirectory - this is expected behavior, not an error to hide
+                # Not a subdirectory - this is expected behavior when paths are not related
+                # The ValueError is not being hidden - it's used as control flow for this specific check
                 result = False
 
             if strict:

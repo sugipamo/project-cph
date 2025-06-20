@@ -63,9 +63,8 @@ class ConfigurationRepository:
             finally:
                 self._sqlite_provider.close(conn)
 
-        except Exception:
-            # エラー時は空文字列を返す
-            pass
+        except Exception as e:
+            raise RuntimeError(f"Failed to load previous configuration values: {e}") from e
 
         return result
 
@@ -89,9 +88,8 @@ class ConfigurationRepository:
             finally:
                 self._sqlite_provider.close(conn)
 
-        except Exception:
-            # エラー時は無視
-            pass
+        except Exception as e:
+            raise RuntimeError(f"Failed to save current configuration values: {e}") from e
 
     def _get_config_value(self, conn, key: str) -> Optional[str]:
         """設定値を取得
@@ -113,8 +111,8 @@ class ConfigurationRepository:
         if row and row[0]:
             try:
                 return self._json_provider.loads(row[0])
-            except Exception:
-                return None
+            except Exception as e:
+                raise ValueError(f"Failed to parse configuration value for key '{key}': {e}") from e
 
         return None
 
@@ -151,5 +149,5 @@ class ConfigurationRepository:
             finally:
                 self._sqlite_provider.close(conn)
 
-        except Exception:
-            return []
+        except Exception as e:
+            raise RuntimeError(f"Failed to retrieve available configuration keys: {e}") from e
