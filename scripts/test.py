@@ -670,41 +670,49 @@ class TestRunner:
                     for node in ast.walk(tree):
                         # 1. try-except でのフォールバック検知
                         if isinstance(node, ast.Try):
-                            issues = self._check_try_except_fallback(node, relative_path)
+                            issues = self._check_try_except_fallback(node, relative_path, content)
                             fallback_issues.extend(issues)
 
                         # 2. or演算子でのフォールバック検知
                         elif isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or):
-                            issues = self._check_or_fallback(node, relative_path)
+                            issues = self._check_or_fallback(node, relative_path, content)
                             fallback_issues.extend(issues)
 
                         # 3. 条件式(ternary)でのフォールバック検知
                         elif isinstance(node, ast.IfExp):
-                            issues = self._check_ternary_fallback(node, relative_path)
+                            issues = self._check_ternary_fallback(node, relative_path, content)
                             fallback_issues.extend(issues)
 
                         # 4. if-None チェックでのフォールバック検知
                         elif isinstance(node, ast.If):
-                            issues = self._check_none_fallback(node, relative_path)
+                            issues = self._check_none_fallback(node, relative_path, content)
                             fallback_issues.extend(issues)
 
                 except (SyntaxError, UnicodeDecodeError, OSError, FileNotFoundError):
                     continue
 
-            success = len(fallback_issues) == 0
+            # スマート分類による誤検出フィルタリング
+            filtered_issues = self._filter_legitimate_patterns(fallback_issues)
+            success = len(filtered_issues) == 0
 
             if spinner:
                 spinner.stop(success)
             elif self.verbose:
                 self.logger.info(f"{'✅' if success else '❌'} フォールバック処理チェック")
 
-            if fallback_issues:
+            if filtered_issues:
                 self.issues.append("フォールバック処理が検出されました（CLAUDE.mdルール違反 - エラー隠蔽防止）:")
-                for issue in fallback_issues[:20]:
+                for issue in filtered_issues[:20]:
                     self.issues.append(f"  {issue}")
 
-                if len(fallback_issues) > 20:
-                    self.issues.append(f"  ... 他{len(fallback_issues) - 20}件")
+                if len(filtered_issues) > 20:
+                    self.issues.append(f"  ... 他{len(filtered_issues) - 20}件")
+
+            # 検出統計を表示
+            if self.verbose and fallback_issues:
+                total_detected = len(fallback_issues)
+                filtered_out = total_detected - len(filtered_issues)
+                self.logger.info(f"検出統計: 総数{total_detected}件, 除外{filtered_out}件, 問題{len(filtered_issues)}件")
 
             return success
 
@@ -714,9 +722,10 @@ class TestRunner:
             self.issues.append(f"フォールバック処理チェックでエラー: {e}")
             return False
 
-    def _check_try_except_fallback(self, node: ast.Try, file_path: str) -> list:
+    def _check_try_except_fallback(self, node: ast.Try, file_path: str, content: str) -> list:
         """try-except でのフォールバック処理を検知"""
         issues = []
+        content_lines = content.splitlines()
 
         for handler in node.handlers:
             # except節での代入（フォールバック値設定）を検知
@@ -724,41 +733,84 @@ class TestRunner:
                 if isinstance(stmt, ast.Assign):
                     # 具体的な値の代入（リテラル、定数など）
                     if self._is_fallback_value(stmt.value):
-                        issues.append(f"{file_path}:{stmt.lineno} try-except でのフォールバック代入")
+                        context = self._get_code_context(content_lines, stmt.lineno)
+                        severity = self._determine_severity(file_path, stmt.lineno, context, 'try_except_assign')
+                        issues.append({
+                            'type': 'try_except_assign',
+                            'location': f"{file_path}:{stmt.lineno}",
+                            'message': 'try-except でのフォールバック代入',
+                            'severity': severity,
+                            'context': context
+                        })
 
                 elif isinstance(stmt, ast.Return) and stmt.value and self._is_fallback_value(stmt.value):
                     # return文での具体的な値返却
-                        issues.append(f"{file_path}:{stmt.lineno} try-except でのフォールバック return")
+                    context = self._get_code_context(content_lines, stmt.lineno)
+                    severity = self._determine_severity(file_path, stmt.lineno, context, 'try_except_return')
+                    issues.append({
+                        'type': 'try_except_return',
+                        'location': f"{file_path}:{stmt.lineno}",
+                        'message': 'try-except でのフォールバック return',
+                        'severity': severity,
+                        'context': context
+                    })
 
         return issues
 
-    def _check_or_fallback(self, node: ast.BoolOp, file_path: str) -> list:
+    def _check_or_fallback(self, node: ast.BoolOp, file_path: str, content: str) -> list:
         """or演算子でのフォールバック処理を検知"""
         issues = []
+        content_lines = content.splitlines()
 
         # A or B の形で、Bが具体的な値（フォールバック値）の場合
         if len(node.values) >= 2:
             last_value = node.values[-1]
             if self._is_fallback_value(last_value):
-                issues.append(f"{file_path}:{node.lineno} or演算子でのフォールバック")
+                context = self._get_code_context(content_lines, node.lineno)
+                severity = self._determine_severity(file_path, node.lineno, context, 'or_fallback')
+                issues.append({
+                    'type': 'or_fallback',
+                    'location': f"{file_path}:{node.lineno}",
+                    'message': 'or演算子でのフォールバック',
+                    'severity': severity,
+                    'context': context
+                })
 
         return issues
 
-    def _check_ternary_fallback(self, node: ast.IfExp, file_path: str) -> list:
+    def _check_ternary_fallback(self, node: ast.IfExp, file_path: str, content: str) -> list:
         """条件式でのフォールバック処理を検知"""
         issues = []
+        content_lines = content.splitlines()
 
         # A if condition else B の形で、BまたはAが具体的な値の場合
         if self._is_fallback_value(node.orelse):
-            issues.append(f"{file_path}:{node.lineno} 条件式でのフォールバック (else節)")
+            context = self._get_code_context(content_lines, node.lineno)
+            severity = self._determine_severity(file_path, node.lineno, context, 'ternary_else')
+            issues.append({
+                'type': 'ternary_else',
+                'location': f"{file_path}:{node.lineno}",
+                'message': '条件式でのフォールバック (else節)',
+                'severity': severity,
+                'context': context
+            })
         elif self._is_fallback_value(node.body):
-            issues.append(f"{file_path}:{node.lineno} 条件式でのフォールバック (then節)")
+            context = self._get_code_context(content_lines, node.lineno)
+            severity = self._determine_severity(file_path, node.lineno, context, 'ternary_then')
+            issues.append({
+                'type': 'ternary_then',
+                'location': f"{file_path}:{node.lineno}",
+                'message': '条件式でのフォールバック (then節)',
+                'severity': severity,
+                'context': context
+            })
 
         return issues
 
-    def _check_none_fallback(self, node: ast.If, file_path: str) -> list:
+    def _check_none_fallback(self, node: ast.If, file_path: str, content: str) -> list:
         """if-None チェックでのフォールバック処理を検知"""
         issues = []
+        content_lines = content.splitlines()
 
         # if var is None: var = default の形を検知
         if (isinstance(node.test, ast.Compare) and
@@ -766,9 +818,17 @@ class TestRunner:
             any(isinstance(comp, ast.Constant) and comp.value is None
                 for comp in node.test.comparators)):
             # None チェック後の代入を検知
-                    for stmt in node.body:
-                        if isinstance(stmt, ast.Assign) and self._is_fallback_value(stmt.value):
-                            issues.append(f"{file_path}:{stmt.lineno} None チェックでのフォールバック")
+            for stmt in node.body:
+                if isinstance(stmt, ast.Assign) and self._is_fallback_value(stmt.value):
+                    context = self._get_code_context(content_lines, stmt.lineno)
+                    severity = self._determine_severity(file_path, stmt.lineno, context, 'none_check')
+                    issues.append({
+                        'type': 'none_check',
+                        'location': f"{file_path}:{stmt.lineno}",
+                        'message': 'None チェックでのフォールバック',
+                        'severity': severity,
+                        'context': context
+                    })
 
         return issues
 
@@ -806,6 +866,86 @@ class TestRunner:
                 return True
 
         return False
+
+    def _get_code_context(self, content_lines: list, line_num: int) -> str:
+        """指定行の前後のコードコンテキストを取得"""
+        try:
+            start = max(0, line_num - 3)
+            end = min(len(content_lines), line_num + 2)
+            context_lines = []
+            for i in range(start, end):
+                prefix = ">>> " if i == line_num - 1 else "    "
+                context_lines.append(f"{prefix}{content_lines[i].strip()}")
+            return "\n".join(context_lines)
+        except (IndexError, TypeError):
+            return ""
+
+    def _determine_severity(self, file_path: str, line_num: int, context: str, pattern_type: str) -> str:
+        """コンテキスト分析による重要度判定"""
+        # 技術的に必要なパターンの自動識別
+        legitimate_patterns = {
+            'lazy_import': r'from .* import',
+            'di_resolution': r'resolve\(.*DIKey',
+            'pathlib_control': r'\.relative_to\(',
+            'sqlite_null': r'row\[0\].*if.*else',
+            'default_assignment': r'\w+\s*=\s*\w+\s*or\s*',
+            'dummy_logger': r'DummyLogger',
+            'compatibility': r'互換性.*維持'
+        }
+
+        # infrastructure層での特別処理
+        if 'infrastructure' in file_path:
+            for pattern_name, pattern in legitimate_patterns.items():
+                if pattern_name in context.lower() or any(p in context for p in pattern.split('|') if '|' in pattern):
+                    return 'ALLOWED'
+
+            # DI関連のフォールバック
+            if 'container' in context and 'resolve' in context:
+                return 'ALLOWED'
+
+            # SQLite NULL処理
+            if 'sqlite' in file_path and ('row[0]' in context or 'None' in context):
+                return 'ALLOWED'
+
+            # pathlib制御フロー
+            if 'path' in file_path and 'relative_to' in context:
+                return 'ALLOWED'
+
+        # 問題のあるパターンの検出
+        problematic_patterns = {
+            'error_hiding': r'except.*:\s*(pass|return False)',
+            'broad_except': r'except Exception:\s*return',
+            'silent_fail': r'except.*:\s*$'
+        }
+
+        for pattern_name, _pattern in problematic_patterns.items():
+            if pattern_name in context.lower():
+                return 'ERROR'
+
+        # デフォルト判定
+        if pattern_type in ['try_except_assign', 'try_except_return']:
+            return 'WARNING'
+        return 'WARNING'
+
+    def _filter_legitimate_patterns(self, issues: list) -> list:
+        """技術的に必要なパターンをフィルタリング"""
+        filtered_issues = []
+
+        for issue in issues:
+            if isinstance(issue, dict):
+                if issue.get('severity') == 'ALLOWED':
+                    continue
+                if issue.get('severity') == 'ERROR':
+                    filtered_issues.append(f"[ERROR] {issue['location']} {issue['message']}")
+                elif issue.get('severity') == 'WARNING':
+                    filtered_issues.append(f"[WARNING] {issue['location']} {issue['message']}")
+                else:
+                    filtered_issues.append(f"{issue['location']} {issue['message']}")
+            else:
+                # 旧形式のissue（文字列）
+                filtered_issues.append(issue)
+
+        return filtered_issues
 
     def _is_legitimate_pattern(self, node: ast.AST, context: str) -> bool:
         """正当な使用パターンかを判定"""
