@@ -25,7 +25,6 @@ class UnifiedDriver:
         self._docker_driver = None
         self._file_driver = None
         self._shell_driver = None
-        self._python_driver = None
 
     @property
     def docker_driver(self):
@@ -48,12 +47,6 @@ class UnifiedDriver:
             self._shell_driver = self.infrastructure.resolve(DIKey.SHELL_DRIVER)
         return self._shell_driver
 
-    @property
-    def python_driver(self):
-        """Lazy load python driver"""
-        if self._python_driver is None:
-            self._python_driver = self.infrastructure.resolve(DIKey.PYTHON_DRIVER)
-        return self._python_driver
 
     def execute_operation_request(self, request: OperationRequestFoundation) -> OperationResult:
         """Execute a request using the appropriate driver
@@ -65,7 +58,8 @@ class UnifiedDriver:
             ExecutionResult from the driver
         """
         # Log request execution
-        self.logger.debug(f"Executing {request.request_type.value} request")
+        request_type_name = getattr(request.request_type, 'name', str(request.request_type))
+        self.logger.debug(f"Executing {request_type_name} request")
 
         # Route to appropriate driver based on request type
         if request.request_type == RequestType.DOCKER_REQUEST:
@@ -74,8 +68,6 @@ class UnifiedDriver:
             return self._execute_file_request(request)
         if request.request_type == RequestType.SHELL_REQUEST:
             return self._execute_shell_request(request)
-        if request.request_type == RequestType.PYTHON_REQUEST:
-            return self._execute_python_request(request)
         raise ValueError(f"Unsupported request type: {request.request_type}")
 
     def _execute_docker_request(self, request: Any) -> OperationResult:
@@ -239,38 +231,3 @@ class UnifiedDriver:
                 exit_code=1
             )
 
-    def _execute_python_request(self, request: Any) -> OperationResult:
-        """Execute python request"""
-        from src.operations.requests.python.python_request import PythonRequest
-        from src.operations.results.shell_result import ShellResult
-
-        if not isinstance(request, PythonRequest):
-            raise TypeError(f"Expected PythonRequest, got {type(request)}")
-
-        try:
-            # Execute python script
-            result = self.python_driver.run(
-                script=request.script,
-                args=request.args,
-                cwd=request.cwd,
-                env=request.env
-            )
-
-            # Convert driver result to ShellResult (Python uses same result type)
-            return ShellResult(
-                success=result.success,
-                output=result.output,
-                error=result.error,
-                request=request,
-                exit_code=getattr(result, 'exit_code', 0 if result.success else 1)
-            )
-
-        except Exception as e:
-            self.logger.error(f"Python operation failed: {e}")
-            return ShellResult(
-                success=False,
-                output="",
-                error=str(e),
-                request=request,
-                exit_code=1
-            )

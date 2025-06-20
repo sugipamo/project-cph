@@ -53,16 +53,16 @@ class FastSQLiteManager:
     def _initialize_shared_memory_db(self) -> None:
         """Initialize shared in-memory database."""
         with self._connection_lock:
-            if self._shared_connection is None:
-                self._shared_connection = self._sqlite_provider.connect(":memory:", check_same_thread=False)
-                self._setup_connection(self._shared_connection)
+            if FastSQLiteManager._shared_connection is None:
+                FastSQLiteManager._shared_connection = self._sqlite_provider.connect(":memory:", check_same_thread=False)
+                self._setup_connection(FastSQLiteManager._shared_connection)
 
                 if not self.skip_migrations:
-                    self._run_migrations(self._shared_connection)
-                    self._migration_applied = True
-            elif not self._migration_applied and not self.skip_migrations:
-                self._run_migrations(self._shared_connection)
-                self._migration_applied = True
+                    self._run_migrations(FastSQLiteManager._shared_connection)
+                    FastSQLiteManager._migration_applied = True
+            elif not FastSQLiteManager._migration_applied and not self.skip_migrations:
+                self._run_migrations(FastSQLiteManager._shared_connection)
+                FastSQLiteManager._migration_applied = True
 
     def _initialize_file_db(self) -> None:
         """Initialize file-based database."""
@@ -141,9 +141,9 @@ class FastSQLiteManager:
         if self._is_memory_db:
             # Use shared connection for in-memory database
             with self._connection_lock:
-                if self._shared_connection is None:
+                if FastSQLiteManager._shared_connection is None:
                     raise RuntimeError("Shared connection not initialized")
-                yield self._shared_connection
+                yield FastSQLiteManager._shared_connection
         else:
             # Create new connection for file database
             conn = self._sqlite_provider.connect(self.db_path)

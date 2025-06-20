@@ -99,7 +99,11 @@ def resolve_format_string(node: 'ConfigNode', initial_values: Optional[dict] = N
     if isinstance(node.value, str):
         s = node.value
     elif isinstance(node.value, dict) and "value" in node.value:
-        s = node.value["value"]
+        value = node.value["value"]
+        if isinstance(value, str):
+            s = value
+        else:
+            return str(value)
     else:
         return str(node.value)
 
