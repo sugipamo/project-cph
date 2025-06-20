@@ -104,9 +104,10 @@ class TestCLIErrorHandling:
         mock_build_infra.side_effect = Exception("DI初期化エラー")
 
         app = MinimalCLIApp()
-        result = app.run_cli_application(["test"])
 
-        assert result == 1  # エラー時は1を返す
+        # 明示的な例外が発生することを期待
+        with pytest.raises(RuntimeError, match="Infrastructure initialization failed"):
+            app.run_cli_application(["test"])
 
     @patch('src.cli.cli_app.build_infrastructure')
     @patch('src.cli.cli_app.parse_user_input')

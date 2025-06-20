@@ -647,6 +647,83 @@ class TestRunner:
                 self.logger.error(f"print使用チェックでエラー: {e}")
             return False
 
+    def check_infrastructure_duplication(self) -> bool:
+        """Infrastructure重複生成の検出（CLAUDE.mdルール違反 - main.py以外での生成禁止）"""
+        import ast
+        import glob
+
+        spinner = None
+        if not self.verbose:
+            spinner = ProgressSpinner("Infrastructure重複生成チェック", self.logger)
+            spinner.start()
+
+        try:
+            duplication_issues = []
+
+            for file_path in glob.glob('src/**/*.py', recursive=True):
+                # main.pyは除外
+                if file_path.endswith('/main.py') or file_path == 'src/main.py':
+                    continue
+
+                try:
+                    content = self.file_handler.read_text(file_path, encoding='utf-8')
+                    tree = ast.parse(content, filename=file_path)
+                    relative_path = file_path.replace('src/', '')
+
+                    # build_infrastructure()呼び出しを検出
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.Call):
+                            # 直接呼び出し: build_infrastructure()
+                            if isinstance(node.func, ast.Name) and node.func.id == 'build_infrastructure':
+                                duplication_issues.append(f"{relative_path}:{node.lineno} build_infrastructure() の直接呼び出し")
+
+                            # モジュール経由: module.build_infrastructure()
+                            elif isinstance(node.func, ast.Attribute) and node.func.attr == 'build_infrastructure':
+                                duplication_issues.append(f"{relative_path}:{node.lineno} {self._get_attr_chain(node.func)} の呼び出し")
+
+                    # build_infrastructure のインポートも検出
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.ImportFrom):
+                            if node.module and 'build_infrastructure' in node.module:
+                                for alias in node.names or []:
+                                    if alias.name == 'build_infrastructure':
+                                        duplication_issues.append(f"{relative_path}:{node.lineno} build_infrastructure のインポート")
+                        elif isinstance(node, ast.Import):
+                            for alias in node.names:
+                                if 'build_infrastructure' in alias.name:
+                                    duplication_issues.append(f"{relative_path}:{node.lineno} {alias.name} のインポート")
+
+                except (SyntaxError, UnicodeDecodeError, OSError, FileNotFoundError):
+                    continue
+
+            success = len(duplication_issues) == 0
+
+            if spinner:
+                spinner.stop(success)
+            elif self.verbose:
+                self.logger.info(f"{'✅' if success else '❌'} Infrastructure重複生成チェック")
+
+            if duplication_issues:
+                self.issues.append("Infrastructure重複生成が検出されました（CLAUDE.mdルール違反 - すべてmain.pyから注入する）:")
+                for issue in duplication_issues:
+                    self.issues.append(f"  {issue}")
+
+            return success
+
+        except Exception as e:
+            if spinner:
+                spinner.stop(False)
+            self.issues.append(f"Infrastructure重複生成チェックでエラー: {e}")
+            return False
+
+    def _get_attr_chain(self, node: ast.Attribute) -> str:
+        """属性チェーンを文字列として取得"""
+        if isinstance(node.value, ast.Name):
+            return f"{node.value.id}.{node.attr}"
+        if isinstance(node.value, ast.Attribute):
+            return f"{self._get_attr_chain(node.value)}.{node.attr}"
+        return f"<expr>.{node.attr}"
+
     def check_fallback_patterns(self) -> bool:
         """フォールバック処理の検出（CLAUDE.mdルール違反 - エラー隠蔽防止）"""
         import ast
@@ -1393,6 +1470,9 @@ def main(file_handler: FileHandler = None):
 
     # 依存性注入チェック
     runner.check_dependency_injection()
+
+    # Infrastructure重複生成チェック
+    runner.check_infrastructure_duplication()
 
     # print使用チェック
     runner.check_print_usage()

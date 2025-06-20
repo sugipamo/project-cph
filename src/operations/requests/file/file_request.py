@@ -89,14 +89,18 @@ class FileRequest(OperationRequestFoundation):
 
     def _handle_write_operation(self, actual_driver: Any) -> FileResult:
         """Handle file write operation."""
+        # Validate content parameter explicitly
+        if self.content is None:
+            raise ValueError("File write operation requires explicit content parameter")
+
         # Check if it's a mock driver with different API
         if hasattr(actual_driver, '_create_impl'):
             # For drivers with _create_impl, resolve path first
             resolved_path = actual_driver.resolve_path(self.path)
-            actual_driver._create_impl(resolved_path, self.content or "")
+            actual_driver._create_impl(resolved_path, self.content)
         else:
             # Regular driver
-            actual_driver.create(self.path, self.content or "")
+            actual_driver.create(self.path, self.content)
         return FileResult(path=self.path, success=True, request=self)
 
     def _handle_exists_operation(self, actual_driver: Any) -> FileResult:

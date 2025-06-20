@@ -43,19 +43,48 @@ class OperationResult:
         self.stderr = stderr
         self.content = content
         self.exists = exists
-        self.path = path if path is not None else (getattr(request, "path", None) if request is not None else None)
-        self.op = op if op is not None else (getattr(request, "op", None) if request is not None else None)
-        self.cmd = cmd if cmd is not None else (getattr(request, "cmd", None) if request is not None else None)
+        # Initialize path, op, and cmd with explicit validation
+        if path is not None:
+            self.path = path
+        elif request is not None:
+            self.path = getattr(request, "path", None)
+        else:
+            self.path = None
+
+        if op is not None:
+            self.op = op
+        elif request is not None:
+            self.op = getattr(request, "op", None)
+        else:
+            self.op = None
+
+        if cmd is not None:
+            self.cmd = cmd
+        elif request is not None:
+            self.cmd = getattr(request, "cmd", None)
+        else:
+            self.cmd = None
         self.request = request
         self.start_time = start_time
         self.end_time = end_time
-        self.elapsed_time = (end_time - start_time) if start_time and end_time else None
+        # Calculate elapsed time with explicit validation
+        if start_time is not None and end_time is not None:
+            self.elapsed_time = end_time - start_time
+        else:
+            self.elapsed_time = None
         self.error_message = error_message
         self.exception = exception
-        self.metadata = metadata or {}
+        # Initialize metadata with explicit validation
+        if metadata is not None:
+            self.metadata = metadata
+        else:
+            self.metadata = {}
         self.skipped = skipped
-        # operation_type is set from request if available
-        self._operation_type = getattr(request, "operation_type", None) if request is not None else None
+        # Initialize operation_type with explicit validation
+        if request is not None:
+            self._operation_type = getattr(request, "operation_type", None)
+        else:
+            self._operation_type = None
 
     @property
     def operation_type(self) -> Optional[Any]:
@@ -147,7 +176,10 @@ class OperationResult:
             parts.append(f"stdout: {self.stdout}")
         if self.exception:
             parts.append(f"exception: {self.exception}")
-        return "\n".join(parts) if parts else "No error output"
+        # Return formatted error output with explicit validation
+        if parts:
+            return "\n".join(parts)
+        return "No error output"
 
 
 __all__ = ["OperationResult"]

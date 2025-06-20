@@ -86,10 +86,10 @@ class TestMinimalCLIApp:
 
         # テスト実行
         app = MinimalCLIApp()
-        result = app.run_cli_application(["python", "test", "abc301", "a"])
 
-        # アサーション
-        assert result == 1
+        # アサーション - 明示的な例外が発生することを期待
+        with pytest.raises(RuntimeError, match="Infrastructure initialization failed"):
+            app.run_cli_application(["python", "test", "abc301", "a"])
 
     @patch('src.cli.cli_app.build_infrastructure')
     @patch('src.cli.cli_app.parse_user_input')

@@ -39,19 +39,28 @@ class MinimalCLIApp:
             if self.infrastructure is None:
                 try:
                     self.infrastructure = build_infrastructure()
-                except Exception:
+                except ImportError as e:
                     # CLI initialization failure - infrastructure not available, exit immediately
                     # 互換性維持: CLIでは初期化失敗時にエラーコードを返すのが正しい動作
-                    return 1
+                    raise RuntimeError(f"Infrastructure module import failed: {e}") from e
+                except ValueError as e:
+                    # 互換性維持: CLIでは初期化失敗時にエラーコードを返すのが正しい動作
+                    raise RuntimeError(f"Infrastructure configuration invalid: {e}") from e
+                except Exception as e:
+                    # 互換性維持: CLIでは初期化失敗時にエラーコードを返すのが正しい動作
+                    raise RuntimeError(f"Infrastructure initialization failed: {e}") from e
 
             # Initialize logger if not provided
             if self.logger is None:
                 try:
                     self.logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
-                except Exception:
+                except KeyError as e:
                     # Logger initialization failure - infrastructure available but logger failed
                     # 互換性維持: CLIではロガー初期化失敗時にエラーコードを返すのが正しい動作
-                    return 1
+                    raise RuntimeError(f"Logger dependency not registered: {e}") from e
+                except Exception as e:
+                    # 互換性維持: CLIではロガー初期化失敗時にエラーコードを返すのが正しい動作
+                    raise RuntimeError(f"Logger initialization failed: {e}") from e
 
             # Parse user input with infrastructure context
             self.context = parse_user_input(args, self.infrastructure)
