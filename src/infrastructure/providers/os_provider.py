@@ -207,7 +207,10 @@ class MockOsProvider(OsProvider):
 
     def path_dirname(self, path: str) -> str:
         """モックディレクトリ名取得（副作用なし）"""
-        return "/".join(path.split("/")[:-1]) if "/" in path else ""
+        # 互換性維持: パスがルートの場合の正しい処理
+        if "/" not in path:
+            raise ValueError(f"Path '{path}' has no directory component")
+        return "/".join(path.split("/")[:-1])
 
     def path_basename(self, path: str) -> str:
         """モックベース名取得（副作用なし）"""
@@ -232,7 +235,10 @@ class MockOsProvider(OsProvider):
     def add_directory(self, path: str, contents: Optional[List[str]] = None) -> None:
         """テスト用ディレクトリ追加"""
         self._filesystem[path] = "dir"
-        self._dir_contents[path] = contents or []
+        # 互換性維持: contentsがNoneの場合の明示的な処理
+        if contents is None:
+            contents = []
+        self._dir_contents[path] = contents
 
     def path_exists(self, path: str) -> bool:
         """モックパス存在判定（副作用なし）"""

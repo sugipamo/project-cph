@@ -142,12 +142,9 @@ class TestConfigurationRepository:
             )
             conn.commit()
 
-        # Test getting the value
-        with sqlite3.connect(repo.db_path) as conn:
-            cursor = conn.cursor()
-            result = repo._get_config_value(cursor, "bad_key")
-
-        assert result is None
+        # Test getting the value - should raise ValueError for invalid JSON
+        with sqlite3.connect(repo.db_path) as conn, pytest.raises(ValueError, match="Failed to parse configuration value"):
+            repo._get_config_value(conn, "bad_key")
 
     def test_save_config_value(self, repo):
         """Test saving configuration value"""
@@ -201,13 +198,9 @@ class TestConfigurationRepository:
             cursor.execute("DROP TABLE system_config")
             conn.commit()
 
-        # Should return default values without raising exception
-        result = repo.load_previous_values()
-        expected = {
-            "old_contest_name": "",
-            "old_problem_name": ""
-        }
-        assert result == expected
+        # Should raise RuntimeError for SQL errors
+        with pytest.raises(RuntimeError, match="Failed to load previous configuration values"):
+            repo.load_previous_values()
 
     def test_save_current_values_with_sql_error(self, repo):
         """Test handling SQL errors during save"""
@@ -217,8 +210,9 @@ class TestConfigurationRepository:
             cursor.execute("DROP TABLE system_config")
             conn.commit()
 
-        # Should not raise exception
-        repo.save_current_values("test", "test")
+        # Should raise RuntimeError for SQL errors
+        with pytest.raises(RuntimeError, match="Failed to save current configuration values"):
+            repo.save_current_values("test", "test")
 
     def test_get_available_config_keys_with_sql_error(self, repo):
         """Test handling SQL errors during key retrieval"""
@@ -228,6 +222,6 @@ class TestConfigurationRepository:
             cursor.execute("DROP TABLE system_config")
             conn.commit()
 
-        # Should return empty list without raising exception
-        result = repo.get_available_config_keys()
-        assert result == []
+        # Should raise RuntimeError for SQL errors
+        with pytest.raises(RuntimeError, match="Failed to retrieve available configuration keys"):
+            repo.get_available_config_keys()

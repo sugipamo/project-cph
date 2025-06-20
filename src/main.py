@@ -7,4 +7,5 @@ from src.infrastructure.di_container import DIKey
 if __name__ == "__main__":
     infrastructure = build_infrastructure()
     sys_provider = infrastructure.resolve(DIKey.SYS_PROVIDER)
-    main(sys_provider.get_argv()[1:], sys_provider.exit)
+    exit_code = main(sys_provider.get_argv()[1:], sys_provider.exit)
+    sys_provider.exit(exit_code)

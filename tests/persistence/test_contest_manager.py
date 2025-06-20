@@ -327,26 +327,6 @@ class TestContestManager:
             )
             assert result is True
 
-    def test_get_latest_non_null_value_success(self):
-        """Test _get_latest_non_null_value finds value"""
-        # Test that the method handles the operation gracefully
-        # The method tries operations repository first, then falls back to config
-        result = self.contest_manager._get_latest_non_null_value("language")
-        # Should return something (Mock or None) without crashing
-        assert result is not None or result is None
-
-    def test_get_latest_non_null_value_fallback(self):
-        """Test _get_latest_non_null_value uses config fallback"""
-        # Mock operations repository to raise exception
-        mock_operations_repo = Mock()
-        mock_operations_repo.find_all.side_effect = Exception("DB error")
-
-        self.container.dependencies["operation_repository"] = mock_operations_repo
-
-        # Test that the method handles exceptions gracefully and falls back to config
-        result = self.contest_manager._get_latest_non_null_value("language")
-        # Should return something (Mock or None) without crashing
-        assert result is not None or result is None
 
     def test_handle_contest_change_needs_backup(self):
         """Test handle_contest_change when backup is needed"""

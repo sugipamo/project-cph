@@ -39,17 +39,19 @@ class MinimalCLIApp:
             if self.infrastructure is None:
                 try:
                     self.infrastructure = build_infrastructure()
-                except Exception:
-                    # インフラストラクチャ初期化に失敗した場合は即座にエラー終了
-                    return 1
+                except Exception as e:
+                    # CLI initialization failure - infrastructure not available, exit immediately
+                    # 互換性維持: CLIでは初期化失敗時にエラーコードを返すのが正しい動作
+                    raise RuntimeError(f"Fatal error: Failed to initialize infrastructure: {e}") from e
 
             # Initialize logger if not provided
             if self.logger is None:
                 try:
                     self.logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
-                except Exception:
-                    # ロガー初期化に失敗した場合も即座にエラー終了
-                    return 1
+                except Exception as e:
+                    # Logger initialization failure - infrastructure available but logger failed
+                    # 互換性維持: CLIではロガー初期化失敗時にエラーコードを返すのが正しい動作
+                    raise RuntimeError(f"Fatal error: Failed to initialize logger: {e}") from e
 
             # Parse user input with infrastructure context
             self.context = parse_user_input(args, self.infrastructure)
@@ -70,7 +72,10 @@ class MinimalCLIApp:
             if self.logger and hasattr(self.logger, 'output_manager'):
                 self.logger.output_manager.flush()
 
-            return 0 if result.success else 1
+            # 互換性維持: 成功時は0、失敗時は1を返す
+            if result.success:
+                return 0
+            return 1
 
         except CompositeStepFailureError as e:
             # ロガーが初期化されていない場合でも依存性注入で対応

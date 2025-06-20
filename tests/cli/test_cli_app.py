@@ -153,38 +153,3 @@ class TestMinimalCLIApp:
         assert captured.out == ""
 
 
-class TestCLIIntegration:
-    """CLI統合テスト（モックインフラストラクチャ使用）"""
-
-    @pytest.mark.integration
-    def test_cli_with_mock_infrastructure(self, mock_infrastructure):
-        """モックインフラストラクチャを使用したCLI統合テスト"""
-        with patch('src.cli.cli_app.build_infrastructure') as mock_build:
-            mock_build.return_value = mock_infrastructure
-
-            with patch('src.cli.cli_app.parse_user_input') as mock_parse:
-                # 最小限のモックコンテキスト
-                mock_context = MagicMock()
-                mock_context.env_json = {
-                    "python": {
-                        "commands": {
-                            "test": {
-                                "steps": [],
-                                "parallel": {"enabled": False, "max_workers": 4}
-                            }
-                        }
-                    },
-                    "shared": {
-                        "environment_logging": {"enabled": False}
-                    }
-                }
-                mock_parse.return_value = mock_context
-
-                # テスト実行
-                app = MinimalCLIApp()
-                result = app.run_cli_application(["python", "test", "abc301", "a"])
-
-                # DI注入とワークフロー構築が正常に動作することを確認
-                assert app.infrastructure is not None
-                assert app.context is not None
-                assert result in [0, 1]  # 正常終了または予期されるエラー

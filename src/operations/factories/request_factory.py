@@ -13,6 +13,14 @@ from src.workflow.step.step import Step, StepType
 class RequestFactory:
     """Factory class for creating request objects from steps"""
 
+    def __init__(self, config_manager=None):
+        """Initialize RequestFactory with configuration manager
+
+        Args:
+            config_manager: Configuration manager for resolving default values
+        """
+        self.config_manager = config_manager
+
     def create_request_from_step(self, step: Step, context: Any, env_manager: Any) -> Optional[OperationRequestFoundation]:
         """Create a request object from a step
 
@@ -109,8 +117,25 @@ class RequestFactory:
         from src.operations.requests.docker.docker_request import DockerOpType
 
         # Container name is typically the first argument after exec
-        container_name = step.cmd[0] if step.cmd else None
-        exec_cmd = step.cmd[1:] if len(step.cmd) > 1 else []
+        if not step.cmd:
+            if self.config_manager:
+                container_name = self.config_manager.resolve_config(
+                    ['request_factory_defaults', 'docker', 'container_name_fallback'], type(None)
+                )
+            else:
+                raise ValueError("No command provided for docker exec and no config manager available")
+        else:
+            container_name = step.cmd[0]
+
+        if len(step.cmd) <= 1:
+            if self.config_manager:
+                exec_cmd = self.config_manager.resolve_config(
+                    ['request_factory_defaults', 'docker', 'exec_cmd_fallback'], list
+                )
+            else:
+                raise ValueError("No exec command provided for docker exec and no config manager available")
+        else:
+            exec_cmd = step.cmd[1:]
 
         return DockerRequest(
             op=DockerOpType.EXEC,
@@ -124,8 +149,25 @@ class RequestFactory:
         from src.operations.requests.docker.docker_request import DockerOpType
 
         # Container and image are typically the first two arguments
-        container_name = step.cmd[0] if step.cmd else None
-        image = step.cmd[1] if len(step.cmd) > 1 else None
+        if not step.cmd:
+            if self.config_manager:
+                container_name = self.config_manager.resolve_config(
+                    ['request_factory_defaults', 'docker', 'container_name_fallback'], type(None)
+                )
+            else:
+                raise ValueError("No command provided for docker commit and no config manager available")
+        else:
+            container_name = step.cmd[0]
+
+        if len(step.cmd) <= 1:
+            if self.config_manager:
+                image = self.config_manager.resolve_config(
+                    ['request_factory_defaults', 'docker', 'image_fallback'], type(None)
+                )
+            else:
+                raise ValueError("No image provided for docker commit and no config manager available")
+        else:
+            image = step.cmd[1]
 
         return DockerRequest(
             op=DockerOpType.BUILD,  # Commit is similar to build in DockerOpType

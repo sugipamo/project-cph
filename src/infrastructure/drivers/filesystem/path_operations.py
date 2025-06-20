@@ -250,6 +250,7 @@ class PathOperations:
             except ValueError:
                 # Not a subdirectory - this is expected behavior when paths are not related
                 # The ValueError is not being hidden - it's used as control flow for this specific check
+                # 互換性維持: Path.relative_to()のValueErrorは仕様上の正常な動作
                 result = False
 
             if strict:

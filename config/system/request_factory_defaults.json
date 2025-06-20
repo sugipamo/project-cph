@@ -1,0 +1,15 @@
+{
+  "request_factory_defaults": {
+    "docker": {
+      "container_name_fallback": null,
+      "image_fallback": null,
+      "exec_cmd_fallback": []
+    },
+    "file": {
+      "path_fallback": ""
+    },
+    "python": {
+      "script_path_fallback": ""
+    }
+  }
+}

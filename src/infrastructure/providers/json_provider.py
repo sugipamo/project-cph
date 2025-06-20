@@ -90,11 +90,8 @@ class MockJsonProvider(JsonProvider):
                     return self._mock_data[mock_path]
 
         # テスト環境では実際のファイルも読み込めるように
-        try:
-            import json
-            return json.load(fp, **kwargs)
-        except (FileNotFoundError, json.JSONDecodeError):
-            return {}
+        import json
+        return json.load(fp, **kwargs)  # エラーは呼び出し元に委譲
 
     def add_mock_data(self, key: str, data: Any) -> None:
         """テスト用データ追加"""

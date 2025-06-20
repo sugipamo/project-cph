@@ -24,24 +24,19 @@ class ContestManager:
     def env_json(self) -> Dict:
         """Lazy load env_json from config loader with shared config."""
         if not self._env_json:
-            try:
-                # Load shared env.json directly to ensure we have shared paths
-                from src.operations.requests.file.file_op_type import FileOpType
-                from src.operations.requests.file.file_request import FileRequest
+            # Load shared env.json directly to ensure we have shared paths
+            from src.operations.requests.file.file_op_type import FileOpType
+            from src.operations.requests.file.file_request import FileRequest
 
-                shared_path = "contest_env/shared/env.json"
-                req = FileRequest(FileOpType.READ, shared_path)
-                result = req.execute_operation(driver=self.file_driver)
+            shared_path = "contest_env/shared/env.json"
+            req = FileRequest(FileOpType.READ, shared_path)
+            result = req.execute_operation(driver=self.file_driver)
 
-                if result.success:
-                    shared_config = self.json_provider.loads(result.content)
-                    self._env_json = shared_config
-                else:
-                    self._env_json = {}
-
-            except Exception as e:
-                self.logger.warning(f"Failed to load shared env.json: {e}")
-                self._env_json = {}
+            if result.success:
+                shared_config = self.json_provider.loads(result.content)
+                self._env_json = shared_config
+            else:
+                raise RuntimeError(f"Failed to load shared env.json from {shared_path}: {result.error_message or 'Unknown error'}")
         return self._env_json
 
     @property
@@ -89,11 +84,7 @@ class ContestManager:
     def files_repo(self):
         """Lazy load contest current files repository."""
         if not hasattr(self, '_files_repo'):
-            try:
-                self._files_repo = self.container.resolve("contest_current_files_repository")
-            except ValueError:
-                # If repository not available, use None (simpler approach)
-                self._files_repo = None
+            self._files_repo = self.container.resolve("contest_current_files_repository")
         return self._files_repo
 
     def get_current_contest_state(self) -> Dict[str, Optional[str]]:
@@ -133,32 +124,24 @@ class ContestManager:
         Returns:
             Latest non-NULL value or None if no non-NULL value found
         """
-        try:
-            from src.infrastructure.di_container import DIKey
+        from src.infrastructure.di_container import DIKey
 
-            # Query operations repository for historical data
-            operations_repo = self.container.resolve(DIKey.OPERATION_REPOSITORY)
+        # Query operations repository for historical data
+        operations_repo = self.container.resolve(DIKey.OPERATION_REPOSITORY)
 
-            # Get all operations ordered by timestamp desc
-            operations = operations_repo.find_all()
+        # Get all operations ordered by timestamp desc
+        operations = operations_repo.find_all()
 
-            for operation in operations:
-                value = getattr(operation, key, None)
-                if value is not None:
-                    return value
+        for operation in operations:
+            value = getattr(operation, key, None)
+            if value is not None:
+                return value
 
-        except Exception as e:
-            # If operations repository fails, try system config
-            self.logger.warning(f"Failed to get historical data: {e}")
-
-        # Fallback: check system config for any stored value
-        try:
-            user_configs = self.config_loader.config_repo.get_user_specified_configs()
+        # Check system config for any stored value
+        user_configs = self.config_loader.config_repo.get_user_specified_configs()
+        if key in user_configs:
             return user_configs[key]
-        except KeyError:
-            return None
-        except Exception as e:
-            raise RuntimeError(f"Failed to retrieve user config for key '{key}': {e}") from e
+        return None
 
     def needs_backup(self, new_language: str, new_contest: str, new_problem: str) -> bool:
         """Check if contest_current needs to be backed up.
@@ -277,7 +260,7 @@ class ContestManager:
 
         except Exception as e:
             self.logger.error(f"Error moving directory contents: {e}")
-            return False
+            raise RuntimeError(f"Failed to move directory contents: {e}") from e
 
     def _clear_contest_current(self, contest_current_path: str) -> bool:
         """Clear contest_current directory."""
@@ -301,8 +284,9 @@ class ContestManager:
 
             return True
 
-        except Exception:
-            return False
+        except Exception as e:
+            self.logger.error(f"Error clearing contest_current directory: {e}")
+            raise RuntimeError(f"Failed to clear contest_current directory: {e}") from e
 
     def _copy_directory_contents(self, source_path: str, dest_path: str) -> bool:
         """Copy all contents from source directory to destination directory."""
@@ -333,7 +317,7 @@ class ContestManager:
 
         except Exception as e:
             self.logger.error(f"Error copying directory contents: {e}")
-            return False
+            raise RuntimeError(f"Failed to copy directory contents: {e}") from e
 
     def _copy_template_structure(self, template_path: str, dest_path: str,
                                 language: str, contest: str, problem: str) -> bool:
@@ -357,7 +341,7 @@ class ContestManager:
 
         except Exception as e:
             self.logger.error(f"Error copying template structure: {e}")
-            return False
+            raise RuntimeError(f"Failed to copy template structure: {e}") from e
 
     def _copy_template_recursive(self, source_dir: str, dest_dir: str, relative_path: str,
                                language: str, contest: str, problem: str,
@@ -395,8 +379,8 @@ class ContestManager:
 
             return True
 
-        except Exception:
-            return False
+        except Exception as e:
+            raise RuntimeError(f"Failed to copy template files recursively: {e}") from e
 
     def _track_files_from_stock(self, stock_path: str, current_path: str,
                               language: str, contest: str, problem: str) -> bool:
@@ -415,8 +399,8 @@ class ContestManager:
 
             return True
 
-        except Exception:
-            return False
+        except Exception as e:
+            raise RuntimeError(f"Failed to track files from stock: {e}") from e
 
     def _track_files_recursive(self, source_dir: str, dest_dir: str, relative_path: str,
                              language: str, contest: str, problem: str,
@@ -444,8 +428,8 @@ class ContestManager:
                         source_item          # original source path
                     ))
 
-        except Exception:
-            pass
+        except Exception as e:
+            raise RuntimeError(f"Failed to track files recursively: {e}") from e
 
     def handle_contest_change(self, new_language: str, new_contest: str, new_problem: str) -> bool:
         """Handle contest change with backup if needed.
@@ -479,7 +463,7 @@ class ContestManager:
 
         except Exception as e:
             self.logger.error(f"Error handling contest change: {e}")
-            return False
+            raise RuntimeError(f"Failed to handle contest change: {e}") from e
 
     def restore_from_contest_stock(self, language: str, contest: str, problem: str) -> bool:
         """Restore contest_current from contest_stock if available.
@@ -526,7 +510,7 @@ class ContestManager:
 
         except Exception as e:
             self.logger.error(f"Error restoring from contest_stock: {e}")
-            return False
+            raise RuntimeError(f"Failed to restore from contest_stock: {e}") from e
 
     def initialize_from_template(self, language: str, contest: str, problem: str) -> bool:
         """Initialize contest_current from contest_template.
@@ -569,7 +553,7 @@ class ContestManager:
 
         except Exception as e:
             self.logger.error(f"Error initializing from template: {e}")
-            return False
+            raise RuntimeError(f"Failed to initialize from template: {e}") from e
 
     def initialize_contest_current(self, language: str, contest: str, problem: str) -> bool:
         """Initialize contest_current with priority: stock -> template.
@@ -581,15 +565,17 @@ class ContestManager:
 
         Returns:
             True if initialization successful, False otherwise
+
+        Raises:
+            RuntimeError: If initialization fails for both stock and template
         """
-        try:
-            # Try to restore from contest_stock first
-            if self.restore_from_contest_stock(language, contest, problem):
-                return True
+        # Try to restore from contest_stock first
+        if self.restore_from_contest_stock(language, contest, problem):
+            return True
 
-            # Fall back to template initialization
-            return self.initialize_from_template(language, contest, problem)
+        # Initialize from template if stock is not available
+        template_success = self.initialize_from_template(language, contest, problem)
+        if not template_success:
+            raise RuntimeError(f"Failed to initialize contest_current for {language} {contest} {problem}: both stock and template initialization failed")
 
-        except Exception as e:
-            self.logger.error(f"Error initializing contest_current: {e}")
-            return False
+        return template_success

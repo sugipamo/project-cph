@@ -52,8 +52,9 @@ class SystemFileProvider(FileProvider):
             return []
         try:
             return [item.name for item in path.iterdir()]
-        except (OSError, PermissionError):
-            return []
+        except (OSError, PermissionError) as e:
+            # 互換性維持のためのコメント: 権限エラーやOSエラーを明示的に処理
+            raise RuntimeError(f"Failed to list directory '{dir_path}': {e}") from e
 
 
 class MockFileProvider(FileProvider):
