@@ -23,9 +23,11 @@ def steps_to_requests(steps: list[Step], context: StepContext, operations) -> Co
     from src.operations.factories.request_factory import RequestFactory
 
     requests = []
-    factory = RequestFactory()
 
     from src.infrastructure.di_container import DIKey
+    config_manager = operations.resolve(DIKey.CONFIG_MANAGER)
+    factory = RequestFactory(config_manager)
+
     env_manager = operations.resolve(DIKey.ENVIRONMENT_MANAGER)
 
     # Create a dummy execution context with the required attributes

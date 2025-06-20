@@ -304,10 +304,10 @@ class TestWorkflowExecutionService:
 
         unified_logger.debug.assert_called_once_with("Test debug message")
 
-    @patch('src.workflow.workflow_execution_service.run_steps')
-    @patch('src.workflow.workflow_execution_service.generate_workflow_from_json')
-    @patch('src.workflow.workflow_execution_service.create_step_context_from_env_context')
-    @patch('src.workflow.workflow_execution_service.execution_context_to_simple_context')
+    @patch('src.workflow.step.step_runner.run_steps')
+    @patch('src.workflow.step.workflow.generate_workflow_from_json')
+    @patch('src.workflow.step.workflow.create_step_context_from_env_context')
+    @patch('src.workflow.step.step_generation_service.execution_context_to_simple_context')
     def test_prepare_workflow_steps_success(self, mock_simple_context, mock_step_context,
                                           mock_generate_workflow, mock_run_steps, service):
         """Test successful workflow step preparation"""

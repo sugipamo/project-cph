@@ -180,7 +180,15 @@ class RequestFactory:
         """Create docker rm request"""
         from src.operations.requests.docker.docker_request import DockerOpType
 
-        container_name = step.cmd[0] if step.cmd else None
+        if not step.cmd:
+            if self.config_manager:
+                container_name = self.config_manager.resolve_config(
+                    ['request_factory_defaults', 'docker', 'container_name_fallback'], type(None)
+                )
+            else:
+                raise ValueError("No command provided for docker remove and no config manager available")
+        else:
+            container_name = step.cmd[0]
 
         return DockerRequest(
             op=DockerOpType.REMOVE,
@@ -192,7 +200,15 @@ class RequestFactory:
         """Create docker rmi request"""
         from src.operations.requests.docker.docker_request import DockerOpType
 
-        image = step.cmd[0] if step.cmd else None
+        if not step.cmd:
+            if self.config_manager:
+                image = self.config_manager.resolve_config(
+                    ['request_factory_defaults', 'docker', 'image_fallback'], type(None)
+                )
+            else:
+                raise ValueError("No command provided for docker rmi and no config manager available")
+        else:
+            image = step.cmd[0]
 
         return DockerRequest(
             op=DockerOpType.REMOVE,  # Use REMOVE for image removal as well
@@ -202,7 +218,15 @@ class RequestFactory:
 
     def _create_mkdir_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
         """Create mkdir request"""
-        path = step.cmd[0] if step.cmd else ""
+        if not step.cmd:
+            if self.config_manager:
+                path = self.config_manager.resolve_config(
+                    ['request_factory_defaults', 'file', 'path_fallback'], str
+                )
+            else:
+                raise ValueError("No command provided for mkdir and no config manager available")
+        else:
+            path = step.cmd[0]
 
         return FileRequest(
             op=FileOpType.MKDIR,
@@ -212,7 +236,15 @@ class RequestFactory:
 
     def _create_touch_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
         """Create touch request"""
-        path = step.cmd[0] if step.cmd else ""
+        if not step.cmd:
+            if self.config_manager:
+                path = self.config_manager.resolve_config(
+                    ['request_factory_defaults', 'file', 'path_fallback'], str
+                )
+            else:
+                raise ValueError("No command provided for touch and no config manager available")
+        else:
+            path = step.cmd[0]
 
         return FileRequest(
             op=FileOpType.TOUCH,
@@ -222,8 +254,25 @@ class RequestFactory:
 
     def _create_copy_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
         """Create copy request"""
-        source = step.cmd[0] if step.cmd else ""
-        target = step.cmd[1] if len(step.cmd) > 1 else ""
+        if not step.cmd:
+            if self.config_manager:
+                source = self.config_manager.resolve_config(
+                    ['request_factory_defaults', 'file', 'path_fallback'], str
+                )
+            else:
+                raise ValueError("No command provided for copy source and no config manager available")
+        else:
+            source = step.cmd[0]
+
+        if len(step.cmd) <= 1:
+            if self.config_manager:
+                target = self.config_manager.resolve_config(
+                    ['request_factory_defaults', 'file', 'path_fallback'], str
+                )
+            else:
+                raise ValueError("No target provided for copy and no config manager available")
+        else:
+            target = step.cmd[1]
 
         return FileRequest(
             op=FileOpType.COPY,
@@ -234,8 +283,12 @@ class RequestFactory:
 
     def _create_move_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
         """Create move request"""
-        source = step.cmd[0] if step.cmd else ""
-        target = step.cmd[1] if len(step.cmd) > 1 else ""
+        if not step.cmd:
+            raise ValueError("Copy command requires source path")
+        source = step.cmd[0]
+        if len(step.cmd) < 2:
+            raise ValueError("Copy command requires both source and target paths")
+        target = step.cmd[1]
 
         return FileRequest(
             op=FileOpType.MOVE,
@@ -246,7 +299,9 @@ class RequestFactory:
 
     def _create_remove_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
         """Create remove request"""
-        path = step.cmd[0] if step.cmd else ""
+        if not step.cmd:
+            raise ValueError("Remove command requires path")
+        path = step.cmd[0]
 
         return FileRequest(
             op=FileOpType.REMOVE,
@@ -256,7 +311,9 @@ class RequestFactory:
 
     def _create_rmtree_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
         """Create rmtree request"""
-        path = step.cmd[0] if step.cmd else ""
+        if not step.cmd:
+            raise ValueError("rmtree command requires path")
+        path = step.cmd[0]
 
         return FileRequest(
             op=FileOpType.RMTREE,
@@ -295,7 +352,9 @@ class RequestFactory:
 
 
 # Create a singleton instance for backward compatibility
-_factory_instance = RequestFactory()
+# Note: This instance will not have config manager injection
+# For proper functionality, use dependency injection
+_factory_instance = RequestFactory(config_manager=None)
 
 
 def create_request(step: Step, context: Any) -> Optional[OperationRequestFoundation]:

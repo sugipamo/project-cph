@@ -39,19 +39,19 @@ class MinimalCLIApp:
             if self.infrastructure is None:
                 try:
                     self.infrastructure = build_infrastructure()
-                except Exception as e:
+                except Exception:
                     # CLI initialization failure - infrastructure not available, exit immediately
                     # 互換性維持: CLIでは初期化失敗時にエラーコードを返すのが正しい動作
-                    raise RuntimeError(f"Fatal error: Failed to initialize infrastructure: {e}") from e
+                    return 1
 
             # Initialize logger if not provided
             if self.logger is None:
                 try:
                     self.logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
-                except Exception as e:
+                except Exception:
                     # Logger initialization failure - infrastructure available but logger failed
                     # 互換性維持: CLIではロガー初期化失敗時にエラーコードを返すのが正しい動作
-                    raise RuntimeError(f"Fatal error: Failed to initialize logger: {e}") from e
+                    return 1
 
             # Parse user input with infrastructure context
             self.context = parse_user_input(args, self.infrastructure)
@@ -259,4 +259,4 @@ def main(argv: Optional[list[str]] = None, exit_func=None) -> int:
 
 if __name__ == "__main__":
     # エントリーポイントでのテストのみ - 実際の実行はmain.pyから
-    main([], lambda x: None)
+    main([], lambda _: None)

@@ -1,15 +1,16 @@
 {
   "request_factory_defaults": {
     "docker": {
-      "container_name_fallback": null,
-      "image_fallback": null,
-      "exec_cmd_fallback": []
+      "error_message": "Docker operation requires explicit parameters",
+      "validation_enabled": true
     },
     "file": {
-      "path_fallback": ""
+      "error_message": "File operation requires explicit parameters",
+      "validation_enabled": true
     },
     "python": {
-      "script_path_fallback": ""
+      "error_message": "Python operation requires explicit parameters",
+      "validation_enabled": true
     }
   }
 }

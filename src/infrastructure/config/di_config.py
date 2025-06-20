@@ -149,10 +149,13 @@ def _create_filesystem() -> Any:
     return LocalFileSystem()
 
 
-def _create_request_factory() -> Any:
-    """Lazy factory for request factory."""
+def _create_request_factory(container: Any) -> Any:
+    """Lazy factory for request factory with config manager injection."""
+    # Get config manager from container
+    from src.infrastructure.di_container import DIKey
     from src.operations.factories.request_factory import RequestFactory
-    return RequestFactory()
+    config_manager = container.resolve(DIKey.CONFIG_MANAGER)
+    return RequestFactory(config_manager)
 
 
 def _create_system_config_loader(container: Any) -> Any:
@@ -292,7 +295,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
 
     # Register environment and factory
     container.register(DIKey.ENVIRONMENT_MANAGER, _create_environment_manager)
-    container.register(DIKey.UNIFIED_REQUEST_FACTORY, _create_request_factory)
+    container.register(DIKey.UNIFIED_REQUEST_FACTORY, lambda: _create_request_factory(container))
 
     # Register interfaces
     container.register("logger", lambda: _create_logger(container))
@@ -381,7 +384,7 @@ def configure_test_dependencies(container: DIContainer) -> None:
 
     # Register environment and factory
     container.register(DIKey.ENVIRONMENT_MANAGER, _create_environment_manager)
-    container.register(DIKey.UNIFIED_REQUEST_FACTORY, _create_request_factory)
+    container.register(DIKey.UNIFIED_REQUEST_FACTORY, lambda: _create_request_factory(container))
 
     # Register mock interfaces
     container.register("logger", _create_mock_logger())

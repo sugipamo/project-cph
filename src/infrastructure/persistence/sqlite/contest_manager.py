@@ -36,7 +36,9 @@ class ContestManager:
                 shared_config = self.json_provider.loads(result.content)
                 self._env_json = shared_config
             else:
-                raise RuntimeError(f"Failed to load shared env.json from {shared_path}: {result.error_message or 'Unknown error'}")
+                if not result.error_message:
+                    raise RuntimeError(f"Failed to load shared env.json from {shared_path}: No error message provided by file operation")
+                raise RuntimeError(f"Failed to load shared env.json from {shared_path}: {result.error_message}")
         return self._env_json
 
     @property
@@ -161,9 +163,11 @@ class ContestManager:
         current_problem = current_state["problem_name"]
 
         # If any of the current values differ from new values, backup is needed
-        return (current_language != new_language or
-                current_contest != new_contest or
-                current_problem != new_problem)
+        if current_language != new_language:
+            return True
+        if current_contest != new_contest:
+            return True
+        return current_problem != new_problem
 
     def backup_contest_current(self, current_state: Dict[str, Optional[str]]) -> bool:
         """Backup contest_current to contest_stock.
@@ -353,7 +357,10 @@ class ContestManager:
             for item in items:
                 source_item = self.os_provider.path_join(source_dir, item)
                 dest_item = self.os_provider.path_join(dest_dir, item)
-                item_relative_path = self.os_provider.path_join(relative_path, item) if relative_path else item
+                if relative_path:
+                    item_relative_path = self.os_provider.path_join(relative_path, item)
+                else:
+                    item_relative_path = item
 
                 if self.os_provider.isdir(source_item):
                     # Create directory and recurse
@@ -411,7 +418,10 @@ class ContestManager:
 
             for item in items:
                 dest_item = self.os_provider.path_join(dest_dir, item)
-                item_relative_path = self.os_provider.path_join(relative_path, item) if relative_path else item
+                if relative_path:
+                    item_relative_path = self.os_provider.path_join(relative_path, item)
+                else:
+                    item_relative_path = item
 
                 if self.os_provider.isdir(dest_item):
                     # Recurse into directory
