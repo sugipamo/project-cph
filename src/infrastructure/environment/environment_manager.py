@@ -2,6 +2,7 @@
 """
 from typing import Any, Optional
 
+from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.operations.requests.base.base_request import OperationRequestFoundation
 from src.operations.results.result import OperationResult
 
@@ -11,13 +12,22 @@ class EnvironmentManager:
     Direct implementation for basic environment management.
     """
 
-    def __init__(self, env_type: Optional[str] = None):
+    def __init__(self, env_type: Optional[str] = None, config_manager: Optional[TypeSafeConfigNodeManager] = None):
         """Initialize environment manager.
 
         Args:
             env_type: Environment type to use (local, docker, etc.)
+            config_manager: Configuration manager instance
         """
-        self._env_type = env_type or "local"
+        self._config_manager = config_manager or TypeSafeConfigNodeManager()
+        if env_type is not None:
+            self._env_type = env_type
+        else:
+            try:
+                self._config_manager.load_from_files(system_dir="config/system")
+                self._env_type = self._config_manager.resolve_config(['env_default', 'env_type'], str)
+            except KeyError as e:
+                raise ValueError("Environment type not provided and no default env_type found in configuration") from e
 
     def prepare_environment(self, context: Any) -> OperationResult:
         """Prepare the environment for execution.
@@ -71,8 +81,15 @@ class EnvironmentManager:
             if force_env_type == 'local':
                 return True
 
-        # Fall back to force_local for backwards compatibility
-        return (('force_local' in step_config and step_config['force_local']) or False) or self._env_type == 'local'
+        # Check force_local for backwards compatibility
+        # 互換性維持のため force_local フィールドもサポート
+        if 'force_local' in step_config:
+            force_local_value = step_config['force_local']
+            if force_local_value:
+                return True
+
+        # Check if current environment is local
+        return self._env_type == 'local'
 
     def get_working_directory(self) -> str:
         """Get the working directory for this environment"""

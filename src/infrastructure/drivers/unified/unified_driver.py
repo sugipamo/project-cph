@@ -1,6 +1,7 @@
 """Unified driver for executing different types of requests"""
 from typing import Any, Optional
 
+from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.infrastructure.di_container import DIContainer, DIKey
 from src.operations.constants.request_types import RequestType
 from src.operations.interfaces.logger_interface import LoggerInterface
@@ -11,15 +12,20 @@ from src.operations.results.result import OperationResult
 class UnifiedDriver:
     """Unified driver that routes requests to appropriate specialized drivers"""
 
-    def __init__(self, infrastructure: DIContainer, logger: Optional[LoggerInterface] = None):
+    def __init__(self, infrastructure: DIContainer, logger: Optional[LoggerInterface] = None, config_manager: Optional[TypeSafeConfigNodeManager] = None):
         """Initialize unified driver with infrastructure container
 
         Args:
             infrastructure: DI container for resolving drivers
             logger: Optional logger instance
+            config_manager: Configuration manager instance
         """
         self.infrastructure = infrastructure
         self.logger = logger or infrastructure.resolve(DIKey.UNIFIED_LOGGER)
+        self._config_manager = config_manager or TypeSafeConfigNodeManager()
+        # Load system configuration if not provided
+        if config_manager is None:
+            self._config_manager.load_from_files(system_dir="config/system")
 
         # Lazy load drivers as needed
         self._docker_driver = None
@@ -213,12 +219,23 @@ class UnifiedDriver:
             )
 
             # Convert driver result to ShellResult
+            # Get exit code from result if available, otherwise determine from success status
+            if hasattr(result, 'exit_code') and result.exit_code is not None:
+                exit_code = result.exit_code
+            else:
+                try:
+                    success_code = self._config_manager.resolve_config(['execution_defaults', 'exit_codes', 'success'], int)
+                    failure_code = self._config_manager.resolve_config(['execution_defaults', 'exit_codes', 'failure'], int)
+                    exit_code = success_code if result.success else failure_code
+                except KeyError as e:
+                    raise ValueError("Exit code not available and no default exit codes found in configuration") from e
+
             return ShellResult(
                 success=result.success,
                 output=result.output,
                 error=result.error,
                 request=request,
-                exit_code=getattr(result, 'exit_code', 0 if result.success else 1)
+                exit_code=exit_code
             )
 
         except Exception as e:

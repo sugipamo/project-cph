@@ -5,6 +5,7 @@
 """
 
 import argparse
+import ast
 import sys
 import threading
 import time
@@ -646,6 +647,189 @@ class TestRunner:
                 self.logger.error(f"print使用チェックでエラー: {e}")
             return False
 
+    def check_fallback_patterns(self) -> bool:
+        """フォールバック処理の検出（CLAUDE.mdルール違反 - エラー隠蔽防止）"""
+        import ast
+        import glob
+
+        spinner = None
+        if not self.verbose:
+            spinner = ProgressSpinner("フォールバック処理チェック", self.logger)
+            spinner.start()
+
+        try:
+            fallback_issues = []
+
+            for file_path in glob.glob('src/**/*.py', recursive=True):
+                try:
+                    content = self.file_handler.read_text(file_path, encoding='utf-8')
+                    tree = ast.parse(content, filename=file_path)
+                    relative_path = file_path.replace('src/', '')
+
+                    # AST解析による各パターンの検知
+                    for node in ast.walk(tree):
+                        # 1. try-except でのフォールバック検知
+                        if isinstance(node, ast.Try):
+                            issues = self._check_try_except_fallback(node, relative_path)
+                            fallback_issues.extend(issues)
+
+                        # 2. or演算子でのフォールバック検知
+                        elif isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or):
+                            issues = self._check_or_fallback(node, relative_path)
+                            fallback_issues.extend(issues)
+
+                        # 3. 条件式(ternary)でのフォールバック検知
+                        elif isinstance(node, ast.IfExp):
+                            issues = self._check_ternary_fallback(node, relative_path)
+                            fallback_issues.extend(issues)
+
+                        # 4. if-None チェックでのフォールバック検知
+                        elif isinstance(node, ast.If):
+                            issues = self._check_none_fallback(node, relative_path)
+                            fallback_issues.extend(issues)
+
+                except (SyntaxError, UnicodeDecodeError, OSError, FileNotFoundError):
+                    continue
+
+            success = len(fallback_issues) == 0
+
+            if spinner:
+                spinner.stop(success)
+            elif self.verbose:
+                self.logger.info(f"{'✅' if success else '❌'} フォールバック処理チェック")
+
+            if fallback_issues:
+                self.issues.append("フォールバック処理が検出されました（CLAUDE.mdルール違反 - エラー隠蔽防止）:")
+                for issue in fallback_issues[:20]:
+                    self.issues.append(f"  {issue}")
+
+                if len(fallback_issues) > 20:
+                    self.issues.append(f"  ... 他{len(fallback_issues) - 20}件")
+
+            return success
+
+        except Exception as e:
+            if spinner:
+                spinner.stop(False)
+            self.issues.append(f"フォールバック処理チェックでエラー: {e}")
+            return False
+
+    def _check_try_except_fallback(self, node: ast.Try, file_path: str) -> list:
+        """try-except でのフォールバック処理を検知"""
+        issues = []
+
+        for handler in node.handlers:
+            # except節での代入（フォールバック値設定）を検知
+            for stmt in handler.body:
+                if isinstance(stmt, ast.Assign):
+                    # 具体的な値の代入（リテラル、定数など）
+                    if self._is_fallback_value(stmt.value):
+                        issues.append(f"{file_path}:{stmt.lineno} try-except でのフォールバック代入")
+
+                elif isinstance(stmt, ast.Return) and stmt.value and self._is_fallback_value(stmt.value):
+                    # return文での具体的な値返却
+                        issues.append(f"{file_path}:{stmt.lineno} try-except でのフォールバック return")
+
+        return issues
+
+    def _check_or_fallback(self, node: ast.BoolOp, file_path: str) -> list:
+        """or演算子でのフォールバック処理を検知"""
+        issues = []
+
+        # A or B の形で、Bが具体的な値（フォールバック値）の場合
+        if len(node.values) >= 2:
+            last_value = node.values[-1]
+            if self._is_fallback_value(last_value):
+                issues.append(f"{file_path}:{node.lineno} or演算子でのフォールバック")
+
+        return issues
+
+    def _check_ternary_fallback(self, node: ast.IfExp, file_path: str) -> list:
+        """条件式でのフォールバック処理を検知"""
+        issues = []
+
+        # A if condition else B の形で、BまたはAが具体的な値の場合
+        if self._is_fallback_value(node.orelse):
+            issues.append(f"{file_path}:{node.lineno} 条件式でのフォールバック (else節)")
+        elif self._is_fallback_value(node.body):
+            issues.append(f"{file_path}:{node.lineno} 条件式でのフォールバック (then節)")
+
+        return issues
+
+    def _check_none_fallback(self, node: ast.If, file_path: str) -> list:
+        """if-None チェックでのフォールバック処理を検知"""
+        issues = []
+
+        # if var is None: var = default の形を検知
+        if (isinstance(node.test, ast.Compare) and
+            any(isinstance(op, (ast.Is, ast.Eq)) for op in node.test.ops) and
+            any(isinstance(comp, ast.Constant) and comp.value is None
+                for comp in node.test.comparators)):
+            # None チェック後の代入を検知
+                    for stmt in node.body:
+                        if isinstance(stmt, ast.Assign) and self._is_fallback_value(stmt.value):
+                            issues.append(f"{file_path}:{stmt.lineno} None チェックでのフォールバック")
+
+        return issues
+
+    def _is_fallback_value(self, node: ast.AST) -> bool:
+        """フォールバック値として使われる可能性のある値を判定"""
+
+        # リテラル値（文字列、数値、リスト、辞書など）
+        if isinstance(node, ast.Constant):
+            return True
+
+        # 空のコンテナ
+        if isinstance(node, (ast.List, ast.Dict, ast.Set, ast.Tuple)):
+            if hasattr(node, 'elts'):
+                return len(node.elts) == 0
+            if hasattr(node, 'keys'):
+                return len(node.keys) == 0
+            return True
+
+        # よくあるフォールバック関数名
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            fallback_function_names = {
+                'dict', 'list', 'set', 'tuple', 'str', 'int', 'float', 'bool',
+                'get_default', 'create_default', 'fallback', 'default_value'
+            }
+            if node.func.id in fallback_function_names:
+                return True
+
+        # 明らかなフォールバック変数名
+        if isinstance(node, ast.Name):
+            fallback_var_names = {
+                'default', 'fallback', 'default_value', 'fallback_value',
+                'empty_dict', 'empty_list', 'none_value'
+            }
+            if node.id in fallback_var_names:
+                return True
+
+        return False
+
+    def _is_legitimate_pattern(self, node: ast.AST, context: str) -> bool:
+        """正当な使用パターンかを判定"""
+
+        # 1. ロギング・デバッグ用途
+        if 'log' in context.lower() or 'debug' in context.lower():
+            return True
+
+        # 2. テストコード
+        if '/test' in context or 'test_' in context:
+            return True
+
+        # 3. 初期化処理（ただし設定値は除く）
+        if 'init' in context.lower() and 'config' not in context.lower():
+            return True
+
+        # 4. 型変換・キャスト
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            type_functions = {'str', 'int', 'float', 'bool', 'list', 'dict', 'set'}
+            if node.func.id in type_functions and len(node.args) <= 1:
+                return True
+
+        return False
+
     def check_dict_get_usage(self, auto_convert: bool = False) -> bool:
         """dict.get()使用チェック - エラー隠蔽の温床となるため禁止（フォールバック対応禁止）"""
         import glob
@@ -1012,6 +1196,7 @@ def main(file_handler: FileHandler = None):
     parser.add_argument("--no-smoke-test", action="store_true", help="スモークテストスキップ")
     parser.add_argument("--no-dict-get-check", action="store_true", help="dict.get()使用チェックスキップ")
     parser.add_argument("--auto-convert-dict-get", action="store_true", help="dict.get()検出時に自動変換実行")
+    parser.add_argument("--no-fallback-check", action="store_true", help="フォールバック処理チェックスキップ")
     parser.add_argument("--check-only", action="store_true", help="高速チェック（テストなし）")
     parser.add_argument("--coverage-only", action="store_true", help="カバレッジレポートのみ表示")
     parser.add_argument("--verbose", "-v", action="store_true", help="詳細出力")
@@ -1075,6 +1260,10 @@ def main(file_handler: FileHandler = None):
     # dict.get()使用チェック
     if not args.no_dict_get_check:
         runner.check_dict_get_usage(auto_convert=args.auto_convert_dict_get)
+
+    # フォールバック処理チェック
+    if not args.no_fallback_check:
+        runner.check_fallback_patterns()
 
     # check-onlyモード
     if args.check_only:

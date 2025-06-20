@@ -1,0 +1,8 @@
+{
+  "execution_defaults": {
+    "exit_codes": {
+      "success": 0,
+      "failure": 1
+    }
+  }
+}
