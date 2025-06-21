@@ -380,7 +380,10 @@ class TypeSafeConfigNodeManager:
         Args:
             infrastructure: DI container for provider injection
         """
+        if infrastructure is None:
+            raise ValueError("Infrastructure must be provided")
         _ensure_imports()
+        self.infrastructure = infrastructure
         self.root_node: Optional[ConfigNode] = None
         self.file_loader = FileLoader(infrastructure)
 
@@ -445,6 +448,8 @@ class TypeSafeConfigNodeManager:
             return self._type_conversion_cache[cache_key]
 
         # ConfigNode解決（約1-5μs）
+        if self.root_node is None:
+            raise ConfigurationError("Configuration not loaded. Call load_from_files() first.")
         _ensure_imports()
         best_node = resolve_best(self.root_node, path)
 
@@ -563,6 +568,9 @@ class TypeSafeConfigNodeManager:
         - ExecutionConfigurationFactory
         - 設定値の解決と構築
         """
+        if self.root_node is None:
+            raise ConfigurationError("Configuration not loaded. Call load_from_files() first.")
+
         # ExecutionConfig生成キャッシュ
         cache_key = (contest_name, problem_name, language, env_type, command_type)
         if cache_key in self._execution_config_cache:

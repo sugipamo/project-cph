@@ -46,7 +46,7 @@ class TestLocalDockerDriver:
         """Test default initialization of LocalDockerDriver."""
         driver = LocalDockerDriver()
         assert driver.shell_driver is not None
-        assert hasattr(driver.shell_driver, 'execute_operation')
+        assert hasattr(driver.shell_driver, 'execute_command')
 
     def test_initialization_with_file_driver(self):
         """Test initialization with custom file driver."""
@@ -286,7 +286,7 @@ class TestLocalDockerDriver:
     def test_ps_names_only(self, mock_shell_request):
         """Test container listing with names only."""
         mock_request = Mock()
-        mock_result = ShellResult(0, "container1\\ncontainer2", "")
+        mock_result = ShellResult(0, "container1\ncontainer2", "")
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
@@ -295,7 +295,8 @@ class TestLocalDockerDriver:
 
         expected_cmd = ["docker", "ps", "-a", "--format", "{{.Names}}"]
         mock_shell_request.assert_called_once_with(expected_cmd, show_output=False)
-        assert result == mock_result
+        # When names_only=True, it returns parsed container names
+        assert result == ["container1", "container2"]
 
     @patch('src.infrastructure.drivers.docker.docker_driver.parse_container_names')
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')

@@ -16,15 +16,9 @@ CONTEST_ENV_DIR = "contest_env"
 def _create_execution_config(command_type=None, language=None, contest_name=None,
                            problem_name=None, env_type=None, infrastructure=None):
     """新設定システムを使用してExecutionConfigを作成するヘルパー関数"""
-    config_manager = TypeSafeConfigNodeManager(infrastructure)
+    # Validate all parameters before any file operations
     if language is None:
         raise ValueError("language parameter cannot be None")
-    config_manager.load_from_files(
-        system_dir="./config/system",
-        env_dir=CONTEST_ENV_DIR,
-        language=language
-    )
-
     if contest_name is None:
         raise ValueError("contest_name parameter cannot be None")
     if problem_name is None:
@@ -33,6 +27,13 @@ def _create_execution_config(command_type=None, language=None, contest_name=None
         raise ValueError("env_type parameter cannot be None")
     if command_type is None:
         raise ValueError("command_type parameter cannot be None")
+
+    config_manager = TypeSafeConfigNodeManager(infrastructure)
+    config_manager.load_from_files(
+        system_dir="./config/system",
+        env_dir=CONTEST_ENV_DIR,
+        language=language
+    )
     context = config_manager.create_execution_config(
         contest_name=contest_name,
         problem_name=problem_name,

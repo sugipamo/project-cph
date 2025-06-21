@@ -6,7 +6,11 @@ from src.infrastructure.di_container import DIContainer, DIKey
 from src.operations.constants.request_types import RequestType
 from src.operations.interfaces.logger_interface import LoggerInterface
 from src.operations.requests.base.base_request import OperationRequestFoundation
+from src.operations.requests.file.file_op_type import FileOpType
+from src.operations.results.docker_result import DockerResult
+from src.operations.results.file_result import FileResult
 from src.operations.results.result import OperationResult
+from src.operations.results.shell_result import ShellResult
 
 
 class UnifiedDriver:
@@ -22,10 +26,14 @@ class UnifiedDriver:
         """
         self.infrastructure = infrastructure
         self.logger = logger or infrastructure.resolve(DIKey.UNIFIED_LOGGER)
-        self._config_manager = config_manager or TypeSafeConfigNodeManager()
+        self._config_manager = config_manager or TypeSafeConfigNodeManager(infrastructure)
         # Load system configuration if not provided
         if config_manager is None:
-            self._config_manager.load_from_files(system_dir="config/system")
+            self._config_manager.load_from_files(
+                system_dir="config/system",
+                env_dir="contest_env",
+                language="python"
+            )
 
         # Lazy load drivers as needed
         self._docker_driver = None
@@ -78,11 +86,9 @@ class UnifiedDriver:
 
     def _execute_docker_request(self, request: Any) -> OperationResult:
         """Execute docker request"""
-        from src.operations.requests.docker.docker_request import DockerRequest
-        from src.operations.results.docker_result import DockerResult
-
-        if not isinstance(request, DockerRequest):
-            raise TypeError(f"Expected DockerRequest, got {type(request)}")
+        # Check if request has DockerRequest-like attributes
+        if not hasattr(request, 'op'):
+            raise TypeError(f"Expected DockerRequest with 'op' attribute, got {type(request)}")
 
         try:
             # Route to appropriate docker operation
@@ -147,12 +153,9 @@ class UnifiedDriver:
 
     def _execute_file_request(self, request: Any) -> OperationResult:
         """Execute file request"""
-        from src.operations.requests.file.file_op_type import FileOpType
-        from src.operations.requests.file.file_request import FileRequest
-        from src.operations.results.file_result import FileResult
-
-        if not isinstance(request, FileRequest):
-            raise TypeError(f"Expected FileRequest, got {type(request)}")
+        # Check if request has FileRequest-like attributes
+        if not hasattr(request, 'op'):
+            raise TypeError(f"Expected FileRequest with 'op' attribute, got {type(request)}")
 
         try:
             # Route to appropriate file operation
@@ -203,11 +206,9 @@ class UnifiedDriver:
 
     def _execute_shell_request(self, request: Any) -> OperationResult:
         """Execute shell request"""
-        from src.operations.requests.shell.shell_request import ShellRequest
-        from src.operations.results.shell_result import ShellResult
-
-        if not isinstance(request, ShellRequest):
-            raise TypeError(f"Expected ShellRequest, got {type(request)}")
+        # Check if request has ShellRequest-like attributes
+        if not hasattr(request, 'cmd'):
+            raise TypeError(f"Expected ShellRequest with 'cmd' attribute, got {type(request)}")
 
         try:
             # Execute shell command

@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Union
 from src.configuration.config_manager import TypedExecutionConfiguration
 
 from .step import Step, StepContext, StepGenerationResult, StepType
-from .step_runner import ExecutionContext, expand_template, run_steps
+from .step_runner import ExecutionContext, expand_file_patterns_in_text, expand_template, run_steps
 from .step_runner import create_step as create_step_simple
 
 
@@ -243,8 +243,6 @@ def expand_file_patterns(template: str, context: Union['TypedExecutionConfigurat
         return context.resolve_formatted_string(template)
 
     # 従来のシステム用
-    from .step_runner import expand_file_patterns_in_text
-
     simple_context = execution_context_to_simple_context(context)
 
     # まずテンプレート変数を展開

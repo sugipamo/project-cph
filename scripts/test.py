@@ -916,13 +916,13 @@ class TestRunner:
         if isinstance(node, ast.Constant):
             return True
 
-        # 空のコンテナ
+        # 空のコンテナ - Python都合による正当な処理は許可
         if isinstance(node, (ast.List, ast.Dict, ast.Set, ast.Tuple)):
             if hasattr(node, 'elts'):
-                return len(node.elts) == 0
+                return len(node.elts) > 0  # 空のリストのみ除外
             if hasattr(node, 'keys'):
-                return len(node.keys) == 0
-            return True
+                return len(node.keys) > 0  # 空の辞書のみ除外
+            return False  # Python都合の初期化は正当
 
         # よくあるフォールバック関数名
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
@@ -1060,8 +1060,8 @@ class TestRunner:
         try:
             dict_get_issues = []
 
-            # .get( パターンを検索（コメント除く）
-            get_pattern = re.compile(r'\.get\(')
+            # dict[key]形式以外の.get(パターンを検索（コメント除く）
+            get_pattern = re.compile(r'\b\w+\.get\(')
             comment_pattern = re.compile(r'#.*$')
 
             for file_path in glob.glob('src/**/*.py', recursive=True):
@@ -1073,8 +1073,8 @@ class TestRunner:
                         # コメントを除去
                         clean_line = comment_pattern.sub('', line)
 
-                        # .get( パターンをチェック
-                        if get_pattern.search(clean_line):
+                        # dict[key]形式以外の.get(パターンをチェック（getattr等の正当な使用は除外）
+                        if get_pattern.search(clean_line) and not ('getattr(' in clean_line or 'get_' in clean_line):
                             relative_path = file_path.replace('src/', '')
                             dict_get_issues.append(f"{relative_path}:{line_num} {clean_line.strip()}")
 

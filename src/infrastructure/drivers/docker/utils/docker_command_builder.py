@@ -48,8 +48,8 @@ def _get_docker_option(option_name: str, user_options: Optional[dict[str, Any]])
     if config_manager is not None and config_manager.root_node is not None:
         try:
             return config_manager.resolve_config(['docker_defaults', 'docker_options', option_name], bool)
-        except KeyError:
-            raise KeyError(f"Docker option '{option_name}' not found in user options or configuration")
+        except KeyError as e:
+            raise KeyError(f"Docker option '{option_name}' not found in user options or configuration") from e
 
     raise KeyError(f"Docker option '{option_name}' not found in user options or configuration")
 
@@ -141,8 +141,9 @@ def build_docker_run_command(image: str, name: Optional[str] = None, options: Op
     if name:
         cmd.extend(["--name", name])
 
-    # Always add Docker run flags (using empty dict if options is None)
-    options = options or {}
+    # Always add Docker run flags (validate options explicitly)
+    if options is None:
+        options = {}
     _add_docker_run_flags(cmd, options)
     _add_docker_run_ports(cmd, options)
     _add_docker_run_volumes(cmd, options)

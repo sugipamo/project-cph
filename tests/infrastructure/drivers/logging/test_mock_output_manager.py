@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from src.infrastructure.drivers.logging.format_info import FormatInfo
+from src.infrastructure.drivers.logging.interfaces.output_manager_interface import OutputManagerInterface
 from src.infrastructure.drivers.logging.mock_output_manager import MockOutputManager
 from src.infrastructure.drivers.logging.types import LogLevel
 
@@ -90,8 +91,8 @@ class TestMockOutputManager:
         """Test adding OutputManager message with realtime flag."""
         manager = MockOutputManager()
 
-        # Mock another OutputManager
-        mock_output_manager = Mock()
+        # Mock another OutputManager that implements OutputManagerInterface
+        mock_output_manager = Mock(spec=OutputManagerInterface)
         mock_output_manager.output.return_value = "nested output"
 
         manager.add(mock_output_manager, LogLevel.INFO, realtime=True)
