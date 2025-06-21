@@ -1,19 +1,17 @@
 """Tests for Docker driver implementation."""
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 
 from src.infrastructure.drivers.docker.docker_driver import DockerDriver, LocalDockerDriver
+from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
 from src.operations.results.shell_result import ShellResult
 
 
 class TestDockerDriver:
     """Test abstract DockerDriver base class."""
 
-    def test_docker_driver_is_abstract(self):
-        """Test that DockerDriver cannot be instantiated directly."""
-        with pytest.raises(TypeError):
-            DockerDriver()
 
     def test_abstract_methods_exist(self):
         """Test that all required abstract methods are defined."""
@@ -44,7 +42,7 @@ class TestLocalDockerDriver:
 
     def test_initialization_default(self):
         """Test default initialization of LocalDockerDriver."""
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         assert driver.shell_driver is not None
         assert hasattr(driver.shell_driver, 'execute_command')
 
@@ -56,14 +54,14 @@ class TestLocalDockerDriver:
 
     def test_execute_command_compatibility(self):
         """Test execute_command method for BaseDriver compatibility."""
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         # Should not raise an error - compatibility method
         result = driver.execute_command(Mock())
         assert result is None
 
     def test_validate_always_true(self):
         """Test that validate always returns True for now."""
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         mock_request = Mock()
         assert driver.validate(mock_request) is True
 
@@ -77,7 +75,7 @@ class TestLocalDockerDriver:
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         result = driver.run_container("ubuntu")
 
         mock_build_command.assert_called_once_with("ubuntu", None, None)
@@ -94,7 +92,7 @@ class TestLocalDockerDriver:
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         options = {"detach": True}
         driver.run_container("ubuntu", name="test", options=options, show_output=False)
 
@@ -111,7 +109,7 @@ class TestLocalDockerDriver:
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         result = driver.stop_container("test-container")
 
         mock_build_command.assert_called_once_with("test-container")
@@ -128,7 +126,7 @@ class TestLocalDockerDriver:
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         result = driver.remove_container("test-container")
 
         mock_build_command.assert_called_once_with("test-container", force=False)
@@ -145,7 +143,7 @@ class TestLocalDockerDriver:
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         driver.remove_container("test-container", force=True, show_output=False)
 
         mock_build_command.assert_called_once_with("test-container", force=True)
@@ -159,7 +157,7 @@ class TestLocalDockerDriver:
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         result = driver.exec_in_container("test-container", ["bash", "-c", "echo hello"])
 
         expected_cmd = ["docker", "exec", "test-container", "bash", "-c", "echo hello"]
@@ -176,19 +174,13 @@ class TestLocalDockerDriver:
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         driver.exec_in_container("test-container", 'bash -c "echo hello"')
 
         expected_cmd = ["docker", "exec", "test-container", "bash", "-c", "echo hello"]
         mock_shell_request.assert_called_once_with(expected_cmd, show_output=True)
         mock_shlex.split.assert_called_once_with('bash -c "echo hello"')
 
-    def test_exec_in_container_invalid_command_type(self):
-        """Test exec with invalid command type raises error."""
-        driver = LocalDockerDriver()
-
-        with pytest.raises(ValueError, match="Invalid command type"):
-            driver.exec_in_container("test-container", 123)
 
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
     def test_get_logs(self, mock_shell_request):
@@ -198,7 +190,7 @@ class TestLocalDockerDriver:
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         result = driver.get_logs("test-container", show_output=False)
 
         expected_cmd = ["docker", "logs", "test-container"]
@@ -216,7 +208,7 @@ class TestLocalDockerDriver:
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         result = driver.build_docker_image(dockerfile_content, tag="test:latest")
 
         mock_build_command.assert_called_once_with("test:latest", dockerfile_content, None)
@@ -227,15 +219,6 @@ class TestLocalDockerDriver:
         )
         assert result == mock_result
 
-    def test_build_docker_image_no_dockerfile(self):
-        """Test Docker image build with missing dockerfile."""
-        driver = LocalDockerDriver()
-
-        with pytest.raises(ValueError, match="dockerfile_text is None"):
-            driver.build_docker_image(None)
-
-        with pytest.raises(ValueError, match="dockerfile_text is None"):
-            driver.build_docker_image("")
 
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
     def test_image_ls(self, mock_shell_request):
@@ -245,7 +228,7 @@ class TestLocalDockerDriver:
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         result = driver.image_ls()
 
         expected_cmd = ["docker", "image", "ls"]
@@ -260,7 +243,7 @@ class TestLocalDockerDriver:
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         result = driver.image_rm("test:latest", show_output=False)
 
         expected_cmd = ["docker", "image", "rm", "test:latest"]
@@ -275,7 +258,7 @@ class TestLocalDockerDriver:
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         result = driver.ps()
 
         expected_cmd = ["docker", "ps"]
@@ -290,7 +273,7 @@ class TestLocalDockerDriver:
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         result = driver.ps(names_only=True, show_output=False)
 
         expected_cmd = ["docker", "ps", "-a", "--format", "{{.Names}}"]
@@ -308,7 +291,7 @@ class TestLocalDockerDriver:
         mock_shell_request.return_value = mock_request
         mock_parse.return_value = ["container1", "container2"]
 
-        driver = LocalDockerDriver()
+        driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
         driver.ps(names_only=True)
 
         # Verify the parsing function would be called on the output

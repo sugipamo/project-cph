@@ -11,8 +11,8 @@ from src.operations.requests.composite.composite_structure import CompositeStruc
 class CompositeRequest(CompositeRequestFoundation):
     """Composite request that contains multiple sub-requests."""
 
-    def __init__(self, requests: list[OperationRequestFoundation], debug_tag: Optional[str] = None, name: Optional[str] = None,
-                 execution_controller: Optional[ExecutionInterface] = None, _executed: bool = False, _results = None, _debug_info: Optional[dict] = None):
+    def __init__(self, requests: list[OperationRequestFoundation], debug_tag: Optional[str], name: Optional[str],
+                 execution_controller: Optional[ExecutionInterface], _executed: bool, _results, _debug_info: Optional[dict]):
         # Initialize structure first before calling super().__init__
         self.structure = CompositeStructure(requests)
         self.execution_controller = execution_controller  # Will be injected from infrastructure
@@ -44,7 +44,7 @@ class CompositeRequest(CompositeRequestFoundation):
         return super().execute_operation(driver)
 
 
-    def _execute_core(self, driver: Any, logger: Optional[Any] = None) -> list[Any]:
+    def _execute_core(self, driver: Any, logger: Optional[Any]) -> list[Any]:
         results = []
         for req in self.requests:
             result = req.execute_operation(driver=driver, logger=logger)
@@ -63,7 +63,7 @@ class CompositeRequest(CompositeRequestFoundation):
 
         return results
 
-    def execute_parallel(self, driver: Any, max_workers: int = 4, logger: Optional[Any] = None) -> list[Any]:
+    def execute_parallel(self, driver: Any, max_workers: int, logger: Optional[Any]) -> list[Any]:
         """Execute requests in parallel using ThreadPoolExecutor"""
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -91,8 +91,8 @@ class CompositeRequest(CompositeRequestFoundation):
         return f"<CompositeRequest name={self.name} {self.structure}>"
 
     @classmethod
-    def make_composite_request(cls, requests: list[OperationRequestFoundation], debug_tag: Optional[str] = None,
-                             name: Optional[str] = None) -> OperationRequestFoundation:
+    def make_composite_request(cls, requests: list[OperationRequestFoundation], debug_tag: Optional[str],
+                             name: Optional[str]) -> OperationRequestFoundation:
         """If requests has only one item, return it as-is; if two or more, wrap in CompositeRequest.
         However, if name is specified, call set_name.
         """

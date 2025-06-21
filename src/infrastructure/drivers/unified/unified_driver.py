@@ -1,5 +1,5 @@
 """Unified driver for executing different types of requests"""
-from typing import Any, Optional
+from typing import Any
 
 from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.infrastructure.di_container import DIContainer, DIKey
@@ -16,24 +16,17 @@ from src.operations.results.shell_result import ShellResult
 class UnifiedDriver:
     """Unified driver that routes requests to appropriate specialized drivers"""
 
-    def __init__(self, infrastructure: DIContainer, logger: Optional[LoggerInterface] = None, config_manager: Optional[TypeSafeConfigNodeManager] = None):
+    def __init__(self, infrastructure: DIContainer, logger: LoggerInterface, config_manager: TypeSafeConfigNodeManager):
         """Initialize unified driver with infrastructure container
 
         Args:
             infrastructure: DI container for resolving drivers
-            logger: Optional logger instance
+            logger: Logger instance
             config_manager: Configuration manager instance
         """
         self.infrastructure = infrastructure
-        self.logger = logger or infrastructure.resolve(DIKey.UNIFIED_LOGGER)
-        self._config_manager = config_manager or TypeSafeConfigNodeManager(infrastructure)
-        # Load system configuration if not provided
-        if config_manager is None:
-            self._config_manager.load_from_files(
-                system_dir="config/system",
-                env_dir="contest_env",
-                language="python"
-            )
+        self.logger = logger
+        self._config_manager = config_manager
 
         # Lazy load drivers as needed
         self._docker_driver = None

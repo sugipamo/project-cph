@@ -7,9 +7,9 @@ from src.operations.results.result import OperationResult
 class DockerResult(OperationResult):
     """Result class for Docker operations."""
 
-    def __init__(self, stdout: Optional[str] = None, stderr: Optional[str] = None,
-                 returncode: Optional[int] = None, container_id: Optional[str] = None,
-                 image: Optional[str] = None, **kwargs):
+    def __init__(self, stdout: Optional[str], stderr: Optional[str],
+                 returncode: Optional[int], container_id: Optional[str],
+                 image: Optional[str], **kwargs):
         """Initialize Docker result.
 
         Args:

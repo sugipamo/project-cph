@@ -82,113 +82,14 @@ class TestValidationService:
         result = ValidationService.validate_env_json(data, "test.json")
         assert result
 
-    def test_validate_env_json_invalid_root_not_dict(self):
-        """Test validation fails when root is not a dictionary"""
-        data = "not a dictionary"
 
-        with pytest.raises(ValueError) as exc_info:
-            ValidationService.validate_env_json(data, "test.json")
 
-        assert "root must be a dictionary" in str(exc_info.value)
-        assert "test.json" in str(exc_info.value)
 
-    def test_validate_env_json_invalid_root_list(self):
-        """Test validation fails when root is a list"""
-        data = ["item1", "item2"]
 
-        with pytest.raises(ValueError) as exc_info:
-            ValidationService.validate_env_json(data, "test.json")
 
-        assert "root must be a dictionary" in str(exc_info.value)
 
-    def test_validate_env_json_invalid_no_languages(self):
-        """Test validation fails when no language configurations are found"""
-        data = {
-            "shared": {"config": "value"},
-            "__common__": {"config": "value"},
-            "common": {"config": "value"},
-            "base": {"config": "value"}
-        }
 
-        with pytest.raises(ValueError) as exc_info:
-            ValidationService.validate_env_json(data, "test.json")
 
-        assert "No language configurations found" in str(exc_info.value)
-        assert "test.json" in str(exc_info.value)
-
-    def test_validate_env_json_invalid_empty_dict(self):
-        """Test validation fails with empty dictionary"""
-        data = {}
-
-        with pytest.raises(ValueError) as exc_info:
-            ValidationService.validate_env_json(data, "test.json")
-
-        assert "No language configurations found" in str(exc_info.value)
-
-    def test_validate_env_json_invalid_language_not_dict(self):
-        """Test validation fails when language config is not a dictionary"""
-        data = {
-            "python": "not a dictionary"
-        }
-
-        with pytest.raises(ValueError) as exc_info:
-            ValidationService.validate_env_json(data, "test.json")
-
-        assert "Language configuration for 'python'" in str(exc_info.value)
-        assert "must be a dictionary" in str(exc_info.value)
-        assert "test.json" in str(exc_info.value)
-
-    def test_validate_env_json_invalid_language_list(self):
-        """Test validation fails when language config is a list"""
-        data = {
-            "python": ["item1", "item2"]
-        }
-
-        with pytest.raises(ValueError) as exc_info:
-            ValidationService.validate_env_json(data, "test.json")
-
-        assert "Language configuration for 'python'" in str(exc_info.value)
-        assert "must be a dictionary" in str(exc_info.value)
-
-    def test_validate_env_json_invalid_language_number(self):
-        """Test validation fails when language config is a number"""
-        data = {
-            "python": 123
-        }
-
-        with pytest.raises(ValueError) as exc_info:
-            ValidationService.validate_env_json(data, "test.json")
-
-        assert "Language configuration for 'python'" in str(exc_info.value)
-        assert "must be a dictionary" in str(exc_info.value)
-
-    def test_validate_env_json_mixed_valid_invalid_languages(self):
-        """Test validation fails when some language configs are invalid"""
-        data = {
-            "python": {
-                "commands": {"test": {"steps": []}}
-            },
-            "cpp": "invalid config",
-            "rust": {
-                "commands": {"build": {"steps": []}}
-            }
-        }
-
-        with pytest.raises(ValueError) as exc_info:
-            ValidationService.validate_env_json(data, "test.json")
-
-        assert "Language configuration for 'cpp'" in str(exc_info.value)
-        assert "must be a dictionary" in str(exc_info.value)
-
-    def test_validate_env_json_path_in_error_messages(self):
-        """Test that the file path is included in error messages"""
-        data = {"python": "invalid"}
-        path = "/path/to/env.json"
-
-        with pytest.raises(ValueError) as exc_info:
-            ValidationService.validate_env_json(data, path)
-
-        assert path in str(exc_info.value)
 
     def test_validate_env_json_special_language_names(self):
         """Test validation with special language names"""

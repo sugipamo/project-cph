@@ -12,14 +12,14 @@ class EnvironmentManager:
     Direct implementation for basic environment management.
     """
 
-    def __init__(self, env_type: Optional[str] = None, config_manager: Optional[TypeSafeConfigNodeManager] = None):
+    def __init__(self, env_type: Optional[str], config_manager: TypeSafeConfigNodeManager):
         """Initialize environment manager.
 
         Args:
             env_type: Environment type to use (local, docker, etc.)
             config_manager: Configuration manager instance
         """
-        self._config_manager = config_manager or TypeSafeConfigNodeManager()
+        self._config_manager = config_manager
         if env_type is not None:
             self._env_type = env_type
         else:
@@ -108,17 +108,18 @@ class EnvironmentManager:
         return "./workspace"
 
     @classmethod
-    def from_context(cls, context: Any) -> 'EnvironmentManager':
+    def from_context(cls, context: Any, config_manager: TypeSafeConfigNodeManager) -> 'EnvironmentManager':
         """Create an EnvironmentManager from an execution context.
 
         Args:
             context: Execution context with env_type
+            config_manager: Configuration manager instance
 
         Returns:
             EnvironmentManager instance
         """
         env_type = getattr(context, 'env_type', None)
-        return cls(env_type)
+        return cls(env_type, config_manager)
 
     def switch_environment(self, env_type: str):
         """Switch to a different environment type.

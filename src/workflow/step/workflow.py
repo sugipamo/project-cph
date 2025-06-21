@@ -44,7 +44,7 @@ def steps_to_requests(steps: list[Step], context: StepContext, operations) -> Co
         if request is not None:
             requests.append(request)
 
-    return CompositeRequest(requests, debug_tag="workflow")
+    return CompositeRequest(requests, debug_tag="workflow", name=None, execution_controller=None, _executed=False, _results=None, _debug_info=None)
 
 
 def generate_workflow_from_json(
@@ -68,7 +68,7 @@ def generate_workflow_from_json(
 
     if not generation_result.is_success:
         # エラーがある場合は空のリクエストを返す
-        empty_request = CompositeRequest.make_composite_request([])
+        empty_request = CompositeRequest.make_composite_request([], debug_tag=None, name=None)
         return empty_request, generation_result.errors, generation_result.warnings
 
     steps = generation_result.steps
@@ -79,7 +79,7 @@ def generate_workflow_from_json(
     validation_errors = validate_step_sequence(steps)
     if validation_errors:
         errors.extend(validation_errors)
-        empty_request = CompositeRequest.make_composite_request([])
+        empty_request = CompositeRequest.make_composite_request([], debug_tag=None, name=None)
         return empty_request, errors, warnings
 
     # 3. 依存関係の解決（必要な準備ステップを挿入）

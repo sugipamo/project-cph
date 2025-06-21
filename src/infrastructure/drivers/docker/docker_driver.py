@@ -68,10 +68,8 @@ class DockerDriver(ExecutionDriverInterface):
 class LocalDockerDriver(DockerDriver):
     """Local Docker driver implementation using shell commands."""
 
-    def __init__(self, file_driver=None):
+    def __init__(self, file_driver: LocalFileDriver):
         super().__init__()
-        if file_driver is None:
-            file_driver = LocalFileDriver()
         self.shell_driver = LocalShellDriver(file_driver)
 
     def execute_command(self, request: Any) -> Any:
@@ -86,20 +84,20 @@ class LocalDockerDriver(DockerDriver):
 
     def run_container(self, image: str, name: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
         cmd = build_docker_run_command(image, name, options)
-        req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute_operation(driver=self.shell_driver)
+        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
     def stop_container(self, name: str, show_output: bool = True):
         cmd = build_docker_stop_command(name)
-        req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute_operation(driver=self.shell_driver)
+        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
     def remove_container(self, name: str, force: bool = False, show_output: bool = True):
         cmd = build_docker_remove_command(name, force=force)
-        req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute_operation(driver=self.shell_driver)
+        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
     def exec_in_container(self, name: str, command: Union[str, list[str]], show_output: bool = True):
@@ -111,14 +109,14 @@ class LocalDockerDriver(DockerDriver):
         else:
             raise ValueError(f"Invalid command type: {type(command)}")
 
-        req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute_operation(driver=self.shell_driver)
+        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
     def get_logs(self, name: str, show_output: bool = True):
         cmd = ["docker", "logs", name]
-        req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute_operation(driver=self.shell_driver)
+        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
     def build_docker_image(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
@@ -126,28 +124,28 @@ class LocalDockerDriver(DockerDriver):
             raise ValueError("dockerfile_text is None. Dockerfile内容が正しく渡っていません。")
 
         cmd = build_docker_build_command(tag, dockerfile_text, options)
-        req = ShellRequest(cmd, show_output=show_output, inputdata=dockerfile_text)
-        result = req.execute_operation(driver=self.shell_driver)
+        req = ShellRequest(cmd, cwd=None, env=None, inputdata=dockerfile_text, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
 
     def image_ls(self, show_output: bool = True):
         cmd = ["docker", "image", "ls"]
-        req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute_operation(driver=self.shell_driver)
+        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
     def image_rm(self, image: str, show_output: bool = True):
         cmd = ["docker", "image", "rm", image]
-        req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute_operation(driver=self.shell_driver)
+        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
     def ps(self, all: bool = False, show_output: bool = True, names_only: bool = False):
         if names_only:
             cmd = ["docker", "ps", "-a", "--format", "{{.Names}}"]
-            req = ShellRequest(cmd, show_output=show_output)
-            result = req.execute_operation(driver=self.shell_driver)
+            req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+            result = req.execute_operation(driver=self.shell_driver, logger=None)
             stdout_value = result.stdout
             if stdout_value is None:
                 raise ValueError("Docker command returned None stdout - this indicates a critical error")
@@ -155,8 +153,8 @@ class LocalDockerDriver(DockerDriver):
         cmd = ["docker", "ps"]
         if all:
             cmd.append("-a")
-        req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute_operation(driver=self.shell_driver)
+        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
     def inspect(self, target: str, type_: Optional[str] = None, show_output: bool = True):
@@ -164,8 +162,8 @@ class LocalDockerDriver(DockerDriver):
         if type_:
             cmd += ["--type", type_]
         cmd.append(target)
-        req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute_operation(driver=self.shell_driver)
+        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
     def cp(self, src: str, dst: str, container: str, to_container: bool = True, show_output: bool = True):
@@ -176,6 +174,6 @@ class LocalDockerDriver(DockerDriver):
             cp_src = f"{container}:{src}"
             cp_dst = str(dst)
         cmd = ["docker", "cp", cp_src, cp_dst]
-        req = ShellRequest(cmd, show_output=show_output)
-        result = req.execute_operation(driver=self.shell_driver)
+        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result

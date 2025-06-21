@@ -5,14 +5,14 @@ from typing import Any, Optional
 class OperationResult:
     """Base class for operation results."""
 
-    def __init__(self, success: Optional[bool] = None, returncode: Optional[int] = None,
-                 stdout: Optional[str] = None, stderr: Optional[str] = None,
-                 content: Optional[str] = None, exists: Optional[bool] = None,
-                 path: Optional[str] = None, op: Optional[Any] = None,
-                 cmd: Optional[str] = None, request: Optional[Any] = None,
-                 start_time: Optional[float] = None, end_time: Optional[float] = None,
-                 error_message: Optional[str] = None, exception: Optional[Exception] = None,
-                 metadata: Optional[dict[str, Any]] = None, skipped: bool = False):
+    def __init__(self, success: Optional[bool], returncode: Optional[int],
+                 stdout: Optional[str], stderr: Optional[str],
+                 content: Optional[str], exists: Optional[bool],
+                 path: Optional[str], op: Optional[Any],
+                 cmd: Optional[str], request: Optional[Any],
+                 start_time: Optional[float], end_time: Optional[float],
+                 error_message: Optional[str], exception: Optional[Exception],
+                 metadata: Optional[dict[str, Any]], skipped: bool):
         """Initialize operation result.
 
         Args:
@@ -137,7 +137,7 @@ class OperationResult:
             'skipped': self.skipped,
         }
 
-    def to_json(self, json_provider=None) -> str:
+    def to_json(self, json_provider) -> str:
         """Convert result to JSON string.
 
         Args:

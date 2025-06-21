@@ -13,7 +13,7 @@ class CompositeRequestFoundation(OperationRequestFoundation):
     into a single executable unit with proper result tracking.
     """
 
-    def __init__(self, requests: list[OperationRequestFoundation], debug_tag: Optional[str] = None, name: Optional[str] = None, _executed: bool = False, _results = None, _debug_info: Optional[dict] = None):
+    def __init__(self, requests: list[OperationRequestFoundation], debug_tag: Optional[str], name: Optional[str], _executed: bool, _results, _debug_info: Optional[dict]):
         super().__init__(name=name, debug_tag=debug_tag, _executed=_executed, _result=None, _debug_info=_debug_info)
         if not all(isinstance(r, OperationRequestFoundation) for r in requests):
             raise TypeError("All elements of 'requests' must be OperationRequestFoundation (or its subclass)")
@@ -42,8 +42,8 @@ class CompositeRequestFoundation(OperationRequestFoundation):
         return f"<{self.request_type.short_name} name={self.name} [\n  {reqs_str}\n]>"
 
     @classmethod
-    def make_composite_request(cls, requests: list[OperationRequestFoundation], debug_tag: Optional[str] = None,
-                             name: Optional[str] = None) -> OperationRequestFoundation:
+    def make_composite_request(cls, requests: list[OperationRequestFoundation], debug_tag: Optional[str],
+                             name: Optional[str]) -> OperationRequestFoundation:
         if len(requests) == 1:
             req = requests[0]
             if name is not None:

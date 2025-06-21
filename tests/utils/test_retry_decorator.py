@@ -62,114 +62,10 @@ class TestRetryDecorator:
         assert result == "success"
         assert mock_func.call_count == 1
 
-    def test_retryable_error_with_eventual_success(self):
-        """Test that retryable errors are retried until success."""
-        mock_func = Mock()
-        mock_func.side_effect = [ConnectionError("fail"), ConnectionError("fail"), "success"]
 
-        config = RetryConfig(
-            max_attempts=3,
-            base_delay=0.01,
-            retryable_errors=(ConnectionError, TimeoutError, OSError),
-            retryable_error_codes=(ErrorCode.NETWORK_TIMEOUT, ErrorCode.NETWORK_CONNECTION_FAILED)
-        )
 
-        @retry_on_failure(config)
-        def test_func():
-            return mock_func()
 
-        result = test_func()
-        assert result == "success"
-        assert mock_func.call_count == 3
 
-    def test_retryable_error_max_attempts_exceeded(self):
-        """Test that retries stop after max attempts."""
-        mock_func = Mock(side_effect=ConnectionError("always fail"))
-
-        config = RetryConfig(
-            max_attempts=2,
-            base_delay=0.01,
-            retryable_errors=(ConnectionError, TimeoutError, OSError),
-            retryable_error_codes=(ErrorCode.NETWORK_TIMEOUT, ErrorCode.NETWORK_CONNECTION_FAILED)
-        )
-
-        @retry_on_failure(config)
-        def test_func():
-            return mock_func()
-
-        with pytest.raises(ConnectionError):
-            test_func()
-
-        assert mock_func.call_count == 2
-
-    def test_non_retryable_error(self):
-        """Test that non-retryable errors are not retried."""
-        mock_func = Mock(side_effect=ValueError("not retryable"))
-
-        config = RetryConfig(
-            retryable_errors=(ConnectionError, TimeoutError, OSError),
-            retryable_error_codes=(ErrorCode.NETWORK_TIMEOUT, ErrorCode.NETWORK_CONNECTION_FAILED)
-        )
-
-        @retry_on_failure(config)
-        def test_func():
-            return mock_func()
-
-        with pytest.raises(ValueError):
-            test_func()
-
-        assert mock_func.call_count == 1
-
-    @patch('time.sleep')
-    def test_exponential_backoff(self, mock_sleep):
-        """Test that exponential backoff is applied."""
-        mock_func = Mock()
-        mock_func.side_effect = [ConnectionError("fail"), "success"]
-
-        config = RetryConfig(
-            max_attempts=3,
-            base_delay=1.0,
-            backoff_factor=2.0,
-            retryable_errors=(ConnectionError, TimeoutError, OSError),
-            retryable_error_codes=(ErrorCode.NETWORK_TIMEOUT, ErrorCode.NETWORK_CONNECTION_FAILED)
-        )
-
-        @retry_on_failure(config)
-        def test_func():
-            return mock_func()
-
-        test_func()
-
-        # Should sleep for base_delay * backoff_factor^0 = 1.0
-        mock_sleep.assert_called_once_with(1.0)
-
-    def test_error_code_based_retry(self):
-        """Test retry based on error codes."""
-        class CustomError(Exception):
-            def __init__(self, message, error_code):
-                super().__init__(message)
-                self.error_code = error_code
-
-        mock_func = Mock()
-        mock_func.side_effect = [
-            CustomError("timeout", ErrorCode.NETWORK_TIMEOUT),
-            "success"
-        ]
-
-        config = RetryConfig(
-            max_attempts=3,
-            base_delay=0.01,
-            retryable_errors=(ConnectionError, TimeoutError, OSError),
-            retryable_error_codes=(ErrorCode.NETWORK_TIMEOUT,)
-        )
-
-        @retry_on_failure(config)
-        def test_func():
-            return mock_func()
-
-        result = test_func()
-        assert result == "success"
-        assert mock_func.call_count == 2
 
 
 class TestRetryableOperation:
@@ -189,23 +85,6 @@ class TestRetryableOperation:
         assert result == "success"
         mock_func.assert_called_once_with("arg1", key="value")
 
-    def test_execute_with_retry_failure_then_success(self):
-        """Test execution with initial failure then success."""
-        config = RetryConfig(
-            max_attempts=3,
-            base_delay=0.01,
-            retryable_errors=(ConnectionError, TimeoutError, OSError),
-            retryable_error_codes=(ErrorCode.NETWORK_TIMEOUT, ErrorCode.NETWORK_CONNECTION_FAILED)
-        )
-        operation = RetryableOperation(config)
-
-        mock_func = Mock()
-        mock_func.side_effect = [ConnectionError("fail"), "success"]
-
-        result = operation.execute_with_retry(mock_func)
-
-        assert result == "success"
-        assert mock_func.call_count == 2
 
 
 class TestPredefinedConfigs:

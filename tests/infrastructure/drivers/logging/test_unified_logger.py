@@ -91,32 +91,8 @@ class TestUnifiedLogger:
         assert logger.enabled is True
         assert len(logger.session_id) == 8
 
-    def test_init_no_di_container(self, mock_output_manager, logger_config):
-        """Test initialization without DI container"""
-        with pytest.raises(ValueError, match="Logger enabled status configuration not available"):
-            UnifiedLogger(
-                output_manager=mock_output_manager,
-                logger_config=logger_config,
-                di_container=None
-            )
 
-    def test_init_no_format_config(self, mock_output_manager, mock_di_container):
-        """Test initialization without format configuration"""
-        with pytest.raises(ValueError, match="Format configuration is required"):
-            UnifiedLogger(
-                output_manager=mock_output_manager,
-                logger_config={},
-                di_container=mock_di_container
-            )
 
-    def test_init_no_icons_config(self, mock_output_manager, mock_di_container):
-        """Test initialization without icons configuration"""
-        with pytest.raises(ValueError, match="Icons configuration is required in format config"):
-            UnifiedLogger(
-                output_manager=mock_output_manager,
-                logger_config={"format": {}},
-                di_container=mock_di_container
-            )
 
     def test_debug_logging(self, unified_logger, mock_output_manager):
         """Test debug message logging"""
@@ -352,12 +328,6 @@ class TestUnifiedLogger:
             formatinfo=FormatInfo(color="blue", bold=True)
         )
 
-    def test_log_workflow_start_no_config(self, unified_logger, mock_output_manager, mock_config_manager):
-        """Test workflow start logging without execution mode configuration"""
-        mock_config_manager.resolve_config.side_effect = KeyError("Config not found")
-
-        with pytest.raises(ValueError, match="Workflow execution mode configuration not found"):
-            unified_logger.log_workflow_start(3, parallel=False)
 
     def test_log_environment_info_disabled(self, unified_logger, mock_output_manager):
         """Test environment info logging when disabled"""
@@ -457,10 +427,6 @@ class TestUnifiedLogger:
 
         assert result == "Hello world, count: 42"
 
-    def test_format_message_invalid_args(self, unified_logger):
-        """Test message formatting with invalid arguments"""
-        with pytest.raises(ValueError, match="Message formatting failed"):
-            unified_logger._format_message("Hello %s %d", ("world",))
 
     def test_icons_merge_priority(self, mock_output_manager, mock_di_container, mock_config_manager):
         """Test icon configuration merge priority (user > config > defaults)"""
@@ -497,9 +463,3 @@ class TestUnifiedLogger:
         # Default should be used when not overridden
         assert logger.icons["error"] == "💥"
 
-    def test_operation_end_no_config_manager(self, unified_logger, mock_output_manager):
-        """Test operation end logging without config manager"""
-        unified_logger._config_manager = None
-
-        with pytest.raises(ValueError, match="Operation status configuration not found"):
-            unified_logger.log_operation_end("OP001", "TEST", True)

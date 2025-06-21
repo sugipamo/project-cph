@@ -84,7 +84,7 @@ class RepositoryInterface(ABC):
         """
 
     @abstractmethod
-    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Dict[str, Any]]:
+    def find_all(self, limit: Optional[int], offset: Optional[int]) -> List[Dict[str, Any]]:
         """Find all entities with optional pagination.
 
         Args:

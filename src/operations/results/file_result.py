@@ -8,12 +8,12 @@ from src.operations.results.result import OperationResult
 class FileResult(OperationResult):
     """Result class for file operations."""
 
-    def __init__(self, success: Optional[bool] = None, content: Optional[str] = None,
-                 path: Optional[str] = None, exists: Optional[bool] = None,
-                 op: Optional[Any] = None, error_message: Optional[str] = None,
-                 exception: Optional[Exception] = None, start_time: Optional[float] = None,
-                 end_time: Optional[float] = None, request: Optional[Any] = None,
-                 metadata: Optional[dict[str, Any]] = None):
+    def __init__(self, success: Optional[bool], content: Optional[str],
+                 path: Optional[str], exists: Optional[bool],
+                 op: Optional[Any], error_message: Optional[str],
+                 exception: Optional[Exception], start_time: Optional[float],
+                 end_time: Optional[float], request: Optional[Any],
+                 metadata: Optional[dict[str, Any]]):
         """Initialize file result.
 
         Args:
@@ -31,12 +31,21 @@ class FileResult(OperationResult):
         """
         super().__init__(
             success=success,
-            exception=exception,
-            error_message=error_message,
+            returncode=None,
+            stdout=None,
+            stderr=None,
+            content=content,
+            exists=exists,
+            path=path,
+            op=op,
+            cmd=None,
+            request=request,
             start_time=start_time,
             end_time=end_time,
-            request=request,
-            metadata=metadata
+            error_message=error_message,
+            exception=exception,
+            metadata=metadata,
+            skipped=False
         )
         self.content = content
         self.path = path

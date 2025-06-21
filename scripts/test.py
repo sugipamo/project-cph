@@ -72,64 +72,53 @@ class TestRunner:
             spinner = ProgressSpinner(description, self.logger)
             spinner.start()
 
-        try:
-            result = self.command_executor.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                cwd=str(Path(__file__).parent.parent)
-            )
+        result = self.command_executor.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=str(Path(__file__).parent.parent)
+        )
 
-            success = result.success
+        success = result.success
 
-            # vultureの場合は特別処理
-            if cmd[0] == "vulture" and result.stdout.strip():
-                if spinner:
-                    spinner.stop(True)  # 未使用コード検出は成功として表示
-            else:
-                if spinner:
-                    spinner.stop(success)
-
-            if not success:
-                if self.verbose:
-                    self.logger.error(f"{description}")
-                    self.logger.debug(f"コマンド: {' '.join(cmd)}")
-                    if result.stderr.strip():
-                        self.logger.error(f"エラー出力: {result.stderr}")
-                    if result.stdout.strip():
-                        self.logger.debug(f"標準出力: {result.stdout}")
-                # vultureの場合は特別処理（未使用コード検出時は正常終了とみなす）
-                if cmd[0] == "vulture" and result.stdout.strip():
-                    return True, result.stdout
-                # 失敗時は標準出力と標準エラー出力の両方を確認
-                combined_output = ""
-                if result.stdout.strip():
-                    combined_output += result.stdout.strip()
-                if result.stderr.strip():
-                    if combined_output:
-                        combined_output += "\n"
-                    combined_output += result.stderr.strip()
-
-                # 何も出力がない場合は終了コードを表示
-                if not combined_output:
-                    combined_output = f"終了コード: {result.returncode}"
-
-                self.issues.append(f"{description}: {combined_output}")
-                return False, combined_output
-            if self.verbose:
-                self.logger.info(f"{description}")
-
-            return True, result.stdout
-
-        except Exception as e:
+        # vultureの場合は特別処理
+        if cmd[0] == "vulture" and result.stdout.strip():
             if spinner:
-                spinner.stop(False)
+                spinner.stop(True)  # 未使用コード検出は成功として表示
+        else:
+            if spinner:
+                spinner.stop(success)
 
-            error_msg = f"{description}: {e!s}"
-            self.issues.append(error_msg)
+        if not success:
             if self.verbose:
-                self.logger.error(f"{error_msg}")
-            return False, str(e)
+                self.logger.error(f"{description}")
+                self.logger.debug(f"コマンド: {' '.join(cmd)}")
+                if result.stderr.strip():
+                    self.logger.error(f"エラー出力: {result.stderr}")
+                if result.stdout.strip():
+                    self.logger.debug(f"標準出力: {result.stdout}")
+            # vultureの場合は特別処理（未使用コード検出時は正常終了とみなす）
+            if cmd[0] == "vulture" and result.stdout.strip():
+                return True, result.stdout
+            # 失敗時は標準出力と標準エラー出力の両方を確認
+            combined_output = ""
+            if result.stdout.strip():
+                combined_output += result.stdout.strip()
+            if result.stderr.strip():
+                if combined_output:
+                    combined_output += "\n"
+                combined_output += result.stderr.strip()
+
+            # 何も出力がない場合は終了コードを表示
+            if not combined_output:
+                combined_output = f"終了コード: {result.returncode}"
+
+            self.issues.append(f"{description}: {combined_output}")
+            return False, combined_output
+        if self.verbose:
+            self.logger.info(f"{description}")
+
+        return True, result.stdout
 
     def check_ruff(self) -> bool:
         """Ruffによるコード品質チェック"""
@@ -186,16 +175,10 @@ class TestRunner:
     def check_dead_code(self) -> bool:
         """vultureを使用した未使用コード検出"""
         # vultureが利用可能かチェック
-        try:
-            result = self.command_executor.run(["vulture", "--version"], capture_output=True, text=True)
-            if not result.success:
-                raise Exception("vulture not available")
-        except Exception as e:
-            error_msg = f"vultureの実行に失敗しました: {e}"
-            if not self.verbose:
-                self.logger.error(error_msg)
-            else:
-                self.logger.error(error_msg)
+        result = self.command_executor.run(["vulture", "--version"], capture_output=True, text=True)
+        if not result.success:
+            error_msg = "vultureの実行に失敗しました"
+            self.logger.error(error_msg)
             self.issues.append(error_msg)
             return False
 
@@ -267,8 +250,8 @@ class TestRunner:
                                         relative_file = file_path.replace('src/', '') if file_path.startswith('src/') else file_path
                                         import_issues.append(f"{relative_file}: import {module} (モジュールが見つかりません)")
 
-                except (SyntaxError, UnicodeDecodeError, OSError, FileNotFoundError):
-                    # 構文エラーやファイル読み込みエラーは無視
+                except SyntaxError:
+                    # 構文エラーのファイルはスキップ
                     continue
 
             success = len(import_issues) == 0
@@ -288,13 +271,9 @@ class TestRunner:
 
             return success
 
-        except Exception as e:
+        finally:
             if spinner:
-                spinner.stop(False)
-            self.issues.append(f"インポート解決チェックでエラー: {e}")
-            if self.verbose:
-                self.logger.error(f"インポート解決チェックでエラー: {e}")
-            return False
+                pass
 
     def quick_smoke_test(self) -> bool:
         """クイックスモークテスト - 基本的な実行可能性をチェック"""
@@ -324,13 +303,9 @@ class TestRunner:
 
             return success
 
-        except Exception as e:
+        finally:
             if spinner:
-                spinner.stop(False)
-            self.issues.append(f"スモークテストでエラー: {e}")
-            if self.verbose:
-                self.logger.error(f"スモークテストでエラー: {e}")
-            return False
+                pass
 
     def check_naming_conventions(self) -> bool:
         """命名規則チェック"""
@@ -433,8 +408,8 @@ class TestRunner:
                                         naming_issues.append(f"無駄なプレフィックス関数名: {relative_path}:{node.lineno} def {func_name}")
                                         break
 
-                except (SyntaxError, UnicodeDecodeError, FileNotFoundError):
-                    # 構文エラーやエンコードエラーは無視
+                except SyntaxError:
+                    # 構文エラーのファイルはスキップ
                     continue
 
             if spinner:
@@ -452,12 +427,9 @@ class TestRunner:
                 if len(naming_issues) > 15:
                     self.warnings.append(f"  ... 他{len(naming_issues) - 15}件")
 
-        except Exception as e:
-            if spinner:
-                spinner.stop(False)
-            self.warnings.append(f"命名規則チェックでエラー: {e}")
-            if self.verbose:
-                self.logger.error(f"命名規則チェックでエラー: {e}")
+        finally:
+            if spinner and not spinner.running:
+                pass
 
         return True  # 警告レベルなので常にTrueを返す
 
@@ -489,16 +461,8 @@ class TestRunner:
             }
 
             # 許可されたディレクトリ（CLAUDE.mdに従い、infrastructure層全体を許可）
-            allowed_dirs = [
-                'src/infrastructure/',
-                'tests/infrastructure/'
-            ]
 
             for file_path in glob.glob('src/**/*.py', recursive=True):
-                # 許可されたディレクトリは除外
-                if any(file_path.startswith(allowed_dir) for allowed_dir in allowed_dirs):
-                    continue
-
                 try:
                     content = self.file_handler.read_text(file_path, encoding='utf-8')
                     tree = ast.parse(content, filename=file_path)
@@ -556,8 +520,8 @@ class TestRunner:
                                             f"{relative_path}:{node.lineno} {func_name}() (副作用関数の直接使用)"
                                         )
 
-                except (SyntaxError, UnicodeDecodeError, OSError, FileNotFoundError):
-                    # 構文エラーやファイル読み込みエラーは無視
+                except SyntaxError:
+                    # 構文エラーのファイルはスキップ
                     continue
 
             success = len(injection_issues) == 0
@@ -579,13 +543,9 @@ class TestRunner:
 
             return success
 
-        except Exception as e:
+        finally:
             if spinner:
-                spinner.stop(False)
-            self.issues.append(f"依存性注入チェックでエラー: {e}")
-            if self.verbose:
-                self.logger.error(f"依存性注入チェックでエラー: {e}")
-            return False
+                pass
 
     def check_print_usage(self) -> bool:
         """print使用チェック - loggingディレクトリ配下を除く"""
@@ -625,8 +585,8 @@ class TestRunner:
                             relative_path = file_path.replace('src/', '')
                             print_issues.append(f"{relative_path}:{line_num} {clean_line.strip()}")
 
-                except (UnicodeDecodeError, OSError, FileNotFoundError):
-                    # ファイル読み込みエラーは無視
+                except UnicodeDecodeError:
+                    # エンコードエラーのファイルはスキップ
                     continue
 
             success = len(print_issues) == 0
@@ -648,13 +608,9 @@ class TestRunner:
 
             return success
 
-        except Exception as e:
+        finally:
             if spinner:
-                spinner.stop(False)
-            self.issues.append(f"print使用チェックでエラー: {e}")
-            if self.verbose:
-                self.logger.error(f"print使用チェックでエラー: {e}")
-            return False
+                pass
 
     def check_infrastructure_duplication(self) -> bool:
         """Infrastructure重複生成の検出（CLAUDE.mdルール違反 - main.py以外での生成禁止）"""
@@ -702,7 +658,8 @@ class TestRunner:
                                 if 'build_infrastructure' in alias.name:
                                     duplication_issues.append(f"{relative_path}:{node.lineno} {alias.name} のインポート")
 
-                except (SyntaxError, UnicodeDecodeError, OSError, FileNotFoundError):
+                except SyntaxError:
+                    # 構文エラーのファイルはスキップ
                     continue
 
             success = len(duplication_issues) == 0
@@ -719,11 +676,9 @@ class TestRunner:
 
             return success
 
-        except Exception as e:
+        finally:
             if spinner:
-                spinner.stop(False)
-            self.issues.append(f"Infrastructure重複生成チェックでエラー: {e}")
-            return False
+                pass
 
     def _get_attr_chain(self, node: ast.Attribute) -> str:
         """属性チェーンを文字列として取得"""
@@ -747,9 +702,6 @@ class TestRunner:
             none_default_issues = []
 
             for file_path in glob.glob('src/**/*.py', recursive=True):
-                # Infrastructure層は依存性注入でNoneデフォルトが必要な場合があるためスキップ
-                if file_path.startswith('src/infrastructure/'):
-                    continue
 
                 try:
                     content = self.file_handler.read_text(file_path, encoding='utf-8')
@@ -782,7 +734,8 @@ class TestRunner:
                                 if arg is not None and isinstance(arg, ast.Constant) and arg.value is None:
                                     none_default_issues.append(f"{relative_path}:{node.lineno} async def {node.name} - キーワード引数のNone初期値")
 
-                except (SyntaxError, UnicodeDecodeError, OSError, FileNotFoundError):
+                except SyntaxError:
+                    # 構文エラーのファイルはスキップ
                     continue
 
             success = len(none_default_issues) == 0
@@ -802,11 +755,9 @@ class TestRunner:
 
             return success
 
-        except Exception as e:
+        finally:
             if spinner:
-                spinner.stop(False)
-            self.issues.append(f"None引数初期値チェックでエラー: {e}")
-            return False
+                pass
 
     def check_fallback_patterns(self) -> bool:
         """フォールバック処理の検出（CLAUDE.mdルール違反 - エラー隠蔽防止）"""
@@ -823,9 +774,6 @@ class TestRunner:
             fallback_issues = []
 
             for file_path in glob.glob('src/**/*.py', recursive=True):
-                # Infrastructure層は許可されているためスキップ
-                if file_path.startswith('src/infrastructure/'):
-                    continue
 
                 try:
                     content = self.file_handler.read_text(file_path, encoding='utf-8')
@@ -857,7 +805,8 @@ class TestRunner:
                             if re.search(r'else\s+["\'\[\{0-9]', line) and not self._is_legitimate_conditional(line):  # else の後にリテラル値で適切な条件分岐以外
                                 fallback_issues.append(f"{relative_path}:{node.lineno} 条件式でのフォールバック: {line}")
 
-                except (SyntaxError, UnicodeDecodeError, OSError, FileNotFoundError):
+                except SyntaxError:
+                    # 構文エラーのファイルはスキップ
                     continue
 
             success = len(fallback_issues) == 0
@@ -877,11 +826,9 @@ class TestRunner:
 
             return success
 
-        except Exception as e:
+        finally:
             if spinner:
-                spinner.stop(False)
-            self.issues.append(f"フォールバック処理チェックでエラー: {e}")
-            return False
+                pass
 
     def _is_legitimate_error_handling(self, line: str) -> bool:
         """正当なエラーハンドリングパターンを判定"""
@@ -959,8 +906,8 @@ class TestRunner:
                                 context_line = self._get_source_line(content, node.lineno)
                                 dict_get_issues.append(f"{relative_path}:{node.lineno} {context_line.strip()}")
 
-                except (SyntaxError, UnicodeDecodeError, OSError, FileNotFoundError):
-                    # 構文エラーやファイル読み込みエラーは無視
+                except SyntaxError:
+                    # 構文エラーのファイルはスキップ
                     continue
 
             success = len(dict_get_issues) == 0
@@ -989,13 +936,9 @@ class TestRunner:
 
             return success
 
-        except Exception as e:
+        finally:
             if spinner:
-                spinner.stop(False)
-            self.issues.append(f"dict.get()使用チェックでエラー: {e}")
-            if self.verbose:
-                self.logger.error(f"dict.get()使用チェックでエラー: {e}")
-            return False
+                pass
 
     def _is_legitimate_get_usage(self, node: ast.Call, content: str) -> bool:
         """正当な.get()使用パターンを判定"""
@@ -1044,41 +987,30 @@ class TestRunner:
         """dict.get()を自動変換"""
         self.logger.info("🔧 dict.get()の自動変換を実行中...")
 
-        try:
-            result = self.command_executor.run([
-                "python3", "scripts/quality/convert_dict_get.py", "src/"
-            ], capture_output=True, text=True, cwd=str(Path(__file__).parent.parent))
+        result = self.command_executor.run([
+            "python3", "scripts/quality/convert_dict_get.py", "src/"
+        ], capture_output=True, text=True, cwd=str(Path(__file__).parent.parent))
 
-            if result.success:
-                self.logger.info("✅ dict.get()の自動変換が完了しました")
-                if result.stdout.strip():
-                    self.logger.info("変換結果:")
-                    for line in result.stdout.strip().split('\n'):
-                        if line.strip():
-                            self.logger.info(f"   {line}")
-                return True
-            self.logger.error("❌ dict.get()の自動変換中にエラーが発生しました")
-            if result.stderr.strip():
-                self.logger.error(f"エラー: {result.stderr}")
-            return False
-
-        except Exception as e:
-            self.logger.error(f"dict.get()の自動変換でエラー: {e}")
-            return False
+        if result.success:
+            self.logger.info("✅ dict.get()の自動変換が完了しました")
+            if result.stdout.strip():
+                self.logger.info("変換結果:")
+                for line in result.stdout.strip().split('\n'):
+                    if line.strip():
+                        self.logger.info(f"   {line}")
+            return True
+        self.logger.error("❌ dict.get()の自動変換中にエラーが発生しました")
+        if result.stderr.strip():
+            self.logger.error(f"エラー: {result.stderr}")
+        return False
 
     def check_types(self) -> bool:
         """型チェック (mypy)"""
         # mypyが利用可能かチェック
-        try:
-            result = self.command_executor.run(["mypy", "--version"], capture_output=True, text=True)
-            if not result.success:
-                raise Exception("mypy not available")
-        except Exception as e:
-            error_msg = f"mypyの実行に失敗しました: {e}"
-            if not self.verbose:
-                self.logger.error(error_msg)
-            else:
-                self.logger.error(error_msg)
+        result = self.command_executor.run(["mypy", "--version"], capture_output=True, text=True)
+        if not result.success:
+            error_msg = "mypyの実行に失敗しました"
+            self.logger.error(error_msg)
             self.issues.append(error_msg)
             return False
 
@@ -1097,37 +1029,28 @@ class TestRunner:
             spinner = ProgressSpinner("構文チェック", self.logger)
             spinner.start()
 
-        try:
-            syntax_errors = []
-            for file_path in glob.glob('src/**/*.py', recursive=True):
-                try:
-                    content = self.file_handler.read_text(file_path, encoding='utf-8')
-                    ast.parse(content, filename=file_path)
-                except SyntaxError as e:
-                    syntax_errors.append(f'{file_path}:{e.lineno}: {e.msg}')
-                except FileNotFoundError:
-                    # ファイルが見つからない場合は無視
-                    continue
-                except Exception as e:
-                    syntax_errors.append(f'{file_path}: {e}')
+        syntax_errors = []
+        for file_path in glob.glob('src/**/*.py', recursive=True):
+            try:
+                content = self.file_handler.read_text(file_path, encoding='utf-8')
+                ast.parse(content, filename=file_path)
+            except SyntaxError as e:
+                syntax_errors.append(f'{file_path}:{e.lineno}: {e.msg}')
+            except FileNotFoundError:
+                # ファイルが見つからない場合はスキップ
+                continue
 
-            success = len(syntax_errors) == 0
+        success = len(syntax_errors) == 0
 
-            if spinner:
-                spinner.stop(success)
-            elif self.verbose:
-                self.logger.info(f"{'✅' if success else '❌'} 構文チェック")
+        if spinner:
+            spinner.stop(success)
+        elif self.verbose:
+            self.logger.info(f"{'✅' if success else '❌'} 構文チェック")
 
-            if syntax_errors:
-                self.issues.extend(syntax_errors)
-                return False
-            return True
-
-        except Exception as e:
-            if spinner:
-                spinner.stop(False)
-            self.issues.append(f"構文チェック: {e}")
+        if syntax_errors:
+            self.issues.extend(syntax_errors)
             return False
+        return True
 
     def run_tests(self, pytest_args: List[str], no_coverage: bool = False, html_coverage: bool = False) -> bool:
         """pytest実行"""
@@ -1161,38 +1084,31 @@ class TestRunner:
     def _run_tests_with_live_progress(self, cmd: List[str]) -> Tuple[bool, str]:
         """テスト実行中に現在のテストを改行せずに表示"""
 
-        try:
-            # CommandExecutorを使用してテストを実行
-            # ライブプログレス表示のため、CommandExecutorの結果を使用
-            result = self.command_executor.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                cwd=str(Path(__file__).parent.parent)
-            )
+        # CommandExecutorを使用してテストを実行
+        # ライブプログレス表示のため、CommandExecutorの結果を使用
+        result = self.command_executor.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=str(Path(__file__).parent.parent)
+        )
 
-            # プログレス表示
-            self.logger.print("🧪 テスト実行", end="", flush=True)
+        # プログレス表示
+        self.logger.print("🧪 テスト実行", end="", flush=True)
 
-            # 簡単なプログレス表示（実際のライブプログレスは省略）
-            import time
-            for _i in range(3):
-                time.sleep(0.1)
-                self.logger.print(".", end="", flush=True)
+        # 簡単なプログレス表示（実際のライブプログレスは省略）
+        import time
+        for _i in range(3):
+            time.sleep(0.1)
+            self.logger.print(".", end="", flush=True)
 
-            success = result.success
-            output = result.stdout
+        success = result.success
+        output = result.stdout
 
-            # 最終結果を表示
-            self.logger.print(f"\r{'✅' if success else '❌'} テスト実行".ljust(90), flush=True)
+        # 最終結果を表示
+        self.logger.print(f"\r{'✅' if success else '❌'} テスト実行".ljust(90), flush=True)
 
-            return success, output
-
-        except Exception as e:
-            # プログレス表示
-            self.logger.print("\r❌ テスト実行", flush=True)
-            self.issues.append(f"テスト実行でエラー: {e}")
-            return False, str(e)
+        return success, output
 
     def _extract_failed_tests(self, output: str) -> None:
         """失敗したテストの詳細を抽出して表示"""
@@ -1276,9 +1192,9 @@ class TestRunner:
                 parts = line.split()
                 for part in parts:
                     if part.endswith('%'):
-                        try:
-                            int(part[:-1])
-                        except ValueError:
+                        if part[:-1].isdigit():
+                            pass
+                        else:
                             continue
                         break
             # 個別ファイルのカバレッジ（80%未満のみ収集）
@@ -1289,11 +1205,11 @@ class TestRunner:
                     # パーセンテージを探す
                     for part in parts[1:]:
                         if part.endswith('%'):
-                            try:
+                            if part[:-1].isdigit():
                                 coverage = int(part[:-1])
                                 if coverage < 80:  # 80%未満のみ収集
                                     low_coverage_files.append((file_path, coverage))
-                            except ValueError:
+                            else:
                                 continue
                             break
 

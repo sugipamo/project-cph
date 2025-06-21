@@ -16,7 +16,7 @@ class FileDriver(ExecutionDriverInterface):
     - Actual file operations in concrete classes (_*_impl methods)
     """
 
-    def __init__(self, base_dir: Path = Path(".")):
+    def __init__(self, base_dir: Path):
         self.base_dir = Path(base_dir)
         # path and dst_path are set dynamically during operations
         self.path = None
@@ -180,7 +180,7 @@ class FileDriver(ExecutionDriverInterface):
         """File removal implementation (implement in concrete class)."""
 
     @abstractmethod
-    def open(self, path: Path, mode: str = "r", encoding: Optional[str] = None):
+    def open(self, path: Path, mode: str, encoding: Optional[str]):
         """Open file (implement in concrete class)."""
 
     def ensure_parent_dir(self, path: Path) -> None:
@@ -201,7 +201,7 @@ class FileDriver(ExecutionDriverInterface):
         return h.hexdigest()
 
     @abstractmethod
-    def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver=None):
+    def docker_cp(self, src: str, dst: str, container: str, to_container: bool, docker_driver):
         """Copy files to/from Docker container (implement in concrete class)."""
 
     def mkdir(self, path: Path) -> None:
@@ -216,5 +216,5 @@ class FileDriver(ExecutionDriverInterface):
         resolved_path.touch(exist_ok=True)
 
     @abstractmethod
-    def list_files(self, base_dir: Path) -> list[Path]:
+    def list_files(self, base_dir: Path) -> list[str]:
         """List all files under specified directory (implement in concrete class)."""

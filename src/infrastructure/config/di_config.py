@@ -11,10 +11,11 @@ def _create_shell_driver(file_driver: Any) -> Any:
     return LocalShellDriver(file_driver=file_driver)
 
 
-def _create_docker_driver() -> Any:
+def _create_docker_driver(container: Any) -> Any:
     """Lazy factory for docker driver."""
     from src.infrastructure.drivers.docker.docker_driver import LocalDockerDriver
-    return LocalDockerDriver()
+    file_driver = container.resolve(DIKey.FILE_DRIVER)
+    return LocalDockerDriver(file_driver)
 
 
 def _create_file_driver() -> Any:
@@ -81,7 +82,9 @@ def _create_system_config_repository(container: Any) -> Any:
 def _create_unified_driver(container: DIContainer) -> Any:
     """Lazy factory for unified driver."""
     from src.infrastructure.drivers.unified.unified_driver import UnifiedDriver
-    return UnifiedDriver(container)
+    logger = container.resolve(DIKey.UNIFIED_LOGGER)
+    config_manager = container.resolve(DIKey.CONFIG_MANAGER)
+    return UnifiedDriver(container, logger, config_manager)
 
 
 def _create_execution_controller() -> Any:
@@ -98,10 +101,11 @@ def _create_output_manager() -> Any:
     return None
 
 
-def _create_environment_manager() -> Any:
+def _create_environment_manager(container: Any) -> Any:
     """Lazy factory for environment manager."""
     from src.infrastructure.environment.environment_manager import EnvironmentManager
-    return EnvironmentManager()
+    config_manager = container.resolve(DIKey.CONFIG_MANAGER)
+    return EnvironmentManager(env_type=None, config_manager=config_manager)
 
 
 def _create_logger(container: Any) -> Any:
@@ -269,7 +273,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
 
     # Register core drivers
     container.register(DIKey.SHELL_DRIVER, lambda: _create_shell_driver(container.resolve(DIKey.FILE_DRIVER)))
-    container.register(DIKey.DOCKER_DRIVER, _create_docker_driver)
+    container.register(DIKey.DOCKER_DRIVER, lambda: _create_docker_driver(container))
     container.register(DIKey.FILE_DRIVER, _create_file_driver)
     container.register(DIKey.PYTHON_DRIVER, _create_python_driver)
     container.register(DIKey.PERSISTENCE_DRIVER, _create_persistence_driver)
@@ -294,7 +298,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.UNIFIED_LOGGER, lambda: _create_unified_logger(container))
 
     # Register environment and factory
-    container.register(DIKey.ENVIRONMENT_MANAGER, _create_environment_manager)
+    container.register(DIKey.ENVIRONMENT_MANAGER, lambda: _create_environment_manager(container))
     container.register(DIKey.UNIFIED_REQUEST_FACTORY, lambda: _create_request_factory(container))
 
     # Register interfaces
@@ -383,7 +387,7 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register(DIKey.UNIFIED_LOGGER, lambda: _create_unified_logger(container))
 
     # Register environment and factory
-    container.register(DIKey.ENVIRONMENT_MANAGER, _create_environment_manager)
+    container.register(DIKey.ENVIRONMENT_MANAGER, lambda: _create_environment_manager(container))
     container.register(DIKey.UNIFIED_REQUEST_FACTORY, lambda: _create_request_factory(container))
 
     # Register mock interfaces

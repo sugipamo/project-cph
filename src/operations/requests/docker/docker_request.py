@@ -31,9 +31,9 @@ class DockerOpType(Enum):
 class DockerRequest(OperationRequestFoundation):
     """Request for Docker container operations."""
 
-    def __init__(self, op: DockerOpType, image: Optional[str] = None, container: Optional[str] = None,
-                 command: Optional[Union[str, list[str]]] = None, options: Optional[dict[str, Any]] = None,
-                 debug_tag=None, name=None, show_output=True, dockerfile_text=None):
+    def __init__(self, op: DockerOpType, image: Optional[str], container: Optional[str],
+                 command: Optional[Union[str, list[str]]], options: Optional[dict[str, Any]],
+                 debug_tag, name, show_output: bool, dockerfile_text):
         """Initialize Docker request.
 
         Args:
@@ -47,7 +47,7 @@ class DockerRequest(OperationRequestFoundation):
             show_output: Whether to show output
             dockerfile_text: Dockerfile content for build operations
         """
-        super().__init__(name=name, debug_tag=debug_tag)
+        super().__init__(name=name, debug_tag=debug_tag, _executed=False, _result=None, _debug_info=None)
         self.op = op
         self.image = image
         self.container = container
@@ -81,7 +81,7 @@ class DockerRequest(OperationRequestFoundation):
         return super().execute_operation(driver)
 
 
-    def _execute_core(self, driver: DockerDriverInterface, logger: Optional[Any] = None):
+    def _execute_core(self, driver: DockerDriverInterface, logger: Optional[Any]):
         """Core execution logic for Docker operations."""
         if logger:
             logger.debug(f"Executing Docker operation: {self.op} for container: {self.container}")
@@ -96,7 +96,7 @@ class DockerRequest(OperationRequestFoundation):
         # Handle normal single request operations
         return self._execute_single_operation(driver, logger)
 
-    def _handle_run_operation(self, driver: DockerDriverInterface, logger: Optional[Any] = None, json_provider=None):
+    def _handle_run_operation(self, driver: DockerDriverInterface, logger: Optional[Any], json_provider):
         """Handle RUN operation with container state checking."""
         # Check if container exists
         container_names = driver.ps(all=True, show_output=False, names_only=True)
@@ -107,7 +107,7 @@ class DockerRequest(OperationRequestFoundation):
         # Check container status and handle accordingly
         return self._handle_existing_container(driver, logger, json_provider)
 
-    def _handle_existing_container(self, driver: DockerDriverInterface, logger: Optional[Any] = None, json_provider=None):
+    def _handle_existing_container(self, driver: DockerDriverInterface, logger: Optional[Any], json_provider):
         """Handle existing container based on its current status."""
         inspect_result = driver.inspect(self.container, show_output=False)
         try:
@@ -121,7 +121,7 @@ class DockerRequest(OperationRequestFoundation):
         except Exception as e:
             raise DockerOperationError(f"Docker container inspection failed: {e}") from e
 
-    def _process_container_status(self, driver: DockerDriverInterface, status: str, logger: Optional[Any] = None):
+    def _process_container_status(self, driver: DockerDriverInterface, status: str, logger: Optional[Any]):
         """Process container based on its current status."""
         if status == "running":
             # Already running, reuse
@@ -137,16 +137,16 @@ class DockerRequest(OperationRequestFoundation):
     def _remove_and_run_container(self, driver: DockerDriverInterface):
         """Remove existing container and run a new one."""
         reqs = [
-            DockerRequest(DockerOpType.REMOVE, container=self.container, show_output=False),
-            DockerRequest(DockerOpType.RUN, image=self.image, container=self.container,
-                         options=self.options, show_output=self.show_output)
+            DockerRequest(DockerOpType.REMOVE, image=None, container=self.container, command=None, options={}, debug_tag=None, name=None, show_output=False, dockerfile_text=None),
+            DockerRequest(DockerOpType.RUN, image=self.image, container=self.container, command=None,
+                         options=self.options, debug_tag=None, name=None, show_output=self.show_output, dockerfile_text=None)
         ]
-        results = CompositeRequest.make_composite_request(reqs).execute_operation(driver)
+        results = CompositeRequest.make_composite_request(reqs, debug_tag=None, name=None).execute_operation(driver, logger=None)
         if isinstance(results, list) and results:
             return results[-1]
         return results
 
-    def _execute_single_operation(self, driver: DockerDriverInterface, logger: Optional[Any] = None):
+    def _execute_single_operation(self, driver: DockerDriverInterface, logger: Optional[Any]):
         """Execute single Docker operation."""
         try:
             result = self._dispatch_operation(driver)

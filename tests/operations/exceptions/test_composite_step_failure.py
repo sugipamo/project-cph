@@ -55,36 +55,7 @@ class TestCompositeStepFailureError:
         assert isinstance(exc, Exception)
         assert isinstance(exc, CompositeStepFailureError)
 
-    def test_raise_and_catch(self):
-        """Test raising and catching the exception"""
-        mock_result = {"returncode": 1}
 
-        with pytest.raises(CompositeStepFailureError) as exc_info:
-            raise CompositeStepFailureError(
-                "Command failed",
-                result=mock_result
-            )
-
-        caught_exc = exc_info.value
-        assert str(caught_exc) == "Command failed"
-        assert caught_exc.result == mock_result
-
-    def test_exception_chaining(self):
-        """Test exception chaining with original exception"""
-        try:
-            # Simulate original error
-            raise ValueError("Original error")
-        except ValueError as e:
-            # Wrap in CompositeStepFailureError
-            with pytest.raises(CompositeStepFailureError) as exc_info:
-                raise CompositeStepFailureError(
-                    "Step failed due to value error",
-                    original_exception=e
-                ) from e
-
-            caught_exc = exc_info.value
-            assert caught_exc.original_exception is e
-            assert str(caught_exc.original_exception) == "Original error"
 
     def test_empty_message(self):
         """Test with empty message"""

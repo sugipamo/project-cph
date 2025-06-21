@@ -12,12 +12,12 @@ from src.operations.results.result import OperationResult
 class ShellRequest(OperationRequestFoundation):
     """Request for executing shell commands."""
 
-    def __init__(self, cmd: Union[str, list[str]], cwd: Optional[str] = None,
-                 env: Optional[dict[str, str]] = None, inputdata: Optional[str] = None,
-                 timeout: Optional[int] = None, debug_tag: Optional[str] = None,
-                 name: Optional[str] = None, show_output: bool = True,
-                 allow_failure: bool = False):
-        super().__init__(name=name, debug_tag=debug_tag)
+    def __init__(self, cmd: Union[str, list[str]], cwd: Optional[str],
+                 env: Optional[dict[str, str]], inputdata: Optional[str],
+                 timeout: Optional[int], debug_tag: Optional[str],
+                 name: Optional[str], show_output: bool,
+                 allow_failure: bool):
+        super().__init__(name=name, debug_tag=debug_tag, _executed=False, _result=None, _debug_info=None)
         self.cmd = cmd
         self.cwd = cwd
         self.env = env
@@ -36,7 +36,7 @@ class ShellRequest(OperationRequestFoundation):
         """Return the request type for type-safe identification."""
         return RequestType.SHELL_REQUEST
 
-    def _execute_core(self, driver: Any, logger: Optional[Any] = None) -> OperationResult:
+    def _execute_core(self, driver: Any, logger: Optional[Any]) -> OperationResult:
         """Core execution logic for shell commands."""
         start_time = time.perf_counter()
 
@@ -48,14 +48,14 @@ class ShellRequest(OperationRequestFoundation):
             end_time = time.perf_counter()
             return self._create_error_result(e, driver, logger, start_time, end_time)
 
-    def _execute_shell_command(self, driver: Any, logger: Optional[Any] = None):
+    def _execute_shell_command(self, driver: Any, logger: Optional[Any]):
         """Execute the shell command with retry logic."""
         from src.infrastructure.patterns.retry_decorator import COMMAND_RETRY_CONFIG, RetryableOperation
         # Create a new config with logger if provided
         config = COMMAND_RETRY_CONFIG
         if logger:
             config = RetryableOperation(config, logger).retry_config
-        retryable = RetryableOperation(config)
+        retryable = RetryableOperation(config, logger)
 
         def execute_command():
             actual_driver = self._get_actual_driver(driver)

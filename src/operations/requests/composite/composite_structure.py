@@ -37,7 +37,7 @@ class CompositeStructure:
         return f"CompositeStructure [\n  {reqs_str}\n]"
 
     @classmethod
-    def make_optimal_structure(cls, requests: list[OperationRequestFoundation], name: Optional[str] = None) -> OperationRequestFoundation:
+    def make_optimal_structure(cls, requests: list[OperationRequestFoundation], name: Optional[str]) -> OperationRequestFoundation:
         """If requests has only one item, return it as-is; if two or more, structure it.
         However, if name is specified, call set_name.
         """

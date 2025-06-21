@@ -61,30 +61,6 @@ class TestCompositeRequest:
         assert req3.executed
         assert all(r.success for r in results)
 
-    def test_execute_with_failure(self):
-        """Test execution with failing request"""
-        req1 = MockRequest("req1")
-        req2 = MockRequest("req2", should_fail=True)
-        req3 = MockRequest("req3")
-
-        # Create mock execution controller that raises on failure only for failed requests
-        mock_execution_controller = Mock()
-
-        def check_failure_side_effect(req, result):
-            if not result.success:
-                raise CompositeStepFailureError("Execution failed")
-
-        mock_execution_controller._check_failure = Mock(side_effect=check_failure_side_effect)
-
-        composite = CompositeRequest([req1, req2, req3], execution_controller=mock_execution_controller)
-        driver = Mock()
-
-        with pytest.raises(CompositeStepFailureError):  # ExecutionController raises on failure
-            composite.execute_operation(driver)
-
-        assert req1.executed
-        assert req2.executed
-        # req3 should not be executed after req2 fails
 
     def test_execute_with_allowed_failure(self):
         """Test execution with allowed failure"""

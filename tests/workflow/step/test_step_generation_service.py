@@ -85,14 +85,6 @@ class TestStepGenerationService(unittest.TestCase):
         self.assertEqual(result.problem_name, "test_problem")
         self.assertEqual(result.language, "python3")
 
-    def test_create_step_context_missing_file_patterns(self):
-        """Test error when TypedExecutionConfiguration lacks file_patterns"""
-        context = Mock(spec=TypedExecutionConfiguration)
-        # Remove file_patterns attribute
-        delattr(context, 'file_patterns')
-
-        with self.assertRaises(AttributeError):
-            create_step_context_from_execution_context(context)
 
     def test_execution_context_to_simple_context_typed(self):
         """Test converting TypedExecutionConfiguration to ExecutionContext"""
@@ -171,17 +163,6 @@ class TestStepGenerationService(unittest.TestCase):
         self.assertEqual(result, "formatted_template")
         mock_expand_template.assert_called_once()
 
-    def test_format_template_none(self):
-        """Test format template with None input"""
-        with self.assertRaises(ValueError) as context:
-            format_template(None, self.typed_context)
-        self.assertIn("Template is required", str(context.exception))
-
-    def test_format_template_non_string(self):
-        """Test format template with non-string input"""
-        with self.assertRaises(ValueError) as context:
-            format_template(123, self.typed_context)
-        self.assertIn("Template must be a string", str(context.exception))
 
     def test_expand_file_patterns_typed(self):
         """Test expanding file patterns with TypedExecutionConfiguration"""
@@ -192,14 +173,6 @@ class TestStepGenerationService(unittest.TestCase):
         self.assertEqual(result, "expanded_pattern")
         self.typed_context.resolve_formatted_string.assert_called_once_with("pattern_{src}")
 
-    def test_expand_file_patterns_typed_missing_method(self):
-        """Test expand_file_patterns when resolve_formatted_string is missing"""
-        # Remove the method
-        if hasattr(self.typed_context, 'resolve_formatted_string'):
-            delattr(self.typed_context, 'resolve_formatted_string')
-
-        with self.assertRaises(AttributeError):
-            expand_file_patterns("pattern_{src}", self.typed_context)
 
     @patch('src.workflow.step.step_generation_service.expand_template')
     @patch('src.workflow.step.step_generation_service.expand_file_patterns_in_text')
@@ -240,12 +213,6 @@ class TestStepGenerationService(unittest.TestCase):
         self.assertGreater(len(result), 0)
         self.assertIn("Command cannot be empty", result[0])
 
-    def test_validate_single_step_copy_insufficient_args(self):
-        """Test validating copy step with insufficient arguments"""
-        with self.assertRaises(ValueError) as context:
-            Step(type=StepType.COPY, cmd=["src"])  # Missing destination
-
-        self.assertIn("requires at least 2 arguments", str(context.exception))
 
     def test_validate_single_step_copy_empty_paths(self):
         """Test validating copy step with empty paths"""

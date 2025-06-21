@@ -11,7 +11,7 @@ def test_move_and_copy_impl(tmp_path):
     src = tmp_path / "a.txt"
     dst = tmp_path / "b.txt"
     src.write_text("abc")
-    driver = LocalFileDriver()
+    driver = LocalFileDriver(base_dir=Path('.'))
     driver.path = src
     driver.dst_path = dst
     driver._move_impl(src, dst)
@@ -22,7 +22,7 @@ def test_move_and_copy_impl(tmp_path):
 
 def test_exists_and_create_impl(tmp_path):
     p = tmp_path / "a.txt"
-    driver = LocalFileDriver()
+    driver = LocalFileDriver(base_dir=Path('.'))
     driver.path = p
     assert not driver._exists_impl(p)
     driver._create_impl(p, "hello")
@@ -34,7 +34,7 @@ def test_copytree_and_rmtree_impl(tmp_path):
     dst_dir = tmp_path / "dst"
     src_dir.mkdir()
     (src_dir / "f.txt").write_text("x")
-    driver = LocalFileDriver()
+    driver = LocalFileDriver(base_dir=Path('.'))
     driver._copytree_impl(src_dir, dst_dir)
     assert (dst_dir / "f.txt").exists()
     driver._rmtree_impl(dst_dir)
@@ -43,26 +43,26 @@ def test_copytree_and_rmtree_impl(tmp_path):
 def test_remove_impl(tmp_path):
     p = tmp_path / "a.txt"
     p.write_text("x")
-    driver = LocalFileDriver()
+    driver = LocalFileDriver(base_dir=Path('.'))
     driver._remove_impl(p)
     assert not p.exists()
 
 def test_open(tmp_path):
     p = tmp_path / "a.txt"
     p.write_text("abc")
-    driver = LocalFileDriver()
+    driver = LocalFileDriver(base_dir=Path('.'))
     driver.path = p
-    with driver.open(p, "r") as f:
+    with driver.open(p, "r", None) as f:
         assert f.read() == "abc"
 
 def test_docker_cp_raises():
-    driver = LocalFileDriver()
+    driver = LocalFileDriver(base_dir=Path('.'))
     with pytest.raises(ValueError):
-        driver.docker_cp("src", "dst", "container")
+        driver.docker_cp("src", "dst", "container", True, None)
 
 def test_hash_file(tmp_path):
     p = tmp_path / "a.txt"
     p.write_text("abc")
-    driver = LocalFileDriver()
+    driver = LocalFileDriver(base_dir=Path('.'))
     h = driver.hash_file(p)
     assert isinstance(h, str) and len(h) > 0

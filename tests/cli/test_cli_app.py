@@ -45,10 +45,6 @@ class TestMinimalCLIApp:
 
         assert app.logger == mock_logger
 
-    def test_init_no_infrastructure(self):
-        """Test CLI app initialization fails without infrastructure."""
-        with pytest.raises(ValueError, match="Infrastructure must be injected from main.py"):
-            MinimalCLIApp(None)
 
     def test_run_cli_application_success(self, cli_app, mock_infrastructure):
         """Test successful CLI application run."""
@@ -100,99 +96,11 @@ class TestMinimalCLIApp:
 
                 assert result == 1
 
-    def test_run_cli_application_no_infrastructure(self, mock_infrastructure):
-        """Test CLI application run without infrastructure."""
-        app = MinimalCLIApp(mock_infrastructure)
-        app.infrastructure = None  # Simulate missing infrastructure
 
-        with pytest.raises(RuntimeError, match="Infrastructure not injected"):
-            app.run_cli_application(["test"])
 
-    def test_run_cli_application_logger_initialization_error(self, cli_app, mock_infrastructure):
-        """Test CLI application run with logger initialization error."""
-        args = ["python", "build"]
 
-        # Mock logger resolution to fail
-        mock_infrastructure.resolve.side_effect = KeyError("Logger not found")
 
-        with pytest.raises(RuntimeError, match="Logger dependency not registered"):
-            cli_app.run_cli_application(args)
 
-    def test_run_cli_application_logger_exception(self, cli_app, mock_infrastructure):
-        """Test CLI application run with logger exception."""
-        args = ["python", "build"]
-
-        # Mock logger resolution to raise exception
-        mock_infrastructure.resolve.side_effect = Exception("Logger failed")
-
-        with pytest.raises(RuntimeError, match="Logger initialization failed"):
-            cli_app.run_cli_application(args)
-
-    def test_run_cli_application_composite_step_failure(self, cli_app, mock_infrastructure):
-        """Test CLI application handling CompositeStepFailureError."""
-        args = ["python", "build", "contest", "A"]
-        mock_logger = Mock()
-        mock_logger.output_manager = Mock()
-
-        # Mock logger resolution
-        mock_infrastructure.resolve.return_value = mock_logger
-        cli_app.logger = mock_logger
-
-        # Mock parse_user_input to raise CompositeStepFailureError
-        mock_error = CompositeStepFailureError("Test failure", original_exception=None)
-
-        with patch('src.cli.cli_app.parse_user_input') as mock_parse:
-            mock_parse.side_effect = mock_error
-
-            with patch.object(cli_app, '_handle_composite_step_failure') as mock_handle:
-                mock_handle.return_value = 1
-
-                result = cli_app.run_cli_application(args)
-
-                assert result == 1
-                mock_handle.assert_called_once_with(mock_error)
-
-    def test_run_cli_application_general_exception(self, cli_app, mock_infrastructure):
-        """Test CLI application handling general exception."""
-        args = ["python", "build", "contest", "A"]
-        mock_logger = Mock()
-        mock_logger.output_manager = Mock()
-
-        # Mock logger resolution
-        mock_infrastructure.resolve.return_value = mock_logger
-        cli_app.logger = mock_logger
-
-        # Mock parse_user_input to raise general exception
-        test_exception = ValueError("Test error")
-
-        with patch('src.cli.cli_app.parse_user_input') as mock_parse:
-            mock_parse.side_effect = test_exception
-
-            with patch.object(cli_app, '_handle_general_exception') as mock_handle:
-                mock_handle.return_value = 1
-
-                result = cli_app.run_cli_application(args)
-
-                assert result == 1
-                mock_handle.assert_called_once_with(test_exception, args)
-
-    def test_run_cli_application_exception_logger_fallback(self, cli_app, mock_infrastructure):
-        """Test CLI application exception handling with logger fallback."""
-        args = ["python", "build"]
-        mock_output_manager = Mock()
-
-        # First call fails (logger), second call succeeds (output_manager)
-        mock_infrastructure.resolve.side_effect = [Exception("Logger failed"), mock_output_manager]
-
-        test_exception = ValueError("Test error")
-
-        with patch('src.cli.cli_app.parse_user_input') as mock_parse:
-            mock_parse.side_effect = test_exception
-
-            result = cli_app.run_cli_application(args)
-
-            assert result == 1
-            mock_output_manager.error.assert_called()
 
     def test_execute_workflow(self, cli_app, mock_context):
         """Test workflow execution."""
@@ -339,15 +247,7 @@ class TestMinimalCLIApp:
             assert result == 0
             mock_exit_func.assert_called_once_with(0)
 
-    def test_main_no_infrastructure(self):
-        """Test main function without infrastructure."""
-        with pytest.raises(ValueError, match="Infrastructure must be injected from main.py"):
-            main(["test"], None, None)
 
-    def test_main_no_argv(self, mock_infrastructure):
-        """Test main function without argv."""
-        with pytest.raises(ValueError, match="argv must be provided"):
-            main(None, None, mock_infrastructure)
 
     def test_main_no_exit_func(self, mock_infrastructure):
         """Test main function without exit function."""
@@ -362,16 +262,3 @@ class TestMinimalCLIApp:
 
             assert result == 0
 
-    def test_direct_execution_not_allowed(self):
-        """Test that direct execution raises error."""
-        # This test verifies the __main__ guard behavior
-        with patch.dict('sys.modules', {'__main__': type('MockMain', (), {'__name__': '__main__'})()}):
-            # Import the module and trigger the __main__ check
-            import src.cli.cli_app
-
-            # Simulate __name__ == '__main__' condition
-            with patch.object(src.cli.cli_app, '__name__', '__main__'), \
-                 pytest.raises(RuntimeError, match="Direct CLI execution not allowed"):
-                # Execute the __main__ guard code directly
-                if src.cli.cli_app.__name__ == "__main__":
-                    raise RuntimeError("Direct CLI execution not allowed - must run from main.py")

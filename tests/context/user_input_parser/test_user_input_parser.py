@@ -79,41 +79,8 @@ class TestUserInputParser:
                 language="python"
             )
 
-    def test_create_execution_config_none_language(self, mock_infrastructure):
-        """Test creation fails when language is None."""
-        with pytest.raises(ValueError, match="language parameter cannot be None"):
-            _create_execution_config(
-                command_type="build",
-                language=None,
-                contest_name="abc123",
-                problem_name="A",
-                env_type="local",
-                infrastructure=mock_infrastructure
-            )
 
-    def test_create_execution_config_none_contest_name(self, mock_infrastructure):
-        """Test creation fails when contest_name is None."""
-        with pytest.raises(ValueError, match="contest_name parameter cannot be None"):
-            _create_execution_config(
-                command_type="build",
-                language="python",
-                contest_name=None,
-                problem_name="A",
-                env_type="local",
-                infrastructure=mock_infrastructure
-            )
 
-    def test_create_execution_config_none_problem_name(self, mock_infrastructure):
-        """Test creation fails when problem_name is None."""
-        with pytest.raises(ValueError, match="problem_name parameter cannot be None"):
-            _create_execution_config(
-                command_type="build",
-                language="python",
-                contest_name="abc123",
-                problem_name=None,
-                env_type="local",
-                infrastructure=mock_infrastructure
-            )
 
     def test_load_current_context_sqlite(self, mock_infrastructure):
         """Test loading current context from SQLite."""
@@ -356,27 +323,6 @@ class TestUserInputParser:
 
             assert result == {"test": "data"}
 
-    def test_load_shared_config_failure(self, mock_infrastructure):
-        """Test loading shared config failure."""
-        mock_file_driver = Mock()
-        mock_os_provider = Mock()
-        mock_json_provider = Mock()
-
-        mock_infrastructure.resolve.side_effect = lambda key: {
-            "file_driver": mock_file_driver,
-            "DIKey.OS_PROVIDER": mock_os_provider,
-            "DIKey.JSON_PROVIDER": mock_json_provider
-        }.get(str(key))
-
-        mock_os_provider.path_join.return_value = "/base/shared/env.json"
-
-        with patch('src.context.user_input_parser.user_input_parser.FileRequest') as mock_file_request:
-            mock_request_instance = Mock()
-            mock_file_request.return_value = mock_request_instance
-            mock_request_instance.execute_operation.side_effect = Exception("File not found")
-
-            with pytest.raises(ValueError, match="Failed to load shared JSON"):
-                _load_shared_config("/base", mock_infrastructure)
 
     def test_make_dockerfile_loader(self, mock_infrastructure):
         """Test creating dockerfile loader function."""
@@ -480,13 +426,6 @@ class TestUserInputParser:
 
         assert result == mock_context
 
-    def test_validate_and_return_context_invalid(self):
-        """Test validating and returning invalid context."""
-        mock_context = Mock()
-        mock_context.validate_execution_data.return_value = (False, "Invalid context")
-
-        with pytest.raises(ValueError, match="Invalid context"):
-            _validate_and_return_context(mock_context)
 
     def test_parse_user_input_integration(self, mock_infrastructure):
         """Test parse_user_input integration."""

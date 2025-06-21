@@ -13,7 +13,7 @@ from src.workflow.step.step import Step, StepType
 class RequestFactory:
     """Factory class for creating request objects from steps"""
 
-    def __init__(self, config_manager=None):
+    def __init__(self, config_manager):
         """Initialize RequestFactory with configuration manager
 
         Args:

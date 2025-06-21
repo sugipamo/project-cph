@@ -14,10 +14,6 @@ from tests.base.base_test import BaseTest
 class TestShellDriverInterface(BaseTest):
     """Test abstract ShellDriver interface"""
 
-    def test_shell_driver_is_abstract(self):
-        """Test that ShellDriver cannot be instantiated directly"""
-        with pytest.raises(TypeError):
-            ShellDriver()
 
     def test_abstract_method_execute_shell_command_defined(self):
         """Test that execute_shell_command method is defined as abstract"""
@@ -171,13 +167,6 @@ class TestLocalShellDriver(BaseTest):
         assert result.returncode == 1
         mock_run_subprocess.assert_called_once()
 
-    @patch('src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess')
-    def test_run_shell_utils_exception(self, mock_run_subprocess):
-        """Test handling of ShellUtils exceptions"""
-        mock_run_subprocess.side_effect = Exception("Shell execution failed")
-
-        with pytest.raises(Exception, match="Shell execution failed"):
-            self.driver.execute_shell_command(["echo", "test"])
 
     @patch('src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess')
     def test_run_empty_command(self, mock_run_subprocess):

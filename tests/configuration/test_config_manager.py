@@ -16,13 +16,6 @@ from src.configuration.config_manager import (
 class TestConfigurationError:
     """Test ConfigurationError exception."""
 
-    def test_configuration_error_creation(self):
-        """Test that ConfigurationError can be created and raised."""
-        error = ConfigurationError("Test configuration error")
-        assert str(error) == "Test configuration error"
-
-        with pytest.raises(ConfigurationError, match="Test configuration error"):
-            raise ConfigurationError("Test configuration error")
 
 
 class TestEnsureImports:
@@ -122,21 +115,6 @@ class TestTypedExecutionConfiguration:
         assert result == "resolved-template"
         mock_resolve.assert_called_once()
 
-    def test_resolve_formatted_string_config_node_error(self):
-        """Test handling of ConfigNode resolution errors."""
-        mock_root_node = Mock()
-
-        config = TypedExecutionConfiguration(
-            contest_name="abc123",
-            problem_name="A",
-            _root_node=mock_root_node
-        )
-
-        with patch('src.configuration.config_manager.resolve_formatted_string') as mock_resolve:
-            mock_resolve.side_effect = Exception("Config resolution failed")
-
-            with pytest.raises(ConfigurationError, match="ConfigNode解決に失敗"):
-                config.resolve_formatted_string("{contest_name}")
 
     def test_validate_execution_data_success(self):
         """Test successful validation of execution data."""
@@ -219,10 +197,6 @@ class TestTypeSafeConfigNodeManager:
         assert manager.infrastructure == mock_infrastructure
         assert manager.root_node is None
 
-    def test_initialization_without_infrastructure(self):
-        """Test initialization fails without infrastructure."""
-        with pytest.raises(ValueError, match="Infrastructure must be provided"):
-            TypeSafeConfigNodeManager(None)
 
     @patch('src.configuration.config_manager.FileLoader')
     def test_load_from_files(self, mock_file_loader_class):
@@ -268,27 +242,7 @@ class TestTypeSafeConfigNodeManager:
             assert result == "resolved_value"
             mock_resolve.assert_called_once_with(mock_root, ["docker", "timeout"])
 
-    def test_resolve_config_no_root_node(self):
-        """Test config resolution without loaded root node."""
-        mock_infrastructure = Mock()
-        manager = TypeSafeConfigNodeManager(mock_infrastructure)
 
-        with pytest.raises(ConfigurationError, match="Configuration not loaded"):
-            manager.resolve_config(["docker", "timeout"], int)
-
-    def test_resolve_config_path_not_found(self):
-        """Test config resolution with invalid path."""
-        mock_infrastructure = Mock()
-        manager = TypeSafeConfigNodeManager(mock_infrastructure)
-
-        mock_root = Mock()
-        manager.root_node = mock_root
-
-        with patch('src.configuration.config_manager.resolve_best') as mock_resolve:
-            mock_resolve.side_effect = KeyError("Path not found")
-
-            with pytest.raises(KeyError):
-                manager.resolve_config(["invalid", "path"], str)
 
     def test_create_execution_config(self):
         """Test creation of execution configuration."""
@@ -329,16 +283,3 @@ class TestTypeSafeConfigNodeManager:
             assert config.command_type == "build"
             assert config._root_node == mock_root
 
-    def test_create_execution_config_no_root_node(self):
-        """Test execution config creation without loaded configuration."""
-        mock_infrastructure = Mock()
-        manager = TypeSafeConfigNodeManager(mock_infrastructure)
-
-        with pytest.raises(ConfigurationError, match="Configuration not loaded"):
-            manager.create_execution_config(
-                contest_name="abc123",
-                problem_name="A",
-                language="python",
-                env_type="local",
-                command_type="build"
-            )

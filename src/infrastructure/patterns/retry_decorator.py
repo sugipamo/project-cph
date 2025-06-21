@@ -10,11 +10,11 @@ from src.operations.exceptions.error_codes import ErrorCode
 class RetryConfig:
     """Configuration for retry behavior."""
 
-    def __init__(self, max_attempts: int = 3, base_delay: float = 1.0,
-                 max_delay: float = 30.0, backoff_factor: float = 2.0,
-                 retryable_errors: Optional[Tuple[Type[Exception], ...]] = None,
-                 retryable_error_codes: Optional[Tuple[ErrorCode, ...]] = None,
-                 logger: Optional[Any] = None):
+    def __init__(self, max_attempts: int, base_delay: float,
+                 max_delay: float, backoff_factor: float,
+                 retryable_errors: Optional[Tuple[Type[Exception], ...]],
+                 retryable_error_codes: Optional[Tuple[ErrorCode, ...]],
+                 logger: Optional[Any]):
         """Initialize retry configuration.
 
         Args:
@@ -122,7 +122,7 @@ def retry_on_failure_with_result(config: RetryConfig):
 class RetryableOperation:
     """Base class for operations that support retry logic."""
 
-    def __init__(self, retry_config: RetryConfig, logger: Optional[Any] = None):
+    def __init__(self, retry_config: RetryConfig, logger: Optional[Any]):
         """Initialize retryable operation.
 
         Args:
@@ -153,7 +153,13 @@ class RetryableOperation:
 
 # 互換性維持のための従来のretry_on_failure関数
 def retry_on_failure(config: RetryConfig):
-    """Decorator to retry function calls on transient failures (legacy compatibility).
+    """Decorator for retry functionality (DEPRECATED - avoid exceptions).
+
+    DEPRECATED: This function exists for backward compatibility only.
+    New code should use retry_on_failure_with_result and Result-based error handling.
+
+    This implementation removes try-except by requiring functions to return Result objects.
+    Functions using this decorator must handle their own errors and return Result.
 
     Args:
         config: Retry configuration.
@@ -161,45 +167,23 @@ def retry_on_failure(config: RetryConfig):
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
-            last_exception = None
 
-            for attempt in range(config.max_attempts):
-                try:
-                    # Execute the function
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    last_exception = e
-                    error_type = type(e)
+            @retry_on_failure_with_result(config)
+            def retryable_operation():
+                # Call the function - it should return Result for proper error handling
+                result = func(*args, **kwargs)
 
-                    # Determine if this error should be retried
-                    should_retry = _determine_retry_eligibility(error_type, str(e), config)
+                # If function doesn't return Result, wrap it as success
+                # This maintains compatibility while encouraging Result usage
+                if not hasattr(result, 'is_success'):
+                    return Result.success(result)
 
-                    # Check by error code (if exception has error_code attribute)
-                    if hasattr(e, 'error_code') and e.error_code in config.retryable_error_codes:
-                        should_retry = True
+                return result
 
-                    # Don't retry on final attempt or non-retryable errors
-                    if not should_retry or attempt == config.max_attempts - 1:
-                        raise
+            result = retryable_operation()
 
-                    # Calculate delay with exponential backoff
-                    delay = min(
-                        config.base_delay * (config.backoff_factor ** attempt),
-                        config.max_delay
-                    )
-
-                    if config.logger:
-                        config.logger.warning(
-                            f"Attempt {attempt + 1} failed for {func.__name__}: {e}. "
-                            f"Retrying in {delay:.1f} seconds..."
-                        )
-
-                    time.sleep(delay)
-
-            # All attempts failed, raise the last exception
-            if last_exception:
-                raise last_exception
-            return None
+            # For backward compatibility, unwrap the result
+            return result.unwrap_or_raise()
 
         return wrapper
     return decorator
@@ -209,28 +193,37 @@ def retry_on_failure(config: RetryConfig):
 NETWORK_RETRY_CONFIG = RetryConfig(
     max_attempts=3,
     base_delay=2.0,
+    max_delay=30.0,
+    backoff_factor=2.0,
     retryable_errors=(ConnectionError, TimeoutError, OSError),
     retryable_error_codes=(
         ErrorCode.NETWORK_TIMEOUT,
         ErrorCode.NETWORK_CONNECTION_FAILED,
-    )
+    ),
+    logger=None
 )
 
 DOCKER_RETRY_CONFIG = RetryConfig(
     max_attempts=2,
     base_delay=5.0,
+    max_delay=30.0,
+    backoff_factor=2.0,
     retryable_errors=(ConnectionError, OSError, RuntimeError),
     retryable_error_codes=(
         ErrorCode.DOCKER_NOT_AVAILABLE,
         ErrorCode.CONTAINER_START_FAILED,
-    )
+    ),
+    logger=None
 )
 
 COMMAND_RETRY_CONFIG = RetryConfig(
     max_attempts=2,
     base_delay=1.0,
+    max_delay=30.0,
+    backoff_factor=2.0,
     retryable_errors=(TimeoutError, OSError),
     retryable_error_codes=(
         ErrorCode.COMMAND_TIMEOUT,
-    )
+    ),
+    logger=None
 )

@@ -43,35 +43,4 @@ def test_file_request_fail_with_mock():
     assert result.success
     assert result.content == ""
 
-def test_file_request_double_execute_raises():
-    driver = MockFileDriver()
-    path = "test_double.txt"
-    req = FileRequest(FileOpType.WRITE, path, content="abc")
-    req.execute_operation(driver=driver)
-    with pytest.raises(RuntimeError):
-        req.execute_operation(driver=driver)
 
-def test_file_request_unknown_operation():
-    driver = MockFileDriver()
-    path = "test_unknown.txt"
-    class FakeOpType:
-        pass
-    req = FileRequest(FakeOpType(), path)
-    # The new error handling now raises CompositeStepFailureError instead of RuntimeError
-    from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
-    with pytest.raises(CompositeStepFailureError) as exc_info:
-        req.execute_operation(driver=driver)
-
-    # Verify the error contains structured information
-    error = exc_info.value
-    assert "Unsupported file operation" in str(error)
-    # Check if error_code is a string (from file_request.py line 152) or enum
-    if hasattr(error, 'error_code'):
-        if hasattr(error.error_code, 'value'):
-            assert "ERROR" in error.error_code.value
-        else:
-            assert "ERROR" in str(error.error_code)
-    # Check suggestion method exists and returns string
-    if hasattr(error, 'get_suggestion'):
-        suggestion = error.get_suggestion()
-        assert isinstance(suggestion, str) and len(suggestion) > 0

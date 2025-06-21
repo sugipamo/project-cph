@@ -13,7 +13,7 @@ class OperationRequestFoundation(ABC):
     offering common execution patterns and debug tracking capabilities.
     """
 
-    def __init__(self, name: Optional[str] = None, debug_tag: Optional[str] = None, _executed: bool = False, _result: Any = None, _debug_info: Optional[dict] = None):
+    def __init__(self, name: Optional[str], debug_tag: Optional[str], _executed: bool, _result: Any, _debug_info: Optional[dict]):
         self.name = name
         self._executed = _executed
         self._result = _result
@@ -24,7 +24,7 @@ class OperationRequestFoundation(ABC):
         self.name = name
         return self
 
-    def _create_debug_info(self, debug_tag: Optional[str] = None) -> Optional[dict]:
+    def _create_debug_info(self, debug_tag: Optional[str]) -> Optional[dict]:
         """Create debug information for request tracking."""
         # 環境変数依存を廃止 - デバッグ情報は常に作成しない（テスト要件と競合するため無効化）
         return None
@@ -39,7 +39,7 @@ class OperationRequestFoundation(ABC):
         """Return the request type for type-safe identification."""
         return RequestType.OPERATION_REQUEST_FOUNDATION
 
-    def execute_operation(self, driver: Optional[Any] = None, logger: Optional[Any] = None) -> Any:
+    def execute_operation(self, driver: Optional[Any], logger: Optional[Any]) -> Any:
         """Execute this operation request using the provided driver.
 
         Args:
@@ -66,7 +66,7 @@ class OperationRequestFoundation(ABC):
 
 
     @abstractmethod
-    def _execute_core(self, driver: Optional[Any], logger: Optional[Any] = None) -> Any:
+    def _execute_core(self, driver: Optional[Any], logger: Optional[Any]) -> Any:
         """Core execution logic to be implemented by subclasses.
 
         Args:

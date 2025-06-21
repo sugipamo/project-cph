@@ -7,12 +7,12 @@ from src.operations.results.result import OperationResult
 class ShellResult(OperationResult):
     """Result class for shell operations."""
 
-    def __init__(self, success: Optional[bool] = None, stdout: Optional[str] = None,
-                 stderr: Optional[str] = None, returncode: Optional[int] = None,
-                 cmd: Optional[str] = None, error_message: Optional[str] = None,
-                 exception: Optional[Exception] = None, start_time: Optional[float] = None,
-                 end_time: Optional[float] = None, request: Optional[Any] = None,
-                 metadata: Optional[dict[str, Any]] = None):
+    def __init__(self, success: Optional[bool], stdout: Optional[str],
+                 stderr: Optional[str], returncode: Optional[int],
+                 cmd: Optional[str], error_message: Optional[str],
+                 exception: Optional[Exception], start_time: Optional[float],
+                 end_time: Optional[float], request: Optional[Any],
+                 metadata: Optional[dict[str, Any]]):
         """Initialize shell result.
 
         Args:
@@ -30,16 +30,21 @@ class ShellResult(OperationResult):
         """
         super().__init__(
             success=success,
+            returncode=returncode,
             stdout=stdout,
             stderr=stderr,
-            returncode=returncode,
+            content=None,
+            exists=None,
+            path=None,
+            op=None,
             cmd=cmd,
-            exception=exception,
-            error_message=error_message,
+            request=request,
             start_time=start_time,
             end_time=end_time,
-            request=request,
-            metadata=metadata
+            error_message=error_message,
+            exception=exception,
+            metadata=metadata,
+            skipped=False
         )
 
     def to_dict(self) -> dict[str, Any]:

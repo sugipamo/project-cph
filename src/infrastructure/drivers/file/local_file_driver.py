@@ -11,7 +11,7 @@ from src.infrastructure.drivers.file.file_driver import FileDriver
 class LocalFileDriver(FileDriver):
     """Local file system driver using Python's built-in file operations."""
 
-    def __init__(self, base_dir: Path = Path(".")):
+    def __init__(self, base_dir: Path):
         super().__init__(base_dir)
 
     def _move_impl(self, src_path: Path, dst_path: Path) -> None:
@@ -63,11 +63,11 @@ class LocalFileDriver(FileDriver):
         if p.exists():
             p.unlink()
 
-    def open(self, path: Path, mode: str = "r", encoding: Optional[str] = None) -> TextIO:
+    def open(self, path: Path, mode: str, encoding: Optional[str]) -> TextIO:
         """Open file and return file object."""
         return Path(path).open(mode=mode, encoding=encoding)
 
-    def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver: Any = None) -> Any:
+    def docker_cp(self, src: str, dst: str, container: str, to_container: bool, docker_driver: Any) -> Any:
         """Copy files to/from Docker container."""
         if docker_driver is None:
             raise ValueError("docker_driver is required")
