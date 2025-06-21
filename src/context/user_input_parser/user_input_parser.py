@@ -13,8 +13,8 @@ from src.operations.requests.file.file_request import FileRequest
 CONTEST_ENV_DIR = "contest_env"
 
 
-def _create_execution_config(command_type=None, language=None, contest_name=None,
-                           problem_name=None, env_type=None, infrastructure=None):
+def _create_execution_config(command_type, language, contest_name,
+                           problem_name, env_type, infrastructure):
     """新設定システムを使用してExecutionConfigを作成するヘルパー関数"""
     # Validate all parameters before any file operations
     if language is None:

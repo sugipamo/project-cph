@@ -29,7 +29,7 @@ class WorkflowExecutionService:
         self.context = context
         self.infrastructure = infrastructure
 
-    def execute_workflow(self, parallel: Optional[bool] = None, max_workers: Optional[int] = None) -> WorkflowExecutionResult:
+    def execute_workflow(self, parallel: Optional[bool], max_workers: Optional[int]) -> WorkflowExecutionResult:
         """Execute workflow based on context configuration
 
         Args:
@@ -62,7 +62,7 @@ class WorkflowExecutionService:
         # Prepare workflow (now returns optimized composite request)
         operations_composite, errors, warnings = self._prepare_workflow_steps()
         if errors:
-            return self._create_error_result(errors, warnings)
+            return self._create_error_result(errors, warnings, None)
 
         # Execute preparation phase (now using composite request)
         preparation_results, prep_errors = self._execute_preparation_phase(operations_composite)
@@ -225,7 +225,8 @@ class WorkflowExecutionService:
         from src.workflow.step.step_generation_service import execution_context_to_simple_context
         from src.workflow.step.step_runner import run_steps
         simple_context = execution_context_to_simple_context(self.context)
-        step_results = run_steps(json_steps, simple_context)
+        from src.infrastructure.providers import SystemOsProvider
+        step_results = run_steps(json_steps, simple_context, SystemOsProvider())
 
         # Note: step_results are no longer stored since we directly return CompositeRequest execution results
 
@@ -320,7 +321,7 @@ class WorkflowExecutionService:
 
         return allow_failure
 
-    def _create_error_result(self, errors, warnings, preparation_results=None):
+    def _create_error_result(self, errors, warnings, preparation_results):
         """Create error result with consistent structure."""
         return WorkflowExecutionResult(
             success=False,

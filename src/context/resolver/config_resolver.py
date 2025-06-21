@@ -62,7 +62,7 @@ def resolve_best(root: ConfigNode, path: Union[list, tuple]) -> Optional[ConfigN
 def resolve_values(root: ConfigNode, path: Union[list, tuple]) -> list:
     return [x.value for x in resolve_by_match_desc(root, path)]
 
-def resolve_formatted_string(s: str, root: ConfigNode, initial_values: Optional[dict] = None) -> str:
+def resolve_formatted_string(s: str, root: ConfigNode, initial_values: Optional[dict]) -> str:
     """文字列sの{key}形式の変数をフォーマットする純粋関数。
 
     Args:
@@ -111,7 +111,7 @@ def resolve_formatted_string(s: str, root: ConfigNode, initial_values: Optional[
     formatted, _ = format_with_missing_keys(s, **key_values)
     return formatted
 
-def resolve_format_string(node: 'ConfigNode', initial_values: Optional[dict] = None) -> str:
+def resolve_format_string(node: 'ConfigNode', initial_values: Optional[dict]) -> str:
     if isinstance(node.value, str):
         s = node.value
     elif isinstance(node.value, dict) and "value" in node.value:

@@ -104,7 +104,7 @@ class SessionRepository(DatabaseRepositoryFoundation):
             return self._row_to_session(results[0])
         return None
 
-    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> list[Session]:
+    def find_all(self, limit: Optional[int], offset: Optional[int]) -> list[Session]:
         """Find all sessions with optional pagination.
 
         Args:
@@ -141,9 +141,9 @@ class SessionRepository(DatabaseRepositoryFoundation):
             return self._row_to_session(results[0])
         return None
 
-    def start_new_session(self, language: Optional[str] = None,
-                         contest_name: Optional[str] = None,
-                         problem_name: Optional[str] = None) -> Session:
+    def start_new_session(self, language: Optional[str],
+                         contest_name: Optional[str],
+                         problem_name: Optional[str]) -> Session:
         """Start a new session, ending any active session first.
 
         Args:
@@ -207,7 +207,7 @@ class SessionRepository(DatabaseRepositoryFoundation):
         affected_rows = self.db_manager.execute_command(query, (total_ops, successful_ops, session_id))
         return affected_rows > 0
 
-    def get_recent_sessions(self, limit: int = 10) -> list[Session]:
+    def get_recent_sessions(self, limit: int) -> list[Session]:
         """Get recent sessions.
 
         Args:
@@ -216,7 +216,7 @@ class SessionRepository(DatabaseRepositoryFoundation):
         Returns:
             List of recent sessions
         """
-        return self.find_all(limit=limit)
+        return self.find_all(limit, None)
 
     def get_session_statistics(self) -> dict[str, Any]:
         """Get session statistics.

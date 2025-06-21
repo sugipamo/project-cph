@@ -1,81 +1,100 @@
-# テスト失敗要因分析
+# テスト失敗分析レポート
 
-## 概要
-`scripts/test.py` 実行結果の失敗要因を分析し、分類したもの
+## 実行概要
+- 実行日時: 2025-06-21
+- 総テスト数: 1,144件
+- 実行結果: 複数のテストが失敗・エラー
 
-## 失敗分類
+## 主要な失敗分類
 
-### 1. TypeError (型エラー関連)
-**失敗テスト数: 88件**
+### 1. 依存性注入関連エラー (DI/Constructor Issues)
+**失敗要因**: 必須引数不足によるコンストラクタエラー
 
-主な原因:
-- `__init__()` missing required positional argument エラー
-- 必須引数の不足
-- 型の不一致
+**影響範囲**:
+- `tests/cli/test_cli_app.py::TestMinimalCLIApp::test_run_cli_application_*` 
+- `tests/configuration/test_config_manager.py::TestFileLoader::test_file_loader_initialization_without_infrastructure`
+- `tests/docker/test_docker_driver_with_tracking.py` (全体)
 
-例:
-- `tests/composite/test_composite_request.py` - コンストラクタ引数不足
-- `tests/di_factory/test_base_composite_request.py` - 必須パラメータ欠如
-- `tests/file/test_local_file_driver.py` - FileDriver初期化エラー
+**具体的エラー例**:
+```
+FileLoader.__init__() missing 1 required positional argument: 'infrastructure'
+LocalDockerDriver.__init__() missing 1 required positional argument: 'file_driver'
+```
 
-### 2. コード品質チェック失敗
-**失敗項目: 3件**
+### 2. Mock設定問題 (Mock Configuration Issues)
+**失敗要因**: Mockオブジェクトの設定不正による実行時エラー
 
-#### 2.1 Ruff自動修正 (❌)
-- コード品質ツールの自動修正が失敗
+**影響範囲**:
+- `tests/cli/test_cli_app.py` - Mock objectがiterableでない問題
+- 各種インフラストラクチャドライバテスト
 
-#### 2.2 フォールバック処理チェック (❌)
-**検出件数: 260件以上**
+**具体的エラー例**:
+```
+TypeError: 'Mock' object is not iterable
+```
 
-主な問題:
-- `try-except`文でのフォールバック処理が禁止されているにも関わらず使用
-- infrastructure層外での例外処理
-- `cli/cli_app.py` での不適切な例外処理
+### 3. CLAUDE.mdルール違反 (Code Quality Issues)
+**失敗要因**: None引数初期値の使用（禁止ルール違反）
 
-解決方法:
-1. `src/infrastructure/result/error_converter.py` の ErrorConverter を使用
-2. operations層では `ErrorConverter.execute_with_conversion()` を呼び出し
-3. 例外処理をinfrastructure層に移動
-4. Result型を使用した明示的なエラーハンドリング
+**影響範囲**: 19件のファイルで検出
+- `workflow/step/step_runner.py:299`
+- `context/dockerfile_resolver.py:22`
+- `context/user_input_parser/user_input_parser.py:16`
+- その他多数
 
-#### 2.3 None引数初期値チェック (❌)
-**検出件数: 40件以上**
+### 4. インフラストラクチャ層の構造変更影響
+**失敗要因**: ドライバクラスの初期化要件変更
 
-問題:
-- CLAUDE.mdルール違反: 引数にデフォルト値（None）を指定している
-- 呼び出し元で適切な値を用意すべき
+**影響範囲**:
+- Docker関連テスト全般
+- Shell実行関連テスト
+- ファイル操作関連テスト
 
-主な該当ファイル:
-- `infrastructure/drivers/logging/adapters/application_logger_adapter.py`
-- `infrastructure/persistence/sqlite/system_config_loader.py`
-- `infrastructure/persistence/sqlite/repositories/docker_container_repository.py`
+### 5. 設定管理システムの変更影響
+**失敗要因**: 設定ローダーの依存関係変更
 
-### 3. 失敗したテストケース統計
-- **複合リクエスト関連**: 6件
-- **設定管理関連**: 7件
-- **Docker関連**: 20件以上
-- **ファイル操作関連**: 3件
-- **その他**: 多数
+**影響範囲**:
+- `tests/configuration/test_config_manager.py` 複数テスト
+- `tests/context/formatters/test_context_formatter.py`
 
-## 重要度別分類
+## カバレッジ問題
 
-### 高優先度
-1. **TypeError関連**: 基本的な機能が動作しない
-2. **フォールバック処理**: アーキテクチャルール違反
-3. **None引数初期値**: コーディング規約違反
+### 低カバレッジファイル (80%未満)
+重要度の高い低カバレッジファイル:
+- `infrastructure/persistence/sqlite/repositories/system_config_repository.py`: 13%
+- `infrastructure/persistence/configuration_repository.py`: 17%
+- `infrastructure/drivers/docker/docker_driver_with_tracking.py`: 20%
+- `infrastructure/persistence/sqlite/sqlite_manager.py`: 22%
 
-### 中優先度
-1. **Ruff品質チェック**: コード品質の改善
+## 推奨対応策
 
-## 対応方針
+### 高優先度 (即座に対応)
+1. **依存性注入の修正**: 必須引数をテストで適切に提供
+2. **Mock設定の修正**: テストでのMockオブジェクト設定の見直し
+3. **CLAUDE.mdルール違反の修正**: None引数初期値の除去
 
-1. **即座対応が必要**:
-   - TypeError の修正（必須引数の追加）
-   - フォールバック処理の削除とResult型への移行
+### 中優先度 (計画的対応)
+1. **インフラストラクチャテストの全面見直し**: 構造変更に合わせたテスト更新
+2. **設定管理テストの修正**: 新しい依存関係に対応
 
-2. **段階的対応**:
-   - None引数初期値の削除
-   - 呼び出し元での適切な値設定
+### 低優先度 (改善項目)
+1. **テストカバレッジの向上**: 特に80%未満のファイル
+2. **テスト構造の最適化**: 依存関係の明確化
 
-3. **継続的改善**:
-   - コード品質ツールの設定見直し
+## 統計情報
+
+### エラー種別統計
+- FAILED: 約200件
+- ERROR: 約100件  
+- コード品質問題: 19件
+
+### 影響モジュール
+- CLI層: 約30%
+- Infrastructure層: 約40%
+- Configuration層: 約20%
+- その他: 約10%
+
+## 注意事項
+- 本分析は実行時点での状況であり、継続的な監視が必要
+- 依存性注入の変更により、テスト全体の見直しが必要
+- CLAUDE.mdルールの徹底により、コード品質の向上が期待される

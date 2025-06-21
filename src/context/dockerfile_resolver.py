@@ -19,9 +19,9 @@ class DockerfileResolver:
     Follows the same resolver pattern used by configuration system.
     """
 
-    def __init__(self, dockerfile_path: Optional[str] = None,
-                 oj_dockerfile_path: Optional[str] = None,
-                 dockerfile_loader: Optional[Callable[[str], str]] = None):
+    def __init__(self, dockerfile_path: Optional[str],
+                 oj_dockerfile_path: Optional[str],
+                 dockerfile_loader: Optional[Callable[[str], str]]):
         """Initialize resolver with paths and loader function
 
         Args:

@@ -70,6 +70,29 @@ class CommandExecutor(ABC):
         """
         pass
 
+    @abstractmethod
+    def run_with_live_output(
+        self,
+        cmd: Union[List[str], str],
+        output_callback: callable,
+        cwd: Optional[str] = None,
+        timeout: Optional[float] = None,
+        env: Optional[Dict[str, str]] = None
+    ) -> CommandResult:
+        """コマンドを実行してリアルタイムで出力を処理
+
+        Args:
+            cmd: 実行するコマンド
+            output_callback: 出力行を受け取るコールバック関数
+            cwd: 作業ディレクトリ
+            timeout: タイムアウト（秒）
+            env: 環境変数
+
+        Returns:
+            CommandResult: 実行結果
+        """
+        pass
+
 
 class SubprocessCommandExecutor(CommandExecutor):
     """subprocess.runを使用した実装"""
@@ -141,6 +164,86 @@ class SubprocessCommandExecutor(CommandExecutor):
             except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
                 return False
 
+    def run_with_live_output(
+        self,
+        cmd: Union[List[str], str],
+        output_callback: callable,
+        cwd: Optional[str] = None,
+        timeout: Optional[float] = None,
+        env: Optional[Dict[str, str]] = None
+    ) -> CommandResult:
+        """subprocess.Popenを使用してリアルタイムで出力を処理"""
+        import threading
+
+        try:
+            # コマンドをリスト形式に統一
+            if isinstance(cmd, str):
+                cmd = cmd.split()
+
+            # プロセスを開始
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,  # stderrもstdoutにリダイレクト
+                text=True,
+                cwd=cwd,
+                env=env,
+                bufsize=1,  # 行バッファリング
+                universal_newlines=True
+            )
+
+            stdout_lines = []
+
+            def read_output():
+                """出力を読み込んでコールバックを呼び出す"""
+                try:
+                    for line in iter(process.stdout.readline, ''):
+                        if line:
+                            line = line.rstrip('\n\r')
+                            stdout_lines.append(line)
+                            output_callback(line)
+                except Exception:
+                    pass
+                finally:
+                    process.stdout.close()
+
+            # 出力読み込みスレッドを開始
+            output_thread = threading.Thread(target=read_output)
+            output_thread.daemon = True
+            output_thread.start()
+
+            # プロセスの完了を待機
+            try:
+                returncode = process.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                returncode = -1
+
+            # 出力スレッドの完了を待機
+            output_thread.join(timeout=1.0)
+
+            return CommandResult(
+                returncode=returncode,
+                stdout='\n'.join(stdout_lines),
+                stderr="",
+                success=returncode == 0
+            )
+
+        except FileNotFoundError as e:
+            return CommandResult(
+                returncode=-1,
+                stdout="",
+                stderr=f"Command not found: {e}",
+                success=False
+            )
+        except Exception as e:
+            return CommandResult(
+                returncode=-1,
+                stdout="",
+                stderr=f"Execution error: {e}",
+                success=False
+            )
+
 
 class MockCommandExecutor(CommandExecutor):
     """テスト用のモック実装"""
@@ -202,6 +305,44 @@ class MockCommandExecutor(CommandExecutor):
     def get_executed_commands(self) -> List[Dict[str, Any]]:
         """実行されたコマンドのリストを取得"""
         return self.executed_commands.copy()
+
+    def run_with_live_output(
+        self,
+        cmd: Union[List[str], str],
+        output_callback: callable,
+        cwd: Optional[str] = None,
+        timeout: Optional[float] = None,
+        env: Optional[Dict[str, str]] = None
+    ) -> CommandResult:
+        """モックライブ出力実行"""
+        # 実行されたコマンドを記録
+        self.executed_commands.append({
+            'cmd': cmd,
+            'output_callback': output_callback,
+            'cwd': cwd,
+            'timeout': timeout,
+            'env': env
+        })
+
+        # モック出力をコールバックに送信
+        import time
+        mock_lines = [
+            "Mock test line 1",
+            "Mock test line 2",
+            "Mock test line 3"
+        ]
+
+        for line in mock_lines:
+            output_callback(line)
+            time.sleep(0.1)
+
+        # デフォルトは成功
+        return CommandResult(
+            returncode=0,
+            stdout="\n".join(mock_lines),
+            stderr="",
+            success=True
+        )
 
 
 def create_command_executor(mock: bool = False) -> CommandExecutor:

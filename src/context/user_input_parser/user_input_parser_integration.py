@@ -103,7 +103,7 @@ def create_new_execution_context(command_type: str,
                                problem_name: str,
                                env_type: str,
                                env_json: Dict[str, Any],
-                               resolver=None) -> TypedExecutionConfiguration:
+                               resolver) -> TypedExecutionConfiguration:
     """新設定システムを使用してExecutionContextの互換実装を作成
 
     既存のExecutionContext.__init__と同じシグネチャで、

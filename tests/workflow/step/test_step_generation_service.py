@@ -168,7 +168,7 @@ class TestStepGenerationService(unittest.TestCase):
         """Test expanding file patterns with TypedExecutionConfiguration"""
         self.typed_context.resolve_formatted_string = Mock(return_value="expanded_pattern")
 
-        result = expand_file_patterns("pattern_{src}", self.typed_context)
+        result = expand_file_patterns("pattern_{src}", self.typed_context, None)
 
         self.assertEqual(result, "expanded_pattern")
         self.typed_context.resolve_formatted_string.assert_called_once_with("pattern_{src}")
@@ -181,7 +181,7 @@ class TestStepGenerationService(unittest.TestCase):
         mock_expand_template.return_value = "expanded_template"
         mock_expand_patterns.return_value = "final_result"
 
-        result = expand_file_patterns("pattern_{src}", self.legacy_context)
+        result = expand_file_patterns("pattern_{src}", self.legacy_context, None)
 
         self.assertEqual(result, "final_result")
 

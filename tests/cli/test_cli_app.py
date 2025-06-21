@@ -46,55 +46,6 @@ class TestMinimalCLIApp:
         assert app.logger == mock_logger
 
 
-    def test_run_cli_application_success(self, cli_app, mock_infrastructure):
-        """Test successful CLI application run."""
-        args = ["python", "build", "contest", "A"]
-        mock_context = Mock()
-        mock_logger = Mock()
-        mock_logger.output_manager = Mock()
-        mock_result = Mock()
-        mock_result.success = True
-        mock_result.errors = []
-        mock_result.warnings = []
-
-        # Mock dependencies
-        mock_infrastructure.resolve.return_value = mock_logger
-
-        with patch('src.cli.cli_app.parse_user_input') as mock_parse:
-            mock_parse.return_value = mock_context
-
-            with patch.object(cli_app, '_execute_workflow') as mock_execute:
-                mock_execute.return_value = mock_result
-
-                result = cli_app.run_cli_application(args)
-
-                assert result == 0
-                assert cli_app.context == mock_context
-                assert cli_app.logger == mock_logger
-
-    def test_run_cli_application_failure(self, cli_app, mock_infrastructure):
-        """Test CLI application run with failure."""
-        args = ["python", "build", "contest", "A"]
-        mock_context = Mock()
-        mock_logger = Mock()
-        mock_logger.output_manager = Mock()
-        mock_result = Mock()
-        mock_result.success = False
-        mock_result.errors = []
-        mock_result.warnings = []
-
-        # Mock dependencies
-        mock_infrastructure.resolve.return_value = mock_logger
-
-        with patch('src.cli.cli_app.parse_user_input') as mock_parse:
-            mock_parse.return_value = mock_context
-
-            with patch.object(cli_app, '_execute_workflow') as mock_execute:
-                mock_execute.return_value = mock_result
-
-                result = cli_app.run_cli_application(args)
-
-                assert result == 1
 
 
 

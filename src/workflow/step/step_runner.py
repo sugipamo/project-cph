@@ -82,7 +82,7 @@ class StepResult:
     error_message: str = ""
 
 
-def run_steps(json_steps: List[Dict[str, Any]], context, os_provider=None) -> List[StepResult]:
+def run_steps(json_steps: List[Dict[str, Any]], context, os_provider) -> List[StepResult]:
     """JSONステップを順次実行する（メイン関数）
 
     Args:
@@ -94,8 +94,7 @@ def run_steps(json_steps: List[Dict[str, Any]], context, os_provider=None) -> Li
         List[StepResult]: 各ステップの実行結果
     """
     if os_provider is None:
-        from src.infrastructure.providers import SystemOsProvider
-        os_provider = SystemOsProvider()
+        raise ValueError("os_provider parameter is required")
 
     results = []
 
@@ -172,7 +171,7 @@ def create_step(json_step: Dict[str, Any], context) -> Step:
     )
 
 
-def check_when_condition(when_clause: Optional[str], context, os_provider=None) -> Tuple[bool, Optional[str]]:
+def check_when_condition(when_clause: Optional[str], context, os_provider) -> Tuple[bool, Optional[str]]:
     """when条件をチェックする"""
     if not when_clause:
         return True, None
@@ -279,7 +278,7 @@ def expand_file_patterns_in_text(text: str, file_patterns: Dict[str, List[str]],
     return result
 
 
-def expand_template_with_new_system(template: str, new_config, operation_type: Optional[str] = None) -> str:
+def expand_template_with_new_system(template: str, new_config, operation_type: Optional[str]) -> str:
     """新設定システムを使用したテンプレート展開
 
     Args:
@@ -297,11 +296,10 @@ def expand_template_with_new_system(template: str, new_config, operation_type: O
     return template
 
 
-def evaluate_test_condition(test_command: str, os_provider=None) -> Tuple[bool, Optional[str]]:
+def evaluate_test_condition(test_command: str, os_provider) -> Tuple[bool, Optional[str]]:
     """test条件を評価する（複合条件もサポート）"""
     if os_provider is None:
-        from src.infrastructure.providers import SystemOsProvider
-        os_provider = SystemOsProvider()
+        raise ValueError("os_provider parameter is required")
 
     # 複合条件（&&）をサポート
     if ' && ' in test_command:

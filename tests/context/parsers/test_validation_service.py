@@ -20,7 +20,7 @@ class TestValidationService:
             }
         }
 
-        result = ValidationService.validate_env_json(data, "test.json")
+        result = ValidationService.validate_env_json(data, "test.json", None)
         assert result
 
     def test_validate_env_json_valid_with_shared(self):
@@ -62,7 +62,7 @@ class TestValidationService:
             }
         }
 
-        result = ValidationService.validate_env_json(data, "test.json")
+        result = ValidationService.validate_env_json(data, "test.json", None)
         assert result
 
     def test_validate_env_json_with_reserved_keys(self):
@@ -79,7 +79,7 @@ class TestValidationService:
             }
         }
 
-        result = ValidationService.validate_env_json(data, "test.json")
+        result = ValidationService.validate_env_json(data, "test.json", None)
         assert result
 
 
@@ -105,7 +105,7 @@ class TestValidationService:
             }
         }
 
-        result = ValidationService.validate_env_json(data, "test.json")
+        result = ValidationService.validate_env_json(data, "test.json", None)
         assert result
 
     def test_validate_env_json_case_sensitivity(self):
@@ -119,5 +119,5 @@ class TestValidationService:
             }
         }
 
-        result = ValidationService.validate_env_json(data, "test.json")
+        result = ValidationService.validate_env_json(data, "test.json", None)
         assert result

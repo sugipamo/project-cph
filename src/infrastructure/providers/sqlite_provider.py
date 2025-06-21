@@ -12,12 +12,12 @@ class SQLiteProvider(ABC):
         pass
 
     @abstractmethod
-    def execute_sql_statement(self, connection: Any, sql: str, parameters: Tuple = ()) -> Any:
+    def execute_sql_statement(self, connection: Any, sql: str, parameters: Tuple) -> Any:
         """SQL文の実行"""
         pass
 
     @abstractmethod
-    def executemany(self, connection: Any, sql: str, seq_of_parameters: Optional[List[Tuple]] = None) -> Any:
+    def executemany(self, connection: Any, sql: str, seq_of_parameters: Optional[List[Tuple]]) -> Any:
         """複数SQL実行"""
         pass
 
@@ -55,11 +55,11 @@ class SystemSQLiteProvider(SQLiteProvider):
         import sqlite3
         return sqlite3.connect(database, **kwargs)
 
-    def execute_sql_statement(self, connection: Any, sql: str, parameters: Tuple = ()) -> Any:
+    def execute_sql_statement(self, connection: Any, sql: str, parameters: Tuple) -> Any:
         """SQL文の実行（副作用）"""
         return connection.execute(sql, parameters)
 
-    def executemany(self, connection: Any, sql: str, seq_of_parameters: Optional[List[Tuple]] = None) -> Any:
+    def executemany(self, connection: Any, sql: str, seq_of_parameters: Optional[List[Tuple]]) -> Any:
         """複数SQL実行（副作用）"""
         if seq_of_parameters is None:
             seq_of_parameters = []
@@ -104,11 +104,11 @@ class MockSQLiteProvider(SQLiteProvider):
             self._data[database] = {}
         return MockSQLiteConnection(database, self)
 
-    def execute_sql_statement(self, connection: Any, sql: str, parameters: Tuple = ()) -> Any:
+    def execute_sql_statement(self, connection: Any, sql: str, parameters: Tuple) -> Any:
         """モックSQL文の実行（副作用なし）"""
         return MockSQLiteCursor(connection.database, sql, parameters, self)
 
-    def executemany(self, connection: Any, sql: str, seq_of_parameters: Optional[List[Tuple]] = None) -> Any:
+    def executemany(self, connection: Any, sql: str, seq_of_parameters: Optional[List[Tuple]]) -> Any:
         """モック複数SQL実行（副作用なし）"""
         if seq_of_parameters is None:
             seq_of_parameters = []
@@ -151,10 +151,10 @@ class MockSQLiteConnection:
         self.database = database
         self._provider = provider
 
-    def execute_sql_statement(self, sql: str, parameters: Tuple = ()) -> Any:
+    def execute_sql_statement(self, sql: str, parameters: Tuple) -> Any:
         return self._provider.execute_sql_statement(self, sql, parameters)
 
-    def executemany(self, sql: str, seq_of_parameters: Optional[List[Tuple]] = None) -> Any:
+    def executemany(self, sql: str, seq_of_parameters: Optional[List[Tuple]]) -> Any:
         return self._provider.executemany(self, sql, seq_of_parameters)
 
     def commit(self) -> None:

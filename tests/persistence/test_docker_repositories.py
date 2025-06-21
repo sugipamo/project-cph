@@ -33,7 +33,9 @@ class TestDockerContainerRepository:
         image_repo.create_or_update_image(
             name="python",
             tag="3.9",
-            dockerfile_hash="abc123"
+            dockerfile_hash="abc123",
+            build_command=None,
+            build_status="success"
         )
 
         container_id = container_repo.create_container(
@@ -52,7 +54,9 @@ class TestDockerContainerRepository:
         image_repo.create_or_update_image(
             name="cpp",
             tag="latest",
-            dockerfile_hash="def456"
+            dockerfile_hash="def456",
+            build_command=None,
+            build_status="success"
         )
 
         volumes = [{"host": "/host/path", "container": "/container/path"}]
@@ -92,7 +96,7 @@ class TestDockerContainerRepository:
     def test_update_container_id(self, container_repo, image_repo):
         """Test updating container Docker ID."""
         # Create image and container
-        image_repo.create_or_update_image("python", "3.9", "abc123")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
         container_repo.create_container("test_container", "python", "3.9")
 
         # Update container ID
@@ -105,7 +109,7 @@ class TestDockerContainerRepository:
     def test_update_container_status(self, container_repo, image_repo):
         """Test updating container status."""
         # Create image and container
-        image_repo.create_or_update_image("python", "3.9", "abc123")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
         container_repo.create_container("test_container", "python", "3.9")
 
         # Update status to running
@@ -118,7 +122,7 @@ class TestDockerContainerRepository:
 
     def test_find_container_by_name_existing(self, container_repo, image_repo):
         """Test finding existing container by name."""
-        image_repo.create_or_update_image("python", "3.9", "abc123")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
         container_repo.create_container("test_container", "python", "3.9", language="python")
 
         container = container_repo.find_container_by_name("test_container")
@@ -134,7 +138,7 @@ class TestDockerContainerRepository:
     def test_find_containers_by_status(self, container_repo, image_repo):
         """Test finding containers by status."""
         # Create image and containers with different statuses
-        image_repo.create_or_update_image("python", "3.9", "abc123")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
 
         container_repo.create_container("container1", "python", "3.9")
         container_repo.create_container("container2", "python", "3.9")
@@ -158,8 +162,8 @@ class TestDockerContainerRepository:
     def test_find_containers_by_language(self, container_repo, image_repo):
         """Test finding containers by language."""
         # Create images and containers with different languages
-        image_repo.create_or_update_image("python", "3.9", "abc123")
-        image_repo.create_or_update_image("cpp", "latest", "def456")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
+        image_repo.create_or_update_image("cpp", "latest", "def456", None, "success")
 
         container_repo.create_container("py_container1", "python", "3.9", language="python")
         container_repo.create_container("py_container2", "python", "3.9", language="python")
@@ -178,7 +182,7 @@ class TestDockerContainerRepository:
     def test_get_active_containers(self, container_repo, image_repo):
         """Test getting active containers."""
         # Create image and containers with different statuses
-        image_repo.create_or_update_image("python", "3.9", "abc123")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
 
         container_repo.create_container("container1", "python", "3.9")  # created
         container_repo.create_container("container2", "python", "3.9")
@@ -198,7 +202,7 @@ class TestDockerContainerRepository:
 
     def test_mark_container_removed(self, container_repo, image_repo):
         """Test marking container as removed."""
-        image_repo.create_or_update_image("python", "3.9", "abc123")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
         container_repo.create_container("test_container", "python", "3.9")
 
         # Mark as removed
@@ -212,7 +216,7 @@ class TestDockerContainerRepository:
     def test_find_unused_containers(self, container_repo, image_repo, sqlite_manager):
         """Test finding unused containers."""
         # Create image and containers
-        image_repo.create_or_update_image("python", "3.9", "abc123")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
         container_repo.create_container("recent_container", "python", "3.9")
         container_repo.create_container("old_container", "python", "3.9")
 
@@ -232,7 +236,7 @@ class TestDockerContainerRepository:
     def test_repository_interface_methods(self, container_repo, image_repo):
         """Test RepositoryInterface implementation."""
         # Create image first
-        image_repo.create_or_update_image("python", "3.9", "abc123")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
 
         # Test create via interface
         entity = {
@@ -254,7 +258,7 @@ class TestDockerContainerRepository:
         assert success is True
 
         # Test find_all via interface
-        all_containers = container_repo.find_all()
+        all_containers = container_repo.find_all(None, None)
         assert len(all_containers) >= 1
 
         # Test delete via interface
@@ -267,7 +271,7 @@ class TestDockerContainerRepository:
 
     def test_json_field_parsing(self, container_repo, image_repo):
         """Test proper JSON field parsing."""
-        image_repo.create_or_update_image("python", "3.9", "abc123")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
 
         # Test with valid JSON
         volumes = [{"host": "/host", "container": "/container"}]
@@ -289,8 +293,8 @@ class TestDockerContainerRepository:
         # Manually insert invalid JSON
         with sqlite_manager.get_connection() as conn:
             conn.execute("""
-                INSERT INTO docker_images (name, tag, dockerfile_hash)
-                VALUES ('python', '3.9', 'abc123')
+                INSERT INTO docker_images (name, tag, dockerfile_hash, build_status)
+                VALUES ('python', '3.9', 'abc123', 'success')
             """)
             conn.execute("""
                 INSERT INTO docker_containers (container_name, image_name, image_tag, volumes)
@@ -302,7 +306,7 @@ class TestDockerContainerRepository:
 
     def test_create_container_record_alias(self, container_repo, image_repo):
         """Test create_container_record method (alias for create_entity_record)."""
-        image_repo.create_or_update_image("python", "3.9", "abc123")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
 
         entity = {
             "container_name": "alias_test",
@@ -321,18 +325,18 @@ class TestDockerContainerRepository:
 
     def test_find_all_with_pagination(self, container_repo, image_repo):
         """Test find_all with limit and offset."""
-        image_repo.create_or_update_image("python", "3.9", "abc123")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
 
         # Create multiple containers
         for i in range(5):
             container_repo.create_container(f"container_{i}", "python", "3.9")
 
         # Test with limit
-        limited = container_repo.find_all(limit=3)
+        limited = container_repo.find_all(3, None)
         assert len(limited) <= 3  # May be less due to filtering
 
         # Test with offset
-        offset_results = container_repo.find_all(offset=2)
+        offset_results = container_repo.find_all(None, 2)
         original_count = len(container_repo.get_active_containers())
         assert len(offset_results) == max(0, original_count - 2)
 
@@ -348,7 +352,7 @@ class TestDockerContainerRepository:
 
     def test_create_container_with_minimal_params(self, container_repo, image_repo):
         """Test creating container with minimal required parameters."""
-        image_repo.create_or_update_image("python", "latest", "abc123")
+        image_repo.create_or_update_image("python", "latest", "abc123", None, "success")
 
         result = container_repo.create_container(
             container_name="minimal_test",
@@ -363,7 +367,7 @@ class TestDockerContainerRepository:
 
     def test_create_container_with_all_params(self, container_repo, image_repo):
         """Test creating container with all parameters."""
-        image_repo.create_or_update_image("python", "3.9", "abc123")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
 
         volumes = [{"host": "/host", "container": "/container"}]
         environment = {"VAR1": "value1"}
@@ -412,6 +416,7 @@ class TestDockerImageRepository:
             name="python",
             tag="3.9",
             dockerfile_hash="abc123",
+            build_command=None,
             build_status="success"
         )
 
@@ -428,10 +433,10 @@ class TestDockerImageRepository:
     def test_create_or_update_image_update_existing(self, image_repo):
         """Test updating an existing image."""
         # Create initial image
-        image_repo.create_or_update_image("python", "3.9", "abc123", "success")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
 
         # Update with new hash
-        image_repo.create_or_update_image("python", "3.9", "def456", "success")
+        image_repo.create_or_update_image("python", "3.9", "def456", None, "success")
 
         # Verify update
         image = image_repo.find_image("python", "3.9")
@@ -439,7 +444,7 @@ class TestDockerImageRepository:
 
     def test_find_image_existing(self, image_repo):
         """Test finding existing image."""
-        image_repo.create_or_update_image("python", "3.9", "abc123")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
 
         image = image_repo.find_image("python", "3.9")
         assert image is not None
@@ -448,9 +453,9 @@ class TestDockerImageRepository:
 
     def test_find_image_by_name_only(self, image_repo):
         """Test finding image by name only (defaults to latest tag)."""
-        image_repo.create_or_update_image("python", "latest", "abc123")
+        image_repo.create_or_update_image("python", "latest", "abc123", None, "success")
 
-        image = image_repo.find_image("python")  # Should default to latest
+        image = image_repo.find_image("python", "latest")  # Should provide tag explicitly
         assert image is not None
         assert image["name"] == "python"
         assert image["tag"] == "latest"
@@ -463,10 +468,10 @@ class TestDockerImageRepository:
     def test_find_images_by_name_prefix(self, image_repo):
         """Test finding all images with names starting with prefix."""
         # Create multiple versions of same image
-        image_repo.create_or_update_image("python", "3.8", "hash1")
-        image_repo.create_or_update_image("python", "3.9", "hash2")
-        image_repo.create_or_update_image("python", "3.10", "hash3")
-        image_repo.create_or_update_image("node", "16", "hash4")
+        image_repo.create_or_update_image("python", "3.8", "hash1", None, "success")
+        image_repo.create_or_update_image("python", "3.9", "hash2", None, "success")
+        image_repo.create_or_update_image("python", "3.10", "hash3", None, "success")
+        image_repo.create_or_update_image("node", "16", "hash4", None, "success")
 
         python_images = image_repo.find_images_by_name_prefix("python")
         assert len(python_images) == 3
@@ -479,9 +484,9 @@ class TestDockerImageRepository:
 
     def test_find_images_by_status(self, image_repo):
         """Test finding images by build status."""
-        image_repo.create_or_update_image("python", "3.9", "abc123", build_status="success")
-        image_repo.create_or_update_image("cpp", "latest", "def456", build_status="failed")
-        image_repo.create_or_update_image("java", "11", "ghi789", build_status="success")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
+        image_repo.create_or_update_image("cpp", "latest", "def456", None, "failed")
+        image_repo.create_or_update_image("java", "11", "ghi789", None, "success")
 
         success_images = image_repo.find_images_by_status("success")
         assert len(success_images) == 2
@@ -493,7 +498,7 @@ class TestDockerImageRepository:
 
     def test_update_image_build_result(self, image_repo):
         """Test updating image build results."""
-        image_repo.create_or_update_image("python", "3.9", "abc123", build_status="building")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "building")
 
         image_repo.update_image_build_result(
             name="python",
@@ -513,9 +518,9 @@ class TestDockerImageRepository:
     def test_get_all_images(self, image_repo):
         """Test getting all images."""
         # Create multiple images
-        image_repo.create_or_update_image("python", "3.9", "abc123")
-        image_repo.create_or_update_image("cpp", "latest", "def456")
-        image_repo.create_or_update_image("java", "11", "ghi789")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
+        image_repo.create_or_update_image("cpp", "latest", "def456", None, "success")
+        image_repo.create_or_update_image("java", "11", "ghi789", None, "success")
 
         all_images = image_repo.get_all_images()
         assert len(all_images) == 3
@@ -531,7 +536,9 @@ class TestDockerImageRepository:
         entity = {
             "name": "interface_test",
             "tag": "1.0",
-            "dockerfile_hash": "abc123"
+            "dockerfile_hash": "abc123",
+            "build_command": None,
+            "build_status": "success"
         }
         result = image_repo.create_entity_record(entity)
         assert result is not None
@@ -546,7 +553,7 @@ class TestDockerImageRepository:
         assert success is True
 
         # Test find_all via interface
-        all_images = image_repo.find_all()
+        all_images = image_repo.find_all(None, None)
         assert len(all_images) >= 1
 
         # Test delete via interface
@@ -555,8 +562,8 @@ class TestDockerImageRepository:
 
     def test_find_unused_images(self, image_repo, sqlite_manager):
         """Test finding unused images."""
-        image_repo.create_or_update_image("recent_image", "latest", "abc123")
-        image_repo.create_or_update_image("old_image", "latest", "def456")
+        image_repo.create_or_update_image("recent_image", "latest", "abc123", None, "success")
+        image_repo.create_or_update_image("old_image", "latest", "def456", None, "success")
 
         # Manually set last_used_at to simulate old image
         with sqlite_manager.get_connection() as conn:
@@ -573,7 +580,7 @@ class TestDockerImageRepository:
 
     def test_update_last_used(self, image_repo, sqlite_manager):
         """Test updating last used timestamp."""
-        image_repo.create_or_update_image("python", "3.9", "abc123")
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
 
         # Manually set an old timestamp to ensure we can detect the change
         with sqlite_manager.get_connection() as conn:
@@ -596,7 +603,7 @@ class TestDockerImageRepository:
 
     def test_delete_image(self, image_repo):
         """Test deleting an image."""
-        image_repo.create_or_update_image("temp_image", "1.0", "abc123")
+        image_repo.create_or_update_image("temp_image", "1.0", "abc123", None, "success")
 
         # Verify it exists
         assert image_repo.find_image("temp_image", "1.0") is not None
@@ -611,12 +618,12 @@ class TestDockerImageRepository:
     def test_get_image_stats(self, image_repo):
         """Test getting image statistics."""
         # Create images with different statuses and sizes
-        image_repo.create_or_update_image("python", "3.9", "abc123", build_status="success")
-        image_repo.update_image_build_result("python", "3.9", size_bytes=100000000)
+        image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
+        image_repo.update_image_build_result("python", "3.9", None, "success", None, 100000000)
 
-        image_repo.create_or_update_image("cpp", "latest", "def456", build_status="failed")
-        image_repo.create_or_update_image("java", "11", "ghi789", build_status="success")
-        image_repo.update_image_build_result("java", "11", size_bytes=200000000)
+        image_repo.create_or_update_image("cpp", "latest", "def456", None, "failed")
+        image_repo.create_or_update_image("java", "11", "ghi789", None, "success")
+        image_repo.update_image_build_result("java", "11", None, "success", None, 200000000)
 
         stats = image_repo.get_image_stats()
 
@@ -628,8 +635,8 @@ class TestDockerImageRepository:
     def test_concurrent_image_operations(self, image_repo):
         """Test concurrent operations on same image."""
         # This tests the update behavior when image already exists
-        image_repo.create_or_update_image("python", "3.9", "hash1", build_status="building")
-        image_repo.create_or_update_image("python", "3.9", "hash2", build_status="success")
+        image_repo.create_or_update_image("python", "3.9", "hash1", None, "building")
+        image_repo.create_or_update_image("python", "3.9", "hash2", None, "success")
 
         # Should have one record with latest values
         image = image_repo.find_image("python", "3.9")
@@ -641,7 +648,9 @@ class TestDockerImageRepository:
         entity = {
             "name": "alias_test",
             "tag": "latest",
-            "dockerfile_hash": "xyz789"
+            "dockerfile_hash": "xyz789",
+            "build_command": None,
+            "build_status": "success"
         }
         result = image_repo.create_image_record(entity)
         assert result is not None
@@ -654,7 +663,7 @@ class TestDockerImageRepository:
 
     def test_find_by_id_without_tag(self, image_repo):
         """Test find_by_id with name only (defaults to latest)."""
-        image_repo.create_or_update_image("test_image", "latest", "abc123")
+        image_repo.create_or_update_image("test_image", "latest", "abc123", None, "success")
 
         # Test finding by name only
         image = image_repo.find_by_id("test_image")
@@ -666,18 +675,18 @@ class TestDockerImageRepository:
         """Test find_all with limit and offset."""
         # Create multiple images
         for i in range(5):
-            image_repo.create_or_update_image(f"image_{i}", "latest", f"hash_{i}")
+            image_repo.create_or_update_image(f"image_{i}", "latest", f"hash_{i}", None, "success")
 
         # Test with limit
-        limited = image_repo.find_all(limit=3)
+        limited = image_repo.find_all(3, None)
         assert len(limited) == 3
 
         # Test with offset
-        offset_results = image_repo.find_all(offset=2)
+        offset_results = image_repo.find_all(None, 2)
         assert len(offset_results) == 3  # 5 total - 2 offset
 
         # Test with both limit and offset
-        paginated = image_repo.find_all(limit=2, offset=1)
+        paginated = image_repo.find_all(2, 1)
         assert len(paginated) == 2
 
     def test_update_nonexistent_image(self, image_repo):
@@ -692,7 +701,7 @@ class TestDockerImageRepository:
 
     def test_delete_by_id_without_tag(self, image_repo):
         """Test delete method using ID without tag."""
-        image_repo.create_or_update_image("test_delete", "latest", "abc123")
+        image_repo.create_or_update_image("test_delete", "latest", "abc123", None, "success")
 
         # Delete using name only (should default to latest)
         result = image_repo.delete("test_delete")

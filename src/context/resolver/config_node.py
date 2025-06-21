@@ -4,7 +4,7 @@ from .config_node_logic import add_edge, find_nearest_key_node, next_nodes_with_
 
 
 class ConfigNode:
-    def __init__(self, key: str, value: Optional[Any] = None):
+    def __init__(self, key: str, value: Optional[Any]):
         self.key = key
         self.value = value
         self.parent: Optional[ConfigNode] = None

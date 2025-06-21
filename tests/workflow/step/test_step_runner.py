@@ -7,6 +7,7 @@ import tempfile
 
 import pytest
 
+from src.infrastructure.providers.os_provider import SystemOsProvider
 from src.workflow.step.step import StepType
 from src.workflow.step.step_runner import (
     ExecutionContext,
@@ -101,28 +102,28 @@ class TestEvaluateTestCondition:
     def test_directory_exists(self):
         """ディレクトリ存在チェック"""
         with tempfile.TemporaryDirectory() as tmpdir:
-            result, error = evaluate_test_condition(f"test -d {tmpdir}")
+            result, error = evaluate_test_condition(f"test -d {tmpdir}", SystemOsProvider())
 
             assert result is True
             assert error is None
 
     def test_directory_not_exists(self):
         """ディレクトリ非存在チェック"""
-        result, error = evaluate_test_condition("test -d /nonexistent/path")
+        result, error = evaluate_test_condition("test -d /nonexistent/path", SystemOsProvider())
 
         assert result is False
         assert error is None
 
     def test_negation(self):
         """否定条件"""
-        result, error = evaluate_test_condition("test ! -d /nonexistent/path")
+        result, error = evaluate_test_condition("test ! -d /nonexistent/path", SystemOsProvider())
 
         assert result is True
         assert error is None
 
     def test_invalid_format(self):
         """無効なフォーマット"""
-        result, error = evaluate_test_condition("invalid command")
+        result, error = evaluate_test_condition("invalid command", SystemOsProvider())
 
         assert result is False
         assert "must start with 'test'" in error
@@ -135,7 +136,7 @@ class TestCheckWhenCondition:
         """when条件がない場合"""
         context = ExecutionContext("abc300", "a", "python", "/tmp/ws", "/tmp/current")
 
-        result, error = check_when_condition(None, context)
+        result, error = check_when_condition(None, context, SystemOsProvider())
 
         assert result is True
         assert error is None
@@ -145,7 +146,7 @@ class TestCheckWhenCondition:
         with tempfile.TemporaryDirectory() as tmpdir:
             context = ExecutionContext("abc300", "a", "python", tmpdir, "/tmp/current")
 
-            result, error = check_when_condition("test -d {local_workspace_path}", context)
+            result, error = check_when_condition("test -d {local_workspace_path}", context, SystemOsProvider())
 
             assert result is True
             assert error is None
@@ -161,7 +162,7 @@ class TestCheckWhenCondition:
                 file_patterns={"test_data": ["test"]}
             )
 
-            result, error = check_when_condition("test -d {local_workspace_path}/{test_data}", context)
+            result, error = check_when_condition("test -d {local_workspace_path}/{test_data}", context, SystemOsProvider())
 
             assert result is True
             assert error is None
@@ -213,7 +214,7 @@ class TestRunSteps:
             {"type": "shell", "cmd": ["echo", "Hello"], "name": "Say hello"}
         ]
 
-        results = run_steps(json_steps, context)
+        results = run_steps(json_steps, context, SystemOsProvider())
 
         assert len(results) == 2
         assert all(result.success for result in results)
@@ -238,7 +239,7 @@ class TestRunSteps:
                 }
             ]
 
-            results = run_steps(json_steps, context)
+            results = run_steps(json_steps, context, SystemOsProvider())
 
             assert len(results) == 2
             assert results[0].success and not results[0].skipped  # 実行された
@@ -280,7 +281,7 @@ class TestIntegrationScenarios:
                 }
             ]
 
-            results = run_steps(json_steps, context)
+            results = run_steps(json_steps, context, SystemOsProvider())
 
             assert len(results) == 2
             assert results[0].success and not results[0].skipped  # stock復元が実行

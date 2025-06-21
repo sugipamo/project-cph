@@ -96,6 +96,7 @@ class LocalDockerDriverWithTracking(LocalDockerDriver):
             with contextlib.suppress(Exception):
                 self.image_repo.create_or_update_image(
                     name=tag,
+                    tag="latest",
                     dockerfile_hash=dockerfile_hash,
                     build_command=f"docker build -t {tag}",
                     build_status="building"
@@ -125,14 +126,17 @@ class LocalDockerDriverWithTracking(LocalDockerDriver):
                         tag="latest",
                         image_id=image_id,
                         build_status="success",
-                        build_time_ms=build_time_ms
+                        build_time_ms=build_time_ms,
+                        size_bytes=None
                     )
                 else:
                     self.image_repo.update_image_build_result(
                         name=tag,
                         tag="latest",
+                        image_id=None,
                         build_status="failed",
-                        build_time_ms=build_time_ms
+                        build_time_ms=build_time_ms,
+                        size_bytes=None
                     )
             except Exception:
                 pass

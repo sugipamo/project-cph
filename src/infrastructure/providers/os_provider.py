@@ -17,7 +17,7 @@ class OsProvider(ABC):
         pass
 
     @abstractmethod
-    def makedirs(self, path: str, exist_ok: bool = False) -> None:
+    def makedirs(self, path: str, exist_ok: bool) -> None:
         """ディレクトリ作成"""
         pass
 
@@ -95,7 +95,7 @@ class SystemOsProvider(OsProvider):
         import os
         return os.listdir(path)
 
-    def makedirs(self, path: str, exist_ok: bool = False) -> None:
+    def makedirs(self, path: str, exist_ok: bool) -> None:
         """ディレクトリ作成（副作用）"""
         import os
         os.makedirs(path, exist_ok=exist_ok)
@@ -179,7 +179,7 @@ class MockOsProvider(OsProvider):
             return self._dir_contents[path]
         return []
 
-    def makedirs(self, path: str, exist_ok: bool = False) -> None:
+    def makedirs(self, path: str, exist_ok: bool) -> None:
         """モックディレクトリ作成（副作用なし）"""
         if path in self._filesystem and not exist_ok:
             raise FileExistsError(f"Directory {path} already exists")
@@ -232,7 +232,7 @@ class MockOsProvider(OsProvider):
         """テスト用ファイル追加"""
         self._filesystem[path] = "file"
 
-    def add_directory(self, path: str, contents: Optional[List[str]] = None) -> None:
+    def add_directory(self, path: str, contents: Optional[List[str]]) -> None:
         """テスト用ディレクトリ追加"""
         self._filesystem[path] = "dir"
         if contents is None:

@@ -184,7 +184,8 @@ def generate_steps_from_json(json_steps: List[Dict[str, Any]], context: Union['T
     """
     # 新しいシンプル設計を使用
     simple_context = execution_context_to_simple_context(context)
-    step_results = run_steps(json_steps, simple_context)
+    from src.infrastructure.providers import SystemOsProvider
+    step_results = run_steps(json_steps, simple_context, SystemOsProvider())
 
     # 結果を旧形式に変換
     steps = []
@@ -233,7 +234,7 @@ def format_template(template: Any, context: Union['TypedExecutionConfiguration',
     return expand_template(template, simple_context)
 
 
-def expand_file_patterns(template: str, context: Union['TypedExecutionConfiguration', Any], step_type=None) -> str:
+def expand_file_patterns(template: str, context: Union['TypedExecutionConfiguration', Any], step_type) -> str:
     """ファイルパターンを展開する（後方互換性）"""
     # TypedExecutionConfigurationの場合は直接テンプレート展開を使用
     if isinstance(context, TypedExecutionConfiguration):

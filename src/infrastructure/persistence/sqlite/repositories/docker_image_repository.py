@@ -29,7 +29,7 @@ class DockerImageRepository(DatabaseRepositoryFoundation):
             name, tag = str(entity_id), 'latest'
         return self.find_image(name, tag)
 
-    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Dict[str, Any]]:
+    def find_all(self, limit: Optional[int], offset: Optional[int]) -> List[Dict[str, Any]]:
         """Find all images."""
         images = self.get_all_images()
         if offset:
@@ -71,10 +71,10 @@ class DockerImageRepository(DatabaseRepositoryFoundation):
     def create_or_update_image(
         self,
         name: str,
-        tag: str = "latest",
-        dockerfile_hash: Optional[str] = None,
-        build_command: Optional[str] = None,
-        build_status: str = "pending",
+        tag: str,
+        dockerfile_hash: Optional[str],
+        build_command: Optional[str],
+        build_status: str,
     ) -> int:
         """Create or update an image record."""
         # First try to update existing
@@ -106,10 +106,10 @@ class DockerImageRepository(DatabaseRepositoryFoundation):
         self,
         name: str,
         tag: str,
-        image_id: Optional[str] = None,
-        build_status: str = "success",
-        build_time_ms: Optional[int] = None,
-        size_bytes: Optional[int] = None,
+        image_id: Optional[str],
+        build_status: str,
+        build_time_ms: Optional[int],
+        size_bytes: Optional[int],
     ) -> None:
         """Update image build results."""
         query = """
@@ -125,7 +125,7 @@ class DockerImageRepository(DatabaseRepositoryFoundation):
         with self.connection as conn:
             conn.execute(query, params)
 
-    def find_image(self, name: str, tag: str = "latest") -> Optional[Dict[str, Any]]:
+    def find_image(self, name: str, tag: str) -> Optional[Dict[str, Any]]:
         """Find an image by name and tag."""
         query = """
             SELECT * FROM docker_images
@@ -179,7 +179,7 @@ class DockerImageRepository(DatabaseRepositoryFoundation):
             cursor = conn.execute(query, (days,))
             return [dict(row) for row in cursor.fetchall()]
 
-    def update_last_used(self, name: str, tag: str = "latest") -> None:
+    def update_last_used(self, name: str, tag: str) -> None:
         """Update the last used timestamp for an image."""
         query = """
             UPDATE docker_images
@@ -189,7 +189,7 @@ class DockerImageRepository(DatabaseRepositoryFoundation):
         with self.connection as conn:
             conn.execute(query, (name, tag))
 
-    def delete_image(self, name: str, tag: str = "latest") -> bool:
+    def delete_image(self, name: str, tag: str) -> bool:
         """Delete an image record."""
         query = """
             DELETE FROM docker_images

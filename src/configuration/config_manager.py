@@ -481,8 +481,8 @@ class TypeSafeConfigNodeManager:
         return [self._convert_to_type(item, item_type) for item in raw_value]
 
     def resolve_template_typed(self, template: str,
-                              context: Optional[Dict] = None,
-                              return_type: Type[T] = str) -> T:
+                              context: Optional[Dict],
+                              return_type: Type[T]) -> T:
         """型安全なテンプレート変数展開
 
         統合対象:
@@ -508,7 +508,7 @@ class TypeSafeConfigNodeManager:
         return converted
 
     def resolve_template_to_path(self, template: str,
-                               context: Optional[Dict] = None) -> Path:
+                               context: Optional[Dict]) -> Path:
         """パス専用のテンプレート展開"""
         expanded = self.resolve_template_typed(template, context, str)
         return Path(expanded)
@@ -529,7 +529,7 @@ class TypeSafeConfigNodeManager:
     def resolve_config_validated(self, path: List[str],
                                 return_type: Type[T],
                                 validator: callable,
-                                error_message: Optional[str] = None) -> T:
+                                error_message: Optional[str]) -> T:
         """バリデーション付きの型安全解決"""
         value = self.resolve_config(path, return_type)
 

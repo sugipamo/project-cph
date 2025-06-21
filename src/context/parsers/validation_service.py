@@ -7,7 +7,7 @@ class ValidationService:
     """Simple validation service for env.json files"""
 
     @staticmethod
-    def validate_env_json(data: dict[str, Any], path: str, shared_config: Optional[dict[str, Any]] = None) -> bool:
+    def validate_env_json(data: dict[str, Any], path: str, shared_config: Optional[dict[str, Any]]) -> bool:
         """Basic validation for env.json files
 
         Args:

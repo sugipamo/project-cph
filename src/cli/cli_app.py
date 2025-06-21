@@ -99,7 +99,7 @@ class MinimalCLIApp:
         service = WorkflowExecutionService(self.context, self.infrastructure)
 
         # Execute workflow
-        result = service.execute_workflow()
+        result = service.execute_workflow(parallel=None, max_workers=None)
 
         # Present results if needed
         self._present_results(result)

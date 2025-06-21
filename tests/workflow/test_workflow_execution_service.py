@@ -66,7 +66,7 @@ class TestWorkflowExecutionService(unittest.TestCase):
             with patch.object(self.service, '_execute_preparation_phase') as mock_prep:
                 mock_prep.return_value = ([], [])
 
-                result = self.service.execute_workflow()
+                result = self.service.execute_workflow(parallel=None, max_workers=None)
 
                 self.assertIsInstance(result, WorkflowExecutionResult)
                 self.assertTrue(result.success)
@@ -107,7 +107,7 @@ class TestWorkflowExecutionService(unittest.TestCase):
         with patch.object(self.service, '_prepare_workflow_steps') as mock_prepare:
             mock_prepare.return_value = (None, ["Preparation error"], [])
 
-            result = self.service.execute_workflow()
+            result = self.service.execute_workflow(parallel=None, max_workers=None)
 
             self.assertFalse(result.success)
             self.assertIn("Preparation error", result.errors)
@@ -136,7 +136,7 @@ class TestWorkflowExecutionService(unittest.TestCase):
                 with patch.object(self.service, '_should_allow_failure') as mock_allow:
                     mock_allow.return_value = False
 
-                    result = self.service.execute_workflow()
+                    result = self.service.execute_workflow(parallel=None, max_workers=None)
 
                     self.assertFalse(result.success)
                     self.assertGreater(len(result.errors), 0)

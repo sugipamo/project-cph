@@ -13,7 +13,7 @@ class SysProvider(ABC):
         pass
 
     @abstractmethod
-    def exit(self, code: int = 0) -> None:
+    def exit(self, code: int) -> None:
         """プログラムを終了"""
         pass
 
@@ -35,7 +35,7 @@ class SystemSysProvider(SysProvider):
         """コマンドライン引数を取得"""
         return sys.argv
 
-    def exit(self, code: int = 0) -> None:
+    def exit(self, code: int) -> None:
         """プログラムを終了"""
         sys.exit(code)
 
@@ -51,7 +51,7 @@ class SystemSysProvider(SysProvider):
 class MockSysProvider(SysProvider):
     """テスト用のモックsysプロバイダー"""
 
-    def __init__(self, argv: Optional[List[str]] = None, platform: str = "test"):
+    def __init__(self, argv: Optional[List[str]], platform: str):
         # フォールバック処理は禁止、必要なエラーを見逃すことになる
         if argv is None:
             raise ValueError("argv parameter is required")
@@ -64,7 +64,7 @@ class MockSysProvider(SysProvider):
         """コマンドライン引数を取得"""
         return self._argv
 
-    def exit(self, code: int = 0) -> None:
+    def exit(self, code: int) -> None:
         """プログラムを終了（モック）"""
         self._exit_code = code
         if self._exit_callback:

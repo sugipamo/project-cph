@@ -197,8 +197,8 @@ def format_values_with_context_dict(values: list, context_dict: dict) -> list:
 
 
 def get_docker_naming_from_data(data: Union[ExecutionFormatData, 'TypedExecutionConfiguration'],
-                               dockerfile_content: Optional[str] = None,
-                               oj_dockerfile_content: Optional[str] = None) -> dict:
+                               dockerfile_content: Optional[str],
+                               oj_dockerfile_content: Optional[str]) -> dict:
     """データからDocker命名情報を生成する純粋関数
 
     Args:
