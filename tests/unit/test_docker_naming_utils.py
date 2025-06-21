@@ -54,7 +54,7 @@ class TestGetDockerImageName:
 
     def test_image_name_without_dockerfile(self):
         """Test image name generation without custom dockerfile"""
-        result = get_docker_image_name("python")
+        result = get_docker_image_name("python", "")
         assert result == "python"
 
     def test_image_name_with_dockerfile(self):
@@ -80,7 +80,7 @@ class TestGetDockerContainerName:
 
     def test_container_name_without_dockerfile(self):
         """Test container name generation without custom dockerfile"""
-        result = get_docker_container_name("python")
+        result = get_docker_container_name("python", "")
         assert result == "cph_python"
 
     def test_container_name_with_dockerfile(self):
@@ -108,7 +108,7 @@ class TestGetOjImageName:
 
     def test_oj_image_name_without_dockerfile(self):
         """Test OJ image name generation without custom dockerfile"""
-        result = get_oj_image_name()
+        result = get_oj_image_name("")
         assert result == "ojtools"
 
     def test_oj_image_name_with_dockerfile(self):
@@ -126,7 +126,7 @@ class TestGetOjContainerName:
 
     def test_oj_container_name_without_dockerfile(self):
         """Test OJ container name generation without custom dockerfile"""
-        result = get_oj_container_name()
+        result = get_oj_container_name("")
         assert result == "cph_ojtools"
 
     def test_oj_container_name_with_dockerfile(self):

@@ -6,7 +6,7 @@ from src.operations.requests.composite.base_composite_request import CompositeRe
 
 class DummyRequest(OperationRequestFoundation):
     def __init__(self, name=None):
-        super().__init__(name=name, debug_tag=None, _executed=False, _result=None, _debug_info=None)
+        super().__init__(name=name, debug_tag=None)
     @property
     def operation_type(self):
         return "DUMMY"
@@ -14,8 +14,8 @@ class DummyRequest(OperationRequestFoundation):
         return "ok"
 
 class DummyCompositeRequest(CompositeRequestFoundation):
-    def __init__(self, requests, debug_tag=None, name=None, _executed=False, _results=None, _debug_info=None):
-        super().__init__(requests=requests, debug_tag=debug_tag, name=name, _executed=_executed, _results=_results, _debug_info=_debug_info)
+    def __init__(self, requests, debug_tag=None, name=None):
+        super().__init__(requests=requests, debug_tag=debug_tag, name=name)
 
     def _execute_core(self, driver, logger):
         return [r._execute_core(driver, logger) for r in self.requests]

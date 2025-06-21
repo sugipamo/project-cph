@@ -13,11 +13,11 @@ class OperationRequestFoundation(ABC):
     offering common execution patterns and debug tracking capabilities.
     """
 
-    def __init__(self, name: Optional[str], debug_tag: Optional[str], _executed: bool, _result: Any, _debug_info: Optional[dict]):
+    def __init__(self, name: Optional[str], debug_tag: Optional[str]):
         self.name = name
-        self._executed = _executed
-        self._result = _result
-        self.debug_info = _debug_info if _debug_info is not None else self._create_debug_info(debug_tag)
+        self._executed = False
+        self._result = None
+        self.debug_info = self._create_debug_info(debug_tag)
 
     def set_name(self, name: str) -> 'OperationRequestFoundation':
         """Set the name of this request."""
@@ -39,7 +39,7 @@ class OperationRequestFoundation(ABC):
         """Return the request type for type-safe identification."""
         return RequestType.OPERATION_REQUEST_FOUNDATION
 
-    def execute_operation(self, driver: Optional[Any], logger: Optional[Any]) -> Any:
+    def execute_operation(self, driver: Optional[Any] = None, logger: Optional[Any] = None) -> Any:
         """Execute this operation request using the provided driver.
 
         Args:

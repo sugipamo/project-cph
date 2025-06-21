@@ -197,19 +197,19 @@ class OperationResult:
     def _get_op_str(self) -> str:
         """Get op string with explicit validation."""
         if self.op is None:
-            raise ValueError("Operation 'op' is required but not available")
+            return ""
         return str(self.op)
 
     def _get_operation_type_str(self) -> str:
         """Get operation_type string with explicit validation."""
         if self.operation_type is None:
-            raise ValueError("Operation 'operation_type' is required but not available")
+            return ""
         return str(self.operation_type)
 
     def _get_exception_str(self) -> str:
         """Get exception string with explicit validation."""
         if self.exception is None:
-            raise ValueError("Exception information is required but not available")
+            return ""
         return str(self.exception)
 
     def get_error_output(self) -> str:

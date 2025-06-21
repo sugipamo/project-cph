@@ -25,6 +25,7 @@ class TestSystemConfigRepository:
     def setup_method(self):
         """Set up test fixtures."""
         self.mock_manager = MagicMock()
+        self.mock_config_manager = MagicMock()
         self.mock_connection = MagicMock()
         self.mock_cursor = MagicMock()
 
@@ -33,7 +34,10 @@ class TestSystemConfigRepository:
         self.mock_manager.__enter__.return_value = self.mock_connection
         self.mock_manager.__exit__.return_value = None
 
-        self.repository = SystemConfigRepository(self.mock_manager)
+        # Setup config_manager to return None for default values
+        self.mock_config_manager.resolve_config.return_value = None
+
+        self.repository = SystemConfigRepository(self.mock_manager, self.mock_config_manager)
 
     def test_init(self):
         """Test repository initialization."""
@@ -88,12 +92,12 @@ class TestSystemConfigRepository:
 
         with patch.object(self.repository, 'get_all_configs_with_metadata', return_value=configs):
             # Test with limit only
-            result = self.repository.find_all(limit=2)
+            result = self.repository.find_all(limit=2, offset=None)
             assert len(result) == 2
             assert result[0]['config_key'] == 'key1'
 
             # Test with offset only
-            result = self.repository.find_all(offset=2)
+            result = self.repository.find_all(limit=None, offset=2)
             assert len(result) == 2
             assert result[0]['config_key'] == 'key3'
 
@@ -160,21 +164,21 @@ class TestSystemConfigRepository:
         with patch.object(self.repository, 'get_config_with_metadata', return_value=existing_config):
             self.mock_connection.execute.return_value = self.mock_cursor
 
-            self.repository.set_config('existing', 'updated_value', 'new_category')
+            self.repository.set_config('existing', 'updated_value', 'new_category', 'updated_description')
 
             # Verify UPDATE query was called
             self.mock_connection.execute.assert_called_once()
             call_args = self.mock_connection.execute.call_args
 
             assert 'UPDATE system_config' in call_args[0][0]
-            assert call_args[0][1] == ('"updated_value"', 'new_category', None, 'existing')
+            assert call_args[0][1] == ('"updated_value"', 'new_category', 'updated_description', 'existing')
 
     def test_set_config_none_value(self):
         """Test setting None value."""
         with patch.object(self.repository, 'get_config_with_metadata', return_value=None):
             self.mock_connection.execute.return_value = self.mock_cursor
 
-            self.repository.set_config('null_key', None)
+            self.repository.set_config('null_key', None, 'test_category', 'test_description')
 
             call_args = self.mock_connection.execute.call_args
             assert call_args[0][1][1] is None  # config_value should be None
@@ -312,8 +316,8 @@ class TestSystemConfigRepository:
             self.repository.bulk_set_configs(configs, 'test_category')
 
         assert mock_set.call_count == 2
-        mock_set.assert_any_call('key1', 'value1', 'test_category')
-        mock_set.assert_any_call('key2', 'value2', 'test_category')
+        mock_set.assert_any_call('key1', 'value1', 'test_category', None)
+        mock_set.assert_any_call('key2', 'value2', 'test_category', None)
 
     def test_get_user_specified_configs(self):
         """Test get_user_specified_configs."""

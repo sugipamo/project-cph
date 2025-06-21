@@ -31,12 +31,12 @@ class Result(Generic[T, E]):
     @classmethod
     def success(cls, value: T) -> 'Result[T, E]':
         """Create successful result."""
-        return cls(True, value=value)
+        return cls(True, value=value, error=None)
 
     @classmethod
     def failure(cls, error: E) -> 'Result[T, E]':
         """Create failure result."""
-        return cls(False, error=error)
+        return cls(False, value=None, error=error)
 
     def is_success(self) -> bool:
         """Check if operation succeeded."""

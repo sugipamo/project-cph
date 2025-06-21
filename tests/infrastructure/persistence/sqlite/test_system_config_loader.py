@@ -228,13 +228,13 @@ class TestSystemConfigLoader:
 
         # Check that old values were saved and new values were set
         expected_calls = [
-            (("old_contest_name", "old_contest"), {}),
-            (("contest_name", "new_contest"), {}),
-            (("old_problem_name", "old_problem"), {}),
-            (("problem_name", "new_problem"), {}),
-            (("language", "python"), {}),
-            (("command", "build"), {}),
-            (("env_type", "docker"), {})
+            (("old_contest_name", "old_contest", "context", "Previous contest name"), {}),
+            (("contest_name", "new_contest", "context", "Current contest name"), {}),
+            (("old_problem_name", "old_problem", "context", "Previous problem name"), {}),
+            (("problem_name", "new_problem", "context", "Current problem name"), {}),
+            (("language", "python", "context", "Programming language"), {}),
+            (("command", "build", "context", "Current command"), {}),
+            (("env_type", "docker", "context", "Environment type"), {})
         ]
 
         assert self.mock_config_repo.set_config.call_count == 7
@@ -251,7 +251,7 @@ class TestSystemConfigLoader:
 
         self.loader.update_current_context(None, None, "rust", None, None)
 
-        self.mock_config_repo.set_config.assert_called_once_with("language", "rust")
+        self.mock_config_repo.set_config.assert_called_once_with("language", "rust", "context", "Programming language")
 
     def test_update_current_context_with_old_values(self):
         """Test update_current_context saves old values when they exist."""
@@ -265,8 +265,8 @@ class TestSystemConfigLoader:
 
         # Should save old value and set new value
         expected_calls = [
-            (("old_contest_name", "existing_contest"), {}),
-            (("contest_name", "new_contest"), {})
+            (("old_contest_name", "existing_contest", "context", "Previous contest name"), {}),
+            (("contest_name", "new_contest", "context", "Current contest name"), {})
         ]
 
         assert self.mock_config_repo.set_config.call_count == 2
@@ -280,7 +280,7 @@ class TestSystemConfigLoader:
 
         self.loader.clear_context_value("test_key")
 
-        self.mock_config_repo.set_config.assert_called_once_with("test_key", None)
+        self.mock_config_repo.set_config.assert_called_once_with("test_key", None, None, None)
 
     def test_has_user_specified_true(self):
         """Test has_user_specified method when value exists."""

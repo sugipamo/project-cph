@@ -238,7 +238,7 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
     def bulk_set_configs(self, configs: Dict[str, Any], category: Optional[str]) -> None:
         """Set multiple configurations at once."""
         for key, value in configs.items():
-            self.set_config(key, value, category)
+            self.set_config(key, value, category, None)
 
     def get_user_specified_configs(self) -> Dict[str, Any]:
         """Get only user-specified configuration values (non-NULL)."""

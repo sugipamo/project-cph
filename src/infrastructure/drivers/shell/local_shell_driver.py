@@ -1,5 +1,5 @@
 """Local shell driver implementation using subprocess."""
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from src.infrastructure.drivers.shell.shell_driver import ShellDriver
 from src.infrastructure.drivers.shell.utils.shell_utils import ShellUtils
@@ -13,9 +13,9 @@ class LocalShellDriver(ShellDriver):
         super().__init__()
         self.file_driver = file_driver
 
-    def execute_shell_command(self, cmd: Union[str, list[str]], cwd: str,
-                            env: dict[str, str], inputdata: str,
-                            timeout: int) -> Any:
+    def execute_shell_command(self, cmd: Union[str, list[str]], cwd: Optional[str] = None,
+                            env: Optional[dict[str, str]] = None, inputdata: Optional[str] = None,
+                            timeout: Optional[int] = None) -> Any:
         """Execute a shell command using subprocess.
 
         Args:
@@ -29,10 +29,11 @@ class LocalShellDriver(ShellDriver):
             Command execution result
         """
         # Create cwd directory if specified
-        from pathlib import Path
-        cwd_path = Path(cwd)
-        if not cwd_path.exists():
-            self.file_driver.makedirs(cwd_path, exist_ok=True)
+        if cwd:
+            from pathlib import Path
+            cwd_path = Path(cwd)
+            if not cwd_path.exists():
+                self.file_driver.makedirs(cwd_path, exist_ok=True)
 
         return ShellUtils.run_subprocess(
             cmd=cmd,

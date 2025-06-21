@@ -335,7 +335,7 @@ def _create_initial_context(context_data, env_config, infrastructure):
     contest_name = context_data["contest_name"] or "default"
     problem_name = context_data["problem_name"] or "a"
     env_type = context_data["env_type"] or "default"
-    
+
     context = _create_execution_config(
         command_type=command_type,
         language=language,

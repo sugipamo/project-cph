@@ -16,7 +16,7 @@ class FileRequest(OperationRequestFoundation):
     def __init__(self, op: FileOpType, path: str, content: Optional[str],
                  dst_path: Optional[str], debug_tag: Optional[str],
                  name: Optional[str], allow_failure: bool = False):
-        super().__init__(name=name, debug_tag=debug_tag, _executed=False, _result=None, _debug_info=None)
+        super().__init__(name=name, debug_tag=debug_tag)
         self.op = op
         self.path = path
         self.content = content

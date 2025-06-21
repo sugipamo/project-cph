@@ -17,7 +17,7 @@ class PythonRequest(OperationRequestFoundation):
     def __init__(self, code_or_file: Union[str, list[str]], cwd: Optional[str],
                  show_output: bool, name: Optional[str],
                  debug_tag: Optional[str]):
-        super().__init__(name=name, debug_tag=debug_tag, _executed=False, _result=None, _debug_info=None)
+        super().__init__(name=name, debug_tag=debug_tag)
         self.code_or_file = code_or_file  # Code string or filename
         self.cwd = cwd
         self.show_output = show_output
@@ -27,7 +27,7 @@ class PythonRequest(OperationRequestFoundation):
         if hasattr(driver, 'infrastructure'):
             return driver.infrastructure.resolve(DIKey.OS_PROVIDER)
         # Fallback: create a temporary provider if needed
-        from src.infrastructure.providers import SystemOsProvider
+        from src.infrastructure.providers.os_provider import SystemOsProvider
         return SystemOsProvider()
 
     @property
@@ -49,7 +49,7 @@ class PythonRequest(OperationRequestFoundation):
             end_time = time.time()
 
             return OperationResult(
-                success=None,
+                success=returncode == 0,
                 returncode=returncode,
                 stdout=stdout,
                 stderr=stderr,
@@ -61,7 +61,7 @@ class PythonRequest(OperationRequestFoundation):
                 request=self,
                 start_time=start_time,
                 end_time=end_time,
-                error_message=None,
+                error_message=None if returncode == 0 else stderr,
                 exception=None,
                 metadata={},
                 skipped=False

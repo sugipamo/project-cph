@@ -18,7 +18,7 @@ class ShellRequest(OperationRequestFoundation):
                  timeout: int, debug_tag: str,
                  name: str, show_output: bool,
                  allow_failure: bool):
-        super().__init__(name=name, debug_tag=debug_tag, _executed=False, _result=None, _debug_info=None)
+        super().__init__(name=name, debug_tag=debug_tag)
         self.cmd = cmd
         self.cwd = cwd
         self.env = env

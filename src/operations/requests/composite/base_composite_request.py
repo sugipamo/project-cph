@@ -13,12 +13,12 @@ class CompositeRequestFoundation(OperationRequestFoundation):
     into a single executable unit with proper result tracking.
     """
 
-    def __init__(self, requests: list[OperationRequestFoundation], debug_tag: Optional[str], name: Optional[str], _executed: bool, _results, _debug_info: Optional[dict]):
-        super().__init__(name=name, debug_tag=debug_tag, _executed=_executed, _result=None, _debug_info=_debug_info)
+    def __init__(self, requests: list[OperationRequestFoundation], debug_tag: Optional[str], name: Optional[str]):
+        super().__init__(name=name, debug_tag=debug_tag)
         if not all(isinstance(r, OperationRequestFoundation) for r in requests):
             raise TypeError("All elements of 'requests' must be OperationRequestFoundation (or its subclass)")
         self.requests = requests
-        self._results = _results
+        self._results = []
 
     def set_name(self, name: str) -> 'CompositeRequestFoundation':
         """Set the name of this request."""

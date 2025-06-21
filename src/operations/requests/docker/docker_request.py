@@ -47,7 +47,7 @@ class DockerRequest(OperationRequestFoundation):
             show_output: Whether to show output
             dockerfile_text: Dockerfile content for build operations
         """
-        super().__init__(name=name, debug_tag=debug_tag, _executed=False, _result=None, _debug_info=None)
+        super().__init__(name=name, debug_tag=debug_tag)
         self.op = op
         self.image = image
         self.container = container

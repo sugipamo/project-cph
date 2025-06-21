@@ -21,8 +21,13 @@ class TestRetryConfig:
     def test_default_config(self):
         """Test default retry configuration."""
         config = RetryConfig(
+            max_attempts=3,
+            base_delay=1.0,
+            max_delay=30.0,
+            backoff_factor=2.0,
             retryable_errors=(ConnectionError, TimeoutError),
-            retryable_error_codes=(ErrorCode.NETWORK_TIMEOUT,)
+            retryable_error_codes=(ErrorCode.NETWORK_TIMEOUT,),
+            logger=None
         )
         assert config.max_attempts == 3
         assert config.base_delay == 1.0
@@ -34,8 +39,11 @@ class TestRetryConfig:
         config = RetryConfig(
             max_attempts=5,
             base_delay=2.0,
+            max_delay=60.0,
+            backoff_factor=1.5,
             retryable_errors=(ConnectionError,),
-            retryable_error_codes=(ErrorCode.NETWORK_TIMEOUT,)
+            retryable_error_codes=(ErrorCode.NETWORK_TIMEOUT,),
+            logger=None
         )
         assert config.max_attempts == 5
         assert config.base_delay == 2.0
@@ -50,8 +58,13 @@ class TestRetryDecorator:
         mock_func = Mock(return_value="success")
 
         config = RetryConfig(
+            max_attempts=3,
+            base_delay=1.0,
+            max_delay=30.0,
+            backoff_factor=2.0,
             retryable_errors=(ConnectionError, TimeoutError, OSError),
-            retryable_error_codes=(ErrorCode.NETWORK_TIMEOUT, ErrorCode.NETWORK_CONNECTION_FAILED)
+            retryable_error_codes=(ErrorCode.NETWORK_TIMEOUT, ErrorCode.NETWORK_CONNECTION_FAILED),
+            logger=None
         )
 
         @retry_on_failure(config)
@@ -74,10 +87,15 @@ class TestRetryableOperation:
     def test_execute_with_retry_success(self):
         """Test successful execution with retry logic."""
         config = RetryConfig(
+            max_attempts=3,
+            base_delay=1.0,
+            max_delay=30.0,
+            backoff_factor=2.0,
             retryable_errors=(ConnectionError, TimeoutError, OSError),
-            retryable_error_codes=(ErrorCode.NETWORK_TIMEOUT, ErrorCode.NETWORK_CONNECTION_FAILED)
+            retryable_error_codes=(ErrorCode.NETWORK_TIMEOUT, ErrorCode.NETWORK_CONNECTION_FAILED),
+            logger=None
         )
-        operation = RetryableOperation(config)
+        operation = RetryableOperation(config, None)
         mock_func = Mock(return_value="success")
 
         result = operation.execute_with_retry(mock_func, "arg1", key="value")
