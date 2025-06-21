@@ -45,13 +45,13 @@ def _get_docker_option(option_name: str, user_options: Optional[dict[str, Any]])
 
     # Then check configuration system - フォールバック処理は禁止、必要なエラーを見逃すことになる
     config_manager = _get_config_manager()
-    if config_manager is not None and config_manager.root_node is not None:
-        try:
-            return config_manager.resolve_config(['docker_defaults', 'docker_options', option_name], bool)
-        except KeyError as e:
-            raise KeyError(f"Docker option '{option_name}' not found in user options or configuration") from e
+    if config_manager is None:
+        raise KeyError(f"Docker option '{option_name}' not found: configuration manager not available")
 
-    raise KeyError(f"Docker option '{option_name}' not found in user options or configuration")
+    if config_manager.root_node is None:
+        raise KeyError(f"Docker option '{option_name}' not found: configuration not loaded")
+
+    return config_manager.resolve_config(['docker_defaults', 'docker_options', option_name], bool)
 
 
 def validate_docker_image_name(image_name: str) -> bool:
@@ -223,11 +223,11 @@ def build_docker_build_command(tag: Optional[str] = None, dockerfile_text: Optio
         if "build_args" in options:
             for arg in options["build_args"]:
                 cmd.extend(["--build-arg", arg])
-        if options.get("no_cache"):
+        if _get_docker_option("no_cache", options):
             cmd.append("--no-cache")
-        if options.get("pull"):
+        if _get_docker_option("pull", options):
             cmd.append("--pull")
-        if options.get("quiet"):
+        if _get_docker_option("quiet", options):
             cmd.append("-q")
 
     # If dockerfile_text is provided, read from stdin

@@ -255,7 +255,7 @@ def _create_sys_provider() -> Any:
 def _create_mock_sys_provider() -> Any:
     """Lazy factory for mock sys provider."""
     from src.infrastructure.providers import MockSysProvider
-    return MockSysProvider()
+    return MockSysProvider(argv=["test_program"])
 
 
 def configure_production_dependencies(container: DIContainer) -> None:

@@ -40,8 +40,11 @@ class TestConfigFileLoading:
 
     def test_config_manager_initialization(self):
         """TypeSafeConfigNodeManagerの初期化テスト"""
+        # モックのインフラストラクチャを作成
+        mock_infrastructure = MagicMock()
+
         # 実際の設定マネージャーを作成
-        config_manager = TypeSafeConfigNodeManager()
+        config_manager = TypeSafeConfigNodeManager(mock_infrastructure)
 
         # 初期化が成功することを確認
         assert config_manager is not None

@@ -52,7 +52,10 @@ class MockSysProvider(SysProvider):
     """テスト用のモックsysプロバイダー"""
 
     def __init__(self, argv: Optional[List[str]] = None, platform: str = "test"):
-        self._argv = argv or ["test_script"]
+        # フォールバック処理は禁止、必要なエラーを見逃すことになる
+        if argv is None:
+            raise ValueError("argv parameter is required")
+        self._argv = argv
         self._platform = platform
         self._exit_code: Optional[int] = None
         self._exit_callback: Optional[Callable[[int], None]] = None

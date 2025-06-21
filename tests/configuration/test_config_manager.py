@@ -246,9 +246,9 @@ class TestTypeSafeConfigNodeManager:
 
             assert manager.root_node == mock_root
             mock_file_loader.load_and_merge_configs.assert_called_once_with(
-                system_dir="./config/system",
-                env_dir="./contest_env",
-                language="python"
+                "./config/system",
+                "./contest_env",
+                "python"
             )
 
     def test_resolve_config_success(self):

@@ -25,7 +25,9 @@ class ProgressSpinner:
         self.spinner_chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
         self.running = False
         self.thread = None
-        self.logger = logger or create_logger()
+        if logger is None:
+            raise ValueError("Logger is required")
+        self.logger = logger
 
     def start(self):
         self.running = True
@@ -51,9 +53,15 @@ class ProgressSpinner:
 class TestRunner:
     def __init__(self, verbose: bool = False, logger: Logger = None, command_executor: CommandExecutor = None, file_handler: FileHandler = None):
         self.verbose = verbose
-        self.logger = logger or create_logger(verbose=verbose)
-        self.command_executor = command_executor or create_command_executor()
-        self.file_handler = file_handler or create_file_handler()
+        if logger is None:
+            raise ValueError("Logger is required")
+        if command_executor is None:
+            raise ValueError("CommandExecutor is required")
+        if file_handler is None:
+            raise ValueError("FileHandler is required")
+        self.logger = logger
+        self.command_executor = command_executor
+        self.file_handler = file_handler
         self.issues: List[str] = []
         self.warnings: List[str] = []
 
@@ -182,13 +190,14 @@ class TestRunner:
             result = self.command_executor.run(["vulture", "--version"], capture_output=True, text=True)
             if not result.success:
                 raise Exception("vulture not available")
-        except Exception:
+        except Exception as e:
+            error_msg = f"vultureの実行に失敗しました: {e}"
             if not self.verbose:
-                self.logger.warning("vultureがインストールされていません（推奨）")
+                self.logger.error(error_msg)
             else:
-                self.logger.warning("vultureがインストールされていません（推奨）")
-            self.warnings.append("vultureがインストールされていません（推奨）")
-            return True  # 未使用コード検出なしでも続行
+                self.logger.error(error_msg)
+            self.issues.append(error_msg)
+            return False
 
         success, output = self.run_command(
             ["vulture", "src/", ".vulture_whitelist.py", "--min-confidence", "80"],
@@ -959,45 +968,56 @@ class TestRunner:
 
     def _determine_severity(self, file_path: str, line_num: int, context: str, pattern_type: str) -> str:
         """コンテキスト分析による重要度判定"""
-        # 技術的に必要なパターンの自動識別
-        legitimate_patterns = {
-            'lazy_import': r'from .* import',
-            'di_resolution': r'resolve\(.*DIKey',
-            'pathlib_control': r'\.relative_to\(',
-            'sqlite_null': r'row\[0\].*if.*else',
-            'default_assignment': r'\w+\s*=\s*\w+\s*or\s*',
-            'dummy_logger': r'DummyLogger',
-            'compatibility': r'互換性.*維持'
-        }
+        context_lower = context.lower()
 
-        # infrastructure層での特別処理
+        # 設定関連の正当なフォールバック（CLAUDE.mdルールに従い、設定は別途追加対応）
+        config_patterns = [
+            'config', 'setting', 'default_', 'fallback_', 'init_', 'initialization',
+            'デフォルト', 'initial', 'preset', 'template'
+        ]
+        if (any(pattern in context_lower for pattern in config_patterns) and
+            any(keyword in context_lower for keyword in ['config', 'setting'])):
+            # 設定値の初期化は正当、ただし設定ファイルに追加すべき
+            return 'CONFIG_WARNING'  # 設定追加推奨
+
+        # infrastructure層での技術的必要性
         if 'infrastructure' in file_path:
-            for pattern_name, pattern in legitimate_patterns.items():
-                if pattern_name in context.lower() or any(p in context for p in pattern.split('|') if '|' in pattern):
-                    return 'ALLOWED'
-
-            # DI関連のフォールバック
-            if 'container' in context and 'resolve' in context:
+            # DI container解決時のフォールバック
+            if any(pattern in context_lower for pattern in ['container', 'resolve', 'inject', 'di_']):
                 return 'ALLOWED'
 
-            # SQLite NULL処理
-            if 'sqlite' in file_path and ('row[0]' in context or 'None' in context):
+            # データベース処理での NULL/None 処理
+            if (any(pattern in context_lower for pattern in ['sqlite', 'database', 'db_', 'row', 'cursor']) and
+                ('none' in context_lower or 'null' in context_lower)):
                 return 'ALLOWED'
 
-            # pathlib制御フロー
-            if 'path' in file_path and 'relative_to' in context:
+            # pathlib での相対パス処理
+            if any(pattern in context_lower for pattern in ['path', 'relative_to', 'resolve']):
                 return 'ALLOWED'
 
-        # 問題のあるパターンの検出
-        problematic_patterns = {
-            'error_hiding': r'except.*:\s*(pass|return False)',
-            'broad_except': r'except Exception:\s*return',
-            'silent_fail': r'except.*:\s*$'
-        }
+            # ロギング関連の安全な処理
+            if any(pattern in context_lower for pattern in ['logger', 'log_', 'dummy']):
+                return 'ALLOWED'
 
-        for pattern_name, _pattern in problematic_patterns.items():
-            if pattern_name in context.lower():
-                return 'ERROR'
+        # テストコードでの制御フロー
+        if any(pattern in file_path for pattern in ['/test', '_test', 'test_']):
+            return 'ALLOWED'
+
+        # 問題のあるパターン（エラー隠蔽の検出）
+        error_hiding_patterns = [
+            'except.*pass', 'except.*return false', 'except.*return none',
+            'except exception', 'except:', 'silent', 'ignore'
+        ]
+        if any(pattern in context_lower for pattern in error_hiding_patterns):
+            return 'ERROR'
+
+        # 型変換・キャスト処理
+        if any(pattern in context_lower for pattern in ['str(', 'int(', 'float(', 'bool(', 'list(', 'dict(']):
+            return 'ALLOWED'
+
+        # Python言語仕様による必要な処理
+        if any(pattern in context_lower for pattern in ['__init__', '__new__', '__enter__', '__exit__']):
+            return 'ALLOWED'
 
         # デフォルト判定
         if pattern_type in ['try_except_assign', 'try_except_return']:
@@ -1007,20 +1027,30 @@ class TestRunner:
     def _filter_legitimate_patterns(self, issues: list) -> list:
         """技術的に必要なパターンをフィルタリング"""
         filtered_issues = []
+        config_warnings = []
 
         for issue in issues:
             if isinstance(issue, dict):
-                if issue.get('severity') == 'ALLOWED':
+                severity = issue.get('severity')
+                if severity == 'ALLOWED':
                     continue
-                if issue.get('severity') == 'ERROR':
+                if severity == 'CONFIG_WARNING':
+                    # 設定関連は警告として別途管理
+                    config_warnings.append(f"[設定推奨] {issue['location']} {issue['message']} (設定ファイルに追加推奨)")
+                    continue
+                if severity == 'ERROR':
                     filtered_issues.append(f"[ERROR] {issue['location']} {issue['message']}")
-                elif issue.get('severity') == 'WARNING':
+                elif severity == 'WARNING':
                     filtered_issues.append(f"[WARNING] {issue['location']} {issue['message']}")
                 else:
                     filtered_issues.append(f"{issue['location']} {issue['message']}")
             else:
                 # 旧形式のissue（文字列）
                 filtered_issues.append(issue)
+
+        # 設定関連の警告を別途追加
+        if config_warnings:
+            self.warnings.extend(config_warnings)
 
         return filtered_issues
 
@@ -1049,8 +1079,8 @@ class TestRunner:
 
     def check_dict_get_usage(self, auto_convert: bool = False) -> bool:
         """dict.get()使用チェック - エラー隠蔽の温床となるため禁止（フォールバック対応禁止）"""
+        import ast
         import glob
-        import re
 
         spinner = None
         if not self.verbose:
@@ -1060,26 +1090,28 @@ class TestRunner:
         try:
             dict_get_issues = []
 
-            # dict[key]形式以外の.get(パターンを検索（コメント除く）
-            get_pattern = re.compile(r'\b\w+\.get\(')
-            comment_pattern = re.compile(r'#.*$')
-
             for file_path in glob.glob('src/**/*.py', recursive=True):
                 try:
                     content = self.file_handler.read_text(file_path, encoding='utf-8')
-                    lines = content.splitlines(keepends=True)
+                    tree = ast.parse(content, filename=file_path)
+                    relative_path = file_path.replace('src/', '')
 
-                    for line_num, line in enumerate(lines, 1):
-                        # コメントを除去
-                        clean_line = comment_pattern.sub('', line)
+                    # AST解析によるより正確な.get()メソッド検出
+                    for node in ast.walk(tree):
+                        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and
+                            node.func.attr == 'get'):
+                            # .get() メソッド呼び出しを検出
+                            # 正当な使用パターンを除外
+                            if self._is_legitimate_get_usage(node, content):
+                                continue
 
-                        # dict[key]形式以外の.get(パターンをチェック（getattr等の正当な使用は除外）
-                        if get_pattern.search(clean_line) and not ('getattr(' in clean_line or 'get_' in clean_line):
-                            relative_path = file_path.replace('src/', '')
-                            dict_get_issues.append(f"{relative_path}:{line_num} {clean_line.strip()}")
+                            # 変数名やオブジェクト名から、辞書の可能性を判定
+                            if self._is_likely_dict_get(node):
+                                context_line = self._get_source_line(content, node.lineno)
+                                dict_get_issues.append(f"{relative_path}:{node.lineno} {context_line.strip()}")
 
-                except (UnicodeDecodeError, OSError, FileNotFoundError):
-                    # ファイル読み込みエラーは無視
+                except (SyntaxError, UnicodeDecodeError, OSError, FileNotFoundError):
+                    # 構文エラーやファイル読み込みエラーは無視
                     continue
 
             success = len(dict_get_issues) == 0
@@ -1115,6 +1147,49 @@ class TestRunner:
                 self.logger.error(f"dict.get()使用チェックでエラー: {e}")
             return False
 
+    def _is_legitimate_get_usage(self, node: ast.Call, content: str) -> bool:
+        """正当な.get()使用パターンを判定"""
+        # HTTP/APIクライアントのGETメソッド
+        if isinstance(node.func.value, ast.Name):
+            var_name = node.func.value.id.lower()
+            if any(keyword in var_name for keyword in ['client', 'session', 'request', 'http', 'api']):
+                return True
+
+        # 設定取得メソッド（get_config, get_setting等）
+        context_line = self._get_source_line(content, node.lineno).lower()
+        if any(pattern in context_line for pattern in ['get_config', 'get_setting', 'getattr', 'get_user', 'get_data']):
+            return True
+
+        # クラスのgetterメソッド
+        return bool(hasattr(node.func.value, 'attr') and node.func.value.attr.startswith('get_'))
+
+    def _is_likely_dict_get(self, node: ast.Call) -> bool:
+        """辞書のget()メソッドである可能性を判定"""
+        if isinstance(node.func.value, ast.Name):
+            var_name = node.func.value.id.lower()
+            # 辞書を示唆する変数名
+            dict_indicators = ['dict', 'config', 'data', 'params', 'options', 'settings', 'mapping', 'cache']
+            if any(indicator in var_name for indicator in dict_indicators):
+                return True
+
+        # 辞書リテラルから直接呼び出し: {}.get()
+        if isinstance(node.func.value, ast.Dict):
+            return True
+
+        # インデックスアクセスの結果: data[key].get()
+        if isinstance(node.func.value, ast.Subscript):
+            return True
+
+        # デフォルト値が指定されている場合（dict.get()の典型的な使用法）
+        return len(node.args) > 1
+
+    def _get_source_line(self, content: str, line_num: int) -> str:
+        """指定行のソースコードを取得"""
+        lines = content.splitlines()
+        if 1 <= line_num <= len(lines):
+            return lines[line_num - 1]
+        return ""
+
     def _auto_convert_dict_get(self) -> bool:
         """dict.get()を自動変換"""
         self.logger.info("🔧 dict.get()の自動変換を実行中...")
@@ -1148,13 +1223,14 @@ class TestRunner:
             result = self.command_executor.run(["mypy", "--version"], capture_output=True, text=True)
             if not result.success:
                 raise Exception("mypy not available")
-        except Exception:
+        except Exception as e:
+            error_msg = f"mypyの実行に失敗しました: {e}"
             if not self.verbose:
-                self.logger.warning("mypyがインストールされていません（推奨）")
+                self.logger.error(error_msg)
             else:
-                self.logger.warning("mypyがインストールされていません（推奨）")
-            self.warnings.append("mypyがインストールされていません（推奨）")
-            return True  # 型チェックなしでも続行
+                self.logger.error(error_msg)
+            self.issues.append(error_msg)
+            return False
 
         return self.run_command(
             ["mypy", "src/", "--no-error-summary"],

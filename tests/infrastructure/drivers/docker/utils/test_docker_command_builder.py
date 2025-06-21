@@ -64,7 +64,7 @@ class TestDockerCommandBuilder:
         mock_config.resolve_config.side_effect = KeyError("Not found")
         set_config_manager(mock_config)
 
-        with pytest.raises(KeyError, match="Docker option 'interactive' not found"):
+        with pytest.raises(KeyError, match="Not found"):
             _get_docker_option("interactive", None)
 
     def test_get_docker_option_unknown_option(self):
@@ -74,7 +74,7 @@ class TestDockerCommandBuilder:
         mock_config.resolve_config.side_effect = KeyError("Not found")
         set_config_manager(mock_config)
 
-        with pytest.raises(KeyError, match="Docker option 'unknown' not found"):
+        with pytest.raises(KeyError, match="Not found"):
             _get_docker_option("unknown", None)
 
     def test_validate_docker_image_name_valid(self):

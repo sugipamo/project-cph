@@ -92,12 +92,13 @@ class PythonUtils:
         except KeyError as e:
             raise PythonConfigError("No default Python interpreter configured") from e
 
+        # フォールバック処理は禁止、必要なエラーを見逃すことになる
         try:
             alternatives = self.config_manager.resolve_config(
                 ['python_config', 'interpreters', 'alternatives'], list
             )
-        except KeyError:
-            alternatives = [default_interpreter]
+        except KeyError as e:
+            raise RuntimeError("Python interpreters alternatives configuration is required") from e
 
         # Try to find a working interpreter
         for interpreter in [default_interpreter, *alternatives]:

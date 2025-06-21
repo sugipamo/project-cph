@@ -53,8 +53,9 @@ def is_potential_script_path(code_or_file: list[str], script_extensions: Optiona
     Returns:
         Boolean indicating if it looks like a script file path
     """
+    # フォールバック処理は禁止、必要なエラーを見逃すことになる
     if script_extensions is None:
-        script_extensions = ['.py', '.js', '.sh', '.rb', '.go']
+        raise ValueError("script_extensions parameter is required")
 
     return (len(code_or_file) == 1 and
             any(code_or_file[0].endswith(ext) for ext in script_extensions))

@@ -29,15 +29,14 @@ class RetryConfig:
         self.base_delay = base_delay
         self.max_delay = max_delay
         self.backoff_factor = backoff_factor
-        self.retryable_errors = retryable_errors or (
-            ConnectionError, TimeoutError, OSError
-        )
-        self.retryable_error_codes = retryable_error_codes or (
-            ErrorCode.NETWORK_TIMEOUT,
-            ErrorCode.NETWORK_CONNECTION_FAILED,
-            ErrorCode.COMMAND_TIMEOUT,
-            ErrorCode.DOCKER_NOT_AVAILABLE,
-        )
+        # フォールバック処理は禁止、必要なエラーを見逃すことになる
+        if retryable_errors is None:
+            raise ValueError("retryable_errors parameter is required")
+        self.retryable_errors = retryable_errors
+
+        if retryable_error_codes is None:
+            raise ValueError("retryable_error_codes parameter is required")
+        self.retryable_error_codes = retryable_error_codes
         self.logger = logger
 
 
@@ -155,6 +154,7 @@ class RetryableOperation:
 NETWORK_RETRY_CONFIG = RetryConfig(
     max_attempts=3,
     base_delay=2.0,
+    retryable_errors=(ConnectionError, TimeoutError, OSError),
     retryable_error_codes=(
         ErrorCode.NETWORK_TIMEOUT,
         ErrorCode.NETWORK_CONNECTION_FAILED,
@@ -164,6 +164,7 @@ NETWORK_RETRY_CONFIG = RetryConfig(
 DOCKER_RETRY_CONFIG = RetryConfig(
     max_attempts=2,
     base_delay=5.0,
+    retryable_errors=(ConnectionError, OSError, RuntimeError),
     retryable_error_codes=(
         ErrorCode.DOCKER_NOT_AVAILABLE,
         ErrorCode.CONTAINER_START_FAILED,
@@ -173,6 +174,7 @@ DOCKER_RETRY_CONFIG = RetryConfig(
 COMMAND_RETRY_CONFIG = RetryConfig(
     max_attempts=2,
     base_delay=1.0,
+    retryable_errors=(TimeoutError, OSError),
     retryable_error_codes=(
         ErrorCode.COMMAND_TIMEOUT,
     )

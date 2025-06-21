@@ -348,7 +348,8 @@ def evaluate_test_condition(test_command: str, os_provider=None) -> Tuple[bool, 
             final_result = not result if negate else result
             return final_result, None
         except Exception as e:
-            return False, f"Error evaluating string condition: {e}"
+            # フォールバック処理は禁止、必要なエラーを見逃すことになる
+            raise ValueError(f"Error evaluating string condition: {e}") from e
 
     if len(args) < 2:
         return False, "Missing test arguments"
@@ -376,7 +377,8 @@ def evaluate_test_condition(test_command: str, os_provider=None) -> Tuple[bool, 
         return final_result, None
 
     except Exception as e:
-        return False, f"Error evaluating condition: {e}"
+        # フォールバック処理は禁止、必要なエラーを見逃すことになる
+        raise ValueError(f"Error evaluating condition: {e}") from e
 
 
 def execute_step_mock(step: Step) -> Tuple[bool, str]:
