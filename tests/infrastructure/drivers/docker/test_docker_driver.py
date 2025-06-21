@@ -79,9 +79,9 @@ class TestLocalDockerDriver:
         mock_shell_request.return_value = mock_request
 
         driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
-        result = driver.run_container("ubuntu", name=None, options={}, show_output=True)
+        result = driver.run_container("ubuntu", name="test", options={}, show_output=True)
 
-        mock_build_command.assert_called_once_with("ubuntu", None, {})
+        mock_build_command.assert_called_once_with("ubuntu", "test", {})
         mock_shell_request.assert_called_once_with(["docker", "run", "ubuntu"], cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=True, allow_failure=False)
         assert result == mock_result
 
@@ -142,10 +142,10 @@ class TestLocalDockerDriver:
         mock_shell_request.return_value = mock_request
 
         driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
-        result = driver.remove_container("test-container")
+        result = driver.remove_container("test-container", force=False, show_output=True)
 
         mock_build_command.assert_called_once_with("test-container", force=False)
-        mock_shell_request.assert_called_once_with(["docker", "rm", "test-container"], show_output=True)
+        mock_shell_request.assert_called_once_with(["docker", "rm", "test-container"], cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=True, allow_failure=False)
         assert result == mock_result
 
     @patch('src.infrastructure.drivers.docker.docker_driver.build_docker_remove_command')
@@ -165,7 +165,7 @@ class TestLocalDockerDriver:
         driver.remove_container("test-container", force=True, show_output=False)
 
         mock_build_command.assert_called_once_with("test-container", force=True)
-        mock_shell_request.assert_called_once_with(["docker", "rm", "-f", "test-container"], show_output=False)
+        mock_shell_request.assert_called_once_with(["docker", "rm", "-f", "test-container"], cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=False, allow_failure=False)
 
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
     def test_exec_in_container_list_command(self, mock_shell_request):
@@ -179,10 +179,10 @@ class TestLocalDockerDriver:
         mock_shell_request.return_value = mock_request
 
         driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
-        result = driver.exec_in_container("test-container", ["bash", "-c", "echo hello"])
+        result = driver.exec_in_container("test-container", ["bash", "-c", "echo hello"], show_output=True)
 
         expected_cmd = ["docker", "exec", "test-container", "bash", "-c", "echo hello"]
-        mock_shell_request.assert_called_once_with(expected_cmd, show_output=True)
+        mock_shell_request.assert_called_once_with(expected_cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=True, allow_failure=False)
         assert result == mock_result
 
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
@@ -199,10 +199,10 @@ class TestLocalDockerDriver:
         mock_shell_request.return_value = mock_request
 
         driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
-        driver.exec_in_container("test-container", 'bash -c "echo hello"')
+        driver.exec_in_container("test-container", 'bash -c "echo hello"', show_output=True)
 
         expected_cmd = ["docker", "exec", "test-container", "bash", "-c", "echo hello"]
-        mock_shell_request.assert_called_once_with(expected_cmd, show_output=True)
+        mock_shell_request.assert_called_once_with(expected_cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=True, allow_failure=False)
         mock_shlex.split.assert_called_once_with('bash -c "echo hello"')
 
 
@@ -221,7 +221,7 @@ class TestLocalDockerDriver:
         result = driver.get_logs("test-container", show_output=False)
 
         expected_cmd = ["docker", "logs", "test-container"]
-        mock_shell_request.assert_called_once_with(expected_cmd, show_output=False)
+        mock_shell_request.assert_called_once_with(expected_cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=False, allow_failure=False)
         assert result == mock_result
 
     @patch('src.infrastructure.drivers.docker.docker_driver.build_docker_build_command')
@@ -239,13 +239,14 @@ class TestLocalDockerDriver:
         mock_shell_request.return_value = mock_request
 
         driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
-        result = driver.build_docker_image(dockerfile_content, tag="test:latest", options={}, show_output=True)
+        result = driver.build_docker_image(dockerfile_content, tag="test:latest", options={}, context_path=".", show_output=True)
 
-        mock_build_command.assert_called_once_with("test:latest", dockerfile_content, {})
+        mock_build_command.assert_called_once_with("test:latest", dockerfile_content, ".", {})
         mock_shell_request.assert_called_once_with(
             ["docker", "build", "-t", "test:latest", "-f", "-", "."],
-            show_output=True,
-            inputdata=dockerfile_content
+            cwd=".", env={}, inputdata=dockerfile_content, timeout=600,
+            debug_tag="docker_build", name="docker_build_request",
+            show_output=True, allow_failure=False
         )
         assert result == mock_result
 
@@ -262,10 +263,10 @@ class TestLocalDockerDriver:
         mock_shell_request.return_value = mock_request
 
         driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
-        result = driver.image_ls()
+        result = driver.image_ls(show_output=True)
 
         expected_cmd = ["docker", "image", "ls"]
-        mock_shell_request.assert_called_once_with(expected_cmd, show_output=True)
+        mock_shell_request.assert_called_once_with(expected_cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=True, allow_failure=False)
         assert result == mock_result
 
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
@@ -283,7 +284,7 @@ class TestLocalDockerDriver:
         result = driver.image_rm("test:latest", show_output=False)
 
         expected_cmd = ["docker", "image", "rm", "test:latest"]
-        mock_shell_request.assert_called_once_with(expected_cmd, show_output=False)
+        mock_shell_request.assert_called_once_with(expected_cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=False, allow_failure=False)
         assert result == mock_result
 
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
@@ -298,10 +299,10 @@ class TestLocalDockerDriver:
         mock_shell_request.return_value = mock_request
 
         driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
-        result = driver.ps()
+        result = driver.ps(all=False, show_output=True, names_only=False)
 
         expected_cmd = ["docker", "ps"]
-        mock_shell_request.assert_called_once_with(expected_cmd, show_output=True)
+        mock_shell_request.assert_called_once_with(expected_cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=True, allow_failure=False)
         assert result == mock_result
 
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
@@ -316,10 +317,10 @@ class TestLocalDockerDriver:
         mock_shell_request.return_value = mock_request
 
         driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
-        result = driver.ps(names_only=True, show_output=False)
+        result = driver.ps(all=False, names_only=True, show_output=False)
 
         expected_cmd = ["docker", "ps", "-a", "--format", "{{.Names}}"]
-        mock_shell_request.assert_called_once_with(expected_cmd, show_output=False)
+        mock_shell_request.assert_called_once_with(expected_cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=False, allow_failure=False)
         # When names_only=True, it returns parsed container names
         assert result == ["container1", "container2"]
 
@@ -337,7 +338,7 @@ class TestLocalDockerDriver:
         mock_parse.return_value = ["container1", "container2"]
 
         driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
-        driver.ps(names_only=True)
+        driver.ps(all=False, names_only=True, show_output=True)
 
         # Verify the parsing function would be called on the output
         mock_parse.assert_called_once_with("container1\\ncontainer2")

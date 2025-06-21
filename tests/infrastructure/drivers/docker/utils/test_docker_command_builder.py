@@ -96,9 +96,9 @@ class TestDockerCommandBuilder:
         }.get(tuple(path), False)
         set_config_manager(mock_config)
 
-        cmd = build_docker_run_command("ubuntu:latest")
+        cmd = build_docker_run_command("ubuntu:latest", "test-container", {})
 
-        expected = ["docker", "run", "-i", "-t", "--rm", "ubuntu:latest"]
+        expected = ["docker", "run", "--name", "test-container", "-i", "-t", "--rm", "ubuntu:latest"]
         assert cmd == expected
 
     def test_build_docker_run_command_with_name(self):
@@ -114,7 +114,7 @@ class TestDockerCommandBuilder:
         }.get(tuple(path), False)
         set_config_manager(mock_config)
 
-        cmd = build_docker_run_command("ubuntu:latest", name="my-container")
+        cmd = build_docker_run_command("ubuntu:latest", "my-container", {})
 
         expected = ["docker", "run", "--name", "my-container", "-i", "-t", "--rm", "ubuntu:latest"]
         assert cmd == expected
@@ -141,10 +141,10 @@ class TestDockerCommandBuilder:
             "command": ["bash", "-c", "echo hello"]
         }
 
-        cmd = build_docker_run_command("ubuntu:latest", options=options)
+        cmd = build_docker_run_command("ubuntu:latest", "test-container", options)
 
         expected = [
-            "docker", "run", "-d",
+            "docker", "run", "--name", "test-container", "-d",
             "-p", "8080:80", "-p", "3000:3000",
             "-v", "/host:/container",
             "-e", "ENV_VAR=value",
@@ -171,25 +171,25 @@ class TestDockerCommandBuilder:
         set_config_manager(mock_config)
 
         options = {"command": "bash"}
-        cmd = build_docker_run_command("ubuntu:latest", options=options)
+        cmd = build_docker_run_command("ubuntu:latest", "test-container", options)
 
         assert cmd[-1] == "bash"
 
     def test_build_docker_stop_command(self):
         """Test building docker stop command."""
-        cmd = build_docker_stop_command("my-container")
-        expected = ["docker", "stop", "my-container"]
+        cmd = build_docker_stop_command("my-container", 10)
+        expected = ["docker", "stop", "-t", "10", "my-container"]
         assert cmd == expected
 
     def test_build_docker_stop_command_with_timeout(self):
         """Test building docker stop command with timeout."""
-        cmd = build_docker_stop_command("my-container", timeout=30)
+        cmd = build_docker_stop_command("my-container", 30)
         expected = ["docker", "stop", "-t", "30", "my-container"]
         assert cmd == expected
 
     def test_build_docker_remove_command(self):
         """Test building docker remove command."""
-        cmd = build_docker_remove_command("my-container")
+        cmd = build_docker_remove_command("my-container", force=False, volumes=False)
         expected = ["docker", "rm", "my-container"]
         assert cmd == expected
 
@@ -201,20 +201,35 @@ class TestDockerCommandBuilder:
 
     def test_build_docker_build_command_basic(self):
         """Test building basic docker build command."""
-        cmd = build_docker_build_command()
-        expected = ["docker", "build", "."]
+        mock_config = Mock()
+        mock_config.root_node = Mock()
+        mock_config.resolve_config.side_effect = KeyError("Not found")
+        set_config_manager(mock_config)
+
+        cmd = build_docker_build_command("latest", "FROM ubuntu", ".", {})
+        expected = ["docker", "build", "-t", "latest", "-f", "-", "."]
         assert cmd == expected
 
     def test_build_docker_build_command_with_tag(self):
         """Test building docker build command with tag."""
-        cmd = build_docker_build_command(tag="my-image:latest")
-        expected = ["docker", "build", "-t", "my-image:latest", "."]
+        mock_config = Mock()
+        mock_config.root_node = Mock()
+        mock_config.resolve_config.side_effect = KeyError("Not found")
+        set_config_manager(mock_config)
+
+        cmd = build_docker_build_command("my-image:latest", "FROM ubuntu", ".", {})
+        expected = ["docker", "build", "-t", "my-image:latest", "-f", "-", "."]
         assert cmd == expected
 
     def test_build_docker_build_command_with_dockerfile_text(self):
         """Test building docker build command with dockerfile text."""
-        cmd = build_docker_build_command(dockerfile_text="FROM ubuntu")
-        expected = ["docker", "build", "-f", "-", "."]
+        mock_config = Mock()
+        mock_config.root_node = Mock()
+        mock_config.resolve_config.side_effect = KeyError("Not found")
+        set_config_manager(mock_config)
+
+        cmd = build_docker_build_command("latest", "FROM ubuntu", ".", {})
+        expected = ["docker", "build", "-t", "latest", "-f", "-", "."]
         assert cmd == expected
 
     def test_build_docker_build_command_with_options(self):
@@ -226,21 +241,23 @@ class TestDockerCommandBuilder:
             "quiet": True
         }
 
-        cmd = build_docker_build_command(context_path="/app", options=options)
+        cmd = build_docker_build_command("test:latest", "FROM ubuntu", "/app", options)
 
         expected = [
             "docker", "build",
+            "-t", "test:latest",
             "--build-arg", "ARG1=value1",
             "--build-arg", "ARG2=value2",
             "--no-cache", "--pull", "-q",
+            "-f", "-",
             "/app"
         ]
         assert cmd == expected
 
     def test_build_docker_ps_command_basic(self):
         """Test building basic docker ps command."""
-        cmd = build_docker_ps_command()
-        expected = ["docker", "ps"]
+        cmd = build_docker_ps_command(all=False, filter_params=[], format_string="table")
+        expected = ["docker", "ps", "--format", "table"]
         assert cmd == expected
 
     def test_build_docker_ps_command_with_options(self):
@@ -261,8 +278,8 @@ class TestDockerCommandBuilder:
 
     def test_build_docker_inspect_command_basic(self):
         """Test building basic docker inspect command."""
-        cmd = build_docker_inspect_command("my-container")
-        expected = ["docker", "inspect", "my-container"]
+        cmd = build_docker_inspect_command("my-container", "container", "json")
+        expected = ["docker", "inspect", "--type", "container", "--format", "json", "my-container"]
         assert cmd == expected
 
     def test_build_docker_inspect_command_with_options(self):
@@ -295,8 +312,8 @@ class TestDockerCommandBuilder:
 
     def test_build_docker_exec_command_basic(self):
         """Test building basic docker exec command."""
-        cmd = build_docker_exec_command("my-container", "bash")
-        expected = ["docker", "exec", "my-container", "bash"]
+        cmd = build_docker_exec_command("my-container", "bash", interactive=False, tty=False, user="root", workdir="/")
+        expected = ["docker", "exec", "-u", "root", "-w", "/", "my-container", "bash"]
         assert cmd == expected
 
     def test_build_docker_exec_command_with_options(self):
@@ -319,8 +336,8 @@ class TestDockerCommandBuilder:
 
     def test_build_docker_logs_command_basic(self):
         """Test building basic docker logs command."""
-        cmd = build_docker_logs_command("my-container")
-        expected = ["docker", "logs", "my-container"]
+        cmd = build_docker_logs_command("my-container", follow=False, tail=50, since="1970-01-01")
+        expected = ["docker", "logs", "--tail", "50", "--since", "1970-01-01", "my-container"]
         assert cmd == expected
 
     def test_build_docker_logs_command_with_options(self):

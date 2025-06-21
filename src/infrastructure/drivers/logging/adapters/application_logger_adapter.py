@@ -37,7 +37,8 @@ class ApplicationLoggerAdapter(LoggerInterface):
         self.output_manager.add(
             formatted_message,
             LogLevel.DEBUG,
-            formatinfo=FormatInfo(color="gray")
+            formatinfo=FormatInfo(color="gray"),
+            realtime=False
         )
 
     def info(self, message: str, *args: Any, **kwargs: Any) -> None:
@@ -46,7 +47,8 @@ class ApplicationLoggerAdapter(LoggerInterface):
         self.output_manager.add(
             formatted_message,
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="cyan")
+            formatinfo=FormatInfo(color="cyan"),
+            realtime=False
         )
 
     def warning(self, message: str, *args: Any, **kwargs: Any) -> None:
@@ -55,7 +57,8 @@ class ApplicationLoggerAdapter(LoggerInterface):
         self.output_manager.add(
             formatted_message,
             LogLevel.WARNING,
-            formatinfo=FormatInfo(color="yellow", bold=True)
+            formatinfo=FormatInfo(color="yellow", bold=True),
+            realtime=False
         )
 
     def error(self, message: str, *args: Any, **kwargs: Any) -> None:
@@ -64,7 +67,8 @@ class ApplicationLoggerAdapter(LoggerInterface):
         self.output_manager.add(
             formatted_message,
             LogLevel.ERROR,
-            formatinfo=FormatInfo(color="red", bold=True)
+            formatinfo=FormatInfo(color="red", bold=True),
+            realtime=False
         )
 
     def critical(self, message: str, *args: Any, **kwargs: Any) -> None:
@@ -73,7 +77,8 @@ class ApplicationLoggerAdapter(LoggerInterface):
         self.output_manager.add(
             formatted_message,
             LogLevel.CRITICAL,
-            formatinfo=FormatInfo(color="red", bold=True)
+            formatinfo=FormatInfo(color="red", bold=True),
+            realtime=False
         )
 
     def log_error_with_correlation(self, error_id: str, error_code: str,
@@ -90,7 +95,8 @@ class ApplicationLoggerAdapter(LoggerInterface):
         self.output_manager.add(
             formatted_message,
             LogLevel.ERROR,
-            formatinfo=FormatInfo(color="red", bold=True)
+            formatinfo=FormatInfo(color="red", bold=True),
+            realtime=False
         )
 
     def log_operation_start(self, operation_id: str, operation_type: str,
@@ -103,7 +109,8 @@ class ApplicationLoggerAdapter(LoggerInterface):
         self.output_manager.add(
             message,
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="blue")
+            formatinfo=FormatInfo(color="blue"),
+            realtime=False
         )
 
     def log_operation_end(self, operation_id: str, operation_type: str,
@@ -140,7 +147,8 @@ class ApplicationLoggerAdapter(LoggerInterface):
         self.output_manager.add(
             message,
             level,
-            formatinfo=FormatInfo(color=color, bold=bool(not success))
+            formatinfo=FormatInfo(color=color, bold=bool(not success)),
+            realtime=False
         )
 
     def _format_message(self, message: str, args: tuple) -> str:

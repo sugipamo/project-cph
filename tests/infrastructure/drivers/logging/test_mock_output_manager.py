@@ -14,7 +14,7 @@ class TestMockOutputManager:
 
     def test_init_default(self):
         """Test MockOutputManager initialization with defaults."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.INFO)
 
         assert manager.name is None
         assert manager.level == LogLevel.INFO
@@ -39,7 +39,7 @@ class TestMockOutputManager:
         with patch('src.infrastructure.drivers.logging.mock_output_manager.DIContainer') as mock_container:
             mock_container.resolve.return_value = mock_config_manager
 
-            manager = MockOutputManager()
+            manager = MockOutputManager(name=None, level=LogLevel.INFO)
 
             assert manager._config_manager == mock_config_manager
 
@@ -48,15 +48,17 @@ class TestMockOutputManager:
         with patch('src.infrastructure.drivers.logging.mock_output_manager.DIContainer') as mock_container:
             mock_container.resolve.side_effect = Exception("Config not found")
 
-            manager = MockOutputManager()
+            manager = MockOutputManager(name=None, level=LogLevel.INFO)
+
+            # manager already initialized above
 
             assert manager._config_manager is None
 
     def test_add_simple_message(self):
         """Test adding simple string message."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.INFO)
 
-        manager.add("Test message", LogLevel.INFO)
+        manager.add("Test message", LogLevel.INFO, formatinfo=None, realtime=False)
 
         assert len(manager.entries) == 1
         assert manager.entries[0].content == "Test message"
@@ -64,10 +66,10 @@ class TestMockOutputManager:
 
     def test_add_with_format_info(self):
         """Test adding message with format info."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.INFO)
         format_info = FormatInfo(color="red")
 
-        manager.add("Test message", LogLevel.ERROR, formatinfo=format_info)
+        manager.add("Test message", LogLevel.ERROR, formatinfo=format_info, realtime=False)
 
         assert len(manager.entries) == 1
         assert manager.entries[0].content == "Test message"
@@ -76,12 +78,12 @@ class TestMockOutputManager:
 
     def test_add_realtime_string_message(self):
         """Test adding string message with realtime flag."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.INFO)
         mock_config_manager = Mock()
         mock_config_manager.resolve_config.return_value = "default_text"
         manager._config_manager = mock_config_manager
 
-        manager.add("Test message", LogLevel.INFO, realtime=True)
+        manager.add("Test message", LogLevel.INFO, formatinfo=None, realtime=True)
 
         assert len(manager.entries) == 1
         assert len(manager.captured_outputs) == 1
@@ -89,13 +91,13 @@ class TestMockOutputManager:
 
     def test_add_realtime_output_manager_message(self):
         """Test adding OutputManager message with realtime flag."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.INFO)
 
         # Mock another OutputManager that implements OutputManagerInterface
         mock_output_manager = Mock(spec=OutputManagerInterface)
         mock_output_manager.output.return_value = "nested output"
 
-        manager.add(mock_output_manager, LogLevel.INFO, realtime=True)
+        manager.add(mock_output_manager, LogLevel.INFO, formatinfo=None, realtime=True)
 
         assert len(manager.entries) == 1
         assert len(manager.captured_outputs) == 1
@@ -106,7 +108,7 @@ class TestMockOutputManager:
 
     def test_should_log(self):
         """Test _should_log method."""
-        manager = MockOutputManager(level=LogLevel.INFO)
+        manager = MockOutputManager(name=None, level=LogLevel.INFO)
 
         assert manager._should_log(LogLevel.DEBUG) is False
         assert manager._should_log(LogLevel.INFO) is True
@@ -161,7 +163,7 @@ class TestMockOutputManager:
         """Test output method with manager name."""
         manager = MockOutputManager(name="test-manager")
 
-        manager.add("Test message", LogLevel.INFO)
+        manager.add("Test message", LogLevel.INFO, formatinfo=None, realtime=False)
 
         output = manager.output()
 
@@ -194,7 +196,7 @@ class TestMockOutputManager:
         """Test flush method."""
         manager = MockOutputManager()
 
-        manager.add("Test message", LogLevel.INFO)
+        manager.add("Test message", LogLevel.INFO, formatinfo=None, realtime=False)
 
         initial_flush_calls = manager.flush_calls
         initial_outputs = len(manager.captured_outputs)

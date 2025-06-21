@@ -50,7 +50,8 @@ class TestApplicationLoggerAdapter:
         self.output_manager.add.assert_called_once_with(
             "Test debug message",
             LogLevel.DEBUG,
-            formatinfo=FormatInfo(color="gray")
+            formatinfo=FormatInfo(color="gray"),
+            realtime=False
         )
 
     def test_debug_with_args(self):
@@ -60,7 +61,8 @@ class TestApplicationLoggerAdapter:
         self.output_manager.add.assert_called_once_with(
             "Test formatted message",
             LogLevel.DEBUG,
-            formatinfo=FormatInfo(color="gray")
+            formatinfo=FormatInfo(color="gray"),
+            realtime=False
         )
 
     def test_info(self):
@@ -70,7 +72,8 @@ class TestApplicationLoggerAdapter:
         self.output_manager.add.assert_called_once_with(
             "Test info message",
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="cyan")
+            formatinfo=FormatInfo(color="cyan"),
+            realtime=False
         )
 
     def test_info_with_args(self):
@@ -80,7 +83,8 @@ class TestApplicationLoggerAdapter:
         self.output_manager.add.assert_called_once_with(
             "Count: 42",
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="cyan")
+            formatinfo=FormatInfo(color="cyan"),
+            realtime=False
         )
 
     def test_warning(self):
@@ -90,7 +94,8 @@ class TestApplicationLoggerAdapter:
         self.output_manager.add.assert_called_once_with(
             "Test warning message",
             LogLevel.WARNING,
-            formatinfo=FormatInfo(color="yellow", bold=True)
+            formatinfo=FormatInfo(color="yellow", bold=True),
+            realtime=False
         )
 
     def test_error(self):
@@ -115,7 +120,7 @@ class TestApplicationLoggerAdapter:
 
     def test_log_error_with_correlation(self):
         """Test log_error_with_correlation method"""
-        self.adapter.log_error_with_correlation("ERR001", "AUTH_FAILED", "Authentication failed")
+        self.adapter.log_error_with_correlation("ERR001", "AUTH_FAILED", "Authentication failed", context=None)
 
         expected_message = f"[ERROR#ERR001] [AUTH_FAILED] Authentication failed (session: {self.adapter.session_id})"
         self.output_manager.add.assert_called_once_with(
@@ -127,7 +132,7 @@ class TestApplicationLoggerAdapter:
     def test_log_error_with_correlation_and_context(self):
         """Test log_error_with_correlation method with context"""
         context = {"user": "test_user", "ip": "127.0.0.1"}
-        self.adapter.log_error_with_correlation("ERR002", "LOGIN_FAILED", "Login failed", context)
+        self.adapter.log_error_with_correlation("ERR002", "LOGIN_FAILED", "Login failed", context=context)
 
         expected_message = (f"[ERROR#ERR002] [LOGIN_FAILED] Login failed (session: {self.adapter.session_id}) "
                           f"Context: {context}")
