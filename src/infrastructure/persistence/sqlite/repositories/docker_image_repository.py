@@ -54,8 +54,10 @@ class DockerImageRepository(DatabaseRepositoryFoundation):
             self.update_image_build_result(
                 name=name,
                 tag=tag,
+                image_id=updates.get('image_id'),
                 build_status=updates['build_status'],
-                **{k: v for k, v in updates.items() if k != 'build_status'}
+                build_time_ms=updates.get('build_time_ms'),
+                size_bytes=updates.get('size_bytes')
             )
         return True
 

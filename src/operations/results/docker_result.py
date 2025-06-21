@@ -20,11 +20,30 @@ class DockerResult(OperationResult):
             image: Docker image name
             **kwargs: Additional arguments passed to parent
         """
+        # Provide defaults for required parent arguments
+        defaults = {
+            'success': None,
+            'content': None,
+            'exists': None,
+            'path': None,
+            'op': None,
+            'cmd': None,
+            'request': None,
+            'start_time': None,
+            'end_time': None,
+            'error_message': None,
+            'exception': None,
+            'metadata': None,
+            'skipped': False
+        }
+        # Update defaults with any provided kwargs
+        defaults.update(kwargs)
+        
         super().__init__(
             stdout=stdout,
             stderr=stderr,
             returncode=returncode,
-            **kwargs
+            **defaults
         )
         self.container_id = container_id
         self.image = image

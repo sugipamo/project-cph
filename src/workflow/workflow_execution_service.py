@@ -262,7 +262,7 @@ class WorkflowExecutionService:
         # Get logger and config manager from infrastructure
         from src.infrastructure.di_container import DIKey
         logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
-        config_manager = self.infrastructure.resolve(DIKey.CONFIG_MANAGER)
+        config_manager = self.infrastructure.resolve("config_manager")
 
         unified_driver = UnifiedDriver(self.infrastructure, logger, config_manager)
 

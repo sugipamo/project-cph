@@ -17,7 +17,9 @@ class MockDockerDriver(DockerDriver):
         self._default_result = DockerResult(
             stdout="mock docker output",
             stderr="",
-            returncode=0
+            returncode=0,
+            container_id="mock_container_id",
+            image="mock_image:latest"
         )
 
     def _get_exit_code_for_state(self, state: str) -> int:
@@ -56,7 +58,9 @@ class MockDockerDriver(DockerDriver):
         return DockerResult(
             stdout=f"Mock: Started container {name} from {image}",
             stderr="",
-            returncode=0
+            returncode=0,
+            container_id=name,
+            image=image
         )
 
     def stop_container(self, container_name: str, show_output: bool) -> DockerResult:
@@ -80,7 +84,9 @@ class MockDockerDriver(DockerDriver):
         return DockerResult(
             stdout=f"Mock: Stopped container {container_name}",
             stderr="",
-            returncode=0
+            returncode=0,
+            container_id=container_name,
+            image="mock_image:latest"
         )
 
     def remove_container(self, container_name: str, force: bool, show_output: bool) -> DockerResult:
@@ -107,7 +113,9 @@ class MockDockerDriver(DockerDriver):
         return DockerResult(
             stdout=f"Mock: Removed container {container_name}",
             stderr="",
-            returncode=0
+            returncode=0,
+            container_id=container_name,
+            image="mock_image:latest"
         )
 
     def exec_in_container(self, container_name: str, command: str, show_output: bool) -> DockerResult:
@@ -131,7 +139,9 @@ class MockDockerDriver(DockerDriver):
         return DockerResult(
             stdout=f"Mock: Executed '{command}' in {container_name}",
             stderr="",
-            returncode=0
+            returncode=0,
+            container_id=container_name,
+            image="mock_image:latest"
         )
 
     def inspect(self, container_name: str, type_: Optional[str], show_output: bool) -> DockerResult:
@@ -170,7 +180,9 @@ class MockDockerDriver(DockerDriver):
         return DockerResult(
             stdout=json_output,
             stderr="",
-            returncode=0
+            returncode=0,
+            container_id=container_name,
+            image="mock_image:latest"
         )
 
     def ps(self, all: bool, show_output: bool, names_only: bool) -> DockerResult:
@@ -206,7 +218,9 @@ class MockDockerDriver(DockerDriver):
             stdout="CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    NAMES\n" +
                    "mock_id        mock      mock      mock      mock      mock_container",
             stderr="",
-            returncode=0
+            returncode=0,
+            container_id="mock_container",
+            image="mock_image:latest"
         )
 
     def get_executed_operations(self) -> list[dict]:
@@ -278,7 +292,9 @@ class MockDockerDriver(DockerDriver):
         return DockerResult(
             stdout=f"Mock logs for {name}",
             stderr="",
-            returncode=0
+            returncode=0,
+            container_id=name,
+            image="mock_image:latest"
         )
 
     def execute_command(self, request: Any) -> Any:

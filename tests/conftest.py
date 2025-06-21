@@ -139,10 +139,12 @@ def clean_mock_state(mock_drivers):
 def fast_sqlite_manager():
     """Shared FastSQLiteManager for persistence tests with in-memory database."""
     from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
+    from src.infrastructure.providers.sqlite_provider import SystemSQLiteProvider
 
     # Force reset before creating new manager
     FastSQLiteManager.reset_shared_connection()
-    manager = FastSQLiteManager(db_path=":memory:", skip_migrations=False)
+    sqlite_provider = SystemSQLiteProvider()
+    manager = FastSQLiteManager(db_path=":memory:", skip_migrations=False, sqlite_provider=sqlite_provider)
     yield manager
     # Cleanup after module
     FastSQLiteManager.reset_shared_connection()

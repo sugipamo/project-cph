@@ -42,7 +42,13 @@ class TestDockerContainerRepository:
             container_name="test_container",
             image_name="python",
             image_tag="3.9",
-            language="python"
+            language="python",
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
         )
 
         assert container_id is not None
@@ -97,7 +103,18 @@ class TestDockerContainerRepository:
         """Test updating container Docker ID."""
         # Create image and container
         image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
-        container_repo.create_container("test_container", "python", "3.9")
+        container_repo.create_container(
+            container_name="test_container",
+            image_name="python",
+            image_tag="3.9",
+            language=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )
 
         # Update container ID
         container_repo.update_container_id("test_container", "docker_id_123")
@@ -110,7 +127,18 @@ class TestDockerContainerRepository:
         """Test updating container status."""
         # Create image and container
         image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
-        container_repo.create_container("test_container", "python", "3.9")
+        container_repo.create_container(
+            container_name="test_container",
+            image_name="python",
+            image_tag="3.9",
+            language=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )
 
         # Update status to running
         container_repo.update_container_status("test_container", "running", "started_at")
@@ -123,7 +151,18 @@ class TestDockerContainerRepository:
     def test_find_container_by_name_existing(self, container_repo, image_repo):
         """Test finding existing container by name."""
         image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
-        container_repo.create_container("test_container", "python", "3.9", language="python")
+        container_repo.create_container(
+            container_name="test_container",
+            image_name="python",
+            image_tag="3.9",
+            language="python",
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )
 
         container = container_repo.find_container_by_name("test_container")
         assert container is not None
@@ -140,9 +179,42 @@ class TestDockerContainerRepository:
         # Create image and containers with different statuses
         image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
 
-        container_repo.create_container("container1", "python", "3.9")
-        container_repo.create_container("container2", "python", "3.9")
-        container_repo.create_container("container3", "python", "3.9")
+        container_repo.create_container(
+            container_name="container1",
+            image_name="python",
+            image_tag="3.9",
+            language=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )
+        container_repo.create_container(
+            container_name="container2",
+            image_name="python",
+            image_tag="3.9",
+            language=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )
+        container_repo.create_container(
+            container_name="container3",
+            image_name="python",
+            image_tag="3.9",
+            language=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )
 
         # Update statuses
         container_repo.update_container_status("container1", "running", None)
@@ -165,9 +237,42 @@ class TestDockerContainerRepository:
         image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
         image_repo.create_or_update_image("cpp", "latest", "def456", None, "success")
 
-        container_repo.create_container("py_container1", "python", "3.9", language="python")
-        container_repo.create_container("py_container2", "python", "3.9", language="python")
-        container_repo.create_container("cpp_container1", "cpp", "latest", language="cpp")
+        container_repo.create_container(
+            container_name="py_container1",
+            image_name="python",
+            image_tag="3.9",
+            language="python",
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )
+        container_repo.create_container(
+            container_name="py_container2",
+            image_name="python",
+            image_tag="3.9",
+            language="python",
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )
+        container_repo.create_container(
+            container_name="cpp_container1",
+            image_name="cpp",
+            image_tag="latest",
+            language="cpp",
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )
 
         # Find Python containers
         python_containers = container_repo.find_containers_by_language("python")
@@ -184,9 +289,42 @@ class TestDockerContainerRepository:
         # Create image and containers with different statuses
         image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
 
-        container_repo.create_container("container1", "python", "3.9")  # created
-        container_repo.create_container("container2", "python", "3.9")
-        container_repo.create_container("container3", "python", "3.9")
+        container_repo.create_container(
+            container_name="container1",
+            image_name="python",
+            image_tag="3.9",
+            language=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )  # created
+        container_repo.create_container(
+            container_name="container2",
+            image_name="python",
+            image_tag="3.9",
+            language=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )
+        container_repo.create_container(
+            container_name="container3",
+            image_name="python",
+            image_tag="3.9",
+            language=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )
 
         # Update statuses
         container_repo.update_container_status("container2", "running", None)
@@ -203,7 +341,18 @@ class TestDockerContainerRepository:
     def test_mark_container_removed(self, container_repo, image_repo):
         """Test marking container as removed."""
         image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
-        container_repo.create_container("test_container", "python", "3.9")
+        container_repo.create_container(
+            container_name="test_container",
+            image_name="python",
+            image_tag="3.9",
+            language=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )
 
         # Mark as removed
         container_repo.mark_container_removed("test_container")
@@ -217,8 +366,30 @@ class TestDockerContainerRepository:
         """Test finding unused containers."""
         # Create image and containers
         image_repo.create_or_update_image("python", "3.9", "abc123", None, "success")
-        container_repo.create_container("recent_container", "python", "3.9")
-        container_repo.create_container("old_container", "python", "3.9")
+        container_repo.create_container(
+            container_name="recent_container",
+            image_name="python",
+            image_tag="3.9",
+            language=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )
+        container_repo.create_container(
+            container_name="old_container",
+            image_name="python",
+            image_tag="3.9",
+            language=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
+        )
 
         # Manually set last_used_at to simulate old container
         with sqlite_manager.get_connection() as conn:
@@ -243,7 +414,13 @@ class TestDockerContainerRepository:
             "container_name": "interface_test",
             "image_name": "python",
             "image_tag": "3.9",
-            "language": "python"
+            "language": "python",
+            "contest_name": None,
+            "problem_name": None,
+            "env_type": None,
+            "volumes": None,
+            "environment": None,
+            "ports": None
         }
         result = container_repo.create_entity_record(entity)
         assert result is not None
@@ -278,10 +455,16 @@ class TestDockerContainerRepository:
         environment = {"VAR1": "value1", "VAR2": "value2"}
 
         container_repo.create_container(
-            "json_test",
-            "python", "3.9",
+            container_name="json_test",
+            image_name="python",
+            image_tag="3.9",
+            language=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
             volumes=volumes,
-            environment=environment
+            environment=environment,
+            ports=None
         )
 
         container = container_repo.find_container_by_name("json_test")
@@ -312,7 +495,13 @@ class TestDockerContainerRepository:
             "container_name": "alias_test",
             "image_name": "python",
             "image_tag": "3.9",
-            "language": "python"
+            "language": "python",
+            "contest_name": None,
+            "problem_name": None,
+            "env_type": None,
+            "volumes": None,
+            "environment": None,
+            "ports": None
         }
         result = container_repo.create_container_record(entity)
         assert result is not None
@@ -329,7 +518,18 @@ class TestDockerContainerRepository:
 
         # Create multiple containers
         for i in range(5):
-            container_repo.create_container(f"container_{i}", "python", "3.9")
+            container_repo.create_container(
+                container_name=f"container_{i}",
+                image_name="python",
+                image_tag="3.9",
+                language=None,
+                contest_name=None,
+                problem_name=None,
+                env_type=None,
+                volumes=None,
+                environment=None,
+                ports=None
+            )
 
         # Test with limit
         limited = container_repo.find_all(3, None)
@@ -356,13 +556,20 @@ class TestDockerContainerRepository:
 
         result = container_repo.create_container(
             container_name="minimal_test",
-            image_name="python"
-            # Only required params, others should use defaults
+            image_name="python",
+            image_tag="latest",  # Must be explicitly specified
+            language=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            volumes=None,
+            environment=None,
+            ports=None
         )
 
         assert result is not None
         container = container_repo.find_container_by_name("minimal_test")
-        assert container["image_tag"] == "latest"  # Default value
+        assert container["image_tag"] == "latest"
         assert container["status"] == "created"  # Default status
 
     def test_create_container_with_all_params(self, container_repo, image_repo):

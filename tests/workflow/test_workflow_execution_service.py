@@ -232,12 +232,15 @@ class TestWorkflowExecutionService(unittest.TestCase):
             }
         }
 
-        mock_logger = Mock()
-        self.infrastructure.resolve.return_value = mock_logger
-
         self.service._log_environment_info()
 
-        mock_logger.log_environment_info.assert_called_once()
+        self.mock_logger.log_environment_info.assert_called_once_with(
+            language_name=self.context.language,
+            contest_name=self.context.contest_name,
+            problem_name=self.context.problem_name,
+            env_type=self.context.env_type,
+            env_logging_config={"enabled": True, "log_level": "INFO"}
+        )
 
 
     def test_log_environment_info_merged_config(self):
@@ -249,16 +252,21 @@ class TestWorkflowExecutionService(unittest.TestCase):
             }
         }
 
-        mock_logger = Mock()
-        self.infrastructure.resolve.return_value = mock_logger
-
         self.service._log_environment_info()
 
-        mock_logger.log_environment_info.assert_called_once()
+        self.mock_logger.log_environment_info.assert_called_once_with(
+            language_name=self.context.language,
+            contest_name=self.context.contest_name,
+            problem_name=self.context.problem_name,
+            env_type=self.context.env_type,
+            env_logging_config={"enabled": True, "log_level": "DEBUG"}
+        )
 
-    @patch('src.workflow.workflow_execution_service.run_steps')
-    @patch('src.workflow.workflow_execution_service.generate_workflow_from_json')
-    def test_prepare_workflow_steps_success(self, mock_generate, mock_run_steps):
+    @patch('src.workflow.step.step_runner.run_steps')
+    @patch('src.workflow.step.workflow.generate_workflow_from_json')
+    @patch('src.workflow.step.step_generation_service.execution_context_to_simple_context')
+    @patch('src.workflow.step.workflow.create_step_context_from_env_context')
+    def test_prepare_workflow_steps_success(self, mock_create_step_context, mock_execution_context, mock_generate, mock_run_steps):
         """Test successful workflow step preparation"""
         # Mock workflow steps
         json_steps = [{"type": "mkdir", "cmd": ["test"]}]
@@ -290,8 +298,9 @@ class TestWorkflowExecutionService(unittest.TestCase):
             self.assertEqual(result[0], None)
             self.assertIn("No workflow steps found", result[1][0])
 
-    @patch('src.workflow.workflow_execution_service.run_steps')
-    def test_prepare_workflow_steps_with_errors(self, mock_run_steps):
+    @patch('src.workflow.step.step_runner.run_steps')
+    @patch('src.workflow.step.step_generation_service.execution_context_to_simple_context')
+    def test_prepare_workflow_steps_with_errors(self, mock_execution_context, mock_run_steps):
         """Test workflow step preparation with step errors"""
         json_steps = [{"type": "invalid", "cmd": []}]
 
