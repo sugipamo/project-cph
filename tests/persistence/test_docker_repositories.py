@@ -141,9 +141,9 @@ class TestDockerContainerRepository:
         container_repo.create_container("container3", "python", "3.9")
 
         # Update statuses
-        container_repo.update_container_status("container1", "running")
-        container_repo.update_container_status("container2", "running")
-        container_repo.update_container_status("container3", "stopped")
+        container_repo.update_container_status("container1", "running", None)
+        container_repo.update_container_status("container2", "running", None)
+        container_repo.update_container_status("container3", "stopped", None)
 
         # Find running containers
         running_containers = container_repo.find_containers_by_status("running")
@@ -185,8 +185,8 @@ class TestDockerContainerRepository:
         container_repo.create_container("container3", "python", "3.9")
 
         # Update statuses
-        container_repo.update_container_status("container2", "running")
-        container_repo.update_container_status("container3", "stopped")
+        container_repo.update_container_status("container2", "running", None)
+        container_repo.update_container_status("container3", "stopped", None)
 
         # Get active containers (created, running, started)
         active_containers = container_repo.get_active_containers()

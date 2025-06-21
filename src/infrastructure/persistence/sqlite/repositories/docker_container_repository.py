@@ -42,7 +42,7 @@ class DockerContainerRepository(DatabaseRepositoryFoundation):
             return False
 
         if 'status' in updates:
-            self.update_container_status(str(entity_id), updates['status'])
+            self.update_container_status(str(entity_id), updates['status'], None)
         return True
 
     def delete(self, entity_id: Any) -> bool:

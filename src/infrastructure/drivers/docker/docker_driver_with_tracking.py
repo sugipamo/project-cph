@@ -63,7 +63,7 @@ class LocalDockerDriverWithTracking(LocalDockerDriver):
         if result.success:
             try:
                 self.container_repo.update_container_status(name, "stopped", "stopped_at")
-                self.container_repo.add_lifecycle_event(name, "stopped")
+                self.container_repo.add_lifecycle_event(name, "stopped", None)
             except Exception:
                 pass
 
