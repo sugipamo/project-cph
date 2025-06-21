@@ -95,7 +95,7 @@ class TestGenerateWorkflowFromJson:
         assert result == empty_request
         assert errors == ["Invalid step type"]
         assert warnings == []
-        mock_composite_request.make_composite_request.assert_called_once_with([])
+        mock_composite_request.make_composite_request.assert_called_once_with([], debug_tag=None, name=None)
 
     @patch('src.workflow.step.workflow.generate_steps_from_json')
     @patch('src.workflow.step.workflow.validate_step_sequence')

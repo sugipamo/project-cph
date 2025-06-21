@@ -158,7 +158,7 @@ class FastSQLiteManager:
 
             # Validate connection state before yielding
             validation = self._validate_connection(conn)
-            validation.raise_if_invalid()
+            validation.raise_if_invalid(PersistenceError)
 
             # Connection management without try-except
             yield conn
@@ -267,10 +267,14 @@ class FastSQLiteManager:
         """Determine if connection should be rolled back based on state."""
         # Check if there are any uncommitted changes
         if hasattr(conn, 'in_transaction') and conn.in_transaction:
-            # Check for any SQLite error indicators
-            cursor = conn.execute("PRAGMA integrity_check(1)")
-            result = cursor.fetchone()
-            if result and result[0] != "ok":
+            try:
+                # Check for any SQLite error indicators
+                cursor = conn.execute("PRAGMA integrity_check(1)")
+                result = cursor.fetchone()
+                if result and hasattr(result, '__getitem__') and result[0] != "ok":
+                    return True
+            except Exception:
+                # If pragma fails, assume rollback is needed
                 return True
         return False
 

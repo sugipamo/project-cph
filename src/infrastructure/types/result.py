@@ -112,7 +112,7 @@ class OperationResult:
     @classmethod
     def create_success(cls, message: str, details: Optional[dict]) -> 'OperationResult':
         """Create successful operation result."""
-        return cls(True, message, details)
+        return cls(True, message, details, None)
 
     @classmethod
     def create_failure(cls, message: str, error_code: Optional[str], details: Optional[dict]) -> 'OperationResult':

@@ -197,21 +197,19 @@ class TestStepGenerationService(unittest.TestCase):
 
     def test_validate_step_sequence_with_errors(self):
         """Test validating step sequence with errors"""
-        # Create invalid step (empty command)
-        step = Step(type=StepType.MKDIR, cmd=[])
+        # Create step with valid command but invalid paths for testing validation
+        step = Step(type=StepType.COPY, cmd=["", "destination"])  # Empty source path
 
         result = validate_step_sequence([step])
 
         self.assertGreater(len(result), 0)  # Should have errors
 
     def test_validate_single_step_empty_command(self):
-        """Test validating step with empty command"""
-        step = Step(type=StepType.MKDIR, cmd=[])
-
-        result = validate_single_step(step)
-
-        self.assertGreater(len(result), 0)
-        self.assertIn("Command cannot be empty", result[0])
+        """Test validating step with empty command raises ValueError"""
+        with self.assertRaises(ValueError) as context:
+            Step(type=StepType.MKDIR, cmd=[])
+        
+        self.assertIn("must have non-empty cmd", str(context.exception))
 
 
     def test_validate_single_step_copy_empty_paths(self):

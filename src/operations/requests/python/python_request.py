@@ -14,10 +14,10 @@ class PythonRequest(OperationRequestFoundation):
 
     _require_driver = True
 
-    def __init__(self, code_or_file: Union[str, list[str]], cwd: Optional[str] = None,
-                 show_output: bool = True, name: Optional[str] = None,
-                 debug_tag: Optional[str] = None):
-        super().__init__(name=name, debug_tag=debug_tag)
+    def __init__(self, code_or_file: Union[str, list[str]], cwd: Optional[str],
+                 show_output: bool, name: Optional[str],
+                 debug_tag: Optional[str]):
+        super().__init__(name=name, debug_tag=debug_tag, _executed=False, _result=None, _debug_info=None)
         self.code_or_file = code_or_file  # Code string or filename
         self.cwd = cwd
         self.show_output = show_output
@@ -49,12 +49,22 @@ class PythonRequest(OperationRequestFoundation):
             end_time = time.time()
 
             return OperationResult(
+                success=None,
+                returncode=returncode,
                 stdout=stdout,
                 stderr=stderr,
-                returncode=returncode,
+                content=None,
+                exists=None,
+                path=None,
+                op=self.operation_type,
+                cmd=None,
                 request=self,
                 start_time=start_time,
-                end_time=end_time
+                end_time=end_time,
+                error_message=None,
+                exception=None,
+                metadata={},
+                skipped=False
             )
 
         except Exception as e:
@@ -62,13 +72,22 @@ class PythonRequest(OperationRequestFoundation):
             if logger:
                 logger.error(f"Python execution failed: {e}")
             return OperationResult(
+                success=False,
+                returncode=1,
                 stdout="",
                 stderr=str(e),
-                returncode=1,
+                content=None,
+                exists=None,
+                path=None,
+                op=self.operation_type,
+                cmd=None,
                 request=self,
                 start_time=start_time,
                 end_time=end_time,
-                error_message=str(e)
+                error_message=str(e),
+                exception=e,
+                metadata={},
+                skipped=False
             )
         finally:
             if self.cwd:
@@ -101,7 +120,10 @@ class PythonRequest(OperationRequestFoundation):
             return python_driver.is_script_file(self.code_or_file)
 
         # Driver does not support is_script_file, use PythonUtils as last resort
-        return PythonUtils.is_script_file(self.code_or_file)
+        python_utils = PythonUtils(None)
+        if isinstance(self.code_or_file, list):
+            return python_utils.is_script_file(self.code_or_file)
+        return python_utils.is_script_file([self.code_or_file])
 
     def _prepare_code_string(self) -> str:
         """Prepare code string from code_or_file input."""

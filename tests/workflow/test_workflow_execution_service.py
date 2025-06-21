@@ -33,9 +33,11 @@ class TestWorkflowExecutionService(unittest.TestCase):
         self.infrastructure = Mock()
         self.mock_config_manager = Mock()
         self.mock_logger = Mock()
+        from src.infrastructure.di_container import DIKey
         self.infrastructure.resolve.side_effect = lambda key: {
             "config_manager": self.mock_config_manager,
-            "unified_logger": self.mock_logger
+            "unified_logger": self.mock_logger,
+            DIKey.UNIFIED_LOGGER: self.mock_logger
         }.get(key, Mock())
 
         # Create service instance

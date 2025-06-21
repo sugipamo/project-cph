@@ -18,7 +18,7 @@ class DummyPythonUtils:
         return ("code_out", "", 0)
 
 def test_python_request_repr():
-    req = PythonRequest(["print('x')"])
+    req = PythonRequest(["print('x')"], cwd=None, show_output=True, name=None, debug_tag=None)
     s = repr(req)
     assert "PythonRequest" in s
 
@@ -35,7 +35,7 @@ def test_python_request_code_string(monkeypatch):
             self.python_driver = MockPythonDriver()
 
     mock_driver = MockUnifiedDriver()
-    req = PythonRequest(["print('ok')"])
+    req = PythonRequest(["print('ok')"], cwd=None, show_output=True, name=None, debug_tag=None)
     result = req._execute_core(mock_driver)
     assert isinstance(result, OperationResult)
     assert result.stdout == "ok"
@@ -56,7 +56,7 @@ def test_python_request_script_file(monkeypatch, tmp_path):
             self.python_driver = MockPythonDriver()
 
     mock_driver = MockUnifiedDriver()
-    req = PythonRequest([str(script_path)])
+    req = PythonRequest([str(script_path)], cwd=None, show_output=True, name=None, debug_tag=None)
     result = req._execute_core(mock_driver)
     assert result.stdout == "script"
     assert result.returncode == 0
@@ -73,7 +73,7 @@ def test_python_request_with_cwd(monkeypatch, tmp_path):
             self.python_driver = MockPythonDriver()
 
     mock_driver = MockUnifiedDriver()
-    req = PythonRequest(["print('cwd')"], cwd=str(tmp_path))
+    req = PythonRequest(["print('cwd')"], cwd=str(tmp_path), show_output=True, name=None, debug_tag=None)
     result = req._execute_core(mock_driver)
     assert result.stdout == "cwd"
     assert result.returncode == 0
@@ -90,7 +90,7 @@ def test_python_request_execute_exception(monkeypatch):
             self.python_driver = MockPythonDriver()
 
     mock_driver = MockUnifiedDriver()
-    req = PythonRequest(["raise Exception('fail')"])
+    req = PythonRequest(["raise Exception('fail')"], cwd=None, show_output=True, name=None, debug_tag=None)
     result = req._execute_core(mock_driver)
     assert isinstance(result, OperationResult)
     assert result.stderr == "fail"
@@ -109,7 +109,7 @@ def test_python_request_code_string_with_patch(monkeypatch):
             self.python_driver = MockPythonDriver()
 
     mock_driver = MockUnifiedDriver()
-    req = PythonRequest(["print('ok')"])
+    req = PythonRequest(["print('ok')"], cwd=None, show_output=True, name=None, debug_tag=None)
     result = req._execute_core(mock_driver)
     assert isinstance(result, OperationResult)
     assert result.stdout == "ok"
@@ -130,7 +130,7 @@ def test_python_request_script_file_with_patch(monkeypatch, tmp_path):
             self.python_driver = MockPythonDriver()
 
     mock_driver = MockUnifiedDriver()
-    req = PythonRequest([str(script_path)])
+    req = PythonRequest([str(script_path)], cwd=None, show_output=True, name=None, debug_tag=None)
     result = req._execute_core(mock_driver)
     assert result.stdout == "script"
     assert result.returncode == 0
@@ -147,7 +147,7 @@ def test_python_request_with_cwd_with_patch(monkeypatch, tmp_path):
             self.python_driver = MockPythonDriver()
 
     mock_driver = MockUnifiedDriver()
-    req = PythonRequest(["print('cwd')"], cwd=str(tmp_path))
+    req = PythonRequest(["print('cwd')"], cwd=str(tmp_path), show_output=True, name=None, debug_tag=None)
     result = req._execute_core(mock_driver)
     assert result.stdout == "cwd"
     assert result.returncode == 0
@@ -164,7 +164,7 @@ def test_python_request_execute_exception_with_patch(monkeypatch):
             self.python_driver = MockPythonDriver()
 
     mock_driver = MockUnifiedDriver()
-    req = PythonRequest(["raise Exception('fail')"])
+    req = PythonRequest(["raise Exception('fail')"], cwd=None, show_output=True, name=None, debug_tag=None)
     result = req._execute_core(mock_driver)
     assert isinstance(result, OperationResult)
     assert result.stderr == "fail"
