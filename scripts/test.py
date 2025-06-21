@@ -733,10 +733,81 @@ class TestRunner:
             return f"{self._get_attr_chain(node.value)}.{node.attr}"
         return f"<expr>.{node.attr}"
 
+    def check_none_default_arguments(self) -> bool:
+        """None引数初期値の検出（CLAUDE.mdルール違反 - デフォルト値使用禁止）"""
+        import ast
+        import glob
+
+        spinner = None
+        if not self.verbose:
+            spinner = ProgressSpinner("None引数初期値チェック", self.logger)
+            spinner.start()
+
+        try:
+            none_default_issues = []
+
+            for file_path in glob.glob('src/**/*.py', recursive=True):
+                try:
+                    content = self.file_handler.read_text(file_path, encoding='utf-8')
+                    tree = ast.parse(content, filename=file_path)
+                    relative_path = file_path.replace('src/', '')
+
+                    for node in ast.walk(tree):
+                        # 関数定義での引数チェック
+                        if isinstance(node, ast.FunctionDef):
+                            for arg in node.args.defaults:
+                                if (isinstance(arg, ast.Constant) and arg.value is None) or (isinstance(arg, ast.NameConstant) and arg.value is None):
+                                    none_default_issues.append(f"{relative_path}:{node.lineno} def {node.name} - None引数初期値")
+
+                            # キーワード専用引数のデフォルト値もチェック
+                            for arg in node.args.kw_defaults:
+                                if arg is not None:
+                                    if (isinstance(arg, ast.Constant) and arg.value is None) or (isinstance(arg, ast.NameConstant) and arg.value is None):
+                                        none_default_issues.append(f"{relative_path}:{node.lineno} def {node.name} - キーワード引数のNone初期値")
+
+                        # 非同期関数定義での引数チェック
+                        elif isinstance(node, ast.AsyncFunctionDef):
+                            for arg in node.args.defaults:
+                                if (isinstance(arg, ast.Constant) and arg.value is None) or (isinstance(arg, ast.NameConstant) and arg.value is None):
+                                    none_default_issues.append(f"{relative_path}:{node.lineno} async def {node.name} - None引数初期値")
+
+                            # キーワード専用引数のデフォルト値もチェック
+                            for arg in node.args.kw_defaults:
+                                if arg is not None:
+                                    if (isinstance(arg, ast.Constant) and arg.value is None) or (isinstance(arg, ast.NameConstant) and arg.value is None):
+                                        none_default_issues.append(f"{relative_path}:{node.lineno} async def {node.name} - キーワード引数のNone初期値")
+
+                except (SyntaxError, UnicodeDecodeError, OSError, FileNotFoundError):
+                    continue
+
+            success = len(none_default_issues) == 0
+
+            if spinner:
+                spinner.stop(success)
+            elif self.verbose:
+                self.logger.info(f"{'✅' if success else '❌'} None引数初期値チェック")
+
+            if none_default_issues:
+                self.issues.append("None引数初期値が検出されました（CLAUDE.mdルール違反 - 呼び出し元で適切な値を用意）:")
+                for issue in none_default_issues[:25]:
+                    self.issues.append(f"  {issue}")
+
+                if len(none_default_issues) > 25:
+                    self.issues.append(f"  ... 他{len(none_default_issues) - 25}件")
+
+            return success
+
+        except Exception as e:
+            if spinner:
+                spinner.stop(False)
+            self.issues.append(f"None引数初期値チェックでエラー: {e}")
+            return False
+
     def check_fallback_patterns(self) -> bool:
         """フォールバック処理の検出（CLAUDE.mdルール違反 - エラー隠蔽防止）"""
         import ast
         import glob
+        import re
 
         spinner = None
         if not self.verbose:
@@ -751,54 +822,47 @@ class TestRunner:
                     content = self.file_handler.read_text(file_path, encoding='utf-8')
                     tree = ast.parse(content, filename=file_path)
                     relative_path = file_path.replace('src/', '')
+                    content_lines = content.splitlines()
 
-                    # AST解析による各パターンの検知
                     for node in ast.walk(tree):
-                        # 1. try-except でのフォールバック検知
+                        # 1. try-except内での代入・return
                         if isinstance(node, ast.Try):
-                            issues = self._check_try_except_fallback(node, relative_path, content)
-                            fallback_issues.extend(issues)
+                            for handler in node.handlers:
+                                for stmt in handler.body:
+                                    if isinstance(stmt, (ast.Assign, ast.Return)):
+                                        line = content_lines[stmt.lineno - 1].strip() if stmt.lineno <= len(content_lines) else ""
+                                        fallback_issues.append(f"{relative_path}:{stmt.lineno} try-except内でのフォールバック: {line}")
 
-                        # 2. or演算子でのフォールバック検知
+                        # 2. or演算子での値指定
                         elif isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or):
-                            issues = self._check_or_fallback(node, relative_path, content)
-                            fallback_issues.extend(issues)
+                            if len(node.values) >= 2:
+                                line = content_lines[node.lineno - 1].strip() if node.lineno <= len(content_lines) else ""
+                                if re.search(r'or\s+["\'\[\{0-9]', line):  # or の後にリテラル値
+                                    fallback_issues.append(f"{relative_path}:{node.lineno} or演算子でのフォールバック: {line}")
 
-                        # 3. 条件式(ternary)でのフォールバック検知
+                        # 3. 条件式での値指定
                         elif isinstance(node, ast.IfExp):
-                            issues = self._check_ternary_fallback(node, relative_path, content)
-                            fallback_issues.extend(issues)
-
-                        # 4. if-None チェックでのフォールバック検知
-                        elif isinstance(node, ast.If):
-                            issues = self._check_none_fallback(node, relative_path, content)
-                            fallback_issues.extend(issues)
+                            line = content_lines[node.lineno - 1].strip() if node.lineno <= len(content_lines) else ""
+                            if re.search(r'else\s+["\'\[\{0-9]', line):  # else の後にリテラル値
+                                fallback_issues.append(f"{relative_path}:{node.lineno} 条件式でのフォールバック: {line}")
 
                 except (SyntaxError, UnicodeDecodeError, OSError, FileNotFoundError):
                     continue
 
-            # スマート分類による誤検出フィルタリング
-            filtered_issues = self._filter_legitimate_patterns(fallback_issues)
-            success = len(filtered_issues) == 0
+            success = len(fallback_issues) == 0
 
             if spinner:
                 spinner.stop(success)
             elif self.verbose:
                 self.logger.info(f"{'✅' if success else '❌'} フォールバック処理チェック")
 
-            if filtered_issues:
-                self.issues.append("フォールバック処理が検出されました（CLAUDE.mdルール違反 - エラー隠蔽防止）:")
-                for issue in filtered_issues[:20]:
+            if fallback_issues:
+                self.issues.append("フォールバック処理が検出されました（CLAUDE.mdルール違反）:")
+                for issue in fallback_issues[:20]:
                     self.issues.append(f"  {issue}")
 
-                if len(filtered_issues) > 20:
-                    self.issues.append(f"  ... 他{len(filtered_issues) - 20}件")
-
-            # 検出統計を表示
-            if self.verbose and fallback_issues:
-                total_detected = len(fallback_issues)
-                filtered_out = total_detected - len(filtered_issues)
-                self.logger.info(f"検出統計: 総数{total_detected}件, 除外{filtered_out}件, 問題{len(filtered_issues)}件")
+                if len(fallback_issues) > 20:
+                    self.issues.append(f"  ... 他{len(fallback_issues) - 20}件")
 
             return success
 
@@ -808,274 +872,6 @@ class TestRunner:
             self.issues.append(f"フォールバック処理チェックでエラー: {e}")
             return False
 
-    def _check_try_except_fallback(self, node: ast.Try, file_path: str, content: str) -> list:
-        """try-except でのフォールバック処理を検知"""
-        issues = []
-        content_lines = content.splitlines()
-
-        for handler in node.handlers:
-            # except節での代入（フォールバック値設定）を検知
-            for stmt in handler.body:
-                if isinstance(stmt, ast.Assign):
-                    # 具体的な値の代入（リテラル、定数など）
-                    if self._is_fallback_value(stmt.value):
-                        context = self._get_code_context(content_lines, stmt.lineno)
-                        severity = self._determine_severity(file_path, stmt.lineno, context, 'try_except_assign')
-                        issues.append({
-                            'type': 'try_except_assign',
-                            'location': f"{file_path}:{stmt.lineno}",
-                            'message': 'try-except でのフォールバック代入',
-                            'severity': severity,
-                            'context': context
-                        })
-
-                elif isinstance(stmt, ast.Return) and stmt.value and self._is_fallback_value(stmt.value):
-                    # return文での具体的な値返却
-                    context = self._get_code_context(content_lines, stmt.lineno)
-                    severity = self._determine_severity(file_path, stmt.lineno, context, 'try_except_return')
-                    issues.append({
-                        'type': 'try_except_return',
-                        'location': f"{file_path}:{stmt.lineno}",
-                        'message': 'try-except でのフォールバック return',
-                        'severity': severity,
-                        'context': context
-                    })
-
-        return issues
-
-    def _check_or_fallback(self, node: ast.BoolOp, file_path: str, content: str) -> list:
-        """or演算子でのフォールバック処理を検知"""
-        issues = []
-        content_lines = content.splitlines()
-
-        # A or B の形で、Bが具体的な値（フォールバック値）の場合
-        if len(node.values) >= 2:
-            last_value = node.values[-1]
-            if self._is_fallback_value(last_value):
-                context = self._get_code_context(content_lines, node.lineno)
-                severity = self._determine_severity(file_path, node.lineno, context, 'or_fallback')
-                issues.append({
-                    'type': 'or_fallback',
-                    'location': f"{file_path}:{node.lineno}",
-                    'message': 'or演算子でのフォールバック',
-                    'severity': severity,
-                    'context': context
-                })
-
-        return issues
-
-    def _check_ternary_fallback(self, node: ast.IfExp, file_path: str, content: str) -> list:
-        """条件式でのフォールバック処理を検知"""
-        issues = []
-        content_lines = content.splitlines()
-
-        # A if condition else B の形で、BまたはAが具体的な値の場合
-        if self._is_fallback_value(node.orelse):
-            context = self._get_code_context(content_lines, node.lineno)
-            severity = self._determine_severity(file_path, node.lineno, context, 'ternary_else')
-            issues.append({
-                'type': 'ternary_else',
-                'location': f"{file_path}:{node.lineno}",
-                'message': '条件式でのフォールバック (else節)',
-                'severity': severity,
-                'context': context
-            })
-        elif self._is_fallback_value(node.body):
-            context = self._get_code_context(content_lines, node.lineno)
-            severity = self._determine_severity(file_path, node.lineno, context, 'ternary_then')
-            issues.append({
-                'type': 'ternary_then',
-                'location': f"{file_path}:{node.lineno}",
-                'message': '条件式でのフォールバック (then節)',
-                'severity': severity,
-                'context': context
-            })
-
-        return issues
-
-    def _check_none_fallback(self, node: ast.If, file_path: str, content: str) -> list:
-        """if-None チェックでのフォールバック処理を検知"""
-        issues = []
-        content_lines = content.splitlines()
-
-        # if var is None: var = default の形を検知
-        if (isinstance(node.test, ast.Compare) and
-            any(isinstance(op, (ast.Is, ast.Eq)) for op in node.test.ops) and
-            any(isinstance(comp, ast.Constant) and comp.value is None
-                for comp in node.test.comparators)):
-            # None チェック後の代入を検知
-            for stmt in node.body:
-                if isinstance(stmt, ast.Assign) and self._is_fallback_value(stmt.value):
-                    context = self._get_code_context(content_lines, stmt.lineno)
-                    severity = self._determine_severity(file_path, stmt.lineno, context, 'none_check')
-                    issues.append({
-                        'type': 'none_check',
-                        'location': f"{file_path}:{stmt.lineno}",
-                        'message': 'None チェックでのフォールバック',
-                        'severity': severity,
-                        'context': context
-                    })
-
-        return issues
-
-    def _is_fallback_value(self, node: ast.AST) -> bool:
-        """フォールバック値として使われる可能性のある値を判定"""
-
-        # リテラル値（文字列、数値、リスト、辞書など）
-        if isinstance(node, ast.Constant):
-            return True
-
-        # 空のコンテナ - Python都合による正当な処理は許可
-        if isinstance(node, (ast.List, ast.Dict, ast.Set, ast.Tuple)):
-            if hasattr(node, 'elts'):
-                return len(node.elts) > 0  # 空のリストのみ除外
-            if hasattr(node, 'keys'):
-                return len(node.keys) > 0  # 空の辞書のみ除外
-            return False  # Python都合の初期化は正当
-
-        # よくあるフォールバック関数名
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-            fallback_function_names = {
-                'dict', 'list', 'set', 'tuple', 'str', 'int', 'float', 'bool',
-                'get_default', 'create_default', 'fallback', 'default_value'
-            }
-            if node.func.id in fallback_function_names:
-                return True
-
-        # 明らかなフォールバック変数名
-        if isinstance(node, ast.Name):
-            fallback_var_names = {
-                'default', 'fallback', 'default_value', 'fallback_value',
-                'empty_dict', 'empty_list', 'none_value'
-            }
-            if node.id in fallback_var_names:
-                return True
-
-        return False
-
-    def _get_code_context(self, content_lines: list, line_num: int) -> str:
-        """指定行の前後のコードコンテキストを取得"""
-        try:
-            start = max(0, line_num - 3)
-            end = min(len(content_lines), line_num + 2)
-            context_lines = []
-            for i in range(start, end):
-                prefix = ">>> " if i == line_num - 1 else "    "
-                context_lines.append(f"{prefix}{content_lines[i].strip()}")
-            return "\n".join(context_lines)
-        except (IndexError, TypeError):
-            return ""
-
-    def _determine_severity(self, file_path: str, line_num: int, context: str, pattern_type: str) -> str:
-        """コンテキスト分析による重要度判定"""
-        context_lower = context.lower()
-
-        # 設定関連の正当なフォールバック（CLAUDE.mdルールに従い、設定は別途追加対応）
-        config_patterns = [
-            'config', 'setting', 'default_', 'fallback_', 'init_', 'initialization',
-            'デフォルト', 'initial', 'preset', 'template'
-        ]
-        if (any(pattern in context_lower for pattern in config_patterns) and
-            any(keyword in context_lower for keyword in ['config', 'setting'])):
-            # 設定値の初期化は正当、ただし設定ファイルに追加すべき
-            return 'CONFIG_WARNING'  # 設定追加推奨
-
-        # infrastructure層での技術的必要性
-        if 'infrastructure' in file_path:
-            # DI container解決時のフォールバック
-            if any(pattern in context_lower for pattern in ['container', 'resolve', 'inject', 'di_']):
-                return 'ALLOWED'
-
-            # データベース処理での NULL/None 処理
-            if (any(pattern in context_lower for pattern in ['sqlite', 'database', 'db_', 'row', 'cursor']) and
-                ('none' in context_lower or 'null' in context_lower)):
-                return 'ALLOWED'
-
-            # pathlib での相対パス処理
-            if any(pattern in context_lower for pattern in ['path', 'relative_to', 'resolve']):
-                return 'ALLOWED'
-
-            # ロギング関連の安全な処理
-            if any(pattern in context_lower for pattern in ['logger', 'log_', 'dummy']):
-                return 'ALLOWED'
-
-        # テストコードでの制御フロー
-        if any(pattern in file_path for pattern in ['/test', '_test', 'test_']):
-            return 'ALLOWED'
-
-        # 問題のあるパターン（エラー隠蔽の検出）
-        error_hiding_patterns = [
-            'except.*pass', 'except.*return false', 'except.*return none',
-            'except exception', 'except:', 'silent', 'ignore'
-        ]
-        if any(pattern in context_lower for pattern in error_hiding_patterns):
-            return 'ERROR'
-
-        # 型変換・キャスト処理
-        if any(pattern in context_lower for pattern in ['str(', 'int(', 'float(', 'bool(', 'list(', 'dict(']):
-            return 'ALLOWED'
-
-        # Python言語仕様による必要な処理
-        if any(pattern in context_lower for pattern in ['__init__', '__new__', '__enter__', '__exit__']):
-            return 'ALLOWED'
-
-        # デフォルト判定
-        if pattern_type in ['try_except_assign', 'try_except_return']:
-            return 'WARNING'
-        return 'WARNING'
-
-    def _filter_legitimate_patterns(self, issues: list) -> list:
-        """技術的に必要なパターンをフィルタリング"""
-        filtered_issues = []
-        config_warnings = []
-
-        for issue in issues:
-            if isinstance(issue, dict):
-                severity = issue.get('severity')
-                if severity == 'ALLOWED':
-                    continue
-                if severity == 'CONFIG_WARNING':
-                    # 設定関連は警告として別途管理
-                    config_warnings.append(f"[設定推奨] {issue['location']} {issue['message']} (設定ファイルに追加推奨)")
-                    continue
-                if severity == 'ERROR':
-                    filtered_issues.append(f"[ERROR] {issue['location']} {issue['message']}")
-                elif severity == 'WARNING':
-                    filtered_issues.append(f"[WARNING] {issue['location']} {issue['message']}")
-                else:
-                    filtered_issues.append(f"{issue['location']} {issue['message']}")
-            else:
-                # 旧形式のissue（文字列）
-                filtered_issues.append(issue)
-
-        # 設定関連の警告を別途追加
-        if config_warnings:
-            self.warnings.extend(config_warnings)
-
-        return filtered_issues
-
-    def _is_legitimate_pattern(self, node: ast.AST, context: str) -> bool:
-        """正当な使用パターンかを判定"""
-
-        # 1. ロギング・デバッグ用途
-        if 'log' in context.lower() or 'debug' in context.lower():
-            return True
-
-        # 2. テストコード
-        if '/test' in context or 'test_' in context:
-            return True
-
-        # 3. 初期化処理（ただし設定値は除く）
-        if 'init' in context.lower() and 'config' not in context.lower():
-            return True
-
-        # 4. 型変換・キャスト
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-            type_functions = {'str', 'int', 'float', 'bool', 'list', 'dict', 'set'}
-            if node.func.id in type_functions and len(node.args) <= 1:
-                return True
-
-        return False
 
     def check_dict_get_usage(self, auto_convert: bool = False) -> bool:
         """dict.get()使用チェック - エラー隠蔽の温床となるため禁止（フォールバック対応禁止）"""
@@ -1122,12 +918,13 @@ class TestRunner:
                 self.logger.info(f"{'✅' if success else '❌'} dict.get()使用チェック")
 
             if dict_get_issues:
-                # 自動変換を実行
-                if self._auto_convert_dict_get() and not auto_convert:  # 無限ループ防止
+                # 自動変換を実行（フォールバック処理は禁止のため、変換失敗時は直接エラー表示）
+                if not auto_convert and self._auto_convert_dict_get():
                     # 変換成功時のみ再チェック（1回のみ）
                     return self.check_dict_get_usage(auto_convert=True)
+                    # 変換失敗時はエラーを隠さずに表示
 
-                # 変換失敗または再チェック時は従来のエラー表示
+                # エラー表示
                 self.issues.append("dict.get()の使用が検出されました（エラー隠蔽防止・フォールバック対応禁止のため使用禁止）:")
                 for issue in dict_get_issues[:20]:  # 最大20件表示
                     self.issues.append(f"  {issue}")
@@ -1490,6 +1287,7 @@ def main(file_handler: FileHandler = None):
     parser.add_argument("--no-dict-get-check", action="store_true", help="dict.get()使用チェックスキップ")
     parser.add_argument("--auto-convert-dict-get", action="store_true", help="dict.get()検出時に自動変換実行")
     parser.add_argument("--no-fallback-check", action="store_true", help="フォールバック処理チェックスキップ")
+    parser.add_argument("--no-none-default-check", action="store_true", help="None引数初期値チェックスキップ")
     parser.add_argument("--check-only", action="store_true", help="高速チェック（テストなし）")
     parser.add_argument("--coverage-only", action="store_true", help="カバレッジレポートのみ表示")
     parser.add_argument("--verbose", "-v", action="store_true", help="詳細出力")
@@ -1560,6 +1358,10 @@ def main(file_handler: FileHandler = None):
     # フォールバック処理チェック
     if not args.no_fallback_check:
         runner.check_fallback_patterns()
+
+    # None引数初期値チェック
+    if not args.no_none_default_check:
+        runner.check_none_default_arguments()
 
     # check-onlyモード
     if args.check_only:
