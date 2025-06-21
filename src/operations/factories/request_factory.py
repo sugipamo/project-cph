@@ -141,6 +141,7 @@ class RequestFactory:
             op=DockerOpType.EXEC,
             container=container_name,
             command=exec_cmd,
+            options={},
             debug_tag=f"docker_exec_{context.problem_name}"
         )
 
@@ -173,6 +174,7 @@ class RequestFactory:
             op=DockerOpType.BUILD,  # Commit is similar to build in DockerOpType
             container=container_name,
             image=image,
+            options={},
             debug_tag=f"docker_commit_{context.problem_name}"
         )
 
@@ -193,6 +195,7 @@ class RequestFactory:
         return DockerRequest(
             op=DockerOpType.REMOVE,
             container=container_name,
+            options={},
             debug_tag=f"docker_rm_{context.problem_name}"
         )
 
@@ -213,6 +216,7 @@ class RequestFactory:
         return DockerRequest(
             op=DockerOpType.REMOVE,  # Use REMOVE for image removal as well
             image=image,
+            options={},
             debug_tag=f"docker_rmi_{context.problem_name}"
         )
 

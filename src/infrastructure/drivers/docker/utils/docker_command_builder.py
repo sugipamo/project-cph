@@ -43,24 +43,13 @@ def _get_docker_option(option_name: str, user_options: Optional[dict[str, Any]])
     if user_options and option_name in user_options:
         return user_options[option_name]
 
-    # Then check configuration system
+    # Then check configuration system - フォールバック処理は禁止、必要なエラーを見逃すことになる
     config_manager = _get_config_manager()
     if config_manager is not None and config_manager.root_node is not None:
         try:
             return config_manager.resolve_config(['docker_defaults', 'docker_options', option_name], bool)
         except KeyError:
-            pass  # Fall through to default behavior
-
-    # Fallback to sensible defaults if configuration is unavailable
-    default_options = {
-        'interactive': True,
-        'tty': True,
-        'remove': True,
-        'detach': False
-    }
-
-    if option_name in default_options:
-        return default_options[option_name]
+            raise KeyError(f"Docker option '{option_name}' not found in user options or configuration")
 
     raise KeyError(f"Docker option '{option_name}' not found in user options or configuration")
 
@@ -77,10 +66,10 @@ def validate_docker_image_name(image_name: str) -> bool:
     if not image_name:
         return False
 
-    # Basic Docker image name validation
+    # Basic Docker image name validation - lowercase only per Docker standard
     # Pattern: [registry/]name[:tag]
     pattern = r'^([a-z0-9._-]+/)*[a-z0-9._-]+(:[\w.-]+)?$'
-    return bool(re.match(pattern, image_name, re.IGNORECASE))
+    return bool(re.match(pattern, image_name))
 
 
 def _add_docker_run_flags(cmd: list[str], options: dict[str, Any]) -> None:
@@ -152,13 +141,13 @@ def build_docker_run_command(image: str, name: Optional[str] = None, options: Op
     if name:
         cmd.extend(["--name", name])
 
-    if options:
-        _add_docker_run_flags(cmd, options)
-        _add_docker_run_ports(cmd, options)
-        _add_docker_run_volumes(cmd, options)
-
-        _add_docker_run_environment(cmd, options)
-        _add_docker_run_misc_options(cmd, options)
+    # Always add Docker run flags (using empty dict if options is None)
+    options = options or {}
+    _add_docker_run_flags(cmd, options)
+    _add_docker_run_ports(cmd, options)
+    _add_docker_run_volumes(cmd, options)
+    _add_docker_run_environment(cmd, options)
+    _add_docker_run_misc_options(cmd, options)
 
     cmd.append(image)
     _add_docker_run_command(cmd, options)
@@ -233,11 +222,11 @@ def build_docker_build_command(tag: Optional[str] = None, dockerfile_text: Optio
         if "build_args" in options:
             for arg in options["build_args"]:
                 cmd.extend(["--build-arg", arg])
-        if options["no_cache"]:
+        if options.get("no_cache"):
             cmd.append("--no-cache")
-        if options["pull"]:
+        if options.get("pull"):
             cmd.append("--pull")
-        if options["quiet"]:
+        if options.get("quiet"):
             cmd.append("-q")
 
     # If dockerfile_text is provided, read from stdin

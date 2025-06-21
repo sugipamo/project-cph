@@ -29,8 +29,6 @@ def _create_execution_config(command_type=None, language=None, contest_name=None
         raise ValueError("contest_name parameter cannot be None")
     if problem_name is None:
         raise ValueError("problem_name parameter cannot be None")
-    if language is None:
-        raise ValueError("language parameter cannot be None")
     if env_type is None:
         raise ValueError("env_type parameter cannot be None")
     if command_type is None:

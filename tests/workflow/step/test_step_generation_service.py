@@ -63,6 +63,8 @@ class TestStepGenerationService(unittest.TestCase):
                 "run_command": "python3 main.py"
             }
         }
+        # Prevent accessing config.runtime_config path
+        del self.legacy_context.config
 
     def test_create_step_context_from_execution_context_typed(self):
         """Test creating StepContext from TypedExecutionConfiguration"""
@@ -240,12 +242,10 @@ class TestStepGenerationService(unittest.TestCase):
 
     def test_validate_single_step_copy_insufficient_args(self):
         """Test validating copy step with insufficient arguments"""
-        step = Step(type=StepType.COPY, cmd=["src"])  # Missing destination
+        with self.assertRaises(ValueError) as context:
+            Step(type=StepType.COPY, cmd=["src"])  # Missing destination
 
-        result = validate_single_step(step)
-
-        self.assertGreater(len(result), 0)
-        self.assertIn("Requires at least 2 arguments", result[0])
+        self.assertIn("requires at least 2 arguments", str(context.exception))
 
     def test_validate_single_step_copy_empty_paths(self):
         """Test validating copy step with empty paths"""

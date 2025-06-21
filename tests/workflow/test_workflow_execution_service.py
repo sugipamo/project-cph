@@ -205,9 +205,10 @@ class TestWorkflowExecutionService(unittest.TestCase):
         step.type = StepType.MKDIR
         step.cmd = ["test_dir"]
 
+        from src.operations.constants.request_types import RequestType
+
         mock_request = Mock()
-        mock_request.request_type = Mock()
-        mock_request.request_type.name = "FILE_REQUEST"
+        mock_request.request_type = RequestType.FILE_REQUEST
 
         with patch('src.workflow.workflow_execution_service.create_request') as mock_create:
             mock_create.return_value = mock_request
