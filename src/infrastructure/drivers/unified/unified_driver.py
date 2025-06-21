@@ -226,19 +226,33 @@ class UnifiedDriver:
 
             return ShellResult(
                 success=result.success,
-                output=result.output,
-                error=result.error,
+                stdout=result.output,
+                stderr=result.error,
+                returncode=exit_code,
+                cmd=request.cmd,
+                error_message=None,
+                exception=None,
+                start_time=0.0,
+                end_time=0.0,
                 request=request,
-                exit_code=exit_code
+                metadata={},
+                op="shell_operation"
             )
 
         except Exception as e:
             self.logger.error(f"Shell operation failed: {e}")
             return ShellResult(
                 success=False,
-                output="",
-                error=str(e),
+                stdout="",
+                stderr=str(e),
+                returncode=1,
+                cmd=request.cmd,
+                error_message=str(e),
+                exception=e,
+                start_time=0.0,
+                end_time=0.0,
                 request=request,
-                exit_code=1
+                metadata={},
+                op="shell_operation"
             )
 

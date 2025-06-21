@@ -38,7 +38,7 @@ class DockerResult(OperationResult):
         }
         # Update defaults with any provided kwargs
         defaults.update(kwargs)
-        
+
         super().__init__(
             stdout=stdout,
             stderr=stderr,
