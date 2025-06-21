@@ -39,7 +39,7 @@ class OperationRequestFoundation(ABC):
         """Return the request type for type-safe identification."""
         return RequestType.OPERATION_REQUEST_FOUNDATION
 
-    def execute_operation(self, driver: Optional[Any] = None, logger: Optional[Any] = None) -> Any:
+    def execute_operation(self, driver: Optional[Any], logger: Optional[Any]) -> Any:
         """Execute this operation request using the provided driver.
 
         Args:

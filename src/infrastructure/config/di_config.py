@@ -105,7 +105,8 @@ def _create_environment_manager(container: Any) -> Any:
     """Lazy factory for environment manager."""
     from src.infrastructure.environment.environment_manager import EnvironmentManager
     config_manager = container.resolve(DIKey.CONFIG_MANAGER)
-    return EnvironmentManager(env_type=None, config_manager=config_manager)
+    logger = container.resolve(DIKey.LOGGER)
+    return EnvironmentManager(env_type=None, config_manager=config_manager, logger=logger)
 
 
 def _create_logger(container: Any) -> Any:

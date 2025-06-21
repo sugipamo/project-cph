@@ -4,6 +4,7 @@ from typing import Any, Optional
 from unittest.mock import Mock
 
 from src.configuration.config_manager import TypeSafeConfigNodeManager
+from src.operations.interfaces.logger_interface import LoggerInterface
 from src.operations.requests.base.base_request import OperationRequestFoundation
 from src.operations.results.result import OperationResult
 
@@ -13,14 +14,16 @@ class EnvironmentManager:
     Direct implementation for basic environment management.
     """
 
-    def __init__(self, env_type: Optional[str], config_manager: TypeSafeConfigNodeManager):
+    def __init__(self, env_type: Optional[str], config_manager: TypeSafeConfigNodeManager, logger: LoggerInterface):
         """Initialize environment manager.
 
         Args:
             env_type: Environment type to use (local, docker, etc.)
             config_manager: Configuration manager instance
+            logger: Logger interface for logging
         """
         self._config_manager = config_manager
+        self.logger = logger
         if env_type is not None:
             self._env_type = env_type
         else:
@@ -105,7 +108,7 @@ class EnvironmentManager:
             OperationResult with execution details
         """
         # Direct execution without strategy pattern
-        return request.execute_operation(driver)
+        return request.execute_operation(driver, self.logger)
 
     def should_force_local(self, step_config: dict[str, Any]) -> bool:
         """Check if a step should be forced to run locally.
@@ -149,18 +152,19 @@ class EnvironmentManager:
         return "./workspace"
 
     @classmethod
-    def from_context(cls, context: Any, config_manager: TypeSafeConfigNodeManager) -> 'EnvironmentManager':
+    def from_context(cls, context: Any, config_manager: TypeSafeConfigNodeManager, logger: LoggerInterface) -> 'EnvironmentManager':
         """Create an EnvironmentManager from an execution context.
 
         Args:
             context: Execution context with env_type
             config_manager: Configuration manager instance
+            logger: Logger interface for logging
 
         Returns:
             EnvironmentManager instance
         """
         env_type = getattr(context, 'env_type', None)
-        return cls(env_type, config_manager)
+        return cls(env_type, config_manager, logger)
 
     def switch_environment(self, env_type: str):
         """Switch to a different environment type.

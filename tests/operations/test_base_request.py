@@ -66,7 +66,8 @@ class TestOperationRequestFoundation:
         request = ConcreteRequest(name="test")
         driver = Mock()
 
-        result = request.execute_operation(driver)
+        logger = Mock()
+        result = request.execute_operation(driver, logger)
 
         assert result == {"status": "success"}
         assert request._executed is True
@@ -81,7 +82,8 @@ class TestOperationRequestFoundation:
         request = ConcreteRequest()
         request._require_driver = False
 
-        result = request.execute_operation()
+        logger = Mock()
+        result = request.execute_operation(None, logger)
 
         assert result == {"status": "success"}
         assert request.driver_used is None

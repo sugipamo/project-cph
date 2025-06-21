@@ -756,7 +756,7 @@ class TestDockerImageRepository:
         assert found["name"] == "interface_test"
 
         # Test update via interface
-        success = image_repo.update("interface_test:1.0", {"build_status": "success"})
+        success = image_repo.update("interface_test:1.0", {"build_status": "success", "image_id": None, "build_time_ms": None, "size_bytes": None})
         assert success is True
 
         # Test find_all via interface
@@ -898,7 +898,7 @@ class TestDockerImageRepository:
 
     def test_update_nonexistent_image(self, image_repo):
         """Test updating non-existent image returns False."""
-        result = image_repo.update("nonexistent:latest", {"build_status": "success"})
+        result = image_repo.update("nonexistent:latest", {"build_status": "success", "image_id": None, "build_time_ms": None, "size_bytes": None})
         assert result is False
 
     def test_delete_nonexistent_image(self, image_repo):

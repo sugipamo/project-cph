@@ -229,7 +229,7 @@ def _load_shared_config(base_dir: str, infrastructure):
 
     try:
         req = FileRequest(FileOpType.READ, shared_path)
-        result = req.execute_operation(driver=file_driver)
+        result = req.execute_operation(driver=file_driver, logger=None)
         return json_provider.loads(result.content)
     except Exception as e:
         raise ValueError(f"Failed to load shared JSON: {e}") from e
@@ -246,7 +246,7 @@ def make_dockerfile_loader(infrastructure):
     def loader(path: str) -> str:
         file_driver = infrastructure.resolve("file_driver")
         req = FileRequest(FileOpType.READ, path)
-        result = req.execute_operation(driver=file_driver)
+        result = req.execute_operation(driver=file_driver, logger=None)
         return result.content
     return loader
 

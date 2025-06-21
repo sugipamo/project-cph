@@ -40,8 +40,8 @@ class CompositeRequest(CompositeRequestFoundation):
         """Return the request type for type-safe identification."""
         return RequestType.COMPOSITE_REQUEST
 
-    def execute_composite_operation(self, driver: Any) -> list[Any]:
-        return super().execute_operation(driver)
+    def execute_composite_operation(self, driver: Any, logger: Any) -> list[Any]:
+        return super().execute_operation(driver, logger)
 
 
     def _execute_core(self, driver: Any, logger: Optional[Any]) -> list[Any]:
