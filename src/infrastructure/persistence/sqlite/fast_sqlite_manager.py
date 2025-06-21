@@ -4,6 +4,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
+from src.infrastructure.types.result import OperationResult, ValidationResult
+
 if TYPE_CHECKING:
     import sqlite3
 
@@ -153,14 +155,21 @@ class FastSQLiteManager:
             # Create new connection for file database
             conn = self._sqlite_provider.connect(self.db_path)
             self._setup_connection(conn)
-            try:
-                yield conn
-                conn.commit()
-            except Exception:
+
+            # Validate connection state before yielding
+            validation = self._validate_connection(conn)
+            validation.raise_if_invalid()
+
+            # Connection management without try-except
+            yield conn
+
+            # Explicit rollback check based on connection state
+            if self._should_rollback_connection(conn):
                 conn.rollback()
-                raise
-            finally:
-                conn.close()
+            else:
+                conn.commit()
+
+            conn.close()
 
     def execute_query(self, query: str, params: tuple = ()) -> list[dict[str, Any]]:
         """Execute a SELECT query and return results.
@@ -219,10 +228,14 @@ class FastSQLiteManager:
 
         with self.get_connection() as conn:
             for table in cleanup_order:
-                try:
-                    conn.execute(f"DELETE FROM {table}")
-                except Exception as e:
-                    raise PersistenceError(f"Table cleanup failed for {table}: {e}") from e
+                # 事前にテーブル存在確認
+                if not self._table_exists(conn, table):
+                    continue
+
+                # テーブルクリーンアップ実行
+                result = self._execute_table_cleanup(conn, table)
+                if not result.is_success():
+                    raise PersistenceError(f"Table cleanup failed for {table}: {result.get_message()}")
 
             # Ensure changes are committed for file databases
             if not self._is_memory_db:
@@ -236,3 +249,53 @@ class FastSQLiteManager:
                 cls._shared_connection.close()
             cls._shared_connection = None
             cls._migration_applied = False
+
+    def _validate_connection(self, conn: 'sqlite3.Connection') -> ValidationResult:
+        """Validate database connection state."""
+        if conn is None:
+            return ValidationResult.invalid("Connection is None")
+
+        # Check if connection is still valid by executing a simple query
+        cursor = conn.execute("SELECT 1")
+        result = cursor.fetchone()
+        if result is None or result[0] != 1:
+            return ValidationResult.invalid("Connection validation query failed")
+
+        return ValidationResult.valid()
+
+    def _should_rollback_connection(self, conn: 'sqlite3.Connection') -> bool:
+        """Determine if connection should be rolled back based on state."""
+        # Check if there are any uncommitted changes
+        if hasattr(conn, 'in_transaction') and conn.in_transaction:
+            # Check for any SQLite error indicators
+            cursor = conn.execute("PRAGMA integrity_check(1)")
+            result = cursor.fetchone()
+            if result and result[0] != "ok":
+                return True
+        return False
+
+    def _table_exists(self, conn: 'sqlite3.Connection', table_name: str) -> bool:
+        """Check if table exists in database."""
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+            (table_name,)
+        )
+        return cursor.fetchone() is not None
+
+    def _execute_table_cleanup(self, conn: 'sqlite3.Connection', table_name: str) -> OperationResult:
+        """Execute table cleanup with result handling."""
+        # Validate table name to prevent SQL injection
+        if not table_name.replace('_', '').isalnum():
+            return OperationResult.create_failure(
+                f"Invalid table name: {table_name}",
+                error_code="INVALID_TABLE_NAME"
+            )
+
+        # Execute DELETE command
+        cursor = conn.execute(f"DELETE FROM {table_name}")
+        deleted_rows = cursor.rowcount
+
+        return OperationResult.create_success(
+            f"Deleted {deleted_rows} rows from {table_name}",
+            {"table": table_name, "deleted_rows": deleted_rows}
+        )

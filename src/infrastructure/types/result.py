@@ -1,5 +1,5 @@
 """Result type for explicit error handling without try-catch."""
-from typing import Generic, TypeVar, Union, Optional, Callable, Any
+from typing import Any, Callable, Generic, Optional, TypeVar
 
 T = TypeVar('T')
 E = TypeVar('E', bound=Exception)
@@ -7,13 +7,13 @@ E = TypeVar('E', bound=Exception)
 
 class Result(Generic[T, E]):
     """Result type for explicit success/failure handling.
-    
+
     Replaces try-catch blocks with explicit error state management.
     """
 
     def __init__(self, success: bool, value: Optional[T] = None, error: Optional[E] = None):
         """Initialize result.
-        
+
         Args:
             success: Whether operation succeeded
             value: Success value (required if success=True)
@@ -23,7 +23,7 @@ class Result(Generic[T, E]):
             raise ValueError("Success result requires value")
         if not success and error is None:
             raise ValueError("Failure result requires error")
-            
+
         self._success = success
         self._value = value
         self._error = error
@@ -48,7 +48,7 @@ class Result(Generic[T, E]):
 
     def get_value(self) -> T:
         """Get success value.
-        
+
         Raises:
             ValueError: If result is failure
         """
@@ -58,7 +58,7 @@ class Result(Generic[T, E]):
 
     def get_error(self) -> E:
         """Get error information.
-        
+
         Raises:
             ValueError: If result is success
         """
@@ -97,7 +97,7 @@ class OperationResult:
 
     def __init__(self, success: bool, message: str = "", details: Optional[dict] = None, error_code: Optional[str] = None):
         """Initialize operation result.
-        
+
         Args:
             success: Whether operation succeeded
             message: Human-readable message
@@ -145,18 +145,18 @@ class OperationResult:
             combined_message = f"{self.message}; {other.message}"
             combined_details = {**self.details, **other.details}
             return OperationResult.create_success(combined_message, combined_details)
-        
+
         # If either failed, combine error messages
         error_parts = []
         if not self.success:
             error_parts.append(self.message)
         if not other.success:
             error_parts.append(other.message)
-        
+
         combined_error = "; ".join(error_parts)
         combined_details = {**self.details, **other.details}
         error_code = self.error_code or other.error_code
-        
+
         return OperationResult.create_failure(combined_error, error_code, combined_details)
 
 
@@ -166,7 +166,7 @@ class ValidationResult:
 
     def __init__(self, is_valid: bool, error_message: str = ""):
         """Initialize validation result.
-        
+
         Args:
             is_valid: Whether validation passed
             error_message: Error message if validation failed

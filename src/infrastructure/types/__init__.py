@@ -1,19 +1,19 @@
 """Infrastructure types for explicit error handling."""
 
 from .result import (
-    Result,
     OperationResult,
+    Result,
     ValidationResult,
-    validate_not_none,
     validate_not_empty,
-    validate_positive_int
+    validate_not_none,
+    validate_positive_int,
 )
 
 __all__ = [
+    'OperationResult',
     'Result',
-    'OperationResult', 
     'ValidationResult',
-    'validate_not_none',
     'validate_not_empty',
+    'validate_not_none',
     'validate_positive_int'
 ]

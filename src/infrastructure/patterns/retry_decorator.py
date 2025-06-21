@@ -3,8 +3,8 @@ import time
 from functools import wraps
 from typing import Any, Callable, Optional, Tuple, Type
 
+from src.infrastructure.types.result import Result
 from src.operations.exceptions.error_codes import ErrorCode
-from src.infrastructure.types.result import Result, OperationResult
 
 
 class RetryConfig:
@@ -60,21 +60,15 @@ def _determine_retry_eligibility(error_type: type, error_message: str, config: R
         raise ValueError("Retry configuration is invalid or incomplete")
 
     # Check by error type
-    if issubclass(error_type, config.retryable_errors):
-        return True
-
-    # For additional checks based on error message patterns if needed
-    return False
+    return issubclass(error_type, config.retryable_errors)
 
 
-def retry_on_failure_with_result(config: Optional[RetryConfig] = None):
+def retry_on_failure_with_result(config: RetryConfig):
     """Decorator to retry function calls that return Result objects.
 
     Args:
         config: Retry configuration. If None, uses default config.
     """
-    if config is None:
-        config = RetryConfig()
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
@@ -84,10 +78,10 @@ def retry_on_failure_with_result(config: Optional[RetryConfig] = None):
 
             for attempt in range(config.max_attempts):
                 result = func(*args, **kwargs)
-                
+
                 if result.is_success():
                     return result
-                
+
                 # Get error information
                 error = result.get_error()
                 last_error = error
@@ -128,33 +122,87 @@ def retry_on_failure_with_result(config: Optional[RetryConfig] = None):
 class RetryableOperation:
     """Base class for operations that support retry logic."""
 
-    def __init__(self, retry_config: Optional[RetryConfig] = None, logger: Optional[Any] = None):
+    def __init__(self, retry_config: RetryConfig, logger: Optional[Any] = None):
         """Initialize retryable operation.
 
         Args:
             retry_config: Retry configuration
             logger: Logger instance for logging retry attempts
         """
-        self.retry_config = retry_config or RetryConfig(logger=logger)
+        self.retry_config = retry_config
         if logger and not self.retry_config.logger:
             self.retry_config.logger = logger
 
-    def execute_with_retry(self, operation: Callable, *args, **kwargs) -> Result:
+    def execute_with_retry(self, operation: Callable, *args, **kwargs) -> Any:
         """Execute an operation with retry logic.
 
         Args:
-            operation: The operation to execute that returns a Result
+            operation: The operation to execute
             *args: Positional arguments for the operation
             **kwargs: Keyword arguments for the operation
 
         Returns:
             Result of the operation
         """
-        @retry_on_failure_with_result(self.retry_config)
+        @retry_on_failure(self.retry_config)
         def wrapped_operation():
             return operation(*args, **kwargs)
 
         return wrapped_operation()
+
+
+# 互換性維持のための従来のretry_on_failure関数
+def retry_on_failure(config: RetryConfig):
+    """Decorator to retry function calls on transient failures (legacy compatibility).
+
+    Args:
+        config: Retry configuration.
+    """
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exception = None
+
+            for attempt in range(config.max_attempts):
+                try:
+                    # Execute the function
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    error_type = type(e)
+
+                    # Determine if this error should be retried
+                    should_retry = _determine_retry_eligibility(error_type, str(e), config)
+
+                    # Check by error code (if exception has error_code attribute)
+                    if hasattr(e, 'error_code') and e.error_code in config.retryable_error_codes:
+                        should_retry = True
+
+                    # Don't retry on final attempt or non-retryable errors
+                    if not should_retry or attempt == config.max_attempts - 1:
+                        raise
+
+                    # Calculate delay with exponential backoff
+                    delay = min(
+                        config.base_delay * (config.backoff_factor ** attempt),
+                        config.max_delay
+                    )
+
+                    if config.logger:
+                        config.logger.warning(
+                            f"Attempt {attempt + 1} failed for {func.__name__}: {e}. "
+                            f"Retrying in {delay:.1f} seconds..."
+                        )
+
+                    time.sleep(delay)
+
+            # All attempts failed, raise the last exception
+            if last_exception:
+                raise last_exception
+            return None
+
+        return wrapper
+    return decorator
 
 
 # Predefined retry configurations for common scenarios

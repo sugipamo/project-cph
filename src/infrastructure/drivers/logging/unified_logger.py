@@ -370,9 +370,26 @@ class UnifiedLogger(LoggerInterface):
     def _format_message(self, message: str, args: tuple) -> str:
         """Format message with arguments (Python logging style)."""
         if args:
-            try:
-                return message % args
-            except (TypeError, ValueError) as e:
-                # Proper error handling instead of fallback
-                raise ValueError(f"Message formatting failed: {e}. Message: '{message}', Args: {args}") from e
+            # Validate format string and arguments before formatting
+            if not self._validate_format_args(message, args):
+                raise ValueError(f"Message formatting validation failed. Message: '{message}', Args: {args}")
+
+            # Perform formatting with validated inputs
+            return message % args
         return message
+
+    def _validate_format_args(self, message: str, args: tuple) -> bool:
+        """Validate format string and arguments compatibility."""
+        if not isinstance(message, str):
+            return False
+        if not isinstance(args, tuple):
+            return False
+
+        # Count format specifiers in message
+        import re
+        format_specs = re.findall(r'%[sdifgGeEcrxa%]', message)
+        # Remove literal % signs
+        literal_percents = message.count('%%')
+        expected_args = len(format_specs) - literal_percents
+
+        return len(args) == expected_args
