@@ -12,7 +12,7 @@ class ShellResult(OperationResult):
                  cmd: Optional[str], error_message: Optional[str],
                  exception: Optional[Exception], start_time: Optional[float],
                  end_time: Optional[float], request: Optional[Any],
-                 metadata: Optional[dict[str, Any]]):
+                 metadata: Optional[dict[str, Any]], op: Optional[str] = None):
         """Initialize shell result.
 
         Args:
@@ -36,7 +36,7 @@ class ShellResult(OperationResult):
             content=None,
             exists=None,
             path=None,
-            op=None,
+            op=op,
             cmd=cmd,
             request=request,
             start_time=start_time,

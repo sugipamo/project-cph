@@ -151,7 +151,7 @@ class TestSystemConfigLoader:
         """Test save_config method without category."""
         self.mock_container.resolve.return_value = self.mock_config_repo
 
-        self.loader.save_config("test_key", "test_value")
+        self.loader.save_config("test_key", "test_value", None)
 
         self.mock_config_repo.set_config.assert_called_once_with(
             "test_key", "test_value", None
@@ -249,7 +249,7 @@ class TestSystemConfigLoader:
 
         self.mock_config_repo.get_config.return_value = None
 
-        self.loader.update_current_context(language="rust")
+        self.loader.update_current_context(None, None, "rust", None, None)
 
         self.mock_config_repo.set_config.assert_called_once_with("language", "rust")
 
@@ -261,7 +261,7 @@ class TestSystemConfigLoader:
             "contest_name": "existing_contest"
         }.get(key)
 
-        self.loader.update_current_context(contest_name="new_contest")
+        self.loader.update_current_context("new_contest", None, None, None, None)
 
         # Should save old value and set new value
         expected_calls = [

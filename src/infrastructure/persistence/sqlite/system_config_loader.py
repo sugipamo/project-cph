@@ -120,24 +120,24 @@ class SystemConfigLoader:
             # Save old contest name before updating
             old_contest = self.config_repo.get_config("contest_name")
             if old_contest:
-                self.config_repo.set_config("old_contest_name", old_contest)
-            self.config_repo.set_config("contest_name", contest_name)
+                self.config_repo.set_config("old_contest_name", old_contest, "context", "Previous contest name")
+            self.config_repo.set_config("contest_name", contest_name, "context", "Current contest name")
         if problem_name is not None:
             # Save old problem name before updating
             old_problem = self.config_repo.get_config("problem_name")
             if old_problem:
-                self.config_repo.set_config("old_problem_name", old_problem)
-            self.config_repo.set_config("problem_name", problem_name)
+                self.config_repo.set_config("old_problem_name", old_problem, "context", "Previous problem name")
+            self.config_repo.set_config("problem_name", problem_name, "context", "Current problem name")
         if language is not None:
-            self.config_repo.set_config("language", language)
+            self.config_repo.set_config("language", language, "context", "Programming language")
         if command is not None:
-            self.config_repo.set_config("command", command)
+            self.config_repo.set_config("command", command, "context", "Current command")
         if env_type is not None:
-            self.config_repo.set_config("env_type", env_type)
+            self.config_repo.set_config("env_type", env_type, "context", "Environment type")
 
     def clear_context_value(self, key: str) -> None:
         """Clear a specific context value (set to NULL)."""
-        self.config_repo.set_config(key, None)
+        self.config_repo.set_config(key, None, None, None)
 
     def has_user_specified(self, key: str) -> bool:
         """Check if a configuration was user-specified (not NULL)."""

@@ -47,17 +47,17 @@ def test_is_script_file_true_false(tmp_path, python_utils):
 def test_run_script_file(tmp_path, python_utils):
     f = tmp_path / "b.py"
     f.write_text("print('hello')")
-    out, err, code = python_utils.run_script_file(str(f))
+    out, err, code = python_utils.run_script_file(str(f), cwd=None)
     assert "hello" in out
     assert code == 0
 
 def test_run_code_string_success(python_utils):
-    out, err, code = python_utils.run_code_string("print('abc')")
+    out, err, code = python_utils.run_code_string("print('abc')", cwd=None)
     assert out.strip() == "abc"
     assert err == ""
     assert code == 0
 
 def test_run_code_string_exception(python_utils):
-    out, err, code = python_utils.run_code_string("raise Exception('fail')")
+    out, err, code = python_utils.run_code_string("raise Exception('fail')", cwd=None)
     assert "Exception" in err
     assert code == 1

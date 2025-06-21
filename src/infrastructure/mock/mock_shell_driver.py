@@ -13,9 +13,18 @@ class MockShellDriver(ShellDriver):
         self._commands_executed = []
         self._responses = {}
         self._default_response = ShellResult(
+            success=True,
             stdout="mock output",
             stderr="",
-            returncode=0
+            returncode=0,
+            cmd="mock command",
+            error_message=None,
+            exception=None,
+            start_time=0.0,
+            end_time=0.0,
+            request=None,
+            metadata={},
+            op="mock_shell_operation"
         )
         self.file_driver = file_driver
 

@@ -2,6 +2,7 @@
 Comprehensive tests for shell_driver module
 """
 import unittest.mock
+from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -27,7 +28,7 @@ class TestLocalShellDriver(BaseTest):
     def setup_test(self):
         """Setup test data"""
         from src.infrastructure.mock.mock_file_driver import MockFileDriver
-        self.mock_file_driver = MockFileDriver()
+        self.mock_file_driver = MockFileDriver(base_dir=Path('/tmp'))
         self.driver = LocalShellDriver(self.mock_file_driver)
 
         # Mock successful shell result
@@ -208,7 +209,7 @@ class TestLocalShellDriverIntegration(BaseTest):
     def setup_test(self):
         """Setup test data"""
         from src.infrastructure.mock.mock_file_driver import MockFileDriver
-        self.mock_file_driver = MockFileDriver()
+        self.mock_file_driver = MockFileDriver(base_dir=Path('/tmp'))
         self.driver = LocalShellDriver(self.mock_file_driver)
 
     @patch('src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess')
@@ -281,7 +282,7 @@ class TestLocalShellDriverEdgeCases(BaseTest):
     def setup_test(self):
         """Setup test data"""
         from src.infrastructure.mock.mock_file_driver import MockFileDriver
-        self.mock_file_driver = MockFileDriver()
+        self.mock_file_driver = MockFileDriver(base_dir=Path('/tmp'))
         self.driver = LocalShellDriver(self.mock_file_driver)
 
     @patch('src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess')
@@ -419,7 +420,7 @@ class TestShellDriverParameterValidation(BaseTest):
     def setup_test(self):
         """Setup test data"""
         from src.infrastructure.mock.mock_file_driver import MockFileDriver
-        self.mock_file_driver = MockFileDriver()
+        self.mock_file_driver = MockFileDriver(base_dir=Path('/tmp'))
         self.driver = LocalShellDriver(self.mock_file_driver)
 
     @patch('src.infrastructure.drivers.shell.utils.shell_utils.ShellUtils.run_subprocess')

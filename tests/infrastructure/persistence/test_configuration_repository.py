@@ -38,17 +38,17 @@ class TestConfigurationRepository:
     @pytest.fixture
     def repo(self, temp_db_path):
         """Create ConfigurationRepository instance with temp database"""
-        return ConfigurationRepository(temp_db_path)
+        return ConfigurationRepository(temp_db_path, None, None)
 
     def test_init_with_default_path(self):
         """Test initialization with default database path"""
-        repo = ConfigurationRepository()
+        repo = ConfigurationRepository("cph_history.db", None, None)
         assert repo.db_path == "cph_history.db"
 
     def test_init_with_custom_path(self):
         """Test initialization with custom database path"""
         custom_path = "/custom/path/test.db"
-        repo = ConfigurationRepository(custom_path)
+        repo = ConfigurationRepository(custom_path, None, None)
         assert repo.db_path == custom_path
 
 

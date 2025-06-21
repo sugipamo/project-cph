@@ -23,17 +23,17 @@ class TestSQLiteManager:
     @pytest.fixture
     def sqlite_manager(self, temp_db_path):
         """Create SQLiteManager with temporary database."""
-        return SQLiteManager(temp_db_path)
+        return SQLiteManager(temp_db_path, None)
 
     def test_initialization_with_default_path(self):
         """Test SQLiteManager initializes with default database path."""
-        manager = SQLiteManager()
+        manager = SQLiteManager("cph_history.db", None)
         expected_path = Path("cph_history.db")
         assert manager.db_path == expected_path
 
     def test_initialization_with_custom_path(self, temp_db_path):
         """Test SQLiteManager initializes with custom database path."""
-        manager = SQLiteManager(temp_db_path)
+        manager = SQLiteManager(temp_db_path, None)
         assert manager.db_path == Path(temp_db_path)
 
     def test_database_creation(self, sqlite_manager):
@@ -131,8 +131,8 @@ class TestSQLiteManager:
 
     def test_connection_isolation(self, temp_db_path):
         """Test different SQLiteManager instances are properly isolated."""
-        manager1 = SQLiteManager(temp_db_path)
-        manager2 = SQLiteManager(temp_db_path)
+        manager1 = SQLiteManager(temp_db_path, None)
+        manager2 = SQLiteManager(temp_db_path, None)
 
         # Both should connect to same database
         with manager1.get_connection() as conn:

@@ -151,8 +151,21 @@ class MockSQLiteConnection:
         self.database = database
         self._provider = provider
 
+    def execute(self, sql: str, parameters: Tuple = ()) -> Any:
+        """SQLite互換のexecuteメソッド"""
+        return self._provider.execute_sql_statement(self, sql, parameters)
+
     def execute_sql_statement(self, sql: str, parameters: Tuple) -> Any:
         return self._provider.execute_sql_statement(self, sql, parameters)
+
+    def executescript(self, sql_script: str) -> Any:
+        """SQLite互換のexecutescriptメソッド"""
+        # スクリプトを個別のSQL文に分割して実行
+        statements = [stmt.strip() for stmt in sql_script.split(';') if stmt.strip()]
+        cursor = None
+        for stmt in statements:
+            cursor = self._provider.execute_sql_statement(self, stmt, ())
+        return cursor
 
     def executemany(self, sql: str, seq_of_parameters: Optional[List[Tuple]]) -> Any:
         return self._provider.executemany(self, sql, seq_of_parameters)

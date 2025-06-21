@@ -208,7 +208,7 @@ class TestStepGenerationService(unittest.TestCase):
         """Test validating step with empty command raises ValueError"""
         with self.assertRaises(ValueError) as context:
             Step(type=StepType.MKDIR, cmd=[])
-        
+
         self.assertIn("must have non-empty cmd", str(context.exception))
 
 

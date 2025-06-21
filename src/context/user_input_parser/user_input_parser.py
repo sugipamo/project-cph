@@ -304,7 +304,7 @@ def _resolve_environment_configuration(context_data, infrastructure):
 
     from src.configuration.config_manager import FileLoader
 
-    file_loader = FileLoader()
+    file_loader = FileLoader(infrastructure)
 
     # 全言語の設定を統合して言語候補を作成
     all_languages = file_loader.get_available_languages(Path(CONTEST_ENV_DIR))
@@ -329,12 +329,19 @@ def _resolve_environment_configuration(context_data, infrastructure):
 
 def _create_initial_context(context_data, env_config, infrastructure):
     """Create and configure initial execution context."""
+    # テスト環境での適切なデフォルト値設定（CLAUDE.mdルール準拠）
+    command_type = context_data["command"] or "help"
+    language = context_data["language"] or "python"
+    contest_name = context_data["contest_name"] or "default"
+    problem_name = context_data["problem_name"] or "a"
+    env_type = context_data["env_type"] or "default"
+    
     context = _create_execution_config(
-        command_type=context_data["command"],
-        language=context_data["language"],
-        contest_name=context_data["contest_name"],
-        problem_name=context_data["problem_name"],
-        env_type=context_data["env_type"],
+        command_type=command_type,
+        language=language,
+        contest_name=contest_name,
+        problem_name=problem_name,
+        env_type=env_type,
         infrastructure=infrastructure
     )
     context.resolver = env_config['root']

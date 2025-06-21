@@ -65,10 +65,10 @@ class FastSQLiteManager:
                 self._setup_connection(FastSQLiteManager._shared_connection)
 
                 if not self.skip_migrations:
-                    self._run_migrations(FastSQLiteManager._shared_connection)
+                    self._run_migrations(FastSQLiteManager._shared_connection, 0)
                     FastSQLiteManager._migration_applied = True
             elif not FastSQLiteManager._migration_applied and not self.skip_migrations:
-                self._run_migrations(FastSQLiteManager._shared_connection)
+                self._run_migrations(FastSQLiteManager._shared_connection, 0)
                 FastSQLiteManager._migration_applied = True
 
     def _initialize_file_db(self) -> None:

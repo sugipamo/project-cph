@@ -29,7 +29,7 @@ class TestFastSQLiteManager:
         mock_provider = Mock()
         mock_connection = Mock()
         mock_provider.connect.return_value = mock_connection
-        
+
         # Mock the _run_migrations method to avoid missing parameter error
         with patch.object(FastSQLiteManager, '_run_migrations'):
             manager = FastSQLiteManager(
@@ -209,7 +209,7 @@ class TestFastSQLiteManager:
             with patch.object(manager, '_validate_connection') as mock_validate:
                 from src.infrastructure.types.result import ValidationResult
                 mock_validate.return_value = ValidationResult.valid()
-                
+
                 with manager.get_connection() as conn:
                     assert conn == mock_connection
 
@@ -379,9 +379,9 @@ class TestFastSQLiteManager:
             from src.infrastructure.types.result import OperationResult
             with patch.object(manager, '_execute_table_cleanup') as mock_cleanup:
                 mock_cleanup.return_value = OperationResult(
-                    success=True, 
-                    message="Success", 
-                    details={}, 
+                    success=True,
+                    message="Success",
+                    details={},
                     error_code=None
                 )
                 manager.cleanup_test_data()
