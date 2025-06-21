@@ -110,11 +110,11 @@ class SystemConfigLoader:
         """Get execution context with specification status."""
         return self.config_repo.get_execution_context_summary()
 
-    def update_current_context(self, contest_name: Optional[str] = None,
-                              problem_name: Optional[str] = None,
-                              language: Optional[str] = None,
-                              command: Optional[str] = None,
-                              env_type: Optional[str] = None) -> None:
+    def update_current_context(self, contest_name: Optional[str],
+                              problem_name: Optional[str],
+                              language: Optional[str],
+                              command: Optional[str],
+                              env_type: Optional[str]) -> None:
         """Update current execution context."""
         if contest_name is not None:
             # Save old contest name before updating
