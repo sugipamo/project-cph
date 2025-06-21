@@ -26,7 +26,7 @@ class DockerContainerRepository(DatabaseRepositoryFoundation):
         """Find container by ID."""
         return self.find_container_by_name(str(entity_id))
 
-    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Dict[str, Any]]:
+    def find_all(self, limit: Optional[int], offset: Optional[int]) -> List[Dict[str, Any]]:
         """Find all containers."""
         containers = self.get_active_containers()
         if offset:
@@ -58,14 +58,14 @@ class DockerContainerRepository(DatabaseRepositoryFoundation):
         self,
         container_name: str,
         image_name: str,
-        image_tag: str = "latest",
-        language: Optional[str] = None,
-        contest_name: Optional[str] = None,
-        problem_name: Optional[str] = None,
-        env_type: Optional[str] = None,
-        volumes: Optional[List[Dict[str, str]]] = None,
-        environment: Optional[Dict[str, str]] = None,
-        ports: Optional[List[Dict[str, Any]]] = None,
+        image_tag: str,
+        language: Optional[str],
+        contest_name: Optional[str],
+        problem_name: Optional[str],
+        env_type: Optional[str],
+        volumes: Optional[List[Dict[str, str]]],
+        environment: Optional[Dict[str, str]],
+        ports: Optional[List[Dict[str, Any]]],
     ) -> int:
         """Create a new container record."""
         query = """
@@ -106,7 +106,7 @@ class DockerContainerRepository(DatabaseRepositoryFoundation):
         self,
         container_name: str,
         status: str,
-        timestamp_field: Optional[str] = None
+        timestamp_field: Optional[str]
     ) -> None:
         """Update container status and related timestamp."""
         query = "UPDATE docker_containers SET status = ?, last_used_at = CURRENT_TIMESTAMP"
@@ -201,7 +201,7 @@ class DockerContainerRepository(DatabaseRepositoryFoundation):
         self,
         container_name: str,
         event_type: str,
-        event_data: Optional[Dict[str, Any]] = None
+        event_data: Optional[Dict[str, Any]]
     ) -> None:
         """Add a lifecycle event for a container."""
         query = """

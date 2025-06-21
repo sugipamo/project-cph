@@ -235,7 +235,10 @@ class RequestFactory:
         return FileRequest(
             op=FileOpType.MKDIR,
             path=path,
-            debug_tag=f"mkdir_{context.problem_name}"
+            content=None,
+            dst_path=None,
+            debug_tag=f"mkdir_{context.problem_name}",
+            name=None
         )
 
     def _create_touch_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
@@ -253,7 +256,10 @@ class RequestFactory:
         return FileRequest(
             op=FileOpType.TOUCH,
             path=path,
-            debug_tag=f"touch_{context.problem_name}"
+            content=None,
+            dst_path=None,
+            debug_tag=f"touch_{context.problem_name}",
+            name=None
         )
 
     def _create_copy_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
@@ -281,8 +287,10 @@ class RequestFactory:
         return FileRequest(
             op=FileOpType.COPY,
             path=source,
+            content=None,
             dst_path=target,
-            debug_tag=f"copy_{context.problem_name}"
+            debug_tag=f"copy_{context.problem_name}",
+            name=None
         )
 
     def _create_move_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
@@ -297,8 +305,10 @@ class RequestFactory:
         return FileRequest(
             op=FileOpType.MOVE,
             path=source,
+            content=None,
             dst_path=target,
-            debug_tag=f"move_{context.problem_name}"
+            debug_tag=f"move_{context.problem_name}",
+            name=None
         )
 
     def _create_remove_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
@@ -310,7 +320,10 @@ class RequestFactory:
         return FileRequest(
             op=FileOpType.REMOVE,
             path=path,
-            debug_tag=f"remove_{context.problem_name}"
+            content=None,
+            dst_path=None,
+            debug_tag=f"remove_{context.problem_name}",
+            name=None
         )
 
     def _create_rmtree_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
@@ -322,7 +335,10 @@ class RequestFactory:
         return FileRequest(
             op=FileOpType.RMTREE,
             path=path,
-            debug_tag=f"rmtree_{context.problem_name}"
+            content=None,
+            dst_path=None,
+            debug_tag=f"rmtree_{context.problem_name}",
+            name=None
         )
 
     def _create_chmod_request(self, step: Step, context: Any, env_manager: Any) -> ShellRequest:

@@ -28,11 +28,11 @@ class TestMinimalCLIApp:
     @pytest.fixture
     def cli_app(self, mock_infrastructure):
         """Create MinimalCLIApp instance."""
-        return MinimalCLIApp(mock_infrastructure)
+        return MinimalCLIApp(mock_infrastructure, logger=None)
 
     def test_init_success(self, mock_infrastructure):
         """Test successful CLI app initialization."""
-        app = MinimalCLIApp(mock_infrastructure)
+        app = MinimalCLIApp(mock_infrastructure, logger=None)
 
         assert app.infrastructure == mock_infrastructure
         assert app.context is None

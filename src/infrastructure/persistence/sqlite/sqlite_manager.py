@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 class SQLiteManager:
     """Manages SQLite database connections and schema migrations."""
 
-    def __init__(self, db_path: str = "cph_history.db", sqlite_provider=None):
+    def __init__(self, db_path: str, sqlite_provider):
         """Initialize SQLite manager.
 
         Args:

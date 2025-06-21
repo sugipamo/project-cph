@@ -13,10 +13,10 @@ from src.operations.results.file_result import FileResult
 class FileRequest(OperationRequestFoundation):
     """Request for file operations."""
 
-    def __init__(self, op: FileOpType, path: str, content: Optional[str] = None,
-                 dst_path: Optional[str] = None, debug_tag: Optional[str] = None,
-                 name: Optional[str] = None, allow_failure: bool = False):
-        super().__init__(name=name, debug_tag=debug_tag)
+    def __init__(self, op: FileOpType, path: str, content: Optional[str],
+                 dst_path: Optional[str], debug_tag: Optional[str],
+                 name: Optional[str], allow_failure: bool = False):
+        super().__init__(name=name, debug_tag=debug_tag, _executed=False, _result=None, _debug_info=None)
         self.op = op
         self.path = path
         self.content = content
@@ -33,18 +33,22 @@ class FileRequest(OperationRequestFoundation):
         """Return the request type for type-safe identification."""
         return RequestType.FILE_REQUEST
 
-    def _execute_core(self, driver: Any, logger: Optional[Any] = None) -> FileResult:
+    def _execute_core(self, driver: Any, logger: Optional[Any]) -> FileResult:
         """Core execution logic for file operations."""
         self._start_time = time.time()
-        try:
-            actual_driver = self._resolve_driver(driver)
-            if logger:
-                logger.debug(f"Executing file operation: {self.op} on {self.path}")
-            return self._dispatch_file_operation(actual_driver)
-        except Exception as e:
-            if logger:
-                logger.error(f"File operation failed: {self.op} on {self.path}: {e}")
-            return self._handle_file_error(e)
+
+        actual_driver = self._resolve_driver(driver)
+        if logger:
+            logger.debug(f"Executing file operation: {self.op} on {self.path}")
+
+        # Execute operation and check for errors
+        result = self._dispatch_file_operation(actual_driver)
+
+        # Check if operation failed and handle error
+        if hasattr(result, 'success') and not result.success and logger:
+            logger.error(f"File operation failed: {self.op} on {self.path}")
+
+        return result
 
     def _resolve_driver(self, driver: Any) -> Any:
         """Resolve the actual file driver from unified driver if needed."""

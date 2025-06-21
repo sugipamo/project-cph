@@ -13,7 +13,7 @@ from src.workflow.workflow_result import WorkflowExecutionResult
 class MinimalCLIApp:
     """Minimal CLI application with essential features"""
 
-    def __init__(self, infrastructure: DIContainer, logger=None):
+    def __init__(self, infrastructure: DIContainer, logger):
         """Initialize minimal CLI application
 
         Args:
@@ -35,90 +35,59 @@ class MinimalCLIApp:
         Returns:
             Exit code (0 for success, 1 for failure)
         """
-        try:
-            # Infrastructure must be injected from main.py - no direct initialization
-            if self.infrastructure is None:
-                raise RuntimeError("Infrastructure not injected - must be provided by main.py")
+        # Infrastructure must be injected from main.py - no direct initialization
+        if self.infrastructure is None:
+            raise RuntimeError("Infrastructure not injected - must be provided by main.py")
 
-            # Initialize logger if not provided
-            if self.logger is None:
-                try:
-                    self.logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
-                except KeyError as e:
-                    # Logger initialization failure - infrastructure available but logger failed
-                    # 互換性維持: CLIではロガー初期化失敗時にエラーコードを返すのが正しい動作
-                    raise RuntimeError(f"Logger dependency not registered: {e}") from e
-                except Exception as e:
-                    # 互換性維持: CLIではロガー初期化失敗時にエラーコードを返すのが正しい動作
-                    raise RuntimeError(f"Logger initialization failed: {e}") from e
+        # Initialize logger if not provided
+        if self.logger is None:
+            logger_result = self._initialize_logger()
+            if not logger_result:
+                return 1
 
-            # Parse user input with infrastructure context
-            self.context = parse_user_input(args, self.infrastructure)
+        # Parse user input with infrastructure context
+        self.context = parse_user_input(args, self.infrastructure)
 
-            # Log application start
-            self.logger.info(f"CLI実行開始: {' '.join(args)}")
+        # Log application start
+        self.logger.info(f"CLI実行開始: {' '.join(args)}")
 
-            # Construct and execute workflow
-            result = self._execute_workflow()
+        # Construct and execute workflow
+        result = self._execute_workflow()
 
-            # Log application end
-            if result.success:
-                self.logger.info("CLI実行完了")
-            else:
-                self.logger.error("CLI実行失敗")
+        # Log application end
+        if result.success:
+            self.logger.info("CLI実行完了")
+        else:
+            self.logger.error("CLI実行失敗")
 
-            # ログ出力をフラッシュして表示
-            if self.logger and hasattr(self.logger, 'output_manager'):
-                self.logger.output_manager.flush()
+        # ログ出力をフラッシュして表示
+        if self.logger and hasattr(self.logger, 'output_manager'):
+            self.logger.output_manager.flush()
 
-            # 互換性維持: 成功時は0、失敗時は1を返す
-            if result.success:
-                return 0
-            return 1
+        # 互換性維持: 成功時は0、失敗時は1を返す
+        if result.success:
+            return 0
+        return 1
 
-        except CompositeStepFailureError as e:
-            # ロガーが初期化されていない場合でも依存性注入で対応
-            if self.logger is None and self.infrastructure is not None:
-                try:
-                    self.logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
-                except Exception as logger_error:
-                    raise RuntimeError(f"Logger initialization failed: {logger_error}") from logger_error
+    def _initialize_logger(self) -> bool:
+        """Initialize logger using dependency injection
 
-            if self.logger is None:
-                # infrastructureも利用できない場合は致命的エラー
-                raise RuntimeError(f"Logger initialization failed: {e}") from None
+        Returns:
+            bool: True if successful, False if failed
+        """
+        # Logger dependency resolution
+        if 'UNIFIED_LOGGER' not in [key.name for key in self.infrastructure._services]:
+            # Logger initialization failure - infrastructure available but logger failed
+            # 互換性維持: CLIではロガー初期化失敗時にエラーコードを返すのが正しい動作
+            raise RuntimeError("Logger dependency not registered")
 
-            result = self._handle_composite_step_failure(e)
-            # エラー時もログ出力をフラッシュ
-            if self.logger and hasattr(self.logger, 'output_manager'):
-                self.logger.output_manager.flush()
-            return result
-        except Exception as e:
-            # ロガーが初期化されていない場合でも依存性注入で対応
-            if self.logger is None and self.infrastructure is not None:
-                try:
-                    self.logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
-                except Exception:
-                    # 最後の手段: output_managerを使用
-                    try:
-                        output_manager = self.infrastructure.resolve(DIKey.OUTPUT_MANAGER)
-                        output_manager.error(f"エラー: {e}")
-                        if "--debug" in args:
-                            output_manager.error(f"スタックトレース: {traceback.format_exc()}")
-                        return 1
-                    except Exception:
-                        # infrastructureも失敗した場合は致命的エラー
-                        raise RuntimeError(f"Logger and infrastructure initialization failed: {e}") from None
+        resolved_logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
+        if resolved_logger is None:
+            # 互換性維持: CLIではロガー初期化失敗時にエラーコードを返すのが正しい動作
+            raise RuntimeError("Logger initialization failed")
 
-            if self.logger is None:
-                # infrastructureも利用できない場合は致命的エラー
-                raise RuntimeError(f"Logger initialization failed: {e}") from None
-
-            result = self._handle_general_exception(e, args)
-            # エラー時もログ出力をフラッシュ
-            if self.logger and hasattr(self.logger, 'output_manager'):
-                self.logger.output_manager.flush()
-            return result
+        self.logger = resolved_logger
+        return True
 
     def _execute_workflow(self) -> WorkflowExecutionResult:
         """Construct and execute workflow using infrastructure dependencies
@@ -170,11 +139,11 @@ class MinimalCLIApp:
         self.logger.error(exception.get_formatted_message())
 
         if hasattr(exception, 'result') and exception.result is not None:
-            try:
+            # エラー出力取得を安全に実行
+            error_output = self._get_error_output_safely(exception.result)
+            if error_output:
                 self.logger.error("詳細:")
-                self.logger.error(exception.result.get_error_output())
-            except Exception as error_output_error:
-                self.logger.error(f"結果エラー出力取得エラー: {error_output_error}")
+                self.logger.error(error_output)
 
         if exception.original_exception:
             self.logger.error(f"元の例外: {type(exception.original_exception).__name__}")
@@ -224,8 +193,23 @@ class MinimalCLIApp:
 
         return 1
 
+    def _get_error_output_safely(self, result) -> Optional[str]:
+        """Safely get error output from result object
 
-def main(argv: Optional[list[str]] = None, exit_func=None, infrastructure: Optional[DIContainer] = None) -> int:
+        Args:
+            result: Result object that may have get_error_output method
+
+        Returns:
+            str: Error output if available, None otherwise
+        """
+        if hasattr(result, 'get_error_output'):
+            error_output = result.get_error_output()
+            if error_output:
+                return error_output
+        return None
+
+
+def main(argv: Optional[list[str]], exit_func, infrastructure: Optional[DIContainer]) -> int:
     """Main entry point for minimal CLI
 
     Args:

@@ -84,11 +84,48 @@ def format_with_context(template: str, context: dict[str, Any]) -> str:
         def __missing__(self, key):
             return f"{{{key}}}"
 
-    try:
+    # Check if template contains valid format syntax
+    if _contains_valid_format_syntax(template, str_context):
         return template.format_map(SafeDict(str_context))
-    except (KeyError, ValueError):
-        # Fallback to simple replacement
-        return format_string_simple(template, str_context)
+
+    # Use simple replacement if format_map would fail
+    return format_string_simple(template, str_context)
+
+
+def _contains_valid_format_syntax(template: str, context: dict) -> bool:
+    """Check if template contains valid format syntax that can be processed safely
+
+    Args:
+        template: Template string to check
+        context: Context dictionary with available keys
+
+    Returns:
+        bool: True if template can be safely formatted, False otherwise
+    """
+    import re
+
+    # Check for basic format syntax without complex expressions
+    format_pattern = re.compile(r'\{[^{}]*\}')
+    format_keys = format_pattern.findall(template)
+
+    # If no format keys found, safe to proceed
+    if not format_keys:
+        return True
+
+    # Check if all format keys are simple (no complex expressions)
+    for key in format_keys:
+        # Remove braces and check content
+        key_content = key[1:-1]
+
+        # Skip if contains format specs or complex expressions
+        if ':' in key_content or '!' in key_content or '.' in key_content:
+            return False
+
+        # Skip if key is not in context (will be handled by SafeDict)
+        if key_content and key_content not in context:
+            continue
+
+    return True
 
 
 def validate_template_keys(template: str, required_keys: list[str]) -> tuple[bool, list[str]]:

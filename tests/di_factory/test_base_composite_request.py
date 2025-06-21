@@ -6,16 +6,19 @@ from src.operations.requests.composite.base_composite_request import CompositeRe
 
 class DummyRequest(OperationRequestFoundation):
     def __init__(self, name=None):
-        super().__init__(name=name)
+        super().__init__(name=name, debug_tag=None, _executed=False, _result=None, _debug_info=None)
     @property
     def operation_type(self):
         return "DUMMY"
-    def _execute_core(self, driver):
+    def _execute_core(self, driver, logger):
         return "ok"
 
 class DummyCompositeRequest(CompositeRequestFoundation):
-    def _execute_core(self, driver):
-        return [r._execute_core(driver) for r in self.requests]
+    def __init__(self, requests, debug_tag=None, name=None, _executed=False, _results=None, _debug_info=None):
+        super().__init__(requests=requests, debug_tag=debug_tag, name=name, _executed=_executed, _results=_results, _debug_info=_debug_info)
+
+    def _execute_core(self, driver, logger):
+        return [r._execute_core(driver, logger) for r in self.requests]
 
 def test_base_composite_request_set_name():
     reqs = [DummyRequest("a"), DummyRequest("b")]
@@ -33,13 +36,13 @@ def test_base_composite_request_repr():
 
 def test_make_composite_request_single():
     req = DummyRequest("a")
-    result = DummyCompositeRequest.make_composite_request([req], name="single")
+    result = DummyCompositeRequest.make_composite_request([req], debug_tag=None, name="single")
     assert isinstance(result, DummyRequest)
     assert result.name == "single"
 
 def test_make_composite_request_multiple():
     reqs = [DummyRequest("a"), DummyRequest("b")]
-    result = DummyCompositeRequest.make_composite_request(reqs, name="multi")
+    result = DummyCompositeRequest.make_composite_request(reqs, debug_tag=None, name="multi")
     assert isinstance(result, DummyCompositeRequest)
     assert result.name == "multi"
 

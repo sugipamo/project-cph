@@ -60,5 +60,5 @@ def test_hash_file(tmp_path):
     p = tmp_path / "a.txt"
     p.write_text("abc")
     driver = LocalFileDriver(base_dir=Path('.'))
-    h = driver.hash_file(p)
+    h = driver.hash_file(p, "sha256")
     assert isinstance(h, str) and len(h) > 0

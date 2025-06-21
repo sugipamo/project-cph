@@ -790,7 +790,7 @@ class TestRunner:
                         if isinstance(node, ast.Try):
                             # infrastructureディレクトリ以外でのtry文を検出
                             if not relative_path.startswith('infrastructure/') and not relative_path.startswith('tests/infrastructure/'):
-                                fallback_issues.append(f"{relative_path}:{node.lineno} try文がinfrastructure層外で使用されています")
+                                fallback_issues.append(f"{relative_path}:{node.lineno} try文がinfrastructure/result外で使用されています")
                                 fallback_issues.append("  解決方法:")
                                 fallback_issues.append("    1. src/infrastructure/result/error_converter.py の ErrorConverter を使用")
                                 fallback_issues.append("    2. operations層では ErrorConverter.execute_with_conversion() を呼び出し")
@@ -1022,17 +1022,24 @@ class TestRunner:
     def check_types(self) -> bool:
         """型チェック (mypy)"""
         # mypyが利用可能かチェック
-        result = self.command_executor.run(["mypy", "--version"], capture_output=True, text=True)
+        result = self.command_executor.run(["python3", "-m", "mypy", "--version"], capture_output=True, text=True)
         if not result.success:
             error_msg = "mypyの実行に失敗しました"
             self.logger.error(error_msg)
             self.issues.append(error_msg)
             return False
 
-        return self.run_command(
-            ["mypy", "src/", "--no-error-summary"],
+        # mypy実行と結果分析
+        success, output = self.run_command(
+            ["python3", "-m", "mypy", "src/", "--no-error-summary"],
             "型チェック"
-        )[0]
+        )
+
+        # 型エラーが検出された場合、簡潔なサマリーを作成
+        if not success and output:
+            self._analyze_type_errors(output)
+
+        return success
 
     def check_syntax(self) -> bool:
         """基本構文チェック"""
@@ -1240,6 +1247,76 @@ class TestRunner:
 
             if len(low_coverage_files) > 15:
                 self.warnings.append(f"  ... 他{len(low_coverage_files) - 15}件")
+
+    def _analyze_type_errors(self, output: str) -> None:
+        """型エラー分析（簡潔なサマリーを表示）"""
+        lines = output.split('\n')
+        type_errors = []
+        error_by_file = {}
+
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            # mypyエラー行のパターン: "src/path/file.py:line:col: error: message [error-code]"
+            if line.startswith('src/') and ': error:' in line:
+                parts = line.split(': error:', 1)
+                if len(parts) == 2:
+                    file_location = parts[0]
+                    error_message = parts[1].strip()
+
+                    # ファイルパスとエラーメッセージを抽出
+                    if ':' in file_location:
+                        file_path = file_location.split(':')[0]
+                        short_path = file_path.replace('src/', '')
+
+                        if short_path not in error_by_file:
+                            error_by_file[short_path] = 0
+                        error_by_file[short_path] += 1
+
+                        # 重要なエラーのみ詳細表示
+                        if self._is_important_type_error(error_message):
+                            type_errors.append(f"{short_path}: {error_message}")
+
+        if type_errors or error_by_file:
+            # ファイル別エラー数サマリー
+            if error_by_file:
+                total_errors = sum(error_by_file.values())
+                error_files = len(error_by_file)
+                self.issues.append(f"型エラー: {total_errors}件 ({error_files}ファイル)")
+
+                # エラー数の多いファイルを表示（上位10件）
+                sorted_files = sorted(error_by_file.items(), key=lambda x: x[1], reverse=True)
+                self.issues.append("エラー数の多いファイル:")
+                for file_path, count in sorted_files[:10]:
+                    self.issues.append(f"  {file_path}: {count}件")
+
+                if len(sorted_files) > 10:
+                    self.issues.append(f"  ... 他{len(sorted_files) - 10}ファイル")
+
+            # 重要なエラーの詳細表示（最大5件）
+            if type_errors:
+                self.issues.append("主要な型エラー:")
+                for error in type_errors[:5]:
+                    self.issues.append(f"  {error}")
+
+                if len(type_errors) > 5:
+                    self.issues.append(f"  ... 他{len(type_errors) - 5}件")
+
+    def _is_important_type_error(self, error_message: str) -> bool:
+        """重要な型エラーかどうかを判定"""
+        important_patterns = [
+            'has no attribute',
+            'incompatible type',
+            'cannot be assigned',
+            'is not subscriptable',
+            'missing type annotation',
+            'no-untyped-def',
+            'arg-type'
+        ]
+
+        return any(pattern in error_message.lower() for pattern in important_patterns)
 
     def print_summary(self):
         """実行結果のサマリーを表示"""

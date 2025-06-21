@@ -9,15 +9,15 @@ def test_build_docker_cmd_basic():
     assert "ubuntu:latest" in cmd
 
 def test_build_docker_cmd_no_options():
-    cmd = DockerUtils.build_docker_cmd(["docker", "ps"])
+    cmd = DockerUtils.build_docker_cmd(["docker", "ps"], options={}, positional_args=[])
     assert cmd == ["docker", "ps"]
 
 def test_build_docker_cmd_short_option():
-    cmd = DockerUtils.build_docker_cmd(["docker", "run"], options={"a": "b"})
+    cmd = DockerUtils.build_docker_cmd(["docker", "run"], options={"a": "b"}, positional_args=[])
     assert "-a" in cmd and "b" in cmd
 
 def test_build_docker_cmd_long_option():
-    cmd = DockerUtils.build_docker_cmd(["docker", "run"], options={"rm": None})
+    cmd = DockerUtils.build_docker_cmd(["docker", "run"], options={"rm": None}, positional_args=[])
     assert "--rm" in cmd
 
 def test_parse_image_tag_with_tag():

@@ -58,8 +58,9 @@ class TestCompositeRequest:
 
         composite = create_composite([req1, req2, req3])
         driver = Mock()
+        logger = Mock()
 
-        results = composite.execute_operation(driver)
+        results = composite.execute_operation(driver, logger)
 
         assert len(results) == 3
         assert req1.executed
@@ -76,8 +77,9 @@ class TestCompositeRequest:
 
         composite = create_composite([req1, req2, req3])
         driver = Mock()
+        logger = Mock()
 
-        results = composite.execute_operation(driver)
+        results = composite.execute_operation(driver, logger)
 
         assert len(results) == 3
         assert req1.executed
@@ -90,7 +92,7 @@ class TestCompositeRequest:
     def test_make_composite_request_single(self):
         """Test make_composite_request with single request"""
         req = MockRequest("single", False, False)
-        result = CompositeRequest.make_composite_request([req], name="test")
+        result = CompositeRequest.make_composite_request([req], debug_tag=None, name="test")
 
         # Should return the request itself with name set
         assert result is req  # set_name returns self
@@ -102,7 +104,7 @@ class TestCompositeRequest:
         req1 = MockRequest("req1", False, False)
         req2 = MockRequest("req2", False, False)
 
-        result = CompositeRequest.make_composite_request([req1, req2], name="test")
+        result = CompositeRequest.make_composite_request([req1, req2], debug_tag=None, name="test")
 
         assert isinstance(result, CompositeRequest)
         assert result.name == "test"
@@ -151,8 +153,9 @@ class TestCompositeRequest:
         """Test composite with no requests"""
         composite = create_composite([])
         driver = Mock()
+        logger = Mock()
 
-        results = composite.execute_operation(driver)
+        results = composite.execute_operation(driver, logger)
         assert results == []
         assert len(composite) == 0
 
@@ -174,7 +177,8 @@ class TestCompositeRequest:
         composite = create_composite([req1, req2, req3])
 
         driver = Mock()
-        results = composite.execute_operation(driver)
+        logger = Mock()
+        results = composite.execute_operation(driver, logger)
 
         # Should execute all requests
         assert len(results) == 3
