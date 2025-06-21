@@ -1,23 +1,22 @@
 """ステップ生成・実行の核となる関数群（新しいシンプル設計）"""
 from typing import Any, Dict, List, Union
 
+# 新設定システムをサポート
+from src.configuration.config_manager import TypedExecutionConfiguration
+
 from .step import Step, StepContext, StepGenerationResult, StepType
 from .step_runner import ExecutionContext, expand_template, run_steps
 from .step_runner import create_step as create_step_simple
-
-# 新設定システムをサポート
-try:
-    from src.configuration.config_manager import TypedExecutionConfiguration
-except ImportError:
-    TypedExecutionConfiguration = None
 
 
 def create_step_context_from_execution_context(execution_context: Union['TypedExecutionConfiguration', Any]) -> StepContext:
     """実行コンテキストからStepContextを作成するヘルパー関数（新旧システム対応）"""
     # TypedExecutionConfigurationの場合
-    if TypedExecutionConfiguration and isinstance(execution_context, TypedExecutionConfiguration):
+    if isinstance(execution_context, TypedExecutionConfiguration):
         # 新設定システムから直接値を取得
-        file_patterns = getattr(execution_context, 'file_patterns', {})
+        if not hasattr(execution_context, 'file_patterns'):
+            raise AttributeError(f"TypedExecutionConfiguration {execution_context} does not have required 'file_patterns' attribute")
+        file_patterns = execution_context.file_patterns
 
         return StepContext(
             contest_name=execution_context.contest_name,
@@ -212,9 +211,23 @@ def create_step_from_json(json_step: Dict[str, Any], context: Union['TypedExecut
 
 # 後方互換性のための関数（旧APIのエミュレーション）
 def format_template(template: Any, context: Union['TypedExecutionConfiguration', Any]) -> str:
-    """テンプレート文字列をフォーマットする（後方互換性）"""
+    """テンプレート文字列をフォーマットする（後方互換性）
+
+    Args:
+        template: Template to format
+        context: Execution context
+
+    Returns:
+        Formatted template string
+
+    Raises:
+        ValueError: If template is None or context is invalid
+    """
+    if template is None:
+        raise ValueError("Template is required but None was provided")
+
     if not isinstance(template, str):
-        return str(template) if template is not None else ""
+        raise ValueError(f"Template must be a string, got {type(template)}")
 
     simple_context = execution_context_to_simple_context(context)
     return expand_template(template, simple_context)
@@ -223,11 +236,11 @@ def format_template(template: Any, context: Union['TypedExecutionConfiguration',
 def expand_file_patterns(template: str, context: Union['TypedExecutionConfiguration', Any], step_type=None) -> str:
     """ファイルパターンを展開する（後方互換性）"""
     # TypedExecutionConfigurationの場合は直接テンプレート展開を使用
-    if TypedExecutionConfiguration and isinstance(context, TypedExecutionConfiguration) and hasattr(context, 'resolve_formatted_string'):
-        try:
-            return context.resolve_formatted_string(template)
-        except Exception:
-            pass  # フォールバック
+    if isinstance(context, TypedExecutionConfiguration):
+        if not hasattr(context, 'resolve_formatted_string'):
+            raise AttributeError(f"TypedExecutionConfiguration {context} does not have required 'resolve_formatted_string' method")
+        # resolve_formatted_stringが存在する場合のみ実行
+        return context.resolve_formatted_string(template)
 
     # 従来のシステム用
     from .step_runner import expand_file_patterns_in_text

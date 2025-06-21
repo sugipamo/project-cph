@@ -17,18 +17,30 @@ def _create_execution_config(command_type=None, language=None, contest_name=None
                            problem_name=None, env_type=None, infrastructure=None):
     """新設定システムを使用してExecutionConfigを作成するヘルパー関数"""
     config_manager = TypeSafeConfigNodeManager(infrastructure)
+    if language is None:
+        raise ValueError("language parameter cannot be None")
     config_manager.load_from_files(
         system_dir="./config/system",
         env_dir=CONTEST_ENV_DIR,
-        language=language or "python"
+        language=language
     )
 
+    if contest_name is None:
+        raise ValueError("contest_name parameter cannot be None")
+    if problem_name is None:
+        raise ValueError("problem_name parameter cannot be None")
+    if language is None:
+        raise ValueError("language parameter cannot be None")
+    if env_type is None:
+        raise ValueError("env_type parameter cannot be None")
+    if command_type is None:
+        raise ValueError("command_type parameter cannot be None")
     context = config_manager.create_execution_config(
-        contest_name=contest_name or "",
-        problem_name=problem_name or "",
-        language=language or "python",
-        env_type=env_type or "local",
-        command_type=command_type or "open"
+        contest_name=contest_name,
+        problem_name=problem_name,
+        language=language,
+        env_type=env_type,
+        command_type=command_type
     )
 
     return context
@@ -220,8 +232,8 @@ def _load_shared_config(base_dir: str, infrastructure):
         req = FileRequest(FileOpType.READ, shared_path)
         result = req.execute_operation(driver=file_driver)
         return json_provider.loads(result.content)
-    except Exception:
-        return None
+    except Exception as e:
+        raise ValueError(f"Failed to load shared JSON: {e}") from e
 
 
 

@@ -235,9 +235,8 @@ class MockOsProvider(OsProvider):
     def add_directory(self, path: str, contents: Optional[List[str]] = None) -> None:
         """テスト用ディレクトリ追加"""
         self._filesystem[path] = "dir"
-        # 互換性維持: contentsがNoneの場合の明示的な処理
         if contents is None:
-            contents = []
+            raise ValueError("Contents must be explicitly provided (pass empty list [] if directory is empty)")
         self._dir_contents[path] = contents
 
     def path_exists(self, path: str) -> bool:

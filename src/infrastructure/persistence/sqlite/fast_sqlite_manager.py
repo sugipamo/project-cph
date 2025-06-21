@@ -8,6 +8,11 @@ if TYPE_CHECKING:
     import sqlite3
 
 
+class PersistenceError(Exception):
+    """永続化システムのエラー"""
+    pass
+
+
 class FastSQLiteManager:
     """Fast SQLite manager with shared in-memory database for tests."""
 
@@ -216,9 +221,8 @@ class FastSQLiteManager:
             for table in cleanup_order:
                 try:
                     conn.execute(f"DELETE FROM {table}")
-                except Exception:
-                    # Table might not exist, continue
-                    continue
+                except Exception as e:
+                    raise PersistenceError(f"Table cleanup failed for {table}: {e}") from e
 
             # Ensure changes are committed for file databases
             if not self._is_memory_db:

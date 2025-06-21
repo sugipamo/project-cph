@@ -49,7 +49,9 @@ class SessionRepository(DatabaseRepositoryFoundation):
         ) VALUES (?, ?, ?, ?, ?, ?, ?)
         """
 
-        session_start = session.session_start or datetime.now()
+        if session.session_start is None:
+            raise ValueError("Session start time is required")
+        session_start = session.session_start
         params = (
             session_start.isoformat() if session_start else None,
             session.session_end.isoformat() if session.session_end else None,
@@ -240,9 +242,12 @@ class SessionRepository(DatabaseRepositoryFoundation):
             ORDER BY count DESC
         """)
 
+        if avg_duration is None:
+            raise ValueError("No completed sessions found to calculate average duration")
+
         return {
             "total_sessions": total_sessions,
-            "average_duration_minutes": avg_duration or 0,
+            "average_duration_minutes": avg_duration,
             "language_sessions": language_sessions
         }
 

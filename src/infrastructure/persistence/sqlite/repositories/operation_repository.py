@@ -7,6 +7,11 @@ from src.infrastructure.persistence.base.base_repository import DatabaseReposito
 from src.infrastructure.persistence.sqlite.sqlite_manager import SQLiteManager
 
 
+class PersistenceError(Exception):
+    """永続化システムのエラー"""
+    pass
+
+
 @dataclass
 class Operation:
     """Operation data model."""
@@ -251,10 +256,13 @@ class OperationRepository(DatabaseRepositoryFoundation):
             ORDER BY count DESC
         """)
 
+        if total_ops == 0:
+            raise ValueError("Cannot calculate success rate: no operations found")
+
         return {
             "total_operations": total_ops,
             "successful_operations": success_ops,
-            "success_rate": (success_ops / total_ops * 100) if total_ops > 0 else 0,
+            "success_rate": success_ops / total_ops * 100,
             "language_usage": language_stats,
             "command_usage": command_stats
         }
@@ -321,8 +329,8 @@ class OperationRepository(DatabaseRepositoryFoundation):
         if row["details"]:
             try:
                 details = self._json_provider.loads(row["details"])
-            except Exception:
-                details = {"raw": row["details"]}
+            except Exception as e:
+                raise PersistenceError(f"Operation details JSON parsing failed: {e}") from e
 
         return Operation(
             id=row["id"],

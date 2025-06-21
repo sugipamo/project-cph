@@ -48,6 +48,12 @@ class FileResult(OperationResult):
         """Return the operation type for file operations."""
         return OperationType.FILE
 
+    def _get_op_str(self) -> str:
+        """Get op string with explicit validation."""
+        if self.op is None:
+            raise ValueError("File operation 'op' is required but not available")
+        return str(self.op)
+
     def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary."""
         base = super().to_dict()
@@ -55,6 +61,6 @@ class FileResult(OperationResult):
             'content': self.content,
             'path': self.path,
             'exists': self.exists,
-            'op': str(self.op) if self.op else None,
+            'op': self._get_op_str(),
         })
         return base

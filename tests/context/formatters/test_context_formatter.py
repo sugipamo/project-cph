@@ -188,16 +188,6 @@ class TestFormatTemplateString:
             assert result == "Resolved string"
             assert len(missing) == 0
 
-    @patch('src.context.formatters.context_formatter.TypedExecutionConfiguration', MockTypedExecutionConfiguration)
-    def test_format_with_typed_config_resolve_method_fallback(self):
-        config = MockTypedExecutionConfiguration()
-        config.resolve_formatted_string = Mock(side_effect=Exception("Test error"))
-
-        template = "Running {command_type}"
-        result, missing = format_template_string(template, config)
-
-        assert result == "Running test"
-        assert len(missing) == 0
 
 
 class TestValidateExecutionData:
@@ -289,13 +279,6 @@ class TestValidateExecutionData:
         assert is_valid is True
         assert error is None
 
-    @patch('src.context.formatters.context_formatter.TypedExecutionConfiguration', MockTypedExecutionConfiguration)
-    def test_validate_typed_config_fallback(self):
-        config = MockTypedExecutionConfiguration()
-        is_valid, error = validate_execution_data(config)
-
-        assert is_valid is True
-        assert error is None
 
 
 class TestFormatValuesWithContextDict:

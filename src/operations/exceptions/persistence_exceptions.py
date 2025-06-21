@@ -16,9 +16,8 @@ class PersistenceError(Exception):
         super().__init__(message)
         self.operation = operation
         if details is None:
-            self.details = {}
-        else:
-            self.details = details
+            raise ValueError("Details must be explicitly provided (pass empty dict {} if no details)")
+        self.details = details
 
 
 class ConnectionError(PersistenceError):

@@ -93,8 +93,8 @@ class UserInputParserIntegration:
 
             return not (hasattr(old_context, 'language') and old_context.language != new_config.language)
 
-        except Exception:
-            return False
+        except Exception as e:
+            raise ValueError(f"Failed to validate compatibility: {e}") from e
 
 
 def create_new_execution_context(command_type: str,

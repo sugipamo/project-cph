@@ -33,10 +33,12 @@ class OperationResult:
             metadata: Additional metadata
             skipped: Whether the operation was skipped
         """
-        if success is not None:
-            self.success = success
+        if success is None:
+            if returncode is None:
+                raise ValueError("Either success or returncode must be provided")
+            self.success = returncode == 0
         else:
-            self.success = (returncode == 0) if returncode is not None else False
+            self.success = success
 
         self.returncode = returncode
         self.stdout = stdout
@@ -122,15 +124,15 @@ class OperationResult:
             'content': self.content,
             'exists': self.exists,
             'path': self.path,
-            'op': str(self.op) if self.op else None,
+            'op': self._get_op_str(),
             'cmd': self.cmd,
             'request': str(self.request),
-            'operation_type': str(self.operation_type) if self.operation_type else None,
+            'operation_type': self._get_operation_type_str(),
             'start_time': self.start_time,
             'end_time': self.end_time,
             'elapsed_time': self.elapsed_time,
             'error_message': self.error_message,
-            'exception': str(self.exception) if self.exception else None,
+            'exception': self._get_exception_str(),
             'metadata': self.metadata,
             'skipped': self.skipped,
         }
@@ -142,15 +144,33 @@ class OperationResult:
             json_provider: JSON provider (injected for dependency inversion)
         """
         if json_provider is None:
-            # デフォルト値禁止のため、単純な文字列表現にフォールバック
-            return str(self.to_dict())
+            raise ValueError("json_provider is required")
 
         return json_provider.dumps(self.to_dict(), ensure_ascii=False, indent=2)
 
+    def _get_operation_identifier(self) -> str:
+        """Get operation identifier.
+
+        Returns:
+            Operation identifier in priority order
+
+        Raises:
+            ValueError: If no operation identifier is available
+        """
+        if self.op is not None:
+            return str(self.op)
+        if self.cmd is not None:
+            return str(self.cmd)
+        raise ValueError("Operation identifier (op or cmd) is required but not available")
+
     def summary(self) -> str:
         """Get a summary of the result."""
+        if self.success:
+            status = "OK"
+        else:
+            status = "FAIL"
         return (
-            f"[{'OK' if self.success else 'FAIL'}] op={self.op or self.cmd} "
+            f"[{status}] op={self._get_operation_identifier()} "
             f"path={self.path} code={self.returncode} time={self.elapsed_time}s\n"
             f"content={str(self.content)[:100]}\n"
             f"stdout={str(self.stdout)[:100]}\n"
@@ -164,6 +184,24 @@ class OperationResult:
             f"<OperationResult success={self.success} op={self.op} cmd={self.cmd} "
             f"path={self.path} returncode={self.returncode} error_message={self.error_message}>"
         )
+
+    def _get_op_str(self) -> str:
+        """Get op string with explicit validation."""
+        if self.op is None:
+            raise ValueError("Operation 'op' is required but not available")
+        return str(self.op)
+
+    def _get_operation_type_str(self) -> str:
+        """Get operation_type string with explicit validation."""
+        if self.operation_type is None:
+            raise ValueError("Operation 'operation_type' is required but not available")
+        return str(self.operation_type)
+
+    def _get_exception_str(self) -> str:
+        """Get exception string with explicit validation."""
+        if self.exception is None:
+            raise ValueError("Exception information is required but not available")
+        return str(self.exception)
 
     def get_error_output(self) -> str:
         """Get formatted error output."""

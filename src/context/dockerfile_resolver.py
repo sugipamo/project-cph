@@ -86,8 +86,8 @@ class DockerfileResolver:
 
         try:
             self._dockerfile_content = self._dockerfile_loader(self._dockerfile_path)
-        except Exception:
-            self._dockerfile_content = None
+        except Exception as e:
+            raise RuntimeError(f"Failed to load Dockerfile from {self._dockerfile_path}: {e}") from e
 
     def _load_oj_dockerfile_content(self) -> None:
         """Load OJ Dockerfile content from path"""
@@ -99,8 +99,8 @@ class DockerfileResolver:
 
         try:
             self._oj_dockerfile_content = self._dockerfile_loader(self._oj_dockerfile_path)
-        except Exception:
-            self._oj_dockerfile_content = None
+        except Exception as e:
+            raise RuntimeError(f"Failed to load OJ Dockerfile from {self._oj_dockerfile_path}: {e}") from e
 
     def invalidate_cache(self) -> None:
         """Invalidate content cache, forcing reload on next access

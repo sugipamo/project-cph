@@ -16,6 +16,11 @@ resolve_formatted_string = None
 
 T = TypeVar('T')
 
+
+class ConfigurationError(Exception):
+    """設定システムのエラー"""
+    pass
+
 def _ensure_imports():
     """Ensure context imports are loaded when needed"""
     global ConfigNode, create_config_root_from_dict, resolve_best, resolve_formatted_string
@@ -64,9 +69,8 @@ class TypedExecutionConfiguration:
                     'command_type': self.command_type,
                 }
                 return resolve_formatted_string(template, self._root_node, context)
-            except Exception:
-                # ConfigNode解決に失敗した場合は基本解決にフォールバック
-                pass
+            except Exception as e:
+                raise ConfigurationError(f"ConfigNode解決に失敗: {e}") from e
 
         # 基本的な変数置換のみ（フォールバック）
         context = {
@@ -99,10 +103,10 @@ class TypedExecutionConfiguration:
                         node = resolve_best(self._root_node, path)
                         if node:
                             context[key] = str(node.value)
-                    except (KeyError, AttributeError, TypeError):
-                        pass
-            except (KeyError, AttributeError, TypeError):
-                pass
+                    except (KeyError, AttributeError, TypeError) as e:
+                        raise ConfigurationError(f"パス解決エラー key='{key}' path='{path}': {e}") from e
+            except (KeyError, AttributeError, TypeError) as e:
+                raise ConfigurationError(f"設定パス構築エラー: {e}") from e
 
         try:
             # 再帰的テンプレート展開（最大5回まで）
@@ -114,9 +118,8 @@ class TypedExecutionConfiguration:
                     # 変化がなくなったら終了
                     break
             return result
-        except KeyError:
-            # 存在しないキーの場合はそのまま返す
-            return template
+        except KeyError as e:
+            raise ConfigurationError(f"テンプレート変数が見つかりません: {e}") from e
 
     def validate_execution_data(self) -> tuple[bool, str]:
         """実行データの検証（レガシー互換）"""
@@ -247,9 +250,8 @@ class FileLoader:
                 config_data = self.load_json_file(str(json_file))
                 if config_data:
                     system_config = self._deep_merge(system_config, config_data)
-        except (OSError, PermissionError):
-            # ディレクトリアクセスエラーの場合は空の設定を返す
-            pass
+        except (OSError, PermissionError) as e:
+            raise ConfigurationError(f"システム設定ディレクトリアクセスエラー: {e}") from e
 
         return system_config
 
@@ -328,8 +330,8 @@ class FileLoader:
                     env_file = item / "env.json"
                     if env_file.exists():
                         languages.append(item.name)
-        except (OSError, PermissionError):
-            pass
+        except (OSError, PermissionError) as e:
+            raise ConfigurationError(f"言語ディレクトリアクセスエラー: {e}") from e
 
         return sorted(languages)
 
@@ -484,7 +486,9 @@ class TypeSafeConfigNodeManager:
         - 32個のテンプレート展開関数
         """
         # テンプレートキャッシュチェック
-        cache_key = (template, tuple(sorted(context.items())) if context else ())
+        if context is None:
+            raise ValueError("context cannot be None")
+        cache_key = (template, tuple(sorted(context.items())))
         if cache_key in self._template_cache:
             cached_result = self._template_cache[cache_key]
             return self._convert_to_type(cached_result, return_type)
@@ -514,8 +518,8 @@ class TypeSafeConfigNodeManager:
         try:
             self.resolve_template_typed(template)
             return True
-        except (KeyError, TypeError):
-            return False
+        except (KeyError, TypeError) as e:
+            raise ValueError(f"Template validation failed: {e}") from e
 
     def resolve_config_validated(self, path: List[str],
                                 return_type: Type[T],
@@ -546,8 +550,7 @@ class TypeSafeConfigNodeManager:
             except (KeyError, TypeError, ValueError):
                 continue
 
-        # すべて失敗した場合はデフォルト値
-        return 30
+        raise ConfigurationError("タイムアウト値の取得に失敗しました。設定ファイルを確認してください")
 
     def create_execution_config(self, contest_name: str,
                               problem_name: str,
@@ -641,8 +644,7 @@ class TypeSafeConfigNodeManager:
             except (KeyError, TypeError):
                 continue
 
-        # すべて失敗した場合のデフォルト値
-        return False
+        raise ConfigurationError("デバッグモード設定の取得に失敗しました。設定ファイルを確認してください")
 
 
     def _convert_to_type(self, value: Any, target_type: Type[T]) -> T:

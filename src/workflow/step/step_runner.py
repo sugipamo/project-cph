@@ -200,24 +200,24 @@ def expand_template(template: str, context) -> str:
     if hasattr(context, 'resolve_formatted_string'):
         try:
             return context.resolve_formatted_string(template)
-        except Exception:
-            # フォールバック処理に移行
-            pass
+        except Exception as e:
+            raise ValueError(f"テンプレート解決エラー (resolve_formatted_string): {e}") from e
 
     # ExecutionContextAdapterの場合（新設定システムアダプター）
     if hasattr(context, 'format_string'):
         try:
             return context.format_string(template)
-        except Exception:
-            # フォールバック処理に移行
-            pass
+        except Exception as e:
+            raise ValueError(f"テンプレート解決エラー (format_string): {e}") from e
 
     # SimpleExecutionContext（step_runner.py内のExecutionContext）の場合
     if hasattr(context, 'to_dict'):
         result = template
         for key, value in context.to_dict().items():
             # Pathオブジェクトも文字列に変換
-            str_value = str(value) if value is not None else ""
+            if value is None:
+                raise ValueError(f"Value for key '{key}' is None")
+            str_value = str(value)
             result = result.replace(f'{{{key}}}', str_value)
         return result
 
@@ -233,7 +233,9 @@ def expand_template(template: str, context) -> str:
     for attr in common_attrs:
         if hasattr(context, attr):
             value = getattr(context, attr)
-            context_dict[attr] = str(value) if value is not None else ""
+            if value is None:
+                raise ValueError(f"Value for attribute '{attr}' is None")
+            context_dict[attr] = str(value)
 
     # テンプレート置換
     for key, value in context_dict.items():

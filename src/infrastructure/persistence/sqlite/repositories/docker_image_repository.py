@@ -224,6 +224,9 @@ class DockerImageRepository(DatabaseRepositoryFoundation):
             FROM docker_images
             WHERE size_bytes IS NOT NULL
         """)
-            stats['total_size_bytes'] = cursor.fetchone()[0] or 0
+            total_size = cursor.fetchone()[0]
+            if total_size is None:
+                raise ValueError("No docker images with size information found")
+            stats['total_size_bytes'] = total_size
 
         return stats

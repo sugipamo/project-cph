@@ -81,15 +81,8 @@ class MinimalCLIApp:
             if self.logger is None and self.infrastructure is not None:
                 try:
                     self.logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
-                except Exception:
-                    # 最後の手段: output_managerを使用
-                    try:
-                        output_manager = self.infrastructure.resolve(DIKey.OUTPUT_MANAGER)
-                        output_manager.error(f"エラー: {e}")
-                        return 1
-                    except Exception:
-                        # infrastructureも失敗した場合は致命的エラー
-                        raise RuntimeError(f"Logger and infrastructure initialization failed: {e}") from None
+                except Exception as logger_error:
+                    raise RuntimeError(f"Logger initialization failed: {logger_error}") from logger_error
 
             if self.logger is None:
                 # infrastructureも利用できない場合は致命的エラー
@@ -180,8 +173,8 @@ class MinimalCLIApp:
             try:
                 self.logger.error("詳細:")
                 self.logger.error(exception.result.get_error_output())
-            except Exception:
-                pass
+            except Exception as error_output_error:
+                self.logger.error(f"結果エラー出力取得エラー: {error_output_error}")
 
         if exception.original_exception:
             self.logger.error(f"元の例外: {type(exception.original_exception).__name__}")

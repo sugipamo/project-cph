@@ -14,8 +14,8 @@ from src.operations.pure.formatters import format_string_simple, format_with_mis
 # 新設定システムをサポート
 try:
     from src.configuration.config_manager import TypedExecutionConfiguration
-except ImportError:
-    TypedExecutionConfiguration = None
+except ImportError as e:
+    raise ImportError(f"Required TypedExecutionConfiguration module not available: {e}") from e
 
 
 @dataclass(frozen=True)
@@ -110,9 +110,8 @@ def format_template_string(template: str, data: Union[ExecutionFormatData, 'Type
             try:
                 formatted = data.resolve_formatted_string(template)
                 return formatted, set()  # 新システムではmissing keysの詳細は取得しない
-            except Exception:
-                # フォールバック: format_dictを使用
-                pass
+            except Exception as e:
+                raise ValueError(f"文字列フォーマット解決エラー: {e}") from e
 
         format_dict = create_format_dict_from_typed_config(data)
     else:

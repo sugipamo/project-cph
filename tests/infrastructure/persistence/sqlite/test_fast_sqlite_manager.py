@@ -316,6 +316,8 @@ class TestFastSQLiteManager:
 
     def test_cleanup_test_data_with_exception(self):
         """Test cleanup_test_data method when table doesn't exist"""
+        from src.infrastructure.persistence.sqlite.fast_sqlite_manager import PersistenceError
+
         mock_provider = Mock()
         mock_connection = Mock()
         # First exception for PRAGMA, then 5 for the DELETE statements
@@ -324,10 +326,11 @@ class TestFastSQLiteManager:
 
         manager = FastSQLiteManager(sqlite_provider=mock_provider, skip_migrations=True)
 
-        # Should not raise exception
-        manager.cleanup_test_data()
+        # Should raise PersistenceError
+        with pytest.raises(PersistenceError, match="Table cleanup failed"):
+            manager.cleanup_test_data()
 
-        assert mock_connection.execute.call_count == 6  # PRAGMA + 5 DELETE statements
+        assert mock_connection.execute.call_count == 2  # PRAGMA + first DELETE that fails
 
     def test_reset_shared_connection(self):
         """Test reset_shared_connection class method"""

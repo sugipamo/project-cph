@@ -39,11 +39,13 @@ class PathInfo:
     def from_path(cls, file_path: Union[str, Path]) -> 'PathInfo':
         """パスからPathInfoを作成"""
         path_obj = Path(file_path)
+        if not path_obj.exists():
+            raise FileNotFoundError(f"Path does not exist: {file_path}")
         return cls(
             path=str(path_obj),
             is_absolute=path_obj.is_absolute(),
-            is_directory=path_obj.is_dir() if path_obj.exists() else False,
-            is_file=path_obj.is_file() if path_obj.exists() else False,
+            is_directory=path_obj.is_dir(),
+            is_file=path_obj.is_file(),
             parent=str(path_obj.parent),
             name=path_obj.name,
             stem=path_obj.stem,

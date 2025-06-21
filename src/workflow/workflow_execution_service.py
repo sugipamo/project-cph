@@ -42,9 +42,16 @@ class WorkflowExecutionService:
         # Get parallel configuration from context
         parallel_config = self._get_parallel_config()
 
-        # Override with parameters if specified
-        use_parallel = parallel if parallel is not None else parallel_config["enabled"]
-        use_max_workers = max_workers if max_workers is not None else parallel_config["max_workers"]
+        # Override with parameters if specified - no fallback logic
+        if parallel is not None:
+            use_parallel = parallel
+        else:
+            use_parallel = parallel_config["enabled"]
+
+        if max_workers is not None:
+            use_max_workers = max_workers
+        else:
+            use_max_workers = parallel_config["max_workers"]
 
         # Store parallel config in context for request factories
         self.context._parallel_config = parallel_config
@@ -96,7 +103,7 @@ class WorkflowExecutionService:
             # 設定が見つからない場合（互換性維持のコメント）
             self._debug_log(f"Failed to get workflow steps from new config system: {e}")
             self._debug_log(f"command_type={self.context.command_type}")
-            return []
+            raise
 
     def _get_parallel_config(self) -> dict:
         """Get parallel execution configuration from context using injected config system"""
@@ -117,9 +124,10 @@ class WorkflowExecutionService:
             }
 
         except (KeyError, TypeError) as e:
-            # 設定が見つからない場合はデフォルト値を返す（互換性維持のコメント）
-            self._debug_log(f"Failed to get parallel config, using defaults: {e}")
-            return {"enabled": False, "max_workers": 4}
+            # 設定が見つからない場合は明示的にエラーを発生させる
+            self._debug_log(f"Failed to get parallel config: {e}")
+            self._debug_log(f"command_type={self.context.command_type}")
+            raise
 
     def _create_workflow_tasks(self, steps: list[Step]) -> list[dict]:
         """Convert steps to workflow tasks for fitting analysis"""
@@ -181,9 +189,9 @@ class WorkflowExecutionService:
             # For merged configs, shared settings are at the root level
             shared_config = self.context.env_json
 
-        # Check if environment_logging exists
+        # Check if environment_logging exists - raise error if missing
         if 'environment_logging' not in shared_config:
-            return
+            raise KeyError("Required environment_logging configuration not found in shared config")
 
         env_logging_config = shared_config['environment_logging']
 
@@ -256,8 +264,10 @@ class WorkflowExecutionService:
 
         unified_driver = UnifiedDriver(self.infrastructure, logger)
 
-        # Check if composite request supports parallel execution
-        if use_parallel and hasattr(operations_composite, 'execute_parallel'):
+        # Check if composite request supports parallel execution - no fallback
+        if use_parallel:
+            if not hasattr(operations_composite, 'execute_parallel'):
+                raise AttributeError(f"Composite request {type(operations_composite)} does not support parallel execution")
             execution_result = operations_composite.execute_parallel(unified_driver, max_workers=max_workers, logger=logger)
         else:
             execution_result = operations_composite.execute_operation(unified_driver, logger=logger)
@@ -291,8 +301,14 @@ class WorkflowExecutionService:
 
     def _should_allow_failure(self, result):
         """Determine if a failure should be allowed based on request type."""
-        request = result.request if hasattr(result, 'request') else None
-        allow_failure = getattr(request, 'allow_failure', False) if request else False
+        if not hasattr(result, 'request'):
+            raise AttributeError(f"Result object {type(result)} does not have required 'request' attribute")
+        request = result.request
+        if request is None:
+            raise ValueError("Result request is None")
+        if not hasattr(request, 'allow_failure'):
+            raise AttributeError(f"Request object {type(request)} does not have required 'allow_failure' attribute")
+        allow_failure = request.allow_failure
 
         # Temporary workaround for TEST steps allow_failure issue
         if (hasattr(request, 'request_type') and request.request_type == RequestType.SHELL_REQUEST
@@ -308,7 +324,7 @@ class WorkflowExecutionService:
         return WorkflowExecutionResult(
             success=False,
             results=[],
-            preparation_results=preparation_results or [],
+            preparation_results=preparation_results,
             errors=errors,
             warnings=warnings
         )

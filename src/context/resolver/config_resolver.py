@@ -42,8 +42,22 @@ def resolve_by_match_desc(root: ConfigNode, path: Union[list, tuple]) -> list:
     return _resolve_by_match_desc(root, tuple(path))
 
 def resolve_best(root: ConfigNode, path: Union[list, tuple]) -> Optional[ConfigNode]:
+    """Resolve the best matching config node for given path.
+
+    Args:
+        root: Root config node
+        path: Path to resolve
+
+    Returns:
+        Best matching config node
+
+    Raises:
+        ValueError: If no matching config node is found
+    """
     results = resolve_by_match_desc(root, path)
-    return results[0] if results else None
+    if not results:
+        raise ValueError(f"No matching config node found for path: {path}")
+    return results[0]
 
 def resolve_values(root: ConfigNode, path: Union[list, tuple]) -> list:
     return [x.value for x in resolve_by_match_desc(root, path)]
@@ -59,7 +73,9 @@ def resolve_formatted_string(s: str, root: ConfigNode, initial_values: Optional[
     Returns:
         フォーマット済みの文字列
     """
-    key_values = dict(initial_values) if initial_values else {}
+    if initial_values is None:
+        raise ValueError("initial_values cannot be None")
+    key_values = dict(initial_values)
     formatted, missing_keys = format_with_missing_keys(s, **key_values)
 
     if not missing_keys:
@@ -107,7 +123,9 @@ def resolve_format_string(node: 'ConfigNode', initial_values: Optional[dict] = N
     else:
         return str(node.value)
 
-    key_values = dict(initial_values) if initial_values else {}
+    if initial_values is None:
+        raise ValueError("initial_values cannot be None")
+    key_values = dict(initial_values)
     formatted, missing_keys = format_with_missing_keys(s, **key_values)
     if not missing_keys:
         return formatted

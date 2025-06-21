@@ -52,6 +52,57 @@ class StepContext:
     language_id: Optional[str] = None
     file_patterns: Optional[dict[str, list[str]]] = None
 
+    def _get_required_path(self, path_value, name):
+        """Get required path value.
+
+        Args:
+            path_value: Path value to check
+            name: Name of the path for error messages
+
+        Returns:
+            Path as string
+
+        Raises:
+            ValueError: If path is None or empty
+        """
+        if path_value is None or str(path_value).strip() == '':
+            raise ValueError(f"Required path '{name}' is None or empty")
+        return str(path_value)
+
+    def _get_required_filename(self, filename_value, name):
+        """Get required filename value.
+
+        Args:
+            filename_value: Filename value to check
+            name: Name of the filename for error messages
+
+        Returns:
+            Filename as string
+
+        Raises:
+            ValueError: If filename is None or empty
+        """
+        if filename_value is None or str(filename_value).strip() == '':
+            raise ValueError(f"Required filename '{name}' is None or empty")
+        return str(filename_value)
+
+    def _get_required_identifier(self, identifier_value, name):
+        """Get required identifier value.
+
+        Args:
+            identifier_value: Identifier value to check
+            name: Name of the identifier for error messages
+
+        Returns:
+            Identifier as string
+
+        Raises:
+            ValueError: If identifier is None or empty
+        """
+        if identifier_value is None or str(identifier_value).strip() == '':
+            raise ValueError(f"Required identifier '{name}' is None or empty")
+        return str(identifier_value)
+
     def to_format_dict(self) -> dict[str, str]:
         """文字列フォーマット用の辞書を生成"""
         format_dict = {
@@ -61,13 +112,13 @@ class StepContext:
             'language_name': self.language,
             'env_type': self.env_type,
             'command_type': self.command_type,
-            'local_workspace_path': self.local_workspace_path or '',
-            'contest_current_path': self.contest_current_path or '',
-            'contest_stock_path': self.contest_stock_path or '',
-            'contest_template_path': self.contest_template_path or '',
-            'contest_temp_path': self.contest_temp_path or '',
-            'source_file_name': self.source_file_name or '',
-            'language_id': self.language_id or '',
+            'local_workspace_path': self._get_required_path(self.local_workspace_path, 'local_workspace_path'),
+            'contest_current_path': self._get_required_path(self.contest_current_path, 'contest_current_path'),
+            'contest_stock_path': self._get_required_path(self.contest_stock_path, 'contest_stock_path'),
+            'contest_template_path': self._get_required_path(self.contest_template_path, 'contest_template_path'),
+            'contest_temp_path': self._get_required_path(self.contest_temp_path, 'contest_temp_path'),
+            'source_file_name': self._get_required_filename(self.source_file_name, 'source_file_name'),
+            'language_id': self._get_required_identifier(self.language_id, 'language_id'),
         }
 
         # Add file patterns to format dict

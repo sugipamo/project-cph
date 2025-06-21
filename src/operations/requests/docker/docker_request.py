@@ -11,6 +11,11 @@ from src.operations.requests.composite.composite_request import CompositeRequest
 from src.operations.results.result import OperationResult
 
 
+class DockerOperationError(Exception):
+    """Docker操作のエラー"""
+    pass
+
+
 class DockerOpType(Enum):
     """Docker operation types."""
     RUN = auto()
@@ -47,7 +52,9 @@ class DockerRequest(OperationRequestFoundation):
         self.image = image
         self.container = container
         self.command = command
-        self.options = options or {}
+        if options is None:
+            raise ValueError("Options must be explicitly provided (pass empty dict {} if no options)")
+        self.options = options
         self.show_output = show_output
         self._executed = False
         self._result = None
@@ -55,11 +62,9 @@ class DockerRequest(OperationRequestFoundation):
 
     def _get_json_provider(self, driver):
         """Get JSON provider from driver infrastructure."""
-        if hasattr(driver, 'infrastructure'):
-            return driver.infrastructure.resolve(DIKey.JSON_PROVIDER)
-        # Fallback: create a temporary provider if needed
-        from src.infrastructure.providers import SystemJsonProvider
-        return SystemJsonProvider()
+        if not hasattr(driver, 'infrastructure'):
+            raise AttributeError(f"Driver {type(driver)} does not have required 'infrastructure' attribute")
+        return driver.infrastructure.resolve(DIKey.JSON_PROVIDER)
 
     @property
     def operation_type(self):
@@ -113,9 +118,8 @@ class DockerRequest(OperationRequestFoundation):
                 state = inspect_data[0]["State"]
                 status = state["Status"]
                 return self._process_container_status(driver, status, logger)
-        except Exception:
-            # If inspect fails, just run
-            return driver.run_container(self.image, self.container, self.options, show_output=self.show_output)
+        except Exception as e:
+            raise DockerOperationError(f"Docker container inspection failed: {e}") from e
 
     def _process_container_status(self, driver: DockerDriverInterface, status: str, logger: Optional[Any] = None):
         """Process container based on its current status."""
@@ -159,7 +163,9 @@ class DockerRequest(OperationRequestFoundation):
         if self.op == DockerOpType.STOP:
             return driver.stop_container(self.container, show_output=self.show_output)
         if self.op == DockerOpType.REMOVE:
-            force = ('f' in self.options and self.options['f'] is not None) if self.options else False
+            if not self.options:
+                raise ValueError("Options cannot be empty for REMOVE operation with 'f' flag check")
+            force = 'f' in self.options and self.options['f'] is not None
             return driver.remove_container(self.container, force=force, show_output=self.show_output)
         if self.op == DockerOpType.INSPECT:
             return driver.inspect(self.container, show_output=self.show_output)
