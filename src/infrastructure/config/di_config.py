@@ -117,13 +117,15 @@ def _create_logger(container: Any) -> Any:
 def _create_logging_output_manager() -> Any:
     """Lazy factory for logging output manager."""
     from src.infrastructure.drivers.logging import OutputManager
-    return OutputManager()
+    from src.infrastructure.drivers.logging.types import LogLevel
+    return OutputManager(name="output", level=LogLevel.DEBUG)
 
 
 def _create_mock_logging_output_manager() -> Any:
     """Lazy factory for mock logging output manager."""
     from src.infrastructure.drivers.logging import MockOutputManager
-    return MockOutputManager()
+    from src.infrastructure.drivers.logging.types import LogLevel
+    return MockOutputManager(name="mock_output", level=LogLevel.DEBUG)
 
 
 def _create_application_logger_adapter(container: Any) -> Any:
@@ -144,7 +146,20 @@ def _create_unified_logger(container: Any) -> Any:
     """Lazy factory for unified logger."""
     from src.infrastructure.drivers.logging import UnifiedLogger
     output_manager = container.resolve(DIKey.LOGGING_OUTPUT_MANAGER)
-    return UnifiedLogger(output_manager, di_container=container)
+    logger_config = {
+        "format": {
+            "icons": {
+                "debug": "🐛",
+                "info": "ℹ️"
+            }
+        }
+    }
+    return UnifiedLogger(
+        output_manager=output_manager,
+        name="unified_logger",
+        logger_config=logger_config,
+        di_container=container
+    )
 
 
 def _create_filesystem() -> Any:
@@ -319,6 +334,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register('persistence_driver', lambda: container.resolve(DIKey.PERSISTENCE_DRIVER))
     container.register('unified_driver', lambda: container.resolve(DIKey.UNIFIED_DRIVER))
     container.register('sqlite_manager', lambda: container.resolve(DIKey.SQLITE_MANAGER))
+    container.register('unified_logger', lambda: container.resolve(DIKey.UNIFIED_LOGGER))
 
 
 def configure_test_dependencies(container: DIContainer) -> None:
@@ -408,3 +424,4 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register('persistence_driver', lambda: container.resolve(DIKey.PERSISTENCE_DRIVER))
     container.register('unified_driver', lambda: container.resolve(DIKey.UNIFIED_DRIVER))
     container.register('sqlite_manager', lambda: container.resolve(DIKey.SQLITE_MANAGER))
+    container.register('unified_logger', lambda: container.resolve(DIKey.UNIFIED_LOGGER))

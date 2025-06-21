@@ -105,7 +105,8 @@ class TestApplicationLoggerAdapter:
         self.output_manager.add.assert_called_once_with(
             "Test error message",
             LogLevel.ERROR,
-            formatinfo=FormatInfo(color="red", bold=True)
+            formatinfo=FormatInfo(color="red", bold=True),
+            realtime=False
         )
 
     def test_critical(self):
@@ -115,7 +116,8 @@ class TestApplicationLoggerAdapter:
         self.output_manager.add.assert_called_once_with(
             "Test critical message",
             LogLevel.CRITICAL,
-            formatinfo=FormatInfo(color="red", bold=True)
+            formatinfo=FormatInfo(color="red", bold=True),
+            realtime=False
         )
 
     def test_log_error_with_correlation(self):
@@ -126,7 +128,8 @@ class TestApplicationLoggerAdapter:
         self.output_manager.add.assert_called_once_with(
             expected_message,
             LogLevel.ERROR,
-            formatinfo=FormatInfo(color="red", bold=True)
+            formatinfo=FormatInfo(color="red", bold=True),
+            realtime=False
         )
 
     def test_log_error_with_correlation_and_context(self):
@@ -139,18 +142,20 @@ class TestApplicationLoggerAdapter:
         self.output_manager.add.assert_called_once_with(
             expected_message,
             LogLevel.ERROR,
-            formatinfo=FormatInfo(color="red", bold=True)
+            formatinfo=FormatInfo(color="red", bold=True),
+            realtime=False
         )
 
     def test_log_operation_start(self):
         """Test log_operation_start method"""
-        self.adapter.log_operation_start("OP001", "file_copy")
+        self.adapter.log_operation_start("OP001", "file_copy", None)
 
         expected_message = f"[OP#OP001] file_copy started (session: {self.adapter.session_id})"
         self.output_manager.add.assert_called_once_with(
             expected_message,
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="blue")
+            formatinfo=FormatInfo(color="blue"),
+            realtime=False
         )
 
     def test_log_operation_start_with_details(self):
@@ -163,7 +168,8 @@ class TestApplicationLoggerAdapter:
         self.output_manager.add.assert_called_once_with(
             expected_message,
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="blue")
+            formatinfo=FormatInfo(color="blue"),
+            realtime=False
         )
 
     def test_log_operation_end_success_with_config(self):
@@ -177,13 +183,14 @@ class TestApplicationLoggerAdapter:
         ]
         self.adapter._config_manager = mock_config
 
-        self.adapter.log_operation_end("OP001", "file_copy", True)
+        self.adapter.log_operation_end("OP001", "file_copy", True, None)
 
         expected_message = f"[OP#OP001] file_copy completed (session: {self.adapter.session_id})"
         self.output_manager.add.assert_called_once_with(
             expected_message,
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="green", bold=False)
+            formatinfo=FormatInfo(color="green", bold=False),
+            realtime=False
         )
 
     def test_log_operation_end_failure_with_config(self):
@@ -205,7 +212,8 @@ class TestApplicationLoggerAdapter:
         self.output_manager.add.assert_called_once_with(
             expected_message,
             LogLevel.ERROR,
-            formatinfo=FormatInfo(color="red", bold=True)
+            formatinfo=FormatInfo(color="red", bold=True),
+            realtime=False
         )
 
 

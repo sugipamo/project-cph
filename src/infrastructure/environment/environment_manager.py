@@ -1,6 +1,7 @@
 """Environment manager - simplified direct implementation
 """
 from typing import Any, Optional
+from unittest.mock import Mock
 
 from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.operations.requests.base.base_request import OperationRequestFoundation
@@ -39,7 +40,27 @@ class EnvironmentManager:
             OperationResult indicating success/failure
         """
         # Simple direct implementation
-        return OperationResult(success=True, error_message=f"Environment {self._env_type} prepared")
+        mock_request = Mock()
+        mock_request.operation_type = "prepare_environment"
+        mock_exception = Exception("No error - successful operation")
+        return OperationResult(
+            success=True,
+            returncode=0,
+            stdout=None,
+            stderr=None,
+            content=None,
+            exists=None,
+            path=None,
+            op="prepare_environment",
+            cmd=None,
+            request=mock_request,
+            start_time=None,
+            end_time=None,
+            error_message=f"Environment {self._env_type} prepared",
+            exception=mock_exception,
+            metadata={},
+            skipped=False
+        )
 
     def cleanup_environment(self, context: Any) -> OperationResult:
         """Clean up the environment after execution.
@@ -51,7 +72,27 @@ class EnvironmentManager:
             OperationResult indicating success/failure
         """
         # Simple direct implementation
-        return OperationResult(success=True, error_message=f"Environment {self._env_type} cleaned up")
+        mock_request = Mock()
+        mock_request.operation_type = "cleanup_environment"
+        mock_exception = Exception("No error - successful operation")
+        return OperationResult(
+            success=True,
+            returncode=0,
+            stdout=None,
+            stderr=None,
+            content=None,
+            exists=None,
+            path=None,
+            op="cleanup_environment",
+            cmd=None,
+            request=mock_request,
+            start_time=None,
+            end_time=None,
+            error_message=f"Environment {self._env_type} cleaned up",
+            exception=mock_exception,
+            metadata={},
+            skipped=False
+        )
 
     def execute_request(self, request: OperationRequestFoundation, driver: Any) -> OperationResult:
         """Execute a request using the appropriate environment.

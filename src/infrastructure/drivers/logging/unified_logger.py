@@ -93,7 +93,8 @@ class UnifiedLogger(LoggerInterface):
         self.output_manager.add(
             display_message,
             LogLevel.DEBUG,
-            formatinfo=FormatInfo(color="gray")
+            formatinfo=FormatInfo(color="gray"),
+            realtime=False
         )
 
     def info(self, message: str, *args: Any, **kwargs: Any) -> None:
@@ -105,7 +106,8 @@ class UnifiedLogger(LoggerInterface):
         self.output_manager.add(
             display_message,
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="cyan")
+            formatinfo=FormatInfo(color="cyan"),
+            realtime=False
         )
 
     def warning(self, message: str, *args: Any, **kwargs: Any) -> None:
@@ -117,7 +119,8 @@ class UnifiedLogger(LoggerInterface):
         self.output_manager.add(
             display_message,
             LogLevel.WARNING,
-            formatinfo=FormatInfo(color="yellow", bold=True)
+            formatinfo=FormatInfo(color="yellow", bold=True),
+            realtime=False
         )
 
     def error(self, message: str, *args: Any, **kwargs: Any) -> None:
@@ -129,7 +132,8 @@ class UnifiedLogger(LoggerInterface):
         self.output_manager.add(
             display_message,
             LogLevel.ERROR,
-            formatinfo=FormatInfo(color="red", bold=True)
+            formatinfo=FormatInfo(color="red", bold=True),
+            realtime=False
         )
 
     def critical(self, message: str, *args: Any, **kwargs: Any) -> None:
@@ -141,7 +145,8 @@ class UnifiedLogger(LoggerInterface):
         self.output_manager.add(
             display_message,
             LogLevel.CRITICAL,
-            formatinfo=FormatInfo(color="red", bold=True)
+            formatinfo=FormatInfo(color="red", bold=True),
+            realtime=False
         )
 
     # PythonLogger compatibility methods
@@ -159,7 +164,8 @@ class UnifiedLogger(LoggerInterface):
         self.output_manager.add(
             formatted_message,
             LogLevel.ERROR,
-            formatinfo=FormatInfo(color="red", bold=True)
+            formatinfo=FormatInfo(color="red", bold=True),
+            realtime=False
         )
 
     def log_operation_start(self, operation_id: str, operation_type: str,
@@ -172,7 +178,8 @@ class UnifiedLogger(LoggerInterface):
         self.output_manager.add(
             message,
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="blue")
+            formatinfo=FormatInfo(color="blue"),
+            realtime=False
         )
 
     def log_operation_end(self, operation_id: str, operation_type: str,
@@ -209,7 +216,8 @@ class UnifiedLogger(LoggerInterface):
         self.output_manager.add(
             message,
             level,
-            formatinfo=FormatInfo(color=color, bold=bool(not success))
+            formatinfo=FormatInfo(color=color, bold=bool(not success)),
+            realtime=False
         )
 
     # ConsoleLogger/DebugLogger compatibility methods
@@ -223,7 +231,8 @@ class UnifiedLogger(LoggerInterface):
         self.output_manager.add(
             start_message,
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="blue", bold=True)
+            formatinfo=FormatInfo(color="blue", bold=True),
+            realtime=False
         )
 
         executing_icon = self.icons["executing"]
@@ -231,7 +240,8 @@ class UnifiedLogger(LoggerInterface):
         self.output_manager.add(
             executing_message,
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="blue")
+            formatinfo=FormatInfo(color="blue"),
+            realtime=False
         )
 
     def step_success(self, step_name: str, message: str) -> None:
@@ -247,7 +257,8 @@ class UnifiedLogger(LoggerInterface):
         self.output_manager.add(
             success_message,
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="green", bold=True)
+            formatinfo=FormatInfo(color="green", bold=True),
+            realtime=False
         )
 
     def step_failure(self, step_name: str, error: str, allow_failure: bool) -> None:
@@ -270,7 +281,8 @@ class UnifiedLogger(LoggerInterface):
         self.output_manager.add(
             failure_message,
             level,
-            formatinfo=FormatInfo(color=color, bold=True)
+            formatinfo=FormatInfo(color=color, bold=True),
+            realtime=False
         )
 
         if error:
@@ -278,7 +290,8 @@ class UnifiedLogger(LoggerInterface):
             self.output_manager.add(
                 error_message,
                 level,
-                formatinfo=FormatInfo(color=color, indent=1)
+                formatinfo=FormatInfo(color=color, indent=1),
+                realtime=False
             )
 
     def config_load_warning(self, file_path: str, error: str) -> None:
@@ -293,7 +306,8 @@ class UnifiedLogger(LoggerInterface):
             self.output_manager.add(
                 message,
                 LogLevel.INFO,
-                formatinfo=FormatInfo(color="blue", bold=True)
+                formatinfo=FormatInfo(color="blue", bold=True),
+                realtime=False
             )
 
     def log_workflow_start(self, step_count: int, parallel: bool) -> None:
@@ -319,7 +333,8 @@ class UnifiedLogger(LoggerInterface):
             self.output_manager.add(
                 message,
                 LogLevel.INFO,
-                formatinfo=FormatInfo(color="blue", bold=True)
+                formatinfo=FormatInfo(color="blue", bold=True),
+                realtime=False
             )
 
     def log_environment_info(self, language_name: Optional[str], contest_name: Optional[str],
@@ -360,7 +375,8 @@ class UnifiedLogger(LoggerInterface):
             self.output_manager.add(
                 message,
                 LogLevel.INFO,
-                formatinfo=FormatInfo(color="cyan")
+                formatinfo=FormatInfo(color="cyan"),
+                realtime=False
             )
 
     def is_enabled(self) -> bool:

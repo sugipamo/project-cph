@@ -20,7 +20,7 @@ class OutputManager(OutputManagerInterface):
         self.entries.append(entry)
         if realtime:
             if isinstance(message, OutputManager):
-                print(message.output())
+                print(message.output(indent=0, level=LogLevel.DEBUG))
             else:
                 print(message)
 

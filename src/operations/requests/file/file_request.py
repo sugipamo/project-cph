@@ -80,16 +80,52 @@ class FileRequest(OperationRequestFoundation):
         resolved_path = actual_driver.resolve_path(self.path)
         with resolved_path.open("r", encoding="utf-8") as f:
             content = f.read()
-        return FileResult(content=content, path=self.path, success=True, request=self)
+        return FileResult(
+            success=True,
+            content=content,
+            path=self.path,
+            exists=None,
+            op=self.op,
+            error_message=None,
+            exception=Exception("No exception - operation successful"),
+            start_time=self._start_time,
+            end_time=time.time(),
+            request=self,
+            metadata=None
+        )
 
     def _read_from_mock_driver(self, actual_driver: Any) -> FileResult:
         """Read file content from mock driver."""
         abs_path = actual_driver.base_dir / Path(self.path)
         if abs_path in actual_driver.contents:
             content = actual_driver.contents[abs_path]
-            return FileResult(content=content, path=self.path, success=True, request=self)
+            return FileResult(
+                success=True,
+                content=content,
+                path=self.path,
+                exists=None,
+                op=self.op,
+                error_message=None,
+                exception=Exception("No exception - operation successful"),
+                start_time=self._start_time,
+                end_time=time.time(),
+                request=self,
+                metadata=None
+            )
         # MockFileDriver: return empty content for non-existent files
-        return FileResult(content="", path=self.path, success=True, request=self)
+        return FileResult(
+            success=True,
+            content="",
+            path=self.path,
+            exists=False,
+            op=self.op,
+            error_message=None,
+            exception=Exception("No exception - operation successful"),
+            start_time=self._start_time,
+            end_time=time.time(),
+            request=self,
+            metadata=None
+        )
 
     def _handle_write_operation(self, actual_driver: Any) -> FileResult:
         """Handle file write operation."""
@@ -105,7 +141,19 @@ class FileRequest(OperationRequestFoundation):
         else:
             # Regular driver
             actual_driver.create(self.path, self.content)
-        return FileResult(path=self.path, success=True, request=self)
+        return FileResult(
+            success=True,
+            content=None,
+            path=self.path,
+            exists=None,
+            op=self.op,
+            error_message=None,
+            exception=Exception("No exception - operation successful"),
+            start_time=self._start_time,
+            end_time=time.time(),
+            request=self,
+            metadata=None
+        )
 
     def _handle_exists_operation(self, actual_driver: Any) -> FileResult:
         """Handle file exists check operation."""
@@ -116,7 +164,19 @@ class FileRequest(OperationRequestFoundation):
         else:
             # Regular driver
             exists = actual_driver.exists(self.path)
-        return FileResult(path=self.path, success=True, exists=exists, request=self)
+        return FileResult(
+            success=True,
+            content=None,
+            path=self.path,
+            exists=exists,
+            op=self.op,
+            error_message=None,
+            exception=Exception("No exception - operation successful"),
+            start_time=self._start_time,
+            end_time=time.time(),
+            request=self,
+            metadata=None
+        )
 
     def _handle_move_copy_operations(self, actual_driver: Any) -> FileResult:
         """Handle move and copy operations that require source and destination paths."""
@@ -129,7 +189,19 @@ class FileRequest(OperationRequestFoundation):
         elif self.op == FileOpType.MOVETREE:
             actual_driver.movetree(self.path, self.dst_path)
 
-        return FileResult(path=self.dst_path, success=True, request=self)
+        return FileResult(
+            success=True,
+            content=None,
+            path=self.dst_path,
+            exists=None,
+            op=self.op,
+            error_message=None,
+            exception=Exception("No exception - operation successful"),
+            start_time=self._start_time,
+            end_time=time.time(),
+            request=self,
+            metadata=None
+        )
 
     def _handle_single_path_operations(self, actual_driver: Any) -> FileResult:
         """Handle operations that work on a single path."""
@@ -142,7 +214,19 @@ class FileRequest(OperationRequestFoundation):
         elif self.op == FileOpType.TOUCH:
             actual_driver.touch(self.path)
 
-        return FileResult(path=self.path, success=True, request=self)
+        return FileResult(
+            success=True,
+            content=None,
+            path=self.path,
+            exists=None,
+            op=self.op,
+            error_message=None,
+            exception=Exception("No exception - operation successful"),
+            start_time=self._start_time,
+            end_time=time.time(),
+            request=self,
+            metadata=None
+        )
 
     def _handle_file_error(self, e: Exception) -> FileResult:
         """Handle file operation errors."""
@@ -151,10 +235,17 @@ class FileRequest(OperationRequestFoundation):
         # If allow_failure is True, return a failure result instead of raising exception
         if self.allow_failure:
             return FileResult(
-                path=self.path,
                 success=False,
+                content=None,
+                path=self.path,
+                exists=None,
+                op=self.op,
                 error_message=formatted_error,
-                request=self
+                exception=e,
+                start_time=self._start_time,
+                end_time=time.time(),
+                request=self,
+                metadata=None
             )
 
         from src.operations.exceptions.composite_step_failure import CompositeStepFailureError

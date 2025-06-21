@@ -13,35 +13,35 @@ from src.operations.results.result import OperationResult
 class TestEnvironmentManager:
     """Tests for EnvironmentManager class"""
 
-    def test_init_with_env_type(self):
+    def test_init_with_env_type(self, mock_infrastructure):
         """Test initialization with explicit env_type"""
-        manager = EnvironmentManager(env_type="docker")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="docker", config_manager=config_manager)
         assert manager._env_type == "docker"
 
-    def test_init_with_config_manager(self):
+    def test_init_with_config_manager(self, mock_infrastructure):
         """Test initialization with explicit config manager"""
-        config_manager = Mock(spec=TypeSafeConfigNodeManager)
+        config_manager = mock_infrastructure.resolve('config_manager')
         manager = EnvironmentManager(env_type="local", config_manager=config_manager)
         assert manager._config_manager == config_manager
         assert manager._env_type == "local"
 
-    @patch('src.infrastructure.environment.environment_manager.TypeSafeConfigNodeManager')
-    def test_init_loads_config_when_no_env_type(self, mock_config_class):
+    def test_init_loads_config_when_no_env_type(self, mock_infrastructure):
         """Test initialization loads config when env_type not provided"""
-        mock_config = Mock()
-        mock_config.resolve_config.return_value = "test_env"
-        mock_config_class.return_value = mock_config
+        config_manager = Mock(spec=TypeSafeConfigNodeManager)
+        config_manager.resolve_config.return_value = "test_env"
 
-        manager = EnvironmentManager()
+        manager = EnvironmentManager(env_type=None, config_manager=config_manager)
 
-        mock_config.load_from_files.assert_called_once_with(system_dir="config/system")
-        mock_config.resolve_config.assert_called_once_with(['env_default', 'env_type'], str)
+        config_manager.load_from_files.assert_called_once_with(system_dir="config/system")
+        config_manager.resolve_config.assert_called_once_with(['env_default', 'env_type'], str)
         assert manager._env_type == "test_env"
 
 
-    def test_prepare_environment(self):
+    def test_prepare_environment(self, mock_infrastructure):
         """Test prepare_environment method"""
-        manager = EnvironmentManager(env_type="test")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="test", config_manager=config_manager)
         context = Mock()
 
         result = manager.prepare_environment(context)
@@ -50,9 +50,10 @@ class TestEnvironmentManager:
         assert result.success is True
         assert "Environment test prepared" in result.error_message
 
-    def test_cleanup_environment(self):
+    def test_cleanup_environment(self, mock_infrastructure):
         """Test cleanup_environment method"""
-        manager = EnvironmentManager(env_type="test")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="test", config_manager=config_manager)
         context = Mock()
 
         result = manager.cleanup_environment(context)
@@ -61,9 +62,10 @@ class TestEnvironmentManager:
         assert result.success is True
         assert "Environment test cleaned up" in result.error_message
 
-    def test_execute_request(self):
+    def test_execute_request(self, mock_infrastructure):
         """Test execute_request method"""
-        manager = EnvironmentManager(env_type="test")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="test", config_manager=config_manager)
         request = Mock(spec=OperationRequestFoundation)
         driver = Mock()
         expected_result = Mock(spec=OperationResult)
@@ -74,81 +76,93 @@ class TestEnvironmentManager:
         request.execute_operation.assert_called_once_with(driver)
         assert result == expected_result
 
-    def test_should_force_local_with_force_env_type_local(self):
+    def test_should_force_local_with_force_env_type_local(self, mock_infrastructure):
         """Test should_force_local returns True when force_env_type is local"""
-        manager = EnvironmentManager(env_type="docker")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="docker", config_manager=config_manager)
         step_config = {"force_env_type": "local"}
 
         assert manager.should_force_local(step_config) is True
 
-    def test_should_force_local_with_force_env_type_docker(self):
+    def test_should_force_local_with_force_env_type_docker(self, mock_infrastructure):
         """Test should_force_local returns False when force_env_type is docker and env_type is not local"""
-        manager = EnvironmentManager(env_type="docker")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="docker", config_manager=config_manager)
         step_config = {"force_env_type": "docker"}
 
         assert manager.should_force_local(step_config) is False
 
-    def test_should_force_local_with_force_local_true(self):
+    def test_should_force_local_with_force_local_true(self, mock_infrastructure):
         """Test should_force_local returns True when force_local is True (backwards compatibility)"""
-        manager = EnvironmentManager(env_type="docker")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="docker", config_manager=config_manager)
         step_config = {"force_local": True}
 
         assert manager.should_force_local(step_config) is True
 
-    def test_should_force_local_with_force_local_false(self):
+    def test_should_force_local_with_force_local_false(self, mock_infrastructure):
         """Test should_force_local returns False when force_local is False"""
-        manager = EnvironmentManager(env_type="docker")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="docker", config_manager=config_manager)
         step_config = {"force_local": False}
 
         assert manager.should_force_local(step_config) is False
 
-    def test_should_force_local_with_local_env_type(self):
+    def test_should_force_local_with_local_env_type(self, mock_infrastructure):
         """Test should_force_local returns True when env_type is local"""
-        manager = EnvironmentManager(env_type="local")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="local", config_manager=config_manager)
         step_config = {}
 
         assert manager.should_force_local(step_config) is True
 
-    def test_should_force_local_with_non_local_env_type(self):
+    def test_should_force_local_with_non_local_env_type(self, mock_infrastructure):
         """Test should_force_local returns False when env_type is not local"""
-        manager = EnvironmentManager(env_type="docker")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="docker", config_manager=config_manager)
         step_config = {}
 
         assert manager.should_force_local(step_config) is False
 
-    def test_get_working_directory(self):
+    def test_get_working_directory(self, mock_infrastructure):
         """Test get_working_directory method"""
-        manager = EnvironmentManager(env_type="test")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="test", config_manager=config_manager)
         assert manager.get_working_directory() == "."
 
-    def test_get_timeout(self):
+    def test_get_timeout(self, mock_infrastructure):
         """Test get_timeout method"""
-        manager = EnvironmentManager(env_type="test")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="test", config_manager=config_manager)
         assert manager.get_timeout() == 300
 
-    def test_get_shell(self):
+    def test_get_shell(self, mock_infrastructure):
         """Test get_shell method"""
-        manager = EnvironmentManager(env_type="test")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="test", config_manager=config_manager)
         assert manager.get_shell() == "bash"
 
-    def test_get_workspace_root(self):
+    def test_get_workspace_root(self, mock_infrastructure):
         """Test get_workspace_root method"""
-        manager = EnvironmentManager(env_type="test")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="test", config_manager=config_manager)
         assert manager.get_workspace_root() == "./workspace"
 
-    def test_from_context_with_env_type(self):
+    def test_from_context_with_env_type(self, mock_infrastructure):
         """Test from_context class method with env_type"""
         context = Mock()
         context.env_type = "test_env"
+        config_manager = mock_infrastructure.resolve('config_manager')
 
-        manager = EnvironmentManager.from_context(context)
+        manager = EnvironmentManager.from_context(context, config_manager)
 
         assert manager._env_type == "test_env"
 
 
-    def test_switch_environment(self):
+    def test_switch_environment(self, mock_infrastructure):
         """Test switch_environment method"""
-        manager = EnvironmentManager(env_type="initial")
+        config_manager = mock_infrastructure.resolve('config_manager')
+        manager = EnvironmentManager(env_type="initial", config_manager=config_manager)
         assert manager._env_type == "initial"
 
         manager.switch_environment("new_env")

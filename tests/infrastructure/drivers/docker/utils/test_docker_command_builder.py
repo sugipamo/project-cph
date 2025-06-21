@@ -203,7 +203,7 @@ class TestDockerCommandBuilder:
         """Test building basic docker build command."""
         mock_config = Mock()
         mock_config.root_node = Mock()
-        mock_config.resolve_config.side_effect = KeyError("Not found")
+        mock_config.resolve_config.return_value = False  # デフォルト値を返す
         set_config_manager(mock_config)
 
         cmd = build_docker_build_command("latest", "FROM ubuntu", ".", {})
@@ -214,7 +214,7 @@ class TestDockerCommandBuilder:
         """Test building docker build command with tag."""
         mock_config = Mock()
         mock_config.root_node = Mock()
-        mock_config.resolve_config.side_effect = KeyError("Not found")
+        mock_config.resolve_config.return_value = False  # デフォルト値を返す
         set_config_manager(mock_config)
 
         cmd = build_docker_build_command("my-image:latest", "FROM ubuntu", ".", {})
@@ -225,7 +225,7 @@ class TestDockerCommandBuilder:
         """Test building docker build command with dockerfile text."""
         mock_config = Mock()
         mock_config.root_node = Mock()
-        mock_config.resolve_config.side_effect = KeyError("Not found")
+        mock_config.resolve_config.return_value = False  # デフォルト値を返す
         set_config_manager(mock_config)
 
         cmd = build_docker_build_command("latest", "FROM ubuntu", ".", {})

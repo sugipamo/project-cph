@@ -29,8 +29,15 @@ class ContestManager:
             from src.operations.requests.file.file_request import FileRequest
 
             shared_path = "contest_env/shared/env.json"
-            req = FileRequest(FileOpType.READ, shared_path)
-            result = req.execute_operation(driver=self.file_driver)
+            req = FileRequest(
+                op=FileOpType.READ,
+                path=shared_path,
+                content=None,
+                dst_path=None,
+                debug_tag="load_shared_env",
+                name="load_shared_env_json"
+            )
+            result = req.execute_operation(driver=self.file_driver, logger=self.logger)
 
             if result.success:
                 shared_config = self.json_provider.loads(result.content)
@@ -221,8 +228,15 @@ class ContestManager:
     def _directory_has_content(self, directory_path: str) -> bool:
         """Check if directory exists and has content."""
         try:
-            req = FileRequest(FileOpType.EXISTS, directory_path)
-            result = req.execute_operation(driver=self.file_driver)
+            req = FileRequest(
+                op=FileOpType.EXISTS,
+                path=directory_path,
+                content=None,
+                dst_path=None,
+                debug_tag="check_directory_content",
+                name="check_directory_exists"
+            )
+            result = req.execute_operation(driver=self.file_driver, logger=self.logger)
 
 
             # For now, assume directory has content if it exists
@@ -236,8 +250,15 @@ class ContestManager:
     def _ensure_directory_exists(self, directory_path: str) -> bool:
         """Ensure directory exists, create if necessary."""
         try:
-            req = FileRequest(FileOpType.MKDIR, directory_path)
-            result = req.execute_operation(driver=self.file_driver)
+            req = FileRequest(
+                op=FileOpType.MKDIR,
+                path=directory_path,
+                content=None,
+                dst_path=None,
+                debug_tag="ensure_directory",
+                name="create_directory"
+            )
+            result = req.execute_operation(driver=self.file_driver, logger=self.logger)
             return result.success
         except Exception as e:
             raise RuntimeError(f"Failed to ensure directory exists '{directory_path}': {e}") from e
@@ -254,8 +275,15 @@ class ContestManager:
                 dest_item = self.os_provider.path_join(dest_path, item)
 
                 # Use move operation
-                req = FileRequest(FileOpType.MOVE, source_item, dst_path=dest_item)
-                move_result = req.execute_operation(driver=self.file_driver)
+                req = FileRequest(
+                    op=FileOpType.MOVE,
+                    path=source_item,
+                    content=None,
+                    dst_path=dest_item,
+                    debug_tag="move_directory_item",
+                    name="move_contest_file"
+                )
+                move_result = req.execute_operation(driver=self.file_driver, logger=self.logger)
 
                 if not move_result.success:
                     return False
@@ -278,11 +306,25 @@ class ContestManager:
 
                     # Remove file or directory
                     if self.os_provider.isdir(item_path):
-                        req = FileRequest(FileOpType.RMTREE, item_path)
+                        req = FileRequest(
+                            op=FileOpType.RMTREE,
+                            path=item_path,
+                            content=None,
+                            dst_path=None,
+                            debug_tag="clear_directory",
+                            name="remove_directory_tree"
+                        )
                     else:
-                        req = FileRequest(FileOpType.REMOVE, item_path)
+                        req = FileRequest(
+                            op=FileOpType.REMOVE,
+                            path=item_path,
+                            content=None,
+                            dst_path=None,
+                            debug_tag="clear_file",
+                            name="remove_file"
+                        )
 
-                    result = req.execute_operation(driver=self.file_driver)
+                    result = req.execute_operation(driver=self.file_driver, logger=self.logger)
                     if not result.success:
                         return False
 
@@ -308,11 +350,25 @@ class ContestManager:
 
                 # Use copy operation (preserves structure)
                 if self.os_provider.isdir(source_item):
-                    req = FileRequest(FileOpType.COPYTREE, source_item, dst_path=dest_item)
+                    req = FileRequest(
+                        op=FileOpType.COPYTREE,
+                        path=source_item,
+                        content=None,
+                        dst_path=dest_item,
+                        debug_tag="copy_directory_tree",
+                        name="copy_template_directory"
+                    )
                 else:
-                    req = FileRequest(FileOpType.COPY, source_item, dst_path=dest_item)
+                    req = FileRequest(
+                        op=FileOpType.COPY,
+                        path=source_item,
+                        content=None,
+                        dst_path=dest_item,
+                        debug_tag="copy_file",
+                        name="copy_template_file"
+                    )
 
-                copy_result = req.execute_operation(driver=self.file_driver)
+                copy_result = req.execute_operation(driver=self.file_driver, logger=self.logger)
 
                 if not copy_result.success:
                     return False
@@ -370,8 +426,15 @@ class ContestManager:
                         return False
                 else:
                     # Copy file
-                    req = FileRequest(FileOpType.COPY, source_item, dst_path=dest_item)
-                    result = req.execute_operation(driver=self.file_driver)
+                    req = FileRequest(
+                        op=FileOpType.COPY,
+                        path=source_item,
+                        content=None,
+                        dst_path=dest_item,
+                        debug_tag="copy_template_recursive",
+                        name="copy_template_recursive_file"
+                    )
+                    result = req.execute_operation(driver=self.file_driver, logger=self.logger)
 
                     if not result.success:
                         return False

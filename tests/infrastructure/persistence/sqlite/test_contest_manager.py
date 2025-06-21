@@ -48,11 +48,15 @@ class TestContestManager:
 
     def test_env_json_property_loads_from_file_when_none(self, mock_container):
         """Test env_json property loads from file when not provided."""
+        from pathlib import Path
+
+        from src.infrastructure.mock.mock_file_driver import MockFileDriver
+
         # Create manager without env_json
         manager = ContestManager(mock_container, None)
 
-        # Mock file driver and json provider
-        mock_file_driver = Mock()
+        # Use MockFileDriver with proper base_dir
+        mock_file_driver = MockFileDriver(Path("/tmp"))
         mock_json_provider = Mock()
         mock_file_result = Mock()
         mock_file_result.success = True
@@ -254,7 +258,7 @@ class TestContestManager:
             "problem_name": "A"
         })
         contest_manager.backup_contest_current = Mock(return_value=True)
-        contest_manager.logger = Mock()
+        contest_manager._logger = Mock()
 
         result = contest_manager.handle_contest_change("cpp", "def456", "B")
         assert result is True
@@ -273,7 +277,7 @@ class TestContestManager:
         contest_manager._clear_contest_current = Mock(return_value=True)
         contest_manager._copy_directory_contents = Mock(return_value=True)
         contest_manager._track_files_from_stock = Mock(return_value=True)
-        contest_manager.files_repo = Mock()
+        contest_manager._files_repo = Mock()
 
         result = contest_manager.restore_from_contest_stock("python", "abc123", "A")
         assert result is True
@@ -291,9 +295,9 @@ class TestContestManager:
         contest_manager._directory_has_content = Mock(return_value=True)
         contest_manager._clear_contest_current = Mock(return_value=True)
         contest_manager._copy_template_structure = Mock(return_value=True)
-        contest_manager.os_provider = Mock()
-        contest_manager.os_provider.path_join.return_value = "/contest_template/python"
-        contest_manager.logger = Mock()
+        contest_manager._os_provider = Mock()
+        contest_manager._os_provider.path_join.return_value = "/contest_template/python"
+        contest_manager._logger = Mock()
 
         result = contest_manager.initialize_from_template("python", "abc123", "A")
         assert result is True
@@ -301,9 +305,9 @@ class TestContestManager:
     def test_initialize_from_template_no_template(self, contest_manager):
         """Test initialization when no template available."""
         contest_manager._directory_has_content = Mock(return_value=False)
-        contest_manager.os_provider = Mock()
-        contest_manager.os_provider.path_join.return_value = "/contest_template/python"
-        contest_manager.logger = Mock()
+        contest_manager._os_provider = Mock()
+        contest_manager._os_provider.path_join.return_value = "/contest_template/python"
+        contest_manager._logger = Mock()
 
         result = contest_manager.initialize_from_template("python", "abc123", "A")
         assert result is False
@@ -326,12 +330,16 @@ class TestContestManager:
 
     def test_directory_has_content(self, contest_manager):
         """Test _directory_has_content method."""
-        # Mock file driver and request
-        mock_file_driver = Mock()
+        from pathlib import Path
+
+        from src.infrastructure.mock.mock_file_driver import MockFileDriver
+
+        # Use MockFileDriver with proper base_dir
+        mock_file_driver = MockFileDriver(Path("/tmp"))
         mock_result = Mock()
         mock_result.exists = True
 
-        contest_manager.file_driver = mock_file_driver
+        contest_manager._file_driver = mock_file_driver
 
         with patch('src.infrastructure.persistence.sqlite.contest_manager.FileRequest') as mock_file_request:
             mock_request_instance = Mock()
@@ -343,12 +351,16 @@ class TestContestManager:
 
     def test_ensure_directory_exists(self, contest_manager):
         """Test _ensure_directory_exists method."""
-        # Mock file driver and request
-        mock_file_driver = Mock()
+        from pathlib import Path
+
+        from src.infrastructure.mock.mock_file_driver import MockFileDriver
+
+        # Use MockFileDriver with proper base_dir
+        mock_file_driver = MockFileDriver(Path("/tmp"))
         mock_result = Mock()
         mock_result.success = True
 
-        contest_manager.file_driver = mock_file_driver
+        contest_manager._file_driver = mock_file_driver
 
         with patch('src.infrastructure.persistence.sqlite.contest_manager.FileRequest') as mock_file_request:
             mock_request_instance = Mock()
@@ -360,13 +372,17 @@ class TestContestManager:
 
     def test_move_directory_contents(self, contest_manager):
         """Test _move_directory_contents method."""
+        from pathlib import Path
+
+        from src.infrastructure.mock.mock_file_driver import MockFileDriver
+
         # Mock OS provider and file operations
         mock_os_provider = Mock()
         mock_os_provider.listdir.return_value = ["file1.txt", "file2.txt"]
         mock_os_provider.path_join.side_effect = lambda *args: "/".join(args)
 
-        contest_manager.os_provider = mock_os_provider
-        contest_manager.file_driver = Mock()
+        contest_manager._os_provider = mock_os_provider
+        contest_manager._file_driver = MockFileDriver(Path("/tmp"))
 
         with patch('src.infrastructure.persistence.sqlite.contest_manager.FileRequest') as mock_file_request:
             mock_request_instance = Mock()
@@ -381,6 +397,10 @@ class TestContestManager:
 
     def test_clear_contest_current(self, contest_manager):
         """Test _clear_contest_current method."""
+        from pathlib import Path
+
+        from src.infrastructure.mock.mock_file_driver import MockFileDriver
+
         # Mock OS provider
         mock_os_provider = Mock()
         mock_os_provider.exists.return_value = True
@@ -388,8 +408,8 @@ class TestContestManager:
         mock_os_provider.path_join.side_effect = lambda *args: "/".join(args)
         mock_os_provider.isdir.side_effect = lambda path: path.endswith("dir1")
 
-        contest_manager.os_provider = mock_os_provider
-        contest_manager.file_driver = Mock()
+        contest_manager._os_provider = mock_os_provider
+        contest_manager._file_driver = MockFileDriver(Path("/tmp"))
 
         with patch('src.infrastructure.persistence.sqlite.contest_manager.FileRequest') as mock_file_request:
             mock_request_instance = Mock()

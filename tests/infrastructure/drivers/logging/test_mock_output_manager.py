@@ -117,43 +117,43 @@ class TestMockOutputManager:
 
     def test_collect_entries_basic(self):
         """Test _collect_entries method."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.DEBUG)
 
-        manager.add("Debug message", LogLevel.DEBUG)
-        manager.add("Info message", LogLevel.INFO)
-        manager.add("Error message", LogLevel.ERROR)
+        manager.add("Debug message", LogLevel.DEBUG, formatinfo=None, realtime=False)
+        manager.add("Info message", LogLevel.INFO, formatinfo=None, realtime=False)
+        manager.add("Error message", LogLevel.ERROR, formatinfo=None, realtime=False)
 
         # Collect all entries
-        entries = manager._collect_entries(level=LogLevel.DEBUG)
+        entries = manager._collect_entries(flatten=False, sort=False, level=LogLevel.DEBUG)
         assert len(entries) == 3
 
         # Collect only INFO and above
-        entries = manager._collect_entries(level=LogLevel.INFO)
+        entries = manager._collect_entries(flatten=False, sort=False, level=LogLevel.INFO)
         assert len(entries) == 2
         assert entries[0].content == "Info message"
         assert entries[1].content == "Error message"
 
     def test_collect_entries_with_sort(self):
         """Test _collect_entries with sorting."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.DEBUG)
 
         # Add entries (they'll have different timestamps)
-        manager.add("First message", LogLevel.INFO)
-        manager.add("Second message", LogLevel.INFO)
+        manager.add("First message", LogLevel.INFO, formatinfo=None, realtime=False)
+        manager.add("Second message", LogLevel.INFO, formatinfo=None, realtime=False)
 
-        entries = manager._collect_entries(sort=True)
+        entries = manager._collect_entries(flatten=False, sort=True, level=LogLevel.DEBUG)
         assert len(entries) == 2
         # Should be sorted by timestamp
         assert entries[0].timestamp <= entries[1].timestamp
 
     def test_output_basic(self):
         """Test output method."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.DEBUG)
 
-        manager.add("Test message 1", LogLevel.INFO)
-        manager.add("Test message 2", LogLevel.ERROR)
+        manager.add("Test message 1", LogLevel.INFO, formatinfo=None, realtime=False)
+        manager.add("Test message 2", LogLevel.ERROR, formatinfo=None, realtime=False)
 
-        output = manager.output()
+        output = manager.output(indent=0, level=LogLevel.DEBUG)
 
         # Should contain both messages
         assert "Test message 1" in output
@@ -161,32 +161,32 @@ class TestMockOutputManager:
 
     def test_output_with_name(self):
         """Test output method with manager name."""
-        manager = MockOutputManager(name="test-manager")
+        manager = MockOutputManager(name="test-manager", level=LogLevel.DEBUG)
 
         manager.add("Test message", LogLevel.INFO, formatinfo=None, realtime=False)
 
-        output = manager.output()
+        output = manager.output(indent=0, level=LogLevel.DEBUG)
 
         assert "test-manager" in output
         assert "Test message" in output
 
     def test_output_with_indent(self):
         """Test output method with indentation."""
-        manager = MockOutputManager(name="test-manager")
+        manager = MockOutputManager(name="test-manager", level=LogLevel.DEBUG)
 
-        output = manager.output(indent=2)
+        output = manager.output(indent=2, level=LogLevel.DEBUG)
 
         assert output.startswith("        test-manager")  # 2 * 4 spaces
 
     def test_output_with_level_filter(self):
         """Test output method with level filtering."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.DEBUG)
 
-        manager.add("Debug message", LogLevel.DEBUG)
-        manager.add("Info message", LogLevel.INFO)
-        manager.add("Error message", LogLevel.ERROR)
+        manager.add("Debug message", LogLevel.DEBUG, formatinfo=None, realtime=False)
+        manager.add("Info message", LogLevel.INFO, formatinfo=None, realtime=False)
+        manager.add("Error message", LogLevel.ERROR, formatinfo=None, realtime=False)
 
-        output = manager.output(level=LogLevel.INFO)
+        output = manager.output(indent=0, level=LogLevel.INFO)
 
         assert "Debug message" not in output
         assert "Info message" in output
@@ -194,7 +194,7 @@ class TestMockOutputManager:
 
     def test_flush(self):
         """Test flush method."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.DEBUG)
 
         manager.add("Test message", LogLevel.INFO, formatinfo=None, realtime=False)
 
@@ -208,11 +208,11 @@ class TestMockOutputManager:
 
     def test_flatten(self):
         """Test flatten method."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.DEBUG)
 
-        manager.add("Debug message", LogLevel.DEBUG)
-        manager.add("Info message", LogLevel.INFO)
-        manager.add("Error message", LogLevel.ERROR)
+        manager.add("Debug message", LogLevel.DEBUG, formatinfo=None, realtime=False)
+        manager.add("Info message", LogLevel.INFO, formatinfo=None, realtime=False)
+        manager.add("Error message", LogLevel.ERROR, formatinfo=None, realtime=False)
 
         # Get all entries flattened
         flattened = manager.flatten(level=LogLevel.DEBUG)
@@ -224,19 +224,19 @@ class TestMockOutputManager:
 
     def test_output_sorted(self):
         """Test output_sorted method."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.DEBUG)
 
-        manager.add("Message 1", LogLevel.INFO)
-        manager.add("Message 2", LogLevel.ERROR)
+        manager.add("Message 1", LogLevel.INFO, formatinfo=None, realtime=False)
+        manager.add("Message 2", LogLevel.ERROR, formatinfo=None, realtime=False)
 
-        sorted_output = manager.output_sorted()
+        sorted_output = manager.output_sorted(level=LogLevel.DEBUG)
 
         assert "Message 1" in sorted_output
         assert "Message 2" in sorted_output
 
     def test_get_captured_outputs(self):
         """Test get_captured_outputs utility method."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.DEBUG)
 
         manager.captured_outputs.append("Test output 1")
         manager.captured_outputs.append("Test output 2")
@@ -253,7 +253,7 @@ class TestMockOutputManager:
 
     def test_get_flush_count(self):
         """Test get_flush_count utility method."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.DEBUG)
 
         assert manager.get_flush_count() == 0
 
@@ -265,7 +265,7 @@ class TestMockOutputManager:
 
     def test_clear_captured(self):
         """Test clear_captured utility method."""
-        manager = MockOutputManager()
+        manager = MockOutputManager(name=None, level=LogLevel.DEBUG)
 
         manager.captured_outputs.append("Test output")
         manager.flush()
@@ -283,13 +283,13 @@ class TestMockOutputManager:
         manager = MockOutputManager(name="test-manager", level=LogLevel.INFO)
 
         # Add various messages
-        manager.add("Debug message", LogLevel.DEBUG)  # Should be filtered out
-        manager.add("Info message", LogLevel.INFO)
-        manager.add("Warning message", LogLevel.WARNING)
-        manager.add("Error message", LogLevel.ERROR)
+        manager.add("Debug message", LogLevel.DEBUG, formatinfo=None, realtime=False)  # Should be filtered out
+        manager.add("Info message", LogLevel.INFO, formatinfo=None, realtime=False)
+        manager.add("Warning message", LogLevel.WARNING, formatinfo=None, realtime=False)
+        manager.add("Error message", LogLevel.ERROR, formatinfo=None, realtime=False)
 
         # Test output filtering
-        output = manager.output(level=LogLevel.INFO)
+        output = manager.output(indent=0, level=LogLevel.INFO)
         assert "Debug message" not in output
         assert "Info message" in output
         assert "Warning message" in output

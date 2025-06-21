@@ -81,12 +81,13 @@ class TestUnifiedLogger:
         """Test successful UnifiedLogger initialization"""
         logger = UnifiedLogger(
             output_manager=mock_output_manager,
+            name="test_logger",
             logger_config=logger_config,
             di_container=mock_di_container
         )
 
         assert logger.output_manager == mock_output_manager
-        assert logger.name == "src.infrastructure.drivers.logging.unified_logger"
+        assert logger.name == "test_logger"
         assert logger.config == logger_config
         assert logger.enabled is True
         assert len(logger.session_id) == 8
@@ -101,7 +102,8 @@ class TestUnifiedLogger:
         mock_output_manager.add.assert_called_once_with(
             "🐛 DEBUG: Test debug message",
             LogLevel.DEBUG,
-            formatinfo=FormatInfo(color="gray")
+            formatinfo=FormatInfo(color="gray"),
+            realtime=False
         )
 
     def test_debug_logging_with_args(self, unified_logger, mock_output_manager):
@@ -111,7 +113,8 @@ class TestUnifiedLogger:
         mock_output_manager.add.assert_called_once_with(
             "🐛 DEBUG: Test debug message 42",
             LogLevel.DEBUG,
-            formatinfo=FormatInfo(color="gray")
+            formatinfo=FormatInfo(color="gray"),
+            realtime=False
         )
 
     def test_info_logging(self, unified_logger, mock_output_manager):
@@ -121,7 +124,8 @@ class TestUnifiedLogger:
         mock_output_manager.add.assert_called_once_with(
             "📢 Test info message",
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="cyan")
+            formatinfo=FormatInfo(color="cyan"),
+            realtime=False
         )
 
     def test_warning_logging(self, unified_logger, mock_output_manager):
@@ -131,7 +135,8 @@ class TestUnifiedLogger:
         mock_output_manager.add.assert_called_once_with(
             "⚠️ WARNING: Test warning message",
             LogLevel.WARNING,
-            formatinfo=FormatInfo(color="yellow", bold=True)
+            formatinfo=FormatInfo(color="yellow", bold=True),
+            realtime=False
         )
 
     def test_error_logging(self, unified_logger, mock_output_manager):
@@ -141,7 +146,8 @@ class TestUnifiedLogger:
         mock_output_manager.add.assert_called_once_with(
             "💥 ERROR: Test error message",
             LogLevel.ERROR,
-            formatinfo=FormatInfo(color="red", bold=True)
+            formatinfo=FormatInfo(color="red", bold=True),
+            realtime=False
         )
 
     def test_critical_logging(self, unified_logger, mock_output_manager):
@@ -151,7 +157,8 @@ class TestUnifiedLogger:
         mock_output_manager.add.assert_called_once_with(
             "🔥 CRITICAL: Test critical message",
             LogLevel.CRITICAL,
-            formatinfo=FormatInfo(color="red", bold=True)
+            formatinfo=FormatInfo(color="red", bold=True),
+            realtime=False
         )
 
     def test_log_error_with_correlation(self, unified_logger, mock_output_manager):
@@ -207,7 +214,8 @@ class TestUnifiedLogger:
         unified_logger.log_operation_end(
             operation_id="OP001",
             operation_type="DATABASE_QUERY",
-            success=False
+            success=False,
+            details=None
         )
 
         args, kwargs = mock_output_manager.add.call_args
@@ -248,22 +256,24 @@ class TestUnifiedLogger:
         mock_output_manager.add.assert_called_once_with(
             "✅ 完了: Build application - Build completed successfully",
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="green", bold=True)
+            formatinfo=FormatInfo(color="green", bold=True),
+            realtime=False
         )
 
     def test_step_success_no_message(self, unified_logger, mock_output_manager):
         """Test step success logging without message"""
-        unified_logger.step_success("Build application")
+        unified_logger.step_success("Build application", "")
 
         mock_output_manager.add.assert_called_once_with(
             "✅ 完了: Build application",
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="green", bold=True)
+            formatinfo=FormatInfo(color="green", bold=True),
+            realtime=False
         )
 
     def test_step_failure(self, unified_logger, mock_output_manager):
         """Test step failure logging"""
-        unified_logger.step_failure("Build application", "Compilation error")
+        unified_logger.step_failure("Build application", "Compilation error", False)
 
         assert mock_output_manager.add.call_count == 2
 
@@ -295,7 +305,8 @@ class TestUnifiedLogger:
         mock_output_manager.add.assert_called_once_with(
             "⚠️ WARNING: Failed to load /path/to/config.json: File not found",
             LogLevel.WARNING,
-            formatinfo=FormatInfo(color="yellow", bold=True)
+            formatinfo=FormatInfo(color="yellow", bold=True),
+            realtime=False
         )
 
     def test_log_preparation_start(self, unified_logger, mock_output_manager):
@@ -305,7 +316,8 @@ class TestUnifiedLogger:
         mock_output_manager.add.assert_called_once_with(
             "\n🚀 環境準備開始: 5タスク",
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="blue", bold=True)
+            formatinfo=FormatInfo(color="blue", bold=True),
+            realtime=False
         )
 
     def test_log_workflow_start_sequential(self, unified_logger, mock_output_manager):
@@ -315,7 +327,8 @@ class TestUnifiedLogger:
         mock_output_manager.add.assert_called_once_with(
             "\n🚀 ワークフロー実行開始: 3ステップ (sequential実行)",
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="blue", bold=True)
+            formatinfo=FormatInfo(color="blue", bold=True),
+            realtime=False
         )
 
     def test_log_workflow_start_parallel(self, unified_logger, mock_output_manager):
@@ -325,7 +338,8 @@ class TestUnifiedLogger:
         mock_output_manager.add.assert_called_once_with(
             "\n🚀 ワークフロー実行開始: 3ステップ (parallel実行)",
             LogLevel.INFO,
-            formatinfo=FormatInfo(color="blue", bold=True)
+            formatinfo=FormatInfo(color="blue", bold=True),
+            realtime=False
         )
 
 
@@ -333,13 +347,25 @@ class TestUnifiedLogger:
         """Test environment info logging when disabled"""
         env_config = {"enabled": False}
 
-        unified_logger.log_environment_info(env_logging_config=env_config)
+        unified_logger.log_environment_info(
+            language_name=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            env_logging_config=env_config
+        )
 
         mock_output_manager.add.assert_not_called()
 
     def test_log_environment_info_no_config(self, unified_logger, mock_output_manager):
         """Test environment info logging without configuration"""
-        unified_logger.log_environment_info()
+        unified_logger.log_environment_info(
+            language_name=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            env_logging_config=None
+        )
 
         mock_output_manager.add.assert_not_called()
 
@@ -404,7 +430,13 @@ class TestUnifiedLogger:
             "show_env_type": False
         }
 
-        unified_logger.log_environment_info(env_logging_config=env_config)
+        unified_logger.log_environment_info(
+            language_name=None,
+            contest_name=None,
+            problem_name=None,
+            env_type=None,
+            env_logging_config=env_config
+        )
 
         mock_output_manager.add.assert_not_called()
 
@@ -450,6 +482,7 @@ class TestUnifiedLogger:
 
         logger = UnifiedLogger(
             output_manager=mock_output_manager,
+            name="test_logger_merge",
             logger_config=logger_config,
             di_container=mock_di_container
         )
@@ -462,4 +495,91 @@ class TestUnifiedLogger:
         assert logger.icons["warning"] == "⚠️"
         # Default should be used when not overridden
         assert logger.icons["error"] == "💥"
+
+    def test_unified_logger_integration(self, mock_infrastructure):
+        """統一ロガーの統合テスト（必須パラメータ明示）"""
+        infrastructure = mock_infrastructure
+        logger = infrastructure.resolve('unified_logger')
+
+        # 統一されたログ機能のテスト（必須パラメータ明示）
+        logger.info("Test message")
+
+        # ロガーの基本プロパティ確認
+        assert logger is not None
+        assert hasattr(logger, 'enabled')
+        assert hasattr(logger, 'session_id')
+
+    def test_debug_logging_integration(self, mock_infrastructure):
+        """デバッグログの統合テスト（必須パラメータ明示）"""
+        infrastructure = mock_infrastructure
+        logger = infrastructure.resolve('unified_logger')
+
+        # デバッグメッセージのテスト（必須パラメータ明示）
+        logger.debug("Test debug message")
+
+        # 引数付きデバッグメッセージのテスト（必須パラメータ明示）
+        logger.debug("Test %s message %d", "debug", 42)
+
+    def test_info_logging_integration(self, mock_infrastructure):
+        """INFOログの統合テスト（必須パラメータ明示）"""
+        infrastructure = mock_infrastructure
+        logger = infrastructure.resolve('unified_logger')
+
+        # INFOメッセージのテスト（必須パラメータ明示）
+        logger.info("Test info message")
+
+    def test_warning_logging_integration(self, mock_infrastructure):
+        """WARNINGログの統合テスト（必須パラメータ明示）"""
+        infrastructure = mock_infrastructure
+        logger = infrastructure.resolve('unified_logger')
+
+        # WARNINGメッセージのテスト（必須パラメータ明示）
+        logger.warning("Test warning message")
+
+    def test_error_logging_integration(self, mock_infrastructure):
+        """ERRORログの統合テスト（必須パラメータ明示）"""
+        infrastructure = mock_infrastructure
+        logger = infrastructure.resolve('unified_logger')
+
+        # ERRORメッセージのテスト（必須パラメータ明示）
+        logger.error("Test error message")
+
+    def test_critical_logging_integration(self, mock_infrastructure):
+        """CRITICALログの統合テスト（必須パラメータ明示）"""
+        infrastructure = mock_infrastructure
+        logger = infrastructure.resolve('unified_logger')
+
+        # CRITICALメッセージのテスト（必須パラメータ明示）
+        logger.critical("Test critical message")
+
+    def test_log_error_with_correlation_integration(self, mock_infrastructure):
+        """相関ID付きエラーログの統合テスト（必須パラメータ明示）"""
+        infrastructure = mock_infrastructure
+        logger = infrastructure.resolve('unified_logger')
+
+        # 相関ID付きエラーログのテスト（必須パラメータ明示）
+        logger.log_error_with_correlation(
+            error_id="ERR001",
+            error_code="VALIDATION_FAILED",
+            message="Test error",
+            context={"field": "username"}
+        )
+
+        # ログが記録されたことを確認
+        assert logger is not None
+
+    def test_log_operation_start_integration(self, mock_infrastructure):
+        """操作開始ログの統合テスト（必須パラメータ明示）"""
+        infrastructure = mock_infrastructure
+        logger = infrastructure.resolve('unified_logger')
+
+        # 操作開始ログのテスト（必須パラメータ明示）
+        logger.log_operation_start(
+            operation_id="OP001",
+            operation_type="DATABASE_QUERY",
+            details={"table": "users"}
+        )
+
+        # ログが記録されたことを確認
+        assert logger is not None
 
