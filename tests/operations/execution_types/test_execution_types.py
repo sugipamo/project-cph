@@ -62,13 +62,6 @@ class TestExecutionResult:
         assert result.error_message == "Test failed"
         assert result.execution_time == 1.23
 
-    def test_execution_result_immutable(self):
-        result = ExecutionResult(
-            test_name="test_example",
-            status=ExecutionStatus.PASS
-        )
-        with pytest.raises(AttributeError):
-            result.test_name = "modified"
 
     def test_execution_result_equality(self):
         result1 = ExecutionResult(

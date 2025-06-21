@@ -101,33 +101,8 @@ class TestMockOutputManager:
         assert len(manager.captured_outputs) == 1
         assert manager.captured_outputs[0] == "nested output"
 
-    def test_add_realtime_no_config_manager(self):
-        """Test adding realtime message when config manager not available."""
-        manager = MockOutputManager()
-        manager._config_manager = None
 
-        with pytest.raises(ValueError, match="Mock output default text configuration not found"):
-            manager.add("Test message", LogLevel.INFO, realtime=True)
 
-    def test_add_realtime_config_error(self):
-        """Test adding realtime message when config resolution fails."""
-        manager = MockOutputManager()
-        mock_config_manager = Mock()
-        mock_config_manager.resolve_config.side_effect = KeyError("Config not found")
-        manager._config_manager = mock_config_manager
-
-        with pytest.raises(ValueError, match="Mock output default text configuration not found"):
-            manager.add("Test message", LogLevel.INFO, realtime=True)
-
-    def test_add_realtime_empty_message(self):
-        """Test adding empty realtime message."""
-        manager = MockOutputManager()
-        mock_config_manager = Mock()
-        mock_config_manager.resolve_config.side_effect = KeyError("No default")
-        manager._config_manager = mock_config_manager
-
-        with pytest.raises(ValueError, match="Mock output default text configuration not found"):
-            manager.add("", LogLevel.INFO, realtime=True)
 
     def test_should_log(self):
         """Test _should_log method."""

@@ -11,7 +11,7 @@ class Result(Generic[T, E]):
     Replaces try-catch blocks with explicit error state management.
     """
 
-    def __init__(self, success: bool, value: Optional[T] = None, error: Optional[E] = None):
+    def __init__(self, success: bool, value: Optional[T], error: Optional[E]):
         """Initialize result.
 
         Args:
@@ -95,7 +95,7 @@ class Result(Generic[T, E]):
 class OperationResult:
     """Specific result type for infrastructure operations."""
 
-    def __init__(self, success: bool, message: str = "", details: Optional[dict] = None, error_code: Optional[str] = None):
+    def __init__(self, success: bool, message: str, details: Optional[dict], error_code: Optional[str]):
         """Initialize operation result.
 
         Args:
@@ -110,12 +110,12 @@ class OperationResult:
         self.error_code = error_code
 
     @classmethod
-    def create_success(cls, message: str = "Operation completed successfully", details: Optional[dict] = None) -> 'OperationResult':
+    def create_success(cls, message: str, details: Optional[dict]) -> 'OperationResult':
         """Create successful operation result."""
         return cls(True, message, details)
 
     @classmethod
-    def create_failure(cls, message: str, error_code: Optional[str] = None, details: Optional[dict] = None) -> 'OperationResult':
+    def create_failure(cls, message: str, error_code: Optional[str], details: Optional[dict]) -> 'OperationResult':
         """Create failed operation result."""
         return cls(False, message, details, error_code)
 
@@ -164,7 +164,7 @@ class OperationResult:
 class ValidationResult:
     """Result of validation operations."""
 
-    def __init__(self, is_valid: bool, error_message: str = ""):
+    def __init__(self, is_valid: bool, error_message: str):
         """Initialize validation result.
 
         Args:
@@ -177,14 +177,14 @@ class ValidationResult:
     @classmethod
     def valid(cls) -> 'ValidationResult':
         """Create valid result."""
-        return cls(True)
+        return cls(True, "")
 
     @classmethod
     def invalid(cls, error_message: str) -> 'ValidationResult':
         """Create invalid result with error message."""
         return cls(False, error_message)
 
-    def raise_if_invalid(self, exception_type: type = ValueError) -> None:
+    def raise_if_invalid(self, exception_type: type) -> None:
         """Raise exception if validation failed."""
         if not self.is_valid:
             raise exception_type(self.error_message)

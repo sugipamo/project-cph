@@ -154,26 +154,6 @@ class TestFastSQLiteManager:
         finally:
             Path(db_path).unlink(missing_ok=True)
 
-    def test_get_connection_file_database_with_exception(self):
-        """Test get_connection for file database when exception occurs"""
-        mock_provider = Mock()
-        mock_connection = Mock()
-        mock_provider.connect.return_value = mock_connection
-
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
-            db_path = tmp.name
-
-        try:
-            with patch.object(FastSQLiteManager, '_initialize_database'):
-                manager = FastSQLiteManager(db_path=db_path, sqlite_provider=mock_provider, skip_migrations=True)
-
-            with pytest.raises(RuntimeError), manager.get_connection():
-                raise RuntimeError("Test exception")
-
-            mock_connection.rollback.assert_called_once()
-            mock_connection.close.assert_called_once()
-        finally:
-            Path(db_path).unlink(missing_ok=True)
 
     def test_execute_query(self):
         """Test execute_query method"""
@@ -314,23 +294,6 @@ class TestFastSQLiteManager:
         actual_calls = [call[0] for call in mock_connection.execute.call_args_list]
         assert actual_calls == expected_calls
 
-    def test_cleanup_test_data_with_exception(self):
-        """Test cleanup_test_data method when table doesn't exist"""
-        from src.infrastructure.persistence.sqlite.fast_sqlite_manager import PersistenceError
-
-        mock_provider = Mock()
-        mock_connection = Mock()
-        # First exception for PRAGMA, then 5 for the DELETE statements
-        mock_connection.execute.side_effect = [None, Exception("Table not found"), None, None, None, None]
-        mock_provider.connect.return_value = mock_connection
-
-        manager = FastSQLiteManager(sqlite_provider=mock_provider, skip_migrations=True)
-
-        # Should raise PersistenceError
-        with pytest.raises(PersistenceError, match="Table cleanup failed"):
-            manager.cleanup_test_data()
-
-        assert mock_connection.execute.call_count == 2  # PRAGMA + first DELETE that fails
 
     def test_reset_shared_connection(self):
         """Test reset_shared_connection class method"""

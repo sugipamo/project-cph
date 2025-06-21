@@ -26,7 +26,7 @@ class WorkflowLoggerAdapter:
     }
 
     def __init__(self, output_manager: OutputManagerInterface,
-                 logger_config: Optional[dict[str, Any]] = None):
+                 logger_config: Optional[dict[str, Any]]):
         """Initialize workflow logger adapter.
 
         Args:

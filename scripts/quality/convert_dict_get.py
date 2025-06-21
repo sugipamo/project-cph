@@ -29,6 +29,7 @@ class DictGetConverter(ast.NodeTransformer):
 
             # dict.get(key) -> dict[key] (KeyErrorを発生させる)
             if len(node.args) == 1:
+                self.conversions.append(f"行 {node.lineno}: dict.get(key) -> dict[key]")
                 return ast.Subscript(
                     value=node.func.value,
                     slice=node.args[0],
@@ -38,6 +39,7 @@ class DictGetConverter(ast.NodeTransformer):
             # dict.get(key, default) -> dict[key] (強制変換、デフォルト値無視)
             # プロジェクト方針：デフォルト値禁止、KeyErrorで問題を表面化
             if len(node.args) == 2:
+                self.conversions.append(f"行 {node.lineno}: dict.get(key, default) -> dict[key]")
                 return ast.Subscript(
                     value=node.func.value,
                     slice=node.args[0],
@@ -89,7 +91,7 @@ def convert_file_ast(file_path: Path, dry_run: bool = True) -> List[str]:
         converter = DictGetConverter()
         new_tree = converter.visit(tree)
 
-        if converter.conversions or ast.dump(tree) != ast.dump(new_tree):
+        if converter.conversions:
             if not dry_run:
                 # 変換されたASTをコードに戻す
                 import astor  # 必要に応じてインストール

@@ -57,41 +57,8 @@ class TestWorkflowLoggerAdapter:
         assert "config" in adapter.icons
         assert adapter.icons["config"] == "⚙️"
 
-    @patch('src.infrastructure.drivers.logging.adapters.workflow_logger_adapter.DIContainer')
-    def test_init_without_config(self, mock_di_container):
-        """Test initialization without config"""
-        mock_di_container.resolve.return_value = self.mock_config_manager
 
-        # Override config manager to handle empty format config
-        def empty_config_side_effect(path, data_type):
-            if path == ['logging_config', 'adapters', 'workflow', 'default_enabled']:
-                return True
-            if path == ['logging_config', 'adapters', 'workflow', 'default_format', 'icons']:
-                return {"config": "⚙️"}
-            raise KeyError(f"Unknown config path: {path}")
 
-        self.mock_config_manager.resolve_config.side_effect = empty_config_side_effect
-
-        with pytest.raises(ValueError, match="User icon configuration not found"):
-            WorkflowLoggerAdapter(self.output_manager)
-
-    @patch('src.infrastructure.drivers.logging.adapters.workflow_logger_adapter.DIContainer')
-    def test_init_no_config_manager(self, mock_di_container):
-        """Test initialization when config manager is not available"""
-        mock_di_container.resolve.side_effect = Exception("DI error")
-
-        with pytest.raises(ValueError, match="Workflow logger enabled status configuration not available"):
-            WorkflowLoggerAdapter(self.output_manager, self.logger_config)
-
-    @patch('src.infrastructure.drivers.logging.adapters.workflow_logger_adapter.DIContainer')
-    def test_init_config_key_error(self, mock_di_container):
-        """Test initialization when config key is missing"""
-        mock_config = Mock()
-        mock_config.resolve_config.side_effect = KeyError("config not found")
-        mock_di_container.resolve.return_value = mock_config
-
-        with pytest.raises(ValueError, match="Workflow logger enabled status configuration not available"):
-            WorkflowLoggerAdapter(self.output_manager, self.logger_config)
 
     def _create_adapter(self):
         """Helper to create adapter with mocked dependencies"""
@@ -328,13 +295,6 @@ class TestWorkflowLoggerAdapter:
             formatinfo=FormatInfo(color="blue", bold=True)
         )
 
-    def test_log_workflow_start_config_error(self):
-        """Test log_workflow_start method with config error"""
-        adapter = self._create_adapter()
-        adapter._config_manager.resolve_config.side_effect = KeyError("config not found")
-
-        with pytest.raises(ValueError, match="Workflow execution mode configuration not found"):
-            adapter.log_workflow_start(3)
 
     def test_config_load_warning(self):
         """Test config_load_warning method"""

@@ -21,7 +21,7 @@ class DockerDriver(ExecutionDriverInterface):
     """Abstract base class for Docker operations."""
 
     @abstractmethod
-    def run_container(self, image: str, name: Optional[str] = None, options: Optional[dict[str, Any]] = None):
+    def run_container(self, image: str, name: Optional[str], options: dict[str, Any]):
         pass
 
     @abstractmethod
@@ -41,7 +41,7 @@ class DockerDriver(ExecutionDriverInterface):
         pass
 
     @abstractmethod
-    def build_docker_image(self, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True, dockerfile_text: Optional[str] = None):
+    def build_docker_image(self, dockerfile_text: str, tag: Optional[str], options: dict[str, Any], show_output: bool = True):
         pass
 
     @abstractmethod
@@ -57,7 +57,7 @@ class DockerDriver(ExecutionDriverInterface):
         pass
 
     @abstractmethod
-    def inspect(self, target: str, type_: Optional[str] = None):
+    def inspect(self, target: str, type_: Optional[str]):
         pass
 
     @abstractmethod
@@ -82,21 +82,21 @@ class LocalDockerDriver(DockerDriver):
         # For now, always return True for Docker requests
         return True
 
-    def run_container(self, image: str, name: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
+    def run_container(self, image: str, name: str, options: dict[str, Any], show_output: bool = True):
         cmd = build_docker_run_command(image, name, options)
-        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        req = ShellRequest(cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=show_output, allow_failure=False)
         result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
-    def stop_container(self, name: str, show_output: bool = True):
-        cmd = build_docker_stop_command(name)
-        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+    def stop_container(self, name: str, timeout: int, show_output: bool):
+        cmd = build_docker_stop_command(name, timeout)
+        req = ShellRequest(cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=show_output, allow_failure=False)
         result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
-    def remove_container(self, name: str, force: bool = False, show_output: bool = True):
+    def remove_container(self, name: str, force: bool, show_output: bool):
         cmd = build_docker_remove_command(name, force=force)
-        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        req = ShellRequest(cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=show_output, allow_failure=False)
         result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
@@ -109,42 +109,42 @@ class LocalDockerDriver(DockerDriver):
         else:
             raise ValueError(f"Invalid command type: {type(command)}")
 
-        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        req = ShellRequest(cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=show_output, allow_failure=False)
         result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
     def get_logs(self, name: str, show_output: bool = True):
         cmd = ["docker", "logs", name]
-        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        req = ShellRequest(cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=show_output, allow_failure=False)
         result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
-    def build_docker_image(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
+    def build_docker_image(self, dockerfile_text: str, tag: str, options: dict[str, Any], context_path: str, show_output: bool = True):
         if not dockerfile_text or dockerfile_text is None:
             raise ValueError("dockerfile_text is None. Dockerfile内容が正しく渡っていません。")
 
-        cmd = build_docker_build_command(tag, dockerfile_text, options)
-        req = ShellRequest(cmd, cwd=None, env=None, inputdata=dockerfile_text, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        cmd = build_docker_build_command(tag, dockerfile_text, context_path, options)
+        req = ShellRequest(cmd, cwd=".", env={}, inputdata=dockerfile_text, timeout=600, debug_tag="docker_build", name="docker_build_request", show_output=show_output, allow_failure=False)
         result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
 
     def image_ls(self, show_output: bool = True):
         cmd = ["docker", "image", "ls"]
-        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        req = ShellRequest(cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=show_output, allow_failure=False)
         result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
     def image_rm(self, image: str, show_output: bool = True):
         cmd = ["docker", "image", "rm", image]
-        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        req = ShellRequest(cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=show_output, allow_failure=False)
         result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
     def ps(self, all: bool = False, show_output: bool = True, names_only: bool = False):
         if names_only:
             cmd = ["docker", "ps", "-a", "--format", "{{.Names}}"]
-            req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+            req = ShellRequest(cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=show_output, allow_failure=False)
             result = req.execute_operation(driver=self.shell_driver, logger=None)
             stdout_value = result.stdout
             if stdout_value is None:
@@ -153,16 +153,16 @@ class LocalDockerDriver(DockerDriver):
         cmd = ["docker", "ps"]
         if all:
             cmd.append("-a")
-        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        req = ShellRequest(cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=show_output, allow_failure=False)
         result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
-    def inspect(self, target: str, type_: Optional[str] = None, show_output: bool = True):
+    def inspect(self, target: str, type_: Optional[str], show_output: bool = True):
         cmd = ["docker", "inspect"]
         if type_:
             cmd += ["--type", type_]
         cmd.append(target)
-        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        req = ShellRequest(cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=show_output, allow_failure=False)
         result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result
 
@@ -174,6 +174,6 @@ class LocalDockerDriver(DockerDriver):
             cp_src = f"{container}:{src}"
             cp_dst = str(dst)
         cmd = ["docker", "cp", cp_src, cp_dst]
-        req = ShellRequest(cmd, cwd=None, env=None, inputdata=None, timeout=None, debug_tag=None, name=None, show_output=show_output, allow_failure=False)
+        req = ShellRequest(cmd, cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=show_output, allow_failure=False)
         result = req.execute_operation(driver=self.shell_driver, logger=None)
         return result

@@ -15,8 +15,8 @@ class MockOutputManager(OutputManagerInterface):
 
     def __init__(
         self,
-        name: Optional[str] = None,
-        level: LogLevel = LogLevel.INFO
+        name: Optional[str],
+        level: LogLevel
     ):
         self.name = name
         self.level = level
@@ -32,9 +32,9 @@ class MockOutputManager(OutputManagerInterface):
     def add(
         self,
         message: Union[str, OutputManagerInterface],
-        level: LogLevel = LogLevel.INFO,
-        formatinfo: Optional[FormatInfo] = None,
-        realtime: bool = False
+        level: LogLevel,
+        formatinfo: Optional[FormatInfo],
+        realtime: bool
     ) -> None:
         """Add entry to mock (no side effects)."""
         entry = LogEntry(message, level, formatinfo=formatinfo)
@@ -64,7 +64,7 @@ class MockOutputManager(OutputManagerInterface):
         """Check if level should be logged."""
         return level.value >= self.level.value
 
-    def _collect_entries(self, flatten: bool = False, sort: bool = False, level: LogLevel = LogLevel.DEBUG) -> List[LogEntry]:
+    def _collect_entries(self, flatten: bool, sort: bool, level: LogLevel) -> List[LogEntry]:
         """Collect entries matching criteria."""
         def collect(entries):
             result = []
@@ -82,28 +82,28 @@ class MockOutputManager(OutputManagerInterface):
             result.sort(key=lambda e: e.timestamp)
         return result
 
-    def output(self, indent: int = 0, level: LogLevel = LogLevel.DEBUG) -> str:
+    def output(self, indent: int, level: LogLevel) -> str:
         """Generate mock output."""
         lines = []
         if self.name:
             lines.append(('    ' * indent) + self.name)
-        for entry in self._collect_entries(flatten=False, sort=False, level=level):
+        for entry in self._collect_entries(False, False, level):
             lines.append(entry.formatted_content)
         return "\n".join(lines)
 
     def flush(self) -> None:
         """Mock flush (no side effects)."""
         self.flush_calls += 1
-        output = self.output()
+        output = self.output(0, LogLevel.DEBUG)
         self.captured_outputs.append(output)
 
-    def flatten(self, level: LogLevel = LogLevel.DEBUG) -> List[LogEntry]:
+    def flatten(self, level: LogLevel) -> List[LogEntry]:
         """Get flattened entries."""
-        return self._collect_entries(flatten=True, sort=False, level=level)
+        return self._collect_entries(True, False, level)
 
-    def output_sorted(self, level: LogLevel = LogLevel.DEBUG) -> str:
+    def output_sorted(self, level: LogLevel) -> str:
         """Generate sorted output."""
-        entries = self._collect_entries(flatten=True, sort=True, level=level)
+        entries = self._collect_entries(True, True, level)
         return "\n".join(e.formatted_content for e in entries)
 
     # Test utility methods

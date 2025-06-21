@@ -32,7 +32,7 @@ class LocalDockerDriverWithTracking(LocalDockerDriver):
             self._image_repo = self.di_container.resolve(DIKey.DOCKER_IMAGE_REPOSITORY)
         return self._image_repo
 
-    def run_container(self, image: str, name: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
+    def run_container(self, image: str, name: Optional[str], options: dict[str, Any], show_output: bool = True):
         """Run container and track in database."""
         result = super().run_container(image, name, options, show_output)
 
@@ -86,7 +86,7 @@ class LocalDockerDriverWithTracking(LocalDockerDriver):
 
         return result
 
-    def build_docker_image(self, dockerfile_text: str, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True):
+    def build_docker_image(self, dockerfile_text: str, tag: Optional[str], options: dict[str, Any], show_output: bool = True):
         """Build image and track in database."""
         # Calculate Dockerfile hash
         dockerfile_hash = hashlib.sha256(dockerfile_text.encode('utf-8')).hexdigest()[:12]

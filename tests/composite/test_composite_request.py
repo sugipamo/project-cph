@@ -11,10 +11,16 @@ from src.operations.requests.composite.composite_request import CompositeRequest
 from src.operations.results.result import OperationResult
 
 
+def create_composite(requests, name=None, debug_tag=None):
+    """Helper function to create CompositeRequest with required arguments."""
+    return CompositeRequest(requests, debug_tag=debug_tag, name=name,
+                          execution_controller=None, _executed=False, _results=None, _debug_info=None)
+
+
 class MockRequest(OperationRequestFoundation):
     """Mock request for testing"""
-    def __init__(self, name=None, should_fail=False, allow_failure=False):
-        super().__init__(name=name)
+    def __init__(self, name, should_fail, allow_failure):
+        super().__init__(name=name, debug_tag=None, _executed=False, _result=None, _debug_info=None)
         self.should_fail = should_fail
         self.allow_failure = allow_failure
         self.executed = False
@@ -23,7 +29,7 @@ class MockRequest(OperationRequestFoundation):
     def operation_type(self):
         return "MOCK"
 
-    def _execute_core(self, driver, logger=None):
+    def _execute_core(self, driver, logger):
         self.executed = True
         result = Mock(spec=OperationResult)
         result.success = not self.should_fail
@@ -36,9 +42,9 @@ class TestCompositeRequest:
 
     def test_init(self):
         """Test CompositeRequest initialization"""
-        req1 = MockRequest("req1")
-        req2 = MockRequest("req2")
-        composite = CompositeRequest([req1, req2], name="test_composite")
+        req1 = MockRequest("req1", False, False)
+        req2 = MockRequest("req2", False, False)
+        composite = create_composite([req1, req2], name="test_composite")
 
         assert composite.name == "test_composite"
         assert len(composite) == 2
@@ -46,11 +52,11 @@ class TestCompositeRequest:
 
     def test_execute_sequential(self):
         """Test sequential execution of requests"""
-        req1 = MockRequest("req1")
-        req2 = MockRequest("req2")
-        req3 = MockRequest("req3")
+        req1 = MockRequest("req1", False, False)
+        req2 = MockRequest("req2", False, False)
+        req3 = MockRequest("req3", False, False)
 
-        composite = CompositeRequest([req1, req2, req3])
+        composite = create_composite([req1, req2, req3])
         driver = Mock()
 
         results = composite.execute_operation(driver)
@@ -64,11 +70,11 @@ class TestCompositeRequest:
 
     def test_execute_with_allowed_failure(self):
         """Test execution with allowed failure"""
-        req1 = MockRequest("req1")
-        req2 = MockRequest("req2", should_fail=True, allow_failure=True)
-        req3 = MockRequest("req3")
+        req1 = MockRequest("req1", False, False)
+        req2 = MockRequest("req2", True, True)
+        req3 = MockRequest("req3", False, False)
 
-        composite = CompositeRequest([req1, req2, req3])
+        composite = create_composite([req1, req2, req3])
         driver = Mock()
 
         results = composite.execute_operation(driver)
@@ -83,7 +89,7 @@ class TestCompositeRequest:
 
     def test_make_composite_request_single(self):
         """Test make_composite_request with single request"""
-        req = MockRequest("single")
+        req = MockRequest("single", False, False)
         result = CompositeRequest.make_composite_request([req], name="test")
 
         # Should return the request itself with name set
@@ -93,8 +99,8 @@ class TestCompositeRequest:
 
     def test_make_composite_request_multiple(self):
         """Test make_composite_request with multiple requests"""
-        req1 = MockRequest("req1")
-        req2 = MockRequest("req2")
+        req1 = MockRequest("req1", False, False)
+        req2 = MockRequest("req2", False, False)
 
         result = CompositeRequest.make_composite_request([req1, req2], name="test")
 
@@ -104,24 +110,24 @@ class TestCompositeRequest:
 
     def test_count_leaf_requests(self):
         """Test counting leaf requests"""
-        req1 = MockRequest("req1")
-        req2 = MockRequest("req2")
-        req3 = MockRequest("req3")
+        req1 = MockRequest("req1", False, False)
+        req2 = MockRequest("req2", False, False)
+        req3 = MockRequest("req3", False, False)
 
         # Simple composite
-        composite = CompositeRequest([req1, req2, req3])
+        composite = create_composite([req1, req2, req3])
         assert composite.count_leaf_requests() == 3
 
         # Nested composite
-        inner = CompositeRequest([req1, req2])
-        outer = CompositeRequest([inner, req3])
+        inner = create_composite([req1, req2])
+        outer = create_composite([inner, req3])
         assert outer.count_leaf_requests() == 3
 
     def test_repr(self):
         """Test string representation"""
-        req1 = MockRequest("req1")
-        req2 = MockRequest("req2")
-        composite = CompositeRequest([req1, req2], name="test")
+        req1 = MockRequest("req1", False, False)
+        req2 = MockRequest("req2", False, False)
+        composite = create_composite([req1, req2], name="test")
 
         repr_str = repr(composite)
         assert "CompositeRequest" in repr_str
@@ -129,11 +135,11 @@ class TestCompositeRequest:
 
     def test_requests_property(self):
         """Test requests property getter and setter"""
-        req1 = MockRequest("req1")
-        req2 = MockRequest("req2")
-        req3 = MockRequest("req3")
+        req1 = MockRequest("req1", False, False)
+        req2 = MockRequest("req2", False, False)
+        req3 = MockRequest("req3", False, False)
 
-        composite = CompositeRequest([req1, req2])
+        composite = create_composite([req1, req2])
         assert composite.requests == [req1, req2]
 
         # Test setter
@@ -143,7 +149,7 @@ class TestCompositeRequest:
 
     def test_empty_composite(self):
         """Test composite with no requests"""
-        composite = CompositeRequest([])
+        composite = create_composite([])
         driver = Mock()
 
         results = composite.execute_operation(driver)
@@ -152,20 +158,20 @@ class TestCompositeRequest:
 
     def test_debug_tag(self):
         """Test debug_tag parameter"""
-        req1 = MockRequest("req1")
-        composite = CompositeRequest([req1], debug_tag="DEBUG")
+        req1 = MockRequest("req1", False, False)
+        composite = create_composite([req1], debug_tag="DEBUG")
 
         assert hasattr(composite, '_debug_tag') or True  # Implementation may vary
 
     def test_nested_composite_execution(self):
         """Test execution of nested composite requests"""
-        req1 = MockRequest("req1")
-        req2 = MockRequest("req2")
-        req3 = MockRequest("req3")
+        req1 = MockRequest("req1", False, False)
+        req2 = MockRequest("req2", False, False)
+        req3 = MockRequest("req3", False, False)
 
         # Don't use nested CompositeRequest as it returns a list
         # which causes issues with ExecutionController._check_failure
-        composite = CompositeRequest([req1, req2, req3])
+        composite = create_composite([req1, req2, req3])
 
         driver = Mock()
         results = composite.execute_operation(driver)

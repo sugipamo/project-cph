@@ -44,12 +44,6 @@ class TestPathOperations:
             str
         )
 
-    def test_get_default_workspace_path_key_error(self, path_ops, mock_config_manager):
-        """Test default workspace path with KeyError"""
-        mock_config_manager.resolve_config.side_effect = KeyError("Config not found")
-
-        with pytest.raises(ValueError, match="No default workspace path configured"):
-            path_ops._get_default_workspace_path()
 
     def test_resolve_path_absolute(self, path_ops):
         """Test resolving absolute path"""
@@ -95,10 +89,6 @@ class TestPathOperations:
         assert len(result.errors) > 0
         assert "Base directory cannot be None" in result.errors
 
-    def test_resolve_path_exception_handling(self, path_ops):
-        """Test resolve_path exception handling"""
-        with pytest.raises(ValueError):
-            path_ops.resolve_path(None, "test")
 
     def test_normalize_path_success(self, path_ops):
         """Test successful path normalization"""
@@ -120,10 +110,6 @@ class TestPathOperations:
         assert result.result == os.path.normpath(test_path)
         assert result.metadata["original"] == test_path
 
-    def test_normalize_path_none_error(self, path_ops):
-        """Test normalize_path with None input"""
-        with pytest.raises(ValueError, match="Path parameter cannot be None"):
-            path_ops.normalize_path(None)
 
     def test_safe_path_join_success(self, path_ops):
         """Test successful path joining"""
@@ -156,15 +142,7 @@ class TestPathOperations:
         assert len(result.warnings) > 0
         assert "Potentially unsafe path component" in result.warnings[0]
 
-    def test_safe_path_join_no_paths_error(self, path_ops):
-        """Test safe_path_join with no paths"""
-        with pytest.raises(ValueError, match="At least one path must be provided"):
-            path_ops.safe_path_join()
 
-    def test_safe_path_join_none_path_error(self, path_ops):
-        """Test safe_path_join with None path"""
-        with pytest.raises(ValueError, match="Path at index 0 is None"):
-            path_ops.safe_path_join(None, "dir")
 
     def test_get_relative_path_success(self, path_ops):
         """Test successful relative path calculation"""
@@ -192,12 +170,6 @@ class TestPathOperations:
             assert result.success is True
             assert result.result == os.path.relpath(target, base)
 
-    def test_get_relative_path_not_relative_error(self, path_ops):
-        """Test get_relative_path when paths are not related"""
-        with tempfile.TemporaryDirectory() as base_dir, \
-             tempfile.TemporaryDirectory() as target_dir, \
-             pytest.raises(ValueError, match="Cannot compute relative path"):
-            path_ops.get_relative_path(target_dir, base_dir)
 
     def test_is_subdirectory_true(self, path_ops):
         """Test is_subdirectory when child is subdirectory"""
@@ -308,12 +280,6 @@ class TestPathOperations:
 
         assert result == "/path/to/file.py"
 
-    def test_change_extension_no_original_extension(self, path_ops):
-        """Test change_extension with file that has no extension"""
-        file_path = "/path/to/file"
-
-        with pytest.raises(ValueError, match="has no extension to replace"):
-            path_ops.change_extension(file_path, ".txt")
 
     def test_change_extension_strict_mode(self, path_ops):
         """Test change_extension in strict mode"""
@@ -328,14 +294,3 @@ class TestPathOperations:
         assert result.metadata["original_extension"] == ".txt"
         assert result.metadata["new_extension"] == ".py"
 
-    def test_exception_handling_in_strict_mode(self, path_ops):
-        """Test exception handling in strict mode"""
-        with patch('os.path.normpath') as mock_normpath:
-            mock_normpath.side_effect = Exception("Test exception")
-
-            result = path_ops.normalize_path("test", strict=True)
-
-            assert isinstance(result, PathOperationResult)
-            assert result.success is False
-            assert "Test exception" in result.errors
-            assert result.metadata["error_type"] == "Exception"

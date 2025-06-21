@@ -7,8 +7,8 @@ class DockerUtils:
     """Utility class for Docker command construction and parsing."""
 
     @staticmethod
-    def build_docker_cmd(base_cmd: list[str], options: Optional[dict[str, Any]] = None,
-                        positional_args: Optional[list[str]] = None) -> list[str]:
+    def build_docker_cmd(base_cmd: list[str], options: dict[str, Any],
+                        positional_args: list[str]) -> list[str]:
         """Build a Docker command with options and positional arguments.
 
         Args:
@@ -21,8 +21,7 @@ class DockerUtils:
         """
         cmd = base_cmd.copy()
 
-        if options:
-            for key, value in options.items():
+        for key, value in options.items():
                 if len(key) == 1:
                     # Short option
                     cmd.append(f"-{key}")
@@ -33,8 +32,7 @@ class DockerUtils:
                 if value is not None:
                     cmd.append(str(value))
 
-        if positional_args:
-            cmd.extend(positional_args)
+        cmd.extend(positional_args)
 
         return cmd
 

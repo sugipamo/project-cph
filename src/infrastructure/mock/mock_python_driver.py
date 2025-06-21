@@ -14,7 +14,7 @@ class MockPythonDriver(PythonDriver):
         self._responses = {}  # code/file -> (stdout, stderr, returncode)
         self._default_response = ("mock python output", "", 0)
 
-    def run_code_string(self, code: str, cwd: Optional[str] = None) -> tuple[str, str, int]:
+    def run_code_string(self, code: str, cwd: Optional[str]) -> tuple[str, str, int]:
         """Execute Python code string (mocked).
 
         Args:
@@ -32,7 +32,7 @@ class MockPythonDriver(PythonDriver):
 
         return self._responses[code]
 
-    def run_script_file(self, file_path: str, cwd: Optional[str] = None) -> tuple[str, str, int]:
+    def run_script_file(self, file_path: str, cwd: Optional[str]) -> tuple[str, str, int]:
         """Execute Python script file (mocked).
 
         Args:
@@ -65,8 +65,8 @@ class MockPythonDriver(PythonDriver):
             return code_or_file.endswith('.py')
         return False
 
-    def set_response(self, code_or_file: str, stdout: str, stderr: str = "",
-                    returncode: int = 0) -> None:
+    def set_response(self, code_or_file: str, stdout: str, stderr: str,
+                    returncode: int) -> None:
         """Set predefined response for code or file.
 
         Args:
@@ -77,8 +77,8 @@ class MockPythonDriver(PythonDriver):
         """
         self._responses[code_or_file] = (stdout, stderr, returncode)
 
-    def set_default_response(self, stdout: str, stderr: str = "",
-                           returncode: int = 0) -> None:
+    def set_default_response(self, stdout: str, stderr: str,
+                           returncode: int) -> None:
         """Set default response for unknown code/files.
 
         Args:

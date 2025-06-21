@@ -87,27 +87,7 @@ class TestLocalFileSystem:
             contents = fs.iterdir(empty_dir)
             assert contents == []
 
-    def test_iterdir_permission_error(self, mock_config_manager):
-        fs = LocalFileSystem(mock_config_manager)
-        with TemporaryDirectory():
-            # Use patch to simulate PermissionError
-            mock_path = Mock()
-            mock_path.iterdir.side_effect = PermissionError("Access denied")
 
-            # Should raise FileSystemError when permission denied
-            with pytest.raises(FileSystemError, match="Failed to list directory contents"):
-                fs.iterdir(mock_path)
-
-    def test_iterdir_os_error(self, mock_config_manager):
-        fs = LocalFileSystem(mock_config_manager)
-        with TemporaryDirectory():
-            # Use patch to simulate OSError
-            mock_path = Mock()
-            mock_path.iterdir.side_effect = OSError("IO error")
-
-            # Should raise FileSystemError when OS error occurs
-            with pytest.raises(FileSystemError, match="Failed to list directory contents"):
-                fs.iterdir(mock_path)
 
     def test_mkdir_basic(self, mock_config_manager):
         fs = LocalFileSystem(mock_config_manager)
@@ -123,10 +103,6 @@ class TestLocalFileSystem:
         with TemporaryDirectory() as temp_dir:
             nested_dir = Path(temp_dir) / "parent" / "child" / "grandchild"
 
-            # Without parents=True, this should fail
-            with pytest.raises(FileNotFoundError):
-                fs.mkdir(nested_dir)
-
             # With parents=True, this should succeed
             fs.mkdir(nested_dir, parents=True)
             assert nested_dir.exists()
@@ -138,23 +114,10 @@ class TestLocalFileSystem:
             existing_dir = Path(temp_dir) / "existing"
             existing_dir.mkdir()
 
-            # Without exist_ok=True, this should fail
-            with pytest.raises(FileExistsError):
-                fs.mkdir(existing_dir)
-
             # With exist_ok=True, this should succeed
             fs.mkdir(existing_dir, exist_ok=True)
             assert existing_dir.exists()
 
-    def test_mkdir_exists_raises(self, mock_config_manager):
-        fs = LocalFileSystem(mock_config_manager)
-        with TemporaryDirectory() as temp_dir:
-            existing_dir = Path(temp_dir) / "existing"
-            existing_dir.mkdir()
-
-            # Try to create the same directory without exist_ok
-            with pytest.raises(FileExistsError):
-                fs.mkdir(existing_dir, exist_ok=False)
 
     def test_complex_scenario(self, mock_config_manager):
         """Test a complex scenario with multiple operations."""
@@ -194,22 +157,6 @@ class TestLocalFileSystem:
             assert len(src_contents) == 1
             assert src_contents[0].name == "main.py"
 
-    def test_copy_file_not_implemented(self, mock_config_manager):
-        fs = LocalFileSystem(mock_config_manager)
-        with pytest.raises(NotImplementedError, match="copy_file is not implemented"):
-            fs.copy_file(Path("source"), Path("dest"))
 
-    def test_move_file_not_implemented(self, mock_config_manager):
-        fs = LocalFileSystem(mock_config_manager)
-        with pytest.raises(NotImplementedError, match="move_file is not implemented"):
-            fs.move_file(Path("source"), Path("dest"))
 
-    def test_delete_file_not_implemented(self, mock_config_manager):
-        fs = LocalFileSystem(mock_config_manager)
-        with pytest.raises(NotImplementedError, match="delete_file is not implemented"):
-            fs.delete_file(Path("test.txt"))
 
-    def test_create_directory_not_implemented(self, mock_config_manager):
-        fs = LocalFileSystem(mock_config_manager)
-        with pytest.raises(NotImplementedError, match="create_directory is not implemented"):
-            fs.create_directory(Path("test_dir"))

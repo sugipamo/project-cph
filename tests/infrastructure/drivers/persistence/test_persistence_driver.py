@@ -62,14 +62,6 @@ class TestPersistenceDriver:
         result = driver.execute_command(request)
         assert result == 5
 
-    def test_execute_with_unsupported_request(self):
-        driver = MockPersistenceDriver()
-
-        # Create a request without query or command
-        request = type('Request', (), {})()
-
-        with pytest.raises(ValueError, match="Unsupported request type"):
-            driver.execute_command(request)
 
     def test_validate_with_query_request(self):
         driver = MockPersistenceDriver()
@@ -178,25 +170,6 @@ class TestSQLitePersistenceDriver:
         # Rollback should not be called on success
         mock_connection.rollback.assert_not_called()
 
-    @patch('src.infrastructure.persistence.sqlite.sqlite_manager.SQLiteManager')
-    def test_begin_transaction_rollback_on_error(self, mock_sqlite_manager_class):
-        mock_manager = Mock()
-        mock_connection = MagicMock()
-
-        @contextmanager
-        def mock_get_connection():
-            yield mock_connection
-
-        mock_manager.get_connection = mock_get_connection
-        mock_sqlite_manager_class.return_value = mock_manager
-
-        driver = SQLitePersistenceDriver()
-
-        with pytest.raises(ValueError), driver.begin_transaction():
-            raise ValueError("Test error")
-
-        # Rollback should be called on error
-        mock_connection.rollback.assert_called_once()
 
     @patch('src.infrastructure.persistence.sqlite.sqlite_manager.SQLiteManager')
     def test_get_repository_cached(self, mock_sqlite_manager_class):

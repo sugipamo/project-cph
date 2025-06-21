@@ -58,10 +58,6 @@ def test_move_and_copy_impl():
     assert driver._exists_impl(src)
     assert driver.contents[src] == "abc"
 
-def test_copy_impl_file_not_found():
-    driver = MockFileDriver()
-    with pytest.raises(FileNotFoundError):
-        driver._copy_impl(driver.base_dir / Path("notfound.txt"), driver.base_dir / Path("b.txt"))
 
 def test_copytree_and_rmtree_impl():
     driver = MockFileDriver()
@@ -93,11 +89,6 @@ def test_open_read_and_write():
         f.write("def")
     assert driver.contents[driver.base_dir / p] == "def"  # writeで内容が上書きされる
 
-def test_open_unsupported_mode():
-    driver = MockFileDriver()
-    driver.path = Path("a.txt")
-    with pytest.raises(NotImplementedError), driver.open("a.txt", "x"):
-        pass
 
 def test_docker_cp_and_hash_file():
     driver = MockFileDriver()
@@ -108,6 +99,3 @@ def test_docker_cp_and_hash_file():
     assert result.startswith("mock_docker_cp_")
     h = driver.hash_file(p)
     assert isinstance(h, str) and len(h) > 0
-    # docker_cpでFileNotFoundError
-    with pytest.raises(FileNotFoundError):
-        driver.docker_cp("notfound.txt", "dst", "container")

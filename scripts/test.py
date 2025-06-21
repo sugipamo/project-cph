@@ -469,6 +469,10 @@ class TestRunner:
 
                     relative_path = file_path.replace('src/', '')
 
+                    # infrastructure層は副作用の直接使用を許可（CLAUDE.mdルールに従う）
+                    if relative_path.startswith('infrastructure/'):
+                        continue
+
                     # インポート文と使用箇所をチェック
                     for node in ast.walk(tree):
                         # from subprocess import run のようなケース
@@ -784,6 +788,17 @@ class TestRunner:
                     for node in ast.walk(tree):
                         # 1. try-except内での代入・return（必要なエラーハンドリングを除外）
                         if isinstance(node, ast.Try):
+                            # infrastructureディレクトリ以外でのtry文を検出
+                            if not relative_path.startswith('infrastructure/') and not relative_path.startswith('tests/infrastructure/'):
+                                fallback_issues.append(f"{relative_path}:{node.lineno} try文がinfrastructure層外で使用されています")
+                                fallback_issues.append("  解決方法:")
+                                fallback_issues.append("    1. src/infrastructure/result/error_converter.py の ErrorConverter を使用")
+                                fallback_issues.append("    2. operations層では ErrorConverter.execute_with_conversion() を呼び出し")
+                                fallback_issues.append("    3. 例外処理をinfrastructure層に移動")
+                                fallback_issues.append("    4. Result型を使用して明示的なエラーハンドリング")
+                                fallback_issues.append("  参考実装: src/operations/requests/shell/shell_request.py")
+                                continue
+
                             for handler in node.handlers:
                                 for stmt in handler.body:
                                     if isinstance(stmt, (ast.Assign, ast.Return)):

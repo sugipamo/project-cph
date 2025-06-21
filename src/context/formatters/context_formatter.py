@@ -213,8 +213,8 @@ def get_docker_naming_from_data(data: Union[ExecutionFormatData, 'TypedExecution
     language = data.language
 
     # Container names are fixed (no hash)
-    container_name = get_docker_container_name(language)
-    oj_container_name = get_oj_container_name()
+    container_name = get_docker_container_name(language, "")
+    oj_container_name = get_oj_container_name("")
 
     # Image names use hash if dockerfile content is provided
     image_name = get_docker_image_name(language, dockerfile_content)

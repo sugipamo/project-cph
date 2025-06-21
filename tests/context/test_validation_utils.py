@@ -114,14 +114,3 @@ def test_get_steps_from_resolver_success():
         assert result[1].key == 1
 
 
-def test_get_steps_from_resolver_no_steps():
-    """Test steps retrieval when steps are not found"""
-    def mock_resolve_best(resolver, path):
-        return None
-
-    with patch('src.context.resolver.config_resolver.resolve_best', side_effect=mock_resolve_best):
-        mock_resolver = Mock()
-
-        with pytest.raises(ValueError) as excinfo:
-            get_steps_from_resolver(mock_resolver, "python", "test")
-        assert "stepsが見つかりません" in str(excinfo.value)

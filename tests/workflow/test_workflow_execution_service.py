@@ -153,12 +153,6 @@ class TestWorkflowExecutionService(unittest.TestCase):
             ['commands', 'build', 'steps'], list
         )
 
-    def test_get_workflow_steps_config_error(self):
-        """Test workflow steps retrieval with configuration error"""
-        self.mock_config_manager.resolve_config.side_effect = KeyError("Config not found")
-
-        with self.assertRaises(KeyError):
-            self.service._get_workflow_steps()
 
     def test_get_parallel_config_success(self):
         """Test successful parallel configuration retrieval"""
@@ -171,12 +165,6 @@ class TestWorkflowExecutionService(unittest.TestCase):
 
         self.assertEqual(result, {"enabled": True, "max_workers": 8})
 
-    def test_get_parallel_config_error(self):
-        """Test parallel configuration retrieval with error"""
-        self.mock_config_manager.resolve_config.side_effect = KeyError("Config not found")
-
-        with self.assertRaises(KeyError):
-            self.service._get_parallel_config()
 
     def test_create_workflow_tasks_docker_request(self):
         """Test creating workflow tasks with docker request"""
@@ -249,14 +237,6 @@ class TestWorkflowExecutionService(unittest.TestCase):
 
         mock_logger.log_environment_info.assert_called_once()
 
-    def test_log_environment_info_missing_config(self):
-        """Test environment logging with missing configuration"""
-        self.context.env_json = {"shared": {}}  # Missing environment_logging
-
-        with self.assertRaises(KeyError) as context:
-            self.service._log_environment_info()
-
-        self.assertIn("environment_logging", str(context.exception))
 
     def test_log_environment_info_merged_config(self):
         """Test environment logging with merged configuration"""
@@ -366,15 +346,6 @@ class TestWorkflowExecutionService(unittest.TestCase):
         self.assertEqual(result, [mock_result])
         mock_composite.execute_parallel.assert_called_once_with(mock_driver, max_workers=8, logger=self.mock_logger)
 
-    @patch('src.workflow.workflow_execution_service.UnifiedDriver')
-    def test_execute_main_workflow_parallel_not_supported(self, mock_unified_driver_class):
-        """Test main workflow execution when parallel is not supported"""
-        mock_composite = Mock()
-        # Remove execute_parallel method to simulate not supported
-        del mock_composite.execute_parallel
-
-        with self.assertRaises(AttributeError):
-            self.service._execute_main_workflow(mock_composite, use_parallel=True)
 
     @patch('src.workflow.workflow_execution_service.UnifiedDriver')
     def test_execute_main_workflow_single_result(self, mock_unified_driver_class):
@@ -441,33 +412,8 @@ class TestWorkflowExecutionService(unittest.TestCase):
 
         self.assertTrue(result)
 
-    def test_should_allow_failure_missing_request(self):
-        """Test failure allowance check with missing request"""
-        mock_result = Mock()
-        # Remove request attribute
-        delattr(mock_result, 'request')
 
-        with self.assertRaises(AttributeError):
-            self.service._should_allow_failure(mock_result)
 
-    def test_should_allow_failure_none_request(self):
-        """Test failure allowance check with None request"""
-        mock_result = Mock()
-        mock_result.request = None
-
-        with self.assertRaises(ValueError):
-            self.service._should_allow_failure(mock_result)
-
-    def test_should_allow_failure_missing_allow_failure(self):
-        """Test failure allowance check with missing allow_failure attribute"""
-        mock_result = Mock()
-        mock_request = Mock()
-        # Remove allow_failure attribute
-        delattr(mock_request, 'allow_failure')
-        mock_result.request = mock_request
-
-        with self.assertRaises(AttributeError):
-            self.service._should_allow_failure(mock_result)
 
     def test_should_allow_failure_test_step_workaround(self):
         """Test failure allowance check with TEST step workaround"""

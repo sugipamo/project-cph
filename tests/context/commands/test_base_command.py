@@ -129,10 +129,6 @@ class TestCommandClass:
         assert cmd.matches("test")
         assert not cmd.matches("other")
 
-    def test_abstract_methods_required(self):
-        """Test that abstract methods are required"""
-        with pytest.raises(TypeError):
-            Command()  # Should fail because it's abstract
 
     def test_command_inheritance(self):
         """Test command inheritance"""

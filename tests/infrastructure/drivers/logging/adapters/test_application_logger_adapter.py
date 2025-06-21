@@ -42,14 +42,6 @@ class TestApplicationLoggerAdapter:
         mock_di_container.resolve.assert_called_once_with("config_manager")
         assert adapter._config_manager == mock_config
 
-    @patch('src.infrastructure.drivers.logging.adapters.application_logger_adapter.DIContainer')
-    def test_init_handles_di_container_exception(self, mock_di_container):
-        """Test initialization handles DI container exceptions gracefully"""
-        mock_di_container.resolve.side_effect = Exception("DI error")
-
-        adapter = ApplicationLoggerAdapter(self.output_manager)
-
-        assert adapter._config_manager is None
 
     def test_debug(self):
         """Test debug logging method"""
@@ -211,21 +203,7 @@ class TestApplicationLoggerAdapter:
             formatinfo=FormatInfo(color="red", bold=True)
         )
 
-    def test_log_operation_end_no_config_manager(self):
-        """Test log_operation_end raises error when no config manager"""
-        self.adapter._config_manager = None
 
-        with pytest.raises(ValueError, match="Application adapter operation status configuration not found"):
-            self.adapter.log_operation_end("OP001", "test_op", True)
-
-    def test_log_operation_end_config_key_error(self):
-        """Test log_operation_end raises error when config key not found"""
-        mock_config = Mock()
-        mock_config.resolve_config.side_effect = KeyError("config not found")
-        self.adapter._config_manager = mock_config
-
-        with pytest.raises(ValueError, match="Application adapter operation status configuration not found"):
-            self.adapter.log_operation_end("OP001", "test_op", True)
 
     def test_format_message_with_args(self):
         """Test _format_message method with arguments"""

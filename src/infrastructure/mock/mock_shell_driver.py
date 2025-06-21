@@ -8,7 +8,7 @@ from src.operations.results.shell_result import ShellResult
 class MockShellDriver(ShellDriver):
     """Mock implementation of shell driver for testing."""
 
-    def __init__(self, file_driver=None):
+    def __init__(self, file_driver):
         """Initialize mock shell driver."""
         self._commands_executed = []
         self._responses = {}
@@ -19,9 +19,9 @@ class MockShellDriver(ShellDriver):
         )
         self.file_driver = file_driver
 
-    def execute_shell_command(self, cmd: Union[str, list[str]], cwd: Optional[str] = None,
-                            env: Optional[dict[str, str]] = None, inputdata: Optional[str] = None,
-                            timeout: Optional[int] = None) -> ShellResult:
+    def execute_shell_command(self, cmd: Union[str, list[str]], cwd: Optional[str],
+                            env: Optional[dict[str, str]], inputdata: Optional[str],
+                            timeout: Optional[int]) -> ShellResult:
         """Execute a shell command (mocked).
 
         Args:
@@ -47,8 +47,8 @@ class MockShellDriver(ShellDriver):
         # Return predefined response if available, otherwise default
         return self._responses[cmd_str]
 
-    def execute_command(self, command: str, cwd: Optional[str] = None,
-                       timeout: Optional[int] = None, show_output: bool = True) -> ShellResult:
+    def execute_command(self, command: str, cwd: Optional[str],
+                       timeout: Optional[int], show_output: bool) -> ShellResult:
         """Execute a shell command (mocked).
 
         Args:

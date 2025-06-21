@@ -1,8 +1,9 @@
 """Shell command execution request."""
-import time
 import uuid
 from typing import Any, Optional, Union
 
+from src.infrastructure.result.error_converter import ErrorConverter
+from src.infrastructure.result.result_factory import ResultFactory
 from src.operations.constants.operation_type import OperationType
 from src.operations.constants.request_types import RequestType
 from src.operations.requests.base.base_request import OperationRequestFoundation
@@ -12,10 +13,10 @@ from src.operations.results.result import OperationResult
 class ShellRequest(OperationRequestFoundation):
     """Request for executing shell commands."""
 
-    def __init__(self, cmd: Union[str, list[str]], cwd: Optional[str],
-                 env: Optional[dict[str, str]], inputdata: Optional[str],
-                 timeout: Optional[int], debug_tag: Optional[str],
-                 name: Optional[str], show_output: bool,
+    def __init__(self, cmd: Union[str, list[str]], cwd: str,
+                 env: dict[str, str], inputdata: str,
+                 timeout: int, debug_tag: str,
+                 name: str, show_output: bool,
                  allow_failure: bool):
         super().__init__(name=name, debug_tag=debug_tag, _executed=False, _result=None, _debug_info=None)
         self.cmd = cmd
@@ -25,6 +26,10 @@ class ShellRequest(OperationRequestFoundation):
         self.timeout = timeout
         self.show_output = show_output
         self.allow_failure = allow_failure
+
+        # Infrastructure services for error handling
+        self._error_converter = ErrorConverter()
+        self._result_factory = ResultFactory(self._error_converter)
 
     @property
     def operation_type(self) -> OperationType:
@@ -37,16 +42,24 @@ class ShellRequest(OperationRequestFoundation):
         return RequestType.SHELL_REQUEST
 
     def _execute_core(self, driver: Any, logger: Optional[Any]) -> OperationResult:
-        """Core execution logic for shell commands."""
-        start_time = time.perf_counter()
+        """Core execution logic for shell commands.
 
-        try:
+        Uses infrastructure layer for exception handling per CLAUDE.md rules.
+        """
+        def execute_operation():
             completed = self._execute_shell_command(driver, logger)
-            end_time = time.perf_counter()
-            return self._create_success_result(completed, start_time, end_time)
-        except Exception as e:
-            end_time = time.perf_counter()
-            return self._create_error_result(e, driver, logger, start_time, end_time)
+            return completed
+
+        def create_result(completed, start_time, end_time):
+            return self._result_factory.create_shell_result_data(completed, start_time, end_time, self)
+
+        # Use infrastructure layer for exception handling
+        infrastructure_result = self._result_factory.execute_operation_with_result_creation(
+            execute_operation, create_result
+        )
+
+        # Convert infrastructure result back to OperationResult for compatibility
+        return OperationResult.from_infrastructure_result(infrastructure_result)
 
     def _execute_shell_command(self, driver: Any, logger: Optional[Any]):
         """Execute the shell command with retry logic."""

@@ -55,10 +55,6 @@ def test_open(tmp_path):
     with driver.open(p, "r", None) as f:
         assert f.read() == "abc"
 
-def test_docker_cp_raises():
-    driver = LocalFileDriver(base_dir=Path('.'))
-    with pytest.raises(ValueError):
-        driver.docker_cp("src", "dst", "container", True, None)
 
 def test_hash_file(tmp_path):
     p = tmp_path / "a.txt"

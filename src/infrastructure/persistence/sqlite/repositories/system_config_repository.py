@@ -9,7 +9,7 @@ from src.infrastructure.persistence.base.base_repository import DatabaseReposito
 class SystemConfigRepository(DatabaseRepositoryFoundation):
     """Repository for system configuration operations."""
 
-    def __init__(self, sqlite_manager, config_manager=None):
+    def __init__(self, sqlite_manager, config_manager):
         """Initialize with SQLite manager and config manager."""
         super().__init__(sqlite_manager)
         self.config_manager = config_manager
@@ -72,7 +72,7 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
         """Find config by key."""
         return self.get_config_with_metadata(str(entity_id))
 
-    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Dict[str, Any]]:
+    def find_all(self, limit: Optional[int], offset: Optional[int]) -> List[Dict[str, Any]]:
         """Find all configs."""
         configs = self.get_all_configs_with_metadata()
         if offset:
@@ -102,8 +102,8 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
         self,
         key: str,
         value: Any,
-        category: Optional[str] = None,
-        description: Optional[str] = None,
+        category: Optional[str],
+        description: Optional[str],
     ) -> None:
         """Set or update a configuration value."""
         # Handle None values - store as NULL in database
@@ -235,7 +235,7 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
             cursor = conn.execute(query, (key,))
         return cursor.rowcount > 0
 
-    def bulk_set_configs(self, configs: Dict[str, Any], category: Optional[str] = None) -> None:
+    def bulk_set_configs(self, configs: Dict[str, Any], category: Optional[str]) -> None:
         """Set multiple configurations at once."""
         for key, value in configs.items():
             self.set_config(key, value, category)

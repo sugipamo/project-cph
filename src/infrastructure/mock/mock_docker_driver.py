@@ -28,14 +28,12 @@ class MockDockerDriver(DockerDriver):
             return 1
         raise ValueError(f"Unknown container state: {state}")
 
-    def run_container(self, image: str, container_name: Optional[str] = None,
-                     options: Optional[dict[str, Any]] = None,
-                     show_output: bool = True) -> DockerResult:
+    def run_container(self, image: str, name: Optional[str], options: dict[str, Any], show_output: bool) -> DockerResult:
         """Run a container (mocked).
 
         Args:
             image: Docker image name
-            container_name: Container name
+            name: Container name
             options: Additional options
             show_output: Whether to show output
 
@@ -45,23 +43,23 @@ class MockDockerDriver(DockerDriver):
         self._operations_executed.append({
             'operation': 'run',
             'image': image,
-            'container': container_name,
+            'container': name,
             'options': options,
             'show_output': show_output
         })
 
-        if not container_name:
+        if not name:
             raise ValueError("Container name cannot be empty")
 
-        self._container_states[container_name] = 'running'
+        self._container_states[name] = 'running'
 
         return DockerResult(
-            stdout=f"Mock: Started container {container_name} from {image}",
+            stdout=f"Mock: Started container {name} from {image}",
             stderr="",
             returncode=0
         )
 
-    def stop_container(self, container_name: str, show_output: bool = True) -> DockerResult:
+    def stop_container(self, container_name: str, show_output: bool) -> DockerResult:
         """Stop a container (mocked).
 
         Args:
@@ -85,8 +83,7 @@ class MockDockerDriver(DockerDriver):
             returncode=0
         )
 
-    def remove_container(self, container_name: str, force: bool = False,
-                        show_output: bool = True) -> DockerResult:
+    def remove_container(self, container_name: str, force: bool, show_output: bool) -> DockerResult:
         """Remove a container (mocked).
 
         Args:
@@ -113,8 +110,7 @@ class MockDockerDriver(DockerDriver):
             returncode=0
         )
 
-    def exec_in_container(self, container_name: str, command: str,
-                         show_output: bool = True) -> DockerResult:
+    def exec_in_container(self, container_name: str, command: str, show_output: bool) -> DockerResult:
         """Execute command in container (mocked).
 
         Args:
@@ -138,11 +134,12 @@ class MockDockerDriver(DockerDriver):
             returncode=0
         )
 
-    def inspect(self, container_name: str, show_output: bool = True) -> DockerResult:
+    def inspect(self, container_name: str, type_: Optional[str], show_output: bool) -> DockerResult:
         """Inspect container (mocked).
 
         Args:
             container_name: Container name
+            type_: Inspection type (container/image)
             show_output: Whether to show output
 
         Returns:
@@ -151,6 +148,7 @@ class MockDockerDriver(DockerDriver):
         self._operations_executed.append({
             'operation': 'inspect',
             'container': container_name,
+            'type_': type_,
             'show_output': show_output
         })
 
@@ -175,8 +173,7 @@ class MockDockerDriver(DockerDriver):
             returncode=0
         )
 
-    def ps(self, all: bool = False, show_output: bool = True,
-           names_only: bool = False) -> DockerResult:
+    def ps(self, all: bool, show_output: bool, names_only: bool) -> DockerResult:
         """List containers (mocked).
 
         Args:
@@ -235,7 +232,7 @@ class MockDockerDriver(DockerDriver):
         self._container_states[container_name] = state
 
     # Abstract methods from DockerDriver base class
-    def build_docker_image(self, tag: Optional[str] = None, options: Optional[dict[str, Any]] = None, show_output: bool = True, dockerfile_text: Optional[str] = None):
+    def build_docker_image(self, dockerfile_text: str, tag: Optional[str], options: dict[str, Any], show_output: bool):
         """Build Docker image (mocked)."""
         self._operations_executed.append({
             'operation': 'build',
@@ -271,7 +268,7 @@ class MockDockerDriver(DockerDriver):
         })
         return self._default_result
 
-    def get_logs(self, name: str, show_output: bool = True):
+    def get_logs(self, name: str, show_output: bool):
         """Get container logs (mocked)."""
         self._operations_executed.append({
             'operation': 'logs',

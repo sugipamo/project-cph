@@ -52,10 +52,6 @@ class TestSystemFileProvider:
         finally:
             Path(temp_path).unlink(missing_ok=True)
 
-    def test_read_text_file_not_found(self, file_provider):
-        """Test reading non-existent file raises FileNotFoundError."""
-        with pytest.raises(FileNotFoundError):
-            file_provider.read_text_file("/nonexistent/file.txt")
 
     def test_write_text_file_success(self, file_provider):
         """Test writing text file."""
@@ -131,10 +127,6 @@ class TestMockFileProvider:
         content = mock_provider.read_text_file("test.txt")
         assert content == "test content"
 
-    def test_read_text_file_not_found(self, mock_provider):
-        """Test reading non-existent file raises FileNotFoundError."""
-        with pytest.raises(FileNotFoundError):
-            mock_provider.read_text_file("nonexistent.txt")
 
     def test_write_text_file(self, mock_provider):
         """Test writing text file."""

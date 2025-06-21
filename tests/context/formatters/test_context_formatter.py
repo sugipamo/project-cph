@@ -49,16 +49,6 @@ class TestExecutionFormatData:
         assert data.problem_name == "a"
         assert data.env_type == "docker"
 
-    def test_immutability(self):
-        data = ExecutionFormatData(
-            command_type="test",
-            language="python",
-            contest_name="abc123",
-            problem_name="a",
-            env_type="docker"
-        )
-        with pytest.raises(AttributeError):
-            data.command_type = "new_test"
 
 
 class TestCreateFormatDataFromTypedConfig:

@@ -32,19 +32,16 @@ class FileDriver(ExecutionDriverInterface):
         # For now, always return True for file requests
         return True
 
-    def resolve_path(self, path: Optional[Path] = None) -> Path:
+    def resolve_path(self, path: Path) -> Path:
         """Resolve path to absolute path."""
-        target_path = path if path is not None else self.path
-        if target_path is None:
-            raise ValueError("Path is not set")
-        return self.base_dir / Path(target_path)
+        return self.base_dir / Path(path)
 
-    def makedirs(self, path: Optional[Path] = None, exist_ok: bool = True) -> None:
+    def makedirs(self, path: Path, exist_ok: bool) -> None:
         """Create directories."""
         target_path = self.resolve_path(path)
         target_path.mkdir(parents=True, exist_ok=exist_ok)
 
-    def isdir(self, path: Optional[Path] = None) -> bool:
+    def isdir(self, path: Path) -> bool:
         """Check if path is a directory."""
         target_path = self.resolve_path(path)
         return target_path.is_dir()
@@ -79,14 +76,8 @@ class FileDriver(ExecutionDriverInterface):
         """Find files matching pattern."""
         return list(self.base_dir.glob(pattern))
 
-    def move(self, src_path: Optional[Path] = None, dst_path: Optional[Path] = None) -> None:
+    def move(self, src_path: Path, dst_path: Path) -> None:
         """Move file (template method)."""
-        # Backward compatibility: use self.path and self.dst_path if no args
-        if src_path is None:
-            src_path = self.path
-        if dst_path is None:
-            dst_path = self.dst_path
-
         resolved_src = self.resolve_path(src_path)
         resolved_dst = self.resolve_path(dst_path)
         self.ensure_parent_dir(resolved_dst)
@@ -96,14 +87,8 @@ class FileDriver(ExecutionDriverInterface):
     def _move_impl(self, src_path: Path, dst_path: Path) -> None:
         """File move implementation (implement in concrete class)."""
 
-    def copy(self, src_path: Optional[Path] = None, dst_path: Optional[Path] = None) -> None:
+    def copy(self, src_path: Path, dst_path: Path) -> None:
         """Copy file (template method)."""
-        # Backward compatibility: use self.path and self.dst_path if no args
-        if src_path is None:
-            src_path = self.path
-        if dst_path is None:
-            dst_path = self.dst_path
-
         resolved_src = self.resolve_path(src_path)
         resolved_dst = self.resolve_path(dst_path)
         self.ensure_parent_dir(resolved_dst)
@@ -113,11 +98,8 @@ class FileDriver(ExecutionDriverInterface):
     def _copy_impl(self, src_path: Path, dst_path: Path) -> None:
         """File copy implementation (implement in concrete class)."""
 
-    def exists(self, path: Optional[Path] = None) -> bool:
+    def exists(self, path: Path) -> bool:
         """Check file existence (template method)."""
-        # Backward compatibility: use self.path if no arg
-        if path is None:
-            path = self.path
         resolved_path = self.resolve_path(path)
         return self._exists_impl(resolved_path)
 
@@ -125,7 +107,7 @@ class FileDriver(ExecutionDriverInterface):
     def _exists_impl(self, path: Path) -> bool:
         """File existence check implementation (implement in concrete class)."""
 
-    def create_file(self, path: Path, content: str = "") -> None:
+    def create_file(self, path: Path, content: str) -> None:
         """Create file (template method)."""
         resolved_path = self.resolve_path(path)
         self.ensure_parent_dir(resolved_path)
@@ -188,7 +170,7 @@ class FileDriver(ExecutionDriverInterface):
         parent = Path(path).parent
         parent.mkdir(parents=True, exist_ok=True)
 
-    def hash_file(self, path: Path, algo: str = 'sha256') -> str:
+    def hash_file(self, path: Path, algo: str) -> str:
         """Calculate file hash."""
         h = hashlib.new(algo)
         resolved_path = self.resolve_path(path)

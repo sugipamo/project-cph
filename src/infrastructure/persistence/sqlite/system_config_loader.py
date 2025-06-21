@@ -82,7 +82,7 @@ class SystemConfigLoader:
 
         return env_config
 
-    def save_config(self, key: str, value: Any, category: Optional[str] = None) -> None:
+    def save_config(self, key: str, value: Any, category: Optional[str]) -> None:
         """Save a configuration value.
 
         Args:

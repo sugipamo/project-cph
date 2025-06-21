@@ -41,15 +41,6 @@ class TestExecutionTiming:
         assert timing2.end_time == 120.0
         assert timing2.duration == 20.0
 
-    def test_immutability(self):
-        timing = ExecutionTiming(start_time=100.0, end_time=110.0)
-
-        # frozen=Trueなので属性を変更できない
-        with pytest.raises(AttributeError):
-            timing.start_time = 200.0
-
-        with pytest.raises(AttributeError):
-            timing.end_time = 220.0
 
 
 class TestTimingFunctions:

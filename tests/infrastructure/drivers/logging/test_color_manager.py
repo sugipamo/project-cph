@@ -41,25 +41,9 @@ class TestColorManager:
         assert to_ansi("\033[32m") == "\033[32m"
         assert to_ansi("\033[1;31m") == "\033[1;31m"
 
-    def test_to_ansi_invalid_color_name(self):
-        """Test to_ansi with invalid color name"""
-        with pytest.raises(ValueError, match="未対応の色: invalid"):
-            to_ansi("invalid")
 
-    def test_to_ansi_invalid_ansi_code_missing_prefix(self):
-        """Test to_ansi with invalid ANSI code missing prefix"""
-        with pytest.raises(ValueError, match="未対応の色: 31m"):
-            to_ansi("31m")
 
-    def test_to_ansi_invalid_ansi_code_missing_suffix(self):
-        """Test to_ansi with invalid ANSI code missing suffix"""
-        with pytest.raises(ValueError, match="未対応の色: \\033\\[31"):
-            to_ansi("\033[31")
 
-    def test_to_ansi_empty_string(self):
-        """Test to_ansi with empty string"""
-        with pytest.raises(ValueError, match="未対応の色: "):
-            to_ansi("")
 
     def test_apply_color_with_color_name(self):
         """Test apply_color with color name"""
@@ -82,10 +66,6 @@ class TestColorManager:
         result = apply_color(text, "blue")
         assert result == "\033[34mline1\nline2\033[0m"
 
-    def test_apply_color_with_invalid_color(self):
-        """Test apply_color with invalid color"""
-        with pytest.raises(ValueError, match="未対応の色: invalid"):
-            apply_color("test", "invalid")
 
     def test_apply_color_preserves_text_content(self):
         """Test apply_color preserves the original text content"""

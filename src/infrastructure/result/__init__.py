@@ -5,7 +5,7 @@ from .error_converter import ErrorConverter
 from .result_factory import ResultFactory
 
 __all__ = [
+    "ErrorConverter",
     "InfrastructureResult",
-    "ErrorConverter", 
     "ResultFactory"
 ]

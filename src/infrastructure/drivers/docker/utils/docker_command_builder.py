@@ -125,7 +125,7 @@ def _add_docker_run_misc_options(cmd: list[str], options: dict[str, Any]) -> Non
         cmd.extend(options["extra_args"])
 
 
-def build_docker_run_command(image: str, name: Optional[str] = None, options: Optional[dict[str, Any]] = None) -> list[str]:
+def build_docker_run_command(image: str, name: str, options: dict[str, Any]) -> list[str]:
     """Build docker run command
 
     Args:
@@ -138,12 +138,9 @@ def build_docker_run_command(image: str, name: Optional[str] = None, options: Op
     """
     cmd = ["docker", "run"]
 
-    if name:
-        cmd.extend(["--name", name])
+    cmd.extend(["--name", name])
 
     # Always add Docker run flags (validate options explicitly)
-    if options is None:
-        options = {}
     _add_docker_run_flags(cmd, options)
     _add_docker_run_ports(cmd, options)
     _add_docker_run_volumes(cmd, options)
@@ -164,7 +161,7 @@ def _add_docker_run_command(cmd: list[str], options: Optional[dict[str, Any]]) -
             cmd.append(options["command"])
 
 
-def build_docker_stop_command(name: str, timeout: Optional[int] = None) -> list[str]:
+def build_docker_stop_command(name: str, timeout: int) -> list[str]:
     """Build docker stop command
 
     Args:
@@ -175,8 +172,7 @@ def build_docker_stop_command(name: str, timeout: Optional[int] = None) -> list[
         Docker stop command as list
     """
     cmd = ["docker", "stop"]
-    if timeout is not None:
-        cmd.extend(["-t", str(timeout)])
+    cmd.extend(["-t", str(timeout)])
     cmd.append(name)
     return cmd
 
@@ -201,8 +197,8 @@ def build_docker_remove_command(name: str, force: bool = False, volumes: bool = 
     return cmd
 
 
-def build_docker_build_command(tag: Optional[str] = None, dockerfile_text: Optional[str] = None,
-                              context_path: str = ".", options: Optional[dict[str, Any]] = None) -> list[str]:
+def build_docker_build_command(tag: str, dockerfile_text: str,
+                              context_path: str, options: dict[str, Any]) -> list[str]:
     """Build docker build command
 
     Args:
@@ -216,30 +212,27 @@ def build_docker_build_command(tag: Optional[str] = None, dockerfile_text: Optio
     """
     cmd = ["docker", "build"]
 
-    if tag:
-        cmd.extend(["-t", tag])
+    cmd.extend(["-t", tag])
 
-    if options:
-        if "build_args" in options:
-            for arg in options["build_args"]:
-                cmd.extend(["--build-arg", arg])
-        if _get_docker_option("no_cache", options):
-            cmd.append("--no-cache")
-        if _get_docker_option("pull", options):
-            cmd.append("--pull")
-        if _get_docker_option("quiet", options):
-            cmd.append("-q")
+    if "build_args" in options:
+        for arg in options["build_args"]:
+            cmd.extend(["--build-arg", arg])
+    if _get_docker_option("no_cache", options):
+        cmd.append("--no-cache")
+    if _get_docker_option("pull", options):
+        cmd.append("--pull")
+    if _get_docker_option("quiet", options):
+        cmd.append("-q")
 
     # If dockerfile_text is provided, read from stdin
-    if dockerfile_text:
-        cmd.extend(["-f", "-"])
+    cmd.extend(["-f", "-"])
 
     cmd.append(context_path)
     return cmd
 
 
-def build_docker_ps_command(all: bool = False, filter_params: Optional[list[str]] = None,
-                           format_string: Optional[str] = None) -> list[str]:
+def build_docker_ps_command(all: bool, filter_params: list[str],
+                           format_string: str) -> list[str]:
     """Build docker ps command
 
     Args:
@@ -255,18 +248,16 @@ def build_docker_ps_command(all: bool = False, filter_params: Optional[list[str]
     if all:
         cmd.append("-a")
 
-    if filter_params:
-        for filter_param in filter_params:
-            cmd.extend(["--filter", filter_param])
+    for filter_param in filter_params:
+        cmd.extend(["--filter", filter_param])
 
-    if format_string:
-        cmd.extend(["--format", format_string])
+    cmd.extend(["--format", format_string])
 
     return cmd
 
 
-def build_docker_inspect_command(target: str, type_: Optional[str] = None,
-                                format_string: Optional[str] = None) -> list[str]:
+def build_docker_inspect_command(target: str, type_: str,
+                                format_string: str) -> list[str]:
     """Build docker inspect command
 
     Args:
@@ -279,11 +270,9 @@ def build_docker_inspect_command(target: str, type_: Optional[str] = None,
     """
     cmd = ["docker", "inspect"]
 
-    if type_:
-        cmd.extend(["--type", type_])
+    cmd.extend(["--type", type_])
 
-    if format_string:
-        cmd.extend(["--format", format_string])
+    cmd.extend(["--format", format_string])
 
     cmd.append(target)
     return cmd
@@ -308,8 +297,8 @@ def build_docker_cp_command(src: str, dst: str, container: str,
 
 
 def build_docker_exec_command(container: str, command: Union[str, list[str]],
-                             interactive: bool = False, tty: bool = False,
-                             user: Optional[str] = None, workdir: Optional[str] = None) -> list[str]:
+                             interactive: bool, tty: bool,
+                             user: str, workdir: str) -> list[str]:
     """Build docker exec command
 
     Args:
@@ -331,11 +320,9 @@ def build_docker_exec_command(container: str, command: Union[str, list[str]],
     if tty:
         cmd.append("-t")
 
-    if user:
-        cmd.extend(["-u", user])
+    cmd.extend(["-u", user])
 
-    if workdir:
-        cmd.extend(["-w", workdir])
+    cmd.extend(["-w", workdir])
 
     cmd.append(container)
 
@@ -347,8 +334,8 @@ def build_docker_exec_command(container: str, command: Union[str, list[str]],
     return cmd
 
 
-def build_docker_logs_command(container: str, follow: bool = False,
-                             tail: Optional[int] = None, since: Optional[str] = None) -> list[str]:
+def build_docker_logs_command(container: str, follow: bool,
+                             tail: int, since: str) -> list[str]:
     """Build docker logs command
 
     Args:
@@ -365,11 +352,9 @@ def build_docker_logs_command(container: str, follow: bool = False,
     if follow:
         cmd.append("-f")
 
-    if tail is not None:
-        cmd.extend(["--tail", str(tail)])
+    cmd.extend(["--tail", str(tail)])
 
-    if since:
-        cmd.extend(["--since", since])
+    cmd.extend(["--since", since])
 
     cmd.append(container)
     return cmd

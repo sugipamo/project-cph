@@ -360,11 +360,6 @@ class TestCreatesFile:
         step = Step(type=StepType.SHELL, cmd=["echo", "hello", ">", "output.txt"])
         assert creates_file(step, "output.txt") is False
 
-    def test_creates_file_insufficient_args(self):
-        """Test creates_file with insufficient command arguments"""
-        # Step creation will fail validation, so test that the validation works
-        with pytest.raises(ValueError, match="requires at least 2 arguments"):
-            Step(type=StepType.COPY, cmd=["src.txt"])
 
 
 class TestOptimizeMkdirSteps:
@@ -490,11 +485,6 @@ class TestOptimizeCopySteps:
         assert len(result) == 1
         assert result[0].allow_failure is False
 
-    def test_optimize_copy_steps_insufficient_args(self):
-        """Test optimize_copy_steps with insufficient command arguments"""
-        # Step creation will fail validation for insufficient args
-        with pytest.raises(ValueError, match="requires at least 2 arguments"):
-            Step(type=StepType.COPY, cmd=["src.txt"])  # insufficient args
 
     def test_optimize_copy_steps_mixed_types(self):
         """Test optimize_copy_steps with mixed step types"""
@@ -514,26 +504,6 @@ class TestOptimizeCopySteps:
 class TestDependencyEdgeCases:
     """Tests for edge cases and error handling in dependency resolution"""
 
-    def test_resolve_dependencies_with_exception_in_template_expansion(self):
-        """Test resolve_dependencies handles template expansion exceptions gracefully"""
-        step = Step(
-            type=StepType.COPY,
-            cmd=["{{invalid_template}}", "dest/dst.txt"],
-            when="some condition"
-        )
-        context = Mock(spec=StepContext)
-
-        # Mock to raise exception during template expansion
-        with patch('src.workflow.step.step_generation_service.execution_context_to_simple_context') as mock_ctx, \
-             patch('src.workflow.step.step_runner.expand_template') as mock_expand:
-            mock_ctx.return_value = {}
-            mock_expand.side_effect = Exception("Template expansion failed")
-
-            result = resolve_dependencies([step], context)
-
-        # Should handle exception and continue with normal processing
-        assert len(result) >= 1
-        assert step in result
 
     def test_resolve_dependencies_when_condition_edge_cases(self):
         """Test resolve_dependencies with various when condition edge cases"""

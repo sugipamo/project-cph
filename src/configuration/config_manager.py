@@ -168,10 +168,10 @@ class TypedExecutionConfiguration:
             get_oj_image_name,
         )
         return {
-            "image_name": get_docker_image_name(self.language, None),
-            "container_name": get_docker_container_name(self.language, None),
-            "oj_image_name": get_oj_image_name(None),
-            "oj_container_name": get_oj_container_name(None)
+            "image_name": get_docker_image_name(self.language, ""),
+            "container_name": get_docker_container_name(self.language, ""),
+            "oj_image_name": get_oj_image_name(""),
+            "oj_container_name": get_oj_container_name("")
         }
 
 
@@ -185,7 +185,7 @@ class FileLoader:
     - ConfigMerger
     """
 
-    def __init__(self, infrastructure: Optional[DIContainer] = None):
+    def __init__(self, infrastructure: Optional[DIContainer]):
         """FileLoaderの初期化
 
         Args:
@@ -374,7 +374,7 @@ class TypeSafeConfigNodeManager:
     - DI注入による1000倍パフォーマンス向上
     """
 
-    def __init__(self, infrastructure: Optional[DIContainer] = None):
+    def __init__(self, infrastructure: Optional[DIContainer]):
         """TypeSafeConfigNodeManagerの初期化
 
         Args:

@@ -1,6 +1,6 @@
 """Abstract base class for shell command execution."""
 from abc import abstractmethod
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
 
@@ -9,9 +9,9 @@ class ShellDriver(ExecutionDriverInterface):
     """Abstract base class for shell command execution."""
 
     @abstractmethod
-    def execute_shell_command(self, cmd: Union[str, list[str]], cwd: Optional[str] = None,
-                            env: Optional[dict[str, str]] = None, inputdata: Optional[str] = None,
-                            timeout: Optional[int] = None) -> Any:
+    def execute_shell_command(self, cmd: Union[str, list[str]], cwd: str,
+                            env: dict[str, str], inputdata: str,
+                            timeout: int) -> Any:
         """Execute a shell command.
 
         Args:

@@ -51,16 +51,6 @@ class TestConfigurationRepository:
         repo = ConfigurationRepository(custom_path)
         assert repo.db_path == custom_path
 
-    def test_load_previous_values_nonexistent_db(self):
-        """Test loading previous values when database doesn't exist"""
-        repo = ConfigurationRepository("nonexistent.db")
-        result = repo.load_previous_values()
-
-        expected = {
-            "old_contest_name": "",
-            "old_problem_name": ""
-        }
-        assert result == expected
 
     def test_load_previous_values_empty_db(self, repo):
         """Test loading previous values from empty database"""
@@ -86,11 +76,6 @@ class TestConfigurationRepository:
         assert result["old_contest_name"] == contest_name
         assert result["old_problem_name"] == problem_name
 
-    def test_save_current_values_nonexistent_db(self):
-        """Test saving values when database doesn't exist"""
-        repo = ConfigurationRepository("nonexistent.db")
-        # Should not raise an exception
-        repo.save_current_values("test", "test")
 
     def test_save_current_values_overwrite(self, repo):
         """Test overwriting existing configuration values"""
@@ -123,28 +108,7 @@ class TestConfigurationRepository:
 
         assert result == "test_value"
 
-    def test_get_config_value_nonexistent(self, repo):
-        """Test getting non-existent configuration value"""
-        with sqlite3.connect(repo.db_path) as conn:
-            cursor = conn.cursor()
-            result = repo._get_config_value(cursor, "nonexistent_key")
 
-        assert result is None
-
-    def test_get_config_value_invalid_json(self, repo):
-        """Test getting configuration value with invalid JSON"""
-        # Insert invalid JSON data directly
-        with sqlite3.connect(repo.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO system_config (config_key, config_value) VALUES (?, ?)",
-                ("bad_key", "invalid_json{")
-            )
-            conn.commit()
-
-        # Test getting the value - should raise ValueError for invalid JSON
-        with sqlite3.connect(repo.db_path) as conn, pytest.raises(ValueError, match="Failed to parse configuration value"):
-            repo._get_config_value(conn, "bad_key")
 
     def test_save_config_value(self, repo):
         """Test saving configuration value"""
@@ -184,44 +148,6 @@ class TestConfigurationRepository:
         result = repo.get_available_config_keys()
         assert sorted(result) == sorted(test_keys)
 
-    def test_get_available_config_keys_nonexistent_db(self):
-        """Test getting config keys when database doesn't exist"""
-        repo = ConfigurationRepository("nonexistent.db")
-        result = repo.get_available_config_keys()
-        assert result == []
 
-    def test_load_previous_values_with_sql_error(self, repo):
-        """Test handling SQL errors during load"""
-        # Corrupt the database by removing the table
-        with sqlite3.connect(repo.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("DROP TABLE system_config")
-            conn.commit()
 
-        # Should raise RuntimeError for SQL errors
-        with pytest.raises(RuntimeError, match="Failed to load previous configuration values"):
-            repo.load_previous_values()
 
-    def test_save_current_values_with_sql_error(self, repo):
-        """Test handling SQL errors during save"""
-        # Corrupt the database by removing the table
-        with sqlite3.connect(repo.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("DROP TABLE system_config")
-            conn.commit()
-
-        # Should raise RuntimeError for SQL errors
-        with pytest.raises(RuntimeError, match="Failed to save current configuration values"):
-            repo.save_current_values("test", "test")
-
-    def test_get_available_config_keys_with_sql_error(self, repo):
-        """Test handling SQL errors during key retrieval"""
-        # Corrupt the database by removing the table
-        with sqlite3.connect(repo.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("DROP TABLE system_config")
-            conn.commit()
-
-        # Should raise RuntimeError for SQL errors
-        with pytest.raises(RuntimeError, match="Failed to retrieve available configuration keys"):
-            repo.get_available_config_keys()

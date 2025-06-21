@@ -8,9 +8,9 @@ class ShellUtils:
     """Utility class for shell command operations."""
 
     @staticmethod
-    def run_subprocess(cmd: Union[str, list[str]], cwd: Optional[str] = None,
-                      env: Optional[dict[str, str]] = None, inputdata: Optional[str] = None,
-                      timeout: Optional[int] = None) -> subprocess.CompletedProcess:
+    def run_subprocess(cmd: Union[str, list[str]], cwd: Optional[str],
+                      env: Optional[dict[str, str]], inputdata: Optional[str],
+                      timeout: Optional[int]) -> subprocess.CompletedProcess:
         """Launch subprocess and capture stdout/stderr.
         If inputdata is specified, pass it to stdin.
 
@@ -36,8 +36,8 @@ class ShellUtils:
         return result
 
     @staticmethod
-    def start_interactive(cmd: Union[str, list[str]], cwd: Optional[str] = None,
-                         env: Optional[dict[str, str]] = None) -> subprocess.Popen:
+    def start_interactive(cmd: Union[str, list[str]], cwd: Optional[str],
+                         env: Optional[dict[str, str]]) -> subprocess.Popen:
         """Start interactive subprocess and return Popen object.
 
         Args:

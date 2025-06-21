@@ -16,13 +16,13 @@ from src.operations.exceptions import (
 class PythonUtils:
     """Utility class for Python code operations."""
 
-    def __init__(self, config_manager: Optional[TypeSafeConfigNodeManager] = None):
+    def __init__(self, config_manager: TypeSafeConfigNodeManager):
         """Initialize PythonUtils with configuration manager.
 
         Args:
-            config_manager: Optional configuration manager instance
+            config_manager: Configuration manager instance
         """
-        self.config_manager = config_manager or TypeSafeConfigNodeManager()
+        self.config_manager = config_manager
         self._python_interpreter = None
 
     def is_script_file(self, code_or_file: list[str]) -> bool:
@@ -36,7 +36,7 @@ class PythonUtils:
         """
         return len(code_or_file) == 1 and pathlib.Path(code_or_file[0]).is_file()
 
-    def run_script_file(self, filename: str, cwd: Optional[str] = None) -> tuple[str, str, int]:
+    def run_script_file(self, filename: str, cwd: Optional[str]) -> tuple[str, str, int]:
         """Run Python script file.
 
         Args:
@@ -52,7 +52,7 @@ class PythonUtils:
         ], capture_output=True, text=True, cwd=cwd, check=False)
         return result.stdout, result.stderr, result.returncode
 
-    def run_code_string(self, code: str, cwd: Optional[str] = None) -> tuple[str, str, int]:
+    def run_code_string(self, code: str, cwd: Optional[str]) -> tuple[str, str, int]:
         """Run Python code string.
 
         Args:

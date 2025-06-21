@@ -12,7 +12,7 @@ class ConfigurationRepository:
     - データベース操作の抽象化
     """
 
-    def __init__(self, db_path: str = "cph_history.db", json_provider=None, sqlite_provider=None):
+    def __init__(self, db_path: str, json_provider, sqlite_provider):
         """初期化
 
         Args:

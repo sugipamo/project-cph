@@ -77,7 +77,7 @@ class ApplicationLoggerAdapter(LoggerInterface):
         )
 
     def log_error_with_correlation(self, error_id: str, error_code: str,
-                                  message: str, context: Optional[dict] = None) -> None:
+                                  message: str, context: Optional[dict]) -> None:
         """Log an error with correlation ID and structured context."""
         formatted_message = (
             f"[ERROR#{error_id}] [{error_code}] {message} "
@@ -94,7 +94,7 @@ class ApplicationLoggerAdapter(LoggerInterface):
         )
 
     def log_operation_start(self, operation_id: str, operation_type: str,
-                           details: Optional[dict] = None) -> None:
+                           details: Optional[dict]) -> None:
         """Log the start of an operation with correlation tracking."""
         message = f"[OP#{operation_id}] {operation_type} started (session: {self.session_id})"
         if details:
@@ -107,7 +107,7 @@ class ApplicationLoggerAdapter(LoggerInterface):
         )
 
     def log_operation_end(self, operation_id: str, operation_type: str,
-                         success: bool, details: Optional[dict] = None) -> None:
+                         success: bool, details: Optional[dict]) -> None:
         """Log the end of an operation with correlation tracking."""
         # Get status from configuration
         try:

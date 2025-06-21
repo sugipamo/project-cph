@@ -15,20 +15,20 @@ class PersistenceError(Exception):
 @dataclass
 class Operation:
     """Operation data model."""
-    id: Optional[int] = None
-    timestamp: Optional[datetime] = None
-    command: str = ""
-    language: Optional[str] = None
-    contest_name: Optional[str] = None
-    problem_name: Optional[str] = None
-    env_type: Optional[str] = None
-    result: Optional[str] = None
-    execution_time_ms: Optional[int] = None
-    stdout: Optional[str] = None
-    stderr: Optional[str] = None
-    return_code: Optional[int] = None
-    details: Optional[dict[str, Any]] = None
-    created_at: Optional[datetime] = None
+    id: Optional[int]
+    timestamp: Optional[datetime]
+    command: str
+    language: Optional[str]
+    contest_name: Optional[str]
+    problem_name: Optional[str]
+    env_type: Optional[str]
+    result: Optional[str]
+    execution_time_ms: Optional[int]
+    stdout: Optional[str]
+    stderr: Optional[str]
+    return_code: Optional[int]
+    details: Optional[dict[str, Any]]
+    created_at: Optional[datetime]
 
 
 class OperationRepository(DatabaseRepositoryFoundation):
@@ -126,7 +126,7 @@ class OperationRepository(DatabaseRepositoryFoundation):
             return self._row_to_operation(results[0])
         return None
 
-    def find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> list[Operation]:
+    def find_all(self, limit: Optional[int], offset: Optional[int]) -> list[Operation]:
         """Find all operations with optional pagination.
 
         Args:
@@ -150,7 +150,7 @@ class OperationRepository(DatabaseRepositoryFoundation):
         results = self.db_manager.execute_query(query, params)
         return [self._row_to_operation(row) for row in results]
 
-    def find_by_command(self, command: str, limit: Optional[int] = None) -> list[Operation]:
+    def find_by_command(self, command: str, limit: Optional[int]) -> list[Operation]:
         """Find operations by command type.
 
         Args:
@@ -170,7 +170,7 @@ class OperationRepository(DatabaseRepositoryFoundation):
         results = self.db_manager.execute_query(query, params)
         return [self._row_to_operation(row) for row in results]
 
-    def find_by_contest(self, contest_name: str, problem_name: Optional[str] = None) -> list[Operation]:
+    def find_by_contest(self, contest_name: str, problem_name: Optional[str]) -> list[Operation]:
         """Find operations by contest and optional problem.
 
         Args:
@@ -198,7 +198,7 @@ class OperationRepository(DatabaseRepositoryFoundation):
         results = self.db_manager.execute_query(query, params)
         return [self._row_to_operation(row) for row in results]
 
-    def find_by_language(self, language: str, limit: Optional[int] = None) -> list[Operation]:
+    def find_by_language(self, language: str, limit: Optional[int]) -> list[Operation]:
         """Find operations by programming language.
 
         Args:
@@ -218,7 +218,7 @@ class OperationRepository(DatabaseRepositoryFoundation):
         results = self.db_manager.execute_query(query, params)
         return [self._row_to_operation(row) for row in results]
 
-    def get_recent_operations(self, limit: int = 10) -> list[Operation]:
+    def get_recent_operations(self, limit: int) -> list[Operation]:
         """Get recent operations.
 
         Args:

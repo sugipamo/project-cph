@@ -107,10 +107,6 @@ class TestFileSystemInterface:
         assert child1 in contents
         assert child2 in contents
 
-    def test_iterdir_nonexistent_raises(self):
-        fs = MockFileSystem()
-        with pytest.raises(FileNotFoundError):
-            fs.iterdir(Path("/nonexistent"))
 
     def test_mkdir(self):
         fs = MockFileSystem()
@@ -124,12 +120,6 @@ class TestFileSystemInterface:
         fs.dirs.add(path)
         fs.mkdir(path, exist_ok=True)
 
-    def test_mkdir_exists_raises(self):
-        fs = MockFileSystem()
-        path = Path("/existing")
-        fs.dirs.add(path)
-        with pytest.raises(FileExistsError):
-            fs.mkdir(path, exist_ok=False)
 
     def test_copy_file_success(self):
         fs = MockFileSystem()

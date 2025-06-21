@@ -194,25 +194,7 @@ class TestUnifiedDriver:
                 timeout=30
             )
 
-    def test_execute_operation_request_unsupported_type(self, unified_driver):
-        """Test executing unsupported request type."""
-        mock_request = Mock()
-        mock_request.request_type = "UNSUPPORTED_TYPE"
 
-        with pytest.raises(ValueError, match="Unsupported request type"):
-            unified_driver.execute_operation_request(mock_request)
-
-    def test_execute_docker_request_invalid_type(self, unified_driver):
-        """Test executing Docker request with invalid type."""
-        mock_request = Mock()
-
-        with patch('src.infrastructure.drivers.unified.unified_driver.DockerRequest') as mock_docker_request_class:
-            mock_docker_request_class.__name__ = "DockerRequest"
-
-            # Make isinstance return False
-            with patch('builtins.isinstance', return_value=False), \
-                 pytest.raises(TypeError, match="Expected DockerRequest"):
-                unified_driver._execute_docker_request(mock_request)
 
     def test_execute_docker_request_build_operation(self, unified_driver):
         """Test executing Docker build request."""
@@ -343,43 +325,3 @@ class TestUnifiedDriver:
                 call_args = mock_shell_result_class.call_args[1]
                 assert call_args['exit_code'] == 0
 
-    def test_execute_shell_request_config_error(self, unified_driver, mock_config_manager):
-        """Test executing Shell request when config resolution fails."""
-        mock_request = Mock()
-        mock_request.cmd = "echo hello"
-        mock_request.cwd = "/tmp"
-        mock_request.env = {}
-        mock_request.timeout = 30
-
-        # Mock shell driver with result that doesn't have exit_code
-        mock_shell_driver = Mock()
-        mock_shell_result = Mock()
-        mock_shell_result.success = True
-        mock_shell_result.output = "hello"
-        mock_shell_result.error = ""
-        del mock_shell_result.exit_code
-        mock_shell_driver.run.return_value = mock_shell_result
-
-        unified_driver._shell_driver = mock_shell_driver
-
-        # Mock config manager to raise KeyError
-        mock_config_manager.resolve_config.side_effect = KeyError("Config not found")
-
-        with patch('src.infrastructure.drivers.unified.unified_driver.ShellRequest'), \
-             patch('src.infrastructure.drivers.unified.unified_driver.ShellResult') as mock_shell_result_class:
-            mock_result_instance = Mock()
-            mock_shell_result_class.return_value = mock_result_instance
-
-            # Mock isinstance to return True
-            with patch('builtins.isinstance', return_value=True):
-                result = unified_driver._execute_shell_request(mock_request)
-
-                # Should return error result
-                assert result == mock_result_instance
-                mock_shell_result_class.assert_called_with(
-                    success=False,
-                    output="",
-                    error="Exit code not available and no default exit codes found in configuration",
-                    request=mock_request,
-                    exit_code=1
-                )

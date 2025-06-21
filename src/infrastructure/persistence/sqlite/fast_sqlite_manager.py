@@ -22,7 +22,7 @@ class FastSQLiteManager:
     _connection_lock = threading.RLock()
     _migration_applied = False
 
-    def __init__(self, db_path: str = ":memory:", skip_migrations: bool = False, sqlite_provider=None):
+    def __init__(self, db_path: str, skip_migrations: bool, sqlite_provider):
         """Initialize Fast SQLite manager.
 
         Args:
@@ -101,7 +101,7 @@ class FastSQLiteManager:
             import sqlite3
             conn.row_factory = sqlite3.Row
 
-    def _run_migrations(self, conn: 'sqlite3.Connection', current_version: int = 0) -> None:
+    def _run_migrations(self, conn: 'sqlite3.Connection', current_version: int) -> None:
         """Run database migrations.
 
         Args:
@@ -171,7 +171,7 @@ class FastSQLiteManager:
 
             conn.close()
 
-    def execute_query(self, query: str, params: tuple = ()) -> list[dict[str, Any]]:
+    def execute_query(self, query: str, params: tuple) -> list[dict[str, Any]]:
         """Execute a SELECT query and return results.
 
         Args:
@@ -185,7 +185,7 @@ class FastSQLiteManager:
             cursor = conn.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
 
-    def execute_command(self, command: str, params: tuple = ()) -> int:
+    def execute_command(self, command: str, params: tuple) -> int:
         """Execute an INSERT/UPDATE/DELETE command.
 
         Args:

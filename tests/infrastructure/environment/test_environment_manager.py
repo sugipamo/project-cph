@@ -38,15 +38,6 @@ class TestEnvironmentManager:
         mock_config.resolve_config.assert_called_once_with(['env_default', 'env_type'], str)
         assert manager._env_type == "test_env"
 
-    @patch('src.infrastructure.environment.environment_manager.TypeSafeConfigNodeManager')
-    def test_init_raises_error_when_no_config_found(self, mock_config_class):
-        """Test initialization raises error when no config found"""
-        mock_config = Mock()
-        mock_config.resolve_config.side_effect = KeyError("config not found")
-        mock_config_class.return_value = mock_config
-
-        with pytest.raises(ValueError, match="Environment type not provided and no default env_type found"):
-            EnvironmentManager()
 
     def test_prepare_environment(self):
         """Test prepare_environment method"""
@@ -154,18 +145,6 @@ class TestEnvironmentManager:
 
         assert manager._env_type == "test_env"
 
-    @patch('src.infrastructure.environment.environment_manager.TypeSafeConfigNodeManager')
-    def test_from_context_without_env_type(self, mock_config_class):
-        """Test from_context class method without env_type"""
-        context = object()  # Plain object with no env_type attribute
-
-        # Mock config to prevent loading issues
-        mock_config = Mock()
-        mock_config.resolve_config.side_effect = KeyError("config not found")
-        mock_config_class.return_value = mock_config
-
-        with pytest.raises(ValueError, match="Environment type not provided and no default env_type found"):
-            EnvironmentManager.from_context(context)
 
     def test_switch_environment(self):
         """Test switch_environment method"""

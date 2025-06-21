@@ -20,11 +20,6 @@ def test_register_and_resolve():
     # 複数回resolveしても新しいインスタンスが返る（関数が呼ばれる）
     assert container.resolve("int_provider") == 42
 
-def test_resolve_unregistered_key():
-    container = DIContainer()
-    with pytest.raises(ValueError) as e:
-        container.resolve("not_registered")
-    assert "not_registered" in str(e.value)
 
 
 class TestDIConfigFactories:

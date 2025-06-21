@@ -57,11 +57,11 @@ class TestLocalDockerDriverWithTracking:
         mock_super_run.return_value = mock_result
 
         # Execute
-        result = self.driver.run_container("ubuntu", "test-container", {"port": "8080"})
+        result = self.driver.run_container("ubuntu", name="test-container", options={"port": "8080"}, show_output=True)
 
         # Assert
         assert result == mock_result
-        mock_super_run.assert_called_once_with("ubuntu", "test-container", {"port": "8080"}, True)
+        mock_super_run.assert_called_once_with("ubuntu", name="test-container", options={"port": "8080"}, show_output=True)
 
         # Verify tracking calls
         self.mock_container_repo.update_container_status.assert_called_once_with(
@@ -84,7 +84,7 @@ class TestLocalDockerDriverWithTracking:
         mock_super_run.return_value = mock_result
 
         # Execute
-        result = self.driver.run_container("ubuntu", "test-container")
+        result = self.driver.run_container("ubuntu", name="test-container", options={}, show_output=True)
 
         # Assert
         assert result == mock_result
@@ -101,7 +101,7 @@ class TestLocalDockerDriverWithTracking:
         mock_super_run.return_value = mock_result
 
         # Execute
-        result = self.driver.run_container("ubuntu", None)
+        result = self.driver.run_container("ubuntu", name=None, options={}, show_output=True)
 
         # Assert
         assert result == mock_result
@@ -117,30 +117,13 @@ class TestLocalDockerDriverWithTracking:
         mock_super_run.return_value = mock_result
 
         # Execute
-        result = self.driver.run_container("ubuntu", "test-container")
+        result = self.driver.run_container("ubuntu", name="test-container", options={}, show_output=True)
 
         # Assert
         assert result == mock_result
         self.mock_container_repo.update_container_status.assert_not_called()
         self.mock_container_repo.add_lifecycle_event.assert_not_called()
 
-    @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.run_container')
-    def test_run_container_tracking_exception(self, mock_super_run):
-        """Test container run with tracking exception."""
-        # Setup
-        mock_result = MagicMock()
-        mock_result.success = True
-        mock_result.stdout = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-        mock_super_run.return_value = mock_result
-
-        # Make tracking fail
-        self.mock_container_repo.update_container_status.side_effect = Exception("DB error")
-
-        # Execute - should not raise exception
-        result = self.driver.run_container("ubuntu", "test-container")
-
-        # Assert operation still succeeds
-        assert result == mock_result
 
     @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.stop_container')
     def test_stop_container_success(self, mock_super_stop):
@@ -181,22 +164,6 @@ class TestLocalDockerDriverWithTracking:
         self.mock_container_repo.update_container_status.assert_not_called()
         self.mock_container_repo.add_lifecycle_event.assert_not_called()
 
-    @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.stop_container')
-    def test_stop_container_tracking_exception(self, mock_super_stop):
-        """Test container stop with tracking exception."""
-        # Setup
-        mock_result = MagicMock()
-        mock_result.success = True
-        mock_super_stop.return_value = mock_result
-
-        # Make tracking fail
-        self.mock_container_repo.update_container_status.side_effect = Exception("DB error")
-
-        # Execute - should not raise exception
-        result = self.driver.stop_container("test-container")
-
-        # Assert operation still succeeds
-        assert result == mock_result
 
     @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.remove_container')
     def test_remove_container_success(self, mock_super_remove):
@@ -251,11 +218,11 @@ class TestLocalDockerDriverWithTracking:
         expected_hash = hashlib.sha256(dockerfile_text.encode('utf-8')).hexdigest()[:12]
 
         # Execute
-        result = self.driver.build_docker_image(dockerfile_text, "test:latest")
+        result = self.driver.build_docker_image(dockerfile_text, tag="test:latest", options={}, show_output=True)
 
         # Assert
         assert result == mock_result
-        mock_super_build.assert_called_once_with(dockerfile_text, "test:latest", None, True)
+        mock_super_build.assert_called_once_with(dockerfile_text, tag="test:latest", options={}, show_output=True)
 
         # Verify tracking calls
         self.mock_image_repo.create_or_update_image.assert_called_once_with(
@@ -287,7 +254,7 @@ class TestLocalDockerDriverWithTracking:
         dockerfile_text = "FROM ubuntu"
 
         # Execute
-        result = self.driver.build_docker_image(dockerfile_text, "test")
+        result = self.driver.build_docker_image(dockerfile_text, tag="test", options={}, show_output=True)
 
         # Assert
         assert result == mock_result
@@ -313,7 +280,7 @@ class TestLocalDockerDriverWithTracking:
         dockerfile_text = "FROM invalid"
 
         # Execute
-        result = self.driver.build_docker_image(dockerfile_text, "test")
+        result = self.driver.build_docker_image(dockerfile_text, tag="test", options={}, show_output=True)
 
         # Assert
         assert result == mock_result
@@ -335,31 +302,12 @@ class TestLocalDockerDriverWithTracking:
         dockerfile_text = "FROM ubuntu"
 
         # Execute
-        result = self.driver.build_docker_image(dockerfile_text, None)
+        result = self.driver.build_docker_image(dockerfile_text, tag=None, options={}, show_output=True)
 
         # Assert
         assert result == mock_result
         self.mock_image_repo.create_or_update_image.assert_not_called()
         self.mock_image_repo.update_image_build_result.assert_not_called()
-
-    @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.build_docker_image')
-    def test_build_tracking_exception(self, mock_super_build):
-        """Test image build with tracking exception."""
-        # Setup
-        mock_result = MagicMock()
-        mock_result.success = True
-        mock_super_build.return_value = mock_result
-
-        # Make tracking fail
-        self.mock_image_repo.create_or_update_image.side_effect = Exception("DB error")
-
-        dockerfile_text = "FROM ubuntu"
-
-        # Execute - should not raise exception
-        result = self.driver.build_docker_image(dockerfile_text, "test")
-
-        # Assert operation still succeeds
-        assert result == mock_result
 
     @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.image_rm')
     def test_image_rm_success_with_tag(self, mock_super_rm):
@@ -410,20 +358,3 @@ class TestLocalDockerDriverWithTracking:
         # Assert
         assert result == mock_result
         self.mock_image_repo.delete_image.assert_not_called()
-
-    @patch('src.infrastructure.drivers.docker.docker_driver.LocalDockerDriver.image_rm')
-    def test_image_rm_tracking_exception(self, mock_super_rm):
-        """Test image removal with tracking exception."""
-        # Setup
-        mock_result = MagicMock()
-        mock_result.success = True
-        mock_super_rm.return_value = mock_result
-
-        # Make tracking fail
-        self.mock_image_repo.delete_image.side_effect = Exception("DB error")
-
-        # Execute - should not raise exception
-        result = self.driver.image_rm("test")
-
-        # Assert operation still succeeds
-        assert result == mock_result

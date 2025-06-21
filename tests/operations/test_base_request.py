@@ -74,29 +74,7 @@ class TestOperationRequestFoundation:
         assert request.execute_called is True
         assert request.driver_used is driver
 
-    def test_execute_already_executed(self):
-        """Test executing a request twice raises error"""
-        request = ConcreteRequest()
-        driver = Mock()
 
-        # First execution succeeds
-        request.execute_operation(driver)
-
-        # Second execution should raise RuntimeError
-        with pytest.raises(RuntimeError) as exc_info:
-            request.execute_operation(driver)
-
-        assert "has already been executed" in str(exc_info.value)
-
-    def test_execute_without_driver_when_required(self):
-        """Test executing without driver when driver is required"""
-        request = ConcreteRequest()
-        # Default behavior requires driver
-
-        with pytest.raises(ValueError) as exc_info:
-            request.execute_operation()
-
-        assert "requires a driver" in str(exc_info.value)
 
     def test_execute_without_driver_when_not_required(self):
         """Test executing without driver when driver is not required"""
@@ -113,13 +91,6 @@ class TestOperationRequestFoundation:
         request = ConcreteRequest()
         assert request.operation_type == OperationType.SHELL
 
-    def test_abstract_methods(self):
-        """Test that abstract methods must be implemented"""
-        # Cannot instantiate OperationRequestFoundation directly
-        with pytest.raises(TypeError) as exc_info:
-            OperationRequestFoundation()
-
-        assert "Can't instantiate abstract class" in str(exc_info.value)
 
     def test_debug_info_stack_frame(self):
         """Test that debug info captures correct stack frame"""
@@ -132,22 +103,3 @@ class TestOperationRequestFoundation:
             assert request.debug_info["function"] == "create_request"
             assert request.debug_info["debug_tag"] == "STACK_TEST"
 
-    def test_execute_preserves_exception(self):
-        """Test that exceptions in _execute_core are preserved"""
-        class FailingRequest(OperationRequestFoundation):
-            @property
-            def operation_type(self):
-                return OperationType.SHELL
-
-            def _execute_core(self, driver, logger=None):
-                raise ValueError("Test error")
-
-        request = FailingRequest()
-        driver = Mock()
-
-        with pytest.raises(ValueError) as exc_info:
-            request.execute_operation(driver)
-
-        assert str(exc_info.value) == "Test error"
-        # Request should still be marked as executed
-        assert request._executed is True

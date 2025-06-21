@@ -19,7 +19,7 @@ def calculate_dockerfile_hash(dockerfile_text: Optional[str]) -> Optional[str]:
     return hashlib.sha256(dockerfile_text.encode("utf-8")).hexdigest()[:12]
 
 
-def get_docker_image_name(language: str, dockerfile_text: Optional[str] = None) -> str:
+def get_docker_image_name(language: str, dockerfile_text: str) -> str:
     """Generate Docker image name with optional content hash
 
     Args:
@@ -29,13 +29,13 @@ def get_docker_image_name(language: str, dockerfile_text: Optional[str] = None) 
     Returns:
         Image name in format: {language} or {language}_{hash}
     """
-    if not dockerfile_text or not dockerfile_text.strip():
-        return language
     hash_suffix = calculate_dockerfile_hash(dockerfile_text)
+    if hash_suffix is None:
+        return language
     return f"{language}_{hash_suffix}"
 
 
-def get_docker_container_name(language: str, dockerfile_text: Optional[str] = None) -> str:
+def get_docker_container_name(language: str, dockerfile_text: str) -> str:
     """Generate Docker container name with cph_ prefix (no hash for consistency)
 
     Args:
@@ -48,7 +48,7 @@ def get_docker_container_name(language: str, dockerfile_text: Optional[str] = No
     return f"cph_{language}"
 
 
-def get_oj_image_name(oj_dockerfile_text: Optional[str] = None) -> str:
+def get_oj_image_name(oj_dockerfile_text: str) -> str:
     """Generate OJ tools image name
 
     Args:
@@ -57,13 +57,13 @@ def get_oj_image_name(oj_dockerfile_text: Optional[str] = None) -> str:
     Returns:
         OJ image name in format: ojtools or ojtools_{hash}
     """
-    if not oj_dockerfile_text or not oj_dockerfile_text.strip():
-        return "ojtools"
     hash_suffix = calculate_dockerfile_hash(oj_dockerfile_text)
+    if hash_suffix is None:
+        return "ojtools"
     return f"ojtools_{hash_suffix}"
 
 
-def get_oj_container_name(oj_dockerfile_text: Optional[str] = None) -> str:
+def get_oj_container_name(oj_dockerfile_text: str) -> str:
     """Generate OJ tools container name (no hash for consistency)
 
     Args:

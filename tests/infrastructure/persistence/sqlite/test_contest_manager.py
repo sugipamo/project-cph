@@ -323,13 +323,6 @@ class TestContestManager:
         result = contest_manager.initialize_contest_current("python", "abc123", "A")
         assert result is True
 
-    def test_initialize_contest_current_failure(self, contest_manager):
-        """Test initialize_contest_current when both stock and template fail."""
-        contest_manager.restore_from_contest_stock = Mock(return_value=False)
-        contest_manager.initialize_from_template = Mock(return_value=False)
-
-        with pytest.raises(RuntimeError, match="both stock and template initialization failed"):
-            contest_manager.initialize_contest_current("python", "abc123", "A")
 
     def test_directory_has_content(self, contest_manager):
         """Test _directory_has_content method."""

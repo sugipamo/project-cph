@@ -12,7 +12,7 @@ class MockFileDriver(FileDriver):
     - Internal state simulation
     """
 
-    def __init__(self, base_dir: Path = Path(".")):
+    def __init__(self, base_dir: Path):
         super().__init__(base_dir)
         # Operation history (for behavior verification)
         self.operations: list[tuple[str, ...]] = []
@@ -33,7 +33,7 @@ class MockFileDriver(FileDriver):
             self.call_count[operation] = 0
         self.call_count[operation] = self.call_count[operation] + 1
 
-    def assert_operation_called(self, operation: str, times: Optional[int] = None) -> None:
+    def assert_operation_called(self, operation: str, times: Optional[int]) -> None:
         """Verify that specified operation was called"""
         if operation not in self.call_count:
             count = 0
@@ -49,7 +49,7 @@ class MockFileDriver(FileDriver):
         matching_calls = [op for op in self.operations if op[0] == operation and op[1:] == expected_args]
         assert len(matching_calls) > 0, f"Operation '{operation}' with args {expected_args} was not found in {self.operations}"
 
-    def set_file_exists(self, path: str, exists: bool = True) -> None:
+    def set_file_exists(self, path: str, exists: bool) -> None:
         """Set file existence state"""
         abs_path = self.base_dir / Path(path)
         self.file_exists_map[abs_path] = exists
@@ -124,14 +124,14 @@ class MockFileDriver(FileDriver):
         if path in self.contents:
             del self.contents[path]
 
-    def makedirs(self, path: Optional[Path] = None, exist_ok: bool = True) -> None:
+    def makedirs(self, path: Optional[Path], exist_ok: bool) -> None:
         """Create directories (mock implementation)."""
         target_path = self.resolve_path(path) if path is not None else self.resolve_path(self.path)
         self._record_operation("makedirs", target_path, exist_ok)
         # Mock implementation - just add to files set to indicate it exists
         self.files.add(target_path)
 
-    def open(self, path: str, mode: str = "r", encoding: Optional[str] = None):
+    def open(self, path: str, mode: str, encoding: Optional[str]):
         """Mock file open"""
         from contextlib import contextmanager
         from io import StringIO
@@ -163,7 +163,7 @@ class MockFileDriver(FileDriver):
 
         return mock_file()
 
-    def docker_cp(self, src: str, dst: str, container: str, to_container: bool = True, docker_driver: Any = None):
+    def docker_cp(self, src: str, dst: str, container: str, to_container: bool, docker_driver: Any):
         """Mock Docker copy"""
         self._record_operation("docker_cp", src, dst, container, to_container)
         # Check if source file exists

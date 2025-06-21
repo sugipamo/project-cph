@@ -71,15 +71,18 @@ class TestLocalDockerDriver:
         """Test basic container run functionality."""
         mock_build_command.return_value = ["docker", "run", "ubuntu"]
         mock_request = Mock()
-        mock_result = ShellResult(0, "Container started", "")
+        mock_result = Mock()
+        mock_result.stdout = "Container started"
+        mock_result.stderr = ""
+        mock_result.returncode = 0
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
         driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
-        result = driver.run_container("ubuntu")
+        result = driver.run_container("ubuntu", name=None, options={}, show_output=True)
 
-        mock_build_command.assert_called_once_with("ubuntu", None, None)
-        mock_shell_request.assert_called_once_with(["docker", "run", "ubuntu"], show_output=True)
+        mock_build_command.assert_called_once_with("ubuntu", None, {})
+        mock_shell_request.assert_called_once_with(["docker", "run", "ubuntu"], cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=True, allow_failure=False)
         assert result == mock_result
 
     @patch('src.infrastructure.drivers.docker.docker_driver.build_docker_run_command')
@@ -88,7 +91,10 @@ class TestLocalDockerDriver:
         """Test container run with name and options."""
         mock_build_command.return_value = ["docker", "run", "--name", "test", "ubuntu"]
         mock_request = Mock()
-        mock_result = ShellResult(0, "Container started", "")
+        mock_result = Mock()
+        mock_result.stdout = "Container started"
+        mock_result.stderr = ""
+        mock_result.returncode = 0
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
@@ -97,7 +103,7 @@ class TestLocalDockerDriver:
         driver.run_container("ubuntu", name="test", options=options, show_output=False)
 
         mock_build_command.assert_called_once_with("ubuntu", "test", options)
-        mock_shell_request.assert_called_once_with(["docker", "run", "--name", "test", "ubuntu"], show_output=False)
+        mock_shell_request.assert_called_once_with(["docker", "run", "--name", "test", "ubuntu"], cwd=".", env={}, inputdata="", timeout=300, debug_tag="docker_run", name="docker_run_request", show_output=False, allow_failure=False)
 
     @patch('src.infrastructure.drivers.docker.docker_driver.build_docker_stop_command')
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
@@ -105,15 +111,21 @@ class TestLocalDockerDriver:
         """Test container stop functionality."""
         mock_build_command.return_value = ["docker", "stop", "test-container"]
         mock_request = Mock()
-        mock_result = ShellResult(0, "Container stopped", "")
+        mock_result = Mock()
+        mock_result.stdout = "Container stopped"
+        mock_result.stderr = ""
+        mock_result.returncode = 0
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
         driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
-        result = driver.stop_container("test-container")
+        result = driver.stop_container("test-container", timeout=10, show_output=True)
 
-        mock_build_command.assert_called_once_with("test-container")
-        mock_shell_request.assert_called_once_with(["docker", "stop", "test-container"], show_output=True)
+        mock_build_command.assert_called_once_with("test-container", 10)
+        mock_shell_request.assert_called_once_with(["docker", "stop", "test-container"],
+                                                  cwd=".", env={}, inputdata="", timeout=300,
+                                                  debug_tag="docker_run", name="docker_run_request",
+                                                  show_output=True, allow_failure=False)
         assert result == mock_result
 
     @patch('src.infrastructure.drivers.docker.docker_driver.build_docker_remove_command')
@@ -122,7 +134,10 @@ class TestLocalDockerDriver:
         """Test container removal functionality."""
         mock_build_command.return_value = ["docker", "rm", "test-container"]
         mock_request = Mock()
-        mock_result = ShellResult(0, "Container removed", "")
+        mock_result = Mock()
+        mock_result.stdout = "Container removed"
+        mock_result.stderr = ""
+        mock_result.returncode = 0
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
@@ -139,7 +154,10 @@ class TestLocalDockerDriver:
         """Test forced container removal."""
         mock_build_command.return_value = ["docker", "rm", "-f", "test-container"]
         mock_request = Mock()
-        mock_result = ShellResult(0, "Container removed", "")
+        mock_result = Mock()
+        mock_result.stdout = "Container removed"
+        mock_result.stderr = ""
+        mock_result.returncode = 0
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
@@ -153,7 +171,10 @@ class TestLocalDockerDriver:
     def test_exec_in_container_list_command(self, mock_shell_request):
         """Test executing command in container with list command."""
         mock_request = Mock()
-        mock_result = ShellResult(0, "Command executed", "")
+        mock_result = Mock()
+        mock_result.stdout = "Command executed"
+        mock_result.stderr = ""
+        mock_result.returncode = 0
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
@@ -170,7 +191,10 @@ class TestLocalDockerDriver:
         """Test executing command in container with string command."""
         mock_shlex.split.return_value = ["bash", "-c", "echo hello"]
         mock_request = Mock()
-        mock_result = ShellResult(0, "Command executed", "")
+        mock_result = Mock()
+        mock_result.stdout = "Command executed"
+        mock_result.stderr = ""
+        mock_result.returncode = 0
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
@@ -186,7 +210,10 @@ class TestLocalDockerDriver:
     def test_get_logs(self, mock_shell_request):
         """Test getting container logs."""
         mock_request = Mock()
-        mock_result = ShellResult(0, "Container logs", "")
+        mock_result = Mock()
+        mock_result.stdout = "Container logs"
+        mock_result.stderr = ""
+        mock_result.returncode = 0
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
@@ -204,14 +231,17 @@ class TestLocalDockerDriver:
         dockerfile_content = "FROM ubuntu\\nRUN echo hello"
         mock_build_command.return_value = ["docker", "build", "-t", "test:latest", "-f", "-", "."]
         mock_request = Mock()
-        mock_result = ShellResult(0, "Image built", "")
+        mock_result = Mock()
+        mock_result.stdout = "Image built"
+        mock_result.stderr = ""
+        mock_result.returncode = 0
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
         driver = LocalDockerDriver(file_driver=LocalFileDriver(base_dir=Path('.')))
-        result = driver.build_docker_image(dockerfile_content, tag="test:latest")
+        result = driver.build_docker_image(dockerfile_content, tag="test:latest", options={}, show_output=True)
 
-        mock_build_command.assert_called_once_with("test:latest", dockerfile_content, None)
+        mock_build_command.assert_called_once_with("test:latest", dockerfile_content, {})
         mock_shell_request.assert_called_once_with(
             ["docker", "build", "-t", "test:latest", "-f", "-", "."],
             show_output=True,
@@ -224,7 +254,10 @@ class TestLocalDockerDriver:
     def test_image_ls(self, mock_shell_request):
         """Test listing Docker images."""
         mock_request = Mock()
-        mock_result = ShellResult(0, "ubuntu\\nalpine", "")
+        mock_result = Mock()
+        mock_result.stdout = "ubuntu\\nalpine"
+        mock_result.stderr = ""
+        mock_result.returncode = 0
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
@@ -239,7 +272,10 @@ class TestLocalDockerDriver:
     def test_image_rm(self, mock_shell_request):
         """Test removing Docker image."""
         mock_request = Mock()
-        mock_result = ShellResult(0, "Image removed", "")
+        mock_result = Mock()
+        mock_result.stdout = "Image removed"
+        mock_result.stderr = ""
+        mock_result.returncode = 0
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
@@ -254,7 +290,10 @@ class TestLocalDockerDriver:
     def test_ps_basic(self, mock_shell_request):
         """Test basic container listing."""
         mock_request = Mock()
-        mock_result = ShellResult(0, "CONTAINER ID   IMAGE", "")
+        mock_result = Mock()
+        mock_result.stdout = "CONTAINER ID   IMAGE"
+        mock_result.stderr = ""
+        mock_result.returncode = 0
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
@@ -269,7 +308,10 @@ class TestLocalDockerDriver:
     def test_ps_names_only(self, mock_shell_request):
         """Test container listing with names only."""
         mock_request = Mock()
-        mock_result = ShellResult(0, "container1\ncontainer2", "")
+        mock_result = Mock()
+        mock_result.stdout = "container1\ncontainer2"
+        mock_result.stderr = ""
+        mock_result.returncode = 0
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
 
@@ -286,7 +328,10 @@ class TestLocalDockerDriver:
     def test_ps_names_only_with_parsing(self, mock_shell_request, mock_parse):
         """Test container listing with names parsing."""
         mock_request = Mock()
-        mock_result = ShellResult(0, "container1\\ncontainer2", "")
+        mock_result = Mock()
+        mock_result.stdout = "container1\\ncontainer2"
+        mock_result.stderr = ""
+        mock_result.returncode = 0
         mock_request.execute_operation.return_value = mock_result
         mock_shell_request.return_value = mock_request
         mock_parse.return_value = ["container1", "container2"]

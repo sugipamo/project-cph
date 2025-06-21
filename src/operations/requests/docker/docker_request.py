@@ -102,19 +102,19 @@ class DockerRequest(OperationRequestFoundation):
         container_names = driver.ps(all=True, show_output=False, names_only=True)
         if self.container not in container_names:
             # If doesn't exist, just run
-            return driver.run_container(self.image, self.container, self.options, show_output=self.show_output)
+            return driver.run_container(self.image, name=self.container, options=self.options, show_output=self.show_output)
 
         # Check container status and handle accordingly
         return self._handle_existing_container(driver, logger, json_provider)
 
     def _handle_existing_container(self, driver: DockerDriverInterface, logger: Optional[Any], json_provider):
         """Handle existing container based on its current status."""
-        inspect_result = driver.inspect(self.container, show_output=False)
+        inspect_result = driver.inspect(self.container, type_=None, show_output=False)
         try:
             inspect_data = json_provider.loads(inspect_result.stdout)
             if isinstance(inspect_data, list) and len(inspect_data) > 0:
                 if "State" not in inspect_data[0]:
-                    return driver.run_container(self.image, self.container, self.options, show_output=self.show_output)
+                    return driver.run_container(self.image, name=self.container, options=self.options, show_output=self.show_output)
                 state = inspect_data[0]["State"]
                 status = state["Status"]
                 return self._process_container_status(driver, status, logger)
@@ -132,7 +132,7 @@ class DockerRequest(OperationRequestFoundation):
             return self._remove_and_run_container(driver)
 
         # For other statuses, just run
-        return driver.run_container(self.image, self.container, self.options, show_output=self.show_output)
+        return driver.run_container(self.image, name=self.container, options=self.options, show_output=self.show_output)
 
     def _remove_and_run_container(self, driver: DockerDriverInterface):
         """Remove existing container and run a new one."""
@@ -159,7 +159,7 @@ class DockerRequest(OperationRequestFoundation):
     def _dispatch_operation(self, driver: DockerDriverInterface):
         """Dispatch to appropriate driver method based on operation type."""
         if self.op == DockerOpType.RUN:
-            return driver.run_container(self.image, self.container, self.options, show_output=self.show_output)
+            return driver.run_container(self.image, name=self.container, options=self.options, show_output=self.show_output)
         if self.op == DockerOpType.STOP:
             return driver.stop_container(self.container, show_output=self.show_output)
         if self.op == DockerOpType.REMOVE:
@@ -168,7 +168,7 @@ class DockerRequest(OperationRequestFoundation):
             force = 'f' in self.options and self.options['f'] is not None
             return driver.remove_container(self.container, force=force, show_output=self.show_output)
         if self.op == DockerOpType.INSPECT:
-            return driver.inspect(self.container, show_output=self.show_output)
+            return driver.inspect(self.container, type_=None, show_output=self.show_output)
         if self.op == DockerOpType.EXEC:
             return driver.exec_in_container(self.container, self.command, show_output=self.show_output)
         if self.op == DockerOpType.LOGS:

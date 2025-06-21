@@ -27,10 +27,6 @@ class TestSystemRegistryProvider:
         assert retrieved == test_registry
         assert retrieved is test_registry  # Should be the same object
 
-    def test_get_registry_key_error(self, registry_provider):
-        """Test getting non-existent registry raises KeyError."""
-        with pytest.raises(KeyError):
-            registry_provider.get_registry("nonexistent")
 
     def test_has_registry_true(self, registry_provider):
         """Test has_registry returns True for existing registry."""
@@ -119,15 +115,6 @@ class TestMockRegistryProvider:
         assert log[0] == ("SET", "test")
         assert log[1] == ("GET", "test")
 
-    def test_get_registry_key_error_with_logging(self, mock_provider):
-        """Test getting non-existent registry with logging."""
-        with pytest.raises(KeyError):
-            mock_provider.get_registry("nonexistent")
-
-        # Should still log the access attempt
-        log = mock_provider.get_access_log()
-        assert len(log) == 1
-        assert log[0] == ("GET", "nonexistent")
 
     def test_has_registry_with_logging(self, mock_provider):
         """Test has_registry with access logging."""

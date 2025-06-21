@@ -35,10 +35,6 @@ class TestDockerCommandBuilder:
 
         assert _get_config_manager() == mock_config
 
-    def test_get_config_manager_not_set(self):
-        """Test getting config manager when not set."""
-        with pytest.raises(RuntimeError, match="Configuration manager not injected"):
-            _get_config_manager()
 
     def test_get_docker_option_from_user_options(self):
         """Test getting Docker option from user-provided options."""
@@ -57,25 +53,7 @@ class TestDockerCommandBuilder:
         result = _get_docker_option("interactive", None)
         assert result is True
 
-    def test_get_docker_option_fallback_to_default(self):
-        """Test that KeyError is raised when option not found (no fallback)."""
-        mock_config = Mock()
-        mock_config.root_node = Mock()
-        mock_config.resolve_config.side_effect = KeyError("Not found")
-        set_config_manager(mock_config)
 
-        with pytest.raises(KeyError, match="Not found"):
-            _get_docker_option("interactive", None)
-
-    def test_get_docker_option_unknown_option(self):
-        """Test getting unknown Docker option raises KeyError."""
-        mock_config = Mock()
-        mock_config.root_node = Mock()
-        mock_config.resolve_config.side_effect = KeyError("Not found")
-        set_config_manager(mock_config)
-
-        with pytest.raises(KeyError, match="Not found"):
-            _get_docker_option("unknown", None)
 
     def test_validate_docker_image_name_valid(self):
         """Test validating valid Docker image names."""

@@ -33,8 +33,8 @@ class UnifiedLogger(LoggerInterface):
     }
 
     def __init__(self, output_manager: OutputManagerInterface,
-                 name: str = __name__, logger_config: Optional[dict[str, Any]] = None,
-                 di_container: Optional[DIContainer] = None):
+                 name: str, logger_config: Optional[dict[str, Any]],
+                 di_container: Optional[DIContainer]):
         """Initialize unified logger.
 
         Args:
@@ -146,7 +146,7 @@ class UnifiedLogger(LoggerInterface):
 
     # PythonLogger compatibility methods
     def log_error_with_correlation(self, error_id: str, error_code: str,
-                                  message: str, context: Optional[dict] = None) -> None:
+                                  message: str, context: Optional[dict]) -> None:
         """Log an error with correlation ID and structured context."""
         formatted_message = (
             f"[ERROR#{error_id}] [{error_code}] {message} "
@@ -163,7 +163,7 @@ class UnifiedLogger(LoggerInterface):
         )
 
     def log_operation_start(self, operation_id: str, operation_type: str,
-                           details: Optional[dict] = None) -> None:
+                           details: Optional[dict]) -> None:
         """Log the start of an operation with correlation tracking."""
         message = f"[OP#{operation_id}] {operation_type} started (session: {self.session_id})"
         if details:
@@ -176,7 +176,7 @@ class UnifiedLogger(LoggerInterface):
         )
 
     def log_operation_end(self, operation_id: str, operation_type: str,
-                         success: bool, details: Optional[dict] = None) -> None:
+                         success: bool, details: Optional[dict]) -> None:
         """Log the end of an operation with correlation tracking."""
         # Get status from configuration
         try:
@@ -234,7 +234,7 @@ class UnifiedLogger(LoggerInterface):
             formatinfo=FormatInfo(color="blue")
         )
 
-    def step_success(self, step_name: str, message: str = "") -> None:
+    def step_success(self, step_name: str, message: str) -> None:
         """ステップ成功ログ"""
         if not self.enabled:
             return
@@ -250,7 +250,7 @@ class UnifiedLogger(LoggerInterface):
             formatinfo=FormatInfo(color="green", bold=True)
         )
 
-    def step_failure(self, step_name: str, error: str, allow_failure: bool = False) -> None:
+    def step_failure(self, step_name: str, error: str, allow_failure: bool) -> None:
         """ステップ失敗ログ"""
         if not self.enabled:
             return
@@ -296,7 +296,7 @@ class UnifiedLogger(LoggerInterface):
                 formatinfo=FormatInfo(color="blue", bold=True)
             )
 
-    def log_workflow_start(self, step_count: int, parallel: bool = False) -> None:
+    def log_workflow_start(self, step_count: int, parallel: bool) -> None:
         """ワークフロー実行開始ログ"""
         if self.enabled:
             icon = self.icons["start"]
@@ -322,9 +322,9 @@ class UnifiedLogger(LoggerInterface):
                 formatinfo=FormatInfo(color="blue", bold=True)
             )
 
-    def log_environment_info(self, language_name: Optional[str] = None, contest_name: Optional[str] = None,
-                           problem_name: Optional[str] = None, env_type: Optional[str] = None,
-                           env_logging_config: Optional[dict] = None) -> None:
+    def log_environment_info(self, language_name: Optional[str], contest_name: Optional[str],
+                           problem_name: Optional[str], env_type: Optional[str],
+                           env_logging_config: Optional[dict]) -> None:
         """Log environment information if enabled in configuration"""
         if not env_logging_config:
             return
