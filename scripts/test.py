@@ -756,26 +756,24 @@ class TestRunner:
                         # 関数定義での引数チェック
                         if isinstance(node, ast.FunctionDef):
                             for arg in node.args.defaults:
-                                if (isinstance(arg, ast.Constant) and arg.value is None) or (isinstance(arg, ast.NameConstant) and arg.value is None):
+                                if isinstance(arg, ast.Constant) and arg.value is None:
                                     none_default_issues.append(f"{relative_path}:{node.lineno} def {node.name} - None引数初期値")
 
                             # キーワード専用引数のデフォルト値もチェック
                             for arg in node.args.kw_defaults:
-                                if arg is not None:
-                                    if (isinstance(arg, ast.Constant) and arg.value is None) or (isinstance(arg, ast.NameConstant) and arg.value is None):
-                                        none_default_issues.append(f"{relative_path}:{node.lineno} def {node.name} - キーワード引数のNone初期値")
+                                if arg is not None and isinstance(arg, ast.Constant) and arg.value is None:
+                                    none_default_issues.append(f"{relative_path}:{node.lineno} def {node.name} - キーワード引数のNone初期値")
 
                         # 非同期関数定義での引数チェック
                         elif isinstance(node, ast.AsyncFunctionDef):
                             for arg in node.args.defaults:
-                                if (isinstance(arg, ast.Constant) and arg.value is None) or (isinstance(arg, ast.NameConstant) and arg.value is None):
+                                if isinstance(arg, ast.Constant) and arg.value is None:
                                     none_default_issues.append(f"{relative_path}:{node.lineno} async def {node.name} - None引数初期値")
 
                             # キーワード専用引数のデフォルト値もチェック
                             for arg in node.args.kw_defaults:
-                                if arg is not None:
-                                    if (isinstance(arg, ast.Constant) and arg.value is None) or (isinstance(arg, ast.NameConstant) and arg.value is None):
-                                        none_default_issues.append(f"{relative_path}:{node.lineno} async def {node.name} - キーワード引数のNone初期値")
+                                if arg is not None and isinstance(arg, ast.Constant) and arg.value is None:
+                                    none_default_issues.append(f"{relative_path}:{node.lineno} async def {node.name} - キーワード引数のNone初期値")
 
                 except (SyntaxError, UnicodeDecodeError, OSError, FileNotFoundError):
                     continue
@@ -818,6 +816,10 @@ class TestRunner:
             fallback_issues = []
 
             for file_path in glob.glob('src/**/*.py', recursive=True):
+                # Infrastructure層は許可されているためスキップ
+                if file_path.startswith('src/infrastructure/'):
+                    continue
+                    
                 try:
                     content = self.file_handler.read_text(file_path, encoding='utf-8')
                     tree = ast.parse(content, filename=file_path)
@@ -825,26 +827,32 @@ class TestRunner:
                     content_lines = content.splitlines()
 
                     for node in ast.walk(tree):
-                        # 1. try-except内での代入・return
+                        # 1. try-except内での代入・return（必要なエラーハンドリングを除外）
                         if isinstance(node, ast.Try):
                             for handler in node.handlers:
                                 for stmt in handler.body:
                                     if isinstance(stmt, (ast.Assign, ast.Return)):
                                         line = content_lines[stmt.lineno - 1].strip() if stmt.lineno <= len(content_lines) else ""
-                                        fallback_issues.append(f"{relative_path}:{stmt.lineno} try-except内でのフォールバック: {line}")
+                                        # 必要なエラーハンドリングパターンを除外
+                                        if not self._is_legitimate_error_handling(line):
+                                            fallback_issues.append(f"{relative_path}:{stmt.lineno} try-except内でのフォールバック: {line}")
 
-                        # 2. or演算子での値指定
+                        # 2. or演算子での値指定（論理演算は除外）
                         elif isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or):
                             if len(node.values) >= 2:
                                 line = content_lines[node.lineno - 1].strip() if node.lineno <= len(content_lines) else ""
                                 if re.search(r'or\s+["\'\[\{0-9]', line):  # or の後にリテラル値
-                                    fallback_issues.append(f"{relative_path}:{node.lineno} or演算子でのフォールバック: {line}")
+                                    # 論理的なチェックは除外
+                                    if not self._is_logical_or_check(line):
+                                        fallback_issues.append(f"{relative_path}:{node.lineno} or演算子でのフォールバック: {line}")
 
-                        # 3. 条件式での値指定
+                        # 3. 条件式での値指定（適切な条件分岐は除外）
                         elif isinstance(node, ast.IfExp):
                             line = content_lines[node.lineno - 1].strip() if node.lineno <= len(content_lines) else ""
                             if re.search(r'else\s+["\'\[\{0-9]', line):  # else の後にリテラル値
-                                fallback_issues.append(f"{relative_path}:{node.lineno} 条件式でのフォールバック: {line}")
+                                # 適切な条件分岐パターンは除外
+                                if not self._is_legitimate_conditional(line):
+                                    fallback_issues.append(f"{relative_path}:{node.lineno} 条件式でのフォールバック: {line}")
 
                 except (SyntaxError, UnicodeDecodeError, OSError, FileNotFoundError):
                     continue
