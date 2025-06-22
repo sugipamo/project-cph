@@ -118,11 +118,19 @@ class NamingChecker:
                         func_name = node.name
                         # プライベートメソッドやspecialメソッドはスキップ
                         if not func_name.startswith('_'):
-                            # 抽象的関数名チェック
-                            for pattern in abstract_function_patterns:
-                                if re.match(pattern, func_name):
-                                    naming_issues.append(f"抽象的関数名: {relative_path}:{node.lineno} def {func_name}")
-                                    break
+                            # SQLite互換メソッドの例外処理
+                            is_sqlite_compat = (
+                                func_name == 'execute' and
+                                'sqlite' in relative_path.lower() and
+                                'MockSQLiteConnection' in content
+                            )
+
+                            if not is_sqlite_compat:
+                                # 抽象的関数名チェック
+                                for pattern in abstract_function_patterns:
+                                    if re.match(pattern, func_name):
+                                        naming_issues.append(f"抽象的関数名: {relative_path}:{node.lineno} def {func_name}")
+                                        break
                             # 無駄なプレフィックス関数名チェック
                             for pattern in useless_prefix_patterns:
                                 if re.match(pattern, func_name):

@@ -11,9 +11,9 @@ from src.infrastructure.drivers.docker.docker_driver import LocalDockerDriver
 class LocalDockerDriverWithTracking(LocalDockerDriver):
     """Docker driver that tracks operations in SQLite."""
 
-    def __init__(self, container):
+    def __init__(self, file_driver, container):
         """Initialize with DI container for repository access."""
-        super().__init__()
+        super().__init__(file_driver)
         self.di_container = container
         self._container_repo = None
         self._image_repo = None
