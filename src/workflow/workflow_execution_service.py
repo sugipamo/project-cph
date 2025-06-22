@@ -222,23 +222,7 @@ class WorkflowExecutionService:
             return None, ["No workflow steps found for command"], []
 
         # Generate Step objects from JSON and get step results with skip information
-        from src.workflow.step.step_generation_service import execution_context_to_simple_context
-        from src.workflow.step.step_runner import run_steps
-        simple_context = execution_context_to_simple_context(self.context)
-        from src.infrastructure.providers import SystemOsProvider
-        from src.infrastructure.providers.json_provider import SystemJsonProvider
-        step_results = run_steps(json_steps, simple_context, SystemOsProvider(), SystemJsonProvider())
-
-        # Note: step_results are no longer stored since we directly return CompositeRequest execution results
-
-        # Check for errors in step results
-        errors = []
-        for i, result in enumerate(step_results):
-            if not result.success and result.error_message:
-                errors.append(f"Step {i}: {result.error_message}")
-
-        if errors:
-            return None, errors, []
+        # Note: Step generation now handled by generate_workflow_from_json only
 
         # Use the OPTIMIZED workflow generation
         from src.workflow.step.workflow import create_step_context_from_env_context, generate_workflow_from_json

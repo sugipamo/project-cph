@@ -55,6 +55,11 @@ class ExecutionContext:
                                 result[pattern_key] = pattern
                 else:
                     result[key] = value
+        
+        # language_nameをlanguageのエイリアスとして追加（後方互換性）
+        if 'language' in result:
+            result['language_name'] = result['language']
+            
         return result
 
 
@@ -89,7 +94,20 @@ def expand_template(template: str, context) -> str:
     # SimpleExecutionContext（step_runner.py内のExecutionContext）の場合
     if hasattr(context, 'to_dict'):
         result = template
-        for key, value in context.to_dict().items():
+        context_dict = context.to_dict()
+        
+        for key, value in context_dict.items():
+            # Pathオブジェクトも文字列に変換
+            if value is None:
+                raise ValueError(f"Value for key '{key}' is None")
+            str_value = str(value)
+            result = result.replace(f'{{{key}}}', str_value)
+        return result
+
+    # StepContextの場合（to_format_dictメソッドを使用）
+    if hasattr(context, 'to_format_dict'):
+        result = template
+        for key, value in context.to_format_dict().items():
             # Pathオブジェクトも文字列に変換
             if value is None:
                 raise ValueError(f"Value for key '{key}' is None")
@@ -116,6 +134,10 @@ def expand_template(template: str, context) -> str:
                 context_dict[attr] = str(value[0]) if value else ""
             else:
                 context_dict[attr] = str(value)
+
+    # language_nameをlanguageと同じ値に設定（後方互換性）
+    if hasattr(context, 'language'):
+        context_dict['language_name'] = str(getattr(context, 'language'))
 
     # テンプレート置換
     for key, value in context_dict.items():

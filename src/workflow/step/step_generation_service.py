@@ -182,23 +182,10 @@ def generate_steps_from_json(json_steps: List[Dict[str, Any]], context: Union['T
     simple_context = execution_context_to_simple_context(context)
     from src.infrastructure.providers import SystemOsProvider
     from src.infrastructure.providers.json_provider import SystemJsonProvider
-    step_results = run_steps(json_steps, simple_context, SystemOsProvider(), SystemJsonProvider())
+    steps = run_steps(json_steps, simple_context, SystemOsProvider(), SystemJsonProvider())
 
-    # 結果を旧形式に変換
-    steps = []
-    errors = []
-    executed_steps = []
-
-    for i, result in enumerate(step_results):
-        if not result.success and result.error_message:
-            errors.append(f"Step {i}: {result.error_message}")
-        elif not result.skipped:
-            executed_steps.append(result.step)
-
-        # when条件でスキップされていないステップは全て含める（後方互換性）
-        steps.append(result.step)
-
-    return StepGenerationResult(steps, errors, [])
+    # run_stepsはStepオブジェクトのリストを返すので、そのまま使用
+    return StepGenerationResult(steps, [], [])
 
 
 def create_step_from_json(json_step: Dict[str, Any], context: Union['TypedExecutionConfiguration', Any]) -> Step:
