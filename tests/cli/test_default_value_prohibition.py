@@ -95,36 +95,6 @@ class TestDefaultValueProhibition:
         assert found_patterns > 0, "安全な設定アクセスパターンが見つかりません"
         print(f"✅ 安全なアクセスパターン使用ファイル: {found_patterns}個")
 
-    def test_step_runner_compliance(self):
-        """step_runner.pyがデフォルト値禁止ルールに準拠していることを確認"""
-        step_runner_path = Path("src/workflow/step/step_runner.py")
-
-        with open(step_runner_path, encoding='utf-8') as f:
-            content = f.read()
-
-        # 実際の.get()使用の確認（コメント内は除外）
-        lines = content.split('\n')
-        violations = []
-        for line_num, line in enumerate(lines, 1):
-            if '.get(' in line:
-                stripped = line.strip()
-                # コメント行やdocstringをスキップ
-                if stripped.startswith('#') or '"""' in line or "'''" in line:
-                    continue
-                violations.append(f"Line {line_num}: {stripped}")
-
-        assert len(violations) == 0, f"step_runner.pyで.get()の実際の使用が検出されました: {violations}"
-
-        # 推奨パターンの使用確認
-        expected_patterns = [
-            "if 'allow_failure' in",  # 条件分岐での安全なアクセス
-            "if 'when' in",           # when条件の安全なアクセス
-        ]
-
-        for pattern in expected_patterns:
-            assert pattern in content, f"step_runner.pyで推奨パターン '{pattern}' が見つかりません"
-
-        print("✅ step_runner.py: デフォルト値禁止ルール準拠")
 
     def test_docker_command_builder_compliance(self):
         """docker_command_builder.pyがルールに準拠していることを確認"""

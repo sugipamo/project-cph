@@ -1,0 +1,12 @@
+{
+  "step_defaults": {
+    "allow_failure": false,
+    "name": null,
+    "timeout": 30,
+    "env": {},
+    "working_directory": null,
+    "retry_count": 0,
+    "parallel": false,
+    "dependencies": []
+  }
+}

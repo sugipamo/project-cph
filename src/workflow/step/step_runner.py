@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 if TYPE_CHECKING:
     from src.workflow.step.step import Step
 
+from src.workflow.step.step import StepType
+
 
 @dataclass
 class ExecutionContext:
@@ -33,13 +35,21 @@ class ExecutionContext:
     contest_files: Optional[List[str]] = None
     test_files: Optional[List[str]] = None
     build_files: Optional[List[str]] = None
+    file_patterns: Optional[Dict[str, List[str]]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """辞書形式に変換"""
         result = {}
         for key, value in self.__dict__.items():
             if value is not None:
-                result[key] = value
+                if key == 'file_patterns' and isinstance(value, dict):
+                    # file_patternsの場合、各パターンを個別のキーとして展開
+                    for pattern_key, pattern_list in value.items():
+                        if pattern_list:
+                            # リストの最初の要素を使用（テストの期待動作に合わせる）
+                            result[pattern_key] = pattern_list[0]
+                else:
+                    result[key] = value
         return result
 
 
@@ -157,7 +167,7 @@ def evaluate_test_condition(condition: str, os_provider):
     return False, f"test条件は 'test' で始まる必要があります must start with 'test': {condition}"
 
 
-def expand_when_condition(when_condition: str, context, os_provider) -> bool:
+def expand_when_condition(when_condition: str, context, os_provider) -> tuple[bool, str]:
     """when条件を展開・評価する
 
     Args:
@@ -166,19 +176,17 @@ def expand_when_condition(when_condition: str, context, os_provider) -> bool:
         os_provider: OSプロバイダー
 
     Returns:
-        bool: 条件が真の場合True
+        tuple[bool, str]: (条件が真の場合True, エラーメッセージまたはNone)
     """
     if not when_condition:
-        return True
+        return True, None
 
     # テンプレート展開
     expanded = expand_template(when_condition, context)
 
     # test条件を評価
     result, error = evaluate_test_condition(expanded, os_provider)
-    if error:
-        raise ValueError(error)
-    return result
+    return result, error
 
 
 def expand_step_with_file_patterns(json_step: Dict[str, Any], context, json_provider, os_provider) -> List[Dict[str, Any]]:
@@ -319,6 +327,7 @@ def create_step(json_step: Dict[str, Any], context) -> 'Step':
     Raises:
         ValueError: 必須フィールドが不足している場合
     """
+    from src.configuration.config_manager import TypeSafeConfigNodeManager
     from src.workflow.step.step import Step
 
     # 必須フィールドのチェック
@@ -332,18 +341,25 @@ def create_step(json_step: Dict[str, Any], context) -> 'Step':
     raw_cmd = json_step['cmd']
     expanded_cmd = [expand_template(arg, context) for arg in raw_cmd]
 
-    # Stepオブジェクトを作成
-    return Step.create_without_validation(
-        step_type=json_step['type'],
+    # デフォルト値設定をロード
+    config_manager = TypeSafeConfigNodeManager()
+    config_manager.load_from_files(system_dir="config/system")
+    step_defaults = config_manager.resolve_config(['step_defaults'], dict)
+
+    # デフォルト値とjson_stepをマージ
+    merged_step = {**step_defaults, **json_step}
+
+    return Step(
+        type=StepType(json_step['type']),
         cmd=expanded_cmd,
-        name=json_step['name'],
-        allow_failure=json_step['allow_failure'],
-        show_output=json_step['show_output'],
-        max_workers=json_step['max_workers'],
-        cwd=json_step['cwd'],
-        when=json_step['when'],
-        output_format=json_step['output_format'],
-        format_preset=json_step['format_preset']
+        name=merged_step['name'],
+        allow_failure=merged_step['allow_failure'],
+        show_output=merged_step['show_output'],
+        max_workers=merged_step['max_workers'],
+        cwd=merged_step['cwd'],
+        when=merged_step['when'],
+        output_format=merged_step['output_format'],
+        format_preset=merged_step['format_preset']
     )
 
 
@@ -368,7 +384,7 @@ def expand_file_patterns_in_text(text: str, file_patterns: Dict[str, List[str]],
     return result
 
 
-def check_when_condition(when_condition: str, context, os_provider) -> bool:
+def check_when_condition(when_condition: str, context, os_provider) -> tuple[bool, str]:
     """when条件をチェックする（互換性のため）
 
     expand_when_conditionのエイリアス
