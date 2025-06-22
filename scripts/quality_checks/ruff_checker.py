@@ -37,7 +37,7 @@ class RuffChecker:
         spinner1 = ProgressSpinner("Ruff自動修正", self.logger)
         spinner1.start()
         self._run_command(
-            ["ruff", "check", "--fix", "--unsafe-fixes"],
+            ["ruff", "check", "--fix", "--unsafe-fixes", ".", "--exclude", "tests/", "--exclude", "test_results/"],
             "Ruff自動修正"
         )
         spinner1.stop(True)
@@ -46,7 +46,7 @@ class RuffChecker:
         spinner2 = ProgressSpinner("コード品質チェック (ruff)", self.logger)
         spinner2.start()
         success, output = self._run_command(
-            ["ruff", "check"],
+            ["ruff", "check", ".", "--exclude", "tests/", "--exclude", "test_results/"],
             "コード品質チェック (ruff)"
         )
         spinner2.stop(success)

@@ -4,50 +4,40 @@
 """
 
 import ast
-import glob
 from typing import List
 
 from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger
 
+from .base.base_quality_checker import BaseQualityChecker
 
-class SyntaxChecker:
+
+class SyntaxChecker(BaseQualityChecker):
     def __init__(self, file_handler: FileHandler, logger: Logger, issues: List[str], verbose: bool = False):
-        self.file_handler = file_handler
-        self.logger = logger
-        self.issues = issues
-        self.verbose = verbose
+        super().__init__(file_handler, logger, issues, verbose)
 
     def check_syntax(self) -> bool:
+        """基本構文チェック（互換性維持用メソッド）"""
+        return self.check()
+
+    def check(self) -> bool:
         """基本構文チェック"""
-        # ProgressSpinnerクラスを直接定義
-        from infrastructure.logger import Logger
-
-        class ProgressSpinner:
-            def __init__(self, message: str, logger: Logger):
-                self.message = message
-                self.logger = logger
-
-            def start(self):
-                pass  # チェック中表示は不要
-
-            def stop(self, success: bool = True):
-                self.logger.info(f"{'✅' if success else '❌'} {self.message}")
-
         spinner = None
         if not self.verbose:
-            spinner = ProgressSpinner("構文チェック", self.logger)
+            spinner = self.create_progress_spinner("構文チェック")
             spinner.start()
 
         syntax_errors = []
-        for file_path in glob.glob('src/**/*.py', recursive=True):
+        target_files = self.get_target_files(excluded_categories=["tests"])
+
+        for file_path in target_files:
             try:
                 content = self.file_handler.read_text(file_path, encoding='utf-8')
                 ast.parse(content, filename=file_path)
             except SyntaxError as e:
                 syntax_errors.append(f'{file_path}:{e.lineno}: {e.msg}')
-            except FileNotFoundError:
-                # ファイルが見つからない場合はスキップ
+            except (FileNotFoundError, UnicodeDecodeError, OSError):
+                # ファイルが見つからない場合やエンコーディングエラーはスキップ
                 continue
 
         success = len(syntax_errors) == 0
