@@ -26,11 +26,21 @@ class RetryConfig:
             retryable_error_codes: Error codes that should trigger retries
             logger: Logger instance for logging retry attempts
         """
+        self._initialize_basic_config(max_attempts, base_delay, max_delay, backoff_factor)
+        self._initialize_error_config(retryable_errors, retryable_error_codes)
+        self.logger = logger
+
+    def _initialize_basic_config(self, max_attempts: int, base_delay: float,
+                                max_delay: float, backoff_factor: float) -> None:
+        """Initialize basic retry configuration parameters."""
         self.max_attempts = max_attempts
         self.base_delay = base_delay
         self.max_delay = max_delay
         self.backoff_factor = backoff_factor
-        # フォールバック処理は禁止、必要なエラーを見逃すことになる
+
+    def _initialize_error_config(self, retryable_errors: Optional[Tuple[Type[Exception], ...]],
+                                retryable_error_codes: Optional[Tuple[ErrorCode, ...]]) -> None:
+        """Initialize error-related configuration parameters."""
         if retryable_errors is None:
             raise ValueError("retryable_errors parameter is required")
         self.retryable_errors = retryable_errors
@@ -38,7 +48,6 @@ class RetryConfig:
         if retryable_error_codes is None:
             raise ValueError("retryable_error_codes parameter is required")
         self.retryable_error_codes = retryable_error_codes
-        self.logger = logger
 
 
 def _determine_retry_eligibility(error_type: type, error_message: str, config: RetryConfig) -> bool:
@@ -63,6 +72,33 @@ def _determine_retry_eligibility(error_type: type, error_message: str, config: R
     return issubclass(error_type, config.retryable_errors)
 
 
+def _should_retry_error(error: Exception, config: RetryConfig) -> bool:
+    """Determine if error should trigger retry."""
+    error_type = type(error)
+    should_retry = _determine_retry_eligibility(error_type, str(error), config)
+
+    if hasattr(error, 'error_code') and error.error_code in config.retryable_error_codes:
+        should_retry = True
+
+    return should_retry
+
+
+def _wait_before_retry(attempt: int, config: RetryConfig, func_name: str, error: Exception) -> None:
+    """Wait before retry with exponential backoff."""
+    delay = min(
+        config.base_delay * (config.backoff_factor ** attempt),
+        config.max_delay
+    )
+
+    if config.logger:
+        config.logger.warning(
+            f"Attempt {attempt + 1} failed for {func_name}: {error}. "
+            f"Retrying in {delay:.1f} seconds..."
+        )
+
+    time.sleep(delay)
+
+
 def retry_on_failure_with_result(config: RetryConfig):
     """Decorator to retry function calls that return Result objects.
 
@@ -73,47 +109,21 @@ def retry_on_failure_with_result(config: RetryConfig):
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs) -> Result:
-            last_error = None
-            last_error_type = None
-
             for attempt in range(config.max_attempts):
                 result = func(*args, **kwargs)
 
                 if result.is_success():
                     return result
 
-                # Get error information
                 error = result.get_error()
-                last_error = error
-                last_error_type = type(error)
+                should_retry = _should_retry_error(error, config)
 
-                # Determine if this error should be retried using explicit logic
-                should_retry = _determine_retry_eligibility(last_error_type, str(error), config)
-
-                # Check by error code (if exception has error_code attribute)
-                if hasattr(error, 'error_code') and error.error_code in config.retryable_error_codes:
-                    should_retry = True
-
-                # Don't retry on final attempt or non-retryable errors
                 if not should_retry or attempt == config.max_attempts - 1:
-                    break
+                    return Result.failure(error)
 
-                # Calculate delay with exponential backoff
-                delay = min(
-                    config.base_delay * (config.backoff_factor ** attempt),
-                    config.max_delay
-                )
+                _wait_before_retry(attempt, config, func.__name__, error)
 
-                if config.logger:
-                    config.logger.warning(
-                        f"Attempt {attempt + 1} failed for {func.__name__}: {error}. "
-                        f"Retrying in {delay:.1f} seconds..."
-                    )
-
-                time.sleep(delay)
-
-            # All attempts failed, return the last failure result
-            return Result.failure(last_error)
+            return Result.failure(error)
 
         return wrapper
     return decorator

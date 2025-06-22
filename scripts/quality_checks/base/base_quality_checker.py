@@ -15,7 +15,7 @@ from .progress_spinner import ProgressSpinner
 from .quality_config_loader import QualityConfigLoader
 
 
-class BaseQualityChecker(ABC):
+class QualityCheckExecutor(ABC):
     def __init__(self, file_handler: FileHandler, logger: Logger, issues: List[str], verbose: bool = False):
         self.file_handler = file_handler
         self.logger = logger

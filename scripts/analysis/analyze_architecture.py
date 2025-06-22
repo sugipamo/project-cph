@@ -11,6 +11,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
+from infrastructure.logger import Logger
+
 
 @dataclass
 class ModuleMetrics:
@@ -46,7 +48,8 @@ class ArchitecturalAnalysis:
 
 
 class ArchitectureAnalyzer:
-    def __init__(self):
+    def __init__(self, logger: Logger):
+        self.logger = logger
         # 期待されるレイヤー構造（Clean Architecture）
         self.expected_layers = {
             'domain': {
@@ -87,7 +90,7 @@ class ArchitectureAnalyzer:
 
     def analyze_project(self, src_dir: Path) -> ArchitecturalAnalysis:
         """プロジェクト全体を分析"""
-        print("🏗️  アーキテクチャ分析開始...")
+        self.logger.info("🏗️  アーキテクチャ分析開始...")
 
         # 1. モジュール情報収集
         self._collect_module_info(src_dir)
@@ -153,7 +156,7 @@ class ArchitectureAnalyzer:
                 }
 
             except Exception as e:
-                print(f"Warning: Failed to analyze {py_file}: {e}")
+                self.logger.warning(f"Failed to analyze {py_file}: {e}")
 
     def _analyze_dependencies(self, src_dir: Path) -> None:
         """依存関係を解析"""
@@ -355,8 +358,8 @@ class ArchitectureAnalyzer:
                     module_parts.append(part)
 
             return 'src.' + '.'.join(module_parts) if module_parts else 'src'
-        except ValueError:
-            return str(file_path)
+        except ValueError as e:
+            raise ValueError(f"Failed to convert file path to module: {file_path}") from e
 
     def _get_layer_from_module(self, module_name: str) -> Optional[str]:
         """モジュール名からレイヤーを特定"""
@@ -393,46 +396,49 @@ class ArchitectureAnalyzer:
 
 def main():
     """メイン処理"""
+    from infrastructure.logger import create_logger
+    logger = create_logger()
+
     if len(sys.argv) < 2:
-        print("Usage: python analyze_architecture.py <src_directory>")
+        logger.info("Usage: python analyze_architecture.py <src_directory>")
         sys.exit(1)
 
     src_dir = Path(sys.argv[1])
-    analyzer = ArchitectureAnalyzer()
+    analyzer = ArchitectureAnalyzer(logger)
 
     # 分析実行
     analysis = analyzer.analyze_project(src_dir)
 
     # 結果表示
-    print("\n" + "=" * 60)
-    print("📊 アーキテクチャ分析結果")
-    print("=" * 60)
+    logger.info("\n" + "=" * 60)
+    logger.info("📊 アーキテクチャ分析結果")
+    logger.info("=" * 60)
 
     # モジュールメトリクス（上位問題）
-    print("\n🎯 問題のあるモジュール (Top 10):")
+    logger.info("\n🎯 問題のあるモジュール (Top 10):")
     for i, metric in enumerate(analysis.module_metrics[:10], 1):
-        print(f"{i:2d}. {metric.name}")
-        print(f"    Distance: {metric.distance:.3f}, "
+        logger.info(f"{i:2d}. {metric.name}")
+        logger.info(f"    Distance: {metric.distance:.3f}, "
               f"Instability: {metric.instability:.3f}, "
               f"Coupling: {metric.efferent_coupling}")
 
     # レイヤー違反
     if analysis.layer_violations:
-        print(f"\n🏗️  レイヤー違反 ({len(analysis.layer_violations)}件):")
+        logger.info(f"\n🏗️  レイヤー違反 ({len(analysis.layer_violations)}件):")
         for violation in analysis.layer_violations[:5]:
-            print(f"   {violation.from_layer} -> {violation.to_layer}: "
+            logger.info(f"   {violation.from_layer} -> {violation.to_layer}: "
                   f"{violation.violation_type}")
 
     # 循環依存
     if analysis.circular_dependencies:
-        print(f"\n🔄 循環依存 ({len(analysis.circular_dependencies)}件):")
+        logger.info(f"\n🔄 循環依存 ({len(analysis.circular_dependencies)}件):")
         for cycle in analysis.circular_dependencies[:3]:
-            print(f"   {' -> '.join(cycle)}")
+            logger.info(f"   {' -> '.join(cycle)}")
 
     # 推奨事項
-    print("\n💡 推奨事項:")
+    logger.info("\n💡 推奨事項:")
     for rec in analysis.recommendations:
-        print(f"   {rec}")
+        logger.info(f"   {rec}")
 
     # JSON出力オプション
     if '--json' in sys.argv:
@@ -447,7 +453,7 @@ def main():
                 'recommendations': analysis.recommendations
             }
             json.dump(data, f, ensure_ascii=False, indent=2)
-        print(f"\n📄 詳細結果を {output_file} に出力しました")
+        logger.info(f"\n📄 詳細結果を {output_file} に出力しました")
 
 
 if __name__ == "__main__":

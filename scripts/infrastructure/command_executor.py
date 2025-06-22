@@ -32,7 +32,7 @@ class CommandExecutor(ABC):
     """コマンド実行インターフェース"""
 
     @abstractmethod
-    def run(
+    def execute_command(
         self,
         cmd: Union[List[str], str],
         capture_output: bool,
@@ -71,7 +71,7 @@ class CommandExecutor(ABC):
         pass
 
     @abstractmethod
-    def run_with_live_output(
+    def execute_command_with_live_output(
         self,
         cmd: Union[List[str], str],
         output_callback: callable,
@@ -97,7 +97,7 @@ class CommandExecutor(ABC):
 class SubprocessCommandExecutor(CommandExecutor):
     """subprocess.runを使用した実装"""
 
-    def run(
+    def execute_command(
         self,
         cmd: Union[List[str], str],
         capture_output: bool,
@@ -164,7 +164,7 @@ class SubprocessCommandExecutor(CommandExecutor):
             except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
                 raise RuntimeError(f"コマンド利用可能性チェックに失敗: {command}, エラー: {e}") from e
 
-    def run_with_live_output(
+    def execute_command_with_live_output(
         self,
         cmd: Union[List[str], str],
         output_callback: callable,
@@ -215,9 +215,9 @@ class SubprocessCommandExecutor(CommandExecutor):
             # プロセスの完了を待機
             try:
                 returncode = process.wait(timeout=timeout)
-            except subprocess.TimeoutExpired:
+            except subprocess.TimeoutExpired as e:
                 process.kill()
-                returncode = -1
+                raise subprocess.TimeoutExpired(cmd=cmd, timeout=timeout) from e
 
             # 出力スレッドの完了を待機
             output_thread.join(timeout=1.0)
@@ -253,15 +253,15 @@ class MockCommandExecutor(CommandExecutor):
         self.mock_results: Dict[str, CommandResult] = {}
         self.available_commands: set = set()
 
-    def run(
+    def execute_command(
         self,
         cmd: Union[List[str], str],
-        capture_output: bool = True,
-        text: bool = True,
-        cwd: Optional[str] = None,
-        timeout: Optional[float] = None,
-        env: Optional[Dict[str, str]] = None,
-        check: bool = False
+        capture_output: bool,
+        text: bool,
+        cwd: Optional[str],
+        timeout: Optional[float],
+        env: Optional[Dict[str, str]],
+        check: bool
     ) -> CommandResult:
         """モックコマンド実行"""
         # 実行されたコマンドを記録
@@ -306,13 +306,13 @@ class MockCommandExecutor(CommandExecutor):
         """実行されたコマンドのリストを取得"""
         return self.executed_commands.copy()
 
-    def run_with_live_output(
+    def execute_command_with_live_output(
         self,
         cmd: Union[List[str], str],
         output_callback: callable,
-        cwd: Optional[str] = None,
-        timeout: Optional[float] = None,
-        env: Optional[Dict[str, str]] = None
+        cwd: Optional[str],
+        timeout: Optional[float],
+        env: Optional[Dict[str, str]]
     ) -> CommandResult:
         """モックライブ出力実行"""
         # 実行されたコマンドを記録
@@ -345,7 +345,7 @@ class MockCommandExecutor(CommandExecutor):
         )
 
 
-def create_command_executor(mock: bool = False) -> CommandExecutor:
+def create_command_executor(mock: bool) -> CommandExecutor:
     """CommandExecutorのファクトリ関数
 
     Args:

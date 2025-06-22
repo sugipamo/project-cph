@@ -3,6 +3,7 @@
 Scripts配下で3番目に重要な副作用であるファイル操作を
 依存性注入可能な形で抽象化
 """
+import json
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -146,6 +147,19 @@ class FileHandler(ABC):
         """
         pass
 
+    @abstractmethod
+    def read_json(self, file_path: Union[str, Path], encoding: str = "utf-8") -> Dict[str, Any]:
+        """JSONファイルを読み込み
+
+        Args:
+            file_path: JSONファイルパス
+            encoding: エンコーディング
+
+        Returns:
+            Dict[str, Any]: JSONの内容
+        """
+        pass
+
 
 class LocalFileHandler(FileHandler):
     """ローカルファイルシステムを使用した実装"""
@@ -231,6 +245,12 @@ class LocalFileHandler(FileHandler):
         # 移動先の親ディレクトリを作成
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(src, dst)
+
+    def read_json(self, file_path: Union[str, Path], encoding: str = "utf-8") -> Dict[str, Any]:
+        """JSONファイルを読み込み"""
+        path = Path(file_path)
+        with open(path, encoding=encoding) as f:
+            return json.load(f)
 
 
 class MockFileHandler(FileHandler):
@@ -350,6 +370,17 @@ class MockFileHandler(FileHandler):
             self.files[dst] = self.files[src]
             del self.files[src]
 
+    def read_json(self, file_path: Union[str, Path], encoding: str = "utf-8") -> Dict[str, Any]:
+        """JSONファイルを読み込み"""
+        path = self._normalize_path(file_path)
+        self._record_operation('read_json', file_path=path, encoding=encoding)
+
+        if path not in self.files:
+            raise FileNotFoundError(f"No such file: {path}")
+
+        content = self.files[path]
+        return json.loads(content)
+
     def get_operations(self) -> List[Dict[str, Any]]:
         """操作履歴を取得"""
         return self.operations.copy()
@@ -365,7 +396,7 @@ class MockFileHandler(FileHandler):
         self.directories.add(path)
 
 
-def create_file_handler(mock: bool = False) -> FileHandler:
+def create_file_handler(mock: bool) -> FileHandler:
     """FileHandlerのファクトリ関数
 
     Args:

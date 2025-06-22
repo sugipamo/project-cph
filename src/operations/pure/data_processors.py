@@ -30,13 +30,14 @@ def group_items_by_key(items: list[Any], key_func) -> dict[Any, list[Any]]:
     Returns:
         Dictionary with grouped items
     """
-    groups = {}
-    for item in items:
+    from functools import reduce
+
+    def add_to_group(acc: dict, item):
         key = key_func(item)
-        if key not in groups:
-            groups[key] = []
-        groups[key].append(item)
-    return groups
+        current_group = acc.get(key, [])
+        return {**acc, key: [*current_group, item]}
+
+    return reduce(add_to_group, items, {})
 
 
 def merge_dictionaries(*dicts: dict[str, Any]) -> dict[str, Any]:

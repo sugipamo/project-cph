@@ -105,14 +105,14 @@ def parse_container_names(container_output: str) -> list[str]:
     if not lines or len(lines) < 2:  # Header + at least one container
         return []
 
-    container_names = []
-    for line in lines[1:]:  # Skip header
+    def extract_container_name(line: str) -> Optional[str]:
         parts = line.split()
         if len(parts) >= 1:
-            # Container name is typically the last column
-            container_names.append(parts[-1])
+            return parts[-1]
+        return None
 
-    return container_names
+    container_names = [extract_container_name(line) for line in lines[1:]]
+    return [name for name in container_names if name is not None]
 
 
 def normalize_filesystem_path(path: str) -> str:
@@ -129,19 +129,18 @@ def normalize_filesystem_path(path: str) -> str:
 
     # Split by both / and \ to handle cross-platform paths
     parts = path.replace('\\', '/').split('/')
-    normalized_parts = []
 
-    for part in parts:
+    def process_part(acc: list, part: str) -> list:
         if part == '' or part == '.':
-            continue
+            return acc
         if part == '..':
-            if normalized_parts and normalized_parts[-1] != '..':
-                normalized_parts.pop()
-            else:
-                normalized_parts.append('..')
-        else:
-            normalized_parts.append(part)
+            if acc and acc[-1] != '..':
+                return acc[:-1]
+            return [*acc, '..']
+        return [*acc, part]
 
+    from functools import reduce
+    normalized_parts = reduce(process_part, parts, [])
     result = '/'.join(normalized_parts)
 
     # Preserve leading slash for absolute paths

@@ -1,8 +1,9 @@
 """Request factory for creating request objects from steps"""
 from typing import Any, Optional
 
+from src.infrastructure.di_container import DIKey
 from src.operations.requests.base.base_request import OperationRequestFoundation
-from src.operations.requests.docker.docker_request import DockerRequest
+from src.operations.requests.docker.docker_request import DockerOpType, DockerRequest
 from src.operations.requests.file.file_op_type import FileOpType
 from src.operations.requests.file.file_request import FileRequest
 from src.operations.requests.python.python_request import PythonRequest
@@ -66,7 +67,6 @@ class RequestFactory:
 
     def _create_docker_build_request(self, step: Step, context: Any, env_manager: Any) -> DockerRequest:
         """Create docker build request"""
-        from src.operations.requests.docker.docker_request import DockerOpType
 
         # Extract tag from build command
         tag = None
@@ -92,7 +92,6 @@ class RequestFactory:
 
     def _create_docker_run_request(self, step: Step, context: Any, env_manager: Any) -> DockerRequest:
         """Create docker run request"""
-        from src.operations.requests.docker.docker_request import DockerOpType
 
         # Extract container name and image from run command
         container_name = None
@@ -123,7 +122,6 @@ class RequestFactory:
 
     def _create_docker_exec_request(self, step: Step, context: Any, env_manager: Any) -> DockerRequest:
         """Create docker exec request"""
-        from src.operations.requests.docker.docker_request import DockerOpType
 
         # Container name is typically the first argument after exec
         if not step.cmd:
@@ -160,7 +158,6 @@ class RequestFactory:
 
     def _create_docker_commit_request(self, step: Step, context: Any) -> DockerRequest:
         """Create docker commit request"""
-        from src.operations.requests.docker.docker_request import DockerOpType
 
         # Container and image are typically the first two arguments
         if not step.cmd:
@@ -197,7 +194,6 @@ class RequestFactory:
 
     def _create_docker_rm_request(self, step: Step, context: Any) -> DockerRequest:
         """Create docker rm request"""
-        from src.operations.requests.docker.docker_request import DockerOpType
 
         if not step.cmd:
             if self.config_manager:
@@ -223,7 +219,6 @@ class RequestFactory:
 
     def _create_docker_rmi_request(self, step: Step, context: Any) -> DockerRequest:
         """Create docker rmi request"""
-        from src.operations.requests.docker.docker_request import DockerOpType
 
         if not step.cmd:
             if self.config_manager:
@@ -423,7 +418,6 @@ def create_request(step: Step, context: Any) -> Optional[OperationRequestFoundat
 
     This function maintains backward compatibility with the old API
     """
-    from src.infrastructure.di_container import DIKey
 
     # contextがinfrastructure属性を持っている場合（TypedExecutionConfiguration）
     if hasattr(context, 'infrastructure'):

@@ -39,7 +39,7 @@ class SmokeTest:
             spinner.start()
 
         # メインモジュールのインポートテスト
-        result = self.command_executor.run(
+        result = self.command_executor.execute_command(
             cmd=[
                 "python3", "-c",
                 "import sys; sys.path.insert(0, '.'); "

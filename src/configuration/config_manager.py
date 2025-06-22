@@ -600,20 +600,29 @@ class TypeSafeConfigNodeManager:
         if self.root_node is None:
             raise ConfigurationError("Configuration not loaded. Call load_from_files() first.")
 
-        # ExecutionConfig生成キャッシュ
         cache_key = (contest_name, problem_name, language, env_type, command_type)
         if cache_key in self._execution_config_cache:
             return self._execution_config_cache[cache_key]
 
-        context = {
+        context = self._create_execution_context(contest_name, problem_name, language, env_type)
+        config = self._build_execution_configuration(contest_name, problem_name, language, env_type, command_type, context)
+        self._cache_execution_config(cache_key, config)
+        return config
+
+    def _create_execution_context(self, contest_name: str, problem_name: str, language: str, env_type: str) -> dict:
+        """実行コンテキストを作成"""
+        workspace = self._resolve_workspace_path()
+        return {
             'contest_name': contest_name,
             'problem_name': problem_name,
             'language': language,
-            'env_type': env_type
+            'env_type': env_type,
+            'workspace': workspace,
+            'language_name': language
         }
 
-        # 設定からワークスペースパスなどを取得
-        # 複数のパスを試行してワークスペースパスを取得
+    def _resolve_workspace_path(self) -> str:
+        """ワークスペースパスを解決"""
         workspace_paths = [
             ['paths', 'local_workspace_path'],
             ['workspace'],
@@ -621,36 +630,27 @@ class TypeSafeConfigNodeManager:
             ['base_path']
         ]
 
-        workspace = None
         for path in workspace_paths:
             try:
-                workspace = self.resolve_config(path, str)
-                break
+                return self.resolve_config(path, str)
             except (KeyError, TypeError):
                 continue
 
-        if workspace is None:
-            # デフォルト値禁止: 設定が存在しない場合はエラー
-            raise KeyError("ワークスペースパスの設定が見つかりません。以下のいずれかの設定が必要です: paths.local_workspace_path, workspace, local_workspace_path, base_path")
+        raise KeyError("ワークスペースパスの設定が見つかりません。以下のいずれかの設定が必要です: paths.local_workspace_path, workspace, local_workspace_path, base_path")
 
-        context['workspace'] = workspace
-        # Add language_name to context for template resolution
-        context['language_name'] = language
-
-        config = TypedExecutionConfiguration(
+    def _build_execution_configuration(self, contest_name: str, problem_name: str, language: str,
+                                     env_type: str, command_type: str, context: dict) -> TypedExecutionConfiguration:
+        """ExecutionConfigurationを構築"""
+        return TypedExecutionConfiguration(
             contest_name=contest_name,
             problem_name=problem_name,
             language=language,
             env_type=env_type,
             command_type=command_type,
-
-            # 型安全なパステンプレート展開
             local_workspace_path=self.resolve_template_to_path("{workspace}", context),
             contest_current_path=self.resolve_template_to_path(
                 self.resolve_config(['paths', 'contest_current_path'], str), context
             ),
-
-            # Additional path templates required by workflow system - no defaults allowed
             contest_stock_path=self.resolve_template_to_path(
                 self.resolve_config(['paths', 'contest_stock_path'], str), context
             ),
@@ -660,25 +660,20 @@ class TypeSafeConfigNodeManager:
             contest_temp_path=self.resolve_template_to_path(
                 self.resolve_config(['paths', 'contest_temp_path'], str), context
             ),
-
-            # 型安全な設定解決（複数のパスを試行）
             timeout_seconds=self._resolve_timeout_with_fallbacks(),
             language_id=self.resolve_config([language, 'language_id'], str),
             source_file_name=self.resolve_config([language, 'source_file_name'], str),
             run_command=self.resolve_config([language, 'run_command'], str),
             debug_mode=self._resolve_debug_mode(),
-
-            # ConfigNodeの参照を渡す（テンプレート解決用）
             _root_node=self.root_node
         )
 
-        # キャッシュに保存（LRU制限）
+    def _cache_execution_config(self, cache_key: tuple, config: TypedExecutionConfiguration) -> None:
+        """ExecutionConfigをキャッシュ"""
         if len(self._execution_config_cache) > 1000:
             oldest_key = next(iter(self._execution_config_cache))
             del self._execution_config_cache[oldest_key]
-
         self._execution_config_cache[cache_key] = config
-        return config
 
     def _resolve_debug_mode(self) -> bool:
         """デバッグモードの解決（複数パスを試行）"""

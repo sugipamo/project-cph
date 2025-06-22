@@ -14,14 +14,8 @@ from infrastructure.logger import Logger
 
 
 class TestRunner:
-    def __init__(self, verbose: bool = False, logger: Logger = None, command_executor: CommandExecutor = None, file_handler: FileHandler = None):
+    def __init__(self, verbose: bool, logger: Logger, command_executor: CommandExecutor, file_handler: FileHandler):
         self.verbose = verbose
-        if logger is None:
-            raise ValueError("Logger is required")
-        if command_executor is None:
-            raise ValueError("CommandExecutor is required")
-        if file_handler is None:
-            raise ValueError("FileHandler is required")
         self.logger = logger
         self.command_executor = command_executor
         self.file_handler = file_handler
@@ -50,7 +44,7 @@ class TestRunner:
             spinner = ProgressSpinner(description, self.logger)
             spinner.start()
 
-        result = self.command_executor.run(
+        result = self.command_executor.execute_command(
             cmd=cmd,
             capture_output=True,
             text=True,
@@ -135,7 +129,7 @@ class TestRunner:
 
         # CommandExecutorを使用してテストを実行
         # ライブプログレス表示のため、CommandExecutorの結果を使用
-        result = self.command_executor.run(
+        result = self.command_executor.execute_command(
             cmd=cmd,
             capture_output=True,
             text=True,

@@ -11,10 +11,10 @@ from infrastructure.command_executor import CommandExecutor
 from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger
 
-from .base.base_quality_checker import BaseQualityChecker
+from .base.base_quality_checker import QualityCheckExecutor
 
 
-class DictGetChecker(BaseQualityChecker):
+class DictGetChecker(QualityCheckExecutor):
     def __init__(self, file_handler: FileHandler, command_executor: CommandExecutor, logger: Logger, issues: List[str], verbose: bool = False):
         super().__init__(file_handler, logger, issues, verbose)
         self.command_executor = command_executor
@@ -143,7 +143,7 @@ class DictGetChecker(BaseQualityChecker):
 
         success = True
         for target_dir in target_directories:
-            result = self.command_executor.run(
+            result = self.command_executor.execute_command(
                 cmd=["python3", script_path, f"{target_dir}/"],
                 capture_output=True,
                 text=True,

@@ -47,27 +47,9 @@ class EnvironmentManager:
         Returns:
             OperationResult indicating success/failure
         """
-        # Simple direct implementation
-        mock_request = Mock()
-        mock_request.operation_type = "prepare_environment"
-        mock_exception = Exception("No error - successful operation")
-        return OperationResult(
-            success=True,
-            returncode=0,
-            stdout=None,
-            stderr=None,
-            content=None,
-            exists=None,
-            path=None,
-            op="prepare_environment",
-            cmd=None,
-            request=mock_request,
-            start_time=None,
-            end_time=None,
-            error_message=f"Environment {self._env_type} prepared",
-            exception=mock_exception,
-            metadata={},
-            skipped=False
+        return self._create_success_result(
+            operation="prepare_environment",
+            message=f"Environment {self._env_type} prepared"
         )
 
     def cleanup_environment(self, context: Any) -> OperationResult:
@@ -79,9 +61,15 @@ class EnvironmentManager:
         Returns:
             OperationResult indicating success/failure
         """
-        # Simple direct implementation
+        return self._create_success_result(
+            operation="cleanup_environment",
+            message=f"Environment {self._env_type} cleaned up"
+        )
+
+    def _create_success_result(self, operation: str, message: str) -> OperationResult:
+        """Create a successful OperationResult."""
         mock_request = Mock()
-        mock_request.operation_type = "cleanup_environment"
+        mock_request.operation_type = operation
         mock_exception = Exception("No error - successful operation")
         return OperationResult(
             success=True,
@@ -91,12 +79,12 @@ class EnvironmentManager:
             content=None,
             exists=None,
             path=None,
-            op="cleanup_environment",
+            op=operation,
             cmd=None,
             request=mock_request,
             start_time=None,
             end_time=None,
-            error_message=f"Environment {self._env_type} cleaned up",
+            error_message=message,
             exception=mock_exception,
             metadata={},
             skipped=False

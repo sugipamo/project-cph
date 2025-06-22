@@ -200,8 +200,8 @@ class FunctionalQualityChecker(ast.NodeVisitor):
             return f"{base}.{node.attr}"
         try:
             return ast.unparse(node)
-        except Exception:
-            return "unknown"
+        except Exception as e:
+            raise Exception(f"Failed to unparse AST node: {e}") from e
 
     def _is_stderr_print(self, node: ast.Call) -> bool:
         """print文がfile=sys.stderrを使用しているかチェック"""
@@ -282,19 +282,11 @@ def check_file(file_path: str) -> List[QualityIssue]:
         return func_checker.issues  # + dataclass_checker.issues
 
     except Exception as e:
-        return [QualityIssue(
-            file=file_path,
-            line=0,
-            issue_type='parse_error',
-            description=f'ファイル解析エラー: {e}',
-            severity='error'
-        )]
+        raise Exception(f"Failed to analyze functional quality in {file_path}: {e}") from e
 
 
-def main(logger: Logger = None):
+def main(logger: Logger):
     """メイン関数"""
-    if logger is None:
-        logger = create_logger()
 
     if len(sys.argv) < 2:
         logger.error("使用方法: python3 functional_quality_check.py <directory>")
@@ -362,4 +354,5 @@ def main(logger: Logger = None):
 
 
 if __name__ == "__main__":
-    main()
+    logger = create_logger()
+    main(logger)

@@ -11,10 +11,10 @@ from typing import List
 from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger
 
-from .base.base_quality_checker import BaseQualityChecker
+from .base.base_quality_checker import QualityCheckExecutor
 
 
-class NamingChecker(BaseQualityChecker):
+class NamingChecker(QualityCheckExecutor):
     def __init__(self, file_handler: FileHandler, logger: Logger, warnings: List[str], verbose: bool = False):
         super().__init__(file_handler, logger, warnings, verbose)
 

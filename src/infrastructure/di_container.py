@@ -71,35 +71,38 @@ class DIContainer:
         Returns:
             Resolved dependency instance
         """
-        # Override takes priority
+        provider = self._get_provider(key)
+        return self._create_instance_with_dependencies(provider)
+
+    def _get_provider(self, key: Union[str, DIKey]) -> Callable:
+        """Get provider for the given key."""
         if key in self._overrides:
-            provider = self._overrides[key]
-        elif key in self._providers:
-            provider = self._providers[key]
-        else:
-            provider = None
+            return self._overrides[key]
+        if key in self._providers:
+            return self._providers[key]
+        raise ValueError(f"{key} is not registered")
 
-        if provider is None:
-            raise ValueError(f"{key} is not registered")
-
-        # Auto dependency resolution from provider argument names
+    def _create_instance_with_dependencies(self, provider: Callable) -> Any:
+        """Create instance by resolving provider dependencies."""
         sig = inspect.signature(provider)
         if len(sig.parameters) == 0:
             return provider()
 
+        kwargs = self._resolve_provider_dependencies(sig.parameters)
+        return provider(**kwargs)
+
+    def _resolve_provider_dependencies(self, parameters) -> dict:
+        """Resolve all dependencies for provider parameters."""
         kwargs = {}
-        for name in sig.parameters:
-            # Try to resolve parameter by name
+        for name in parameters:
             try:
                 if name.upper() in DIKey.__members__:
                     kwargs[name] = self.resolve(DIKey[name.upper()])
                 else:
                     kwargs[name] = self.resolve(name)
             except ValueError:
-                # If dependency not found, skip (allow optional dependencies)
                 pass
-
-        return provider(**kwargs)
+        return kwargs
 
     def override(self, key: Union[str, DIKey], provider: Callable) -> None:
         """Override a dependency (useful for testing).

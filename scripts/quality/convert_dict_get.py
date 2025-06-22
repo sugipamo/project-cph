@@ -104,11 +104,10 @@ def convert_file_ast(file_path: Path, dry_run: bool = True) -> List[str]:
 
         return []
 
-    except ImportError:
-        # astorが利用できない場合は正規表現ベースにフォールバック
-        return convert_file_regex(file_path, dry_run)
+    except ImportError as e:
+        raise ImportError(f"Required dependency 'astor' not available: {e}") from e
     except (SyntaxError, UnicodeDecodeError) as e:
-        return [f"ファイル解析エラー: {e}"]
+        raise Exception(f"Failed to parse file {file_path}: {e}") from e
 
 
 def convert_file_regex(file_path: Path, dry_run: bool = True) -> List[str]:

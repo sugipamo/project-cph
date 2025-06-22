@@ -73,11 +73,14 @@ class AstQualityChecker(ast.NodeVisitor):
 
         result = []
         for issue in self.issues:
-            severity_symbol = {
+            severity_symbols = {
                 'error': '❌',
                 'warning': '⚠️',
                 'info': 'ℹ️'
-            }.get(issue.severity, '⚠️')
+            }
+            if issue.severity not in severity_symbols:
+                raise ValueError(f"Unknown severity: {issue.severity}")
+            severity_symbol = severity_symbols[issue.severity]
 
             result.append(f"{severity_symbol} {Path(issue.file).name}:{issue.line} - {issue.description}")
             if issue.details:

@@ -53,7 +53,7 @@ class E2ETester:
 
     def run_step(self, step: TestStep, cmd_index: int) -> None:
         self.logger.info(f"実行: {' '.join(step.command)}")
-        result = self.command_executor.run(
+        result = self.command_executor.execute_command(
             cmd=step.command,
             capture_output=True,
             text=True,

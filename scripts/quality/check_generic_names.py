@@ -205,4 +205,5 @@ def main(logger: Logger):
         logger.info("✅ 汎用名チェック完了")
 
 if __name__ == "__main__":
-    main()
+    logger = Logger("check_generic_names")
+    main(logger)

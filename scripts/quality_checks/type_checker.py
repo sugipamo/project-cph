@@ -10,10 +10,10 @@ from infrastructure.command_executor import CommandExecutor
 from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger
 
-from .base.base_quality_checker import BaseQualityChecker
+from .base.base_quality_checker import QualityCheckExecutor
 
 
-class TypeChecker(BaseQualityChecker):
+class TypeChecker(QualityCheckExecutor):
     def __init__(self, file_handler: FileHandler, command_executor: CommandExecutor, logger: Logger, issues: List[str], verbose: bool = False):
         super().__init__(file_handler, logger, issues, verbose)
         self.command_executor = command_executor
@@ -30,7 +30,7 @@ class TypeChecker(BaseQualityChecker):
             spinner.start()
 
         # mypyが利用可能かチェック
-        result = self.command_executor.run(
+        result = self.command_executor.execute_command(
             cmd=["python3", "-m", "mypy", "--version"],
             capture_output=True,
             text=True,
@@ -72,7 +72,7 @@ class TypeChecker(BaseQualityChecker):
 
     def _run_command(self, cmd: List[str], description: str) -> Tuple[bool, str]:
         """コマンドを実行し、結果を返す"""
-        result = self.command_executor.run(
+        result = self.command_executor.execute_command(
             cmd=cmd,
             capture_output=True,
             text=True,

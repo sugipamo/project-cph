@@ -33,7 +33,7 @@ class DeadCodeChecker:
                 self.logger.info(f"{'✅' if success else '❌'} {self.message}")
 
         # vultureが利用可能かチェック
-        result = self.command_executor.run(
+        result = self.command_executor.execute_command(
             cmd=["vulture", "--version"],
             capture_output=True,
             text=True,
@@ -79,7 +79,7 @@ class DeadCodeChecker:
         """コマンドを実行し、結果を返す"""
         from pathlib import Path
 
-        result = self.command_executor.run(
+        result = self.command_executor.execute_command(
             cmd=cmd,
             capture_output=True,
             text=True,

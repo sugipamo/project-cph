@@ -32,8 +32,8 @@ class MainTestRunner:
     def __init__(self, verbose: bool = False):
         self.verbose = verbose
         self.logger = create_logger(verbose=verbose)
-        self.command_executor = create_command_executor()
-        self.file_handler = create_file_handler()
+        self.command_executor = create_command_executor(mock=False)
+        self.file_handler = create_file_handler(mock=False)
 
         # メインテストランナーの初期化
         self.test_runner = TestRunner(

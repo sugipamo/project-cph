@@ -57,8 +57,8 @@ def analyze_imports(file_path: str) -> Tuple[List[str], List[Tuple[str, List[str
         analyzer.visit(tree)
 
         return analyzer.imports, analyzer.from_imports
-    except Exception:
-        return [], []
+    except Exception as e:
+        raise Exception(f"Failed to analyze imports in {file_path}: {e}") from e
 
 
 def check_file_size_limits(directory: str) -> List[ArchitectureIssue]:

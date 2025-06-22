@@ -3,22 +3,27 @@
 品質チェッカー設定読み込みユーティリティ
 """
 
-import json
 from pathlib import Path
 from typing import Any, Dict, List
 
+from infrastructure.file_handler import FileHandler
+
 
 class QualityConfigLoader:
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: str, file_handler: FileHandler = None):
         self._config_path = Path(config_path)
+        # 互換性維持: デフォルトでローカルファイルハンドラーを使用
+        if file_handler is None:
+            from infrastructure.file_handler import create_file_handler
+            file_handler = create_file_handler(mock=False)
+        self._file_handler = file_handler
         self._config = self._load_config()
 
     def _load_config(self) -> Dict[str, Any]:
         if not self._config_path.exists():
             raise FileNotFoundError(f"設定ファイルが存在しません: {self._config_path}")
 
-        with open(self._config_path, encoding='utf-8') as f:
-            return json.load(f)
+        return self._file_handler.read_json(str(self._config_path))
 
     def get_target_directories(self) -> List[str]:
         """チェック対象ディレクトリを取得"""

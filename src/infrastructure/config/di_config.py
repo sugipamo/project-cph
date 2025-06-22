@@ -345,7 +345,26 @@ def configure_production_dependencies(container: DIContainer) -> None:
 
 def configure_test_dependencies(container: DIContainer) -> None:
     """Configure test dependencies with mocks."""
-    # Import mock implementations lazily
+    _register_mock_providers(container)
+    _register_mock_drivers(container)
+    _register_test_persistence(container)
+    _register_orchestration_layer(container)
+    _register_test_logging(container)
+    _register_environment_and_factory(container)
+    _register_mock_interfaces(container)
+    _register_workspace_management(container)
+    _register_compatibility_aliases(container)
+
+def _register_mock_providers(container: DIContainer) -> None:
+    """Register mock providers."""
+    container.register(DIKey.JSON_PROVIDER, _create_mock_json_provider)
+    container.register(DIKey.SQLITE_PROVIDER, _create_mock_sqlite_provider)
+    container.register(DIKey.OS_PROVIDER, _create_mock_os_provider)
+    container.register(DIKey.SYS_PROVIDER, _create_mock_sys_provider)
+    container.register(DIKey.CONFIGURATION_REPOSITORY, lambda: _create_configuration_repository(container))
+
+def _register_mock_drivers(container: DIContainer) -> None:
+    """Register mock drivers."""
     def _create_mock_file_driver():
         from src.infrastructure.mock.mock_file_driver import MockFileDriver
         return MockFileDriver(base_dir=Path('.'))
@@ -363,33 +382,18 @@ def configure_test_dependencies(container: DIContainer) -> None:
         from src.infrastructure.mock.mock_python_driver import MockPythonDriver
         return MockPythonDriver()
 
-    def _create_test_sqlite_manager():
-        from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
-        sqlite_provider = container.resolve(DIKey.SQLITE_PROVIDER)
-        return FastSQLiteManager(":memory:", skip_migrations=False, sqlite_provider=sqlite_provider)
-
-    def _create_mock_logger():
-        # Use unified logger with mock output manager for testing
-        return lambda: _create_unified_logger(container)
-
-    def _create_mock_filesystem():
-        from tests.base.mock_filesystem import MockFileSystem
-        return MockFileSystem()
-
-    # Register mock providers (副作用集約)
-    container.register(DIKey.JSON_PROVIDER, _create_mock_json_provider)
-    container.register(DIKey.SQLITE_PROVIDER, _create_mock_sqlite_provider)
-    container.register(DIKey.OS_PROVIDER, _create_mock_os_provider)
-    container.register(DIKey.SYS_PROVIDER, _create_mock_sys_provider)
-    container.register(DIKey.CONFIGURATION_REPOSITORY, lambda: _create_configuration_repository(container))
-
-    # Register mock drivers
     container.register(DIKey.SHELL_DRIVER, lambda: _create_mock_shell_driver(container.resolve(DIKey.FILE_DRIVER)))
     container.register(DIKey.DOCKER_DRIVER, _create_mock_docker_driver)
     container.register(DIKey.FILE_DRIVER, _create_mock_file_driver)
     container.register(DIKey.PYTHON_DRIVER, _create_mock_python_driver)
 
-    # Register test persistence layer
+def _register_test_persistence(container: DIContainer) -> None:
+    """Register test persistence layer."""
+    def _create_test_sqlite_manager():
+        from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
+        sqlite_provider = container.resolve(DIKey.SQLITE_PROVIDER)
+        return FastSQLiteManager(":memory:", skip_migrations=False, sqlite_provider=sqlite_provider)
+
     container.register(DIKey.SQLITE_MANAGER, lambda: _create_test_sqlite_manager())
     container.register(DIKey.OPERATION_REPOSITORY, lambda: _create_operation_repository(container))
     container.register(DIKey.SESSION_REPOSITORY, _create_session_repository)
@@ -397,37 +401,55 @@ def configure_test_dependencies(container: DIContainer) -> None:
     container.register(DIKey.DOCKER_IMAGE_REPOSITORY, _create_docker_image_repository)
     container.register(DIKey.SYSTEM_CONFIG_REPOSITORY, lambda: _create_system_config_repository(container))
 
-    # Register orchestration layer
+def _register_orchestration_layer(container: DIContainer) -> None:
+    """Register orchestration layer."""
     container.register(DIKey.UNIFIED_DRIVER, lambda: _create_unified_driver(container))
     container.register(DIKey.EXECUTION_CONTROLLER, _create_execution_controller)
     container.register(DIKey.OUTPUT_MANAGER, _create_output_manager)
 
-    # Register test logging layer
+def _register_test_logging(container: DIContainer) -> None:
+    """Register test logging layer."""
     container.register(DIKey.LOGGING_OUTPUT_MANAGER, _create_mock_logging_output_manager)
     container.register(DIKey.APPLICATION_LOGGER, lambda: _create_application_logger_adapter(container))
     container.register(DIKey.WORKFLOW_LOGGER, lambda: _create_workflow_logger_adapter(container))
     container.register(DIKey.UNIFIED_LOGGER, lambda: _create_unified_logger(container))
 
-    # Register environment and factory
+def _register_environment_and_factory(container: DIContainer) -> None:
+    """Register environment and factory."""
     container.register(DIKey.ENVIRONMENT_MANAGER, lambda: _create_environment_manager(container))
     container.register(DIKey.UNIFIED_REQUEST_FACTORY, lambda: _create_request_factory(container))
 
-    # Register mock interfaces
+def _register_mock_interfaces(container: DIContainer) -> None:
+    """Register mock interfaces."""
+    def _create_mock_logger():
+        return lambda: _create_unified_logger(container)
+
+    def _create_mock_filesystem():
+        from tests.base.mock_filesystem import MockFileSystem
+        return MockFileSystem()
+
     container.register("logger", _create_mock_logger())
     container.register("filesystem", _create_mock_filesystem)
 
-    # Register simplified workspace management
+def _register_workspace_management(container: DIContainer) -> None:
+    """Register simplified workspace management."""
     container.register("json_config_loader", lambda: _create_json_config_loader(container))
-    container.register("config_manager", lambda: _create_json_config_loader(container))  # config_managerエイリアスを追加
+    container.register("config_manager", lambda: _create_json_config_loader(container))
     container.register("system_config_loader", lambda: _create_system_config_loader(container))
     container.register("contest_manager", lambda: _create_contest_manager(container))
 
-    # Register string-based aliases for backward compatibility
-    container.register('shell_driver', lambda: container.resolve(DIKey.SHELL_DRIVER))
-    container.register('docker_driver', lambda: container.resolve(DIKey.DOCKER_DRIVER))
-    container.register('file_driver', lambda: container.resolve(DIKey.FILE_DRIVER))
-    container.register('python_driver', lambda: container.resolve(DIKey.PYTHON_DRIVER))
-    container.register('persistence_driver', lambda: container.resolve(DIKey.PERSISTENCE_DRIVER))
-    container.register('unified_driver', lambda: container.resolve(DIKey.UNIFIED_DRIVER))
-    container.register('sqlite_manager', lambda: container.resolve(DIKey.SQLITE_MANAGER))
-    container.register('unified_logger', lambda: container.resolve(DIKey.UNIFIED_LOGGER))
+def _register_compatibility_aliases(container: DIContainer) -> None:
+    """Register string-based aliases for backward compatibility."""
+    aliases = {
+        'shell_driver': DIKey.SHELL_DRIVER,
+        'docker_driver': DIKey.DOCKER_DRIVER,
+        'file_driver': DIKey.FILE_DRIVER,
+        'python_driver': DIKey.PYTHON_DRIVER,
+        'persistence_driver': DIKey.PERSISTENCE_DRIVER,
+        'unified_driver': DIKey.UNIFIED_DRIVER,
+        'sqlite_manager': DIKey.SQLITE_MANAGER,
+        'unified_logger': DIKey.UNIFIED_LOGGER
+    }
+
+    for alias, key in aliases.items():
+        container.register(alias, lambda k=key: container.resolve(k))
