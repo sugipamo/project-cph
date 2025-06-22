@@ -2,7 +2,7 @@
 """
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 
 class StepType(Enum):
@@ -50,9 +50,9 @@ class StepContext:
     contest_temp_path: Optional[str] = None
     source_file_name: Optional[str] = None
     language_id: Optional[str] = None
-    file_patterns: Optional[dict[str, list[str]]] = None
+    file_patterns: Optional[Dict[str, List[str]]] = None
 
-    def _get_required_path(self, path_value, name):
+    def _get_required_path(self, path_value: Optional[str], name: str) -> str:
         """Get required path value.
 
         Args:
@@ -69,7 +69,7 @@ class StepContext:
             raise ValueError(f"Required path '{name}' is None or empty")
         return str(path_value)
 
-    def _get_required_filename(self, filename_value, name):
+    def _get_required_filename(self, filename_value: Optional[str], name: str) -> str:
         """Get required filename value.
 
         Args:
@@ -86,7 +86,7 @@ class StepContext:
             raise ValueError(f"Required filename '{name}' is None or empty")
         return str(filename_value)
 
-    def _get_required_identifier(self, identifier_value, name):
+    def _get_required_identifier(self, identifier_value: Optional[str], name: str) -> str:
         """Get required identifier value.
 
         Args:
@@ -103,7 +103,7 @@ class StepContext:
             raise ValueError(f"Required identifier '{name}' is None or empty")
         return str(identifier_value)
 
-    def to_format_dict(self) -> dict[str, str]:
+    def to_format_dict(self) -> Dict[str, str]:
         """文字列フォーマット用の辞書を生成"""
         format_dict = {
             'contest_name': self.contest_name,
@@ -135,12 +135,12 @@ class StepContext:
 class Step:
     """実行可能な単一ステップを表現する不変データクラス"""
     type: StepType
-    cmd: list[str]
+    cmd: List[str]
     allow_failure: bool = False
     show_output: bool = False
     cwd: Optional[str] = None
     force_env_type: Optional[str] = None
-    format_options: Optional[dict[str, Any]] = None
+    format_options: Optional[Dict[str, Any]] = None
     output_format: Optional[str] = None
     format_preset: Optional[str] = None
     when: Optional[str] = None
@@ -148,7 +148,7 @@ class Step:
     auto_generated: bool = False  # fitting/依存関係解決で自動生成されたステップかどうか
     max_workers: int = 1  # ステップの並列実行worker数（1=逐次実行、2以上=並列実行）
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """データ検証"""
         if not self.cmd:
             raise ValueError(f"Step {self.type} must have non-empty cmd")
@@ -179,11 +179,11 @@ class Step:
 @dataclass(frozen=True)
 class StepGenerationResult:
     """ステップ生成の結果を表現するクラス"""
-    steps: list[Step]
-    errors: list[str] = None
-    warnings: list[str] = None
+    steps: List[Step]
+    errors: Optional[List[str]] = None
+    warnings: Optional[List[str]] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.errors is None:
             object.__setattr__(self, 'errors', [])
         if self.warnings is None:

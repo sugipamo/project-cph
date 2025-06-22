@@ -4,10 +4,10 @@ Pure functions for string manipulation, template processing, and path validation
 All functions are stateless with no side effects.
 """
 import re
-from typing import Optional
+from typing import Dict, Optional
 
 
-def format_template_string(template_string: str, context_dict: dict[str, str]) -> str:
+def format_template_string(template_string: str, context_dict: Dict[str, str]) -> str:
     """Pure function version of string formatting
 
     Args:

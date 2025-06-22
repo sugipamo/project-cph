@@ -1,7 +1,7 @@
 """Path operation types and data structures."""
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 @dataclass(frozen=True)
@@ -9,11 +9,11 @@ class PathOperationResult:
     """パス操作結果の統一データクラス"""
     success: bool
     result: Optional[str]
-    errors: list[str]
-    warnings: list[str]
-    metadata: dict[str, Any]
+    errors: List[str]
+    warnings: List[str]
+    metadata: Dict[str, Any]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.errors is None:
             object.__setattr__(self, 'errors', [])
         if self.warnings is None:
@@ -33,7 +33,7 @@ class PathInfo:
     name: str
     stem: str
     suffix: str
-    parts: tuple[str, ...]
+    parts: Tuple[str, ...]
 
     @classmethod
     def from_path(cls, file_path: Union[str, Path]) -> 'PathInfo':
