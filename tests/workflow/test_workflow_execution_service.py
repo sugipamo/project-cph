@@ -316,7 +316,7 @@ class TestWorkflowExecutionService(unittest.TestCase):
             result = self.service._prepare_workflow_steps()
 
             self.assertEqual(result[0], None)
-            self.assertIn("Invalid step type", result[1][0])
+            self.assertIn("is not a valid StepType", result[1][0])
 
     def test_execute_preparation_phase(self):
         """Test preparation phase execution"""

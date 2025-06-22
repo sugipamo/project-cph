@@ -74,46 +74,42 @@ contest_stock_path=getattr(execution_context, 'contest_stock_path', None),
 
 ## 修正方針
 
-### 短期対策（緊急性：高）
+### 即座対応（最優先）
 
-1. **型チェックベースの修正**
+1. **operations/results/result.py の hasattr 変換**
 ```python
-# Before
-self.path = getattr(request, "path", None)
+# Before: 汎用的すぎて理解困難
+self._operation_type = getattr(request, "operation_type", None)
 
-# After  
-if hasattr(request, 'path'):
-    self.path = request.path
+# After: 明確な条件分岐
+if hasattr(request, 'operation_type'):
+    self._operation_type = request.operation_type
 else:
-    self.path = None
+    self._operation_type = None
 ```
 
-2. **プロトコル定義**
+**実装理由:** プロトコルやファクトリより直接的で理解しやすい
+
+### 短期対策（1-2週間）
+
+設定システムの getattr は互換性維持が必要で修正の意味がないため、対策なし。
+
+### 中期対策（1-2ヶ月）
+
+1. **TypedExecutionConfiguration の属性明示化**
 ```python
-from typing import Protocol
-
-class RequestWithPath(Protocol):
-    path: str
-
-class RequestWithCmd(Protocol):
-    cmd: List[str]
-```
-
-### 中期対策（緊急性：中）
-
-1. **設定システムの統一**
-   - すべての設定取得を `config_manager.resolve_config()` 経由に変更
-   - 動的属性生成の廃止
-
-2. **Result専用ファクトリパターン**
-```python
-class ResultFactory:
-    @staticmethod
-    def create_from_request(request: OperationRequestFoundation) -> OperationResult:
-        if isinstance(request, FileRequest):
-            return OperationResult(path=request.path, op=request.op, ...)
-        elif isinstance(request, ShellRequest):
-            return OperationResult(cmd=request.cmd, ...)
+# configuration/config_manager.py
+class TypedExecutionConfiguration:
+    # 動的属性を明示的に宣言
+    contest_current_path: str = ''
+    timeout_seconds: str = ''
+    language_id: str = ''
+    
+    def __post_init__(self):
+        # setattr の代わりに明示的な設定
+        for key, value in self._config_data.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
 ```
 
 ### 長期対策（緊急性：低）
@@ -128,10 +124,16 @@ class ResultFactory:
 
 ## 推奨される対応順序
 
-1. **即座対応** - 構文エラーや明らかなバグの修正（完了済み）
-2. **短期対応** - `operations/results/result.py` の型チェック化
-3. **中期対応** - 設定システムの統一化
-4. **長期対応** - アーキテクチャの抜本的見直し
+1. **即座対応** - `operations/results/result.py` の4箇所を hasattr に変換（所要時間: 30分）
+2. **中期対応** - `TypedExecutionConfiguration` の属性明示化（所要時間: 1-2日）
+3. **長期対応** - 設定システム全体の型安全化（所要時間: 1-2週間）
+
+### 具体的なファイル対象
+
+**即座対応対象:**
+- `src/operations/results/result.py:21-24` - 4つの getattr
+- 影響範囲: 限定的（Result生成のみ）
+- リスク: 低
 
 ## 技術的制約
 

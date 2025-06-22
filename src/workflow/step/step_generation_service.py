@@ -180,16 +180,15 @@ def generate_steps_from_json(json_steps: List[Dict[str, Any]], context: Union['T
     """
     errors = []
     steps = []
-    
+
     # 個別ステップのエラーハンドリングを追加
     simple_context = execution_context_to_simple_context(context)
     from src.infrastructure.providers import SystemOsProvider
     from src.infrastructure.providers.json_provider import SystemJsonProvider
-    
-    # run_stepsをモックで置き換えられるように処理 - モジュールレベルから呼び出し
-    from .step_runner import run_steps as runner_run_steps
-    step_results = runner_run_steps(json_steps, simple_context, SystemOsProvider(), SystemJsonProvider())
-    
+
+    # run_stepsをモックで置き換えられるように処理
+    step_results = run_steps(json_steps, simple_context, SystemOsProvider(), SystemJsonProvider())
+
     # step_resultsが結果オブジェクトのリストかStepオブジェクトのリストかを判定
     if step_results:
         # 最初の要素で判定
