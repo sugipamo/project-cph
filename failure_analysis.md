@@ -101,30 +101,36 @@ Actual: load_from_files(system_dir='./config/system', env_dir='./contest_env', l
    - `UnifiedDriver` へのファイル操作メソッド委譲機能追加
    - `CompositeRequest` コンストラクタ引数修正
 
-## 🔴 現在の主要問題
+## ✅ 解決済みの主要問題
 
-### 1. ファイルパターン解決の失敗
+### 1. ファイルパターン解決の実装完了
 
-**エラー:**
-```
-FileNotFoundError: [Errno 2] No such file or directory: 'contest_stock/python/abc300/a/python/abc300/a/{contest_files}'
-```
+**解決内容（2025-06-22）:**
+- `{contest_files}` テンプレート変数の解決機能を実装
+- ファイルパターン配列を個別ファイル操作に展開する機能を追加
+- `step_runner.py` にファイルパターン専用の展開ロジックを実装
 
-**根本原因:**
-- `{contest_files}` テンプレート変数が解決されずリテラル文字列として残存
-- `step_runner.py:228-230` の共通属性リストに `contest_files` が未含有
-- ファイルパターン配列 `["main.py", "*.py"]` を単一パス文字列として誤用
+**実装された機能:**
+1. **`expand_step_with_file_patterns()`**: ファイルパターンを含むステップを個別ステップに分割
+2. **`get_file_patterns_from_context()`**: コンテキストからファイルパターン配列を取得
+3. **`expand_file_patterns_to_files()`**: グロブパターンによる実際のファイルリスト生成
+4. **テンプレート変数拡張**: `common_attrs`に`contest_files`, `test_files`, `build_files`を追加
 
-**設定での定義:**
+**動作例:**
 ```json
-// contest_env/python/env.json
-"contest_files": ["main.py", "*.py"]
+// 設定: contest_files = ["main.py", "*.py"]
+{"cmd": ["{contest_current_path}/{contest_files}", "{contest_stock_path}/{contest_files}"]}
 
-// contest_env/shared/env.json  
-"cmd": ["{contest_current_path}/{contest_files}", "{contest_stock_path}/.../{contest_files}"]
+// 実行時展開（main.py、util.pyが存在）
+[
+  {"cmd": ["./contest_current/main.py", "./contest_stock/.../main.py"]},
+  {"cmd": ["./contest_current/util.py", "./contest_stock/.../util.py"]}
+]
 ```
 
-### 2. パス重複問題
+## 🟡 残存する問題
+
+### 1. パス重複問題
 
 **症状:**
 - 期待値: `./contest_stock/python/abc300/a/`
@@ -135,12 +141,14 @@ FileNotFoundError: [Errno 2] No such file or directory: 'contest_stock/python/ab
 - ステップ実行時の再解決
 - 複数段階でのテンプレート処理による重複
 
-### 3. 設計上のミスマッチ
+### 2. 設計上のミスマッチ（部分的解決済み）
 
-**問題:**
-- ワークフロー設定: ファイルパターンをパスコンポーネントとして使用
-- 実装: 単一ファイルパスを期待する `copy` 操作
-- 結果: パターンマッチング機能と個別ファイル操作の不整合
+**解決済み:**
+- ファイルパターン配列を個別ファイル操作に展開する機能を実装
+- 設定での配列定義を保持しつつ、実行時に適切な個別ファイル操作に変換
+
+**残存課題:**
+- 一部のエッジケースでのパターンマッチング精度向上が必要
 
 ## 🟡 設計レベルの課題
 

@@ -85,10 +85,10 @@ class FallbackChecker:
         if spinner:
             spinner.stop(success)
         elif self.verbose:
-            self.logger.info(f"{'✅' if success else '❌'} フォールバック処理チェック")
+            self.logger.info(f"{'✅' if success else '❌'} try-except処理チェック")
 
         if fallback_issues:
-            self.issues.append("フォールバック処理が検出されました（CLAUDE.mdルール違反）:")
+            self.issues.append("try-except処理が検出されました（CLAUDE.mdルール違反）:")
             for issue in fallback_issues[:20]:
                 self.issues.append(f"  {issue}")
 
