@@ -77,11 +77,17 @@ class RequestFactory:
 
         return DockerRequest(
             op=DockerOpType.BUILD,
+            image=tag,
+            container=None,
+            command=None,
             options={
                 "context_path": env_manager.get_workspace_root(),
                 "tag": tag
             },
-            debug_tag=f"docker_build_{context.problem_name}"
+            debug_tag=f"docker_build_{context.problem_name}",
+            name=None,
+            show_output=True,
+            dockerfile_text=None
         )
 
     def _create_docker_run_request(self, step: Step, context: Any, env_manager: Any) -> DockerRequest:
@@ -109,7 +115,10 @@ class RequestFactory:
             options={
                 "workspace_mount": env_manager.get_workspace_root()
             },
-            debug_tag=f"docker_run_{context.problem_name}"
+            debug_tag=f"docker_run_{context.problem_name}",
+            name=None,
+            show_output=True,
+            dockerfile_text=None
         )
 
     def _create_docker_exec_request(self, step: Step, context: Any, env_manager: Any) -> DockerRequest:
@@ -139,10 +148,14 @@ class RequestFactory:
 
         return DockerRequest(
             op=DockerOpType.EXEC,
+            image=None,
             container=container_name,
             command=exec_cmd,
             options={},
-            debug_tag=f"docker_exec_{context.problem_name}"
+            debug_tag=f"docker_exec_{context.problem_name}",
+            name=None,
+            show_output=True,
+            dockerfile_text=None
         )
 
     def _create_docker_commit_request(self, step: Step, context: Any) -> DockerRequest:
@@ -172,10 +185,14 @@ class RequestFactory:
 
         return DockerRequest(
             op=DockerOpType.BUILD,  # Commit is similar to build in DockerOpType
-            container=container_name,
             image=image,
+            container=container_name,
+            command=None,
             options={},
-            debug_tag=f"docker_commit_{context.problem_name}"
+            debug_tag=f"docker_commit_{context.problem_name}",
+            name=None,
+            show_output=True,
+            dockerfile_text=None
         )
 
     def _create_docker_rm_request(self, step: Step, context: Any) -> DockerRequest:
@@ -194,9 +211,14 @@ class RequestFactory:
 
         return DockerRequest(
             op=DockerOpType.REMOVE,
+            image=None,
             container=container_name,
+            command=None,
             options={},
-            debug_tag=f"docker_rm_{context.problem_name}"
+            debug_tag=f"docker_rm_{context.problem_name}",
+            name=None,
+            show_output=True,
+            dockerfile_text=None
         )
 
     def _create_docker_rmi_request(self, step: Step, context: Any) -> DockerRequest:
@@ -216,8 +238,13 @@ class RequestFactory:
         return DockerRequest(
             op=DockerOpType.REMOVE,  # Use REMOVE for image removal as well
             image=image,
+            container=None,
+            command=None,
             options={},
-            debug_tag=f"docker_rmi_{context.problem_name}"
+            debug_tag=f"docker_rmi_{context.problem_name}",
+            name=None,
+            show_output=True,
+            dockerfile_text=None
         )
 
     def _create_mkdir_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
@@ -347,7 +374,13 @@ class RequestFactory:
         return ShellRequest(
             cmd=step.cmd,
             cwd=env_manager.get_workspace_root(),
-            debug_tag=f"chmod_{context.problem_name}"
+            env={},
+            inputdata="",
+            timeout=30,
+            debug_tag=f"chmod_{context.problem_name}",
+            name=None,
+            show_output=True,
+            allow_failure=False
         )
 
     def _create_run_request(self, step: Step, context: Any, env_manager: Any) -> ShellRequest:
@@ -355,8 +388,13 @@ class RequestFactory:
         return ShellRequest(
             cmd=step.cmd,
             cwd=env_manager.get_workspace_root(),
-            allow_failure=getattr(step, 'allow_failure', False),
-            debug_tag=f"run_{context.problem_name}"
+            env={},
+            inputdata="",
+            timeout=30,
+            debug_tag=f"run_{context.problem_name}",
+            name=None,
+            show_output=True,
+            allow_failure=getattr(step, 'allow_failure', False)
         )
 
     def _create_python_request(self, step: Step, context: Any, env_manager: Any) -> PythonRequest:
@@ -367,6 +405,8 @@ class RequestFactory:
         return PythonRequest(
             code_or_file=code_or_file,
             cwd=env_manager.get_workspace_root(),
+            show_output=True,
+            name=None,
             debug_tag=f"python_{context.problem_name}"
         )
 
