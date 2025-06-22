@@ -13,6 +13,8 @@ class OperationRequestFoundation(ABC):
     offering common execution patterns and debug tracking capabilities.
     """
 
+    _require_driver = True  # Default requires driver
+
     def __init__(self, name: Optional[str], debug_tag: Optional[str]):
         self.name = name
         self.debug_tag = debug_tag
@@ -57,7 +59,7 @@ class OperationRequestFoundation(ABC):
         if self._executed:
             raise RuntimeError(f"This {self.request_type.short_name} has already been executed.")
         # Driver requirement is controlled by subclasses
-        if getattr(self, '_require_driver', True) and driver is None:
+        if self._require_driver and driver is None:
             raise ValueError(f"{self.request_type.short_name}.execute_operation() requires a driver")
         try:
             self._result = self._execute_core(driver, logger)

@@ -443,4 +443,7 @@ class UnifiedLogger(LoggerInterface):
             LogLevel.ERROR: "ERROR",
             LogLevel.CRITICAL: "CRITICAL"
         }
-        return level_name_mapping[self.output_manager.get_level(], "INFO")
+        current_level = self.output_manager.get_level()
+        if current_level in level_name_mapping:
+            return level_name_mapping[current_level]
+        return "INFO"

@@ -198,9 +198,9 @@ class DockerRequest(OperationRequestFoundation):
         """Create OperationResult from driver result."""
         return OperationResult(
             op=self.op,
-            stdout=getattr(result, 'stdout', None),
-            stderr=getattr(result, 'stderr', None),
-            returncode=getattr(result, 'returncode', None)
+            stdout=result.stdout,
+            stderr=result.stderr,
+            returncode=result.returncode
         )
 
     def _handle_operation_error(self, e: Exception):

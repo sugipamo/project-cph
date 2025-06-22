@@ -394,7 +394,7 @@ class RequestFactory:
             debug_tag=f"run_{context.problem_name}",
             name=None,
             show_output=True,
-            allow_failure=getattr(step, 'allow_failure', False)
+            allow_failure=step.allow_failure
         )
 
     def _create_python_request(self, step: Step, context: Any, env_manager: Any) -> PythonRequest:
@@ -408,7 +408,7 @@ class RequestFactory:
             show_output=True,
             name=None,
             debug_tag=f"python_{context.problem_name}",
-            allow_failure=getattr(step, 'allow_failure', True)
+            allow_failure=step.allow_failure
         )
 
 

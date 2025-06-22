@@ -257,4 +257,4 @@ class FileRequest(OperationRequestFoundation):
 
     def __repr__(self) -> str:
         """String representation of the request."""
-        return f"<FileRequest name={self.name} op={self.op} path={self.path} dst={getattr(self, 'dst_path', None)} content={getattr(self, 'content', None)} >"
+        return f"<FileRequest name={self.name} op={self.op} path={self.path} dst={self.dst_path} content={self.content} >"
