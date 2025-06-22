@@ -47,13 +47,6 @@ class LocalFileSystem(FileSystemInterface):
         """Create a directory."""
         path.mkdir(parents=parents, exist_ok=exist_ok)
 
-    def copy_file(self, source: Path, destination: Path) -> bool:
-        """Copy a file from source to destination."""
-        raise NotImplementedError("copy_file is not implemented")
-
-    def move_file(self, source: Path, destination: Path) -> bool:
-        """Move a file from source to destination."""
-        raise NotImplementedError("move_file is not implemented")
 
     def delete_file(self, path: Path) -> bool:
         """Delete a file."""

@@ -32,31 +32,6 @@ class FileSystemInterface(ABC):
         """Create a directory."""
         pass
 
-    @abstractmethod
-    def copy_file(self, source: Path, destination: Path) -> bool:
-        """Copy a file from source to destination.
-
-        Args:
-            source: Source file path
-            destination: Destination file path
-
-        Returns:
-            True if copy was successful, False otherwise
-        """
-        pass
-
-    @abstractmethod
-    def move_file(self, source: Path, destination: Path) -> bool:
-        """Move a file from source to destination.
-
-        Args:
-            source: Source file path
-            destination: Destination file path
-
-        Returns:
-            True if move was successful, False otherwise
-        """
-        pass
 
     @abstractmethod
     def delete_file(self, path: Path) -> bool:

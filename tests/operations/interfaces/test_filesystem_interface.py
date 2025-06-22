@@ -33,18 +33,6 @@ class MockFileSystem(FileSystemInterface):
             raise FileExistsError(f"Directory {path} already exists")
         self.dirs.add(path)
 
-    def copy_file(self, source: Path, destination: Path) -> bool:
-        if not self.is_file(source):
-            return False
-        self.files.add(destination)
-        return True
-
-    def move_file(self, source: Path, destination: Path) -> bool:
-        if not self.is_file(source):
-            return False
-        self.files.discard(source)
-        self.files.add(destination)
-        return True
 
     def delete_file(self, path: Path) -> bool:
         if not self.is_file(path):
@@ -121,44 +109,6 @@ class TestFileSystemInterface:
         fs.mkdir(path, exist_ok=True)
 
 
-    def test_copy_file_success(self):
-        fs = MockFileSystem()
-        source = Path("/source.txt")
-        dest = Path("/dest.txt")
-        fs.files.add(source)
-
-        result = fs.copy_file(source, dest)
-        assert result
-        assert fs.is_file(source)
-        assert fs.is_file(dest)
-
-    def test_copy_file_nonexistent(self):
-        fs = MockFileSystem()
-        source = Path("/nonexistent.txt")
-        dest = Path("/dest.txt")
-
-        result = fs.copy_file(source, dest)
-        assert not result
-        assert not fs.is_file(dest)
-
-    def test_move_file_success(self):
-        fs = MockFileSystem()
-        source = Path("/source.txt")
-        dest = Path("/dest.txt")
-        fs.files.add(source)
-
-        result = fs.move_file(source, dest)
-        assert result
-        assert not fs.is_file(source)
-        assert fs.is_file(dest)
-
-    def test_move_file_nonexistent(self):
-        fs = MockFileSystem()
-        source = Path("/nonexistent.txt")
-        dest = Path("/dest.txt")
-
-        result = fs.move_file(source, dest)
-        assert not result
 
     def test_delete_file_success(self):
         fs = MockFileSystem()
