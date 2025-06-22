@@ -30,7 +30,10 @@ class QualityConfigLoader:
 
     def get_excluded_directories(self, category: str) -> List[str]:
         """除外ディレクトリを取得"""
-        return self._config["excluded_directories"].get(category, [])
+        excluded_dirs = self._config["excluded_directories"]
+        if category not in excluded_dirs:
+            raise KeyError(f"除外ディレクトリのカテゴリが設定されていません: {category}")
+        return excluded_dirs[category]
 
     def get_excluded_files(self) -> List[str]:
         """除外ファイルを取得"""
@@ -38,11 +41,14 @@ class QualityConfigLoader:
 
     def get_script_path(self, script_name: str) -> str:
         """スクリプトパスを取得"""
-        script_path = self._config["script_paths"].get(script_name)
-        if not script_path:
+        script_paths = self._config["script_paths"]
+        if script_name not in script_paths:
             raise KeyError(f"スクリプトパスが設定されていません: {script_name}")
-        return script_path
+        return script_paths[script_name]
 
     def get_allowed_directories(self, category: str) -> List[str]:
         """許可ディレクトリを取得"""
-        return self._config["allowed_directories"].get(category, [])
+        allowed_dirs = self._config["allowed_directories"]
+        if category not in allowed_dirs:
+            raise KeyError(f"許可ディレクトリのカテゴリが設定されていません: {category}")
+        return allowed_dirs[category]

@@ -30,7 +30,15 @@ class TypeChecker(BaseQualityChecker):
             spinner.start()
 
         # mypyが利用可能かチェック
-        result = self.command_executor.run(["python3", "-m", "mypy", "--version"], capture_output=True, text=True)
+        result = self.command_executor.run(
+            cmd=["python3", "-m", "mypy", "--version"],
+            capture_output=True,
+            text=True,
+            cwd=None,
+            timeout=None,
+            env=None,
+            check=False
+        )
         if not result.success:
             error_msg = "mypyの実行に失敗しました"
             self.logger.error(error_msg)
@@ -65,10 +73,13 @@ class TypeChecker(BaseQualityChecker):
     def _run_command(self, cmd: List[str], description: str) -> Tuple[bool, str]:
         """コマンドを実行し、結果を返す"""
         result = self.command_executor.run(
-            cmd,
+            cmd=cmd,
             capture_output=True,
             text=True,
-            cwd=str(Path(__file__).parent.parent.parent)
+            cwd=str(Path(__file__).parent.parent.parent),
+            timeout=None,
+            env=None,
+            check=False
         )
 
         success = result.success

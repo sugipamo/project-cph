@@ -20,8 +20,8 @@ class QualityIssue:
     details: str = ""
 
 
-class BaseQualityChecker(ast.NodeVisitor):
-    """品質チェックの基底クラス"""
+class AstQualityChecker(ast.NodeVisitor):
+    """AST解析による品質チェックの基底クラス"""
 
     def __init__(self, filename: str, config: dict):
         self.filename = filename
@@ -100,16 +100,11 @@ def analyze_file_structure(file_path: str) -> dict:
             'imports': [node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module],
             'lines': len(content.split('\n'))
         }
-    except Exception:
-        return {
-            'functions': [],
-            'classes': [],
-            'imports': [],
-            'lines': 0
-        }
+    except Exception as e:
+        raise RuntimeError(f"ファイル解析エラー {file_path}: {e}") from e
 
 
-def find_python_files(directory: str, exclude_patterns: Optional[List[str]] = None) -> List[str]:
+def find_python_files(directory: str, exclude_patterns: Optional[List[str]]) -> List[str]:
     """Pythonファイルを再帰的に検索"""
     if exclude_patterns is None:
         exclude_patterns = ['__pycache__', '.git', '.pytest_cache']

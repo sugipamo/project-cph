@@ -81,7 +81,7 @@ class CircularImportChecker:
             rec_stack.add(module)
             path.append(module)
 
-            for imported_module in self.imports[module]):
+            for imported_module in self.imports[module]:
                 if imported_module in self.modules:
                     dfs(imported_module, path.copy())
 

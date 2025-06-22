@@ -51,10 +51,13 @@ class TestRunner:
             spinner.start()
 
         result = self.command_executor.run(
-            cmd,
+            cmd=cmd,
             capture_output=True,
             text=True,
-            cwd=str(Path(__file__).parent.parent.parent)
+            cwd=str(Path(__file__).parent.parent.parent),
+            timeout=None,
+            env=None,
+            check=False
         )
 
         success = result.success
@@ -133,10 +136,13 @@ class TestRunner:
         # CommandExecutorを使用してテストを実行
         # ライブプログレス表示のため、CommandExecutorの結果を使用
         result = self.command_executor.run(
-            cmd,
+            cmd=cmd,
             capture_output=True,
             text=True,
-            cwd=str(Path(__file__).parent.parent.parent)
+            cwd=str(Path(__file__).parent.parent.parent),
+            timeout=None,
+            env=None,
+            check=False
         )
 
         # プログレス表示

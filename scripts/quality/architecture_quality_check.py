@@ -160,7 +160,7 @@ def detect_circular_imports(directory: str) -> List[ArchitectureIssue]:
         visited.add(module)
         rec_stack.add(module)
 
-        for dep in dependencies[module]):
+        for dep in dependencies[module]:
             if dfs(dep, [*path, module]):
                 return True
 

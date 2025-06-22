@@ -189,10 +189,10 @@ class ArchitectureAnalyzer:
 
         for module_name, info in self.module_info.items():
             # Ca: Afferent Coupling (入力結合度)
-            ca = len(self.reverse_dependencies[module_name]))
+            ca = len(self.reverse_dependencies[module_name])
 
             # Ce: Efferent Coupling (出力結合度)
-            ce = len(self.module_dependencies[module_name]))
+            ce = len(self.module_dependencies[module_name])
 
             # I: Instability (不安定性)
             instability = ce / (ca + ce) if (ca + ce) > 0 else 0
@@ -267,7 +267,7 @@ class ArchitectureAnalyzer:
             rec_stack.add(module)
             path.append(module)
 
-            for dep in self.module_dependencies[module]):
+            for dep in self.module_dependencies[module]:
                 if dep in self.module_info:  # プロジェクト内モジュールのみ
                     dfs(dep, path.copy())
 

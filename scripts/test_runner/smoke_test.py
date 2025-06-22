@@ -39,11 +39,19 @@ class SmokeTest:
             spinner.start()
 
         # メインモジュールのインポートテスト
-        result = self.command_executor.run([
-            "python3", "-c",
-            "import sys; sys.path.insert(0, '.'); "
-            "from src.main import main; print('OK')"
-        ], capture_output=True, text=True, cwd=str(Path(__file__).parent.parent.parent))
+        result = self.command_executor.run(
+            cmd=[
+                "python3", "-c",
+                "import sys; sys.path.insert(0, '.'); "
+                "from src.main import main; print('OK')"
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(Path(__file__).parent.parent.parent),
+            timeout=None,
+            env=None,
+            check=False
+        )
 
         success = result.success
 

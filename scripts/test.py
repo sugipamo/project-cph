@@ -13,7 +13,7 @@ from quality_checks.dependency_injection_checker import DependencyInjectionCheck
 from quality_checks.dict_get_checker import DictGetChecker
 from quality_checks.fallback_checker import FallbackChecker
 from quality_checks.getattr_checker import GetattrChecker
-from quality_checks.infrastructure_duplication_checker import InfrastructureDuplicationChecker
+from quality_checks.infra_dup_checker import InfrastructureDuplicationChecker
 from quality_checks.naming_checker import NamingChecker
 from quality_checks.none_default_checker import NoneDefaultChecker
 from quality_checks.print_usage_checker import PrintUsageChecker

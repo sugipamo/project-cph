@@ -35,12 +35,12 @@ class CommandExecutor(ABC):
     def run(
         self,
         cmd: Union[List[str], str],
-        capture_output: bool = True,
-        text: bool = True,
-        cwd: Optional[str] = None,
-        timeout: Optional[float] = None,
-        env: Optional[Dict[str, str]] = None,
-        check: bool = False
+        capture_output: bool,
+        text: bool,
+        cwd: Optional[str],
+        timeout: Optional[float],
+        env: Optional[Dict[str, str]],
+        check: bool
     ) -> CommandResult:
         """コマンドを実行する
 
@@ -75,9 +75,9 @@ class CommandExecutor(ABC):
         self,
         cmd: Union[List[str], str],
         output_callback: callable,
-        cwd: Optional[str] = None,
-        timeout: Optional[float] = None,
-        env: Optional[Dict[str, str]] = None
+        cwd: Optional[str],
+        timeout: Optional[float],
+        env: Optional[Dict[str, str]]
     ) -> CommandResult:
         """コマンドを実行してリアルタイムで出力を処理
 
@@ -100,12 +100,12 @@ class SubprocessCommandExecutor(CommandExecutor):
     def run(
         self,
         cmd: Union[List[str], str],
-        capture_output: bool = True,
-        text: bool = True,
-        cwd: Optional[str] = None,
-        timeout: Optional[float] = None,
-        env: Optional[Dict[str, str]] = None,
-        check: bool = False
+        capture_output: bool,
+        text: bool,
+        cwd: Optional[str],
+        timeout: Optional[float],
+        env: Optional[Dict[str, str]],
+        check: bool
     ) -> CommandResult:
         """subprocess.runを使用してコマンドを実行"""
         try:
@@ -161,16 +161,16 @@ class SubprocessCommandExecutor(CommandExecutor):
                     timeout=10
                 )
                 return result.returncode == 0
-            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-                return False
+            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
+                raise RuntimeError(f"コマンド利用可能性チェックに失敗: {command}, エラー: {e}") from e
 
     def run_with_live_output(
         self,
         cmd: Union[List[str], str],
         output_callback: callable,
-        cwd: Optional[str] = None,
-        timeout: Optional[float] = None,
-        env: Optional[Dict[str, str]] = None
+        cwd: Optional[str],
+        timeout: Optional[float],
+        env: Optional[Dict[str, str]]
     ) -> CommandResult:
         """subprocess.Popenを使用してリアルタイムで出力を処理"""
         import threading

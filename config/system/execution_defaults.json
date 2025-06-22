@@ -3,6 +3,14 @@
     "exit_codes": {
       "success": 0,
       "failure": 1
+    },
+    "command_execution": {
+      "capture_output": true,
+      "text": true,
+      "check": false,
+      "timeout": null,
+      "env": null,
+      "cwd": null
     }
   }
 }

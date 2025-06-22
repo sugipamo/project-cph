@@ -26,10 +26,11 @@ class BaseQualityChecker(ABC):
         config_path = Path(__file__).parent.parent.parent / "configuration" / "quality_checks.json"
         self.config = QualityConfigLoader(str(config_path))
 
-    def get_target_files(self, excluded_categories: Optional[List[str]] = None) -> List[str]:
+    def get_target_files(self, excluded_categories: Optional[List[str]]) -> List[str]:
         """設定に基づいてチェック対象ファイルを取得"""
         target_files = []
-        excluded_categories = excluded_categories or []
+        if excluded_categories is None:
+            raise ValueError("excluded_categories must be provided explicitly")
 
         # 除外ディレクトリの収集
         excluded_dirs = set()

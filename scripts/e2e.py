@@ -25,11 +25,11 @@ class TestStep:
 class E2ETester:
     """E2Eテスト実行クラス"""
 
-    def __init__(self, project_root: Path, command_executor: CommandExecutor = None, logger: Logger = None, file_handler: FileHandler = None):
+    def __init__(self, project_root: Path, command_executor: CommandExecutor, logger: Logger, file_handler: FileHandler):
         self.project_root = project_root
-        self.command_executor = command_executor or create_command_executor()
-        self.logger = logger or create_logger()
-        self.file_handler = file_handler or create_file_handler()
+        self.command_executor = command_executor
+        self.logger = logger
+        self.file_handler = file_handler
 
     def cleanup_environment(self):
         """テスト環境のクリーンアップ"""
@@ -54,10 +54,13 @@ class E2ETester:
     def run_step(self, step: TestStep, cmd_index: int) -> None:
         self.logger.info(f"実行: {' '.join(step.command)}")
         result = self.command_executor.run(
-            step.command,
-            cwd=str(self.project_root),
+            cmd=step.command,
             capture_output=True,
-            text=True
+            text=True,
+            cwd=str(self.project_root),
+            timeout=None,
+            env=None,
+            check=False
         )
         if not result.success:
             raise RuntimeError(f"コマンド失敗: {result.stderr}\n結果: FAIL")

@@ -10,7 +10,7 @@ from typing import List, Set
 
 # scripts/infrastructure modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from infrastructure.logger import Logger, create_logger
+from infrastructure.logger import Logger
 
 # 汎用的すぎる名前のパターン（実用的なレベルに緩和）
 GENERIC_PATTERNS = {
@@ -83,7 +83,7 @@ ALLOWED_NAMES = {
     }
 }
 
-class GenericNameChecker(ast.NodeVisitor):
+class VagueNameDetector(ast.NodeVisitor):
     def __init__(self):
         self.errors: List[str] = []
 
@@ -154,19 +154,17 @@ def check_file(file_path: Path) -> List[str]:
             content = f.read()
 
         tree = ast.parse(content, filename=str(file_path))
-        checker = GenericNameChecker()
+        checker = VagueNameDetector()
         checker.visit(tree)
 
         # ファイル名を含めてエラーメッセージを返す
         return [f"{file_path}:{error}" for error in checker.errors]
 
     except Exception as e:
-        return [f"{file_path}: Error parsing file - {e}"]
+        raise RuntimeError(f"ファイル解析エラー {file_path}: {e}") from e
 
-def main(logger: Logger = None):
+def main(logger: Logger):
     """メイン処理"""
-    if logger is None:
-        logger = create_logger()
 
     if len(sys.argv) < 2:
         logger.error("Usage: python check_generic_names.py <directory>")

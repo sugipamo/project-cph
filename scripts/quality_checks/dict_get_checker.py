@@ -143,9 +143,15 @@ class DictGetChecker(BaseQualityChecker):
 
         success = True
         for target_dir in target_directories:
-            result = self.command_executor.run([
-                "python3", script_path, f"{target_dir}/"
-            ], capture_output=True, text=True, cwd=str(Path(__file__).parent.parent.parent))
+            result = self.command_executor.run(
+                cmd=["python3", script_path, f"{target_dir}/"],
+                capture_output=True,
+                text=True,
+                cwd=str(Path(__file__).parent.parent.parent),
+                timeout=None,
+                env=None,
+                check=False
+            )
 
             if not result.success:
                 success = False
