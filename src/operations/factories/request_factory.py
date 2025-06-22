@@ -407,7 +407,8 @@ class RequestFactory:
             cwd=env_manager.get_workspace_root(),
             show_output=True,
             name=None,
-            debug_tag=f"python_{context.problem_name}"
+            debug_tag=f"python_{context.problem_name}",
+            allow_failure=getattr(step, 'allow_failure', True)
         )
 
 

@@ -647,7 +647,7 @@ class TypeSafeConfigNodeManager:
             # 型安全なパステンプレート展開
             local_workspace_path=self.resolve_template_to_path("{workspace}", context),
             contest_current_path=self.resolve_template_to_path(
-                "{workspace}/contest_current", context
+                self.resolve_config(['paths', 'contest_current_path'], str), context
             ),
 
             # Additional path templates required by workflow system - no defaults allowed

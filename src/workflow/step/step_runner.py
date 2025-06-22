@@ -130,7 +130,7 @@ def expand_template(template: str, context) -> str:
             value = getattr(context, attr)
             # ファイルパターン変数の特殊処理
             if attr in ['contest_files', 'test_files', 'build_files'] and isinstance(value, list):
-                # ファイルパターン配列の場合は最初のパターンを使用
+                # ファイルパターン配列の場合は最初のパターンを使用（when条件やパス構築用）
                 context_dict[attr] = str(value[0]) if value else ""
             else:
                 context_dict[attr] = str(value)

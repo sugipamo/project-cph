@@ -16,11 +16,12 @@ class PythonRequest(OperationRequestFoundation):
 
     def __init__(self, code_or_file: Union[str, list[str]], cwd: Optional[str],
                  show_output: bool, name: Optional[str],
-                 debug_tag: Optional[str]):
+                 debug_tag: Optional[str], allow_failure: bool = True):
         super().__init__(name=name, debug_tag=debug_tag)
         self.code_or_file = code_or_file  # Code string or filename
         self.cwd = cwd
         self.show_output = show_output
+        self.allow_failure = allow_failure
 
     def _get_os_provider(self, driver):
         """Get OS provider from driver infrastructure."""
