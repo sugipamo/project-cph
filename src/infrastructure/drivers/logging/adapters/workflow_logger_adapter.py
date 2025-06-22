@@ -229,3 +229,39 @@ class WorkflowLoggerAdapter:
     def is_enabled(self) -> bool:
         """デバッグログが有効かチェック"""
         return self.enabled
+
+    def set_level(self, level_name: str) -> None:
+        """ログレベルを動的に変更する
+
+        Args:
+            level_name: ログレベル名（"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"）
+        """
+        from src.infrastructure.drivers.logging.types import LogLevel
+        level_mapping = {
+            "DEBUG": LogLevel.DEBUG,
+            "INFO": LogLevel.INFO,
+            "WARNING": LogLevel.WARNING,
+            "ERROR": LogLevel.ERROR,
+            "CRITICAL": LogLevel.CRITICAL
+        }
+
+        if level_name not in level_mapping:
+            raise ValueError(f"Invalid log level: {level_name}")
+
+        self.output_manager.set_level(level_mapping[level_name])
+
+    def get_level(self) -> str:
+        """現在のログレベルを取得する
+
+        Returns:
+            現在のログレベル名
+        """
+        from src.infrastructure.drivers.logging.types import LogLevel
+        level_name_mapping = {
+            LogLevel.DEBUG: "DEBUG",
+            LogLevel.INFO: "INFO",
+            LogLevel.WARNING: "WARNING",
+            LogLevel.ERROR: "ERROR",
+            LogLevel.CRITICAL: "CRITICAL"
+        }
+        return level_name_mapping.get(self.output_manager.get_level(), "INFO")

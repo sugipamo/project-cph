@@ -5,6 +5,7 @@ from typing import Any, Optional, Union
 from src.infrastructure.di_container import DIKey
 from src.infrastructure.drivers.python.utils.python_utils import PythonUtils
 from src.operations.constants.operation_type import OperationType
+from src.operations.constants.request_types import RequestType
 from src.operations.requests.base.base_request import OperationRequestFoundation
 from src.operations.results.result import OperationResult
 
@@ -34,6 +35,10 @@ class PythonRequest(OperationRequestFoundation):
     @property
     def operation_type(self) -> OperationType:
         return OperationType.PYTHON
+
+    @property
+    def request_type(self) -> RequestType:
+        return RequestType.PYTHON_REQUEST
 
     def _execute_core(self, driver: Any = None, logger: Optional[Any] = None) -> OperationResult:
         os_provider = self._get_os_provider(driver)

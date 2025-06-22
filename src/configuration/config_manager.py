@@ -724,6 +724,8 @@ class TypeSafeConfigNodeManager:
         return value
 
 
+
+
 # LegacyAdapter クラスは削除されました。
 # TypedExecutionConfigurationとTypeSafeConfigNodeManagerが
 # すべての機能を直接提供します。

@@ -24,10 +24,11 @@ def _create_file_driver() -> Any:
     return LocalFileDriver(base_dir=Path('.'))
 
 
-def _create_python_driver() -> Any:
+def _create_python_driver(container: Any) -> Any:
     """Lazy factory for python driver."""
     from src.infrastructure.drivers.python.python_driver import LocalPythonDriver
-    return LocalPythonDriver()
+    config_manager = container.resolve(DIKey.CONFIG_MANAGER)
+    return LocalPythonDriver(config_manager)
 
 
 def _create_persistence_driver() -> Any:
@@ -293,7 +294,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.SHELL_DRIVER, lambda: _create_shell_driver(container.resolve(DIKey.FILE_DRIVER)))
     container.register(DIKey.DOCKER_DRIVER, lambda: _create_docker_driver(container))
     container.register(DIKey.FILE_DRIVER, _create_file_driver)
-    container.register(DIKey.PYTHON_DRIVER, _create_python_driver)
+    container.register(DIKey.PYTHON_DRIVER, lambda: _create_python_driver(container))
     container.register(DIKey.PERSISTENCE_DRIVER, _create_persistence_driver)
 
     # Register persistence layer (legacy support)

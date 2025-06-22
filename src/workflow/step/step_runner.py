@@ -55,11 +55,11 @@ class ExecutionContext:
                                 result[pattern_key] = pattern
                 else:
                     result[key] = value
-        
+
         # language_nameをlanguageのエイリアスとして追加（後方互換性）
         if 'language' in result:
             result['language_name'] = result['language']
-            
+
         return result
 
 
@@ -95,7 +95,7 @@ def expand_template(template: str, context) -> str:
     if hasattr(context, 'to_dict'):
         result = template
         context_dict = context.to_dict()
-        
+
         for key, value in context_dict.items():
             # Pathオブジェクトも文字列に変換
             if value is None:
@@ -137,7 +137,7 @@ def expand_template(template: str, context) -> str:
 
     # language_nameをlanguageと同じ値に設定（後方互換性）
     if hasattr(context, 'language'):
-        context_dict['language_name'] = str(getattr(context, 'language'))
+        context_dict['language_name'] = str(context.language)
 
     # テンプレート置換
     for key, value in context_dict.items():

@@ -32,6 +32,7 @@ class UnifiedDriver:
         self._docker_driver = None
         self._file_driver = None
         self._shell_driver = None
+        self._python_driver = None
 
     @property
     def docker_driver(self):
@@ -54,6 +55,19 @@ class UnifiedDriver:
             self._shell_driver = self.infrastructure.resolve(DIKey.SHELL_DRIVER)
         return self._shell_driver
 
+    @property
+    def python_driver(self):
+        """Lazy load python driver"""
+        if self._python_driver is None:
+            self._python_driver = self.infrastructure.resolve(DIKey.PYTHON_DRIVER)
+        return self._python_driver
+
+    def resolve(self, key):
+        """Resolve a driver by key for compatibility with PythonRequest"""
+        if key == 'python_driver':
+            return self.python_driver
+        return self.infrastructure.resolve(key)
+
 
     def execute_operation_request(self, request: OperationRequestFoundation) -> OperationResult:
         """Execute a request using the appropriate driver
@@ -75,6 +89,8 @@ class UnifiedDriver:
             return self._execute_file_request(request)
         if request.request_type == RequestType.SHELL_REQUEST:
             return self._execute_shell_request(request)
+        if request.request_type == RequestType.PYTHON_REQUEST:
+            return self._execute_python_request(request)
         raise ValueError(f"Unsupported request type: {request.request_type}")
 
     def _execute_docker_request(self, request: Any) -> OperationResult:
@@ -270,6 +286,42 @@ class UnifiedDriver:
                 request=request,
                 metadata={},
                 op="shell_operation"
+            )
+
+    def _execute_python_request(self, request: Any) -> OperationResult:
+        """Execute python request"""
+        if not hasattr(request, 'code_or_file'):
+            raise TypeError(f"Expected PythonRequest with 'code_or_file' attribute, got {type(request)}")
+
+        try:
+            stdout, stderr, returncode = self.python_driver.execute_command(request)
+
+            return OperationResult(
+                success=returncode == 0,
+                returncode=returncode,
+                stdout=stdout,
+                stderr=stderr,
+                start_time=0.0,
+                end_time=0.0,
+                error_message=stderr if returncode != 0 else None,
+                exception=None,
+                request=request,
+                metadata={}
+            )
+
+        except Exception as e:
+            self.logger.error(f"Python operation failed: {e}")
+            return OperationResult(
+                success=False,
+                returncode=1,
+                stdout="",
+                stderr=str(e),
+                start_time=0.0,
+                end_time=0.0,
+                error_message=str(e),
+                exception=e,
+                request=request,
+                metadata={}
             )
 
     # File operation delegation methods - route to file driver

@@ -48,6 +48,10 @@ class MinimalCLIApp:
         # Parse user input with infrastructure context
         self.context = parse_user_input(args, self.infrastructure)
 
+        # デバッグモードの処理
+        if hasattr(self.context, 'debug_mode') and self.context.debug_mode:
+            self._handle_debug_mode()
+
         # 言語解決後に設定マネージャーを更新
         from src.infrastructure.drivers.docker.utils.docker_command_builder import _get_config_manager
         try:
@@ -201,6 +205,22 @@ class MinimalCLIApp:
             self.logger.debug(traceback.format_exc())
 
         return 1
+
+    def _handle_debug_mode(self) -> None:
+        """デバッグモードの処理をDebugServiceに委譲"""
+        try:
+            # インフラストラクチャからDebugServiceを取得
+            if self.infrastructure.is_registered("debug_service"):
+                debug_service = self.infrastructure.resolve("debug_service")
+                debug_service.log_debug_context(self.context.__dict__)
+            else:
+                # DebugServiceが利用できない場合はフォールバック
+                self.logger.debug("🔍 デバッグモードが有効化されました")
+                self.logger.debug(f"🔍 実行コンテキスト: {self.context.__dict__}")
+                print("🔍 Debug mode enabled - 詳細ログが出力されます")
+        except Exception as e:
+            # デバッグ処理自体の失敗は警告に留める
+            print(f"⚠️  デバッグ処理に失敗: {e}")
 
     def _get_error_output_safely(self, result) -> Optional[str]:
         """Safely get error output from result object

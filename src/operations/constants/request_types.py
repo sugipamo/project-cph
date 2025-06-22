@@ -13,6 +13,7 @@ class RequestType(Enum):
     DOCKER_REQUEST = auto()
     FILE_REQUEST = auto()
     SHELL_REQUEST = auto()
+    PYTHON_REQUEST = auto()
     COMPOSITE_REQUEST = auto()
 
     # Step types
@@ -32,6 +33,7 @@ class RequestType(Enum):
             self.DOCKER_REQUEST: "Docker",
             self.FILE_REQUEST: "File",
             self.SHELL_REQUEST: "Shell",
+            self.PYTHON_REQUEST: "Python",
             self.COMPOSITE_REQUEST: "Composite",
             self.COMPOSITE_REQUEST_FOUNDATION: "CompositeFoundation",
             self.OPERATION_REQUEST_FOUNDATION: "OperationFoundation",

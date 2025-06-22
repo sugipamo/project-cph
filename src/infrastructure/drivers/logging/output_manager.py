@@ -60,3 +60,11 @@ class OutputManager(OutputManagerInterface):
         entries = self._collect_entries(True, True, level)
         return "\n".join(e.formatted_content for e in entries)
 
+    def set_level(self, level: LogLevel) -> None:
+        """ログレベルを動的に変更する"""
+        self.level = level
+
+    def get_level(self) -> LogLevel:
+        """現在のログレベルを取得する"""
+        return self.level
+
