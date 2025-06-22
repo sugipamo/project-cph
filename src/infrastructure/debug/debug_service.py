@@ -1,7 +1,5 @@
 """デバッグサービス - デバッグ機能の統括管理"""
 
-from src.infrastructure.config.debug_preset_controller import DebugPresetController
-from src.infrastructure.config.preset_manager import PresetManager
 from src.infrastructure.config.runtime_config_overlay import DebugConfigProvider, RuntimeConfigOverlay
 from src.infrastructure.di_container import DIContainer
 
@@ -17,48 +15,31 @@ class DebugService:
         self.infrastructure = infrastructure
         self.overlay = RuntimeConfigOverlay()
         self.config_provider = DebugConfigProvider(self.overlay)
-
-        # プリセット制御の追加
-        self.preset_manager = self._create_preset_manager()
-        self.debug_preset_controller = DebugPresetController(self.preset_manager)
-
         self._debug_enabled = False
 
     def enable_debug_mode(self) -> None:
-        """デバッグモードを有効化
-
-        プリセットシステムを使用した統一的なデバッグモード制御
-        """
+        """デバッグモードを有効化"""
         if self._debug_enabled:
             return
 
-        # 1. デバッグプリセットを適用
-        self.debug_preset_controller.enable_debug_preset()
-
-        # 2. 従来のデバッグ設定も維持（互換性）
+        # デバッグ設定を有効化
         self.config_provider.enable_debug_mode()
 
-        # 3. ロガーレベルを更新
+        # ロガーレベルを更新
         self._update_logger_levels()
 
-        # 4. デバッグ状態を記録
+        # デバッグ状態を記録
         self._debug_enabled = True
 
-        # 5. デバッグ開始メッセージ
+        # デバッグ開始メッセージ
         self._show_debug_notification()
 
     def disable_debug_mode(self) -> None:
-        """デバッグモードを無効化
-
-        プリセットを元に戻して設定を復元
-        """
+        """デバッグモードを無効化"""
         if not self._debug_enabled:
             return
 
-        # プリセットを元に戻す
-        self.debug_preset_controller.disable_debug_preset()
-
-        # 従来のデバッグ設定も無効化（互換性）
+        # デバッグ設定を無効化
         self.config_provider.disable_debug_mode()
 
         self._debug_enabled = False
@@ -122,19 +103,6 @@ class DebugService:
             # ロガーが利用できない場合はフォールバックではなく例外で処理
             raise RuntimeError(f"デバッグコンテキストのログ出力に失敗: {e}") from e
 
-    def _create_preset_manager(self) -> PresetManager:
-        """PresetManagerインスタンスを作成
-
-        Returns:
-            PresetManagerインスタンス
-        """
-        # 設定管理インスタンスを取得
-        try:
-            config_manager = self.infrastructure.resolve("config_manager")
-            return PresetManager(config_manager, self.overlay)
-        except Exception:
-            # 設定管理が見つからない場合はダミーを作成
-            return PresetManager(None, self.overlay)
 
 
 class DebugServiceFactory:

@@ -79,39 +79,10 @@ def execute_workflow(self, parallel, max_workers):
 }
 ```
 
-### 3. E2E Test Procedures
+### 3. E2E Test Procedures （別タスク）
 **場所**: `scripts/e2e.py`
 
-**現在の問題**:
-```python
-def main(args):
-    # ハードコードされたテストシーケンス
-    run_step(["./cph.sh", "abc300", "open", "a", "python", "local"])
-    run_step(["./cph.sh", "abc301", "open", "a", "local"])
-    run_step(["./cph.sh", "test", "local"])
-```
-
-**移行案**:
-```json
-{
-  "test_scenarios": {
-    "basic_workflow": {
-      "steps": [
-        {
-          "name": "open_contest_python",
-          "command": ["./cph.sh", "{contest_id}", "open", "{problem_id}", "python", "local"],
-          "variables": {"contest_id": "abc300", "problem_id": "a"}
-        },
-        {
-          "name": "run_test",
-          "command": ["./cph.sh", "test", "local"],
-          "depends_on": ["open_contest_python"]
-        }
-      ]
-    }
-  }
-}
-```
+**注意**: テスト環境の設定ベース移行は本番環境への混入を防ぐため、別タスクとして分離して実施する。
 
 ## 中優先度移行候補
 
@@ -161,10 +132,11 @@ def main(args):
 ## 実装推奨順序
 
 1. **Docker Command Builder** - 影響範囲が限定的で効果が高い
-2. **E2E Test Procedures** - テスト安定性向上に直結
-3. **Workflow Step Execution** - 中核機能だが影響範囲が大きいため慎重に
-4. **Step Generation Pipeline** - 他の移行完了後に検討
-5. **File Operation Dispatching** - 最後に実施（影響範囲が最も大きい）
+2. **Workflow Step Execution** - 中核機能だが影響範囲が大きいため慎重に
+3. **Step Generation Pipeline** - 他の移行完了後に検討
+4. **File Operation Dispatching** - 最後に実施（影響範囲が最も大きい）
+
+**注意**: E2E Test Procedures は別タスクとして分離
 
 ## 注意事項
 

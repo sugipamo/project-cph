@@ -1,5 +1,4 @@
 # 新設定システムの統合
-from typing import Optional
 
 from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.context.dockerfile_resolver import DockerfileResolver
@@ -449,25 +448,17 @@ def _validate_and_return_context(context):
 def _scan_and_apply_options(args, context, infrastructure):
     """コマンドラインオプションを検出・処理する"""
     debug_enabled = False
-    preset_name = None
     filtered_args = []
 
-    i = 0
-    while i < len(args):
-        arg = args[i]
+    for arg in args:
         if arg == "--debug":
             debug_enabled = True
-        elif arg == "--preset" and i + 1 < len(args):
-            preset_name = args[i + 1]
-            i += 1  # 次の引数もスキップ
         else:
             filtered_args.append(arg)
-        i += 1
 
-    if debug_enabled or preset_name:
+    if debug_enabled:
         context.debug_mode = debug_enabled
-        context.preset_name = preset_name
-        _apply_output_configuration(infrastructure, debug_enabled, preset_name)
+        _enable_debug_mode(infrastructure)
 
     return filtered_args, context
 
@@ -491,77 +482,7 @@ def _enable_debug_mode(infrastructure):
                 logger.error(f"デバッグサービスの初期化に失敗: {e}")
         except Exception:
             pass  # ログサービスも利用できない場合は無視
-        # フォールバック: 従来の方式でログレベルのみ変更
-        _fallback_debug_logging(infrastructure)
 
 
-def _apply_output_configuration(infrastructure, debug_enabled: bool, preset_name: Optional[str]):
-    """出力設定を適用する（デバッグモード・プリセット統合版）
-
-    Args:
-        infrastructure: DIコンテナ
-        debug_enabled: デバッグモードが有効かどうか
-        preset_name: 適用するプリセット名（オプション）
-    """
-    try:
-        from src.infrastructure.debug import DebugServiceFactory
-        debug_service = DebugServiceFactory.create_debug_service(infrastructure)
-
-        if debug_enabled:
-            # デバッグモードを有効化（デバッグプリセット適用）
-            debug_service.enable_debug_mode()
-        elif preset_name:
-            # 指定されたプリセットを適用
-            preset_manager = debug_service.preset_manager
-            success = preset_manager.apply_preset(preset_name)
-            if not success:
-                # infrastructureからログサービスを取得してエラーログ出力
-                try:
-                    if infrastructure.is_registered("unified_logger"):
-                        logger = infrastructure.resolve("unified_logger")
-                        available_presets = preset_manager.get_available_presets()
-                        logger.error(f"プリセット '{preset_name}' が見つかりません。利用可能なプリセット: {', '.join(available_presets)}")
-                except Exception:
-                    pass  # ログサービスも利用できない場合は無視
-
-        # インフラストラクチャにDebugServiceを登録
-        infrastructure.register("debug_service", lambda: debug_service)
-
-    except Exception as e:
-        # サービスの初期化に失敗した場合は警告表示
-        # infrastructureからログサービスを取得してエラーログ出力
-        try:
-            if infrastructure.is_registered("unified_logger"):
-                logger = infrastructure.resolve("unified_logger")
-                logger.error(f"出力設定サービスの初期化に失敗: {e}")
-        except Exception:
-            pass  # ログサービスも利用できない場合は無視
-        # フォールバック: 従来の方式でログレベルのみ変更
-        if debug_enabled:
-            _fallback_debug_logging(infrastructure)
 
 
-def _fallback_debug_logging(infrastructure):
-    """フォールバック: 従来方式でのデバッグログ有効化"""
-    logger_keys = ["unified_logger", "workflow_logger", "application_logger", "logger"]
-    for logger_key in logger_keys:
-        try:
-            if infrastructure.is_registered(logger_key):
-                logger = infrastructure.resolve(logger_key)
-                if hasattr(logger, 'set_level'):
-                    logger.set_level("DEBUG")
-                    # 設定成功をINFOレベルで記録
-                    try:
-                        if infrastructure.is_registered("unified_logger"):
-                            info_logger = infrastructure.resolve("unified_logger")
-                            info_logger.info(f"{logger_key} のログレベルをDEBUGに設定しました")
-                    except Exception:
-                        pass  # ログサービスも利用できない場合は無視
-        except Exception as e:
-            # infrastructureからログサービスを取得してエラーログ出力
-            try:
-                if infrastructure.is_registered("unified_logger"):
-                    error_logger = infrastructure.resolve("unified_logger")
-                    error_logger.error(f"{logger_key} の設定に失敗: {e}")
-            except Exception:
-                pass  # ログサービスも利用できない場合は無視
