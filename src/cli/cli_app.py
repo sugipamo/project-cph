@@ -217,10 +217,12 @@ class MinimalCLIApp:
                 # DebugServiceが利用できない場合はフォールバック
                 self.logger.debug("🔍 デバッグモードが有効化されました")
                 self.logger.debug(f"🔍 実行コンテキスト: {self.context.__dict__}")
-                print("🔍 Debug mode enabled - 詳細ログが出力されます")
+                # デバッグモード通知は既にログで出力済み
+                pass
         except Exception as e:
             # デバッグ処理自体の失敗は警告に留める
-            print(f"⚠️  デバッグ処理に失敗: {e}")
+            # デバッグ処理失敗はシステムの不具合を意味するため、エラーではなく例外で処理
+            raise RuntimeError(f"デバッグ処理に失敗: {e}") from e
 
     def _get_error_output_safely(self, result) -> Optional[str]:
         """Safely get error output from result object

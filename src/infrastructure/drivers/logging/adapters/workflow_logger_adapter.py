@@ -264,4 +264,4 @@ class WorkflowLoggerAdapter:
             LogLevel.ERROR: "ERROR",
             LogLevel.CRITICAL: "CRITICAL"
         }
-        return level_name_mapping.get(self.output_manager.get_level(), "INFO")
+        return level_name_mapping[self.output_manager.get_level(], "INFO")

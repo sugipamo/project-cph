@@ -12,6 +12,7 @@ from code_analysis.import_checker import ImportChecker
 from quality_checks.dependency_injection_checker import DependencyInjectionChecker
 from quality_checks.dict_get_checker import DictGetChecker
 from quality_checks.fallback_checker import FallbackChecker
+from quality_checks.getattr_checker import GetattrChecker
 from quality_checks.infrastructure_duplication_checker import InfrastructureDuplicationChecker
 from quality_checks.naming_checker import NamingChecker
 from quality_checks.none_default_checker import NoneDefaultChecker
@@ -134,6 +135,13 @@ class MainTestRunner:
             verbose
         )
 
+        self.getattr_checker = GetattrChecker(
+            self.file_handler,
+            self.logger,
+            self.test_runner.issues,
+            verbose
+        )
+
     def run_all_checks(self, args):
         """全てのチェックを実行"""
         # カバレッジレポートのみモード
@@ -179,6 +187,9 @@ class MainTestRunner:
 
         # dict.get()使用チェック
         self.dict_get_checker.check_dict_get_usage()
+
+        # getattr()デフォルト値使用チェック
+        self.getattr_checker.check_getattr_usage()
 
         # check-onlyモード
         if args.check_only:

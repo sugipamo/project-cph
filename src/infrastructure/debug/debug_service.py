@@ -17,11 +17,11 @@ class DebugService:
         self.infrastructure = infrastructure
         self.overlay = RuntimeConfigOverlay()
         self.config_provider = DebugConfigProvider(self.overlay)
-        
+
         # プリセット制御の追加
         self.preset_manager = self._create_preset_manager()
         self.debug_preset_controller = DebugPresetController(self.preset_manager)
-        
+
         self._debug_enabled = False
 
     def enable_debug_mode(self) -> None:
@@ -31,25 +31,25 @@ class DebugService:
         """
         if self._debug_enabled:
             return
-            
+
         # 1. デバッグプリセットを適用
         self.debug_preset_controller.enable_debug_preset()
-        
+
         # 2. 従来のデバッグ設定も維持（互換性）
         self.config_provider.enable_debug_mode()
-        
+
         # 3. ロガーレベルを更新
         self._update_logger_levels()
-        
+
         # 4. デバッグ状態を記録
         self._debug_enabled = True
-        
+
         # 5. デバッグ開始メッセージ
         self._show_debug_notification()
 
     def disable_debug_mode(self) -> None:
         """デバッグモードを無効化
-        
+
         プリセットを元に戻して設定を復元
         """
         if not self._debug_enabled:
@@ -57,10 +57,10 @@ class DebugService:
 
         # プリセットを元に戻す
         self.debug_preset_controller.disable_debug_preset()
-        
+
         # 従来のデバッグ設定も無効化（互換性）
         self.config_provider.disable_debug_mode()
-        
+
         self._debug_enabled = False
 
     def is_debug_enabled(self) -> bool:
@@ -84,14 +84,24 @@ class DebugService:
                     logger = self.infrastructure.resolve(logger_key)
                     if hasattr(logger, 'set_level'):
                         logger.set_level("DEBUG")
-                        print(f"🔍 {logger_key} のログレベルをDEBUGに設定しました")
+                        # 設定成功をログに記録しない（デバッグモードでのログレベル変更は成功して当然）
+                        pass
             except Exception as e:
                 # 個別のロガー設定失敗は警告として表示
-                print(f"⚠️  {logger_key} の設定に失敗: {e}")
+                # ログサービス設定失敗を另のログサービスに記録
+                # 設定失敗はシステムの不具合を意味するため、エラーではなく例外で処理
+                raise RuntimeError(f"ログサービス '{logger_key}' の設定に失敗: {e}") from e
 
     def _show_debug_notification(self) -> None:
         """デバッグ開始通知を表示"""
-        print("🔍 Debug mode enabled - 詳細ログが出力されます")
+        # デバッグモード有効化通知をログに記録
+        try:
+            if self.infrastructure.is_registered("unified_logger"):
+                logger = self.infrastructure.resolve("unified_logger")
+                logger.info("Debug mode enabled - 詳細ログが出力されます")
+        except Exception as e:
+            # ログサービスが利用できない場合は例外で処理
+            raise RuntimeError(f"デバッグ通知のログ出力に失敗: {e}") from e
 
     def log_debug_context(self, context: dict) -> None:
         """デバッグコンテキストをログ出力
@@ -108,14 +118,13 @@ class DebugService:
                 logger = self.infrastructure.resolve("logger")
                 logger.debug("🔍 デバッグモードが有効化されました")
                 logger.debug(f"🔍 実行コンテキスト: {context}")
-        except Exception:
-            # ロガーが利用できない場合は標準出力にフォールバック
-            print("🔍 デバッグモードが有効化されました")
-            print(f"🔍 実行コンテキスト: {context}")
+        except Exception as e:
+            # ロガーが利用できない場合はフォールバックではなく例外で処理
+            raise RuntimeError(f"デバッグコンテキストのログ出力に失敗: {e}") from e
 
     def _create_preset_manager(self) -> PresetManager:
         """PresetManagerインスタンスを作成
-        
+
         Returns:
             PresetManagerインスタンス
         """
