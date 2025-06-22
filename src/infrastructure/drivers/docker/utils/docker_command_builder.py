@@ -374,16 +374,3 @@ def parse_container_names(output: str) -> list[str]:
 
     lines = output.strip().split('\n')
     return [line.strip() for line in lines if line.strip()]
-
-
-# Backward compatibility aliases (legacy function versions)
-build_docker_run_command_legacy = build_docker_run_command
-build_docker_stop_command_legacy = build_docker_stop_command
-build_docker_remove_command_legacy = build_docker_remove_command
-build_docker_build_command_legacy = build_docker_build_command
-build_docker_ps_command_legacy = build_docker_ps_command
-build_docker_inspect_command_legacy = build_docker_inspect_command
-build_docker_cp_command_legacy = build_docker_cp_command
-parse_container_names_legacy = parse_container_names
-validate_docker_image_name_legacy = validate_docker_image_name
-

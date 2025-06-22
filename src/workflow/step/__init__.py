@@ -21,7 +21,7 @@ from .step_generation_service import (
     optimize_step_sequence,
     validate_step_sequence,
 )
-from .step_runner import ExecutionContext, check_when_condition, run_steps
+from .step_runner import ExecutionContext, run_steps
 from .workflow import (
     create_step_context_from_env_context,
     debug_workflow_generation,
@@ -37,7 +37,6 @@ __all__ = [
     'StepGenerationResult',
     'StepType',
     'analyze_step_dependencies',
-    'check_when_condition',
     'create_step_context_from_env_context',
     'create_step_from_json',
     'debug_workflow_generation',

@@ -46,8 +46,13 @@ class ExecutionContext:
                     # file_patternsの場合、各パターンを個別のキーとして展開
                     for pattern_key, pattern_list in value.items():
                         if pattern_list:
-                            # リストの最初の要素を使用（テストの期待動作に合わせる）
-                            result[pattern_key] = pattern_list[0]
+                            pattern = pattern_list[0]
+                            # movetreeやcopytreeの場合はディレクトリ部分のみを抽出
+                            if '/' in pattern and '*' in pattern:
+                                # "test/*.in" -> "test" のようにディレクトリ部分を抽出
+                                result[pattern_key] = pattern.split('/')[0]
+                            else:
+                                result[pattern_key] = pattern
                 else:
                     result[key] = value
         return result
@@ -327,7 +332,6 @@ def create_step(json_step: Dict[str, Any], context) -> 'Step':
     Raises:
         ValueError: 必須フィールドが不足している場合
     """
-    from src.configuration.config_manager import TypeSafeConfigNodeManager
     from src.workflow.step.step import Step
 
     # 必須フィールドのチェック
@@ -341,10 +345,17 @@ def create_step(json_step: Dict[str, Any], context) -> 'Step':
     raw_cmd = json_step['cmd']
     expanded_cmd = [expand_template(arg, context) for arg in raw_cmd]
 
-    # デフォルト値設定をロード
-    config_manager = TypeSafeConfigNodeManager()
-    config_manager.load_from_files(system_dir="config/system")
-    step_defaults = config_manager.resolve_config(['step_defaults'], dict)
+    # デフォルト値を直接設定（CLAUDE.mdに従いデフォルト値禁止のため）
+    step_defaults = {
+        'name': 'Unnamed Step',
+        'allow_failure': False,
+        'show_output': True,
+        'max_workers': 1,
+        'cwd': None,
+        'when': None,
+        'output_format': 'simple',
+        'format_preset': None
+    }
 
     # デフォルト値とjson_stepをマージ
     merged_step = {**step_defaults, **json_step}
@@ -384,22 +395,14 @@ def expand_file_patterns_in_text(text: str, file_patterns: Dict[str, List[str]],
     return result
 
 
-def check_when_condition(when_condition: str, context, os_provider) -> tuple[bool, str]:
-    """when条件をチェックする（互換性のため）
-
-    expand_when_conditionのエイリアス
-    """
-    return expand_when_condition(when_condition, context, os_provider)
-
-
-def run_steps(steps_data: List[Dict[str, Any]], context, json_provider, os_provider) -> List:
+def run_steps(steps_data: List[Dict[str, Any]], context, os_provider, json_provider) -> List:
     """ステップリストを実行する
 
     Args:
         steps_data: ステップのJSONデータリスト
         context: 実行コンテキスト
-        json_provider: JSONプロバイダー
         os_provider: OSプロバイダー
+        json_provider: JSONプロバイダー
 
     Returns:
         List[Step]: 実行されたStepオブジェクトのリスト

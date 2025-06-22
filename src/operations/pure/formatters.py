@@ -141,9 +141,3 @@ def validate_template_keys(template: str, required_keys: list[str]) -> tuple[boo
     template_keys = set(extract_format_keys(template))
     missing_keys = [key for key in required_keys if key not in template_keys]
     return len(missing_keys) == 0, missing_keys
-
-
-# Aliases for existing code compatibility
-format_string_legacy = format_string_simple
-safe_format_template = format_with_missing_keys
-extract_template_keys = extract_format_keys

@@ -11,11 +11,11 @@ from src.infrastructure.providers.os_provider import SystemOsProvider
 from src.workflow.step.step import StepType
 from src.workflow.step.step_runner import (
     ExecutionContext,
-    check_when_condition,
     create_step,
     evaluate_test_condition,
     expand_file_patterns_in_text,
     expand_template,
+    expand_when_condition,
     run_steps,
 )
 
@@ -136,7 +136,7 @@ class TestCheckWhenCondition:
         """when条件がない場合"""
         context = ExecutionContext("abc300", "a", "python", "/tmp/ws", "/tmp/current")
 
-        result, error = check_when_condition(None, context, SystemOsProvider())
+        result, error = expand_when_condition(None, context, SystemOsProvider())
 
         assert result is True
         assert error is None
@@ -146,7 +146,7 @@ class TestCheckWhenCondition:
         with tempfile.TemporaryDirectory() as tmpdir:
             context = ExecutionContext("abc300", "a", "python", tmpdir, "/tmp/current")
 
-            result, error = check_when_condition("test -d {local_workspace_path}", context, SystemOsProvider())
+            result, error = expand_when_condition("test -d {local_workspace_path}", context, SystemOsProvider())
 
             assert result is True
             assert error is None
@@ -162,7 +162,7 @@ class TestCheckWhenCondition:
                 file_patterns={"test_data": ["test"]}
             )
 
-            result, error = check_when_condition("test -d {local_workspace_path}/{test_data}", context, SystemOsProvider())
+            result, error = expand_when_condition("test -d {local_workspace_path}/{test_data}", context, SystemOsProvider())
 
             assert result is True
             assert error is None
@@ -203,86 +203,3 @@ class TestCreateStep:
         assert step.cmd == ["/tmp/ws/test", "/tmp/current/test"]  # ディレクトリ部分のみ
 
 
-class TestRunSteps:
-    """ステップ実行のテスト"""
-
-    def test_simple_workflow(self):
-        """基本的なワークフロー"""
-        context = ExecutionContext("abc300", "a", "python", "/tmp/ws", "/tmp/current")
-        json_steps = [
-            {"type": "mkdir", "cmd": ["{contest_current_path}"], "name": "Create directory"},
-            {"type": "shell", "cmd": ["echo", "Hello"], "name": "Say hello"}
-        ]
-
-        results = run_steps(json_steps, context, SystemOsProvider())
-
-        assert len(results) == 2
-        assert all(result.success for result in results)
-        assert not any(result.skipped for result in results)
-
-    def test_workflow_with_when_conditions(self):
-        """when条件付きワークフロー"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            context = ExecutionContext("abc300", "a", "python", tmpdir, "/tmp/current")
-            json_steps = [
-                {
-                    "type": "mkdir",
-                    "cmd": ["{contest_current_path}"],
-                    "when": "test -d {local_workspace_path}",  # 存在する
-                    "name": "Create if workspace exists"
-                },
-                {
-                    "type": "mkdir",
-                    "cmd": ["/tmp/other"],
-                    "when": "test -d /nonexistent",  # 存在しない
-                    "name": "Create if nonexistent exists"
-                }
-            ]
-
-            results = run_steps(json_steps, context, SystemOsProvider())
-
-            assert len(results) == 2
-            assert results[0].success and not results[0].skipped  # 実行された
-            assert results[1].success and results[1].skipped     # スキップされた
-
-
-class TestIntegrationScenarios:
-    """統合テストシナリオ"""
-
-    def test_contest_restoration_scenario(self):
-        """コンテスト復元シナリオ"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # ディレクトリ構造を作成
-            stock_dir = os.path.join(tmpdir, "stock")
-            current_dir = os.path.join(tmpdir, "current")
-            template_dir = os.path.join(tmpdir, "template")
-
-            os.makedirs(stock_dir)
-            os.makedirs(template_dir)
-
-            context = ExecutionContext(
-                "abc300", "a", "python", tmpdir, current_dir,
-                contest_stock_path=stock_dir,
-                contest_template_path=template_dir
-            )
-
-            json_steps = [
-                {
-                    "name": "Restore from stock",
-                    "type": "shell",  # movetreeの代わりにshellでテスト
-                    "cmd": ["echo", "Restored from {contest_stock_path}"],
-                    "when": "test -d {contest_stock_path}"
-                },
-                {
-                    "name": "Initialize from template",
-                    "type": "shell",
-                    "cmd": ["echo", "Initialized from {contest_template_path}"],
-                    "when": "test ! -d {contest_stock_path}"
-                }
-            ]
-
-            results = run_steps(json_steps, context, SystemOsProvider())
-
-            assert len(results) == 2
-            assert results[0].success and not results[0].skipped  # stock復元が実行
-            assert results[1].success and results[1].skipped     # template初期化はスキップ

@@ -93,8 +93,6 @@ def execution_context_to_simple_context(execution_context: Union['TypedExecution
         return ExecutionContext(
             contest_name=execution_context.contest_name,
             problem_name=execution_context.problem_name,
-            old_contest_name=getattr(execution_context, 'old_contest_name', ''),
-            old_problem_name=getattr(execution_context, 'old_problem_name', ''),
             language=execution_context.language,
             local_workspace_path=str(execution_context.local_workspace_path),
             contest_current_path=str(execution_context.contest_current_path),
@@ -158,8 +156,6 @@ def execution_context_to_simple_context(execution_context: Union['TypedExecution
     return ExecutionContext(
         contest_name=execution_context.contest_name,
         problem_name=execution_context.problem_name,
-        old_contest_name=getattr(execution_context, 'old_contest_name', ''),
-        old_problem_name=getattr(execution_context, 'old_problem_name', ''),
         language=execution_context.language,
         local_workspace_path=getattr(execution_context, 'local_workspace_path', ''),
         contest_current_path=getattr(execution_context, 'contest_current_path', ''),

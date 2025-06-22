@@ -7,28 +7,18 @@ Consolidated Docker functionality including:
 """
 from .docker_command_builder import (
     build_docker_build_command,
-    build_docker_build_command_legacy,
     build_docker_cp_command,
-    build_docker_cp_command_legacy,
     build_docker_exec_command,
     build_docker_inspect_command,
-    build_docker_inspect_command_legacy,
     build_docker_logs_command,
     build_docker_ps_command,
-    build_docker_ps_command_legacy,
     build_docker_remove_command,
-    build_docker_remove_command_legacy,
     # Command builders
     build_docker_run_command,
-    # Backward compatibility aliases
-    build_docker_run_command_legacy,
     build_docker_stop_command,
-    build_docker_stop_command_legacy,
     parse_container_names,
-    parse_container_names_legacy,
     # Validation and parsing
     validate_docker_image_name,
-    validate_docker_image_name_legacy,
 )
 from .docker_naming import (
     get_docker_container_name,
@@ -42,31 +32,21 @@ __all__ = [
     # Utils
     "DockerUtils",
     "build_docker_build_command",
-    "build_docker_build_command_legacy",
     "build_docker_cp_command",
-    "build_docker_cp_command_legacy",
     "build_docker_exec_command",
     "build_docker_inspect_command",
-    "build_docker_inspect_command_legacy",
     "build_docker_logs_command",
     "build_docker_ps_command",
-    "build_docker_ps_command_legacy",
     "build_docker_remove_command",
-    "build_docker_remove_command_legacy",
     # Command builders
     "build_docker_run_command",
-    # Backward compatibility
-    "build_docker_run_command_legacy",
     "build_docker_stop_command",
-    "build_docker_stop_command_legacy",
     "get_docker_container_name",
     # Naming
     "get_docker_image_name",
     "get_oj_container_name",
     "get_oj_image_name",
     "parse_container_names",
-    "parse_container_names_legacy",
     # Validation and parsing
     "validate_docker_image_name",
-    "validate_docker_image_name_legacy",
 ]
