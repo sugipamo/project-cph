@@ -127,20 +127,24 @@ class UnifiedDriver:
 
             # Convert driver result to DockerResult
             return DockerResult(
-                success=result.success,
-                output=result.output,
-                error=result.error,
-                request=request,
+                stdout=result.output,
+                stderr=result.error,
+                returncode=0 if result.success else 1,
                 container_id=getattr(result, 'container_id', None),
-                image_id=getattr(result, 'image_id', None)
+                image=getattr(result, 'image_id', None),
+                success=result.success,
+                request=request
             )
 
         except Exception as e:
             self.logger.error(f"Docker operation failed: {e}")
             return DockerResult(
+                stdout="",
+                stderr=str(e),
+                returncode=1,
+                container_id=None,
+                image=None,
                 success=False,
-                output="",
-                error=str(e),
                 request=request
             )
 
@@ -181,20 +185,32 @@ class UnifiedDriver:
             # Convert driver result to FileResult
             return FileResult(
                 success=result.success,
-                output=result.output,
-                error=result.error,
+                content=result.output,
+                path=request.get_absolute_source(),
+                exists=None,
+                op=request.op,
+                error_message=result.error,
+                exception=None,
+                start_time=0.0,
+                end_time=0.0,
                 request=request,
-                path=request.get_absolute_source()
+                metadata={}
             )
 
         except Exception as e:
             self.logger.error(f"File operation failed: {e}")
             return FileResult(
                 success=False,
-                output="",
-                error=str(e),
+                content="",
+                path=request.get_absolute_source(),
+                exists=None,
+                op=getattr(request, 'op', None),
+                error_message=str(e),
+                exception=e,
+                start_time=0.0,
+                end_time=0.0,
                 request=request,
-                path=request.get_absolute_source()
+                metadata={}
             )
 
     def _execute_shell_request(self, request: Any) -> OperationResult:

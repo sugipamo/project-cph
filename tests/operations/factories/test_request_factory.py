@@ -13,18 +13,43 @@ from src.workflow.step.step import Step, StepType
 
 def create_step_with_validation_bypass(step_type, cmd):
     """Create a Step with validation compliance"""
-    # Ensure commands comply with Step validation rules
-    valid_cmd = cmd if cmd else ["dummy"]
+    # For config fallback tests, preserve empty commands
+    if cmd is None:
+        cmd = []
 
-    # Add minimum required arguments for validation if needed
-    if step_type in [StepType.COPY, StepType.MOVE] and len(valid_cmd) < 2:
+    # Ensure commands comply with Step validation rules only when needed
+    valid_cmd = cmd
+
+    # Add minimum required arguments for validation if needed (but not for config fallback tests)
+    if step_type in [StepType.COPY, StepType.MOVE] and len(valid_cmd) < 2 and len(valid_cmd) > 0:
         valid_cmd = [*valid_cmd, "dummy_target"]
-    elif step_type == StepType.DOCKER_EXEC and len(valid_cmd) < 2:
+    elif step_type == StepType.DOCKER_EXEC and len(valid_cmd) < 2 and len(valid_cmd) > 0:
         valid_cmd = [*valid_cmd, "dummy_cmd"]
-    elif step_type == StepType.DOCKER_COMMIT and len(valid_cmd) < 2:
+    elif step_type == StepType.DOCKER_COMMIT and len(valid_cmd) < 2 and len(valid_cmd) > 0:
         valid_cmd = [*valid_cmd, "dummy_image"]
 
     return Step(type=step_type, cmd=valid_cmd)
+
+
+def create_step_bypassing_validation(step_type, cmd, allow_failure=False):
+    """Create a Step that bypasses validation for testing config fallbacks"""
+    # This is a special version for testing that bypasses Step validation
+    # We directly create the Step without going through __post_init__
+    step = object.__new__(Step)
+    object.__setattr__(step, 'type', step_type)
+    object.__setattr__(step, 'cmd', cmd)
+    object.__setattr__(step, 'allow_failure', allow_failure)
+    object.__setattr__(step, 'show_output', False)
+    object.__setattr__(step, 'cwd', None)
+    object.__setattr__(step, 'force_env_type', None)
+    object.__setattr__(step, 'format_options', None)
+    object.__setattr__(step, 'output_format', None)
+    object.__setattr__(step, 'format_preset', None)
+    object.__setattr__(step, 'when', None)
+    object.__setattr__(step, 'name', None)
+    object.__setattr__(step, 'auto_generated', False)
+    object.__setattr__(step, 'max_workers', 1)
+    return step
 
 
 class TestRequestFactory:
@@ -171,7 +196,7 @@ class TestDockerRequestCreation:
         }.get(tuple(path), None)
 
         factory = RequestFactory(mock_config)
-        step = create_step_with_validation_bypass(StepType.DOCKER_EXEC,[])
+        step = create_step_bypassing_validation(StepType.DOCKER_EXEC, [])
 
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
@@ -182,7 +207,7 @@ class TestDockerRequestCreation:
     def test_create_docker_exec_request_empty_cmd_no_config(self, mock_context, mock_env_manager):
         """Test creating docker exec request with empty command without config manager"""
         factory = RequestFactory(None)
-        step = create_step_with_validation_bypass(StepType.DOCKER_EXEC,[])
+        step = create_step_bypassing_validation(StepType.DOCKER_EXEC, [])
 
         with pytest.raises(ValueError, match="No command provided for docker exec"):
             factory.create_request_from_step(step, mock_context, mock_env_manager)
@@ -193,7 +218,7 @@ class TestDockerRequestCreation:
         mock_config.resolve_config.return_value = ["bash"]
 
         factory = RequestFactory(mock_config)
-        step = create_step_with_validation_bypass(StepType.DOCKER_EXEC,["mycontainer"])
+        step = create_step_bypassing_validation(StepType.DOCKER_EXEC, ["mycontainer"])
 
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
@@ -299,14 +324,14 @@ class TestFileRequestCreation:
 
     def test_create_move_request_missing_target(self, factory, mock_context, mock_env_manager):
         """Test creating move request with missing target"""
-        step = create_step_with_validation_bypass(StepType.MOVE,["/source/file"])
+        step = create_step_bypassing_validation(StepType.MOVE, ["/source/file"])
 
         with pytest.raises(ValueError, match="Copy command requires both source and target paths"):
             factory.create_request_from_step(step, mock_context, mock_env_manager)
 
     def test_create_move_request_empty_cmd(self, factory, mock_context, mock_env_manager):
         """Test creating move request with empty command"""
-        step = create_step_with_validation_bypass(StepType.MOVE,[])
+        step = create_step_bypassing_validation(StepType.MOVE, [])
 
         with pytest.raises(ValueError, match="Copy command requires source path"):
             factory.create_request_from_step(step, mock_context, mock_env_manager)
@@ -323,7 +348,7 @@ class TestFileRequestCreation:
 
     def test_create_remove_request_empty_cmd(self, factory, mock_context, mock_env_manager):
         """Test creating remove request with empty command"""
-        step = create_step_with_validation_bypass(StepType.REMOVE,[])
+        step = create_step_bypassing_validation(StepType.REMOVE, [])
 
         with pytest.raises(ValueError, match="Remove command requires path"):
             factory.create_request_from_step(step, mock_context, mock_env_manager)
@@ -340,7 +365,7 @@ class TestFileRequestCreation:
 
     def test_create_rmtree_request_empty_cmd(self, factory, mock_context, mock_env_manager):
         """Test creating rmtree request with empty command"""
-        step = create_step_with_validation_bypass(StepType.RMTREE,[])
+        step = create_step_bypassing_validation(StepType.RMTREE, [])
 
         with pytest.raises(ValueError, match="rmtree command requires path"):
             factory.create_request_from_step(step, mock_context, mock_env_manager)
@@ -392,8 +417,7 @@ class TestShellRequestCreation:
 
     def test_create_run_request_with_allow_failure(self, factory, mock_context, mock_env_manager):
         """Test creating run request with allow_failure flag"""
-        step = create_step_with_validation_bypass(StepType.RUN,["echo", "hello"])
-        step.allow_failure = True
+        step = create_step_bypassing_validation(StepType.RUN, ["echo", "hello"], allow_failure=True)
 
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
@@ -458,7 +482,7 @@ class TestConfigFallbacks:
         mock_config.resolve_config.return_value = "/default/path"
 
         factory = RequestFactory(mock_config)
-        step = create_step_with_validation_bypass(StepType.MKDIR,[])
+        step = create_step_bypassing_validation(StepType.MKDIR, [])
 
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
@@ -471,7 +495,7 @@ class TestConfigFallbacks:
     def test_mkdir_without_config_no_cmd(self, mock_context, mock_env_manager):
         """Test mkdir without config manager and no command"""
         factory = RequestFactory(None)
-        step = create_step_with_validation_bypass(StepType.MKDIR,[])
+        step = create_step_bypassing_validation(StepType.MKDIR, [])
 
         with pytest.raises(ValueError, match="No command provided for mkdir"):
             factory.create_request_from_step(step, mock_context, mock_env_manager)
@@ -482,7 +506,7 @@ class TestConfigFallbacks:
         mock_config.resolve_config.return_value = "/default/target"
 
         factory = RequestFactory(mock_config)
-        step = create_step_with_validation_bypass(StepType.COPY,["/source"])
+        step = create_step_bypassing_validation(StepType.COPY, ["/source"])
 
         result = factory.create_request_from_step(step, mock_context, mock_env_manager)
 
