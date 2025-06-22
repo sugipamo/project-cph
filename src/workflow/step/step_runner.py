@@ -7,16 +7,11 @@
 - テスト条件の評価
 """
 
-import os
+import glob
+import re
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Dict, List, Optional
-import glob
-import json
-import re
-
-
 
 
 @dataclass
@@ -131,13 +126,12 @@ def evaluate_test_condition(condition: str, os_provider) -> bool:
     try:
         # test コマンドとして実行
         if hasattr(os_provider, 'run_command'):
-            result = os_provider.run_command(['test'] + condition.split())
+            result = os_provider.run_command(['test', *condition.split()])
             return result.return_code == 0
-        else:
-            # fallback: subprocess使用
-            result = subprocess.run(['test'] + condition.split(), 
-                                  capture_output=True, text=True)
-            return result.returncode == 0
+        # fallback: subprocess使用
+        result = subprocess.run(['test', *condition.split()],
+                              capture_output=True, text=True)
+        return result.returncode == 0
     except Exception as e:
         raise ValueError(f"test条件の評価に失敗: {condition}, エラー: {e}") from e
 
@@ -207,13 +201,13 @@ def expand_step_with_file_patterns(json_step: Dict[str, Any], context, json_prov
     expanded_steps = []
     for file_path in actual_files:
         step_copy = json_step.copy()
-        
+
         # cmdの各要素でパターン変数を実際のファイルパスに置換
         if isinstance(step_copy['cmd'], list):
             step_copy['cmd'] = [arg.replace(found_pattern_var, file_path) for arg in step_copy['cmd']]
         else:
             step_copy['cmd'] = step_copy['cmd'].replace(found_pattern_var, file_path)
-        
+
         expanded_steps.append(step_copy)
 
     return expanded_steps
@@ -235,7 +229,7 @@ def get_file_patterns_from_context(context, pattern_name: str, json_provider) ->
         patterns = getattr(context, pattern_name)
         if isinstance(patterns, list):
             return patterns
-        elif isinstance(patterns, str):
+        if isinstance(patterns, str):
             return [patterns]
 
     # TypeSafeConfigNodeManagerからの取得を試行
@@ -245,7 +239,7 @@ def get_file_patterns_from_context(context, pattern_name: str, json_provider) ->
             patterns = resolve_config_value(['files', pattern_name], context._root_node)
             if isinstance(patterns, list):
                 return patterns
-            elif isinstance(patterns, str):
+            if isinstance(patterns, str):
                 return [patterns]
         except Exception:
             pass
@@ -256,7 +250,7 @@ def get_file_patterns_from_context(context, pattern_name: str, json_provider) ->
         'test_files': ['test_*.txt', 'sample_*.txt'],
         'build_files': ['*.py', '*.cpp', '*.java']
     }
-    return default_patterns.get(pattern_name, [])
+    return default_patterns[pattern_name]
 
 
 def expand_file_patterns_to_files(patterns: List[str], os_provider) -> List[str]:
@@ -270,7 +264,7 @@ def expand_file_patterns_to_files(patterns: List[str], os_provider) -> List[str]
         List[str]: 実際のファイルパスのリスト
     """
     files = []
-    
+
     for pattern in patterns:
         if '*' in pattern or '?' in pattern:
             # グロブパターンの場合
@@ -283,9 +277,9 @@ def expand_file_patterns_to_files(patterns: List[str], os_provider) -> List[str]
         else:
             # 通常のファイル名の場合
             files.append(pattern)
-    
+
     # 重複を除去し、ソート
-    return sorted(list(set(files)))
+    return sorted(set(files))
 
 
 def create_step(json_step: Dict[str, Any], context) -> 'Step':
@@ -302,30 +296,30 @@ def create_step(json_step: Dict[str, Any], context) -> 'Step':
         ValueError: 必須フィールドが不足している場合
     """
     from src.workflow.step.step import Step
-    
+
     # 必須フィールドのチェック
     if 'cmd' not in json_step:
         raise ValueError("'cmd'フィールドが必須です")
-    
+
     if 'type' not in json_step:
         raise ValueError("'type'フィールドが必須です")
 
     # コマンドを展開
     raw_cmd = json_step['cmd']
     expanded_cmd = [expand_template(arg, context) for arg in raw_cmd]
-    
+
     # Stepオブジェクトを作成
     return Step.create_without_validation(
         step_type=json_step['type'],
         cmd=expanded_cmd,
-        name=json_step.get('name', ''),
-        allow_failure=json_step.get('allow_failure', False),
-        show_output=json_step.get('show_output', True),
-        max_workers=json_step.get('max_workers', 1),
-        cwd=json_step.get('cwd'),
-        when=json_step.get('when'),
-        output_format=json_step.get('output_format'),
-        format_preset=json_step.get('format_preset')
+        name=json_step['name'],
+        allow_failure=json_step['allow_failure'],
+        show_output=json_step['show_output'],
+        max_workers=json_step['max_workers'],
+        cwd=json_step['cwd'],
+        when=json_step['when'],
+        output_format=json_step['output_format'],
+        format_preset=json_step['format_preset']
     )
 
 
@@ -352,7 +346,7 @@ def expand_file_patterns_in_text(text: str, file_patterns: Dict[str, List[str]],
 
 def check_when_condition(when_condition: str, context, os_provider) -> bool:
     """when条件をチェックする（互換性のため）
-    
+
     expand_when_conditionのエイリアス
     """
     return expand_when_condition(when_condition, context, os_provider)
@@ -374,11 +368,11 @@ def run_steps(steps_data: List[Dict[str, Any]], context, json_provider, os_provi
     for step_data in steps_data:
         # ファイルパターンを含むステップを展開
         expanded_steps_data = expand_step_with_file_patterns(step_data, context, json_provider, os_provider)
-        
+
         for expanded_step_data in expanded_steps_data:
             step = create_step(expanded_step_data, context)
             steps.append(step)
-    
+
     return steps
 
 
