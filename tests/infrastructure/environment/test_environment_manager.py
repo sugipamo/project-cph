@@ -36,7 +36,7 @@ class TestEnvironmentManager:
         logger = Mock()
         manager = EnvironmentManager(env_type=None, config_manager=config_manager, logger=logger)
 
-        config_manager.load_from_files.assert_called_once_with(system_dir="config/system")
+        config_manager.load_from_files.assert_called_once_with(system_dir="./config/system", env_dir="./contest_env", language="python")
         config_manager.resolve_config.assert_called_once_with(['env_default', 'env_type'], str)
         assert manager._env_type == "test_env"
 

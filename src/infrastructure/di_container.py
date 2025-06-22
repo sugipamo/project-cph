@@ -38,10 +38,12 @@ class DIKey(Enum):
     APPLICATION_LOGGER = "application_logger"
     WORKFLOW_LOGGER = "workflow_logger"
     UNIFIED_LOGGER = "unified_logger"
+    LOGGER = "logger"
 
     # Environment and Factory
     ENVIRONMENT_MANAGER = "environment_manager"
     UNIFIED_REQUEST_FACTORY = "unified_request_factory"
+    CONFIG_MANAGER = "config_manager"
 
 
 class DIContainer:

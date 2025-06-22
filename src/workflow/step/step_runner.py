@@ -6,6 +6,9 @@
 3. 明確なエラーハンドリング
 4. 最小限の依存関係
 """
+import copy
+import glob
+import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -100,23 +103,27 @@ def run_steps(json_steps: List[Dict[str, Any]], context, os_provider) -> List[St
 
     for i, json_step in enumerate(json_steps):
         try:
-            # ステップを作成
-            step = create_step(json_step, context)
+            # ファイルパターンを含むステップを展開
+            expanded_steps = expand_step_with_file_patterns(json_step, context)
 
-            # when条件をチェック
-            should_run, check_error = check_when_condition(step.when, context, os_provider)
+            for step_json in expanded_steps:
+                # ステップを作成
+                step = create_step(step_json, context)
 
-            if check_error:
-                results.append(StepResult(False, step, False, f"When condition error: {check_error}"))
-                continue
+                # when条件をチェック
+                should_run, check_error = check_when_condition(step.when, context, os_provider)
 
-            if not should_run:
-                results.append(StepResult(True, step, True, "Skipped by when condition"))
-                continue
+                if check_error:
+                    results.append(StepResult(False, step, False, f"When condition error: {check_error}"))
+                    continue
 
-            # ステップ実行（実際の実行は別途実装）
-            success, error = execute_step_mock(step)  # TODO: 実際の実行ロジックに置き換え
-            results.append(StepResult(success, step, False, error))
+                if not should_run:
+                    results.append(StepResult(True, step, True, "Skipped by when condition"))
+                    continue
+
+                # ステップ実行（実際の実行は別途実装）
+                success, error = execute_step_mock(step)  # TODO: 実際の実行ロジックに置き換え
+                results.append(StepResult(success, step, False, error))
 
         except Exception as e:
             # エラーの場合は空のステップを作成
@@ -224,21 +231,148 @@ def expand_template(template: str, context) -> str:
     result = template
     context_dict = {}
 
-    # 共通属性を取得
+    # 共通属性を取得（ファイルパターン変数を追加）
     common_attrs = ['contest_name', 'problem_name', 'language', 'env_type', 'command_type',
                    'local_workspace_path', 'contest_current_path', 'contest_stock_path',
-                   'contest_template_path', 'source_file_name', 'language_id', 'run_command']
+                   'contest_template_path', 'source_file_name', 'language_id', 'run_command',
+                   'contest_files', 'test_files', 'build_files']
 
     for attr in common_attrs:
         if hasattr(context, attr):
             value = getattr(context, attr)
             if value is None:
                 raise ValueError(f"Value for attribute '{attr}' is None")
-            context_dict[attr] = str(value)
+
+            # ファイルパターン変数の特殊処理
+            if attr in ['contest_files', 'test_files', 'build_files'] and isinstance(value, list):
+                # ファイルパターン配列の場合は最初のパターンを使用
+                context_dict[attr] = str(value[0]) if value else ""
+            else:
+                context_dict[attr] = str(value)
 
     # テンプレート置換
     for key, value in context_dict.items():
         result = result.replace(f'{{{key}}}', value)
+
+    return result
+
+
+def expand_step_with_file_patterns(json_step: Dict[str, Any], context) -> List[Dict[str, Any]]:
+    """ファイルパターンを含むステップを個別ステップに展開
+
+    Args:
+        json_step: 展開するステップのJSON
+        context: 実行コンテキスト
+
+    Returns:
+        List[Dict[str, Any]]: 展開されたステップのJSONリスト
+    """
+    cmd = json_step['cmd']
+    cmd_str = ' '.join(cmd) if isinstance(cmd, list) else str(cmd)
+
+    # ファイルパターン変数をチェック
+    file_pattern_vars = ['{contest_files}', '{test_files}', '{build_files}']
+    found_pattern_var = None
+
+    for pattern_var in file_pattern_vars:
+        if pattern_var in cmd_str:
+            found_pattern_var = pattern_var
+            break
+
+    if not found_pattern_var:
+        return [json_step]
+
+    # ファイルパターンを取得
+    pattern_name = found_pattern_var.strip('{}')
+    file_patterns = get_file_patterns_from_context(context, pattern_name)
+
+    if not file_patterns:
+        return [json_step]
+
+    # ファイルリストを展開
+    base_path = get_base_path_for_pattern(json_step, context, found_pattern_var)
+    expanded_files = expand_file_patterns_to_files(file_patterns, base_path)
+
+    if not expanded_files:
+        return [json_step]
+
+    # 各ファイルに対して個別ステップを生成
+    expanded_steps = []
+    for file_name in expanded_files:
+        new_step = copy.deepcopy(json_step)
+        new_step['cmd'] = [arg.replace(found_pattern_var, file_name) for arg in new_step['cmd']]
+
+        # ステップ名を更新
+        if 'name' in new_step:
+            new_step['name'] = f"{new_step['name']} - {file_name}"
+
+        expanded_steps.append(new_step)
+
+    return expanded_steps
+
+
+def get_file_patterns_from_context(context, pattern_name: str) -> List[str]:
+    """コンテキストからファイルパターンを取得"""
+    if hasattr(context, 'file_patterns') and context.file_patterns:
+        return context.file_patterns[pattern_name]
+
+    # フォールバック: 属性から直接取得を試みる
+    if hasattr(context, pattern_name):
+        value = getattr(context, pattern_name)
+        if isinstance(value, list):
+            return value
+        if isinstance(value, str):
+            try:
+                import json
+                return json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                return [value]
+
+    return []
+
+
+def get_base_path_for_pattern(json_step: Dict[str, Any], context, pattern_var: str) -> str:
+    """ファイルパターンのベースパスを取得"""
+    cmd = json_step['cmd']
+
+    # コマンドからパターンが使われている引数を探す
+    for arg in cmd:
+        if pattern_var in arg:
+            # パターン変数を除いたパス部分を抽出
+            path_part = arg.replace(pattern_var, '').rstrip('/')
+            if path_part:
+                return expand_template(path_part, context)
+
+    # デフォルトはカレントパス
+    return getattr(context, 'contest_current_path', '.')
+
+
+def expand_file_patterns_to_files(patterns: List[str], base_path: str) -> List[str]:
+    """ファイルパターンを実際のファイルリストに展開"""
+    expanded_files = []
+
+    for pattern in patterns:
+        if '*' in pattern or '?' in pattern:
+            # グロブパターンでマッチング
+            full_pattern = os.path.join(base_path, pattern)
+            matches = glob.glob(full_pattern)
+            for match in matches:
+                if os.path.isfile(match):
+                    expanded_files.append(os.path.basename(match))
+        else:
+            # 直接ファイル指定
+            full_path = os.path.join(base_path, pattern)
+            if os.path.exists(full_path) or not os.path.exists(base_path):
+                # ファイルが存在するか、ベースパスが存在しない場合は含める
+                expanded_files.append(pattern)
+
+    # 重複を除去して順序を保持
+    seen = set()
+    result = []
+    for f in expanded_files:
+        if f not in seen:
+            seen.add(f)
+            result.append(f)
 
     return result
 

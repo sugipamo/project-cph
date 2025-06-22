@@ -634,6 +634,9 @@ class TypeSafeConfigNodeManager:
             raise KeyError("ワークスペースパスの設定が見つかりません。以下のいずれかの設定が必要です: paths.local_workspace_path, workspace, local_workspace_path, base_path")
 
         context['workspace'] = workspace
+        # Add language_name to context for template resolution
+        context['language_name'] = language
+
         config = TypedExecutionConfiguration(
             contest_name=contest_name,
             problem_name=problem_name,
@@ -645,6 +648,17 @@ class TypeSafeConfigNodeManager:
             local_workspace_path=self.resolve_template_to_path("{workspace}", context),
             contest_current_path=self.resolve_template_to_path(
                 "{workspace}/contest_current", context
+            ),
+
+            # Additional path templates required by workflow system - no defaults allowed
+            contest_stock_path=self.resolve_template_to_path(
+                self.resolve_config(['paths', 'contest_stock_path'], str), context
+            ),
+            contest_template_path=self.resolve_template_to_path(
+                self.resolve_config(['paths', 'contest_template_path'], str), context
+            ),
+            contest_temp_path=self.resolve_template_to_path(
+                self.resolve_config(['paths', 'contest_temp_path'], str), context
             ),
 
             # 型安全な設定解決（複数のパスを試行）

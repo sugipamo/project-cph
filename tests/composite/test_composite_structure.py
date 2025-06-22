@@ -28,6 +28,10 @@ class DummyRequest(OperationRequestFoundation):
             return self.leaf_count
         raise AttributeError("'DummyRequest' object has no attribute 'count_leaf_requests'")
 
+    def __repr__(self):
+        """String representation of DummyRequest."""
+        return f"<DummyRequest name={self.name}>"
+
 
 class DummyCompositeRequest(DummyRequest):
     """Dummy composite request that has count_leaf_requests method."""

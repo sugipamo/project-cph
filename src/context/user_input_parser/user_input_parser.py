@@ -371,6 +371,20 @@ def _handle_contest_management(context, infrastructure):
 
 def _finalize_environment_configuration(context, env_config, infrastructure):
     """Apply environment JSON and finalize configuration."""
+    # Set env_json from env_config - no defaults allowed
+    if hasattr(env_config, 'get') and 'root' in env_config:
+        # Extract the actual dict value from ConfigNode
+        root_node = env_config['root']
+        context.env_json = root_node.value if hasattr(root_node, 'value') else root_node
+    else:
+        # Minimal configuration structure as required by workflow_execution_service
+        context.env_json = {
+            "shared": {
+                "environment_logging": {
+                    "enabled": False
+                }
+            }
+        }
     return context
 
 

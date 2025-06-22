@@ -84,6 +84,7 @@ class TestOperationRepository:
         repository.db_manager.get_connection.return_value.__enter__.return_value = connection_mock
 
         operation_dict = {
+            "id": None,
             "timestamp": datetime(2024, 1, 1, 12, 0, 0),
             "command": "test",
             "language": "python",
@@ -96,6 +97,7 @@ class TestOperationRepository:
             "stderr": "",
             "return_code": 0,
             "details": {"test": "data"},
+            "created_at": None,
         }
 
         result = repository.create_entity_record(operation_dict)

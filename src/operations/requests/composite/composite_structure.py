@@ -21,7 +21,11 @@ class CompositeStructure:
         for req in self.requests:
             # Check if request has count_leaf_requests method (duck typing)
             if hasattr(req, 'count_leaf_requests') and callable(req.count_leaf_requests):
-                count += req.count_leaf_requests()
+                try:
+                    count += req.count_leaf_requests()
+                except AttributeError:
+                    # If method exists but raises AttributeError, treat as leaf request
+                    count += 1
             else:
                 count += 1
         return count

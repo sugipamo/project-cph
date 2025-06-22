@@ -15,6 +15,7 @@ class OperationRequestFoundation(ABC):
 
     def __init__(self, name: Optional[str], debug_tag: Optional[str]):
         self.name = name
+        self.debug_tag = debug_tag
         self._executed = False
         self._result = None
         self.debug_info = self._create_debug_info(debug_tag)

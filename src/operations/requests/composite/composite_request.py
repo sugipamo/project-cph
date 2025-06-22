@@ -100,6 +100,8 @@ class CompositeRequest(CompositeRequestFoundation):
             req = requests[0]
             if name is not None:
                 req = req.set_name(name)
+            if debug_tag is not None and hasattr(req, 'debug_tag'):
+                req.debug_tag = debug_tag
             return req
         return cls(requests, debug_tag=debug_tag, name=name, execution_controller=None)
 

@@ -272,3 +272,24 @@ class UnifiedDriver:
                 op="shell_operation"
             )
 
+    # File operation delegation methods - route to file driver
+    def mkdir(self, path):
+        """Create directory - delegate to file driver"""
+        return self.file_driver.mkdir(path)
+
+    def rmtree(self, path):
+        """Remove directory tree - delegate to file driver"""
+        return self.file_driver.rmtree(path)
+
+    def touch(self, path):
+        """Create empty file - delegate to file driver"""
+        return self.file_driver.touch(path)
+
+    def copy(self, src, dst):
+        """Copy file or directory - delegate to file driver"""
+        return self.file_driver.copy(src, dst)
+
+    def remove(self, path):
+        """Remove file - delegate to file driver"""
+        return self.file_driver.remove(path)
+

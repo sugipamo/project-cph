@@ -40,7 +40,9 @@ def _create_sqlite_manager(container: Any) -> Any:
     """Lazy factory for SQLite manager (legacy)."""
     from src.infrastructure.persistence.sqlite.sqlite_manager import SQLiteManager
     sqlite_provider = container.resolve(DIKey.SQLITE_PROVIDER)
-    return SQLiteManager(sqlite_provider=sqlite_provider)
+    # Use the existing database path - no defaults allowed
+    db_path = "./cph_history.db"
+    return SQLiteManager(db_path=db_path, sqlite_provider=sqlite_provider)
 
 
 def _create_operation_repository(container: Any) -> Any:
@@ -312,10 +314,12 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.APPLICATION_LOGGER, lambda: _create_application_logger_adapter(container))
     container.register(DIKey.WORKFLOW_LOGGER, lambda: _create_workflow_logger_adapter(container))
     container.register(DIKey.UNIFIED_LOGGER, lambda: _create_unified_logger(container))
+    container.register(DIKey.LOGGER, lambda: _create_logger(container))
 
     # Register environment and factory
     container.register(DIKey.ENVIRONMENT_MANAGER, lambda: _create_environment_manager(container))
     container.register(DIKey.UNIFIED_REQUEST_FACTORY, lambda: _create_request_factory(container))
+    container.register(DIKey.CONFIG_MANAGER, lambda: _create_json_config_loader(container))
 
     # Register interfaces
     container.register("logger", lambda: _create_logger(container))

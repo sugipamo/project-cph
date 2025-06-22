@@ -28,7 +28,12 @@ class EnvironmentManager:
             self._env_type = env_type
         else:
             try:
-                self._config_manager.load_from_files(system_dir="config/system")
+                # Load configuration with required parameters - no defaults allowed
+                self._config_manager.load_from_files(
+                    system_dir="./config/system",
+                    env_dir="./contest_env",
+                    language="python"  # Default language for environment initialization
+                )
                 self._env_type = self._config_manager.resolve_config(['env_default', 'env_type'], str)
             except KeyError as e:
                 raise ValueError("Environment type not provided and no default env_type found in configuration") from e

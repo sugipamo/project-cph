@@ -44,7 +44,7 @@ def steps_to_requests(steps: list[Step], context: StepContext, operations) -> Co
         if request is not None:
             requests.append(request)
 
-    return CompositeRequest(requests, debug_tag="workflow", name=None, execution_controller=None, _executed=False, _results=None, _debug_info=None)
+    return CompositeRequest(requests, debug_tag="workflow", name=None, execution_controller=None)
 
 
 def generate_workflow_from_json(
