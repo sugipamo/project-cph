@@ -226,7 +226,8 @@ class WorkflowExecutionService:
         from src.workflow.step.step_runner import run_steps
         simple_context = execution_context_to_simple_context(self.context)
         from src.infrastructure.providers import SystemOsProvider
-        step_results = run_steps(json_steps, simple_context, SystemOsProvider())
+        from src.infrastructure.providers.json_provider import SystemJsonProvider
+        step_results = run_steps(json_steps, simple_context, SystemOsProvider(), SystemJsonProvider())
 
         # Note: step_results are no longer stored since we directly return CompositeRequest execution results
 

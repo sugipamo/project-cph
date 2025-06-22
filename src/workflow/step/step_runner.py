@@ -8,7 +8,6 @@
 """
 import copy
 import glob
-import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -85,13 +84,14 @@ class StepResult:
     error_message: str = ""
 
 
-def run_steps(json_steps: List[Dict[str, Any]], context, os_provider) -> List[StepResult]:
+def run_steps(json_steps: List[Dict[str, Any]], context, os_provider, json_provider) -> List[StepResult]:
     """JSONステップを順次実行する（メイン関数）
 
     Args:
         json_steps: 実行するステップのJSONリスト
         context: 実行コンテキスト
         os_provider: OSプロバイダー（依存性注入用）
+        json_provider: JSONプロバイダー（依存性注入用）
 
     Returns:
         List[StepResult]: 各ステップの実行結果
@@ -104,7 +104,7 @@ def run_steps(json_steps: List[Dict[str, Any]], context, os_provider) -> List[St
     for i, json_step in enumerate(json_steps):
         try:
             # ファイルパターンを含むステップを展開
-            expanded_steps = expand_step_with_file_patterns(json_step, context)
+            expanded_steps = expand_step_with_file_patterns(json_step, context, json_provider, os_provider)
 
             for step_json in expanded_steps:
                 # ステップを作成
@@ -257,12 +257,14 @@ def expand_template(template: str, context) -> str:
     return result
 
 
-def expand_step_with_file_patterns(json_step: Dict[str, Any], context) -> List[Dict[str, Any]]:
+def expand_step_with_file_patterns(json_step: Dict[str, Any], context, json_provider, os_provider) -> List[Dict[str, Any]]:
     """ファイルパターンを含むステップを個別ステップに展開
 
     Args:
         json_step: 展開するステップのJSON
         context: 実行コンテキスト
+        json_provider: JSONプロバイダー
+        os_provider: OSプロバイダー
 
     Returns:
         List[Dict[str, Any]]: 展開されたステップのJSONリスト
@@ -284,14 +286,14 @@ def expand_step_with_file_patterns(json_step: Dict[str, Any], context) -> List[D
 
     # ファイルパターンを取得
     pattern_name = found_pattern_var.strip('{}')
-    file_patterns = get_file_patterns_from_context(context, pattern_name)
+    file_patterns = get_file_patterns_from_context(context, pattern_name, json_provider)
 
     if not file_patterns:
         return [json_step]
 
     # ファイルリストを展開
     base_path = get_base_path_for_pattern(json_step, context, found_pattern_var)
-    expanded_files = expand_file_patterns_to_files(file_patterns, base_path)
+    expanded_files = expand_file_patterns_to_files(file_patterns, base_path, os_provider)
 
     if not expanded_files:
         return [json_step]
@@ -311,24 +313,32 @@ def expand_step_with_file_patterns(json_step: Dict[str, Any], context) -> List[D
     return expanded_steps
 
 
-def get_file_patterns_from_context(context, pattern_name: str) -> List[str]:
+def get_file_patterns_from_context(context, pattern_name: str, json_provider) -> List[str]:
     """コンテキストからファイルパターンを取得"""
     if hasattr(context, 'file_patterns') and context.file_patterns:
+        if pattern_name not in context.file_patterns:
+            raise ValueError(f"Required pattern '{pattern_name}' not found in file_patterns")
         return context.file_patterns[pattern_name]
 
-    # フォールバック: 属性から直接取得を試みる
+    # 属性から直接取得を試みる
     if hasattr(context, pattern_name):
         value = getattr(context, pattern_name)
         if isinstance(value, list):
             return value
         if isinstance(value, str):
             try:
-                import json
-                return json.loads(value)
-            except (json.JSONDecodeError, TypeError):
-                return [value]
+                parsed_json = json_provider.loads(value)
+                return parsed_json
+            except (ValueError, TypeError) as e:
+                # エラーログを出力してエラーを再発生
+                from infrastructure.logger import Logger
+                logger = Logger()
+                logger.error(f"Failed to parse JSON value: {value}, error: {e}")
+                raise
+        else:
+            raise ValueError(f"Pattern '{pattern_name}' found but has unsupported type: {type(value)}")
 
-    return []
+    raise ValueError(f"Required pattern '{pattern_name}' not found in context")
 
 
 def get_base_path_for_pattern(json_step: Dict[str, Any], context, pattern_var: str) -> str:
@@ -347,22 +357,22 @@ def get_base_path_for_pattern(json_step: Dict[str, Any], context, pattern_var: s
     return getattr(context, 'contest_current_path', '.')
 
 
-def expand_file_patterns_to_files(patterns: List[str], base_path: str) -> List[str]:
+def expand_file_patterns_to_files(patterns: List[str], base_path: str, os_provider) -> List[str]:
     """ファイルパターンを実際のファイルリストに展開"""
     expanded_files = []
 
     for pattern in patterns:
         if '*' in pattern or '?' in pattern:
             # グロブパターンでマッチング
-            full_pattern = os.path.join(base_path, pattern)
+            full_pattern = os_provider.path_join(base_path, pattern)
             matches = glob.glob(full_pattern)
             for match in matches:
-                if os.path.isfile(match):
-                    expanded_files.append(os.path.basename(match))
+                if os_provider.path_isfile(match):
+                    expanded_files.append(os_provider.path_basename(match))
         else:
             # 直接ファイル指定
-            full_path = os.path.join(base_path, pattern)
-            if os.path.exists(full_path) or not os.path.exists(base_path):
+            full_path = os_provider.path_join(base_path, pattern)
+            if os_provider.path_exists(full_path) or not os_provider.path_exists(base_path):
                 # ファイルが存在するか、ベースパスが存在しない場合は含める
                 expanded_files.append(pattern)
 

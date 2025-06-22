@@ -185,7 +185,8 @@ def generate_steps_from_json(json_steps: List[Dict[str, Any]], context: Union['T
     # 新しいシンプル設計を使用
     simple_context = execution_context_to_simple_context(context)
     from src.infrastructure.providers import SystemOsProvider
-    step_results = run_steps(json_steps, simple_context, SystemOsProvider())
+    from src.infrastructure.providers.json_provider import SystemJsonProvider
+    step_results = run_steps(json_steps, simple_context, SystemOsProvider(), SystemJsonProvider())
 
     # 結果を旧形式に変換
     steps = []
