@@ -9,9 +9,11 @@
 
 import glob
 import re
-import subprocess
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from src.workflow.step.step import Step
 
 
 @dataclass
@@ -107,7 +109,7 @@ def expand_template(template: str, context) -> str:
     return result
 
 
-def evaluate_test_condition(condition: str, os_provider) -> bool:
+def evaluate_test_condition(condition: str, os_provider):
     """test条件を評価する
 
     Args:
@@ -115,25 +117,44 @@ def evaluate_test_condition(condition: str, os_provider) -> bool:
         os_provider: OSプロバイダー
 
     Returns:
-        bool: 条件が真の場合True
-
-    Raises:
-        ValueError: test条件の評価に失敗した場合
+        tuple: (result: bool, error: None) または (False, error_message: str)
     """
     if not condition.strip():
-        return True
+        return True, None
 
-    try:
-        # test コマンドとして実行
-        if hasattr(os_provider, 'run_command'):
-            result = os_provider.run_command(['test', *condition.split()])
-            return result.return_code == 0
-        # fallback: subprocess使用
-        result = subprocess.run(['test', *condition.split()],
-                              capture_output=True, text=True)
-        return result.returncode == 0
-    except Exception as e:
-        raise ValueError(f"test条件の評価に失敗: {condition}, エラー: {e}") from e
+    # test条件をパースして適切なOSプロバイダーメソッドを使用
+    parts = condition.strip().split()
+
+    # "test -d path" or "-d path" の形式をサポート
+    if len(parts) >= 2:
+        test_idx = 0
+        if parts[0] == 'test':
+            test_idx = 1
+
+        if test_idx < len(parts):
+            flag = parts[test_idx]
+            if test_idx + 1 < len(parts):
+                path = parts[test_idx + 1]
+
+                if flag == '-d':
+                    return os_provider.isdir(path), None
+                if flag == '-f':
+                    return os_provider.isfile(path), None
+                if flag == '-e':
+                    return os_provider.path_exists(path), None
+                if flag == '!' and test_idx + 2 < len(parts):
+                    # 否定の場合、次の条件を評価して反転
+                    inner_flag = parts[test_idx + 1]
+                    inner_path = parts[test_idx + 2]
+                    if inner_flag == '-d':
+                        return not os_provider.isdir(inner_path), None
+                    if inner_flag == '-f':
+                        return not os_provider.isfile(inner_path), None
+                    if inner_flag == '-e':
+                        return not os_provider.path_exists(inner_path), None
+
+    # サポートされていない形式の場合はエラー
+    return False, f"test条件は 'test' で始まる必要があります must start with 'test': {condition}"
 
 
 def expand_when_condition(when_condition: str, context, os_provider) -> bool:
@@ -154,7 +175,10 @@ def expand_when_condition(when_condition: str, context, os_provider) -> bool:
     expanded = expand_template(when_condition, context)
 
     # test条件を評価
-    return evaluate_test_condition(expanded, os_provider)
+    result, error = evaluate_test_condition(expanded, os_provider)
+    if error:
+        raise ValueError(error)
+    return result
 
 
 def expand_step_with_file_patterns(json_step: Dict[str, Any], context, json_provider, os_provider) -> List[Dict[str, Any]]:
