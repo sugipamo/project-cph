@@ -42,8 +42,8 @@ class GetattrChecker:
         getattr_issues = []
 
         for file_path in glob.glob('src/**/*.py', recursive=True):
-            # infrastructure配下とテストファイルは除外
-            if '/infrastructure/' in file_path or '/tests/' in file_path:
+            # テストファイルは除外
+            if '/tests/' in file_path:
                 continue
 
             try:
