@@ -401,8 +401,37 @@ class TypeSafeConfigNodeManager:
         - EnvConfigLoader
         - ConfigMerger
         """
+        self._system_dir = system_dir
+        self._env_dir = env_dir
+        self._language = language
+
         merged_dict = self.file_loader.load_and_merge_configs(
             system_dir, env_dir, language
+        )
+        _ensure_imports()
+        self.root_node = create_config_root_from_dict(merged_dict)
+
+    def reload_with_language(self, language: str):
+        """言語を変更して設定を再読み込み
+
+        Args:
+            language: 新しい言語設定
+
+        Raises:
+            ConfigurationError: 初期設定が未完了の場合
+        """
+        if not hasattr(self, '_system_dir') or not hasattr(self, '_env_dir'):
+            raise ConfigurationError("Initial configuration not loaded. Call load_from_files() first.")
+
+        # キャッシュをクリア
+        self._type_conversion_cache.clear()
+        self._template_cache.clear()
+        self._execution_config_cache.clear()
+
+        # 新しい言語で再読み込み
+        self._language = language
+        merged_dict = self.file_loader.load_and_merge_configs(
+            self._system_dir, self._env_dir, language
         )
         _ensure_imports()
         self.root_node = create_config_root_from_dict(merged_dict)

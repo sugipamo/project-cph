@@ -11,10 +11,11 @@ if __name__ == "__main__":
 
     # Docker command builderに設定マネージャーを注入
     config_manager = TypeSafeConfigNodeManager(infrastructure)
+    # 初期化時は仮の言語で読み込み（user_input_parserで実際の言語解決後に再読み込み）
     config_manager.load_from_files(
         system_dir="./config/system",
         env_dir="./contest_env",
-        language="python"
+        language="python"  # 仮の言語（CLIで実際の言語解決後に更新される）
     )
     set_config_manager(config_manager)
 

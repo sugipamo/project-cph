@@ -48,6 +48,15 @@ class MinimalCLIApp:
         # Parse user input with infrastructure context
         self.context = parse_user_input(args, self.infrastructure)
 
+        # 言語解決後に設定マネージャーを更新
+        from src.infrastructure.drivers.docker.utils.docker_command_builder import _get_config_manager
+        try:
+            config_manager = _get_config_manager()
+            if config_manager and hasattr(self.context, 'language') and self.context.language:
+                config_manager.reload_with_language(self.context.language)
+        except Exception as e:
+            self.logger.warning(f"設定マネージャーの言語更新に失敗: {e}")
+
         # Log application start
         self.logger.info(f"CLI実行開始: {' '.join(args)}")
 
@@ -223,7 +232,9 @@ def main(argv: Optional[list[str]], exit_func, infrastructure: Optional[DIContai
     if infrastructure is None:
         raise ValueError("Infrastructure must be injected from main.py - no direct initialization allowed")
 
-    app = MinimalCLIApp(infrastructure)
+    # Get logger from infrastructure container - no defaults allowed
+    logger = infrastructure.resolve(DIKey.APPLICATION_LOGGER)
+    app = MinimalCLIApp(infrastructure, logger)
 
     # デフォルト引数の処理は呼び出し元で行う
     if argv is None:

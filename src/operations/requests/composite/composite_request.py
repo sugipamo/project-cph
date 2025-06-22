@@ -101,7 +101,7 @@ class CompositeRequest(CompositeRequestFoundation):
             if name is not None:
                 req = req.set_name(name)
             return req
-        return cls(requests, debug_tag=debug_tag, name=name)
+        return cls(requests, debug_tag=debug_tag, name=name, execution_controller=None)
 
     def count_leaf_requests(self) -> int:
         """Recursively count all leaves (CompositeRequestFoundation that are not CompositeRequest).
