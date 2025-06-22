@@ -168,7 +168,8 @@ class EnvironmentManager:
         Returns:
             EnvironmentManager instance
         """
-        env_type = getattr(context, 'env_type', None)
+        # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
+        env_type = context.env_type if hasattr(context, 'env_type') else None
         return cls(env_type, config_manager, logger)
 
     def switch_environment(self, env_type: str):

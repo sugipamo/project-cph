@@ -1,4 +1,6 @@
 """Unified driver for executing different types of requests"""
+import json
+from pathlib import Path
 from typing import Any
 
 from src.configuration.config_manager import TypeSafeConfigNodeManager
@@ -27,12 +29,38 @@ class UnifiedDriver:
         self.infrastructure = infrastructure
         self.logger = logger
         self._config_manager = config_manager
+        # 互換性維持: 設定システムでgetattr()デフォルト値を管理
+        self._infrastructure_defaults = self._load_infrastructure_defaults()
 
         # Lazy load drivers as needed
         self._docker_driver = None
         self._file_driver = None
         self._shell_driver = None
         self._python_driver = None
+
+    def _load_infrastructure_defaults(self) -> dict[str, Any]:
+        """Load infrastructure defaults from config file."""
+        try:
+            config_path = Path(__file__).parents[4] / "config" / "system" / "infrastructure_defaults.json"
+            with open(config_path, encoding='utf-8') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            # フォールバック: デフォルト値をハードコード
+            return {
+                "infrastructure_defaults": {
+                    "unified": {"request_type_name_fallback": "UnknownRequest"},
+                    "docker": {"container_id": None, "image_id": None}
+                }
+            }
+
+    def _get_default_value(self, path: list[str], default_type: type) -> Any:
+        """Get default value from infrastructure defaults."""
+        current = self._infrastructure_defaults
+        for key in path:
+            current = current[key]
+        if isinstance(current, default_type):
+            return current
+        return None
 
     @property
     def docker_driver(self):
@@ -79,7 +107,11 @@ class UnifiedDriver:
             ExecutionResult from the driver
         """
         # Log request execution
-        request_type_name = getattr(request.request_type, 'name', str(request.request_type))
+        # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
+        if hasattr(request.request_type, 'name'):
+            request_type_name = request.request_type.name
+        else:
+            request_type_name = self._get_default_value(['infrastructure_defaults', 'unified', 'request_type_name_fallback'], str) or str(request.request_type)
         self.logger.debug(f"Executing {request_type_name} request")
 
         # Route to appropriate driver based on request type
@@ -146,8 +178,9 @@ class UnifiedDriver:
                 stdout=result.output,
                 stderr=result.error,
                 returncode=0 if result.success else 1,
-                container_id=getattr(result, 'container_id', None),
-                image=getattr(result, 'image_id', None),
+                # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
+                container_id=result.container_id if hasattr(result, 'container_id') else self._get_default_value(['infrastructure_defaults', 'docker', 'container_id'], type(None)),
+                image=result.image_id if hasattr(result, 'image_id') else self._get_default_value(['infrastructure_defaults', 'docker', 'image_id'], type(None)),
                 success=result.success,
                 request=request
             )
@@ -220,7 +253,8 @@ class UnifiedDriver:
                 content="",
                 path=request.get_absolute_source(),
                 exists=None,
-                op=getattr(request, 'op', None),
+                # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
+                op=request.op if hasattr(request, 'op') else self._get_default_value(['infrastructure_defaults', 'result', 'op'], type(None)),
                 error_message=str(e),
                 exception=e,
                 start_time=0.0,

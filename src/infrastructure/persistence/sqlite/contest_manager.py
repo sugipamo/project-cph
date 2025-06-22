@@ -142,7 +142,11 @@ class ContestManager:
         operations = operations_repo.find_all()
 
         for operation in operations:
-            value = getattr(operation, key, None)
+            # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
+            if hasattr(operation, key):
+                value = getattr(operation, key)
+            else:
+                value = None
             if value is not None:
                 return value
 

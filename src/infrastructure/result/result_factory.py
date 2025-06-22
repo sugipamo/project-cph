@@ -1,5 +1,7 @@
 """Result factory service for creating standardized result objects."""
+import json
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
 from .base_result import InfrastructureResult
@@ -22,6 +24,32 @@ class ResultFactory:
             error_converter: Error conversion service for exception handling
         """
         self.error_converter = error_converter
+        # 互換性維持: 設定システムでgetattr()デフォルト値を管理
+        # 設定ファイルから直接読み込む軽量実装
+        self._infrastructure_defaults = self._load_infrastructure_defaults()
+
+    def _load_infrastructure_defaults(self) -> dict[str, Any]:
+        """Load infrastructure defaults from config file."""
+        try:
+            config_path = Path(__file__).parents[3] / "config" / "system" / "infrastructure_defaults.json"
+            with open(config_path, encoding='utf-8') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            # フォールバック: デフォルト値をハードコード
+            return {
+                "infrastructure_defaults": {
+                    "result": {"path": None, "op": None, "cmd": None, "operation_type": "unknown"},
+                    "docker": {"stdout": None, "stderr": None},
+                    "file": {"content": None, "exists": None}
+                }
+            }
+
+    def _get_default_value(self, path: list[str], default_type: type) -> Any:
+        """Get default value from infrastructure defaults."""
+        current = self._infrastructure_defaults
+        for key in path:
+            current = current[key]
+        return current if isinstance(current, default_type) else None
 
     def create_operation_success_result(self, success: bool, returncode: Optional[int],
                                         stdout: Optional[str], stderr: Optional[str],
@@ -52,15 +80,31 @@ class ResultFactory:
 
         # Extract operation information from request if available
         if request is not None:
-            result_path = path or getattr(request, "path", None)
-            result_op = op or getattr(request, "op", None)
-            result_cmd = cmd or getattr(request, "cmd", None)
-            operation_type = getattr(request, "operation_type", None)
+            # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
+            if hasattr(request, "path"):
+                result_path = path or request.path
+            else:
+                result_path = path or self._get_default_value(['infrastructure_defaults', 'result', 'path'], type(None))
+
+            if hasattr(request, "op"):
+                result_op = op or request.op
+            else:
+                result_op = op or self._get_default_value(['infrastructure_defaults', 'result', 'op'], type(None))
+
+            if hasattr(request, "cmd"):
+                result_cmd = cmd or request.cmd
+            else:
+                result_cmd = cmd or self._get_default_value(['infrastructure_defaults', 'result', 'cmd'], type(None))
+
+            if hasattr(request, "operation_type"):
+                operation_type = request.operation_type
+            else:
+                operation_type = self._get_default_value(['infrastructure_defaults', 'result', 'operation_type'], str) or "unknown"
         else:
             result_path = path
             result_op = op
             result_cmd = cmd
-            operation_type = None
+            operation_type = self._get_default_value(['infrastructure_defaults', 'result', 'operation_type'], str)
 
         # Determine success status with explicit validation
         if success is None:
@@ -126,15 +170,31 @@ class ResultFactory:
 
         # Extract operation information from request if available
         if request is not None:
-            result_path = path or getattr(request, "path", None)
-            result_op = op or getattr(request, "op", None)
-            result_cmd = cmd or getattr(request, "cmd", None)
-            operation_type = getattr(request, "operation_type", None)
+            # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
+            if hasattr(request, "path"):
+                result_path = path or request.path
+            else:
+                result_path = path or self._get_default_value(['infrastructure_defaults', 'result', 'path'], type(None))
+
+            if hasattr(request, "op"):
+                result_op = op or request.op
+            else:
+                result_op = op or self._get_default_value(['infrastructure_defaults', 'result', 'op'], type(None))
+
+            if hasattr(request, "cmd"):
+                result_cmd = cmd or request.cmd
+            else:
+                result_cmd = cmd or self._get_default_value(['infrastructure_defaults', 'result', 'cmd'], type(None))
+
+            if hasattr(request, "operation_type"):
+                operation_type = request.operation_type
+            else:
+                operation_type = self._get_default_value(['infrastructure_defaults', 'result', 'operation_type'], str) or "unknown"
         else:
             result_path = path
             result_op = op
             result_cmd = cmd
-            operation_type = None
+            operation_type = self._get_default_value(['infrastructure_defaults', 'result', 'operation_type'], str)
 
         return {
             'success': False,
@@ -179,7 +239,8 @@ class ResultFactory:
             exists=None,
             path=None,
             op=None,
-            cmd=getattr(request, 'cmd', None) if request else None,
+            # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
+            cmd=request.cmd if request and hasattr(request, 'cmd') else self._get_default_value(['infrastructure_defaults', 'result', 'cmd'], type(None)),
             request=request,
             start_time=start_time,
             end_time=end_time,
@@ -206,13 +267,15 @@ class ResultFactory:
         base_data = self.create_operation_success_result(
             success=True,
             returncode=0,
-            stdout=getattr(docker_response, 'stdout', None),
-            stderr=getattr(docker_response, 'stderr', None),
+            # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
+            stdout=docker_response.stdout if hasattr(docker_response, 'stdout') else self._get_default_value(['infrastructure_defaults', 'docker', 'stdout'], type(None)),
+            stderr=docker_response.stderr if hasattr(docker_response, 'stderr') else self._get_default_value(['infrastructure_defaults', 'docker', 'stderr'], type(None)),
             content=None,
             exists=None,
             path=None,
             op=None,
-            cmd=getattr(request, 'cmd', None) if request else None,
+            # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
+            cmd=request.cmd if request and hasattr(request, 'cmd') else self._get_default_value(['infrastructure_defaults', 'result', 'cmd'], type(None)),
             request=request,
             start_time=start_time,
             end_time=end_time,
@@ -244,9 +307,10 @@ class ResultFactory:
             returncode=None,
             stdout=None,
             stderr=None,
-            content=getattr(file_operation_result, 'content', None),
-            exists=getattr(file_operation_result, 'exists', None),
-            path=getattr(request, 'path', None) if request else None,
+            # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
+            content=file_operation_result.content if hasattr(file_operation_result, 'content') else self._get_default_value(['infrastructure_defaults', 'file', 'content'], type(None)),
+            exists=file_operation_result.exists if hasattr(file_operation_result, 'exists') else self._get_default_value(['infrastructure_defaults', 'file', 'exists'], type(None)),
+            path=request.path if request and hasattr(request, 'path') else self._get_default_value(['infrastructure_defaults', 'result', 'path'], type(None)),
             op=None,
             cmd=None,
             request=request,

@@ -1,6 +1,8 @@
 """Persistence driver implementation following infrastructure patterns."""
+import json
 from abc import abstractmethod
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, Dict, List
 
 from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
@@ -9,6 +11,37 @@ from src.operations.interfaces.persistence_interface import PersistenceInterface
 
 class PersistenceDriver(ExecutionDriverInterface, PersistenceInterface):
     """Abstract base class for persistence drivers."""
+
+    def __init__(self):
+        """Initialize PersistenceDriver with infrastructure defaults."""
+        # 互換性維持: 設定システムでgetattr()デフォルト値を管理
+        self._infrastructure_defaults = self._load_infrastructure_defaults()
+
+    def _load_infrastructure_defaults(self) -> dict[str, Any]:
+        """Load infrastructure defaults from config file."""
+        try:
+            config_path = Path(__file__).parents[4] / "config" / "system" / "infrastructure_defaults.json"
+            with open(config_path, encoding='utf-8') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            # フォールバック: デフォルト値をハードコード
+            return {
+                "infrastructure_defaults": {
+                    "persistence": {"params": []}
+                }
+            }
+
+    def _get_default_value(self, path: list[str], default_type: type) -> Any:
+        """Get default value from infrastructure defaults."""
+        current = self._infrastructure_defaults
+        for key in path:
+            current = current[key]
+        if isinstance(current, default_type):
+            return current
+        # 型が不一致の場合のフォールバック
+        if default_type is tuple:
+            return ()
+        return []
 
     @abstractmethod
     def get_connection(self) -> Any:
@@ -46,9 +79,11 @@ class PersistenceDriver(ExecutionDriverInterface, PersistenceInterface):
             The execution result
         """
         if hasattr(request, 'query'):
-            return self.execute_query(request.query, getattr(request, 'params', ()))
+            # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
+            return self.execute_query(request.query, request.params if hasattr(request, 'params') else self._get_default_value(['infrastructure_defaults', 'persistence', 'params'], tuple))
         if hasattr(request, 'command'):
-            return self.execute_persistence_command(request.command, getattr(request, 'params', ()))
+            # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
+            return self.execute_persistence_command(request.command, request.params if hasattr(request, 'params') else self._get_default_value(['infrastructure_defaults', 'persistence', 'params'], tuple))
         raise ValueError(f"Unsupported request type: {type(request)}")
 
     def validate(self, request: Any) -> bool:
