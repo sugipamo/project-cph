@@ -23,7 +23,7 @@ class BaseQualityChecker(ABC):
         self.verbose = verbose
 
         # 設定読み込み
-        config_path = Path(__file__).parent.parent.parent.parent / "src" / "configuration" / "quality_checks.json"
+        config_path = Path(__file__).parent.parent.parent / "configuration" / "quality_checks.json"
         self.config = QualityConfigLoader(str(config_path))
 
     def get_target_files(self, excluded_categories: Optional[List[str]] = None) -> List[str]:

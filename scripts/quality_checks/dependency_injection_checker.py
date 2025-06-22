@@ -4,39 +4,27 @@
 """
 
 import ast
-import glob
 from typing import List
 
 from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger
 
+from .base.base_quality_checker import BaseQualityChecker
 
-class DependencyInjectionChecker:
+
+class DependencyInjectionChecker(BaseQualityChecker):
     def __init__(self, file_handler: FileHandler, logger: Logger, issues: List[str], verbose: bool = False):
-        self.file_handler = file_handler
-        self.logger = logger
-        self.issues = issues
-        self.verbose = verbose
+        super().__init__(file_handler, logger, issues, verbose)
 
     def check_dependency_injection(self) -> bool:
+        """依存性注入チェック - 副作用はinfrastructure外で直接使用禁止（互換性維持用メソッド）"""
+        return self.check()
+
+    def check(self) -> bool:
         """依存性注入チェック - 副作用はinfrastructure外で直接使用禁止"""
-        # ProgressSpinnerクラスを直接定義
-        from infrastructure.logger import Logger
-
-        class ProgressSpinner:
-            def __init__(self, message: str, logger: Logger):
-                self.message = message
-                self.logger = logger
-
-            def start(self):
-                pass  # チェック中表示は不要
-
-            def stop(self, success: bool = True):
-                self.logger.info(f"{'✅' if success else '❌'} {self.message}")
-
         spinner = None
         if not self.verbose:
-            spinner = ProgressSpinner("依存性注入チェック", self.logger)
+            spinner = self.create_progress_spinner("依存性注入チェック")
             spinner.start()
 
         injection_issues = []
@@ -55,22 +43,22 @@ class DependencyInjectionChecker:
             'toml': ['dump']
         }
 
-        # 許可されたディレクトリ（CLAUDE.mdに従い、infrastructure層全体を許可）
-        allowed_dirs = [
-            'src/infrastructure/',
-            'tests/infrastructure/'
-        ]
+        # 許可されたディレクトリを設定から取得
+        allowed_dirs = self.config.get_allowed_directories("dependency_injection")
 
-        for file_path in glob.glob('src/**/*.py', recursive=True):
+        # 対象ファイルを設定ベースで取得（testディレクトリを除外）
+        target_files = self.get_target_files(excluded_categories=["tests"])
+
+        for file_path in target_files:
             # 許可されたディレクトリは除外
-            if any(file_path.startswith(allowed_dir) for allowed_dir in allowed_dirs):
+            if any(allowed_dir in file_path for allowed_dir in allowed_dirs):
                 continue
 
             try:
                 content = self.file_handler.read_text(file_path, encoding='utf-8')
                 tree = ast.parse(content, filename=file_path)
 
-                relative_path = file_path.replace('src/', '')
+                relative_path = self.get_relative_path(file_path)
 
                 # インポート文と使用箇所をチェック
                 for node in ast.walk(tree):

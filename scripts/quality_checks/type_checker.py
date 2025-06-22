@@ -3,44 +3,67 @@
 型チェッカー (mypy)
 """
 
+from pathlib import Path
 from typing import List, Tuple
 
 from infrastructure.command_executor import CommandExecutor
+from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger
 
+from .base.base_quality_checker import BaseQualityChecker
 
-class TypeChecker:
-    def __init__(self, command_executor: CommandExecutor, logger: Logger, issues: List[str]):
+
+class TypeChecker(BaseQualityChecker):
+    def __init__(self, file_handler: FileHandler, command_executor: CommandExecutor, logger: Logger, issues: List[str], verbose: bool = False):
+        super().__init__(file_handler, logger, issues, verbose)
         self.command_executor = command_executor
-        self.logger = logger
-        self.issues = issues
 
     def check_types(self) -> bool:
+        """型チェック（互換性維持用メソッド）"""
+        return self.check()
+
+    def check(self) -> bool:
         """型チェック (mypy)"""
+        spinner = None
+        if not self.verbose:
+            spinner = self.create_progress_spinner("型チェック")
+            spinner.start()
+
         # mypyが利用可能かチェック
         result = self.command_executor.run(["python3", "-m", "mypy", "--version"], capture_output=True, text=True)
         if not result.success:
             error_msg = "mypyの実行に失敗しました"
             self.logger.error(error_msg)
             self.issues.append(error_msg)
+            if spinner:
+                spinner.stop(False)
             return False
 
-        # mypy実行と結果分析
-        success, output = self._run_command(
-            ["python3", "-m", "mypy", "src/", "--no-error-summary"],
-            "型チェック"
-        )
+        # 対象ディレクトリを設定ベースで取得
+        target_directories = self.config.get_target_directories()
 
-        # 型エラーが検出された場合、簡潔なサマリーを作成
-        if not success and output:
-            self._analyze_type_errors(output)
+        success = True
+        for target_dir in target_directories:
+            # mypy実行と結果分析
+            dir_success, output = self._run_command(
+                ["python3", "-m", "mypy", f"{target_dir}/", "--no-error-summary"],
+                f"型チェック ({target_dir})"
+            )
+
+            if not dir_success:
+                success = False
+                if output:
+                    self._analyze_type_errors(output)
+
+        if spinner:
+            spinner.stop(success)
+        elif self.verbose:
+            self.logger.info(f"{'✅' if success else '❌'} 型チェック")
 
         return success
 
     def _run_command(self, cmd: List[str], description: str) -> Tuple[bool, str]:
         """コマンドを実行し、結果を返す"""
-        from pathlib import Path
-
         result = self.command_executor.run(
             cmd,
             capture_output=True,
@@ -78,8 +101,9 @@ class TypeChecker:
             if not line:
                 continue
 
-            # mypyエラー行のパターン: "src/path/file.py:line:col: error: message [error-code]"
-            if line.startswith('src/') and ': error:' in line:
+            # mypyエラー行のパターン: "[src|scripts]/path/file.py:line:col: error: message [error-code]"
+            is_target_file = any(line.startswith(f'{target_dir}/') for target_dir in self.config.get_target_directories())
+            if is_target_file and ': error:' in line:
                 parts = line.split(': error:', 1)
                 if len(parts) == 2:
                     file_location = parts[0]
@@ -88,7 +112,7 @@ class TypeChecker:
                     # ファイルパスとエラーメッセージを抽出
                     if ':' in file_location:
                         file_path = file_location.split(':')[0]
-                        short_path = file_path.replace('src/', '')
+                        short_path = self.get_relative_path(file_path)
 
                         if short_path not in error_by_file:
                             error_by_file[short_path] = 0

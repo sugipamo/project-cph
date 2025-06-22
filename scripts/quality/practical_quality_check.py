@@ -40,7 +40,7 @@ class PracticalQualityChecker(ast.NodeVisitor):
 
     def _check_exclusion(self, filename: str) -> bool:
         """除外パターンをチェック"""
-        return any(Path(filename).match(pattern) for pattern in self.config.get('exclude_patterns', []))
+        return any(Path(filename).match(pattern) for pattern in self.config['exclude_patterns'])
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
         """関数定義をチェック"""

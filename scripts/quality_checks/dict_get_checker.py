@@ -4,7 +4,6 @@ dict.get()使用チェッカー - エラー隠蔽防止
 """
 
 import ast
-import glob
 from pathlib import Path
 from typing import List
 
@@ -12,43 +11,35 @@ from infrastructure.command_executor import CommandExecutor
 from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger
 
+from .base.base_quality_checker import BaseQualityChecker
 
-class DictGetChecker:
+
+class DictGetChecker(BaseQualityChecker):
     def __init__(self, file_handler: FileHandler, command_executor: CommandExecutor, logger: Logger, issues: List[str], verbose: bool = False):
-        self.file_handler = file_handler
+        super().__init__(file_handler, logger, issues, verbose)
         self.command_executor = command_executor
-        self.logger = logger
-        self.issues = issues
-        self.verbose = verbose
 
     def check_dict_get_usage(self, auto_convert: bool = False) -> bool:
+        """dict.get()使用チェック - エラー隠蔽の温床となるため禁止（互換性維持用メソッド）"""
+        return self.check(auto_convert)
+
+    def check(self, auto_convert: bool = False) -> bool:
         """dict.get()使用チェック - エラー隠蔽の温床となるため禁止"""
-        # ProgressSpinnerクラスを直接定義
-        from infrastructure.logger import Logger
-
-        class ProgressSpinner:
-            def __init__(self, message: str, logger: Logger):
-                self.message = message
-                self.logger = logger
-
-            def start(self):
-                pass  # チェック中表示は不要
-
-            def stop(self, success: bool = True):
-                self.logger.info(f"{'✅' if success else '❌'} {self.message}")
-
         spinner = None
         if not self.verbose:
-            spinner = ProgressSpinner("dict.get()使用チェック", self.logger)
+            spinner = self.create_progress_spinner("dict.get()使用チェック")
             spinner.start()
 
         dict_get_issues = []
 
-        for file_path in glob.glob('src/**/*.py', recursive=True):
+        # 対象ファイルを設定ベースで取得（testディレクトリを除外）
+        target_files = self.get_target_files(excluded_categories=["tests"])
+
+        for file_path in target_files:
             try:
                 content = self.file_handler.read_text(file_path, encoding='utf-8')
                 tree = ast.parse(content, filename=file_path)
-                relative_path = file_path.replace('src/', '')
+                relative_path = self.get_relative_path(file_path)
 
                 # AST解析によるより正確な.get()メソッド検出
                 for node in ast.walk(tree):
@@ -140,19 +131,27 @@ class DictGetChecker:
         """dict.get()を自動変換"""
         self.logger.info("🔧 dict.get()の自動変換を実行中...")
 
-        result = self.command_executor.run([
-            "python3", "scripts/quality/convert_dict_get.py", "src/"
-        ], capture_output=True, text=True, cwd=str(Path(__file__).parent.parent.parent))
+        # 設定から変換スクリプトパスを取得
+        try:
+            script_path = self.config.get_script_path("dict_get_converter")
+        except KeyError:
+            self.logger.error("❗ dict.get()変換スクリプトのパスが設定されていません")
+            return False
 
-        if result.success:
+        # 対象ディレクトリを設定から取得
+        target_directories = self.config.get_target_directories()
+
+        success = True
+        for target_dir in target_directories:
+            result = self.command_executor.run([
+                "python3", script_path, f"{target_dir}/"
+            ], capture_output=True, text=True, cwd=str(Path(__file__).parent.parent.parent))
+
+            if not result.success:
+                success = False
+
+        if success:
             self.logger.info("✅ dict.get()の自動変換が完了しました")
-            if result.stdout.strip():
-                self.logger.info("変換結果:")
-                for line in result.stdout.strip().split('\n'):
-                    if line.strip():
-                        self.logger.info(f"   {line}")
             return True
         self.logger.error("❌ dict.get()の自動変換中にエラーが発生しました")
-        if result.stderr.strip():
-            self.logger.error(f"エラー: {result.stderr}")
         return False

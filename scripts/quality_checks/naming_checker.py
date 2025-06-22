@@ -4,7 +4,6 @@
 """
 
 import ast
-import glob
 import re
 from pathlib import Path
 from typing import List
@@ -12,33 +11,22 @@ from typing import List
 from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger
 
+from .base.base_quality_checker import BaseQualityChecker
 
-class NamingChecker:
+
+class NamingChecker(BaseQualityChecker):
     def __init__(self, file_handler: FileHandler, logger: Logger, warnings: List[str], verbose: bool = False):
-        self.file_handler = file_handler
-        self.logger = logger
-        self.warnings = warnings
-        self.verbose = verbose
+        super().__init__(file_handler, logger, warnings, verbose)
 
     def check_naming_conventions(self) -> bool:
+        """命名規則チェック（互換性維持用メソッド）"""
+        return self.check()
+
+    def check(self) -> bool:
         """命名規則チェック"""
-        # ProgressSpinnerクラスを直接定義
-        from infrastructure.logger import Logger
-
-        class ProgressSpinner:
-            def __init__(self, message: str, logger: Logger):
-                self.message = message
-                self.logger = logger
-
-            def start(self):
-                pass  # チェック中表示は不要
-
-            def stop(self, success: bool = True):
-                self.logger.info(f"{'✅' if success else '❌'} {self.message}")
-
         spinner = None
         if not self.verbose:
-            spinner = ProgressSpinner("命名規則チェック", self.logger)
+            spinner = self.create_progress_spinner("命名規則チェック")
             spinner.start()
 
         naming_issues = []
@@ -75,9 +63,12 @@ class NamingChecker:
             r'^Normal[A-Z]', r'^Regular[A-Z]', r'^Typical[A-Z]', r'^Ordinary[A-Z]'
         ]
 
-        for file_path in glob.glob('src/**/*.py', recursive=True):
+        # 対象ファイルを設定ベースで取得（testディレクトリを除外）
+        target_files = self.get_target_files(excluded_categories=["tests"])
+
+        for file_path in target_files:
             file_name = Path(file_path).name
-            relative_path = file_path.replace('src/', '')
+            relative_path = self.get_relative_path(file_path)
 
             # ファイル名チェック
             if file_name in generic_filenames:
@@ -149,11 +140,11 @@ class NamingChecker:
 
         # 問題が見つかった場合は警告として追加
         if naming_issues:
-            self.warnings.append("命名規則の問題が検出されました:")
+            self.issues.append("命名規則の問題が検出されました:")
             for issue in naming_issues[:15]:  # 最大15件表示
-                self.warnings.append(f"  {issue}")
+                self.issues.append(f"  {issue}")
 
             if len(naming_issues) > 15:
-                self.warnings.append(f"  ... 他{len(naming_issues) - 15}件")
+                self.issues.append(f"  ... 他{len(naming_issues) - 15}件")
 
         return True  # 警告レベルなので常にTrueを返す

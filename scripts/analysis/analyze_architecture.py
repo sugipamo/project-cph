@@ -189,24 +189,24 @@ class ArchitectureAnalyzer:
 
         for module_name, info in self.module_info.items():
             # Ca: Afferent Coupling (入力結合度)
-            ca = len(self.reverse_dependencies.get(module_name, set()))
+            ca = len(self.reverse_dependencies[module_name]))
 
             # Ce: Efferent Coupling (出力結合度)
-            ce = len(self.module_dependencies.get(module_name, set()))
+            ce = len(self.module_dependencies[module_name]))
 
             # I: Instability (不安定性)
             instability = ce / (ca + ce) if (ca + ce) > 0 else 0
 
             # A: Abstractness (抽象度)
-            total_items = info.get('total_items', 1)
-            abstractness = info.get('abstract_items', 0) / total_items if total_items > 0 else 0
+            total_items = info['total_items']
+            abstractness = info['abstract_items'] / total_items if total_items > 0 else 0
 
             # D: Distance from Main Sequence
             # Main Sequence: A + I = 1
             distance = abs(abstractness + instability - 1)
 
             # 複雑度スコア（独自指標）
-            complexity_score = (ce * 2) + (ca * 1.5) + (info.get('lines_of_code', 0) / 100)
+            complexity_score = (ce * 2) + (ca * 1.5) + (info['lines_of_code'] / 100)
 
             metrics.append(ModuleMetrics(
                 name=module_name,
@@ -215,7 +215,7 @@ class ArchitectureAnalyzer:
                 instability=instability,
                 abstractness=abstractness,
                 distance=distance,
-                lines_of_code=info.get('lines_of_code', 0),
+                lines_of_code=info['lines_of_code'],
                 complexity_score=complexity_score
             ))
 
@@ -267,7 +267,7 @@ class ArchitectureAnalyzer:
             rec_stack.add(module)
             path.append(module)
 
-            for dep in self.module_dependencies.get(module, set()):
+            for dep in self.module_dependencies[module]):
                 if dep in self.module_info:  # プロジェクト内モジュールのみ
                     dfs(dep, path.copy())
 

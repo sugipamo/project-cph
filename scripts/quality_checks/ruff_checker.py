@@ -3,96 +3,126 @@
 Ruffによるコード品質チェッカー
 """
 
+from pathlib import Path
 from typing import List, Tuple
 
 from infrastructure.command_executor import CommandExecutor
 from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger
 
+from .base.base_quality_checker import BaseQualityChecker
 
-class RuffChecker:
-    def __init__(self, command_executor: CommandExecutor, file_handler: FileHandler, logger: Logger, issues: List[str]):
+
+class RuffChecker(BaseQualityChecker):
+    def __init__(self, file_handler: FileHandler, command_executor: CommandExecutor, logger: Logger, issues: List[str], verbose: bool = False):
+        super().__init__(file_handler, logger, issues, verbose)
         self.command_executor = command_executor
-        self.file_handler = file_handler
-        self.logger = logger
-        self.issues = issues
 
     def check_ruff(self) -> bool:
+        """Ruffによるコード品質チェック（互換性維持用メソッド）"""
+        return self.check()
+
+    def check(self) -> bool:
         """Ruffによるコード品質チェック"""
-        # ProgressSpinnerクラスを直接定義
-        from infrastructure.logger import Logger
-
-        class ProgressSpinner:
-            def __init__(self, message: str, logger: Logger):
-                self.message = message
-                self.logger = logger
-
-            def start(self):
-                pass  # チェック中表示は不要
-
-            def stop(self, success: bool = True):
-                self.logger.info(f"{'✅' if success else '❌'} {self.message}")
+        # 対象ディレクトリを設定から取得
+        target_directories = self.config.get_target_directories()
 
         # まず修正可能な問題を自動修正
-        spinner1 = ProgressSpinner("Ruff自動修正", self.logger)
-        spinner1.start()
-        self._run_command(
-            ["ruff", "check", "--fix", "--unsafe-fixes", ".", "--exclude", "tests/", "--exclude", "test_results/"],
-            "Ruff自動修正"
-        )
-        spinner1.stop(True)
+        spinner1 = None
+        if not self.verbose:
+            spinner1 = self.create_progress_spinner("Ruff自動修正")
+            spinner1.start()
+
+        for target_dir in target_directories:
+            self._run_command(
+                ["ruff", "check", "--fix", "--unsafe-fixes", target_dir, "--exclude", "tests/", "--exclude", "test_results/"],
+                f"Ruff自動修正 ({target_dir})"
+            )
+
+        if spinner1:
+            spinner1.stop(True)
+        elif self.verbose:
+            self.logger.info("✅ Ruff自動修正")
 
         # 残った問題をチェック
-        spinner2 = ProgressSpinner("コード品質チェック (ruff)", self.logger)
-        spinner2.start()
-        success, output = self._run_command(
-            ["ruff", "check", ".", "--exclude", "tests/", "--exclude", "test_results/"],
-            "コード品質チェック (ruff)"
-        )
-        spinner2.stop(success)
+        spinner2 = None
+        if not self.verbose:
+            spinner2 = self.create_progress_spinner("コード品質チェック (ruff)")
+            spinner2.start()
 
-        return success
+        overall_success = True
+        for target_dir in target_directories:
+            success, output = self._run_command(
+                ["ruff", "check", target_dir, "--exclude", "tests/", "--exclude", "test_results/"],
+                f"コード品質チェック (ruff - {target_dir})"
+            )
+            if not success:
+                overall_success = False
+
+        if spinner2:
+            spinner2.stop(overall_success)
+        elif self.verbose:
+            self.logger.info(f"{'✅' if overall_success else '❌'} コード品質チェック (ruff)")
+
+        return overall_success
 
     def check_quality_scripts(self) -> bool:
         """品質チェックスクリプトを実行"""
         all_passed = True
+        target_directories = self.config.get_target_directories()
 
         # 汎用名チェック
-        if self.file_handler.exists("scripts/quality/check_generic_names.py"):
-            success, output = self._run_command(
-                ["python3", "scripts/quality/check_generic_names.py", "src/"],
-                "汎用名チェック"
-            )
-            all_passed = all_passed and success
+        script_path = self.config.get_script_path("generic_name_checker")
+        if self.file_handler.exists(script_path):
+            for target_dir in target_directories:
+                success, output = self._run_command(
+                    ["python3", script_path, f"{target_dir}/"],
+                    f"汎用名チェック ({target_dir})"
+                )
+                all_passed = all_passed and success
 
         # 実用的品質チェック
-        if self.file_handler.exists("scripts/quality/practical_quality_check.py"):
-            success, output = self._run_command(
-                ["python3", "scripts/quality/practical_quality_check.py"],
-                "実用的品質チェック"
-            )
-            all_passed = all_passed and success
-        elif self.file_handler.exists("scripts/quality/functional_quality_check.py"):
-            success, output = self._run_command(
-                ["python3", "scripts/quality/functional_quality_check.py", "src/"],
-                "関数型品質チェック"
-            )
-            all_passed = all_passed and success
+        try:
+            practical_script = self.config.get_script_path("practical_quality_checker")
+            if self.file_handler.exists(practical_script):
+                success, output = self._run_command(
+                    ["python3", practical_script],
+                    "実用的品質チェック"
+                )
+                all_passed = all_passed and success
+        except KeyError:
+            # フォールバック処理は禁止されているため、設定ファイルに追加が必要
+            pass
+
+        try:
+            functional_script = self.config.get_script_path("functional_quality_checker")
+            if self.file_handler.exists(functional_script):
+                for target_dir in target_directories:
+                    success, output = self._run_command(
+                        ["python3", functional_script, f"{target_dir}/"],
+                        f"関数型品質チェック ({target_dir})"
+                    )
+                    all_passed = all_passed and success
+        except KeyError:
+            pass
 
         # アーキテクチャ品質チェック
-        if self.file_handler.exists("scripts/quality/architecture_quality_check.py"):
-            success, output = self._run_command(
-                ["python3", "scripts/quality/architecture_quality_check.py", "src/"],
-                "アーキテクチャ品質チェック"
-            )
-            all_passed = all_passed and success
+        try:
+            arch_script = self.config.get_script_path("architecture_quality_checker")
+            if self.file_handler.exists(arch_script):
+                for target_dir in target_directories:
+                    success, output = self._run_command(
+                        ["python3", arch_script, f"{target_dir}/"],
+                        f"アーキテクチャ品質チェック ({target_dir})"
+                    )
+                    all_passed = all_passed and success
+        except KeyError:
+            pass
 
         return all_passed
 
     def _run_command(self, cmd: List[str], description: str) -> Tuple[bool, str]:
         """コマンドを実行し、結果を返す"""
-        from pathlib import Path
-
         result = self.command_executor.run(
             cmd,
             capture_output=True,

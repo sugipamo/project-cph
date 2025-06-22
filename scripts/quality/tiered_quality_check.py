@@ -39,7 +39,7 @@ class TieredQualityChecker(ast.NodeVisitor):
 
     def _check_exclusion(self, filename: str) -> bool:
         """除外パターンをチェック"""
-        return any(Path(filename).match(pattern) for pattern in self.config.get('exclude_patterns', []))
+        return any(Path(filename).match(pattern) for pattern in self.config['exclude_patterns'])
 
     def _determine_quality_tier(self, function_name: str, file_path: str, node: ast.FunctionDef) -> str:
         """品質基準の階層を判定"""
@@ -107,7 +107,7 @@ class TieredQualityChecker(ast.NodeVisitor):
                 'warning_threshold': 30
             }
         }
-        return tiers.get(tier, tiers['business_logic'])
+        return tiers[tier]
 
     def _determine_severity(self, line_count: int, tier: str) -> str:
         """違反の重要度を判定"""

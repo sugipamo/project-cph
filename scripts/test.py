@@ -45,10 +45,11 @@ class MainTestRunner:
 
         # 品質チェッカーの初期化
         self.ruff_checker = RuffChecker(
-            self.command_executor,
             self.file_handler,
+            self.command_executor,
             self.logger,
-            self.test_runner.issues
+            self.test_runner.issues,
+            verbose
         )
 
         self.syntax_checker = SyntaxChecker(
@@ -59,9 +60,11 @@ class MainTestRunner:
         )
 
         self.type_checker = TypeChecker(
+            self.file_handler,
             self.command_executor,
             self.logger,
-            self.test_runner.issues
+            self.test_runner.issues,
+            verbose
         )
 
         self.dead_code_checker = DeadCodeChecker(

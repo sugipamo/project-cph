@@ -146,7 +146,7 @@ def detect_circular_imports(directory: str) -> List[ArchitectureIssue]:
             cycle_start = path.index(module)
             cycle = path[cycle_start:] + [module]
             issues.append(ArchitectureIssue(
-                file=module_to_file.get(module, module),
+                file=module_to_file[module],
                 issue_type='circular_import',
                 description=f'循環インポート検出: {" -> ".join(cycle)}',
                 severity='error',
@@ -160,7 +160,7 @@ def detect_circular_imports(directory: str) -> List[ArchitectureIssue]:
         visited.add(module)
         rec_stack.add(module)
 
-        for dep in dependencies.get(module, set()):
+        for dep in dependencies[module]):
             if dfs(dep, [*path, module]):
                 return True
 

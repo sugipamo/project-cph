@@ -4,53 +4,40 @@
 """
 
 import ast
-import glob
 import re
 from typing import List
 
 from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger
 
+from .base.base_quality_checker import BaseQualityChecker
 
-class FallbackChecker:
+
+class FallbackChecker(BaseQualityChecker):
     def __init__(self, file_handler: FileHandler, logger: Logger, issues: List[str], verbose: bool = False):
-        self.file_handler = file_handler
-        self.logger = logger
-        self.issues = issues
-        self.verbose = verbose
+        super().__init__(file_handler, logger, issues, verbose)
 
     def check_fallback_patterns(self) -> bool:
+        """フォールバック処理の検出（CLAUDE.mdルール違反 - エラー隠蔽防止）（互換性維持用メソッド）"""
+        return self.check()
+
+    def check(self) -> bool:
         """フォールバック処理の検出（CLAUDE.mdルール違反 - エラー隠蔽防止）"""
-        # ProgressSpinnerクラスを直接定義
-        from infrastructure.logger import Logger
-
-        class ProgressSpinner:
-            def __init__(self, message: str, logger: Logger):
-                self.message = message
-                self.logger = logger
-
-            def start(self):
-                pass  # チェック中表示は不要
-
-            def stop(self, success: bool = True):
-                self.logger.info(f"{'✅' if success else '❌'} {self.message}")
-
         spinner = None
         if not self.verbose:
-            spinner = ProgressSpinner("フォールバック処理チェック", self.logger)
+            spinner = self.create_progress_spinner("フォールバック処理チェック")
             spinner.start()
 
         fallback_issues = []
 
-        for file_path in glob.glob('src/**/*.py', recursive=True):
-            # Infrastructure層は許可されているためスキップ
-            if file_path.startswith('src/infrastructure/'):
-                continue
+        # Infrastructure層を除外した対象ファイルを設定ベースで取得
+        target_files = self.get_target_files(excluded_categories=["infrastructure", "tests"])
 
+        for file_path in target_files:
             try:
                 content = self.file_handler.read_text(file_path, encoding='utf-8')
                 tree = ast.parse(content, filename=file_path)
-                relative_path = file_path.replace('src/', '')
+                relative_path = self.get_relative_path(file_path)
                 content_lines = content.splitlines()
 
                 for node in ast.walk(tree):

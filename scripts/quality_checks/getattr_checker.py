@@ -4,52 +4,39 @@ getattr()デフォルト値使用チェッカー - CLAUDE.md準拠性検知
 """
 
 import ast
-import glob
 from typing import List
 
 from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger
 
+from .base.base_quality_checker import BaseQualityChecker
 
-class GetattrChecker:
+
+class GetattrChecker(BaseQualityChecker):
     def __init__(self, file_handler: FileHandler, logger: Logger, issues: List[str], verbose: bool = False):
-        self.file_handler = file_handler
-        self.logger = logger
-        self.issues = issues
-        self.verbose = verbose
+        super().__init__(file_handler, logger, issues, verbose)
 
     def check_getattr_usage(self) -> bool:
+        """getattr()デフォルト値使用チェック - CLAUDE.md準拠性違反検知（互換性維持用メソッド）"""
+        return self.check()
+
+    def check(self) -> bool:
         """getattr()デフォルト値使用チェック - CLAUDE.md準拠性違反検知"""
-        # ProgressSpinnerクラスを直接定義
-        from infrastructure.logger import Logger
-
-        class ProgressSpinner:
-            def __init__(self, message: str, logger: Logger):
-                self.message = message
-                self.logger = logger
-
-            def start(self):
-                pass  # チェック中表示は不要
-
-            def stop(self, success: bool = True):
-                self.logger.info(f"{'✅' if success else '❌'} {self.message}")
-
         spinner = None
         if not self.verbose:
-            spinner = ProgressSpinner("getattr()デフォルト値使用チェック", self.logger)
+            spinner = self.create_progress_spinner("getattr()デフォルト値使用チェック")
             spinner.start()
 
         getattr_issues = []
 
-        for file_path in glob.glob('src/**/*.py', recursive=True):
-            # テストファイルは除外
-            if '/tests/' in file_path:
-                continue
+        # 対象ファイルを設定ベースで取得（testディレクトリを除外）
+        target_files = self.get_target_files(excluded_categories=["tests"])
 
+        for file_path in target_files:
             try:
                 content = self.file_handler.read_text(file_path, encoding='utf-8')
                 tree = ast.parse(content, filename=file_path)
-                relative_path = file_path.replace('src/', '')
+                relative_path = self.get_relative_path(file_path)
 
                 # AST解析によるgetattr()デフォルト値使用検出
                 for node in ast.walk(tree):

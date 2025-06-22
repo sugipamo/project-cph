@@ -212,7 +212,7 @@ class TestRunner:
                 else:
                     # 詳細な失敗情報
                     self.warnings.append(f"  {test['name']}")
-                    if test.get('details'):
+                    if test['details']:
                         # 最も重要な部分だけを表示（最初の数行とエラー行）
                         important_lines = []
                         for detail in test['details'][:10]:  # 最大10行

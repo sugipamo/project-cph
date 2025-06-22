@@ -40,7 +40,7 @@ class BaseQualityChecker(ast.NodeVisitor):
 
     def _check_exclusion(self, filename: str) -> bool:
         """除外パターンをチェック"""
-        exclude_patterns = self.config.get('exclude_patterns', [])
+        exclude_patterns = self.config['exclude_patterns']
         return any(Path(filename).match(pattern) for pattern in exclude_patterns)
 
     def add_issue(self, node: ast.AST, issue_type: str, description: str,
