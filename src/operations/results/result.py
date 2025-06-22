@@ -55,21 +55,21 @@ class OperationResult:
         if path is not None:
             self.path = path
         elif request is not None:
-            self.path = getattr(request, "path", None)
+            self.path = request.path if hasattr(request, "path") else None
         else:
             self.path = None
 
         if op is not None:
             self.op = op
         elif request is not None:
-            self.op = getattr(request, "op", None)
+            self.op = request.op if hasattr(request, "op") else None
         else:
             self.op = None
 
         if cmd is not None:
             self.cmd = cmd
         elif request is not None:
-            self.cmd = getattr(request, "cmd", None)
+            self.cmd = request.cmd if hasattr(request, "cmd") else None
         else:
             self.cmd = None
         self.request = request
@@ -90,7 +90,7 @@ class OperationResult:
         self.skipped = skipped
         # Initialize operation_type with explicit validation
         if request is not None:
-            self._operation_type = getattr(request, "operation_type", None)
+            self._operation_type = request.operation_type if hasattr(request, "operation_type") else None
         else:
             self._operation_type = None
 

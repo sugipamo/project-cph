@@ -26,9 +26,9 @@ def create_step_context_from_execution_context(execution_context: Union['TypedEx
             command_type=execution_context.command_type,
             local_workspace_path=str(execution_context.local_workspace_path),
             contest_current_path=str(execution_context.contest_current_path),
-            contest_stock_path=str(getattr(execution_context, 'contest_stock_path', '')),
-            contest_template_path=str(getattr(execution_context, 'contest_template_path', '')),
-            contest_temp_path=str(getattr(execution_context, 'contest_temp_path', '')),
+            contest_stock_path=str(execution_context.contest_stock_path if hasattr(execution_context, 'contest_stock_path') else ''),
+            contest_template_path=str(execution_context.contest_template_path if hasattr(execution_context, 'contest_template_path') else ''),
+            contest_temp_path=str(execution_context.contest_temp_path if hasattr(execution_context, 'contest_temp_path') else ''),
             source_file_name=execution_context.source_file_name,
             language_id=execution_context.language_id,
             file_patterns=file_patterns
@@ -72,13 +72,13 @@ def create_step_context_from_execution_context(execution_context: Union['TypedEx
         language=execution_context.language,
         env_type=execution_context.env_type,
         command_type=execution_context.command_type,
-        local_workspace_path=getattr(execution_context, 'local_workspace_path', ''),
-        contest_current_path=getattr(execution_context, 'contest_current_path', ''),
-        contest_stock_path=getattr(execution_context, 'contest_stock_path', None),
-        contest_template_path=getattr(execution_context, 'contest_template_path', None),
-        contest_temp_path=getattr(execution_context, 'contest_temp_path', None),
-        source_file_name=getattr(execution_context, 'source_file_name', None),
-        language_id=getattr(execution_context, 'language_id', None),
+        local_workspace_path=execution_context.local_workspace_path if hasattr(execution_context, 'local_workspace_path') else '',
+        contest_current_path=execution_context.contest_current_path if hasattr(execution_context, 'contest_current_path') else '',
+        contest_stock_path=execution_context.contest_stock_path if hasattr(execution_context, 'contest_stock_path') else None,
+        contest_template_path=execution_context.contest_template_path if hasattr(execution_context, 'contest_template_path') else None,
+        contest_temp_path=execution_context.contest_temp_path if hasattr(execution_context, 'contest_temp_path') else None,
+        source_file_name=execution_context.source_file_name if hasattr(execution_context, 'source_file_name') else None,
+        language_id=execution_context.language_id if hasattr(execution_context, 'language_id') else None,
         file_patterns=file_patterns
     )
 
@@ -88,7 +88,7 @@ def execution_context_to_simple_context(execution_context: Union['TypedExecution
     # TypedExecutionConfigurationの場合
     if TypedExecutionConfiguration and isinstance(execution_context, TypedExecutionConfiguration):
         # 新設定システムから直接値を取得
-        file_patterns = getattr(execution_context, 'file_patterns', {})
+        file_patterns = execution_context.file_patterns if hasattr(execution_context, 'file_patterns') else {}
 
         return ExecutionContext(
             contest_name=execution_context.contest_name,
@@ -96,8 +96,8 @@ def execution_context_to_simple_context(execution_context: Union['TypedExecution
             language=execution_context.language,
             local_workspace_path=str(execution_context.local_workspace_path),
             contest_current_path=str(execution_context.contest_current_path),
-            contest_stock_path=str(getattr(execution_context, 'contest_stock_path', '')),
-            contest_template_path=str(getattr(execution_context, 'contest_template_path', '')),
+            contest_stock_path=str(execution_context.contest_stock_path if hasattr(execution_context, 'contest_stock_path') else ''),
+            contest_template_path=str(execution_context.contest_template_path if hasattr(execution_context, 'contest_template_path') else ''),
             source_file_name=execution_context.source_file_name,
             language_id=execution_context.language_id,
             run_command=execution_context.run_command,
@@ -157,12 +157,12 @@ def execution_context_to_simple_context(execution_context: Union['TypedExecution
         contest_name=execution_context.contest_name,
         problem_name=execution_context.problem_name,
         language=execution_context.language,
-        local_workspace_path=getattr(execution_context, 'local_workspace_path', ''),
-        contest_current_path=getattr(execution_context, 'contest_current_path', ''),
-        contest_stock_path=getattr(execution_context, 'contest_stock_path', ''),
-        contest_template_path=getattr(execution_context, 'contest_template_path', ''),
-        source_file_name=getattr(execution_context, 'source_file_name', ''),
-        language_id=getattr(execution_context, 'language_id', ''),
+        local_workspace_path=execution_context.local_workspace_path if hasattr(execution_context, 'local_workspace_path') else '',
+        contest_current_path=execution_context.contest_current_path if hasattr(execution_context, 'contest_current_path') else '',
+        contest_stock_path=execution_context.contest_stock_path if hasattr(execution_context, 'contest_stock_path') else '',
+        contest_template_path=execution_context.contest_template_path if hasattr(execution_context, 'contest_template_path') else '',
+        source_file_name=execution_context.source_file_name if hasattr(execution_context, 'source_file_name') else '',
+        language_id=execution_context.language_id if hasattr(execution_context, 'language_id') else '',
         run_command=run_command,
         file_patterns=file_patterns
     )

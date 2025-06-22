@@ -134,14 +134,14 @@ def create_step_context_from_env_context(env_context) -> StepContext:
         language=env_context.language,
         env_type=env_context.env_type,
         command_type=env_context.command_type,
-        local_workspace_path=getattr(env_context, 'local_workspace_path', getattr(env_context, 'workspace_path', '')),
-        contest_current_path=getattr(env_context, 'contest_current_path', ''),
-        contest_stock_path=getattr(env_context, 'contest_stock_path', None),
-        contest_template_path=getattr(env_context, 'contest_template_path', None),
-        contest_temp_path=getattr(env_context, 'contest_temp_path', None),
-        source_file_name=getattr(env_context, 'source_file_name', None),
-        language_id=getattr(env_context, 'language_id', None),
-        file_patterns=getattr(env_context, 'file_patterns', None)
+        local_workspace_path=env_context.local_workspace_path if hasattr(env_context, 'local_workspace_path') else (env_context.workspace_path if hasattr(env_context, 'workspace_path') else ''),
+        contest_current_path=env_context.contest_current_path if hasattr(env_context, 'contest_current_path') else '',
+        contest_stock_path=env_context.contest_stock_path if hasattr(env_context, 'contest_stock_path') else None,
+        contest_template_path=env_context.contest_template_path if hasattr(env_context, 'contest_template_path') else None,
+        contest_temp_path=env_context.contest_temp_path if hasattr(env_context, 'contest_temp_path') else None,
+        source_file_name=env_context.source_file_name if hasattr(env_context, 'source_file_name') else None,
+        language_id=env_context.language_id if hasattr(env_context, 'language_id') else None,
+        file_patterns=env_context.file_patterns if hasattr(env_context, 'file_patterns') else None
     )
 
 

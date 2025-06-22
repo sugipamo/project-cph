@@ -141,7 +141,7 @@ class DebugServiceFactory:
     """DebugServiceのファクトリークラス"""
 
     @staticmethod
-    def create(infrastructure: DIContainer) -> DebugService:
+    def create_debug_service(infrastructure: DIContainer) -> DebugService:
         """DebugServiceインスタンスを作成
 
         Args:

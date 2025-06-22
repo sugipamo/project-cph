@@ -6,16 +6,9 @@ pure_functions.pyモジュールの関数をテストして、
 """
 import pytest
 
-# Docker wrapper functions
-from src.infrastructure.drivers.docker.legacy.docker_wrappers import (
-    build_docker_build_command_wrapper,
-    build_docker_cp_command_wrapper,
-    build_docker_inspect_command_wrapper,
-    build_docker_ps_command_wrapper,
-    build_docker_remove_command_wrapper,
-    build_docker_run_command_wrapper,
-    build_docker_stop_command_wrapper,
-    validate_docker_image_name_wrapper,
+# Docker command builder functions (imported for future pure function tests)
+from src.infrastructure.drivers.docker.utils.docker_command_builder import (
+    validate_docker_image_name,
 )
 
 # String formatting functions

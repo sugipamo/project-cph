@@ -476,7 +476,7 @@ def _enable_debug_mode(infrastructure):
     """DebugServiceを使用してデバッグモードを有効化"""
     try:
         from src.infrastructure.debug import DebugServiceFactory
-        debug_service = DebugServiceFactory.create(infrastructure)
+        debug_service = DebugServiceFactory.create_debug_service(infrastructure)
         debug_service.enable_debug_mode()
 
         # インフラストラクチャにDebugServiceを登録（後続処理で使用可能にする）
@@ -505,7 +505,7 @@ def _apply_output_configuration(infrastructure, debug_enabled: bool, preset_name
     """
     try:
         from src.infrastructure.debug import DebugServiceFactory
-        debug_service = DebugServiceFactory.create(infrastructure)
+        debug_service = DebugServiceFactory.create_debug_service(infrastructure)
 
         if debug_enabled:
             # デバッグモードを有効化（デバッグプリセット適用）

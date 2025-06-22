@@ -80,11 +80,11 @@ class TypedExecutionConfiguration:
             'env_type': self.env_type,
             'command_type': self.command_type,
             'local_workspace_path': str(self.local_workspace_path),
-            'contest_current_path': str(getattr(self, 'contest_current_path', '')),
-            'timeout_seconds': str(getattr(self, 'timeout_seconds', '')),
-            'language_id': getattr(self, 'language_id', ''),
-            'source_file_name': getattr(self, 'source_file_name', ''),
-            'run_command': getattr(self, 'run_command', ''),
+            'contest_current_path': str(self.contest_current_path if hasattr(self, 'contest_current_path') else ''),
+            'timeout_seconds': str(self.timeout_seconds if hasattr(self, 'timeout_seconds') else ''),
+            'language_id': self.language_id if hasattr(self, 'language_id') else '',
+            'source_file_name': self.source_file_name if hasattr(self, 'source_file_name') else '',
+            'run_command': self.run_command if hasattr(self, 'run_command') else '',
         }
 
         # 設定ファイルから展開できるパターンも追加
@@ -135,7 +135,7 @@ class TypedExecutionConfiguration:
     @property
     def command_type(self):
         """command_typeプロパティ（レガシー互換）"""
-        return getattr(self, '_command_type', 'open')
+        return self._command_type if hasattr(self, '_command_type') else 'open'
 
     @command_type.setter
     def command_type(self, value):
@@ -145,7 +145,7 @@ class TypedExecutionConfiguration:
     @property
     def dockerfile_resolver(self):
         """dockerfile_resolverプロパティ（レガシー互換）"""
-        return getattr(self, '_dockerfile_resolver', None)
+        return self._dockerfile_resolver if hasattr(self, '_dockerfile_resolver') else None
 
     @dockerfile_resolver.setter
     def dockerfile_resolver(self, value):
