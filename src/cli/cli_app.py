@@ -12,18 +12,20 @@ from src.workflow.workflow_result import WorkflowExecutionResult
 class MinimalCLIApp:
     """Minimal CLI application with essential features"""
 
-    def __init__(self, infrastructure: DIContainer, logger):
+    def __init__(self, infrastructure, logger, config_manager=None):
         """Initialize minimal CLI application
 
         Args:
             infrastructure: DI container (must be injected from main.py)
             logger: Logger instance (optional, for testing)
+            config_manager: Config manager (must be injected from main.py)
         """
         if infrastructure is None:
             raise ValueError("Infrastructure must be injected from main.py - no direct initialization allowed")
         self.infrastructure = infrastructure
         self.context = None
         self.logger = logger
+        self.config_manager = config_manager
 
     def run_cli_application(self, args: list[str]) -> int:
         """Run the CLI application with dependency injection
@@ -53,7 +55,10 @@ class MinimalCLIApp:
 
         # 言語解決後に設定マネージャーを更新
         try:
-            config_manager = _get_config_manager()
+            if self.config_manager:
+                config_manager = self.config_manager
+            else:
+                config_manager = self.infrastructure.resolve('CONFIG_MANAGER')
             if config_manager and hasattr(self.context, 'language') and self.context.language:
                 config_manager.reload_with_language(self.context.language)
         except Exception as e:
@@ -92,7 +97,7 @@ class MinimalCLIApp:
             # 互換性維持: CLIではロガー初期化失敗時にエラーコードを返すのが正しい動作
             raise RuntimeError("Logger dependency not registered")
 
-        resolved_logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
+        resolved_logger = self.infrastructure.resolve('UNIFIED_LOGGER')
         if resolved_logger is None:
             # 互換性維持: CLIではロガー初期化失敗時にエラーコードを返すのが正しい動作
             raise RuntimeError("Logger initialization failed")
@@ -238,13 +243,14 @@ class MinimalCLIApp:
         return None
 
 
-def main(argv: Optional[list[str]], exit_func, infrastructure: Optional[DIContainer]) -> int:
+def main(argv: Optional[list[str]], exit_func, infrastructure, config_manager=None) -> int:
     """Main entry point for minimal CLI
 
     Args:
         argv: Command line arguments (injected for testability)
         exit_func: Exit function (injected for testability)
         infrastructure: DI container (must be injected from main.py)
+        config_manager: Config manager (must be injected from main.py)
 
     Returns:
         Exit code
@@ -253,8 +259,8 @@ def main(argv: Optional[list[str]], exit_func, infrastructure: Optional[DIContai
         raise ValueError("Infrastructure must be injected from main.py - no direct initialization allowed")
 
     # Get logger from infrastructure container - no defaults allowed
-    logger = infrastructure.resolve(DIKey.APPLICATION_LOGGER)
-    app = MinimalCLIApp(infrastructure, logger)
+    logger = infrastructure.resolve('APPLICATION_LOGGER')
+    app = MinimalCLIApp(infrastructure, logger, config_manager)
 
     # デフォルト引数の処理は呼び出し元で行う
     if argv is None:

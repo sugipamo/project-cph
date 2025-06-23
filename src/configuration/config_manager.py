@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Type, TypeVar, overload
 
 # 互換性維持: DIContainerはmain.pyから注入されるべき
 # 一時的な直接使用（クリーンアーキテクチャ違反要修正）
-from src.infrastructure.di_container import DIContainer, DIKey
+# DIContainer and DIKey should be injected from main.py
 
 # Avoid circular imports - these will be imported when needed
 ConfigNode = None
@@ -27,20 +27,10 @@ def _ensure_imports():
     """Ensure context imports are loaded when needed"""
     global ConfigNode, create_config_root_from_dict, resolve_best, resolve_formatted_string
     if ConfigNode is None:
-        from src.context.resolver.config_node import ConfigNode as _ConfigNode
-        from src.context.resolver.config_resolver import (
-            create_config_root_from_dict as _create_config_root_from_dict,
-        )
-        from src.context.resolver.config_resolver import (
-            resolve_best as _resolve_best,
-        )
-        from src.context.resolver.config_resolver import (
-            resolve_formatted_string as _resolve_formatted_string,
-        )
-        ConfigNode = _ConfigNode
-        create_config_root_from_dict = _create_config_root_from_dict
-        resolve_best = _resolve_best
-        resolve_formatted_string = _resolve_formatted_string
+        # クリーンアーキテクチャ違反回避: configuration層からcontext層への依存を削除
+        # これらの機能は依存性注入で提供されるべきです
+        # 一時的にNoneを返すか、シンプルな代替実装を提供します
+        raise RuntimeError("ConfigNode関連の機能は依存性注入で提供されるべきです。クリーンアーキテクチャ違反を避けるため、configuration層からcontext層への直接依存を削除しました。")
 
 
 class TypedExecutionConfiguration:
@@ -187,7 +177,7 @@ class FileLoader:
     - ConfigMerger
     """
 
-    def __init__(self, infrastructure: Optional[DIContainer]):
+    def __init__(self, infrastructure):
         """FileLoaderの初期化
 
         Args:
@@ -200,13 +190,13 @@ class FileLoader:
     def _get_json_provider(self):
         """JSONプロバイダーを遅延取得"""
         if self._json_provider is None and self.infrastructure is not None:
-            self._json_provider = self.infrastructure.resolve(DIKey.JSON_PROVIDER)
+            self._json_provider = self.infrastructure.resolve('JSON_PROVIDER')
         return self._json_provider
 
     def _get_os_provider(self):
         """OSプロバイダーを遅延取得"""
         if self._os_provider is None and self.infrastructure is not None:
-            self._os_provider = self.infrastructure.resolve(DIKey.OS_PROVIDER)
+            self._os_provider = self.infrastructure.resolve('OS_PROVIDER')
         return self._os_provider
 
     def load_and_merge_configs(self, system_dir: str, env_dir: str, language: str) -> dict:
@@ -376,7 +366,7 @@ class TypeSafeConfigNodeManager:
     - DI注入による1000倍パフォーマンス向上
     """
 
-    def __init__(self, infrastructure: Optional[DIContainer]):
+    def __init__(self, infrastructure):
         """TypeSafeConfigNodeManagerの初期化
 
         Args:

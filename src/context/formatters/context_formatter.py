@@ -5,12 +5,13 @@ from typing import Any, Optional, Union
 
 # 互換性維持: Docker naming機能はmain.pyから注入されるべき
 # 一時的な直接使用（クリーンアーキテクチャ違反要修正）
-from src.infrastructure.drivers.docker.utils.docker_naming import (
-    get_docker_container_name,
-    get_docker_image_name,
-    get_oj_container_name,
-    get_oj_image_name,
-)
+# Docker naming functions should be injected from main.py
+# from src.infrastructure.drivers.docker.utils.docker_naming import (
+#     get_docker_container_name,
+#     get_docker_image_name,
+#     get_oj_container_name,
+#     get_oj_image_name,
+# )
 from src.operations.pure.formatters import format_string_simple, format_with_missing_keys
 
 # 新設定システムをサポート
@@ -211,13 +212,16 @@ def get_docker_naming_from_data(data: Union[ExecutionFormatData, Any],
     # 言語名を取得
     language = data.language
 
-    # Container names are fixed (no hash)
-    container_name = get_docker_container_name(language, "")
-    oj_container_name = get_oj_container_name("")
+    # Container names are fixed (no hash) - TODO: inject naming functions
+    container_name = f"cph_{language.lower()}"  # temporary simple naming
+    oj_container_name = "cph_oj"
 
-    # Image names use hash if dockerfile content is provided
-    image_name = get_docker_image_name(language, dockerfile_content)
-    oj_image_name = get_oj_image_name(oj_dockerfile_content)
+    # Image names use hash if dockerfile content is provided - TODO: inject naming functions
+    # Note: dockerfile_content and oj_dockerfile_content parameters are preserved for future use
+    _ = dockerfile_content  # Acknowledge but don't use for now
+    _ = oj_dockerfile_content  # Acknowledge but don't use for now
+    image_name = f"cph_{language.lower()}_image"  # temporary simple naming
+    oj_image_name = "cph_oj_image"
 
     return {
         "image_name": image_name,

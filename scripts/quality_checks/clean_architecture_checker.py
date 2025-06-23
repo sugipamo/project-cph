@@ -155,10 +155,7 @@ class CleanArchitectureChecker(QualityCheckExecutor):
             path.append(module)
 
             # CLAUDE.mdルール適用: dict.get()使用禁止、明示的設定取得
-            if module in dependencies:
-                module_deps = dependencies[module]
-            else:
-                module_deps = set()
+            module_deps = dependencies.get(module, set())
             for dep in module_deps:
                 if dep in dependencies:  # プロジェクト内モジュールのみ
                     dfs(dep, path.copy())

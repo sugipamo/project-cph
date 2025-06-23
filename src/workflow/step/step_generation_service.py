@@ -1,18 +1,15 @@
 """ステップ生成・実行の核となる関数群（新しいシンプル設計）"""
 from typing import Any, Dict, List, Union
 
-# 新設定システムをサポート
-# 互換性維持: TypedExecutionConfigurationは依存性注入で提供される
-# 型チェックのためのみ使用、実際のインスタンスは注入される
-try:
-    from src.configuration import TypedExecutionConfiguration
-except ImportError:
-    # 設定システムが利用できない場合のフォールバック
-    TypedExecutionConfiguration = None
-
 from .step import Step, StepContext, StepGenerationResult, StepType
 from .step_runner import ExecutionContext, expand_file_patterns_in_text, expand_template, run_steps
 from .step_runner import create_step as create_step_simple
+
+# 新設定システムをサポート
+# 互換性維持: TypedExecutionConfigurationは依存性注入で提供される
+# クリーンアーキテクチャ違反回避: workflow層からconfiguration層への直接依存を削除
+# 型チェックのためのみ使用、実際のインスタンスは注入される
+TypedExecutionConfiguration = None  # 依存性注入で提供される
 
 
 def create_step_context_from_execution_context(execution_context: Any) -> StepContext:
@@ -172,7 +169,7 @@ def execution_context_to_simple_context(execution_context: Union[TypedExecutionC
     )
 
 
-def generate_steps_from_json(json_steps: List[Dict[str, Any]], context: Union[TypedExecutionConfiguration, Any], os_provider=None, json_provider=None) -> StepGenerationResult:
+def generate_steps_from_json(json_steps: List[Dict[str, Any]], context: Union[TypedExecutionConfiguration, Any], os_provider, json_provider) -> StepGenerationResult:
     """JSONステップリストから実行可能ステップを生成する（新設計使用）
 
     Args:
@@ -188,13 +185,9 @@ def generate_steps_from_json(json_steps: List[Dict[str, Any]], context: Union[Ty
     # 個別ステップのエラーハンドリングを追加
     simple_context = execution_context_to_simple_context(context)
 
-    # 依存性注入: プロバイダーはmain.pyから注入される
+    # 依存性注入: プロバイダーはmain.pyから注入される（必須）
     if os_provider is None or json_provider is None:
-        # 後方互換性維持のためのフォールバック
-        from src.infrastructure.providers import SystemOsProvider
-        from src.infrastructure.providers.json_provider import SystemJsonProvider
-        os_provider = SystemOsProvider()
-        json_provider = SystemJsonProvider()
+        raise ValueError("プロバイダーは必須です - main.pyから注入してください")
 
     # run_stepsをモックで置き換えられるように処理
     step_results = run_steps(json_steps, simple_context, os_provider, json_provider)

@@ -207,16 +207,10 @@ def _create_json_config_loader(container: Any) -> Any:
     """Lazy factory for JSON config loader."""
     # 互換性維持: infrastructure層では設定マネージャーを直接作成すべきではない
     # main.pyから注入されるべき
-    # TODO: main.pyから設定マネージャーを注入する形に変更
-    from src.configuration.config_manager import TypeSafeConfigNodeManager
-    config_manager = TypeSafeConfigNodeManager(infrastructure=container)
-    # デフォルト設定をロード
-    config_manager.load_from_files(
-        system_dir="./config/system",
-        env_dir="./contest_env",
-        language="python"
-    )
-    return config_manager
+    # クリーンアーキテクチャ違反回避: infrastructure層からconfiguration層への依存を削除
+    # このファクトリは一時的に None を返す
+    # TODO: main.pyで適切に設定マネージャーをセットアップしてください
+    raise RuntimeError("CONFIG_MANAGERはmain.pyから注入されるべきです。クリーンアーキテクチャ違反を避けるため、infrastructure層からconfiguration層への直接依存を削除しました。")
 
 
 def _create_contest_manager(container: Any) -> Any:

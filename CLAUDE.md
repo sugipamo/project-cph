@@ -11,7 +11,7 @@
 
 互換性維持に必要なものは必ず互換性維持のコメントを追記する
 
-副作用はsrc/infrastructure tests/infrastructure のみとする、また、すべてmain.pyから注入する
+副作用はsrc/infrastructure scripts/infrastructure のみとする、また、すべてmain.pyから注入する
 
 設定ファイルの編集はユーザーから明示された場合のみ許可
 

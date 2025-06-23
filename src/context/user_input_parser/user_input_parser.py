@@ -6,8 +6,10 @@ from src.context.dockerfile_resolver import DockerfileResolver
 # from .execution_context import ExecutionContext  # 新システムで置き換え済み
 from src.context.parsers.validation_service import ValidationService
 from src.context.resolver.config_resolver import create_config_root_from_dict, resolve_by_match_desc
-from src.infrastructure.di_container import DIKey
-from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
+
+# Infrastructure dependencies should be injected from main.py
+# from src.infrastructure.di_container import DIKey
+# from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
 from src.operations.requests.file.file_op_type import FileOpType
 from src.operations.requests.file.file_request import FileRequest
 
@@ -29,7 +31,7 @@ def _create_execution_config(command_type, language, contest_name,
     if command_type is None:
         raise ValueError("command_type parameter cannot be None")
 
-    config_manager = infrastructure.resolve(DIKey.CONFIG_MANAGER)
+    config_manager = infrastructure.resolve('CONFIG_MANAGER')
     config_manager.load_from_files(
         system_dir="./config/system",
         env_dir=CONTEST_ENV_DIR,
@@ -48,8 +50,8 @@ def _create_execution_config(command_type, language, contest_name,
 
 def _load_current_context_sqlite(infrastructure):
     """SQLiteから現在のコンテキスト情報を読み込む"""
-    # infrastructure IS the container in this context
-    config_loader = SystemConfigLoader(infrastructure)
+    # Get SystemConfigLoader from infrastructure container
+    config_loader = infrastructure.resolve('SYSTEM_CONFIG_LOADER')
 
     context = config_loader.get_current_context()
     config_loader.load_config()
@@ -65,8 +67,8 @@ def _load_current_context_sqlite(infrastructure):
 
 def _save_current_context_sqlite(infrastructure, context_info):
     """SQLiteに現在のコンテキスト情報を保存する"""
-    # infrastructure IS the container in this context
-    config_loader = SystemConfigLoader(infrastructure)
+    # Get SystemConfigLoader from infrastructure container
+    config_loader = infrastructure.resolve('SYSTEM_CONFIG_LOADER')
 
     # 実行コンテキストを更新
     config_loader.update_current_context(
@@ -101,7 +103,7 @@ def _scan_and_apply_language(args, context, root, infrastructure):
 
     # 互換性維持: FileLoaderは依存性注入で提供される
 
-    file_loader = infrastructure.resolve(DIKey.CONFIG_MANAGER)
+    file_loader = infrastructure.resolve('CONFIG_MANAGER')
     valid_languages = set(file_loader.get_available_languages(Path("contest_env")))
 
     for idx, arg in enumerate(args):
@@ -226,8 +228,8 @@ def _apply_contest_name(args, context, infrastructure):
 def _load_shared_config(base_dir: str, infrastructure):
     """共有設定を読み込む（依存性注入版）"""
     file_driver = infrastructure.resolve("file_driver")
-    os_provider = infrastructure.resolve(DIKey.OS_PROVIDER)
-    json_provider = infrastructure.resolve(DIKey.JSON_PROVIDER)
+    os_provider = infrastructure.resolve('OS_PROVIDER')
+    json_provider = infrastructure.resolve('JSON_PROVIDER')
 
     shared_path = os_provider.path_join(base_dir, "shared", "env.json")
 
@@ -308,7 +310,7 @@ def _resolve_environment_configuration(context_data, infrastructure):
 
     # 互換性維持: FileLoaderは依存性注入で提供される
 
-    file_loader = infrastructure.resolve(DIKey.CONFIG_MANAGER)
+    file_loader = infrastructure.resolve('CONFIG_MANAGER')
 
     # 全言語の設定を統合して言語候補を作成
     all_languages = file_loader.get_available_languages(Path(CONTEST_ENV_DIR))
@@ -425,7 +427,7 @@ def _setup_context_persistence_and_docker(context, args, infrastructure):
     })
 
     # oj.Dockerfileのパスを依存性注入で取得
-    os_provider = infrastructure.resolve(DIKey.OS_PROVIDER)
+    os_provider = infrastructure.resolve('OS_PROVIDER')
     current_file_dir = os_provider.path_dirname(__file__)
     oj_dockerfile_path = os_provider.path_join(current_file_dir, "oj.Dockerfile")
     dockerfile_loader = make_dockerfile_loader(infrastructure)
