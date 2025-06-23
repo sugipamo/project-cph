@@ -246,7 +246,7 @@ class WorkflowExecutionService:
         # Get logger and config manager from infrastructure
         # 互換性維持: infrastructure層への直接依存を削除、依存性注入で解決
         logger = self.infrastructure.resolve("unified_logger")
-        config_manager = self.infrastructure.resolve("config_manager")
+        self.infrastructure.resolve("config_manager")
 
         # UnifiedDriverは外部から注入されるべきです
         unified_driver = self.infrastructure.resolve("unified_driver")

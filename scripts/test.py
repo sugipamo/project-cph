@@ -35,8 +35,8 @@ class MainTestRunner:
     def __init__(self, verbose: bool):
         self.verbose = verbose
         self.logger = create_logger(verbose=verbose, silent=False, system_operations=None)
-        self.command_executor = create_command_executor(mock=True, subprocess_wrapper=None)
-        self.file_handler = create_file_handler(mock=True, file_operations=None)
+        self.command_executor = create_command_executor(mock=False, subprocess_wrapper=None)
+        self.file_handler = create_file_handler(mock=False, file_operations=None)
 
         # エラー種類ごとのグルーピング用
         self.error_groups: Dict[str, List[str]] = defaultdict(list)

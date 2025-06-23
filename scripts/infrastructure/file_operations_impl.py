@@ -49,23 +49,11 @@ class FileOperationsImpl(FileOperations):
         self._json_provider.dump(data, file_path, indent)
 
     def load_yaml(self, file_path: Union[str, Path]) -> Dict[str, Any]:
-        # yaml モジュールは必要に応じて動的インポート
-        try:
-            import yaml
-        except ImportError as e:
-            raise ImportError("PyYAML is required for YAML operations") from e
-
         # yaml操作もjson_provider経由で実行する必要がある
         # 現在はシンプルな実装で代替
         raise NotImplementedError("YAML operations not yet supported through dependency injection")
 
     def dump_yaml(self, data: Dict[str, Any], file_path: Union[str, Path]) -> None:
-        # yaml モジュールは必要に応じて動的インポート
-        try:
-            import yaml
-        except ImportError as e:
-            raise ImportError("PyYAML is required for YAML operations") from e
-
         # yaml操作もjson_provider経由で実行する必要がある
         # 現在はシンプルな実装で代替
         raise NotImplementedError("YAML operations not yet supported through dependency injection")

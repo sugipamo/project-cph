@@ -10,6 +10,7 @@ from typing import List, Set
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger, create_logger
 from infrastructure.system_operations import SystemOperations
 
@@ -148,11 +149,10 @@ class VagueNameDetector(ast.NodeVisitor):
                 )
         self.generic_visit(node)
 
-def check_file(file_path: Path) -> List[str]:
+def check_file(file_path: Path, file_handler: FileHandler) -> List[str]:
     """ファイル内の汎用名をチェック"""
     try:
-        with open(file_path, encoding='utf-8') as f:
-            content = f.read()
+        content = file_handler.read_text(file_path, encoding='utf-8')
 
         tree = ast.parse(content, filename=str(file_path))
         checker = VagueNameDetector()
@@ -164,7 +164,7 @@ def check_file(file_path: Path) -> List[str]:
     except Exception as e:
         raise RuntimeError(f"ファイル解析エラー {file_path}: {e}") from e
 
-def main(logger: Logger, system_ops: SystemOperations):
+def main(logger: Logger, system_ops: SystemOperations, file_handler: FileHandler):
     """メイン処理"""
 
     argv = system_ops.get_argv()
@@ -173,19 +173,20 @@ def main(logger: Logger, system_ops: SystemOperations):
         system_ops.exit(1)
 
     search_dir = Path(argv[1])
-    if not system_ops.path_exists(search_dir):
+    if not file_handler.exists(search_dir):
         logger.error(f"Directory not found: {search_dir}")
         system_ops.exit(1)
 
     all_errors = []
 
     # Python ファイルを再帰的に検索
-    for py_file in search_dir.rglob("*.py"):
+    python_files = file_handler.glob("**/*.py", search_dir)
+    for py_file in python_files:
         # __pycache__ や .git は除外
         if '__pycache__' in str(py_file) or '.git' in str(py_file):
             continue
 
-        errors = check_file(py_file)
+        errors = check_file(py_file, file_handler)
         all_errors.extend(errors)
 
     if all_errors:
@@ -207,7 +208,32 @@ def main(logger: Logger, system_ops: SystemOperations):
         logger.info("✅ 汎用名チェック完了")
 
 if __name__ == "__main__":
+    # 互換性維持: 既存のテストで動作するよう直接インポートを保持
+    import os
+    import sys
+
+    from infrastructure.file_handler import create_file_handler
     from infrastructure.system_operations_impl import SystemOperationsImpl
-    logger = create_logger(verbose=False, silent=False, system_operations=None)
-    system_ops = SystemOperationsImpl()
-    main(logger, system_ops)
+
+    # 依存性注入用のプロバイダーを作成
+    class OSProvider:
+        def getcwd(self): return os.getcwd()
+        def chdir(self, path): os.chdir(path)
+        def path_exists(self, path): return os.path.exists(path)
+        def isfile(self, path): return os.path.isfile(path)
+        def isdir(self, path): return os.path.isdir(path)
+        def makedirs(self, path, exist_ok): os.makedirs(path, exist_ok=exist_ok)
+        def remove(self, path): os.remove(path)
+        def rmdir(self, path): os.rmdir(path)
+        def listdir(self, path): return os.listdir(path)
+        def get_env(self, key): return os.environ.get(key)
+        def set_env(self, key, value): os.environ[key] = value
+
+    class SysProvider:
+        def exit(self, code): sys.exit(code)
+        def get_argv(self): return sys.argv
+
+    system_ops = SystemOperationsImpl(OSProvider(), SysProvider())
+    file_handler = create_file_handler(mock=False, file_operations=None)
+    logger = create_logger(verbose=False, silent=False, system_operations=system_ops)
+    main(logger, system_ops, file_handler)

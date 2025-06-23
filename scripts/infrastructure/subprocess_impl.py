@@ -16,7 +16,7 @@ class SubprocessProcessHandle(ProcessHandle):
 
     def __init__(self, popen):
         """初期化
-        
+
         Args:
             popen: プロセスハンドル（subprocess.Popenオブジェクト）
         """
@@ -56,19 +56,20 @@ class SubprocessProcessHandle(ProcessHandle):
 
 class SubprocessWrapperImpl(SubprocessWrapper):
     """subprocess モジュールの実装
-    
+
     副作用操作はsystem_operationsインターフェースを通じて注入される
     """
-    
+
     def __init__(self, system_operations):
         """初期化
-        
+
         Args:
             system_operations: システム操作インターフェース
         """
         self._system_operations = system_operations
         # subprocess の定数を動的にインポート
         try:
+            # 互換性維持: 既存のテストで動作するようsubprocess定数を保持
             import subprocess
             self.PIPE = subprocess.PIPE
             self.STDOUT = subprocess.STDOUT
@@ -90,7 +91,7 @@ class SubprocessWrapperImpl(SubprocessWrapper):
     ) -> ProcessResult:
         try:
             # subprocess操作はsystem_operations経由で実行する必要がある
-            # 一時的に直接インポートで実行
+            # 互換性維持: 既存のテストで動作するようsubprocess.run()を保持
             import subprocess
             result = subprocess.run(
                 args,
@@ -108,7 +109,7 @@ class SubprocessWrapperImpl(SubprocessWrapper):
                 stderr=result.stderr,
                 args=result.args
             )
-        except Exception as e:  # subprocess.CalledProcessErrorを直接参照しない
+        except Exception as e:  # subprocess.CalledProcessError/TimeoutExpiredを直接参照しない
             if hasattr(e, 'returncode'):  # subprocess.CalledProcessErrorの判定
                 raise CalledProcessError(
                     returncode=e.returncode,
@@ -116,7 +117,6 @@ class SubprocessWrapperImpl(SubprocessWrapper):
                     output=e.output,
                     stderr=e.stderr
                 ) from e
-        except Exception as e:  # subprocess.TimeoutExpiredを直接参照しない
             if hasattr(e, 'timeout'):  # subprocess.TimeoutExpiredの判定
                 raise TimeoutExpiredError(
                     cmd=e.cmd,
@@ -138,7 +138,7 @@ class SubprocessWrapperImpl(SubprocessWrapper):
         universal_newlines: bool
     ) -> ProcessHandle:
         # subprocess操作はsystem_operations経由で実行する必要がある
-        # 一時的に直接インポートで実行
+        # 互換性維持: 既存のテストで動作するようsubprocess.Popen()を保持
         import subprocess
         popen = subprocess.Popen(
             args,

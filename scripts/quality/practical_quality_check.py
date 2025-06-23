@@ -112,9 +112,10 @@ class PracticalQualityChecker(ast.NodeVisitor):
 def main(file_ops: FileOperations, system_ops: SystemOperations):
     """メイン処理"""
     # 設定ファイルを読み込み
-    config_path = Path('.functional_quality_config.yaml')
+    # 一時的にデフォルト設定を使用（YAML操作は未実装のため）
+    config_path = Path('.functional_quality_config.json')
     if system_ops.path_exists(config_path):
-        config = file_ops.load_yaml(config_path)
+        config = file_ops.load_json(config_path)
     else:
         # デフォルト設定
         config = {
@@ -191,8 +192,58 @@ def main(file_ops: FileOperations, system_ops: SystemOperations):
 
 
 if __name__ == "__main__":
+    import json
+    import os
+    import sys
+
     from infrastructure.file_operations_impl import FileOperationsImpl
     from infrastructure.system_operations_impl import SystemOperationsImpl
-    file_ops = FileOperationsImpl()
-    system_ops = SystemOperationsImpl()
+
+    # 依存性注入用のプロバイダーを作成
+    class JSONProvider:
+        def load(self, file_path):
+            with open(file_path, encoding='utf-8') as f:
+                return json.load(f)
+        def dump(self, data, file_path, indent=2):
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=indent, ensure_ascii=False)
+
+    class OSProvider:
+        def getcwd(self): return os.getcwd()
+        def chdir(self, path): os.chdir(path)
+        def path_exists(self, path): return os.path.exists(path)
+        def isfile(self, path): return os.path.isfile(path)
+        def isdir(self, path): return os.path.isdir(path)
+        def makedirs(self, path, exist_ok): os.makedirs(path, exist_ok=exist_ok)
+        def remove(self, path): os.remove(path)
+        def rmdir(self, path): os.rmdir(path)
+        def listdir(self, path): return os.listdir(path)
+        def get_env(self, key): return os.environ.get(key)
+        def set_env(self, key, value): os.environ[key] = value
+
+    class SysProvider:
+        def exit(self, code): sys.exit(code)
+        def get_argv(self): return sys.argv
+
+    # SystemOperationsのshutil機能用のダミー
+    class SystemOpsWithShutil:
+        def __init__(self, os_provider, sys_provider):
+            self._os_provider = os_provider
+            self._sys_provider = sys_provider
+        def get_cwd(self): return self._os_provider.getcwd()
+        def chdir(self, path): self._os_provider.chdir(path)
+        def path_exists(self, path): return self._os_provider.path_exists(path)
+        def is_file(self, path): return self._os_provider.isfile(path)
+        def is_dir(self, path): return self._os_provider.isdir(path)
+        def makedirs(self, path, exist_ok): self._os_provider.makedirs(path, exist_ok)
+        def remove(self, path): self._os_provider.remove(path)
+        def rmdir(self, path): self._os_provider.rmdir(path)
+        def listdir(self, path): return self._os_provider.listdir(path)
+        def get_env(self, key, default): return self._os_provider.get_env(key, default)
+        def set_env(self, key, value): self._os_provider.set_env(key, value)
+        def exit(self, code): self._sys_provider.exit(code)
+        def get_argv(self): return self._sys_provider.get_argv()
+
+    file_ops = FileOperationsImpl(JSONProvider(), SystemOpsWithShutil(OSProvider(), SysProvider()))
+    system_ops = SystemOperationsImpl(OSProvider(), SysProvider())
     main(file_ops, system_ops)

@@ -39,13 +39,13 @@ class Logger(ABC):
 
 class ConsoleLogger(Logger):
     """標準出力への実装
-    
+
     副作用操作はsystem_operationsインターフェースを通じて注入される
     """
 
     def __init__(self, verbose: bool, system_operations):
         """初期化
-        
+
         Args:
             verbose: 詳細モードを有効にするか
             system_operations: システム操作インターフェース
@@ -131,6 +131,6 @@ def create_logger(verbose: bool, silent: bool, system_operations) -> Logger:
     """
     if silent:
         return SilentLogger()
-    
-    
+
+
     return ConsoleLogger(verbose, system_operations)

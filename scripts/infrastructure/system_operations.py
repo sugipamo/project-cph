@@ -106,15 +106,14 @@ class SystemOperations(ABC):
         pass
 
     @abstractmethod
-    def get_env(self, key: str, default: Optional[str]) -> Optional[str]:
+    def get_env(self, key: str) -> Optional[str]:
         """環境変数を取得
 
         Args:
             key: 環境変数名
-            default: デフォルト値
 
         Returns:
-            Optional[str]: 環境変数の値
+            Optional[str]: 環境変数の値（存在しない場合はNone）
         """
         pass
 
@@ -143,5 +142,14 @@ class SystemOperations(ABC):
 
         Returns:
             List[str]: コマンドライン引数のリスト
+        """
+        pass
+
+    @abstractmethod
+    def print_stdout(self, message: str) -> None:
+        """標準出力にメッセージを出力
+
+        Args:
+            message: 出力するメッセージ
         """
         pass

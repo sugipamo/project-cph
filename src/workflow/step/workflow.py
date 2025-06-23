@@ -20,7 +20,6 @@ def steps_to_requests(steps: list[Step], context: StepContext, operations) -> Co
     Returns:
         CompositeRequest: Composite request containing all converted steps
     """
-    from src.operations.factories.request_factory import RequestFactory
 
     requests = []
 
@@ -29,7 +28,7 @@ def steps_to_requests(steps: list[Step], context: StepContext, operations) -> Co
     raise NotImplementedError("config_manager and env_manager must be injected as parameters")
 
     # Create a dummy execution context with the required attributes
-    execution_context = type('ExecutionContext', (), {
+    type('ExecutionContext', (), {
         'problem_name': context.problem_name,
         'contest_name': context.contest_name,
         'language': context.language,

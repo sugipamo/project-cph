@@ -378,6 +378,29 @@ def create_command_executor(mock: bool, subprocess_wrapper: Optional[SubprocessW
 
     if subprocess_wrapper is None:
         from .subprocess_impl import SubprocessWrapperImpl
-        subprocess_wrapper = SubprocessWrapperImpl()
+        from .system_operations_impl import SystemOperationsImpl
+
+        # Create simple direct implementations for the test script
+        class DirectOsProvider:
+            def getcwd(self):
+                # 互換性維持: 既存のテストで動作するようos.getcwd()を保持
+                import os
+                return os.getcwd()
+            def chdir(self, path):
+                # 互換性維持: 既存のテストで動作するようos.chdir()を保持
+                import os
+                return os.chdir(path)
+
+        class DirectSysProvider:
+            def exit(self, code):
+                # 互換性維持: 既存のテストで動作するようsys.exit()を保持
+                import sys
+                return sys.exit(code)
+
+        system_operations = SystemOperationsImpl(
+            os_provider=DirectOsProvider(),
+            sys_provider=DirectSysProvider()
+        )
+        subprocess_wrapper = SubprocessWrapperImpl(system_operations)
 
     return SubprocessCommandExecutor(subprocess_wrapper)

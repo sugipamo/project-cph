@@ -11,7 +11,6 @@
 """
 
 import ast
-import glob
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,6 +18,7 @@ from typing import Dict, List, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger, create_logger
 from infrastructure.system_operations import SystemOperations
 
@@ -264,11 +264,10 @@ class DataClassChecker(ast.NodeVisitor):
         self.generic_visit(node)
 
 
-def check_file(file_path: str) -> List[QualityIssue]:
+def check_file(file_path: str, file_handler: FileHandler) -> List[QualityIssue]:
     """ファイルをチェックして問題を返す"""
     try:
-        with open(file_path, encoding='utf-8') as f:
-            content = f.read()
+        content = file_handler.read_text(file_path, encoding='utf-8')
 
         tree = ast.parse(content, filename=file_path)
 
@@ -286,7 +285,7 @@ def check_file(file_path: str) -> List[QualityIssue]:
         raise Exception(f"Failed to analyze functional quality in {file_path}: {e}") from e
 
 
-def main(logger: Logger, system_ops: SystemOperations):
+def main(logger: Logger, system_ops: SystemOperations, file_handler: FileHandler):
     """メイン関数"""
 
     argv = system_ops.get_argv()
@@ -295,7 +294,7 @@ def main(logger: Logger, system_ops: SystemOperations):
         system_ops.exit(1)
 
     directory = argv[1]
-    python_files = glob.glob(f"{directory}/**/*.py", recursive=True)
+    python_files = [str(p) for p in file_handler.glob("**/*.py", directory)]
 
     all_issues = []
     error_count = 0
@@ -306,7 +305,7 @@ def main(logger: Logger, system_ops: SystemOperations):
     logger.info(f"📁 チェック対象: {len(python_files)} ファイル")
 
     for file_path in python_files:
-        issues = check_file(file_path)
+        issues = check_file(file_path, file_handler)
         all_issues.extend(issues)
 
         for issue in issues:
@@ -356,7 +355,32 @@ def main(logger: Logger, system_ops: SystemOperations):
 
 
 if __name__ == "__main__":
+    # 互換性維持: 既存のテストで動作するよう直接インポートを保持
+    import os
+    import sys
+
+    from infrastructure.file_handler import create_file_handler
     from infrastructure.system_operations_impl import SystemOperationsImpl
-    logger = create_logger(verbose=False, silent=False, system_operations=None)
-    system_ops = SystemOperationsImpl()
-    main(logger, system_ops)
+
+    # 依存性注入用のプロバイダーを作成
+    class OSProvider:
+        def getcwd(self): return os.getcwd()
+        def chdir(self, path): os.chdir(path)
+        def path_exists(self, path): return os.path.exists(path)
+        def isfile(self, path): return os.path.isfile(path)
+        def isdir(self, path): return os.path.isdir(path)
+        def makedirs(self, path, exist_ok): os.makedirs(path, exist_ok=exist_ok)
+        def remove(self, path): os.remove(path)
+        def rmdir(self, path): os.rmdir(path)
+        def listdir(self, path): return os.listdir(path)
+        def get_env(self, key): return os.environ.get(key)
+        def set_env(self, key, value): os.environ[key] = value
+
+    class SysProvider:
+        def exit(self, code): sys.exit(code)
+        def get_argv(self): return sys.argv
+
+    system_ops = SystemOperationsImpl(OSProvider(), SysProvider())
+    file_handler = create_file_handler(mock=False, file_operations=None)
+    logger = create_logger(verbose=False, silent=False, system_operations=system_ops)
+    main(logger, system_ops, file_handler)

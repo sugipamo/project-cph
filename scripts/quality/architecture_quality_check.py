@@ -10,7 +10,6 @@
 """
 
 import ast
-import glob
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
@@ -19,6 +18,7 @@ from typing import Dict, List, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from infrastructure.file_handler import FileHandler
 from infrastructure.system_operations import SystemOperations
 
 
@@ -65,15 +65,15 @@ def analyze_imports(file_path: str) -> Tuple[List[str], List[Tuple[str, List[str
         raise Exception(f"Failed to analyze imports in {file_path}: {e}") from e
 
 
-def check_file_size_limits(directory: str) -> List[ArchitectureIssue]:
+def check_file_size_limits(directory: str, file_handler: FileHandler) -> List[ArchitectureIssue]:
     """ファイルサイズ制限チェック"""
     issues = []
-    python_files = glob.glob(f"{directory}/**/*.py", recursive=True)
+    python_files = file_handler.glob("**/*.py", directory)
 
     for file_path in python_files:
         try:
-            with open(file_path, encoding='utf-8') as f:
-                line_count = sum(1 for _ in f)
+            content = file_handler.read_text(file_path, encoding='utf-8')
+            line_count = len(content.splitlines())
 
             # 極端に大きいファイルのみ警告 (800行以上)
             extreme_threshold = 800
@@ -81,7 +81,7 @@ def check_file_size_limits(directory: str) -> List[ArchitectureIssue]:
             if line_count >= extreme_threshold:
                 severity = 'warning'
                 issues.append(ArchitectureIssue(
-                    file=file_path,
+                    file=str(file_path),
                     issue_type='file_size',
                     description=f'ファイルサイズ {line_count} 行（推奨: {extreme_threshold}行未満）',
                     severity=severity,
@@ -104,10 +104,10 @@ def check_module_structure(directory: str) -> List[ArchitectureIssue]:
     return issues
 
 
-def detect_circular_imports(directory: str, system_ops: SystemOperations) -> List[ArchitectureIssue]:
+def detect_circular_imports(directory: str, system_ops: SystemOperations, file_handler: FileHandler) -> List[ArchitectureIssue]:
     """循環インポートの検出"""
     issues = []
-    python_files = glob.glob(f"{directory}/**/*.py", recursive=True)
+    python_files = file_handler.glob("**/*.py", directory)
 
     # モジュール名とファイルパスのマッピング
     module_to_file = {}
@@ -115,19 +115,17 @@ def detect_circular_imports(directory: str, system_ops: SystemOperations) -> Lis
 
     for file_path in python_files:
         # 相対パスからモジュール名を生成
-        # os.path.relpathの代替実装
-        from pathlib import Path
         rel_path = Path(file_path).relative_to(Path(directory))
         module_name = str(rel_path).replace('/', '.').replace('\\', '.').replace('.py', '')
-        module_to_file[module_name] = file_path
-        file_to_module[file_path] = module_name
+        module_to_file[module_name] = str(file_path)
+        file_to_module[str(file_path)] = module_name
 
     # 依存関係グラフを構築
     dependencies = defaultdict(set)
 
     for file_path in python_files:
-        imports, from_imports = analyze_imports(file_path)
-        current_module = file_to_module[file_path]
+        imports, from_imports = analyze_imports(str(file_path))
+        current_module = file_to_module[str(file_path)]
 
         # 内部インポートのみを対象
         for imp in imports:
@@ -180,7 +178,7 @@ def detect_circular_imports(directory: str, system_ops: SystemOperations) -> Lis
     return issues
 
 
-def check_dependency_direction(directory: str) -> List[ArchitectureIssue]:
+def check_dependency_direction(directory: str, file_handler: FileHandler) -> List[ArchitectureIssue]:
     """依存関係の方向性チェック"""
     issues = []
 
@@ -191,7 +189,7 @@ def check_dependency_direction(directory: str) -> List[ArchitectureIssue]:
         'application': 2   # アプリケーションレイヤー
     }
 
-    python_files = glob.glob(f"{directory}/**/*.py", recursive=True)
+    python_files = file_handler.glob("**/*.py", directory)
 
     for file_path in python_files:
         # ファイルがどの階層に属するか判定
@@ -199,7 +197,7 @@ def check_dependency_direction(directory: str) -> List[ArchitectureIssue]:
         current_module = None
 
         for module, level in hierarchy.items():
-            if module.replace('.', '/') in file_path:
+            if module.replace('.', '/') in str(file_path):
                 current_level = level
                 current_module = module
                 break
@@ -208,7 +206,7 @@ def check_dependency_direction(directory: str) -> List[ArchitectureIssue]:
             continue
 
         # インポートをチェック
-        imports, from_imports = analyze_imports(file_path)
+        imports, from_imports = analyze_imports(str(file_path))
 
         all_imports = imports + [module for module, _ in from_imports]
 
@@ -222,7 +220,7 @@ def check_dependency_direction(directory: str) -> List[ArchitectureIssue]:
                     if target_module.replace('.', '/') in imp:
                         if target_level >= current_level and target_module != current_module:
                             issues.append(ArchitectureIssue(
-                                file=file_path,
+                                file=str(file_path),
                                 issue_type='wrong_dependency_direction',
                                 description=f'{current_module} (level {current_level}) が {target_module} (level {target_level}) に依存',
                                 severity='warning',
@@ -233,9 +231,9 @@ def check_dependency_direction(directory: str) -> List[ArchitectureIssue]:
     return issues
 
 
-def calculate_module_metrics(directory: str) -> Dict[str, any]:
+def calculate_module_metrics(directory: str, file_handler: FileHandler) -> Dict[str, any]:
     """モジュールメトリクスの計算"""
-    python_files = glob.glob(f"{directory}/**/*.py", recursive=True)
+    python_files = file_handler.glob("**/*.py", directory)
 
     total_files = len(python_files)
     total_lines = 0
@@ -246,13 +244,13 @@ def calculate_module_metrics(directory: str) -> Dict[str, any]:
 
     for file_path in python_files:
         try:
-            with open(file_path, encoding='utf-8') as f:
-                line_count = sum(1 for _ in f)
+            content = file_handler.read_text(file_path, encoding='utf-8')
+            line_count = len(content.splitlines())
             total_lines += line_count
 
             if line_count > max_file_size:
                 max_file_size = line_count
-                max_file_path = file_path
+                max_file_path = str(file_path)
 
             # モジュール別カウント
             from pathlib import Path
@@ -273,7 +271,7 @@ def calculate_module_metrics(directory: str) -> Dict[str, any]:
     }
 
 
-def main(system_ops: SystemOperations):
+def main(system_ops: SystemOperations, file_handler: FileHandler):
     """メイン関数"""
     argv = system_ops.get_argv()
     if len(argv) < 2:
@@ -289,31 +287,27 @@ def main(system_ops: SystemOperations):
 
     # 各種チェックを実行
     checks = [
-        ("ファイルサイズ制限", check_file_size_limits),
+        ("ファイルサイズ制限", lambda d: check_file_size_limits(d, file_handler)),
         ("モジュール構造", check_module_structure),
-        ("循環インポート", detect_circular_imports),
-        ("依存関係方向", check_dependency_direction)
+        ("循環インポート", lambda d: detect_circular_imports(d, system_ops, file_handler)),
+        ("依存関係方向", lambda d: check_dependency_direction(d, file_handler))
     ]
 
     for check_name, check_func in checks:
         print(f"🔍 {check_name}チェック中...")
-        if check_func == detect_circular_imports:
-            issues = check_func(directory, system_ops)
-        else:
-            issues = check_func(directory)
+        issues = check_func(directory)
         all_issues.extend(issues)
         print(f"  {'✓' if not issues else '⚠️'} {len(issues)} 件の問題")
 
     print()
 
     # メトリクス表示
-    metrics = calculate_module_metrics(directory)
+    metrics = calculate_module_metrics(directory, file_handler)
     print("📊 アーキテクチャメトリクス:")
     print(f"  📁 総ファイル数: {metrics['total_files']}")
     print(f"  📏 総行数: {metrics['total_lines']:,}")
     print(f"  📐 平均ファイルサイズ: {metrics['average_file_size']:.1f} 行")
     print(f"  📈 最大ファイルサイズ: {metrics['max_file_size']} 行")
-    from pathlib import Path
     print(f"     ({Path(metrics['max_file_path']).name})")
     print()
 
@@ -361,6 +355,31 @@ def main(system_ops: SystemOperations):
 
 
 if __name__ == "__main__":
+    # 互換性維持: 既存のテストで動作するよう直接インポートを保持
+    import os
+    import sys
+
+    from infrastructure.file_handler import create_file_handler
     from infrastructure.system_operations_impl import SystemOperationsImpl
-    system_ops = SystemOperationsImpl()
-    main(system_ops)
+
+    # 依存性注入用のプロバイダーを作成
+    class OSProvider:
+        def getcwd(self): return os.getcwd()
+        def chdir(self, path): os.chdir(path)
+        def path_exists(self, path): return os.path.exists(path)
+        def isfile(self, path): return os.path.isfile(path)
+        def isdir(self, path): return os.path.isdir(path)
+        def makedirs(self, path, exist_ok): os.makedirs(path, exist_ok=exist_ok)
+        def remove(self, path): os.remove(path)
+        def rmdir(self, path): os.rmdir(path)
+        def listdir(self, path): return os.listdir(path)
+        def get_env(self, key): return os.environ.get(key)
+        def set_env(self, key, value): os.environ[key] = value
+
+    class SysProvider:
+        def exit(self, code): sys.exit(code)
+        def get_argv(self): return sys.argv
+
+    system_ops = SystemOperationsImpl(OSProvider(), SysProvider())
+    file_handler = create_file_handler(mock=False, file_operations=None)
+    main(system_ops, file_handler)

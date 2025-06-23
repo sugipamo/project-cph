@@ -8,13 +8,13 @@ from .system_operations import SystemOperations
 
 class SystemOperationsImpl(SystemOperations):
     """os, sys などの実装
-    
+
     副作用操作はos_provider, sys_provider等のインターフェースを通じて注入される
     """
-    
+
     def __init__(self, os_provider, sys_provider):
         """初期化
-        
+
         Args:
             os_provider: OS操作プロバイダー
             sys_provider: sys操作プロバイダー
@@ -49,9 +49,9 @@ class SystemOperationsImpl(SystemOperations):
     def listdir(self, path: Union[str, Path]) -> List[str]:
         return self._os_provider.listdir(path)
 
-    def get_env(self, key: str, default: Optional[str]) -> Optional[str]:
-        # CLAUDE.mdルール適用: dict.get()使用禁止、明示的設定取得
-        return self._os_provider.get_env(key, default)
+    def get_env(self, key: str) -> Optional[str]:
+        # CLAUDE.mdルール適用: デフォルト値禁止、呼び出し元で処理
+        return self._os_provider.get_env(key)
 
     def set_env(self, key: str, value: str) -> None:
         self._os_provider.set_env(key, value)
@@ -61,3 +61,6 @@ class SystemOperationsImpl(SystemOperations):
 
     def get_argv(self) -> List[str]:
         return self._sys_provider.get_argv()
+
+    def print_stdout(self, message: str) -> None:
+        print(message)

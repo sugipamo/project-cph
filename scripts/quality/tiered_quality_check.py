@@ -290,6 +290,28 @@ def main(system_ops: SystemOperations):
 
 
 if __name__ == "__main__":
+    import os
+    import sys
+
     from ..infrastructure.system_operations_impl import SystemOperationsImpl
-    system_ops = SystemOperationsImpl()
+
+    # 依存性注入用のプロバイダーを作成
+    class OSProvider:
+        def getcwd(self): return os.getcwd()
+        def chdir(self, path): os.chdir(path)
+        def path_exists(self, path): return os.path.exists(path)
+        def isfile(self, path): return os.path.isfile(path)
+        def isdir(self, path): return os.path.isdir(path)
+        def makedirs(self, path, exist_ok): os.makedirs(path, exist_ok=exist_ok)
+        def remove(self, path): os.remove(path)
+        def rmdir(self, path): os.rmdir(path)
+        def listdir(self, path): return os.listdir(path)
+        def get_env(self, key): return os.environ.get(key)
+        def set_env(self, key, value): os.environ[key] = value
+
+    class SysProvider:
+        def exit(self, code): sys.exit(code)
+        def get_argv(self): return sys.argv
+
+    system_ops = SystemOperationsImpl(OSProvider(), SysProvider())
     system_ops.exit(main(system_ops))
