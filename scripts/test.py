@@ -202,6 +202,14 @@ class MainTestRunner:
             print("💡 警告の対処方法:")
             print("    - 不要な警告の原因を特定し、コードを修正してください")
             print("    - 警告を無視せず、適切に対処することで品質を向上させます")
+            print("    【Python実装例】")
+            print("    • 命名規則: def calculate_total(items) → snake_case使用")
+            print("    • Logger使用: logger.info(f'計算開始: {x} + {y}') → print文の代替")
+            print("    • 明示的設定: timeout = config['timeout'] → dict.get()の代替")
+            print("    • 属性チェック: if hasattr(obj, 'attr'): value = obj.attr → getattr()の代替")
+            print("    • 依存性注入: def process_data(data, file_writer) → 副作用の委譲")
+            print("    • Result型使用: result = error_converter.execute_with_conversion(op)")
+            print("      if result.is_failure(): handle_error(result.error) → フォールバック処理の代替")
 
         # エラーがない場合
         if not self.test_runner.issues:
@@ -336,8 +344,9 @@ class MainTestRunner:
                 "【CLAUDE.mdルール適用】\n"
                 "フォールバック処理は禁止されています\n"
                 "try-except文での無条件キャッチは避けてください\n"
-                "必要なエラーを見逃すことを防ぐため、明示的なエラーハンドリングを実装してください\n"
-                "エラーは適切に伝播させ、上位層で対処してください"
+                "Infrastructure層でErrorConverterを使用してResult型に変換してください\n"
+                "ビジネスロジック層ではis_failure()でエラーを明示的にチェックしてください\n"
+                "例: error_converter.execute_with_conversion(operation) → result.is_failure()で判定"
             ),
             "命名規則違反": (
                 "PEP 8の命名規則に従ってください\n"
