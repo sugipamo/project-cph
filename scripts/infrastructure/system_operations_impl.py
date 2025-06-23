@@ -1,6 +1,5 @@
 """システム操作関連モジュールのラッパー実装"""
-import os
-import sys
+# os, sysは依存性注入により削除 - 各プロバイダーから受け取る
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -8,46 +7,57 @@ from .system_operations import SystemOperations
 
 
 class SystemOperationsImpl(SystemOperations):
-    """os, sys などの実装"""
+    """os, sys などの実装
+    
+    副作用操作はos_provider, sys_provider等のインターフェースを通じて注入される
+    """
+    
+    def __init__(self, os_provider, sys_provider):
+        """初期化
+        
+        Args:
+            os_provider: OS操作プロバイダー
+            sys_provider: sys操作プロバイダー
+        """
+        self._os_provider = os_provider
+        self._sys_provider = sys_provider
 
     def get_cwd(self) -> str:
-        return os.getcwd()
+        return self._os_provider.getcwd()
 
     def chdir(self, path: Union[str, Path]) -> None:
-        os.chdir(path)
+        self._os_provider.chdir(path)
 
     def path_exists(self, path: Union[str, Path]) -> bool:
-        return os.path.exists(path)
+        return self._os_provider.path_exists(path)
 
     def is_file(self, path: Union[str, Path]) -> bool:
-        return os.path.isfile(path)
+        return self._os_provider.isfile(path)
 
     def is_dir(self, path: Union[str, Path]) -> bool:
-        return os.path.isdir(path)
+        return self._os_provider.isdir(path)
 
-    def makedirs(self, path: Union[str, Path], exist_ok: bool = False) -> None:
-        os.makedirs(path, exist_ok=exist_ok)
+    def makedirs(self, path: Union[str, Path], exist_ok: bool) -> None:
+        self._os_provider.makedirs(path, exist_ok)
 
     def remove(self, path: Union[str, Path]) -> None:
-        os.remove(path)
+        self._os_provider.remove(path)
 
     def rmdir(self, path: Union[str, Path]) -> None:
-        os.rmdir(path)
+        self._os_provider.rmdir(path)
 
     def listdir(self, path: Union[str, Path]) -> List[str]:
-        return os.listdir(path)
+        return self._os_provider.listdir(path)
 
     def get_env(self, key: str, default: Optional[str]) -> Optional[str]:
         # CLAUDE.mdルール適用: dict.get()使用禁止、明示的設定取得
-        if key in os.environ:
-            return os.environ[key]
-        return default
+        return self._os_provider.get_env(key, default)
 
     def set_env(self, key: str, value: str) -> None:
-        os.environ[key] = value
+        self._os_provider.set_env(key, value)
 
     def exit(self, code: int) -> None:
-        sys.exit(code)
+        self._sys_provider.exit(code)
 
     def get_argv(self) -> List[str]:
-        return sys.argv.copy()
+        return self._sys_provider.get_argv()
