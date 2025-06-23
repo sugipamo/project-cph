@@ -6,6 +6,8 @@
 
 import argparse
 import sys
+from collections import defaultdict
+from typing import Dict, List
 
 from code_analysis.dead_code_checker import DeadCodeChecker
 from code_analysis.import_checker import ImportChecker
@@ -29,11 +31,14 @@ from infrastructure.logger import create_logger
 
 
 class MainTestRunner:
-    def __init__(self, verbose: bool = False):
+    def __init__(self, verbose: bool):
         self.verbose = verbose
         self.logger = create_logger(verbose=verbose)
-        self.command_executor = create_command_executor(mock=False)
+        self.command_executor = create_command_executor(mock=False, subprocess_wrapper=None)
         self.file_handler = create_file_handler(mock=False)
+
+        # エラー種類ごとのグルーピング用
+        self.error_groups: Dict[str, List[str]] = defaultdict(list)
 
         # メインテストランナーの初期化
         self.test_runner = TestRunner(
@@ -43,18 +48,19 @@ class MainTestRunner:
             file_handler=self.file_handler
         )
 
-        # 品質チェッカーの初期化
+        # 品質チェッカーの初期化（サイレントモード）
+        silent_logger = create_logger(verbose=False, silent=True)
         self.ruff_checker = RuffChecker(
             self.file_handler,
             self.command_executor,
-            self.logger,
+            silent_logger,
             self.test_runner.issues,
             verbose
         )
 
         self.syntax_checker = SyntaxChecker(
             self.file_handler,
-            self.logger,
+            silent_logger,
             self.test_runner.issues,
             verbose
         )
@@ -62,70 +68,70 @@ class MainTestRunner:
         self.type_checker = TypeChecker(
             self.file_handler,
             self.command_executor,
-            self.logger,
+            silent_logger,
             self.test_runner.issues,
             verbose
         )
 
         self.dead_code_checker = DeadCodeChecker(
             self.command_executor,
-            self.logger,
+            silent_logger,
             self.test_runner.warnings,
             self.test_runner.issues
         )
 
         self.import_checker = ImportChecker(
             self.file_handler,
-            self.logger,
+            silent_logger,
             self.test_runner.issues,
             verbose
         )
 
         self.naming_checker = NamingChecker(
             self.file_handler,
-            self.logger,
+            silent_logger,
             self.test_runner.warnings,
             verbose
         )
 
         self.smoke_test = SmokeTest(
             self.command_executor,
-            self.logger,
+            silent_logger,
             self.test_runner.issues,
             verbose
         )
 
         self.dependency_injection_checker = DependencyInjectionChecker(
             self.file_handler,
-            self.logger,
+            silent_logger,
             self.test_runner.issues,
             verbose
         )
 
         self.print_usage_checker = PrintUsageChecker(
             self.file_handler,
-            self.logger,
+            silent_logger,
             self.test_runner.issues,
             verbose
         )
 
         self.infrastructure_duplication_checker = InfrastructureDuplicationChecker(
             self.file_handler,
-            self.logger,
+            silent_logger,
             self.test_runner.issues,
             verbose
         )
 
         self.none_default_checker = NoneDefaultChecker(
             self.file_handler,
-            self.logger,
+            silent_logger,
             self.test_runner.issues,
             verbose
         )
 
         self.fallback_checker = FallbackChecker(
             self.file_handler,
-            self.logger,
+            silent_logger,
             self.test_runner.issues,
             verbose
         )
@@ -133,24 +139,234 @@ class MainTestRunner:
         self.dict_get_checker = DictGetChecker(
             self.file_handler,
             self.command_executor,
-            self.logger,
+            silent_logger,
             self.test_runner.issues,
             verbose
         )
 
         self.getattr_checker = GetattrChecker(
             self.file_handler,
-            self.logger,
+            silent_logger,
             self.test_runner.issues,
             verbose
         )
+
+    def _categorize_errors(self):
+        """エラーをエラー種類ごとにグループ化"""
+        # issuesリストからエラーをカテゴリーごとに分類
+        for issue in self.test_runner.issues:
+            if "構文エラー" in issue:
+                self.error_groups["構文エラー"].append(issue)
+            elif "インポートエラー" in issue or "インポート解決" in issue:
+                self.error_groups["インポートエラー"].append(issue)
+            elif "型チェック" in issue or "mypy" in issue:
+                self.error_groups["型チェックエラー"].append(issue)
+            elif "Ruff" in issue or "lint" in issue:
+                self.error_groups["コード品質エラー（Ruff）"].append(issue)
+            elif "未使用コード" in issue or "vulture" in issue:
+                self.error_groups["未使用コード検出"].append(issue)
+            elif "命名規則" in issue:
+                self.error_groups["命名規則違反"].append(issue)
+            elif "依存性注入" in issue or "副作用" in issue:
+                self.error_groups["副作用が検出されました"].append(issue)
+            elif "print使用" in issue:
+                self.error_groups["print文使用検出"].append(issue)
+            elif "Infrastructure重複" in issue:
+                self.error_groups["Infrastructure重複生成"].append(issue)
+            elif "None引数" in issue or "デフォルト引数" in issue:
+                self.error_groups["デフォルト引数使用"].append(issue)
+            elif "フォールバック" in issue or "try文" in issue:
+                self.error_groups["フォールバック処理検出"].append(issue)
+            elif "dict.get()" in issue:
+                self.error_groups["dict.get()使用検出"].append(issue)
+            elif "getattr()" in issue:
+                self.error_groups["getattr()デフォルト値使用"].append(issue)
+            elif "テスト実行" in issue:
+                self.error_groups["テスト失敗"].append(issue)
+            else:
+                self.error_groups["その他のエラー"].append(issue)
+
+    def _print_grouped_summary(self):
+        """エラー種類ごとにグループ化して結果を表示"""
+        # エラーをカテゴライズ
+        self._categorize_errors()
+
+        # チェック結果の進捗表示を実行した各チェックについて出力
+        self._print_check_status()
+
+        # 警告を表示
+        if self.test_runner.warnings:
+            print("⚠️  警告:")
+            for warning in self.test_runner.warnings:
+                print(f"   {warning}")
+            print("💡 警告の対処方法:")
+            print("    - 不要な警告の原因を特定し、コードを修正してください")
+            print("    - 警告を無視せず、適切に対処することで品質を向上させます")
+
+        # エラーがない場合
+        if not self.test_runner.issues:
+            if not self.test_runner.warnings:
+                print("✅ 全ての品質チェックが正常に完了しました")
+            return
+
+        # エラー種類ごとに表示
+        print("❌ 修正が必要な問題:")
+        for error_type, errors in self.error_groups.items():
+            if errors:
+                print(f"\n{error_type}:")
+
+                # 修正方針メッセージを表示
+                fix_guidance = self._get_fix_guidance(error_type)
+                if fix_guidance:
+                    print("📋 修正方針:")
+                    for guidance_line in fix_guidance.split('\n'):
+                        if guidance_line.strip():
+                            print(f"    {guidance_line}")
+                    print()  # 空行
+
+                # 各エラーの詳細を抽出してインデント表示
+                for error in errors:
+                    # エラーメッセージから実際の内容部分を抽出
+                    parts = error.split(": ", 1)
+                    if len(parts) > 1:
+                        # エラー内容の各行をインデント
+                        error_lines = parts[1].strip().split("\n")
+                        for line in error_lines:
+                            print(f"    {line}")
+                    else:
+                        print(f"    {error}")
+
+        sys.exit(1)
+
+    def _print_check_status(self):
+        """各チェックの実行ステータスを表示"""
+        # issuesとwarningsから実行されたチェックの成功/失敗を判定
+        check_results = {}
+
+        # デフォルトで実行される基本チェック
+        check_results["構文チェック"] = not any("構文エラー" in issue for issue in self.test_runner.issues)
+        check_results["インポート解決チェック"] = not any("インポート" in issue for issue in self.test_runner.issues)
+        check_results["クイックスモークテスト"] = not any("スモークテスト" in issue for issue in self.test_runner.issues)
+        check_results["Ruff自動修正"] = True  # 自動修正は常に実行
+        check_results["コード品質チェック (ruff)"] = not any("Ruff" in issue or "lint" in issue for issue in self.test_runner.issues)
+        check_results["未使用コード検出"] = not any("未使用コード" in issue for issue in self.test_runner.issues)
+        check_results["命名規則チェック"] = not any("命名規則" in issue for issue in self.test_runner.issues)
+        check_results["依存性注入チェック"] = not any("依存性注入" in issue or "副作用" in issue for issue in self.test_runner.issues)
+        check_results["print使用チェック"] = not any("print使用" in issue for issue in self.test_runner.issues)
+        check_results["Infrastructure重複生成チェック"] = not any("Infrastructure重複" in issue for issue in self.test_runner.issues)
+        check_results["None引数初期値チェック"] = not any("None引数" in issue or "デフォルト引数" in issue for issue in self.test_runner.issues)
+        check_results["フォールバック処理チェック"] = not any("フォールバック" in issue or "try文" in issue for issue in self.test_runner.issues)
+        check_results["dict.get()使用チェック"] = not any("dict.get()" in issue for issue in self.test_runner.issues)
+        check_results["getattr()デフォルト値使用チェック"] = not any("getattr()" in issue for issue in self.test_runner.issues)
+
+        # 各チェックの結果を表示
+        for check_name, success in check_results.items():
+            status_icon = "✅" if success else "❌"
+            print(f"{status_icon} {check_name}")
+
+        print()  # 空行
+
+    def _get_fix_guidance(self, error_type: str) -> str:
+        """エラー種類に対応する修正方針メッセージを返す"""
+        guidance_map = {
+            "構文エラー": (
+                "構文エラーは即座に修正が必要です\n"
+                "IDEの構文チェック機能を活用してください\n"
+                "インデント、括弧の対応、コロンの抜けなどを確認してください"
+            ),
+            "インポートエラー": (
+                "モジュールの依存関係を確認してください\n"
+                "相対インポートではなく絶対インポートを使用してください\n"
+                "循環インポートが発生していないか確認してください\n"
+                "必要なパッケージがインストールされているか確認してください"
+            ),
+            "型チェックエラー": (
+                "型アノテーションを追加してください\n"
+                "Optional型の適切な処理を行ってください\n"
+                "型の一貫性を保ってください\n"
+                "Noneチェックを適切に実装してください"
+            ),
+            "コード品質エラー（Ruff）": (
+                "Ruffの指摘に従ってコードスタイルを統一してください\n"
+                "未使用のインポートや変数を削除してください\n"
+                "命名規則に従ってください（PEP 8準拠）\n"
+                "コードの可読性を向上させてください"
+            ),
+            "副作用が検出されました": (
+                "【CLAUDE.mdルール適用】\n"
+                "副作用はsrc/infrastructure、tests/infrastructureのみで許可されます\n"
+                "全ての副作用はmain.pyから依存性注入してください\n"
+                "ビジネスロジック層では副作用を避けてください\n"
+                "ファイル操作、外部APIコール、データベースアクセスはInfrastructure層で実装してください"
+            ),
+            "print文使用検出": (
+                "print文の代わりにLoggerインターフェースを使用してください\n"
+                "Infrastructure層から注入されたLoggerを使用してください\n"
+                "デバッグ用のprint文は本番コードから削除してください\n"
+                "必要な場合はlogger.info()、logger.error()を使用してください"
+            ),
+            "dict.get()使用検出": (
+                "【CLAUDE.mdルール適用】\n"
+                "dict.get()の使用は禁止されています\n"
+                "設定値は明示的に設定ファイル（{setting}.json）に定義してください\n"
+                "src/configuration/readme.mdの設定取得方法に従ってください\n"
+                "デフォルト値ではなく、適切な設定管理を実装してください"
+            ),
+            "getattr()デフォルト値使用": (
+                "【CLAUDE.mdルール適用】\n"
+                "getattr()のデフォルト値使用は禁止されています\n"
+                "属性の存在チェックを明示的に行ってください\n"
+                "hasattr()を使用して属性の存在を確認してください\n"
+                "必要なエラーを見逃すことを防ぐため、フォールバック処理は避けてください"
+            ),
+            "デフォルト引数使用": (
+                "【CLAUDE.mdルール適用】\n"
+                "引数にデフォルト値を指定することは禁止されています\n"
+                "呼び出し元で値を用意することを徹底してください\n"
+                "全ての引数を明示的に渡すことで、バグの発見を容易にします\n"
+                "設定値が必要な場合は設定ファイルから取得してください"
+            ),
+            "Infrastructure重複生成": (
+                "Infrastructureコンポーネントの重複生成を避けてください\n"
+                "シングルトンパターンまたは依存性注入を使用してください\n"
+                "main.pyからの一元的な注入を実装してください\n"
+                "リソースの適切な管理を行ってください"
+            ),
+            "フォールバック処理検出": (
+                "【CLAUDE.mdルール適用】\n"
+                "フォールバック処理は禁止されています\n"
+                "try-except文での無条件キャッチは避けてください\n"
+                "必要なエラーを見逃すことを防ぐため、明示的なエラーハンドリングを実装してください\n"
+                "エラーは適切に伝播させ、上位層で対処してください"
+            ),
+            "命名規則違反": (
+                "PEP 8の命名規則に従ってください\n"
+                "変数名、関数名はsnake_caseを使用してください\n"
+                "クラス名はPascalCaseを使用してください\n"
+                "意味のある名前を使用し、略語は避けてください"
+            ),
+            "テスト失敗": (
+                "失敗したテストの原因を特定してください\n"
+                "テストコードとプロダクションコードの整合性を確認してください\n"
+                "モックの設定が適切かどうか確認してください\n"
+                "テストデータの準備が正しく行われているか確認してください"
+            ),
+            "その他のエラー": (
+                "エラーメッセージを詳細に確認してください\n"
+                "関連するドキュメントを参照してください\n"
+                "必要に応じてログを追加して問題を特定してください\n"
+                "CLAUDE.mdのルールに照らし合わせて適切な対応を行ってください"
+            )
+        }
+
+        return guidance_map.get(error_type, "")
 
     def run_all_checks(self, args):
         """全てのチェックを実行"""
         # カバレッジレポートのみモード
         if args.coverage_only:
             self.test_runner.run_tests(args.pytest_args, False, args.html)
-            self.test_runner.print_summary()
+            self._print_grouped_summary()
             return
 
         # 基本チェック（構文・インポート・スモークテスト）
@@ -197,14 +413,14 @@ class MainTestRunner:
         # check-onlyモード
         if args.check_only:
             self.type_checker.check_types()
-            self.test_runner.print_summary()
+            self._print_grouped_summary()
             return
 
         # テスト実行
         self.test_runner.run_tests(args.pytest_args, args.no_cov, args.html)
 
         # サマリー表示
-        self.test_runner.print_summary()
+        self._print_grouped_summary()
 
 
 def main():

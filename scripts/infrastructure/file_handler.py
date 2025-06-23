@@ -248,8 +248,7 @@ class LocalFileHandler(FileHandler):
 
     def read_json(self, file_path: Union[str, Path], encoding: str = "utf-8") -> Dict[str, Any]:
         """JSONファイルを読み込み"""
-        path = Path(file_path)
-        with open(path, encoding=encoding) as f:
+        with open(file_path, encoding=encoding) as f:
             return json.load(f)
 
 
@@ -379,7 +378,12 @@ class MockFileHandler(FileHandler):
             raise FileNotFoundError(f"No such file: {path}")
 
         content = self.files[path]
-        return json.loads(content)
+        try:
+            import json
+            return json.loads(content)
+        except ImportError:
+            # モックではJSONの解析を簡略化
+            return {}
 
     def get_operations(self) -> List[Dict[str, Any]]:
         """操作履歴を取得"""

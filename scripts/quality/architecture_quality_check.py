@@ -11,11 +11,15 @@
 
 import ast
 import glob
-import os
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Tuple
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from infrastructure.system_operations import SystemOperations
 
 
 @dataclass(frozen=True)
@@ -100,7 +104,7 @@ def check_module_structure(directory: str) -> List[ArchitectureIssue]:
     return issues
 
 
-def detect_circular_imports(directory: str) -> List[ArchitectureIssue]:
+def detect_circular_imports(directory: str, system_ops: SystemOperations) -> List[ArchitectureIssue]:
     """循環インポートの検出"""
     issues = []
     python_files = glob.glob(f"{directory}/**/*.py", recursive=True)
@@ -111,8 +115,10 @@ def detect_circular_imports(directory: str) -> List[ArchitectureIssue]:
 
     for file_path in python_files:
         # 相対パスからモジュール名を生成
-        rel_path = os.path.relpath(file_path, directory)
-        module_name = rel_path.replace('/', '.').replace('\\', '.').replace('.py', '')
+        # os.path.relpathの代替実装
+        from pathlib import Path
+        rel_path = Path(file_path).relative_to(Path(directory))
+        module_name = str(rel_path).replace('/', '.').replace('\\', '.').replace('.py', '')
         module_to_file[module_name] = file_path
         file_to_module[file_path] = module_name
 
@@ -167,7 +173,7 @@ def detect_circular_imports(directory: str) -> List[ArchitectureIssue]:
         rec_stack.remove(module)
         return False
 
-    for module in dependencies:
+    for module in list(dependencies.keys()):
         if module not in visited:
             dfs(module, [])
 
@@ -249,9 +255,10 @@ def calculate_module_metrics(directory: str) -> Dict[str, any]:
                 max_file_path = file_path
 
             # モジュール別カウント
-            rel_path = os.path.relpath(file_path, directory)
-            if '/' in rel_path:
-                module = rel_path.split('/')[0]
+            from pathlib import Path
+            rel_path = Path(file_path).relative_to(Path(directory))
+            if '/' in str(rel_path):
+                module = str(rel_path).split('/')[0]
                 module_counts[module] += 1
         except Exception:
             continue
@@ -266,13 +273,14 @@ def calculate_module_metrics(directory: str) -> Dict[str, any]:
     }
 
 
-def main():
+def main(system_ops: SystemOperations):
     """メイン関数"""
-    if len(sys.argv) < 2:
+    argv = system_ops.get_argv()
+    if len(argv) < 2:
         print("使用方法: python3 architecture_quality_check.py <directory>")
-        sys.exit(1)
+        system_ops.exit(1)
 
-    directory = sys.argv[1]
+    directory = argv[1]
 
     print("🏗️  アーキテクチャ品質チェック開始...")
     print()
@@ -289,7 +297,10 @@ def main():
 
     for check_name, check_func in checks:
         print(f"🔍 {check_name}チェック中...")
-        issues = check_func(directory)
+        if check_func == detect_circular_imports:
+            issues = check_func(directory, system_ops)
+        else:
+            issues = check_func(directory)
         all_issues.extend(issues)
         print(f"  {'✓' if not issues else '⚠️'} {len(issues)} 件の問題")
 
@@ -302,7 +313,8 @@ def main():
     print(f"  📏 総行数: {metrics['total_lines']:,}")
     print(f"  📐 平均ファイルサイズ: {metrics['average_file_size']:.1f} 行")
     print(f"  📈 最大ファイルサイズ: {metrics['max_file_size']} 行")
-    print(f"     ({os.path.basename(metrics['max_file_path'])})")
+    from pathlib import Path
+    print(f"     ({Path(metrics['max_file_path']).name})")
     print()
 
     print("🗂️  モジュール分布:")
@@ -324,14 +336,14 @@ def main():
         if errors:
             print("\n❌ エラー:")
             for issue in errors[:5]:
-                print(f"  {os.path.basename(issue.file)}: {issue.description}")
+                print(f"  {Path(issue.file).name}: {issue.description}")
             if len(errors) > 5:
                 print(f"  ... 他 {len(errors) - 5} 件")
 
         if warnings:
             print("\n⚠️ 警告:")
             for issue in warnings[:5]:
-                print(f"  {os.path.basename(issue.file)}: {issue.description}")
+                print(f"  {Path(issue.file).name}: {issue.description}")
             if len(warnings) > 5:
                 print(f"  ... 他 {len(warnings) - 5} 件")
 
@@ -339,14 +351,16 @@ def main():
 
         if error_count > 0:
             print("\n💥 アーキテクチャエラーが見つかりました。修正が必要です。")
-            sys.exit(1)
+            system_ops.exit(1)
         else:
             print("\n⚠️ 警告があります。アーキテクチャ改善を推奨します。")
-            sys.exit(0)
+            system_ops.exit(0)
     else:
         print("✅ アーキテクチャ品質基準をクリアしています！")
-        sys.exit(0)
+        system_ops.exit(0)
 
 
 if __name__ == "__main__":
-    main()
+    from infrastructure.system_operations_impl import SystemOperationsImpl
+    system_ops = SystemOperationsImpl()
+    main(system_ops)

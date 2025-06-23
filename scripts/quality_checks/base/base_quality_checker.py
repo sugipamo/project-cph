@@ -24,7 +24,7 @@ class QualityCheckExecutor(ABC):
 
         # 設定読み込み
         config_path = Path(__file__).parent.parent.parent / "configuration" / "quality_checks.json"
-        self.config = QualityConfigLoader(str(config_path))
+        self.config = QualityConfigLoader(str(config_path), file_handler)
 
     def get_target_files(self, excluded_categories: Optional[List[str]]) -> List[str]:
         """設定に基づいてチェック対象ファイルを取得"""

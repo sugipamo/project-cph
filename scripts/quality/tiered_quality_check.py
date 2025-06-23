@@ -6,10 +6,11 @@
 
 import ast
 import glob
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
+
+from ..infrastructure.system_operations import SystemOperations
 
 
 @dataclass(frozen=True)
@@ -211,18 +212,13 @@ def analyze_file(filepath: str, config: dict) -> List[QualityIssue]:
 
         return checker.issues
 
-    except (UnicodeDecodeError, SyntaxError) as e:
-        return [QualityIssue(
-            file=filepath,
-            line=1,
-            issue_type='parse_error',
-            description=f'ファイル解析エラー: {e}',
-            severity='ERROR',
-            tier='unknown'
-        )]
+    except UnicodeDecodeError as e:
+        raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end, f"ファイル解析エラー in {filepath}: {e.reason}") from e
+    except SyntaxError as e:
+        raise SyntaxError(f"構文エラー in {filepath}: {e}") from e
 
 
-def main():
+def main(system_ops: SystemOperations):
     """メイン実行関数"""
     config = {
         'exclude_patterns': [
@@ -294,4 +290,6 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    from ..infrastructure.system_operations_impl import SystemOperationsImpl
+    system_ops = SystemOperationsImpl()
+    system_ops.exit(main(system_ops))

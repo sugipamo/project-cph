@@ -8,9 +8,10 @@ import sys
 from pathlib import Path
 from typing import List, Set
 
-# scripts/infrastructure modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from infrastructure.logger import Logger
+
+from infrastructure.logger import Logger, create_logger
+from infrastructure.system_operations import SystemOperations
 
 # 汎用的すぎる名前のパターン（実用的なレベルに緩和）
 GENERIC_PATTERNS = {
@@ -163,17 +164,18 @@ def check_file(file_path: Path) -> List[str]:
     except Exception as e:
         raise RuntimeError(f"ファイル解析エラー {file_path}: {e}") from e
 
-def main(logger: Logger):
+def main(logger: Logger, system_ops: SystemOperations):
     """メイン処理"""
 
-    if len(sys.argv) < 2:
+    argv = system_ops.get_argv()
+    if len(argv) < 2:
         logger.error("Usage: python check_generic_names.py <directory>")
-        sys.exit(1)
+        system_ops.exit(1)
 
-    search_dir = Path(sys.argv[1])
-    if not search_dir.exists():
+    search_dir = Path(argv[1])
+    if not system_ops.path_exists(search_dir):
         logger.error(f"Directory not found: {search_dir}")
-        sys.exit(1)
+        system_ops.exit(1)
 
     all_errors = []
 
@@ -200,10 +202,12 @@ def main(logger: Logger):
         logger.info("  ❌ pure, var, tmp -> ✅ calculation_result, user_data, temp_file")
         logger.info("  ❌ thing, stuff -> ✅ payment_info, config_data")
 
-        sys.exit(1)
+        system_ops.exit(1)
     else:
         logger.info("✅ 汎用名チェック完了")
 
 if __name__ == "__main__":
-    logger = Logger("check_generic_names")
-    main(logger)
+    from infrastructure.system_operations_impl import SystemOperationsImpl
+    logger = create_logger(verbose=False)
+    system_ops = SystemOperationsImpl()
+    main(logger, system_ops)

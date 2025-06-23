@@ -89,7 +89,7 @@ def main(args):
 
     # インフラストラクチャコンポーネントを初期化
     logger = create_logger()
-    command_executor = create_command_executor()
+    command_executor = create_command_executor(mock=False, subprocess_wrapper=None)
     file_handler = create_file_handler()
 
     logger.info("=== cph.sh E2E Test 開始 ===")

@@ -17,9 +17,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-# scripts/infrastructure modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from infrastructure.logger import Logger, create_logger
+from infrastructure.system_operations import SystemOperations
 
 
 @dataclass(frozen=True)
@@ -285,14 +286,15 @@ def check_file(file_path: str) -> List[QualityIssue]:
         raise Exception(f"Failed to analyze functional quality in {file_path}: {e}") from e
 
 
-def main(logger: Logger):
+def main(logger: Logger, system_ops: SystemOperations):
     """メイン関数"""
 
-    if len(sys.argv) < 2:
+    argv = system_ops.get_argv()
+    if len(argv) < 2:
         logger.error("使用方法: python3 functional_quality_check.py <directory>")
-        sys.exit(1)
+        system_ops.exit(1)
 
-    directory = sys.argv[1]
+    directory = argv[1]
     python_files = glob.glob(f"{directory}/**/*.py", recursive=True)
 
     all_issues = []
@@ -344,15 +346,17 @@ def main(logger: Logger):
 
     if error_count > 0:
         logger.error("💥 エラーが見つかりました。修正が必要です。")
-        sys.exit(1)
+        system_ops.exit(1)
     elif warning_count > 0:
         logger.warning("⚠️  警告があります。品質向上のため修正を推奨します。")
-        sys.exit(0)
+        system_ops.exit(0)
     else:
         logger.info("✅ 関数型プログラミング品質基準をクリアしています！")
-        sys.exit(0)
+        system_ops.exit(0)
 
 
 if __name__ == "__main__":
+    from infrastructure.system_operations_impl import SystemOperationsImpl
     logger = create_logger()
-    main(logger)
+    system_ops = SystemOperationsImpl()
+    main(logger, system_ops)

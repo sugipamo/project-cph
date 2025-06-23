@@ -41,9 +41,9 @@ class CircularImportChecker:
         """ファイルパスをモジュール名に変換"""
         try:
             relative_path = file_path.relative_to(Path.cwd())
-        except ValueError:
-            # 絶対パスの場合の処理
-            relative_path = file_path
+        except ValueError as e:
+            # 絶対パスの場合はエラーとして処理
+            raise ValueError(f"パスを相対パスに変換できません: {file_path}") from e
 
         if relative_path.parts[0] == 'src':
             parts = relative_path.parts[1:]

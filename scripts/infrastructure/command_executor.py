@@ -3,10 +3,11 @@
 Scripts配下で2番目に重要な副作用であるsubprocess.runを
 依存性注入可能な形で抽象化
 """
-import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
+
+from .subprocess_wrapper import SubprocessWrapper
 
 
 @dataclass
@@ -18,8 +19,8 @@ class CommandResult:
     success: bool
 
     @classmethod
-    def from_subprocess_result(cls, result: subprocess.CompletedProcess) -> 'CommandResult':
-        """subprocess.CompletedProcessから変換"""
+    def from_process_result(cls, result) -> 'CommandResult':
+        """ProcessResultから変換"""
         return cls(
             returncode=result.returncode,
             stdout=result.stdout or "",
@@ -95,7 +96,10 @@ class CommandExecutor(ABC):
 
 
 class SubprocessCommandExecutor(CommandExecutor):
-    """subprocess.runを使用した実装"""
+    """SubprocessWrapperを使用した実装"""
+
+    def __init__(self, subprocess_wrapper: SubprocessWrapper):
+        self._subprocess = subprocess_wrapper
 
     def execute_command(
         self,
@@ -107,29 +111,32 @@ class SubprocessCommandExecutor(CommandExecutor):
         env: Optional[Dict[str, str]],
         check: bool
     ) -> CommandResult:
-        """subprocess.runを使用してコマンドを実行"""
+        """SubprocessWrapperを使用してコマンドを実行"""
+        from .subprocess_wrapper import CalledProcessError, TimeoutExpiredError
+
         try:
-            result = subprocess.run(
+            result = self._subprocess.run(
                 cmd,
                 capture_output=capture_output,
                 text=text,
                 cwd=cwd,
                 timeout=timeout,
                 env=env,
-                check=check
+                check=check,
+                shell=False
             )
-            return CommandResult.from_subprocess_result(result)
-        except subprocess.CalledProcessError as e:
+            return CommandResult.from_process_result(result)
+        except CalledProcessError as e:
             return CommandResult(
                 returncode=e.returncode,
-                stdout=e.stdout or "",
+                stdout=e.output or "",
                 stderr=e.stderr or "",
                 success=False
             )
-        except subprocess.TimeoutExpired as e:
+        except TimeoutExpiredError as e:
             return CommandResult(
                 returncode=-1,
-                stdout=e.stdout or "",
+                stdout=e.output or "",
                 stderr=f"Timeout after {timeout} seconds",
                 success=False
             )
@@ -143,25 +150,33 @@ class SubprocessCommandExecutor(CommandExecutor):
 
     def check_availability(self, command: str) -> bool:
         """コマンドが利用可能かチェック"""
+        from .subprocess_wrapper import CalledProcessError, TimeoutExpiredError
+
         try:
-            result = subprocess.run(
+            result = self._subprocess.run(
                 [command, "--version"],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
+                env=None,
+                check=False,
+                shell=False
             )
             return result.returncode == 0
-        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        except (CalledProcessError, FileNotFoundError, TimeoutExpiredError):
             try:
                 # --versionが使えない場合は-hを試す
-                result = subprocess.run(
+                result = self._subprocess.run(
                     [command, "-h"],
                     capture_output=True,
                     text=True,
-                    timeout=10
+                    timeout=10,
+                    env=None,
+                    check=False,
+                    shell=False
                 )
                 return result.returncode == 0
-            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
+            except (CalledProcessError, FileNotFoundError, TimeoutExpiredError) as e:
                 raise RuntimeError(f"コマンド利用可能性チェックに失敗: {command}, エラー: {e}") from e
 
     def execute_command_with_live_output(
@@ -172,8 +187,10 @@ class SubprocessCommandExecutor(CommandExecutor):
         timeout: Optional[float],
         env: Optional[Dict[str, str]]
     ) -> CommandResult:
-        """subprocess.Popenを使用してリアルタイムで出力を処理"""
+        """SubprocessWrapperを使用してリアルタイムで出力を処理"""
         import threading
+
+        from .subprocess_wrapper import TimeoutExpiredError
 
         try:
             # コマンドをリスト形式に統一
@@ -181,10 +198,10 @@ class SubprocessCommandExecutor(CommandExecutor):
                 cmd = cmd.split()
 
             # プロセスを開始
-            process = subprocess.Popen(
+            process = self._subprocess.popen(
                 cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,  # stderrもstdoutにリダイレクト
+                stdout=self._subprocess.PIPE,
+                stderr=self._subprocess.STDOUT,  # stderrもstdoutにリダイレクト
                 text=True,
                 cwd=cwd,
                 env=env,
@@ -205,7 +222,8 @@ class SubprocessCommandExecutor(CommandExecutor):
                 except Exception:
                     pass
                 finally:
-                    process.stdout.close()
+                    if hasattr(process.stdout, 'close'):
+                        process.stdout.close()
 
             # 出力読み込みスレッドを開始
             output_thread = threading.Thread(target=read_output)
@@ -215,9 +233,9 @@ class SubprocessCommandExecutor(CommandExecutor):
             # プロセスの完了を待機
             try:
                 returncode = process.wait(timeout=timeout)
-            except subprocess.TimeoutExpired as e:
+            except TimeoutExpiredError as e:
                 process.kill()
-                raise subprocess.TimeoutExpired(cmd=cmd, timeout=timeout) from e
+                raise TimeoutExpiredError(cmd=cmd, timeout=timeout, output=None, stderr=None) from e
 
             # 出力スレッドの完了を待機
             output_thread.join(timeout=1.0)
@@ -345,15 +363,21 @@ class MockCommandExecutor(CommandExecutor):
         )
 
 
-def create_command_executor(mock: bool) -> CommandExecutor:
+def create_command_executor(mock: bool, subprocess_wrapper: Optional[SubprocessWrapper]) -> CommandExecutor:
     """CommandExecutorのファクトリ関数
 
     Args:
         mock: モック実装を使用するか
+        subprocess_wrapper: SubprocessWrapperの実装（省略時は実装を作成）
 
     Returns:
         CommandExecutor: コマンド実行インスタンス
     """
     if mock:
         return MockCommandExecutor()
-    return SubprocessCommandExecutor()
+
+    if subprocess_wrapper is None:
+        from .subprocess_impl import SubprocessWrapperImpl
+        subprocess_wrapper = SubprocessWrapperImpl()
+
+    return SubprocessCommandExecutor(subprocess_wrapper)

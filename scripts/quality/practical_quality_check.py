@@ -11,7 +11,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
-import yaml
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from infrastructure.file_operations import FileOperations
+from infrastructure.system_operations import SystemOperations
 
 
 @dataclass(frozen=True)
@@ -106,13 +109,12 @@ class PracticalQualityChecker(ast.NodeVisitor):
                 ))
 
 
-def main():
+def main(file_ops: FileOperations, system_ops: SystemOperations):
     """メイン処理"""
     # 設定ファイルを読み込み
     config_path = Path('.functional_quality_config.yaml')
-    if config_path.exists():
-        with open(config_path) as f:
-            config = yaml.safe_load(f)
+    if system_ops.path_exists(config_path):
+        config = file_ops.load_yaml(config_path)
     else:
         # デフォルト設定
         config = {
@@ -179,14 +181,18 @@ def main():
 
     if error_count > 0:
         print("\n💥 重要なエラーが見つかりました。")
-        sys.exit(1)
+        system_ops.exit(1)
     elif warning_count > 50:  # 警告は50件まで許容
         print("\n⚠️  警告が多数あります。段階的な改善を推奨します。")
-        sys.exit(0)
+        system_ops.exit(0)
     else:
         print("\n✅ 実用的な品質基準をクリアしています！")
-        sys.exit(0)
+        system_ops.exit(0)
 
 
 if __name__ == "__main__":
-    main()
+    from infrastructure.file_operations_impl import FileOperationsImpl
+    from infrastructure.system_operations_impl import SystemOperationsImpl
+    file_ops = FileOperationsImpl()
+    system_ops = SystemOperationsImpl()
+    main(file_ops, system_ops)

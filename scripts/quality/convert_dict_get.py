@@ -7,7 +7,6 @@ dict.get()をKeyErrorハンドリングまたは明示的なチェックに変�
 import argparse
 import ast
 import re
-import sys
 from pathlib import Path
 from typing import List, Tuple
 
@@ -141,7 +140,7 @@ def convert_file_regex(file_path: Path, dry_run: bool = True) -> List[str]:
         return conversions
 
     except (UnicodeDecodeError, OSError) as e:
-        return [f"ファイル読み込みエラー: {e}"]
+        raise Exception(f"ファイル読み込みエラー: {e}") from e
 
 
 def find_dict_get_files(src_dir: Path) -> List[Path]:
@@ -191,12 +190,15 @@ def main():
 
     target_path = Path(args.path)
 
-    if not target_path.exists():
+    from ..infrastructure.system_operations_impl import SystemOperationsImpl
+    system_ops = SystemOperationsImpl()
+
+    if not system_ops.path_exists(target_path):
         print(f"エラー: パス '{target_path}' が見つかりません")
-        sys.exit(1)
+        system_ops.exit(1)
 
     # 対象ファイルを収集
-    if target_path.is_file():
+    if system_ops.is_file(target_path):
         target_files = [target_path] if target_path.suffix == '.py' else []
     else:
         target_files = find_dict_get_files(target_path)

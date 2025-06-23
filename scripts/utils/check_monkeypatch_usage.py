@@ -50,9 +50,12 @@ def check_file(filepath: Path) -> List[Tuple[str, int, str]]:
         visitor.visit(tree)
 
         return [(str(filepath), line, msg) for line, msg in visitor.issues]
+    except UnicodeDecodeError as e:
+        raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end, f"ファイル読み込みエラー {filepath}: {e.reason}") from e
+    except SyntaxError as e:
+        raise SyntaxError(f"構文エラー {filepath}: {e}") from e
     except Exception as e:
-        print(f"Error processing {filepath}: {e}", file=sys.stderr)
-        return []
+        raise Exception(f"ファイル処理エラー {filepath}: {e}") from e
 
 
 def main():
