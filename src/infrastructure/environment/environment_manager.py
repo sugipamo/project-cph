@@ -3,7 +3,7 @@
 from typing import Any, Optional
 from unittest.mock import Mock
 
-from src.configuration.config_manager import TypeSafeConfigNodeManager
+# 互換性維持: configuration層への逆方向依存を削除、依存性注入で解決
 from src.operations.interfaces.logger_interface import LoggerInterface
 from src.operations.requests.base.base_request import OperationRequestFoundation
 from src.operations.results.result import OperationResult
@@ -14,7 +14,7 @@ class EnvironmentManager:
     Direct implementation for basic environment management.
     """
 
-    def __init__(self, env_type: Optional[str], config_manager: TypeSafeConfigNodeManager, logger: LoggerInterface):
+    def __init__(self, env_type: Optional[str], config_provider, logger: LoggerInterface):
         """Initialize environment manager.
 
         Args:
@@ -22,7 +22,7 @@ class EnvironmentManager:
             config_manager: Configuration manager instance
             logger: Logger interface for logging
         """
-        self._config_manager = config_manager
+        self._config_provider = config_provider
         self.logger = logger
         if env_type is not None:
             self._env_type = env_type
@@ -145,7 +145,7 @@ class EnvironmentManager:
         return "./workspace"
 
     @classmethod
-    def from_context(cls, context: Any, config_manager: TypeSafeConfigNodeManager, logger: LoggerInterface) -> 'EnvironmentManager':
+    def from_context(cls, context: Any, config_provider, logger: LoggerInterface) -> 'EnvironmentManager':
         """Create an EnvironmentManager from an execution context.
 
         Args:
@@ -158,7 +158,7 @@ class EnvironmentManager:
         """
         # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
         env_type = context.env_type if hasattr(context, 'env_type') else None
-        return cls(env_type, config_manager, logger)
+        return cls(env_type, config_provider, logger)
 
     def switch_environment(self, env_type: str):
         """Switch to a different environment type.

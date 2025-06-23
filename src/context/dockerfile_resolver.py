@@ -3,12 +3,8 @@ Implements the resolver pattern for Dockerfile content management
 """
 from typing import Callable, Optional
 
-from src.infrastructure.drivers.docker.utils.docker_naming import (
-    get_docker_container_name,
-    get_docker_image_name,
-    get_oj_container_name,
-    get_oj_image_name,
-)
+# 互換性維持: infrastructure層への直接依存を削除、依存性注入で解決
+# Docker naming機能は外部から注入される必要があります
 
 
 class DockerfileResolver:
@@ -21,17 +17,20 @@ class DockerfileResolver:
 
     def __init__(self, dockerfile_path: Optional[str],
                  oj_dockerfile_path: Optional[str],
-                 dockerfile_loader: Optional[Callable[[str], str]]):
+                 dockerfile_loader: Optional[Callable[[str], str]],
+                 docker_naming_provider):
         """Initialize resolver with paths and loader function
 
         Args:
             dockerfile_path: Path to main Dockerfile
             oj_dockerfile_path: Path to OJ tools Dockerfile
             dockerfile_loader: Function to load Dockerfile content from path
+            docker_naming_provider: Injected provider for Docker naming functions
         """
         self._dockerfile_path = dockerfile_path
         self._oj_dockerfile_path = oj_dockerfile_path
         self._dockerfile_loader = dockerfile_loader
+        self._docker_naming_provider = docker_naming_provider
 
         # Content cache (None = not loaded, actual content once loaded)
         self._dockerfile_content: Optional[str] = None
@@ -69,11 +68,14 @@ class DockerfileResolver:
         Returns:
             Dictionary with image_name, container_name, oj_image_name, oj_container_name
         """
+        if self._docker_naming_provider is None:
+            raise RuntimeError("Docker naming provider is not injected. Ensure dependency injection is properly configured.")
+
         return {
-            "image_name": get_docker_image_name(language, self.dockerfile),
-            "container_name": get_docker_container_name(language, self.dockerfile),
-            "oj_image_name": get_oj_image_name(self.oj_dockerfile),
-            "oj_container_name": get_oj_container_name(self.oj_dockerfile)
+            "image_name": self._docker_naming_provider.get_docker_image_name(language, self.dockerfile),
+            "container_name": self._docker_naming_provider.get_docker_container_name(language, self.dockerfile),
+            "oj_image_name": self._docker_naming_provider.get_oj_image_name(self.oj_dockerfile),
+            "oj_container_name": self._docker_naming_provider.get_oj_container_name(self.oj_dockerfile)
         }
 
     def _load_dockerfile_content(self) -> None:

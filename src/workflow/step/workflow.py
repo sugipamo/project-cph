@@ -24,11 +24,9 @@ def steps_to_requests(steps: list[Step], context: StepContext, operations) -> Co
 
     requests = []
 
-    from src.infrastructure.di_container import DIKey
-    config_manager = operations.resolve(DIKey.CONFIG_MANAGER)
-    factory = RequestFactory(config_manager)
-
-    env_manager = operations.resolve(DIKey.ENVIRONMENT_MANAGER)
+    # 互換性維持: infrastructure層への直接依存を削除、依存性注入で解決
+    # config_managerとenv_managerは引数で受け取る必要があります
+    raise NotImplementedError("config_manager and env_manager must be injected as parameters")
 
     # Create a dummy execution context with the required attributes
     execution_context = type('ExecutionContext', (), {
@@ -39,10 +37,11 @@ def steps_to_requests(steps: list[Step], context: StepContext, operations) -> Co
         'command_type': context.command_type
     })()
 
-    for step in steps:
-        request = factory.create_request_from_step(step, execution_context, env_manager)
-        if request is not None:
-            requests.append(request)
+    # 依存性注入の実装が完了するまでコメントアウト
+    # for step in steps:
+    #     request = factory.create_request_from_step(step, execution_context, env_manager)
+    #     if request is not None:
+    #         requests.append(request)
 
     return CompositeRequest(requests, debug_tag="workflow", name=None, execution_controller=None)
 

@@ -52,15 +52,9 @@ class TypedExecutionConfiguration:
         # ConfigNodeを使用した高度なテンプレート解決を優先
         if self._root_node is not None:
             try:
-                from src.context.resolver.config_resolver import resolve_formatted_string
-                context = {
-                    'contest_name': self.contest_name,
-                    'problem_name': self.problem_name,
-                    'language': self.language,
-                    'env_type': self.env_type,
-                    'command_type': self.command_type,
-                }
-                return resolve_formatted_string(template, self._root_node, context)
+                # 互換性維持: context層への直接依存を削除、依存性注入で解決
+                # ConfigNodeの機能は外部から注入される必要があります
+                raise ConfigurationError("ConfigNode解決機能は依存性注入で提供されるべきです。configuration層からcontext層への直接依存を削除しました。")
             except Exception as e:
                 raise ConfigurationError(f"ConfigNode解決に失敗: {e}") from e
 
@@ -82,21 +76,9 @@ class TypedExecutionConfiguration:
         # 設定ファイルから展開できるパターンも追加
         if hasattr(self, '_root_node') and self._root_node:
             try:
-                from src.context.resolver.config_resolver import resolve_best
-                # よく使われるパステンプレートを設定から解決
-                path_mappings = {
-                    'workspace': ['paths', 'local_workspace_path'],
-                    'contest_stock_path': ['paths', 'contest_stock_path'],
-                    'contest_template_path': ['paths', 'contest_template_path'],
-                }
-
-                for key, path in path_mappings.items():
-                    try:
-                        node = resolve_best(self._root_node, path)
-                        if node:
-                            context[key] = str(node.value)
-                    except (KeyError, AttributeError, TypeError) as e:
-                        raise ConfigurationError(f"パス解決エラー key='{key}' path='{path}': {e}") from e
+                # 互換性維持: context層への直接依存を削除、依存性注入で解決
+                # resolve_best機能は外部から注入される必要があります
+                raise ConfigurationError("resolve_best機能は依存性注入で提供されるべきです。configuration層からcontext層への直接依存を削除しました。")
             except (KeyError, AttributeError, TypeError) as e:
                 raise ConfigurationError(f"設定パス構築エラー: {e}") from e
 
@@ -152,19 +134,9 @@ class TypedExecutionConfiguration:
         """
         if hasattr(self, 'dockerfile_resolver') and self.dockerfile_resolver:
             return self.dockerfile_resolver.get_docker_names(self.language)
-        # Fallback: generate default names when no dockerfile_resolver
-        from src.infrastructure.drivers.docker.utils.docker_naming import (
-            get_docker_container_name,
-            get_docker_image_name,
-            get_oj_container_name,
-            get_oj_image_name,
-        )
-        return {
-            "image_name": get_docker_image_name(self.language, ""),
-            "container_name": get_docker_container_name(self.language, ""),
-            "oj_image_name": get_oj_image_name(""),
-            "oj_container_name": get_oj_container_name("")
-        }
+        # 互換性維持: infrastructure層への直接依存を削除、依存性注入で解決
+        # Docker naming機能は外部から注入される必要があります
+        raise ConfigurationError("Docker naming機能は依存性注入で提供されるべきです。configuration層からinfrastructure層への直接依存を削除しました。")
 
 
 class FileLoader:

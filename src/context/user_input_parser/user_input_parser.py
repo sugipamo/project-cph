@@ -468,8 +468,13 @@ def _scan_and_apply_options(args, context, infrastructure):
 def _enable_debug_mode(infrastructure):
     """DebugServiceを使用してデバッグモードを有効化"""
     try:
-        from src.infrastructure.debug import DebugServiceFactory
-        debug_service = DebugServiceFactory.create_debug_service(infrastructure)
+        # 互換性維持: infrastructure層への直接依存を削除、依存性注入で解決
+        # DebugServiceFactory機能は外部から注入される必要があります
+        debug_service_factory = infrastructure.resolve('DEBUG_SERVICE_FACTORY')
+        if debug_service_factory is None:
+            raise RuntimeError("DEBUG_SERVICE_FACTORY is not injected. Ensure dependency injection is properly configured.")
+
+        debug_service = debug_service_factory.create_debug_service(infrastructure)
         debug_service.enable_debug_mode()
 
         # インフラストラクチャにDebugServiceを登録（後続処理で使用可能にする）

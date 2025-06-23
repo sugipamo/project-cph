@@ -2,7 +2,8 @@
 from pathlib import Path
 from typing import List
 
-from src.configuration.config_manager import TypeSafeConfigNodeManager
+# 互換性維持: configuration層への逆方向依存を削除、依存性注入で解決
+# TypeSafeConfigNodeManager機能は外部から注入される必要があります
 from src.operations.interfaces.filesystem_interface import FileSystemInterface
 
 
@@ -14,9 +15,9 @@ class FileSystemError(Exception):
 class LocalFileSystem(FileSystemInterface):
     """Local file system implementation of FileSystemInterface."""
 
-    def __init__(self, config_manager: TypeSafeConfigNodeManager):
-        """Initialize LocalFileSystem with configuration manager."""
-        self.config_manager = config_manager
+    def __init__(self, config_provider):
+        """Initialize LocalFileSystem with configuration provider."""
+        self.config_provider = config_provider
 
     def exists(self, path: Path) -> bool:
         """Check if a path exists."""
@@ -35,7 +36,10 @@ class LocalFileSystem(FileSystemInterface):
         try:
             return list(path.iterdir())
         except (OSError, PermissionError) as e:
-            error_action = self.config_manager.resolve_config(
+            if self.config_provider is None:
+                raise FileSystemError(f"Failed to list directory contents: {e}") from e
+
+            error_action = self.config_provider.resolve_config(
                 ['filesystem_config', 'error_handling', 'permission_denied_action'],
                 str
             )
@@ -43,7 +47,7 @@ class LocalFileSystem(FileSystemInterface):
                 raise FileSystemError(f"Failed to list directory contents: {e}") from e
             raise FileSystemError(f"Invalid error action configured: {error_action}. Must be 'error'.") from e
 
-    def mkdir(self, path: Path, parents: bool = False, exist_ok: bool = False) -> None:
+    def mkdir(self, path: Path, parents: bool, exist_ok: bool) -> None:
         """Create a directory."""
         path.mkdir(parents=parents, exist_ok=exist_ok)
 

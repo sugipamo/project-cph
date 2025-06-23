@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from src.configuration.config_manager import TypeSafeConfigNodeManager
+# 互換性維持: configuration層への逆方向依存を削除、依存性注入で解決
 from src.infrastructure.di_container import DIContainer, DIKey
 from src.operations.constants.request_types import RequestType
 from src.operations.interfaces.logger_interface import LoggerInterface
@@ -18,17 +18,17 @@ from src.operations.results.shell_result import ShellResult
 class UnifiedDriver:
     """Unified driver that routes requests to appropriate specialized drivers"""
 
-    def __init__(self, infrastructure: DIContainer, logger: LoggerInterface, config_manager: TypeSafeConfigNodeManager):
+    def __init__(self, infrastructure: DIContainer, logger: LoggerInterface, config_provider):
         """Initialize unified driver with infrastructure container
 
         Args:
             infrastructure: DI container for resolving drivers
             logger: Logger instance
-            config_manager: Configuration manager instance
+            config_provider: Configuration provider instance
         """
         self.infrastructure = infrastructure
         self.logger = logger
-        self._config_manager = config_manager
+        self._config_provider = config_provider
         # 互換性維持: 設定システムでgetattr()デフォルト値を管理
         self._infrastructure_defaults = self._load_infrastructure_defaults()
 

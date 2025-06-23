@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Union
 
-from src.configuration.config_manager import TypeSafeConfigNodeManager
+# 互換性維持: configuration層への逆方向依存を削除、依存性注入で解決
 from src.operations.types.path_types import PathOperationResult
 
 
@@ -15,14 +15,17 @@ class PathOperations:
     シンプルなAPI（例外ベース）と詳細なAPI（結果型ベース）の両方を提供
     """
 
-    def __init__(self, config_manager: TypeSafeConfigNodeManager):
-        """Initialize PathOperations with configuration manager."""
-        self.config_manager = config_manager
+    def __init__(self, config_provider):
+        """Initialize PathOperations with configuration provider."""
+        self.config_provider = config_provider
 
     def _get_default_workspace_path(self) -> str:
         """設定からデフォルトワークスペースパスを取得"""
+        if self.config_provider is None:
+            raise ValueError("Configuration provider is not injected")
+
         try:
-            return self.config_manager.resolve_config(
+            return self.config_provider.resolve_config(
                 ['filesystem_config', 'default_paths', 'workspace'],
                 str
             )
@@ -31,7 +34,7 @@ class PathOperations:
 
     def resolve_path(self, base_dir: Union[str, Path],
                     target_path: Union[str, Path],
-                    strict: bool = False) -> Union[str, PathOperationResult]:
+                    strict: bool) -> Union[str, PathOperationResult]:
         """パスを解決する"""
         try:
             errors = []
@@ -101,7 +104,7 @@ class PathOperations:
                 )
             raise
 
-    def normalize_path(self, path: Union[str, Path], strict: bool = False) -> Union[str, PathOperationResult]:
+    def normalize_path(self, path: Union[str, Path], strict: bool) -> Union[str, PathOperationResult]:
         """パスを正規化する"""
         try:
             if path is None:
@@ -130,7 +133,7 @@ class PathOperations:
                 )
             raise
 
-    def safe_path_join(self, *paths: Union[str, Path], strict: bool = False) -> Union[str, PathOperationResult]:
+    def safe_path_join(self, *paths: Union[str, Path], strict: bool) -> Union[str, PathOperationResult]:
         """安全にパスを結合する"""
         try:
             if not paths:
@@ -192,7 +195,7 @@ class PathOperations:
 
     def get_relative_path(self, target: Union[str, Path],
                          base: Union[str, Path],
-                         strict: bool = False) -> Union[str, PathOperationResult]:
+                         strict: bool) -> Union[str, PathOperationResult]:
         """baseからtargetへの相対パスを取得"""
         try:
             target_path = Path(target).resolve()
@@ -238,7 +241,7 @@ class PathOperations:
 
     def is_subdirectory(self, child: Union[str, Path],
                        parent: Union[str, Path],
-                       strict: bool = False) -> Union[bool, tuple]:
+                       strict: bool) -> Union[bool, tuple]:
         """childがparentのサブディレクトリかどうかチェック"""
         try:
             child_path = Path(child).resolve()
@@ -277,7 +280,7 @@ class PathOperations:
             raise
 
     def ensure_parent_dir(self, file_path: Union[str, Path],
-                         strict: bool = False) -> Union[str, PathOperationResult]:
+                         strict: bool) -> Union[str, PathOperationResult]:
         """ファイルの親ディレクトリを作成"""
         try:
             path_obj = Path(file_path)
@@ -310,7 +313,7 @@ class PathOperations:
             raise
 
     def get_file_extension(self, file_path: Union[str, Path],
-                          strict: bool = False) -> Union[str, PathOperationResult]:
+                          strict: bool) -> Union[str, PathOperationResult]:
         """ファイルの拡張子を取得"""
         try:
             path_obj = Path(file_path)
@@ -339,7 +342,7 @@ class PathOperations:
 
     def change_extension(self, file_path: Union[str, Path],
                         new_extension: str,
-                        strict: bool = False) -> Union[str, PathOperationResult]:
+                        strict: bool) -> Union[str, PathOperationResult]:
         """ファイルの拡張子を変更"""
         try:
             path_obj = Path(file_path)

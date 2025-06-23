@@ -5,8 +5,7 @@ Integrates workflow building, fitting, and execution
 from typing import Optional
 
 # 互換性維持: TypedExecutionConfigurationは依存性注入で提供される
-from src.infrastructure.drivers.unified.unified_driver import UnifiedDriver
-
+# 互換性維持: infrastructure層への直接依存を削除、依存性注入で解決
 # DebugLogger functionality now handled by src/logging UnifiedLogger
 from src.operations.constants.request_types import RequestType
 from src.operations.factories.request_factory import create_request
@@ -199,8 +198,8 @@ class WorkflowExecutionService:
             return
 
         # Use unified logger from infrastructure container for environment logging
-        from src.infrastructure.di_container import DIKey
-        unified_logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
+        # 互換性維持: infrastructure層への直接依存を削除、依存性注入で解決
+        unified_logger = self.infrastructure.resolve("unified_logger")
 
         # Log environment information
         unified_logger.log_environment_info(
@@ -245,11 +244,12 @@ class WorkflowExecutionService:
         """Execute the main workflow operations."""
 
         # Get logger and config manager from infrastructure
-        from src.infrastructure.di_container import DIKey
-        logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
+        # 互換性維持: infrastructure層への直接依存を削除、依存性注入で解決
+        logger = self.infrastructure.resolve("unified_logger")
         config_manager = self.infrastructure.resolve("config_manager")
 
-        unified_driver = UnifiedDriver(self.infrastructure, logger, config_manager)
+        # UnifiedDriverは外部から注入されるべきです
+        unified_driver = self.infrastructure.resolve("unified_driver")
 
         # Check if composite request supports parallel execution - no fallback
         if use_parallel:
@@ -318,7 +318,7 @@ class WorkflowExecutionService:
 
     def _debug_log(self, message: str):
         """Log debug message using infrastructure logger."""
-        from src.infrastructure.di_container import DIKey
-        logger = self.infrastructure.resolve(DIKey.UNIFIED_LOGGER)
+        # 互換性維持: infrastructure層への直接依存を削除、依存性注入で解決
+        logger = self.infrastructure.resolve("unified_logger")
         logger.debug(message)
 

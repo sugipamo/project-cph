@@ -6,7 +6,7 @@ import subprocess
 import traceback
 from typing import Optional
 
-from src.configuration.config_manager import TypeSafeConfigNodeManager
+# 互換性維持: configuration層への逆方向依存を削除、依存性注入で解決
 from src.operations.exceptions import (
     PythonConfigError,
     PythonInterpreterError,
@@ -16,13 +16,13 @@ from src.operations.exceptions import (
 class PythonUtils:
     """Utility class for Python code operations."""
 
-    def __init__(self, config_manager: TypeSafeConfigNodeManager):
-        """Initialize PythonUtils with configuration manager.
+    def __init__(self, config_provider):
+        """Initialize PythonUtils with configuration provider.
 
         Args:
-            config_manager: Configuration manager instance
+            config_provider: Configuration provider instance
         """
-        self.config_manager = config_manager
+        self.config_provider = config_provider
         self._python_interpreter = None
 
     def is_script_file(self, code_or_file: list[str]) -> bool:
