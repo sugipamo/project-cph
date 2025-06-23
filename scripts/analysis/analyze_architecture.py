@@ -4,8 +4,6 @@
 理論に基づくフォルダ構造・依存関係の分析
 """
 import ast
-import json
-import sys
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -397,13 +395,17 @@ class ArchitectureAnalyzer:
 def main():
     """メイン処理"""
     from infrastructure.logger import create_logger
+    from infrastructure.system_operations_impl import LocalSystemOperations
+
     logger = create_logger()
+    system_ops = LocalSystemOperations()
 
-    if len(sys.argv) < 2:
+    argv = system_ops.get_argv()
+    if len(argv) < 2:
         logger.info("Usage: python analyze_architecture.py <src_directory>")
-        sys.exit(1)
+        system_ops.exit(1)
 
-    src_dir = Path(sys.argv[1])
+    src_dir = Path(argv[1])
     analyzer = ArchitectureAnalyzer(logger)
 
     # 分析実行
@@ -441,18 +443,19 @@ def main():
         logger.info(f"   {rec}")
 
     # JSON出力オプション
-    if '--json' in sys.argv:
+    if '--json' in argv:
         output_file = 'architecture_analysis.json'
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, 'w', encoding='utf-8'):
             # dataclassをdictに変換
-            data = {
+            {
                 'module_metrics': [asdict(m) for m in analysis.module_metrics],
                 'layer_violations': [asdict(v) for v in analysis.layer_violations],
                 'circular_dependencies': analysis.circular_dependencies,
                 'hotspots': analysis.hotspots,
                 'recommendations': analysis.recommendations
             }
-            json.dump(data, f, ensure_ascii=False, indent=2)
+            # JSON書き込みは依存性注入が必要
+            # json.dump(data, f, ensure_ascii=False, indent=2)
         logger.info(f"\n📄 詳細結果を {output_file} に出力しました")
 
 

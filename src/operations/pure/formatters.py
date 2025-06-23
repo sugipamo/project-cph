@@ -102,8 +102,6 @@ def _contains_valid_format_syntax(template: str, context: dict) -> bool:
     Returns:
         bool: True if template can be safely formatted, False otherwise
     """
-    import re
-
     # Check for basic format syntax without complex expressions
     format_pattern = re.compile(r'\{[^{}]*\}')
     format_keys = format_pattern.findall(template)

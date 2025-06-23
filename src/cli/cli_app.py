@@ -3,8 +3,6 @@ import traceback
 from typing import Optional
 
 from src.context.user_input_parser.user_input_parser import parse_user_input
-from src.infrastructure.di_container import DIContainer, DIKey
-from src.infrastructure.drivers.docker.utils.docker_command_builder import _get_config_manager
 from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
 from src.operations.exceptions.error_codes import ErrorSuggestion, classify_error
 from src.workflow.workflow_execution_service import WorkflowExecutionService

@@ -1,20 +1,21 @@
 """user_input_parser.pyでの新設定システム統合"""
 from typing import Any, Dict
 
-from src.configuration.config_manager import TypedExecutionConfiguration, TypeSafeConfigNodeManager
+# 互換性維持: 設定管理は依存性注入で提供される
 
 
 class UserInputParserIntegration:
     """user_input_parser.pyでの新設定システム統合"""
 
-    def __init__(self, contest_env_dir: str = "./contest_env", system_config_dir: str = "./config/system"):
+    def __init__(self, config_manager, contest_env_dir: str = "./contest_env", system_config_dir: str = "./config/system"):
         """初期化
 
         Args:
+            config_manager: 設定管理インスタンス（依存性注入）
             contest_env_dir: contest_env ディレクトリのパス
             system_config_dir: システム設定ディレクトリのパス
         """
-        self.config_manager = TypeSafeConfigNodeManager()
+        self.config_manager = config_manager
         self.contest_env_dir = contest_env_dir
         self.system_config_dir = system_config_dir
 
@@ -24,7 +25,7 @@ class UserInputParserIntegration:
                                                    contest_name: str,
                                                    problem_name: str,
                                                    env_type: str,
-                                                   env_json: Dict[str, Any]) -> TypedExecutionConfiguration:
+                                                   env_json: Dict[str, Any]) -> Any:
         """既存のコンテキスト情報から新しいExecutionConfigurationを生成
 
         Args:
@@ -36,7 +37,7 @@ class UserInputParserIntegration:
             env_json: 環境設定JSON
 
         Returns:
-            TypedExecutionConfiguration: 新しい実行設定
+            Any: 新しい実行設定
         """
         # 設定を読み込み
         self.config_manager.load_from_files(
@@ -66,7 +67,7 @@ class UserInputParserIntegration:
             env_json: 環境設定JSON
 
         Returns:
-            TypedExecutionConfiguration: 新しい実行設定
+            Any: 新しい実行設定
         """
         # ExecutionConfigurationを生成
         return self.create_execution_configuration_from_context(
@@ -75,7 +76,7 @@ class UserInputParserIntegration:
 
     def validate_new_system_compatibility(self,
                                         old_context,
-                                        new_config: TypedExecutionConfiguration) -> bool:
+                                        new_config: Any) -> bool:
         """旧システムと新システムの互換性を検証
 
         Args:
@@ -103,7 +104,7 @@ def create_new_execution_context(command_type: str,
                                problem_name: str,
                                env_type: str,
                                env_json: Dict[str, Any],
-                               resolver) -> TypedExecutionConfiguration:
+                               resolver) -> Any:
     """新設定システムを使用してExecutionContextの互換実装を作成
 
     既存のExecutionContext.__init__と同じシグネチャで、
@@ -119,7 +120,7 @@ def create_new_execution_context(command_type: str,
         resolver: リゾルバー（互換性のため）
 
     Returns:
-        TypedExecutionConfiguration: 新しい実行設定
+        Any: 新しい実行設定
     """
     integration = UserInputParserIntegration()
     return integration.create_execution_context_adapter(

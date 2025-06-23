@@ -2,8 +2,6 @@
 import time
 from typing import Any, Optional, Union
 
-from src.infrastructure.di_container import DIKey
-from src.infrastructure.drivers.python.utils.python_utils import PythonUtils
 from src.operations.constants.operation_type import OperationType
 from src.operations.constants.request_types import RequestType
 from src.operations.requests.base.base_request import OperationRequestFoundation
@@ -17,20 +15,21 @@ class PythonRequest(OperationRequestFoundation):
 
     def __init__(self, code_or_file: Union[str, list[str]], cwd: Optional[str],
                  show_output: bool, name: Optional[str],
-                 debug_tag: Optional[str], allow_failure: bool = True):
+                 debug_tag: Optional[str], allow_failure: bool,
+                 os_provider: Any, python_utils: Any):
         super().__init__(name=name, debug_tag=debug_tag)
         self.code_or_file = code_or_file  # Code string or filename
         self.cwd = cwd
         self.show_output = show_output
         self.allow_failure = allow_failure
 
+        # Infrastructure services injected from main.py
+        self._os_provider = os_provider
+        self._python_utils = python_utils
+
     def _get_os_provider(self, driver):
-        """Get OS provider from driver infrastructure."""
-        if hasattr(driver, 'infrastructure'):
-            return driver.infrastructure.resolve(DIKey.OS_PROVIDER)
-        # Fallback: create a temporary provider if needed
-        from src.infrastructure.providers.os_provider import SystemOsProvider
-        return SystemOsProvider()
+        """Get OS provider from injected dependency."""
+        return self._os_provider
 
     @property
     def operation_type(self) -> OperationType:
@@ -125,11 +124,10 @@ class PythonRequest(OperationRequestFoundation):
         if hasattr(python_driver, 'is_script_file'):
             return python_driver.is_script_file(self.code_or_file)
 
-        # Driver does not support is_script_file, use PythonUtils as last resort
-        python_utils = PythonUtils(None)
+        # Driver does not support is_script_file, use injected python_utils
         if isinstance(self.code_or_file, list):
-            return python_utils.is_script_file(self.code_or_file)
-        return python_utils.is_script_file([self.code_or_file])
+            return self._python_utils.is_script_file(self.code_or_file)
+        return self._python_utils.is_script_file([self.code_or_file])
 
     def _prepare_code_string(self) -> str:
         """Prepare code string from code_or_file input."""

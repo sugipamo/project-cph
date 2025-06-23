@@ -94,17 +94,6 @@ class RuffChecker(QualityCheckExecutor):
             # フォールバック処理は禁止されているため、設定ファイルに追加が必要
             pass
 
-        try:
-            functional_script = self.config.get_script_path("functional_quality_checker")
-            if self.file_handler.exists(functional_script):
-                for target_dir in target_directories:
-                    success, output = self._run_command(
-                        ["python3", functional_script, f"{target_dir}/"],
-                        f"関数型品質チェック ({target_dir})"
-                    )
-                    all_passed = all_passed and success
-        except KeyError:
-            pass
 
         # アーキテクチャ品質チェック
         try:

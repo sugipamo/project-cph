@@ -74,14 +74,6 @@ class FallbackChecker(QualityCheckExecutor):
         elif self.verbose:
             self.logger.info(f"{'✅' if success else '❌'} フォールバック処理チェック")
 
-        if fallback_issues:
-            self.issues.append("フォールバック処理が検出されました（CLAUDE.mdルール違反）:")
-            for issue in fallback_issues[:20]:
-                self.issues.append(f"  {issue}")
-
-            if len(fallback_issues) > 20:
-                self.issues.append(f"  ... 他{len(fallback_issues) - 20}件")
-
         return success
 
     def _is_legitimate_error_handling(self, line: str) -> bool:

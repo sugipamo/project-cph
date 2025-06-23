@@ -4,7 +4,8 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Optional
 
-from src.configuration.config_manager import TypeSafeConfigNodeManager
+# 互換性維持: config_managerは注入されるべき
+# from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
 from src.infrastructure.drivers.python.utils.python_utils import PythonUtils
 
@@ -12,7 +13,7 @@ from src.infrastructure.drivers.python.utils.python_utils import PythonUtils
 class PythonDriver(ExecutionDriverInterface):
     """Abstract base class for Python code execution."""
 
-    def __init__(self, config_manager: TypeSafeConfigNodeManager):
+    def __init__(self, config_manager: Any):
         """Initialize PythonDriver with configuration manager."""
         self.config_manager = config_manager
         self.python_utils = PythonUtils(self.config_manager)
@@ -94,7 +95,7 @@ class PythonDriver(ExecutionDriverInterface):
 class LocalPythonDriver(PythonDriver):
     """Local Python execution driver using subprocess."""
 
-    def __init__(self, config_manager: TypeSafeConfigNodeManager):
+    def __init__(self, config_manager: Any):
         """Initialize LocalPythonDriver with configuration manager."""
         super().__init__(config_manager)
 

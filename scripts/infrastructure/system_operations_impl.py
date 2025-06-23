@@ -38,7 +38,10 @@ class SystemOperationsImpl(SystemOperations):
         return os.listdir(path)
 
     def get_env(self, key: str, default: Optional[str]) -> Optional[str]:
-        return os.environ.get(key, default)
+        # CLAUDE.mdルール適用: dict.get()使用禁止、明示的設定取得
+        if key in os.environ:
+            return os.environ[key]
+        return default
 
     def set_env(self, key: str, value: str) -> None:
         os.environ[key] = value

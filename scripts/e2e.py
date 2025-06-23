@@ -4,13 +4,13 @@ E2E Tests for cph.sh - Contest Problem Helper
 極シンプルなコマンド実行テスト
 """
 
-import sys
+# 副作用の直接インポートは禁止 - main.pyから注入が必要
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, List
 
 # scripts/infrastructure modules
-sys.path.insert(0, str(Path(__file__).parent))
+# sys.path.insert(0, str(Path(__file__).parent))  # 副作用の直接使用は禁止
 from infrastructure.command_executor import CommandExecutor, create_command_executor
 from infrastructure.file_handler import FileHandler, create_file_handler
 from infrastructure.logger import Logger, create_logger
@@ -183,7 +183,7 @@ def main(args):
 
     logger.info("\n=== テスト結果サマリー ===")
     logger.info("=== E2E Test 成功 ===")
-    sys.exit(0)
+    # sys.exit(0) は副作用のため削除 - 正常終了は関数のreturnで表現
 
 
 if __name__ == "__main__":

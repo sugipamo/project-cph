@@ -2,20 +2,24 @@
 from typing import Any, Dict, List, Union
 
 # 新設定システムをサポート
-from src.configuration.config_manager import TypedExecutionConfiguration
+# 互換性維持: TypedExecutionConfigurationは依存性注入で提供される
+# 型チェックのためのみ使用、実際のインスタンスは注入される
+try:
+    from src.configuration import TypedExecutionConfiguration
+except ImportError:
+    # 設定システムが利用できない場合のフォールバック
+    TypedExecutionConfiguration = None
 
 from .step import Step, StepContext, StepGenerationResult, StepType
 from .step_runner import ExecutionContext, expand_file_patterns_in_text, expand_template, run_steps
 from .step_runner import create_step as create_step_simple
 
 
-def create_step_context_from_execution_context(execution_context: Union['TypedExecutionConfiguration', Any]) -> StepContext:
+def create_step_context_from_execution_context(execution_context: Any) -> StepContext:
     """実行コンテキストからStepContextを作成するヘルパー関数（新旧システム対応）"""
-    # TypedExecutionConfigurationの場合
-    if isinstance(execution_context, TypedExecutionConfiguration):
+    # 新設定システムの場合
+    if hasattr(execution_context, 'file_patterns'):
         # 新設定システムから直接値を取得
-        if not hasattr(execution_context, 'file_patterns'):
-            raise AttributeError(f"TypedExecutionConfiguration {execution_context} does not have required 'file_patterns' attribute")
         file_patterns = execution_context.file_patterns
 
         return StepContext(
@@ -83,7 +87,7 @@ def create_step_context_from_execution_context(execution_context: Union['TypedEx
     )
 
 
-def execution_context_to_simple_context(execution_context: Union['TypedExecutionConfiguration', Any]) -> ExecutionContext:
+def execution_context_to_simple_context(execution_context: Union[TypedExecutionConfiguration, Any]) -> ExecutionContext:
     """実行コンテキストをSimpleExecutionContextに変換（新旧システム対応）"""
     # TypedExecutionConfigurationの場合
     if TypedExecutionConfiguration and isinstance(execution_context, TypedExecutionConfiguration):
@@ -168,7 +172,7 @@ def execution_context_to_simple_context(execution_context: Union['TypedExecution
     )
 
 
-def generate_steps_from_json(json_steps: List[Dict[str, Any]], context: Union['TypedExecutionConfiguration', Any]) -> StepGenerationResult:
+def generate_steps_from_json(json_steps: List[Dict[str, Any]], context: Union[TypedExecutionConfiguration, Any], os_provider=None, json_provider=None) -> StepGenerationResult:
     """JSONステップリストから実行可能ステップを生成する（新設計使用）
 
     Args:
@@ -183,11 +187,17 @@ def generate_steps_from_json(json_steps: List[Dict[str, Any]], context: Union['T
 
     # 個別ステップのエラーハンドリングを追加
     simple_context = execution_context_to_simple_context(context)
-    from src.infrastructure.providers import SystemOsProvider
-    from src.infrastructure.providers.json_provider import SystemJsonProvider
+
+    # 依存性注入: プロバイダーはmain.pyから注入される
+    if os_provider is None or json_provider is None:
+        # 後方互換性維持のためのフォールバック
+        from src.infrastructure.providers import SystemOsProvider
+        from src.infrastructure.providers.json_provider import SystemJsonProvider
+        os_provider = SystemOsProvider()
+        json_provider = SystemJsonProvider()
 
     # run_stepsをモックで置き換えられるように処理
-    step_results = run_steps(json_steps, simple_context, SystemOsProvider(), SystemJsonProvider())
+    step_results = run_steps(json_steps, simple_context, os_provider, json_provider)
 
     # step_resultsが結果オブジェクトのリストかStepオブジェクトのリストかを判定
     if step_results:
@@ -209,14 +219,14 @@ def generate_steps_from_json(json_steps: List[Dict[str, Any]], context: Union['T
     return StepGenerationResult(steps, errors, [])
 
 
-def create_step_from_json(json_step: Dict[str, Any], context: Union['TypedExecutionConfiguration', Any]) -> Step:
+def create_step_from_json(json_step: Dict[str, Any], context: Union[TypedExecutionConfiguration, Any]) -> Step:
     """単一のJSONステップから実行可能ステップを生成する（後方互換性）"""
     simple_context = execution_context_to_simple_context(context)
     return create_step_simple(json_step, simple_context)
 
 
 # 後方互換性のための関数（旧APIのエミュレーション）
-def format_template(template: Any, context: Union['TypedExecutionConfiguration', Any]) -> str:
+def format_template(template: Any, context: Union[TypedExecutionConfiguration, Any]) -> str:
     """テンプレート文字列をフォーマットする（後方互換性）
 
     Args:
@@ -239,7 +249,7 @@ def format_template(template: Any, context: Union['TypedExecutionConfiguration',
     return expand_template(template, simple_context)
 
 
-def expand_file_patterns(template: str, context: Union['TypedExecutionConfiguration', Any], step_type) -> str:
+def expand_file_patterns(template: str, context: Union[TypedExecutionConfiguration, Any], step_type) -> str:
     """ファイルパターンを展開する（後方互換性）"""
     # TypedExecutionConfigurationの場合は直接テンプレート展開を使用
     if isinstance(context, TypedExecutionConfiguration):

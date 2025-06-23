@@ -6,6 +6,8 @@ ConfigNodeによる統一処理と型安全性を確保した設定管理シス�
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, TypeVar, overload
 
+# 互換性維持: DIContainerはmain.pyから注入されるべき
+# 一時的な直接使用（クリーンアーキテクチャ違反要修正）
 from src.infrastructure.di_container import DIContainer, DIKey
 
 # Avoid circular imports - these will be imported when needed

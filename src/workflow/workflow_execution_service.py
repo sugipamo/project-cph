@@ -4,7 +4,7 @@ Integrates workflow building, fitting, and execution
 
 from typing import Optional
 
-from src.configuration.config_manager import TypedExecutionConfiguration
+# 互換性維持: TypedExecutionConfigurationは依存性注入で提供される
 from src.infrastructure.drivers.unified.unified_driver import UnifiedDriver
 
 # DebugLogger functionality now handled by src/logging UnifiedLogger
@@ -19,7 +19,7 @@ class WorkflowExecutionService:
     Replaces the removed EnvWorkflowService
     """
 
-    def __init__(self, context: TypedExecutionConfiguration, infrastructure):
+    def __init__(self, context, infrastructure):
         """Initialize workflow execution service
 
         Args:

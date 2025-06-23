@@ -1,8 +1,10 @@
 """TypedExecutionConfiguration のフォーマット処理を純粋関数として実装
 """
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
+# 互換性維持: Docker naming機能はmain.pyから注入されるべき
+# 一時的な直接使用（クリーンアーキテクチャ違反要修正）
 from src.infrastructure.drivers.docker.utils.docker_naming import (
     get_docker_container_name,
     get_docker_image_name,
@@ -12,10 +14,7 @@ from src.infrastructure.drivers.docker.utils.docker_naming import (
 from src.operations.pure.formatters import format_string_simple, format_with_missing_keys
 
 # 新設定システムをサポート
-try:
-    from src.configuration.config_manager import TypedExecutionConfiguration
-except ImportError as e:
-    raise ImportError(f"Required TypedExecutionConfiguration module not available: {e}") from e
+# 互換性維持: TypedExecutionConfigurationは依存性注入で提供される
 
 
 @dataclass(frozen=True)
@@ -28,7 +27,7 @@ class ExecutionFormatData:
     env_type: str
 
 
-def create_format_data_from_typed_config(config: 'TypedExecutionConfiguration') -> ExecutionFormatData:
+def create_format_data_from_typed_config(config: Any) -> ExecutionFormatData:
     """TypedExecutionConfigurationからExecutionFormatDataを作成"""
     return ExecutionFormatData(
         command_type=config.command_type,
@@ -39,7 +38,7 @@ def create_format_data_from_typed_config(config: 'TypedExecutionConfiguration') 
     )
 
 
-def create_format_dict_from_typed_config(config: 'TypedExecutionConfiguration') -> dict[str, str]:
+def create_format_dict_from_typed_config(config: Any) -> dict[str, str]:
     """TypedExecutionConfigurationから直接フォーマット用辞書を生成する純粋関数"""
     format_dict = {
         "command_type": config.command_type,
@@ -93,7 +92,7 @@ def create_format_dict(data: ExecutionFormatData) -> dict[str, str]:
     return format_dict
 
 
-def format_template_string(template: str, data: Union[ExecutionFormatData, 'TypedExecutionConfiguration']) -> tuple[str, set]:
+def format_template_string(template: str, data: Union[ExecutionFormatData, Any]) -> tuple[str, set]:
     """テンプレート文字列をデータでフォーマットする純粋関数
 
     Args:
@@ -104,7 +103,7 @@ def format_template_string(template: str, data: Union[ExecutionFormatData, 'Type
         Tuple[str, set]: (フォーマット済み文字列, 見つからなかったキーのセット)
     """
     # TypedExecutionConfigurationの場合
-    if TypedExecutionConfiguration and isinstance(data, TypedExecutionConfiguration):
+    if hasattr(data, 'command_type') and hasattr(data, 'language'):
         # ConfigNodeベースのテンプレート展開を優先
         if hasattr(data, 'resolve_formatted_string'):
             try:
@@ -122,7 +121,7 @@ def format_template_string(template: str, data: Union[ExecutionFormatData, 'Type
     return formatted, set(missing_list)
 
 
-def validate_execution_data(data: Union[ExecutionFormatData, 'TypedExecutionConfiguration']) -> tuple[bool, Optional[str]]:
+def validate_execution_data(data: Union[ExecutionFormatData, Any]) -> tuple[bool, Optional[str]]:
     """データの基本的なバリデーションを行う純粋関数
 
     Args:
@@ -132,7 +131,7 @@ def validate_execution_data(data: Union[ExecutionFormatData, 'TypedExecutionConf
         Tuple[bool, Optional[str]]: (バリデーション結果, エラーメッセージ)
     """
     # TypedExecutionConfigurationの場合
-    if TypedExecutionConfiguration and isinstance(data, TypedExecutionConfiguration):
+    if hasattr(data, 'command_type') and hasattr(data, 'language'):
         # 新設定システムの内部バリデーションを使用
         if hasattr(data, 'validate_execution_data'):
             return data.validate_execution_data()
@@ -196,7 +195,7 @@ def format_values_with_context_dict(values: list, context_dict: dict) -> list:
     return result
 
 
-def get_docker_naming_from_data(data: Union[ExecutionFormatData, 'TypedExecutionConfiguration'],
+def get_docker_naming_from_data(data: Union[ExecutionFormatData, Any],
                                dockerfile_content: Optional[str],
                                oj_dockerfile_content: Optional[str]) -> dict:
     """データからDocker命名情報を生成する純粋関数

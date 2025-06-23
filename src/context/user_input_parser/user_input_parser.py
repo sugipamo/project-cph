@@ -1,6 +1,6 @@
 # 新設定システムの統合
 
-from src.configuration.config_manager import TypeSafeConfigNodeManager
+# 互換性維持: 設定管理は依存性注入で提供される
 from src.context.dockerfile_resolver import DockerfileResolver
 
 # from .execution_context import ExecutionContext  # 新システムで置き換え済み
@@ -29,7 +29,7 @@ def _create_execution_config(command_type, language, contest_name,
     if command_type is None:
         raise ValueError("command_type parameter cannot be None")
 
-    config_manager = TypeSafeConfigNodeManager(infrastructure)
+    config_manager = infrastructure.resolve(DIKey.CONFIG_MANAGER)
     config_manager.load_from_files(
         system_dir="./config/system",
         env_dir=CONTEST_ENV_DIR,
@@ -99,9 +99,9 @@ def _scan_and_apply_language(args, context, root, infrastructure):
     # 実際の言語のみをターゲット（動的に取得）
     from pathlib import Path
 
-    from src.configuration.config_manager import FileLoader
+    # 互換性維持: FileLoaderは依存性注入で提供される
 
-    file_loader = FileLoader(infrastructure)
+    file_loader = infrastructure.resolve(DIKey.CONFIG_MANAGER)
     valid_languages = set(file_loader.get_available_languages(Path("contest_env")))
 
     for idx, arg in enumerate(args):
@@ -306,9 +306,9 @@ def _resolve_environment_configuration(context_data, infrastructure):
     """Load and resolve environment configuration."""
     from pathlib import Path
 
-    from src.configuration.config_manager import FileLoader
+    # 互換性維持: FileLoaderは依存性注入で提供される
 
-    file_loader = FileLoader(infrastructure)
+    file_loader = infrastructure.resolve(DIKey.CONFIG_MANAGER)
 
     # 全言語の設定を統合して言語候補を作成
     all_languages = file_loader.get_available_languages(Path(CONTEST_ENV_DIR))

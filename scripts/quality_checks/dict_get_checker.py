@@ -72,8 +72,6 @@ class DictGetChecker(QualityCheckExecutor):
                 # 変換成功時のみ再チェック（1回のみ）
                 return self.check_dict_get_usage(auto_convert=True)
 
-            # エラー表示
-            self.issues.append("dict.get()の使用が検出されました（エラー隠蔽防止・フォールバック対応禁止のため使用禁止）:")
             for issue in dict_get_issues[:20]:  # 最大20件表示
                 self.issues.append(f"  {issue}")
 

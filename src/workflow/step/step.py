@@ -192,14 +192,14 @@ class StepGenerationResult:
     @property
     def is_success(self) -> bool:
         """エラーがない場合はTrue"""
-        return len(self.errors) == 0
+        return len(self.errors or []) == 0
 
     def add_error(self, error: str) -> 'StepGenerationResult':
         """エラーを追加した新しいインスタンスを返す"""
-        new_errors = [*list(self.errors), error]
+        new_errors = [*(self.errors or []), error]
         return StepGenerationResult(self.steps, new_errors, self.warnings)
 
     def add_warning(self, warning: str) -> 'StepGenerationResult':
         """警告を追加した新しいインスタンスを返す"""
-        new_warnings = [*list(self.warnings), warning]
+        new_warnings = [*(self.warnings or []), warning]
         return StepGenerationResult(self.steps, self.errors, new_warnings)

@@ -205,6 +205,9 @@ def _create_file_pattern_service(container: Any) -> Any:
 
 def _create_json_config_loader(container: Any) -> Any:
     """Lazy factory for JSON config loader."""
+    # 互換性維持: infrastructure層では設定マネージャーを直接作成すべきではない
+    # main.pyから注入されるべき
+    # TODO: main.pyから設定マネージャーを注入する形に変更
     from src.configuration.config_manager import TypeSafeConfigNodeManager
     config_manager = TypeSafeConfigNodeManager(infrastructure=container)
     # デフォルト設定をロード

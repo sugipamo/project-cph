@@ -1,5 +1,6 @@
 """Standardized error codes for structured error handling."""
 from enum import Enum
+from typing import List, Optional
 
 
 class ErrorCode(Enum):
@@ -79,7 +80,7 @@ class ErrorSuggestion:
         return suggestions[error_code]
 
     @staticmethod
-    def get_recovery_actions(error_code: ErrorCode) -> list[str]:
+    def get_recovery_actions(error_code: ErrorCode) -> List[str]:
         """Get specific recovery actions for an error code."""
         recovery_actions = {
             ErrorCode.FILE_NOT_FOUND: [
@@ -161,7 +162,7 @@ def classify_error(exception: Exception, context: str = "") -> ErrorCode:
     return ErrorCode.UNKNOWN_ERROR
 
 
-def _classify_file_errors(error_message: str, context: str) -> ErrorCode:
+def _classify_file_errors(error_message: str, context: str) -> Optional[ErrorCode]:
     """Classify file-related errors."""
     if ("no such file or directory" in error_message or
         "file not found" in error_message or
@@ -173,7 +174,7 @@ def _classify_file_errors(error_message: str, context: str) -> ErrorCode:
     return None
 
 
-def _classify_command_errors(error_message: str, context: str) -> ErrorCode:
+def _classify_command_errors(error_message: str, context: str) -> Optional[ErrorCode]:
     """Classify command-related errors."""
     if "command not found" in error_message or "no such file or directory" in error_message:
         return ErrorCode.COMMAND_NOT_FOUND
@@ -184,7 +185,7 @@ def _classify_command_errors(error_message: str, context: str) -> ErrorCode:
     return None
 
 
-def _classify_docker_errors(error_message: str) -> ErrorCode:
+def _classify_docker_errors(error_message: str) -> Optional[ErrorCode]:
     """Classify Docker-related errors."""
     if "docker" not in error_message:
         return None
@@ -201,7 +202,7 @@ def _classify_docker_errors(error_message: str) -> ErrorCode:
     return None
 
 
-def _classify_python_errors(exception: Exception, error_message: str) -> ErrorCode:
+def _classify_python_errors(exception: Exception, error_message: str) -> Optional[ErrorCode]:
     """Classify Python-related errors."""
     if isinstance(exception, SyntaxError):
         return ErrorCode.PYTHON_SYNTAX_ERROR
@@ -212,7 +213,7 @@ def _classify_python_errors(exception: Exception, error_message: str) -> ErrorCo
     return None
 
 
-def _classify_config_errors(error_message: str) -> ErrorCode:
+def _classify_config_errors(error_message: str) -> Optional[ErrorCode]:
     """Classify configuration-related errors."""
     if "config" not in error_message and "configuration" not in error_message:
         return None
@@ -224,7 +225,7 @@ def _classify_config_errors(error_message: str) -> ErrorCode:
     return None
 
 
-def _classify_network_errors(error_message: str) -> ErrorCode:
+def _classify_network_errors(error_message: str) -> Optional[ErrorCode]:
     """Classify network-related errors."""
     if "timeout" in error_message and ("network" in error_message or "connection" in error_message):
         return ErrorCode.NETWORK_TIMEOUT

@@ -11,6 +11,7 @@ from typing import Dict, List
 
 from code_analysis.dead_code_checker import DeadCodeChecker
 from code_analysis.import_checker import ImportChecker
+from quality_checks.clean_architecture_checker import CleanArchitectureChecker
 from quality_checks.dependency_injection_checker import DependencyInjectionChecker
 from quality_checks.dict_get_checker import DictGetChecker
 from quality_checks.fallback_checker import FallbackChecker
@@ -151,6 +152,13 @@ class MainTestRunner:
             verbose
         )
 
+        self.clean_architecture_checker = CleanArchitectureChecker(
+            self.file_handler,
+            silent_logger,
+            self.test_runner.issues,
+            verbose
+        )
+
     def _categorize_errors(self):
         """エラーをエラー種類ごとにグループ化"""
         # issuesリストからエラーをカテゴリーごとに分類
@@ -181,6 +189,8 @@ class MainTestRunner:
                 self.error_groups["dict.get()使用検出"].append(issue)
             elif "getattr()" in issue:
                 self.error_groups["getattr()デフォルト値使用"].append(issue)
+            elif "クリーンアーキテクチャ違反" in issue:
+                self.error_groups["クリーンアーキテクチャ違反"].append(issue)
             elif "テスト実行" in issue:
                 self.error_groups["テスト失敗"].append(issue)
             else:
@@ -266,6 +276,7 @@ class MainTestRunner:
         check_results["フォールバック処理チェック"] = not any("フォールバック" in issue or "try文" in issue for issue in self.test_runner.issues)
         check_results["dict.get()使用チェック"] = not any("dict.get()" in issue for issue in self.test_runner.issues)
         check_results["getattr()デフォルト値使用チェック"] = not any("getattr()" in issue for issue in self.test_runner.issues)
+        check_results["クリーンアーキテクチャチェック"] = not any("クリーンアーキテクチャ違反" in issue for issue in self.test_runner.issues)
 
         # 各チェックの結果を表示
         for check_name, success in check_results.items():
@@ -360,6 +371,14 @@ class MainTestRunner:
                 "モックの設定が適切かどうか確認してください\n"
                 "テストデータの準備が正しく行われているか確認してください"
             ),
+            "クリーンアーキテクチャ違反": (
+                "【CLAUDE.mdルール適用】\n"
+                "レイヤー間の依存関係を正しい方向に修正してください\n"
+                "ドメイン層（operations）は外部依存を持ってはいけません\n"
+                "インフラストラクチャ層への直接依存を避け、依存性注入を使用してください\n"
+                "循環依存を解消してください\n"
+                "例: src.operations -> src.infrastructure (×) / main.pyからの注入 (○)"
+            ),
             "その他のエラー": (
                 "エラーメッセージを詳細に確認してください\n"
                 "関連するドキュメントを参照してください\n"
@@ -368,7 +387,10 @@ class MainTestRunner:
             )
         }
 
-        return guidance_map.get(error_type, "")
+        # CLAUDE.mdルール適用: dict.get()使用禁止、明示的設定取得
+        if error_type in guidance_map:
+            return guidance_map[error_type]
+        return ""
 
     def run_all_checks(self, args):
         """全てのチェックを実行"""
@@ -418,6 +440,9 @@ class MainTestRunner:
 
         # getattr()デフォルト値使用チェック
         self.getattr_checker.check_getattr_usage()
+
+        # クリーンアーキテクチャチェック
+        self.clean_architecture_checker.check_clean_architecture()
 
         # check-onlyモード
         if args.check_only:

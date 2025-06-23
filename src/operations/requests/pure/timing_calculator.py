@@ -1,8 +1,6 @@
 """実行時間計算の純粋関数 - PythonRequestから分離"""
 from dataclasses import dataclass
-from typing import Optional
-
-from src.infrastructure.providers.time_provider import TimeProvider
+from typing import Any, Optional
 
 
 @dataclass(frozen=True)
@@ -23,7 +21,7 @@ class ExecutionTiming:
         return ExecutionTiming(self.start_time, end_time)
 
 
-def start_timing(time_provider: TimeProvider) -> ExecutionTiming:
+def start_timing(time_provider: Any) -> ExecutionTiming:
     """実行時間測定を開始（副作用をプロバイダーに委譲）
 
     Args:
@@ -35,7 +33,7 @@ def start_timing(time_provider: TimeProvider) -> ExecutionTiming:
     return ExecutionTiming(start_time=time_provider.now())
 
 
-def end_timing(timing: ExecutionTiming, time_provider: TimeProvider) -> ExecutionTiming:
+def end_timing(timing: ExecutionTiming, time_provider: Any) -> ExecutionTiming:
     """実行時間測定を終了（副作用をプロバイダーに委譲）
 
     Args:

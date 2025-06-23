@@ -2,7 +2,6 @@
 from enum import Enum, auto
 from typing import Any, Optional, Union
 
-from src.infrastructure.di_container import DIKey
 from src.operations.constants.operation_type import OperationType
 from src.operations.constants.request_types import RequestType
 from src.operations.interfaces.docker_interface import DockerDriverInterface
@@ -33,7 +32,8 @@ class DockerRequest(OperationRequestFoundation):
 
     def __init__(self, op: DockerOpType, image: Optional[str], container: Optional[str],
                  command: Optional[Union[str, list[str]]], options: Optional[dict[str, Any]],
-                 debug_tag, name, show_output: bool, dockerfile_text):
+                 debug_tag, name, show_output: bool, dockerfile_text,
+                 json_provider: Any):
         """Initialize Docker request.
 
         Args:
@@ -46,6 +46,7 @@ class DockerRequest(OperationRequestFoundation):
             name: Request name
             show_output: Whether to show output
             dockerfile_text: Dockerfile content for build operations
+            json_provider: JSON provider injected from main.py
         """
         super().__init__(name=name, debug_tag=debug_tag)
         self.op = op
@@ -60,11 +61,12 @@ class DockerRequest(OperationRequestFoundation):
         self._result = None
         self.dockerfile_text = dockerfile_text
 
+        # Infrastructure services injected from main.py
+        self._json_provider = json_provider
+
     def _get_json_provider(self, driver):
-        """Get JSON provider from driver infrastructure."""
-        if not hasattr(driver, 'infrastructure'):
-            raise AttributeError(f"Driver {type(driver)} does not have required 'infrastructure' attribute")
-        return driver.infrastructure.resolve(DIKey.JSON_PROVIDER)
+        """Get JSON provider from injected dependency."""
+        return self._json_provider
 
     @property
     def operation_type(self):

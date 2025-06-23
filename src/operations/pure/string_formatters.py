@@ -4,6 +4,7 @@ Pure functions for string manipulation, template processing, and path validation
 All functions are stateless with no side effects.
 """
 import re
+from functools import reduce
 from typing import Dict, Optional
 
 
@@ -139,7 +140,6 @@ def normalize_filesystem_path(path: str) -> str:
             return [*acc, '..']
         return [*acc, part]
 
-    from functools import reduce
     normalized_parts = reduce(process_part, parts, [])
     result = '/'.join(normalized_parts)
 

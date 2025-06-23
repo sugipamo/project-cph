@@ -109,24 +109,28 @@ def retry_on_failure_with_result(config: RetryConfig):
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs) -> Result:
-            for attempt in range(config.max_attempts):
-                result = func(*args, **kwargs)
-
-                if result.is_success():
-                    return result
-
-                error = result.get_error()
-                should_retry = _should_retry_error(error, config)
-
-                if not should_retry or attempt == config.max_attempts - 1:
-                    return Result.failure(error)
-
-                _wait_before_retry(attempt, config, func.__name__, error)
-
-            return Result.failure(error)
-
+            return _execute_with_retry_logic(func, config, args, kwargs)
         return wrapper
     return decorator
+
+
+def _execute_with_retry_logic(func: Callable, config: RetryConfig, args, kwargs) -> Result:
+    """Execute function with retry logic for Result objects."""
+    for attempt in range(config.max_attempts):
+        result = func(*args, **kwargs)
+
+        if result.is_success():
+            return result
+
+        error = result.get_error()
+        should_retry = _should_retry_error(error, config)
+
+        if not should_retry or attempt == config.max_attempts - 1:
+            return Result.failure(error)
+
+        _wait_before_retry(attempt, config, func.__name__, error)
+
+    return Result.failure(error)
 
 
 class RetryableOperation:
@@ -168,35 +172,28 @@ def retry_on_failure(config: RetryConfig):
     DEPRECATED: This function exists for backward compatibility only.
     New code should use retry_on_failure_with_result and Result-based error handling.
 
-    This implementation removes try-except by requiring functions to return Result objects.
-    Functions using this decorator must handle their own errors and return Result.
-
     Args:
         config: Retry configuration.
     """
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
-
-            @retry_on_failure_with_result(config)
-            def retryable_operation():
-                # Call the function - it should return Result for proper error handling
-                result = func(*args, **kwargs)
-
-                # If function doesn't return Result, wrap it as success
-                # This maintains compatibility while encouraging Result usage
-                if not hasattr(result, 'is_success'):
-                    return Result.success(result)
-
-                return result
-
-            result = retryable_operation()
-
-            # For backward compatibility, unwrap the result
+            result = _execute_compatibility_retry(func, config, args, kwargs)
             return result.unwrap_or_raise()
-
         return wrapper
     return decorator
+
+
+def _execute_compatibility_retry(func: Callable, config: RetryConfig, args, kwargs):
+    """Execute function with compatibility retry logic."""
+    @retry_on_failure_with_result(config)
+    def retryable_operation():
+        result = func(*args, **kwargs)
+        if not hasattr(result, 'is_success'):
+            return Result.success(result)
+        return result
+
+    return retryable_operation()
 
 
 # Predefined retry configurations for common scenarios

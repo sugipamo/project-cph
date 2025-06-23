@@ -1,71 +1,91 @@
 """Request factory for creating request objects from steps"""
 from typing import Any, Optional
 
-from src.infrastructure.di_container import DIKey
 from src.operations.requests.base.base_request import OperationRequestFoundation
 from src.operations.requests.docker.docker_request import DockerOpType, DockerRequest
 from src.operations.requests.file.file_op_type import FileOpType
 from src.operations.requests.file.file_request import FileRequest
 from src.operations.requests.python.python_request import PythonRequest
 from src.operations.requests.shell.shell_request import ShellRequest
-from src.workflow.step.step import Step, StepType
+
+# Removed direct import of workflow layer - StepType will be passed as parameter
 
 
 class RequestFactory:
     """Factory class for creating request objects from steps"""
 
-    def __init__(self, config_manager):
-        """Initialize RequestFactory with configuration manager
+    def __init__(self, config_manager, error_converter: Any, result_factory: Any,
+                 os_provider: Any, python_utils: Any, json_provider: Any):
+        """Initialize RequestFactory with injected dependencies
 
         Args:
             config_manager: Configuration manager for resolving default values
+            error_converter: Error converter for handling exceptions
+            result_factory: Result factory for creating results
+            os_provider: OS provider for system operations
+            python_utils: Python utilities for script operations
+            json_provider: JSON provider for parsing JSON data
         """
         self.config_manager = config_manager
+        self._error_converter = error_converter
+        self._result_factory = result_factory
+        self._os_provider = os_provider
+        self._python_utils = python_utils
+        self._json_provider = json_provider
 
-    def create_request_from_step(self, step: Step, context: Any, env_manager: Any) -> Optional[OperationRequestFoundation]:
+    def create_request_from_step(self, step: Any, context: Any, env_manager: Any) -> Optional[OperationRequestFoundation]:
         """Create a request object from a step
 
         Args:
-            step: Step object to convert
+            step: Any object to convert
             context: Execution context containing configuration
             env_manager: Environment manager for workspace paths
 
         Returns:
             Request object or None if step type is not supported
         """
-        if step.type == StepType.DOCKER_BUILD:
+        # Use step type as string to avoid dependency on workflow layer
+        if not hasattr(step, 'type'):
+            raise ValueError("Step object must have 'type' attribute")
+        step_type = step.type
+        if hasattr(step_type, 'name'):
+            step_type_name = step_type.name
+        else:
+            step_type_name = str(step_type)
+
+        if step_type_name == "DOCKER_BUILD":
             return self._create_docker_build_request(step, context, env_manager)
-        if step.type == StepType.DOCKER_RUN:
+        if step_type_name == "DOCKER_RUN":
             return self._create_docker_run_request(step, context, env_manager)
-        if step.type == StepType.DOCKER_EXEC:
+        if step_type_name == "DOCKER_EXEC":
             return self._create_docker_exec_request(step, context, env_manager)
-        if step.type == StepType.DOCKER_COMMIT:
+        if step_type_name == "DOCKER_COMMIT":
             return self._create_docker_commit_request(step, context)
-        if step.type == StepType.DOCKER_RM:
+        if step_type_name == "DOCKER_RM":
             return self._create_docker_rm_request(step, context)
-        if step.type == StepType.DOCKER_RMI:
+        if step_type_name == "DOCKER_RMI":
             return self._create_docker_rmi_request(step, context)
-        if step.type == StepType.MKDIR:
+        if step_type_name == "MKDIR":
             return self._create_mkdir_request(step, context, env_manager)
-        if step.type == StepType.TOUCH:
+        if step_type_name == "TOUCH":
             return self._create_touch_request(step, context, env_manager)
-        if step.type == StepType.COPY:
+        if step_type_name == "COPY":
             return self._create_copy_request(step, context, env_manager)
-        if step.type == StepType.MOVE:
+        if step_type_name == "MOVE":
             return self._create_move_request(step, context, env_manager)
-        if step.type == StepType.REMOVE:
+        if step_type_name == "REMOVE":
             return self._create_remove_request(step, context, env_manager)
-        if step.type == StepType.RMTREE:
+        if step_type_name == "RMTREE":
             return self._create_rmtree_request(step, context, env_manager)
-        if step.type == StepType.CHMOD:
+        if step_type_name == "CHMOD":
             return self._create_chmod_request(step, context, env_manager)
-        if step.type == StepType.RUN:
+        if step_type_name == "RUN":
             return self._create_run_request(step, context, env_manager)
-        if step.type == StepType.PYTHON:
+        if step_type_name == "PYTHON":
             return self._create_python_request(step, context, env_manager)
         return None
 
-    def _create_docker_build_request(self, step: Step, context: Any, env_manager: Any) -> DockerRequest:
+    def _create_docker_build_request(self, step: Any, context: Any, env_manager: Any) -> DockerRequest:
         """Create docker build request"""
 
         # Extract tag from build command
@@ -87,10 +107,11 @@ class RequestFactory:
             debug_tag=f"docker_build_{context.problem_name}",
             name=None,
             show_output=True,
-            dockerfile_text=None
+            dockerfile_text=None,
+            json_provider=self._json_provider
         )
 
-    def _create_docker_run_request(self, step: Step, context: Any, env_manager: Any) -> DockerRequest:
+    def _create_docker_run_request(self, step: Any, context: Any, env_manager: Any) -> DockerRequest:
         """Create docker run request"""
 
         # Extract container name and image from run command
@@ -117,10 +138,11 @@ class RequestFactory:
             debug_tag=f"docker_run_{context.problem_name}",
             name=None,
             show_output=True,
-            dockerfile_text=None
+            dockerfile_text=None,
+            json_provider=self._json_provider
         )
 
-    def _create_docker_exec_request(self, step: Step, context: Any, env_manager: Any) -> DockerRequest:
+    def _create_docker_exec_request(self, step: Any, context: Any, env_manager: Any) -> DockerRequest:
         """Create docker exec request"""
 
         # Container name is typically the first argument after exec
@@ -153,10 +175,11 @@ class RequestFactory:
             debug_tag=f"docker_exec_{context.problem_name}",
             name=None,
             show_output=True,
-            dockerfile_text=None
+            dockerfile_text=None,
+            json_provider=self._json_provider
         )
 
-    def _create_docker_commit_request(self, step: Step, context: Any) -> DockerRequest:
+    def _create_docker_commit_request(self, step: Any, context: Any) -> DockerRequest:
         """Create docker commit request"""
 
         # Container and image are typically the first two arguments
@@ -189,10 +212,11 @@ class RequestFactory:
             debug_tag=f"docker_commit_{context.problem_name}",
             name=None,
             show_output=True,
-            dockerfile_text=None
+            dockerfile_text=None,
+            json_provider=self._json_provider
         )
 
-    def _create_docker_rm_request(self, step: Step, context: Any) -> DockerRequest:
+    def _create_docker_rm_request(self, step: Any, context: Any) -> DockerRequest:
         """Create docker rm request"""
 
         if not step.cmd:
@@ -214,10 +238,11 @@ class RequestFactory:
             debug_tag=f"docker_rm_{context.problem_name}",
             name=None,
             show_output=True,
-            dockerfile_text=None
+            dockerfile_text=None,
+            json_provider=self._json_provider
         )
 
-    def _create_docker_rmi_request(self, step: Step, context: Any) -> DockerRequest:
+    def _create_docker_rmi_request(self, step: Any, context: Any) -> DockerRequest:
         """Create docker rmi request"""
 
         if not step.cmd:
@@ -239,10 +264,11 @@ class RequestFactory:
             debug_tag=f"docker_rmi_{context.problem_name}",
             name=None,
             show_output=True,
-            dockerfile_text=None
+            dockerfile_text=None,
+            json_provider=self._json_provider
         )
 
-    def _create_mkdir_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
+    def _create_mkdir_request(self, step: Any, context: Any, env_manager: Any) -> FileRequest:
         """Create mkdir request"""
         if not step.cmd:
             if self.config_manager:
@@ -263,7 +289,7 @@ class RequestFactory:
             name=None
         )
 
-    def _create_touch_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
+    def _create_touch_request(self, step: Any, context: Any, env_manager: Any) -> FileRequest:
         """Create touch request"""
         if not step.cmd:
             if self.config_manager:
@@ -284,7 +310,7 @@ class RequestFactory:
             name=None
         )
 
-    def _create_copy_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
+    def _create_copy_request(self, step: Any, context: Any, env_manager: Any) -> FileRequest:
         """Create copy request"""
         if not step.cmd:
             if self.config_manager:
@@ -315,7 +341,7 @@ class RequestFactory:
             name=None
         )
 
-    def _create_move_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
+    def _create_move_request(self, step: Any, context: Any, env_manager: Any) -> FileRequest:
         """Create move request"""
         if not step.cmd:
             raise ValueError("Copy command requires source path")
@@ -333,7 +359,7 @@ class RequestFactory:
             name=None
         )
 
-    def _create_remove_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
+    def _create_remove_request(self, step: Any, context: Any, env_manager: Any) -> FileRequest:
         """Create remove request"""
         if not step.cmd:
             raise ValueError("Remove command requires path")
@@ -348,7 +374,7 @@ class RequestFactory:
             name=None
         )
 
-    def _create_rmtree_request(self, step: Step, context: Any, env_manager: Any) -> FileRequest:
+    def _create_rmtree_request(self, step: Any, context: Any, env_manager: Any) -> FileRequest:
         """Create rmtree request"""
         if not step.cmd:
             raise ValueError("rmtree command requires path")
@@ -363,7 +389,7 @@ class RequestFactory:
             name=None
         )
 
-    def _create_chmod_request(self, step: Step, context: Any, env_manager: Any) -> ShellRequest:
+    def _create_chmod_request(self, step: Any, context: Any, env_manager: Any) -> ShellRequest:
         """Create chmod request using shell command"""
         # chmod is not supported by FileRequest, use ShellRequest instead
         return ShellRequest(
@@ -375,10 +401,12 @@ class RequestFactory:
             debug_tag=f"chmod_{context.problem_name}",
             name=None,
             show_output=True,
-            allow_failure=False
+            allow_failure=False,
+            error_converter=self._error_converter,
+            result_factory=self._result_factory
         )
 
-    def _create_run_request(self, step: Step, context: Any, env_manager: Any) -> ShellRequest:
+    def _create_run_request(self, step: Any, context: Any, env_manager: Any) -> ShellRequest:
         """Create run (shell) request"""
         return ShellRequest(
             cmd=step.cmd,
@@ -389,10 +417,12 @@ class RequestFactory:
             debug_tag=f"run_{context.problem_name}",
             name=None,
             show_output=True,
-            allow_failure=step.allow_failure
+            allow_failure=step.allow_failure,
+            error_converter=self._error_converter,
+            result_factory=self._result_factory
         )
 
-    def _create_python_request(self, step: Step, context: Any, env_manager: Any) -> PythonRequest:
+    def _create_python_request(self, step: Any, context: Any, env_manager: Any) -> PythonRequest:
         """Create python request"""
         # For Python steps, cmd contains Python code lines
         code_or_file = step.cmd
@@ -403,26 +433,31 @@ class RequestFactory:
             show_output=True,
             name=None,
             debug_tag=f"python_{context.problem_name}",
-            allow_failure=step.allow_failure
+            allow_failure=step.allow_failure,
+            os_provider=self._os_provider,
+            python_utils=self._python_utils
         )
 
 
-# Create a singleton instance for backward compatibility
-# Note: This instance will not have config manager injection
-# For proper functionality, use dependency injection
-_factory_instance = RequestFactory(config_manager=None)
+# Backward compatibility factory instance - deprecated
+# All dependencies set to None, proper injection should be used
+_factory_instance = RequestFactory(
+    config_manager=None,
+    error_converter=None,
+    result_factory=None,
+    os_provider=None,
+    python_utils=None,
+    json_provider=None
+)
 
 
-def create_request(step: Step, context: Any) -> Optional[OperationRequestFoundation]:
+def create_request(step: Any, context: Any) -> Optional[OperationRequestFoundation]:
     """Create a request from a step using the default factory
 
     This function maintains backward compatibility with the old API
     """
 
-    # contextがinfrastructure属性を持っている場合（TypedExecutionConfiguration）
-    if hasattr(context, 'infrastructure'):
-        env_manager = context.infrastructure.resolve(DIKey.ENVIRONMENT_MANAGER)
-        return _factory_instance.create_request_from_step(step, context, env_manager)
+    # この関数は廃止予定 - 新しいファクトリでは依存性注入が必要
 
     # この関数は廃止予定 - 代わりにRequestFactoryを直接使用してください
     # contextとenv_managerが必要な場合は、呼び出し元で直接RequestFactoryを使用

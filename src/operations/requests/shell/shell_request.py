@@ -2,8 +2,6 @@
 import uuid
 from typing import Any, Optional, Union
 
-from src.infrastructure.result.error_converter import ErrorConverter
-from src.infrastructure.result.result_factory import ResultFactory
 from src.operations.constants.operation_type import OperationType
 from src.operations.constants.request_types import RequestType
 from src.operations.requests.base.base_request import OperationRequestFoundation
@@ -17,7 +15,8 @@ class ShellRequest(OperationRequestFoundation):
                  env: dict[str, str], inputdata: str,
                  timeout: int, debug_tag: str,
                  name: str, show_output: bool,
-                 allow_failure: bool):
+                 allow_failure: bool, error_converter: Any,
+                 result_factory: Any):
         super().__init__(name=name, debug_tag=debug_tag)
         self.cmd = cmd
         self.cwd = cwd
@@ -27,9 +26,9 @@ class ShellRequest(OperationRequestFoundation):
         self.show_output = show_output
         self.allow_failure = allow_failure
 
-        # Infrastructure services for error handling
-        self._error_converter = ErrorConverter()
-        self._result_factory = ResultFactory(self._error_converter)
+        # Infrastructure services injected from main.py
+        self._error_converter = error_converter
+        self._result_factory = result_factory
 
     @property
     def operation_type(self) -> OperationType:
@@ -63,12 +62,12 @@ class ShellRequest(OperationRequestFoundation):
 
     def _execute_shell_command(self, driver: Any, logger: Optional[Any]):
         """Execute the shell command with retry logic."""
-        from src.infrastructure.patterns.retry_decorator import COMMAND_RETRY_CONFIG, RetryableOperation
-        # Create a new config with logger if provided
-        config = COMMAND_RETRY_CONFIG
-        if logger:
-            config = RetryableOperation(config, logger).retry_config
-        retryable = RetryableOperation(config, logger)
+        # Retry functionality should be injected from main.py
+        if hasattr(driver, 'get_retry_operation'):
+            retryable = driver.get_retry_operation(logger)
+        else:
+            # Fallback to direct execution without retry
+            retryable = None
 
         def execute_command():
             actual_driver = self._get_actual_driver(driver)
@@ -80,7 +79,9 @@ class ShellRequest(OperationRequestFoundation):
                 timeout=self.timeout
             )
 
-        return retryable.execute_with_retry(execute_command)
+        if retryable:
+            return retryable.execute_with_retry(execute_command)
+        return execute_command()
 
     def _get_actual_driver(self, driver: Any):
         """Get the actual driver, handling unified driver case."""

@@ -3,6 +3,7 @@
 Pure functions for list processing, dictionary operations, and data transformations.
 All functions are stateless with no side effects, following functional programming principles.
 """
+from functools import reduce
 from typing import Any
 
 
@@ -30,12 +31,14 @@ def group_items_by_key(items: list[Any], key_func) -> dict[Any, list[Any]]:
     Returns:
         Dictionary with grouped items
     """
-    from functools import reduce
-
-    def add_to_group(acc: dict, item):
-        key = key_func(item)
-        current_group = acc.get(key, [])
-        return {**acc, key: [*current_group, item]}
+    def add_to_group(acc: dict, data_item):
+        key = key_func(data_item)
+        # CLAUDE.mdルール適用: dict.get()使用禁止、明示的設定取得
+        if key in acc:
+            current_group = acc[key]
+        else:
+            current_group = []
+        return {**acc, key: [*current_group, data_item]}
 
     return reduce(add_to_group, items, {})
 
