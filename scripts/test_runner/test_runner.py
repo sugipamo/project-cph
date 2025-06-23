@@ -8,6 +8,8 @@ import time
 from pathlib import Path
 from typing import List, Tuple
 
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+
 from infrastructure.command_executor import CommandExecutor
 from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger
@@ -26,7 +28,7 @@ class TestRunner:
     def run_command(self, cmd: List[str], description: str) -> Tuple[bool, str]:
         """コマンドを実行し、結果を返す"""
         # ProgressSpinnerクラスを直接定義
-        from infrastructure.logger import Logger
+        from scripts.infrastructure.logger import Logger
 
         class ProgressSpinner:
             def __init__(self, message: str, logger: Logger):

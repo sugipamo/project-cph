@@ -1,6 +1,5 @@
 """Path operation types and data structures."""
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 
@@ -36,19 +35,22 @@ class PathInfo:
     parts: Tuple[str, ...]
 
     @classmethod
-    def from_path(cls, file_path: Union[str, Path]) -> 'PathInfo':
-        """パスからPathInfoを作成"""
-        path_obj = Path(file_path)
-        if not path_obj.exists():
+    def from_path_with_operations(cls, file_path: Union[str, object], path_operations: Any) -> 'PathInfo':
+        """パスからPathInfoを作成（パス操作を依存性注入）"""
+        if not path_operations.exists(file_path):
             raise FileNotFoundError(f"Path does not exist: {file_path}")
+
+        path_str = str(file_path)
+        path_parts = path_operations.get_path_parts(file_path)
+
         return cls(
-            path=str(path_obj),
-            is_absolute=path_obj.is_absolute(),
-            is_directory=path_obj.is_dir(),
-            is_file=path_obj.is_file(),
-            parent=str(path_obj.parent),
-            name=path_obj.name,
-            stem=path_obj.stem,
-            suffix=path_obj.suffix,
-            parts=path_obj.parts
+            path=path_str,
+            is_absolute=path_operations.is_absolute(file_path),
+            is_directory=path_operations.is_directory(file_path),
+            is_file=path_operations.is_file(file_path),
+            parent=path_operations.get_parent(file_path),
+            name=path_operations.get_name(file_path),
+            stem=path_operations.get_stem(file_path),
+            suffix=path_operations.get_suffix(file_path),
+            parts=path_parts
         )

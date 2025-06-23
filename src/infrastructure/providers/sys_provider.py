@@ -27,6 +27,11 @@ class SysProvider(ABC):
         """Pythonバージョン情報を取得"""
         pass
 
+    @abstractmethod
+    def print_stdout(self, message: str) -> None:
+        """標準出力にメッセージを出力"""
+        pass
+
 
 class SystemSysProvider(SysProvider):
     """実際のsysモジュールを使用するプロバイダー"""
@@ -47,6 +52,10 @@ class SystemSysProvider(SysProvider):
         """Pythonバージョン情報を取得"""
         return sys.version_info
 
+    def print_stdout(self, message: str) -> None:
+        """標準出力にメッセージを出力"""
+        print(message)
+
 
 class MockSysProvider(SysProvider):
     """テスト用のモックsysプロバイダー"""
@@ -59,6 +68,7 @@ class MockSysProvider(SysProvider):
         self._platform = platform
         self._exit_code: Optional[int] = None
         self._exit_callback: Optional[Callable[[int], None]] = None
+        self._stdout_messages: List[str] = []
 
     def get_argv(self) -> List[str]:
         """コマンドライン引数を取得"""
@@ -89,3 +99,15 @@ class MockSysProvider(SysProvider):
     def get_last_exit_code(self) -> Optional[int]:
         """テスト用：最後のexit codeを取得"""
         return self._exit_code
+
+    def print_stdout(self, message: str) -> None:
+        """標準出力にメッセージを出力（モック）"""
+        self._stdout_messages.append(message)
+
+    def get_stdout_messages(self) -> List[str]:
+        """テスト用：出力されたメッセージを取得"""
+        return self._stdout_messages.copy()
+
+    def clear_stdout_messages(self) -> None:
+        """テスト用：出力メッセージをクリア"""
+        self._stdout_messages.clear()

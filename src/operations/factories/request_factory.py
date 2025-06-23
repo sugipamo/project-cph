@@ -15,7 +15,7 @@ class RequestFactory:
     """Factory class for creating request objects from steps"""
 
     def __init__(self, config_manager, error_converter: Any, result_factory: Any,
-                 os_provider: Any, python_utils: Any, json_provider: Any):
+                 os_provider: Any, python_utils: Any, json_provider: Any, time_ops: Any):
         """Initialize RequestFactory with injected dependencies
 
         Args:
@@ -25,6 +25,7 @@ class RequestFactory:
             os_provider: OS provider for system operations
             python_utils: Python utilities for script operations
             json_provider: JSON provider for parsing JSON data
+            time_ops: Time operations provider for time-related operations
         """
         self.config_manager = config_manager
         self._error_converter = error_converter
@@ -32,6 +33,7 @@ class RequestFactory:
         self._os_provider = os_provider
         self._python_utils = python_utils
         self._json_provider = json_provider
+        self._time_ops = time_ops
 
     def create_request_from_step(self, step: Any, context: Any, env_manager: Any) -> Optional[OperationRequestFoundation]:
         """Create a request object from a step
@@ -402,6 +404,7 @@ class RequestFactory:
             name=None,
             show_output=True,
             allow_failure=False,
+            time_ops=self._time_ops,
             error_converter=self._error_converter,
             result_factory=self._result_factory
         )
@@ -435,7 +438,8 @@ class RequestFactory:
             debug_tag=f"python_{context.problem_name}",
             allow_failure=step.allow_failure,
             os_provider=self._os_provider,
-            python_utils=self._python_utils
+            python_utils=self._python_utils,
+            time_ops=self._time_ops
         )
 
 
@@ -447,7 +451,8 @@ _factory_instance = RequestFactory(
     result_factory=None,
     os_provider=None,
     python_utils=None,
-    json_provider=None
+    json_provider=None,
+    time_ops=None
 )
 
 

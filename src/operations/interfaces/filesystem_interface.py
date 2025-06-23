@@ -1,40 +1,39 @@
 """File system interface for dependency injection."""
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import List
+from typing import List, Union
 
 
 class FileSystemInterface(ABC):
     """Interface for file system operations."""
 
     @abstractmethod
-    def exists(self, path: Path) -> bool:
+    def exists(self, path: Union[str, object]) -> bool:
         """Check if a path exists."""
         pass
 
     @abstractmethod
-    def is_file(self, path: Path) -> bool:
+    def is_file(self, path: Union[str, object]) -> bool:
         """Check if a path is a file."""
         pass
 
     @abstractmethod
-    def is_dir(self, path: Path) -> bool:
+    def is_dir(self, path: Union[str, object]) -> bool:
         """Check if a path is a directory."""
         pass
 
     @abstractmethod
-    def iterdir(self, path: Path) -> List[Path]:
+    def iterdir(self, path: Union[str, object]) -> List[Union[str, object]]:
         """List contents of a directory."""
         pass
 
     @abstractmethod
-    def mkdir(self, path: Path, parents: bool = False, exist_ok: bool = False) -> None:
+    def mkdir(self, path: Union[str, object], parents: bool, exist_ok: bool) -> None:
         """Create a directory."""
         pass
 
 
     @abstractmethod
-    def delete_file(self, path: Path) -> bool:
+    def delete_file(self, path: Union[str, object]) -> bool:
         """Delete a file.
 
         Args:
@@ -46,7 +45,7 @@ class FileSystemInterface(ABC):
         pass
 
     @abstractmethod
-    def create_directory(self, path: Path) -> bool:
+    def create_directory(self, path: Union[str, object]) -> bool:
         """Create a directory.
 
         Args:

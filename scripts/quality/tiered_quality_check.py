@@ -6,11 +6,15 @@
 
 import ast
 import glob
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List
 
-from ..infrastructure.system_operations import SystemOperations
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from infrastructure.logger import Logger
+from infrastructure.system_operations import SystemOperations
 
 
 @dataclass(frozen=True)
@@ -218,7 +222,7 @@ def analyze_file(filepath: str, config: dict) -> List[QualityIssue]:
         raise SyntaxError(f"構文エラー in {filepath}: {e}") from e
 
 
-def main(system_ops: SystemOperations):
+def main(system_ops: SystemOperations, logger: Logger):
     """メイン実行関数"""
     config = {
         'exclude_patterns': [
@@ -240,52 +244,62 @@ def main(system_ops: SystemOperations):
     warning_count = 0
     info_count = 0
 
-    print("🎯 階層化品質チェック開始...")
+    logger.info("🎯 階層化品質チェック開始...")
 
     for filepath in python_files:
         issues = analyze_file(filepath, config)
         all_issues.extend(issues)
 
     if all_issues:
-        print(f"\n📋 検出された問題 ({len(all_issues)} 件):\n")
+        logger.info(f"\n📋 検出された問題 ({len(all_issues)} 件):\n")
 
         # 重要度別に集計・表示
         for severity in ['ERROR', 'WARNING', 'INFO']:
             severity_issues = [issue for issue in all_issues if issue.severity == severity]
             if severity_issues:
                 if severity == 'ERROR':
-                    print("❌ エラー:")
+                    logger.error("❌ エラー:")
                     error_count = len(severity_issues)
                 elif severity == 'WARNING':
-                    print("⚠️  警告:")
+                    logger.warning("⚠️  警告:")
                     warning_count = len(severity_issues)
                 else:
-                    print("ℹ️  情報:")
+                    logger.info("ℹ️  情報:")
                     info_count = len(severity_issues)
 
                 for issue in severity_issues[:20]:  # 最初の20件のみ表示
-                    print(f"  {issue.file}:{issue.line} - {issue.description} (階層: {issue.tier})")
+                    if severity == 'ERROR':
+                        logger.error(f"  {issue.file}:{issue.line} - {issue.description} (階層: {issue.tier})")
+                    elif severity == 'WARNING':
+                        logger.warning(f"  {issue.file}:{issue.line} - {issue.description} (階層: {issue.tier})")
+                    else:
+                        logger.info(f"  {issue.file}:{issue.line} - {issue.description} (階層: {issue.tier})")
 
                 if len(severity_issues) > 20:
-                    print(f"  ... 他 {len(severity_issues) - 20} 件")
-                print()
+                    if severity == 'ERROR':
+                        logger.error(f"  ... 他 {len(severity_issues) - 20} 件")
+                    elif severity == 'WARNING':
+                        logger.warning(f"  ... 他 {len(severity_issues) - 20} 件")
+                    else:
+                        logger.info(f"  ... 他 {len(severity_issues) - 20} 件")
+                logger.info("")
 
     # サマリー
     checked_files = len([f for f in python_files if not any(Path(f).match(p) for p in config['exclude_patterns'])])
-    print("📊 チェック結果:")
-    print(f"  ❌ エラー: {error_count}")
-    print(f"  ⚠️  警告: {warning_count}")
-    print(f"  ℹ️  情報: {info_count}")
-    print(f"  📁 チェック済みファイル: {checked_files}")
+    logger.info("📊 チェック結果:")
+    logger.info(f"  ❌ エラー: {error_count}")
+    logger.info(f"  ⚠️  警告: {warning_count}")
+    logger.info(f"  ℹ️  情報: {info_count}")
+    logger.info(f"  📁 チェック済みファイル: {checked_files}")
 
     if error_count > 0:
-        print("\n💥 重要なエラーが見つかりました。")
-        print("品質基準の修正が必要です")
+        logger.error("\n💥 重要なエラーが見つかりました。")
+        logger.error("品質基準の修正が必要です")
         return 1
     if warning_count > 0:
-        print("\n⚠️ 警告があります。品質改善を推奨します。")
+        logger.warning("\n⚠️ 警告があります。品質改善を推奨します。")
         return 0
-    print("\n✅ 品質チェック完了。問題は見つかりませんでした。")
+    logger.info("\n✅ 品質チェック完了。問題は見つかりませんでした。")
     return 0
 
 
@@ -293,7 +307,8 @@ if __name__ == "__main__":
     import os
     import sys
 
-    from ..infrastructure.system_operations_impl import SystemOperationsImpl
+    from infrastructure.logger import create_logger
+    from infrastructure.system_operations_impl import SystemOperationsImpl
 
     # 依存性注入用のプロバイダーを作成
     class OSProvider:
@@ -312,6 +327,10 @@ if __name__ == "__main__":
     class SysProvider:
         def exit(self, code): sys.exit(code)
         def get_argv(self): return sys.argv
+        def print_stdout(self, message): print(message)
+        def print_stderr(self, message): print(message, file=sys.stderr)
+        def print_stdout_with_args(self, *args, **kwargs): print(*args, **kwargs)
 
     system_ops = SystemOperationsImpl(OSProvider(), SysProvider())
-    system_ops.exit(main(system_ops))
+    logger = create_logger(verbose=True, silent=False, system_operations=system_ops)
+    system_ops.exit(main(system_ops, logger))

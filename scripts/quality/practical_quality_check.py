@@ -14,6 +14,7 @@ from typing import List
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from infrastructure.file_operations import FileOperations
+from infrastructure.logger import Logger
 from infrastructure.system_operations import SystemOperations
 
 
@@ -109,7 +110,7 @@ class PracticalQualityChecker(ast.NodeVisitor):
                 ))
 
 
-def main(file_ops: FileOperations, system_ops: SystemOperations):
+def main(file_ops: FileOperations, system_ops: SystemOperations, logger: Logger):
     """メイン処理"""
     # 設定ファイルを読み込み
     # 一時的にデフォルト設定を使用（YAML操作は未実装のため）
@@ -128,7 +129,7 @@ def main(file_ops: FileOperations, system_ops: SystemOperations):
             }
         }
 
-    print("🎯 実用的品質チェック開始...")
+    logger.info("🎯 実用的品質チェック開始...")
 
     # Pythonファイルを検索
     python_files = glob.glob('src/**/*.py', recursive=True)
@@ -147,47 +148,47 @@ def main(file_ops: FileOperations, system_ops: SystemOperations):
             all_issues.extend(checker.issues)
 
         except Exception as e:
-            print(f"⚠️  {filepath} の解析中にエラー: {e}")
+            logger.error(f"⚠️  {filepath} の解析中にエラー: {e}")
 
     # 結果表示
     error_count = sum(1 for issue in all_issues if issue.severity == 'error')
     warning_count = sum(1 for issue in all_issues if issue.severity == 'warning')
 
     if all_issues:
-        print(f"\n📋 検出された問題 ({len(all_issues)} 件):\n")
+        logger.info(f"\n📋 検出された問題 ({len(all_issues)} 件):\n")
 
         # エラーを先に表示
         errors = [i for i in all_issues if i.severity == 'error']
         if errors:
-            print("❌ エラー:")
+            logger.error("❌ エラー:")
             for issue in errors[:10]:
-                print(f"  {issue.file}:{issue.line} - {issue.description}")
+                logger.error(f"  {issue.file}:{issue.line} - {issue.description}")
             if len(errors) > 10:
-                print(f"  ... 他 {len(errors) - 10} 件")
-            print()
+                logger.error(f"  ... 他 {len(errors) - 10} 件")
+            logger.info("")
 
         # 警告を表示
         warnings = [i for i in all_issues if i.severity == 'warning']
         if warnings:
-            print("⚠️  警告:")
+            logger.warning("⚠️  警告:")
             for issue in warnings[:10]:
-                print(f"  {issue.file}:{issue.line} - {issue.description}")
+                logger.warning(f"  {issue.file}:{issue.line} - {issue.description}")
             if len(warnings) > 10:
-                print(f"  ... 他 {len(warnings) - 10} 件")
+                logger.warning(f"  ... 他 {len(warnings) - 10} 件")
 
-    print("\n📊 チェック結果:")
-    print(f"  ❌ エラー: {error_count}")
-    print(f"  ⚠️  警告: {warning_count}")
-    print(f"  📁 チェック済みファイル: {len(python_files)}")
+    logger.info("\n📊 チェック結果:")
+    logger.info(f"  ❌ エラー: {error_count}")
+    logger.info(f"  ⚠️  警告: {warning_count}")
+    logger.info(f"  📁 チェック済みファイル: {len(python_files)}")
 
     if error_count > 0:
-        print("\n💥 重要なエラーが見つかりました。")
+        logger.error("\n💥 重要なエラーが見つかりました。")
         system_ops.exit(1)
     elif warning_count > 50:  # 警告は50件まで許容
-        print("\n⚠️  警告が多数あります。段階的な改善を推奨します。")
+        logger.warning("\n⚠️  警告が多数あります。段階的な改善を推奨します。")
         system_ops.exit(0)
     else:
-        print("\n✅ 実用的な品質基準をクリアしています！")
+        logger.info("\n✅ 実用的な品質基準をクリアしています！")
         system_ops.exit(0)
 
 
@@ -197,6 +198,7 @@ if __name__ == "__main__":
     import sys
 
     from infrastructure.file_operations_impl import FileOperationsImpl
+    from infrastructure.logger import create_logger
     from infrastructure.system_operations_impl import SystemOperationsImpl
 
     # 依存性注入用のプロバイダーを作成
@@ -224,6 +226,9 @@ if __name__ == "__main__":
     class SysProvider:
         def exit(self, code): sys.exit(code)
         def get_argv(self): return sys.argv
+        def print_stdout(self, message): print(message)
+        def print_stderr(self, message): print(message, file=sys.stderr)
+        def print_stdout_with_args(self, *args, **kwargs): print(*args, **kwargs)
 
     # SystemOperationsのshutil機能用のダミー
     class SystemOpsWithShutil:
@@ -246,4 +251,5 @@ if __name__ == "__main__":
 
     file_ops = FileOperationsImpl(JSONProvider(), SystemOpsWithShutil(OSProvider(), SysProvider()))
     system_ops = SystemOperationsImpl(OSProvider(), SysProvider())
-    main(file_ops, system_ops)
+    logger = create_logger(verbose=True, silent=False, system_operations=system_ops)
+    main(file_ops, system_ops, logger)

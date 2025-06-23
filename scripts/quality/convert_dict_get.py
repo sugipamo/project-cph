@@ -7,8 +7,12 @@ dict.get()をKeyErrorハンドリングまたは明示的なチェックに変�
 import argparse
 import ast
 import re
+import sys
 from pathlib import Path
 from typing import List, Tuple
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from infrastructure.logger import Logger
 
 
 class DictGetConverter(ast.NodeTransformer):
@@ -175,7 +179,7 @@ def find_dict_get_files(src_dir: Path) -> List[Path]:
     return files_with_get
 
 
-def main():
+def main(logger: Logger = None):
     parser = argparse.ArgumentParser(description="dict.get()自動変換ツール")
     parser.add_argument("path", nargs="?", default="src/",
                        help="変換対象のディレクトリまたはファイル (デフォルト: src/)")
@@ -194,7 +198,10 @@ def main():
     system_ops = SystemOperationsImpl()
 
     if not system_ops.path_exists(target_path):
-        print(f"エラー: パス '{target_path}' が見つかりません")
+        if logger:
+            logger.error(f"エラー: パス '{target_path}' が見つかりません")
+        else:
+            print(f"エラー: パス '{target_path}' が見つかりません")
         system_ops.exit(1)
 
     # 対象ファイルを収集
@@ -204,13 +211,22 @@ def main():
         target_files = find_dict_get_files(target_path)
 
     if not target_files:
-        print("✅ dict.get()を使用しているファイルが見つかりませんでした")
+        if logger:
+            logger.info("✅ dict.get()を使用しているファイルが見つかりませんでした")
+        else:
+            print("✅ dict.get()を使用しているファイルが見つかりませんでした")
         return
 
-    print(f"📁 {len(target_files)}個のファイルでdict.get()を検出しました")
+    if logger:
+        logger.info(f"📁 {len(target_files)}個のファイルでdict.get()を検出しました")
+    else:
+        print(f"📁 {len(target_files)}個のファイルでdict.get()を検出しました")
 
     if args.dry_run:
-        print("🔍 プレビューモード（実際の変更は行いません）")
+        if logger:
+            logger.info("🔍 プレビューモード（実際の変更は行いません）")
+        else:
+            print("🔍 プレビューモード（実際の変更は行いません）")
 
     total_conversions = 0
 
@@ -218,7 +234,10 @@ def main():
         relative_path = file_path.relative_to(Path.cwd()) if file_path.is_absolute() else file_path
 
         if args.verbose:
-            print(f"\n📄 処理中: {relative_path}")
+            if logger:
+                logger.info(f"\n📄 処理中: {relative_path}")
+            else:
+                print(f"\n📄 処理中: {relative_path}")
 
         # 変換実行
         if args.regex_only:
@@ -227,23 +246,44 @@ def main():
             conversions = convert_file_ast(file_path, args.dry_run)
 
         if conversions:
-            print(f"🔧 {relative_path}:")
-            for conversion in conversions:
-                print(f"   {conversion}")
+            if logger:
+                logger.info(f"🔧 {relative_path}:")
+                for conversion in conversions:
+                    logger.info(f"   {conversion}")
+            else:
+                print(f"🔧 {relative_path}:")
+                for conversion in conversions:
+                    print(f"   {conversion}")
             total_conversions += len(conversions)
         elif args.verbose:
-            print("   変更なし")
+            if logger:
+                logger.info("   変更なし")
+            else:
+                print("   変更なし")
 
-    print("\n📊 変換サマリー:")
-    print(f"   対象ファイル: {len(target_files)}個")
-    print(f"   変換箇所: {total_conversions}箇所")
+    if logger:
+        logger.info("\n📊 変換サマリー:")
+        logger.info(f"   対象ファイル: {len(target_files)}個")
+        logger.info(f"   変換箇所: {total_conversions}箇所")
+    else:
+        print("\n📊 変換サマリー:")
+        print(f"   対象ファイル: {len(target_files)}個")
+        print(f"   変換箇所: {total_conversions}箇所")
 
     if args.dry_run and total_conversions > 0:
-        print("\n💡 実際に変換するには --dry-run を外して再実行してください")
+        if logger:
+            logger.info("\n💡 実際に変換するには --dry-run を外して再実行してください")
+        else:
+            print("\n💡 実際に変換するには --dry-run を外して再実行してください")
     elif total_conversions > 0:
-        print("✅ 変換が完了しました")
-        print("⚠️  変換後は必ずテストを実行して動作確認してください")
+        if logger:
+            logger.info("✅ 変換が完了しました")
+            logger.warning("⚠️  変換後は必ずテストを実行して動作確認してください")
+        else:
+            print("✅ 変換が完了しました")
+            print("⚠️  変換後は必ずテストを実行して動作確認してください")
 
 
 if __name__ == "__main__":
+    # 単体実行時は標準のprintを使用
     main()

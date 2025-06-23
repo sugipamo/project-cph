@@ -20,7 +20,7 @@ class SubprocessWrapper(ABC):
     """subprocess操作のインターフェース"""
 
     @abstractmethod
-    def run(
+    def execute_command(
         self,
         args: Union[str, List[str]],
         capture_output: bool,

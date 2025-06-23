@@ -158,6 +158,7 @@ class FileLoader:
         self.infrastructure = infrastructure
         self._json_provider = None
         self._os_provider = None
+        self._file_provider = None
 
     def _get_json_provider(self):
         """JSONプロバイダーを遅延取得"""
@@ -170,6 +171,12 @@ class FileLoader:
         if self._os_provider is None and self.infrastructure is not None:
             self._os_provider = self.infrastructure.resolve('OS_PROVIDER')
         return self._os_provider
+
+    def _get_file_provider(self):
+        """ファイルプロバイダーを遅延取得"""
+        if self._file_provider is None and self.infrastructure is not None:
+            self._file_provider = self.infrastructure.resolve('FILE_PROVIDER')
+        return self._file_provider
 
     def load_and_merge_configs(self, system_dir: str, env_dir: str, language: str) -> dict:
         """設定ファイルの読み込みとマージ（既存4つのloader統合）
@@ -302,16 +309,17 @@ class FileLoader:
     def load_json_file(self, file_path: str) -> dict:
         """JSONファイル読み込み（共通機能）- 依存性注入版"""
         json_provider = self._get_json_provider()
+        file_provider = self._get_file_provider()
 
         try:
-            if not Path(file_path).exists():
+            if not file_provider.exists(Path(file_path)):
                 return {}
 
-            with open(file_path, encoding='utf-8') as f:
-                if json_provider is not None:
-                    return json_provider.load(f)
-                # エラー: JSONプロバイダーが注入されていません
-                raise RuntimeError("JSONプロバイダーが注入されていません。DIコンテナの設定を確認してください。")
+            file_content = file_provider.read_text(Path(file_path), encoding='utf-8')
+            if json_provider is not None:
+                return json_provider.loads(file_content)
+            # エラー: JSONプロバイダーが注入されていません
+            raise RuntimeError("JSONプロバイダーが注入されていません。DIコンテナの設定を確認してください。")
         except (FileNotFoundError, Exception) as e:
             # エラーは適切に報告する
             raise RuntimeError(f"JSONファイル読み込みエラー: {file_path} - {e}") from e

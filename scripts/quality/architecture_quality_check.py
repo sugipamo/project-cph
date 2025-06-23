@@ -19,6 +19,7 @@ from typing import Dict, List, Tuple
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from infrastructure.file_handler import FileHandler
+from infrastructure.logger import Logger
 from infrastructure.system_operations import SystemOperations
 
 
@@ -50,11 +51,10 @@ class ImportAnalyzer(ast.NodeVisitor):
             self.from_imports.append((node.module, names))
 
 
-def analyze_imports(file_path: str) -> Tuple[List[str], List[Tuple[str, List[str]]]]:
+def analyze_imports(file_path: str, file_handler: FileHandler) -> Tuple[List[str], List[Tuple[str, List[str]]]]:
     """ファイルのインポートを分析"""
     try:
-        with open(file_path, encoding='utf-8') as f:
-            content = f.read()
+        content = file_handler.read_text(file_path, encoding='utf-8')
 
         tree = ast.parse(content, filename=file_path)
         analyzer = ImportAnalyzer(file_path)
@@ -206,7 +206,7 @@ def check_dependency_direction(directory: str, file_handler: FileHandler) -> Lis
             continue
 
         # インポートをチェック
-        imports, from_imports = analyze_imports(str(file_path))
+        imports, from_imports = analyze_imports(str(file_path), file_handler)
 
         all_imports = imports + [module for module, _ in from_imports]
 
@@ -271,17 +271,17 @@ def calculate_module_metrics(directory: str, file_handler: FileHandler) -> Dict[
     }
 
 
-def main(system_ops: SystemOperations, file_handler: FileHandler):
+def main(system_ops: SystemOperations, file_handler: FileHandler, logger: Logger):
     """メイン関数"""
     argv = system_ops.get_argv()
     if len(argv) < 2:
-        print("使用方法: python3 architecture_quality_check.py <directory>")
+        system_ops.print_stdout("使用方法: python3 architecture_quality_check.py <directory>")
         system_ops.exit(1)
 
     directory = argv[1]
 
-    print("🏗️  アーキテクチャ品質チェック開始...")
-    print()
+    logger.info("🏗️  アーキテクチャ品質チェック開始...")
+    logger.info("")
 
     all_issues = []
 
@@ -294,63 +294,63 @@ def main(system_ops: SystemOperations, file_handler: FileHandler):
     ]
 
     for check_name, check_func in checks:
-        print(f"🔍 {check_name}チェック中...")
+        logger.info(f"🔍 {check_name}チェック中...")
         issues = check_func(directory)
         all_issues.extend(issues)
-        print(f"  {'✓' if not issues else '⚠️'} {len(issues)} 件の問題")
+        logger.info(f"  {'✓' if not issues else '⚠️'} {len(issues)} 件の問題")
 
-    print()
+    logger.info("")
 
     # メトリクス表示
     metrics = calculate_module_metrics(directory, file_handler)
-    print("📊 アーキテクチャメトリクス:")
-    print(f"  📁 総ファイル数: {metrics['total_files']}")
-    print(f"  📏 総行数: {metrics['total_lines']:,}")
-    print(f"  📐 平均ファイルサイズ: {metrics['average_file_size']:.1f} 行")
-    print(f"  📈 最大ファイルサイズ: {metrics['max_file_size']} 行")
-    print(f"     ({Path(metrics['max_file_path']).name})")
-    print()
+    logger.info("📊 アーキテクチャメトリクス:")
+    logger.info(f"  📁 総ファイル数: {metrics['total_files']}")
+    logger.info(f"  📏 総行数: {metrics['total_lines']:,}")
+    logger.info(f"  📐 平均ファイルサイズ: {metrics['average_file_size']:.1f} 行")
+    logger.info(f"  📈 最大ファイルサイズ: {metrics['max_file_size']} 行")
+    logger.info(f"     ({Path(metrics['max_file_path']).name})")
+    logger.info("")
 
-    print("🗂️  モジュール分布:")
+    logger.info("🗂️  モジュール分布:")
     for module, count in sorted(metrics['module_distribution'].items()):
-        print(f"  {module}: {count} ファイル")
-    print()
+        logger.info(f"  {module}: {count} ファイル")
+    logger.info("")
 
     # 問題の表示
     if all_issues:
         error_count = sum(1 for issue in all_issues if issue.severity == 'error')
         warning_count = sum(1 for issue in all_issues if issue.severity == 'warning')
 
-        print("📋 検出された問題:")
+        logger.info("📋 検出された問題:")
 
         # エラーを先に表示
         errors = [issue for issue in all_issues if issue.severity == 'error']
         warnings = [issue for issue in all_issues if issue.severity == 'warning']
 
         if errors:
-            print("\n❌ エラー:")
+            logger.info("\n❌ エラー:")
             for issue in errors[:5]:
-                print(f"  {Path(issue.file).name}: {issue.description}")
+                logger.info(f"  {Path(issue.file).name}: {issue.description}")
             if len(errors) > 5:
-                print(f"  ... 他 {len(errors) - 5} 件")
+                logger.info(f"  ... 他 {len(errors) - 5} 件")
 
         if warnings:
-            print("\n⚠️ 警告:")
+            logger.info("\n⚠️ 警告:")
             for issue in warnings[:5]:
-                print(f"  {Path(issue.file).name}: {issue.description}")
+                logger.info(f"  {Path(issue.file).name}: {issue.description}")
             if len(warnings) > 5:
-                print(f"  ... 他 {len(warnings) - 5} 件")
+                logger.info(f"  ... 他 {len(warnings) - 5} 件")
 
-        print(f"\n📊 サマリー: ❌ {error_count} エラー, ⚠️ {warning_count} 警告")
+        logger.info(f"\n📊 サマリー: ❌ {error_count} エラー, ⚠️ {warning_count} 警告")
 
         if error_count > 0:
-            print("\n💥 アーキテクチャエラーが見つかりました。修正が必要です。")
+            logger.info("\n💥 アーキテクチャエラーが見つかりました。修正が必要です。")
             system_ops.exit(1)
         else:
-            print("\n⚠️ 警告があります。アーキテクチャ改善を推奨します。")
+            logger.info("\n⚠️ 警告があります。アーキテクチャ改善を推奨します。")
             system_ops.exit(0)
     else:
-        print("✅ アーキテクチャ品質基準をクリアしています！")
+        logger.info("✅ アーキテクチャ品質基準をクリアしています！")
         system_ops.exit(0)
 
 

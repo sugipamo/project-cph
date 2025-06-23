@@ -3,9 +3,8 @@
 Pure functions for string manipulation, template processing, and path validation.
 All functions are stateless with no side effects.
 """
-import re
 from functools import reduce
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 
 def format_template_string(template_string: str, context_dict: Dict[str, str]) -> str:
@@ -29,18 +28,19 @@ def format_template_string(template_string: str, context_dict: Dict[str, str]) -
     return formatted_result
 
 
-def extract_missing_template_keys(template: str, available_keys: set) -> list[str]:
+def extract_missing_template_keys(template: str, available_keys: set, regex_ops: Any) -> list[str]:
     """Pure function to extract unresolved keys from template string
 
     Args:
         template: Template string ({key} format)
         available_keys: Set of available keys
+        regex_ops: Regex operations provider for dependency injection
 
     Returns:
         List of unresolved keys
     """
-    pattern = r'\{([^}]+)\}'
-    found_keys = re.findall(pattern, template)
+    pattern = regex_ops.compile_pattern(r'\{([^}]+)\}')
+    found_keys = regex_ops.findall(pattern, template)
     return [key for key in found_keys if key not in available_keys]
 
 

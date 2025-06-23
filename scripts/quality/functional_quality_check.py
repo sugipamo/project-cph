@@ -119,7 +119,6 @@ class FunctionalQualityChecker(ast.NodeVisitor):
         """代入をチェック（可変操作の検出）"""
         # infrastructure配下とテストファイルでは可変操作を許可
         if self.current_function and not self.is_infrastructure and not self.is_test_file:
-            # リストの要素変更 (list[0] = value)
             for target in node.targets:
                 if isinstance(target, ast.Subscript):
                     self.mutable_operations.append((ast.unparse(target), node.lineno))
@@ -275,11 +274,7 @@ def check_file(file_path: str, file_handler: FileHandler) -> List[QualityIssue]:
         func_checker = FunctionalQualityChecker(file_path)
         func_checker.visit(tree)
 
-        # データクラスチェック - 要求が厳しすぎるため無効化
-        # dataclass_checker = DataClassChecker(file_path)
-        # dataclass_checker.visit(tree)
-
-        return func_checker.issues  # + dataclass_checker.issues
+        return func_checker.issues
 
     except Exception as e:
         raise Exception(f"Failed to analyze functional quality in {file_path}: {e}") from e

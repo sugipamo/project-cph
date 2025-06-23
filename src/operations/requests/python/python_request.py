@@ -1,5 +1,4 @@
 """Python code execution request."""
-import time
 from typing import Any, Optional, Union
 
 from src.operations.constants.operation_type import OperationType
@@ -16,7 +15,7 @@ class PythonRequest(OperationRequestFoundation):
     def __init__(self, code_or_file: Union[str, list[str]], cwd: Optional[str],
                  show_output: bool, name: Optional[str],
                  debug_tag: Optional[str], allow_failure: bool,
-                 os_provider: Any, python_utils: Any):
+                 os_provider: Any, python_utils: Any, time_ops: Any):
         super().__init__(name=name, debug_tag=debug_tag)
         self.code_or_file = code_or_file  # Code string or filename
         self.cwd = cwd
@@ -26,6 +25,7 @@ class PythonRequest(OperationRequestFoundation):
         # Infrastructure services injected from main.py
         self._os_provider = os_provider
         self._python_utils = python_utils
+        self._time_ops = time_ops
 
     def _get_os_provider(self, driver):
         """Get OS provider from injected dependency."""
@@ -41,7 +41,7 @@ class PythonRequest(OperationRequestFoundation):
 
     def _execute_core(self, driver: Any = None, logger: Optional[Any] = None) -> OperationResult:
         os_provider = self._get_os_provider(driver)
-        start_time = time.time()
+        start_time = self._time_ops.current_time()
         old_cwd = os_provider.getcwd()
 
         try:
@@ -51,7 +51,7 @@ class PythonRequest(OperationRequestFoundation):
             if logger:
                 logger.debug(f"Executing Python code: {self.code_or_file}")
             stdout, stderr, returncode = self._execute_python_code(driver)
-            end_time = time.time()
+            end_time = self._time_ops.current_time()
 
             return OperationResult(
                 success=returncode == 0,
@@ -73,7 +73,7 @@ class PythonRequest(OperationRequestFoundation):
             )
 
         except Exception as e:
-            end_time = time.time()
+            end_time = self._time_ops.current_time()
             if logger:
                 logger.error(f"Python execution failed: {e}")
             return OperationResult(

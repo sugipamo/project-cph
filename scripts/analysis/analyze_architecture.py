@@ -203,7 +203,6 @@ class ArchitectureAnalyzer:
             abstractness = info['abstract_items'] / total_items if total_items > 0 else 0
 
             # D: Distance from Main Sequence
-            # Main Sequence: A + I = 1
             distance = abs(abstractness + instability - 1)
 
             # 複雑度スコア（独自指標）

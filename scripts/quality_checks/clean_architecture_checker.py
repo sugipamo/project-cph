@@ -23,9 +23,9 @@ class CleanArchitectureChecker(QualityCheckExecutor):
             'operations': 0,    # ドメイン層（プロジェクト特有）
             'context': 1,       # アプリケーション層
             'workflow': 1,      # アプリケーション層
+            'configuration': 1, # アプリケーション層として再定義
             'cli': 2,           # インターフェース層
-            'infrastructure': 2, # インフラストラクチャ層
-            'configuration': 2   # インフラストラクチャ層
+            'infrastructure': 2 # インフラストラクチャ層
         }
 
         # 許可される依存関係
@@ -34,9 +34,9 @@ class CleanArchitectureChecker(QualityCheckExecutor):
             'operations': [],
             'context': ['operations', 'domain'],
             'workflow': ['operations', 'domain', 'context'],
+            'configuration': ['operations'],  # 設定層はドメイン層のみに依存可能
             'cli': ['operations', 'domain', 'context', 'workflow'],
-            'infrastructure': ['operations', 'domain'],
-            'configuration': []
+            'infrastructure': ['operations', 'domain']
         }
 
     def check_clean_architecture(self) -> bool:
@@ -66,6 +66,22 @@ class CleanArchitectureChecker(QualityCheckExecutor):
         # ドメイン純粋性をチェック
         domain_purity_issues = self._check_domain_purity()
         architecture_issues.extend(domain_purity_issues)
+
+        # コメントアウトされたコードをチェック
+        commented_code_issues = self._check_commented_code()
+        architecture_issues.extend(commented_code_issues)
+
+        # 動的インポートをチェック
+        dynamic_import_issues = self._check_dynamic_imports()
+        architecture_issues.extend(dynamic_import_issues)
+
+        # 具体的な違反パターンをチェック
+        specific_violations = self._check_specific_violations()
+        architecture_issues.extend(specific_violations)
+
+        # 副作用の配置違反をチェック
+        side_effect_violations = self._check_side_effect_violations()
+        architecture_issues.extend(side_effect_violations)
 
         if spinner:
             spinner.stop()
@@ -179,7 +195,11 @@ class CleanArchitectureChecker(QualityCheckExecutor):
         # 禁止されたインポート（インフラストラクチャ系）
         forbidden_imports = {
             'subprocess', 'shutil', 'sqlite3', 'docker', 'requests', 'urllib',
-            'json', 'yaml', 'toml', 'configparser'  # 設定系も制限
+            'json', 'yaml', 'toml', 'configparser',  # 設定系も制限
+            'os', 'sys', 'pathlib', 'glob', 'tempfile', 'io',
+            'asyncio', 'threading', 'multiprocessing',
+            'logging', 'datetime', 'time',  # 副作用を持つ可能性
+            're', 'ast'  # メタプログラミング系
         }
 
         for file_path in domain_files:
@@ -265,3 +285,213 @@ class CleanArchitectureChecker(QualityCheckExecutor):
 
         # 許可されたレイヤーへの依存かチェック
         return to_layer in self.allowed_dependencies[from_layer]
+
+    def _check_commented_code(self) -> List[str]:
+        """コメントアウトされたコードをチェック"""
+        violations = []
+
+        # 対象ファイルを取得
+        target_files = self.get_target_files(excluded_categories=["tests"])
+
+        # コードを含む可能性があるキーワード
+        code_keywords = {
+            'import', 'from', '=', 'def', 'class', 'if', 'for', 'while',
+            'try', 'except', 'with', 'return', 'yield', 'raise', 'assert'
+        }
+
+        for file_path in target_files:
+            try:
+                content = self.file_handler.read_text(file_path, encoding='utf-8')
+                lines = content.split('\n')
+                relative_path = self.get_relative_path(file_path)
+
+                in_docstring = False
+                docstring_delimiter = None
+
+                for line_num, line in enumerate(lines, 1):
+                    stripped = line.strip()
+
+                    # docstringの開始/終了を追跡
+                    if '"""' in stripped or "'''" in stripped:
+                        if not in_docstring:
+                            if stripped.count('"""') == 1:
+                                in_docstring = True
+                                docstring_delimiter = '"""'
+                            elif stripped.count("'''") == 1:
+                                in_docstring = True
+                                docstring_delimiter = "'''"
+                        elif docstring_delimiter and docstring_delimiter in stripped:
+                            in_docstring = False
+                            docstring_delimiter = None
+
+                    # docstring内は許可
+                    if in_docstring:
+                        continue
+
+                    # # で始まるコメント行をチェック
+                    if stripped.startswith('#') and not stripped.startswith('#!/'):
+                        comment_content = stripped[1:].strip()
+
+                        # キーワードが含まれているかチェック
+                        words = comment_content.split()
+                        if (words and any(keyword in comment_content for keyword in code_keywords) and
+                            (comment_content.startswith('from ') or
+                             comment_content.startswith('import ') or
+                             ' = ' in comment_content or
+                             comment_content.startswith('def ') or
+                             comment_content.startswith('class '))):
+                            violations.append(
+                                f"{relative_path}:{line_num} コメントアウトされたコード: {stripped}"
+                            )
+
+            except Exception as e:
+                if self.verbose:
+                    self.logger.warning(f"Failed to check commented code in {file_path}: {e}")
+
+        return violations
+
+    def _check_dynamic_imports(self) -> List[str]:
+        """動的インポートをチェック"""
+        violations = []
+
+        # 対象ファイルを取得
+        target_files = self.get_target_files(excluded_categories=["tests"])
+
+        for file_path in target_files:
+            try:
+                content = self.file_handler.read_text(file_path, encoding='utf-8')
+                tree = ast.parse(content, filename=file_path)
+                relative_path = self.get_relative_path(file_path)
+
+                for node in ast.walk(tree):
+                    # importlib.import_module() の使用をチェック
+                    if isinstance(node, ast.Call):
+                        if (isinstance(node.func, ast.Attribute) and
+                            isinstance(node.func.value, ast.Name) and
+                            node.func.value.id == 'importlib' and
+                            node.func.attr == 'import_module'):
+                            violations.append(
+                                f"{relative_path}:{node.lineno} 動的インポート禁止: importlib.import_module()"
+                            )
+
+                        # __import__() の使用をチェック
+                        elif (isinstance(node.func, ast.Name) and
+                              node.func.id == '__import__'):
+                            violations.append(
+                                f"{relative_path}:{node.lineno} 動的インポート禁止: __import__()"
+                            )
+
+                    # exec() や eval() でのインポートをチェック
+                    elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and
+                          node.func.id in ['exec', 'eval'] and node.args and
+                          isinstance(node.args[0], ast.Constant) and
+                          isinstance(node.args[0].value, str) and
+                          ('import' in node.args[0].value)):
+                        violations.append(
+                            f"{relative_path}:{node.lineno} 動的インポート禁止: {node.func.id}() with import"
+                        )
+
+            except Exception as e:
+                if self.verbose:
+                    self.logger.warning(f"Failed to check dynamic imports in {file_path}: {e}")
+
+        return violations
+
+    def _check_specific_violations(self) -> List[str]:
+        """具体的な違反パターンをチェック"""
+        violations = []
+
+        # 具体的な違反パターン
+        violation_patterns = [
+            ('src.configuration', 'src.context', 'configuration層からcontext層への依存'),
+            ('src.workflow', 'src.infrastructure', 'workflow層からinfrastructure層への直接依存'),
+            ('src.operations', 'src.infrastructure', 'operations層からinfrastructure層への直接依存'),
+            ('src.context', 'src.infrastructure', 'context層からinfrastructure層への直接依存')
+        ]
+
+        # 対象ファイルを取得
+        target_files = self.get_target_files(excluded_categories=["tests"])
+
+        for file_path in target_files:
+            try:
+                content = self.file_handler.read_text(file_path, encoding='utf-8')
+                tree = ast.parse(content, filename=file_path)
+                relative_path = self.get_relative_path(file_path)
+
+                # ファイルがどの層に属するかを判定
+                file_module = self._get_module_name(file_path)
+                if not file_module:
+                    continue
+
+                for node in ast.walk(tree):
+                    # インポート文をチェック
+                    if isinstance(node, ast.ImportFrom) and node.module:
+                        for from_pattern, to_pattern, description in violation_patterns:
+                            if (file_module.startswith(from_pattern) and
+                                node.module.startswith(to_pattern)):
+                                violations.append(
+                                    f"{relative_path}:{node.lineno} {description}: {node.module}"
+                                )
+
+                    elif isinstance(node, ast.Import):
+                        for alias in node.names:
+                            for from_pattern, to_pattern, description in violation_patterns:
+                                if (file_module.startswith(from_pattern) and
+                                    alias.name.startswith(to_pattern)):
+                                    violations.append(
+                                        f"{relative_path}:{node.lineno} {description}: {alias.name}"
+                                    )
+
+            except Exception as e:
+                if self.verbose:
+                    self.logger.warning(f"Failed to check specific violations in {file_path}: {e}")
+
+        return violations
+
+    def _check_side_effect_violations(self) -> List[str]:
+        """副作用の配置違反をチェック"""
+        violations = []
+
+        # 対象ファイルを取得（infrastructure層とscripts/infrastructure以外）
+        target_files = self.get_target_files(excluded_categories=["tests"])
+        non_infra_files = [
+            f for f in target_files
+            if '/infrastructure/' not in f and '/scripts/infrastructure/' not in f
+        ]
+
+        # 副作用を持つ操作のパターン
+        side_effect_patterns = {
+            'open': 'ファイルI/O操作',
+            'Path.write_text': 'ファイル書き込み操作',
+            'Path.read_text': 'ファイル読み込み操作',
+            'requests.': 'ネットワーク操作',
+            'urllib.': 'ネットワーク操作',
+            'subprocess.': 'プロセス実行',
+            'os.system': 'システム操作',
+            'os.environ': '環境変数の直接アクセス',
+            'sys.exit': 'プロセス終了',
+            'print(': 'コンソール出力'  # print使用は別チェックと重複するが、より厳密にチェック
+        }
+
+        for file_path in non_infra_files:
+            try:
+                content = self.file_handler.read_text(file_path, encoding='utf-8')
+                lines = content.split('\n')
+                relative_path = self.get_relative_path(file_path)
+
+                for line_num, line in enumerate(lines, 1):
+                    # コメント行は無視
+                    if line.strip().startswith('#'):
+                        continue
+
+                    for pattern, description in side_effect_patterns.items():
+                        if pattern in line:
+                            violations.append(
+                                f"{relative_path}:{line_num} 副作用配置違反: {description} - {line.strip()}"
+                            )
+
+            except Exception as e:
+                if self.verbose:
+                    self.logger.warning(f"Failed to check side effects in {file_path}: {e}")
+
+        return violations

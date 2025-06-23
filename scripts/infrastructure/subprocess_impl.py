@@ -78,7 +78,7 @@ class SubprocessWrapperImpl(SubprocessWrapper):
             self.PIPE = -1
             self.STDOUT = -2
 
-    def run(
+    def execute_command(
         self,
         args: Union[str, List[str]],
         capture_output: bool,

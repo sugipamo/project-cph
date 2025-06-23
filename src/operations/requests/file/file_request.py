@@ -1,6 +1,4 @@
 """File operation request."""
-import time
-from pathlib import Path
 from typing import Any, Optional
 
 from src.operations.constants.operation_type import OperationType
@@ -15,13 +13,14 @@ class FileRequest(OperationRequestFoundation):
 
     def __init__(self, op: FileOpType, path: str, content: Optional[str],
                  dst_path: Optional[str], debug_tag: Optional[str],
-                 name: Optional[str], allow_failure: bool = False):
+                 name: Optional[str], allow_failure: bool, time_ops: Any):
         super().__init__(name=name, debug_tag=debug_tag)
         self.op = op
         self.path = path
         self.content = content
         self.dst_path = dst_path
         self.allow_failure = allow_failure
+        self.time_ops = time_ops
 
     @property
     def operation_type(self) -> OperationType:
@@ -35,7 +34,7 @@ class FileRequest(OperationRequestFoundation):
 
     def _execute_core(self, driver: Any, logger: Optional[Any]) -> FileResult:
         """Core execution logic for file operations."""
-        self._start_time = time.time()
+        self._start_time = self.time_ops.current_time()
 
         actual_driver = self._resolve_driver(driver)
         if logger:
@@ -76,10 +75,8 @@ class FileRequest(OperationRequestFoundation):
         if hasattr(actual_driver, 'contents') and hasattr(actual_driver, 'files'):
             return self._read_from_mock_driver(actual_driver)
 
-        # Regular driver - use real filesystem
-        resolved_path = actual_driver.resolve_path(self.path)
-        with resolved_path.open("r", encoding="utf-8") as f:
-            content = f.read()
+        # Regular driver - delegate to driver's read method
+        content = actual_driver.read(self.path)
         return FileResult(
             success=True,
             content=content,
@@ -89,14 +86,14 @@ class FileRequest(OperationRequestFoundation):
             error_message=None,
             exception=Exception("No exception - operation successful"),
             start_time=self._start_time,
-            end_time=time.time(),
+            end_time=self.time_ops.current_time(),
             request=self,
             metadata=None
         )
 
     def _read_from_mock_driver(self, actual_driver: Any) -> FileResult:
         """Read file content from mock driver."""
-        abs_path = actual_driver.base_dir / Path(self.path)
+        abs_path = actual_driver.resolve_path(self.path)
         if abs_path in actual_driver.contents:
             content = actual_driver.contents[abs_path]
             return FileResult(
@@ -108,7 +105,7 @@ class FileRequest(OperationRequestFoundation):
                 error_message=None,
                 exception=Exception("No exception - operation successful"),
                 start_time=self._start_time,
-                end_time=time.time(),
+                end_time=self.time_ops.current_time(),
                 request=self,
                 metadata=None
             )
@@ -122,7 +119,7 @@ class FileRequest(OperationRequestFoundation):
             error_message=None,
             exception=Exception("No exception - operation successful"),
             start_time=self._start_time,
-            end_time=time.time(),
+            end_time=self.time_ops.current_time(),
             request=self,
             metadata=None
         )
@@ -150,7 +147,7 @@ class FileRequest(OperationRequestFoundation):
             error_message=None,
             exception=Exception("No exception - operation successful"),
             start_time=self._start_time,
-            end_time=time.time(),
+            end_time=self.time_ops.current_time(),
             request=self,
             metadata=None
         )
@@ -173,7 +170,7 @@ class FileRequest(OperationRequestFoundation):
             error_message=None,
             exception=Exception("No exception - operation successful"),
             start_time=self._start_time,
-            end_time=time.time(),
+            end_time=self.time_ops.current_time(),
             request=self,
             metadata=None
         )
@@ -198,7 +195,7 @@ class FileRequest(OperationRequestFoundation):
             error_message=None,
             exception=Exception("No exception - operation successful"),
             start_time=self._start_time,
-            end_time=time.time(),
+            end_time=self.time_ops.current_time(),
             request=self,
             metadata=None
         )
@@ -223,7 +220,7 @@ class FileRequest(OperationRequestFoundation):
             error_message=None,
             exception=Exception("No exception - operation successful"),
             start_time=self._start_time,
-            end_time=time.time(),
+            end_time=self.time_ops.current_time(),
             request=self,
             metadata=None
         )
@@ -243,7 +240,7 @@ class FileRequest(OperationRequestFoundation):
                 error_message=formatted_error,
                 exception=e,
                 start_time=self._start_time,
-                end_time=time.time(),
+                end_time=self.time_ops.current_time(),
                 request=self,
                 metadata=None
             )

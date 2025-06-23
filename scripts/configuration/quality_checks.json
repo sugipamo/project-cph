@@ -1,5 +1,5 @@
 {
-  "target_directories": ["src", "scripts"],
+  "target_directories": ["src"],
   "file_patterns": ["**/*.py"],
   "excluded_directories": {
     "infrastructure": ["src/infrastructure/", "tests/infrastructure/"],

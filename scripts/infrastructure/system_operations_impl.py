@@ -63,4 +63,10 @@ class SystemOperationsImpl(SystemOperations):
         return self._sys_provider.get_argv()
 
     def print_stdout(self, message: str) -> None:
-        print(message)
+        self._sys_provider.print_stdout(message)
+
+    def print_stderr(self, message: str) -> None:
+        self._sys_provider.print_stderr(message)
+
+    def print_stdout_with_args(self, *args, **kwargs) -> None:
+        self._sys_provider.print_stdout_with_args(*args, **kwargs)

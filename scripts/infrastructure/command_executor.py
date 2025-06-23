@@ -115,7 +115,7 @@ class SubprocessCommandExecutor(CommandExecutor):
         from .subprocess_wrapper import CalledProcessError, TimeoutExpiredError
 
         try:
-            result = self._subprocess.run(
+            result = self._subprocess.execute_command(
                 cmd,
                 capture_output=capture_output,
                 text=text,
@@ -153,7 +153,7 @@ class SubprocessCommandExecutor(CommandExecutor):
         from .subprocess_wrapper import CalledProcessError, TimeoutExpiredError
 
         try:
-            result = self._subprocess.run(
+            result = self._subprocess.execute_command(
                 [command, "--version"],
                 capture_output=True,
                 text=True,
@@ -166,7 +166,7 @@ class SubprocessCommandExecutor(CommandExecutor):
         except (CalledProcessError, FileNotFoundError, TimeoutExpiredError):
             try:
                 # --versionが使えない場合は-hを試す
-                result = self._subprocess.run(
+                result = self._subprocess.execute_command(
                     [command, "-h"],
                     capture_output=True,
                     text=True,
