@@ -34,7 +34,7 @@ from infrastructure.logger import create_logger
 class MainTestRunner:
     def __init__(self, verbose: bool):
         self.verbose = verbose
-        self.logger = create_logger(verbose=verbose, silent=False)
+        self.logger = create_logger(verbose=verbose, silent=False, system_operations=None)
         self.command_executor = create_command_executor(mock=True, subprocess_wrapper=None)
         self.file_handler = create_file_handler(mock=True, file_operations=None)
 
@@ -50,7 +50,7 @@ class MainTestRunner:
         )
 
         # 品質チェッカーの初期化（サイレントモード）
-        silent_logger = create_logger(verbose=False, silent=True)
+        silent_logger = create_logger(verbose=False, silent=True, system_operations=None)
         self.ruff_checker = RuffChecker(
             self.file_handler,
             self.command_executor,

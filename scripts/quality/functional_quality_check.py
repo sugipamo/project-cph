@@ -357,6 +357,6 @@ def main(logger: Logger, system_ops: SystemOperations):
 
 if __name__ == "__main__":
     from infrastructure.system_operations_impl import SystemOperationsImpl
-    logger = create_logger()
+    logger = create_logger(verbose=False, silent=False, system_operations=None)
     system_ops = SystemOperationsImpl()
     main(logger, system_ops)

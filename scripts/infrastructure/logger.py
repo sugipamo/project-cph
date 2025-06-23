@@ -54,21 +54,29 @@ class ConsoleLogger(Logger):
         self._system_operations = system_operations
 
     def info(self, message: str) -> None:
-        print(f"[INFO] {message}")
+        if self._system_operations:
+            self._system_operations.print_stdout(f"[INFO] {message}")
+        else:
+            print(f"[INFO] {message}")  # 互換性維持のための一時的な対応
 
     def warning(self, message: str) -> None:
-        # sys.stderrはsystem_operations経由で出力する必要がある
-        # 一時的にprintで代替
-        print(f"[WARNING] {message}")
+        if self._system_operations:
+            self._system_operations.print_stderr(f"[WARNING] {message}")
+        else:
+            print(f"[WARNING] {message}")  # 互換性維持のための一時的な対応
 
     def error(self, message: str) -> None:
-        # sys.stderrはsystem_operations経由で出力する必要がある
-        # 一時的にprintで代替
-        print(f"[ERROR] {message}")
+        if self._system_operations:
+            self._system_operations.print_stderr(f"[ERROR] {message}")
+        else:
+            print(f"[ERROR] {message}")  # 互換性維持のための一時的な対応
 
     def debug(self, message: str) -> None:
         if self.verbose:
-            print(f"[DEBUG] {message}")
+            if self._system_operations:
+                self._system_operations.print_stdout(f"[DEBUG] {message}")
+            else:
+                print(f"[DEBUG] {message}")  # 互換性維持のための一時的な対応
 
     def print(self, *args: Any, **kwargs: Any) -> None:
         """print関数の互換メソッド
@@ -76,7 +84,10 @@ class ConsoleLogger(Logger):
         既存のコードからの移行を容易にするため、
         print関数と同じシグネチャを持つ
         """
-        print(*args, **kwargs)
+        if self._system_operations and hasattr(self._system_operations, 'print_stdout_with_args'):
+            self._system_operations.print_stdout_with_args(*args, **kwargs)
+        else:
+            print(*args, **kwargs)  # 互換性維持のための一時的な対応
 
 
 class SilentLogger(Logger):
@@ -107,7 +118,7 @@ class SilentLogger(Logger):
         self.messages['print'].append((args, kwargs))
 
 
-def create_logger(verbose: bool, silent: bool, system_operations=None) -> Logger:
+def create_logger(verbose: bool, silent: bool, system_operations) -> Logger:
     """ロガーのファクトリ関数
 
     Args:
@@ -121,8 +132,5 @@ def create_logger(verbose: bool, silent: bool, system_operations=None) -> Logger
     if silent:
         return SilentLogger()
     
-    if system_operations is None:
-        # テスト環境での一時的な対応：system_operationsがNoneの場合はSilentLoggerを使用
-        return SilentLogger()
     
     return ConsoleLogger(verbose, system_operations)

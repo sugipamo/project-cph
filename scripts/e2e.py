@@ -88,7 +88,7 @@ def main(args):
     project_root = Path(args.project_root)
 
     # インフラストラクチャコンポーネントを初期化
-    logger = create_logger()
+    logger = create_logger(verbose=False, silent=False, system_operations=None)
     command_executor = create_command_executor(mock=False, subprocess_wrapper=None)
     file_handler = create_file_handler()
 

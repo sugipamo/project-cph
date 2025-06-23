@@ -397,7 +397,7 @@ def main():
     from infrastructure.logger import create_logger
     from infrastructure.system_operations_impl import LocalSystemOperations
 
-    logger = create_logger()
+    logger = create_logger(verbose=False, silent=False, system_operations=None)
     system_ops = LocalSystemOperations()
 
     argv = system_ops.get_argv()
