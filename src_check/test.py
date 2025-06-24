@@ -2,10 +2,44 @@ import os
 import sys
 import importlib.util
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Set
 import shutil
 
-from models.check_result import CheckResult
+from models.check_result import CheckResult, FailureLocation
+
+
+def filter_results_by_locations(
+    results: List[Tuple[str, CheckResult]], 
+    target_locations: Set[str]
+) -> List[Tuple[str, CheckResult]]:
+    """指定された位置に基づいて結果をフィルタする
+    
+    Args:
+        results: チェック結果のリスト
+        target_locations: フィルタ対象の位置のセット（"file_path:line_number"形式）
+    
+    Returns:
+        フィルタされたチェック結果のリスト
+    """
+    filtered_results = []
+    
+    for rule_name, result in results:
+        filtered_locations = []
+        
+        for location in result.failure_locations:
+            location_str = f"{location.file_path}:{location.line_number}"
+            if location_str in target_locations:
+                filtered_locations.append(location)
+        
+        if filtered_locations:
+            filtered_result = CheckResult(
+                failure_locations=filtered_locations,
+                fix_policy=result.fix_policy,
+                fix_example_code=result.fix_example_code
+            )
+            filtered_results.append((rule_name, filtered_result))
+    
+    return filtered_results
 
 
 def load_and_execute_rules(rules_dir: Path) -> List[Tuple[str, CheckResult]]:

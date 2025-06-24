@@ -1,5 +1,5 @@
 ルール: dependency_injection_checker
-失敗件数: 196
+失敗件数: 185
 
 修正方針:
 【CLAUDE.mdルール適用】
@@ -9,17 +9,6 @@
 ファイル操作、外部APIコール、データベースアクセスはInfrastructure層で実装してください。
 
 失敗箇所:
-/home/cphelper/project-cph/src/configuration/config_manager.py:318
-/home/cphelper/project-cph/src/configuration/config_manager.py:319
-/home/cphelper/project-cph/src/operations/factories/request_factory.py:84
-/home/cphelper/project-cph/src/operations/factories/request_factory.py:92
-/home/cphelper/project-cph/src/workflow/step/step_generation_service.py:319
-/home/cphelper/project-cph/src/workflow/step/dependency.py:241
-/home/cphelper/project-cph/src/workflow/step/workflow.py:47
-/home/cphelper/project-cph/src/workflow/step/workflow.py:95
-/home/cphelper/project-cph/src/workflow/step/workflow.py:113
-/home/cphelper/project-cph/src/configuration/resolver/config_resolver.py:104
-/home/cphelper/project-cph/src/configuration/resolver/config_resolver.py:150
 /home/cphelper/project-cph/tests/test_conftest_fixtures.py:16
 /home/cphelper/project-cph/tests/file/test_local_file_driver.py:13
 /home/cphelper/project-cph/tests/file/test_local_file_driver.py:30

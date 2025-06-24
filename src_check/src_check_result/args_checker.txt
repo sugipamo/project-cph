@@ -1,5 +1,5 @@
 ルール: args_checker
-失敗件数: 42
+失敗件数: 17
 
 修正方針:
 【CLAUDE.mdルール適用】
@@ -8,31 +8,6 @@
 これにより、関数のインターフェースが明確になり、型ヒントも適用できます。
 
 失敗箇所:
-/home/cphelper/project-cph/src/infrastructure/patterns/retry_decorator.py:111
-/home/cphelper/project-cph/src/infrastructure/patterns/retry_decorator.py:150
-/home/cphelper/project-cph/src/infrastructure/patterns/retry_decorator.py:180
-/home/cphelper/project-cph/src/infrastructure/mock/mock_file_driver.py:29
-/home/cphelper/project-cph/src/infrastructure/mock/mock_file_driver.py:47
-/home/cphelper/project-cph/src/infrastructure/providers/os_provider.py:35
-/home/cphelper/project-cph/src/infrastructure/providers/os_provider.py:113
-/home/cphelper/project-cph/src/infrastructure/providers/os_provider.py:204
-/home/cphelper/project-cph/src/infrastructure/drivers/logging/unified_logger.py:87
-/home/cphelper/project-cph/src/infrastructure/drivers/logging/unified_logger.py:100
-/home/cphelper/project-cph/src/infrastructure/drivers/logging/unified_logger.py:113
-/home/cphelper/project-cph/src/infrastructure/drivers/logging/unified_logger.py:126
-/home/cphelper/project-cph/src/infrastructure/drivers/logging/unified_logger.py:139
-/home/cphelper/project-cph/src/infrastructure/drivers/filesystem/path_operations.py:136
-/home/cphelper/project-cph/src/infrastructure/drivers/logging/adapters/application_logger_adapter.py:34
-/home/cphelper/project-cph/src/infrastructure/drivers/logging/adapters/application_logger_adapter.py:44
-/home/cphelper/project-cph/src/infrastructure/drivers/logging/adapters/application_logger_adapter.py:54
-/home/cphelper/project-cph/src/infrastructure/drivers/logging/adapters/application_logger_adapter.py:64
-/home/cphelper/project-cph/src/infrastructure/drivers/logging/adapters/application_logger_adapter.py:74
-/home/cphelper/project-cph/src/operations/pure/data_processors.py:43
-/home/cphelper/project-cph/src/operations/interfaces/logger_interface.py:10
-/home/cphelper/project-cph/src/operations/interfaces/logger_interface.py:15
-/home/cphelper/project-cph/src/operations/interfaces/logger_interface.py:20
-/home/cphelper/project-cph/src/operations/interfaces/logger_interface.py:25
-/home/cphelper/project-cph/src/operations/interfaces/logger_interface.py:30
 /home/cphelper/project-cph/tests/base/base_test.py:89
 /home/cphelper/project-cph/tests/base/mock_logger.py:14
 /home/cphelper/project-cph/tests/base/mock_logger.py:18

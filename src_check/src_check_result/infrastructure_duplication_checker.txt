@@ -1,5 +1,5 @@
 ルール: infrastructure_duplication_checker
-失敗件数: 170
+失敗件数: 151
 
 修正方針:
 Infrastructureコンポーネントの重複生成を避けてください。
@@ -8,25 +8,6 @@ main.pyからの一元的な注入を実装してください。
 リソースの適切な管理を行ってください。
 
 失敗箇所:
-/home/cphelper/project-cph/src/configuration/config_manager.py:405
-/home/cphelper/project-cph/src/infrastructure/result/result_factory.py:267
-/home/cphelper/project-cph/src/infrastructure/result/result_factory.py:305
-/home/cphelper/project-cph/src/infrastructure/result/result_factory.py:363
-/home/cphelper/project-cph/src/infrastructure/persistence/sqlite/repositories/docker_container_repository.py:22
-/home/cphelper/project-cph/src/infrastructure/persistence/sqlite/repositories/docker_image_repository.py:21
-/home/cphelper/project-cph/src/infrastructure/persistence/sqlite/repositories/session_repository.py:170
-/home/cphelper/project-cph/src/operations/factories/request_factory.py:142
-/home/cphelper/project-cph/src/operations/factories/request_factory.py:179
-/home/cphelper/project-cph/src/operations/factories/request_factory.py:214
-/home/cphelper/project-cph/src/operations/factories/request_factory.py:238
-/home/cphelper/project-cph/src/operations/factories/request_factory.py:262
-/home/cphelper/project-cph/src/operations/factories/request_factory.py:307
-/home/cphelper/project-cph/src/operations/factories/request_factory.py:338
-/home/cphelper/project-cph/src/operations/factories/request_factory.py:356
-/home/cphelper/project-cph/src/operations/factories/request_factory.py:371
-/home/cphelper/project-cph/src/operations/factories/request_factory.py:386
-/home/cphelper/project-cph/src/operations/factories/request_factory.py:412
-/home/cphelper/project-cph/src/context/user_input_parser/user_input_parser.py:241
 /home/cphelper/project-cph/tests/persistence/test_docker_repositories.py:60
 /home/cphelper/project-cph/tests/persistence/test_docker_repositories.py:72
 /home/cphelper/project-cph/tests/persistence/test_docker_repositories.py:105

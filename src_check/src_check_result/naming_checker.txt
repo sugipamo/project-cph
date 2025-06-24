@@ -1,16 +1,10 @@
 ルール: naming_checker
-失敗件数: 57
+失敗件数: 51
 
 修正方針:
 PEP 8の命名規則に従ってください。変数名、関数名はsnake_caseを使用してください。クラス名はPascalCaseを使用してください。意味のある名前を使用し、略語は避けてください。
 
 失敗箇所:
-/home/cphelper/project-cph/src/configuration/pure_config_manager.py:9
-/home/cphelper/project-cph/src/configuration/pure_config_manager.py:21
-/home/cphelper/project-cph/src/operations/types/execution_types.py:28
-/home/cphelper/project-cph/src/operations/types/execution_types.py:29
-/home/cphelper/project-cph/src/operations/results/result.py:7
-/home/cphelper/project-cph/src/workflow/step/step_generation_service.py:12
 /home/cphelper/project-cph/tests/workflow/test_workflow_execution_service.py:15
 /home/cphelper/project-cph/tests/configuration/test_fixtures_separated_system.py:14
 /home/cphelper/project-cph/tests/infrastructure/debug/test_debug_service.py:19

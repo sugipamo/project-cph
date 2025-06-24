@@ -1,5 +1,5 @@
 ルール: dict_get_checker
-失敗件数: 34
+失敗件数: 29
 
 修正方針:
 【CLAUDE.mdルール適用】
@@ -9,11 +9,6 @@ src/configuration/readme.mdの設定取得方法に従ってください。
 デフォルト値ではなく、適切な設定管理を実装してください。
 
 失敗箇所:
-/home/cphelper/project-cph/src/context/user_input_parser/user_input_parser.py:326
-/home/cphelper/project-cph/src/context/user_input_parser/user_input_parser.py:327
-/home/cphelper/project-cph/src/context/user_input_parser/user_input_parser.py:328
-/home/cphelper/project-cph/src/context/user_input_parser/user_input_parser.py:329
-/home/cphelper/project-cph/src/context/user_input_parser/user_input_parser.py:330
 /home/cphelper/project-cph/tests/base/mock_filesystem.py:104
 /home/cphelper/project-cph/tests/workflow/test_workflow_execution_service.py:37
 /home/cphelper/project-cph/tests/configuration/test_fixtures_separated_system.py:102

@@ -1,5 +1,5 @@
 ルール: fallback_checker
-失敗件数: 48
+失敗件数: 31
 
 修正方針:
 【CLAUDE.mdルール適用】
@@ -10,23 +10,6 @@ Infrastructure層でErrorConverterを使用してResult型に変換してくだ�
 例: error_converter.execute_with_conversion(operation) → result.is_failure()で判定
 
 失敗箇所:
-/home/cphelper/project-cph/src/cli/cli_app.py:65
-/home/cphelper/project-cph/src/cli/cli_app.py:226
-/home/cphelper/project-cph/src/context/dockerfile_resolver.py:90
-/home/cphelper/project-cph/src/context/dockerfile_resolver.py:103
-/home/cphelper/project-cph/src/configuration/config_manager.py:156
-/home/cphelper/project-cph/src/workflow/step/dependency.py:37
-/home/cphelper/project-cph/src/workflow/step/step_runner.py:84
-/home/cphelper/project-cph/src/workflow/step/step_runner.py:91
-/home/cphelper/project-cph/src/workflow/step/step_runner.py:303
-/home/cphelper/project-cph/src/workflow/step/step_runner.py:441
-/home/cphelper/project-cph/src/context/user_input_parser/user_input_parser_integration.py:101
-/home/cphelper/project-cph/src/context/user_input_parser/user_input_parser.py:225
-/home/cphelper/project-cph/src/context/user_input_parser/user_input_parser.py:360
-/home/cphelper/project-cph/src/context/user_input_parser/user_input_parser.py:471
-/home/cphelper/project-cph/src/context/user_input_parser/user_input_parser.py:478
-/home/cphelper/project-cph/src/context/formatters/context_formatter.py:106
-/home/cphelper/project-cph/src/configuration/utils/config_validation_utils.py:37
 /home/cphelper/project-cph/tests/conftest.py:159
 /home/cphelper/project-cph/tests/conftest.py:172
 /home/cphelper/project-cph/tests/cli/test_config_diagnosis.py:24
