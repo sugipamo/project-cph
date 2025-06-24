@@ -155,6 +155,14 @@ class Runner:
         # 最終結果を表示
         self.logger.print(f"\r{'✅' if success else '❌'} テスト実行".ljust(90), flush=True)
 
+        # テスト実行結果の詳細を表示
+        if output.strip():
+            self.logger.print("\n" + "="*70)
+            self.logger.print("テスト実行結果:")
+            self.logger.print("="*70)
+            self.logger.print(output)
+            self.logger.print("="*70)
+
         return success, output
 
     def _extract_failed_tests(self, output: str) -> None:

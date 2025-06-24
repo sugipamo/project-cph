@@ -42,7 +42,7 @@ class MainTestRunner:
         # エラー種類ごとのグルーピング用
         self.error_groups: Dict[str, List[str]] = defaultdict(list)
 
-        # メインテストランナーの初期化
+        # メインテストランナーの初期化（通常のloggerを使用）
         self.runner = Runner(
             verbose=verbose,
             logger=self.logger,
