@@ -1,3 +1,7 @@
+"""実行コンテキストのバリデーションユーティリティ
+
+ExecutionContextの基本的なバリデーションを提供します。
+"""
 from typing import Optional
 
 
@@ -43,37 +47,3 @@ def validate_execution_context_data(
         return False, f"指定された言語 '{language}' は環境設定ファイルに存在しません"
 
     return True, None
-
-
-def get_steps_from_resolver(resolver, language: str, command_type: str) -> list:
-    """resolverから指定された言語とコマンドタイプのstepsを取得する純粋関数
-
-    Args:
-        resolver: ConfigResolverインスタンス
-        language: 言語
-        command_type: コマンドタイプ
-
-    Returns:
-        list: ステップのConfigNodeリスト
-
-    Raises:
-        ValueError: stepsが見つからない場合
-    """
-    from src.context.resolver.config_resolver import resolve_best
-
-    try:
-        steps_node = resolve_best(resolver, [language, "commands", command_type, "steps"])
-        if not steps_node:
-            raise ValueError("stepsが見つかりません")
-
-        # steps配列の各要素のConfigNodeを返す
-        step_nodes = []
-        for child in steps_node.next_nodes:
-            if isinstance(child.key, int):  # 配列のインデックス
-                step_nodes.append(child)
-
-        # インデックス順にソート
-        step_nodes.sort(key=lambda n: n.key)
-        return step_nodes
-    except Exception as e:
-        raise ValueError(f"stepsの取得に失敗しました: {e}") from e

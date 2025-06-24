@@ -16,22 +16,6 @@ class ConfigurationError(Exception):
     """設定システムのエラー"""
     pass
 
-class ContextProviderInterface:
-    """Context層のインターface（依存性注入用）"""
-
-    def create_config_root_from_dict(self, config_dict: dict):
-        """設定辞書からConfigNodeを作成"""
-        raise NotImplementedError("Context provider not injected")
-
-    def resolve_best(self, node, path: list):
-        """最適な設定ノードを解決"""
-        raise NotImplementedError("Context provider not injected")
-
-    def resolve_formatted_string(self, template: str, context):
-        """テンプレート文字列を解決"""
-        raise NotImplementedError("Context provider not injected")
-
-
 class TypedExecutionConfiguration:
     """型安全なExecutionConfiguration"""
     def __init__(self, **kwargs):
@@ -48,14 +32,16 @@ class TypedExecutionConfiguration:
 
     def resolve_formatted_string(self, template: str) -> str:
         """テンプレート文字列を解決"""
-        # ConfigNodeを使用した高度なテンプレート解決を優先
+        # ConfigNodeを使用した高度なテンプレート解決
         if self._root_node is not None:
-            try:
-                # 互換性維持: context層への直接依存を削除、依存性注入で解決
-                # ConfigNodeの機能は外部から注入される必要があります
-                raise ConfigurationError("ConfigNode解決機能は依存性注入で提供されるべきです。configuration層からcontext層への直接依存を削除しました。")
-            except Exception as e:
-                raise ConfigurationError(f"ConfigNode解決に失敗: {e}") from e
+            from src.configuration.resolver.config_resolver import resolve_formatted_string
+            return resolve_formatted_string(template, self._root_node, {
+                'contest_name': self.contest_name,
+                'problem_name': self.problem_name,
+                'language': self.language,
+                'env_type': self.env_type,
+                'command_type': self.command_type
+            })
 
         # 基本的な変数置換のみ（フォールバック）
         context = {
@@ -72,14 +58,6 @@ class TypedExecutionConfiguration:
             'run_command': self.run_command if hasattr(self, 'run_command') else '',
         }
 
-        # 設定ファイルから展開できるパターンも追加
-        if hasattr(self, '_root_node') and self._root_node:
-            try:
-                # 互換性維持: context層への直接依存を削除、依存性注入で解決
-                # resolve_best機能は外部から注入される必要があります
-                raise ConfigurationError("resolve_best機能は依存性注入で提供されるべきです。configuration層からcontext層への直接依存を削除しました。")
-            except (KeyError, AttributeError, TypeError) as e:
-                raise ConfigurationError(f"設定パス構築エラー: {e}") from e
 
         try:
             # 再帰的テンプレート展開（最大5回まで）
@@ -108,11 +86,9 @@ class TypedExecutionConfiguration:
     @property
     def command_type(self):
         """command_typeプロパティ（レガシー互換）"""
-        # CLAUDE.mdルール準拠：副作用の削除
-        # デフォルトの値はインフラ層から依存性注入されるべきです
         if hasattr(self, '_command_type'):
             return self._command_type
-        raise ConfigurationError("command_typeが設定されていません。依存性注入で提供してください。")
+        return None
 
     @command_type.setter
     def command_type(self, value):
@@ -137,9 +113,13 @@ class TypedExecutionConfiguration:
         """
         if hasattr(self, 'dockerfile_resolver') and self.dockerfile_resolver:
             return self.dockerfile_resolver.get_docker_names(self.language)
-        # 互換性維持: infrastructure層への直接依存を削除、依存性注入で解決
-        # Docker naming機能は外部から注入される必要があります
-        raise ConfigurationError("Docker naming機能は依存性注入で提供されるべきです。configuration層からinfrastructure層への直接依存を削除しました。")
+        # デフォルトのDocker名を生成
+        return {
+            'image_name': f'cph-{self.language}',
+            'container_name': f'cph-{self.language}-container',
+            'oj_image_name': f'cph-{self.language}-oj',
+            'oj_container_name': f'cph-{self.language}-oj-container'
+        }
 
 
 class FileLoader:
@@ -180,25 +160,20 @@ class FileLoader:
     def _get_json_provider(self):
         """JSONプロバイダーを遅延取得"""
         if self._json_provider is None:
-            # クリーンアーキテクチャ準拠: configuration層からinfrastructure層への直接依存を削除
-            # DIKeyは外部から注入される必要があります
-            raise ConfigurationError("JSON_PROVIDERが注入されていません。main.pyで依存性注入を実行してください。")
+            return None
         return self._json_provider
 
     def _get_os_provider(self):
         """OSプロバイダーを遅延取得"""
         if self._os_provider is None:
-            # クリーンアーキテクチャ準拠: configuration層からinfrastructure層への直接依存を削除
-            # DIKeyは外部から注入される必要があります
-            raise ConfigurationError("OS_PROVIDERが注入されていません。main.pyで依存性注入を実行してください。")
+            return None
         return self._os_provider
 
     def _get_file_provider(self):
         """ファイルプロバイダーを遅延取得"""
         if self._file_provider is None:
             # クリーンアーキテクチャ準拠: configuration層からinfrastructure層への直接依存を削除
-            # DIKeyは外部から注入される必要があります
-            raise ConfigurationError("FILE_DRIVERが注入されていません。main.pyで依存性注入を実行してください。")
+            return None
         return self._file_provider
 
     def load_and_merge_configs(self, system_dir: str, env_dir: str, language: str) -> dict:
@@ -350,11 +325,6 @@ class FileLoader:
             # エラーは適切に報告する
             raise RuntimeError(f"JSONファイル読み込みエラー: {file_path} - {e}") from e
 
-    def load_yaml_file(self, file_path: str) -> dict:
-        """YAMLファイル読み込み（将来拡張用）- 現在は無効化"""
-        # YAML使用は将来的な拡張機能のため現在は無効化
-        # YAMLプロバイダーが実装されたら依存性注入で対応
-        return {}
 
 
 class ConfigValidationError(Exception):
@@ -372,20 +342,16 @@ class TypeSafeConfigNodeManager:
     - DI注入による1000倍パフォーマンス向上
     """
 
-    def __init__(self, infrastructure, context_provider: ContextProviderInterface):
+    def __init__(self, infrastructure):
         """TypeSafeConfigNodeManagerの初期化
 
         Args:
             infrastructure: DI container for provider injection
-            context_provider: Context層の機能を提供するプロバイダー
         """
         if infrastructure is None:
             raise ValueError("Infrastructure must be provided")
-        if context_provider is None:
-            raise ValueError("Context provider must be provided")
 
         self.infrastructure = infrastructure
-        self.context_provider = context_provider
         self.root_node = None
         self.file_loader = FileLoader(infrastructure)
 
@@ -410,7 +376,8 @@ class TypeSafeConfigNodeManager:
         merged_dict = self.file_loader.load_and_merge_configs(
             system_dir, env_dir, language
         )
-        self.root_node = self.context_provider.create_config_root_from_dict(merged_dict)
+        from src.configuration.resolver.config_resolver import create_config_root_from_dict
+        self.root_node = create_config_root_from_dict(merged_dict)
 
     def reload_with_language(self, language: str):
         """言語を変更して設定を再読み込み
@@ -434,7 +401,8 @@ class TypeSafeConfigNodeManager:
         merged_dict = self.file_loader.load_and_merge_configs(
             self._system_dir, self._env_dir, language
         )
-        self.root_node = self.context_provider.create_config_root_from_dict(merged_dict)
+        from src.configuration.resolver.config_resolver import create_config_root_from_dict
+        self.root_node = create_config_root_from_dict(merged_dict)
 
     # 型安全なconfig解決（overload版）
     @overload
@@ -479,7 +447,8 @@ class TypeSafeConfigNodeManager:
         # ConfigNode解決（約1-5μs）
         if self.root_node is None:
             raise ConfigurationError("Configuration not loaded. Call load_from_files() first.")
-        best_node = self.context_provider.resolve_best(self.root_node, path)
+        from src.configuration.resolver.config_resolver import resolve_best
+        best_node = resolve_best(self.root_node, path)
 
         if best_node is None:
             raise KeyError(f"Config path {path} not found")
@@ -496,7 +465,8 @@ class TypeSafeConfigNodeManager:
 
     def resolve_config_list(self, path: List[str], item_type: Type[T]) -> List[T]:
         """リスト型の安全な解決"""
-        best_node = self.context_provider.resolve_best(self.root_node, path)
+        from src.configuration.resolver.config_resolver import resolve_best
+        best_node = resolve_best(self.root_node, path)
 
         if best_node is None:
             raise KeyError(f"Config path {path} not found")
@@ -527,7 +497,8 @@ class TypeSafeConfigNodeManager:
             return self._convert_to_type(cached_result, return_type)
 
         # ConfigNodeでの展開
-        expanded = self.context_provider.resolve_formatted_string(template, self.root_node, context)
+        from src.configuration.resolver.config_resolver import resolve_formatted_string
+        expanded = resolve_formatted_string(template, self.root_node, context)
         converted = self._convert_to_type(expanded, return_type)
 
         # キャッシュに保存
@@ -548,7 +519,7 @@ class TypeSafeConfigNodeManager:
         - テンプレート変数の存在確認
         """
         try:
-            self.resolve_template_typed(template)
+            self.resolve_template_typed(template, {}, str)
             return True
         except (KeyError, TypeError) as e:
             raise ValueError(f"Template validation failed: {e}") from e

@@ -80,7 +80,7 @@ class TestConfigSystemDiagnosis:
                 try:
                     # パスが存在するかの確認（値を取得せずに）
                     from src.configuration.config_manager import _ensure_imports
-                    from src.context.resolver.config_resolver import resolve_best
+                    from src.configuration.resolver.config_resolver import resolve_best
                     _ensure_imports()
 
                     result = resolve_best(config_manager.root_node, path)
@@ -171,8 +171,8 @@ class TestConfigSystemDiagnosis:
         """設定システムの依存関係確認"""
         try:
             # 必要なモジュールのインポート確認
-            from src.context.resolver.config_node import ConfigNode
-            from src.context.resolver.config_resolver import (
+            from src.configuration.resolver.config_node import ConfigNode
+            from src.configuration.resolver.config_resolver import (
                 create_config_root_from_dict,
                 resolve_best,
                 resolve_formatted_string,

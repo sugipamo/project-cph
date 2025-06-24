@@ -1,8 +1,8 @@
 from collections import deque
 from typing import Any, Optional, Union
 
-from src.context.resolver.config_node import ConfigNode
-from src.context.resolver.config_node_logic import add_edge, init_matches
+from src.configuration.resolver.config_node import ConfigNode
+from src.configuration.resolver.config_node_logic import add_edge, init_matches
 from src.operations.pure.formatters import format_with_missing_keys
 
 

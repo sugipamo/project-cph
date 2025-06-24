@@ -294,7 +294,7 @@ def get_file_patterns_from_context(context, pattern_name: str, json_provider) ->
     # TypeSafeConfigNodeManagerからの取得を試行
     if hasattr(context, '_root_node') and context._root_node:
         try:
-            from src.context.resolver.config_resolver import resolve_config_value
+            from src.configuration.resolver.config_resolver import resolve_config_value
             patterns = resolve_config_value(['files', pattern_name], context._root_node)
             if isinstance(patterns, list):
                 return patterns

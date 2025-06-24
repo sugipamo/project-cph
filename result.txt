@@ -26,8 +26,10 @@
    失敗したテスト:
      ERROR scripts/test_runner/smoke_test.py
      ERROR scripts/test_runner/test_runner.py
+     ERROR tests/context/test_validation_utils.py
    カバレッジが低いファイル（80%未満）:
      configuration/pure_config_manager.py: 0%
+     configuration/utils/config_validation_utils.py: 0%
      infrastructure/config/config_loader_service.py: 0%
      infrastructure/providers/mock_regex_provider.py: 0%
      infrastructure/providers/regex_provider.py: 0%
@@ -35,14 +37,13 @@
      operations/interfaces/regex_interface.py: 0%
      operations/interfaces/time_interface.py: 0%
      workflow/step/dependency.py: 7%
-     context/resolver/config_resolver.py: 9%
-     context/utils/validation_utils.py: 9%
+     configuration/resolver/config_resolver.py: 9%
      infrastructure/drivers/filesystem/path_operations.py: 9%
      workflow/step/step_generation_service.py: 10%
+     context/utils/execution_validation_utils.py: 11%
      infrastructure/persistence/sqlite/contest_manager.py: 12%
      infrastructure/persistence/sqlite/repositories/system_config_repository.py: 13%
-     workflow/workflow_execution_service.py: 13%
-     ... 他95件
+     ... 他96件
 💡 警告の対処方法:
     - 不要な警告の原因を特定し、コードを修正してください
     - 警告を無視せず、適切に対処することで品質を向上させます
@@ -188,10 +189,7 @@
 
     src.cli.cli_app (cli) -> src.infrastructure.di_container (infrastructure)
     src.configuration.config_manager (configuration) -> src.infrastructure.di_container (infrastructure)
-    src.configuration.pure_config_manager (configuration) -> src.context.resolver.config_resolver (context)
     src.context.user_input_parser.user_input_parser (context) -> src.infrastructure.config.config_loader_service (infrastructure)
-    configuration/pure_config_manager.py:19 configuration層からcontext層への依存: src.context.resolver.config_resolver
-    configuration/pure_config_manager.py:20 configuration層からcontext層への依存: src.context.resolver.config_resolver
-    configuration/pure_config_manager.py:72 configuration層からcontext層への依存: src.context.resolver.config_resolver
-    configuration/pure_config_manager.py:104 configuration層からcontext層への依存: src.context.resolver.config_resolver
+    src.context.user_input_parser.user_input_parser (context) -> src.configuration.resolver.config_resolver (configuration)
+    src.workflow.step.step_runner (workflow) -> src.configuration.resolver.config_resolver (configuration)
     context/user_input_parser/user_input_parser.py:298 context層からinfrastructure層への直接依存: src.infrastructure.config.config_loader_service

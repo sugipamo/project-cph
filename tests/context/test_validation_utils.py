@@ -105,7 +105,7 @@ def test_get_steps_from_resolver_success():
             return steps_node
         return None
 
-    with patch('src.context.resolver.config_resolver.resolve_best', side_effect=mock_resolve_best):
+    with patch('src.configuration.resolver.config_resolver.resolve_best', side_effect=mock_resolve_best):
         mock_resolver = Mock()
         result = get_steps_from_resolver(mock_resolver, "python", "test")
 
