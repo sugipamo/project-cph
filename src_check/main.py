@@ -7,6 +7,41 @@ import shutil
 
 from models.check_result import CheckResult
 
+def filter_failures_by_path(results: List[Tuple[str, CheckResult]], path_prefix: str, exclude_rules: List[str]) -> List[Tuple[str, CheckResult]]:
+    """
+    指定されたパスプレフィックスに一致する失敗のみをフィルタリングする
+    
+    Args:
+        results: チェック結果のリスト
+        path_prefix: フィルタリングするパスのプレフィックス
+        exclude_rules: フィルタリングから除外するルール名のリスト
+    """
+    if exclude_rules is None:
+        exclude_rules = []
+    
+    filtered_results = []
+    
+    for rule_name, result in results:
+        if rule_name in exclude_rules:
+            # 除外ルールはフィルタリングせずそのまま追加
+            filtered_results.append((rule_name, result))
+            continue
+            
+        filtered_locations = [
+            location for location in result.failure_locations
+            if location.file_path.startswith(path_prefix)
+        ]
+        
+        if filtered_locations or not result.failure_locations:
+            filtered_result = CheckResult(
+                failure_locations=filtered_locations,
+                fix_policy=result.fix_policy,
+                fix_example_code=result.fix_example_code
+            )
+            filtered_results.append((rule_name, filtered_result))
+    
+    return filtered_results
+
 def load_and_execute_rules(rules_dir: Path) -> List[Tuple[str, CheckResult]]:
     """rules配下の.pyファイルを動的にインポートし、main関数を実行する"""
     results = []
@@ -77,36 +112,36 @@ def display_results(results: List[Tuple[str, CheckResult]], threshold: int = 10)
     total_failures = 0
     
     for rule_name, result in results:
+        if not result.failure_locations:
+            continue
+            
         print(f"■ ルール: {rule_name}")
         print(f"  失敗件数: {len(result.failure_locations)}")
         
-        if result.failure_locations:
-            total_failures += len(result.failure_locations)
-            
-            if len(result.failure_locations) > threshold:
-                # 失敗が多い場合は修正方針のみを表示
-                if result.fix_policy:
-                    print(f"\n  修正方針:")
-                    print(f"    {result.fix_policy}")
-                print(f"\n  詳細はsrc_check_result/{rule_name}.txtを参照してください")
-            else:
-                # 失敗が少ない場合は詳細を表示
-                print(f"\n  失敗箇所:")
-                for location in result.failure_locations:
-                    print(f"    - {location.file_path}:{location.line_number}")
-                
-                if result.fix_policy:
-                    print(f"\n  修正方針:")
-                    print(f"    {result.fix_policy}")
-                
-                if result.fix_example_code:
-                    print(f"\n  修正例:")
-                    print("    ```")
-                    for line in result.fix_example_code.split('\n'):
-                        print(f"    {line}")
-                    print("    ```")
+        total_failures += len(result.failure_locations)
+        
+        if len(result.failure_locations) > threshold:
+            # 失敗が多い場合は修正方針のみを表示
+            if result.fix_policy:
+                print(f"\n  修正方針:")
+                print(f"    {result.fix_policy}")
+            print(f"\n  詳細はsrc_check_result/{rule_name}.txtを参照してください")
         else:
-            print("  ✓ すべてのチェックをパスしました")
+            # 失敗が少ない場合は詳細を表示
+            print(f"\n  失敗箇所:")
+            for location in result.failure_locations:
+                print(f"    - {location.file_path}:{location.line_number}")
+            
+            if result.fix_policy:
+                print(f"\n  修正方針:")
+                print(f"    {result.fix_policy}")
+            
+            if result.fix_example_code:
+                print(f"\n  修正例:")
+                print("    ```")
+                for line in result.fix_example_code.split('\n'):
+                    print(f"    {line}")
+                print("    ```")
         
         print(f"\n{'-'*80}\n")
     
@@ -127,11 +162,15 @@ def main():
     auto_correct_results = load_and_execute_rules(auto_correct_dir)
     results.extend(auto_correct_results)
     
+    # src/以下のファイルのみをフィルタリング（テスト関連のルールは除外）
+    test_related_rules = ["pytest_runner"]  # テストに関連するルールのリスト
+    filtered_results = filter_failures_by_path(results, "src/", exclude_rules=test_related_rules)
+    
     # 結果をファイルに保存
-    save_results_to_files(results, output_dir)
+    save_results_to_files(filtered_results, output_dir)
     
     # 結果を表示（失敗が10件を超える場合は修正方針のみ）
-    display_results(results)
+    display_results(filtered_results)
 
 
 if __name__ == "__main__":
