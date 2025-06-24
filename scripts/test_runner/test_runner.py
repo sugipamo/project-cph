@@ -28,7 +28,7 @@ class TestRunner:
     def run_command(self, cmd: List[str], description: str) -> Tuple[bool, str]:
         """コマンドを実行し、結果を返す"""
         # ProgressSpinnerクラスを直接定義
-        from scripts.infrastructure.logger import Logger
+        from infrastructure.logger import Logger
 
         class ProgressSpinner:
             def __init__(self, message: str, logger: Logger):

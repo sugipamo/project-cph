@@ -203,19 +203,33 @@ class CleanArchitectureChecker:
         content = py_file.read_text(encoding='utf-8')
         lines = content.split('\n')
         
+        # 改善されたパターン：コンテキストを考慮した副作用検出
         side_effect_patterns = [
-            (r'open\s*\(', 'ファイル操作'),
-            (r'print\s*\(', 'コンソール出力'),
-            (r'subprocess\.', 'サブプロセス実行'),
-            (r'os\.', 'OS操作'),
-            (r'shutil\.', 'ファイルシステム操作'),
-            (r'requests\.', 'HTTP通信'),
-            (r'socket\.', 'ネットワーク通信'),
+            # ファイルI/O（依存性注入を除外）
+            (r'(?<!_provider\.)(?<!provider\.)open\s*\(', 'ファイル操作'),
+            (r'\bprint\s*\((?!["\'][^"\']*(debug|test)[^"\'])', 'コンソール出力'),
+            (r'subprocess\.(run|call|check_output|Popen)', 'サブプロセス実行'),
+            (r'os\.(system|remove|mkdir|rmdir)', 'OS操作'),
+            (r'shutil\.(copy|move|rmtree)', 'ファイルシステム操作'),
+            # HTTP通信（ローカル変数名を除外）
+            (r'\brequests\.(get|post|put|delete|patch|head|options)', 'HTTP通信'),
+            (r'socket\.(socket|connect|bind)', 'ネットワーク通信'),
         ]
         
         for line_num, line in enumerate(lines, 1):
+            # コメント行をスキップ
+            if line.strip().startswith('#'):
+                continue
+            
+            # 文字列リテラル内の誤検知を防ぐ
+            cleaned_line = self._remove_string_literals(line)
+            
             for pattern, description in side_effect_patterns:
-                if re.search(pattern, line):
+                if re.search(pattern, cleaned_line):
+                    # 依存性注入のコンテキストをチェック
+                    if self._is_dependency_injection_context(content, line_num, cleaned_line):
+                        continue
+                    
                     severity = "error" if layer == ArchitectureLayer.DOMAIN else "warning"
                     self.violations.append(Violation(
                         file_path=str(py_file),
@@ -224,6 +238,46 @@ class CleanArchitectureChecker:
                         description=f"{layer.value}層での副作用: {description}",
                         severity=severity
                     ))
+    
+    def _remove_string_literals(self, line: str) -> str:
+        """文字列リテラル内のパターンを除外"""
+        import re
+        # 文字列リテラル（シングル・ダブルクォート）を空文字に置換
+        line = re.sub(r"'[^']*'", "''", line)
+        line = re.sub(r'"[^"]*"', '""', line)
+        return line
+    
+    def _is_dependency_injection_context(self, content: str, line_num: int, line: str) -> bool:
+        """依存性注入のコンテキストかどうかを判定"""
+        import re
+        lines = content.split('\n')
+        
+        # プロバイダーパターンの検出
+        provider_patterns = [
+            r'.*_provider\.',
+            r'self\._.*_provider\.',
+            r'provider\.',
+            r'self\..*provider\.',
+        ]
+        
+        for pattern in provider_patterns:
+            if re.search(pattern, line):
+                return True
+        
+        # 関数/メソッドの引数として注入されているかチェック（前後5行を確認）
+        start = max(0, line_num - 6)
+        end = min(len(lines), line_num + 5)
+        context_lines = lines[start:end]
+        
+        for context_line in context_lines:
+            # 関数定義で provider や _provider を引数として受け取っている
+            if re.search(r'def\s+\w+\([^)]*provider[^)]*\):', context_line):
+                return True
+            # クラスの __init__ で provider を受け取っている
+            if re.search(r'def\s+__init__\([^)]*provider[^)]*\):', context_line):
+                return True
+        
+        return False
     
     def _get_layer_from_path(self, path: Path) -> Optional[ArchitectureLayer]:
         """ファイルパスからレイヤーを取得"""

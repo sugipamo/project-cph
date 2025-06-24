@@ -1,24 +1,45 @@
 """Main entry point for the CPH application
+
+クリーンアーキテクチャに準拠した段階的初期化を実装：
+1. Infrastructure層の基本サービス初期化
+2. Configuration層の純粋化された設定管理
+3. 上位層への依存性注入
 """
 from src.cli.cli_app import main
-from src.configuration.config_manager import TypeSafeConfigNodeManager
+from src.configuration.pure_config_manager import PureConfigManager
 from src.infrastructure.build_infrastructure import build_infrastructure
+from src.infrastructure.config.config_loader_service import ConfigLoaderService
 from src.infrastructure.di_container import DIKey
 from src.infrastructure.drivers.docker.utils.docker_command_builder import set_config_manager
 
 if __name__ == "__main__":
+    # Phase 1: Infrastructure層の基本サービス初期化（循環依存なし）
     infrastructure = build_infrastructure()
 
-    # Docker command builderに設定マネージャーを注入
-    config_manager = TypeSafeConfigNodeManager(infrastructure)
-    # CONFIG_MANAGERをinfrastructureに登録（クリーンアーキテクチャ準拠）
+    # Phase 2: 設定ファイル読み込み（Infrastructure層で副作用処理）
+    config_loader = ConfigLoaderService(infrastructure)
+    config_dict = config_loader.load_config_files(
+        system_dir="./config/system",
+        env_dir="./contest_env",
+        language="python"  # 仮の言語（CLIで実際の言語解決後に更新される）
+    )
+
+    # Phase 3: 純粋なConfiguration層の初期化（副作用なし）
+    config_manager = PureConfigManager()
+    config_manager.initialize_from_config_dict(
+        config_dict=config_dict,
+        system_dir="./config/system",
+        env_dir="./contest_env",
+        language="python"
+    )
+
+    # Phase 4: CONFIG_MANAGERをDIContainerに登録
     infrastructure.register("CONFIG_MANAGER", lambda: config_manager)
     infrastructure.register(DIKey.CONFIG_MANAGER, lambda: config_manager)
 
-    # file_request_factoryの登録（依存性注入強化）
+    # Phase 5: RequestFactoryの登録（依存性注入）
     from src.operations.factories.request_factory import RequestFactory
 
-    # RequestFactoryに必要な依存関係を注入
     def create_request_factory():
         return RequestFactory(
             config_manager=config_manager,
@@ -32,14 +53,10 @@ if __name__ == "__main__":
 
     infrastructure.register("file_request_factory", create_request_factory)
 
-    # 初期化時は仮の言語で読み込み（user_input_parserで実際の言語解決後に再読み込み）
-    config_manager.load_from_files(
-        system_dir="./config/system",
-        env_dir="./contest_env",
-        language="python"  # 仮の言語（CLIで実際の言語解決後に更新される）
-    )
+    # Phase 6: Docker command builderに設定マネージャーを注入
     set_config_manager(config_manager)
 
+    # Phase 7: アプリケーション実行（すべての依存性が解決済み）
     sys_provider = infrastructure.resolve(DIKey.SYS_PROVIDER)
     exit_code = main(sys_provider.get_argv()[1:], sys_provider.exit, infrastructure)
     sys_provider.exit(exit_code)

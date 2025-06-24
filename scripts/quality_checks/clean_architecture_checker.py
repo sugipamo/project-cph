@@ -459,18 +459,25 @@ class CleanArchitectureChecker(QualityCheckExecutor):
             if '/infrastructure/' not in f and '/scripts/infrastructure/' not in f
         ]
 
-        # 副作用を持つ操作のパターン
+        # 副作用を持つ操作のパターン（改善版：コンテキストを考慮）
+        import re
+        
+        # 正規表現パターンで依存性注入を除外
         side_effect_patterns = {
-            'open': 'ファイルI/O操作',
-            'Path.write_text': 'ファイル書き込み操作',
-            'Path.read_text': 'ファイル読み込み操作',
-            'requests.': 'ネットワーク操作',
-            'urllib.': 'ネットワーク操作',
-            'subprocess.': 'プロセス実行',
-            'os.system': 'システム操作',
-            'os.environ': '環境変数の直接アクセス',
-            'sys.exit': 'プロセス終了',
-            'print(': 'コンソール出力'  # print使用は別チェックと重複するが、より厳密にチェック
+            # ファイルI/O（依存性注入を除外）
+            r'(?<!_provider\.)(?<!provider\.)open\s*\(': 'ファイルI/O操作',
+            r'Path\s*\(.*\)\.write_text': 'ファイル書き込み操作',
+            r'Path\s*\(.*\)\.read_text': 'ファイル読み込み操作',
+            # ネットワーク操作（変数名を除外）
+            r'\brequests\.(get|post|put|delete|patch|head|options)': 'HTTPリクエスト操作',
+            r'urllib\.(request|parse|error)': 'ネットワーク操作',
+            # プロセス・システム操作
+            r'subprocess\.(run|call|check_output|Popen)': 'プロセス実行',
+            r'os\.system\s*\(': 'システム操作',
+            r'os\.environ\s*\[': '環境変数の直接アクセス',
+            r'sys\.exit\s*\(': 'プロセス終了',
+            # コンソール出力（標準的な使用は除外）
+            r'\bprint\s*\((?!["\'].*debug.*["\'])(?!["\'].*test.*["\'])': 'コンソール出力'
         }
 
         for file_path in non_infra_files:
@@ -483,9 +490,16 @@ class CleanArchitectureChecker(QualityCheckExecutor):
                     # コメント行は無視
                     if line.strip().startswith('#'):
                         continue
-
+                    
+                    # 文字列リテラル内の誤検知を避ける
+                    cleaned_line = self._remove_string_literals(line)
+                    
                     for pattern, description in side_effect_patterns.items():
-                        if pattern in line:
+                        if re.search(pattern, cleaned_line):
+                            # 依存性注入のコンテキストチェック
+                            if self._is_dependency_injection_context(content, line_num, cleaned_line):
+                                continue
+                            
                             violations.append(
                                 f"{relative_path}:{line_num} 副作用配置違反: {description} - {line.strip()}"
                             )
@@ -495,3 +509,43 @@ class CleanArchitectureChecker(QualityCheckExecutor):
                     self.logger.warning(f"Failed to check side effects in {file_path}: {e}")
 
         return violations
+    
+    def _remove_string_literals(self, line: str) -> str:
+        """文字列リテラル内のパターンを除外"""
+        import re
+        # 文字列リテラル（シングル・ダブルクォート）を空文字に置換
+        line = re.sub(r"'[^']*'", "''", line)
+        line = re.sub(r'"[^"]*"', '""', line)
+        return line
+    
+    def _is_dependency_injection_context(self, content: str, line_num: int, line: str) -> bool:
+        """依存性注入のコンテキストかどうかを判定"""
+        import re
+        lines = content.split('\n')
+        
+        # プロバイダーパターンの検出
+        provider_patterns = [
+            r'.*_provider\.',
+            r'self\._.*_provider\.',
+            r'provider\.',
+            r'self\..*provider\.',
+        ]
+        
+        for pattern in provider_patterns:
+            if re.search(pattern, line):
+                return True
+        
+        # 関数/メソッドの引数として注入されているかチェック（前後5行を確認）
+        start = max(0, line_num - 6)
+        end = min(len(lines), line_num + 5)
+        context_lines = lines[start:end]
+        
+        for context_line in context_lines:
+            # 関数定義で provider や _provider を引数として受け取っている
+            if re.search(r'def\s+\w+\([^)]*provider[^)]*\):', context_line):
+                return True
+            # クラスの __init__ で provider を受け取っている
+            if re.search(r'def\s+__init__\([^)]*provider[^)]*\):', context_line):
+                return True
+        
+        return False

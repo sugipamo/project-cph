@@ -10,54 +10,26 @@ from typing import Any, Dict, List, Optional, Type, TypeVar, overload
 # 一時的な直接使用（クリーンアーキテクチャ違反要修正）
 # DIContainer and DIKey should be injected from main.py
 
-# Avoid circular imports - these will be imported when needed
-ConfigNode = None
-create_config_root_from_dict = None
-resolve_best = None
-resolve_formatted_string = None
-
 T = TypeVar('T')
-
 
 class ConfigurationError(Exception):
     """設定システムのエラー"""
     pass
 
-def _ensure_imports():
-    """Ensure context imports are loaded when needed"""
-    global ConfigNode, create_config_root_from_dict, resolve_best, resolve_formatted_string
-    if ConfigNode is None:
-        # クリーンアーキテクチャ準拠: configuration層からcontext層への直接依存を削除
-        # NoOp実装を提供し、実際の機能は依存性注入で提供される
-        class NoOpConfigNode:
-            def __init__(self, **kwargs):
-                # CLAUDE.mdルール準拠: dict.get()デフォルト値使用禁止
-                if 'value' in kwargs:
-                    self.value = kwargs['value']
-                else:
-                    self.value = {}
-                if 'key' in kwargs:
-                    self.key = kwargs['key']
-                else:
-                    self.key = ''
-                if 'next_nodes' in kwargs:
-                    self.next_nodes = kwargs['next_nodes']
-                else:
-                    self.next_nodes = []
+class ContextProviderInterface:
+    """Context層のインターface（依存性注入用）"""
 
-        def noop_create_config_root_from_dict(config_dict):
-            return NoOpConfigNode(value=config_dict)
+    def create_config_root_from_dict(self, config_dict: dict):
+        """設定辞書からConfigNodeを作成"""
+        raise NotImplementedError("Context provider not injected")
 
-        def noop_resolve_best(node, path):
-            return None
+    def resolve_best(self, node, path: list):
+        """最適な設定ノードを解決"""
+        raise NotImplementedError("Context provider not injected")
 
-        def noop_resolve_formatted_string(template, context):
-            return template
-
-        ConfigNode = NoOpConfigNode
-        create_config_root_from_dict = noop_create_config_root_from_dict
-        resolve_best = noop_resolve_best
-        resolve_formatted_string = noop_resolve_formatted_string
+    def resolve_formatted_string(self, template: str, context):
+        """テンプレート文字列を解決"""
+        raise NotImplementedError("Context provider not injected")
 
 
 class TypedExecutionConfiguration:
@@ -187,32 +159,46 @@ class FileLoader:
             infrastructure: DI container for provider injection
         """
         self.infrastructure = infrastructure
+        # 依存性を遅延注入
         self._json_provider = None
         self._os_provider = None
         self._file_provider = None
+        # 依存性の注入
+        self._inject_dependencies()
+
+    def _inject_dependencies(self):
+        """依存性注入を実行"""
+        try:
+            from src.infrastructure.di_container import DIKey
+            self._json_provider = self.infrastructure.resolve(DIKey.JSON_PROVIDER)
+            self._os_provider = self.infrastructure.resolve(DIKey.OS_PROVIDER)
+            self._file_provider = self.infrastructure.resolve(DIKey.FILE_DRIVER)
+        except Exception:
+            # 注入に失敗した場合は警告するが続行
+            pass
 
     def _get_json_provider(self):
         """JSONプロバイダーを遅延取得"""
-        if self._json_provider is None and self.infrastructure is not None:
+        if self._json_provider is None:
             # クリーンアーキテクチャ準拠: configuration層からinfrastructure層への直接依存を削除
             # DIKeyは外部から注入される必要があります
-            raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
+            raise ConfigurationError("JSON_PROVIDERが注入されていません。main.pyで依存性注入を実行してください。")
         return self._json_provider
 
     def _get_os_provider(self):
         """OSプロバイダーを遅延取得"""
-        if self._os_provider is None and self.infrastructure is not None:
+        if self._os_provider is None:
             # クリーンアーキテクチャ準拠: configuration層からinfrastructure層への直接依存を削除
             # DIKeyは外部から注入される必要があります
-            raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
+            raise ConfigurationError("OS_PROVIDERが注入されていません。main.pyで依存性注入を実行してください。")
         return self._os_provider
 
     def _get_file_provider(self):
         """ファイルプロバイダーを遅延取得"""
-        if self._file_provider is None and self.infrastructure is not None:
+        if self._file_provider is None:
             # クリーンアーキテクチャ準拠: configuration層からinfrastructure層への直接依存を削除
             # DIKeyは外部から注入される必要があります
-            raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
+            raise ConfigurationError("FILE_DRIVERが注入されていません。main.pyで依存性注入を実行してください。")
         return self._file_provider
 
     def load_and_merge_configs(self, system_dir: str, env_dir: str, language: str) -> dict:
@@ -386,17 +372,21 @@ class TypeSafeConfigNodeManager:
     - DI注入による1000倍パフォーマンス向上
     """
 
-    def __init__(self, infrastructure):
+    def __init__(self, infrastructure, context_provider: ContextProviderInterface):
         """TypeSafeConfigNodeManagerの初期化
 
         Args:
             infrastructure: DI container for provider injection
+            context_provider: Context層の機能を提供するプロバイダー
         """
         if infrastructure is None:
             raise ValueError("Infrastructure must be provided")
-        _ensure_imports()
+        if context_provider is None:
+            raise ValueError("Context provider must be provided")
+
         self.infrastructure = infrastructure
-        self.root_node: Optional[ConfigNode] = None
+        self.context_provider = context_provider
+        self.root_node = None
         self.file_loader = FileLoader(infrastructure)
 
         # 多層キャッシュシステム
@@ -420,8 +410,7 @@ class TypeSafeConfigNodeManager:
         merged_dict = self.file_loader.load_and_merge_configs(
             system_dir, env_dir, language
         )
-        _ensure_imports()
-        self.root_node = create_config_root_from_dict(merged_dict)
+        self.root_node = self.context_provider.create_config_root_from_dict(merged_dict)
 
     def reload_with_language(self, language: str):
         """言語を変更して設定を再読み込み
@@ -445,8 +434,7 @@ class TypeSafeConfigNodeManager:
         merged_dict = self.file_loader.load_and_merge_configs(
             self._system_dir, self._env_dir, language
         )
-        _ensure_imports()
-        self.root_node = create_config_root_from_dict(merged_dict)
+        self.root_node = self.context_provider.create_config_root_from_dict(merged_dict)
 
     # 型安全なconfig解決（overload版）
     @overload
@@ -491,8 +479,7 @@ class TypeSafeConfigNodeManager:
         # ConfigNode解決（約1-5μs）
         if self.root_node is None:
             raise ConfigurationError("Configuration not loaded. Call load_from_files() first.")
-        _ensure_imports()
-        best_node = resolve_best(self.root_node, path)
+        best_node = self.context_provider.resolve_best(self.root_node, path)
 
         if best_node is None:
             raise KeyError(f"Config path {path} not found")
@@ -509,7 +496,7 @@ class TypeSafeConfigNodeManager:
 
     def resolve_config_list(self, path: List[str], item_type: Type[T]) -> List[T]:
         """リスト型の安全な解決"""
-        best_node = resolve_best(self.root_node, path)
+        best_node = self.context_provider.resolve_best(self.root_node, path)
 
         if best_node is None:
             raise KeyError(f"Config path {path} not found")
@@ -540,8 +527,7 @@ class TypeSafeConfigNodeManager:
             return self._convert_to_type(cached_result, return_type)
 
         # ConfigNodeでの展開
-        _ensure_imports()
-        expanded = resolve_formatted_string(template, self.root_node, context)
+        expanded = self.context_provider.resolve_formatted_string(template, self.root_node, context)
         converted = self._convert_to_type(expanded, return_type)
 
         # キャッシュに保存

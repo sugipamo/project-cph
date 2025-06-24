@@ -3,6 +3,7 @@ import traceback
 from typing import Optional
 
 from src.context.user_input_parser.user_input_parser import parse_user_input
+from src.infrastructure.di_container import DIKey
 from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
 from src.operations.exceptions.error_codes import ErrorSuggestion, classify_error
 from src.workflow.workflow_execution_service import WorkflowExecutionService
@@ -259,7 +260,7 @@ def main(argv: Optional[list[str]], exit_func, infrastructure, config_manager=No
         raise ValueError("Infrastructure must be injected from main.py - no direct initialization allowed")
 
     # Get logger from infrastructure container - no defaults allowed
-    logger = infrastructure.resolve('APPLICATION_LOGGER')
+    logger = infrastructure.resolve(DIKey.APPLICATION_LOGGER)
     app = MinimalCLIApp(infrastructure, logger, config_manager)
 
     # デフォルト引数の処理は呼び出し元で行う

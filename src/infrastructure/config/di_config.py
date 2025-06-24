@@ -262,10 +262,20 @@ def _create_mock_os_provider() -> Any:
     return MockOsProvider()
 
 
-def _create_sys_provider() -> Any:
+def _create_sys_provider(container: Any) -> Any:
     """Lazy factory for sys provider."""
     from src.infrastructure.providers import SystemSysProvider
-    return SystemSysProvider()
+
+    # 循環依存を避けるため、基本的なloggerインターフェースを提供
+    class BasicLogger:
+        def info(self, msg: str): pass
+        def debug(self, msg: str): pass
+        def warning(self, msg: str): pass
+        def error(self, msg: str): pass
+        def critical(self, msg: str): pass
+        def log(self, level: int, msg: str): pass
+
+    return SystemSysProvider(BasicLogger())
 
 
 def _create_mock_sys_provider() -> Any:
@@ -280,7 +290,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.JSON_PROVIDER, _create_json_provider)
     container.register(DIKey.SQLITE_PROVIDER, _create_sqlite_provider)
     container.register(DIKey.OS_PROVIDER, _create_os_provider)
-    container.register(DIKey.SYS_PROVIDER, _create_sys_provider)
+    container.register(DIKey.SYS_PROVIDER, lambda: _create_sys_provider(container))
     container.register(DIKey.CONFIGURATION_REPOSITORY, lambda: _create_configuration_repository(container))
 
     # Register core drivers
@@ -406,6 +416,7 @@ def _register_test_logging(container: DIContainer) -> None:
     container.register(DIKey.APPLICATION_LOGGER, lambda: _create_application_logger_adapter(container))
     container.register(DIKey.WORKFLOW_LOGGER, lambda: _create_workflow_logger_adapter(container))
     container.register(DIKey.UNIFIED_LOGGER, lambda: _create_unified_logger(container))
+    container.register(DIKey.LOGGER, lambda: _create_logger(container))
 
 def _register_environment_and_factory(container: DIContainer) -> None:
     """Register environment and factory."""
