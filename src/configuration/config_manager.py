@@ -479,9 +479,7 @@ class TypeSafeConfigNodeManager:
 
         return [self._convert_to_type(item, item_type) for item in raw_value]
 
-    def resolve_template_typed(self: Dict, template: str, context: Optional[Dict], return_type: Type[T]):
-                              context: Optional[Dict],
-                              return_type: Type[T]) -> T:
+    def resolve_template_typed(self, template: str, context: Optional[Dict], return_type: Type[T]) -> T:
         """型安全なテンプレート変数展開
 
         統合対象:

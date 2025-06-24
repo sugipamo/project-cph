@@ -1,0 +1,8 @@
+ルール: local_import_fixer
+失敗件数: 1
+
+修正方針:
+ローカルインポート（関数内・メソッド内のimport文）をファイル上部に移動
+
+失敗箇所:
+src/configuration/config_manager.py:560

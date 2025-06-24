@@ -1,5 +1,9 @@
 """純粋なConfiguration層の実装
 
+from src.configuration.resolver.config_node import ConfigNode as ConfigNodeClass
+from src.configuration.resolver.config_resolver import create_config_root_from_dict as create_func
+from src.configuration.resolver.config_resolver import resolve_best
+from src.configuration.resolver.config_resolver import resolve_formatted_string
 副作用を排除し、設定データの解析とアクセスのみに責務を限定した
 Configuration層の実装です。
 """
@@ -16,8 +20,6 @@ def _ensure_imports() -> None:
     """必要なモジュールの遅延インポート"""
     global ConfigNode, create_config_root_from_dict
     if ConfigNode is None:
-        from src.configuration.resolver.config_node import ConfigNode as ConfigNodeClass
-        from src.configuration.resolver.config_resolver import create_config_root_from_dict as create_func
         ConfigNode = ConfigNodeClass
         create_config_root_from_dict = create_func
 
@@ -38,7 +40,6 @@ class PureConfigManager:
         self._language: Optional[str] = None
 
     def initialize_from_config_dict(self, config_dict: Dict[str, Any], system_dir: str, env_dir: str, language: str) -> None:
-                                   system_dir: str, env_dir: str, language: str):
         """設定辞書から初期化（純粋関数）
 
         Args:
@@ -69,7 +70,6 @@ class PureConfigManager:
         if self.root_node is None:
             raise RuntimeError("ConfigManager has not been initialized")
 
-        from src.configuration.resolver.config_resolver import resolve_best
 
         try:
             value = resolve_best(self.root_node, path)
@@ -101,7 +101,6 @@ class PureConfigManager:
         if self.root_node is None:
             raise RuntimeError("ConfigManager has not been initialized")
 
-        from src.configuration.resolver.config_resolver import resolve_formatted_string
 
         result = resolve_formatted_string(self.root_node, template, context)
 

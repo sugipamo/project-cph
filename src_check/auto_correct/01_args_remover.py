@@ -8,6 +8,9 @@ import os
 import sys
 from pathlib import Path
 
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from src_check.models.check_result import CheckResult, FailureLocation
+
 
 class ArgsRemover(ast.NodeTransformer):
     def __init__(self):
@@ -50,30 +53,36 @@ def remove_args_from_file(file_path):
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(new_source)
             return True
-    except Exception as e:
-        print(f"Error processing {file_path}: {e}")
+    except Exception:
         return False
     
     return False
 
 
 def main():
-    src_path = Path("src")
+    current_dir = Path(__file__).parent.parent.parent
+    src_path = current_dir / "src"
     if not src_path.exists():
-        print("src directory not found")
-        return
+        return CheckResult(
+            failure_locations=[],
+            fix_policy="src directory not found",
+            fix_example_code=None
+        )
     
-    modified_files = []
+    failure_locations = []
     
     for py_file in src_path.rglob("*.py"):
         if remove_args_from_file(py_file):
-            modified_files.append(str(py_file))
-            print(f"Removed *args from: {py_file}")
+            failure_locations.append(FailureLocation(
+                file_path=str(py_file),
+                line_number=0
+            ))
     
-    if modified_files:
-        print(f"\nModified {len(modified_files)} files")
-    else:
-        print("No *args found to remove")
+    return CheckResult(
+        failure_locations=failure_locations,
+        fix_policy="*args parameters automatically removed from function definitions",
+        fix_example_code="def func(param1, param2): pass  # *args removed"
+    )
 
 
 if __name__ == "__main__":

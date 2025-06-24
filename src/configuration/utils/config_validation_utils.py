@@ -1,5 +1,6 @@
 """設定関連のバリデーションユーティリティ
 
+from src.configuration.resolver.config_resolver import resolve_best
 ConfigNode/resolverを使用した設定データの検証と取得を行います。
 """
 
@@ -18,7 +19,6 @@ def get_steps_from_resolver(resolver: Dict, language: str, command_type: str) ->
     Raises:
         ValueError: stepsが見つからない場合
     """
-    from src.configuration.resolver.config_resolver import resolve_best
 
     try:
         steps_node = resolve_best(resolver, [language, "commands", command_type, "steps"])

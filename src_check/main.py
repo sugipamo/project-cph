@@ -43,38 +43,39 @@ def filter_failures_by_path(results: List[Tuple[str, CheckResult]], path_prefix:
     return filtered_results
 
 def load_and_execute_rules(rules_dir: Path) -> List[Tuple[str, CheckResult]]:
-    """rules配下の.pyファイルを動的にインポートし、main関数を実行する"""
+    """指定ディレクトリ配下の.pyファイルを再帰的に検索し、main関数があるものを実行する"""
     results = []
     
     if not rules_dir.exists():
         print(f"エラー: {rules_dir} ディレクトリが存在しません")
         return results
     
-    for py_file in rules_dir.glob("*.py"):
+    for py_file in rules_dir.rglob("*.py"):
         if py_file.name == "__init__.py":
             continue
             
-        module_name = py_file.stem
+        relative_path = py_file.relative_to(rules_dir)
+        module_name_with_path = str(relative_path.with_suffix('')).replace(os.sep, '_')
         
         try:
-            spec = importlib.util.spec_from_file_location(module_name, py_file)
+            spec = importlib.util.spec_from_file_location(module_name_with_path, py_file)
             if spec is None or spec.loader is None:
                 print(f"警告: {py_file} のロードに失敗しました")
                 continue
                 
             module = importlib.util.module_from_spec(spec)
-            sys.modules[module_name] = module
+            sys.modules[module_name_with_path] = module
             spec.loader.exec_module(module)
             
             if hasattr(module, 'main'):
                 result = module.main()
-                if isinstance(result, CheckResult):
-                    results.append((module_name, result))
+                if hasattr(result, '__class__') and result.__class__.__name__ == 'CheckResult':
+                    results.append((module_name_with_path, result))
                 else:
-                    raise ValueError(f"警告: {module_name}.main() がCheckResultを返しませんでした")
+                    raise ValueError(f"警告: {module_name_with_path}.main() がCheckResultを返しませんでした: {type(result)}")
                 
         except Exception as e:
-            raise ValueError(f"エラー: {module_name} の実行中にエラーが発生しました: {e}")
+            raise ValueError(f"エラー: {module_name_with_path} の実行中にエラーが発生しました: {e}")
     
     return results
 
@@ -97,7 +98,7 @@ def save_results_to_files(results: List[Tuple[str, CheckResult]], output_dir: Pa
                     f.write(f"{location.file_path}:{location.line_number}\n")
 
 
-def display_results(results: List[Tuple[str, CheckResult]], threshold: int = 10) -> None:
+def display_results(results: List[Tuple[str, CheckResult]]) -> None:
     """チェック結果を表示する"""
     if not results:
         print("\n実行可能なルールが見つかりませんでした")
@@ -108,42 +109,30 @@ def display_results(results: List[Tuple[str, CheckResult]], threshold: int = 10)
     print(f"{'='*80}\n")
     
     total_failures = 0
+    rules_with_failures = 0
+    
+    print(f"実行されたルール数: {len(results)}")
     
     for rule_name, result in results:
-        if not result.failure_locations:
-            continue
+        if result.failure_locations:
+            rules_with_failures += 1
+            print(f"■ ルール: {rule_name}")
+            print(f"  失敗件数: {len(result.failure_locations)}")
             
-        print(f"■ ルール: {rule_name}")
-        print(f"  失敗件数: {len(result.failure_locations)}")
-        
-        total_failures += len(result.failure_locations)
-        
-        if len(result.failure_locations) > threshold:
-            # 失敗が多い場合は修正方針のみを表示
+            total_failures += len(result.failure_locations)
+            
+            # 修正方針を表示
             if result.fix_policy:
                 print(f"\n  修正方針:")
                 print(f"    {result.fix_policy}")
+            
+            # 詳細はファイルを参照
             print(f"\n  詳細はsrc_check_result/{rule_name}.txtを参照してください")
-        else:
-            # 失敗が少ない場合は詳細を表示
-            print(f"\n  失敗箇所:")
-            for location in result.failure_locations:
-                print(f"    - {location.file_path}:{location.line_number}")
             
-            if result.fix_policy:
-                print(f"\n  修正方針:")
-                print(f"    {result.fix_policy}")
-            
-            if result.fix_example_code:
-                print(f"\n  修正例:")
-                print("    ```")
-                for line in result.fix_example_code.split('\n'):
-                    print(f"    {line}")
-                print("    ```")
-        
-        print(f"\n{'-'*80}\n")
+            print(f"\n{'-'*80}\n")
     
     print(f"総失敗件数: {total_failures}")
+    print(f"失敗のあったルール数: {rules_with_failures}")
     print(f"{'='*80}\n")
 
 
