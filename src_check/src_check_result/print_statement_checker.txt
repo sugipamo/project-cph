@@ -1,0 +1,10 @@
+ルール: print_statement_checker
+失敗件数: 3
+
+修正方針:
+print文の代わりにロギングライブラリ（logging）を使用してください。
+
+失敗箇所:
+/home/cphelper/project-cph/src/infrastructure/drivers/logging/output_manager.py:23
+/home/cphelper/project-cph/src/infrastructure/drivers/logging/output_manager.py:25
+/home/cphelper/project-cph/src/infrastructure/drivers/logging/output_manager.py:54

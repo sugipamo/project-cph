@@ -3,6 +3,7 @@ import sys
 import importlib.util
 from pathlib import Path
 from typing import List, Tuple
+import shutil
 
 from models.check_result import CheckResult
 
@@ -46,7 +47,25 @@ def load_and_execute_rules(rules_dir: Path) -> List[Tuple[str, CheckResult]]:
     return results
 
 
-def display_results(results: List[Tuple[str, CheckResult]]) -> None:
+def save_results_to_files(results: List[Tuple[str, CheckResult]], output_dir: Path) -> None:
+    """チェック結果をファイルに保存する"""
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    for rule_name, result in results:
+        if result.failure_locations:
+            file_path = output_dir / f"{rule_name}.txt"
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(f"ルール: {rule_name}\n")
+                f.write(f"失敗件数: {len(result.failure_locations)}\n")
+                f.write(f"\n修正方針:\n{result.fix_policy}\n" if result.fix_policy else "")
+                f.write(f"\n失敗箇所:\n")
+                for location in result.failure_locations:
+                    f.write(f"{location.file_path}:{location.line_number}\n")
+
+
+def display_results(results: List[Tuple[str, CheckResult]], threshold: int = 10) -> None:
     """チェック結果を表示する"""
     if not results:
         print("\n実行可能なルールが見つかりませんでした")
@@ -64,20 +83,29 @@ def display_results(results: List[Tuple[str, CheckResult]]) -> None:
         
         if result.failure_locations:
             total_failures += len(result.failure_locations)
-            print(f"\n  失敗箇所:")
-            for location in result.failure_locations:
-                print(f"    - {location.file_path}:{location.line_number}")
             
-            if result.fix_policy:
-                print(f"\n  修正方針:")
-                print(f"    {result.fix_policy}")
-            
-            if result.fix_example_code:
-                print(f"\n  修正例:")
-                print("    ```")
-                for line in result.fix_example_code.split('\n'):
-                    print(f"    {line}")
-                print("    ```")
+            if len(result.failure_locations) > threshold:
+                # 失敗が多い場合は修正方針のみを表示
+                if result.fix_policy:
+                    print(f"\n  修正方針:")
+                    print(f"    {result.fix_policy}")
+                print(f"\n  詳細はsrc_check_result/{rule_name}.txtを参照してください")
+            else:
+                # 失敗が少ない場合は詳細を表示
+                print(f"\n  失敗箇所:")
+                for location in result.failure_locations:
+                    print(f"    - {location.file_path}:{location.line_number}")
+                
+                if result.fix_policy:
+                    print(f"\n  修正方針:")
+                    print(f"    {result.fix_policy}")
+                
+                if result.fix_example_code:
+                    print(f"\n  修正例:")
+                    print("    ```")
+                    for line in result.fix_example_code.split('\n'):
+                        print(f"    {line}")
+                    print("    ```")
         else:
             print("  ✓ すべてのチェックをパスしました")
         
@@ -91,8 +119,19 @@ def main():
     """メイン処理"""
     src_check_dir = Path(__file__).parent
     rules_dir = src_check_dir / "rules"
+    auto_correct_dir = src_check_dir / "auto_correct"
+    output_dir = src_check_dir / "src_check_result"
     
     results = load_and_execute_rules(rules_dir)
+    
+    # auto_correctディレクトリのスクリプトも実行
+    auto_correct_results = load_and_execute_rules(auto_correct_dir)
+    results.extend(auto_correct_results)
+    
+    # 結果をファイルに保存
+    save_results_to_files(results, output_dir)
+    
+    # 結果を表示（失敗が10件を超える場合は修正方針のみ）
     display_results(results)
 
 

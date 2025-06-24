@@ -1,0 +1,8 @@
+ルール: import_checker
+失敗件数: 1
+
+修正方針:
+モジュールの依存関係を確認してください。相対インポートではなく絶対インポートを使用してください。循環インポートが発生していないか確認してください。必要なパッケージがインストールされているか確認してください。
+
+失敗箇所:
+/home/cphelper/project-cph/tests/context/test_validation_utils.py:5
