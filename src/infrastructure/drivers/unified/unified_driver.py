@@ -5,10 +5,10 @@ from typing import Any
 
 # 互換性維持: configuration層への逆方向依存を削除、依存性注入で解決
 from src.infrastructure.di_container import DIContainer, DIKey
+from src.infrastructure.requests.base.base_request import OperationRequestFoundation
+from src.infrastructure.requests.file.file_op_type import FileOpType
 from src.operations.constants.request_types import RequestType
 from src.operations.interfaces.logger_interface import LoggerInterface
-from src.operations.requests.base.base_request import OperationRequestFoundation
-from src.operations.requests.file.file_op_type import FileOpType
 from src.operations.results.docker_result import DockerResult
 from src.operations.results.file_result import FileResult
 from src.operations.results.result import OperationResult

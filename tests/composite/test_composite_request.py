@@ -5,9 +5,9 @@ from unittest.mock import Mock, patch
 import pytest
 
 from src.operations.constants.request_types import RequestType
-from src.operations.requests.base.base_request import OperationRequestFoundation
-from src.operations.requests.composite.composite_request import CompositeRequest
-from src.operations.requests.composite.composite_structure import CompositeStructure
+from src.infrastructure.requests.base.base_request import OperationRequestFoundation
+from src.infrastructure.requests.composite.composite_request import CompositeRequest
+from src.infrastructure.requests.composite.composite_structure import CompositeStructure
 
 
 class DummyRequest(OperationRequestFoundation):

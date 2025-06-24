@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import pytest
 
 from src.infrastructure.providers.time_provider import TimeProvider
-from src.operations.requests.pure.timing_calculator import (
+from src.infrastructure.requests.pure.timing_calculator import (
     ExecutionTiming,
     end_timing,
     format_execution_timing,

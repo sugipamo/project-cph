@@ -2,7 +2,7 @@ import unittest.mock
 
 import pytest
 
-from src.operations.requests.python.python_request import PythonRequest
+from src.infrastructure.requests.python.python_request import PythonRequest
 from src.operations.results import OperationResult
 
 

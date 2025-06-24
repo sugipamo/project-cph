@@ -1,8 +1,8 @@
 """Contest management system for handling contest_current backup and state detection."""
 from typing import Dict, List, Optional
 
-from src.operations.requests.file.file_op_type import FileOpType
-from src.operations.requests.file.file_request import FileRequest
+from src.infrastructure.requests.file.file_op_type import FileOpType
+from src.infrastructure.requests.file.file_request import FileRequest
 
 from .system_config_loader import SystemConfigLoader
 
@@ -25,8 +25,8 @@ class ContestManager:
         """Lazy load env_json from config loader with shared config."""
         if not self._env_json:
             # Load shared env.json directly to ensure we have shared paths
-            from src.operations.requests.file.file_op_type import FileOpType
-            from src.operations.requests.file.file_request import FileRequest
+            from src.infrastructure.requests.file.file_op_type import FileOpType
+            from src.infrastructure.requests.file.file_request import FileRequest
 
             shared_path = "contest_env/shared/env.json"
             req = FileRequest(

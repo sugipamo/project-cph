@@ -1,39 +1,52 @@
-"""Request factory for creating request objects from steps"""
-from typing import Any, Optional
+"""Request factory for creating request objects from steps
 
-from src.infrastructure.requests.base.base_request import OperationRequestFoundation
-from src.infrastructure.requests.docker.docker_request import DockerOpType, DockerRequest
-from src.infrastructure.requests.file.file_op_type import FileOpType
-from src.infrastructure.requests.file.file_request import FileRequest
-from src.infrastructure.requests.python.python_request import PythonRequest
-from src.infrastructure.requests.shell.shell_request import ShellRequest
+クリーンアーキテクチャ準拠: operations層からinfrastructure層への直接依存を削除
+代わりに抽象化レイヤーを使用し、依存性注入でリクエスト作成機能を提供
+"""
+from typing import Any, Optional, Protocol
 
-# Removed direct import of workflow layer - StepType will be passed as parameter
+
+class OperationRequestFoundation(Protocol):
+    """Request base protocol - infrastructure層の実装への依存を避ける"""
+    def execute_operation(self, driver: Any, logger: Any) -> Any:
+        """Execute the operation using provided driver"""
+        ...
+
+
+class RequestCreator(Protocol):
+    """Request creator protocol for dependency inversion"""
+    def create_docker_request(self, op_type: str, **kwargs) -> OperationRequestFoundation:
+        """Create docker request"""
+        ...
+
+    def create_file_request(self, op_type: str, **kwargs) -> OperationRequestFoundation:
+        """Create file request"""
+        ...
+
+    def create_shell_request(self, **kwargs) -> OperationRequestFoundation:
+        """Create shell request"""
+        ...
+
+    def create_python_request(self, **kwargs) -> OperationRequestFoundation:
+        """Create python request"""
+        ...
 
 
 class RequestFactory:
-    """Factory class for creating request objects from steps"""
+    """Factory class for creating request objects from steps
 
-    def __init__(self, config_manager, error_converter: Any, result_factory: Any,
-                 os_provider: Any, python_utils: Any, json_provider: Any, time_ops: Any):
+    クリーンアーキテクチャ準拠: 具体的な実装ではなく抽象化に依存
+    """
+
+    def __init__(self, config_manager, request_creator: RequestCreator):
         """Initialize RequestFactory with injected dependencies
 
         Args:
             config_manager: Configuration manager for resolving default values
-            error_converter: Error converter for handling exceptions
-            result_factory: Result factory for creating results
-            os_provider: OS provider for system operations
-            python_utils: Python utilities for script operations
-            json_provider: JSON provider for parsing JSON data
-            time_ops: Time operations provider for time-related operations
+            request_creator: Request creator for creating concrete requests
         """
         self.config_manager = config_manager
-        self._error_converter = error_converter
-        self._result_factory = result_factory
-        self._os_provider = os_provider
-        self._python_utils = python_utils
-        self._json_provider = json_provider
-        self._time_ops = time_ops
+        self._request_creator = request_creator
 
     def create_request_from_step(self, step: Any, context: Any, env_manager: Any) -> Optional[OperationRequestFoundation]:
         """Create a request object from a step
@@ -87,9 +100,8 @@ class RequestFactory:
             return self._create_python_request(step, context, env_manager)
         return None
 
-    def _create_docker_build_request(self, step: Any, context: Any, env_manager: Any) -> DockerRequest:
+    def _create_docker_build_request(self, step: Any, context: Any, env_manager: Any) -> OperationRequestFoundation:
         """Create docker build request"""
-
         # Extract tag from build command
         tag = None
         if "-t" in step.cmd:
@@ -97,8 +109,8 @@ class RequestFactory:
             if tag_idx < len(step.cmd):
                 tag = step.cmd[tag_idx]
 
-        return DockerRequest(
-            op=DockerOpType.BUILD,
+        return self._request_creator.create_docker_request(
+            op_type="BUILD",
             image=tag,
             container=None,
             command=None,
@@ -109,13 +121,11 @@ class RequestFactory:
             debug_tag=f"docker_build_{context.problem_name}",
             name=None,
             show_output=True,
-            dockerfile_text=None,
-            json_provider=self._json_provider
+            dockerfile_text=None
         )
 
-    def _create_docker_run_request(self, step: Any, context: Any, env_manager: Any) -> DockerRequest:
+    def _create_docker_run_request(self, step: Any, context: Any, env_manager: Any) -> OperationRequestFoundation:
         """Create docker run request"""
-
         # Extract container name and image from run command
         container_name = None
         image = None
@@ -129,8 +139,8 @@ class RequestFactory:
         if step.cmd:
             image = step.cmd[-1]
 
-        return DockerRequest(
-            op=DockerOpType.RUN,
+        return self._request_creator.create_docker_request(
+            op_type="RUN",
             image=image,
             container=container_name,
             command=step.cmd,
@@ -140,13 +150,11 @@ class RequestFactory:
             debug_tag=f"docker_run_{context.problem_name}",
             name=None,
             show_output=True,
-            dockerfile_text=None,
-            json_provider=self._json_provider
+            dockerfile_text=None
         )
 
-    def _create_docker_exec_request(self, step: Any, context: Any, env_manager: Any) -> DockerRequest:
+    def _create_docker_exec_request(self, step: Any, context: Any, env_manager: Any) -> OperationRequestFoundation:
         """Create docker exec request"""
-
         # Container name is typically the first argument after exec
         if not step.cmd:
             if self.config_manager:
@@ -168,8 +176,8 @@ class RequestFactory:
         else:
             exec_cmd = step.cmd[1:]
 
-        return DockerRequest(
-            op=DockerOpType.EXEC,
+        return self._request_creator.create_docker_request(
+            op_type="EXEC",
             image=None,
             container=container_name,
             command=exec_cmd,
@@ -177,13 +185,11 @@ class RequestFactory:
             debug_tag=f"docker_exec_{context.problem_name}",
             name=None,
             show_output=True,
-            dockerfile_text=None,
-            json_provider=self._json_provider
+            dockerfile_text=None
         )
 
-    def _create_docker_commit_request(self, step: Any, context: Any) -> DockerRequest:
+    def _create_docker_commit_request(self, step: Any, context: Any) -> OperationRequestFoundation:
         """Create docker commit request"""
-
         # Container and image are typically the first two arguments
         if not step.cmd:
             if self.config_manager:
@@ -205,8 +211,8 @@ class RequestFactory:
         else:
             image = step.cmd[1]
 
-        return DockerRequest(
-            op=DockerOpType.BUILD,  # Commit is similar to build in DockerOpType
+        return self._request_creator.create_docker_request(
+            op_type="BUILD",  # Commit is similar to build
             image=image,
             container=container_name,
             command=None,
@@ -214,13 +220,11 @@ class RequestFactory:
             debug_tag=f"docker_commit_{context.problem_name}",
             name=None,
             show_output=True,
-            dockerfile_text=None,
-            json_provider=self._json_provider
+            dockerfile_text=None
         )
 
-    def _create_docker_rm_request(self, step: Any, context: Any) -> DockerRequest:
+    def _create_docker_rm_request(self, step: Any, context: Any) -> OperationRequestFoundation:
         """Create docker rm request"""
-
         if not step.cmd:
             if self.config_manager:
                 container_name = self.config_manager.resolve_config(
@@ -231,8 +235,8 @@ class RequestFactory:
         else:
             container_name = step.cmd[0]
 
-        return DockerRequest(
-            op=DockerOpType.REMOVE,
+        return self._request_creator.create_docker_request(
+            op_type="REMOVE",
             image=None,
             container=container_name,
             command=None,
@@ -240,13 +244,11 @@ class RequestFactory:
             debug_tag=f"docker_rm_{context.problem_name}",
             name=None,
             show_output=True,
-            dockerfile_text=None,
-            json_provider=self._json_provider
+            dockerfile_text=None
         )
 
-    def _create_docker_rmi_request(self, step: Any, context: Any) -> DockerRequest:
+    def _create_docker_rmi_request(self, step: Any, context: Any) -> OperationRequestFoundation:
         """Create docker rmi request"""
-
         if not step.cmd:
             if self.config_manager:
                 image = self.config_manager.resolve_config(
@@ -257,8 +259,8 @@ class RequestFactory:
         else:
             image = step.cmd[0]
 
-        return DockerRequest(
-            op=DockerOpType.REMOVE,  # Use REMOVE for image removal as well
+        return self._request_creator.create_docker_request(
+            op_type="REMOVE",  # Use REMOVE for image removal as well
             image=image,
             container=None,
             command=None,
@@ -266,11 +268,10 @@ class RequestFactory:
             debug_tag=f"docker_rmi_{context.problem_name}",
             name=None,
             show_output=True,
-            dockerfile_text=None,
-            json_provider=self._json_provider
+            dockerfile_text=None
         )
 
-    def _create_mkdir_request(self, step: Any, context: Any, env_manager: Any) -> FileRequest:
+    def _create_mkdir_request(self, step: Any, context: Any, env_manager: Any) -> OperationRequestFoundation:
         """Create mkdir request"""
         if not step.cmd:
             if self.config_manager:
@@ -282,8 +283,8 @@ class RequestFactory:
         else:
             path = step.cmd[0]
 
-        return FileRequest(
-            op=FileOpType.MKDIR,
+        return self._request_creator.create_file_request(
+            op_type="MKDIR",
             path=path,
             content=None,
             dst_path=None,
@@ -291,7 +292,7 @@ class RequestFactory:
             name=None
         )
 
-    def _create_touch_request(self, step: Any, context: Any, env_manager: Any) -> FileRequest:
+    def _create_touch_request(self, step: Any, context: Any, env_manager: Any) -> OperationRequestFoundation:
         """Create touch request"""
         if not step.cmd:
             if self.config_manager:
@@ -303,8 +304,8 @@ class RequestFactory:
         else:
             path = step.cmd[0]
 
-        return FileRequest(
-            op=FileOpType.TOUCH,
+        return self._request_creator.create_file_request(
+            op_type="TOUCH",
             path=path,
             content=None,
             dst_path=None,
@@ -312,7 +313,7 @@ class RequestFactory:
             name=None
         )
 
-    def _create_copy_request(self, step: Any, context: Any, env_manager: Any) -> FileRequest:
+    def _create_copy_request(self, step: Any, context: Any, env_manager: Any) -> OperationRequestFoundation:
         """Create copy request"""
         if not step.cmd:
             if self.config_manager:
@@ -334,8 +335,8 @@ class RequestFactory:
         else:
             target = step.cmd[1]
 
-        return FileRequest(
-            op=FileOpType.COPY,
+        return self._request_creator.create_file_request(
+            op_type="COPY",
             path=source,
             content=None,
             dst_path=target,
@@ -343,17 +344,17 @@ class RequestFactory:
             name=None
         )
 
-    def _create_move_request(self, step: Any, context: Any, env_manager: Any) -> FileRequest:
+    def _create_move_request(self, step: Any, context: Any, env_manager: Any) -> OperationRequestFoundation:
         """Create move request"""
         if not step.cmd:
-            raise ValueError("Copy command requires source path")
+            raise ValueError("Move command requires source path")
         source = step.cmd[0]
         if len(step.cmd) < 2:
-            raise ValueError("Copy command requires both source and target paths")
+            raise ValueError("Move command requires both source and target paths")
         target = step.cmd[1]
 
-        return FileRequest(
-            op=FileOpType.MOVE,
+        return self._request_creator.create_file_request(
+            op_type="MOVE",
             path=source,
             content=None,
             dst_path=target,
@@ -361,14 +362,14 @@ class RequestFactory:
             name=None
         )
 
-    def _create_remove_request(self, step: Any, context: Any, env_manager: Any) -> FileRequest:
+    def _create_remove_request(self, step: Any, context: Any, env_manager: Any) -> OperationRequestFoundation:
         """Create remove request"""
         if not step.cmd:
             raise ValueError("Remove command requires path")
         path = step.cmd[0]
 
-        return FileRequest(
-            op=FileOpType.REMOVE,
+        return self._request_creator.create_file_request(
+            op_type="REMOVE",
             path=path,
             content=None,
             dst_path=None,
@@ -376,14 +377,14 @@ class RequestFactory:
             name=None
         )
 
-    def _create_rmtree_request(self, step: Any, context: Any, env_manager: Any) -> FileRequest:
+    def _create_rmtree_request(self, step: Any, context: Any, env_manager: Any) -> OperationRequestFoundation:
         """Create rmtree request"""
         if not step.cmd:
             raise ValueError("rmtree command requires path")
         path = step.cmd[0]
 
-        return FileRequest(
-            op=FileOpType.RMTREE,
+        return self._request_creator.create_file_request(
+            op_type="RMTREE",
             path=path,
             content=None,
             dst_path=None,
@@ -391,10 +392,10 @@ class RequestFactory:
             name=None
         )
 
-    def _create_chmod_request(self, step: Any, context: Any, env_manager: Any) -> ShellRequest:
+    def _create_chmod_request(self, step: Any, context: Any, env_manager: Any) -> OperationRequestFoundation:
         """Create chmod request using shell command"""
         # chmod is not supported by FileRequest, use ShellRequest instead
-        return ShellRequest(
+        return self._request_creator.create_shell_request(
             cmd=step.cmd,
             cwd=env_manager.get_workspace_root(),
             env={},
@@ -403,15 +404,12 @@ class RequestFactory:
             debug_tag=f"chmod_{context.problem_name}",
             name=None,
             show_output=True,
-            allow_failure=False,
-            time_ops=self._time_ops,
-            error_converter=self._error_converter,
-            result_factory=self._result_factory
+            allow_failure=False
         )
 
-    def _create_run_request(self, step: Any, context: Any, env_manager: Any) -> ShellRequest:
+    def _create_run_request(self, step: Any, context: Any, env_manager: Any) -> OperationRequestFoundation:
         """Create run (shell) request"""
-        return ShellRequest(
+        return self._request_creator.create_shell_request(
             cmd=step.cmd,
             cwd=env_manager.get_workspace_root(),
             env={},
@@ -420,50 +418,30 @@ class RequestFactory:
             debug_tag=f"run_{context.problem_name}",
             name=None,
             show_output=True,
-            allow_failure=step.allow_failure,
-            error_converter=self._error_converter,
-            result_factory=self._result_factory
+            allow_failure=step.allow_failure
         )
 
-    def _create_python_request(self, step: Any, context: Any, env_manager: Any) -> PythonRequest:
+    def _create_python_request(self, step: Any, context: Any, env_manager: Any) -> OperationRequestFoundation:
         """Create python request"""
         # For Python steps, cmd contains Python code lines
         code_or_file = step.cmd
 
-        return PythonRequest(
+        return self._request_creator.create_python_request(
             code_or_file=code_or_file,
             cwd=env_manager.get_workspace_root(),
             show_output=True,
             name=None,
             debug_tag=f"python_{context.problem_name}",
-            allow_failure=step.allow_failure,
-            os_provider=self._os_provider,
-            python_utils=self._python_utils,
-            time_ops=self._time_ops
+            allow_failure=step.allow_failure
         )
 
 
-# Backward compatibility factory instance - deprecated
-# All dependencies set to None, proper injection should be used
-_factory_instance = RequestFactory(
-    config_manager=None,
-    error_converter=None,
-    result_factory=None,
-    os_provider=None,
-    python_utils=None,
-    json_provider=None,
-    time_ops=None
-)
-
-
+# Backward compatibility function - deprecated
 def create_request(step: Any, context: Any) -> Optional[OperationRequestFoundation]:
     """Create a request from a step using the default factory
 
-    This function maintains backward compatibility with the old API
+    This function is deprecated - use RequestFactory with proper dependency injection instead
     """
-
     # この関数は廃止予定 - 新しいファクトリでは依存性注入が必要
-
-    # この関数は廃止予定 - 代わりにRequestFactoryを直接使用してください
-    # contextとenv_managerが必要な場合は、呼び出し元で直接RequestFactoryを使用
     return None
+

@@ -1,7 +1,7 @@
 """Tests for domain.requests.pure package __init__.py."""
 import pytest
 
-import src.operations.requests.pure as pure_module
+import src.infrastructure.requests.pure as pure_module
 
 
 class TestPurePackageInit:
@@ -98,16 +98,16 @@ class TestPurePackageInit:
         # Check that the package has the expected structure
         assert hasattr(pure_module, '__file__')
         assert hasattr(pure_module, '__name__')
-        assert pure_module.__name__ == 'src.operations.requests.pure'
+        assert pure_module.__name__ == 'src.infrastructure.requests.pure'
 
     def test_imports_from_timing_calculator(self):
         """Test that imports come from the correct module."""
         # This test ensures the imports are actually from timing_calculator
-        from src.operations.requests.pure.timing_calculator import ExecutionTiming as DirectExecutionTiming
+        from src.infrastructure.requests.pure.timing_calculator import ExecutionTiming as DirectExecutionTiming
 
         # Should be the same class
         assert pure_module.ExecutionTiming is DirectExecutionTiming
 
         # Test with a few functions as well
-        from src.operations.requests.pure.timing_calculator import start_timing as direct_start_timing
+        from src.infrastructure.requests.pure.timing_calculator import start_timing as direct_start_timing
         assert pure_module.start_timing is direct_start_timing

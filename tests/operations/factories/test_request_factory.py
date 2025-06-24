@@ -4,10 +4,10 @@ from unittest.mock import Mock, patch
 import pytest
 
 from src.operations.factories.request_factory import RequestFactory, create_request
-from src.operations.requests.docker.docker_request import DockerRequest
-from src.operations.requests.file.file_request import FileRequest
-from src.operations.requests.python.python_request import PythonRequest
-from src.operations.requests.shell.shell_request import ShellRequest
+from src.infrastructure.requests.docker.docker_request import DockerRequest
+from src.infrastructure.requests.file.file_request import FileRequest
+from src.infrastructure.requests.python.python_request import PythonRequest
+from src.infrastructure.requests.shell.shell_request import ShellRequest
 from src.workflow.step.step import Step, StepType
 
 

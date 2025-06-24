@@ -3,8 +3,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.operations.requests.base.base_request import OperationRequestFoundation
-from src.operations.requests.composite.composite_structure import CompositeStructure
+from src.infrastructure.requests.base.base_request import OperationRequestFoundation
+from src.infrastructure.requests.composite.composite_structure import CompositeStructure
 
 
 class DummyRequest(OperationRequestFoundation):

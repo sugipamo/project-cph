@@ -1,24 +1,37 @@
 """完全な純粋関数ベースのワークフロー生成・実行パイプライン
-"""
-from typing import Any
 
-from src.operations.requests.composite.composite_request import CompositeRequest
+クリーンアーキテクチャ準拠: workflow層からinfrastructure層への直接依存を削除
+"""
+from typing import Any, Optional, Protocol
 
 from .dependency import optimize_copy_steps, optimize_mkdir_steps, resolve_dependencies
 from .step import Step, StepContext
 from .step_generation_service import generate_steps_from_json, optimize_step_sequence, validate_step_sequence
 
 
-def steps_to_requests(steps: list[Step], context: StepContext, operations) -> CompositeRequest:
+class CompositeRequestInterface(Protocol):
+    """Composite request interface for dependency inversion"""
+    requests: list
+
+    def __init__(self, requests: list, debug_tag: Optional[str] = None, name: Optional[str] = None, execution_controller = None):
+        ...
+
+    @classmethod
+    def make_composite_request(cls, requests: list, debug_tag: Optional[str] = None, name: Optional[str] = None):
+        ...
+
+
+def steps_to_requests(steps: list[Step], context: StepContext, operations, composite_request_factory) -> CompositeRequestInterface:
     """Convert a list of steps to a CompositeRequest using RequestFactoryV2
 
     Args:
         steps: List of Step objects to convert
         context: Step context for creating requests
         operations: Operations object (DI container)
+        composite_request_factory: Factory for creating composite requests
 
     Returns:
-        CompositeRequest: Composite request containing all converted steps
+        CompositeRequestInterface: Composite request containing all converted steps
     """
 
     requests = []
@@ -31,14 +44,15 @@ def steps_to_requests(steps: list[Step], context: StepContext, operations) -> Co
         if request is not None:
             requests.append(request)
 
-    return CompositeRequest(requests, debug_tag="workflow", name=None, execution_controller=None)
+    return composite_request_factory(requests, debug_tag="workflow", name=None, execution_controller=None)
 
 
 def generate_workflow_from_json(
     json_steps: list[dict[str, Any]],
     context: StepContext,
-    operations
-) -> tuple[CompositeRequest, list[str], list[str]]:
+    operations,
+    composite_request_factory
+) -> tuple[CompositeRequestInterface, list[str], list[str]]:
     """JSONステップからCompositeRequestまでの完全なパイプラインを実行する純粋関数
 
     Args:
@@ -55,7 +69,7 @@ def generate_workflow_from_json(
 
     if not generation_result.is_success:
         # エラーがある場合は空のリクエストを返す
-        empty_request = CompositeRequest.make_composite_request([], debug_tag=None, name=None)
+        empty_request = composite_request_factory([], debug_tag=None, name=None)
         return empty_request, generation_result.errors, generation_result.warnings
 
     steps = generation_result.steps
@@ -66,7 +80,7 @@ def generate_workflow_from_json(
     validation_errors = validate_step_sequence(steps)
     if validation_errors:
         errors.extend(validation_errors)
-        empty_request = CompositeRequest.make_composite_request([], debug_tag=None, name=None)
+        empty_request = composite_request_factory([], debug_tag=None, name=None)
         return empty_request, errors, warnings
 
     # 3. 依存関係の解決（必要な準備ステップを挿入）
@@ -76,7 +90,7 @@ def generate_workflow_from_json(
     optimized_steps = optimize_workflow_steps(resolved_steps)
 
     # 5. Step から Request への変換
-    composite_request = steps_to_requests(optimized_steps, context, operations)
+    composite_request = steps_to_requests(optimized_steps, context, operations, composite_request_factory)
 
     return composite_request, errors, warnings
 
@@ -133,7 +147,7 @@ def create_step_context_from_env_context(env_context) -> StepContext:
 
 
 def validate_workflow_execution(
-    composite_request: CompositeRequest,
+    composite_request: CompositeRequestInterface,
     errors: list[str],
     warnings: list[str]
 ) -> tuple[bool, list[str]]:

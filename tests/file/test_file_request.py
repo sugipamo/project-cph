@@ -4,8 +4,8 @@ import pytest
 
 from src.infrastructure.mock.mock_file_driver import MockFileDriver
 from src.operations.constants.operation_type import OperationType
-from src.operations.requests.file.file_op_type import FileOpType
-from src.operations.requests.file.file_request import FileRequest
+from src.infrastructure.requests.file.file_op_type import FileOpType
+from src.infrastructure.requests.file.file_request import FileRequest
 from src.operations.results.file_result import FileResult
 
 

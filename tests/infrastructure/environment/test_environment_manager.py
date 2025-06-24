@@ -6,7 +6,7 @@ import pytest
 
 from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.infrastructure.environment.environment_manager import EnvironmentManager
-from src.operations.requests.base.base_request import OperationRequestFoundation
+from src.infrastructure.requests.base.base_request import OperationRequestFoundation
 from src.operations.results.result import OperationResult
 
 

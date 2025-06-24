@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from src.operations.constants.operation_type import OperationType
-from src.operations.requests.base.base_request import OperationRequestFoundation
+from src.infrastructure.requests.base.base_request import OperationRequestFoundation
 
 
 class ConcreteRequest(OperationRequestFoundation):
