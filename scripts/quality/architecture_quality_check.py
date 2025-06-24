@@ -19,7 +19,7 @@ from typing import Dict, List, Tuple
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from infrastructure.file_handler import FileHandler
-from infrastructure.logger import Logger
+from infrastructure.logger import Logger, ConsoleLogger
 from infrastructure.system_operations import SystemOperations
 
 
@@ -124,7 +124,7 @@ def detect_circular_imports(directory: str, system_ops: SystemOperations, file_h
     dependencies = defaultdict(set)
 
     for file_path in python_files:
-        imports, from_imports = analyze_imports(str(file_path))
+        imports, from_imports = analyze_imports(str(file_path), file_handler)
         current_module = file_to_module[str(file_path)]
 
         # 内部インポートのみを対象
@@ -379,7 +379,9 @@ if __name__ == "__main__":
     class SysProvider:
         def exit(self, code): sys.exit(code)
         def get_argv(self): return sys.argv
+        def print_stdout(self, message): print(message)
 
     system_ops = SystemOperationsImpl(OSProvider(), SysProvider())
     file_handler = create_file_handler(mock=False, file_operations=None)
-    main(system_ops, file_handler)
+    logger = ConsoleLogger(verbose=True, system_operations=system_ops)
+    main(system_ops, file_handler, logger)

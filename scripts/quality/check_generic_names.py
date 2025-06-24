@@ -232,6 +232,7 @@ if __name__ == "__main__":
     class SysProvider:
         def exit(self, code): sys.exit(code)
         def get_argv(self): return sys.argv
+        def print_stdout(self, message): print(message)
 
     system_ops = SystemOperationsImpl(OSProvider(), SysProvider())
     file_handler = create_file_handler(mock=False, file_operations=None)

@@ -13,6 +13,7 @@ from code_analysis.dead_code_checker import DeadCodeChecker
 from code_analysis.import_checker import ImportChecker
 from quality_checks.clean_architecture_checker import CleanArchitectureChecker
 from quality_checks.dependency_injection_checker import DependencyInjectionChecker
+from quality_checks.infrastructure_operations_checker import InfrastructureOperationsChecker
 from quality_checks.dict_get_checker import DictGetChecker
 from quality_checks.fallback_checker import FallbackChecker
 from quality_checks.getattr_checker import GetattrChecker
@@ -159,6 +160,13 @@ class MainTestRunner:
             verbose
         )
 
+        self.infrastructure_operations_checker = InfrastructureOperationsChecker(
+            self.file_handler,
+            silent_logger,
+            self.test_runner.issues,
+            verbose
+        )
+
     def _categorize_errors(self):
         """エラーをエラー種類ごとにグループ化"""
         # issuesリストからエラーをカテゴリーごとに分類
@@ -191,6 +199,8 @@ class MainTestRunner:
                 self.error_groups["getattr()デフォルト値使用"].append(issue)
             elif "クリーンアーキテクチャ違反" in issue:
                 self.error_groups["クリーンアーキテクチャ違反"].append(issue)
+            elif "Infrastructure->Operations依存関係違反" in issue:
+                self.error_groups["Infrastructure->Operations依存関係違反"].append(issue)
             elif "テスト実行" in issue:
                 self.error_groups["テスト失敗"].append(issue)
             else:
@@ -277,6 +287,7 @@ class MainTestRunner:
         check_results["dict.get()使用チェック"] = not any("dict.get()" in issue for issue in self.test_runner.issues)
         check_results["getattr()デフォルト値使用チェック"] = not any("getattr()" in issue for issue in self.test_runner.issues)
         check_results["クリーンアーキテクチャチェック"] = not any("クリーンアーキテクチャ違反" in issue for issue in self.test_runner.issues)
+        check_results["Infrastructure->Operations依存関係チェック"] = not any("Infrastructure->Operations依存関係違反" in issue for issue in self.test_runner.issues)
 
         # 各チェックの結果を表示
         for check_name, success in check_results.items():
@@ -379,6 +390,14 @@ class MainTestRunner:
                 "循環依存を解消してください\n"
                 "例: src.operations -> src.infrastructure (×) / main.pyからの注入 (○)"
             ),
+            "Infrastructure->Operations依存関係違反": (
+                "【CLAUDE.mdルール適用】\n"
+                "Infrastructure層からOperations層への過度な依存を検出しました\n"
+                "高頻度パターン: 共通インターフェースへの抽出を検討してください\n"
+                "requests層の直接使用: 設計の見直しが必要です\n"
+                "main.pyからの依存性注入を強化してください\n"
+                "例: 共通インターフェースをsrc/shared/interfacesに移動"
+            ),
             "その他のエラー": (
                 "エラーメッセージを詳細に確認してください\n"
                 "関連するドキュメントを参照してください\n"
@@ -443,6 +462,9 @@ class MainTestRunner:
 
         # クリーンアーキテクチャチェック
         self.clean_architecture_checker.check_clean_architecture()
+
+        # Infrastructure->Operations依存関係チェック
+        self.infrastructure_operations_checker.check_infrastructure_operations_dependencies()
 
         # check-onlyモード
         if args.check_only:

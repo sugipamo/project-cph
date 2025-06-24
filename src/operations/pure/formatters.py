@@ -4,11 +4,11 @@ This module provides core formatting functions that can be used
 anywhere without causing circular imports.
 """
 from functools import lru_cache
-from typing import Any, Optional
+from typing import Any
 
 
 @lru_cache(maxsize=512)
-def extract_format_keys(template: str, regex_ops: Optional[Any] = None) -> list[str]:
+def extract_format_keys(template: str, regex_ops: Any) -> list[str]:
     """Extract format keys from template string.
 
     Args:
@@ -18,8 +18,7 @@ def extract_format_keys(template: str, regex_ops: Optional[Any] = None) -> list[
     Returns:
         List of format keys found in template
     """
-    if regex_ops is None:
-        raise ValueError("regex_ops parameter is required for extract_format_keys")
+    # regex_ops is now required parameter - no default value check needed
 
     pattern = regex_ops.compile_pattern(r'{(\w+)}')
     return regex_ops.findall(pattern, template)
