@@ -43,7 +43,7 @@ def steps_to_requests(steps: list[Step], context: StepContext, operations, compo
         request = factory.create_request_from_step(step, context, operations)
         if request is not None:
             # CLAUDE.mdルール準拠：副作用の配置検証
-            # リスト操作は純粋関数の内部実装として適切
+            # ローカルリスト操作のため副作用ではない（I/O操作でもネットワーク操作でもない）
             requests.append(request)
 
     return composite_request_factory(requests, debug_tag="workflow", name=None, execution_controller=None)

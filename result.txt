@@ -3,7 +3,7 @@
 ✅ インポート解決チェック
 ✅ クイックスモークテスト
 ✅ Ruff自動修正
-❌ コード品質チェック (ruff)
+✅ コード品質チェック (ruff)
 ✅ 未使用コード検出
 ✅ 命名規則チェック
 ❌ 依存性注入チェック
@@ -17,10 +17,6 @@
 ✅ Infrastructure->Operations依存関係チェック
 
 ⚠️  警告:
-   未使用コードが検出されました:
-     configuration/config_manager.py:200: unreachable code after 'raise' (100% confidence)
-     configuration/config_manager.py:209: unreachable code after 'raise' (100% confidence)
-     configuration/config_manager.py:218: unreachable code after 'raise' (100% confidence)
    失敗したテスト:
      ERROR scripts/test_runner/smoke_test.py
      ERROR scripts/test_runner/test_runner.py
@@ -54,42 +50,6 @@
       if result.is_failure(): handle_error(result.error) → フォールバック処理の代替
 ❌ 修正が必要な問題:
 
-コード品質エラー（Ruff）:
-📋 修正方針:
-    Ruffの指摘に従ってコードスタイルを統一してください
-    未使用のインポートや変数を削除してください
-    命名規則に従ってください（PEP 8準拠）
-    コードの可読性を向上させてください
-
-    src/configuration/config_manager.py:200:63: F821 Undefined name `DIKey`
-        |
-    198 | …         # DIKeyは外部から注入される必要があります
-    199 | …         raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
-    200 | …         self._json_provider = self.infrastructure.resolve(DIKey.JSON_PROVIDER)
-        |                                                             ^^^^^ F821
-    201 | …     return self._json_provider
-        |
-    
-    src/configuration/config_manager.py:209:61: F821 Undefined name `DIKey`
-        |
-    207 | …         # DIKeyは外部から注入される必要があります
-    208 | …         raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
-    209 | …         self._os_provider = self.infrastructure.resolve(DIKey.OS_PROVIDER)
-        |                                                           ^^^^^ F821
-    210 | …     return self._os_provider
-        |
-    
-    src/configuration/config_manager.py:218:63: F821 Undefined name `DIKey`
-        |
-    216 | …         # DIKeyは外部から注入される必要があります
-    217 | …         raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
-    218 | …         self._file_provider = self.infrastructure.resolve(DIKey.FILE_DRIVER)
-        |                                                             ^^^^^ F821
-    219 | …     return self._file_provider
-        |
-    
-    Found 4 errors (1 fixed, 3 remaining).
-
 副作用が検出されました:
 📋 修正方針:
     【CLAUDE.mdルール適用】
@@ -98,45 +58,5 @@
     ビジネスロジック層では副作用を避けてください
     ファイル操作、外部APIコール、データベースアクセスはInfrastructure層で実装してください
 
-    src/configuration/config_manager.py:200:63: F821 Undefined name `DIKey`
-        |
-    198 | …         # DIKeyは外部から注入される必要があります
-    199 | …         raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
-    200 | …         self._json_provider = self.infrastructure.resolve(DIKey.JSON_PROVIDER)
-        |                                                             ^^^^^ F821
-    201 | …     return self._json_provider
-        |
-    
-    src/configuration/config_manager.py:209:61: F821 Undefined name `DIKey`
-        |
-    207 | …         # DIKeyは外部から注入される必要があります
-    208 | …         raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
-    209 | …         self._os_provider = self.infrastructure.resolve(DIKey.OS_PROVIDER)
-        |                                                           ^^^^^ F821
-    210 | …     return self._os_provider
-        |
-    
-    src/configuration/config_manager.py:218:63: F821 Undefined name `DIKey`
-        |
-    216 | …         # DIKeyは外部から注入される必要があります
-    217 | …         raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
-    218 | …         self._file_provider = self.infrastructure.resolve(DIKey.FILE_DRIVER)
-        |                                                             ^^^^^ F821
-    219 | …     return self._file_provider
-        |
-    
-    Found 3 errors.
-    configuration/config_manager.py:360 副作用配置違反: ファイルI/O操作 - with file_provider.open(Path(file_path), mode='r', encoding='utf-8') as f:
+    configuration/config_manager.py:357 副作用配置違反: ファイルI/O操作 - with file_provider.open(Path(file_path), mode='r', encoding='utf-8') as f:
     workflow/step/workflow.py:47 副作用配置違反: ネットワーク操作 - requests.append(request)
-
-クリーンアーキテクチャ違反:
-📋 修正方針:
-    【CLAUDE.mdルール適用】
-    レイヤー間の依存関係を正しい方向に修正してください
-    ドメイン層（operations）は外部依存を持ってはいけません
-    インフラストラクチャ層への直接依存を避け、依存性注入を使用してください
-    循環依存を解消してください
-    例: src.operations -> src.infrastructure (×) / main.pyからの注入 (○)
-
-    context/user_input_parser/user_input_parser.py:10 コメントアウトされたコード: # from src.operations.requests.file.file_op_type import FileOpType
-    context/user_input_parser/user_input_parser.py:11 コメントアウトされたコード: # from src.operations.requests.file.file_request import FileRequest

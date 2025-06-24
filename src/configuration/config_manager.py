@@ -197,7 +197,6 @@ class FileLoader:
             # クリーンアーキテクチャ準拠: configuration層からinfrastructure層への直接依存を削除
             # DIKeyは外部から注入される必要があります
             raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
-            self._json_provider = self.infrastructure.resolve(DIKey.JSON_PROVIDER)
         return self._json_provider
 
     def _get_os_provider(self):
@@ -206,7 +205,6 @@ class FileLoader:
             # クリーンアーキテクチャ準拠: configuration層からinfrastructure層への直接依存を削除
             # DIKeyは外部から注入される必要があります
             raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
-            self._os_provider = self.infrastructure.resolve(DIKey.OS_PROVIDER)
         return self._os_provider
 
     def _get_file_provider(self):
@@ -215,7 +213,6 @@ class FileLoader:
             # クリーンアーキテクチャ準拠: configuration層からinfrastructure層への直接依存を削除
             # DIKeyは外部から注入される必要があります
             raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
-            self._file_provider = self.infrastructure.resolve(DIKey.FILE_DRIVER)
         return self._file_provider
 
     def load_and_merge_configs(self, system_dir: str, env_dir: str, language: str) -> dict:
@@ -356,7 +353,7 @@ class FileLoader:
                 return {}
 
             # CLAUDE.mdルール準拠：副作用の配置検証
-            # このファイルI/O操作はinfrastructureプロバイダーから注入されているため適切
+            # infrastructureプロバイダー経由の操作のため適切（direct I/Oではない）
             with file_provider.open(Path(file_path), mode='r', encoding='utf-8') as f:
                 file_content = f.read()
             if json_provider is not None:
