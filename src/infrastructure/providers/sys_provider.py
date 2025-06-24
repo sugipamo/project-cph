@@ -3,6 +3,8 @@ import sys
 from abc import ABC, abstractmethod
 from typing import Any, Callable, List, Optional
 
+from src.operations.interfaces.logger_interface import LoggerInterface
+
 
 class SysProvider(ABC):
     """sysモジュールの副作用を集約する抽象プロバイダー"""
@@ -36,6 +38,11 @@ class SysProvider(ABC):
 class SystemSysProvider(SysProvider):
     """実際のsysモジュールを使用するプロバイダー"""
 
+    def __init__(self, logger: LoggerInterface):
+        if logger is None:
+            raise ValueError("logger parameter is required")
+        self._logger = logger
+
     def get_argv(self) -> List[str]:
         """コマンドライン引数を取得"""
         return sys.argv
@@ -54,7 +61,7 @@ class SystemSysProvider(SysProvider):
 
     def print_stdout(self, message: str) -> None:
         """標準出力にメッセージを出力"""
-        print(message)
+        self._logger.info(message)
 
 
 class MockSysProvider(SysProvider):

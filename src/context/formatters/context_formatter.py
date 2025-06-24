@@ -3,15 +3,8 @@
 from dataclasses import dataclass
 from typing import Any, Optional, Union
 
-# 互換性維持: Docker naming機能はmain.pyから注入されるべき
-# 一時的な直接使用（クリーンアーキテクチャ違反要修正）
-# Docker naming functions should be injected from main.py
-# from src.infrastructure.drivers.docker.utils.docker_naming import (
-#     get_docker_container_name,
-#     get_docker_image_name,
-#     get_oj_container_name,
-#     get_oj_image_name,
-# )
+# 互換性維持: Docker naming機能とフォーマッターはmain.pyから注入されるべき
+# 純粋関数の使用は許可されるが、依存性注入の観点から改善推奨
 from src.operations.pure.formatters import format_string_simple, format_with_missing_keys
 
 # 新設定システムをサポート

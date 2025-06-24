@@ -3,7 +3,7 @@
 ✅ インポート解決チェック
 ✅ クイックスモークテスト
 ✅ Ruff自動修正
-✅ コード品質チェック (ruff)
+❌ コード品質チェック (ruff)
 ✅ 未使用コード検出
 ✅ 命名規則チェック
 ❌ 依存性注入チェック
@@ -17,8 +17,6 @@
 ✅ Infrastructure->Operations依存関係チェック
 
 ⚠️  警告:
-   未使用コードが検出されました:
-     workflow/step/workflow.py:31: unreachable code after 'raise' (100% confidence)
    失敗したテスト:
      ERROR scripts/test_runner/smoke_test.py
      ERROR scripts/test_runner/test_runner.py
@@ -52,6 +50,25 @@
       if result.is_failure(): handle_error(result.error) → フォールバック処理の代替
 ❌ 修正が必要な問題:
 
+コード品質エラー（Ruff）:
+📋 修正方針:
+    Ruffの指摘に従ってコードスタイルを統一してください
+    未使用のインポートや変数を削除してください
+    命名規則に従ってください（PEP 8準拠）
+    コードの可読性を向上させてください
+
+    src/context/user_input_parser/user_input_parser.py:252:15: F821 Undefined name `FileRequest`
+        |
+    250 |     def loader(path: str) -> str:
+    251 |         file_driver = infrastructure.resolve("file_driver")
+    252 |         req = FileRequest(FileOpType.READ, path)
+        |               ^^^^^^^^^^^ F821
+    253 |         result = req.execute_operation(driver=file_driver, logger=None)
+    254 |         return result.content
+        |
+    
+    Found 6 errors (5 fixed, 1 remaining).
+
 その他のエラー:
 📋 修正方針:
     エラーメッセージを詳細に確認してください
@@ -59,8 +76,17 @@
     必要に応じてログを追加して問題を特定してください
     CLAUDE.mdのルールに照らし合わせて適切な対応を行ってください
 
-    print()の使用が検出されました（ロギング使用を推奨）:
-      infrastructure/providers/sys_provider.py:57 print(message)
+    src/context/user_input_parser/user_input_parser.py:252:15: F821 Undefined name `FileRequest`
+        |
+    250 |     def loader(path: str) -> str:
+    251 |         file_driver = infrastructure.resolve("file_driver")
+    252 |         req = FileRequest(FileOpType.READ, path)
+        |               ^^^^^^^^^^^ F821
+    253 |         result = req.execute_operation(driver=file_driver, logger=None)
+    254 |         return result.content
+        |
+    
+    Found 1 error.
       operations/pure/data_processors.py:37 current_group = acc.get(key, [])
 
 クリーンアーキテクチャ違反:
@@ -73,18 +99,11 @@
     例: src.operations -> src.infrastructure (×) / main.pyからの注入 (○)
 
     context/dockerfile_resolver.py:35 コメントアウトされたコード: # Content cache (None = not loaded, actual content once loaded)
-    context/formatters/context_formatter.py:9 コメントアウトされたコード: # from src.infrastructure.drivers.docker.utils.docker_naming import (
-    context/user_input_parser/user_input_parser.py:6 コメントアウトされたコード: # from .execution_context import ExecutionContext  # 新システムで置き換え済み
-    context/user_input_parser/user_input_parser.py:11 コメントアウトされたコード: # from src.infrastructure.di_container import DIKey
-    context/user_input_parser/user_input_parser.py:12 コメントアウトされたコード: # from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
     infrastructure/config/di_config.py:195 コメントアウトされたコード: # from src.workflow.preparation.file.file_pattern_service import FilePatternService
     infrastructure/config/di_config.py:197 コメントアウトされたコード: # config_loader = container.resolve("json_config_loader")
     infrastructure/config/di_config.py:198 コメントアウトされたコード: # file_driver = container.resolve("file_driver")
     infrastructure/config/di_config.py:199 コメントアウトされたコード: # logger = container.resolve("logger")
-    infrastructure/drivers/python/python_driver.py:8 コメントアウトされたコード: # from src.configuration.config_manager import TypeSafeConfigNodeManager
     infrastructure/persistence/base/base_repository.py:39 コメントアウトされたコード: # - find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Dict[str, Any]]
-    operations/requests/composite/composite_request.py:55 コメントアウトされたコード: #     from src.application.orchestration.output_manager import OutputManager
-    workflow/step/workflow.py:41 コメントアウトされたコード: #     request = factory.create_request_from_step(step, execution_context, env_manager)
 
 副作用が検出されました:
 📋 修正方針:
@@ -96,8 +115,7 @@
 
     configuration/config_manager.py:112 副作用配置違反: ファイルI/O操作 - return self._command_type if hasattr(self, '_command_type') else 'open'
     configuration/config_manager.py:565 副作用配置違反: ファイルI/O操作 - command_type: str = "open") -> TypedExecutionConfiguration:
-    context/user_input_parser/user_input_parser.py:13 副作用配置違反: ネットワーク操作 - from src.operations.requests.file.file_op_type import FileOpType
-    context/user_input_parser/user_input_parser.py:14 副作用配置違反: ネットワーク操作 - from src.operations.requests.file.file_request import FileRequest
+    context/user_input_parser/user_input_parser.py:10 副作用配置違反: ネットワーク操作 - from src.operations.requests.file.file_op_type import FileOpType
     operations/factories/request_factory.py:4 副作用配置違反: ネットワーク操作 - from src.operations.requests.base.base_request import OperationRequestFoundation
     operations/factories/request_factory.py:5 副作用配置違反: ネットワーク操作 - from src.operations.requests.docker.docker_request import DockerOpType, DockerRequest
     operations/factories/request_factory.py:6 副作用配置違反: ネットワーク操作 - from src.operations.requests.file.file_op_type import FileOpType
@@ -121,3 +139,4 @@
     operations/requests/python/python_request.py:6 副作用配置違反: ネットワーク操作 - from src.operations.requests.base.base_request import OperationRequestFoundation
     operations/requests/shell/shell_request.py:7 副作用配置違反: ネットワーク操作 - from src.operations.requests.base.base_request import OperationRequestFoundation
     workflow/step/workflow.py:5 副作用配置違反: ネットワーク操作 - from src.operations.requests.composite.composite_request import CompositeRequest
+    workflow/step/workflow.py:32 副作用配置違反: ネットワーク操作 - requests.append(request)

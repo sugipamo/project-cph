@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 # 互換性維持: config_managerは注入されるべき
-# from src.configuration.config_manager import TypeSafeConfigNodeManager
 from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
 from src.infrastructure.drivers.python.utils.python_utils import PythonUtils
 

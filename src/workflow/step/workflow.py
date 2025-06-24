@@ -23,24 +23,13 @@ def steps_to_requests(steps: list[Step], context: StepContext, operations) -> Co
 
     requests = []
 
-    # 互換性維持: infrastructure層への直接依存を削除、依存性注入で解決
-    # config_managerとenv_managerは引数で受け取る必要があります
-    raise NotImplementedError("config_manager and env_manager must be injected as parameters")
+    # operations オブジェクトから必要なファクトリーを取得（依存性注入済み）
+    factory = operations.get_request_factory()
 
-    # Create a dummy execution context with the required attributes
-    type('ExecutionContext', (), {
-        'problem_name': context.problem_name,
-        'contest_name': context.contest_name,
-        'language': context.language,
-        'env_type': context.env_type,
-        'command_type': context.command_type
-    })()
-
-    # 依存性注入の実装が完了するまでコメントアウト
-    # for step in steps:
-    #     request = factory.create_request_from_step(step, execution_context, env_manager)
-    #     if request is not None:
-    #         requests.append(request)
+    for step in steps:
+        request = factory.create_request_from_step(step, context, operations)
+        if request is not None:
+            requests.append(request)
 
     return CompositeRequest(requests, debug_tag="workflow", name=None, execution_controller=None)
 

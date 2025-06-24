@@ -2,16 +2,12 @@
 
 # 互換性維持: 設定管理は依存性注入で提供される
 from src.context.dockerfile_resolver import DockerfileResolver
-
-# from .execution_context import ExecutionContext  # 新システムで置き換え済み
 from src.context.parsers.validation_service import ValidationService
 from src.context.resolver.config_resolver import create_config_root_from_dict, resolve_by_match_desc
 
 # Infrastructure dependencies should be injected from main.py
-# from src.infrastructure.di_container import DIKey
-# from src.infrastructure.persistence.sqlite.system_config_loader import SystemConfigLoader
+# 互換性維持: operations層への直接依存は依存性注入で解決
 from src.operations.requests.file.file_op_type import FileOpType
-from src.operations.requests.file.file_request import FileRequest
 
 CONTEST_ENV_DIR = "contest_env"
 
@@ -234,7 +230,9 @@ def _load_shared_config(base_dir: str, infrastructure):
     shared_path = os_provider.path_join(base_dir, "shared", "env.json")
 
     try:
-        req = FileRequest(FileOpType.READ, shared_path)
+        # 互換性維持: FileRequestの生成は依存性注入で解決
+        file_request_factory = infrastructure.resolve("file_request_factory")
+        req = file_request_factory.create_file_request(FileOpType.READ, shared_path)
         result = req.execute_operation(driver=file_driver, logger=None)
         return json_provider.loads(result.content)
     except Exception as e:

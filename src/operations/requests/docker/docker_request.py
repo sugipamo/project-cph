@@ -139,9 +139,9 @@ class DockerRequest(OperationRequestFoundation):
     def _remove_and_run_container(self, driver: DockerDriverInterface):
         """Remove existing container and run a new one."""
         reqs = [
-            DockerRequest(DockerOpType.REMOVE, image=None, container=self.container, command=None, options={}, debug_tag=None, name=None, show_output=False, dockerfile_text=None),
+            DockerRequest(DockerOpType.REMOVE, image=None, container=self.container, command=None, options={}, debug_tag=None, name=None, show_output=False, dockerfile_text=None, json_provider=self.json_provider),
             DockerRequest(DockerOpType.RUN, image=self.image, container=self.container, command=None,
-                         options=self.options, debug_tag=None, name=None, show_output=self.show_output, dockerfile_text=None)
+                         options=self.options, debug_tag=None, name=None, show_output=self.show_output, dockerfile_text=None, json_provider=self.json_provider)
         ]
         results = CompositeRequest.make_composite_request(reqs, debug_tag=None, name=None).execute_operation(driver, logger=None)
         if isinstance(results, list) and results:
