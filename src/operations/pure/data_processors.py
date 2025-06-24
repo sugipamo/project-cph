@@ -34,7 +34,7 @@ def group_items_by_key(items: list[Any], key_func) -> dict[Any, list[Any]]:
     def add_to_group(acc: dict, data_item):
         key = key_func(data_item)
         # CLAUDE.mdルール適用: dict.get()使用禁止、明示的設定取得
-        current_group = acc.get(key, [])
+        current_group = acc[key] if key in acc else []
         return {**acc, key: [*current_group, data_item]}
 
     return reduce(add_to_group, items, {})

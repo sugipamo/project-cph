@@ -36,7 +36,6 @@ class DatabaseRepositoryFoundation(RepositoryInterface):
     # Note: Concrete repositories must implement the abstract methods from RepositoryInterface:
     # - create_entity_record(self, entity: Dict[str, Any]) -> Any
     # - find_by_id(self, entity_id: Any) -> Optional[Dict[str, Any]]
-    # - find_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Dict[str, Any]]
     # - update(self, entity_id: Any, updates: Dict[str, Any]) -> bool
     # - delete(self, entity_id: Any) -> bool
 

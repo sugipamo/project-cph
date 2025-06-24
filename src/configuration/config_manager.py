@@ -42,7 +42,7 @@ class TypedExecutionConfiguration:
 
         # ConfigNodeへの参照を保持（テンプレート解決用）
         # 互換性維持: 内部実装でのオプショナルパラメータ取得
-        if '_root_node' in kwargs:  # noqa: SIM401
+        if '_root_node' in kwargs:
             self._root_node = kwargs['_root_node']
         else:
             self._root_node = None

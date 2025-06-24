@@ -84,6 +84,7 @@ ignore = [
     "RUF003",   # 全角文字の使用（処理系に影響しない）
     "B027",     # 抽象クラスの空メソッド（optional override pattern）
     "SIM910",   # dict.get with None as default (辞書.get()の自動修正を無効化)
+    "SIM401",   # dict.get()の使用を無効化（CLAUDE.mdルール適用）
 ]
 
 # 1つの関数の最大行数

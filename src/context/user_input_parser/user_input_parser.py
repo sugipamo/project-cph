@@ -8,6 +8,7 @@ from src.context.resolver.config_resolver import create_config_root_from_dict, r
 # Infrastructure dependencies should be injected from main.py
 # 互換性維持: operations層への直接依存は依存性注入で解決
 from src.operations.requests.file.file_op_type import FileOpType
+from src.operations.requests.file.file_request import FileRequest
 
 CONTEST_ENV_DIR = "contest_env"
 

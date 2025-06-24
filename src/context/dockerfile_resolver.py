@@ -32,7 +32,6 @@ class DockerfileResolver:
         self._dockerfile_loader = dockerfile_loader
         self._docker_naming_provider = docker_naming_provider
 
-        # Content cache (None = not loaded, actual content once loaded)
         self._dockerfile_content: Optional[str] = None
         self._oj_dockerfile_content: Optional[str] = None
         self._content_loaded = {"dockerfile": False, "oj_dockerfile": False}

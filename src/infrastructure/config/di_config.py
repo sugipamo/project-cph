@@ -191,16 +191,7 @@ def _create_system_config_loader(container: Any) -> Any:
 
 def _create_file_pattern_service(container: Any) -> Any:
     """Lazy factory for file pattern service - currently disabled."""
-    # TODO: Restore when FilePatternService is available
-    # from src.workflow.preparation.file.file_pattern_service import FilePatternService
-    #
-    # config_loader = container.resolve("json_config_loader")
-    # file_driver = container.resolve("file_driver")
-    # logger = container.resolve("logger")
-    # return FilePatternService(config_loader, file_driver, logger)
     return None
-
-
 
 
 def _create_json_config_loader(container: Any) -> Any:
