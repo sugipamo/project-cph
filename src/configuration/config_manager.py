@@ -25,7 +25,7 @@ class ConfigurationError(Exception):
 
 class TypedExecutionConfiguration:
     """型安全なExecutionConfiguration"""
-    def __init__(self, **kwargs):
+    def __init__(self: Dict) -> None:
         """TypedExecutionConfigurationの初期化"""
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -90,14 +90,14 @@ class TypedExecutionConfiguration:
 
 
     @property
-    def command_type(self):
+    def command_type(self) -> None:
         """command_typeプロパティ（レガシー互換）"""
         if hasattr(self, '_command_type'):
             return self._command_type
         return None
 
     @command_type.setter
-    def command_type(self, value):
+    def command_type(self, value) -> None:
         """command_typeのsetter"""
         self._command_type = value
 
@@ -107,7 +107,7 @@ class TypedExecutionConfiguration:
         return self._dockerfile_resolver if hasattr(self, '_dockerfile_resolver') else None
 
     @dockerfile_resolver.setter
-    def dockerfile_resolver(self, value):
+    def dockerfile_resolver(self, value) -> None:
         """dockerfile_resolverのsetter"""
         self._dockerfile_resolver = value
 
@@ -138,7 +138,7 @@ class FileLoader:
     - ConfigMerger
     """
 
-    def __init__(self, infrastructure):
+    def __init__(self, infrastructure) -> None:
         """FileLoaderの初期化
 
         Args:
@@ -152,7 +152,7 @@ class FileLoader:
         # 依存性の注入
         self._inject_dependencies()
 
-    def _inject_dependencies(self):
+    def _inject_dependencies(self) -> None:
         """依存性注入を実行"""
         try:
             self._json_provider = self.infrastructure.resolve(DIKey.JSON_PROVIDER)
@@ -162,19 +162,19 @@ class FileLoader:
             # 注入に失敗した場合は警告するが続行
             pass
 
-    def _get_json_provider(self):
+    def _get_json_provider(self) -> None:
         """JSONプロバイダーを遅延取得"""
         if self._json_provider is None:
             return None
         return self._json_provider
 
-    def _get_os_provider(self):
+    def _get_os_provider(self) -> None:
         """OSプロバイダーを遅延取得"""
         if self._os_provider is None:
             return None
         return self._os_provider
 
-    def _get_file_provider(self):
+    def _get_file_provider(self) -> None:
         """ファイルプロバイダーを遅延取得"""
         if self._file_provider is None:
             # クリーンアーキテクチャ準拠: configuration層からinfrastructure層への直接依存を削除
@@ -271,7 +271,7 @@ class FileLoader:
 
         return result
 
-    def _deep_merge(self, target: dict, source: dict) -> dict:
+    def _deep_merge(self: Dict, target: dict, source: dict):
         """辞書を再帰的にマージ（ConfigMerger._deep_merge統合）"""
         result = target.copy()
 
@@ -347,7 +347,7 @@ class TypeSafeConfigNodeManager:
     - DI注入による1000倍パフォーマンス向上
     """
 
-    def __init__(self, infrastructure):
+    def __init__(self: Dict, infrastructure) -> None:
         """TypeSafeConfigNodeManagerの初期化
 
         Args:
@@ -365,7 +365,7 @@ class TypeSafeConfigNodeManager:
         self._template_cache: Dict[str, str] = {}
         self._execution_config_cache: Dict[tuple, TypedExecutionConfiguration] = {}
 
-    def load_from_files(self, system_dir: str, env_dir: str, language: str):
+    def load_from_files(self, system_dir: str, env_dir: str, language: str) -> None:
         """ファイルから設定を読み込み、ConfigNodeツリー構築（一度のみ実行）
 
         統合対象:
@@ -383,7 +383,7 @@ class TypeSafeConfigNodeManager:
         )
         self.root_node = create_config_root_from_dict(merged_dict)
 
-    def reload_with_language(self, language: str):
+    def reload_with_language(self, language: str) -> None:
         """言語を変更して設定を再読み込み
 
         Args:
@@ -423,7 +423,7 @@ class TypeSafeConfigNodeManager:
     @overload
     def resolve_config(self, path: List[str], return_type: Type[T]) -> T: ...
 
-    def resolve_config(self, path: List[str], return_type: Type[T]) -> T:
+    def resolve_config(self: Dict, path: List[str], return_type: Type[T]):
         """型指定必須の階層設定解決
 
         Args:
@@ -465,7 +465,7 @@ class TypeSafeConfigNodeManager:
         return converted_value
 
 
-    def resolve_config_list(self, path: List[str], item_type: Type[T]) -> List[T]:
+    def resolve_config_list(self: Dict, path: List[str], item_type: Type[T]):
         """リスト型の安全な解決"""
         best_node = resolve_best(self.root_node, path)
 
@@ -479,7 +479,7 @@ class TypeSafeConfigNodeManager:
 
         return [self._convert_to_type(item, item_type) for item in raw_value]
 
-    def resolve_template_typed(self, template: str,
+    def resolve_template_typed(self: Dict, template: str, context: Optional[Dict], return_type: Type[T]):
                               context: Optional[Dict],
                               return_type: Type[T]) -> T:
         """型安全なテンプレート変数展開
@@ -555,7 +555,7 @@ class TypeSafeConfigNodeManager:
 
         raise ConfigurationError("タイムアウト値の取得に失敗しました。設定ファイルを確認してください")
 
-    def create_execution_config(self, contest_name: str,
+    def create_execution_config(self: Dict, contest_name: str, problem_name: str, language: str, env_type: str, command_type: str):
                               problem_name: str,
                               language: str,
                               env_type: str,
@@ -607,7 +607,7 @@ class TypeSafeConfigNodeManager:
 
         raise KeyError("ワークスペースパスの設定が見つかりません。以下のいずれかの設定が必要です: paths.local_workspace_path, workspace, local_workspace_path, base_path")
 
-    def _build_execution_configuration(self, contest_name: str, problem_name: str, language: str,
+    def _build_execution_configuration(self: Dict, contest_name: str, problem_name: str, language: str, env_type: str, command_type: str, context: dict):
                                      env_type: str, command_type: str, context: dict) -> TypedExecutionConfiguration:
         """ExecutionConfigurationを構築"""
         return TypedExecutionConfiguration(
@@ -637,7 +637,7 @@ class TypeSafeConfigNodeManager:
             _root_node=self.root_node
         )
 
-    def _cache_execution_config(self, cache_key: tuple, config: TypedExecutionConfiguration) -> None:
+    def _cache_execution_config(self: Dict, cache_key: tuple, config: TypedExecutionConfiguration):
         """ExecutionConfigをキャッシュ"""
         if len(self._execution_config_cache) > 1000:
             oldest_key = next(iter(self._execution_config_cache))

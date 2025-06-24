@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from src.configuration.resolver.config_node import ConfigNode
 
-def init_matches(node: 'ConfigNode', value: Any):
+def init_matches(node: 'ConfigNode', value: Any) -> None:
     if isinstance(value, dict) and "aliases" in value:
         aliases = value["aliases"]
         if not isinstance(aliases, list):
@@ -14,7 +14,7 @@ def init_matches(node: 'ConfigNode', value: Any):
         del value["aliases"]
     node.value = value
 
-def add_edge(parent: 'ConfigNode', to_node: 'ConfigNode'):
+def add_edge(parent: 'ConfigNode', to_node: 'ConfigNode') -> None:
     if to_node in parent.next_nodes:
         raise ValueError(f"重複したエッジは許可されていません: {to_node}")
     parent.next_nodes.append(to_node)

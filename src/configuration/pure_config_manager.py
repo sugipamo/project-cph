@@ -12,7 +12,7 @@ create_config_root_from_dict = None
 T = TypeVar('T')
 
 
-def _ensure_imports():
+def _ensure_imports() -> None:
     """必要なモジュールの遅延インポート"""
     global ConfigNode, create_config_root_from_dict
     if ConfigNode is None:
@@ -29,7 +29,7 @@ class PureConfigManager:
     ファイル読み込み等の副作用はInfrastructure層に委譲します。
     """
 
-    def __init__(self):
+    def __init__(self: Dict) -> None:
         """純粋な初期化（依存性なし）"""
         _ensure_imports()
         self.root_node: Optional[ConfigNode] = None
@@ -37,7 +37,7 @@ class PureConfigManager:
         self._env_dir: Optional[str] = None
         self._language: Optional[str] = None
 
-    def initialize_from_config_dict(self, config_dict: Dict[str, Any],
+    def initialize_from_config_dict(self, config_dict: Dict[str, Any], system_dir: str, env_dir: str, language: str) -> None:
                                    system_dir: str, env_dir: str, language: str):
         """設定辞書から初期化（純粋関数）
 

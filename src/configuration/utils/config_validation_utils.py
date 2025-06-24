@@ -4,7 +4,7 @@ ConfigNode/resolverを使用した設定データの検証と取得を行いま�
 """
 
 
-def get_steps_from_resolver(resolver, language: str, command_type: str) -> list:
+def get_steps_from_resolver(resolver: Dict, language: str, command_type: str) -> Optional:
     """resolverから指定された言語とコマンドタイプのstepsを取得する純粋関数
 
     Args:

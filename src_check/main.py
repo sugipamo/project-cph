@@ -71,12 +71,10 @@ def load_and_execute_rules(rules_dir: Path) -> List[Tuple[str, CheckResult]]:
                 if isinstance(result, CheckResult):
                     results.append((module_name, result))
                 else:
-                    print(f"警告: {module_name}.main() がCheckResultを返しませんでした")
-            else:
-                print(f"警告: {module_name} にmain関数が見つかりません")
+                    raise ValueError(f"警告: {module_name}.main() がCheckResultを返しませんでした")
                 
         except Exception as e:
-            print(f"エラー: {module_name} の実行中にエラーが発生しました: {e}")
+            raise ValueError(f"エラー: {module_name} の実行中にエラーが発生しました: {e}")
     
     return results
 
