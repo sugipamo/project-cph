@@ -196,12 +196,17 @@ def _create_file_pattern_service(container: Any) -> Any:
 
 def _create_json_config_loader(container: Any) -> Any:
     """Lazy factory for JSON config loader."""
-    # 互換性維持: infrastructure層では設定マネージャーを直接作成すべきではない
-    # main.pyから注入されるべき
-    # クリーンアーキテクチャ違反回避: infrastructure層からconfiguration層への依存を削除
-    # このファクトリは一時的に None を返す
-    # TODO: main.pyで適切に設定マネージャーをセットアップしてください
-    raise RuntimeError("CONFIG_MANAGERはmain.pyから注入されるべきです。クリーンアーキテクチャ違反を避けるため、infrastructure層からconfiguration層への直接依存を削除しました。")
+    # 互換性維持: main.pyから設定されるまでNoneを返す
+    # CONFIG_MANAGERがmain.pyで適切に登録されている場合はそれを返す
+    try:
+        # main.pyで既に登録されている場合はそれを使用
+        if container.is_registered("CONFIG_MANAGER"):
+            return container.resolve("CONFIG_MANAGER")
+    except Exception:
+        pass
+
+    # 登録されていない場合はNoneを返す（後でmain.pyから設定される）
+    return None
 
 
 def _create_contest_manager(container: Any) -> Any:

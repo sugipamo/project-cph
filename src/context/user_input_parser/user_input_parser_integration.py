@@ -46,7 +46,11 @@ class UserInputParserIntegration:
 
         # TypeSafeConfigNodeManagerで生成
         return self.config_manager.create_execution_config(
-            contest_name, problem_name, language, env_type, command_type
+            contest_name=contest_name,
+            problem_name=problem_name,
+            language=language,
+            env_type=env_type,
+            command_type=command_type
         )
 
     def create_execution_context_adapter(self,

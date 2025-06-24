@@ -1,9 +1,9 @@
 🧪 テスト実行...❌ テスト実行                                                                                  
 ✅ 構文チェック
-✅ インポート解決チェック
-✅ クイックスモークテスト
+❌ インポート解決チェック
+❌ クイックスモークテスト
 ✅ Ruff自動修正
-✅ コード品質チェック (ruff)
+❌ コード品質チェック (ruff)
 ✅ 未使用コード検出
 ✅ 命名規則チェック
 ❌ 依存性注入チェック
@@ -17,26 +17,48 @@
 ✅ Infrastructure->Operations依存関係チェック
 
 ⚠️  警告:
+   未使用コードが検出されました:
+     operations/interfaces/request_interfaces.py:46: unused variable 'working_directory' (100% confidence)
    失敗したテスト:
      ERROR scripts/test_runner/smoke_test.py
      ERROR scripts/test_runner/test_runner.py
+     ERROR tests/base/base_test.py
+     ERROR tests/cli/test_cli_app.py
+     ERROR tests/composite/test_composite_request.py
+     ERROR tests/composite/test_composite_structure.py
+     ERROR tests/di_factory/test_base_composite_request.py
+     ERROR tests/env_core/step/test_workflow.py
+     ERROR tests/file/test_file_request.py
+     ERROR tests/infrastructure/drivers/docker/test_docker_driver.py
+     ERROR tests/infrastructure/drivers/docker/test_docker_driver_with_tracking.py
+     ERROR tests/infrastructure/drivers/unified/test_unified_driver.py
+     ERROR tests/infrastructure/environment/test_environment_manager.py
+     ERROR tests/infrastructure/persistence/sqlite/test_contest_manager.py
+     ERROR tests/mock/test_mock_file_driver.py
+     ERROR tests/operations/factories/test_request_factory.py
+     ERROR tests/operations/requests/pure/test_pure_init.py
+     ERROR tests/operations/requests/pure/test_timing_calculator.py
+     ERROR tests/operations/test_base_request.py
+     ERROR tests/python/test_python_request.py
+     ERROR tests/shell/test_shell_driver.py
+     ERROR tests/workflow/test_workflow_execution_service.py
    カバレッジが低いファイル（80%未満）:
+     infrastructure/drivers/python/python_driver.py: 0%
+     infrastructure/mock/mock_file_driver.py: 0%
+     infrastructure/mock/mock_python_driver.py: 0%
+     infrastructure/mock/mock_shell_driver.py: 0%
      infrastructure/providers/mock_regex_provider.py: 0%
      infrastructure/providers/regex_provider.py: 0%
+     infrastructure/requests/pure/__init__.py: 0%
+     infrastructure/requests/pure/timing_calculator.py: 0%
      main.py: 0%
      operations/interfaces/regex_interface.py: 0%
      operations/interfaces/time_interface.py: 0%
-     workflow/step/dependency.py: 7%
-     context/resolver/config_resolver.py: 9%
-     context/utils/validation_utils.py: 9%
-     infrastructure/drivers/filesystem/path_operations.py: 9%
-     workflow/step/step_generation_service.py: 10%
-     infrastructure/persistence/sqlite/contest_manager.py: 12%
-     infrastructure/persistence/sqlite/repositories/system_config_repository.py: 13%
-     workflow/workflow_execution_service.py: 13%
-     operations/pure/string_formatters.py: 14%
-     cli/cli_app.py: 15%
-     ... 他92件
+     operations/results/docker_result.py: 0%
+     operations/results/shell_result.py: 0%
+     workflow/workflow_execution_service.py: 0%
+     workflow/workflow_result.py: 0%
+     ... 他98件
 💡 警告の対処方法:
     - 不要な警告の原因を特定し、コードを修正してください
     - 警告を無視せず、適切に対処することで品質を向上させます
@@ -50,6 +72,128 @@
       if result.is_failure(): handle_error(result.error) → フォールバック処理の代替
 ❌ 修正が必要な問題:
 
+インポートエラー:
+📋 修正方針:
+    モジュールの依存関係を確認してください
+    相対インポートではなく絶対インポートを使用してください
+    循環インポートが発生していないか確認してください
+    必要なパッケージがインストールされているか確認してください
+
+    インポート解決エラーが検出されました:
+
+その他のエラー:
+📋 修正方針:
+    エラーメッセージを詳細に確認してください
+    関連するドキュメントを参照してください
+    必要に応じてログを追加して問題を特定してください
+    CLAUDE.mdのルールに照らし合わせて適切な対応を行ってください
+
+    import src.operations.requests.base.base_request (モジュールが見つかりません)
+    import src.operations.requests.base.base_request (モジュールが見つかりません)
+    import src.operations.requests.file.file_op_type (モジュールが見つかりません)
+    import src.operations.requests.shell.shell_request (モジュールが見つかりません)
+    import src.operations.requests.file.file_op_type (モジュールが見つかりません)
+    import src.operations.requests.file.file_request (モジュールが見つかりません)
+    import src.operations.requests.file.file_op_type (モジュールが見つかりません)
+    import src.operations.requests.file.file_request (モジュールが見つかりません)
+    import src.operations.requests.composite.composite_request (モジュールが見つかりません)
+    Traceback (most recent call last):
+      File "<string>", line 1, in <module>
+      File "/home/cphelper/project-cph/src/main.py", line 3, in <module>
+        from src.cli.cli_app import main
+      File "/home/cphelper/project-cph/src/cli/cli_app.py", line 8, in <module>
+        from src.workflow.workflow_execution_service import WorkflowExecutionService
+      File "/home/cphelper/project-cph/src/workflow/__init__.py", line 7, in <module>
+        from .step import Step, StepContext, StepType
+      File "/home/cphelper/project-cph/src/workflow/step/__init__.py", line 25, in <module>
+        from .workflow import (
+      File "/home/cphelper/project-cph/src/workflow/step/workflow.py", line 5, in <module>
+        from src.operations.requests.composite.composite_request import CompositeRequest
+    ModuleNotFoundError: No module named 'src.operations.requests'
+    src/configuration/config_manager.py:32:58: N817 CamelCase `ConfigNode` imported as acronym `CN`
+       |
+    30 |         # 互換性維持: 段階的移行中は既存の実装を使用
+    31 |         try:
+    32 |             from src.context.resolver.config_node import ConfigNode as CN
+       |                                                          ^^^^^^^^^^^^^^^^ N817
+    33 |             from src.context.resolver.config_resolver import create_config_root_from_dict as ccrfd
+    34 |             from src.context.resolver.config_resolver import resolve_best as rb
+       |
+    
+    src/configuration/config_manager.py:38:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+       |
+    36 |             ConfigNode, create_config_root_from_dict, resolve_best, resolve_formatted_string = CN, ccrfd, rb, rfs
+    37 |         except ImportError as e:
+    38 |             raise RuntimeError(f"Required dependencies not available: {e}")
+       |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+       |
+    
+    Found 2 errors.
+
+コード品質エラー（Ruff）:
+📋 修正方針:
+    Ruffの指摘に従ってコードスタイルを統一してください
+    未使用のインポートや変数を削除してください
+    命名規則に従ってください（PEP 8準拠）
+    コードの可読性を向上させてください
+
+    src/configuration/config_manager.py:32:58: N817 CamelCase `ConfigNode` imported as acronym `CN`
+       |
+    30 |         # 互換性維持: 段階的移行中は既存の実装を使用
+    31 |         try:
+    32 |             from src.context.resolver.config_node import ConfigNode as CN
+       |                                                          ^^^^^^^^^^^^^^^^ N817
+    33 |             from src.context.resolver.config_resolver import create_config_root_from_dict as ccrfd
+    34 |             from src.context.resolver.config_resolver import resolve_best as rb
+       |
+    
+    src/configuration/config_manager.py:38:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+       |
+    36 |             ConfigNode, create_config_root_from_dict, resolve_best, resolve_formatted_string = CN, ccrfd, rb, rfs
+    37 |         except ImportError as e:
+    38 |             raise RuntimeError(f"Required dependencies not available: {e}")
+       |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+       |
+    
+    Found 24 errors (22 fixed, 2 remaining).
+
+クリーンアーキテクチャ違反:
+📋 修正方針:
+    【CLAUDE.mdルール適用】
+    レイヤー間の依存関係を正しい方向に修正してください
+    ドメイン層（operations）は外部依存を持ってはいけません
+    インフラストラクチャ層への直接依存を避け、依存性注入を使用してください
+    循環依存を解消してください
+    例: src.operations -> src.infrastructure (×) / main.pyからの注入 (○)
+
+    src.configuration.config_manager (configuration) -> src.context.resolver.config_node (context)
+    src.configuration.config_manager (configuration) -> src.infrastructure.di_container (infrastructure)
+    src.configuration.config_manager (configuration) -> src.context.resolver.config_resolver (context)
+    src.operations.factories.request_factory (operations) -> src.infrastructure.requests.shell.shell_request (infrastructure)
+    src.operations.factories.request_factory (operations) -> src.infrastructure.requests.base.base_request (infrastructure)
+    src.operations.factories.request_factory (operations) -> src.infrastructure.requests.python.python_request (infrastructure)
+    src.operations.factories.request_factory (operations) -> src.infrastructure.requests.file.file_op_type (infrastructure)
+    src.operations.factories.request_factory (operations) -> src.infrastructure.requests.file.file_request (infrastructure)
+    src.operations.factories.request_factory (operations) -> src.infrastructure.requests.docker.docker_request (infrastructure)
+    operations/factories/request_factory.py:4 ドメイン層でインフラストラクチャ層への直接依存: src.infrastructure.requests.base.base_request
+    operations/factories/request_factory.py:5 ドメイン層でインフラストラクチャ層への直接依存: src.infrastructure.requests.docker.docker_request
+    operations/factories/request_factory.py:6 ドメイン層でインフラストラクチャ層への直接依存: src.infrastructure.requests.file.file_op_type
+    operations/factories/request_factory.py:7 ドメイン層でインフラストラクチャ層への直接依存: src.infrastructure.requests.file.file_request
+    operations/factories/request_factory.py:8 ドメイン層でインフラストラクチャ層への直接依存: src.infrastructure.requests.python.python_request
+    operations/factories/request_factory.py:9 ドメイン層でインフラストラクチャ層への直接依存: src.infrastructure.requests.shell.shell_request
+    context/user_input_parser/user_input_parser.py:10 コメントアウトされたコード: # from src.operations.requests.file.file_op_type import FileOpType
+    context/user_input_parser/user_input_parser.py:11 コメントアウトされたコード: # from src.operations.requests.file.file_request import FileRequest
+    configuration/config_manager.py:32 configuration層からcontext層への依存: src.context.resolver.config_node
+    configuration/config_manager.py:33 configuration層からcontext層への依存: src.context.resolver.config_resolver
+    configuration/config_manager.py:34 configuration層からcontext層への依存: src.context.resolver.config_resolver
+    configuration/config_manager.py:35 configuration層からcontext層への依存: src.context.resolver.config_resolver
+    operations/factories/request_factory.py:4 operations層からinfrastructure層への直接依存: src.infrastructure.requests.base.base_request
+    operations/factories/request_factory.py:5 operations層からinfrastructure層への直接依存: src.infrastructure.requests.docker.docker_request
+    operations/factories/request_factory.py:6 operations層からinfrastructure層への直接依存: src.infrastructure.requests.file.file_op_type
+    operations/factories/request_factory.py:7 operations層からinfrastructure層への直接依存: src.infrastructure.requests.file.file_request
+    operations/factories/request_factory.py:8 operations層からinfrastructure層への直接依存: src.infrastructure.requests.python.python_request
+    operations/factories/request_factory.py:9 operations層からinfrastructure層への直接依存: src.infrastructure.requests.shell.shell_request
+
 副作用が検出されました:
 📋 修正方針:
     【CLAUDE.mdルール適用】
@@ -58,31 +202,13 @@
     ビジネスロジック層では副作用を避けてください
     ファイル操作、外部APIコール、データベースアクセスはInfrastructure層で実装してください
 
-    configuration/config_manager.py:112 副作用配置違反: ファイルI/O操作 - return self._command_type if hasattr(self, '_command_type') else 'open'
-    configuration/config_manager.py:565 副作用配置違反: ファイルI/O操作 - command_type: str = "open") -> TypedExecutionConfiguration:
-    context/user_input_parser/user_input_parser.py:10 副作用配置違反: ネットワーク操作 - from src.operations.requests.file.file_op_type import FileOpType
-    context/user_input_parser/user_input_parser.py:11 副作用配置違反: ネットワーク操作 - from src.operations.requests.file.file_request import FileRequest
-    operations/factories/request_factory.py:4 副作用配置違反: ネットワーク操作 - from src.operations.requests.base.base_request import OperationRequestFoundation
-    operations/factories/request_factory.py:5 副作用配置違反: ネットワーク操作 - from src.operations.requests.docker.docker_request import DockerOpType, DockerRequest
-    operations/factories/request_factory.py:6 副作用配置違反: ネットワーク操作 - from src.operations.requests.file.file_op_type import FileOpType
-    operations/factories/request_factory.py:7 副作用配置違反: ネットワーク操作 - from src.operations.requests.file.file_request import FileRequest
-    operations/factories/request_factory.py:8 副作用配置違反: ネットワーク操作 - from src.operations.requests.python.python_request import PythonRequest
-    operations/factories/request_factory.py:9 副作用配置違反: ネットワーク操作 - from src.operations.requests.shell.shell_request import ShellRequest
-    operations/requests/base/base_request.py:1 副作用配置違反: ネットワーク操作 - """Base class for all operation requests."""
-    operations/requests/base/base_request.py:10 副作用配置違反: ネットワーク操作 - """Foundation class for all operation requests.
-    operations/requests/composite/base_composite_request.py:6 副作用配置違反: ネットワーク操作 - from src.operations.requests.base.base_request import OperationRequestFoundation
-    operations/requests/composite/base_composite_request.py:10 副作用配置違反: ネットワーク操作 - """Foundation class for composite requests that contain multiple sub-requests.
-    operations/requests/composite/composite_request.py:6 副作用配置違反: ネットワーク操作 - from src.operations.requests.base.base_request import OperationRequestFoundation
-    operations/requests/composite/composite_request.py:7 副作用配置違反: ネットワーク操作 - from src.operations.requests.composite.base_composite_request import CompositeRequestFoundation
-    operations/requests/composite/composite_request.py:8 副作用配置違反: ネットワーク操作 - from src.operations.requests.composite.composite_structure import CompositeStructure
-    operations/requests/composite/composite_request.py:12 副作用配置違反: ネットワーク操作 - """Composite request that contains multiple sub-requests."""
-    operations/requests/composite/composite_request.py:29 副作用配置違反: ネットワーク操作 - @requests.setter
-    operations/requests/composite/composite_structure.py:6 副作用配置違反: ネットワーク操作 - from src.operations.requests.base.base_request import OperationRequestFoundation
-    operations/requests/docker/docker_request.py:8 副作用配置違反: ネットワーク操作 - from src.operations.requests.base.base_request import OperationRequestFoundation
-    operations/requests/docker/docker_request.py:9 副作用配置違反: ネットワーク操作 - from src.operations.requests.composite.composite_request import CompositeRequest
-    operations/requests/file/file_request.py:6 副作用配置違反: ネットワーク操作 - from src.operations.requests.base.base_request import OperationRequestFoundation
-    operations/requests/file/file_request.py:7 副作用配置違反: ネットワーク操作 - from src.operations.requests.file.file_op_type import FileOpType
-    operations/requests/python/python_request.py:6 副作用配置違反: ネットワーク操作 - from src.operations.requests.base.base_request import OperationRequestFoundation
-    operations/requests/shell/shell_request.py:7 副作用配置違反: ネットワーク操作 - from src.operations.requests.base.base_request import OperationRequestFoundation
+    configuration/config_manager.py:117 副作用配置違反: ファイルI/O操作 - return self._command_type if hasattr(self, '_command_type') else 'open'
+    configuration/config_manager.py:326 副作用配置違反: ファイルI/O操作 - with file_provider.open(Path(file_path), mode='r', encoding='utf-8') as f:
+    operations/factories/request_factory.py:4 副作用配置違反: ネットワーク操作 - from src.infrastructure.requests.base.base_request import OperationRequestFoundation
+    operations/factories/request_factory.py:5 副作用配置違反: ネットワーク操作 - from src.infrastructure.requests.docker.docker_request import DockerOpType, DockerRequest
+    operations/factories/request_factory.py:6 副作用配置違反: ネットワーク操作 - from src.infrastructure.requests.file.file_op_type import FileOpType
+    operations/factories/request_factory.py:7 副作用配置違反: ネットワーク操作 - from src.infrastructure.requests.file.file_request import FileRequest
+    operations/factories/request_factory.py:8 副作用配置違反: ネットワーク操作 - from src.infrastructure.requests.python.python_request import PythonRequest
+    operations/factories/request_factory.py:9 副作用配置違反: ネットワーク操作 - from src.infrastructure.requests.shell.shell_request import ShellRequest
     workflow/step/workflow.py:5 副作用配置違反: ネットワーク操作 - from src.operations.requests.composite.composite_request import CompositeRequest
     workflow/step/workflow.py:32 副作用配置違反: ネットワーク操作 - requests.append(request)

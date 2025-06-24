@@ -1,9 +1,9 @@
 """Base composite request class."""
 from typing import Optional
 
+from src.infrastructure.requests.base.base_request import OperationRequestFoundation
 from src.operations.constants.operation_type import OperationType
 from src.operations.constants.request_types import RequestType
-from src.operations.requests.base.base_request import OperationRequestFoundation
 
 
 class CompositeRequestFoundation(OperationRequestFoundation):

@@ -27,10 +27,15 @@ def _ensure_imports():
     """Ensure context imports are loaded when needed"""
     global ConfigNode, create_config_root_from_dict, resolve_best, resolve_formatted_string
     if ConfigNode is None:
-        # クリーンアーキテクチャ違反回避: configuration層からcontext層への依存を削除
-        # これらの機能は依存性注入で提供されるべきです
-        # 一時的にNoneを返すか、シンプルな代替実装を提供します
-        raise RuntimeError("ConfigNode関連の機能は依存性注入で提供されるべきです。クリーンアーキテクチャ違反を避けるため、configuration層からcontext層への直接依存を削除しました。")
+        # 互換性維持: 段階的移行中は既存の実装を使用
+        try:
+            from src.context.resolver.config_node import ConfigNode as CN
+            from src.context.resolver.config_resolver import create_config_root_from_dict as ccrfd
+            from src.context.resolver.config_resolver import resolve_best as rb
+            from src.context.resolver.config_resolver import resolve_formatted_string as rfs
+            ConfigNode, create_config_root_from_dict, resolve_best, resolve_formatted_string = CN, ccrfd, rb, rfs
+        except ImportError as e:
+            raise RuntimeError(f"Required dependencies not available: {e}")
 
 
 class TypedExecutionConfiguration:
@@ -163,19 +168,22 @@ class FileLoader:
     def _get_json_provider(self):
         """JSONプロバイダーを遅延取得"""
         if self._json_provider is None and self.infrastructure is not None:
-            self._json_provider = self.infrastructure.resolve('JSON_PROVIDER')
+            from src.infrastructure.di_container import DIKey
+            self._json_provider = self.infrastructure.resolve(DIKey.JSON_PROVIDER)
         return self._json_provider
 
     def _get_os_provider(self):
         """OSプロバイダーを遅延取得"""
         if self._os_provider is None and self.infrastructure is not None:
-            self._os_provider = self.infrastructure.resolve('OS_PROVIDER')
+            from src.infrastructure.di_container import DIKey
+            self._os_provider = self.infrastructure.resolve(DIKey.OS_PROVIDER)
         return self._os_provider
 
     def _get_file_provider(self):
         """ファイルプロバイダーを遅延取得"""
         if self._file_provider is None and self.infrastructure is not None:
-            self._file_provider = self.infrastructure.resolve('FILE_PROVIDER')
+            from src.infrastructure.di_container import DIKey
+            self._file_provider = self.infrastructure.resolve(DIKey.FILE_DRIVER)
         return self._file_provider
 
     def load_and_merge_configs(self, system_dir: str, env_dir: str, language: str) -> dict:
@@ -315,7 +323,8 @@ class FileLoader:
             if not file_provider.exists(Path(file_path)):
                 return {}
 
-            file_content = file_provider.read_text(Path(file_path), encoding='utf-8')
+            with file_provider.open(Path(file_path), mode='r', encoding='utf-8') as f:
+                file_content = f.read()
             if json_provider is not None:
                 return json_provider.loads(file_content)
             # エラー: JSONプロバイダーが注入されていません
@@ -561,8 +570,8 @@ class TypeSafeConfigNodeManager:
     def create_execution_config(self, contest_name: str,
                               problem_name: str,
                               language: str,
-                              env_type: str = "local",
-                              command_type: str = "open") -> TypedExecutionConfiguration:
+                              env_type: str,
+                              command_type: str) -> TypedExecutionConfiguration:
         """型安全なExecutionConfiguration生成
 
         統合対象:

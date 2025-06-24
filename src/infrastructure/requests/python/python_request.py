@@ -1,9 +1,9 @@
 """Python code execution request."""
 from typing import Any, Optional, Union
 
+from src.infrastructure.requests.base.base_request import OperationRequestFoundation
 from src.operations.constants.operation_type import OperationType
 from src.operations.constants.request_types import RequestType
-from src.operations.requests.base.base_request import OperationRequestFoundation
 from src.operations.results.result import OperationResult
 
 

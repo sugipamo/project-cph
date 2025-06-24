@@ -7,8 +7,8 @@ from src.context.resolver.config_resolver import create_config_root_from_dict, r
 
 # Infrastructure dependencies should be injected from main.py
 # 互換性維持: operations層への直接依存は依存性注入で解決
-from src.operations.requests.file.file_op_type import FileOpType
-from src.operations.requests.file.file_request import FileRequest
+# from src.operations.requests.file.file_op_type import FileOpType
+# from src.operations.requests.file.file_request import FileRequest
 
 CONTEST_ENV_DIR = "contest_env"
 
@@ -233,7 +233,7 @@ def _load_shared_config(base_dir: str, infrastructure):
     try:
         # 互換性維持: FileRequestの生成は依存性注入で解決
         file_request_factory = infrastructure.resolve("file_request_factory")
-        req = file_request_factory.create_file_request(FileOpType.READ, shared_path)
+        req = file_request_factory.create_file_request("READ", shared_path)
         result = req.execute_operation(driver=file_driver, logger=None)
         return json_provider.loads(result.content)
     except Exception as e:
@@ -250,7 +250,9 @@ def _load_shared_config(base_dir: str, infrastructure):
 def make_dockerfile_loader(infrastructure):
     def loader(path: str) -> str:
         file_driver = infrastructure.resolve("file_driver")
-        req = FileRequest(FileOpType.READ, path)
+        # 互換性維持: FileRequestの生成は依存性注入で解決
+        file_request_factory = infrastructure.resolve("file_request_factory")
+        req = file_request_factory.create_file_request("READ", path)
         result = req.execute_operation(driver=file_driver, logger=None)
         return result.content
     return loader

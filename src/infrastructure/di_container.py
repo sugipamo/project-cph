@@ -127,3 +127,11 @@ class DIContainer:
             True if registered, False otherwise
         """
         return key in self._providers or key in self._overrides
+
+    def get_request_factory(self):
+        """Get the request factory for workflow operations.
+
+        Returns:
+            RequestFactory instance for creating operation requests
+        """
+        return self.resolve("file_request_factory")

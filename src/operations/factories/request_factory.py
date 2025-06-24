@@ -1,12 +1,12 @@
 """Request factory for creating request objects from steps"""
 from typing import Any, Optional
 
-from src.operations.requests.base.base_request import OperationRequestFoundation
-from src.operations.requests.docker.docker_request import DockerOpType, DockerRequest
-from src.operations.requests.file.file_op_type import FileOpType
-from src.operations.requests.file.file_request import FileRequest
-from src.operations.requests.python.python_request import PythonRequest
-from src.operations.requests.shell.shell_request import ShellRequest
+from src.infrastructure.requests.base.base_request import OperationRequestFoundation
+from src.infrastructure.requests.docker.docker_request import DockerOpType, DockerRequest
+from src.infrastructure.requests.file.file_op_type import FileOpType
+from src.infrastructure.requests.file.file_request import FileRequest
+from src.infrastructure.requests.python.python_request import PythonRequest
+from src.infrastructure.requests.shell.shell_request import ShellRequest
 
 # Removed direct import of workflow layer - StepType will be passed as parameter
 
