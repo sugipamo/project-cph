@@ -6,6 +6,7 @@ from typing import List, Tuple, Set
 import shutil
 
 from models.check_result import CheckResult
+from di_container import DIContainer
 
 def filter_failures_by_path(results: List[Tuple[str, CheckResult]], path_prefix: str, exclude_rules: List[str]) -> List[Tuple[str, CheckResult]]:
     """
@@ -42,7 +43,7 @@ def filter_failures_by_path(results: List[Tuple[str, CheckResult]], path_prefix:
     
     return filtered_results
 
-def load_and_execute_rules(rules_dir: Path) -> List[Tuple[str, CheckResult]]:
+def load_and_execute_rules(rules_dir: Path, di_container: DIContainer) -> List[Tuple[str, CheckResult]]:
     """指定ディレクトリ配下の.pyファイルを再帰的に検索し、main関数があるものを実行する"""
     results = []
     
@@ -50,7 +51,7 @@ def load_and_execute_rules(rules_dir: Path) -> List[Tuple[str, CheckResult]]:
         print(f"エラー: {rules_dir} ディレクトリが存在しません")
         return results
     
-    for py_file in rules_dir.rglob("*.py"):
+    for py_file in sorted(rules_dir.rglob("*.py")):
         if py_file.name == "__init__.py":
             continue
             
@@ -68,7 +69,13 @@ def load_and_execute_rules(rules_dir: Path) -> List[Tuple[str, CheckResult]]:
             spec.loader.exec_module(module)
             
             if hasattr(module, 'main'):
-                result = module.main()
+                # main関数の引数チェック
+                import inspect
+                sig = inspect.signature(module.main)
+                if len(sig.parameters) > 0:
+                    result = module.main(di_container)
+                else:
+                    result = module.main()
                 if hasattr(result, '__class__') and result.__class__.__name__ == 'CheckResult':
                     results.append((module_name_with_path, result))
                 else:
@@ -139,15 +146,19 @@ def display_results(results: List[Tuple[str, CheckResult]]) -> None:
 def main():
     """メイン処理"""
     src_check_dir = Path(__file__).parent
-    rules_dir = src_check_dir / "rules"
-    auto_correct_dir = src_check_dir / "auto_correct"
+    src_processors_dir = src_check_dir / "src_processors"
+    transformers_dir = src_check_dir / "transformers"
     output_dir = src_check_dir / "src_check_result"
     
-    results = load_and_execute_rules(rules_dir)
+    # DIコンテナを初期化
+    di_container = DIContainer()
     
-    # auto_correctディレクトリのスクリプトも実行
-    auto_correct_results = load_and_execute_rules(auto_correct_dir)
-    results.extend(auto_correct_results)
+    # src_processorsディレクトリ全体を再帰的に読み込み
+    results = load_and_execute_rules(src_processors_dir, di_container)
+    
+    # transformersディレクトリのスクリプトも実行
+    transformer_results = load_and_execute_rules(transformers_dir, di_container)
+    results.extend(transformer_results)
     
     # src/以下のファイルのみをフィルタリング（テスト関連のルールは除外）
     test_related_rules = ["pytest_runner"]  # テストに関連するルールのリスト
