@@ -16,8 +16,8 @@ from .config_manager import (
     TypedExecutionConfiguration,
     TypeSafeConfigNodeManager,
 )
-from .execution_config import ExecutionPaths
-from .output_config import OutputConfig
+from .models.execution_config import ExecutionPaths
+from .models.output_config import OutputConfig
 
 __all__ = [
     'ExecutionPaths',
