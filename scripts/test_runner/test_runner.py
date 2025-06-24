@@ -15,7 +15,7 @@ from infrastructure.file_handler import FileHandler
 from infrastructure.logger import Logger
 
 
-class TestRunner:
+class Runner:
     def __init__(self, verbose: bool, logger: Logger, command_executor: CommandExecutor, file_handler: FileHandler):
         self.verbose = verbose
         self.logger = logger

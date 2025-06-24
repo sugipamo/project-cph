@@ -25,7 +25,7 @@ from quality_checks.ruff_checker import RuffChecker
 from quality_checks.syntax_checker import SyntaxChecker
 from quality_checks.type_checker import TypeChecker
 from test_runner.smoke_test import SmokeTest
-from test_runner.test_runner import TestRunner
+from test_runner.test_runner import Runner
 
 from infrastructure.command_executor import create_command_executor
 from infrastructure.file_handler import create_file_handler
@@ -43,7 +43,7 @@ class MainTestRunner:
         self.error_groups: Dict[str, List[str]] = defaultdict(list)
 
         # メインテストランナーの初期化
-        self.test_runner = TestRunner(
+        self.runner = Runner(
             verbose=verbose,
             logger=self.logger,
             command_executor=self.command_executor,
@@ -56,14 +56,14 @@ class MainTestRunner:
             self.file_handler,
             self.command_executor,
             silent_logger,
-            self.test_runner.issues,
+            self.runner.issues,
             verbose
         )
 
         self.syntax_checker = SyntaxChecker(
             self.file_handler,
             silent_logger,
-            self.test_runner.issues,
+            self.runner.issues,
             verbose
         )
 
@@ -71,70 +71,70 @@ class MainTestRunner:
             self.file_handler,
             self.command_executor,
             silent_logger,
-            self.test_runner.issues,
+            self.runner.issues,
             verbose
         )
 
         self.dead_code_checker = DeadCodeChecker(
             self.command_executor,
             silent_logger,
-            self.test_runner.warnings,
-            self.test_runner.issues
+            self.runner.warnings,
+            self.runner.issues
         )
 
         self.import_checker = ImportChecker(
             self.file_handler,
             silent_logger,
-            self.test_runner.issues,
+            self.runner.issues,
             verbose
         )
 
         self.naming_checker = NamingChecker(
             self.file_handler,
             silent_logger,
-            self.test_runner.warnings,
+            self.runner.warnings,
             verbose
         )
 
         self.smoke_test = SmokeTest(
             self.command_executor,
             silent_logger,
-            self.test_runner.issues,
+            self.runner.issues,
             verbose
         )
 
         self.dependency_injection_checker = DependencyInjectionChecker(
             self.file_handler,
             silent_logger,
-            self.test_runner.issues,
+            self.runner.issues,
             verbose
         )
 
         self.print_usage_checker = PrintUsageChecker(
             self.file_handler,
             silent_logger,
-            self.test_runner.issues,
+            self.runner.issues,
             verbose
         )
 
         self.infrastructure_duplication_checker = InfrastructureDuplicationChecker(
             self.file_handler,
             silent_logger,
-            self.test_runner.issues,
+            self.runner.issues,
             verbose
         )
 
         self.none_default_checker = NoneDefaultChecker(
             self.file_handler,
             silent_logger,
-            self.test_runner.issues,
+            self.runner.issues,
             verbose
         )
 
         self.fallback_checker = FallbackChecker(
             self.file_handler,
             silent_logger,
-            self.test_runner.issues,
+            self.runner.issues,
             verbose
         )
 
@@ -142,35 +142,35 @@ class MainTestRunner:
             self.file_handler,
             self.command_executor,
             silent_logger,
-            self.test_runner.issues,
+            self.runner.issues,
             verbose
         )
 
         self.getattr_checker = GetattrChecker(
             self.file_handler,
             silent_logger,
-            self.test_runner.issues,
+            self.runner.issues,
             verbose
         )
 
         self.clean_architecture_checker = CleanArchitectureChecker(
             self.file_handler,
             silent_logger,
-            self.test_runner.issues,
+            self.runner.issues,
             verbose
         )
 
         self.infrastructure_operations_checker = InfrastructureOperationsChecker(
             self.file_handler,
             silent_logger,
-            self.test_runner.issues,
+            self.runner.issues,
             verbose
         )
 
     def _categorize_errors(self):
         """エラーをエラー種類ごとにグループ化"""
         # issuesリストからエラーをカテゴリーごとに分類
-        for issue in self.test_runner.issues:
+        for issue in self.runner.issues:
             if "構文エラー" in issue:
                 self.error_groups["構文エラー"].append(issue)
             elif "インポートエラー" in issue or "インポート解決" in issue:
@@ -215,9 +215,9 @@ class MainTestRunner:
         self._print_check_status()
 
         # 警告を表示
-        if self.test_runner.warnings:
+        if self.runner.warnings:
             print("⚠️  警告:")
-            for warning in self.test_runner.warnings:
+            for warning in self.runner.warnings:
                 print(f"   {warning}")
             print("💡 警告の対処方法:")
             print("    - 不要な警告の原因を特定し、コードを修正してください")
@@ -232,8 +232,8 @@ class MainTestRunner:
             print("      if result.is_failure(): handle_error(result.error) → フォールバック処理の代替")
 
         # エラーがない場合
-        if not self.test_runner.issues:
-            if not self.test_runner.warnings:
+        if not self.runner.issues:
+            if not self.runner.warnings:
                 print("✅ 全ての品質チェックが正常に完了しました")
             return
 
@@ -272,22 +272,22 @@ class MainTestRunner:
         check_results = {}
 
         # デフォルトで実行される基本チェック
-        check_results["構文チェック"] = not any("構文エラー" in issue for issue in self.test_runner.issues)
-        check_results["インポート解決チェック"] = not any("インポート" in issue for issue in self.test_runner.issues)
-        check_results["クイックスモークテスト"] = not any("スモークテスト" in issue for issue in self.test_runner.issues)
+        check_results["構文チェック"] = not any("構文エラー" in issue for issue in self.runner.issues)
+        check_results["インポート解決チェック"] = not any("インポート" in issue for issue in self.runner.issues)
+        check_results["クイックスモークテスト"] = not any("スモークテスト" in issue for issue in self.runner.issues)
         check_results["Ruff自動修正"] = True  # 自動修正は常に実行
-        check_results["コード品質チェック (ruff)"] = not any("Ruff" in issue or "lint" in issue for issue in self.test_runner.issues)
-        check_results["未使用コード検出"] = not any("未使用コード" in issue for issue in self.test_runner.issues)
-        check_results["命名規則チェック"] = not any("命名規則" in issue for issue in self.test_runner.issues)
-        check_results["依存性注入チェック"] = not any("依存性注入" in issue or "副作用" in issue for issue in self.test_runner.issues)
-        check_results["print使用チェック"] = not any("print使用" in issue for issue in self.test_runner.issues)
-        check_results["Infrastructure重複生成チェック"] = not any("Infrastructure重複" in issue for issue in self.test_runner.issues)
-        check_results["None引数初期値チェック"] = not any("None引数" in issue or "デフォルト引数" in issue for issue in self.test_runner.issues)
-        check_results["フォールバック処理チェック"] = not any("フォールバック" in issue or "try文" in issue for issue in self.test_runner.issues)
-        check_results["dict.get()使用チェック"] = not any("dict.get()" in issue for issue in self.test_runner.issues)
-        check_results["getattr()デフォルト値使用チェック"] = not any("getattr()" in issue for issue in self.test_runner.issues)
-        check_results["クリーンアーキテクチャチェック"] = not any("クリーンアーキテクチャ違反" in issue for issue in self.test_runner.issues)
-        check_results["Infrastructure->Operations依存関係チェック"] = not any("Infrastructure->Operations依存関係違反" in issue for issue in self.test_runner.issues)
+        check_results["コード品質チェック (ruff)"] = not any("Ruff" in issue or "lint" in issue for issue in self.runner.issues)
+        check_results["未使用コード検出"] = not any("未使用コード" in issue for issue in self.runner.issues)
+        check_results["命名規則チェック"] = not any("命名規則" in issue for issue in self.runner.issues)
+        check_results["依存性注入チェック"] = not any("依存性注入" in issue or "副作用" in issue for issue in self.runner.issues)
+        check_results["print使用チェック"] = not any("print使用" in issue for issue in self.runner.issues)
+        check_results["Infrastructure重複生成チェック"] = not any("Infrastructure重複" in issue for issue in self.runner.issues)
+        check_results["None引数初期値チェック"] = not any("None引数" in issue or "デフォルト引数" in issue for issue in self.runner.issues)
+        check_results["フォールバック処理チェック"] = not any("フォールバック" in issue or "try文" in issue for issue in self.runner.issues)
+        check_results["dict.get()使用チェック"] = not any("dict.get()" in issue for issue in self.runner.issues)
+        check_results["getattr()デフォルト値使用チェック"] = not any("getattr()" in issue for issue in self.runner.issues)
+        check_results["クリーンアーキテクチャチェック"] = not any("クリーンアーキテクチャ違反" in issue for issue in self.runner.issues)
+        check_results["Infrastructure->Operations依存関係チェック"] = not any("Infrastructure->Operations依存関係違反" in issue for issue in self.runner.issues)
 
         # 各チェックの結果を表示
         for check_name, success in check_results.items():
@@ -415,7 +415,7 @@ class MainTestRunner:
         """全てのチェックを実行"""
         # カバレッジレポートのみモード
         if args.coverage_only:
-            self.test_runner.run_tests(args.pytest_args, False, args.html)
+            self.runner.run_tests(args.pytest_args, False, args.html)
             self._print_grouped_summary()
             return
 
@@ -473,7 +473,7 @@ class MainTestRunner:
             return
 
         # テスト実行
-        self.test_runner.run_tests(args.pytest_args, args.no_cov, args.html)
+        self.runner.run_tests(args.pytest_args, args.no_cov, args.html)
 
         # サマリー表示
         self._print_grouped_summary()

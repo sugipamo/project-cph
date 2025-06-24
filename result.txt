@@ -112,7 +112,7 @@
     111 |             else:
         |
     
-    Found 56 errors (51 fixed, 5 remaining).
+    Found 5 errors.
 
 その他のエラー:
 📋 修正方針:
