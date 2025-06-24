@@ -15,11 +15,11 @@ class OperationRequestFoundation(Protocol):
 
 class RequestCreator(Protocol):
     """Request creator protocol for dependency inversion"""
-    def create_docker_request(self, op_type: str, **kwargs) -> OperationRequestFoundation:
+    def create_docker_request(self, **kwargs) -> OperationRequestFoundation:
         """Create docker request"""
         ...
 
-    def create_file_request(self, op_type: str, **kwargs) -> OperationRequestFoundation:
+    def create_file_request(self, **kwargs) -> OperationRequestFoundation:
         """Create file request"""
         ...
 

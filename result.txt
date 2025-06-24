@@ -3,13 +3,13 @@
 ✅ インポート解決チェック
 ✅ クイックスモークテスト
 ✅ Ruff自動修正
-✅ コード品質チェック (ruff)
+❌ コード品質チェック (ruff)
 ✅ 未使用コード検出
 ✅ 命名規則チェック
 ❌ 依存性注入チェック
 ✅ print使用チェック
 ✅ Infrastructure重複生成チェック
-❌ None引数初期値チェック
+✅ None引数初期値チェック
 ✅ フォールバック処理チェック
 ✅ dict.get()使用チェック
 ✅ getattr()デフォルト値使用チェック
@@ -18,9 +18,9 @@
 
 ⚠️  警告:
    未使用コードが検出されました:
-     operations/factories/request_factory.py:18: unused variable 'op_type' (100% confidence)
-     operations/factories/request_factory.py:22: unused variable 'op_type' (100% confidence)
-     operations/interfaces/request_interfaces.py:46: unused variable 'working_directory' (100% confidence)
+     configuration/config_manager.py:200: unreachable code after 'raise' (100% confidence)
+     configuration/config_manager.py:209: unreachable code after 'raise' (100% confidence)
+     configuration/config_manager.py:218: unreachable code after 'raise' (100% confidence)
    失敗したテスト:
      ERROR scripts/test_runner/smoke_test.py
      ERROR scripts/test_runner/test_runner.py
@@ -54,31 +54,80 @@
       if result.is_failure(): handle_error(result.error) → フォールバック処理の代替
 ❌ 修正が必要な問題:
 
-デフォルト引数使用:
+コード品質エラー（Ruff）:
+📋 修正方針:
+    Ruffの指摘に従ってコードスタイルを統一してください
+    未使用のインポートや変数を削除してください
+    命名規則に従ってください（PEP 8準拠）
+    コードの可読性を向上させてください
+
+    src/configuration/config_manager.py:200:63: F821 Undefined name `DIKey`
+        |
+    198 | …         # DIKeyは外部から注入される必要があります
+    199 | …         raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
+    200 | …         self._json_provider = self.infrastructure.resolve(DIKey.JSON_PROVIDER)
+        |                                                             ^^^^^ F821
+    201 | …     return self._json_provider
+        |
+    
+    src/configuration/config_manager.py:209:61: F821 Undefined name `DIKey`
+        |
+    207 | …         # DIKeyは外部から注入される必要があります
+    208 | …         raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
+    209 | …         self._os_provider = self.infrastructure.resolve(DIKey.OS_PROVIDER)
+        |                                                           ^^^^^ F821
+    210 | …     return self._os_provider
+        |
+    
+    src/configuration/config_manager.py:218:63: F821 Undefined name `DIKey`
+        |
+    216 | …         # DIKeyは外部から注入される必要があります
+    217 | …         raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
+    218 | …         self._file_provider = self.infrastructure.resolve(DIKey.FILE_DRIVER)
+        |                                                             ^^^^^ F821
+    219 | …     return self._file_provider
+        |
+    
+    Found 4 errors (1 fixed, 3 remaining).
+
+副作用が検出されました:
 📋 修正方針:
     【CLAUDE.mdルール適用】
-    引数にデフォルト値を指定することは禁止されています
-    呼び出し元で値を用意することを徹底してください
-    全ての引数を明示的に渡すことで、バグの発見を容易にします
-    設定値が必要な場合は設定ファイルから取得してください
+    副作用はsrc/infrastructure、tests/infrastructureのみで許可されます
+    全ての副作用はmain.pyから依存性注入してください
+    ビジネスロジック層では副作用を避けてください
+    ファイル操作、外部APIコール、データベースアクセスはInfrastructure層で実装してください
 
-    None引数初期値が検出されました（CLAUDE.mdルール違反 - 呼び出し元で適切な値を用意）:
-      workflow/step/workflow.py:16 def __init__ - None引数初期値
-      workflow/step/workflow.py:16 def __init__ - None引数初期値
-      workflow/step/workflow.py:16 def __init__ - None引数初期値
-      workflow/step/workflow.py:20 def make_composite_request - None引数初期値
-      workflow/step/workflow.py:20 def make_composite_request - None引数初期値
-
-その他のエラー:
-📋 修正方針:
-    エラーメッセージを詳細に確認してください
-    関連するドキュメントを参照してください
-    必要に応じてログを追加して問題を特定してください
-    CLAUDE.mdのルールに照らし合わせて適切な対応を行ってください
-
-      configuration/config_manager.py:34 self.value = kwargs.get('value', {})
-      configuration/config_manager.py:35 self.key = kwargs.get('key', '')
-      configuration/config_manager.py:36 self.next_nodes = kwargs.get('next_nodes', [])
+    src/configuration/config_manager.py:200:63: F821 Undefined name `DIKey`
+        |
+    198 | …         # DIKeyは外部から注入される必要があります
+    199 | …         raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
+    200 | …         self._json_provider = self.infrastructure.resolve(DIKey.JSON_PROVIDER)
+        |                                                             ^^^^^ F821
+    201 | …     return self._json_provider
+        |
+    
+    src/configuration/config_manager.py:209:61: F821 Undefined name `DIKey`
+        |
+    207 | …         # DIKeyは外部から注入される必要があります
+    208 | …         raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
+    209 | …         self._os_provider = self.infrastructure.resolve(DIKey.OS_PROVIDER)
+        |                                                           ^^^^^ F821
+    210 | …     return self._os_provider
+        |
+    
+    src/configuration/config_manager.py:218:63: F821 Undefined name `DIKey`
+        |
+    216 | …         # DIKeyは外部から注入される必要があります
+    217 | …         raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
+    218 | …         self._file_provider = self.infrastructure.resolve(DIKey.FILE_DRIVER)
+        |                                                             ^^^^^ F821
+    219 | …     return self._file_provider
+        |
+    
+    Found 3 errors.
+    configuration/config_manager.py:360 副作用配置違反: ファイルI/O操作 - with file_provider.open(Path(file_path), mode='r', encoding='utf-8') as f:
+    workflow/step/workflow.py:47 副作用配置違反: ネットワーク操作 - requests.append(request)
 
 クリーンアーキテクチャ違反:
 📋 修正方針:
@@ -89,18 +138,5 @@
     循環依存を解消してください
     例: src.operations -> src.infrastructure (×) / main.pyからの注入 (○)
 
-    src.configuration.config_manager (configuration) -> src.infrastructure.di_container (infrastructure)
     context/user_input_parser/user_input_parser.py:10 コメントアウトされたコード: # from src.operations.requests.file.file_op_type import FileOpType
     context/user_input_parser/user_input_parser.py:11 コメントアウトされたコード: # from src.operations.requests.file.file_request import FileRequest
-
-副作用が検出されました:
-📋 修正方針:
-    【CLAUDE.mdルール適用】
-    副作用はsrc/infrastructure、tests/infrastructureのみで許可されます
-    全ての副作用はmain.pyから依存性注入してください
-    ビジネスロジック層では副作用を避けてください
-    ファイル操作、外部APIコール、データベースアクセスはInfrastructure層で実装してください
-
-    configuration/config_manager.py:129 副作用配置違反: ファイルI/O操作 - return self._command_type if hasattr(self, '_command_type') else 'open'
-    configuration/config_manager.py:338 副作用配置違反: ファイルI/O操作 - with file_provider.open(Path(file_path), mode='r', encoding='utf-8') as f:
-    workflow/step/workflow.py:45 副作用配置違反: ネットワーク操作 - requests.append(request)

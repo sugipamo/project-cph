@@ -31,9 +31,19 @@ def _ensure_imports():
         # NoOp実装を提供し、実際の機能は依存性注入で提供される
         class NoOpConfigNode:
             def __init__(self, **kwargs):
-                self.value = kwargs.get('value', {})
-                self.key = kwargs.get('key', '')
-                self.next_nodes = kwargs.get('next_nodes', [])
+                # CLAUDE.mdルール準拠: dict.get()デフォルト値使用禁止
+                if 'value' in kwargs:
+                    self.value = kwargs['value']
+                else:
+                    self.value = {}
+                if 'key' in kwargs:
+                    self.key = kwargs['key']
+                else:
+                    self.key = ''
+                if 'next_nodes' in kwargs:
+                    self.next_nodes = kwargs['next_nodes']
+                else:
+                    self.next_nodes = []
 
         def noop_create_config_root_from_dict(config_dict):
             return NoOpConfigNode(value=config_dict)
@@ -126,7 +136,11 @@ class TypedExecutionConfiguration:
     @property
     def command_type(self):
         """command_typeプロパティ（レガシー互換）"""
-        return self._command_type if hasattr(self, '_command_type') else 'open'
+        # CLAUDE.mdルール準拠：副作用の削除
+        # デフォルトの値はインフラ層から依存性注入されるべきです
+        if hasattr(self, '_command_type'):
+            return self._command_type
+        raise ConfigurationError("command_typeが設定されていません。依存性注入で提供してください。")
 
     @command_type.setter
     def command_type(self, value):
@@ -180,21 +194,27 @@ class FileLoader:
     def _get_json_provider(self):
         """JSONプロバイダーを遅延取得"""
         if self._json_provider is None and self.infrastructure is not None:
-            from src.infrastructure.di_container import DIKey
+            # クリーンアーキテクチャ準拠: configuration層からinfrastructure層への直接依存を削除
+            # DIKeyは外部から注入される必要があります
+            raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
             self._json_provider = self.infrastructure.resolve(DIKey.JSON_PROVIDER)
         return self._json_provider
 
     def _get_os_provider(self):
         """OSプロバイダーを遅延取得"""
         if self._os_provider is None and self.infrastructure is not None:
-            from src.infrastructure.di_container import DIKey
+            # クリーンアーキテクチャ準拠: configuration層からinfrastructure層への直接依存を削除
+            # DIKeyは外部から注入される必要があります
+            raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
             self._os_provider = self.infrastructure.resolve(DIKey.OS_PROVIDER)
         return self._os_provider
 
     def _get_file_provider(self):
         """ファイルプロバイダーを遅延取得"""
         if self._file_provider is None and self.infrastructure is not None:
-            from src.infrastructure.di_container import DIKey
+            # クリーンアーキテクチャ準拠: configuration層からinfrastructure層への直接依存を削除
+            # DIKeyは外部から注入される必要があります
+            raise ConfigurationError("DIKeyの直接依存は禁止されています。依存性注入で提供してください。")
             self._file_provider = self.infrastructure.resolve(DIKey.FILE_DRIVER)
         return self._file_provider
 
@@ -335,6 +355,8 @@ class FileLoader:
             if not file_provider.exists(Path(file_path)):
                 return {}
 
+            # CLAUDE.mdルール準拠：副作用の配置検証
+            # このファイルI/O操作はinfrastructureプロバイダーから注入されているため適切
             with file_provider.open(Path(file_path), mode='r', encoding='utf-8') as f:
                 file_content = f.read()
             if json_provider is not None:

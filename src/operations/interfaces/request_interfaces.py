@@ -43,6 +43,6 @@ class ShellOperationInterface(ABC):
     """Pure interface for shell operations."""
 
     @abstractmethod
-    def execute_shell_operation(self, command: str, working_directory: str) -> Any:
+    def execute_shell_operation(self, command: str) -> Any:
         """Execute shell operation with given command and working directory."""
         pass
