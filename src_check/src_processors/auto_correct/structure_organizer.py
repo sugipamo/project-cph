@@ -7,6 +7,10 @@ from dataclasses import dataclass, field
 from collections import defaultdict
 import shutil
 import re
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from src_check.models.check_result import CheckResult, FailureLocation
 
 
 @dataclass
@@ -462,22 +466,47 @@ class StructureOrganizer:
         return report
 
 
-def main(src_dir: str, dry_run: bool = True, report_path: Optional[str] = None) -> None:
+def main(di_container) -> CheckResult:
+    project_root = Path(__file__).parent.parent.parent.parent
+    src_dir = project_root / 'src'
+    report_path = project_root / 'structure_analysis_report.json'
+    dry_run = True
+    
     print(f"🔍 プロジェクト構造の解析を開始: {src_dir}")
     
-    organizer = StructureOrganizer(src_dir)
+    failure_locations = []
+    
+    organizer = StructureOrganizer(str(src_dir))
     organizer.analyze_project()
     
     if organizer.check_issues():
         print("\n❌ 循環参照または遅延インポートが検出されたため、処理を停止します。")
         print("これらの問題を解決してから再実行してください。")
         
+        # 循環参照と遅延インポートをfailure_locationsに追加
+        for ref1, ref2 in organizer.circular_references:
+            failure_locations.append(FailureLocation(
+                file_path=ref1,
+                line_number=0
+            ))
+        
+        for delayed in organizer.delayed_imports:
+            failure_locations.append(FailureLocation(
+                file_path=delayed[0],
+                line_number=0
+            ))
+        
         if report_path:
             report = organizer.generate_report()
             with open(report_path, 'w', encoding='utf-8') as f:
                 json.dump(report, f, ensure_ascii=False, indent=2)
             print(f"\n📊 詳細レポートを保存しました: {report_path}")
-        return
+            
+        return CheckResult(
+            failure_locations=failure_locations,
+            fix_policy="循環参照と遅延インポートを解決してください",
+            fix_example_code="# TYPE_CHECKINGブロック内でインポートを遅延させる例\nfrom typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n    from some_module import SomeClass"
+        )
     
     print("\n✅ 循環参照・遅延インポートは検出されませんでした。")
     
@@ -485,13 +514,25 @@ def main(src_dir: str, dry_run: bool = True, report_path: Optional[str] = None) 
     
     if not ideal_structure:
         print("✅ 現在の構造は適切です。変更の必要はありません。")
-        return
+        return CheckResult(
+            failure_locations=[],
+            fix_policy="現在の構造は適切です",
+            fix_example_code=None
+        )
     
     print(f"\n📐 {len(ideal_structure)}個のファイルの再配置が必要です。")
     
     move_steps = organizer.generate_move_plan(ideal_structure)
     
+    # dry_runモードで実行
     organizer.execute_reorganization(move_steps, dry_run=dry_run)
+    
+    # 移動が必要なファイルをfailure_locationsに追加
+    for step in move_steps:
+        failure_locations.append(FailureLocation(
+            file_path=str(step.source),
+            line_number=0
+        ))
     
     if report_path:
         report = organizer.generate_report()
@@ -509,6 +550,12 @@ def main(src_dir: str, dry_run: bool = True, report_path: Optional[str] = None) 
         print(f"\n📊 レポートを保存しました: {report_path}")
     
     print("\n✅ 処理が完了しました。")
+    
+    return CheckResult(
+        failure_locations=failure_locations,
+        fix_policy="ファイルの再配置により構造を改善します。詳細はレポートを参照してください。",
+        fix_example_code="# 適切なディレクトリ構造の例:\n# src/\n#   models/\n#   services/\n#   utils/"
+    )
 
 
 if __name__ == "__main__":
