@@ -42,36 +42,87 @@ class RollbackInfo:
 class LogicalFileOrganizer:
     """論理的な構造に基づいてファイルを自動整理するツール"""
     
-    # 論理的なカテゴリと対応するフォルダ名
-    LOGICAL_CATEGORIES = {
-        # データ層
-        'models': ['model', 'entity', 'schema', 'dto'],
-        'repositories': ['repository', 'repo', 'dao'],
+    # Clean Architecture準拠のカテゴリと対応するフォルダ名
+    CLEAN_ARCHITECTURE_CATEGORIES = {
+        # Domain Layer - ピュアなビジネスロジック、エンティティ、ドメインサービス
+        'domain': {
+            'patterns': ['config_node', 'base_request', 'base_composite_request', 'workflow', 'step', 'dependency'],
+            'keywords': ['entity', 'domain', 'value_object', 'aggregate', 'specification'],
+            'interfaces': ['interface', 'protocol'],
+            'description': 'Pure business logic entities and domain services'
+        },
         
-        # ビジネスロジック層
-        'services': ['service', 'business', 'logic'],
-        'use_cases': ['usecase', 'use_case', 'interactor'],
+        # Application Layer - アプリケーションサービス、ユースケース、オーケストレーション
+        'application': {
+            'patterns': ['workflow_execution_svc', 'step_generation_svc', 'config_loader_svc', 'contest_mgmt', 'debug_svc'],
+            'keywords': ['service', 'execution', 'orchestrat', 'usecase', 'application', 'coordinator'],
+            'suffixes': ['_svc', '_service', '_manager', '_coordinator'],
+            'description': 'Application services and use case orchestration'
+        },
         
-        # プレゼンテーション層
-        'controllers': ['controller', 'handler', 'endpoint'],
-        'views': ['view', 'template', 'ui'],
+        # Infrastructure Layer - 外部システム連携、永続化、デバイスドライバ
+        'infrastructure': {
+            'patterns': ['docker_driver', 'file_driver', 'shell_driver', 'sqlite_mgmt', 'persistence_driver',
+                        'local_file_driver', 'local_shell_driver', 'unified_driver', 'python_driver',
+                        'mock_docker_driver', 'mock_file_driver', 'mock_python_driver', 'mock_shell_driver',
+                        'docker_driver_with_tracking', 'fast_sqlite_mgmt'],
+            'keywords': ['driver', 'repository', 'adapter', 'connector', 'persistence', 'database', 'external'],
+            'suffixes': ['_driver', '_repository', '_adapter', '_connector', '_provider'],
+            'description': 'External system integration and data persistence'
+        },
         
-        # インフラ層
-        'infrastructure': ['infra', 'infrastructure', 'external'],
-        'adapters': ['adapter', 'connector', 'client'],
+        # Operations Layer - 横断的関心事、インターフェース、型定義
+        'operations': {
+            'patterns': ['docker_request', 'file_request', 'shell_request', 'python_request', 'composite_request',
+                        'docker_result', 'file_result', 'shell_result', 'workflow_result',
+                        'docker_interface', 'execution_interface', 'output_manager_interface',
+                        'composite_step_failure', 'error_converter', 'result_factory', 'request_factory'],
+            'keywords': ['request', 'result', 'interface', 'factory', 'converter', 'exception', 'error'],
+            'suffixes': ['_request', '_result', '_interface', '_factory', '_converter', '_exception'],
+            'description': 'Cross-cutting concerns and interface definitions'
+        },
         
-        # ユーティリティ
-        'utils': ['util', 'utils', 'helper', 'helpers'],
-        'validators': ['validator', 'validation', 'check'],
-        'formatters': ['formatter', 'format', 'serializer'],
-        'parsers': ['parser', 'parse', 'reader'],
+        # Presentation Layer - CLI、エントリーポイント、ユーザーインターフェース
+        'presentation': {
+            'patterns': ['cli_app', 'main', 'context_formatter', 'context_validator', 'user_input_parser'],
+            'keywords': ['cli', 'main', 'formatter', 'validator', 'parser', 'ui', 'presentation'],
+            'suffixes': ['_formatter', '_validator', '_parser', '_cli'],
+            'description': 'User interface and presentation logic'
+        },
         
-        # 設定・定数
-        'config': ['config', 'configuration', 'settings'],
-        'constants': ['constant', 'const', 'enum'],
+        # Utilities - ユーティリティ、ヘルパー、共通ロジック
+        'utils': {
+            'patterns': ['python_utils', 'path_operations', 'retry_decorator', 'time_adapter', 'sys_provider',
+                        'regex_provider', 'mock_regex_provider', 'format_info'],
+            'keywords': ['util', 'helper', 'common', 'shared', 'decorator', 'adapter', 'operations'],
+            'suffixes': ['_utils', '_helper', '_decorator', '_adapter', '_operations', '_provider'],
+            'description': 'Common utilities and helper functions'
+        },
         
-        # テスト
-        'tests': ['test', 'tests', 'spec'],
+        # Logging - ログ関連
+        'logging': {
+            'patterns': ['unified_logger', 'application_logger_adapter', 'workflow_logger_adapter', 'output_mgmt', 'mock_output_mgmt'],
+            'keywords': ['logger', 'logging', 'log', 'output'],
+            'suffixes': ['_logger', '_adapter', '_mgmt'],
+            'description': 'Logging and output management'
+        },
+        
+        # Configuration - 設定管理（ドメイン層とは分離）
+        'configuration': {
+            'patterns': ['configuration', 'di_config', 'build_infrastructure', 'environment_mgmt', 'system_config_loader', 'system_config_repository'],
+            'keywords': ['config', 'configuration', 'settings', 'environment', 'setup'],
+            'suffixes': ['_config', '_configuration', '_settings', '_loader'],
+            'description': 'Configuration management and system setup'
+        },
+        
+        # Data Access - データアクセス層
+        'data': {
+            'patterns': ['docker_container_repository', 'docker_image_repository', 'operation_repository',
+                        'session_repository', 'sqlite_state_repository', 'state_repository', 'base_repository'],
+            'keywords': ['repository', 'dao', 'data', 'persistence', 'storage'],
+            'suffixes': ['_repository', '_dao'],
+            'description': 'Data access and repository patterns'
+        }
     }
     
     def __init__(self, src_dir: str, dry_run: bool = True):
@@ -125,55 +176,265 @@ class LogicalFileOrganizer:
                     self.file_moves.append(move)
                     
     def _determine_logical_category(self, file_path: Path) -> Optional[str]:
-        """ファイルの論理的カテゴリを判定"""
+        """ファイルの論理的カテゴリをClean Architecture準拠で判定"""
         file_name = file_path.stem.lower()
+        parent_dir = file_path.parent.name.lower()
         
-        # ファイル名から判定
-        for category, patterns in self.LOGICAL_CATEGORIES.items():
-            for pattern in patterns:
-                if pattern in file_name:
-                    return category
-                    
-        # ファイル内容から判定
+        # 1. パターンマッチングによる判定（最優先）
+        for category, config in self.CLEAN_ARCHITECTURE_CATEGORIES.items():
+            if 'patterns' in config:
+                for pattern in config['patterns']:
+                    if pattern in file_name or pattern in parent_dir:
+                        return category
+        
+        # 2. ファイル名のサフィックスによる判定
+        for category, config in self.CLEAN_ARCHITECTURE_CATEGORIES.items():
+            if 'suffixes' in config:
+                for suffix in config['suffixes']:
+                    if file_name.endswith(suffix):
+                        return category
+        
+        # 3. キーワードによる判定
+        for category, config in self.CLEAN_ARCHITECTURE_CATEGORIES.items():
+            if 'keywords' in config:
+                for keyword in config['keywords']:
+                    if keyword in file_name:
+                        return category
+        
+        # 4. ファイル内容（クラス名、インポート）による判定
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
                 
+            # インポート文から依存関係を分析
+            category_from_imports = self._analyze_imports_for_category(content)
+            if category_from_imports:
+                return category_from_imports
+                
+            # クラス名から判定
             tree = ast.parse(content)
-            
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef):
                     class_name = node.name.lower()
-                    for category, patterns in self.LOGICAL_CATEGORIES.items():
-                        for pattern in patterns:
-                            if pattern in class_name:
-                                return category
-                                
+                    for category, config in self.CLEAN_ARCHITECTURE_CATEGORIES.items():
+                        if 'keywords' in config:
+                            for keyword in config['keywords']:
+                                if keyword in class_name:
+                                    return category
+                                    
         except Exception:
             pass
             
         return None
+    
+    def _analyze_imports_for_category(self, content: str) -> Optional[str]:
+        """インポート文から適切なカテゴリを推定（依存関係分析強化版）"""
+        lines = content.split('\n')
+        import_score = defaultdict(int)
+        
+        # 各カテゴリの特徴的なインポートパターンとスコア
+        category_patterns = {
+            'infrastructure': {
+                'patterns': ['docker', 'container', 'image', 'shell', 'subprocess', 'pathlib', 'shutil', 'os.path'],
+                'score': 3
+            },
+            'data': {
+                'patterns': ['sqlite', 'database', 'db', 'repository', 'persistence', 'storage'],
+                'score': 3
+            },
+            'logging': {
+                'patterns': ['logging', 'logger', 'log', 'output', 'debug'],
+                'score': 2
+            },
+            'presentation': {
+                'patterns': ['argparse', 'click', 'cli', 'command', 'sys.argv', 'main'],
+                'score': 3
+            },
+            'application': {
+                'patterns': ['workflow', 'execution', 'service', 'orchestrat', 'coordinator'],
+                'score': 2
+            },
+            'domain': {
+                'patterns': ['entity', 'value', 'specification', 'aggregate', 'domain'],
+                'score': 2
+            },
+            'operations': {
+                'patterns': ['request', 'result', 'interface', 'protocol', 'factory', 'abc'],
+                'score': 2
+            },
+            'utils': {
+                'patterns': ['util', 'helper', 'common', 'decorator', 'typing', 'datetime'],
+                'score': 1
+            }
+        }
+        
+        # インポート文を解析してスコアを計算
+        for line in lines:
+            line = line.strip()
+            if line.startswith(('import ', 'from ')):
+                line_lower = line.lower()
+                
+                # 各カテゴリのパターンをチェック
+                for category, config in category_patterns.items():
+                    for pattern in config['patterns']:
+                        if pattern in line_lower:
+                            import_score[category] += config['score']
+                
+                # 特別なパターン分析
+                if 'src.infrastructure' in line:
+                    import_score['application'] += 2  # infrastructureを使う→application層
+                elif 'src.operations' in line:
+                    import_score['application'] += 1  # operationsを使う→application層
+                elif 'abc.ABC' in line or 'Protocol' in line:
+                    import_score['operations'] += 2  # インターフェース定義
+                elif 'from typing import' in line:
+                    import_score['operations'] += 1  # 型定義
+        
+        # 最もスコアが高いカテゴリを返す
+        if import_score:
+            best_category = max(import_score.items(), key=lambda x: x[1])
+            if best_category[1] >= 2:  # 閾値以上のスコアがある場合のみ
+                return best_category[0]
+        
+        return None
+    
+    def _analyze_dependency_relationships(self, file_path: Path, content: str) -> dict:
+        """ファイルの依存関係を分析してより詳細な分類情報を取得"""
+        dependencies = {
+            'imports_infrastructure': False,
+            'imports_domain': False,
+            'imports_application': False,
+            'imports_operations': False,
+            'defines_interfaces': False,
+            'contains_business_logic': False,
+            'contains_external_calls': False
+        }
+        
+        lines = content.split('\n')
+        
+        # インポート分析
+        for line in lines:
+            line = line.strip()
+            if line.startswith(('import ', 'from ')):
+                if 'src.infrastructure' in line:
+                    dependencies['imports_infrastructure'] = True
+                elif 'src.domain' in line or 'src.core' in line:
+                    dependencies['imports_domain'] = True
+                elif 'src.application' in line:
+                    dependencies['imports_application'] = True
+                elif 'src.operations' in line:
+                    dependencies['imports_operations'] = True
+        
+        # コード内容分析
+        try:
+            tree = ast.parse(content)
+            for node in ast.walk(tree):
+                # インターフェース定義チェック
+                if isinstance(node, ast.ClassDef):
+                    for base in node.bases:
+                        if isinstance(base, ast.Name) and base.id in ['ABC', 'Protocol']:
+                            dependencies['defines_interfaces'] = True
+                        elif isinstance(base, ast.Attribute) and base.attr in ['ABC', 'Protocol']:
+                            dependencies['defines_interfaces'] = True
+                
+                # 外部呼び出しチェック
+                if isinstance(node, ast.Call):
+                    if isinstance(node.func, ast.Attribute):
+                        # subprocess, docker, shutil等の外部システム呼び出し
+                        if hasattr(node.func, 'value') and isinstance(node.func.value, ast.Name):
+                            if node.func.value.id in ['subprocess', 'docker', 'shutil', 'os']:
+                                dependencies['contains_external_calls'] = True
+        
+        except Exception:
+            pass
+        
+        return dependencies
         
     def _get_ideal_path(self, current_path: Path, category: str) -> Path:
-        """理想的なファイルパスを生成"""
-        # カテゴリ別のディレクトリ構造
+        """Clean Architecture準拠の理想的なファイルパスを生成"""
+        # Clean Architecture層別のディレクトリ構造
         category_dir = self.src_dir / category
         
-        # サブカテゴリを判定（例: user_repository.py → repositories/user/）
+        # サブカテゴリを判定（例: docker_driver.py → infrastructure/drivers/docker/）
         file_stem = current_path.stem
         
-        # パターンを削除してエンティティ名を抽出
-        entity_name = file_stem
-        for _, patterns in self.LOGICAL_CATEGORIES.items():
-            for pattern in patterns:
-                entity_name = entity_name.replace(f"_{pattern}", "").replace(f"{pattern}_", "")
+        # Clean Architecture固有のサブディレクトリ分類
+        if category == 'infrastructure':
+            if 'driver' in file_stem:
+                driver_type = self._extract_driver_type(file_stem)
+                return category_dir / 'drivers' / driver_type / current_path.name
+            elif 'repository' in file_stem:
+                return category_dir / 'repositories' / current_path.name
+            elif 'adapter' in file_stem:
+                return category_dir / 'adapters' / current_path.name
+            else:
+                return category_dir / current_path.name
                 
-        # 特定のカテゴリではエンティティ別のサブフォルダを作成
-        if category in ['repositories', 'services', 'controllers', 'models']:
-            if entity_name and entity_name != file_stem:
+        elif category == 'domain':
+            if 'entity' in file_stem or 'model' in file_stem:
+                return category_dir / 'entities' / current_path.name
+            elif 'service' in file_stem:
+                return category_dir / 'services' / current_path.name
+            elif 'value' in file_stem:
+                return category_dir / 'values' / current_path.name
+            else:
+                return category_dir / current_path.name
+                
+        elif category == 'application':
+            if 'service' in file_stem or 'svc' in file_stem:
+                return category_dir / 'services' / current_path.name
+            elif 'usecase' in file_stem:
+                return category_dir / 'usecases' / current_path.name
+            else:
+                return category_dir / current_path.name
+                
+        elif category == 'operations':
+            if 'request' in file_stem:
+                return category_dir / 'requests' / current_path.name
+            elif 'result' in file_stem:
+                return category_dir / 'results' / current_path.name
+            elif 'interface' in file_stem:
+                return category_dir / 'interfaces' / current_path.name
+            elif 'factory' in file_stem:
+                return category_dir / 'factories' / current_path.name
+            else:
+                return category_dir / current_path.name
+                
+        elif category == 'data':
+            entity_name = self._extract_entity_name(file_stem)
+            if entity_name:
                 return category_dir / entity_name / current_path.name
+            else:
+                return category_dir / current_path.name
                 
+        # その他のカテゴリはフラット構造
         return category_dir / current_path.name
+    
+    def _extract_driver_type(self, file_stem: str) -> str:
+        """ドライバータイプを抽出（例: docker_driver → docker）"""
+        if 'docker' in file_stem:
+            return 'docker'
+        elif 'file' in file_stem:
+            return 'file'
+        elif 'shell' in file_stem:
+            return 'shell'
+        elif 'python' in file_stem:
+            return 'python'
+        else:
+            return 'generic'
+    
+    def _extract_entity_name(self, file_stem: str) -> str:
+        """エンティティ名を抽出（例: user_repository → user）"""
+        # よくあるサフィックスを削除してエンティティ名を抽出
+        suffixes_to_remove = ['_repository', '_service', '_controller', '_model', '_entity']
+        entity_name = file_stem
+        
+        for suffix in suffixes_to_remove:
+            if entity_name.endswith(suffix):
+                entity_name = entity_name[:-len(suffix)]
+                break
+                
+        return entity_name if entity_name != file_stem else ""
         
     def _get_element_type(self, file_path: Path) -> str:
         """ファイルの要素タイプを判定"""
@@ -197,16 +458,54 @@ class LogicalFileOrganizer:
             return 'module'
             
     def _create_move_plan(self) -> None:
-        """移動計画を最適化"""
-        # 依存関係を考慮して移動順序を決定
-        self.file_moves.sort(key=lambda m: (
-            # まずユーティリティやモデルなど基盤となるものを移動
-            0 if m.destination.parts[-2] in ['utils', 'models', 'constants'] else 1,
-            # 次にリポジトリやサービス
-            0 if m.destination.parts[-2] in ['repositories', 'services'] else 1,
-            # 最後にコントローラーなど上位層
-            str(m.source)
-        ))
+        """Clean Architecture依存関係を考慮して移動計画を最適化"""
+        
+        # Clean Architecture層の移動優先度
+        # 依存関係の少ない層から移動（Domain → Application → Infrastructure → Presentation）
+        layer_priority = {
+            'domain': 0,      # 最優先：ピュアなビジネスロジック、依存関係なし
+            'utils': 1,       # ユーティリティ：多くの層から依存される
+            'operations': 2,  # 横断的関心事：インターフェース定義
+            'data': 3,        # データアクセス：ドメインに依存
+            'application': 4, # アプリケーション層：ドメインに依存
+            'logging': 5,     # ログ：多くの層から使用される
+            'configuration': 6, # 設定：アプリケーション層から使用
+            'infrastructure': 7, # インフラ層：外部システム連携
+            'presentation': 8  # プレゼンテーション層：最上位、他全てに依存
+        }
+        
+        def get_move_priority(move: FileMove) -> tuple:
+            # 移動先のカテゴリを特定
+            try:
+                # パスから層を抽出（例: src/domain/entities/config_node.py → domain）
+                path_parts = move.destination.parts
+                src_index = None
+                for i, part in enumerate(path_parts):
+                    if part == 'src':
+                        src_index = i
+                        break
+                
+                if src_index is not None and src_index + 1 < len(path_parts):
+                    layer = path_parts[src_index + 1]
+                    priority = layer_priority.get(layer, 99)
+                else:
+                    priority = 99
+                    
+            except Exception:
+                priority = 99
+            
+            return (priority, str(move.source))
+        
+        # 依存関係を考慮してソート
+        self.file_moves.sort(key=get_move_priority)
+        
+        # 移動計画の詳細ログ
+        print(f"📋 移動計画を依存関係順に整理しました:")
+        for i, move in enumerate(self.file_moves[:5]):  # 最初の5件のみ表示
+            layer = move.destination.parts[-2] if len(move.destination.parts) > 1 else 'unknown'
+            print(f"  {i+1}. {layer}: {move.source.name}")
+        if len(self.file_moves) > 5:
+            print(f"  ... 他 {len(self.file_moves) - 5} 件")
         
     def _create_import_update_plan(self) -> None:
         """インポート更新計画を作成"""
@@ -491,5 +790,5 @@ def main() -> CheckResult:
 
 if __name__ == "__main__":
     # テスト実行
-    result = main(None)
+    result = main()
     print(f"\nCheckResult: {len(result.failure_locations)} files need reorganization")
