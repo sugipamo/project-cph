@@ -339,9 +339,10 @@ class FileSplitter:
         return results
 
 def main() -> CheckResult:
+    import os
     project_root = Path(__file__).parent.parent.parent.parent
     src_dir = project_root / 'src'
-    dry_run = True
+    dry_run = bool(os.environ.get('SRC_CHECK_DRY_RUN', False))
     single_function = True
     single_class = True
     print(f'🔍 ファイル分割解析を開始: {src_dir}')

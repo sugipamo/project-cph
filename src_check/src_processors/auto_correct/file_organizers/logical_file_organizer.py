@@ -226,18 +226,35 @@ class LogicalFileOrganizer:
                 with open(py_file, 'r', encoding='utf-8') as f:
                     lines = f.readlines()
                     
-                for i, line in enumerate(lines):
-                    for old_module, new_module in move_mapping.items():
-                        if f"from {old_module}" in line or f"import {old_module}" in line:
-                            new_line = line.replace(old_module, new_module)
-                            
-                            update = ImportUpdate(
-                                file_path=py_file,
-                                old_import=line.strip(),
-                                new_import=new_line.strip(),
-                                line_number=i + 1
-                            )
-                            self.import_updates.append(update)
+                # ファイル全体で文字列置換（文字列リテラル内も含む）
+                content = ''.join(lines)
+                updated_content = content
+                has_updates = False
+                
+                for old_module, new_module in move_mapping.items():
+                    # インポート文の置換パターン
+                    patterns = [
+                        f"from {old_module} import",
+                        f"from {old_module}.",  # from src.configuration.config_manager import
+                        f"import {old_module}",
+                        f"'{old_module}'",      # 文字列リテラル内も対象
+                        f'"{old_module}"',      # ダブルクォート文字列も対象
+                    ]
+                    
+                    for pattern in patterns:
+                        if pattern in updated_content:
+                            replacement = pattern.replace(old_module, new_module)
+                            updated_content = updated_content.replace(pattern, replacement)
+                            has_updates = True
+                
+                if has_updates:
+                    update = ImportUpdate(
+                        file_path=py_file,
+                        old_import=content,
+                        new_import=updated_content,
+                        line_number=0
+                    )
+                    self.import_updates.append(update)
                             
             except Exception as e:
                 print(f"⚠️  {py_file}の解析中にエラー: {e}")
@@ -332,7 +349,10 @@ class LogicalFileOrganizer:
                     
                 # インポートを更新
                 for update in updates:
-                    content = content.replace(update.old_import, update.new_import)
+                    if update.line_number == 0:  # ファイル全体の置換
+                        content = update.new_import
+                    else:  # 行単位の置換
+                        content = content.replace(update.old_import, update.new_import)
                     
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(content)
@@ -465,8 +485,10 @@ def main() -> CheckResult:
     
     print(f"🔍 論理的ファイル整理解析を開始: {src_dir}")
     
-    # Dry runモードで実行
-    organizer = LogicalFileOrganizer(str(src_dir), dry_run=True)
+    # DRY_RUNモードをチェック
+    import os
+    dry_run = bool(os.environ.get('SRC_CHECK_DRY_RUN', False))
+    organizer = LogicalFileOrganizer(str(src_dir), dry_run=dry_run)
     file_moves, import_updates = organizer.organize()
     
     failure_locations = []

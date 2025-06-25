@@ -81,7 +81,7 @@ def main() -> CheckResult:
                 violations = check_file(py_file)
                 all_violations.extend(violations)
     fix_policy = '【CLAUDE.mdルール適用】\n引数にデフォルト値を指定することは禁止されています。\n呼び出し元で値を用意することを徹底してください。\n全ての引数を明示的に渡すことで、バグの発見を容易にします。\n設定値が必要な場合は設定ファイルから取得してください。'
-    fix_example = "# Before - デフォルト引数の使用\ndef process_data(data, timeout=30, retry_count=3, print=None):\n    if print is None:\n        print = get_default_print()\n    # 処理\n    \n# After - 明示的な引数\ndef process_data(data, timeout, retry_count, print):\n    # 処理\n\n# 呼び出し元での値の準備\nfrom src.configuration.config_manager import ConfigManager\n\nconfig_manager = ConfigManager(file_handler)\ntimeout = config_manager.get_value('processing.timeout')\nretry_count = config_manager.get_value('processing.retry_count')\nprint = create_print(verbose=True, silent=False, system_operations=None)\n\nprocess_data(data, timeout, retry_count, print)"
+    fix_example = "# Before - デフォルト引数の使用\ndef process_data(data, timeout=30, retry_count=3, print=None):\n    if print is None:\n        print = get_default_print()\n    # 処理\n    \n# After - 明示的な引数\ndef process_data(data, timeout, retry_count, print):\n    # 処理\n\n# 呼び出し元での値の準備\nfrom src.config.config_manager import ConfigManager\n\nconfig_manager = ConfigManager(file_handler)\ntimeout = config_manager.get_value('processing.timeout')\nretry_count = config_manager.get_value('processing.retry_count')\nprint = create_print(verbose=True, silent=False, system_operations=None)\n\nprocess_data(data, timeout, retry_count, print)"
     return CheckResult(failure_locations=all_violations, fix_policy=fix_policy, fix_example_code=fix_example)
 if __name__ == '__main__':
     result = main()

@@ -1,0 +1,27 @@
+{
+  "timestamp": "20250625_111432",
+  "backup_dir": "/home/cphelper/project-cph/.file_org_backup_20250625_111432",
+  "moves": [
+    {
+      "source": "/home/cphelper/project-cph/src/configuration/config_node/config_node.py",
+      "destination": "/home/cphelper/project-cph/src/config/config_node.py",
+      "reason": "configカテゴリに属するため"
+    },
+    {
+      "source": "/home/cphelper/project-cph/src/configuration/config_node/config_node_logic.py",
+      "destination": "/home/cphelper/project-cph/src/services/node/config_node_logic.py",
+      "reason": "servicesカテゴリに属するため"
+    },
+    {
+      "source": "/home/cphelper/project-cph/src/configuration/config_node/config_resolver.py",
+      "destination": "/home/cphelper/project-cph/src/config/config_resolver.py",
+      "reason": "configカテゴリに属するため"
+    },
+    {
+      "source": "/home/cphelper/project-cph/src/configuration/config_node/protocols.py",
+      "destination": "/home/cphelper/project-cph/src/config/protocols.py",
+      "reason": "configカテゴリに属するため"
+    }
+  ],
+  "import_updates": []
+}

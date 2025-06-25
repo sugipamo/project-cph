@@ -238,7 +238,7 @@ class StructureOrganizer:
         elif 'presentation' in path_str or 'api' in path_str:
             return 'presentation'
         elif 'configuration' in path_str or 'config' in path_str:
-            return 'configuration'
+            return 'config'
         elif 'utils' in path_str or 'helpers' in path_str:
             return 'shared'
         else:
@@ -254,7 +254,7 @@ class StructureOrganizer:
     def _get_ideal_path(self, current_path: Path, module_type: str, analysis: FileAnalysis) -> Path:
         relative = current_path.relative_to(self.src_dir)
         file_name = relative.name
-        type_to_dir = {'infrastructure': 'infrastructure', 'domain': 'domain', 'application': 'application', 'presentation': 'presentation', 'configuration': 'configuration', 'shared': 'shared'}
+        type_to_dir = {'infrastructure': 'infrastructure', 'domain': 'domain', 'application': 'application', 'presentation': 'presentation', 'config': 'config', 'shared': 'shared'}
         ideal_dir = self.src_dir / type_to_dir[module_type]
         if len(relative.parts) > 1:
             sub_path = Path(*relative.parts[1:-1])
@@ -279,8 +279,8 @@ class StructureOrganizer:
             return 'ドメインモデルをdomainレイヤーに移動'
         elif 'application' in dest_parts:
             return 'アプリケーションサービスをapplicationレイヤーに移動'
-        elif 'configuration' in dest_parts:
-            return '設定関連モジュールをconfigurationに移動'
+        elif 'config' in dest_parts:
+            return '設定関連モジュールをconfigに移動'
         else:
             return f'{source.name}を適切なレイヤーに移動'
 
@@ -348,10 +348,11 @@ class StructureOrganizer:
         return report
 
 def main() -> CheckResult:
+    import os
     project_root = Path(__file__).parent.parent.parent.parent
     src_dir = project_root / 'src'
     report_path = project_root / 'structure_analysis_report.json'
-    dry_run = True
+    dry_run = bool(os.environ.get('SRC_CHECK_DRY_RUN', False))
     print(f'🔍 プロジェクト構造の解析を開始: {src_dir}')
     failure_locations = []
     organizer = StructureOrganizer(str(src_dir))

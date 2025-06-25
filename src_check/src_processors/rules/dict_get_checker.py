@@ -65,8 +65,8 @@ def main() -> CheckResult:
                     continue
                 violations = check_file(py_file)
                 all_violations.extend(violations)
-    fix_policy = '【CLAUDE.mdルール適用】\ndict.get()の使用は禁止されています。\n設定値は明示的に設定ファイル（{setting}.json）に定義してください。\nsrc/configuration/readme.mdの設定取得方法に従ってください。\nデフォルト値ではなく、適切な設定管理を実装してください。'
-    fix_example = '# Before - dict.get()の使用\nconfig = load_config()\ntimeout = config.get(\'timeout\', 30)  # デフォルト値を使用\nretry_count = config.get(\'retry_count\', 3)\n\n# After - 明示的な設定管理\n# 1. 設定ファイルに明示的に定義 (config.json)\n{\n    "timeout": 30,\n    "retry_count": 3\n}\n\n# 2. ConfigManagerを使用して取得\nfrom src.configuration.config_manager import ConfigManager\n\nconfig_manager = ConfigManager(file_handler)\ntimeout = config_manager.get_value(\'timeout\')  # 設定が存在しない場合はエラー\nretry_count = config_manager.get_value(\'retry_count\')\n\n# 3. 存在チェックが必要な場合\nif \'optional_setting\' in config:\n    value = config[\'optional_setting\']\nelse:\n    # デフォルト値ではなく、適切なエラーハンドリング\n    raise ConfigurationError("optional_settingが設定されていません")'
+    fix_policy = '【CLAUDE.mdルール適用】\ndict.get()の使用は禁止されています。\n設定値は明示的に設定ファイル（{setting}.json）に定義してください。\nsrc/config/readme.mdの設定取得方法に従ってください。\nデフォルト値ではなく、適切な設定管理を実装してください。'
+    fix_example = '# Before - dict.get()の使用\nconfig = load_config()\ntimeout = config.get(\'timeout\', 30)  # デフォルト値を使用\nretry_count = config.get(\'retry_count\', 3)\n\n# After - 明示的な設定管理\n# 1. 設定ファイルに明示的に定義 (config.json)\n{\n    "timeout": 30,\n    "retry_count": 3\n}\n\n# 2. ConfigManagerを使用して取得\nfrom src.config.config_manager import ConfigManager\n\nconfig_manager = ConfigManager(file_handler)\ntimeout = config_manager.get_value(\'timeout\')  # 設定が存在しない場合はエラー\nretry_count = config_manager.get_value(\'retry_count\')\n\n# 3. 存在チェックが必要な場合\nif \'optional_setting\' in config:\n    value = config[\'optional_setting\']\nelse:\n    # デフォルト値ではなく、適切なエラーハンドリング\n    raise ConfigurationError("optional_settingが設定されていません")'
     return CheckResult(failure_locations=all_violations, fix_policy=fix_policy, fix_example_code=fix_example)
 if __name__ == '__main__':
     result = main()

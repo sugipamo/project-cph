@@ -27,9 +27,10 @@ def main() -> CheckResult:
     src_dir = project_root / 'src'
     
     # 設定を取得
+    import os
     config = {
         'mode': 'both',  # 'args', 'kwargs', 'both'
-        'dry_run': True
+        'dry_run': bool(os.environ.get('SRC_CHECK_DRY_RUN', False))
     }
     
     print(f"🔍 引数処理解析を開始: {src_dir}")
