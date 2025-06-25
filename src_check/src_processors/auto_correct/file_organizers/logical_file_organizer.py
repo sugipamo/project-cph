@@ -274,26 +274,23 @@ class LogicalFileOrganizer:
         """実際にファイルを移動"""
         print("\n🚀 ファイル整理を実行中...")
         
-        # バックアップディレクトリを作成
+        # ログディレクトリを作成（バックアップは無効化）
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_dir = self.src_dir.parent / f".file_org_backup_{timestamp}"
-        backup_dir.mkdir(exist_ok=True)
+        log_dir = Path("src_check/auto_correct_log")
+        log_dir.mkdir(exist_ok=True)
         
-        # ロールバック情報を初期化
+        # ロールバック情報を初期化（ログのみ）
         self.rollback_info = RollbackInfo(
             timestamp=timestamp,
             moves=[],
             import_updates=[],
-            backup_dir=backup_dir
+            backup_dir=log_dir  # ログディレクトリとして使用
         )
         
         # ファイルを移動
         for move in self.file_moves:
             try:
-                # バックアップ
-                backup_path = backup_dir / move.source.relative_to(self.src_dir)
-                backup_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(move.source, backup_path)
+                # バックアップは無効化（Gitで管理）
                 
                 # 移動先ディレクトリを作成
                 move.destination.parent.mkdir(parents=True, exist_ok=True)
@@ -341,11 +338,7 @@ class LogicalFileOrganizer:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
                     
-                # バックアップ
-                if self.rollback_info:
-                    backup_path = self.rollback_info.backup_dir / file_path.relative_to(self.src_dir)
-                    backup_path.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(file_path, backup_path)
+                # バックアップは無効化（Gitで管理）
                     
                 # インポートを更新
                 for update in updates:
@@ -378,11 +371,12 @@ class LogicalFileOrganizer:
     def _save_rollback_info(self) -> None:
         """ロールバック情報を保存"""
         if self.rollback_info:
-            rollback_file = self.src_dir.parent / f".rollback_{self.rollback_info.timestamp}.json"
+            rollback_file = self.rollback_info.backup_dir / f"operation_log_{self.rollback_info.timestamp}.json"
             
             data = {
                 'timestamp': self.rollback_info.timestamp,
-                'backup_dir': str(self.rollback_info.backup_dir),
+                'log_dir': str(self.rollback_info.backup_dir),
+                'note': 'バックアップは無効化されています。変更はGitで管理してください。',
                 'moves': [
                     {
                         'source': str(m.source),
@@ -438,45 +432,12 @@ class LogicalFileOrganizer:
                 print(f"  - {file_path}: {count}箇所")
                 
     def rollback(self, rollback_file: Path) -> bool:
-        """整理をロールバック"""
-        print(f"\n🔄 ロールバックを実行: {rollback_file}")
-        
-        try:
-            with open(rollback_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                
-            backup_dir = Path(data['backup_dir'])
-            
-            # ファイルを元に戻す
-            for move_data in reversed(data['moves']):
-                src = Path(move_data['destination'])
-                dst = Path(move_data['source'])
-                
-                if src.exists():
-                    dst.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.move(str(src), str(dst))
-                    print(f"✅ 復元: {dst}")
-                    
-            # バックアップから元のファイルを復元
-            for root, dirs, files in os.walk(backup_dir):
-                for file in files:
-                    backup_file = Path(root) / file
-                    relative = backup_file.relative_to(backup_dir)
-                    original = self.src_dir / relative
-                    
-                    original.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(backup_file, original)
-                    print(f"✅ 復元: {original}")
-                    
-            # バックアップディレクトリを削除
-            shutil.rmtree(backup_dir)
-            
-            print("\n✅ ロールバック完了")
-            return True
-            
-        except Exception as e:
-            print(f"❌ ロールバック失敗: {e}")
-            return False
+        """整理をロールバック（無効化済み）"""
+        print(f"\n❌ ロールバック機能は無効化されています。")
+        print(f"    変更はGitで管理してください。")
+        print(f"    git reset --hard HEAD または git checkout でファイルを復元してください。")
+        print(f"    ログファイル: {rollback_file}")
+        return False
 
 
 def main() -> CheckResult:

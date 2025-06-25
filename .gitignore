@@ -17,3 +17,6 @@ workspace/
 
 claude_api_key.txt
 claude-desktop-debian/
+
+# Auto-correct logs
+src_check/auto_correct_log/
