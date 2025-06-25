@@ -11,11 +11,12 @@ sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 from src_check.models.check_result import CheckResult, FailureLocation
 
 # 同じディレクトリのモジュールをインポート
-from .args_remover import ArgsRemover
-from .kwargs_remover import KwargsRemover
+sys.path.append(str(Path(__file__).parent))
+from args_remover import ArgsRemover
+from kwargs_remover import KwargsRemover
 
 
-def main(di_container) -> CheckResult:
+def main(di_container, logger=print) -> CheckResult:
     """
     引数処理のメインエントリーポイント
     
