@@ -46,7 +46,7 @@ def run_pytest() -> tuple[List[FailureLocation], str]:
     except Exception as e:
         return ([], f'pytest実行エラー: {str(e)}')
 
-def main(di_container) -> CheckResult:
+def main() -> CheckResult:
     """
     メインエントリーポイント
     

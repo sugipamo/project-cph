@@ -38,7 +38,7 @@ def process_directory(directory: Path, adder: TypeHintAdder) -> List[FailureLoca
             continue
     return processed_files
 
-def main(di_container) -> CheckResult:
+def main() -> CheckResult:
     """
     型ヒント自動修正のメインエントリーポイント
     

@@ -131,7 +131,7 @@ def scan_directory(directory: str) -> List[str]:
                 python_files.append(os.path.join(root, file))
     return python_files
 
-def main(di_container, print) -> CheckResult:
+def main() -> CheckResult:
     """メイン処理"""
     parser = argparse.ArgumentParser(description='ローカルインポート修正スクリプト')
     parser.add_argument('--directory', '-d', default='src', help='スキャン対象ディレクトリ (デフォルト: src)')

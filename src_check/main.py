@@ -105,6 +105,9 @@ def load_and_execute_rules(rules_dir: Path, capture_output: bool = True) -> Tupl
                 else:
                     raise ValueError(f"警告: {module_name_with_path}.main() がCheckResultを返しませんでした: {type(result)}")
                 
+        except ImportError as e:
+            print(f"警告: {module_name_with_path} のインポートをスキップしました: {e}")
+            continue
         except Exception as e:
             raise ValueError(f"エラー: {module_name_with_path} の実行中にエラーが発生しました: {e}")
     

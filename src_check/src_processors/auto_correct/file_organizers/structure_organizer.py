@@ -347,7 +347,7 @@ class StructureOrganizer:
             report['file_details'][str(file_path)] = {'classes': len(analysis.classes), 'functions': len(analysis.functions), 'imports': len(analysis.imports), 'has_type_checking': analysis.has_type_checking_import}
         return report
 
-def main(di_container, print) -> CheckResult:
+def main() -> CheckResult:
     project_root = Path(__file__).parent.parent.parent.parent
     src_dir = project_root / 'src'
     report_path = project_root / 'structure_analysis_report.json'

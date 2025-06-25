@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Set, Tuple, Optional, Any
 from dataclasses import dataclass, field
 from collections import defaultdict
-import networkx as nx
+# networkxの代わりに自力実装のgraphクラスを使用
 from itertools import combinations
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
@@ -43,7 +43,7 @@ class SmartOrganizer:
     def __init__(self, src_dir: str):
         self.src_dir = Path(src_dir)
         self.code_elements: Dict[str, CodeElement] = {}
-        self.dependency_graph = nx.DiGraph()
+        self.dependency_graph = SimpleDiGraph()
         self.file_contents: Dict[Path, str] = {}
         
     def analyze_codebase(self) -> None:
@@ -242,7 +242,7 @@ class SmartOrganizer:
         return issues
 
 
-def main(di_container) -> CheckResult:
+def main() -> CheckResult:
     project_root = Path(__file__).parent.parent.parent.parent
     src_dir = project_root / 'src'
     

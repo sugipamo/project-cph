@@ -83,7 +83,7 @@ def check_file(file_path: Path) -> List[FailureLocation]:
     except Exception:
         return []
 
-def main(di_container) -> CheckResult:
+def main() -> CheckResult:
     """
     メインエントリーポイント
     

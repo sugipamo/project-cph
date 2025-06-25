@@ -10,18 +10,14 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 from src_check.models.check_result import CheckResult, FailureLocation
 
-# 親ディレクトリのモジュールをインポート
-sys.path.append(str(Path(__file__).parent.parent))
+# 同じディレクトリのモジュールをインポート
+sys.path.append(str(Path(__file__).parent))
 from local_import_fixer import LocalImportFixer
 
 
-def main(di_container) -> CheckResult:
+def main() -> CheckResult:
     """
     インポート修正のメインエントリーポイント
-    
-    Args:
-        di_container: DIコンテナ
-        print: ロガー関数
         
     Returns:
         CheckResult: チェック結果

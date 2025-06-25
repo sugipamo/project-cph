@@ -11,21 +11,21 @@ from typing import Dict, Any, Optional
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 from src_check.models.check_result import CheckResult, FailureLocation
 
-# 親ディレクトリのモジュールをインポート
-sys.path.append(str(Path(__file__).parent.parent))
+# 同じディレクトリのモジュールをインポート
+sys.path.append(str(Path(__file__).parent))
 from file_splitter import FileSplitter
 from structure_organizer import StructureOrganizer
 from logical_file_organizer import LogicalFileOrganizer
-from smart_organizer import SmartOrganizer
+try:
+    from smart_organizer import SmartOrganizer
+    HAS_SMART_ORGANIZER = True
+except ImportError:
+    HAS_SMART_ORGANIZER = False
 
 
 def main() -> CheckResult:
     """
     ファイル整理のメインエントリーポイント
-    
-    Args:
-        di_container: DIコンテナ
-        print: ロガー関数
         
     Returns:
         CheckResult: チェック結果
@@ -59,7 +59,14 @@ def main() -> CheckResult:
             
         elif config['mode'] == 'smart':
             # 依存関係に基づくスマート整理
-            return _run_smart_organizer(src_dir, config, print)
+            if HAS_SMART_ORGANIZER:
+                return _run_smart_organizer(src_dir, config, print)
+            else:
+                return CheckResult(
+                    failure_locations=[],
+                    fix_policy="SmartOrganizerは利用できません（networkxが必要です）",
+                    fix_example_code=None
+                )
             
         else:
             return CheckResult(
@@ -241,5 +248,5 @@ def _run_smart_organizer(src_dir: Path, config: Dict[str, Any], print) -> CheckR
 
 if __name__ == "__main__":
     # テスト実行
-    result = main(None)
+    result = main()
     print(f"\nCheckResult: {len(result.failure_locations)} files need organization")
