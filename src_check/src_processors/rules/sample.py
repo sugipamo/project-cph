@@ -98,10 +98,10 @@ def main(di_container) -> CheckResult:
     return CheckResult(failure_locations=all_violations, fix_policy=fix_policy, fix_example_code=fix_example)
 if __name__ == '__main__':
     result = main()
-    print(f'サンプルチェッカー: {len(result.failure_locations)}件の違反を検出')
+    logger(f'サンプルチェッカー: {len(result.failure_locations)}件の違反を検出')
     if result.failure_locations:
-        print('\n違反箇所:')
+        logger('\n違反箇所:')
         for location in result.failure_locations[:5]:
-            print(f'  - {location.file_path}:{location.line_number}')
+            logger(f'  - {location.file_path}:{location.line_number}')
         if len(result.failure_locations) > 5:
-            print(f'  ... 他 {len(result.failure_locations) - 5} 件')
+            logger(f'  ... 他 {len(result.failure_locations) - 5} 件')

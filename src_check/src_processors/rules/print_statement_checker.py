@@ -39,8 +39,8 @@ def main(di_container) -> CheckResult:
             violations = check_file(py_file)
             all_violations.extend(violations)
     fix_policy = 'print文の代わりにロギングライブラリ（logging）を使用してください。'
-    fix_example = '# Before\nprint(f"Processing file: {filename}")\n\n# After\nimport logging\n\nlogger = logging.getLogger(__name__)\nlogger.info(f"Processing file: {filename}")'
+    fix_example = '# Before\nprint(f"Processing file: {filename}")\n\n# After\nimport logging\n\nlogger = logging.getLogger(__name__)\nprint(f"Processing file: {filename}")'
     return CheckResult(failure_locations=all_violations, fix_policy=fix_policy, fix_example_code=fix_example)
 if __name__ == '__main__':
     result = main()
-    print(f'Found {len(result.failure_locations)} violations')
+    logger(f'Found {len(result.failure_locations)} violations')

@@ -88,4 +88,4 @@ def main(di_container) -> CheckResult:
     return CheckResult(failure_locations=all_violations, fix_policy=fix_policy, fix_example_code=fix_example)
 if __name__ == '__main__':
     result = main()
-    print(f'Infrastructure->Operations依存関係チェッカー: {len(result.failure_locations)}件の違反を検出')
+    logger(f'Infrastructure->Operations依存関係チェッカー: {len(result.failure_locations)}件の違反を検出')

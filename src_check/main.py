@@ -2,8 +2,11 @@ import os
 import sys
 import importlib.util
 from pathlib import Path
-from typing import List, Tuple, Set
+from typing import List, Tuple, Set, Optional, Dict
 import shutil
+import io
+import contextlib
+import argparse
 
 from models.check_result import CheckResult
 from di_container import DIContainer
@@ -43,13 +46,24 @@ def filter_failures_by_path(results: List[Tuple[str, CheckResult]], path_prefix:
     
     return filtered_results
 
-def load_and_execute_rules(rules_dir: Path, di_container: DIContainer) -> List[Tuple[str, CheckResult]]:
-    """指定ディレクトリ配下の.pyファイルを再帰的に検索し、main関数があるものを実行する"""
+def load_and_execute_rules(rules_dir: Path, di_container: DIContainer, capture_output: bool = True) -> Tuple[List[Tuple[str, CheckResult]], Dict[str, str]]:
+    """
+    指定ディレクトリ配下の.pyファイルを再帰的に検索し、main関数があるものを実行する
+    
+    Args:
+        rules_dir: ルールファイルが格納されているディレクトリ
+        di_container: 依存性注入コンテナ
+        capture_output: print出力をキャプチャするかどうか（デフォルト: True）
+    
+    Returns:
+        Tuple[List[Tuple[str, CheckResult]], Dict[str, str]]: 結果リストとキャプチャした出力の辞書
+    """
     results = []
+    captured_outputs = {}
     
     if not rules_dir.exists():
         print(f"エラー: {rules_dir} ディレクトリが存在しません")
-        return results
+        return results, captured_outputs
     
     for py_file in sorted(rules_dir.rglob("*.py")):
         if py_file.name == "__init__.py":
@@ -72,10 +86,36 @@ def load_and_execute_rules(rules_dir: Path, di_container: DIContainer) -> List[T
                 # main関数の引数チェック
                 import inspect
                 sig = inspect.signature(module.main)
-                if len(sig.parameters) > 0:
-                    result = module.main(di_container)
+                params = list(sig.parameters.keys())
+                
+                # 実行関数を定義
+                def execute_main():
+                    # 引数に応じて適切に呼び出し
+                    if len(params) == 0:
+                        return module.main()
+                    elif len(params) == 1 and params[0] == 'di_container':
+                        return module.main(di_container)
+                    elif len(params) == 2 and params[0] == 'di_container' and params[1] == 'logger':
+                        logger = di_container.resolve('logger')
+                        return module.main(di_container, logger)
+                    else:
+                        # その他の引数パターンの場合はdi_containerのみ渡す
+                        return module.main(di_container)
+                
+                # print出力のキャプチャ設定
+                if capture_output:
+                    output_buffer = io.StringIO()
+                    with contextlib.redirect_stdout(output_buffer):
+                        result = execute_main()
+                    
+                    # キャプチャした出力を保存
+                    captured_output = output_buffer.getvalue()
+                    if captured_output:
+                        captured_outputs[module_name_with_path] = captured_output
                 else:
-                    result = module.main()
+                    # キャプチャしない場合は通常実行
+                    result = execute_main()
+                    
                 if hasattr(result, '__class__') and result.__class__.__name__ == 'CheckResult':
                     results.append((module_name_with_path, result))
                 else:
@@ -84,10 +124,10 @@ def load_and_execute_rules(rules_dir: Path, di_container: DIContainer) -> List[T
         except Exception as e:
             raise ValueError(f"エラー: {module_name_with_path} の実行中にエラーが発生しました: {e}")
     
-    return results
+    return results, captured_outputs
 
 
-def save_results_to_files(results: List[Tuple[str, CheckResult]], output_dir: Path) -> None:
+def save_results_to_files(results: List[Tuple[str, CheckResult]], output_dir: Path, captured_outputs: Optional[Dict[str, str]] = None) -> None:
     """チェック結果をファイルに保存する"""
     if output_dir.exists():
         shutil.rmtree(output_dir)
@@ -103,6 +143,13 @@ def save_results_to_files(results: List[Tuple[str, CheckResult]], output_dir: Pa
                 f.write(f"\n失敗箇所:\n")
                 for location in result.failure_locations:
                     f.write(f"{location.file_path}:{location.line_number}\n")
+                
+                # キャプチャした出力を追加
+                if captured_outputs and rule_name in captured_outputs:
+                    f.write(f"\n\n実行時出力:\n")
+                    f.write(f"{'-'*40}\n")
+                    f.write(captured_outputs[rule_name])
+                    f.write(f"{'-'*40}\n")
 
 
 def display_results(results: List[Tuple[str, CheckResult]]) -> None:
@@ -145,6 +192,12 @@ def display_results(results: List[Tuple[str, CheckResult]]) -> None:
 
 def main():
     """メイン処理"""
+    # コマンドライン引数の解析
+    parser = argparse.ArgumentParser(description='コード品質チェックツール')
+    parser.add_argument('--verbose', '-v', action='store_true', 
+                       help='ルール実行時のprint出力を表示')
+    args = parser.parse_args()
+    
     src_check_dir = Path(__file__).parent
     src_processors_dir = src_check_dir / "src_processors"
     transformers_dir = src_check_dir / "transformers"
@@ -153,20 +206,40 @@ def main():
     # DIコンテナを初期化
     di_container = DIContainer()
     
+    # verboseモードの場合はキャプチャしない
+    capture_output = not args.verbose
+    
+    # 全体の結果リストとキャプチャした出力を保存
+    all_results = []
+    all_captured_outputs = {}
+    
     # まずtransformersを適用
-    transformer_results = load_and_execute_rules(transformers_dir, di_container)
-    results = transformer_results
+    transformer_results, transformer_outputs = load_and_execute_rules(
+        transformers_dir, di_container, capture_output=capture_output
+    )
+    all_results.extend(transformer_results)
+    all_captured_outputs.update(transformer_outputs)
     
     # その後src_processorsディレクトリ全体を再帰的に読み込み
-    src_processor_results = load_and_execute_rules(src_processors_dir, di_container)
-    results.extend(src_processor_results)
+    src_processor_results, src_processor_outputs = load_and_execute_rules(
+        src_processors_dir, di_container, capture_output=capture_output
+    )
+    all_results.extend(src_processor_results)
+    all_captured_outputs.update(src_processor_outputs)
     
     # src/以下のファイルのみをフィルタリング（テスト関連のルールは除外）
     test_related_rules = ["pytest_runner"]  # テストに関連するルールのリスト
-    filtered_results = filter_failures_by_path(results, "src/", exclude_rules=test_related_rules)
+    filtered_results = filter_failures_by_path(all_results, "src/", exclude_rules=test_related_rules)
+    
+    # フィルタリングされた結果に対応するキャプチャ出力も抽出
+    filtered_outputs = {
+        rule_name: output 
+        for rule_name, output in all_captured_outputs.items()
+        if any(r[0] == rule_name for r in filtered_results)
+    }
     
     # 結果をファイルに保存
-    save_results_to_files(filtered_results, output_dir)
+    save_results_to_files(filtered_results, output_dir, filtered_outputs)
     
     # 結果を表示（失敗が10件を超える場合は修正方針のみ）
     display_results(filtered_results)

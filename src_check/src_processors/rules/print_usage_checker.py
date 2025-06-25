@@ -66,9 +66,9 @@ def main(di_container) -> CheckResult:
                     continue
                 violations = check_file(py_file)
                 all_violations.extend(violations)
-    fix_policy = 'print文の代わりにLoggerインターフェースを使用してください。Infrastructure層から注入されたLoggerを使用してください。デバッグ用のprint文は本番コードから削除してください。必要な場合はlogger.info()、logger.error()を使用してください。'
-    fix_example = '# Before - print文の使用\ndef process_data(data):\n    print(f"Processing {len(data)} items")\n    result = transform(data)\n    print(f"Completed processing")\n    return result\n\n# After - Loggerインターフェースの使用\ndef process_data(data, logger):\n    logger.info(f"Processing {len(data)} items")\n    result = transform(data)\n    logger.info(f"Completed processing")\n    return result\n\n# main.pyでの依存性注入\nfrom infrastructure.logger import create_logger\n\nlogger = create_logger(verbose=True, silent=False, system_operations=None)\nresult = process_data(data, logger)'
+    fix_policy = 'print文の代わりにLoggerインターフェースを使用してください。Infrastructure層から注入されたLoggerを使用してください。デバッグ用のprint文は本番コードから削除してください。必要な場合はprint()、logger.error()を使用してください。'
+    fix_example = '# Before - print文の使用\ndef process_data(data):\n    print(f"Processing {len(data)} items")\n    result = transform(data)\n    print(f"Completed processing")\n    return result\n\n# After - Loggerインターフェースの使用\ndef process_data(data, logger):\n    print(f"Processing {len(data)} items")\n    result = transform(data)\n    print(f"Completed processing")\n    return result\n\n# main.pyでの依存性注入\nfrom infrastructure.logger import create_logger\n\nlogger = create_logger(verbose=True, silent=False, system_operations=None)\nresult = process_data(data, logger)'
     return CheckResult(failure_locations=all_violations, fix_policy=fix_policy, fix_example_code=fix_example)
 if __name__ == '__main__':
     result = main()
-    print(f'print使用チェッカー: {len(result.failure_locations)}件の違反を検出')
+    logger(f'print使用チェッカー: {len(result.failure_locations)}件の違反を検出')

@@ -34,7 +34,7 @@ def process_directory(directory: Path, adder: TypeHintAdder) -> List[FailureLoca
             if was_modified:
                 processed_files.append(FailureLocation(file_path=str(py_file), line_number=1))
         except Exception as e:
-            print(f'警告: {py_file} の処理中にエラー: {e}')
+            logger(f'警告: {py_file} の処理中にエラー: {e}')
             continue
     return processed_files
 
@@ -66,4 +66,4 @@ def main(di_container) -> CheckResult:
     return CheckResult(failure_locations=processed_files, fix_policy=fix_policy, fix_example_code=fix_example if fix_example else None)
 if __name__ == '__main__':
     result = main()
-    print(f'型ヒント自動修正: {len(result.failure_locations)}ファイルを処理しました')
+    logger(f'型ヒント自動修正: {len(result.failure_locations)}ファイルを処理しました')
