@@ -153,12 +153,13 @@ def main():
     # DIコンテナを初期化
     di_container = DIContainer()
     
-    # src_processorsディレクトリ全体を再帰的に読み込み
-    results = load_and_execute_rules(src_processors_dir, di_container)
-    
-    # transformersディレクトリのスクリプトも実行
+    # まずtransformersを適用
     transformer_results = load_and_execute_rules(transformers_dir, di_container)
-    results.extend(transformer_results)
+    results = transformer_results
+    
+    # その後src_processorsディレクトリ全体を再帰的に読み込み
+    src_processor_results = load_and_execute_rules(src_processors_dir, di_container)
+    results.extend(src_processor_results)
     
     # src/以下のファイルのみをフィルタリング（テスト関連のルールは除外）
     test_related_rules = ["pytest_runner"]  # テストに関連するルールのリスト

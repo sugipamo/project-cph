@@ -47,14 +47,11 @@ class PrintToLoggerTransformer(ast.NodeTransformer):
                 )
             )
             
-            # main関数の直後に挿入
-            for i, child in enumerate(new_node.body):
+            # main関数内の先頭に挿入
+            for child in new_node.body:
                 if isinstance(child, ast.FunctionDef) and child.name == 'main':
-                    new_node.body.insert(i + 1, logger_assign)
+                    child.body.insert(0, logger_assign)
                     break
-            else:
-                # main関数が見つからない場合は先頭に挿入
-                new_node.body.insert(0, logger_assign)
         
         return new_node
     
@@ -99,26 +96,27 @@ def transform_file(file_path: Path) -> bool:
 def main(di_container) -> CheckResult:
     """メインエントリーポイント"""
     current_dir = Path(__file__).parent.parent.parent
-    src_path = current_dir / "src"
-    
-    if not src_path.exists():
-        return CheckResult(
-            failure_locations=[],
-            fix_policy="src directory not found",
-            fix_example_code=None
-        )
     
     failure_locations = []
     
-    for py_file in src_path.rglob("*.py"):
-        if transform_file(py_file):
-            failure_locations.append(FailureLocation(
-                file_path=str(py_file),
-                line_number=0
-            ))
+    # src_processors/配下のみを対象にする
+    target_dirs = [
+        current_dir / "src_check" / "src_processors"
+    ]
+    
+    for target_dir in target_dirs:
+        if target_dir.exists():
+            for py_file in target_dir.rglob("*.py"):
+                if py_file.name == "__init__.py":
+                    continue
+                if transform_file(py_file):
+                    failure_locations.append(FailureLocation(
+                        file_path=str(py_file),
+                        line_number=0
+                    ))
     
     return CheckResult(
         failure_locations=failure_locations,
-        fix_policy="print文をlogger呼び出しに自動変換し、di_container.resolve('logger')を追加",
+        fix_policy="src_processors配下のprint文をlogger呼び出しに自動変換し、di_container.resolve('logger')を追加",
         fix_example_code="logger = di_container.resolve('logger')\nlogger(message)  # print(message)から変換"
     )

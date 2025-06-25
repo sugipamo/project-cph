@@ -22,16 +22,12 @@
 - 修正方針と修正例は具体的かつ実践的に記述
 - エラーが発生しても他のファイルのチェックを継続
 """
-
 import ast
 from pathlib import Path
 from typing import List
-
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
-
 from models.check_result import CheckResult, FailureLocation
-
 
 class SampleChecker(ast.NodeVisitor):
     """
@@ -44,24 +40,17 @@ class SampleChecker(ast.NodeVisitor):
     - visit_Call: 関数呼び出しをチェック
     - その他: https://docs.python.org/3/library/ast.html 参照
     """
-    
+
     def __init__(self, file_path: str):
         self.file_path = file_path
         self.violations = []
-    
+
     def visit_Pass(self, node):
         """
         例: pass文を検出する（実際のルールでは適切なノードタイプを使用）
         """
-        # 違反を検出したらFailureLocationを作成
-        self.violations.append(FailureLocation(
-            file_path=self.file_path,
-            line_number=node.lineno
-        ))
-        
-        # 子ノードも訪問する
+        self.violations.append(FailureLocation(file_path=self.file_path, line_number=node.lineno))
         self.generic_visit(node)
-
 
 def check_file(file_path: Path) -> List[FailureLocation]:
     """
@@ -74,27 +63,18 @@ def check_file(file_path: Path) -> List[FailureLocation]:
         違反箇所のリスト
     """
     try:
-        # ファイルを読み込んでASTに変換
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        
         tree = ast.parse(content, filename=str(file_path))
-        
-        # チェッカーでASTを走査
         checker = SampleChecker(str(file_path))
         checker.visit(tree)
-        
         return checker.violations
-        
     except SyntaxError:
-        # 構文エラーのあるファイルはスキップ
         return []
     except Exception as e:
-        # その他のエラーもスキップ（必要に応じてログ出力）
         return []
 
-
-def main() -> CheckResult:
+def main(di_container) -> CheckResult:
     """
     メインエントリーポイント
     
@@ -104,57 +84,24 @@ def main() -> CheckResult:
     Returns:
         CheckResult: チェック結果
     """
-    # プロジェクトルートを取得
     project_root = Path(__file__).parent.parent.parent
-    src_dir = project_root / "src"
-    
-    # チェック対象のファイルを収集
+    src_dir = project_root / 'src'
     all_violations = []
-    
     if src_dir.exists():
-        # src配下の全Pythonファイルをチェック
-        for py_file in src_dir.rglob("*.py"):
-            # 必要に応じて除外パターンを追加
-            if "__pycache__" in str(py_file):
+        for py_file in src_dir.rglob('*.py'):
+            if '__pycache__' in str(py_file):
                 continue
-            
             violations = check_file(py_file)
             all_violations.extend(violations)
-    
-    # 修正方針を記述（ユーザーが理解しやすい日本語で）
-    fix_policy = "pass文を実際の処理に置き換えてください。TODOコメントを追加して後で実装する場合は、具体的な実装内容を記載してください。"
-    
-    # 修正例を記述（実践的なコード例を提示）
-    fix_example = """# Before
-def process_data(data):
-    pass
-
-# After - 実装予定の場合
-def process_data(data):
-    # TODO: データの検証とクリーニング処理を実装
-    raise NotImplementedError("process_data is not implemented yet")
-
-# After - 空の処理が意図的な場合
-def process_data(data):
-    # 特定の条件下では処理不要
-    return"""
-    
-    return CheckResult(
-        failure_locations=all_violations,
-        fix_policy=fix_policy,
-        fix_example_code=fix_example
-    )
-
-
-if __name__ == "__main__":
-    # 直接実行時のテスト用
+    fix_policy = 'pass文を実際の処理に置き換えてください。TODOコメントを追加して後で実装する場合は、具体的な実装内容を記載してください。'
+    fix_example = '# Before\ndef process_data(data):\n    pass\n\n# After - 実装予定の場合\ndef process_data(data):\n    # TODO: データの検証とクリーニング処理を実装\n    raise NotImplementedError("process_data is not implemented yet")\n\n# After - 空の処理が意図的な場合\ndef process_data(data):\n    # 特定の条件下では処理不要\n    return'
+    return CheckResult(failure_locations=all_violations, fix_policy=fix_policy, fix_example_code=fix_example)
+if __name__ == '__main__':
     result = main()
-    print(f"サンプルチェッカー: {len(result.failure_locations)}件の違反を検出")
-    
+    print(f'サンプルチェッカー: {len(result.failure_locations)}件の違反を検出')
     if result.failure_locations:
-        print("\n違反箇所:")
-        for location in result.failure_locations[:5]:  # 最初の5件のみ表示
-            print(f"  - {location.file_path}:{location.line_number}")
-        
+        print('\n違反箇所:')
+        for location in result.failure_locations[:5]:
+            print(f'  - {location.file_path}:{location.line_number}')
         if len(result.failure_locations) > 5:
-            print(f"  ... 他 {len(result.failure_locations) - 5} 件")
+            print(f'  ... 他 {len(result.failure_locations) - 5} 件')
