@@ -12,6 +12,42 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 from src_check.models.check_result import CheckResult, FailureLocation
 
 
+class SimpleDiGraph:
+    """networkxのDiGraphの簡易実装"""
+    def __init__(self):
+        self.nodes = set()
+        self.edges = defaultdict(set)  # {from_node: {to_nodes}}
+        self.in_edges = defaultdict(set)  # {to_node: {from_nodes}}
+    
+    def add_node(self, node):
+        self.nodes.add(node)
+    
+    def add_edge(self, from_node, to_node):
+        self.nodes.add(from_node)
+        self.nodes.add(to_node)
+        self.edges[from_node].add(to_node)
+        self.in_edges[to_node].add(from_node)
+    
+    def neighbors(self, node):
+        return self.edges.get(node, set())
+    
+    def predecessors(self, node):
+        return self.in_edges.get(node, set())
+    
+    def subgraph(self, nodes):
+        """指定されたノードのサブグラフを作成"""
+        sub = SimpleDiGraph()
+        for node in nodes:
+            if node in self.nodes:
+                sub.add_node(node)
+        for from_node in nodes:
+            if from_node in self.edges:
+                for to_node in self.edges[from_node]:
+                    if to_node in nodes:
+                        sub.add_edge(from_node, to_node)
+        return sub
+
+
 @dataclass
 class CodeElement:
     name: str
@@ -90,7 +126,7 @@ class SmartOrganizer:
     def _build_dependency_graph(self) -> None:
         """依存関係グラフを構築"""
         for element_id, element in self.code_elements.items():
-            self.dependency_graph.add_node(element_id, element=element)
+            self.dependency_graph.add_node(element_id)
             
         # 簡易的な依存関係検出（実際はより詳細な解析が必要）
         for element_id, element in self.code_elements.items():
@@ -108,11 +144,9 @@ class SmartOrganizer:
         """凝集度の高いモジュールを発見"""
         modules = []
         
-        # コミュニティ検出アルゴリズムを使用
+        # 簡易的なコミュニティ検出アルゴリズム
         try:
-            communities = nx.community.greedy_modularity_communities(
-                self.dependency_graph.to_undirected()
-            )
+            communities = self._detect_communities()
             
             for i, community in enumerate(communities):
                 elements = [
@@ -135,6 +169,38 @@ class SmartOrganizer:
             
         return modules
         
+    def _detect_communities(self) -> List[Set[str]]:
+        """簡易的なコミュニティ検出（強連結成分を基にしたアプローチ）"""
+        visited = set()
+        communities = []
+        
+        for node in self.dependency_graph.nodes:
+            if node not in visited:
+                # 幅優先探索で連結成分を見つける
+                community = set()
+                queue = [node]
+                
+                while queue:
+                    current = queue.pop(0)
+                    if current in visited:
+                        continue
+                    
+                    visited.add(current)
+                    community.add(current)
+                    
+                    # 双方向の接続を確認（緩い結合）
+                    neighbors = self.dependency_graph.neighbors(current)
+                    predecessors = self.dependency_graph.predecessors(current)
+                    
+                    for neighbor in neighbors.union(predecessors):
+                        if neighbor not in visited:
+                            queue.append(neighbor)
+                
+                if len(community) > 1:  # 単一ノードのコミュニティは除外
+                    communities.append(community)
+        
+        return communities
+    
     def _calculate_cohesion(self, community: Set[str]) -> float:
         """モジュールの凝集度を計算"""
         internal_edges = 0
