@@ -7,7 +7,7 @@ src_check/main.pyから動的に読み込まれ、src配下の残骸フォルダ
 """
 import sys
 from pathlib import Path
-from typing import List, Set
+from typing import List
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 from src_check.models.check_result import CheckResult, FailureLocation
@@ -170,3 +170,10 @@ if __name__ == "__main__":
     # テスト実行
     result = main()
     print(f"\nCheckResult: {len(result.failure_locations)} remnant folders found")
+    
+    # 実際に削除を実行
+    project_root = Path(__file__).parent.parent.parent.parent.parent
+    src_dir = project_root / 'src'
+    cleaner = RemnantCleaner(str(src_dir))
+    cleaned = cleaner.clean_remnant_folders(dry_run=False)
+    print(f"実際に削除: {len(cleaned)} folders")
