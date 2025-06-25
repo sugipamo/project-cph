@@ -459,7 +459,7 @@ class LogicalFileOrganizer:
             return False
 
 
-def main(di_container) -> CheckResult:
+def main() -> CheckResult:
     project_root = Path(__file__).parent.parent.parent.parent
     src_dir = project_root / 'src'
     

@@ -130,7 +130,7 @@ class StructureOrganizer:
             analysis = FileAnalysis(path=file_path, imports=analyzer.imports + analyzer.type_checking_imports, classes=analyzer.classes, functions=analyzer.functions, has_type_checking_import=analyzer.has_type_checking_import, has_circular_reference=False)
             self.file_analyses[file_path] = analysis
         except Exception as e:
-            logger(f'Error analyzing {file_path}: {e}')
+            print(f'Error analyzing {file_path}: {e}')
 
     def _build_import_graph(self) -> None:
         for file_path, analysis in self.file_analyses.items():
@@ -207,14 +207,14 @@ class StructureOrganizer:
     def check_issues(self) -> bool:
         has_issues = False
         if self.circular_references:
-            logger('❌ 循環参照が検出されました:')
+            print('❌ 循環参照が検出されました:')
             for ref in self.circular_references:
-                logger(f'  - {ref[0]} <-> {ref[1]}')
+                print(f'  - {ref[0]} <-> {ref[1]}')
             has_issues = True
         if self.delayed_imports:
-            logger('❌ 遅延インポートが検出されました:')
+            print('❌ 遅延インポートが検出されました:')
             for module, path in self.delayed_imports:
-                logger(f'  - {module} ({path})')
+                print(f'  - {module} ({path})')
             has_issues = True
         return has_issues
 
@@ -288,20 +288,20 @@ class StructureOrganizer:
         destinations = {}
         for step in move_steps:
             if step.destination in destinations:
-                logger(f'⚠️  警告: {step.destination}への重複移動が検出されました')
+                print(f'⚠️  警告: {step.destination}への重複移動が検出されました')
             destinations[step.destination] = step.source
         return move_steps
 
     def execute_reorganization(self, move_steps: List[MoveStep], dry_run: bool=True) -> None:
         if dry_run:
-            logger('\n📋 実行計画 (Dry Run):')
+            print('\n📋 実行計画 (Dry Run):')
             for step in move_steps:
-                logger(f'  {step.source} → {step.destination}')
-                logger(f'    理由: {step.reason}')
+                print(f'  {step.source} → {step.destination}')
+                print(f'    理由: {step.reason}')
             return
         import_updates = {}
         for step in move_steps:
-            logger(f'\n🚚 移動中: {step.source} → {step.destination}')
+            print(f'\n🚚 移動中: {step.source} → {step.destination}')
             step.destination.parent.mkdir(parents=True, exist_ok=True)
             old_module = self._path_to_module(step.source)
             new_module = self._path_to_module(step.destination)
@@ -314,7 +314,7 @@ class StructureOrganizer:
         for step in move_steps:
             if step.source.exists():
                 step.source.unlink()
-                logger(f'🗑️  削除: {step.source}')
+                print(f'🗑️  削除: {step.source}')
         self._cleanup_empty_dirs()
 
     def _update_imports_in_file(self, file_path: Path, import_updates: Dict[str, str]) -> None:
@@ -331,15 +331,15 @@ class StructureOrganizer:
             if modified:
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(content)
-                logger(f'✏️  インポート更新: {file_path}')
+                print(f'✏️  インポート更新: {file_path}')
         except Exception as e:
-            logger(f'❌ エラー: {file_path}のインポート更新に失敗: {e}')
+            print(f'❌ エラー: {file_path}のインポート更新に失敗: {e}')
 
     def _cleanup_empty_dirs(self) -> None:
         for root, dirs, files in os.walk(self.src_dir, topdown=False):
             if not files and (not dirs):
                 Path(root).rmdir()
-                logger(f'🗑️  空ディレクトリ削除: {root}')
+                print(f'🗑️  空ディレクトリ削除: {root}')
 
     def generate_report(self) -> Dict[str, Any]:
         report = {'total_files': len(self.file_analyses), 'circular_references': len(self.circular_references), 'delayed_imports': len(self.delayed_imports), 'file_details': {}, 'issues': {'circular_references': [{'from': ref[0], 'to': ref[1]} for ref in self.circular_references], 'delayed_imports': [{'module': module, 'file': path} for module, path in self.delayed_imports]}}
@@ -347,7 +347,7 @@ class StructureOrganizer:
             report['file_details'][str(file_path)] = {'classes': len(analysis.classes), 'functions': len(analysis.functions), 'imports': len(analysis.imports), 'has_type_checking': analysis.has_type_checking_import}
         return report
 
-def main(di_container, logger) -> CheckResult:
+def main(di_container, print) -> CheckResult:
     project_root = Path(__file__).parent.parent.parent.parent
     src_dir = project_root / 'src'
     report_path = project_root / 'structure_analysis_report.json'

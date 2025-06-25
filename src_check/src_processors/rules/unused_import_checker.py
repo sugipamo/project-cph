@@ -68,4 +68,4 @@ def main(di_container) -> CheckResult:
     return CheckResult(failure_locations=all_violations, fix_policy=fix_policy, fix_example_code=fix_example)
 if __name__ == '__main__':
     result = main()
-    logger(f'Found {len(result.failure_locations)} violations')
+    print(f'Found {len(result.failure_locations)} violations')

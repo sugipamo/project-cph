@@ -21,7 +21,7 @@ def main(di_container) -> CheckResult:
     
     Args:
         di_container: DIコンテナ
-        logger: ロガー関数
+        print: ロガー関数
         
     Returns:
         CheckResult: チェック結果
@@ -29,7 +29,7 @@ def main(di_container) -> CheckResult:
     project_root = Path(__file__).parent.parent.parent.parent.parent
     src_dir = project_root / 'src'
     
-    logger(f"🔍 インポート解析を開始: {src_dir}")
+    print(f"🔍 インポート解析を開始: {src_dir}")
     
     try:
         fixer = LocalImportFixer(str(src_dir))
@@ -66,7 +66,7 @@ def main(di_container) -> CheckResult:
         )
         
     except Exception as e:
-        logger(f"❌ エラーが発生しました: {e}")
+        print(f"❌ エラーが発生しました: {e}")
         return CheckResult(
             failure_locations=[],
             fix_policy=f"インポート解析中にエラーが発生しました: {str(e)}",

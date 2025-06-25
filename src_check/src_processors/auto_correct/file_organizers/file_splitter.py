@@ -338,7 +338,7 @@ class FileSplitter:
                 self.execute_split(analysis, plan, dry_run=dry_run)
         return results
 
-def main(di_container, logger) -> CheckResult:
+def main() -> CheckResult:
     project_root = Path(__file__).parent.parent.parent.parent
     src_dir = project_root / 'src'
     dry_run = True

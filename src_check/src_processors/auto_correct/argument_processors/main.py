@@ -16,13 +16,9 @@ from args_remover import ArgsRemover
 from kwargs_remover import KwargsRemover
 
 
-def main(di_container, logger=print) -> CheckResult:
+def main() -> CheckResult:
     """
     引数処理のメインエントリーポイント
-    
-    Args:
-        di_container: DIコンテナ
-        logger: ロガー関数
         
     Returns:
         CheckResult: チェック結果
@@ -36,8 +32,8 @@ def main(di_container, logger=print) -> CheckResult:
         'dry_run': True
     }
     
-    logger(f"🔍 引数処理解析を開始: {src_dir}")
-    logger(f"モード: {config['mode']}")
+    print(f"🔍 引数処理解析を開始: {src_dir}")
+    print(f"モード: {config['mode']}")
     
     failure_locations = []
     fix_policies = []
@@ -45,14 +41,14 @@ def main(di_container, logger=print) -> CheckResult:
     try:
         if config['mode'] in ['args', 'both']:
             # 引数のデフォルト値を削除
-            args_result = _process_args(src_dir, config, logger)
+            args_result = _process_args(src_dir, config, print)
             failure_locations.extend(args_result.failure_locations)
             if args_result.fix_policy:
                 fix_policies.append(args_result.fix_policy)
         
         if config['mode'] in ['kwargs', 'both']:
             # キーワード引数のデフォルト値を削除
-            kwargs_result = _process_kwargs(src_dir, config, logger)
+            kwargs_result = _process_kwargs(src_dir, config, print)
             failure_locations.extend(kwargs_result.failure_locations)
             if kwargs_result.fix_policy:
                 fix_policies.append(kwargs_result.fix_policy)
@@ -79,7 +75,7 @@ def main(di_container, logger=print) -> CheckResult:
         )
         
     except Exception as e:
-        logger(f"❌ エラーが発生しました: {e}")
+        print(f"❌ エラーが発生しました: {e}")
         return CheckResult(
             failure_locations=[],
             fix_policy=f"引数処理中にエラーが発生しました: {str(e)}",
@@ -87,7 +83,7 @@ def main(di_container, logger=print) -> CheckResult:
         )
 
 
-def _process_args(src_dir: Path, config: dict, logger) -> CheckResult:
+def _process_args(src_dir: Path, config: dict, print) -> CheckResult:
     """引数のデフォルト値を処理"""
     remover = ArgsRemover(dry_run=config['dry_run'])
     failures = []
@@ -108,10 +104,10 @@ def _process_args(src_dir: Path, config: dict, logger) -> CheckResult:
                 if not config['dry_run'] and modified != content:
                     with open(py_file, 'w', encoding='utf-8') as f:
                         f.write(modified)
-                    logger(f"✏️  修正: {py_file}")
+                    print(f"✏️  修正: {py_file}")
                     
         except Exception as e:
-            logger(f"⚠️  {py_file}の処理中にエラー: {e}")
+            print(f"⚠️  {py_file}の処理中にエラー: {e}")
     
     if failures:
         return CheckResult(
@@ -127,7 +123,7 @@ def _process_args(src_dir: Path, config: dict, logger) -> CheckResult:
         )
 
 
-def _process_kwargs(src_dir: Path, config: dict, logger) -> CheckResult:
+def _process_kwargs(src_dir: Path, config: dict, print) -> CheckResult:
     """キーワード引数のデフォルト値を処理"""
     remover = KwargsRemover(dry_run=config['dry_run'])
     failures = []
@@ -148,10 +144,10 @@ def _process_kwargs(src_dir: Path, config: dict, logger) -> CheckResult:
                 if not config['dry_run'] and modified != content:
                     with open(py_file, 'w', encoding='utf-8') as f:
                         f.write(modified)
-                    logger(f"✏️  修正: {py_file}")
+                    print(f"✏️  修正: {py_file}")
                     
         except Exception as e:
-            logger(f"⚠️  {py_file}の処理中にエラー: {e}")
+            print(f"⚠️  {py_file}の処理中にエラー: {e}")
     
     if failures:
         return CheckResult(
@@ -171,5 +167,5 @@ def _process_kwargs(src_dir: Path, config: dict, logger) -> CheckResult:
 
 if __name__ == "__main__":
     # テスト実行
-    result = main(None)
+    result = main()
     print(f"\nCheckResult: {len(result.failure_locations)} default values found")

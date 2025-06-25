@@ -5,7 +5,9 @@ import ast
 import os
 import sys
 from pathlib import Path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+# Add project root to path
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
 from src_check.models.check_result import CheckResult, FailureLocation
 
 class ArgsRemover(ast.NodeTransformer):
@@ -47,7 +49,7 @@ def remove_args_from_file(file_path):
         return False
     return False
 
-def main(di_container):
+def main():
     current_dir = Path(__file__).parent.parent.parent
     src_path = current_dir / 'src'
     if not src_path.exists():

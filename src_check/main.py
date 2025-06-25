@@ -9,7 +9,6 @@ import contextlib
 import argparse
 
 from models.check_result import CheckResult
-from di_container import DIContainer
 
 def filter_failures_by_path(results: List[Tuple[str, CheckResult]], path_prefix: str, exclude_rules: List[str]) -> List[Tuple[str, CheckResult]]:
     """
@@ -46,7 +45,7 @@ def filter_failures_by_path(results: List[Tuple[str, CheckResult]], path_prefix:
     
     return filtered_results
 
-def load_and_execute_rules(rules_dir: Path, di_container: DIContainer, capture_output: bool = True) -> Tuple[List[Tuple[str, CheckResult]], Dict[str, str]]:
+def load_and_execute_rules(rules_dir: Path, capture_output: bool = True) -> Tuple[List[Tuple[str, CheckResult]], Dict[str, str]]:
     """
     指定ディレクトリ配下の.pyファイルを再帰的に検索し、main関数があるものを実行する
     
@@ -83,24 +82,9 @@ def load_and_execute_rules(rules_dir: Path, di_container: DIContainer, capture_o
             spec.loader.exec_module(module)
             
             if hasattr(module, 'main'):
-                # main関数の引数チェック
-                import inspect
-                sig = inspect.signature(module.main)
-                params = list(sig.parameters.keys())
-                
-                # 実行関数を定義
+                # main関数を引数なしで実行
                 def execute_main():
-                    # 引数に応じて適切に呼び出し
-                    if len(params) == 0:
-                        return module.main()
-                    elif len(params) == 1 and params[0] == 'di_container':
-                        return module.main(di_container)
-                    elif len(params) == 2 and params[0] == 'di_container' and params[1] == 'logger':
-                        logger = di_container.resolve('logger')
-                        return module.main(di_container, logger)
-                    else:
-                        # その他の引数パターンの場合はdi_containerのみ渡す
-                        return module.main(di_container)
+                    return module.main()
                 
                 # print出力のキャプチャ設定
                 if capture_output:
@@ -203,8 +187,6 @@ def main():
     transformers_dir = src_check_dir / "transformers"
     output_dir = src_check_dir / "src_check_result"
     
-    # DIコンテナを初期化
-    di_container = DIContainer()
     
     # verboseモードの場合はキャプチャしない
     capture_output = not args.verbose
@@ -215,14 +197,14 @@ def main():
     
     # まずtransformersを適用
     transformer_results, transformer_outputs = load_and_execute_rules(
-        transformers_dir, di_container, capture_output=capture_output
+        transformers_dir, capture_output=capture_output
     )
     all_results.extend(transformer_results)
     all_captured_outputs.update(transformer_outputs)
     
     # その後src_processorsディレクトリ全体を再帰的に読み込み
     src_processor_results, src_processor_outputs = load_and_execute_rules(
-        src_processors_dir, di_container, capture_output=capture_output
+        src_processors_dir, capture_output=capture_output
     )
     all_results.extend(src_processor_results)
     all_captured_outputs.update(src_processor_outputs)

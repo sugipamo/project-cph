@@ -59,10 +59,10 @@ def main(di_container) -> CheckResult:
     return CheckResult(failure_locations=failures, fix_policy=fix_policy, fix_example_code=fix_example)
 if __name__ == '__main__':
     result = main()
-    logger(f'pytestチェッカー: {len(result.failure_locations)}件のテスト失敗を検出')
+    print(f'pytestチェッカー: {len(result.failure_locations)}件のテスト失敗を検出')
     if result.failure_locations:
-        logger('\n失敗したテストファイル:')
+        print('\n失敗したテストファイル:')
         for location in result.failure_locations[:5]:
-            logger(f'  - {location.file_path}')
+            print(f'  - {location.file_path}')
         if len(result.failure_locations) > 5:
-            logger(f'  ... 他 {len(result.failure_locations) - 5} 件')
+            print(f'  ... 他 {len(result.failure_locations) - 5} 件')

@@ -19,13 +19,13 @@ from logical_file_organizer import LogicalFileOrganizer
 from smart_organizer import SmartOrganizer
 
 
-def main(di_container) -> CheckResult:
+def main() -> CheckResult:
     """
     ファイル整理のメインエントリーポイント
     
     Args:
         di_container: DIコンテナ
-        logger: ロガー関数
+        print: ロガー関数
         
     Returns:
         CheckResult: チェック結果
@@ -41,25 +41,25 @@ def main(di_container) -> CheckResult:
         'single_class': True
     }
     
-    logger(f"🔍 ファイル整理解析を開始: {src_dir}")
-    logger(f"モード: {config['mode']}")
+    print(f"🔍 ファイル整理解析を開始: {src_dir}")
+    print(f"モード: {config['mode']}")
     
     try:
         if config['mode'] == 'split':
             # 1ファイル1関数/クラスに分割
-            return _run_file_splitter(src_dir, config, logger)
+            return _run_file_splitter(src_dir, config, print)
             
         elif config['mode'] == 'structure':
             # 循環参照チェックと構造整理
-            return _run_structure_organizer(src_dir, config, logger)
+            return _run_structure_organizer(src_dir, config, print)
             
         elif config['mode'] == 'logical':
             # 論理的なフォルダ構造に整理
-            return _run_logical_organizer(src_dir, config, logger)
+            return _run_logical_organizer(src_dir, config, print)
             
         elif config['mode'] == 'smart':
             # 依存関係に基づくスマート整理
-            return _run_smart_organizer(src_dir, config, logger)
+            return _run_smart_organizer(src_dir, config, print)
             
         else:
             return CheckResult(
@@ -69,7 +69,7 @@ def main(di_container) -> CheckResult:
             )
             
     except Exception as e:
-        logger(f"❌ エラーが発生しました: {e}")
+        print(f"❌ エラーが発生しました: {e}")
         return CheckResult(
             failure_locations=[],
             fix_policy=f"ファイル整理中にエラーが発生しました: {str(e)}",
@@ -77,7 +77,7 @@ def main(di_container) -> CheckResult:
         )
 
 
-def _run_file_splitter(src_dir: Path, config: Dict[str, Any], logger) -> CheckResult:
+def _run_file_splitter(src_dir: Path, config: Dict[str, Any], print) -> CheckResult:
     """ファイル分割モードの実行"""
     splitter = FileSplitter(
         str(src_dir),
@@ -87,8 +87,8 @@ def _run_file_splitter(src_dir: Path, config: Dict[str, Any], logger) -> CheckRe
     
     results = splitter.analyze_and_split_project(dry_run=config['dry_run'])
     
-    logger(f"  解析したファイル数: {results['files_analyzed']}")
-    logger(f"  分割対象ファイル数: {results['files_to_split']}")
+    print(f"  解析したファイル数: {results['files_analyzed']}")
+    print(f"  分割対象ファイル数: {results['files_to_split']}")
     
     failure_locations = []
     for plan in results.get('split_plans', []):
@@ -111,7 +111,7 @@ def _run_file_splitter(src_dir: Path, config: Dict[str, Any], logger) -> CheckRe
         )
 
 
-def _run_structure_organizer(src_dir: Path, config: Dict[str, Any], logger) -> CheckResult:
+def _run_structure_organizer(src_dir: Path, config: Dict[str, Any], print) -> CheckResult:
     """構造整理モードの実行"""
     organizer = StructureOrganizer(str(src_dir))
     organizer.analyze_project()
@@ -162,7 +162,7 @@ def _run_structure_organizer(src_dir: Path, config: Dict[str, Any], logger) -> C
     )
 
 
-def _run_logical_organizer(src_dir: Path, config: Dict[str, Any], logger) -> CheckResult:
+def _run_logical_organizer(src_dir: Path, config: Dict[str, Any], print) -> CheckResult:
     """論理的整理モードの実行"""
     organizer = LogicalFileOrganizer(str(src_dir), dry_run=config['dry_run'])
     file_moves, import_updates = organizer.organize()
@@ -197,7 +197,7 @@ def _run_logical_organizer(src_dir: Path, config: Dict[str, Any], logger) -> Che
     )
 
 
-def _run_smart_organizer(src_dir: Path, config: Dict[str, Any], logger) -> CheckResult:
+def _run_smart_organizer(src_dir: Path, config: Dict[str, Any], print) -> CheckResult:
     """スマート整理モードの実行"""
     organizer = SmartOrganizer(str(src_dir))
     organizer.analyze_codebase()
@@ -205,13 +205,13 @@ def _run_smart_organizer(src_dir: Path, config: Dict[str, Any], logger) -> Check
     plan = organizer.generate_organization_plan()
     issues = organizer.validate_plan(plan)
     
-    logger(f"  発見されたモジュール: {len(plan.modules)}")
-    logger(f"  リスク評価: {plan.risk_assessment}")
+    print(f"  発見されたモジュール: {len(plan.modules)}")
+    print(f"  リスク評価: {plan.risk_assessment}")
     
     if issues:
-        logger("  検証で問題が発見されました:")
+        print("  検証で問題が発見されました:")
         for issue in issues:
-            logger(f"    - {issue}")
+            print(f"    - {issue}")
     
     failure_locations = []
     for module in plan.modules:
