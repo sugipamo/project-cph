@@ -86,11 +86,14 @@ class RemnantCleaner:
         return remnant_folders
     
     def _get_all_directories(self) -> List[Path]:
-        """すべてのディレクトリを取得"""
+        """すべてのディレクトリを取得（深い順にソート）"""
         directories = []
         for item in self.src_dir.rglob('*'):
             if item.is_dir():
                 directories.append(item)
+        
+        # 深い階層から浅い階層の順にソート
+        directories.sort(key=lambda p: len(p.parts), reverse=True)
         return directories
     
     def _is_remnant_folder(self, folder_path: Path) -> bool:
@@ -146,22 +149,24 @@ class RemnantCleaner:
             return True
     
     def clean_remnant_folders(self, dry_run: bool = True) -> List[Path]:
-        """残骸フォルダを削除"""
+        """残骸フォルダを削除（深い順から実行）"""
         import shutil
         
-        remnant_folders = self.find_remnant_folders()
+        # 削除処理のために再度深い順でディレクトリを取得
+        all_directories = self._get_all_directories()
         cleaned_folders = []
         
-        for folder in remnant_folders:
-            try:
-                if not dry_run:
-                    shutil.rmtree(folder)
-                    print(f"削除しました: {folder}")
-                else:
-                    print(f"削除対象: {folder}")
-                cleaned_folders.append(folder)
-            except Exception as e:
-                print(f"削除失敗: {folder} - {e}")
+        for folder in all_directories:
+            if self._is_remnant_folder(folder):
+                try:
+                    if not dry_run:
+                        shutil.rmtree(folder)
+                        print(f"削除しました: {folder}")
+                    else:
+                        print(f"削除対象: {folder}")
+                    cleaned_folders.append(folder)
+                except Exception as e:
+                    print(f"削除失敗: {folder} - {e}")
         
         return cleaned_folders
 

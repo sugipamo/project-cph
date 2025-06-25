@@ -8,7 +8,7 @@ import io
 import contextlib
 import argparse
 
-from models.check_result import CheckResult
+from .models.check_result import CheckResult
 
 def filter_failures_by_path(results: List[Tuple[str, CheckResult]], path_prefix: str, exclude_rules: List[str]) -> List[Tuple[str, CheckResult]]:
     """
