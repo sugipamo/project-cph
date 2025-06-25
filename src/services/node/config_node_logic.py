@@ -2,7 +2,7 @@ from collections import deque
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from src.configuration.resolver.config_node import ConfigNode
+    from src.core.configuration.config_node import ConfigNode
 
 def init_matches(node: 'ConfigNode', value: Any):
     if isinstance(value, dict) and "aliases" in value:

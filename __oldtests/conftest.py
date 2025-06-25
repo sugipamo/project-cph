@@ -8,14 +8,14 @@ from pathlib import Path
 
 import pytest
 
-from src.infrastructure.build_infrastructure import build_mock_infrastructure
+from src.core.build_infrastructure.build_infrastructure import build_mock_infrastructure
 from src.infrastructure.di_container import DIContainer
 
 
 def pytest_sessionstart(session):
     """Reset SQLite connection at the start of test session."""
     try:
-        from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
+        from src.core.fast_sqlite_mgmt.fast_sqlite_manager import FastSQLiteManager
         FastSQLiteManager.reset_shared_connection()
     except ImportError:
         pass
@@ -158,7 +158,7 @@ def clean_sqlite_manager(fast_sqlite_manager):
         fast_sqlite_manager.cleanup_test_data()
     except Exception:
         # If cleanup fails, reset connection and try again
-        from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
+        from src.core.fast_sqlite_mgmt.fast_sqlite_manager import FastSQLiteManager
         FastSQLiteManager.reset_shared_connection()
         # Reinitialize
         fast_sqlite_manager._initialize_database()
@@ -171,5 +171,5 @@ def clean_sqlite_manager(fast_sqlite_manager):
         fast_sqlite_manager.cleanup_test_data()
     except Exception:
         # If cleanup fails, reset the shared connection for next test
-        from src.infrastructure.persistence.sqlite.fast_sqlite_manager import FastSQLiteManager
+        from src.core.fast_sqlite_mgmt.fast_sqlite_manager import FastSQLiteManager
         FastSQLiteManager.reset_shared_connection()

@@ -1,2 +1,0 @@
-"""Input parsing components
-"""

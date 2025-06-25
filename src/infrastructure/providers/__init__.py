@@ -1,41 +1,9 @@
 """Infrastructure providers - 副作用を集約するプロバイダー群"""
-
-from .file_provider import FileProvider, MockFileProvider, SystemFileProvider
-from .json_provider import JsonProvider, MockJsonProvider, SystemJsonProvider
-from .os_provider import MockOsProvider, OsProvider, SystemOsProvider
-from .registry_provider import MockRegistryProvider, RegistryProvider, SystemRegistryProvider
-from .sqlite_provider import MockSQLiteProvider, SQLiteProvider, SystemSQLiteProvider
-from .sys_provider import MockSysProvider, SysProvider, SystemSysProvider
-from .time_provider import FixedTimeProvider, MockTimeProvider, SystemTimeProvider, TimeProvider
-
-__all__ = [
-    # File providers
-    'FileProvider',
-    'FixedTimeProvider',
-    # JSON providers
-    'JsonProvider',
-    'MockFileProvider',
-    'MockJsonProvider',
-    'MockOsProvider',
-    'MockRegistryProvider',
-    'MockSQLiteProvider',
-    'MockSysProvider',
-    'MockTimeProvider',
-    # OS providers
-    'OsProvider',
-    # Registry providers
-    'RegistryProvider',
-    # SQLite providers
-    'SQLiteProvider',
-    # Sys providers
-    'SysProvider',
-    'SystemFileProvider',
-    'SystemJsonProvider',
-    'SystemOsProvider',
-    'SystemRegistryProvider',
-    'SystemSQLiteProvider',
-    'SystemSysProvider',
-    'SystemTimeProvider',
-    # Time providers
-    'TimeProvider'
-]
+from infrastructure.file_provider import FileProvider, MockFileProvider, SystemFileProvider
+from infrastructure.json_provider import JsonProvider, MockJsonProvider, SystemJsonProvider
+from infrastructure.os_provider import MockOsProvider, OsProvider, SystemOsProvider
+from infrastructure.registry_provider import MockRegistryProvider, RegistryProvider, SystemRegistryProvider
+from infrastructure.sqlite_provider import MockSQLiteProvider, SQLiteProvider, SystemSQLiteProvider
+from infrastructure.sys_provider import MockSysProvider, SysProvider, SystemSysProvider
+from infrastructure.time_provider import FixedTimeProvider, MockTimeProvider, SystemTimeProvider, TimeProvider
+__all__ = ['FileProvider', 'FixedTimeProvider', 'JsonProvider', 'MockFileProvider', 'MockJsonProvider', 'MockOsProvider', 'MockRegistryProvider', 'MockSQLiteProvider', 'MockSysProvider', 'MockTimeProvider', 'OsProvider', 'RegistryProvider', 'SQLiteProvider', 'SysProvider', 'SystemFileProvider', 'SystemJsonProvider', 'SystemOsProvider', 'SystemRegistryProvider', 'SystemSQLiteProvider', 'SystemSysProvider', 'SystemTimeProvider', 'TimeProvider']

@@ -1,1 +1,1 @@
-from .result import OperationResult
+from operations.result import OperationResult

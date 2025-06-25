@@ -2,10 +2,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Optional, Union
-
 if TYPE_CHECKING:
-    from .format_info import FormatInfo
-    from .output_manager import OutputManager
+    from core.format_info.format_info import FormatInfo
+    from formatters.output_manager import OutputManager
 
 class LogLevel(Enum):
     DEBUG = auto()
@@ -30,6 +29,5 @@ class LogEntry:
     def formatted_content(self) -> str:
         text = self.content if isinstance(self.content, str) else self.content.output()
         if self.formatinfo:
-            # 循環インポート回避のため、ここでメソッド呼び出し
             return self.formatinfo.apply(text)
         return text

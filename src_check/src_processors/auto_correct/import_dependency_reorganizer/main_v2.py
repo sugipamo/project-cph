@@ -131,9 +131,12 @@ def main(config: Optional[ReorganizerConfig] = None,
         # インポート解析
         analyzer = SimpleImportAnalyzer(src_root)
         
+        # すべてのファイルを一括解析
+        analyzer.analyze_all_files()
+        
+        # 解析結果をログ出力
         for py_file in python_files:
             try:
-                analyzer.analyze_file(py_file)
                 imports = analyzer.file_imports.get(py_file, [])
                 logger.log_import_analysis(py_file, len(imports), imports)
             except Exception as e:

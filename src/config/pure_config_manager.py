@@ -1,9 +1,9 @@
 """純粋なConfiguration層の実装
 
-from src.configuration.resolver.config_node import ConfigNode as ConfigNodeClass
-from src.configuration.resolver.config_resolver import create_config_root_from_dict as create_func
-from src.configuration.resolver.config_resolver import resolve_best
-from src.configuration.resolver.config_resolver import resolve_formatted_string
+from src.core.configuration.config_node import ConfigNode as ConfigNodeClass
+from src.core.configuration.config_resolver import create_config_root_from_dict as create_func
+from src.core.configuration.config_resolver import resolve_best
+from src.core.configuration.config_resolver import resolve_formatted_string
 副作用を排除し、設定データの解析とアクセスのみに責務を限定した
 Configuration層の実装です。
 """

@@ -10,19 +10,7 @@
 
 移行完了により、レガシーアダプターは削除されました。
 """
-
-from .config_manager import (
-    FileLoader,
-    TypedExecutionConfiguration,
-    TypeSafeConfigNodeManager,
-)
-from .execution_config import ExecutionPaths
-from .output_config import OutputConfig
-
-__all__ = [
-    'ExecutionPaths',
-    'FileLoader',
-    'OutputConfig',
-    'TypeSafeConfigNodeManager',
-    'TypedExecutionConfiguration',
-]
+from config_manager import FileLoader, TypedExecutionConfiguration, TypeSafeConfigNodeManager
+from execution_config import ExecutionPaths
+from output_config import OutputConfig
+__all__ = ['ExecutionPaths', 'FileLoader', 'OutputConfig', 'TypeSafeConfigNodeManager', 'TypedExecutionConfiguration']

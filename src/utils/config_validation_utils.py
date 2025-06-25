@@ -1,6 +1,6 @@
 """設定関連のバリデーションユーティリティ
 
-from src.configuration.resolver.config_resolver import resolve_best
+from src.core.configuration.config_resolver import resolve_best
 ConfigNode/resolverを使用した設定データの検証と取得を行います。
 """
 
