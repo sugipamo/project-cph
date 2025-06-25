@@ -1,0 +1,40 @@
+{
+  "total_files": 4,
+  "circular_references": 0,
+  "delayed_imports": 1,
+  "file_details": {
+    "/home/cphelper/project-cph/src/configuration/__init__.py": {
+      "classes": 0,
+      "functions": 0,
+      "imports": 0,
+      "has_type_checking": false
+    },
+    "/home/cphelper/project-cph/src/configuration/config_node/config_resolver.py": {
+      "classes": 1,
+      "functions": 10,
+      "imports": 5,
+      "has_type_checking": false
+    },
+    "/home/cphelper/project-cph/src/configuration/config_node/config_node_logic.py": {
+      "classes": 0,
+      "functions": 5,
+      "imports": 2,
+      "has_type_checking": true
+    },
+    "/home/cphelper/project-cph/src/configuration/config_node/config_node.py": {
+      "classes": 1,
+      "functions": 6,
+      "imports": 2,
+      "has_type_checking": false
+    }
+  },
+  "issues": {
+    "circular_references": [],
+    "delayed_imports": [
+      {
+        "module": "configuration.config_node.config_node_logic",
+        "file": "/home/cphelper/project-cph/src/configuration/config_node/config_node_logic.py"
+      }
+    ]
+  }
+}
