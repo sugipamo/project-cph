@@ -1,0 +1,100 @@
+{
+  "start_time": "2025-06-25T14:51:02.803460",
+  "end_time": "2025-06-25T14:51:02.803774",
+  "total_duration": 0.000315,
+  "event_count": 6,
+  "events": [
+    {
+      "timestamp": "2025-06-25T14:51:02.803506",
+      "level": "INFO",
+      "message": "依存関係ベースフォルダ構造整理を開始",
+      "details": {
+        "config": {
+          "max_file_count": 50,
+          "max_depth": 3,
+          "execute_mode": true,
+          "dry_run": false,
+          "exclude_patterns": [
+            "__pycache__",
+            "*.pyc"
+          ],
+          "include_test_files": false,
+          "exclude_type_checking": true,
+          "create_init_files": true,
+          "cleanup_empty_dirs": true,
+          "preserve_structure_for": [
+            "__init__.py",
+            "conftest.py"
+          ],
+          "depth_folder_mapping": {
+            "0": "",
+            "1": "foundation",
+            "2": "business",
+            "3": "application"
+          },
+          "folder_name_patterns": {
+            "*_manager": "{name}_mgmt",
+            "*_service": "{name}_svc",
+            "*_handler": "{name}_hdlr",
+            "*_controller": "{name}_ctrl",
+            "*_processor": "{name}_proc",
+            "config*": "configuration",
+            "util*": "utilities"
+          },
+          "use_git_backup": true,
+          "backup_dir_name": "backup_reorganize_{timestamp}",
+          "log_level": "DEBUG",
+          "log_to_file": true,
+          "log_file_name": "reorganizer_{timestamp}.log",
+          "verbose": true,
+          "validate_syntax": true,
+          "validate_imports": true,
+          "run_tests_after": false,
+          "test_command": "pytest",
+          "stop_on_first_error": false,
+          "ignore_circular_deps": true,
+          "max_errors_to_show": 10
+        }
+      },
+      "elapsed_seconds": 4.8e-05
+    },
+    {
+      "timestamp": "2025-06-25T14:51:02.803559",
+      "level": "INFO",
+      "message": "プロジェクトルート: /home/cphelper/project-cph",
+      "details": {},
+      "elapsed_seconds": 0.0001
+    },
+    {
+      "timestamp": "2025-06-25T14:51:02.803590",
+      "level": "INFO",
+      "message": "解析対象: /home/cphelper/project-cph/test_src_phase3",
+      "details": {},
+      "elapsed_seconds": 0.000131
+    },
+    {
+      "timestamp": "2025-06-25T14:51:02.803620",
+      "level": "INFO",
+      "message": "=== Phase 1 開始 ===",
+      "details": {
+        "phase": "Phase 1",
+        "description": "ファイル収集と依存関係解析"
+      },
+      "elapsed_seconds": 0.000161
+    },
+    {
+      "timestamp": "2025-06-25T14:51:02.803733",
+      "level": "INFO",
+      "message": "発見されたPythonファイル数: 0",
+      "details": {},
+      "elapsed_seconds": 0.000275
+    },
+    {
+      "timestamp": "2025-06-25T14:51:02.803764",
+      "level": "WARNING",
+      "message": "Pythonファイルが見つかりませんでした",
+      "details": {},
+      "elapsed_seconds": 0.000305
+    }
+  ]
+}

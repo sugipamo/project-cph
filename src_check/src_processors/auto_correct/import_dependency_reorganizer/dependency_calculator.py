@@ -125,10 +125,11 @@ class DependencyCalculator:
         for module in all_modules:
             in_degree[module] = 0
         
-        # 入次数計算
+        # 入次数計算：moduleがdepに依存している場合、moduleの入次数を増やす
         for module, deps in self.dependency_graph.items():
-            for dep in deps:
-                in_degree[dep] += 1
+            in_degree[module] = len(deps)
+        
+        print(f"デバッグ: 入次数 = {dict(in_degree)}")
         
         # 入次数0のノードをキューに追加
         queue = deque()
@@ -146,9 +147,10 @@ class DependencyCalculator:
             current = queue.popleft()
             processed += 1
             
-            # 依存するモジュールの深度を更新
+            # このモジュールに依存しているモジュール（dependents）の深度を更新
             for dependent in self.reverse_graph.get(current, []):
-                # このモジュールに依存しているモジュールの深度を更新
+                # dependent は current に依存している
+                # つまり dependent の深度 = current の深度 + 1
                 new_depth = min(depths[current] + 1, max_depth)
                 
                 if dependent not in depths:

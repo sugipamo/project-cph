@@ -1,0 +1,11 @@
+2025-06-25 15:14:28 - import_dependency_reorganizer - INFO - 依存関係ベースフォルダ構造整理を開始
+2025-06-25 15:14:28 - import_dependency_reorganizer - INFO - プロジェクトルート: /home/cphelper/project-cph
+2025-06-25 15:14:28 - import_dependency_reorganizer - INFO - 解析対象: /home/cphelper/project-cph/src
+2025-06-25 15:14:28 - import_dependency_reorganizer - INFO - === Phase 1 開始 ===
+2025-06-25 15:14:28 - import_dependency_reorganizer - INFO - 発見されたPythonファイル数: 209
+2025-06-25 15:14:28 - import_dependency_reorganizer - INFO - === Phase 1 成功 (0.01秒) ===
+2025-06-25 15:14:28 - import_dependency_reorganizer - INFO - === Phase 2 開始 ===
+2025-06-25 15:14:28 - import_dependency_reorganizer - INFO - 移動計画作成: 0ファイル
+2025-06-25 15:14:28 - import_dependency_reorganizer - INFO - === Phase 2 成功 (0.00秒) ===
+2025-06-25 15:14:28 - import_dependency_reorganizer - INFO - 実行ログを保存: /home/cphelper/project-cph/src_check/src_processors/auto_correct/import_dependency_reorganizer/logs/reorganizer_20250625_151428.json
+2025-06-25 15:14:28 - import_dependency_reorganizer - INFO - 実行統計

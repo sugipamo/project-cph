@@ -1,0 +1,179 @@
+{
+  "metadata": {
+    "generated_at": "2025-06-25T15:00:47.398826",
+    "total_nodes": 10,
+    "total_edges": 13,
+    "circular_dependencies": 1,
+    "max_depth": 0
+  },
+  "nodes": [
+    {
+      "id": 0,
+      "name": "src.api_handler",
+      "label": "src.api_handler",
+      "dependencies": 3,
+      "dependents": 1,
+      "file_path": "test_src_graph/api_handler.py"
+    },
+    {
+      "id": 1,
+      "name": "src.circular_a",
+      "label": "src.circular_a",
+      "dependencies": 1,
+      "dependents": 1,
+      "file_path": "test_src_graph/circular_a.py"
+    },
+    {
+      "id": 2,
+      "name": "src.circular_b",
+      "label": "src.circular_b",
+      "dependencies": 1,
+      "dependents": 1,
+      "file_path": "test_src_graph/circular_b.py"
+    },
+    {
+      "id": 3,
+      "name": "src.config_service",
+      "label": "src.config_service",
+      "dependencies": 3,
+      "dependents": 1,
+      "file_path": "test_src_graph/config_service.py"
+    },
+    {
+      "id": 4,
+      "name": "src.constants",
+      "label": "src.constants",
+      "dependencies": 0,
+      "dependents": 2,
+      "file_path": "test_src_graph/constants.py"
+    },
+    {
+      "id": 5,
+      "name": "src.formatters",
+      "label": "src.formatters",
+      "dependencies": 1,
+      "dependents": 1,
+      "file_path": "test_src_graph/formatters.py"
+    },
+    {
+      "id": 6,
+      "name": "src.main",
+      "label": "src.main",
+      "dependencies": 1,
+      "dependents": 0,
+      "file_path": "test_src_graph/main.py"
+    },
+    {
+      "id": 7,
+      "name": "src.types",
+      "label": "src.types",
+      "dependencies": 0,
+      "dependents": 4,
+      "file_path": "test_src_graph/types.py"
+    },
+    {
+      "id": 8,
+      "name": "src.user_service",
+      "label": "src.user_service",
+      "dependencies": 2,
+      "dependents": 1,
+      "file_path": "test_src_graph/user_service.py"
+    },
+    {
+      "id": 9,
+      "name": "src.validators",
+      "label": "src.validators",
+      "dependencies": 1,
+      "dependents": 1,
+      "file_path": "test_src_graph/validators.py"
+    }
+  ],
+  "edges": [
+    {
+      "source": 1,
+      "target": 2,
+      "source_name": "src.circular_a",
+      "target_name": "src.circular_b"
+    },
+    {
+      "source": 9,
+      "target": 7,
+      "source_name": "src.validators",
+      "target_name": "src.types"
+    },
+    {
+      "source": 2,
+      "target": 1,
+      "source_name": "src.circular_b",
+      "target_name": "src.circular_a"
+    },
+    {
+      "source": 3,
+      "target": 5,
+      "source_name": "src.config_service",
+      "target_name": "src.formatters"
+    },
+    {
+      "source": 3,
+      "target": 7,
+      "source_name": "src.config_service",
+      "target_name": "src.types"
+    },
+    {
+      "source": 3,
+      "target": 4,
+      "source_name": "src.config_service",
+      "target_name": "src.constants"
+    },
+    {
+      "source": 6,
+      "target": 0,
+      "source_name": "src.main",
+      "target_name": "src.api_handler"
+    },
+    {
+      "source": 0,
+      "target": 7,
+      "source_name": "src.api_handler",
+      "target_name": "src.types"
+    },
+    {
+      "source": 0,
+      "target": 8,
+      "source_name": "src.api_handler",
+      "target_name": "src.user_service"
+    },
+    {
+      "source": 0,
+      "target": 3,
+      "source_name": "src.api_handler",
+      "target_name": "src.config_service"
+    },
+    {
+      "source": 5,
+      "target": 4,
+      "source_name": "src.formatters",
+      "target_name": "src.constants"
+    },
+    {
+      "source": 8,
+      "target": 9,
+      "source_name": "src.user_service",
+      "target_name": "src.validators"
+    },
+    {
+      "source": 8,
+      "target": 7,
+      "source_name": "src.user_service",
+      "target_name": "src.types"
+    }
+  ],
+  "circular_dependencies": [
+    [
+      "src.circular_a",
+      "src.circular_b",
+      "src.circular_a",
+      "src.circular_a"
+    ]
+  ]
+}

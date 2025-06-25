@@ -1,0 +1,60 @@
+{
+  "_comment": "依存関係ベースフォルダ構造整理ツールの設定ファイル",
+  "max_file_count": 250,
+  "max_depth": 5,
+  "execute_mode": false,
+  "dry_run": true,
+  "_comment_analysis": "解析設定",
+  "exclude_patterns": [
+    "__pycache__",
+    "*.pyc",
+    ".git",
+    ".pytest_cache",
+    "*.egg-info"
+  ],
+  "include_test_files": false,
+  "exclude_type_checking": true,
+  "_comment_move": "移動設定",
+  "create_init_files": true,
+  "cleanup_empty_dirs": true,
+  "preserve_structure_for": [
+    "__init__.py",
+    "conftest.py"
+  ],
+  "_comment_folders": "深度別フォルダマッピング",
+  "depth_folder_mapping": {
+    "0": "",
+    "1": "core",
+    "2": "services",
+    "3": "handlers",
+    "4": "controllers",
+    "5": "app"
+  },
+  "_comment_custom": "カスタムフォルダ名規則 (*はワイルドカード)",
+  "folder_name_patterns": {
+    "*_manager": "{name}_mgmt",
+    "*_service": "{name}_svc",
+    "*_handler": "{name}_hdlr",
+    "*_controller": "{name}_ctrl",
+    "*_processor": "{name}_proc",
+    "config*": "configuration",
+    "util*": "utilities"
+  },
+  "_comment_backup": "バックアップ設定",
+  "use_git_backup": true,
+  "backup_dir_name": "backup_reorganize_{timestamp}",
+  "_comment_log": "ログ設定",
+  "log_level": "INFO",
+  "log_to_file": true,
+  "log_file_name": "reorganizer_{timestamp}.log",
+  "verbose": false,
+  "_comment_validation": "検証設定",
+  "validate_syntax": true,
+  "validate_imports": true,
+  "run_tests_after": false,
+  "test_command": "pytest",
+  "_comment_error": "エラーハンドリング設定",
+  "stop_on_first_error": false,
+  "ignore_circular_deps": false,
+  "max_errors_to_show": 10
+}

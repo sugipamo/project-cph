@@ -1,0 +1,148 @@
+{
+  "start_time": "2025-06-25T15:14:28.197343",
+  "end_time": "2025-06-25T15:14:28.207677",
+  "total_duration": 0.010334,
+  "event_count": 9,
+  "events": [
+    {
+      "timestamp": "2025-06-25T15:14:28.197463",
+      "level": "INFO",
+      "message": "依存関係ベースフォルダ構造整理を開始",
+      "details": {
+        "config": {
+          "max_file_count": 250,
+          "max_depth": 5,
+          "execute_mode": false,
+          "dry_run": true,
+          "exclude_patterns": [
+            "__pycache__",
+            "*.pyc",
+            ".git",
+            ".pytest_cache",
+            "*.egg-info"
+          ],
+          "include_test_files": false,
+          "exclude_type_checking": true,
+          "create_init_files": true,
+          "cleanup_empty_dirs": true,
+          "preserve_structure_for": [
+            "__init__.py",
+            "conftest.py"
+          ],
+          "depth_folder_mapping": {
+            "0": "",
+            "1": "core",
+            "2": "services",
+            "3": "handlers",
+            "4": "controllers",
+            "5": "app"
+          },
+          "folder_name_patterns": {
+            "*_manager": "{name}_mgmt",
+            "*_service": "{name}_svc",
+            "*_handler": "{name}_hdlr",
+            "*_controller": "{name}_ctrl",
+            "*_processor": "{name}_proc",
+            "config*": "configuration",
+            "util*": "utilities"
+          },
+          "use_git_backup": true,
+          "backup_dir_name": "backup_reorganize_{timestamp}",
+          "log_level": "INFO",
+          "log_to_file": true,
+          "log_file_name": "reorganizer_{timestamp}.log",
+          "verbose": false,
+          "validate_syntax": true,
+          "validate_imports": true,
+          "run_tests_after": false,
+          "test_command": "pytest",
+          "stop_on_first_error": false,
+          "ignore_circular_deps": false,
+          "max_errors_to_show": 10,
+          "generate_graph": false,
+          "graph_formats": [
+            "dot",
+            "mermaid",
+            "json",
+            "ascii",
+            "html"
+          ]
+        }
+      },
+      "elapsed_seconds": 0.000125
+    },
+    {
+      "timestamp": "2025-06-25T15:14:28.197540",
+      "level": "INFO",
+      "message": "プロジェクトルート: /home/cphelper/project-cph",
+      "details": {},
+      "elapsed_seconds": 0.000199
+    },
+    {
+      "timestamp": "2025-06-25T15:14:28.197582",
+      "level": "INFO",
+      "message": "解析対象: /home/cphelper/project-cph/src",
+      "details": {},
+      "elapsed_seconds": 0.000241
+    },
+    {
+      "timestamp": "2025-06-25T15:14:28.197620",
+      "level": "INFO",
+      "message": "=== Phase 1 開始 ===",
+      "details": {
+        "phase": "Phase 1",
+        "description": "ファイル収集と依存関係解析"
+      },
+      "elapsed_seconds": 0.000279
+    },
+    {
+      "timestamp": "2025-06-25T15:14:28.204590",
+      "level": "INFO",
+      "message": "発見されたPythonファイル数: 209",
+      "details": {},
+      "elapsed_seconds": 0.007252
+    },
+    {
+      "timestamp": "2025-06-25T15:14:28.207485",
+      "level": "INFO",
+      "message": "=== Phase 1 成功 (0.01秒) ===",
+      "details": {
+        "phase": "Phase 1",
+        "success": true,
+        "duration": 0.009820938110351562
+      },
+      "elapsed_seconds": 0.010146
+    },
+    {
+      "timestamp": "2025-06-25T15:14:28.207526",
+      "level": "INFO",
+      "message": "=== Phase 2 開始 ===",
+      "details": {
+        "phase": "Phase 2",
+        "description": "移動計画の作成"
+      },
+      "elapsed_seconds": 0.010184
+    },
+    {
+      "timestamp": "2025-06-25T15:14:28.207558",
+      "level": "INFO",
+      "message": "移動計画作成: 0ファイル",
+      "details": {
+        "file_count": 0,
+        "sample_moves": []
+      },
+      "elapsed_seconds": 0.010216
+    },
+    {
+      "timestamp": "2025-06-25T15:14:28.207588",
+      "level": "INFO",
+      "message": "=== Phase 2 成功 (0.00秒) ===",
+      "details": {
+        "phase": "Phase 2",
+        "success": true,
+        "duration": 6.961822509765625e-05
+      },
+      "elapsed_seconds": 0.010247
+    }
+  ]
+}

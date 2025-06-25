@@ -52,7 +52,14 @@ class SimpleImportAnalyzer:
         imports = []
         detailed_imports = []
         
+        # TYPE_CHECKINGブロックを検出
+        type_checking_blocks = self._find_type_checking_blocks(tree)
+        
         for node in ast.walk(tree):
+            # TYPE_CHECKINGブロック内のインポートは除外
+            if self._is_in_type_checking_block(node, type_checking_blocks):
+                continue
+                
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     module_name = alias.name
@@ -86,6 +93,49 @@ class SimpleImportAnalyzer:
         
         self.file_imports[file_path] = imports
         self.import_statements[file_path] = detailed_imports
+    
+    def _find_type_checking_blocks(self, tree: ast.AST) -> list:
+        """TYPE_CHECKINGブロックの範囲を検出"""
+        type_checking_blocks = []
+        
+        for node in ast.walk(tree):
+            if isinstance(node, ast.If):
+                # if TYPE_CHECKING: のパターンを検出
+                if (isinstance(node.test, ast.Name) and 
+                    node.test.id == 'TYPE_CHECKING'):
+                    # TYPE_CHECKINGブロックの行範囲を記録
+                    start_line = node.lineno
+                    end_line = self._get_block_end_line(node)
+                    type_checking_blocks.append((start_line, end_line))
+        
+        return type_checking_blocks
+    
+    def _get_block_end_line(self, if_node: ast.If) -> int:
+        """ifブロックの終了行を取得"""
+        max_line = if_node.lineno
+        
+        # if文の本体の最大行番号を取得
+        for stmt in if_node.body:
+            if hasattr(stmt, 'lineno'):
+                max_line = max(max_line, stmt.lineno)
+            # 再帰的に子ノードもチェック
+            for child in ast.walk(stmt):
+                if hasattr(child, 'lineno'):
+                    max_line = max(max_line, child.lineno)
+        
+        return max_line
+    
+    def _is_in_type_checking_block(self, node: ast.AST, type_checking_blocks: list) -> bool:
+        """ノードがTYPE_CHECKINGブロック内にあるかチェック"""
+        if not hasattr(node, 'lineno'):
+            return False
+        
+        node_line = node.lineno
+        for start_line, end_line in type_checking_blocks:
+            if start_line <= node_line <= end_line:
+                return True
+        
+        return False
     
     def _is_project_module(self, module_name: str) -> bool:
         """プロジェクト内モジュールかどうか判定"""
@@ -143,9 +193,9 @@ class SimpleImportAnalyzer:
             
             # モジュール名を追加
             if module:
-                final_parts = base_parts + tuple(module.split('.'))
+                final_parts = list(base_parts) + module.split('.')
             else:
-                final_parts = base_parts
+                final_parts = list(base_parts)
             
             # src.プレフィックスを追加
             if final_parts:

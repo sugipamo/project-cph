@@ -1,0 +1,25 @@
+{
+    "target_directory": "src",
+    "max_depth": 4,
+    "exclude_patterns": [
+        "__pycache__",
+        "*.pyc",
+        ".git",
+        "__init__.py",
+        "test_*",
+        "*_test.py"
+    ],
+    "max_file_count": 250,
+    "folder_mapping": {
+        "0": "core",
+        "1": "components", 
+        "2": "services",
+        "3": "infrastructure",
+        "4": "deep"
+    },
+    "backup_enabled": true,
+    "ignore_circular_deps": false,
+    "generate_graph": true,
+    "graph_formats": ["dot", "mermaid", "html"],
+    "graph_output_dir": "dependency_graphs"
+}

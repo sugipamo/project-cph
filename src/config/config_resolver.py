@@ -1,47 +1,10 @@
 from collections import deque
 from typing import Any, Optional, Union
 
-from .config_node import ConfigNode
-from .config_node_logic import add_edge, init_matches
-from functools import lru_cache
+from src.configuration.resolver.config_node import ConfigNode
+from src.configuration.resolver.config_node_logic import add_edge, init_matches
+from src.operations.pure.formatters import format_with_missing_keys
 
-
-@lru_cache(maxsize=512)
-def extract_format_keys(template: str, regex_ops: Any) -> list[str]:
-    """Extract format keys from template string.
-
-    Args:
-        template: Template string with {key} placeholders
-        regex_ops: Regex operations provider for dependency injection
-
-    Returns:
-        List of format keys found in template
-    """
-    # regex_ops is now required parameter - no default value check needed
-
-    pattern = regex_ops.compile_pattern(r'{(\w+)}')
-    return regex_ops.findall(pattern, template)
-
-def format_with_missing_keys(template: str, regex_ops: Any, **kwargs) -> tuple[str, list[str]]:
-    """Format template with partial data, returning missing keys.
-
-    Args:
-        template: Template string to format
-        regex_ops: Regex operations provider for dependency injection
-        **kwargs: Format variables
-
-    Returns:
-        Tuple of (formatted_string, missing_keys)
-    """
-    keys = extract_format_keys(template, regex_ops)
-    missing = [k for k in keys if k not in kwargs]
-
-    class SafeDict(dict):
-        def __missing__(self, key):
-            return '{' + key + '}'
-
-    formatted = template.format_map(SafeDict(kwargs))
-    return formatted, missing
 
 def create_config_root_from_dict(data: Any) -> ConfigNode:
     if not isinstance(data, dict):
