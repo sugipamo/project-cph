@@ -14,7 +14,7 @@ sys.path.append(str(Path(__file__).parent))
 from core.module_explorer import ModuleExplorer
 from core.dynamic_importer import DynamicImporter
 from core.result_writer import ResultWriter
-from models.check_result import CheckResult
+from models.check_result import CheckResult, Severity
 from comprehensive_import_fixer import ComprehensiveImportFixer
 
 
@@ -51,7 +51,14 @@ def main():
         
         if pre_check_result.failure_locations:
             print(f"⚠️  {len(pre_check_result.failure_locations)}個の壊れたインポートを検出")
-            print("修正を試みます...")
+            
+            # CRITICALなエラーの場合は詳細を表示
+            if pre_check_result.severity == Severity.CRITICAL:
+                print("\n❌ 重大なインポートエラーが検出されました:")
+                if pre_check_result.fix_example_code:
+                    print(pre_check_result.fix_example_code)
+            
+            print("\n修正を試みます...")
             fix_result = fixer.check_and_fix_imports(dry_run=False)
             print(f"✅ {fix_result.fix_policy}")
         else:
@@ -89,10 +96,11 @@ def main():
                 results.append(result)
                 
                 # 深刻なエラーチェック
-                if "ERROR" in result.title:
+                if "ERROR" in result.title or (hasattr(result, 'severity') and result.severity == Severity.CRITICAL):
                     critical_errors.append({
                         'module': module_info.module_name,
-                        'error': result.fix_policy
+                        'error': result.fix_policy,
+                        'severity': result.severity if hasattr(result, 'severity') else Severity.ERROR
                     })
                     
             except Exception as e:
@@ -106,7 +114,8 @@ def main():
                     title=f"{module_info.module_name}_EXECUTION_ERROR",
                     failure_locations=[],
                     fix_policy=error_msg,
-                    fix_example_code=None
+                    fix_example_code=None,
+                    severity=Severity.CRITICAL
                 )
                 results.append(error_result)
         

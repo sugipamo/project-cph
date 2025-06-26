@@ -1,6 +1,6 @@
 === import_dependency_reorganizer ===
 
-失敗箇所: 74件
+失敗箇所: 75件
 ----------------------------------------
 1. infrastructure/ast_analyzer.py:0
 2. infrastructure/local_filesystem.py:0
@@ -9,80 +9,81 @@
 5. domain/base_request.py:0
 6. domain/workflow_result.py:0
 7. domain/config_node.py:0
-8. presentation/context_validator.py:0
-9. presentation/context_formatter.py:0
-10. operations/error_converter.py:0
-11. operations/composite_structure.py:0
-12. utils/sys_provider.py:0
-13. utils/format_info.py:0
-14. utils/regex_provider.py:0
-15. utils/retry_decorator.py:0
-16. utils/python_utils.py:0
-17. utils/path_operations.py:0
-18. utils/mock_regex_provider.py:0
-19. utils/time_adapter.py:0
-20. application/fast_sqlite_manager.py:0
-21. application/sqlite_manager.py:0
-22. configuration/system_config_loader.py:0
-23. configuration/configuration_repository.py:0
-24. configuration/environment_manager.py:0
-25. infrastructure/drivers/file/mock_file_driver.py:0
-26. infrastructure/drivers/file/file_driver.py:0
-27. infrastructure/drivers/shell/shell_driver.py:0
-28. data/base/base_repository.py:0
-29. data/state/state_repository.py:0
-30. operations/requests/python_request.py:0
-31. operations/requests/shell_request.py:0
-32. operations/interfaces/docker_interface.py:0
-33. operations/interfaces/execution_interface.py:0
-34. operations/results/result_factory.py:0
-35. operations/results/shell_result.py:0
-36. operations/results/docker_result.py:0
-37. operations/results/file_result.py:0
-38. application/services/config_loader_service.py:0
-39. application/services/debug_service.py:0
-40. presentation/module_parser.py:0
-41. configuration/system_config_repository.py:0
-42. configuration/config_resolver.py:0
-43. infrastructure/drivers/generic/persistence_driver.py:0
-44. infrastructure/drivers/generic/unified_driver.py:0
-45. infrastructure/drivers/shell/local_shell_driver.py:0
-46. infrastructure/drivers/shell/mock_shell_driver.py:0
-47. infrastructure/drivers/python/python_driver.py:0
-48. domain/services/step_generation_service.py:0
-49. domain/services/workflow_execution_service.py:0
-50. data/operation/operation_repository.py:0
-51. data/docker_container/docker_container_repository.py:0
-52. data/sqlite_state/sqlite_state_repository.py:0
-53. data/docker_image/docker_image_repository.py:0
-54. data/session/session_repository.py:0
-55. operations/requests/composite_request.py:0
-56. operations/requests/file_request.py:0
-57. operations/interfaces/output_manager_interface.py:0
-58. domain/dependency.py:0
-59. domain/workflow_logger_adapter.py:0
-60. presentation/user_input_parser.py:0
-61. application/mock_output_manager.py:0
-62. application/contest_manager.py:0
-63. application/output_manager.py:0
-64. logging/application_logger_adapter.py:0
-65. logging/unified_logger.py:0
-66. infrastructure/drivers/docker/docker_driver.py:0
-67. operations/requests/docker_request.py:0
-68. domain/workflow.py:0
-69. presentation/main.py:0
-70. presentation/cli_app.py:0
-71. configuration/build_infrastructure.py:0
-72. configuration/di_config.py:0
-73. infrastructure/drivers/docker/docker_driver_with_tracking.py:0
-74. infrastructure/drivers/docker/mock_docker_driver.py:0
+8. domain/composite_step_failure.py:0
+9. presentation/context_validator.py:0
+10. presentation/context_formatter.py:0
+11. operations/error_converter.py:0
+12. operations/composite_structure.py:0
+13. utils/sys_provider.py:0
+14. utils/format_info.py:0
+15. utils/regex_provider.py:0
+16. utils/retry_decorator.py:0
+17. utils/python_utils.py:0
+18. utils/path_operations.py:0
+19. utils/mock_regex_provider.py:0
+20. utils/time_adapter.py:0
+21. application/fast_sqlite_manager.py:0
+22. application/sqlite_manager.py:0
+23. configuration/system_config_loader.py:0
+24. configuration/configuration_repository.py:0
+25. configuration/environment_manager.py:0
+26. infrastructure/drivers/file/mock_file_driver.py:0
+27. infrastructure/drivers/file/file_driver.py:0
+28. infrastructure/drivers/shell/shell_driver.py:0
+29. data/base/base_repository.py:0
+30. data/state/state_repository.py:0
+31. operations/requests/python_request.py:0
+32. operations/requests/shell_request.py:0
+33. operations/interfaces/docker_interface.py:0
+34. operations/interfaces/execution_interface.py:0
+35. operations/results/result_factory.py:0
+36. operations/results/shell_result.py:0
+37. operations/results/docker_result.py:0
+38. operations/results/file_result.py:0
+39. application/services/config_loader_service.py:0
+40. application/services/debug_service.py:0
+41. presentation/module_parser.py:0
+42. configuration/system_config_repository.py:0
+43. configuration/config_resolver.py:0
+44. infrastructure/drivers/generic/persistence_driver.py:0
+45. infrastructure/drivers/generic/unified_driver.py:0
+46. infrastructure/drivers/shell/local_shell_driver.py:0
+47. infrastructure/drivers/shell/mock_shell_driver.py:0
+48. infrastructure/drivers/python/python_driver.py:0
+49. domain/services/step_generation_service.py:0
+50. domain/services/workflow_execution_service.py:0
+51. data/operation/operation_repository.py:0
+52. data/docker_container/docker_container_repository.py:0
+53. data/sqlite_state/sqlite_state_repository.py:0
+54. data/docker_image/docker_image_repository.py:0
+55. data/session/session_repository.py:0
+56. operations/requests/composite_request.py:0
+57. operations/requests/file_request.py:0
+58. operations/interfaces/output_manager_interface.py:0
+59. domain/dependency.py:0
+60. domain/workflow_logger_adapter.py:0
+61. presentation/user_input_parser.py:0
+62. application/mock_output_manager.py:0
+63. application/contest_manager.py:0
+64. application/output_manager.py:0
+65. logging/application_logger_adapter.py:0
+66. logging/unified_logger.py:0
+67. infrastructure/drivers/docker/docker_driver.py:0
+68. operations/requests/docker_request.py:0
+69. domain/workflow.py:0
+70. presentation/main.py:0
+71. presentation/cli_app.py:0
+72. configuration/build_infrastructure.py:0
+73. configuration/di_config.py:0
+74. infrastructure/drivers/docker/docker_driver_with_tracking.py:0
+75. infrastructure/drivers/docker/mock_docker_driver.py:0
 
 修正方針:
 --------------------
-74個のファイルを依存関係の深度に基づいて再配置します。
+75個のファイルを依存関係の深度に基づいて再配置します。
 
 深度別の移動計画:
-  深度1: 39ファイル
+  深度1: 40ファイル
   深度2: 18ファイル
   深度3: 10ファイル
   深度4: 7ファイル
@@ -96,4 +97,4 @@ python3 -m src_check.processors.auto_correct.import_dependency_reorganizer.main_
 # 設定ファイルを作成して詳細なオプションを指定:
 python3 -m src_check.processors.auto_correct.import_dependency_reorganizer.main_v2 --generate-config
 
-実行時刻: 2025-06-26 15:26:35
+実行時刻: 2025-06-26 15:50:46

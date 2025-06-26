@@ -3,10 +3,6 @@ Implements the resolver pattern for Dockerfile content management
 """
 from typing import Callable, Optional
 
-# 互換性維持: infrastructure層への直接依存を削除、依存性注入で解決
-# Docker naming機能は外部から注入される必要があります
-
-
 class DockerfileResolver:
     """Lazy Dockerfile content resolver
 

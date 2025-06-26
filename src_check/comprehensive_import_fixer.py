@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Set, Tuple
 from dataclasses import dataclass, field
 
-from models.check_result import CheckResult, FailureLocation
+from models.check_result import CheckResult, FailureLocation, Severity
 
 
 @dataclass
@@ -99,19 +99,36 @@ class ComprehensiveImportFixer:
         # 解決できなかったインポートの詳細を作成
         unresolved_details = self._create_unresolved_details()
         
+        # testsディレクトリからのインポートがあるかチェック
+        has_test_imports = any(
+            'tests' in imp['module'] 
+            for imp in self.unresolved_imports 
+            if imp.get('module')
+        )
+        
+        # 重大度を決定
+        if has_test_imports or self.unresolved_imports:
+            severity = Severity.CRITICAL
+        elif all_failures:
+            severity = Severity.ERROR
+        else:
+            severity = Severity.INFO
+        
         if dry_run:
             return CheckResult(
                 title="comprehensive_import_check",
                 failure_locations=all_failures,
                 fix_policy=f"{len(all_failures)}個の壊れたインポートを検出しました",
-                fix_example_code=unresolved_details if self.unresolved_imports else None
+                fix_example_code=unresolved_details if self.unresolved_imports else None,
+                severity=severity
             )
         else:
             return CheckResult(
                 title="comprehensive_import_fix",
                 failure_locations=[],
                 fix_policy=f"{files_fixed}個のファイルで{len(all_failures)}個のインポートを修正しました",
-                fix_example_code=unresolved_details if self.unresolved_imports else None
+                fix_example_code=unresolved_details if self.unresolved_imports else None,
+                severity=severity if self.unresolved_imports else Severity.INFO
             )
     
     def _check_file_imports(self, file_path: Path) -> List[FailureLocation]:

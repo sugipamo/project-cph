@@ -9,14 +9,15 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 sys.path.append(str(Path(__file__).parent.parent))
-from models.check_result import CheckResult
+from models.check_result import CheckResult, LogLevel
 
 
 class DynamicImporter:
     """動的インポート管理クラス"""
     
-    def __init__(self, project_root: Path):
+    def __init__(self, project_root: Path, min_log_level: LogLevel = LogLevel.ERROR):
         self.project_root = project_root
+        self.min_log_level = min_log_level
     
     def import_and_execute(self, module_path: Path, module_name: str) -> CheckResult:
         """
@@ -26,7 +27,8 @@ class DynamicImporter:
         # 標準出力を一時的に抑制
         import io
         original_stdout = sys.stdout
-        sys.stdout = io.StringIO()
+        captured_output = io.StringIO()
+        sys.stdout = captured_output
         
         try:
             # モジュール仕様を作成
@@ -63,11 +65,31 @@ class DynamicImporter:
                     del sys.modules[module_key]
                     
         except ImportError as e:
+            # インポートエラーの詳細を標準出力に表示（CRITICALレベル）
+            sys.stdout = original_stdout
+            captured = captured_output.getvalue()
+            if self.min_log_level.value <= LogLevel.CRITICAL.value:
+                if captured:
+                    print(f"\n⚠️  {module_name} の実行中に出力がありました:")
+                    print(captured)
+                print(f"\n❌ {module_name} でインポートエラーが発生しました: {str(e)}")
+            sys.stdout = captured_output
+            
             return self._create_failure_result(
                 module_name,
                 f"インポートエラー: {str(e)}"
             )
         except Exception as e:
+            # その他のエラーも標準出力に表示（ERRORレベル）
+            sys.stdout = original_stdout
+            captured = captured_output.getvalue()
+            if self.min_log_level.value <= LogLevel.ERROR.value:
+                if captured:
+                    print(f"\n⚠️  {module_name} の実行中に出力がありました:")
+                    print(captured)
+                print(f"\n❌ {module_name} で実行時エラーが発生しました: {str(e)}")
+            sys.stdout = captured_output
+            
             return self._create_failure_result(
                 module_name,
                 f"実行時エラー: {str(e)}"
@@ -75,6 +97,11 @@ class DynamicImporter:
         finally:
             # 標準出力を復元
             sys.stdout = original_stdout
+            captured = captured_output.getvalue()
+            if captured and "ERROR" not in module_name and self.min_log_level.value <= LogLevel.DEBUG.value:
+                # DEBUGレベル以下の場合のみ正常終了時の出力を表示
+                print(f"\n📝 {module_name} の出力:")
+                print(captured)
     
     def _execute_main_function(self, module: Any, module_name: str) -> CheckResult:
         """
@@ -99,7 +126,8 @@ class DynamicImporter:
                         title=module_name,
                         failure_locations=result.failure_locations,
                         fix_policy=result.fix_policy,
-                        fix_example_code=result.fix_example_code
+                        fix_example_code=result.fix_example_code,
+                        severity=result.severity if hasattr(result, 'severity') else Severity.WARNING
                     )
                 
                 return result
@@ -117,11 +145,15 @@ class DynamicImporter:
     
     def _create_failure_result(self, module_name: str, error_message: str) -> CheckResult:
         """失敗時のCheckResultを作成"""
+        # testsからのインポートエラーなど重大なエラーを判定
+        is_critical = 'tests' in error_message or 'No module named' in error_message
+        
         return CheckResult(
             title=f"{module_name}_ERROR",
             failure_locations=[],
             fix_policy=f"実行失敗: {error_message}",
-            fix_example_code=None
+            fix_example_code=None,
+            severity=Severity.CRITICAL if is_critical else Severity.ERROR
         )
     
     def _create_success_result(self, module_name: str, message: str) -> CheckResult:
@@ -130,7 +162,8 @@ class DynamicImporter:
             title=module_name,
             failure_locations=[],
             fix_policy=message,
-            fix_example_code=None
+            fix_example_code=None,
+            severity=Severity.INFO
         )
     
     def validate_main_function(self, module_path: Path) -> bool:
