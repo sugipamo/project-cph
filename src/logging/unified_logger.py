@@ -2,14 +2,14 @@
 import uuid
 from typing import TYPE_CHECKING, Any, ClassVar, Optional
 from src.infrastructure.di_container import DIContainer
-from infrastructure.drivers.logging.types import LogLevel
+from src.utils.types import LogLevel
 import re
 if TYPE_CHECKING:
     pass
 from src.operations.interfaces.logger_interface import LoggerInterface
-from infrastructure.drivers.logging.format_info import FormatInfo
-from core.output_manager_interface.output_manager_interface import OutputManagerInterface
-from infrastructure.drivers.logging.types import LogLevel
+from src.utils.format_info import FormatInfo
+from src.operations.interfaces.output_manager_interface import OutputManagerInterface
+from src.utils.types import LogLevel
 
 class UnifiedLogger(LoggerInterface):
     """Unified logger that provides all infrastructure/drivers/logging functionality."""

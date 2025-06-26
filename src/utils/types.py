@@ -3,8 +3,8 @@ from datetime import datetime
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Optional, Union
 if TYPE_CHECKING:
-    from core.format_info.format_info import FormatInfo
-    from formatters.output_manager import OutputManager
+    from src.utils.format_info import FormatInfo
+    from src.application.output_manager import OutputManager
 
 class LogLevel(Enum):
     DEBUG = auto()

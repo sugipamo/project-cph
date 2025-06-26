@@ -5,7 +5,7 @@ from abc import abstractmethod
 from typing import Any, Optional, Union
 
 from src.infrastructure.drivers.generic.base_driver import ExecutionDriverInterface
-from src.infrastructure.drivers.docker.utils import (
+from src.infrastructure.drivers.docker.utils.docker_naming import (
     build_docker_build_command,
     build_docker_remove_command,
     build_docker_run_command,

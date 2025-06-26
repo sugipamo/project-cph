@@ -15,7 +15,7 @@ from core.module_explorer import ModuleExplorer
 from core.dynamic_importer import DynamicImporter
 from core.result_writer import ResultWriter
 from models.check_result import CheckResult
-from import_resolver import ImportResolver
+from comprehensive_import_fixer import ComprehensiveImportFixer
 
 
 def main():
@@ -46,13 +46,13 @@ def main():
         print("ステップ1: インポートの事前チェック")
         print("=" * 60)
         
-        resolver = ImportResolver(project_root)
-        pre_check_result = resolver.check_imports()
+        fixer = ComprehensiveImportFixer(project_root)
+        pre_check_result = fixer.check_and_fix_imports(dry_run=True)
         
         if pre_check_result.failure_locations:
             print(f"⚠️  {len(pre_check_result.failure_locations)}個の壊れたインポートを検出")
             print("修正を試みます...")
-            fix_result = resolver.fix_imports(dry_run=False)
+            fix_result = fixer.check_and_fix_imports(dry_run=False)
             print(f"✅ {fix_result.fix_policy}")
         else:
             print("✅ すべてのインポートは正常です")
@@ -116,12 +116,37 @@ def main():
         summary_file = writer.create_summary_report(results)
         
         # 5. 標準出力には深刻なエラーのみ表示
+        has_critical = False
+        
         if critical_errors:
-            print("深刻なエラーが発生しました:")
+            print("\n❌ 深刻なエラーが発生しました:")
             for error in critical_errors:
                 print(f"  - {error['module']}: {error['error']}")
+            has_critical = True
         
-        print(f"詳細は {summary_file} を参照してください。")
+        # インポートエラーも深刻なエラーとして扱う
+        import_check_results = [r for r in results if 'import_check' in r.title and r.failure_locations]
+        if import_check_results:
+            for result in import_check_results:
+                if result.fix_example_code and '解決できなかったインポート' in result.fix_example_code:
+                    print("\n❌ 解決できないインポートが存在します:")
+                    # 削除されたモジュールのみを表示
+                    lines = result.fix_example_code.split('\n')
+                    in_deleted_section = False
+                    for line in lines:
+                        if '削除されたモジュール:' in line:
+                            in_deleted_section = True
+                            continue
+                        elif '不明なモジュール:' in line:
+                            in_deleted_section = False
+                        elif in_deleted_section and line.strip().startswith('/'):
+                            print(f"  {line.strip()}")
+                    has_critical = True
+        
+        if has_critical:
+            print(f"\n詳細は {summary_file} を参照してください。")
+        else:
+            print(f"詳細は {summary_file} を参照してください。")
         
         # 6. インポート解決（後処理）
         print("\n" + "=" * 60)
@@ -129,12 +154,12 @@ def main():
         print("=" * 60)
         
         # ファイル移動などの処理後、再度インポートをチェック
-        post_check_result = resolver.check_imports()
+        post_check_result = fixer.check_and_fix_imports(dry_run=True)
         
         if post_check_result.failure_locations:
             print(f"⚠️  処理後に{len(post_check_result.failure_locations)}個の壊れたインポートを検出")
             print("修正を試みます...")
-            post_fix_result = resolver.fix_imports(dry_run=False)
+            post_fix_result = fixer.check_and_fix_imports(dry_run=False)
             print(f"✅ {post_fix_result.fix_policy}")
             
             # 修正結果も記録
@@ -143,7 +168,22 @@ def main():
             
             # 結果を再出力
             writer.write_results(results)
-            writer.create_summary_report(results)
+            summary_file = writer.create_summary_report(results)
+            
+            # 解決できなかったインポートがある場合は深刻なエラーとして表示
+            if post_check_result.fix_example_code and '解決できなかったインポート' in post_check_result.fix_example_code:
+                print("\n❌ 解決できないインポートが残っています:")
+                lines = post_check_result.fix_example_code.split('\n')
+                in_deleted_section = False
+                for line in lines:
+                    if '削除されたモジュール:' in line:
+                        in_deleted_section = True
+                        continue
+                    elif '不明なモジュール:' in line:
+                        in_deleted_section = False
+                    elif in_deleted_section and line.strip().startswith('/'):
+                        print(f"  {line.strip()}")
+                print(f"\n詳細は {summary_file} を参照してください。")
         else:
             print("✅ すべてのインポートは正常です")
         

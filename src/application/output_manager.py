@@ -1,7 +1,7 @@
 from typing import List, Optional, Union
-from infrastructure.drivers.logging.format_info import FormatInfo
-from core.output_manager_interface.output_manager_interface import OutputManagerInterface
-from infrastructure.drivers.logging.types import LogEntry, LogLevel
+from src.utils.format_info import FormatInfo
+from src.operations.interfaces.output_manager_interface import OutputManagerInterface
+from src.utils.types import LogEntry, LogLevel
 
 class OutputManager(OutputManagerInterface):
 

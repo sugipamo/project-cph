@@ -1,10 +1,10 @@
 import re
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
-from formatters.color_manager import apply_color
-from formatters.types import LogFormatType
+from src.application.color_manager import apply_color
+from src.utils.types import LogFormatType
 if TYPE_CHECKING:
-    from formatters.types import LogFormatType
+    from src.utils.types import LogFormatType
 else:
     pass
 

@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional, Set
 from datetime import datetime
 from src.infrastructure.module_info import ModuleInfo, ExportedSymbol
-from presentation.ast_analyzer import ASTAnalyzer
+from src.infrastructure.ast_analyzer import ASTAnalyzer
 
 class ModuleParser:
 

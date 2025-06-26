@@ -3,9 +3,9 @@ import json
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
-from infrastructure.result.base_result import InfrastructureResult
+from src.operations.results.base_result import InfrastructureResult
 if TYPE_CHECKING:
-    from core.error_converter.error_converter import ErrorConverter
+    from src.operations.error_converter import ErrorConverter
 
 class ResultFactory:
     """Factory service for creating standardized result objects.

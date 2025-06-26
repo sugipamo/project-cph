@@ -4,8 +4,8 @@ import uuid
 from typing import Any, Optional
 from src.infrastructure.di_container import DIContainer
 from src.operations.interfaces.logger_interface import LoggerInterface
-from format_info import FormatInfo
-from interfaces.output_manager_interface import OutputManagerInterface
+from src.utils.format_info import FormatInfo
+from src.operations.interfaces.output_manager_interface import OutputManagerInterface
 from types import LogLevel
 
 class ApplicationLoggerAdapter(LoggerInterface):

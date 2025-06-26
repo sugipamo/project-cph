@@ -1,8 +1,8 @@
 """Output manager interface for dependency injection."""
 from abc import ABC, abstractmethod
 from typing import List, Optional, Union
-from infrastructure.drivers.logging.format_info import FormatInfo
-from infrastructure.drivers.logging.types import LogEntry, LogLevel
+from src.utils.format_info import FormatInfo
+from src.utils.types import LogEntry, LogLevel
 
 class OutputManagerInterface(ABC):
     """Abstract interface for output management."""
