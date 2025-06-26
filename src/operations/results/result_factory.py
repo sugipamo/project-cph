@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 from src.operations.results.base_result import InfrastructureResult
 if TYPE_CHECKING:
-    from src.core.module_parser.__init__ import ErrorConverter
+    from src.operations.results.__init__ import ErrorConverter
 
 class ResultFactory:
     """Factory service for creating standardized result objects.

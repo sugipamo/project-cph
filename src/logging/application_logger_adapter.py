@@ -5,7 +5,7 @@ from typing import Any, Optional
 from src.infrastructure.di_container import DIContainer
 from src.operations.interfaces.logger_interface import LoggerInterface
 from src.utils.format_info import FormatInfo
-from src.core.module_parser.__init__ import OutputManagerInterface
+from src.operations.results.__init__ import OutputManagerInterface
 from types import LogLevel
 
 class ApplicationLoggerAdapter(LoggerInterface):

@@ -130,6 +130,13 @@ class DynamicImporter:
                         fix_example_code=result.fix_example_code
                     )
                 
+                # 自動修正が可能なモジュールの場合は実行
+                if self._should_auto_fix(module_name, result):
+                    print(f"\n🔧 {module_name} の自動修正条件を満たしています")
+                    self._execute_auto_fix(module_name, result)
+                else:
+                    print(f"\n💡 {module_name}: 自動修正の条件チェック - failures={len(result.failure_locations) if result.failure_locations else 0}, module_check={module_name in ['remnant_cleaners', 'import_dependency_reorganizer']}")
+                
                 return result
                 
             except Exception as e:
@@ -179,3 +186,74 @@ class DynamicImporter:
             
         except Exception:
             return False
+    
+    def _should_auto_fix(self, module_name: str, result: CheckResult) -> bool:
+        """自動修正を実行すべきかどうかを判断"""
+        # remnant_cleanersとimport_dependency_reorganizerは自動修正対象
+        auto_fix_modules = ['remnant_cleaners', 'import_dependency_reorganizer']
+        
+        # モジュール名が対象で、かつ失敗がある場合のみ自動修正
+        return (module_name in auto_fix_modules and 
+                result.failure_locations and 
+                len(result.failure_locations) > 0)
+    
+    def _execute_auto_fix(self, module_name: str, result: CheckResult) -> None:
+        """自動修正を実行"""
+        import subprocess
+        import shutil
+        from pathlib import Path
+        
+        print(f"\n🔧 {module_name} の自動修正を実行中...")
+        
+        try:
+            if module_name == 'remnant_cleaners':
+                self._fix_remnant_cleaners(result)
+            elif module_name == 'import_dependency_reorganizer':
+                self._fix_import_dependency_reorganizer(result)
+            
+            print(f"✅ {module_name} の自動修正が完了しました")
+            
+        except Exception as e:
+            print(f"❌ {module_name} の自動修正でエラーが発生: {str(e)}")
+    
+    def _fix_remnant_cleaners(self, result: CheckResult) -> None:
+        """remnant_cleanersの自動修正：空フォルダの削除"""
+        import shutil
+        from pathlib import Path
+        
+        for failure in result.failure_locations:
+            folder_path = Path(failure.file_path)
+            if folder_path.exists() and folder_path.is_dir():
+                # フォルダ内のファイルをチェック
+                files = list(folder_path.iterdir())
+                
+                # __pycache__と__init__.pyのみの場合は削除
+                has_only_cache_and_init = all(
+                    f.name in ['__pycache__', '__init__.py'] for f in files
+                )
+                
+                if has_only_cache_and_init or len(files) == 0:
+                    print(f"  🗑️  削除: {folder_path}")
+                    shutil.rmtree(folder_path)
+                else:
+                    print(f"  ⚠️  スキップ: {folder_path} (他のファイルが存在)")
+    
+    def _fix_import_dependency_reorganizer(self, result: CheckResult) -> None:
+        """import_dependency_reorganizerの自動修正：ファイル移動実行"""
+        import subprocess
+        
+        # main_v2.pyの--executeオプションで実行
+        cmd = [
+            'python3', '-m', 
+            'src_check.processors.auto_correct.import_dependency_reorganizer.main_v2',
+            '--execute'
+        ]
+        
+        print(f"  🚀 実行: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            print("  ✅ ファイル移動が正常に完了しました")
+        else:
+            print(f"  ❌ ファイル移動でエラーが発生: {result.stderr}")
+            raise Exception(f"ファイル移動失敗: {result.stderr}")

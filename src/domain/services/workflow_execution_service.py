@@ -11,7 +11,7 @@ from typing import Optional
 from src.operations.requests.request_types import RequestType
 from src.operations.requests.request_factory import create_request
 from src.domain.step import Step, StepType
-from src.core.module_parser.__init__ import WorkflowExecutionResult
+from src.operations.results.__init__ import WorkflowExecutionResult
 
 
 class WorkflowExecutionService:

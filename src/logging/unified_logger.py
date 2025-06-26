@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     pass
 from src.operations.interfaces.logger_interface import LoggerInterface
 from src.utils.format_info import FormatInfo
-from src.core.module_parser.__init__ import OutputManagerInterface
+from src.operations.results.__init__ import OutputManagerInterface
 
 class UnifiedLogger(LoggerInterface):
     """Unified logger that provides all infrastructure/drivers/logging functionality."""

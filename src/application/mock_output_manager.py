@@ -3,7 +3,7 @@ import contextlib
 from typing import List, Optional, Union
 from src.infrastructure.di_container import DIContainer
 from src.utils.format_info import FormatInfo
-from src.core.module_parser.__init__ import OutputManagerInterface
+from src.operations.results.__init__ import OutputManagerInterface
 from src.utils.types import LogEntry, LogLevel
 
 class MockOutputManager(OutputManagerInterface):

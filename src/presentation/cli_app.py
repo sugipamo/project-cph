@@ -4,10 +4,10 @@ from typing import Optional
 
 from src.presentation.user_input_parser_integration import parse_user_input
 from src.infrastructure.di_container import DIKey
-from src.core.module_parser.__init__ import CompositeStepFailureError
+from src.operations.results.__init__ import CompositeStepFailureError
 from src.operations.error_codes import ErrorSuggestion, classify_error
 from src.domain.services.workflow_execution_service import WorkflowExecutionService
-from src.core.module_parser.__init__ import WorkflowExecutionResult
+from src.operations.results.__init__ import WorkflowExecutionResult
 
 
 class MinimalCLIApp:

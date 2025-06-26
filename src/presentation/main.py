@@ -5,9 +5,9 @@
 2. Configuration層の純粋化された設定管理
 3. 上位層への依存性注入
 """
-from src.core.module_parser.__init__ import main
+from src.operations.results.__init__ import main
 from src.application.pure_config_manager import PureConfigManager
-from src.core.module_parser.__init__ import build_infrastructure
+from src.operations.results.__init__ import build_infrastructure
 from src.application.services.config_loader_service import ConfigLoaderService
 from src.infrastructure.di_container import DIKey
 from src.presentation.docker_command_builder import set_config_manager

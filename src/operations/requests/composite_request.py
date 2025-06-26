@@ -3,9 +3,9 @@ from typing import Any, Optional
 
 from src.operations.requests.request_factory import OperationRequestFoundation
 from src.domain.base_composite_request import CompositeRequestFoundation
-from src.core.composite_structure.__init__ import CompositeStructure
+from src.operations.results.__init__ import CompositeStructure
 from src.operations.requests.request_types import RequestType
-from src.core.module_parser.__init__ import ExecutionInterface
+from src.operations.results.__init__ import ExecutionInterface
 
 
 from concurrent.futures import ThreadPoolExecutor, as_completed

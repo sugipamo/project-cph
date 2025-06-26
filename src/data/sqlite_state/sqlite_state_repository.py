@@ -4,7 +4,7 @@ Infrastructure層での状態永続化の具体実装
 """
 from typing import Any, Dict, Optional
 from sqlite.repositories.system_config_repository import SystemConfigRepository
-from src.core.module_parser.__init__ import IStateRepository
+from src.operations.results.__init__ import IStateRepository
 from src.application.execution_history import ExecutionHistory
 from src.infrastructure.persistence.state.models.session_context import SessionContext
 
