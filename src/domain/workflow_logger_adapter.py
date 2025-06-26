@@ -3,7 +3,7 @@ import contextlib
 from typing import Any, ClassVar, Optional
 from src.infrastructure.di_container import DIContainer
 from src.utils.format_info import FormatInfo
-from src.operations.results.__init__ import OutputManagerInterface
+from src.operations.interfaces.output_manager_interface import OutputManagerInterface
 from src.utils.types import LogLevel
 
 class WorkflowLoggerAdapter:

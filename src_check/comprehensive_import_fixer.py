@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """
 包括的なインポート修正ツール
-すべてのインポートスタイルに対応し、正しいモジュールパスを動的に解決する
+
+役割: 壊れたインポートパスの修正（モジュールパス解決）
+- 存在しないモジュールパスを正しいパスに修正
+- 例: from tests.xxx → from src.operations.xxx
+- 例: from infrastructure.xxx → from src.infrastructure.xxx
+
+注意: これはインポートパス修正専用です。
+ローカルインポート移動は import_fixers/main.py が担当します。
 """
 
 import ast
@@ -33,17 +40,34 @@ class ComprehensiveImportFixer:
         self.symbol_cache: Dict[str, Set[Path]] = {}
         self._fix_map: Dict[str, Tuple[str, str]] = {}
         
-        # プロジェクト内部モジュールの接頭辞
-        self.internal_prefixes = {
-            'infrastructure', 'core', 'application', 'domain', 
-            'utils', 'operations', 'presentation', 'repositories',
-            'services', 'config', 'context', 'formatters', 'parsers',
-            'validators', 'views', 'src', 'interfaces', 'data', 'logging',
-            'configuration', 'persistence', 'models'
-        }
+        # プロジェクト内部モジュールの接頭辞（動的に検出）
+        self.internal_prefixes = self._discover_internal_prefixes()
         
         # キャッシュの構築
         self._build_caches()
+    
+    def _discover_internal_prefixes(self) -> Set[str]:
+        """プロジェクト内のフォルダ構造を動的に検出"""
+        prefixes = {'src'}  # srcは常に含める
+        
+        # src配下の直接のディレクトリを検出
+        if self.src_root.exists():
+            for item in self.src_root.iterdir():
+                if item.is_dir() and not item.name.startswith('__'):
+                    prefixes.add(item.name)
+        
+        # 既知の基本的なフォルダ名も追加（安全のため）
+        base_prefixes = {
+            'infrastructure', 'core', 'application', 'domain', 
+            'utils', 'operations', 'presentation', 'repositories',
+            'services', 'config', 'context', 'formatters', 'parsers',
+            'validators', 'views', 'interfaces', 'data', 'logging',
+            'configuration', 'persistence', 'models'
+        }
+        prefixes.update(base_prefixes)
+        
+        print(f"🔍 検出された内部プリフィックス: {sorted(prefixes)}")
+        return prefixes
     
     def _build_caches(self):
         """モジュールとシンボルのキャッシュを構築"""

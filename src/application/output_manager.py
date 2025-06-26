@@ -1,6 +1,6 @@
 from typing import List, Optional, Union
 from src.utils.format_info import FormatInfo
-from src.operations.results.__init__ import OutputManagerInterface
+from src.operations.interfaces.output_manager_interface import OutputManagerInterface
 from src.utils.types import LogEntry, LogLevel
 class OutputManager(OutputManagerInterface):
 
