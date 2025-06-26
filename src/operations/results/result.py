@@ -1,296 +1,211 @@
-"""Base result class for operation results."""
-from typing import TYPE_CHECKING, Any, Dict, Optional
+"""Result type for explicit error handling without try-catch."""
+from typing import Any, Callable, Generic, Optional, TypeVar
 
-if TYPE_CHECKING:
-    from typing import Any as InfrastructureResult
-else:
-    InfrastructureResult = Any
+T = TypeVar('T')
+E = TypeVar('E', bound=Exception)
+
+
+class Result(Generic[T, E]):
+    """Result type for explicit success/failure handling.
+
+    Replaces try-catch blocks with explicit error state management.
+    """
+
+    def __init__(self, success: bool, value: Optional[T], error: Optional[E]):
+        """Initialize result.
+
+        Args:
+            success: Whether operation succeeded
+            value: Success value (required if success=True)
+            error: Error information (required if success=False)
+        """
+        if success and value is None:
+            raise ValueError("Success result requires value")
+        if not success and error is None:
+            raise ValueError("Failure result requires error")
+
+        self._success = success
+        self._value = value
+        self._error = error
+
+    @classmethod
+    def success(cls, value: T) -> 'Result[T, E]':
+        """Create successful result."""
+        return cls(True, value=value, error=None)
+
+    @classmethod
+    def failure(cls, error: E) -> 'Result[T, E]':
+        """Create failure result."""
+        return cls(False, value=None, error=error)
+
+    def is_success(self) -> bool:
+        """Check if operation succeeded."""
+        return self._success
+
+    def is_failure(self) -> bool:
+        """Check if operation failed."""
+        return not self._success
+
+    def get_value(self) -> T:
+        """Get success value.
+
+        Raises:
+            ValueError: If result is failure
+        """
+        if not self._success:
+            raise ValueError("Cannot get value from failure result")
+        return self._value
+
+    def get_error(self) -> E:
+        """Get error information.
+
+        Raises:
+            ValueError: If result is success
+        """
+        if self._success:
+            raise ValueError("Cannot get error from success result")
+        return self._error
+
+    def map(self, func: Callable[[T], Any]) -> 'Result[Any, E]':
+        """Transform success value if result is successful."""
+        if self._success:
+            transformed_value = func(self._value)
+            return Result.success(transformed_value)
+        return Result.failure(self._error)
+
+    def flat_map(self, func: Callable[[T], 'Result[Any, E]']) -> 'Result[Any, E]':
+        """Chain operations that return Results."""
+        if self._success:
+            return func(self._value)
+        return Result.failure(self._error)
+
+    def or_else(self, default_value: T) -> T:
+        """Get value or default if failure."""
+        if self._success:
+            return self._value
+        return default_value
+
+    def unwrap_or_raise(self) -> T:
+        """Get value or raise the contained error."""
+        if self._success:
+            return self._value
+        raise self._error
 
 
 class OperationResult:
-    """Base class for operation results.
+    """Specific result type for infrastructure operations."""
 
-    This class now integrates with the infrastructure layer for consistent
-    result handling while maintaining backward compatibility.
-    """
-
-    # Explicit attribute declarations for type checking
-    path: Optional[str]
-    cmd: Optional[str]
-    elapsed_time: Optional[float]
-
-    def __init__(self, success: Optional[bool], returncode: Optional[int],
-                 stdout: Optional[str], stderr: Optional[str],
-                 content: Optional[str], exists: Optional[bool],
-                 path: Optional[str], op: Optional[Any],
-                 cmd: Optional[str], request: Optional[Any],
-                 start_time: Optional[float], end_time: Optional[float],
-                 error_message: Optional[str], exception: Optional[Exception],
-                 metadata: Optional[Dict[str, Any]], skipped: bool):
+    def __init__(self, success: bool, message: str, details: Optional[dict], error_code: Optional[str]):
         """Initialize operation result.
 
         Args:
-            success: Whether the operation was successful
-            returncode: Process return code
-            stdout: Standard output
-            stderr: Standard error
-            content: Content (for file operations)
-            exists: File existence flag
-            path: File path
-            op: Operation type
-            cmd: Command executed
-            request: Original request object
-            start_time: Operation start time
-            end_time: Operation end time
-            error_message: Error message
-            exception: Exception that occurred
-            metadata: Additional metadata
-            skipped: Whether the operation was skipped
+            success: Whether operation succeeded
+            message: Human-readable message
+            details: Additional operation details
+            error_code: Specific error code for failure cases
         """
-        if success is None:
-            if returncode is None:
-                raise ValueError("Either success or returncode must be provided")
-            self.success = returncode == 0
-        else:
-            self.success = success
+        self.success = success
+        self.message = message
+        self.details = details or {}
+        self.error_code = error_code
 
-        self.returncode = returncode
-        self.stdout = stdout
-        self.stderr = stderr
-        self.content = content
-        self.exists = exists
-        # Initialize path, op, and cmd with explicit validation
-        if path is not None:
-            self.path = path
-        elif request is not None:
-            self.path = request.path if hasattr(request, "path") else None
-        else:
-            self.path = None
+    @classmethod
+    def create_success(cls, message: str, details: Optional[dict]) -> 'OperationResult':
+        """Create successful operation result."""
+        return cls(True, message, details, None)
 
-        if op is not None:
-            self.op = op
-        elif request is not None:
-            self.op = request.op if hasattr(request, "op") else None
-        else:
-            self.op = None
-
-        if cmd is not None:
-            self.cmd = cmd
-        elif request is not None:
-            self.cmd = request.cmd if hasattr(request, "cmd") else None
-        else:
-            self.cmd = None
-        self.request = request
-        self.start_time = start_time
-        self.end_time = end_time
-        # Calculate elapsed time with explicit validation
-        if start_time is not None and end_time is not None:
-            self.elapsed_time = end_time - start_time
-        else:
-            self.elapsed_time = None
-        self.error_message = error_message
-        self.exception = exception
-        # Initialize metadata with explicit validation
-        if metadata is not None:
-            self.metadata = metadata
-        else:
-            self.metadata = {}
-        self.skipped = skipped
-        # Initialize operation_type with explicit validation
-        if request is not None:
-            self._operation_type = request.operation_type if hasattr(request, "operation_type") else None
-        else:
-            self._operation_type = None
-
-        # Create infrastructure result for compatibility and future migration
-        self._infrastructure_result = self._create_infrastructure_result()
-
-    @property
-    def operation_type(self) -> Optional[Any]:
-        """Get the operation type."""
-        return self._operation_type
+    @classmethod
+    def create_failure(cls, message: str, error_code: Optional[str], details: Optional[dict]) -> 'OperationResult':
+        """Create failed operation result."""
+        return cls(False, message, details, error_code)
 
     def is_success(self) -> bool:
-        """Check if operation was successful."""
+        """Check if operation succeeded."""
         return self.success
 
     def is_failure(self) -> bool:
         """Check if operation failed."""
         return not self.success
 
-    def raise_if_error(self) -> None:
-        """Raise exception if operation failed."""
-        if self.exception:
-            raise self.exception
+    def get_message(self) -> str:
+        """Get operation message."""
+        return self.message
+
+    def get_details(self) -> dict:
+        """Get operation details."""
+        return self.details
+
+    def get_error_code(self) -> Optional[str]:
+        """Get error code for failed operations."""
+        return self.error_code
+
+    def combine_with(self, other: 'OperationResult') -> 'OperationResult':
+        """Combine two operation results (both must succeed for combined success)."""
+        if self.success and other.success:
+            combined_message = f"{self.message}; {other.message}"
+            combined_details = {**self.details, **other.details}
+            return OperationResult.create_success(combined_message, combined_details)
+
+        # If either failed, combine error messages
+        error_parts = []
         if not self.success:
-            raise RuntimeError(
-                f"Operation failed: {self.op or self.cmd} {self.path}\n"
-                f"content={self.content}\n"
-                f"stdout={self.stdout}\n"
-                f"stderr={self.stderr}\n"
-                f"error={self.error_message}"
-            )
+            error_parts.append(self.message)
+        if not other.success:
+            error_parts.append(other.message)
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert result to dictionary."""
-        return {
-            'success': self.success,
-            'returncode': self.returncode,
-            'stdout': self.stdout,
-            'stderr': self.stderr,
-            'content': self.content,
-            'exists': self.exists,
-            'path': self.path,
-            'op': self._get_op_str(),
-            'cmd': self.cmd,
-            'request': str(self.request),
-            'operation_type': self._get_operation_type_str(),
-            'start_time': self.start_time,
-            'end_time': self.end_time,
-            'elapsed_time': self.elapsed_time,
-            'error_message': self.error_message,
-            'exception': self._get_exception_str(),
-            'metadata': self.metadata,
-            'skipped': self.skipped,
-        }
+        combined_error = "; ".join(error_parts)
+        combined_details = {**self.details, **other.details}
+        error_code = self.error_code or other.error_code
 
-    def to_json(self, json_provider: Any) -> str:
-        """Convert result to JSON string.
+        return OperationResult.create_failure(combined_error, error_code, combined_details)
+
+
+# Validation utilities for pre-condition checking
+class ValidationResult:
+    """Result of validation operations."""
+
+    def __init__(self, is_valid: bool, error_message: str):
+        """Initialize validation result.
 
         Args:
-            json_provider: JSON provider (injected for dependency inversion)
+            is_valid: Whether validation passed
+            error_message: Error message if validation failed
         """
-        if json_provider is None:
-            raise ValueError("json_provider is required")
-
-        result = json_provider.dumps(self.to_dict(), ensure_ascii=False, indent=2)
-        return str(result)
-
-    def _get_operation_identifier(self) -> str:
-        """Get operation identifier.
-
-        Returns:
-            Operation identifier in priority order
-
-        Raises:
-            ValueError: If no operation identifier is available
-        """
-        if self.op is not None:
-            return str(self.op)
-        if self.cmd is not None:
-            return str(self.cmd)
-        raise ValueError("Operation identifier (op or cmd) is required but not available")
-
-    def summary(self) -> str:
-        """Get a summary of the result."""
-        if self.success:
-            status = "OK"
-        else:
-            status = "FAIL"
-        return (
-            f"[{status}] op={self._get_operation_identifier()} "
-            f"path={self.path} code={self.returncode} time={self.elapsed_time}s\n"
-            f"content={str(self.content)[:100]}\n"
-            f"stdout={str(self.stdout)[:100]}\n"
-            f"stderr={str(self.stderr)[:100]}\n"
-            f"error={self.error_message}"
-        )
-
-    def __repr__(self) -> str:
-        """String representation of the result."""
-        return (
-            f"<OperationResult success={self.success} op={self.op} cmd={self.cmd} "
-            f"path={self.path} returncode={self.returncode} error_message={self.error_message}>"
-        )
-
-    def _get_op_str(self) -> str:
-        """Get op string with explicit validation."""
-        if self.op is None:
-            return ""
-        return str(self.op)
-
-    def _get_operation_type_str(self) -> str:
-        """Get operation_type string with explicit validation."""
-        if self.operation_type is None:
-            return ""
-        return str(self.operation_type)
-
-    def _get_exception_str(self) -> str:
-        """Get exception string with explicit validation."""
-        if self.exception is None:
-            return ""
-        return str(self.exception)
-
-    def get_error_output(self) -> str:
-        """Get formatted error output."""
-        parts = []
-        if self.error_message:
-            parts.append(f"error_message: {self.error_message}")
-        if self.stderr:
-            parts.append(f"stderr: {self.stderr}")
-        if self.stdout and not self.success:
-            parts.append(f"stdout: {self.stdout}")
-        if self.exception:
-            parts.append(f"exception: {self.exception}")
-        # Return formatted error output with explicit validation
-        if parts:
-            return "\n".join(parts)
-        return "No error output"
-
-    def _create_infrastructure_result(self) -> Any:
-        """Create infrastructure result representation.
-
-        This method creates an InfrastructureResult that wraps the operation data,
-        providing a bridge to the infrastructure layer result system.
-        Infrastructure result creation should be handled by injected factory.
-
-        Returns:
-            Infrastructure result containing operation data or exception
-        """
-        # This should be handled by injected infrastructure result factory
-        return None
-
-    def get_infrastructure_result(self) -> Any:
-        """Get infrastructure result representation.
-
-        Returns:
-            Infrastructure result wrapping this operation result
-        """
-        return self._infrastructure_result
+        self.is_valid = is_valid
+        self.error_message = error_message
 
     @classmethod
-    def from_infrastructure_result(cls, infrastructure_result: Any) -> 'OperationResult':
-        """Create OperationResult from InfrastructureResult.
+    def valid(cls) -> 'ValidationResult':
+        """Create valid result."""
+        return cls(True, "")
 
-        This factory method enables creation of OperationResult instances
-        from infrastructure layer results, supporting the migration path.
-        For now, returns a basic failure result.
+    @classmethod
+    def invalid(cls, error_message: str) -> 'ValidationResult':
+        """Create invalid result with error message."""
+        return cls(False, error_message)
 
-        Args:
-            infrastructure_result: Infrastructure result containing operation data
-
-        Returns:
-            OperationResult instance
-        """
-        # Infrastructure result handling should be injected
-        return cls(
-            success=False,
-            returncode=None,
-            stdout=None,
-            stderr=None,
-            content=None,
-            exists=None,
-            path=None,
-            op=None,
-            cmd=None,
-            request=None,
-            start_time=None,
-            end_time=None,
-            error_message="Infrastructure result conversion not implemented",
-            exception=None,
-            metadata={},
-            skipped=False
-        )
+    def raise_if_invalid(self, exception_type: type) -> None:
+        """Raise exception if validation failed."""
+        if not self.is_valid:
+            raise exception_type(self.error_message)
 
 
-__all__ = ["OperationResult"]
+def validate_not_none(value: Any, name: str) -> ValidationResult:
+    """Validate that value is not None."""
+    if value is None:
+        return ValidationResult.invalid(f"{name} cannot be None")
+    return ValidationResult.valid()
+
+
+def validate_not_empty(value: str, name: str) -> ValidationResult:
+    """Validate that string is not empty."""
+    if not value or not value.strip():
+        return ValidationResult.invalid(f"{name} cannot be empty")
+    return ValidationResult.valid()
+
+
+def validate_positive_int(value: int, name: str) -> ValidationResult:
+    """Validate that integer is positive."""
+    if value <= 0:
+        return ValidationResult.invalid(f"{name} must be positive")
+    return ValidationResult.valid()

@@ -1,1 +1,1 @@
-"""Operations layer - Core operation requests, results, and interfaces."""
+from operations.result import OperationResult
