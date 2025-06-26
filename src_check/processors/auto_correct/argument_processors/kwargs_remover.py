@@ -8,7 +8,7 @@ from pathlib import Path
 # Add src_check parent to path
 src_check_parent = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(src_check_parent))
-from models.check_result import CheckResult, FailureLocation
+from models.check_result import CheckResult, FailureLocation, LogLevel
 
 class KwargsRemover(ast.NodeTransformer):
 
@@ -51,11 +51,23 @@ def main():
     current_dir = Path(__file__).parent.parent.parent
     src_path = current_dir / 'src'
     if not src_path.exists():
-        return CheckResult(failure_locations=[], fix_policy='src directory not found', fix_example_code=None)
+        return CheckResult(
+            title="kwargs_remover",
+            log_level=LogLevel.ERROR,
+            failure_locations=[], 
+            fix_policy='src directory not found', 
+            fix_example_code=None
+        )
     failure_locations = []
     for py_file in src_path.rglob('*.py'):
         if remove_kwargs_from_file(py_file):
             failure_locations.append(FailureLocation(file_path=str(py_file), line_number=0))
-    return CheckResult(failure_locations=failure_locations, fix_policy='**kwargs parameters automatically removed from function definitions', fix_example_code='def func(param1, param2): pass  # **kwargs removed')
+    return CheckResult(
+        title="kwargs_remover",
+        log_level=LogLevel.WARNING if failure_locations else LogLevel.INFO,
+        failure_locations=failure_locations, 
+        fix_policy='**kwargs parameters automatically removed from function definitions', 
+        fix_example_code='def func(param1, param2): pass  # **kwargs removed'
+    )
 if __name__ == '__main__':
     main()

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import List
 sys.path.append(str(Path(__file__).parent.parent))
-from models.check_result import CheckResult, FailureLocation
+from models.check_result import CheckResult, FailureLocation, LogLevel
 sys.path.append(str(Path(__file__).parent))
 from type_hint_adder import TypeHintAdder
 
@@ -65,6 +65,7 @@ def main() -> CheckResult:
             fix_example += f'\n他 {len(modifications) - 3} 件の関数が修正されました。'
     return CheckResult(
         title="type_hints",
+        log_level=LogLevel.INFO if processed_files else LogLevel.DEBUG,
         failure_locations=processed_files, 
         fix_policy=fix_policy, 
         fix_example_code=fix_example if fix_example else None

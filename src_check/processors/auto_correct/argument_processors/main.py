@@ -4,11 +4,12 @@
 src_check/main.pyから動的に読み込まれ、src配下のファイルの
 引数・キーワード引数のデフォルト値を自動削除します。
 """
+import os
 import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
-from models.check_result import CheckResult, FailureLocation
+from models.check_result import CheckResult, FailureLocation, LogLevel
 
 # 同じディレクトリのモジュールをインポート
 sys.path.append(str(Path(__file__).parent))
@@ -71,6 +72,7 @@ def main() -> CheckResult:
         
         return CheckResult(
             title="argument_processors",
+            log_level=LogLevel.WARNING if failure_locations else LogLevel.INFO,
             failure_locations=failure_locations,
             fix_policy=fix_policy,
             fix_example_code=fix_example
@@ -80,6 +82,7 @@ def main() -> CheckResult:
         print(f"❌ エラーが発生しました: {e}")
         return CheckResult(
             title="argument_processors_error",
+            log_level=LogLevel.ERROR,
             failure_locations=[],
             fix_policy=f"引数処理中にエラーが発生しました: {str(e)}",
             fix_example_code=None
@@ -88,86 +91,60 @@ def main() -> CheckResult:
 
 def _process_args(src_dir: Path, config: dict, print) -> CheckResult:
     """引数のデフォルト値を処理"""
-    remover = ArgsRemover(dry_run=config['dry_run'])
-    failures = []
+    # args_remover.pyのmain関数を直接呼び出す
+    from args_remover import main as args_main
     
-    for py_file in src_dir.rglob('*.py'):
-        if '__pycache__' in str(py_file):
-            continue
+    # 現在のディレクトリを保存
+    original_cwd = os.getcwd()
+    project_root = Path(__file__).parent.parent.parent.parent.parent
+    
+    try:
+        # src_dirに移動
+        os.chdir(project_root)
+        result = args_main()
+        return result
         
-        try:
-            with open(py_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            modified, locations = remover.remove_defaults(content, str(py_file))
-            
-            if locations:
-                failures.extend(locations)
-                
-                if not config['dry_run'] and modified != content:
-                    with open(py_file, 'w', encoding='utf-8') as f:
-                        f.write(modified)
-                    print(f"✏️  修正: {py_file}")
-                    
-        except Exception as e:
-            print(f"⚠️  {py_file}の処理中にエラー: {e}")
-    
-    if failures:
+    except Exception as e:
+        print(f"⚠️  引数処理中にエラー: {e}")
         return CheckResult(
-            title="argument_processors_args",
-            failure_locations=failures,
-            fix_policy=f"{len(failures)}個の引数デフォルト値が検出されました。",
-            fix_example_code=None
-        )
-    else:
-        return CheckResult(
-            title="argument_processors_args",
+            title="argument_processors_args_error",
+            log_level=LogLevel.ERROR,
             failure_locations=[],
-            fix_policy="",
+            fix_policy=f"引数処理中にエラー: {str(e)}",
             fix_example_code=None
         )
+    finally:
+        # ディレクトリを元に戻す
+        os.chdir(original_cwd)
 
 
 def _process_kwargs(src_dir: Path, config: dict, print) -> CheckResult:
     """キーワード引数のデフォルト値を処理"""
-    remover = KwargsRemover(dry_run=config['dry_run'])
-    failures = []
+    # kwargs_remover.pyのmain関数を直接呼び出す
+    from kwargs_remover import main as kwargs_main
     
-    for py_file in src_dir.rglob('*.py'):
-        if '__pycache__' in str(py_file):
-            continue
+    # 現在のディレクトリを保存
+    original_cwd = os.getcwd()
+    project_root = Path(__file__).parent.parent.parent.parent.parent
+    
+    try:
+        # src_dirに移動
+        os.chdir(project_root)
+        result = kwargs_main()
+        return result
         
-        try:
-            with open(py_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            modified, locations = remover.remove_defaults(content, str(py_file))
-            
-            if locations:
-                failures.extend(locations)
-                
-                if not config['dry_run'] and modified != content:
-                    with open(py_file, 'w', encoding='utf-8') as f:
-                        f.write(modified)
-                    print(f"✏️  修正: {py_file}")
-                    
-        except Exception as e:
-            print(f"⚠️  {py_file}の処理中にエラー: {e}")
-    
-    if failures:
+    except Exception as e:
+        print(f"⚠️  キーワード引数処理中にエラー: {e}")
         return CheckResult(
-            title="argument_processors_kwargs",
-            failure_locations=failures,
-            fix_policy=f"{len(failures)}個のキーワード引数デフォルト値が検出されました。",
-            fix_example_code=None
-        )
-    else:
-        return CheckResult(
-            title="argument_processors_kwargs",
+            title="argument_processors_kwargs_error",
+            log_level=LogLevel.ERROR,
             failure_locations=[],
-            fix_policy="",
+            fix_policy=f"キーワード引数処理中にエラー: {str(e)}",
             fix_example_code=None
         )
+    finally:
+        # ディレクトリを元に戻す
+        os.chdir(original_cwd)
 
 
 

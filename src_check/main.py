@@ -14,7 +14,7 @@ sys.path.append(str(Path(__file__).parent))
 from core.module_explorer import ModuleExplorer
 from core.dynamic_importer import DynamicImporter
 from core.result_writer import ResultWriter
-from models.check_result import CheckResult, Severity
+from models.check_result import CheckResult, LogLevel
 from comprehensive_import_fixer import ComprehensiveImportFixer
 
 
@@ -53,7 +53,7 @@ def main():
             print(f"⚠️  {len(pre_check_result.failure_locations)}個の壊れたインポートを検出")
             
             # CRITICALなエラーの場合は詳細を表示
-            if pre_check_result.severity == Severity.CRITICAL:
+            if pre_check_result.log_level == LogLevel.CRITICAL:
                 print("\n❌ 重大なインポートエラーが検出されました:")
                 if pre_check_result.fix_example_code:
                     print(pre_check_result.fix_example_code)
@@ -77,7 +77,7 @@ def main():
             return
         
         # 3. 動的インポートで順次実行
-        importer = DynamicImporter(project_root)
+        importer = DynamicImporter(project_root, min_log_level=LogLevel.ERROR)
         results = []
         critical_errors = []
         
@@ -96,11 +96,11 @@ def main():
                 results.append(result)
                 
                 # 深刻なエラーチェック
-                if "ERROR" in result.title or (hasattr(result, 'severity') and result.severity == Severity.CRITICAL):
+                if "ERROR" in result.title or (hasattr(result, 'log_level') and result.log_level.value >= LogLevel.ERROR.value):
                     critical_errors.append({
                         'module': module_info.module_name,
                         'error': result.fix_policy,
-                        'severity': result.severity if hasattr(result, 'severity') else Severity.ERROR
+                        'log_level': result.log_level if hasattr(result, 'log_level') else LogLevel.ERROR
                     })
                     
             except Exception as e:
@@ -112,10 +112,10 @@ def main():
                 # エラー時もCheckResultを作成
                 error_result = CheckResult(
                     title=f"{module_info.module_name}_EXECUTION_ERROR",
+                    log_level=LogLevel.CRITICAL,
                     failure_locations=[],
                     fix_policy=error_msg,
-                    fix_example_code=None,
-                    severity=Severity.CRITICAL
+                    fix_example_code=None
                 )
                 results.append(error_result)
         

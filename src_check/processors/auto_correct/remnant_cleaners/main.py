@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
-from models.check_result import CheckResult, FailureLocation
+from models.check_result import CheckResult, FailureLocation, LogLevel
 
 
 def main() -> CheckResult:
@@ -53,6 +53,7 @@ def main() -> CheckResult:
         
         return CheckResult(
             title="remnant_cleaners",
+            log_level=LogLevel.WARNING if failure_locations else LogLevel.INFO,
             failure_locations=failure_locations,
             fix_policy=fix_policy,
             fix_example_code=fix_example
@@ -62,6 +63,7 @@ def main() -> CheckResult:
         print(f"❌ エラーが発生しました: {e}")
         return CheckResult(
             title="remnant_cleaners_error",
+            log_level=LogLevel.ERROR,
             failure_locations=[],
             fix_policy=f"残骸フォルダ解析中にエラーが発生しました: {str(e)}",
             fix_example_code=None

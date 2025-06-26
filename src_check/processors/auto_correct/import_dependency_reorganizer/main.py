@@ -7,7 +7,7 @@ import time
 src_check_dir = Path(__file__).parent.parent.parent.parent  # src_checkディレクトリ
 sys.path.insert(0, str(src_check_dir))
 
-from models.check_result import CheckResult, FailureLocation
+from models.check_result import CheckResult, FailureLocation, LogLevel
 
 # 現在のディレクトリをパスに追加してローカルモジュールをインポート
 current_dir = Path(__file__).parent
@@ -37,6 +37,7 @@ def main() -> CheckResult:
         if not src_root.exists():
             return CheckResult(
                 title="import_dependency_reorganizer",
+                log_level=LogLevel.ERROR,
                 failure_locations=[FailureLocation(file_path="system", line_number=0)],
                 fix_policy="src/ディレクトリが見つかりません",
                 fix_example_code=None
@@ -52,6 +53,7 @@ def main() -> CheckResult:
         if file_count > 250:
             return CheckResult(
                 title="import_dependency_reorganizer",
+                log_level=LogLevel.ERROR,
                 failure_locations=[FailureLocation(file_path="system", line_number=0)],
                 fix_policy=f"ファイル数が多すぎます ({file_count}ファイル)。250ファイル以下で実行してください",
                 fix_example_code=None
@@ -60,6 +62,7 @@ def main() -> CheckResult:
         if file_count == 0:
             return CheckResult(
                 title="import_dependency_reorganizer",
+                log_level=LogLevel.INFO,
                 failure_locations=[],
                 fix_policy="Pythonファイルが見つかりませんでした",
                 fix_example_code=None
@@ -98,6 +101,7 @@ def main() -> CheckResult:
         if not depth_map:
             return CheckResult(
                 title="import_dependency_reorganizer",
+                log_level=LogLevel.INFO,
                 failure_locations=[],
                 fix_policy="依存関係が検出されませんでした",
                 fix_example_code=None
@@ -136,6 +140,7 @@ def main() -> CheckResult:
             
             return CheckResult(
                 title="import_dependency_reorganizer",
+                log_level=LogLevel.ERROR,
                 failure_locations=failures,
                 fix_policy=f"循環依存が検出されました: {len(circular_deps)}個のサイクル",
                 fix_example_code=None
@@ -174,6 +179,7 @@ def main() -> CheckResult:
             
             return CheckResult(
                 title="import_dependency_reorganizer",
+                log_level=LogLevel.WARNING,
                 failure_locations=failures,
                 fix_policy=fix_policy,
                 fix_example_code=fix_example
@@ -188,8 +194,11 @@ def main() -> CheckResult:
         )
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return CheckResult(
             title="import_dependency_reorganizer",
+            log_level=LogLevel.ERROR,
             failure_locations=[FailureLocation(file_path="system", line_number=0)],
             fix_policy=f"プロトタイプ実行エラー: {str(e)}",
             fix_example_code=None

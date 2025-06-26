@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
-from models.check_result import CheckResult, FailureLocation
+from models.check_result import CheckResult, FailureLocation, LogLevel
 
 # 同じディレクトリのモジュールをインポート
 sys.path.append(str(Path(__file__).parent))
@@ -65,6 +65,7 @@ def main() -> CheckResult:
             else:
                 return CheckResult(
                     title="file_organizers_smart_error",
+                    log_level=LogLevel.ERROR,
                     failure_locations=[],
                     fix_policy="SmartOrganizerは利用できません（networkxが必要です）",
                     fix_example_code=None
@@ -73,6 +74,7 @@ def main() -> CheckResult:
         else:
             return CheckResult(
                 title="file_organizers_mode_error",
+                log_level=LogLevel.ERROR,
                 failure_locations=[],
                 fix_policy=f"不明なモード: {config['mode']}",
                 fix_example_code=None
@@ -82,6 +84,7 @@ def main() -> CheckResult:
         print(f"❌ エラーが発生しました: {e}")
         return CheckResult(
             title="file_organizers_error",
+            log_level=LogLevel.ERROR,
             failure_locations=[],
             fix_policy=f"ファイル整理中にエラーが発生しました: {str(e)}",
             fix_example_code=None
@@ -111,6 +114,7 @@ def _run_file_splitter(src_dir: Path, config: Dict[str, Any], print) -> CheckRes
     if failure_locations:
         return CheckResult(
             title="file_organizers_split",
+            log_level=LogLevel.WARNING,
             failure_locations=failure_locations,
             fix_policy=f"{len(failure_locations)}個のファイルが1ファイル1関数/1クラスの原則に違反しています。",
             fix_example_code="# 分割後:\n# utils/function1.py\n# utils/function2.py"
@@ -118,6 +122,7 @@ def _run_file_splitter(src_dir: Path, config: Dict[str, Any], print) -> CheckRes
     else:
         return CheckResult(
             title="file_organizers_split",
+            log_level=LogLevel.INFO,
             failure_locations=[],
             fix_policy="すべてのファイルが原則に従っています。",
             fix_example_code=None
@@ -146,6 +151,7 @@ def _run_structure_organizer(src_dir: Path, config: Dict[str, Any], print) -> Ch
         
         return CheckResult(
             title="file_organizers_structure",
+            log_level=LogLevel.ERROR,
             failure_locations=failure_locations,
             fix_policy="循環参照または遅延インポートを解決してください。",
             fix_example_code="# Protocolを使用した循環参照の解決例"
@@ -165,6 +171,7 @@ def _run_structure_organizer(src_dir: Path, config: Dict[str, Any], print) -> Ch
         
         return CheckResult(
             title="file_organizers_structure",
+            log_level=LogLevel.WARNING,
             failure_locations=failure_locations,
             fix_policy=f"{len(move_steps)}個のファイルの再配置が推奨されます。",
             fix_example_code="# src/\n#   domain/\n#   application/\n#   infrastructure/"
@@ -172,6 +179,7 @@ def _run_structure_organizer(src_dir: Path, config: Dict[str, Any], print) -> Ch
     
     return CheckResult(
         title="file_organizers_structure",
+        log_level=LogLevel.INFO,
         failure_locations=[],
         fix_policy="現在の構造は適切です。",
         fix_example_code=None
@@ -193,6 +201,7 @@ def _run_logical_organizer(src_dir: Path, config: Dict[str, Any], print) -> Chec
     if failure_locations:
         return CheckResult(
             title="file_organizers_logical",
+            log_level=LogLevel.WARNING,
             failure_locations=failure_locations,
             fix_policy=(
                 f"{len(file_moves)}個のファイルを論理的なフォルダ構造に再配置します。\n"
@@ -209,6 +218,7 @@ def _run_logical_organizer(src_dir: Path, config: Dict[str, Any], print) -> Chec
     
     return CheckResult(
         title="file_organizers_logical",
+        log_level=LogLevel.INFO,
         failure_locations=[],
         fix_policy="ファイル構造は既に論理的に整理されています。",
         fix_example_code=None

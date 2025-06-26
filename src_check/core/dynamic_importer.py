@@ -124,10 +124,10 @@ class DynamicImporter:
                     # CheckResultを再作成（frozenのため）
                     return CheckResult(
                         title=module_name,
+                        log_level=result.log_level if hasattr(result, 'log_level') else LogLevel.WARNING,
                         failure_locations=result.failure_locations,
                         fix_policy=result.fix_policy,
-                        fix_example_code=result.fix_example_code,
-                        severity=result.severity if hasattr(result, 'severity') else Severity.WARNING
+                        fix_example_code=result.fix_example_code
                     )
                 
                 return result
@@ -150,20 +150,20 @@ class DynamicImporter:
         
         return CheckResult(
             title=f"{module_name}_ERROR",
+            log_level=LogLevel.CRITICAL if is_critical else LogLevel.ERROR,
             failure_locations=[],
             fix_policy=f"実行失敗: {error_message}",
-            fix_example_code=None,
-            severity=Severity.CRITICAL if is_critical else Severity.ERROR
+            fix_example_code=None
         )
     
     def _create_success_result(self, module_name: str, message: str) -> CheckResult:
         """成功時のCheckResultを作成"""
         return CheckResult(
             title=module_name,
+            log_level=LogLevel.INFO,
             failure_locations=[],
             fix_policy=message,
-            fix_example_code=None,
-            severity=Severity.INFO
+            fix_example_code=None
         )
     
     def validate_main_function(self, module_path: Path) -> bool:

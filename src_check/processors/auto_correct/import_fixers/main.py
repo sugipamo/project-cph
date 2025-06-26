@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
-from models.check_result import CheckResult, FailureLocation
+from models.check_result import CheckResult, FailureLocation, LogLevel
 
 # 同じディレクトリのモジュールをインポート
 sys.path.append(str(Path(__file__).parent))
@@ -57,6 +57,7 @@ def main() -> CheckResult:
         
         return CheckResult(
             title="import_fixers",
+            log_level=LogLevel.WARNING if failure_locations else LogLevel.INFO,
             failure_locations=failure_locations,
             fix_policy=fix_policy,
             fix_example_code=fix_example
@@ -66,6 +67,7 @@ def main() -> CheckResult:
         print(f"❌ エラーが発生しました: {e}")
         return CheckResult(
             title="import_fixers_error",
+            log_level=LogLevel.ERROR,
             failure_locations=[],
             fix_policy=f"インポート解析中にエラーが発生しました: {str(e)}",
             fix_example_code=None

@@ -1,9 +1,0 @@
-=== argument_processors_error ===
-
-失敗箇所: なし
-
-修正方針:
---------------------
-引数処理中にエラーが発生しました: ArgsRemover.__init__() got an unexpected keyword argument 'dry_run'
-
-実行時刻: 2025-06-26 15:50:46

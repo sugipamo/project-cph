@@ -11,6 +11,6 @@ remnant_cleaners: OK
 import_fixers: OK
 import_dependency_reorganizer: NG(75件)
 file_organizers_logical: OK
-argument_processors_error: OK
+argument_processors: OK
 
-実行時刻: 2025-06-26 15:50:46
+実行時刻: 2025-06-26 16:19:46
