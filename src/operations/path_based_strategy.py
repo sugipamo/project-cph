@@ -6,7 +6,7 @@ import difflib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.infrastructure.candidate import BrokenImport, Candidate, ImportType
-from src.core.search_strategy import SearchStrategy, SearchResult
+from src.operations.search_strategy import SearchStrategy, SearchResult
 
 
 class PathBasedStrategy(SearchStrategy):

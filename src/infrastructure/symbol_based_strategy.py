@@ -4,8 +4,8 @@ from typing import List, Dict, Any, Optional, Set
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.infrastructure.candidate import BrokenImport, Candidate, ModuleInfo
-from src.core.search_strategy import SearchStrategy, SearchResult
-from src.core.module_parser import ModuleParser
+from src.operations.search_strategy import SearchStrategy, SearchResult
+from src.presentation.module_parser import ModuleParser
 
 
 class SymbolBasedStrategy(SearchStrategy):

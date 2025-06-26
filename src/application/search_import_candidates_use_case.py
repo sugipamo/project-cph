@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import time
 
 from src.infrastructure.candidate import BrokenImport, Candidate
-from src.domain.services import CandidateScorer
+from src.application.candidate_scorer import CandidateScorer
 from src.core.services.search_coordinator import SearchCoordinator
 
 
