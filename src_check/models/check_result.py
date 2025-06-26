@@ -12,6 +12,7 @@ class FailureLocation:
 @dataclass(frozen=True)
 class CheckResult:
     """品質チェック結果を表すデータクラス"""
+    title: str
     failure_locations: List[FailureLocation] = field(default_factory=list)
     fix_policy: str = ""
     fix_example_code: Optional[str] = None

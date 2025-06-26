@@ -1,0 +1,5348 @@
+{
+  "start_time": "2025-06-26T13:52:48.266753",
+  "end_time": "2025-06-26T13:52:48.906984",
+  "total_duration": 0.640232,
+  "event_count": 440,
+  "events": [
+    {
+      "timestamp": "2025-06-26T13:52:48.266863",
+      "level": "INFO",
+      "message": "依存関係ベースフォルダ構造整理を開始",
+      "details": {
+        "config": {
+          "max_file_count": 250,
+          "max_depth": 5,
+          "execute_mode": true,
+          "dry_run": false,
+          "exclude_patterns": [
+            "__pycache__",
+            "*.pyc",
+            ".git",
+            ".pytest_cache",
+            "*.egg-info"
+          ],
+          "include_test_files": false,
+          "exclude_type_checking": true,
+          "create_init_files": true,
+          "cleanup_empty_dirs": true,
+          "preserve_structure_for": [
+            "__init__.py",
+            "conftest.py"
+          ],
+          "depth_folder_mapping": {
+            "0": "",
+            "1": "core",
+            "2": "services",
+            "3": "handlers",
+            "4": "controllers",
+            "5": "app"
+          },
+          "folder_name_patterns": {
+            "*_manager": "{name}_mgmt",
+            "*_service": "{name}_svc",
+            "*_handler": "{name}_hdlr",
+            "*_controller": "{name}_ctrl",
+            "*_processor": "{name}_proc",
+            "config*": "configuration",
+            "util*": "utilities"
+          },
+          "use_git_backup": true,
+          "backup_dir_name": "backup_reorganize_{timestamp}",
+          "log_level": "INFO",
+          "log_to_file": true,
+          "log_file_name": "reorganizer_{timestamp}.log",
+          "verbose": false,
+          "validate_syntax": true,
+          "validate_imports": true,
+          "run_tests_after": false,
+          "test_command": "pytest",
+          "stop_on_first_error": false,
+          "ignore_circular_deps": false,
+          "max_errors_to_show": 10,
+          "generate_graph": false,
+          "graph_formats": [
+            "dot",
+            "mermaid",
+            "json",
+            "ascii",
+            "html"
+          ]
+        }
+      },
+      "elapsed_seconds": 0.000115
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.266944",
+      "level": "INFO",
+      "message": "プロジェクトルート: /home/cphelper/project-cph",
+      "details": {},
+      "elapsed_seconds": 0.000193
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.266992",
+      "level": "INFO",
+      "message": "解析対象: /home/cphelper/project-cph/src",
+      "details": {},
+      "elapsed_seconds": 0.00024
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.267052",
+      "level": "INFO",
+      "message": "=== Phase 1 開始 ===",
+      "details": {
+        "phase": "Phase 1",
+        "description": "ファイル収集と依存関係解析"
+      },
+      "elapsed_seconds": 0.0003
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.272418",
+      "level": "INFO",
+      "message": "発見されたPythonファイル数: 174",
+      "details": {},
+      "elapsed_seconds": 0.005669
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462031",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195286
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462049",
+      "level": "DEBUG",
+      "message": "インポート解析: ast_analyzer.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/ast_analyzer.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.domain.models"
+        ]
+      },
+      "elapsed_seconds": 0.195297
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462054",
+      "level": "DEBUG",
+      "message": "インポート解析: local_filesystem.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/local_filesystem.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.operations.interfaces.filesystem_interface"
+        ]
+      },
+      "elapsed_seconds": 0.195302
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462058",
+      "level": "DEBUG",
+      "message": "インポート解析: persistence_exceptions.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/persistence_exceptions.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195306
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462062",
+      "level": "DEBUG",
+      "message": "インポート解析: json_provider.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/json_provider.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.19531
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462065",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195313
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462081",
+      "level": "DEBUG",
+      "message": "インポート解析: sqlite_provider.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/sqlite_provider.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.19533
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462087",
+      "level": "DEBUG",
+      "message": "インポート解析: time_provider.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/time_provider.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195335
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462091",
+      "level": "DEBUG",
+      "message": "インポート解析: module_info.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/module_info.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195338
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462094",
+      "level": "DEBUG",
+      "message": "インポート解析: candidate.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/candidate.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195342
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462098",
+      "level": "DEBUG",
+      "message": "インポート解析: file_provider.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/file_provider.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195345
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462101",
+      "level": "DEBUG",
+      "message": "インポート解析: registry_provider.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/registry_provider.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195349
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462104",
+      "level": "DEBUG",
+      "message": "インポート解析: os_provider.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/os_provider.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195352
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462108",
+      "level": "DEBUG",
+      "message": "インポート解析: di_container.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/di_container.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195355
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462111",
+      "level": "DEBUG",
+      "message": "インポート解析: base_composite_request.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/domain/base_composite_request.py",
+        "import_count": 3,
+        "dependencies": [
+          "src.infrastructure.requests.base.base_request",
+          "src.operations.constants.operation_type",
+          "src.operations.constants.request_types"
+        ]
+      },
+      "elapsed_seconds": 0.195359
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462115",
+      "level": "DEBUG",
+      "message": "インポート解析: dependency.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/domain/dependency.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.core.workflow.workflow.step.step_generation_service",
+          "src.core.workflow.workflow.step.step_runner"
+        ]
+      },
+      "elapsed_seconds": 0.195362
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462118",
+      "level": "DEBUG",
+      "message": "インポート解析: step_runner.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/domain/step_runner.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.core.workflow.workflow.step.step"
+        ]
+      },
+      "elapsed_seconds": 0.195366
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462121",
+      "level": "DEBUG",
+      "message": "インポート解析: step.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/domain/step.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195369
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462124",
+      "level": "DEBUG",
+      "message": "インポート解析: base_request.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/domain/base_request.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.operations.constants.operation_type",
+          "src.operations.constants.request_types"
+        ]
+      },
+      "elapsed_seconds": 0.195372
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462128",
+      "level": "DEBUG",
+      "message": "インポート解析: workflow_result.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/domain/workflow_result.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.195376
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462131",
+      "level": "DEBUG",
+      "message": "インポート解析: workflow.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/domain/workflow.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195379
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462135",
+      "level": "DEBUG",
+      "message": "インポート解析: workflow_logger_adapter.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/domain/workflow_logger_adapter.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.di_container",
+          "src.infrastructure.drivers.logging.types"
+        ]
+      },
+      "elapsed_seconds": 0.195383
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462138",
+      "level": "DEBUG",
+      "message": "インポート解析: config_node_logic.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/domain/config_node_logic.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195386
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462141",
+      "level": "DEBUG",
+      "message": "インポート解析: config_node.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/domain/config_node.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.services.node.config_node_logic"
+        ]
+      },
+      "elapsed_seconds": 0.195389
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462145",
+      "level": "DEBUG",
+      "message": "インポート解析: composite_step_failure.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/domain/composite_step_failure.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195393
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462148",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/cli/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195396
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462152",
+      "level": "DEBUG",
+      "message": "インポート解析: docker_command_builder.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/docker_command_builder.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195399
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462155",
+      "level": "DEBUG",
+      "message": "インポート解析: context_validator.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/context_validator.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.context.utils.execution_validation_utils"
+        ]
+      },
+      "elapsed_seconds": 0.195403
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462159",
+      "level": "DEBUG",
+      "message": "インポート解析: context_formatter.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/context_formatter.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.operations.pure.formatters"
+        ]
+      },
+      "elapsed_seconds": 0.195407
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462162",
+      "level": "DEBUG",
+      "message": "インポート解析: string_formatters.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/string_formatters.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.19541
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462165",
+      "level": "DEBUG",
+      "message": "インポート解析: cli.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/cli.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.application.use_cases",
+          "src.domain.models"
+        ]
+      },
+      "elapsed_seconds": 0.195413
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462168",
+      "level": "DEBUG",
+      "message": "インポート解析: user_input_parser_integration.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/user_input_parser_integration.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195416
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462172",
+      "level": "DEBUG",
+      "message": "インポート解析: directory_pattern_strategy.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/directory_pattern_strategy.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.domain.models",
+          "src.domain.services.search_strategy"
+        ]
+      },
+      "elapsed_seconds": 0.195419
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462175",
+      "level": "DEBUG",
+      "message": "インポート解析: main.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/main.py",
+        "import_count": 7,
+        "dependencies": [
+          "src.core.cli_app.cli_app",
+          "src.configuration.pure_config_manager",
+          "src.infrastructure.build_infrastructure",
+          "src.infrastructure.config.config_loader_service",
+          "src.infrastructure.di_container"
+        ]
+      },
+      "elapsed_seconds": 0.195423
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462178",
+      "level": "DEBUG",
+      "message": "インポート解析: path_based_strategy.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/path_based_strategy.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.domain.models",
+          "src.domain.services.search_strategy"
+        ]
+      },
+      "elapsed_seconds": 0.195426
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462181",
+      "level": "DEBUG",
+      "message": "インポート解析: module_parser.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/module_parser.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.domain.models",
+          "src.presentation.ast_analyzer"
+        ]
+      },
+      "elapsed_seconds": 0.195429
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462185",
+      "level": "DEBUG",
+      "message": "インポート解析: search_import_candidates_use_case.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/search_import_candidates_use_case.py",
+        "import_count": 3,
+        "dependencies": [
+          "src.domain.models",
+          "src.domain.services",
+          "src.domain.services.search_coordinator"
+        ]
+      },
+      "elapsed_seconds": 0.195433
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462188",
+      "level": "DEBUG",
+      "message": "インポート解析: candidate_scorer.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/candidate_scorer.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.domain.models"
+        ]
+      },
+      "elapsed_seconds": 0.195436
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462191",
+      "level": "DEBUG",
+      "message": "インポート解析: formatters.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/formatters.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195439
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462194",
+      "level": "DEBUG",
+      "message": "インポート解析: cli_app.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/cli_app.py",
+        "import_count": 6,
+        "dependencies": [
+          "src.core.user_input_parser.user_input_parser",
+          "src.infrastructure.di_container",
+          "src.operations.exceptions.composite_step_failure",
+          "src.operations.exceptions.error_codes",
+          "src.core.workflow_execution_svc.workflow_execution_service"
+        ]
+      },
+      "elapsed_seconds": 0.195442
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462198",
+      "level": "DEBUG",
+      "message": "インポート解析: symbol_based_strategy.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/symbol_based_strategy.py",
+        "import_count": 3,
+        "dependencies": [
+          "src.domain.models",
+          "src.domain.services.search_strategy",
+          "src.infrastructure.ast_parser"
+        ]
+      },
+      "elapsed_seconds": 0.195446
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462201",
+      "level": "DEBUG",
+      "message": "インポート解析: user_input_parser.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/presentation/user_input_parser.py",
+        "import_count": 4,
+        "dependencies": [
+          "src.core.configuration.config_resolver",
+          "src.context.dockerfile_resolver",
+          "src.context.parsers.validation_service",
+          "src.infrastructure.config.config_loader_service"
+        ]
+      },
+      "elapsed_seconds": 0.195449
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462205",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/__init__.py",
+        "import_count": 1,
+        "dependencies": [
+          "operations.python_exceptions"
+        ]
+      },
+      "elapsed_seconds": 0.195453
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462208",
+      "level": "DEBUG",
+      "message": "インポート解析: data_processors.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/data_processors.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195456
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462211",
+      "level": "DEBUG",
+      "message": "インポート解析: python_exceptions.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/python_exceptions.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195459
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462214",
+      "level": "DEBUG",
+      "message": "インポート解析: error_converter.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/error_converter.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195462
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462218",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195465
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462221",
+      "level": "DEBUG",
+      "message": "インポート解析: search_strategy.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/search_strategy.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.domain.models"
+        ]
+      },
+      "elapsed_seconds": 0.195468
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462224",
+      "level": "DEBUG",
+      "message": "インポート解析: path_types.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/path_types.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195472
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462227",
+      "level": "DEBUG",
+      "message": "インポート解析: base_command.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/base_command.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195475
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462230",
+      "level": "DEBUG",
+      "message": "インポート解析: composite_structure.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/composite_structure.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.infrastructure.requests.base.base_request"
+        ]
+      },
+      "elapsed_seconds": 0.195478
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462234",
+      "level": "DEBUG",
+      "message": "インポート解析: error_codes.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/error_codes.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195481
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462237",
+      "level": "DEBUG",
+      "message": "インポート解析: sys_provider.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/sys_provider.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.operations.interfaces.logger_interface"
+        ]
+      },
+      "elapsed_seconds": 0.195485
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462240",
+      "level": "DEBUG",
+      "message": "インポート解析: docker_utils.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/docker_utils.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195488
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462243",
+      "level": "DEBUG",
+      "message": "インポート解析: docker_path_ops.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/docker_path_ops.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195491
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462246",
+      "level": "DEBUG",
+      "message": "インポート解析: format_info.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/format_info.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195494
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462249",
+      "level": "DEBUG",
+      "message": "インポート解析: types.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/types.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195497
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462253",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.1955
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462256",
+      "level": "DEBUG",
+      "message": "インポート解析: shell_utils.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/shell_utils.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195503
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462259",
+      "level": "DEBUG",
+      "message": "インポート解析: regex_provider.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/regex_provider.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.operations.interfaces.regex_interface"
+        ]
+      },
+      "elapsed_seconds": 0.195507
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462263",
+      "level": "DEBUG",
+      "message": "インポート解析: execution_validation_utils.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/execution_validation_utils.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.19551
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462266",
+      "level": "DEBUG",
+      "message": "インポート解析: retry_decorator.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/retry_decorator.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.types.result",
+          "src.operations.exceptions.error_codes"
+        ]
+      },
+      "elapsed_seconds": 0.195513
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462269",
+      "level": "DEBUG",
+      "message": "インポート解析: python_utils.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/python_utils.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.operations.exceptions"
+        ]
+      },
+      "elapsed_seconds": 0.195516
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462272",
+      "level": "DEBUG",
+      "message": "インポート解析: path_operations.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/path_operations.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.operations.types.path_types"
+        ]
+      },
+      "elapsed_seconds": 0.19552
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462275",
+      "level": "DEBUG",
+      "message": "インポート解析: config_validation_utils.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/config_validation_utils.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195523
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462278",
+      "level": "DEBUG",
+      "message": "インポート解析: mock_regex_provider.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/mock_regex_provider.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.operations.interfaces.regex_interface"
+        ]
+      },
+      "elapsed_seconds": 0.195526
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462281",
+      "level": "DEBUG",
+      "message": "インポート解析: time_adapter.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/utils/time_adapter.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.providers.time_provider",
+          "src.operations.interfaces.time_interface"
+        ]
+      },
+      "elapsed_seconds": 0.195529
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462284",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/context/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195532
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462287",
+      "level": "DEBUG",
+      "message": "インポート解析: dockerfile_resolver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/context/dockerfile_resolver.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195535
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462290",
+      "level": "DEBUG",
+      "message": "インポート解析: mock_output_manager.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/mock_output_manager.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.infrastructure.di_container"
+        ]
+      },
+      "elapsed_seconds": 0.195538
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462293",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195541
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462297",
+      "level": "DEBUG",
+      "message": "インポート解析: timing_calculator.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/timing_calculator.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195544
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462301",
+      "level": "DEBUG",
+      "message": "インポート解析: execution_types.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/execution_types.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195549
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462304",
+      "level": "DEBUG",
+      "message": "インポート解析: config_manager.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/config_manager.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195552
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462307",
+      "level": "DEBUG",
+      "message": "インポート解析: color_manager.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/color_manager.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195555
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462310",
+      "level": "DEBUG",
+      "message": "インポート解析: fast_sqlite_manager.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/fast_sqlite_manager.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.types.result",
+          "src.infrastructure.providers.sqlite_provider"
+        ]
+      },
+      "elapsed_seconds": 0.195558
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462314",
+      "level": "DEBUG",
+      "message": "インポート解析: pure_config_manager.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/pure_config_manager.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195561
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462317",
+      "level": "DEBUG",
+      "message": "インポート解析: output_manager.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/output_manager.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195565
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462320",
+      "level": "DEBUG",
+      "message": "インポート解析: sqlite_manager.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/sqlite_manager.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.infrastructure.providers.sqlite_provider"
+        ]
+      },
+      "elapsed_seconds": 0.195568
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462323",
+      "level": "DEBUG",
+      "message": "インポート解析: execution_history.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/execution_history.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195571
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462327",
+      "level": "DEBUG",
+      "message": "インポート解析: application_logger_adapter.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/logging/application_logger_adapter.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.di_container",
+          "src.operations.interfaces.logger_interface"
+        ]
+      },
+      "elapsed_seconds": 0.195574
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462330",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/logging/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195577
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462333",
+      "level": "DEBUG",
+      "message": "インポート解析: unified_logger.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/logging/unified_logger.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.di_container",
+          "src.operations.interfaces.logger_interface"
+        ]
+      },
+      "elapsed_seconds": 0.195581
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462336",
+      "level": "DEBUG",
+      "message": "インポート解析: build_infrastructure.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/configuration/build_infrastructure.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.core.di_config.di_config",
+          "src.infrastructure.di_container"
+        ]
+      },
+      "elapsed_seconds": 0.195584
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462339",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/configuration/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195587
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462343",
+      "level": "DEBUG",
+      "message": "インポート解析: system_config_repository.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/configuration/system_config_repository.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.infrastructure.persistence.base.base_repository"
+        ]
+      },
+      "elapsed_seconds": 0.19559
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462346",
+      "level": "DEBUG",
+      "message": "インポート解析: system_config_loader.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/configuration/system_config_loader.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.infrastructure.di_container"
+        ]
+      },
+      "elapsed_seconds": 0.195594
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462349",
+      "level": "DEBUG",
+      "message": "インポート解析: runtime_config_overlay.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/configuration/runtime_config_overlay.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195597
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462353",
+      "level": "DEBUG",
+      "message": "インポート解析: di_config.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/configuration/di_config.py",
+        "import_count": 39,
+        "dependencies": [
+          "src.infrastructure.di_container",
+          "src.infrastructure.di_container",
+          "src.infrastructure.drivers.docker.docker_driver",
+          "src.infrastructure.drivers.file.local_file_driver",
+          "src.infrastructure.drivers.filesystem.local_filesystem"
+        ]
+      },
+      "elapsed_seconds": 0.1956
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462356",
+      "level": "DEBUG",
+      "message": "インポート解析: execution_config.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/configuration/execution_config.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195604
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462359",
+      "level": "DEBUG",
+      "message": "インポート解析: config_resolver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/configuration/config_resolver.py",
+        "import_count": 3,
+        "dependencies": [
+          "src.core.configuration.config_node",
+          "src.core.configuration.config_node_logic",
+          "src.operations.pure.formatters"
+        ]
+      },
+      "elapsed_seconds": 0.195607
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462362",
+      "level": "DEBUG",
+      "message": "インポート解析: output_config.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/configuration/output_config.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.19561
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462366",
+      "level": "DEBUG",
+      "message": "インポート解析: configuration_repository.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/configuration/configuration_repository.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.providers.json_provider",
+          "src.infrastructure.providers.sqlite_provider"
+        ]
+      },
+      "elapsed_seconds": 0.195613
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462369",
+      "level": "DEBUG",
+      "message": "インポート解析: environment_manager.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/configuration/environment_manager.py",
+        "import_count": 3,
+        "dependencies": [
+          "src.infrastructure.requests.base.base_request",
+          "src.operations.interfaces.logger_interface",
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.195617
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462372",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.19562
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462376",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/requests/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195623
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462384",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/ast_parser/__init__.py",
+        "import_count": 3,
+        "dependencies": [
+          "src.infrastructure.ast_parser.ast_analyzer",
+          "src.infrastructure.ast_parser.import_detector",
+          "src.infrastructure.ast_parser.module_parser"
+        ]
+      },
+      "elapsed_seconds": 0.195632
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462388",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/persistence/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195636
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462392",
+      "level": "DEBUG",
+      "message": "インポート解析: local_file_driver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/file/local_file_driver.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.infrastructure.drivers.file.file_driver"
+        ]
+      },
+      "elapsed_seconds": 0.195639
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462395",
+      "level": "DEBUG",
+      "message": "インポート解析: mock_file_driver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/file/mock_file_driver.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.infrastructure.drivers.file.file_driver"
+        ]
+      },
+      "elapsed_seconds": 0.195642
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462398",
+      "level": "DEBUG",
+      "message": "インポート解析: file_driver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/file/file_driver.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.infrastructure.drivers.base.base_driver"
+        ]
+      },
+      "elapsed_seconds": 0.195646
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462401",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/file/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195649
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462405",
+      "level": "DEBUG",
+      "message": "インポート解析: docker_driver_with_tracking.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/docker/docker_driver_with_tracking.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.di_container",
+          "src.infrastructure.drivers.docker.docker_driver"
+        ]
+      },
+      "elapsed_seconds": 0.195653
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462408",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/docker/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195656
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462412",
+      "level": "DEBUG",
+      "message": "インポート解析: docker_driver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/docker/docker_driver.py",
+        "import_count": 5,
+        "dependencies": [
+          "src.infrastructure.drivers.base.base_driver",
+          "src.infrastructure.drivers.docker.utils",
+          "src.infrastructure.drivers.file.local_file_driver",
+          "src.infrastructure.drivers.shell.local_shell_driver",
+          "src.infrastructure.requests.shell.shell_request"
+        ]
+      },
+      "elapsed_seconds": 0.19566
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462415",
+      "level": "DEBUG",
+      "message": "インポート解析: mock_docker_driver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/docker/mock_docker_driver.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.drivers.docker.docker_driver",
+          "src.operations.results.docker_result"
+        ]
+      },
+      "elapsed_seconds": 0.195663
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462418",
+      "level": "DEBUG",
+      "message": "インポート解析: persistence_driver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/generic/persistence_driver.py",
+        "import_count": 3,
+        "dependencies": [
+          "src.infrastructure.drivers.base.base_driver",
+          "src.operations.interfaces.persistence_interface",
+          "src.infrastructure.persistence.sqlite.sqlite_manager"
+        ]
+      },
+      "elapsed_seconds": 0.195666
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462421",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/generic/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195669
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462425",
+      "level": "DEBUG",
+      "message": "インポート解析: base_driver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/generic/base_driver.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195672
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462428",
+      "level": "DEBUG",
+      "message": "インポート解析: unified_driver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/generic/unified_driver.py",
+        "import_count": 9,
+        "dependencies": [
+          "src.infrastructure.di_container",
+          "src.infrastructure.requests.base.base_request",
+          "src.infrastructure.requests.file.file_op_type",
+          "src.operations.constants.request_types",
+          "src.operations.interfaces.logger_interface"
+        ]
+      },
+      "elapsed_seconds": 0.195675
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462431",
+      "level": "DEBUG",
+      "message": "インポート解析: local_shell_driver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/shell/local_shell_driver.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.drivers.shell.shell_driver",
+          "src.infrastructure.drivers.shell.utils.shell_utils"
+        ]
+      },
+      "elapsed_seconds": 0.195679
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462434",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/shell/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195682
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462437",
+      "level": "DEBUG",
+      "message": "インポート解析: shell_driver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/shell/shell_driver.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.infrastructure.drivers.base.base_driver"
+        ]
+      },
+      "elapsed_seconds": 0.195685
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462440",
+      "level": "DEBUG",
+      "message": "インポート解析: mock_shell_driver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/shell/mock_shell_driver.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.drivers.shell.shell_driver",
+          "src.operations.results.shell_result"
+        ]
+      },
+      "elapsed_seconds": 0.195688
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462444",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/python/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195691
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462447",
+      "level": "DEBUG",
+      "message": "インポート解析: mock_python_driver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/python/mock_python_driver.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.infrastructure.drivers.python.python_driver"
+        ]
+      },
+      "elapsed_seconds": 0.195695
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462450",
+      "level": "DEBUG",
+      "message": "インポート解析: python_driver.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/python/python_driver.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.drivers.base.base_driver",
+          "src.infrastructure.drivers.python.utils.python_utils"
+        ]
+      },
+      "elapsed_seconds": 0.195698
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462453",
+      "level": "DEBUG",
+      "message": "インポート解析: docker_naming.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/drivers/docker/utils/docker_naming.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195701
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462457",
+      "level": "DEBUG",
+      "message": "インポート解析: file_op_type.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/requests/file/file_op_type.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195704
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462460",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/requests/file/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195707
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462463",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/persistence/sqlite/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195711
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462466",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/persistence/state/models/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195714
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462469",
+      "level": "DEBUG",
+      "message": "インポート解析: session_context.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/persistence/state/models/session_context.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195717
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462472",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/infrastructure/persistence/sqlite/migrations/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.19572
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462476",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/domain/models/__init__.py",
+        "import_count": 3,
+        "dependencies": [
+          "src.domain.models.broken_import",
+          "src.domain.models.candidate",
+          "src.domain.models.module_info"
+        ]
+      },
+      "elapsed_seconds": 0.195724
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462479",
+      "level": "DEBUG",
+      "message": "インポート解析: step_generation_service.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/domain/services/step_generation_service.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195727
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462482",
+      "level": "DEBUG",
+      "message": "インポート解析: workflow_execution_service.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/domain/services/workflow_execution_service.py",
+        "import_count": 4,
+        "dependencies": [
+          "src.operations.constants.request_types",
+          "src.operations.factories.request_factory",
+          "src.core.workflow.workflow.step.step",
+          "src.core.workflow_result.workflow_result"
+        ]
+      },
+      "elapsed_seconds": 0.19573
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462485",
+      "level": "DEBUG",
+      "message": "インポート解析: operation_repository.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/operation/operation_repository.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.persistence.base.base_repository",
+          "src.infrastructure.persistence.sqlite.sqlite_manager"
+        ]
+      },
+      "elapsed_seconds": 0.195733
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462489",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/operation/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195736
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462492",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/base/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195739
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462495",
+      "level": "DEBUG",
+      "message": "インポート解析: base_repository.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/base/base_repository.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.operations.interfaces.persistence_interface"
+        ]
+      },
+      "elapsed_seconds": 0.195742
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462498",
+      "level": "DEBUG",
+      "message": "インポート解析: docker_container_repository.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/docker_container/docker_container_repository.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.infrastructure.persistence.base.base_repository"
+        ]
+      },
+      "elapsed_seconds": 0.195745
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462501",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/docker_container/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195749
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462504",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/state/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195752
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462507",
+      "level": "DEBUG",
+      "message": "インポート解析: state_repository.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/state/state_repository.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195755
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462510",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/sqlite_state/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195758
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462513",
+      "level": "DEBUG",
+      "message": "インポート解析: sqlite_state_repository.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/sqlite_state/sqlite_state_repository.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195761
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462516",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/docker_image/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195764
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462520",
+      "level": "DEBUG",
+      "message": "インポート解析: docker_image_repository.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/docker_image/docker_image_repository.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.infrastructure.persistence.base.base_repository"
+        ]
+      },
+      "elapsed_seconds": 0.195768
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462523",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/session/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195771
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462526",
+      "level": "DEBUG",
+      "message": "インポート解析: session_repository.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/data/session/session_repository.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.persistence.base.base_repository",
+          "src.infrastructure.persistence.sqlite.sqlite_manager"
+        ]
+      },
+      "elapsed_seconds": 0.195774
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462529",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/factories/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195777
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462532",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/constants/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.19578
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462535",
+      "level": "DEBUG",
+      "message": "インポート解析: operation_type.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/constants/operation_type.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195783
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462539",
+      "level": "DEBUG",
+      "message": "インポート解析: request_interfaces.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/requests/request_interfaces.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195786
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462542",
+      "level": "DEBUG",
+      "message": "インポート解析: python_request.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/requests/python_request.py",
+        "import_count": 4,
+        "dependencies": [
+          "src.infrastructure.requests.base.base_request",
+          "src.operations.constants.operation_type",
+          "src.operations.constants.request_types",
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.19579
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462545",
+      "level": "DEBUG",
+      "message": "インポート解析: request_types.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/requests/request_types.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195793
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462548",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/requests/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195796
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462551",
+      "level": "DEBUG",
+      "message": "インポート解析: request_factory.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/requests/request_factory.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195799
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462554",
+      "level": "DEBUG",
+      "message": "インポート解析: composite_request.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/requests/composite_request.py",
+        "import_count": 5,
+        "dependencies": [
+          "src.infrastructure.requests.base.base_request",
+          "src.infrastructure.requests.composite.base_composite_request",
+          "src.infrastructure.requests.composite.composite_structure",
+          "src.operations.constants.request_types",
+          "src.operations.interfaces.execution_interface"
+        ]
+      },
+      "elapsed_seconds": 0.195802
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462557",
+      "level": "DEBUG",
+      "message": "インポート解析: shell_request.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/requests/shell_request.py",
+        "import_count": 5,
+        "dependencies": [
+          "src.infrastructure.requests.base.base_request",
+          "src.operations.constants.operation_type",
+          "src.operations.constants.request_types",
+          "src.operations.results.result",
+          "src.operations.exceptions.error_codes"
+        ]
+      },
+      "elapsed_seconds": 0.195805
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462560",
+      "level": "DEBUG",
+      "message": "インポート解析: docker_request.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/requests/docker_request.py",
+        "import_count": 6,
+        "dependencies": [
+          "src.infrastructure.requests.base.base_request",
+          "src.infrastructure.requests.composite.composite_request",
+          "src.operations.constants.operation_type",
+          "src.operations.constants.request_types",
+          "src.operations.interfaces.docker_interface"
+        ]
+      },
+      "elapsed_seconds": 0.195808
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462563",
+      "level": "DEBUG",
+      "message": "インポート解析: file_request.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/requests/file_request.py",
+        "import_count": 6,
+        "dependencies": [
+          "src.infrastructure.requests.base.base_request",
+          "src.infrastructure.requests.file.file_op_type",
+          "src.operations.constants.operation_type",
+          "src.operations.constants.request_types",
+          "src.operations.results.file_result"
+        ]
+      },
+      "elapsed_seconds": 0.195811
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462566",
+      "level": "DEBUG",
+      "message": "インポート解析: regex_interface.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/interfaces/regex_interface.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195814
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462570",
+      "level": "DEBUG",
+      "message": "インポート解析: docker_interface.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/interfaces/docker_interface.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.195817
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462573",
+      "level": "DEBUG",
+      "message": "インポート解析: persistence_interface.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/interfaces/persistence_interface.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.19582
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462576",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/interfaces/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195823
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462579",
+      "level": "DEBUG",
+      "message": "インポート解析: filesystem_interface.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/interfaces/filesystem_interface.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195826
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462582",
+      "level": "DEBUG",
+      "message": "インポート解析: execution_interface.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/interfaces/execution_interface.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.19583
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462585",
+      "level": "DEBUG",
+      "message": "インポート解析: output_manager_interface.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/interfaces/output_manager_interface.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195833
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462588",
+      "level": "DEBUG",
+      "message": "インポート解析: time_interface.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/interfaces/time_interface.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195836
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462591",
+      "level": "DEBUG",
+      "message": "インポート解析: logger_interface.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/interfaces/logger_interface.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195839
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462594",
+      "level": "DEBUG",
+      "message": "インポート解析: result_factory.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/results/result_factory.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195842
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462597",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/results/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195845
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462600",
+      "level": "DEBUG",
+      "message": "インポート解析: check_result.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/results/check_result.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195848
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462604",
+      "level": "DEBUG",
+      "message": "インポート解析: shell_result.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/results/shell_result.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.195852
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462607",
+      "level": "DEBUG",
+      "message": "インポート解析: base_result.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/results/base_result.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195855
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462610",
+      "level": "DEBUG",
+      "message": "インポート解析: docker_result.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/results/docker_result.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.195858
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462613",
+      "level": "DEBUG",
+      "message": "インポート解析: result.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/results/result.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195861
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462616",
+      "level": "DEBUG",
+      "message": "インポート解析: file_result.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/operations/results/file_result.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.operations.constants.operation_type",
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.195864
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462620",
+      "level": "DEBUG",
+      "message": "インポート解析: validation_service.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/services/validation_service.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.195867
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462623",
+      "level": "DEBUG",
+      "message": "インポート解析: __init__.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/services/__init__.py",
+        "import_count": 0,
+        "dependencies": []
+      },
+      "elapsed_seconds": 0.19587
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462626",
+      "level": "DEBUG",
+      "message": "インポート解析: config_loader_service.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/services/config_loader_service.py",
+        "import_count": 1,
+        "dependencies": [
+          "src.infrastructure.di_container"
+        ]
+      },
+      "elapsed_seconds": 0.195874
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.462629",
+      "level": "DEBUG",
+      "message": "インポート解析: debug_service.py",
+      "details": {
+        "file_path": "/home/cphelper/project-cph/src/application/services/debug_service.py",
+        "import_count": 2,
+        "dependencies": [
+          "src.infrastructure.config.runtime_config_overlay",
+          "src.infrastructure.di_container"
+        ]
+      },
+      "elapsed_seconds": 0.195877
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.472917",
+      "level": "DEBUG",
+      "message": "依存深度: src = 0",
+      "details": {
+        "module": "src",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.20617
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.472959",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.ast_analyzer = 2",
+      "details": {
+        "module": "src.infrastructure.ast_analyzer",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.domain.models"
+        ]
+      },
+      "elapsed_seconds": 0.206207
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.472991",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.local_filesystem = 1",
+      "details": {
+        "module": "src.infrastructure.local_filesystem",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.interfaces.filesystem_interface"
+        ]
+      },
+      "elapsed_seconds": 0.206239
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473021",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.persistence_exceptions = 0",
+      "details": {
+        "module": "src.infrastructure.persistence_exceptions",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.206269
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473051",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.json_provider = 0",
+      "details": {
+        "module": "src.infrastructure.json_provider",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.206299
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473091",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure = 0",
+      "details": {
+        "module": "src.infrastructure",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.20634
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473123",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.sqlite_provider = 0",
+      "details": {
+        "module": "src.infrastructure.sqlite_provider",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.206371
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473152",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.time_provider = 0",
+      "details": {
+        "module": "src.infrastructure.time_provider",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.2064
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473179",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.module_info = 0",
+      "details": {
+        "module": "src.infrastructure.module_info",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.206427
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473207",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.candidate = 0",
+      "details": {
+        "module": "src.infrastructure.candidate",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.206455
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473317",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.file_provider = 0",
+      "details": {
+        "module": "src.infrastructure.file_provider",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.206565
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473351",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.registry_provider = 0",
+      "details": {
+        "module": "src.infrastructure.registry_provider",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.206599
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473386",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.os_provider = 0",
+      "details": {
+        "module": "src.infrastructure.os_provider",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.206634
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473416",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.di_container = 0",
+      "details": {
+        "module": "src.infrastructure.di_container",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.206663
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473445",
+      "level": "DEBUG",
+      "message": "依存深度: src.domain.base_composite_request = 1",
+      "details": {
+        "module": "src.domain.base_composite_request",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.requests.base.base_request",
+          "src.operations.constants.operation_type",
+          "src.operations.constants.request_types"
+        ]
+      },
+      "elapsed_seconds": 0.206693
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473472",
+      "level": "DEBUG",
+      "message": "依存深度: src.domain.dependency = 1",
+      "details": {
+        "module": "src.domain.dependency",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.core.workflow.workflow.step.step_generation_service",
+          "src.core.workflow.workflow.step.step_runner"
+        ]
+      },
+      "elapsed_seconds": 0.20672
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473500",
+      "level": "DEBUG",
+      "message": "依存深度: src.domain.step_runner = 1",
+      "details": {
+        "module": "src.domain.step_runner",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.core.workflow.workflow.step.step"
+        ]
+      },
+      "elapsed_seconds": 0.206748
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473527",
+      "level": "DEBUG",
+      "message": "依存深度: src.domain.step = 0",
+      "details": {
+        "module": "src.domain.step",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.206775
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473555",
+      "level": "DEBUG",
+      "message": "依存深度: src.domain.base_request = 1",
+      "details": {
+        "module": "src.domain.base_request",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.constants.operation_type",
+          "src.operations.constants.request_types"
+        ]
+      },
+      "elapsed_seconds": 0.206803
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473582",
+      "level": "DEBUG",
+      "message": "依存深度: src.domain.workflow_result = 1",
+      "details": {
+        "module": "src.domain.workflow_result",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.20683
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473611",
+      "level": "DEBUG",
+      "message": "依存深度: src.domain.workflow = 0",
+      "details": {
+        "module": "src.domain.workflow",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.206858
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473639",
+      "level": "DEBUG",
+      "message": "依存深度: src.domain.workflow_logger_adapter = 1",
+      "details": {
+        "module": "src.domain.workflow_logger_adapter",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.di_container",
+          "src.infrastructure.drivers.logging.types"
+        ]
+      },
+      "elapsed_seconds": 0.206886
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473668",
+      "level": "DEBUG",
+      "message": "依存深度: src.domain.config_node_logic = 0",
+      "details": {
+        "module": "src.domain.config_node_logic",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.206916
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473695",
+      "level": "DEBUG",
+      "message": "依存深度: src.domain.config_node = 1",
+      "details": {
+        "module": "src.domain.config_node",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.services.node.config_node_logic"
+        ]
+      },
+      "elapsed_seconds": 0.206943
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473721",
+      "level": "DEBUG",
+      "message": "依存深度: src.domain.composite_step_failure = 0",
+      "details": {
+        "module": "src.domain.composite_step_failure",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.206969
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473748",
+      "level": "DEBUG",
+      "message": "依存深度: src.cli = 0",
+      "details": {
+        "module": "src.cli",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.206996
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473776",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.docker_command_builder = 0",
+      "details": {
+        "module": "src.presentation.docker_command_builder",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207024
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473803",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.context_validator = 1",
+      "details": {
+        "module": "src.presentation.context_validator",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.context.utils.execution_validation_utils"
+        ]
+      },
+      "elapsed_seconds": 0.207051
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473830",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.context_formatter = 1",
+      "details": {
+        "module": "src.presentation.context_formatter",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.pure.formatters"
+        ]
+      },
+      "elapsed_seconds": 0.207078
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473857",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.string_formatters = 0",
+      "details": {
+        "module": "src.presentation.string_formatters",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207105
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473884",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.cli = 2",
+      "details": {
+        "module": "src.presentation.cli",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.application.use_cases",
+          "src.domain.models"
+        ]
+      },
+      "elapsed_seconds": 0.207132
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473911",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.user_input_parser_integration = 0",
+      "details": {
+        "module": "src.presentation.user_input_parser_integration",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207159
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473937",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.directory_pattern_strategy = 2",
+      "details": {
+        "module": "src.presentation.directory_pattern_strategy",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.domain.models",
+          "src.domain.services.search_strategy"
+        ]
+      },
+      "elapsed_seconds": 0.207185
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473964",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.main = 1",
+      "details": {
+        "module": "src.presentation.main",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.core.cli_app.cli_app",
+          "src.configuration.pure_config_manager",
+          "src.infrastructure.build_infrastructure",
+          "src.infrastructure.config.config_loader_service",
+          "src.infrastructure.di_container",
+          "src.infrastructure.drivers.docker.utils.docker_command_builder",
+          "src.operations.factories.request_factory"
+        ]
+      },
+      "elapsed_seconds": 0.207212
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.473996",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.path_based_strategy = 2",
+      "details": {
+        "module": "src.presentation.path_based_strategy",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.domain.models",
+          "src.domain.services.search_strategy"
+        ]
+      },
+      "elapsed_seconds": 0.207245
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474028",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.module_parser = 2",
+      "details": {
+        "module": "src.presentation.module_parser",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.domain.models",
+          "src.presentation.ast_analyzer"
+        ]
+      },
+      "elapsed_seconds": 0.207275
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474054",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.search_import_candidates_use_case = 2",
+      "details": {
+        "module": "src.presentation.search_import_candidates_use_case",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.domain.models",
+          "src.domain.services",
+          "src.domain.services.search_coordinator"
+        ]
+      },
+      "elapsed_seconds": 0.207302
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474098",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.candidate_scorer = 2",
+      "details": {
+        "module": "src.presentation.candidate_scorer",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.domain.models"
+        ]
+      },
+      "elapsed_seconds": 0.207346
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474127",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.formatters = 0",
+      "details": {
+        "module": "src.presentation.formatters",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207375
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474155",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.cli_app = 1",
+      "details": {
+        "module": "src.presentation.cli_app",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.core.user_input_parser.user_input_parser",
+          "src.infrastructure.di_container",
+          "src.operations.exceptions.composite_step_failure",
+          "src.operations.exceptions.error_codes",
+          "src.core.workflow_execution_svc.workflow_execution_service",
+          "src.core.workflow_result.workflow_result"
+        ]
+      },
+      "elapsed_seconds": 0.207402
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474182",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.symbol_based_strategy = 2",
+      "details": {
+        "module": "src.presentation.symbol_based_strategy",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.domain.models",
+          "src.domain.services.search_strategy",
+          "src.infrastructure.ast_parser"
+        ]
+      },
+      "elapsed_seconds": 0.20743
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474209",
+      "level": "DEBUG",
+      "message": "依存深度: src.presentation.user_input_parser = 1",
+      "details": {
+        "module": "src.presentation.user_input_parser",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.core.configuration.config_resolver",
+          "src.context.dockerfile_resolver",
+          "src.context.parsers.validation_service",
+          "src.infrastructure.config.config_loader_service"
+        ]
+      },
+      "elapsed_seconds": 0.207457
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474237",
+      "level": "DEBUG",
+      "message": "依存深度: src.data = 1",
+      "details": {
+        "module": "src.data",
+        "depth": 1,
+        "direct_dependencies": [
+          "operations.python_exceptions"
+        ]
+      },
+      "elapsed_seconds": 0.207485
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474265",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.data_processors = 0",
+      "details": {
+        "module": "src.data.data_processors",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207513
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474293",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.python_exceptions = 0",
+      "details": {
+        "module": "src.operations.python_exceptions",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.20754
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474318",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.error_converter = 0",
+      "details": {
+        "module": "src.operations.error_converter",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207566
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474346",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations = 0",
+      "details": {
+        "module": "src.operations",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207594
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474373",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.search_strategy = 2",
+      "details": {
+        "module": "src.operations.search_strategy",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.domain.models"
+        ]
+      },
+      "elapsed_seconds": 0.20762
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474410",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.path_types = 0",
+      "details": {
+        "module": "src.operations.path_types",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207658
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474439",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.base_command = 0",
+      "details": {
+        "module": "src.operations.base_command",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207686
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474467",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.composite_structure = 1",
+      "details": {
+        "module": "src.operations.composite_structure",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.requests.base.base_request"
+        ]
+      },
+      "elapsed_seconds": 0.207715
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474494",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.error_codes = 0",
+      "details": {
+        "module": "src.operations.error_codes",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207742
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474522",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils.sys_provider = 1",
+      "details": {
+        "module": "src.utils.sys_provider",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.interfaces.logger_interface"
+        ]
+      },
+      "elapsed_seconds": 0.20777
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474549",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils.docker_utils = 0",
+      "details": {
+        "module": "src.utils.docker_utils",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207797
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474580",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils.docker_path_ops = 0",
+      "details": {
+        "module": "src.utils.docker_path_ops",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207828
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474610",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils.format_info = 0",
+      "details": {
+        "module": "src.utils.format_info",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207858
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474639",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils.types = 0",
+      "details": {
+        "module": "src.utils.types",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207887
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474668",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils = 0",
+      "details": {
+        "module": "src.utils",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207916
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474698",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils.shell_utils = 0",
+      "details": {
+        "module": "src.utils.shell_utils",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.207945
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474726",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils.regex_provider = 1",
+      "details": {
+        "module": "src.utils.regex_provider",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.interfaces.regex_interface"
+        ]
+      },
+      "elapsed_seconds": 0.207973
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474752",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils.execution_validation_utils = 0",
+      "details": {
+        "module": "src.utils.execution_validation_utils",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474779",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils.retry_decorator = 1",
+      "details": {
+        "module": "src.utils.retry_decorator",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.types.result",
+          "src.operations.exceptions.error_codes"
+        ]
+      },
+      "elapsed_seconds": 0.208027
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474806",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils.python_utils = 1",
+      "details": {
+        "module": "src.utils.python_utils",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.exceptions"
+        ]
+      },
+      "elapsed_seconds": 0.208054
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474833",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils.path_operations = 1",
+      "details": {
+        "module": "src.utils.path_operations",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.types.path_types"
+        ]
+      },
+      "elapsed_seconds": 0.20808
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474860",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils.config_validation_utils = 0",
+      "details": {
+        "module": "src.utils.config_validation_utils",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208108
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474886",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils.mock_regex_provider = 1",
+      "details": {
+        "module": "src.utils.mock_regex_provider",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.interfaces.regex_interface"
+        ]
+      },
+      "elapsed_seconds": 0.208134
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474913",
+      "level": "DEBUG",
+      "message": "依存深度: src.utils.time_adapter = 1",
+      "details": {
+        "module": "src.utils.time_adapter",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.providers.time_provider",
+          "src.operations.interfaces.time_interface"
+        ]
+      },
+      "elapsed_seconds": 0.208161
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474940",
+      "level": "DEBUG",
+      "message": "依存深度: src.context = 0",
+      "details": {
+        "module": "src.context",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208187
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.474971",
+      "level": "DEBUG",
+      "message": "依存深度: src.context.dockerfile_resolver = 0",
+      "details": {
+        "module": "src.context.dockerfile_resolver",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.20822
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475002",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.mock_output_manager = 1",
+      "details": {
+        "module": "src.application.mock_output_manager",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.di_container"
+        ]
+      },
+      "elapsed_seconds": 0.20825
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475029",
+      "level": "DEBUG",
+      "message": "依存深度: src.application = 0",
+      "details": {
+        "module": "src.application",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208277
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475056",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.timing_calculator = 0",
+      "details": {
+        "module": "src.application.timing_calculator",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208303
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475097",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.execution_types = 0",
+      "details": {
+        "module": "src.application.execution_types",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208345
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475127",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.config_manager = 0",
+      "details": {
+        "module": "src.application.config_manager",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208375
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475156",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.contest_manager = 1",
+      "details": {
+        "module": "src.application.contest_manager",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.requests.file.file_op_type",
+          "src.infrastructure.requests.file.file_request",
+          "src.infrastructure.di_container",
+          "src.infrastructure.requests.file.file_op_type",
+          "src.infrastructure.requests.file.file_request"
+        ]
+      },
+      "elapsed_seconds": 0.208404
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475183",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.color_manager = 0",
+      "details": {
+        "module": "src.application.color_manager",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208431
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475211",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.fast_sqlite_manager = 1",
+      "details": {
+        "module": "src.application.fast_sqlite_manager",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.types.result",
+          "src.infrastructure.providers.sqlite_provider"
+        ]
+      },
+      "elapsed_seconds": 0.208459
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475238",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.pure_config_manager = 0",
+      "details": {
+        "module": "src.application.pure_config_manager",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208486
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475265",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.output_manager = 0",
+      "details": {
+        "module": "src.application.output_manager",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208512
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475292",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.sqlite_manager = 1",
+      "details": {
+        "module": "src.application.sqlite_manager",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.providers.sqlite_provider"
+        ]
+      },
+      "elapsed_seconds": 0.208539
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475318",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.execution_history = 0",
+      "details": {
+        "module": "src.application.execution_history",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208566
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475344",
+      "level": "DEBUG",
+      "message": "依存深度: src.logging.application_logger_adapter = 1",
+      "details": {
+        "module": "src.logging.application_logger_adapter",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.di_container",
+          "src.operations.interfaces.logger_interface"
+        ]
+      },
+      "elapsed_seconds": 0.208592
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475371",
+      "level": "DEBUG",
+      "message": "依存深度: src.logging = 0",
+      "details": {
+        "module": "src.logging",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208619
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475408",
+      "level": "DEBUG",
+      "message": "依存深度: src.logging.unified_logger = 1",
+      "details": {
+        "module": "src.logging.unified_logger",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.di_container",
+          "src.operations.interfaces.logger_interface"
+        ]
+      },
+      "elapsed_seconds": 0.208656
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475438",
+      "level": "DEBUG",
+      "message": "依存深度: src.configuration.build_infrastructure = 1",
+      "details": {
+        "module": "src.configuration.build_infrastructure",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.core.di_config.di_config",
+          "src.infrastructure.di_container"
+        ]
+      },
+      "elapsed_seconds": 0.208686
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475466",
+      "level": "DEBUG",
+      "message": "依存深度: src.configuration = 0",
+      "details": {
+        "module": "src.configuration",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208713
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475496",
+      "level": "DEBUG",
+      "message": "依存深度: src.configuration.system_config_repository = 1",
+      "details": {
+        "module": "src.configuration.system_config_repository",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.persistence.base.base_repository"
+        ]
+      },
+      "elapsed_seconds": 0.208744
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475525",
+      "level": "DEBUG",
+      "message": "依存深度: src.configuration.system_config_loader = 1",
+      "details": {
+        "module": "src.configuration.system_config_loader",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.di_container"
+        ]
+      },
+      "elapsed_seconds": 0.208773
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475553",
+      "level": "DEBUG",
+      "message": "依存深度: src.configuration.runtime_config_overlay = 0",
+      "details": {
+        "module": "src.configuration.runtime_config_overlay",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208801
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475579",
+      "level": "DEBUG",
+      "message": "依存深度: src.configuration.di_config = 4",
+      "details": {
+        "module": "src.configuration.di_config",
+        "depth": 4,
+        "direct_dependencies": [
+          "src.infrastructure.di_container",
+          "src.infrastructure.di_container",
+          "src.infrastructure.drivers.docker.docker_driver",
+          "src.infrastructure.drivers.file.local_file_driver",
+          "src.infrastructure.drivers.filesystem.local_filesystem",
+          "src.infrastructure.drivers.logging",
+          "src.infrastructure.drivers.logging",
+          "src.infrastructure.drivers.logging",
+          "src.infrastructure.drivers.logging.adapters",
+          "src.infrastructure.drivers.logging.adapters",
+          "src.infrastructure.drivers.logging.types",
+          "src.infrastructure.drivers.persistence.persistence_driver",
+          "src.infrastructure.drivers.python.python_driver",
+          "src.infrastructure.drivers.shell.local_shell_driver",
+          "src.infrastructure.drivers.unified.unified_driver",
+          "src.infrastructure.environment.environment_manager",
+          "src.infrastructure.mock.mock_docker_driver",
+          "src.infrastructure.mock.mock_file_driver",
+          "src.infrastructure.mock.mock_python_driver",
+          "src.infrastructure.mock.mock_shell_driver",
+          "src.infrastructure.persistence.configuration_repository",
+          "src.infrastructure.persistence.sqlite.contest_manager",
+          "src.infrastructure.persistence.sqlite.fast_sqlite_manager",
+          "src.infrastructure.persistence.sqlite.repositories.docker_container_repository",
+          "src.infrastructure.persistence.sqlite.repositories.docker_image_repository",
+          "src.infrastructure.persistence.sqlite.repositories.operation_repository",
+          "src.infrastructure.persistence.sqlite.repositories.session_repository",
+          "src.infrastructure.persistence.sqlite.repositories.system_config_repository",
+          "src.infrastructure.persistence.sqlite.sqlite_manager",
+          "src.infrastructure.persistence.sqlite.system_config_loader",
+          "src.infrastructure.providers",
+          "src.infrastructure.providers",
+          "src.infrastructure.providers",
+          "src.infrastructure.providers",
+          "src.infrastructure.providers",
+          "src.infrastructure.providers",
+          "src.infrastructure.providers",
+          "src.infrastructure.providers",
+          "src.operations.factories.request_factory"
+        ]
+      },
+      "elapsed_seconds": 0.208827
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475608",
+      "level": "DEBUG",
+      "message": "依存深度: src.configuration.execution_config = 0",
+      "details": {
+        "module": "src.configuration.execution_config",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208856
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475635",
+      "level": "DEBUG",
+      "message": "依存深度: src.configuration.config_resolver = 1",
+      "details": {
+        "module": "src.configuration.config_resolver",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.core.configuration.config_node",
+          "src.core.configuration.config_node_logic",
+          "src.operations.pure.formatters"
+        ]
+      },
+      "elapsed_seconds": 0.208883
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475662",
+      "level": "DEBUG",
+      "message": "依存深度: src.configuration.output_config = 0",
+      "details": {
+        "module": "src.configuration.output_config",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.20891
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475688",
+      "level": "DEBUG",
+      "message": "依存深度: src.configuration.configuration_repository = 1",
+      "details": {
+        "module": "src.configuration.configuration_repository",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.providers.json_provider",
+          "src.infrastructure.providers.sqlite_provider"
+        ]
+      },
+      "elapsed_seconds": 0.208936
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475715",
+      "level": "DEBUG",
+      "message": "依存深度: src.configuration.environment_manager = 1",
+      "details": {
+        "module": "src.configuration.environment_manager",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.requests.base.base_request",
+          "src.operations.interfaces.logger_interface",
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.208963
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475746",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers = 0",
+      "details": {
+        "module": "src.infrastructure.drivers",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.208994
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475776",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.requests = 0",
+      "details": {
+        "module": "src.infrastructure.requests",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.209024
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475806",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.ast_parser = 1",
+      "details": {
+        "module": "src.infrastructure.ast_parser",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.ast_parser.ast_analyzer",
+          "src.infrastructure.ast_parser.import_detector",
+          "src.infrastructure.ast_parser.module_parser"
+        ]
+      },
+      "elapsed_seconds": 0.209054
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475835",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.persistence = 0",
+      "details": {
+        "module": "src.infrastructure.persistence",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.209083
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475872",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.file.local_file_driver = 2",
+      "details": {
+        "module": "src.infrastructure.drivers.file.local_file_driver",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.infrastructure.drivers.file.file_driver"
+        ]
+      },
+      "elapsed_seconds": 0.20912
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475908",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.file.mock_file_driver = 2",
+      "details": {
+        "module": "src.infrastructure.drivers.file.mock_file_driver",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.infrastructure.drivers.file.file_driver"
+        ]
+      },
+      "elapsed_seconds": 0.209156
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475949",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.file.file_driver = 1",
+      "details": {
+        "module": "src.infrastructure.drivers.file.file_driver",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.drivers.base.base_driver"
+        ]
+      },
+      "elapsed_seconds": 0.209198
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.475983",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.file = 0",
+      "details": {
+        "module": "src.infrastructure.drivers.file",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.209231
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476018",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.docker.docker_driver_with_tracking = 4",
+      "details": {
+        "module": "src.infrastructure.drivers.docker.docker_driver_with_tracking",
+        "depth": 4,
+        "direct_dependencies": [
+          "src.infrastructure.di_container",
+          "src.infrastructure.drivers.docker.docker_driver"
+        ]
+      },
+      "elapsed_seconds": 0.209265
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476050",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.docker = 0",
+      "details": {
+        "module": "src.infrastructure.drivers.docker",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.209298
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476095",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.docker.docker_driver = 3",
+      "details": {
+        "module": "src.infrastructure.drivers.docker.docker_driver",
+        "depth": 3,
+        "direct_dependencies": [
+          "src.infrastructure.drivers.base.base_driver",
+          "src.infrastructure.drivers.docker.utils",
+          "src.infrastructure.drivers.file.local_file_driver",
+          "src.infrastructure.drivers.shell.local_shell_driver",
+          "src.infrastructure.requests.shell.shell_request"
+        ]
+      },
+      "elapsed_seconds": 0.209344
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476133",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.docker.mock_docker_driver = 4",
+      "details": {
+        "module": "src.infrastructure.drivers.docker.mock_docker_driver",
+        "depth": 4,
+        "direct_dependencies": [
+          "src.infrastructure.drivers.docker.docker_driver",
+          "src.operations.results.docker_result"
+        ]
+      },
+      "elapsed_seconds": 0.20938
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476166",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.generic.persistence_driver = 1",
+      "details": {
+        "module": "src.infrastructure.drivers.generic.persistence_driver",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.drivers.base.base_driver",
+          "src.operations.interfaces.persistence_interface",
+          "src.infrastructure.persistence.sqlite.sqlite_manager"
+        ]
+      },
+      "elapsed_seconds": 0.209414
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476199",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.generic = 0",
+      "details": {
+        "module": "src.infrastructure.drivers.generic",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.209447
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476232",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.generic.base_driver = 0",
+      "details": {
+        "module": "src.infrastructure.drivers.generic.base_driver",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.20948
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476265",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.generic.unified_driver = 2",
+      "details": {
+        "module": "src.infrastructure.drivers.generic.unified_driver",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.infrastructure.di_container",
+          "src.infrastructure.requests.base.base_request",
+          "src.infrastructure.requests.file.file_op_type",
+          "src.operations.constants.request_types",
+          "src.operations.interfaces.logger_interface",
+          "src.operations.results.docker_result",
+          "src.operations.results.file_result",
+          "src.operations.results.result",
+          "src.operations.results.shell_result"
+        ]
+      },
+      "elapsed_seconds": 0.209513
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476297",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.shell.local_shell_driver = 2",
+      "details": {
+        "module": "src.infrastructure.drivers.shell.local_shell_driver",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.infrastructure.drivers.shell.shell_driver",
+          "src.infrastructure.drivers.shell.utils.shell_utils"
+        ]
+      },
+      "elapsed_seconds": 0.209544
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476328",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.shell = 0",
+      "details": {
+        "module": "src.infrastructure.drivers.shell",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.209575
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476360",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.shell.shell_driver = 1",
+      "details": {
+        "module": "src.infrastructure.drivers.shell.shell_driver",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.drivers.base.base_driver"
+        ]
+      },
+      "elapsed_seconds": 0.209608
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476400",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.shell.mock_shell_driver = 2",
+      "details": {
+        "module": "src.infrastructure.drivers.shell.mock_shell_driver",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.infrastructure.drivers.shell.shell_driver",
+          "src.operations.results.shell_result"
+        ]
+      },
+      "elapsed_seconds": 0.209648
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476434",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.python = 0",
+      "details": {
+        "module": "src.infrastructure.drivers.python",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.209682
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476468",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.python.mock_python_driver = 2",
+      "details": {
+        "module": "src.infrastructure.drivers.python.mock_python_driver",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.infrastructure.drivers.python.python_driver"
+        ]
+      },
+      "elapsed_seconds": 0.209716
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476500",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.python.python_driver = 1",
+      "details": {
+        "module": "src.infrastructure.drivers.python.python_driver",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.drivers.base.base_driver",
+          "src.infrastructure.drivers.python.utils.python_utils"
+        ]
+      },
+      "elapsed_seconds": 0.209748
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476536",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.drivers.docker.utils.docker_naming = 0",
+      "details": {
+        "module": "src.infrastructure.drivers.docker.utils.docker_naming",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.209784
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476570",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.requests.file.file_op_type = 0",
+      "details": {
+        "module": "src.infrastructure.requests.file.file_op_type",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.209818
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476603",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.requests.file = 0",
+      "details": {
+        "module": "src.infrastructure.requests.file",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.209851
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476637",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.persistence.sqlite = 0",
+      "details": {
+        "module": "src.infrastructure.persistence.sqlite",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.209884
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476672",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.persistence.state.models = 0",
+      "details": {
+        "module": "src.infrastructure.persistence.state.models",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.20992
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476710",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.persistence.state.models.session_context = 0",
+      "details": {
+        "module": "src.infrastructure.persistence.state.models.session_context",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.209957
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476745",
+      "level": "DEBUG",
+      "message": "依存深度: src.infrastructure.persistence.sqlite.migrations = 0",
+      "details": {
+        "module": "src.infrastructure.persistence.sqlite.migrations",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.209993
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476775",
+      "level": "DEBUG",
+      "message": "依存深度: src.domain.models = 1",
+      "details": {
+        "module": "src.domain.models",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.domain.models.broken_import",
+          "src.domain.models.candidate",
+          "src.domain.models.module_info"
+        ]
+      },
+      "elapsed_seconds": 0.210023
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476806",
+      "level": "DEBUG",
+      "message": "依存深度: src.domain.services.step_generation_service = 0",
+      "details": {
+        "module": "src.domain.services.step_generation_service",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210054
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476838",
+      "level": "DEBUG",
+      "message": "依存深度: src.domain.services.workflow_execution_service = 1",
+      "details": {
+        "module": "src.domain.services.workflow_execution_service",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.constants.request_types",
+          "src.operations.factories.request_factory",
+          "src.core.workflow.workflow.step.step",
+          "src.core.workflow_result.workflow_result"
+        ]
+      },
+      "elapsed_seconds": 0.210086
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476870",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.operation.operation_repository = 1",
+      "details": {
+        "module": "src.data.operation.operation_repository",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.persistence.base.base_repository",
+          "src.infrastructure.persistence.sqlite.sqlite_manager"
+        ]
+      },
+      "elapsed_seconds": 0.210118
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476900",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.operation = 0",
+      "details": {
+        "module": "src.data.operation",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210148
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476930",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.base = 0",
+      "details": {
+        "module": "src.data.base",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210178
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476960",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.base.base_repository = 1",
+      "details": {
+        "module": "src.data.base.base_repository",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.interfaces.persistence_interface"
+        ]
+      },
+      "elapsed_seconds": 0.210208
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.476991",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.docker_container.docker_container_repository = 1",
+      "details": {
+        "module": "src.data.docker_container.docker_container_repository",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.persistence.base.base_repository"
+        ]
+      },
+      "elapsed_seconds": 0.210239
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477020",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.docker_container = 0",
+      "details": {
+        "module": "src.data.docker_container",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210268
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477049",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.state = 0",
+      "details": {
+        "module": "src.data.state",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210297
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477092",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.state.state_repository = 0",
+      "details": {
+        "module": "src.data.state.state_repository",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210341
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477126",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.sqlite_state = 0",
+      "details": {
+        "module": "src.data.sqlite_state",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210374
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477157",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.sqlite_state.sqlite_state_repository = 0",
+      "details": {
+        "module": "src.data.sqlite_state.sqlite_state_repository",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210405
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477188",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.docker_image = 0",
+      "details": {
+        "module": "src.data.docker_image",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210436
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477219",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.docker_image.docker_image_repository = 1",
+      "details": {
+        "module": "src.data.docker_image.docker_image_repository",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.persistence.base.base_repository"
+        ]
+      },
+      "elapsed_seconds": 0.210467
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477249",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.session = 0",
+      "details": {
+        "module": "src.data.session",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210496
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477280",
+      "level": "DEBUG",
+      "message": "依存深度: src.data.session.session_repository = 1",
+      "details": {
+        "module": "src.data.session.session_repository",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.persistence.base.base_repository",
+          "src.infrastructure.persistence.sqlite.sqlite_manager"
+        ]
+      },
+      "elapsed_seconds": 0.210527
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477309",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.factories = 0",
+      "details": {
+        "module": "src.operations.factories",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210557
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477338",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.constants = 0",
+      "details": {
+        "module": "src.operations.constants",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210586
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477368",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.constants.operation_type = 0",
+      "details": {
+        "module": "src.operations.constants.operation_type",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210615
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477408",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.requests.request_interfaces = 0",
+      "details": {
+        "module": "src.operations.requests.request_interfaces",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210656
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477440",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.requests.python_request = 1",
+      "details": {
+        "module": "src.operations.requests.python_request",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.requests.base.base_request",
+          "src.operations.constants.operation_type",
+          "src.operations.constants.request_types",
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.210688
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477472",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.requests.request_types = 0",
+      "details": {
+        "module": "src.operations.requests.request_types",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.21072
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477502",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.requests = 0",
+      "details": {
+        "module": "src.operations.requests",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.21075
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477532",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.requests.request_factory = 0",
+      "details": {
+        "module": "src.operations.requests.request_factory",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.21078
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477562",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.requests.composite_request = 2",
+      "details": {
+        "module": "src.operations.requests.composite_request",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.infrastructure.requests.base.base_request",
+          "src.infrastructure.requests.composite.base_composite_request",
+          "src.infrastructure.requests.composite.composite_structure",
+          "src.operations.constants.request_types",
+          "src.operations.interfaces.execution_interface"
+        ]
+      },
+      "elapsed_seconds": 0.21081
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477592",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.requests.shell_request = 1",
+      "details": {
+        "module": "src.operations.requests.shell_request",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.requests.base.base_request",
+          "src.operations.constants.operation_type",
+          "src.operations.constants.request_types",
+          "src.operations.results.result",
+          "src.operations.exceptions.error_codes"
+        ]
+      },
+      "elapsed_seconds": 0.21084
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477622",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.requests.docker_request = 2",
+      "details": {
+        "module": "src.operations.requests.docker_request",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.infrastructure.requests.base.base_request",
+          "src.infrastructure.requests.composite.composite_request",
+          "src.operations.constants.operation_type",
+          "src.operations.constants.request_types",
+          "src.operations.interfaces.docker_interface",
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.21087
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477655",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.requests.file_request = 2",
+      "details": {
+        "module": "src.operations.requests.file_request",
+        "depth": 2,
+        "direct_dependencies": [
+          "src.infrastructure.requests.base.base_request",
+          "src.infrastructure.requests.file.file_op_type",
+          "src.operations.constants.operation_type",
+          "src.operations.constants.request_types",
+          "src.operations.results.file_result",
+          "src.operations.exceptions.composite_step_failure"
+        ]
+      },
+      "elapsed_seconds": 0.210903
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477688",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.interfaces.regex_interface = 0",
+      "details": {
+        "module": "src.operations.interfaces.regex_interface",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210936
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477717",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.interfaces.docker_interface = 1",
+      "details": {
+        "module": "src.operations.interfaces.docker_interface",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.210965
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477747",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.interfaces.persistence_interface = 0",
+      "details": {
+        "module": "src.operations.interfaces.persistence_interface",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.210995
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477775",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.interfaces = 0",
+      "details": {
+        "module": "src.operations.interfaces",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.211023
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477804",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.interfaces.filesystem_interface = 0",
+      "details": {
+        "module": "src.operations.interfaces.filesystem_interface",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.211052
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477836",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.interfaces.execution_interface = 1",
+      "details": {
+        "module": "src.operations.interfaces.execution_interface",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.211084
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477866",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.interfaces.output_manager_interface = 0",
+      "details": {
+        "module": "src.operations.interfaces.output_manager_interface",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.211114
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477896",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.interfaces.time_interface = 0",
+      "details": {
+        "module": "src.operations.interfaces.time_interface",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.211144
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477924",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.interfaces.logger_interface = 0",
+      "details": {
+        "module": "src.operations.interfaces.logger_interface",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.211172
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477953",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.results.result_factory = 0",
+      "details": {
+        "module": "src.operations.results.result_factory",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.211201
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.477983",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.results = 0",
+      "details": {
+        "module": "src.operations.results",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.211231
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.478013",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.results.check_result = 0",
+      "details": {
+        "module": "src.operations.results.check_result",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.211261
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.478044",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.results.shell_result = 1",
+      "details": {
+        "module": "src.operations.results.shell_result",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.211292
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.478085",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.results.base_result = 0",
+      "details": {
+        "module": "src.operations.results.base_result",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.211334
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.478122",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.results.docker_result = 1",
+      "details": {
+        "module": "src.operations.results.docker_result",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.211369
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.478153",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.results.result = 0",
+      "details": {
+        "module": "src.operations.results.result",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.211401
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.478185",
+      "level": "DEBUG",
+      "message": "依存深度: src.operations.results.file_result = 1",
+      "details": {
+        "module": "src.operations.results.file_result",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.operations.constants.operation_type",
+          "src.operations.results.result"
+        ]
+      },
+      "elapsed_seconds": 0.211433
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.478215",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.services.validation_service = 0",
+      "details": {
+        "module": "src.application.services.validation_service",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.211462
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.478245",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.services = 0",
+      "details": {
+        "module": "src.application.services",
+        "depth": 0,
+        "direct_dependencies": []
+      },
+      "elapsed_seconds": 0.211493
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.478276",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.services.config_loader_service = 1",
+      "details": {
+        "module": "src.application.services.config_loader_service",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.di_container"
+        ]
+      },
+      "elapsed_seconds": 0.211524
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.478308",
+      "level": "DEBUG",
+      "message": "依存深度: src.application.services.debug_service = 1",
+      "details": {
+        "module": "src.application.services.debug_service",
+        "depth": 1,
+        "direct_dependencies": [
+          "src.infrastructure.config.runtime_config_overlay",
+          "src.infrastructure.di_container"
+        ]
+      },
+      "elapsed_seconds": 0.211555
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.478431",
+      "level": "INFO",
+      "message": "=== Phase 1 成功 (0.21秒) ===",
+      "details": {
+        "phase": "Phase 1",
+        "success": true,
+        "duration": 0.21129965782165527
+      },
+      "elapsed_seconds": 0.21168
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.478476",
+      "level": "INFO",
+      "message": "=== Phase 2 開始 ===",
+      "details": {
+        "phase": "Phase 2",
+        "description": "移動計画の作成"
+      },
+      "elapsed_seconds": 0.211725
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.478911",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/ast_analyzer.py → services/ast_analyzer/ast_analyzer.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "ast_analyzer"
+      },
+      "elapsed_seconds": 0.21216
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.478997",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/local_filesystem.py → core/local_filesystem/local_filesystem.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "local_filesystem"
+      },
+      "elapsed_seconds": 0.212245
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.479095",
+      "level": "DEBUG",
+      "message": "移動計画: domain/base_composite_request.py → core/base_composite_request/base_composite_request.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "base_composite_request"
+      },
+      "elapsed_seconds": 0.212343
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.479172",
+      "level": "DEBUG",
+      "message": "移動計画: domain/dependency.py → core/dependency/dependency.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "dependency"
+      },
+      "elapsed_seconds": 0.21242
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.479241",
+      "level": "DEBUG",
+      "message": "移動計画: domain/step_runner.py → core/step_runner/step_runner.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "step_runner"
+      },
+      "elapsed_seconds": 0.212489
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.479308",
+      "level": "DEBUG",
+      "message": "移動計画: domain/base_request.py → core/base_request/base_request.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "base_request"
+      },
+      "elapsed_seconds": 0.212556
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.479389",
+      "level": "DEBUG",
+      "message": "移動計画: domain/workflow_result.py → core/workflow_result/workflow_result.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "workflow_result"
+      },
+      "elapsed_seconds": 0.212638
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.479463",
+      "level": "DEBUG",
+      "message": "移動計画: domain/workflow_logger_adapter.py → core/workflow_logger_adapter/workflow_logger_adapter.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "workflow_logger_adapter"
+      },
+      "elapsed_seconds": 0.212711
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.479536",
+      "level": "DEBUG",
+      "message": "移動計画: domain/config_node.py → core/configuration/config_node.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "configuration"
+      },
+      "elapsed_seconds": 0.212784
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.479605",
+      "level": "DEBUG",
+      "message": "移動計画: presentation/context_validator.py → core/context_validator/context_validator.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "context_validator"
+      },
+      "elapsed_seconds": 0.212853
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.479671",
+      "level": "DEBUG",
+      "message": "移動計画: presentation/context_formatter.py → core/context_formatter/context_formatter.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "context_formatter"
+      },
+      "elapsed_seconds": 0.212919
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.479741",
+      "level": "DEBUG",
+      "message": "移動計画: presentation/cli.py → services/cli/cli.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "cli"
+      },
+      "elapsed_seconds": 0.212989
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.479809",
+      "level": "DEBUG",
+      "message": "移動計画: presentation/directory_pattern_strategy.py → services/directory_pattern_strategy/directory_pattern_strategy.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "directory_pattern_strategy"
+      },
+      "elapsed_seconds": 0.213057
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.479876",
+      "level": "DEBUG",
+      "message": "移動計画: presentation/main.py → core/main/main.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "main"
+      },
+      "elapsed_seconds": 0.213124
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.479943",
+      "level": "DEBUG",
+      "message": "移動計画: presentation/path_based_strategy.py → services/path_based_strategy/path_based_strategy.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "path_based_strategy"
+      },
+      "elapsed_seconds": 0.213191
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.480009",
+      "level": "DEBUG",
+      "message": "移動計画: presentation/module_parser.py → services/module_parser/module_parser.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "module_parser"
+      },
+      "elapsed_seconds": 0.213257
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.480092",
+      "level": "DEBUG",
+      "message": "移動計画: presentation/search_import_candidates_use_case.py → services/search_import_candidates_use_case/search_import_candidates_use_case.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "search_import_candidates_use_case"
+      },
+      "elapsed_seconds": 0.21334
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.480178",
+      "level": "DEBUG",
+      "message": "移動計画: presentation/candidate_scorer.py → services/candidate_scorer/candidate_scorer.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "candidate_scorer"
+      },
+      "elapsed_seconds": 0.213427
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.480249",
+      "level": "DEBUG",
+      "message": "移動計画: presentation/cli_app.py → core/cli_app/cli_app.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "cli_app"
+      },
+      "elapsed_seconds": 0.213497
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.480318",
+      "level": "DEBUG",
+      "message": "移動計画: presentation/symbol_based_strategy.py → services/symbol_based_strategy/symbol_based_strategy.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "symbol_based_strategy"
+      },
+      "elapsed_seconds": 0.213566
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.480393",
+      "level": "DEBUG",
+      "message": "移動計画: presentation/user_input_parser.py → core/user_input_parser/user_input_parser.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "user_input_parser"
+      },
+      "elapsed_seconds": 0.213641
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.480465",
+      "level": "DEBUG",
+      "message": "移動計画: operations/search_strategy.py → services/search_strategy/search_strategy.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "search_strategy"
+      },
+      "elapsed_seconds": 0.213713
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.480535",
+      "level": "DEBUG",
+      "message": "移動計画: operations/composite_structure.py → core/composite_structure/composite_structure.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "composite_structure"
+      },
+      "elapsed_seconds": 0.213782
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.480608",
+      "level": "DEBUG",
+      "message": "移動計画: utils/sys_provider.py → core/sys_provider/sys_provider.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "sys_provider"
+      },
+      "elapsed_seconds": 0.213856
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.480678",
+      "level": "DEBUG",
+      "message": "移動計画: utils/regex_provider.py → core/regex_provider/regex_provider.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "regex_provider"
+      },
+      "elapsed_seconds": 0.213926
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.480747",
+      "level": "DEBUG",
+      "message": "移動計画: utils/retry_decorator.py → core/retry_decorator/retry_decorator.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "retry_decorator"
+      },
+      "elapsed_seconds": 0.213995
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.480815",
+      "level": "DEBUG",
+      "message": "移動計画: utils/python_utils.py → core/python_utils/python_utils.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "python_utils"
+      },
+      "elapsed_seconds": 0.214063
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.480881",
+      "level": "DEBUG",
+      "message": "移動計画: utils/path_operations.py → core/path_operations/path_operations.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "path_operations"
+      },
+      "elapsed_seconds": 0.214129
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.480949",
+      "level": "DEBUG",
+      "message": "移動計画: utils/mock_regex_provider.py → core/mock_regex_provider/mock_regex_provider.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "mock_regex_provider"
+      },
+      "elapsed_seconds": 0.214197
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.481024",
+      "level": "DEBUG",
+      "message": "移動計画: utils/time_adapter.py → core/time_adapter/time_adapter.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "time_adapter"
+      },
+      "elapsed_seconds": 0.214273
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.481113",
+      "level": "DEBUG",
+      "message": "移動計画: application/mock_output_manager.py → core/mock_output_mgmt/mock_output_manager.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "mock_output_mgmt"
+      },
+      "elapsed_seconds": 0.214362
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.481183",
+      "level": "DEBUG",
+      "message": "移動計画: application/contest_manager.py → core/contest_mgmt/contest_manager.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "contest_mgmt"
+      },
+      "elapsed_seconds": 0.214431
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.481248",
+      "level": "DEBUG",
+      "message": "移動計画: application/fast_sqlite_manager.py → core/fast_sqlite_mgmt/fast_sqlite_manager.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "fast_sqlite_mgmt"
+      },
+      "elapsed_seconds": 0.214496
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.481314",
+      "level": "DEBUG",
+      "message": "移動計画: application/sqlite_manager.py → core/sqlite_mgmt/sqlite_manager.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "sqlite_mgmt"
+      },
+      "elapsed_seconds": 0.214562
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.481389",
+      "level": "DEBUG",
+      "message": "移動計画: logging/application_logger_adapter.py → core/application_logger_adapter/application_logger_adapter.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "application_logger_adapter"
+      },
+      "elapsed_seconds": 0.214638
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.481460",
+      "level": "DEBUG",
+      "message": "移動計画: logging/unified_logger.py → core/unified_logger/unified_logger.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "unified_logger"
+      },
+      "elapsed_seconds": 0.214708
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.481528",
+      "level": "DEBUG",
+      "message": "移動計画: configuration/build_infrastructure.py → core/build_infrastructure/build_infrastructure.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "build_infrastructure"
+      },
+      "elapsed_seconds": 0.214776
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.481597",
+      "level": "DEBUG",
+      "message": "移動計画: configuration/system_config_repository.py → core/system_config_repository/system_config_repository.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "system_config_repository"
+      },
+      "elapsed_seconds": 0.214845
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.481665",
+      "level": "DEBUG",
+      "message": "移動計画: configuration/system_config_loader.py → core/system_config_loader/system_config_loader.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "system_config_loader"
+      },
+      "elapsed_seconds": 0.214913
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.481735",
+      "level": "DEBUG",
+      "message": "移動計画: configuration/di_config.py → controllers/di_config/di_config.py",
+      "details": {
+        "depth": 4,
+        "folder_name": "di_config"
+      },
+      "elapsed_seconds": 0.214983
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.481804",
+      "level": "DEBUG",
+      "message": "移動計画: configuration/config_resolver.py → core/configuration/config_resolver.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "configuration"
+      },
+      "elapsed_seconds": 0.215052
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.481874",
+      "level": "DEBUG",
+      "message": "移動計画: configuration/configuration_repository.py → core/configuration/configuration_repository.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "configuration"
+      },
+      "elapsed_seconds": 0.215122
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.481941",
+      "level": "DEBUG",
+      "message": "移動計画: configuration/environment_manager.py → core/environment_mgmt/environment_manager.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "environment_mgmt"
+      },
+      "elapsed_seconds": 0.215189
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.482017",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/drivers/file/local_file_driver.py → services/local_file_driver/local_file_driver.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "local_file_driver"
+      },
+      "elapsed_seconds": 0.215265
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.482117",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/drivers/file/mock_file_driver.py → services/mock_file_driver/mock_file_driver.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "mock_file_driver"
+      },
+      "elapsed_seconds": 0.215366
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.482194",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/drivers/file/file_driver.py → core/file_driver/file_driver.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "file_driver"
+      },
+      "elapsed_seconds": 0.215442
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.482267",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/drivers/docker/docker_driver_with_tracking.py → controllers/docker_driver_with_tracking/docker_driver_with_tracking.py",
+      "details": {
+        "depth": 4,
+        "folder_name": "docker_driver_with_tracking"
+      },
+      "elapsed_seconds": 0.215515
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.482341",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/drivers/docker/docker_driver.py → handlers/docker_driver/docker_driver.py",
+      "details": {
+        "depth": 3,
+        "folder_name": "docker_driver"
+      },
+      "elapsed_seconds": 0.215588
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.482422",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/drivers/docker/mock_docker_driver.py → controllers/mock_docker_driver/mock_docker_driver.py",
+      "details": {
+        "depth": 4,
+        "folder_name": "mock_docker_driver"
+      },
+      "elapsed_seconds": 0.215671
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.482501",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/drivers/generic/persistence_driver.py → core/persistence_driver/persistence_driver.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "persistence_driver"
+      },
+      "elapsed_seconds": 0.215749
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.482576",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/drivers/generic/unified_driver.py → services/unified_driver/unified_driver.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "unified_driver"
+      },
+      "elapsed_seconds": 0.215824
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.482650",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/drivers/shell/local_shell_driver.py → services/local_shell_driver/local_shell_driver.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "local_shell_driver"
+      },
+      "elapsed_seconds": 0.215898
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.482724",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/drivers/shell/shell_driver.py → core/shell_driver/shell_driver.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "shell_driver"
+      },
+      "elapsed_seconds": 0.215972
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.482795",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/drivers/shell/mock_shell_driver.py → services/mock_shell_driver/mock_shell_driver.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "mock_shell_driver"
+      },
+      "elapsed_seconds": 0.216043
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.482867",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/drivers/python/mock_python_driver.py → services/mock_python_driver/mock_python_driver.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "mock_python_driver"
+      },
+      "elapsed_seconds": 0.216115
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.482942",
+      "level": "DEBUG",
+      "message": "移動計画: infrastructure/drivers/python/python_driver.py → core/python_driver/python_driver.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "python_driver"
+      },
+      "elapsed_seconds": 0.21619
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.483026",
+      "level": "DEBUG",
+      "message": "移動計画: domain/services/workflow_execution_service.py → core/workflow_execution_svc/workflow_execution_service.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "workflow_execution_svc"
+      },
+      "elapsed_seconds": 0.216274
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.483115",
+      "level": "DEBUG",
+      "message": "移動計画: data/operation/operation_repository.py → core/operation_repository/operation_repository.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "operation_repository"
+      },
+      "elapsed_seconds": 0.216363
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.483188",
+      "level": "DEBUG",
+      "message": "移動計画: data/base/base_repository.py → core/base_repository/base_repository.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "base_repository"
+      },
+      "elapsed_seconds": 0.216436
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.483259",
+      "level": "DEBUG",
+      "message": "移動計画: data/docker_container/docker_container_repository.py → core/docker_container_repository/docker_container_repository.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "docker_container_repository"
+      },
+      "elapsed_seconds": 0.216507
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.483334",
+      "level": "DEBUG",
+      "message": "移動計画: data/docker_image/docker_image_repository.py → core/docker_image_repository/docker_image_repository.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "docker_image_repository"
+      },
+      "elapsed_seconds": 0.216583
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.483415",
+      "level": "DEBUG",
+      "message": "移動計画: data/session/session_repository.py → core/session_repository/session_repository.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "session_repository"
+      },
+      "elapsed_seconds": 0.216663
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.483488",
+      "level": "DEBUG",
+      "message": "移動計画: operations/requests/python_request.py → core/python_request/python_request.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "python_request"
+      },
+      "elapsed_seconds": 0.216736
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.483561",
+      "level": "DEBUG",
+      "message": "移動計画: operations/requests/composite_request.py → services/composite_request/composite_request.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "composite_request"
+      },
+      "elapsed_seconds": 0.216809
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.483630",
+      "level": "DEBUG",
+      "message": "移動計画: operations/requests/shell_request.py → core/shell_request/shell_request.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "shell_request"
+      },
+      "elapsed_seconds": 0.216878
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.483742",
+      "level": "DEBUG",
+      "message": "移動計画: operations/requests/docker_request.py → services/docker_request/docker_request.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "docker_request"
+      },
+      "elapsed_seconds": 0.21699
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.483811",
+      "level": "DEBUG",
+      "message": "移動計画: operations/requests/file_request.py → services/file_request/file_request.py",
+      "details": {
+        "depth": 2,
+        "folder_name": "file_request"
+      },
+      "elapsed_seconds": 0.217059
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.483880",
+      "level": "DEBUG",
+      "message": "移動計画: operations/interfaces/docker_interface.py → core/docker_interface/docker_interface.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "docker_interface"
+      },
+      "elapsed_seconds": 0.217128
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.483949",
+      "level": "DEBUG",
+      "message": "移動計画: operations/interfaces/execution_interface.py → core/execution_interface/execution_interface.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "execution_interface"
+      },
+      "elapsed_seconds": 0.217197
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.484018",
+      "level": "DEBUG",
+      "message": "移動計画: operations/results/shell_result.py → core/shell_result/shell_result.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "shell_result"
+      },
+      "elapsed_seconds": 0.217265
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.484103",
+      "level": "DEBUG",
+      "message": "移動計画: operations/results/docker_result.py → core/docker_result/docker_result.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "docker_result"
+      },
+      "elapsed_seconds": 0.217352
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.484176",
+      "level": "DEBUG",
+      "message": "移動計画: operations/results/file_result.py → core/file_result/file_result.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "file_result"
+      },
+      "elapsed_seconds": 0.217424
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.484246",
+      "level": "DEBUG",
+      "message": "移動計画: application/services/config_loader_service.py → core/config_loader_svc/config_loader_service.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "config_loader_svc"
+      },
+      "elapsed_seconds": 0.217494
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.484314",
+      "level": "DEBUG",
+      "message": "移動計画: application/services/debug_service.py → core/debug_svc/debug_service.py",
+      "details": {
+        "depth": 1,
+        "folder_name": "debug_svc"
+      },
+      "elapsed_seconds": 0.217562
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.484406",
+      "level": "INFO",
+      "message": "移動計画作成: 74ファイル",
+      "details": {
+        "file_count": 74,
+        "sample_moves": [
+          {
+            "from": "/home/cphelper/project-cph/src/infrastructure/ast_analyzer.py",
+            "to": "/home/cphelper/project-cph/src/services/ast_analyzer/ast_analyzer.py"
+          },
+          {
+            "from": "/home/cphelper/project-cph/src/infrastructure/local_filesystem.py",
+            "to": "/home/cphelper/project-cph/src/core/local_filesystem/local_filesystem.py"
+          },
+          {
+            "from": "/home/cphelper/project-cph/src/domain/base_composite_request.py",
+            "to": "/home/cphelper/project-cph/src/core/base_composite_request/base_composite_request.py"
+          },
+          {
+            "from": "/home/cphelper/project-cph/src/domain/dependency.py",
+            "to": "/home/cphelper/project-cph/src/core/dependency/dependency.py"
+          },
+          {
+            "from": "/home/cphelper/project-cph/src/domain/step_runner.py",
+            "to": "/home/cphelper/project-cph/src/core/step_runner/step_runner.py"
+          }
+        ]
+      },
+      "elapsed_seconds": 0.217655
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.484464",
+      "level": "INFO",
+      "message": "=== Phase 2 成功 (0.01秒) ===",
+      "details": {
+        "phase": "Phase 2",
+        "success": true,
+        "duration": 0.005975246429443359
+      },
+      "elapsed_seconds": 0.217713
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.484507",
+      "level": "INFO",
+      "message": "=== Phase 3 開始 ===",
+      "details": {
+        "phase": "Phase 3",
+        "description": "インポート文の更新"
+      },
+      "elapsed_seconds": 0.217756
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.655509",
+      "level": "INFO",
+      "message": "インポート更新完了: 3ファイル",
+      "details": {},
+      "elapsed_seconds": 0.388763
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.655572",
+      "level": "INFO",
+      "message": "=== Phase 3 成功 (0.17秒) ===",
+      "details": {
+        "phase": "Phase 3",
+        "success": true,
+        "duration": 0.1710515022277832
+      },
+      "elapsed_seconds": 0.38882
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.655607",
+      "level": "INFO",
+      "message": "=== Phase 4 開始 ===",
+      "details": {
+        "phase": "Phase 4",
+        "description": "ファイル移動の実行"
+      },
+      "elapsed_seconds": 0.388856
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.694329",
+      "level": "INFO",
+      "message": "=== Phase 4 成功 (0.04秒) ===",
+      "details": {
+        "phase": "Phase 4",
+        "success": true,
+        "duration": 0.038614749908447266
+      },
+      "elapsed_seconds": 0.427584
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.694417",
+      "level": "INFO",
+      "message": "=== Phase 5 開始 ===",
+      "details": {
+        "phase": "Phase 5",
+        "description": "移動後の検証"
+      },
+      "elapsed_seconds": 0.427667
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.906224",
+      "level": "INFO",
+      "message": "=== Phase 5 失敗 (0.21秒) ===",
+      "details": {
+        "phase": "Phase 5",
+        "success": false,
+        "duration": 0.21175312995910645
+      },
+      "elapsed_seconds": 0.639477
+    },
+    {
+      "timestamp": "2025-06-26T13:52:48.906958",
+      "level": "CRITICAL",
+      "message": "予期しないエラー: CheckResult.__init__() missing 1 required positional argument: 'title'",
+      "details": {
+        "error_type": "TypeError"
+      },
+      "elapsed_seconds": 0.640208
+    }
+  ]
+}

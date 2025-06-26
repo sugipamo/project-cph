@@ -14,7 +14,7 @@ from src.infrastructure.drivers.docker.utils import (
 )
 from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
 from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
-from src.infrastructure.requests.shell.shell_request import ShellRequest
+from src.operations.requests.shell_request import ShellRequest
 
 
 class DockerDriver(ExecutionDriverInterface):

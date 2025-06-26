@@ -1,1 +1,0 @@
-from operations.result import OperationResult

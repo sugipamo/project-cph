@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List, Optional, Set, Tuple
 from dataclasses import dataclass
 
-from src.domain.models import ExportedSymbol
+from src.core.models import ExportedSymbol
 
 
 @dataclass

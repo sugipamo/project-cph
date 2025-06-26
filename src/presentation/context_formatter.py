@@ -5,7 +5,7 @@ from typing import Any, Optional, Union
 
 # 互換性維持: Docker naming機能とフォーマッターはmain.pyから注入されるべき
 # 純粋関数の使用は許可されるが、依存性注入の観点から改善推奨
-from src.operations.pure.formatters import format_string_simple, format_with_missing_keys
+from src.core.pure.formatters import format_string_simple, format_with_missing_keys
 
 # 新設定システムをサポート
 # 互換性維持: TypedExecutionConfigurationは依存性注入で提供される

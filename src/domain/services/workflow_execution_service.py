@@ -8,9 +8,9 @@ from typing import Optional
 # 互換性維持: TypedExecutionConfigurationは依存性注入で提供される
 # 互換性維持: infrastructure層への直接依存を削除、依存性注入で解決
 # DebugLogger functionality now handled by src/logging UnifiedLogger
-from src.operations.constants.request_types import RequestType
-from src.operations.factories.request_factory import create_request
-from src.core.workflow.workflow.step.step import Step, StepType
+from src.core.constants.request_types import RequestType
+from src.core.factories.request_factory import create_request
+from src.domain.step import Step, StepType
 from src.core.workflow_result.workflow_result import WorkflowExecutionResult
 
 

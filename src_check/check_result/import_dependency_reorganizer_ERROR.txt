@@ -1,0 +1,9 @@
+=== import_dependency_reorganizer_ERROR ===
+
+失敗箇所: なし
+
+修正方針:
+--------------------
+実行失敗: main関数実行エラー: CheckResult.__init__() missing 1 required positional argument: 'title'
+
+実行時刻: 2025-06-26 13:33:15

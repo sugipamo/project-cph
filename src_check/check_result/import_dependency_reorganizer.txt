@@ -1,0 +1,96 @@
+=== import_dependency_reorganizer ===
+
+失敗箇所: 71件
+----------------------------------------
+1. infrastructure/ast_analyzer.py:0
+2. infrastructure/local_filesystem.py:0
+3. infrastructure/symbol_based_strategy.py:0
+4. domain/base_composite_request.py:0
+5. domain/dependency.py:0
+6. domain/step_runner.py:0
+7. domain/base_request.py:0
+8. domain/workflow_result.py:0
+9. domain/workflow.py:0
+10. domain/workflow_logger_adapter.py:0
+11. domain/config_node.py:0
+12. presentation/context_validator.py:0
+13. presentation/context_formatter.py:0
+14. presentation/module_parser.py:0
+15. operations/search_strategy.py:0
+16. operations/directory_pattern_strategy.py:0
+17. operations/path_based_strategy.py:0
+18. operations/composite_structure.py:0
+19. utils/sys_provider.py:0
+20. utils/regex_provider.py:0
+21. utils/path_operations.py:0
+22. utils/mock_regex_provider.py:0
+23. utils/time_adapter.py:0
+24. application/mock_output_manager.py:0
+25. application/fast_sqlite_manager.py:0
+26. application/search_import_candidates_use_case.py:0
+27. application/candidate_scorer.py:0
+28. application/sqlite_manager.py:0
+29. logging/application_logger_adapter.py:0
+30. logging/unified_logger.py:0
+31. configuration/build_infrastructure.py:0
+32. configuration/system_config_repository.py:0
+33. configuration/system_config_loader.py:0
+34. configuration/configuration_repository.py:0
+35. configuration/environment_manager.py:0
+36. infrastructure/drivers/file/mock_file_driver.py:0
+37. infrastructure/drivers/file/file_driver.py:0
+38. infrastructure/drivers/generic/persistence_driver.py:0
+39. infrastructure/drivers/shell/local_shell_driver.py:0
+40. infrastructure/drivers/shell/shell_driver.py:0
+41. infrastructure/drivers/python/python_driver.py:0
+42. domain/services/workflow_execution_service.py:0
+43. data/operation/operation_repository.py:0
+44. data/base/base_repository.py:0
+45. data/docker_container/docker_container_repository.py:0
+46. data/docker_image/docker_image_repository.py:0
+47. data/session/session_repository.py:0
+48. operations/requests/python_request.py:0
+49. operations/requests/shell_request.py:0
+50. operations/interfaces/docker_interface.py:0
+51. operations/interfaces/execution_interface.py:0
+52. operations/results/shell_result.py:0
+53. operations/results/docker_result.py:0
+54. operations/results/file_result.py:0
+55. application/services/config_loader_service.py:0
+56. application/services/debug_service.py:0
+57. presentation/main.py:0
+58. presentation/cli_app.py:0
+59. presentation/user_input_parser.py:0
+60. utils/retry_decorator.py:0
+61. configuration/config_resolver.py:0
+62. infrastructure/drivers/docker/docker_driver.py:0
+63. infrastructure/drivers/generic/unified_driver.py:0
+64. infrastructure/drivers/shell/mock_shell_driver.py:0
+65. operations/requests/composite_request.py:0
+66. operations/requests/docker_request.py:0
+67. operations/requests/file_request.py:0
+68. application/contest_manager.py:0
+69. infrastructure/drivers/docker/docker_driver_with_tracking.py:0
+70. infrastructure/drivers/docker/mock_docker_driver.py:0
+71. configuration/di_config.py:0
+
+修正方針:
+--------------------
+71個のファイルを依存関係の深度に基づいて再配置します。
+
+深度別の移動計画:
+  深度1: 56ファイル
+  深度2: 11ファイル
+  深度3: 3ファイル
+  深度4: 1ファイル
+
+
+修正例:
+--------------------
+# 実際に移動を実行するには:
+python3 -m src_check.processors.auto_correct.import_dependency_reorganizer.main_v2 --execute
+
+# 設定ファイルを作成して詳細なオプションを指定:
+python3 -m src_check.processors.auto_correct.import_dependency_reorganizer.main_v2 --generate-config
+
+実行時刻: 2025-06-26 14:33:42

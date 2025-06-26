@@ -3,13 +3,13 @@
 # 互換性維持: 設定管理は依存性注入で提供される
 from src.core.configuration.config_resolver import create_config_root_from_dict, resolve_by_match_desc
 from src.context.dockerfile_resolver import DockerfileResolver
-from src.context.parsers.validation_service import ValidationService
+from src.application.services.validation_service import ValidationService
 
 # Infrastructure dependencies should be injected from main.py
 # 互換性維持: operations層への直接依存は依存性注入で解決
 
 from pathlib import Path
-from src.infrastructure.config.config_loader_service import ConfigLoaderService
+from src.application.services.config_loader_service import ConfigLoaderService
 CONTEST_ENV_DIR = "contest_env"
 
 

@@ -1,0 +1,30 @@
+=== remnant_cleaners ===
+
+失敗箇所: 12件
+----------------------------------------
+1. /home/cphelper/project-cph/src/infrastructure/ast_parser:0
+2. /home/cphelper/project-cph/src/domain/models:0
+3. /home/cphelper/project-cph/src/core/composite_structure:0
+4. /home/cphelper/project-cph/src/core/candidate_scorer:0
+5. /home/cphelper/project-cph/src/core/symbol_based_strategy:0
+6. /home/cphelper/project-cph/src/core/path_based_strategy:0
+7. /home/cphelper/project-cph/src/core/ast_analyzer:0
+8. /home/cphelper/project-cph/src/core/search_import_candidates_use_case:0
+9. /home/cphelper/project-cph/src/core/local_filesystem:0
+10. /home/cphelper/project-cph/src/core/search_strategy:0
+11. /home/cphelper/project-cph/src/core/directory_pattern_strategy:0
+12. /home/cphelper/project-cph/src/core/module_parser:0
+
+修正方針:
+--------------------
+12個の残骸フォルダが検出されました。
+__pycache__および__init__.pyのみが存在するフォルダを削除します。
+
+修正例:
+--------------------
+# 削除対象フォルダの例:
+src/empty_module/  # __init__.pyのみ
+src/utils/__pycache__/  # __pycache__のみ
+src/old_package/  # __init__.pyと__pycache__のみ
+
+実行時刻: 2025-06-26 14:33:42

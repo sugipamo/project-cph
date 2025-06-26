@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 # 互換性維持: config_managerは注入されるべき
 from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
-from src.infrastructure.drivers.python.utils.python_utils import PythonUtils
+from src.utils.python_utils import PythonUtils
 
 
 class PythonDriver(ExecutionDriverInterface):

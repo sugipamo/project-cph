@@ -3,8 +3,8 @@ from typing import Any, Optional
 
 from src.infrastructure.requests.base.base_request import OperationRequestFoundation
 from src.infrastructure.requests.composite.base_composite_request import CompositeRequestFoundation
-from src.infrastructure.requests.composite.composite_structure import CompositeStructure
-from src.operations.constants.request_types import RequestType
+from src.core.composite_structure import CompositeStructure
+from src.core.constants.request_types import RequestType
 from src.operations.interfaces.execution_interface import ExecutionInterface
 
 

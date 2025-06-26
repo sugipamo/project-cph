@@ -4,11 +4,11 @@ from typing import Any, Optional
 from src.infrastructure.requests.base.base_request import OperationRequestFoundation
 from src.infrastructure.requests.file.file_op_type import FileOpType
 from src.operations.constants.operation_type import OperationType
-from src.operations.constants.request_types import RequestType
+from src.core.constants.request_types import RequestType
 from src.operations.results.file_result import FileResult
 
 
-from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
+from src.core.exceptions.composite_step_failure import CompositeStepFailureError
 class FileRequest(OperationRequestFoundation):
     """Request for file operations."""
 

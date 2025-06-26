@@ -7,7 +7,7 @@ import traceback
 from typing import Optional
 
 # 互換性維持: configuration層への逆方向依存を削除、依存性注入で解決
-from src.operations.exceptions import (
+from src.core.exceptions import PythonConfigError, PythonInterpreterError
     PythonConfigError,
     PythonInterpreterError,
 )

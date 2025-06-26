@@ -7,7 +7,7 @@ from typing import Any
 from src.infrastructure.di_container import DIContainer, DIKey
 from src.infrastructure.requests.base.base_request import OperationRequestFoundation
 from src.infrastructure.requests.file.file_op_type import FileOpType
-from src.operations.constants.request_types import RequestType
+from src.core.constants.request_types import RequestType
 from src.operations.interfaces.logger_interface import LoggerInterface
 from src.operations.results.docker_result import DockerResult
 from src.operations.results.file_result import FileResult

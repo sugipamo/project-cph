@@ -4,7 +4,7 @@ from typing import List, Optional
 import json
 import sys
 
-from src.application.use_cases import (
+from src.core.use_cases import FindBrokenImportsUseCase, FindBrokenImportsRequest, SearchImportCandidatesUseCase, SearchImportCandidatesRequest, FixImportsUseCase, FixImportsRequest, ImportFix
     FindBrokenImportsUseCase,
     FindBrokenImportsRequest,
     SearchImportCandidatesUseCase,
@@ -13,7 +13,7 @@ from src.application.use_cases import (
     FixImportsRequest,
     ImportFix
 )
-from src.domain.models import BrokenImport
+from src.core.models import BrokenImport
 
 
 @click.group()

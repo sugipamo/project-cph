@@ -4,9 +4,9 @@ from typing import Optional
 
 from src.core.user_input_parser.user_input_parser import parse_user_input
 from src.infrastructure.di_container import DIKey
-from src.operations.exceptions.composite_step_failure import CompositeStepFailureError
-from src.operations.exceptions.error_codes import ErrorSuggestion, classify_error
-from src.core.workflow_execution_svc.workflow_execution_service import WorkflowExecutionService
+from src.core.exceptions.composite_step_failure import CompositeStepFailureError
+from src.core.exceptions.error_codes import ErrorSuggestion, classify_error
+from src.domain.services.workflow_execution_service import WorkflowExecutionService
 from src.core.workflow_result.workflow_result import WorkflowExecutionResult
 
 

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
-from src.domain.models import BrokenImport, Candidate
+from src.infrastructure.candidate import BrokenImport, Candidate
 
 
 @dataclass

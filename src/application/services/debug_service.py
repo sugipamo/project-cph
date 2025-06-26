@@ -1,6 +1,6 @@
 """デバッグサービス - デバッグ機能の統括管理"""
 
-from src.infrastructure.config.runtime_config_overlay import DebugConfigProvider, RuntimeConfigOverlay
+from src.configuration.runtime_config_overlay import DebugConfigProvider, RuntimeConfigOverlay
 from src.infrastructure.di_container import DIContainer
 
 

@@ -5,10 +5,10 @@
 2. Configuration層の純粋化された設定管理
 3. 上位層への依存性注入
 """
-from src.core.cli_app.cli_app import main
-from src.configuration.pure_config_manager import PureConfigManager
-from src.infrastructure.build_infrastructure import build_infrastructure
-from src.infrastructure.config.config_loader_service import ConfigLoaderService
+from src.presentation.main import main
+from src.application.pure_config_manager import PureConfigManager
+from src.configuration.build_infrastructure import build_infrastructure
+from src.application.services.config_loader_service import ConfigLoaderService
 from src.infrastructure.di_container import DIKey
 from src.infrastructure.drivers.docker.utils.docker_command_builder import set_config_manager
 
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     infrastructure.register(DIKey.CONFIG_MANAGER, lambda: config_manager)
 
     # Phase 5: RequestFactoryの登録（依存性注入）
-    from src.operations.factories.request_factory import RequestFactory
+    from src.operations.requests.request_factory import RequestFactory
 
     def create_request_factory():
         return RequestFactory(

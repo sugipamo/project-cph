@@ -1,0 +1,19 @@
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - 依存関係ベースフォルダ構造整理を開始
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - プロジェクトルート: /home/cphelper/project-cph
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - 解析対象: /home/cphelper/project-cph/src
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - === Phase 1 開始 ===
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - 発見されたPythonファイル数: 174
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - === Phase 1 成功 (0.21秒) ===
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - === Phase 2 開始 ===
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - 移動計画作成: 74ファイル
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - === Phase 2 成功 (0.01秒) ===
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - === Phase 3 開始 ===
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - インポート更新完了: 3ファイル
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - === Phase 3 成功 (0.17秒) ===
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - === Phase 4 開始 ===
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - === Phase 4 成功 (0.04秒) ===
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - === Phase 5 開始 ===
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - === Phase 5 失敗 (0.21秒) ===
+2025-06-26 13:52:48 - import_dependency_reorganizer - CRITICAL - 予期しないエラー: CheckResult.__init__() missing 1 required positional argument: 'title'
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - 実行ログを保存: /home/cphelper/project-cph/src_check/processors/auto_correct/import_dependency_reorganizer/logs/reorganizer_20250626_135248.json
+2025-06-26 13:52:48 - import_dependency_reorganizer - INFO - 実行統計
