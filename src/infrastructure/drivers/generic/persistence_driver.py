@@ -5,11 +5,11 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, List
 
-from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
+from src.infrastructure.drivers.generic.base_driver import ExecutionDriverInterface
 from src.operations.interfaces.persistence_interface import PersistenceInterface
 
 
-from src.infrastructure.persistence.sqlite.sqlite_manager import SQLiteManager
+from src.application.sqlite_manager import SQLiteManager
 class PersistenceDriver(ExecutionDriverInterface, PersistenceInterface):
     """Abstract base class for persistence drivers."""
 

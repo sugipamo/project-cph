@@ -5,7 +5,7 @@ from src.infrastructure.di_container import DIContainer
 from format_info import FormatInfo
 from interfaces.output_manager_interface import OutputManagerInterface
 from types import LogLevel
-from src.infrastructure.drivers.logging.types import LogLevel
+from src.utils.types import LogLevel
 
 class WorkflowLoggerAdapter:
     """Adapter that provides workflow-specific logging using src/logging OutputManager."""

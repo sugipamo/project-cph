@@ -1,7 +1,7 @@
 """Mock shell driver for testing."""
 from typing import Optional, Union
 
-from src.infrastructure.drivers.shell.local_shell_driver import ShellDriver
+from src.infrastructure.drivers.shell.shell_driver import ShellDriver
 from src.operations.results.shell_result import ShellResult
 
 

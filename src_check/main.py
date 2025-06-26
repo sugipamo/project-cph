@@ -25,6 +25,21 @@ def main():
     project_root = src_check_root.parent  # project-cph
     output_dir = src_check_root / "check_result"
     
+    # check_resultディレクトリのクリーンアップ
+    if output_dir.exists():
+        print("🧹 check_resultディレクトリをクリーンアップ中...")
+        import shutil
+        # ディレクトリ内のファイルを削除（ディレクトリ自体は残す）
+        for item in output_dir.iterdir():
+            if item.is_file():
+                item.unlink()
+            elif item.is_dir():
+                shutil.rmtree(item)
+        print("✅ クリーンアップ完了")
+    else:
+        # ディレクトリが存在しない場合は作成
+        output_dir.mkdir(parents=True, exist_ok=True)
+    
     try:
         # 1. インポート解決（前処理）
         print("=" * 60)

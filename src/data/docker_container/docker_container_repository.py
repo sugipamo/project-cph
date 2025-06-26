@@ -2,7 +2,7 @@
 import json
 from typing import Any, Dict, List, Optional
 
-from src.infrastructure.persistence.base.base_repository import DatabaseRepositoryFoundation
+from src.data.base.base_repository import DatabaseRepositoryFoundation
 
 
 class DockerContainerRepository(DatabaseRepositoryFoundation):

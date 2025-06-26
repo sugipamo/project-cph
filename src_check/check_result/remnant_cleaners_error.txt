@@ -1,9 +1,0 @@
-=== remnant_cleaners_error ===
-
-失敗箇所: なし
-
-修正方針:
---------------------
-残骸フォルダ解析中にエラーが発生しました: maximum recursion depth exceeded
-
-実行時刻: 2025-06-26 13:24:25

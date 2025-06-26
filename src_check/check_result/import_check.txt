@@ -1,88 +1,14 @@
 === import_check ===
 
-失敗箇所: 76件
+失敗箇所: 2件
 ----------------------------------------
-1. src/infrastructure/ast_analyzer.py:6
-2. src/domain/base_composite_request.py:4
-3. src/domain/base_composite_request.py:6
-4. src/domain/dependency.py:5
-5. src/domain/dependency.py:6
-6. src/domain/step_runner.py:20
-7. src/domain/base_request.py:6
-8. src/domain/workflow_logger_adapter.py:8
-9. src/domain/config_node.py:2
-10. src/presentation/context_validator.py:5
-11. src/presentation/context_formatter.py:8
-12. src/presentation/main.py:13
-13. src/presentation/cli_app.py:5
-14. src/presentation/cli_app.py:7
-15. src/presentation/cli_app.py:8
-16. src/presentation/cli_app.py:10
-17. src/presentation/user_input_parser.py:4
-18. src/operations/composite_structure.py:6
-19. src/utils/retry_decorator.py:7
-20. src/utils/path_operations.py:9
-21. src/application/fast_sqlite_manager.py:7
-22. src/application/fast_sqlite_manager.py:9
-23. src/application/search_import_candidates_use_case.py:8
-24. src/application/sqlite_manager.py:6
-25. src/configuration/build_infrastructure.py:4
-26. src/configuration/system_config_repository.py:6
-27. src/configuration/di_config.py:11
-28. src/configuration/di_config.py:17
-29. src/configuration/di_config.py:18
-30. src/configuration/di_config.py:29
-31. src/configuration/di_config.py:35
-32. src/configuration/di_config.py:37
-33. src/configuration/di_config.py:38
-34. src/configuration/di_config.py:39
-35. src/configuration/di_config.py:40
-36. src/configuration/di_config.py:41
-37. src/configuration/di_config.py:42
-38. src/configuration/di_config.py:43
-39. src/configuration/di_config.py:44
-40. src/configuration/config_resolver.py:5
-41. src/configuration/config_resolver.py:6
-42. src/configuration/configuration_repository.py:6
-43. src/configuration/configuration_repository.py:7
-44. src/configuration/environment_manager.py:6
-45. src/infrastructure/drivers/file/file_driver.py:8
-46. src/infrastructure/drivers/docker/docker_driver.py:7
-47. src/infrastructure/drivers/docker/docker_driver.py:8
-48. src/infrastructure/drivers/generic/persistence_driver.py:8
-49. src/infrastructure/drivers/generic/persistence_driver.py:12
-50. src/infrastructure/drivers/generic/unified_driver.py:8
-51. src/infrastructure/drivers/generic/unified_driver.py:10
-52. src/infrastructure/drivers/shell/shell_driver.py:7
-53. src/infrastructure/drivers/python/python_driver.py:8
-54. src/domain/services/workflow_execution_service.py:11
-55. src/domain/services/workflow_execution_service.py:12
-56. src/domain/services/workflow_execution_service.py:14
-57. src/data/operation/operation_repository.py:6
-58. src/data/operation/operation_repository.py:7
-59. src/data/docker_container/docker_container_repository.py:5
-60. src/data/docker_image/docker_image_repository.py:4
-61. src/data/session/session_repository.py:6
-62. src/data/session/session_repository.py:7
-63. src/operations/requests/python_request.py:4
-64. src/operations/requests/python_request.py:6
-65. src/operations/requests/composite_request.py:4
-66. src/operations/requests/composite_request.py:5
-67. src/operations/requests/composite_request.py:7
-68. src/operations/requests/shell_request.py:5
-69. src/operations/requests/shell_request.py:7
-70. src/operations/requests/shell_request.py:11
-71. src/operations/requests/docker_request.py:5
-72. src/operations/requests/docker_request.py:8
-73. src/operations/requests/docker_request.py:9
-74. src/operations/requests/file_request.py:4
-75. src/operations/requests/file_request.py:7
-76. src/operations/requests/file_request.py:11
+1. src/application/search_import_candidates_use_case.py:8
+2. src/infrastructure/drivers/docker/docker_driver.py:8
 
 修正方針:
 --------------------
-76個の壊れたインポートが検出されました。
+2個の壊れたインポートが検出されました。
 - 相対インポートを絶対インポートに変換
 - 移動されたモジュールのパスを更新
 
-実行時刻: 2025-06-26 14:33:42
+実行時刻: 2025-06-26 14:42:45

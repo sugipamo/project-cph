@@ -1,7 +1,7 @@
 """Local shell driver implementation using subprocess."""
 from typing import Any, Optional, Union
 
-from src.infrastructure.drivers.shell.local_shell_driver import ShellDriver
+from src.infrastructure.drivers.shell.shell_driver import ShellDriver
 from src.utils.shell_utils import ShellUtils
 
 

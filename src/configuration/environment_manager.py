@@ -3,7 +3,7 @@
 from typing import Any, Optional
 from unittest.mock import Mock
 
-from src.infrastructure.requests.base.base_request import OperationRequestFoundation
+from src.operations.requests.request_factory import OperationRequestFoundation
 
 # 互換性維持: configuration層への逆方向依存を削除、依存性注入で解決
 from src.operations.interfaces.logger_interface import LoggerInterface

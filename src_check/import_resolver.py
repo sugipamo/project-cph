@@ -4,11 +4,13 @@
 
 import sys
 from pathlib import Path
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Set
 import ast
 import re
+from dataclasses import dataclass
 
 from models.check_result import CheckResult, FailureLocation
+from utils.broken_import import BrokenImport, ImportType
 
 
 class ImportResolver:
@@ -194,9 +196,6 @@ class ImportResolver:
                     'old': old_import,
                     'new': new_import
                 })
-            elif 'module' in broken and broken['module'].startswith('src.'):
-                # デバッグ: 修正案が生成されなかった場合
-                print(f"  ⚠️  修正案なし: {broken['module']} (タイプ: {broken['type']})")
         
         # 実際の修正を実行
         if not dry_run:
@@ -212,91 +211,105 @@ class ImportResolver:
         )
     
     def _find_correct_module(self, wrong_module: str, import_names: List[str]) -> Optional[str]:
-        """正しいモジュールパスを探す"""
-        # 個別モジュールの具体的なマッピング
-        specific_mappings = {
-            # domain -> core
-            'src.domain.config_node': 'src.core.configuration.config_node',
-            'src.domain.models': 'src.core.models.models',
-            'src.domain.models.check_result': 'src.core.models.check_result.check_result',
-            'src.domain.models.broken_import': 'src.core.models.broken_import.broken_import',
-            'src.domain.models.candidate': 'src.core.models.candidate.candidate',
-            'src.domain.models.module_info': 'src.core.models.module_info.module_info',
-            'src.domain.base_request': 'src.core.base_request.base_request',
-            'src.domain.base_composite_request': 'src.core.base_composite_request.base_composite_request',
-            'src.domain.dependency': 'src.core.dependency.dependency',
-            'src.domain.step_runner': 'src.core.step_runner.step_runner',
-            'src.domain.workflow_result': 'src.core.workflow_result.workflow_result',
-            'src.domain.workflow_logger_adapter': 'src.core.workflow_logger_adapter.workflow_logger_adapter',
-            'src.domain.services': 'src.core.services.services',
-            'src.domain.services.workflow_execution_service': 'src.core.workflow_execution_svc.workflow_execution_service',
-            'src.domain.services.search_strategy': 'src.core.services.search_strategy.search_strategy',
-            'src.domain.services.search_coordinator': 'src.core.services.search_coordinator.search_coordinator',
-            
-            # operations -> core/services
-            'src.operations.exceptions': 'src.core.exceptions.exceptions',
-            'src.operations.exceptions.error_codes': 'src.core.exceptions.error_codes.error_codes',
-            'src.operations.exceptions.composite_step_failure': 'src.core.exceptions.composite_step_failure.composite_step_failure',
-            'src.operations.composite_structure': 'src.core.composite_structure.composite_structure',
-            'src.operations.search_strategy': 'src.services.search_strategy.search_strategy',
-            'src.operations.requests.file_request': 'src.services.file_request.file_request',
-            'src.operations.requests.composite_request': 'src.services.composite_request.composite_request',
-            'src.operations.requests.shell_request': 'src.core.shell_request.shell_request',
-            'src.operations.requests.docker_request': 'src.services.docker_request.docker_request',
-            'src.operations.requests.python_request': 'src.core.python_request.python_request',
-            
-            # インフラ系
-            'src.infrastructure.ast_analyzer': 'src.services.ast_analyzer.ast_analyzer',
-            'src.infrastructure.local_filesystem': 'src.core.local_filesystem.local_filesystem',
-            
-            # その他
-            'src.presentation.cli': 'src.services.cli.cli',
-            'src.presentation.cli_app': 'src.core.cli_app.cli_app',
-            'src.presentation.main': 'src.core.main.main',
-            'src.presentation.user_input_parser': 'src.core.user_input_parser.user_input_parser',
-            'src.configuration.di_config': 'src.controllers.di_config.di_config',
-            'src.configuration.config_resolver': 'src.core.configuration.config_resolver',
-        }
-        
-        # 完全一致をチェック
-        if wrong_module in specific_mappings:
-            return specific_mappings[wrong_module]
-        
-        # プレフィックスベースのマッピング
-        prefix_mappings = {
-            'src.presentation': 'src.core',
-            'src.domain': 'src.core',
-            'src.application': 'src.core',
-            'src.utils': 'src.core',
-            'src.operations': 'src.core',
-            'src.logging': 'src.core',
-            'src.configuration': 'src.core',
-            'src.data': 'src.core'
-        }
-        
-        # 部分一致をチェック
-        for old_prefix, new_prefix in prefix_mappings.items():
-            if wrong_module.startswith(old_prefix + '.'):
-                # より具体的なマッピングを優先
-                tentative = wrong_module.replace(old_prefix, new_prefix, 1)
-                # 実際に存在するか確認
-                if self._validate_import(tentative, None):
-                    return tentative
-        
-        # シンボル名から推測（最後の手段）
+        """動的に正しいモジュールパスを探す"""
+        # シンボル名から動的に検索
         if import_names:
             for name in import_names:
+                # 完全一致でファイル名を検索
+                exact_files = list(self.src_root.rglob(f"**/{name}.py"))
+                if exact_files:
+                    # 最も適切なファイルを選択
+                    best_match = self._select_best_match(exact_files, wrong_module, name)
+                    if best_match:
+                        return self._path_to_module(best_match)
+                
                 # snake_case変換して検索
                 snake_name = self._camel_to_snake(name)
-                possible_files = list(self.src_root.rglob(f"**/{snake_name}.py"))
+                if snake_name != name.lower():  # CamelCaseの場合のみ
+                    snake_files = list(self.src_root.rglob(f"**/{snake_name}.py"))
+                    if snake_files:
+                        best_match = self._select_best_match(snake_files, wrong_module, name)
+                        if best_match:
+                            return self._path_to_module(best_match)
                 
-                for pf in possible_files:
-                    module_path = self._path_to_module(pf)
-                    # インポート可能か確認
-                    if self._validate_import(module_path, None):
-                        return module_path
+                # クラス名としてファイル内を検索
+                class_matches = self._search_class_in_files(name)
+                if class_matches:
+                    best_match = self._select_best_match(class_matches, wrong_module, name)
+                    if best_match:
+                        return self._path_to_module(best_match)
+        
+        # モジュール名の最後の部分からファイルを探す
+        module_parts = wrong_module.split('.')
+        if len(module_parts) > 2:  # src.xxx.yyyの形式
+            last_part = module_parts[-1]
+            possible_files = list(self.src_root.rglob(f"**/{last_part}.py"))
+            if possible_files:
+                best_match = self._select_best_match(possible_files, wrong_module, last_part)
+                if best_match:
+                    return self._path_to_module(best_match)
         
         return None
+    
+    def _search_class_in_files(self, class_name: str) -> List[Path]:
+        """ファイル内に指定されたクラスが定義されているか検索"""
+        matches = []
+        pattern = f"class {class_name}"
+        
+        for py_file in self.src_root.rglob("*.py"):
+            try:
+                with open(py_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    if pattern in content:
+                        # ASTで確認
+                        tree = ast.parse(content)
+                        for node in ast.walk(tree):
+                            if isinstance(node, ast.ClassDef) and node.name == class_name:
+                                matches.append(py_file)
+                                break
+            except:
+                continue
+        
+        return matches
+    
+    def _select_best_match(self, candidates: List[Path], original_module: str, symbol_name: str) -> Optional[Path]:
+        """複数の候補から最適なファイルを選択"""
+        if not candidates:
+            return None
+        
+        if len(candidates) == 1:
+            return candidates[0]
+        
+        # スコアリングで最適な候補を選択
+        scored_candidates = []
+        
+        for candidate in candidates:
+            score = 0
+            rel_path = candidate.relative_to(self.src_root)
+            path_parts = list(rel_path.parts)
+            
+            # 元のモジュールパスとの類似度
+            original_parts = original_module.split('.')[1:]  # src.を除く
+            for part in original_parts:
+                if part in path_parts:
+                    score += 10
+            
+            # ファイル名がシンボル名と一致
+            if candidate.stem == symbol_name.lower() or candidate.stem == self._camel_to_snake(symbol_name):
+                score += 20
+            
+            # ディレクトリ深度（浅いほど優先）
+            score -= len(path_parts)
+            
+            # __init__.pyは優先度を下げる
+            if candidate.name == '__init__.py':
+                score -= 5
+            
+            scored_candidates.append((score, candidate))
+        
+        # スコアが最も高い候補を選択
+        scored_candidates.sort(key=lambda x: x[0], reverse=True)
+        return scored_candidates[0][1]
     
     def _camel_to_snake(self, name: str) -> str:
         """CamelCaseをsnake_caseに変換"""

@@ -4,9 +4,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
-from src.infrastructure.types.result import OperationResult, ValidationResult
+from src.operations.results.result import OperationResult, ValidationResult
 
-from src.infrastructure.providers.sqlite_provider import SystemSQLiteProvider
+from src.infrastructure.sqlite_provider import SystemSQLiteProvider
 import sqlite3
 if TYPE_CHECKING:
     import sqlite3

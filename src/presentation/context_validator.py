@@ -2,7 +2,7 @@
 """
 from typing import Optional
 
-from src.context.utils.execution_validation_utils import validate_execution_context_data
+from src.utils.execution_validation_utils import validate_execution_context_data
 
 
 class ContextValidator:

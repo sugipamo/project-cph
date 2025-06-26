@@ -10,7 +10,7 @@ from src.application.pure_config_manager import PureConfigManager
 from src.configuration.build_infrastructure import build_infrastructure
 from src.application.services.config_loader_service import ConfigLoaderService
 from src.infrastructure.di_container import DIKey
-from src.infrastructure.drivers.docker.utils.docker_command_builder import set_config_manager
+from src.presentation.docker_command_builder import set_config_manager
 
 if __name__ == "__main__":
     # Phase 1: Infrastructure層の基本サービス初期化（循環依存なし）

@@ -2,8 +2,8 @@
 """
 from pathlib import Path
 from workflow.step.step import Step, StepContext, StepType
-from src.core.workflow.workflow.step.step_generation_service import execution_context_to_simple_context
-from src.core.workflow.workflow.step.step_runner import expand_template
+from src.domain.services.step_generation_service import execution_context_to_simple_context
+from src.domain.step_runner import expand_template
 
 def resolve_dependencies(steps: list[Step], context: StepContext) -> list[Step]:
     """ステップリストの依存関係を解決し、必要な準備ステップを挿入する純粋関数

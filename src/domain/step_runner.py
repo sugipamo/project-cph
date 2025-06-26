@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 if TYPE_CHECKING:
     from src.domain.step import Step
 
-from src.core.workflow.workflow.step.step import StepType
+from src.domain.step import StepType
 
 
 @dataclass

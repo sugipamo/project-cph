@@ -2,17 +2,17 @@
 
 実行モジュール数: 8
 失敗モジュール数: 3
-総失敗件数: 159
+総失敗件数: 84
 
 モジュール別結果:
 --------------------------------------------------
 type_hints: OK
 remnant_cleaners: NG(12件)
 import_fixers: OK
-import_dependency_reorganizer: NG(71件)
+import_dependency_reorganizer: NG(70件)
 file_organizers_logical: OK
 argument_processors_error: OK
-import_check: NG(76件)
+import_check: NG(2件)
 import_fix: OK
 
-実行時刻: 2025-06-26 14:33:42
+実行時刻: 2025-06-26 14:42:45

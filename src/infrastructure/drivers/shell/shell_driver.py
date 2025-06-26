@@ -4,7 +4,7 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Union
 
-from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
+from src.infrastructure.drivers.generic.base_driver import ExecutionDriverInterface
 
 
 class ShellDriver(ExecutionDriverInterface):

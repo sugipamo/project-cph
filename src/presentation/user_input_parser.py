@@ -1,7 +1,7 @@
 # 新設定システムの統合
 
 # 互換性維持: 設定管理は依存性注入で提供される
-from src.core.configuration.config_resolver import create_config_root_from_dict, resolve_by_match_desc
+from src.configuration.config_resolver import create_config_root_from_dict, resolve_by_match_desc
 from src.context.dockerfile_resolver import DockerfileResolver
 from src.application.services.validation_service import ValidationService
 

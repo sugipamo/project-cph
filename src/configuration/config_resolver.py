@@ -2,8 +2,8 @@ from collections import deque
 from typing import Any, Optional, Union
 
 from src.domain.config_node import ConfigNode
-from src.core.configuration.config_node_logic import add_edge, init_matches
-from src.core.pure.formatters import format_with_missing_keys
+from src.domain.config_node_logic import add_edge, init_matches
+from src.presentation.formatters import format_with_missing_keys
 
 
 def create_config_root_from_dict(data: Any) -> ConfigNode:

@@ -4,7 +4,7 @@ import shlex
 from abc import abstractmethod
 from typing import Any, Optional, Union
 
-from src.infrastructure.drivers.base.base_driver import ExecutionDriverInterface
+from src.infrastructure.drivers.generic.base_driver import ExecutionDriverInterface
 from src.infrastructure.drivers.docker.utils import (
     build_docker_build_command,
     build_docker_remove_command,
