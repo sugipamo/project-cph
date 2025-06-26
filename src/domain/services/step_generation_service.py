@@ -1,6 +1,6 @@
 """ステップ生成・実行の核となる関数群（新しいシンプル設計）"""
 from typing import Any, Dict, List, Union
-from src.domain.services.step_generation_service import Step, StepContext, StepGenerationResult, StepType
+from src.domain.step import Step, StepContext, StepGenerationResult, StepType
 from src.domain.step_runner import ExecutionContext, expand_file_patterns_in_text, expand_template, run_steps
 from src.domain.step_runner import create_step as create_step_simple
 TypedExecutionConfiguration = None

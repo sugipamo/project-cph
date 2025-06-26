@@ -1,0 +1,463 @@
+{
+  "timestamp": "20250626_162208",
+  "summary": {
+    "total_files": 75,
+    "success_count": 75,
+    "error_count": 0
+  },
+  "move_plan": {
+    "/home/cphelper/project-cph/src/infrastructure/ast_analyzer.py": "/home/cphelper/project-cph/src/core/ast_analyzer/ast_analyzer.py",
+    "/home/cphelper/project-cph/src/infrastructure/local_filesystem.py": "/home/cphelper/project-cph/src/core/local_filesystem/local_filesystem.py",
+    "/home/cphelper/project-cph/src/domain/base_composite_request.py": "/home/cphelper/project-cph/src/core/base_composite_request/base_composite_request.py",
+    "/home/cphelper/project-cph/src/domain/dependency.py": "/home/cphelper/project-cph/src/handlers/dependency/dependency.py",
+    "/home/cphelper/project-cph/src/domain/step_runner.py": "/home/cphelper/project-cph/src/core/step_runner/step_runner.py",
+    "/home/cphelper/project-cph/src/domain/base_request.py": "/home/cphelper/project-cph/src/core/base_request/base_request.py",
+    "/home/cphelper/project-cph/src/domain/workflow_result.py": "/home/cphelper/project-cph/src/core/workflow_result/workflow_result.py",
+    "/home/cphelper/project-cph/src/domain/workflow.py": "/home/cphelper/project-cph/src/controllers/workflow/workflow.py",
+    "/home/cphelper/project-cph/src/domain/workflow_logger_adapter.py": "/home/cphelper/project-cph/src/handlers/workflow_logger_adapter/workflow_logger_adapter.py",
+    "/home/cphelper/project-cph/src/domain/config_node.py": "/home/cphelper/project-cph/src/core/configuration/config_node.py",
+    "/home/cphelper/project-cph/src/domain/composite_step_failure.py": "/home/cphelper/project-cph/src/core/composite_step_failure/composite_step_failure.py",
+    "/home/cphelper/project-cph/src/presentation/context_validator.py": "/home/cphelper/project-cph/src/core/context_validator/context_validator.py",
+    "/home/cphelper/project-cph/src/presentation/context_formatter.py": "/home/cphelper/project-cph/src/core/context_formatter/context_formatter.py",
+    "/home/cphelper/project-cph/src/presentation/main.py": "/home/cphelper/project-cph/src/app/main/main.py",
+    "/home/cphelper/project-cph/src/presentation/module_parser.py": "/home/cphelper/project-cph/src/services/module_parser/module_parser.py",
+    "/home/cphelper/project-cph/src/presentation/cli_app.py": "/home/cphelper/project-cph/src/controllers/cli_app/cli_app.py",
+    "/home/cphelper/project-cph/src/presentation/user_input_parser.py": "/home/cphelper/project-cph/src/handlers/user_input_parser/user_input_parser.py",
+    "/home/cphelper/project-cph/src/operations/error_converter.py": "/home/cphelper/project-cph/src/core/error_converter/error_converter.py",
+    "/home/cphelper/project-cph/src/operations/composite_structure.py": "/home/cphelper/project-cph/src/core/composite_structure/composite_structure.py",
+    "/home/cphelper/project-cph/src/utils/sys_provider.py": "/home/cphelper/project-cph/src/core/sys_provider/sys_provider.py",
+    "/home/cphelper/project-cph/src/utils/format_info.py": "/home/cphelper/project-cph/src/core/format_info/format_info.py",
+    "/home/cphelper/project-cph/src/utils/regex_provider.py": "/home/cphelper/project-cph/src/core/regex_provider/regex_provider.py",
+    "/home/cphelper/project-cph/src/utils/retry_decorator.py": "/home/cphelper/project-cph/src/core/retry_decorator/retry_decorator.py",
+    "/home/cphelper/project-cph/src/utils/python_utils.py": "/home/cphelper/project-cph/src/core/python_utils/python_utils.py",
+    "/home/cphelper/project-cph/src/utils/path_operations.py": "/home/cphelper/project-cph/src/core/path_operations/path_operations.py",
+    "/home/cphelper/project-cph/src/utils/mock_regex_provider.py": "/home/cphelper/project-cph/src/core/mock_regex_provider/mock_regex_provider.py",
+    "/home/cphelper/project-cph/src/utils/time_adapter.py": "/home/cphelper/project-cph/src/core/time_adapter/time_adapter.py",
+    "/home/cphelper/project-cph/src/application/mock_output_manager.py": "/home/cphelper/project-cph/src/handlers/mock_output_mgmt/mock_output_manager.py",
+    "/home/cphelper/project-cph/src/application/contest_manager.py": "/home/cphelper/project-cph/src/handlers/contest_mgmt/contest_manager.py",
+    "/home/cphelper/project-cph/src/application/fast_sqlite_manager.py": "/home/cphelper/project-cph/src/core/fast_sqlite_mgmt/fast_sqlite_manager.py",
+    "/home/cphelper/project-cph/src/application/output_manager.py": "/home/cphelper/project-cph/src/handlers/output_mgmt/output_manager.py",
+    "/home/cphelper/project-cph/src/application/sqlite_manager.py": "/home/cphelper/project-cph/src/core/sqlite_mgmt/sqlite_manager.py",
+    "/home/cphelper/project-cph/src/logging/application_logger_adapter.py": "/home/cphelper/project-cph/src/handlers/application_logger_adapter/application_logger_adapter.py",
+    "/home/cphelper/project-cph/src/logging/unified_logger.py": "/home/cphelper/project-cph/src/handlers/unified_logger/unified_logger.py",
+    "/home/cphelper/project-cph/src/configuration/build_infrastructure.py": "/home/cphelper/project-cph/src/app/build_infrastructure/build_infrastructure.py",
+    "/home/cphelper/project-cph/src/configuration/system_config_repository.py": "/home/cphelper/project-cph/src/services/system_config_repository/system_config_repository.py",
+    "/home/cphelper/project-cph/src/configuration/system_config_loader.py": "/home/cphelper/project-cph/src/core/system_config_loader/system_config_loader.py",
+    "/home/cphelper/project-cph/src/configuration/di_config.py": "/home/cphelper/project-cph/src/app/di_config/di_config.py",
+    "/home/cphelper/project-cph/src/configuration/config_resolver.py": "/home/cphelper/project-cph/src/services/configuration/config_resolver.py",
+    "/home/cphelper/project-cph/src/configuration/configuration_repository.py": "/home/cphelper/project-cph/src/core/configuration/configuration_repository.py",
+    "/home/cphelper/project-cph/src/configuration/environment_manager.py": "/home/cphelper/project-cph/src/core/environment_mgmt/environment_manager.py",
+    "/home/cphelper/project-cph/src/infrastructure/drivers/file/mock_file_driver.py": "/home/cphelper/project-cph/src/core/mock_file_driver/mock_file_driver.py",
+    "/home/cphelper/project-cph/src/infrastructure/drivers/file/file_driver.py": "/home/cphelper/project-cph/src/core/file_driver/file_driver.py",
+    "/home/cphelper/project-cph/src/infrastructure/drivers/docker/docker_driver_with_tracking.py": "/home/cphelper/project-cph/src/controllers/docker_driver_with_tracking/docker_driver_with_tracking.py",
+    "/home/cphelper/project-cph/src/infrastructure/drivers/docker/docker_driver.py": "/home/cphelper/project-cph/src/handlers/docker_driver/docker_driver.py",
+    "/home/cphelper/project-cph/src/infrastructure/drivers/docker/mock_docker_driver.py": "/home/cphelper/project-cph/src/controllers/mock_docker_driver/mock_docker_driver.py",
+    "/home/cphelper/project-cph/src/infrastructure/drivers/generic/persistence_driver.py": "/home/cphelper/project-cph/src/services/persistence_driver/persistence_driver.py",
+    "/home/cphelper/project-cph/src/infrastructure/drivers/generic/unified_driver.py": "/home/cphelper/project-cph/src/services/unified_driver/unified_driver.py",
+    "/home/cphelper/project-cph/src/infrastructure/drivers/shell/local_shell_driver.py": "/home/cphelper/project-cph/src/services/local_shell_driver/local_shell_driver.py",
+    "/home/cphelper/project-cph/src/infrastructure/drivers/shell/shell_driver.py": "/home/cphelper/project-cph/src/core/shell_driver/shell_driver.py",
+    "/home/cphelper/project-cph/src/infrastructure/drivers/shell/mock_shell_driver.py": "/home/cphelper/project-cph/src/services/mock_shell_driver/mock_shell_driver.py",
+    "/home/cphelper/project-cph/src/infrastructure/drivers/python/python_driver.py": "/home/cphelper/project-cph/src/services/python_driver/python_driver.py",
+    "/home/cphelper/project-cph/src/domain/services/step_generation_service.py": "/home/cphelper/project-cph/src/services/step_generation_svc/step_generation_service.py",
+    "/home/cphelper/project-cph/src/domain/services/workflow_execution_service.py": "/home/cphelper/project-cph/src/services/workflow_execution_svc/workflow_execution_service.py",
+    "/home/cphelper/project-cph/src/data/operation/operation_repository.py": "/home/cphelper/project-cph/src/services/operation_repository/operation_repository.py",
+    "/home/cphelper/project-cph/src/data/base/base_repository.py": "/home/cphelper/project-cph/src/core/base_repository/base_repository.py",
+    "/home/cphelper/project-cph/src/data/docker_container/docker_container_repository.py": "/home/cphelper/project-cph/src/services/docker_container_repository/docker_container_repository.py",
+    "/home/cphelper/project-cph/src/data/state/state_repository.py": "/home/cphelper/project-cph/src/core/state_repository/state_repository.py",
+    "/home/cphelper/project-cph/src/data/sqlite_state/sqlite_state_repository.py": "/home/cphelper/project-cph/src/services/sqlite_state_repository/sqlite_state_repository.py",
+    "/home/cphelper/project-cph/src/data/docker_image/docker_image_repository.py": "/home/cphelper/project-cph/src/services/docker_image_repository/docker_image_repository.py",
+    "/home/cphelper/project-cph/src/data/session/session_repository.py": "/home/cphelper/project-cph/src/services/session_repository/session_repository.py",
+    "/home/cphelper/project-cph/src/operations/requests/python_request.py": "/home/cphelper/project-cph/src/core/python_request/python_request.py",
+    "/home/cphelper/project-cph/src/operations/requests/composite_request.py": "/home/cphelper/project-cph/src/services/composite_request/composite_request.py",
+    "/home/cphelper/project-cph/src/operations/requests/shell_request.py": "/home/cphelper/project-cph/src/core/shell_request/shell_request.py",
+    "/home/cphelper/project-cph/src/operations/requests/docker_request.py": "/home/cphelper/project-cph/src/handlers/docker_request/docker_request.py",
+    "/home/cphelper/project-cph/src/operations/requests/file_request.py": "/home/cphelper/project-cph/src/services/file_request/file_request.py",
+    "/home/cphelper/project-cph/src/operations/interfaces/docker_interface.py": "/home/cphelper/project-cph/src/core/docker_interface/docker_interface.py",
+    "/home/cphelper/project-cph/src/operations/interfaces/execution_interface.py": "/home/cphelper/project-cph/src/core/execution_interface/execution_interface.py",
+    "/home/cphelper/project-cph/src/operations/interfaces/output_manager_interface.py": "/home/cphelper/project-cph/src/services/output_manager_interface/output_manager_interface.py",
+    "/home/cphelper/project-cph/src/operations/results/result_factory.py": "/home/cphelper/project-cph/src/core/result_factory/result_factory.py",
+    "/home/cphelper/project-cph/src/operations/results/shell_result.py": "/home/cphelper/project-cph/src/core/shell_result/shell_result.py",
+    "/home/cphelper/project-cph/src/operations/results/docker_result.py": "/home/cphelper/project-cph/src/core/docker_result/docker_result.py",
+    "/home/cphelper/project-cph/src/operations/results/file_result.py": "/home/cphelper/project-cph/src/core/file_result/file_result.py",
+    "/home/cphelper/project-cph/src/application/services/config_loader_service.py": "/home/cphelper/project-cph/src/core/config_loader_svc/config_loader_service.py",
+    "/home/cphelper/project-cph/src/application/services/debug_service.py": "/home/cphelper/project-cph/src/core/debug_svc/debug_service.py"
+  },
+  "errors": [],
+  "move_history": [
+    {
+      "old": "/home/cphelper/project-cph/src/infrastructure/ast_analyzer.py",
+      "new": "/home/cphelper/project-cph/src/core/ast_analyzer/ast_analyzer.py",
+      "timestamp": "2025-06-26T16:22:07.906505"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/infrastructure/local_filesystem.py",
+      "new": "/home/cphelper/project-cph/src/core/local_filesystem/local_filesystem.py",
+      "timestamp": "2025-06-26T16:22:07.906542"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/domain/base_composite_request.py",
+      "new": "/home/cphelper/project-cph/src/core/base_composite_request/base_composite_request.py",
+      "timestamp": "2025-06-26T16:22:07.906570"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/domain/dependency.py",
+      "new": "/home/cphelper/project-cph/src/handlers/dependency/dependency.py",
+      "timestamp": "2025-06-26T16:22:07.906617"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/domain/step_runner.py",
+      "new": "/home/cphelper/project-cph/src/core/step_runner/step_runner.py",
+      "timestamp": "2025-06-26T16:22:07.906640"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/domain/base_request.py",
+      "new": "/home/cphelper/project-cph/src/core/base_request/base_request.py",
+      "timestamp": "2025-06-26T16:22:07.906664"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/domain/workflow_result.py",
+      "new": "/home/cphelper/project-cph/src/core/workflow_result/workflow_result.py",
+      "timestamp": "2025-06-26T16:22:07.906686"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/domain/workflow.py",
+      "new": "/home/cphelper/project-cph/src/controllers/workflow/workflow.py",
+      "timestamp": "2025-06-26T16:22:07.906709"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/domain/workflow_logger_adapter.py",
+      "new": "/home/cphelper/project-cph/src/handlers/workflow_logger_adapter/workflow_logger_adapter.py",
+      "timestamp": "2025-06-26T16:22:07.906733"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/domain/config_node.py",
+      "new": "/home/cphelper/project-cph/src/core/configuration/config_node.py",
+      "timestamp": "2025-06-26T16:22:07.906756"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/domain/composite_step_failure.py",
+      "new": "/home/cphelper/project-cph/src/core/composite_step_failure/composite_step_failure.py",
+      "timestamp": "2025-06-26T16:22:07.906790"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/presentation/context_validator.py",
+      "new": "/home/cphelper/project-cph/src/core/context_validator/context_validator.py",
+      "timestamp": "2025-06-26T16:22:07.906816"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/presentation/context_formatter.py",
+      "new": "/home/cphelper/project-cph/src/core/context_formatter/context_formatter.py",
+      "timestamp": "2025-06-26T16:22:07.906839"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/presentation/main.py",
+      "new": "/home/cphelper/project-cph/src/app/main/main.py",
+      "timestamp": "2025-06-26T16:22:07.906862"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/presentation/module_parser.py",
+      "new": "/home/cphelper/project-cph/src/services/module_parser/module_parser.py",
+      "timestamp": "2025-06-26T16:22:07.906884"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/presentation/cli_app.py",
+      "new": "/home/cphelper/project-cph/src/controllers/cli_app/cli_app.py",
+      "timestamp": "2025-06-26T16:22:07.906906"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/presentation/user_input_parser.py",
+      "new": "/home/cphelper/project-cph/src/handlers/user_input_parser/user_input_parser.py",
+      "timestamp": "2025-06-26T16:22:07.906928"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/operations/error_converter.py",
+      "new": "/home/cphelper/project-cph/src/core/error_converter/error_converter.py",
+      "timestamp": "2025-06-26T16:22:07.906951"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/operations/composite_structure.py",
+      "new": "/home/cphelper/project-cph/src/core/composite_structure/composite_structure.py",
+      "timestamp": "2025-06-26T16:22:07.906974"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/utils/sys_provider.py",
+      "new": "/home/cphelper/project-cph/src/core/sys_provider/sys_provider.py",
+      "timestamp": "2025-06-26T16:22:07.907000"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/utils/format_info.py",
+      "new": "/home/cphelper/project-cph/src/core/format_info/format_info.py",
+      "timestamp": "2025-06-26T16:22:07.907027"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/utils/regex_provider.py",
+      "new": "/home/cphelper/project-cph/src/core/regex_provider/regex_provider.py",
+      "timestamp": "2025-06-26T16:22:07.907050"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/utils/retry_decorator.py",
+      "new": "/home/cphelper/project-cph/src/core/retry_decorator/retry_decorator.py",
+      "timestamp": "2025-06-26T16:22:07.907080"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/utils/python_utils.py",
+      "new": "/home/cphelper/project-cph/src/core/python_utils/python_utils.py",
+      "timestamp": "2025-06-26T16:22:07.907104"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/utils/path_operations.py",
+      "new": "/home/cphelper/project-cph/src/core/path_operations/path_operations.py",
+      "timestamp": "2025-06-26T16:22:07.907137"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/utils/mock_regex_provider.py",
+      "new": "/home/cphelper/project-cph/src/core/mock_regex_provider/mock_regex_provider.py",
+      "timestamp": "2025-06-26T16:22:07.907159"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/utils/time_adapter.py",
+      "new": "/home/cphelper/project-cph/src/core/time_adapter/time_adapter.py",
+      "timestamp": "2025-06-26T16:22:07.907181"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/application/mock_output_manager.py",
+      "new": "/home/cphelper/project-cph/src/handlers/mock_output_mgmt/mock_output_manager.py",
+      "timestamp": "2025-06-26T16:22:07.907206"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/application/contest_manager.py",
+      "new": "/home/cphelper/project-cph/src/handlers/contest_mgmt/contest_manager.py",
+      "timestamp": "2025-06-26T16:22:07.907228"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/application/fast_sqlite_manager.py",
+      "new": "/home/cphelper/project-cph/src/core/fast_sqlite_mgmt/fast_sqlite_manager.py",
+      "timestamp": "2025-06-26T16:22:07.907251"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/application/output_manager.py",
+      "new": "/home/cphelper/project-cph/src/handlers/output_mgmt/output_manager.py",
+      "timestamp": "2025-06-26T16:22:07.907279"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/application/sqlite_manager.py",
+      "new": "/home/cphelper/project-cph/src/core/sqlite_mgmt/sqlite_manager.py",
+      "timestamp": "2025-06-26T16:22:07.907301"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/logging/application_logger_adapter.py",
+      "new": "/home/cphelper/project-cph/src/handlers/application_logger_adapter/application_logger_adapter.py",
+      "timestamp": "2025-06-26T16:22:07.907325"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/logging/unified_logger.py",
+      "new": "/home/cphelper/project-cph/src/handlers/unified_logger/unified_logger.py",
+      "timestamp": "2025-06-26T16:22:07.907347"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/configuration/build_infrastructure.py",
+      "new": "/home/cphelper/project-cph/src/app/build_infrastructure/build_infrastructure.py",
+      "timestamp": "2025-06-26T16:22:07.907371"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/configuration/system_config_repository.py",
+      "new": "/home/cphelper/project-cph/src/services/system_config_repository/system_config_repository.py",
+      "timestamp": "2025-06-26T16:22:07.907395"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/configuration/system_config_loader.py",
+      "new": "/home/cphelper/project-cph/src/core/system_config_loader/system_config_loader.py",
+      "timestamp": "2025-06-26T16:22:07.907417"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/configuration/di_config.py",
+      "new": "/home/cphelper/project-cph/src/app/di_config/di_config.py",
+      "timestamp": "2025-06-26T16:22:07.907438"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/configuration/config_resolver.py",
+      "new": "/home/cphelper/project-cph/src/services/configuration/config_resolver.py",
+      "timestamp": "2025-06-26T16:22:07.907469"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/configuration/configuration_repository.py",
+      "new": "/home/cphelper/project-cph/src/core/configuration/configuration_repository.py",
+      "timestamp": "2025-06-26T16:22:07.907491"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/configuration/environment_manager.py",
+      "new": "/home/cphelper/project-cph/src/core/environment_mgmt/environment_manager.py",
+      "timestamp": "2025-06-26T16:22:07.907517"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/infrastructure/drivers/file/mock_file_driver.py",
+      "new": "/home/cphelper/project-cph/src/core/mock_file_driver/mock_file_driver.py",
+      "timestamp": "2025-06-26T16:22:07.907548"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/infrastructure/drivers/file/file_driver.py",
+      "new": "/home/cphelper/project-cph/src/core/file_driver/file_driver.py",
+      "timestamp": "2025-06-26T16:22:07.907573"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/infrastructure/drivers/docker/docker_driver_with_tracking.py",
+      "new": "/home/cphelper/project-cph/src/controllers/docker_driver_with_tracking/docker_driver_with_tracking.py",
+      "timestamp": "2025-06-26T16:22:07.907598"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/infrastructure/drivers/docker/docker_driver.py",
+      "new": "/home/cphelper/project-cph/src/handlers/docker_driver/docker_driver.py",
+      "timestamp": "2025-06-26T16:22:07.907620"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/infrastructure/drivers/docker/mock_docker_driver.py",
+      "new": "/home/cphelper/project-cph/src/controllers/mock_docker_driver/mock_docker_driver.py",
+      "timestamp": "2025-06-26T16:22:07.907652"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/infrastructure/drivers/generic/persistence_driver.py",
+      "new": "/home/cphelper/project-cph/src/services/persistence_driver/persistence_driver.py",
+      "timestamp": "2025-06-26T16:22:07.907677"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/infrastructure/drivers/generic/unified_driver.py",
+      "new": "/home/cphelper/project-cph/src/services/unified_driver/unified_driver.py",
+      "timestamp": "2025-06-26T16:22:07.907700"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/infrastructure/drivers/shell/local_shell_driver.py",
+      "new": "/home/cphelper/project-cph/src/services/local_shell_driver/local_shell_driver.py",
+      "timestamp": "2025-06-26T16:22:07.907724"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/infrastructure/drivers/shell/shell_driver.py",
+      "new": "/home/cphelper/project-cph/src/core/shell_driver/shell_driver.py",
+      "timestamp": "2025-06-26T16:22:07.907746"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/infrastructure/drivers/shell/mock_shell_driver.py",
+      "new": "/home/cphelper/project-cph/src/services/mock_shell_driver/mock_shell_driver.py",
+      "timestamp": "2025-06-26T16:22:07.907774"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/infrastructure/drivers/python/python_driver.py",
+      "new": "/home/cphelper/project-cph/src/services/python_driver/python_driver.py",
+      "timestamp": "2025-06-26T16:22:07.907797"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/domain/services/step_generation_service.py",
+      "new": "/home/cphelper/project-cph/src/services/step_generation_svc/step_generation_service.py",
+      "timestamp": "2025-06-26T16:22:07.907820"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/domain/services/workflow_execution_service.py",
+      "new": "/home/cphelper/project-cph/src/services/workflow_execution_svc/workflow_execution_service.py",
+      "timestamp": "2025-06-26T16:22:07.907842"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/data/operation/operation_repository.py",
+      "new": "/home/cphelper/project-cph/src/services/operation_repository/operation_repository.py",
+      "timestamp": "2025-06-26T16:22:07.907866"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/data/base/base_repository.py",
+      "new": "/home/cphelper/project-cph/src/core/base_repository/base_repository.py",
+      "timestamp": "2025-06-26T16:22:07.907890"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/data/docker_container/docker_container_repository.py",
+      "new": "/home/cphelper/project-cph/src/services/docker_container_repository/docker_container_repository.py",
+      "timestamp": "2025-06-26T16:22:07.907915"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/data/state/state_repository.py",
+      "new": "/home/cphelper/project-cph/src/core/state_repository/state_repository.py",
+      "timestamp": "2025-06-26T16:22:07.907939"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/data/sqlite_state/sqlite_state_repository.py",
+      "new": "/home/cphelper/project-cph/src/services/sqlite_state_repository/sqlite_state_repository.py",
+      "timestamp": "2025-06-26T16:22:07.907965"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/data/docker_image/docker_image_repository.py",
+      "new": "/home/cphelper/project-cph/src/services/docker_image_repository/docker_image_repository.py",
+      "timestamp": "2025-06-26T16:22:07.907989"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/data/session/session_repository.py",
+      "new": "/home/cphelper/project-cph/src/services/session_repository/session_repository.py",
+      "timestamp": "2025-06-26T16:22:07.908024"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/operations/requests/python_request.py",
+      "new": "/home/cphelper/project-cph/src/core/python_request/python_request.py",
+      "timestamp": "2025-06-26T16:22:07.908049"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/operations/requests/composite_request.py",
+      "new": "/home/cphelper/project-cph/src/services/composite_request/composite_request.py",
+      "timestamp": "2025-06-26T16:22:07.908078"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/operations/requests/shell_request.py",
+      "new": "/home/cphelper/project-cph/src/core/shell_request/shell_request.py",
+      "timestamp": "2025-06-26T16:22:07.908101"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/operations/requests/docker_request.py",
+      "new": "/home/cphelper/project-cph/src/handlers/docker_request/docker_request.py",
+      "timestamp": "2025-06-26T16:22:07.908123"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/operations/requests/file_request.py",
+      "new": "/home/cphelper/project-cph/src/services/file_request/file_request.py",
+      "timestamp": "2025-06-26T16:22:07.908145"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/operations/interfaces/docker_interface.py",
+      "new": "/home/cphelper/project-cph/src/core/docker_interface/docker_interface.py",
+      "timestamp": "2025-06-26T16:22:07.908179"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/operations/interfaces/execution_interface.py",
+      "new": "/home/cphelper/project-cph/src/core/execution_interface/execution_interface.py",
+      "timestamp": "2025-06-26T16:22:07.908201"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/operations/interfaces/output_manager_interface.py",
+      "new": "/home/cphelper/project-cph/src/services/output_manager_interface/output_manager_interface.py",
+      "timestamp": "2025-06-26T16:22:07.908224"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/operations/results/result_factory.py",
+      "new": "/home/cphelper/project-cph/src/core/result_factory/result_factory.py",
+      "timestamp": "2025-06-26T16:22:07.908248"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/operations/results/shell_result.py",
+      "new": "/home/cphelper/project-cph/src/core/shell_result/shell_result.py",
+      "timestamp": "2025-06-26T16:22:07.908275"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/operations/results/docker_result.py",
+      "new": "/home/cphelper/project-cph/src/core/docker_result/docker_result.py",
+      "timestamp": "2025-06-26T16:22:07.908298"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/operations/results/file_result.py",
+      "new": "/home/cphelper/project-cph/src/core/file_result/file_result.py",
+      "timestamp": "2025-06-26T16:22:07.908320"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/application/services/config_loader_service.py",
+      "new": "/home/cphelper/project-cph/src/core/config_loader_svc/config_loader_service.py",
+      "timestamp": "2025-06-26T16:22:07.908345"
+    },
+    {
+      "old": "/home/cphelper/project-cph/src/application/services/debug_service.py",
+      "new": "/home/cphelper/project-cph/src/core/debug_svc/debug_service.py",
+      "timestamp": "2025-06-26T16:22:07.908376"
+    }
+  ]
+}

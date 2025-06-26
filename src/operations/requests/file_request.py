@@ -5,10 +5,10 @@ from src.operations.requests.request_factory import OperationRequestFoundation
 from src.infrastructure.requests.file.file_op_type import FileOpType
 from src.operations.constants.operation_type import OperationType
 from src.operations.requests.request_types import RequestType
-from src.operations.results.file_result import FileResult
+from src.core.module_parser.__init__ import FileResult
 
 
-from src.domain.composite_step_failure import CompositeStepFailureError
+from src.core.module_parser.__init__ import CompositeStepFailureError
 class FileRequest(OperationRequestFoundation):
     """Request for file operations."""
 

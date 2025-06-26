@@ -3,10 +3,10 @@ from enum import Enum, auto
 from typing import Any, Optional, Union
 
 from src.operations.requests.request_factory import OperationRequestFoundation
-from src.operations.requests.composite_request import CompositeRequest
+from src.core.module_parser.__init__ import CompositeRequest
 from src.operations.constants.operation_type import OperationType
 from src.operations.requests.request_types import RequestType
-from src.operations.interfaces.docker_interface import DockerDriverInterface
+from src.core.module_parser.__init__ import DockerDriverInterface
 from src.operations.results.result import OperationResult
 
 

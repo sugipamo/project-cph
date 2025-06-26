@@ -1,12 +1,7 @@
 import re
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING
-from src.application.color_manager import apply_color
+from typing import Optional
 from src.utils.types import LogFormatType
-if TYPE_CHECKING:
-    from src.utils.types import LogFormatType
-else:
-    pass
 
 @dataclass
 class FormatInfo:

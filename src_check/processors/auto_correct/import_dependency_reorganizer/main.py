@@ -188,6 +188,7 @@ def main() -> CheckResult:
         # 移動不要の場合
         return CheckResult(
             title="import_dependency_reorganizer",
+            log_level=LogLevel.INFO,
             failure_locations=[],
             fix_policy="現在のフォルダ構造は依存関係に基づいて適切に配置されています。",
             fix_example_code=None
@@ -233,6 +234,17 @@ def _create_enhanced_move_plan(depth_map: dict, src_root: Path, analyzer) -> dic
         
         # 深度1以上のファイルの移動計画
         for file_path in files:
+            # 現在のファイル配置が適切かどうかを判断
+            rel_path = file_path.relative_to(src_root)
+            current_folder = rel_path.parent.name if rel_path.parent != Path('.') else None
+            
+            # 既に適切なフォルダに配置されているかチェック
+            is_properly_placed = _is_file_properly_placed(file_path, depth, src_root)
+            
+            if is_properly_placed:
+                print(f"      ✅ {rel_path} (適切に配置済み)")
+                continue
+            
             # より意味のあるフォルダ名を生成
             folder_name = _generate_meaningful_folder_name(file_path, depth)
             new_path = _calculate_new_path(src_root, folder_name, depth, file_path)
@@ -275,6 +287,36 @@ def _generate_meaningful_folder_name(file_path: Path, depth: int) -> str:
     else:
         # デフォルトはファイル名そのまま
         return filename
+
+def _is_file_properly_placed(file_path: Path, depth: int, src_root: Path) -> bool:
+    """ファイルが既に適切なフォルダに配置されているかチェック"""
+    rel_path = file_path.relative_to(src_root)
+    current_folder = rel_path.parent.name if rel_path.parent != Path('.') else None
+    
+    # 深度0のファイルはsrc直下が適切
+    if depth == 0:
+        return rel_path.parent == Path('.')
+    
+    # 既存の意味のあるフォルダ名パターンをチェック
+    semantic_folders = {
+        'domain', 'utils', 'application', 'configuration', 'infrastructure',
+        'presentation', 'operations', 'data', 'logging', 'context'
+    }
+    
+    # 現在のフォルダが意味のある名前の場合は適切と判断
+    if current_folder and current_folder in semantic_folders:
+        return True
+    
+    # サブフォルダもチェック（例: operations/requests/）
+    parent_parts = rel_path.parts[:-1]  # ファイル名を除く
+    if len(parent_parts) >= 1 and parent_parts[0] in semantic_folders:
+        return True
+    
+    # 深度が浅く、既にサブフォルダに配置されている場合は適切
+    if depth <= 2 and len(parent_parts) >= 1:
+        return True
+    
+    return False
 
 def _calculate_new_path(src_root: Path, folder_name: str, depth: int, file_path: Path) -> Path:
     """新しいファイルパスを計算"""

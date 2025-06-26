@@ -2,12 +2,12 @@
 import traceback
 from typing import Optional
 
-from src.presentation.user_input_parser import parse_user_input
+from src.presentation.user_input_parser_integration import parse_user_input
 from src.infrastructure.di_container import DIKey
-from src.domain.composite_step_failure import CompositeStepFailureError
+from src.core.module_parser.__init__ import CompositeStepFailureError
 from src.operations.error_codes import ErrorSuggestion, classify_error
 from src.domain.services.workflow_execution_service import WorkflowExecutionService
-from src.domain.workflow_result import WorkflowExecutionResult
+from src.core.module_parser.__init__ import WorkflowExecutionResult
 
 
 class MinimalCLIApp:

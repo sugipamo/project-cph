@@ -9,8 +9,8 @@ from src.operations.requests.request_factory import OperationRequestFoundation
 from src.infrastructure.requests.file.file_op_type import FileOpType
 from src.operations.requests.request_types import RequestType
 from src.operations.interfaces.logger_interface import LoggerInterface
-from src.operations.results.docker_result import DockerResult
-from src.operations.results.file_result import FileResult
+from src.core.module_parser.__init__ import DockerResult
+from src.core.module_parser.__init__ import FileResult
 from src.operations.results.result import OperationResult
 from src.operations.results.shell_result import ShellResult
 

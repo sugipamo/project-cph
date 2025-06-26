@@ -13,7 +13,7 @@ from src.infrastructure.drivers.docker.utils.docker_naming import (
     parse_container_names,
 )
 from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
-from src.infrastructure.drivers.shell.local_shell_driver import LocalShellDriver
+from src.core.module_parser.__init__ import LocalShellDriver
 from src.operations.requests.shell_request import ShellRequest
 
 

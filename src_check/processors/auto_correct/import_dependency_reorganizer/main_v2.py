@@ -15,7 +15,7 @@ from typing import Optional, Dict, List, Tuple
 src_check_dir = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(src_check_dir))
 
-from models.check_result import CheckResult, FailureLocation
+from models.check_result import CheckResult, FailureLocation, LogLevel
 
 # 現在のディレクトリをパスに追加
 current_dir = Path(__file__).parent
@@ -53,6 +53,7 @@ def main(config: Optional[ReorganizerConfig] = None,
             except Exception as e:
                 return CheckResult(
                     title="import_dependency_reorganizer_v2",
+                    log_level=LogLevel.ERROR,
                     failure_locations=[FailureLocation(file_path="config", line_number=0)],
                     fix_policy=f"設定ファイル読み込みエラー: {str(e)}",
                     fix_example_code=None
@@ -65,6 +66,7 @@ def main(config: Optional[ReorganizerConfig] = None,
     if config_errors:
         return CheckResult(
             title="import_dependency_reorganizer_v2",
+            log_level=LogLevel.ERROR,
             failure_locations=[FailureLocation(file_path="config", line_number=0)],
             fix_policy=f"設定エラー: {'; '.join(config_errors)}",
             fix_example_code=None
@@ -126,6 +128,7 @@ def main(config: Optional[ReorganizerConfig] = None,
             logger.warning("Pythonファイルが見つかりませんでした")
             return CheckResult(
                 title="import_dependency_reorganizer_v2",
+                log_level=LogLevel.WARNING,
                 failure_locations=[],
                 fix_policy="Pythonファイルが見つかりませんでした",
                 fix_example_code=None
@@ -224,6 +227,7 @@ def main(config: Optional[ReorganizerConfig] = None,
         
         return CheckResult(
             title="import_dependency_reorganizer_v2",
+            log_level=LogLevel.INFO,
             failure_locations=[],
             fix_policy=f"シミュレーション完了: {len(move_plan)}ファイルの移動を計画 (実行時間: {total_time:.2f}秒)",
             fix_example_code=f"実行するには config.execute_mode=True を設定してください\n{error_collector.format_report()}"
@@ -233,6 +237,7 @@ def main(config: Optional[ReorganizerConfig] = None,
         logger.critical(f"予期しないエラー: {str(e)}", error_type=type(e).__name__)
         return CheckResult(
             title="import_dependency_reorganizer_v2",
+            log_level=LogLevel.ERROR,
             failure_locations=[FailureLocation(file_path="system", line_number=0)],
             fix_policy=f"システムエラー: {str(e)}",
             fix_example_code=None
@@ -394,6 +399,7 @@ def _execute_reorganization(src_root: Path, move_plan: Dict[Path, Path],
     
     return CheckResult(
         title="import_dependency_reorganizer_v2",
+        log_level=LogLevel.INFO,
         failure_locations=[],
         fix_policy=f"ファイル移動完了: {success_count}/{len(move_plan)}成功 (実行時間: {total_time:.2f}秒)",
         fix_example_code=f"詳細レポート: {report_path}\n{error_collector.format_report()}"
@@ -414,6 +420,7 @@ def _create_error_result(error_collector: ErrorCollector,
     
     return CheckResult(
         title="import_dependency_reorganizer_v2",
+        log_level=LogLevel.ERROR,
         failure_locations=failures,
         fix_policy=f"エラーが発生しました: {summary['total_errors']}個のエラー, {summary['total_warnings']}個の警告 (実行時間: {total_time:.2f}秒)",
         fix_example_code=error_collector.format_report()

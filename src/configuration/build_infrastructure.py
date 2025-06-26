@@ -1,7 +1,7 @@
 """Infrastructure builder with improved dependency management.
 Uses lazy loading to reduce coupling and startup time.
 """
-from src.configuration.di_config import configure_production_dependencies, configure_test_dependencies
+from src.core.module_parser.__init__ import configure_production_dependencies, configure_test_dependencies
 from src.infrastructure.di_container import DIContainer
 
 

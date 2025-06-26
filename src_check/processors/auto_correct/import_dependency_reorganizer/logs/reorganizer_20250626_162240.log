@@ -1,0 +1,12 @@
+2025-06-26 16:22:40 - import_dependency_reorganizer - INFO - 依存関係ベースフォルダ構造整理を開始
+2025-06-26 16:22:40 - import_dependency_reorganizer - INFO - プロジェクトルート: /home/cphelper/project-cph
+2025-06-26 16:22:40 - import_dependency_reorganizer - INFO - 解析対象: /home/cphelper/project-cph/src
+2025-06-26 16:22:40 - import_dependency_reorganizer - INFO - === Phase 1 開始 ===
+2025-06-26 16:22:40 - import_dependency_reorganizer - INFO - 発見されたPythonファイル数: 202
+2025-06-26 16:22:40 - import_dependency_reorganizer - INFO - === Phase 1 成功 (0.24秒) ===
+2025-06-26 16:22:40 - import_dependency_reorganizer - INFO - === Phase 2 開始 ===
+2025-06-26 16:22:40 - import_dependency_reorganizer - INFO - 移動計画作成: 0ファイル
+2025-06-26 16:22:40 - import_dependency_reorganizer - INFO - === Phase 2 成功 (0.00秒) ===
+2025-06-26 16:22:40 - import_dependency_reorganizer - CRITICAL - 予期しないエラー: CheckResult.__init__() missing 1 required positional argument: 'log_level'
+2025-06-26 16:22:40 - import_dependency_reorganizer - INFO - 実行ログを保存: /home/cphelper/project-cph/src_check/processors/auto_correct/import_dependency_reorganizer/logs/reorganizer_20250626_162240.json
+2025-06-26 16:22:40 - import_dependency_reorganizer - INFO - 実行統計

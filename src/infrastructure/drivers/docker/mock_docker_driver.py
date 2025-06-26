@@ -2,7 +2,7 @@
 from typing import Any, Optional
 
 from src.infrastructure.drivers.docker.docker_driver import DockerDriver
-from src.operations.results.docker_result import DockerResult
+from src.core.module_parser.__init__ import DockerResult
 
 
 class MockDockerDriver(DockerDriver):
