@@ -1,13 +1,12 @@
 === import_fixers ===
 
-失敗箇所: 2件
+失敗箇所: 1件
 ----------------------------------------
-1. /home/cphelper/project-cph/src/domain/step_runner.py:18
-2. /home/cphelper/project-cph/src/domain/config_node_logic.py:4
+1. /home/cphelper/project-cph/src/domain/config_node_logic.py:5
 
 修正方針:
 --------------------
-2個のローカルインポートが2個のファイルで検出されました。
+1個のローカルインポートが1個のファイルで検出されました。
 関数内・メソッド内のimport文をファイル上部に移動することを推奨します。
 
 修正例:
@@ -23,4 +22,4 @@ import os  # ファイル上部に移動
 def some_function():
     return os.getcwd()
 
-実行時刻: 2025-06-27 18:21:19
+実行時刻: 2025-06-27 18:59:07
