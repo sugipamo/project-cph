@@ -8,12 +8,12 @@ class FileProvider(ABC):
     """ファイル操作の抽象インターフェース"""
 
     @abstractmethod
-    def read_text_file(self, file_path: str, encoding: str = 'utf-8') -> str:
+    def read_text_file(self, file_path: str, encoding: str) -> str:
         """テキストファイルを読み込み"""
         pass
 
     @abstractmethod
-    def write_text_file(self, file_path: str, content: str, encoding: str = 'utf-8') -> None:
+    def write_text_file(self, file_path: str, content: str, encoding: str) -> None:
         """テキストファイルに書き込み"""
         pass
 
@@ -31,12 +31,12 @@ class FileProvider(ABC):
 class SystemFileProvider(FileProvider):
     """システムファイル操作の実装 - 副作用はここに集約"""
 
-    def read_text_file(self, file_path: str, encoding: str = 'utf-8') -> str:
+    def read_text_file(self, file_path: str, encoding: str) -> str:
         """テキストファイルを読み込み（副作用）"""
         with open(file_path, encoding=encoding) as f:
             return f.read()
 
-    def write_text_file(self, file_path: str, content: str, encoding: str = 'utf-8') -> None:
+    def write_text_file(self, file_path: str, content: str, encoding: str) -> None:
         """テキストファイルに書き込み（副作用）"""
         with open(file_path, 'w', encoding=encoding) as f:
             f.write(content)
@@ -63,13 +63,13 @@ class MockFileProvider(FileProvider):
     def __init__(self):
         self._files: Dict[str, str] = {}
 
-    def read_text_file(self, file_path: str, encoding: str = 'utf-8') -> str:
+    def read_text_file(self, file_path: str, encoding: str) -> str:
         """モック読み込み（副作用なし）"""
         if file_path not in self._files:
             raise FileNotFoundError(f"File not found: {file_path}")
         return self._files[file_path]
 
-    def write_text_file(self, file_path: str, content: str, encoding: str = 'utf-8') -> None:
+    def write_text_file(self, file_path: str, content: str, encoding: str) -> None:
         """モック書き込み（副作用なし）"""
         self._files[file_path] = content
 

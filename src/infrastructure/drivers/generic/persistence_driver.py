@@ -50,12 +50,12 @@ class PersistenceDriver(ExecutionDriverInterface, PersistenceInterface):
         pass
 
     @abstractmethod
-    def execute_query(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:
+    def execute_query(self, query: str, params: tuple) -> List[Dict[str, Any]]:
         """Execute a SELECT query and return results."""
         pass
 
     @abstractmethod
-    def execute_persistence_command(self, command: str, params: tuple = ()) -> int:
+    def execute_persistence_command(self, command: str, params: tuple) -> int:
         """Execute an INSERT/UPDATE/DELETE command."""
         pass
 
@@ -120,11 +120,11 @@ class SQLitePersistenceDriver(PersistenceDriver):
         """Get a database connection."""
         return self._sqlite_manager.get_connection()
 
-    def execute_query(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:
+    def execute_query(self, query: str, params: tuple) -> List[Dict[str, Any]]:
         """Execute a SELECT query and return results."""
         return self._sqlite_manager.execute_query(query, params)
 
-    def execute_persistence_command(self, command: str, params: tuple = ()) -> int:
+    def execute_persistence_command(self, command: str, params: tuple) -> int:
         """Execute an INSERT/UPDATE/DELETE command."""
         return self._sqlite_manager.execute_command(command, params)
 

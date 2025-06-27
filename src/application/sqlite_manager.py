@@ -118,7 +118,7 @@ class SQLiteManager:
         finally:
             conn.close()
 
-    def execute_query(self, query: str, params: tuple = ()) -> list[dict[str, Any]]:
+    def execute_query(self, query: str, params: tuple) -> list[dict[str, Any]]:
         """Execute a SELECT query and return results.
 
         Args:
@@ -132,7 +132,7 @@ class SQLiteManager:
             cursor = conn.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
 
-    def execute_command(self, command: str, params: tuple = ()) -> int:
+    def execute_command(self, command: str, params: tuple) -> int:
         """Execute an INSERT/UPDATE/DELETE command.
 
         Args:

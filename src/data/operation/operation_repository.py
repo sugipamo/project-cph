@@ -235,10 +235,11 @@ class OperationRepository(DatabaseRepositoryFoundation):
         Returns:
             Dictionary containing various statistics
         """
-        total_ops = self.db_manager.execute_query("SELECT COUNT(*) as count FROM operations")[0]["count"]
+        total_ops = self.db_manager.execute_query("SELECT COUNT(*) as count FROM operations", ())[0]["count"]
 
         success_ops = self.db_manager.execute_query(
-            "SELECT COUNT(*) as count FROM operations WHERE result = 'success'"
+            "SELECT COUNT(*) as count FROM operations WHERE result = 'success'",
+            ()
         )[0]["count"]
 
         language_stats = self.db_manager.execute_query("""
@@ -247,14 +248,14 @@ class OperationRepository(DatabaseRepositoryFoundation):
             WHERE language IS NOT NULL
             GROUP BY language
             ORDER BY count DESC
-        """)
+        """, ())
 
         command_stats = self.db_manager.execute_query("""
             SELECT command, COUNT(*) as count
             FROM operations
             GROUP BY command
             ORDER BY count DESC
-        """)
+        """, ())
 
         if total_ops == 0:
             raise ValueError("Cannot calculate success rate: no operations found")

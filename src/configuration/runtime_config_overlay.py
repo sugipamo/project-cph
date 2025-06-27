@@ -31,7 +31,7 @@ class RuntimeConfigOverlay:
         current[path_parts[-1]] = value
         self._active = True
 
-    def get_overlay(self, config_path: str, default_value: Any = None) -> Any:
+    def get_overlay(self, config_path: str, default_value: Any) -> Any:
         """オーバーレイ設定を取得
 
         Args:
@@ -63,7 +63,18 @@ class RuntimeConfigOverlay:
         Returns:
             オーバーレイが存在する場合True
         """
-        return self.get_overlay(config_path) is not None
+        if not self._active:
+            return False
+        
+        path_parts = config_path.split('.')
+        current = self._overlay_config
+        
+        try:
+            for part in path_parts:
+                current = current[part]
+            return True
+        except (KeyError, TypeError):
+            return False
 
     def clear_overlay(self) -> None:
         """オーバーレイをクリア"""
@@ -95,14 +106,16 @@ class DebugConfigProvider:
         """デバッグモードを無効化"""
         self.overlay.clear_overlay()
 
-    def get_log_level(self, default: str = "INFO") -> str:
+    def get_log_level(self, default: str) -> str:
         """ログレベルを取得（オーバーレイ優先）"""
         return self.overlay.get_overlay("logging_config.default_level", default)
 
     def is_debug_enabled(self) -> bool:
         """デバッグモードが有効かチェック"""
-        return self.overlay.get_overlay("debug", False)
+        debug_value = False  # 呼び出し元で値を用意
+        return self.overlay.get_overlay("debug", debug_value)
 
     def should_show_step_details(self) -> bool:
         """ステップ詳細表示が有効かチェック"""
-        return self.overlay.get_overlay("output.show_step_details", False)
+        show_details_value = False  # 呼び出し元で値を用意
+        return self.overlay.get_overlay("output.show_step_details", show_details_value)

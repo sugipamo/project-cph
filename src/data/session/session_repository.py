@@ -135,7 +135,7 @@ class SessionRepository(DatabaseRepositoryFoundation):
             Active session if found, None otherwise
         """
         query = "SELECT * FROM sessions WHERE session_end IS NULL ORDER BY session_start DESC LIMIT 1"
-        results = self.db_manager.execute_query(query)
+        results = self.db_manager.execute_query(query, ())
 
         if results:
             return self._row_to_session(results[0])
@@ -224,7 +224,7 @@ class SessionRepository(DatabaseRepositoryFoundation):
         Returns:
             Dictionary containing session statistics
         """
-        total_sessions = self.db_manager.execute_query("SELECT COUNT(*) as count FROM sessions")[0]["count"]
+        total_sessions = self.db_manager.execute_query("SELECT COUNT(*) as count FROM sessions", ())[0]["count"]
 
         avg_duration = self.db_manager.execute_query("""
             SELECT AVG(
@@ -232,7 +232,7 @@ class SessionRepository(DatabaseRepositoryFoundation):
             ) as avg_minutes
             FROM sessions
             WHERE session_end IS NOT NULL
-        """)[0]["avg_minutes"]
+        """, ())[0]["avg_minutes"]
 
         language_sessions = self.db_manager.execute_query("""
             SELECT language, COUNT(*) as count
@@ -240,7 +240,7 @@ class SessionRepository(DatabaseRepositoryFoundation):
             WHERE language IS NOT NULL
             GROUP BY language
             ORDER BY count DESC
-        """)
+        """, ())
 
         if avg_duration is None:
             raise ValueError("No completed sessions found to calculate average duration")
