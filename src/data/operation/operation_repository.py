@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
-from src.data.base.base_repository import DatabaseRepositoryFoundation
 from src.application.sqlite_manager import SQLiteManager
+from src.data.base.base_repository import DatabaseRepositoryFoundation
 
 
 class PersistenceError(Exception):

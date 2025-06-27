@@ -1,7 +1,7 @@
 import ast
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
-from dataclasses import dataclass
 
 from src.infrastructure.module_info import ExportedSymbol
 

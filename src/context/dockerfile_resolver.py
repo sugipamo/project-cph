@@ -3,6 +3,7 @@ Implements the resolver pattern for Dockerfile content management
 """
 from typing import Callable, Optional
 
+
 class DockerfileResolver:
     """Lazy Dockerfile content resolver
 

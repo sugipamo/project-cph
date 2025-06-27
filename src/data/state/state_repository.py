@@ -4,8 +4,10 @@
 """
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
+
 from src.application.execution_history import ExecutionHistory
 from src.infrastructure.persistence.state.models.session_context import SessionContext
+
 
 class IStateRepository(ABC):
     """状態管理リポジトリのインターフェース

@@ -3,10 +3,12 @@
 Infrastructure層での状態永続化の具体実装
 """
 from typing import Any, Dict, Optional
+
+from src.application.execution_history import ExecutionHistory
 from src.configuration.system_config_repository import SystemConfigRepository
 from src.data.state.state_repository import IStateRepository
-from src.application.execution_history import ExecutionHistory
 from src.infrastructure.persistence.state.models.session_context import SessionContext
+
 
 class SqliteStateRepository(IStateRepository):
     """SQLiteベースの状態管理実装

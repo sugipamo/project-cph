@@ -1,7 +1,8 @@
 from collections import deque
 from typing import TYPE_CHECKING, Any
+
 if TYPE_CHECKING:
-    from src.domain.config_node_logic import ConfigNode
+    from src.domain.config_node import ConfigNode
 
 def init_matches(node: 'ConfigNode', value: Any):
     if isinstance(value, dict) and "aliases" in value:

@@ -1,8 +1,8 @@
 """Base composite request class."""
 from typing import Optional
 
-from src.operations.requests.request_factory import OperationRequestFoundation
 from src.operations.constants.operation_type import OperationType
+from src.operations.requests.request_factory import OperationRequestFoundation
 from src.operations.requests.request_types import RequestType
 
 

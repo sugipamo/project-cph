@@ -1,8 +1,8 @@
 """レジストリプロバイダー - グローバル状態管理の副作用を集約"""
+import re
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Generic, Optional, TypeVar
 
-import re
 T = TypeVar('T')
 
 

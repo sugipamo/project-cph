@@ -1,8 +1,8 @@
 """設定関連のバリデーションユーティリティ
 
-from src.core.configuration.config_resolver import resolve_best
 ConfigNode/resolverを使用した設定データの検証と取得を行います。
 """
+from src.configuration.config_resolver import resolve_best
 
 
 def get_steps_from_resolver(resolver, language: str, command_type: str) -> list:

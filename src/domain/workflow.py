@@ -3,9 +3,15 @@
 クリーンアーキテクチャ準拠: workflow層からinfrastructure層への直接依存を削除
 """
 from typing import Any, Optional, Protocol
+
 from src.domain.dependency import optimize_copy_steps, optimize_mkdir_steps, resolve_dependencies
-from workflow.step.step import Step, StepContext
-from workflow.step.step_generation_service import generate_steps_from_json, optimize_step_sequence, validate_step_sequence
+from src.domain.services.step_generation_service import (
+    generate_steps_from_json,
+    optimize_step_sequence,
+    validate_step_sequence,
+)
+from src.domain.step import Step, StepContext
+
 
 class CompositeRequestInterface(Protocol):
     """Composite request interface for dependency inversion"""

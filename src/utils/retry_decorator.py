@@ -3,8 +3,8 @@ import time
 from functools import wraps
 from typing import Any, Callable, Optional, Tuple, Type
 
-from src.operations.results.result import Result
 from src.operations.error_codes import ErrorCode
+from src.operations.results.result import Result
 
 
 class RetryConfig:

@@ -1,16 +1,17 @@
 """Workflow execution service to replace the removed EnvWorkflowService
-from src.core.workflow.workflow.step.workflow import create_step_context_from_env_context, generate_workflow_from_json
 Integrates workflow building, fitting, and execution
 """
 
 from typing import Optional
 
+from src.domain.step import Step, StepType
+from src.domain.workflow import create_step_context_from_env_context, generate_workflow_from_json
+from src.operations.requests.request_factory import create_request
+
 # 互換性維持: TypedExecutionConfigurationは依存性注入で提供される
 # 互換性維持: infrastructure層への直接依存を削除、依存性注入で解決
 # DebugLogger functionality now handled by src/logging UnifiedLogger
 from src.operations.requests.request_types import RequestType
-from src.operations.requests.request_factory import create_request
-from src.domain.step import Step, StepType
 from src.operations.results.__init__ import WorkflowExecutionResult
 
 

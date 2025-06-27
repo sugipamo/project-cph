@@ -14,6 +14,7 @@ class TestRequestFactory:
         self.mock_request_creator = Mock()
         self.mock_env_manager = Mock()
         self.mock_context = Mock()
+        self.mock_context.problem_name = "A"
         
         self.factory = RequestFactory(
             config_manager=self.mock_config_manager,
@@ -24,7 +25,7 @@ class TestRequestFactory:
         """Test creating mkdir file request"""
         step = Mock()
         step.type = StepType.MKDIR
-        step.path = "/test/directory"
+        step.cmd = ["/test/directory"]
         
         mock_request = Mock()
         self.mock_request_creator.create_file_request.return_value = mock_request
@@ -36,15 +37,14 @@ class TestRequestFactory:
         assert result == mock_request
         self.mock_request_creator.create_file_request.assert_called_once()
         call_args = self.mock_request_creator.create_file_request.call_args[1]
-        assert call_args['op_type'] == 'mkdir'
+        assert call_args['op_type'] == 'MKDIR'
         assert call_args['path'] == "/test/directory"
     
     def test_create_file_request_copy(self):
         """Test creating copy file request"""
         step = Mock()
         step.type = StepType.COPY
-        step.src_path = "/source/file.txt"
-        step.dst_path = "/dest/file.txt"
+        step.cmd = ["/source/file.txt", "/dest/file.txt"]
         
         mock_request = Mock()
         self.mock_request_creator.create_file_request.return_value = mock_request
@@ -56,7 +56,7 @@ class TestRequestFactory:
         assert result == mock_request
         self.mock_request_creator.create_file_request.assert_called_once()
         call_args = self.mock_request_creator.create_file_request.call_args[1]
-        assert call_args['op_type'] == 'copy'
+        assert call_args['op_type'] == 'COPY'
         assert call_args['path'] == "/source/file.txt"
         assert call_args['dst_path'] == "/dest/file.txt"
     
@@ -64,8 +64,7 @@ class TestRequestFactory:
         """Test creating move file request"""
         step = Mock()
         step.type = StepType.MOVE
-        step.src_path = "/source/file.txt"
-        step.dst_path = "/dest/file.txt"
+        step.cmd = ["/source/file.txt", "/dest/file.txt"]
         
         mock_request = Mock()
         self.mock_request_creator.create_file_request.return_value = mock_request
@@ -77,7 +76,7 @@ class TestRequestFactory:
         assert result == mock_request
         self.mock_request_creator.create_file_request.assert_called_once()
         call_args = self.mock_request_creator.create_file_request.call_args[1]
-        assert call_args['op_type'] == 'move'
+        assert call_args['op_type'] == 'MOVE'
         assert call_args['path'] == "/source/file.txt"
         assert call_args['dst_path'] == "/dest/file.txt"
     
@@ -85,7 +84,7 @@ class TestRequestFactory:
         """Test creating remove file request"""
         step = Mock()
         step.type = StepType.REMOVE
-        step.path = "/file/to/remove.txt"
+        step.cmd = ["/file/to/remove.txt"]
         
         mock_request = Mock()
         self.mock_request_creator.create_file_request.return_value = mock_request
@@ -97,15 +96,14 @@ class TestRequestFactory:
         assert result == mock_request
         self.mock_request_creator.create_file_request.assert_called_once()
         call_args = self.mock_request_creator.create_file_request.call_args[1]
-        assert call_args['op_type'] == 'remove'
+        assert call_args['op_type'] == 'REMOVE'
         assert call_args['path'] == "/file/to/remove.txt"
     
     def test_create_shell_request_run(self):
         """Test creating shell run request"""
         step = Mock()
         step.type = StepType.RUN
-        step.command = "echo 'Hello, World!'"
-        step.cwd = "/working/dir"
+        step.cmd = ["echo", "Hello, World!"]
         
         mock_request = Mock()
         self.mock_request_creator.create_shell_request.return_value = mock_request
@@ -117,15 +115,13 @@ class TestRequestFactory:
         assert result == mock_request
         self.mock_request_creator.create_shell_request.assert_called_once()
         call_args = self.mock_request_creator.create_shell_request.call_args[1]
-        assert call_args['command'] == "echo 'Hello, World!'"
-        assert call_args['cwd'] == "/working/dir"
+        assert call_args['cmd'] == ["echo", "Hello, World!"]
     
     def test_create_shell_request_chmod(self):
         """Test creating chmod request (via shell)"""
         step = Mock()
         step.type = StepType.CHMOD
-        step.path = "/file.txt"
-        step.mode = "755"
+        step.cmd = ["chmod", "755", "/file.txt"]
         
         mock_request = Mock()
         self.mock_request_creator.create_shell_request.return_value = mock_request
@@ -137,15 +133,13 @@ class TestRequestFactory:
         assert result == mock_request
         self.mock_request_creator.create_shell_request.assert_called_once()
         call_args = self.mock_request_creator.create_shell_request.call_args[1]
-        assert "chmod 755" in call_args['command']
-        assert "/file.txt" in call_args['command']
+        assert call_args['cmd'] == ["chmod", "755", "/file.txt"]
     
     def test_create_python_request(self):
         """Test creating Python execution request"""
         step = Mock()
         step.type = StepType.PYTHON
-        step.script = "print('Hello from Python')"
-        step.cwd = "/python/dir"
+        step.cmd = ["print('Hello from Python')"]
         
         mock_request = Mock()
         self.mock_request_creator.create_python_request.return_value = mock_request
@@ -157,16 +151,13 @@ class TestRequestFactory:
         assert result == mock_request
         self.mock_request_creator.create_python_request.assert_called_once()
         call_args = self.mock_request_creator.create_python_request.call_args[1]
-        assert call_args['script'] == "print('Hello from Python')"
-        assert call_args['cwd'] == "/python/dir"
+        assert call_args['code_or_file'] == ["print('Hello from Python')"]
     
     def test_create_docker_build_request(self):
         """Test creating Docker build request"""
         step = Mock()
         step.type = StepType.DOCKER_BUILD
-        step.dockerfile = "Dockerfile"
-        step.image_tag = "myapp:latest"
-        step.build_context = "/build/context"
+        step.cmd = ["docker", "build", "-t", "myapp:latest", "."]
         
         mock_request = Mock()
         self.mock_request_creator.create_docker_request.return_value = mock_request
@@ -178,17 +169,14 @@ class TestRequestFactory:
         assert result == mock_request
         self.mock_request_creator.create_docker_request.assert_called_once()
         call_args = self.mock_request_creator.create_docker_request.call_args[1]
-        assert call_args['op_type'] == 'build'
-        assert call_args['dockerfile'] == "Dockerfile"
-        assert call_args['image_tag'] == "myapp:latest"
+        assert call_args['op_type'] == 'BUILD'
+        assert call_args['image'] == "myapp:latest"
     
     def test_create_docker_run_request(self):
         """Test creating Docker run request"""
         step = Mock()
         step.type = StepType.DOCKER_RUN
-        step.image = "ubuntu:latest"
-        step.container_name = "test_container"
-        step.command = "bash"
+        step.cmd = ["docker", "run", "--name", "test_container", "ubuntu:latest"]
         
         mock_request = Mock()
         self.mock_request_creator.create_docker_request.return_value = mock_request
@@ -200,16 +188,15 @@ class TestRequestFactory:
         assert result == mock_request
         self.mock_request_creator.create_docker_request.assert_called_once()
         call_args = self.mock_request_creator.create_docker_request.call_args[1]
-        assert call_args['op_type'] == 'run'
+        assert call_args['op_type'] == 'RUN'
         assert call_args['image'] == "ubuntu:latest"
-        assert call_args['container_name'] == "test_container"
+        assert call_args['container'] == "test_container"
     
     def test_create_docker_exec_request(self):
         """Test creating Docker exec request"""
         step = Mock()
         step.type = StepType.DOCKER_EXEC
-        step.container = "running_container"
-        step.command = "ls -la"
+        step.cmd = ["running_container", "ls", "-la"]
         
         mock_request = Mock()
         self.mock_request_creator.create_docker_request.return_value = mock_request
@@ -221,9 +208,9 @@ class TestRequestFactory:
         assert result == mock_request
         self.mock_request_creator.create_docker_request.assert_called_once()
         call_args = self.mock_request_creator.create_docker_request.call_args[1]
-        assert call_args['op_type'] == 'exec'
+        assert call_args['op_type'] == 'EXEC'
         assert call_args['container'] == "running_container"
-        assert call_args['command'] == "ls -la"
+        assert call_args['command'] == ["ls", "-la"]
     
     def test_unsupported_step_type(self):
         """Test handling of unsupported step type"""
@@ -243,46 +230,50 @@ class TestRequestFactory:
     
     def test_missing_required_parameter(self):
         """Test error handling for missing required parameters"""
+        # Create factory without config_manager to test error handling
+        factory_without_config = RequestFactory(
+            config_manager=None,
+            request_creator=self.mock_request_creator
+        )
+        
         step = Mock()
         step.type = StepType.MKDIR
-        # Missing required 'path' attribute
-        del step.path
+        # Missing cmd or empty cmd
+        step.cmd = []
         
         with pytest.raises(ValueError) as exc_info:
-            self.factory.create_request_from_step(
+            factory_without_config.create_request_from_step(
                 step, self.mock_context, self.mock_env_manager
             )
         
-        assert "Missing required parameter: path" in str(exc_info.value)
+        assert "No command provided for mkdir" in str(exc_info.value)
     
     def test_fallback_to_config_for_missing_command(self):
-        """Test fallback to configuration for missing command"""
+        """Test that MKDIR uses config fallback for missing command"""
         step = Mock()
-        step.type = StepType.RUN
-        # No command attribute
-        del step.command
+        step.type = StepType.MKDIR
+        # Empty cmd
+        step.cmd = []
         
-        # Set up config manager to return a command
-        self.mock_config_manager.get_formatted_string.return_value = "default command"
+        # Set up config manager to return a fallback path
+        self.mock_config_manager.resolve_config.return_value = "/fallback/path"
         
         mock_request = Mock()
-        self.mock_request_creator.create_shell_request.return_value = mock_request
+        self.mock_request_creator.create_file_request.return_value = mock_request
         
         result = self.factory.create_request_from_step(
             step, self.mock_context, self.mock_env_manager
         )
         
         assert result == mock_request
-        call_args = self.mock_request_creator.create_shell_request.call_args[1]
-        assert call_args['command'] == "default command"
+        call_args = self.mock_request_creator.create_file_request.call_args[1]
+        assert call_args['path'] == "/fallback/path"
     
     def test_debug_tag_and_name_handling(self):
-        """Test debug_tag and name are passed through"""
+        """Test debug_tag and name are generated properly"""
         step = Mock()
         step.type = StepType.TOUCH
-        step.path = "/test.txt"
-        step.debug_tag = "test_debug"
-        step.name = "test_step"
+        step.cmd = ["/test.txt"]
         
         mock_request = Mock()
         self.mock_request_creator.create_file_request.return_value = mock_request
@@ -292,5 +283,5 @@ class TestRequestFactory:
         )
         
         call_args = self.mock_request_creator.create_file_request.call_args[1]
-        assert call_args['debug_tag'] == "test_debug"
-        assert call_args['name'] == "test_step"
+        # Debug tag should include problem name from context
+        assert "A" in call_args['debug_tag']  # problem_name from mock context

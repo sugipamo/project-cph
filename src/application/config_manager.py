@@ -1,14 +1,13 @@
 """TypeSafeConfigNodeManager - 型安全な統一設定管理
 
-from src.core.configuration.config_resolver import create_config_root_from_dict
-from src.core.configuration.config_resolver import resolve_best
-from src.core.configuration.config_resolver import resolve_formatted_string
-from src.infrastructure.di_container import DIKey
 ConfigNodeによる統一処理と型安全性を確保した設定管理システム。
 24ファイルから9ファイルへの大幅簡素化と1000倍のパフォーマンス向上を実現。
 """
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, TypeVar, overload
+
+from src.configuration.config_resolver import create_config_root_from_dict, resolve_best, resolve_formatted_string
+from src.infrastructure.di_container import DIKey
 
 # 互換性維持: DIContainerはmain.pyから注入されるべき
 # 一時的な直接使用（クリーンアーキテクチャ違反要修正）

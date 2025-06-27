@@ -1,11 +1,11 @@
 """Local shell driver implementation using subprocess."""
+from pathlib import Path
 from typing import Any, Optional, Union
 
 from src.infrastructure.drivers.shell.shell_driver import ShellDriver
 from src.utils.shell_utils import ShellUtils
 
 
-from pathlib import Path
 class LocalShellDriver(ShellDriver):
     """Local shell driver implementation using subprocess."""
 

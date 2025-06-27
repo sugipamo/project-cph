@@ -1,7 +1,5 @@
 """Step実行のためのユーティリティ関数とExecutionContextクラス
 
-from src.core.configuration.config_resolver import resolve_config_value
-from src.core.workflow.workflow.step.step import Step
 このモジュールはワークフローステップの実行に必要な機能を提供する。
 主な機能:
 - テンプレート文字列の展開
@@ -14,10 +12,12 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-if TYPE_CHECKING:
-    from src.domain.step import Step
+from src.configuration.config_resolver import resolve_best
 
-from src.domain.step import StepType
+if TYPE_CHECKING:
+    pass
+
+from src.domain.step import Step, StepType
 
 
 @dataclass
@@ -296,7 +296,8 @@ def get_file_patterns_from_context(context, pattern_name: str, json_provider) ->
     # TypeSafeConfigNodeManagerからの取得を試行
     if hasattr(context, '_root_node') and context._root_node:
         try:
-            patterns = resolve_config_value(['files', pattern_name], context._root_node)
+            patterns_node = resolve_best(context._root_node, ['files', pattern_name])
+            patterns = patterns_node.value if patterns_node else None
             if isinstance(patterns, list):
                 return patterns
             if isinstance(patterns, str):

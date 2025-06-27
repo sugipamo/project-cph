@@ -1,7 +1,7 @@
 """Mock python driver for testing."""
 from typing import Optional
 
-from src.infrastructure.drivers.python.mock_python_driver import PythonDriver
+from src.infrastructure.drivers.python.python_driver import PythonDriver
 
 
 class MockPythonDriver(PythonDriver):

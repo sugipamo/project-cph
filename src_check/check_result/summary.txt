@@ -10,7 +10,7 @@ type_hints: OK
 remnant_cleaners: OK
 import_fixers: NG(2件)
 import_dependency_reorganizer: OK
-file_organizers_error: OK
+file_organizers_logical: OK
 argument_processors: OK
 
-実行時刻: 2025-06-27 17:43:52
+実行時刻: 2025-06-27 18:21:19

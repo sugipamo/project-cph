@@ -1,7 +1,9 @@
 """Exception for composite step failures."""
 import uuid
 from typing import Any, Optional
+
 from src.operations.error_codes import ErrorCode, ErrorSuggestion, classify_error
+
 
 class CompositeStepFailureError(Exception):
     """Exception raised when a composite step fails."""

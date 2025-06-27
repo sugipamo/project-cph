@@ -1,5 +1,7 @@
 from typing import Any, Optional
+
 from src.domain.config_node_logic import add_edge, find_nearest_key_node, next_nodes_with_key, path
+
 
 class ConfigNode:
 

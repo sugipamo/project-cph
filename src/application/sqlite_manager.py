@@ -1,10 +1,11 @@
 """SQLite database manager for connection and schema management."""
+import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
 from src.infrastructure.sqlite_provider import SystemSQLiteProvider
-import sqlite3
+
 if TYPE_CHECKING:
     import sqlite3
 

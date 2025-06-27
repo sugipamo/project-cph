@@ -2,9 +2,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Optional, Union
+
 if TYPE_CHECKING:
-    from src.utils.format_info import FormatInfo
     from src.application.output_manager import OutputManager
+    from src.utils.format_info import FormatInfo
 
 class LogLevel(Enum):
     DEBUG = auto()

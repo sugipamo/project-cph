@@ -9,7 +9,7 @@ class TestWorkflow:
     def setup_method(self):
         """Set up test fixtures"""
         # Import here to avoid import errors
-        from workflow.step.step import StepContext
+        from src.domain.step import StepContext
         self.mock_context = StepContext(
             contest_name="ABC100",
             problem_name="A",
@@ -28,7 +28,7 @@ class TestWorkflow:
         self.mock_operations = Mock()
         self.mock_composite_factory = Mock()
     
-    @patch('src.domain.workflow.generate_steps_from_json')
+    @patch('src.domain.services.step_generation_service.generate_steps_from_json')
     def test_generate_workflow_from_json_success(self, mock_generate):
         """Test successful workflow generation from JSON"""
         from src.domain.workflow import generate_workflow_from_json
@@ -123,12 +123,13 @@ class TestWorkflow:
         mock_composite = Mock()
         mock_composite.requests = [Mock(), Mock()]
         
-        is_valid, validation_errors = validate_workflow_execution(
+        is_valid, validation_messages = validate_workflow_execution(
             mock_composite, [], []
         )
         
         assert is_valid is True
-        assert validation_errors == []
+        assert len(validation_messages) == 1
+        assert "Generated 2 executable requests" in validation_messages[0]
     
     def test_validate_workflow_execution_with_errors(self):
         """Test workflow execution validation with existing errors"""
@@ -137,17 +138,18 @@ class TestWorkflow:
         mock_composite = Mock()
         mock_composite.requests = []
         
-        is_valid, validation_errors = validate_workflow_execution(
+        is_valid, validation_messages = validate_workflow_execution(
             mock_composite, ["Previous error"], []
         )
         
         assert is_valid is False
-        assert "Previous error" in validation_errors
+        assert "Found 1 errors:" in validation_messages[0]
+        assert "  - Previous error" in validation_messages[1]
     
     def test_steps_to_requests(self):
         """Test conversion of steps to requests"""
         from src.domain.workflow import steps_to_requests
-        from workflow.step.step import Step
+        from src.domain.step import Step
         
         # Create mock steps
         mock_step1 = Mock(spec=Step)

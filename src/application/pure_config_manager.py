@@ -1,13 +1,13 @@
 """純粋なConfiguration層の実装
 
-from src.core.configuration.config_node import ConfigNode as ConfigNodeClass
-from src.core.configuration.config_resolver import create_config_root_from_dict as create_func
-from src.core.configuration.config_resolver import resolve_best
-from src.core.configuration.config_resolver import resolve_formatted_string
 副作用を排除し、設定データの解析とアクセスのみに責務を限定した
 Configuration層の実装です。
 """
 from typing import Any, Dict, List, Optional, Type, TypeVar
+
+from src.domain.config_node import ConfigNode as ConfigNodeClass
+from src.configuration.config_resolver import create_config_root_from_dict as create_func
+from src.configuration.config_resolver import resolve_best, resolve_formatted_string
 
 # 遅延インポートで循環依存を回避
 ConfigNode = None

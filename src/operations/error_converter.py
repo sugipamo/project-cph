@@ -4,7 +4,9 @@ This module contains all try-catch logic confined to the infrastructure layer,
 following CLAUDE.md rules that side effects should only exist in infrastructure.
 """
 from typing import Any, Callable, TypeVar
+
 from src.operations.results.base_result import InfrastructureResult
+
 T = TypeVar('T')
 
 class ErrorConverter:

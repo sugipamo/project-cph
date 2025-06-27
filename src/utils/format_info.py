@@ -1,7 +1,10 @@
 import re
 from dataclasses import dataclass
 from typing import Optional
+
+from src.application.color_manager import apply_color
 from src.utils.types import LogFormatType
+
 
 @dataclass
 class FormatInfo:

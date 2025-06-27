@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import List, Set, Dict, Optional
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional, Set
 
 
 @dataclass

@@ -1,12 +1,14 @@
 """Application Logger Adapter - bridges src/logging with LoggerInterface."""
 import contextlib
 import uuid
+from types import LogLevel
 from typing import Any, Optional
+
 from src.infrastructure.di_container import DIContainer
 from src.operations.interfaces.logger_interface import LoggerInterface
-from src.utils.format_info import FormatInfo
 from src.operations.interfaces.output_manager_interface import OutputManagerInterface
-from types import LogLevel
+from src.utils.format_info import FormatInfo
+
 
 class ApplicationLoggerAdapter(LoggerInterface):
     """Adapter that implements LoggerInterface using src/logging OutputManager."""

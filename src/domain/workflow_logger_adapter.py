@@ -1,10 +1,12 @@
 """Workflow Logger Adapter - bridges src/logging with workflow-specific logging."""
 import contextlib
 from typing import Any, ClassVar, Optional
+
 from src.infrastructure.di_container import DIContainer
-from src.utils.format_info import FormatInfo
 from src.operations.interfaces.output_manager_interface import OutputManagerInterface
+from src.utils.format_info import FormatInfo
 from src.utils.types import LogLevel
+
 
 class WorkflowLoggerAdapter:
     """Adapter that provides workflow-specific logging using src/logging OutputManager."""

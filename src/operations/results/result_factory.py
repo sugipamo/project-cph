@@ -3,7 +3,9 @@ import json
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
+
 from src.operations.results.base_result import InfrastructureResult
+
 if TYPE_CHECKING:
     from src.operations.results.__init__ import ErrorConverter
 

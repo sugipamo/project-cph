@@ -1,9 +1,11 @@
 """Contest management system for handling contest_current backup and state detection."""
 from typing import Dict, List, Optional
-from src.infrastructure.requests.file.file_op_type import FileOpType
-from src.operations.requests.file_request import FileRequest
+
 from src.configuration.system_config_loader import SystemConfigLoader
 from src.infrastructure.di_container import DIKey
+from src.infrastructure.requests.file.file_op_type import FileOpType
+from src.operations.requests.file_request import FileRequest
+
 
 class ContestManager:
     """Manages contest state detection and backup operations."""
@@ -23,7 +25,16 @@ class ContestManager:
         """Lazy load env_json from config loader with shared config."""
         if not self._env_json:
             shared_path = 'contest_env/shared/env.json'
-            req = FileRequest(op=FileOpType.READ, path=shared_path, content=None, dst_path=None, debug_tag='load_shared_env', name='load_shared_env_json')
+            req = FileRequest(
+                op=FileOpType.READ,
+                path=shared_path,
+                content=None,
+                dst_path=None,
+                debug_tag='load_shared_env',
+                name='load_shared_env_json',
+                allow_failure=False,
+                time_ops=None
+            )
             result = req.execute_operation(driver=self.file_driver, logger=self.logger)
             if result.success:
                 shared_config = self.json_provider.loads(result.content)

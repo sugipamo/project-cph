@@ -4,7 +4,6 @@ import shlex
 from abc import abstractmethod
 from typing import Any, Optional, Union
 
-from src.infrastructure.drivers.generic.base_driver import ExecutionDriverInterface
 from src.infrastructure.drivers.docker.utils.docker_naming import (
     build_docker_build_command,
     build_docker_remove_command,
@@ -13,8 +12,9 @@ from src.infrastructure.drivers.docker.utils.docker_naming import (
     parse_container_names,
 )
 from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
-from src.operations.results.__init__ import LocalShellDriver
+from src.infrastructure.drivers.generic.base_driver import ExecutionDriverInterface
 from src.operations.requests.shell_request import ShellRequest
+from src.operations.results.__init__ import LocalShellDriver
 
 
 class DockerDriver(ExecutionDriverInterface):

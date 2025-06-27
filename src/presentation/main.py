@@ -5,11 +5,10 @@
 2. Configuration層の純粋化された設定管理
 3. 上位層への依存性注入
 """
-from src.operations.results.__init__ import main
 from src.application.pure_config_manager import PureConfigManager
-from src.operations.results.__init__ import build_infrastructure
 from src.application.services.config_loader_service import ConfigLoaderService
 from src.infrastructure.di_container import DIKey
+from src.operations.results.__init__ import build_infrastructure, main
 from src.presentation.docker_command_builder import set_config_manager
 
 if __name__ == "__main__":

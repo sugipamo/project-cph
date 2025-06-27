@@ -2,48 +2,44 @@
 from pathlib import Path
 from typing import Any
 
-from src.infrastructure.di_container import DIContainer, DIKey
-
-
-from src.infrastructure.di_container import DIKey
-from src.infrastructure.drivers.docker.docker_driver import LocalDockerDriver
-from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
-from src.operations.results.__init__ import LocalFileSystem
-from src.application.mock_output_manager import MockOutputManager
-from src.application.output_manager import OutputManager
-from src.operations.results.__init__ import UnifiedLogger
-from src.operations.results.__init__ import ApplicationLoggerAdapter
-from src.domain.workflow_logger_adapter import WorkflowLoggerAdapter
-from src.utils.types import LogLevel
-from src.operations.results.__init__ import SQLitePersistenceDriver
-from src.infrastructure.drivers.python.mock_python_driver import LocalPythonDriver
-from src.operations.results.__init__ import LocalShellDriver
-from src.infrastructure.drivers.generic.unified_driver import UnifiedDriver
-from src.configuration.environment_manager import EnvironmentManager
-from src.infrastructure.drivers.docker.mock_docker_driver import MockDockerDriver
-from src.infrastructure.drivers.file.mock_file_driver import MockFileDriver
-from src.infrastructure.drivers.python.mock_python_driver import MockPythonDriver
-from src.infrastructure.drivers.shell.mock_shell_driver import MockShellDriver
-from src.configuration.configuration_repository import ConfigurationRepository
 from src.application.contest_manager import ContestManager
 from src.application.fast_sqlite_manager import FastSQLiteManager
-from src.operations.results.__init__ import DockerContainerRepository
+from src.application.mock_output_manager import MockOutputManager
+from src.application.output_manager import OutputManager
+from src.application.sqlite_manager import SQLiteManager
+from src.configuration.configuration_repository import ConfigurationRepository
+from src.configuration.environment_manager import EnvironmentManager
+from src.configuration.system_config_repository import SystemConfigRepository
 from src.data.docker_image.docker_image_repository import DockerImageRepository
 from src.data.operation.operation_repository import OperationRepository
-from src.operations.results.__init__ import SessionRepository
-from src.configuration.system_config_repository import SystemConfigRepository
-from src.application.sqlite_manager import SQLiteManager
-from src.operations.results.__init__ import SystemConfigLoader
-from src.infrastructure.json_provider import MockJsonProvider
-from src.infrastructure.os_provider import MockOsProvider
-from src.infrastructure.sqlite_provider import MockSQLiteProvider
-from src.utils.sys_provider import MockSysProvider
-from src.infrastructure.json_provider import SystemJsonProvider
-from src.infrastructure.os_provider import SystemOsProvider
-from src.infrastructure.sqlite_provider import SystemSQLiteProvider
-from src.utils.sys_provider import SystemSysProvider
+from src.domain.workflow_logger_adapter import WorkflowLoggerAdapter
+from src.infrastructure.di_container import DIContainer, DIKey
+from src.infrastructure.drivers.docker.docker_driver import LocalDockerDriver
+from src.infrastructure.drivers.docker.mock_docker_driver import MockDockerDriver
+from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
+from src.infrastructure.drivers.file.mock_file_driver import MockFileDriver
+from src.infrastructure.drivers.generic.unified_driver import UnifiedDriver
+from src.infrastructure.drivers.python.mock_python_driver import LocalPythonDriver, MockPythonDriver
+from src.infrastructure.drivers.shell.mock_shell_driver import MockShellDriver
+from src.infrastructure.json_provider import MockJsonProvider, SystemJsonProvider
+from src.infrastructure.os_provider import MockOsProvider, SystemOsProvider
+from src.infrastructure.sqlite_provider import MockSQLiteProvider, SystemSQLiteProvider
 from src.operations.requests.request_factory import RequestFactory
+from src.operations.results.__init__ import (
+    ApplicationLoggerAdapter,
+    DockerContainerRepository,
+    LocalFileSystem,
+    LocalShellDriver,
+    SessionRepository,
+    SQLitePersistenceDriver,
+    SystemConfigLoader,
+    UnifiedLogger,
+)
+from src.utils.sys_provider import MockSysProvider, SystemSysProvider
+from src.utils.types import LogLevel
 from tests.base.mock_filesystem import MockFileSystem
+
+
 def _create_shell_driver(file_driver: Any) -> Any:
     """Lazy factory for shell driver."""
     return LocalShellDriver(file_driver=file_driver)

@@ -49,7 +49,7 @@ class TestStepRunner:
     def test_expand_template_with_dict_context(self):
         """Test template expansion with dictionary context"""
         template = "{greeting} {name}!"
-        context = Mock()
+        context = MagicMock(spec=['to_dict'])
         context.to_dict.return_value = {"greeting": "Hello", "name": "World"}
         
         result = expand_template(template, context)
@@ -207,34 +207,30 @@ class TestStepRunner:
             
             result = create_step(
                 json_step,
-                self.execution_context,
-                self.mock_json_provider,
-                self.mock_os_provider
+                self.execution_context
             )
             
             assert result == mock_step
             mock_step_class.assert_called_once()
     
-    @patch('src.domain.step_runner.expand_when_condition')
-    def test_create_step_with_when_condition_false(self, mock_expand_when):
-        """Test step creation when 'when' condition is false"""
+    def test_create_step_with_when_condition_false(self):
+        """Test step creation with when condition - condition is stored but not evaluated during creation"""
         json_step = {
             "name": "conditional_step",
             "type": "shell",
-            "cmd": "echo 'should not run'",
+            "cmd": ["echo", "should not run"],
             "when": "test -d /nonexistent"
         }
         
-        mock_expand_when.return_value = (False, None)
-        
         result = create_step(
             json_step,
-            self.execution_context,
-            self.mock_json_provider,
-            self.mock_os_provider
+            self.execution_context
         )
         
-        assert result is None
+        # Step is created with when condition stored
+        assert result is not None
+        assert result.when == "test -d /nonexistent"
+        assert result.name == "conditional_step"
     
     def test_execution_context_to_dict(self):
         """Test ExecutionContext conversion to dictionary"""

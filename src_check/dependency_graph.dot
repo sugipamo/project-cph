@@ -1,0 +1,84 @@
+digraph DependencyGraph {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  
+  "src.infrastructure.drivers.python.mock_python_driver" [fillcolor="#ffcdd2", style=filled];
+  "src.configuration.di_config" [fillcolor="#cfe2ff", style=filled];
+  "src.operations.requests.shell_request" [fillcolor="#cfe2ff", style=filled];
+  "src.infrastructure.drivers.generic.unified_driver" [fillcolor="#cfe2ff", style=filled];
+  "src.operations.requests.file_request" [fillcolor="#cfe2ff", style=filled];
+  "src.presentation.cli_app" [fillcolor="#cfe2ff", style=filled];
+  "src.presentation.main" [fillcolor="#cfe2ff", style=filled];
+  "src.operations.requests.docker_request" [fillcolor="#cfe2ff", style=filled];
+  "src.logging.unified_logger" [fillcolor="#cfe2ff", style=filled];
+  "src.infrastructure.drivers.docker.docker_driver" [fillcolor="#cfe2ff", style=filled];
+  "src.utils.types" [fillcolor="#fff3cd", style=filled];
+  
+  "src.presentation.main" -> "src.application.pure_config_manager";
+  "src.presentation.main" -> "src.application.services.config_loader_service";
+  "src.presentation.main" -> "src.infrastructure.di_container";
+  "src.presentation.main" -> "src.operations.requests.request_factory";
+  "src.presentation.main" -> "src.operations.results.__init__";
+  "src.presentation.main" -> "src.presentation.docker_command_builder";
+  "src.presentation.cli_app" -> "src.domain.services.workflow_execution_service";
+  "src.presentation.cli_app" -> "src.infrastructure.di_container";
+  "src.presentation.cli_app" -> "src.operations.error_codes";
+  "src.presentation.cli_app" -> "src.operations.results.__init__";
+  "src.presentation.cli_app" -> "src.presentation.user_input_parser_integration";
+  "src.logging.unified_logger" -> "src.infrastructure.di_container";
+  "src.logging.unified_logger" -> "src.operations.interfaces.logger_interface";
+  "src.logging.unified_logger" -> "src.operations.interfaces.output_manager_interface";
+  "src.logging.unified_logger" -> "src.utils.format_info";
+  "src.logging.unified_logger" -> "src.utils.types";
+  "src.configuration.di_config" -> "src.application.contest_manager";
+  "src.configuration.di_config" -> "src.application.fast_sqlite_manager";
+  "src.configuration.di_config" -> "src.application.mock_output_manager";
+  "src.configuration.di_config" -> "src.application.output_manager";
+  "src.configuration.di_config" -> "src.application.sqlite_manager";
+  "src.configuration.di_config" -> "src.configuration.configuration_repository";
+  "src.configuration.di_config" -> "src.configuration.environment_manager";
+  "src.configuration.di_config" -> "src.configuration.system_config_repository";
+  "src.configuration.di_config" -> "src.data.docker_image.docker_image_repository";
+  "src.configuration.di_config" -> "src.data.operation.operation_repository";
+  "src.infrastructure.drivers.docker.docker_driver" -> "src.infrastructure.drivers.docker.utils.docker_naming";
+  "src.infrastructure.drivers.docker.docker_driver" -> "src.infrastructure.drivers.file.local_file_driver";
+  "src.infrastructure.drivers.docker.docker_driver" -> "src.infrastructure.drivers.generic.base_driver";
+  "src.infrastructure.drivers.docker.docker_driver" -> "src.operations.requests.shell_request";
+  "src.infrastructure.drivers.docker.docker_driver" -> "src.operations.results.__init__";
+  "src.infrastructure.drivers.generic.unified_driver" -> "src.infrastructure.di_container";
+  "src.infrastructure.drivers.generic.unified_driver" -> "src.infrastructure.requests.file.file_op_type";
+  "src.infrastructure.drivers.generic.unified_driver" -> "src.operations.interfaces.logger_interface";
+  "src.infrastructure.drivers.generic.unified_driver" -> "src.operations.requests.request_factory";
+  "src.infrastructure.drivers.generic.unified_driver" -> "src.operations.requests.request_types";
+  "src.infrastructure.drivers.generic.unified_driver" -> "src.operations.results.__init__";
+  "src.infrastructure.drivers.generic.unified_driver" -> "src.operations.results.result";
+  "src.infrastructure.drivers.generic.unified_driver" -> "src.operations.results.shell_result";
+  "src.operations.requests.shell_request" -> "src.operations.constants.operation_type";
+  "src.operations.requests.shell_request" -> "src.operations.error_codes";
+  "src.operations.requests.shell_request" -> "src.operations.requests.request_factory";
+  "src.operations.requests.shell_request" -> "src.operations.requests.request_types";
+  "src.operations.requests.shell_request" -> "src.operations.results.result";
+  "src.operations.requests.docker_request" -> "src.operations.constants.operation_type";
+  "src.operations.requests.docker_request" -> "src.operations.requests.request_factory";
+  "src.operations.requests.docker_request" -> "src.operations.requests.request_types";
+  "src.operations.requests.docker_request" -> "src.operations.results.__init__";
+  "src.operations.requests.docker_request" -> "src.operations.results.result";
+  "src.operations.requests.file_request" -> "src.domain.composite_step_failure";
+  "src.operations.requests.file_request" -> "src.infrastructure.requests.file.file_op_type";
+  "src.operations.requests.file_request" -> "src.operations.constants.operation_type";
+  "src.operations.requests.file_request" -> "src.operations.requests.request_factory";
+  "src.operations.requests.file_request" -> "src.operations.requests.request_types";
+  "src.operations.requests.file_request" -> "src.operations.results.file_result";
+  
+  // Circular dependencies
+  edge [color=red, style=bold];
+  "src.infrastructure.drivers.python.mock_python_driver" -> "src.infrastructure.drivers.python.mock_python_driver" [color=red];
+  
+  // TYPE_CHECKING dependencies
+  edge [color=orange, style=dashed];
+  "src.domain.step_runner" -> "src.domain.step" [color=orange, style=dashed];
+  "src.domain.config_node_logic" -> "src.domain.config_node_logic" [color=orange, style=dashed];
+  "src.utils.types" -> "src.application.output_manager" [color=orange, style=dashed];
+  "src.utils.types" -> "src.utils.format_info" [color=orange, style=dashed];
+  "src.operations.results.result_factory" -> "src.operations.results.__init__" [color=orange, style=dashed];
+}

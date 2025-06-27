@@ -1,9 +1,9 @@
 """SQLiteプロバイダー - 副作用を集約"""
+import sqlite3
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 
-import sqlite3
 class SQLiteProvider(ABC):
     """SQLite操作の抽象インターフェース"""
 

@@ -1,9 +1,9 @@
 """OSプロバイダー - 副作用を集約"""
+import os
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
 
-import os
 class OsProvider(ABC):
     """OS操作の抽象インターフェース"""
 

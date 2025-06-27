@@ -1,12 +1,12 @@
 """Mock file driver for testing behavior verification."""
+from contextlib import contextmanager
+from io import StringIO
 from pathlib import Path
 from typing import Any, Optional
 
 from src.infrastructure.drivers.file.local_file_driver import FileDriver
 
 
-from contextlib import contextmanager
-from io import StringIO
 class MockFileDriver(FileDriver):
     """Mock driver for behavior verification
     - Detailed operation history recording

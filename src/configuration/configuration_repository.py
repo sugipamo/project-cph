@@ -2,9 +2,10 @@
 from pathlib import Path
 from typing import Dict, Optional
 
-
 from src.infrastructure.json_provider import SystemJsonProvider
 from src.infrastructure.sqlite_provider import SystemSQLiteProvider
+
+
 class ConfigurationRepository:
     """設定データの永続化とアクセスを担当
 

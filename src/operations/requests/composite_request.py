@@ -1,14 +1,13 @@
 """Composite request implementation."""
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Optional
 
-from src.operations.requests.request_factory import OperationRequestFoundation
 from src.domain.base_composite_request import CompositeRequestFoundation
-from src.operations.results.__init__ import CompositeStructure
+from src.operations.requests.request_factory import OperationRequestFoundation
 from src.operations.requests.request_types import RequestType
-from src.operations.results.__init__ import ExecutionInterface
+from src.operations.results.__init__ import CompositeStructure, ExecutionInterface
 
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
 class CompositeRequest(CompositeRequestFoundation):
     """Composite request that contains multiple sub-requests."""
 
