@@ -3,13 +3,10 @@ import sqlite3
 import threading
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 from src.infrastructure.sqlite_provider import SystemSQLiteProvider
 from src.operations.results.result import OperationResult, ValidationResult
-
-if TYPE_CHECKING:
-    import sqlite3
 
 
 class PersistenceError(Exception):

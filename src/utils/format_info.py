@@ -3,12 +3,12 @@ from dataclasses import dataclass
 from typing import Optional
 
 from src.application.color_manager import apply_color
-from src.utils.types import LogFormatType
+from src.utils.log_format_type import LogFormatType
 
 
 @dataclass
 class FormatInfo:
-    formattype: 'LogFormatType' = None
+    formattype: Optional[LogFormatType] = None
     color: Optional[str] = None
     bold: bool = False
     indent: int = 0

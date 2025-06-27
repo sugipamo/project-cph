@@ -1,16 +1,13 @@
 """Unified logger that combines all logging functionality."""
 import re
 import uuid
-from typing import TYPE_CHECKING, Any, ClassVar, Optional
+from typing import Any, ClassVar, Optional
 
 from src.infrastructure.di_container import DIContainer
-from src.utils.types import LogLevel
-
-if TYPE_CHECKING:
-    pass
 from src.operations.interfaces.logger_interface import LoggerInterface
 from src.operations.interfaces.output_manager_interface import OutputManagerInterface
 from src.utils.format_info import FormatInfo
+from src.utils.types import LogLevel
 
 
 class UnifiedLogger(LoggerInterface):

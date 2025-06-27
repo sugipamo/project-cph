@@ -3,9 +3,10 @@ from datetime import datetime
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Optional, Union
 
+from src.utils.format_info import FormatInfo
+
 if TYPE_CHECKING:
-    from src.application.output_manager import OutputManager
-    from src.utils.format_info import FormatInfo
+    from src.operations.interfaces.output_manager_interface import OutputManagerInterface
 
 class LogLevel(Enum):
     DEBUG = auto()
@@ -14,17 +15,12 @@ class LogLevel(Enum):
     ERROR = auto()
     CRITICAL = auto()
 
-class LogFormatType(Enum):
-    RAW = auto()
-    PLAIN = auto()
-    CUSTOM = auto()
-
 @dataclass(frozen=True)
 class LogEntry:
-    content: Union[str, 'OutputManager']
+    content: Union[str, 'OutputManagerInterface']
     level: LogLevel = LogLevel.INFO
     timestamp: datetime = field(default_factory=datetime.now)
-    formatinfo: Optional['FormatInfo'] = None
+    formatinfo: Optional[FormatInfo] = None
 
     @property
     def formatted_content(self) -> str:

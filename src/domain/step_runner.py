@@ -10,13 +10,9 @@
 import glob
 import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from src.configuration.config_resolver import resolve_best
-
-if TYPE_CHECKING:
-    pass
-
 from src.domain.step import Step, StepType
 
 

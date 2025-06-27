@@ -2,12 +2,10 @@
 import json
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
+from src.operations.error_converter import ErrorConverter
 from src.operations.results.base_result import InfrastructureResult
-
-if TYPE_CHECKING:
-    from src.operations.results.__init__ import ErrorConverter
 
 class ResultFactory:
     """Factory service for creating standardized result objects.
@@ -16,7 +14,7 @@ class ResultFactory:
     ensuring consistent result structure and avoiding scattered result creation code.
     """
 
-    def __init__(self, error_converter: 'ErrorConverter'):
+    def __init__(self, error_converter: ErrorConverter):
         """Initialize result factory.
 
         Args:

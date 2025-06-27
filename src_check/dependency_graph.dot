@@ -2,17 +2,17 @@ digraph DependencyGraph {
   rankdir=LR;
   node [shape=box, style=rounded];
   
-  "src.operations.requests.shell_request" [fillcolor="#cfe2ff", style=filled];
-  "src.utils.types" [fillcolor="#fff3cd", style=filled];
-  "src.presentation.cli_app" [fillcolor="#cfe2ff", style=filled];
-  "src.configuration.di_config" [fillcolor="#cfe2ff", style=filled];
-  "src.presentation.main" [fillcolor="#cfe2ff", style=filled];
-  "src.infrastructure.drivers.python.mock_python_driver" [fillcolor="#ffcdd2", style=filled];
-  "src.infrastructure.drivers.generic.unified_driver" [fillcolor="#cfe2ff", style=filled];
-  "src.operations.requests.file_request" [fillcolor="#cfe2ff", style=filled];
-  "src.logging.unified_logger" [fillcolor="#cfe2ff", style=filled];
-  "src.operations.requests.docker_request" [fillcolor="#cfe2ff", style=filled];
   "src.infrastructure.drivers.docker.docker_driver" [fillcolor="#cfe2ff", style=filled];
+  "src.presentation.main" [fillcolor="#cfe2ff", style=filled];
+  "src.presentation.cli_app" [fillcolor="#cfe2ff", style=filled];
+  "src.operations.requests.file_request" [fillcolor="#cfe2ff", style=filled];
+  "src.infrastructure.drivers.python.mock_python_driver" [fillcolor="#ffcdd2", style=filled];
+  "src.operations.requests.shell_request" [fillcolor="#cfe2ff", style=filled];
+  "src.operations.requests.docker_request" [fillcolor="#cfe2ff", style=filled];
+  "src.utils.types" [fillcolor="#fff3cd", style=filled];
+  "src.infrastructure.drivers.generic.unified_driver" [fillcolor="#cfe2ff", style=filled];
+  "src.logging.unified_logger" [fillcolor="#cfe2ff", style=filled];
+  "src.configuration.di_config" [fillcolor="#cfe2ff", style=filled];
   
   "src.presentation.main" -> "src.application.pure_config_manager";
   "src.presentation.main" -> "src.application.services.config_loader_service";

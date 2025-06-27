@@ -2,12 +2,9 @@
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 from src.infrastructure.sqlite_provider import SystemSQLiteProvider
-
-if TYPE_CHECKING:
-    import sqlite3
 
 
 class SQLiteManager:
