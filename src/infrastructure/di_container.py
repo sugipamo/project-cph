@@ -11,6 +11,7 @@ class DIKey(Enum):
     SHELL_DRIVER = "shell_driver"
     DOCKER_DRIVER = "docker_driver"
     PYTHON_DRIVER = "python_driver"
+    SHELL_PYTHON_DRIVER = "shell_python_driver"
     PERSISTENCE_DRIVER = "persistence_driver"
 
     # Providers (副作用集約)

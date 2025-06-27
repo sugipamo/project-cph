@@ -1,5 +1,6 @@
 import pytest
 from src.domain.config_node import ConfigNode
+from src.domain.config_node_service import add_edge, path, next_nodes_with_key, find_nearest_key_node
 
 
 class TestConfigNode:
@@ -15,7 +16,7 @@ class TestConfigNode:
         parent = ConfigNode("parent", {})
         child = ConfigNode("child", {"data": "test"})
         
-        parent.add_edge(child)
+        add_edge(parent, child)
         
         assert child.parent == parent
         assert child in parent.next_nodes
@@ -26,10 +27,10 @@ class TestConfigNode:
         parent = ConfigNode("parent", {})
         child = ConfigNode("child", {})
         
-        parent.add_edge(child)
+        add_edge(parent, child)
         
         with pytest.raises(ValueError, match="重複したエッジは許可されていません"):
-            parent.add_edge(child)
+            add_edge(parent, child)
 
     def test_repr(self):
         node = ConfigNode("test_key", {"value": 123})
@@ -46,8 +47,8 @@ class TestConfigNode:
         child1 = ConfigNode("child1", {})
         child2 = ConfigNode("child2", {})
         
-        parent.add_edge(child1)
-        parent.add_edge(child2)
+        add_edge(parent, child1)
+        add_edge(parent, child2)
         
         assert "next_nodes=['child1', 'child2']" in repr(parent)
 
@@ -57,21 +58,21 @@ class TestConfigNode:
         child2 = ConfigNode("child2", {})
         child3 = ConfigNode("special", {})
         
-        parent.add_edge(child1)
-        parent.add_edge(child2)
-        parent.add_edge(child3)
+        add_edge(parent, child1)
+        add_edge(parent, child2)
+        add_edge(parent, child3)
         
         # Test finding by exact key
-        results = parent.next_nodes_with_key("child1")
+        results = next_nodes_with_key(parent, "child1")
         assert len(results) == 1
         assert results[0] == child1
         
         # Test wildcard match - '*' needs to be the search key
-        results = parent.next_nodes_with_key("*")
+        results = next_nodes_with_key(parent, "*")
         assert len(results) == 3  # All nodes match due to '*' in matches
         
         # Test no match
-        results = parent.next_nodes_with_key("nonexistent")
+        results = next_nodes_with_key(parent, "nonexistent")
         assert len(results) == 0
 
     def test_path(self):
@@ -79,12 +80,12 @@ class TestConfigNode:
         level1 = ConfigNode("level1", {})
         level2 = ConfigNode("level2", {})
         
-        root.add_edge(level1)
-        level1.add_edge(level2)
+        add_edge(root, level1)
+        add_edge(level1, level2)
         
-        assert root.path() == []
-        assert level1.path() == ["level1"]
-        assert level2.path() == ["level1", "level2"]
+        assert path(root) == []
+        assert path(level1) == ["level1"]
+        assert path(level2) == ["level1", "level2"]
 
     def test_find_nearest_key_node(self):
         root = ConfigNode("root", {})
@@ -92,17 +93,17 @@ class TestConfigNode:
         branch2 = ConfigNode("branch2", {})
         target = ConfigNode("target", {})
         
-        root.add_edge(branch1)
-        root.add_edge(branch2)
-        branch2.add_edge(target)
+        add_edge(root, branch1)
+        add_edge(root, branch2)
+        add_edge(branch2, target)
         
         # Find from root
-        results = root.find_nearest_key_node("target")
+        results = find_nearest_key_node(root, "target")
         assert len(results) == 1
         assert results[0] == target
         
         # Find from branch1 (shouldn't find anything)
-        results = branch1.find_nearest_key_node("nonexistent")
+        results = find_nearest_key_node(branch1, "nonexistent")
         assert len(results) == 0
 
     def test_value_none(self):

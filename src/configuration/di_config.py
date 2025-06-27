@@ -14,13 +14,15 @@ from src.data.docker_image.docker_image_repository import DockerImageRepository
 from src.data.operation.operation_repository import OperationRepository
 from src.domain.workflow_logger_adapter import WorkflowLoggerAdapter
 from src.infrastructure.di_container import DIContainer, DIKey
-from src.infrastructure.drivers.docker.docker_driver import LocalDockerDriver
-from src.infrastructure.drivers.docker.mock_docker_driver import MockDockerDriver
+from src.infrastructure.drivers.docker.docker_driver import DockerDriver
 from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
-from src.infrastructure.drivers.file.mock_file_driver import MockFileDriver
 from src.infrastructure.drivers.generic.unified_driver import UnifiedDriver
-from src.infrastructure.drivers.python.mock_python_driver import LocalPythonDriver, MockPythonDriver
-from src.infrastructure.drivers.shell.mock_shell_driver import MockShellDriver
+from src.infrastructure.drivers.python.python_driver import LocalPythonDriver
+from src.infrastructure.drivers.shell_python_driver import LocalShellPythonDriver
+from src_check.mocks.drivers.mock_docker_driver import MockDockerDriver
+from src_check.mocks.drivers.mock_file_driver import MockFileDriver
+from src_check.mocks.drivers.mock_python_driver import MockPythonDriver
+from src_check.mocks.drivers.mock_shell_driver import MockShellDriver
 from src.infrastructure.json_provider import MockJsonProvider, SystemJsonProvider
 from src.infrastructure.os_provider import MockOsProvider, SystemOsProvider
 from src.infrastructure.sqlite_provider import MockSQLiteProvider, SystemSQLiteProvider
@@ -46,9 +48,9 @@ def _create_shell_driver(file_driver: Any) -> Any:
 
 
 def _create_docker_driver(container: Any) -> Any:
-    """Lazy factory for docker driver."""
+    """Lazy factory for docker driver with tracking."""
     file_driver = container.resolve(DIKey.FILE_DRIVER)
-    return LocalDockerDriver(file_driver)
+    return DockerDriver(file_driver, di_container=container)
 
 
 def _create_file_driver() -> Any:
@@ -65,6 +67,13 @@ def _create_python_driver(container: Any) -> Any:
 def _create_persistence_driver() -> Any:
     """Lazy factory for persistence driver."""
     return SQLitePersistenceDriver()
+
+
+def _create_shell_python_driver(container: Any) -> Any:
+    """Lazy factory for combined shell/python driver."""
+    config_manager = container.resolve(DIKey.CONFIG_MANAGER)
+    file_driver = container.resolve(DIKey.FILE_DRIVER)
+    return LocalShellPythonDriver(config_manager, file_driver)
 
 
 def _create_sqlite_manager(container: Any) -> Any:
@@ -295,10 +304,11 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.CONFIGURATION_REPOSITORY, lambda: _create_configuration_repository(container))
 
     # Register core drivers
-    container.register(DIKey.SHELL_DRIVER, lambda: _create_shell_driver(container.resolve(DIKey.FILE_DRIVER)))
+    container.register(DIKey.SHELL_PYTHON_DRIVER, lambda: _create_shell_python_driver(container))
+    container.register(DIKey.SHELL_DRIVER, lambda: container.resolve(DIKey.SHELL_PYTHON_DRIVER))
+    container.register(DIKey.PYTHON_DRIVER, lambda: container.resolve(DIKey.SHELL_PYTHON_DRIVER))
     container.register(DIKey.DOCKER_DRIVER, lambda: _create_docker_driver(container))
     container.register(DIKey.FILE_DRIVER, _create_file_driver)
-    container.register(DIKey.PYTHON_DRIVER, lambda: _create_python_driver(container))
     container.register(DIKey.PERSISTENCE_DRIVER, _create_persistence_driver)
 
     # Register persistence layer (legacy support)

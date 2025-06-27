@@ -9,7 +9,8 @@ from src.infrastructure.requests.file.file_op_type import FileOpType
 from src.operations.interfaces.logger_interface import LoggerInterface
 from src.operations.requests.request_factory import OperationRequestFoundation
 from src.operations.requests.request_types import RequestType
-from src.operations.results.__init__ import DockerResult, FileResult
+from src.operations.results.docker_result import DockerResult
+from src.operations.results.file_result import FileResult
 from src.operations.results.result import OperationResult
 from src.operations.results.shell_result import ShellResult
 
@@ -34,8 +35,7 @@ class UnifiedDriver:
         # Lazy load drivers as needed
         self._docker_driver = None
         self._file_driver = None
-        self._shell_driver = None
-        self._python_driver = None
+        self._shell_python_driver = None
 
     def _load_infrastructure_defaults(self) -> dict[str, Any]:
         """Load infrastructure defaults from config file."""
@@ -76,18 +76,21 @@ class UnifiedDriver:
         return self._file_driver
 
     @property
+    def shell_python_driver(self):
+        """Lazy load shell/python driver"""
+        if self._shell_python_driver is None:
+            self._shell_python_driver = self.infrastructure.resolve(DIKey.SHELL_PYTHON_DRIVER)
+        return self._shell_python_driver
+
+    @property
     def shell_driver(self):
-        """Lazy load shell driver"""
-        if self._shell_driver is None:
-            self._shell_driver = self.infrastructure.resolve(DIKey.SHELL_DRIVER)
-        return self._shell_driver
+        """Compatibility property for shell driver"""
+        return self.shell_python_driver
 
     @property
     def python_driver(self):
-        """Lazy load python driver"""
-        if self._python_driver is None:
-            self._python_driver = self.infrastructure.resolve(DIKey.PYTHON_DRIVER)
-        return self._python_driver
+        """Compatibility property for python driver"""
+        return self.shell_python_driver
 
     def resolve(self, key):
         """Resolve a driver by key for compatibility with PythonRequest"""
@@ -269,31 +272,15 @@ class UnifiedDriver:
             raise TypeError(f"Expected ShellRequest with 'cmd' attribute, got {type(request)}")
 
         try:
-            # Execute shell command
-            result = self.shell_driver.run(
-                cmd=request.cmd,
-                cwd=request.cwd,
-                env=request.env,
-                timeout=request.timeout
-            )
+            # Execute shell command via execute_command
+            result = self.shell_driver.execute_command(request)
 
-            # Convert driver result to ShellResult
-            # Get exit code from result if available, otherwise determine from success status
-            if hasattr(result, 'exit_code') and result.exit_code is not None:
-                exit_code = result.exit_code
-            else:
-                try:
-                    success_code = self._config_manager.resolve_config(['execution_defaults', 'exit_codes', 'success'], int)
-                    failure_code = self._config_manager.resolve_config(['execution_defaults', 'exit_codes', 'failure'], int)
-                    exit_code = success_code if result.success else failure_code
-                except KeyError as e:
-                    raise ValueError("Exit code not available and no default exit codes found in configuration") from e
-
+            # Convert CompletedProcess result to ShellResult
             return ShellResult(
-                success=result.success,
-                stdout=result.output,
-                stderr=result.error,
-                returncode=exit_code,
+                success=result.returncode == 0,
+                stdout=result.stdout,
+                stderr=result.stderr,
+                returncode=result.returncode,
                 cmd=request.cmd,
                 error_message=None,
                 exception=None,
