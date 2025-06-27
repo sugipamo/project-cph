@@ -23,4 +23,4 @@ import os  # ファイル上部に移動
 def some_function():
     return os.getcwd()
 
-実行時刻: 2025-06-26 17:01:03
+実行時刻: 2025-06-27 17:43:52

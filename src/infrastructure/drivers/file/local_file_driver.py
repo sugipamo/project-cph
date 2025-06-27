@@ -5,7 +5,7 @@ from pathlib import Path
 from shutil import copy2
 from typing import Any, Optional, TextIO
 
-from src.infrastructure.drivers.file.local_file_driver import FileDriver
+from src.infrastructure.drivers.file.file_driver import FileDriver
 
 
 class LocalFileDriver(FileDriver):

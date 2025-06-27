@@ -1,8 +1,8 @@
 """Contest management system for handling contest_current backup and state detection."""
 from typing import Dict, List, Optional
 from src.infrastructure.requests.file.file_op_type import FileOpType
-from src.operations.results.__init__ import FileRequest
-from tests.system_config_loader import SystemConfigLoader
+from src.operations.requests.file_request import FileRequest
+from src.configuration.system_config_loader import SystemConfigLoader
 from src.infrastructure.di_container import DIKey
 
 class ContestManager:

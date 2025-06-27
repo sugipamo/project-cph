@@ -1,4 +1,4 @@
 [workspace]
 members = [
-    "contest_current/rust"
+    "contest_template/rust"
 ]
