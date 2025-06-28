@@ -1,54 +1,46 @@
 """Unified driver for shell and Python command execution."""
-import json
 from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Optional, Union
 
-from src.infrastructure.drivers.generic.base_driver import ExecutionDriverInterface
+from src.infrastructure.drivers.base_driver import BaseDriverImplementation
 from src.utils.python_utils import PythonUtils
 from src.utils.shell_utils import ShellUtils
 
 
-class ShellPythonDriver(ExecutionDriverInterface):
+class ShellPythonDriver(BaseDriverImplementation):
     """Combined driver for shell and Python command execution."""
 
-    def __init__(self, config_manager: Any, file_driver: Any):
+    def __init__(self, config_manager: Any, file_driver: Any, container=None):
         """Initialize with config manager and file driver."""
+        super().__init__(container)
         self.config_manager = config_manager
         self.file_driver = file_driver
         self.python_utils = PythonUtils(self.config_manager)
-        self._infrastructure_defaults = self._load_infrastructure_defaults()
 
-    def _load_infrastructure_defaults(self) -> dict[str, Any]:
-        """Load infrastructure defaults from config file."""
-        try:
-            config_path = Path(__file__).parents[3] / "config" / "system" / "infrastructure_defaults.json"
-            with open(config_path, encoding='utf-8') as f:
-                return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            return {
-                "infrastructure_defaults": {
-                    "shell": {"cwd": None, "env": {}, "inputdata": None, "timeout": 30},
-                    "python": {"cwd": None}
-                }
-            }
-
-    def _get_default_value(self, path: list[str], default_type: type) -> Any:
-        """Get default value from infrastructure defaults."""
-        current = self._infrastructure_defaults
-        try:
-            for key in path:
-                current = current[key]
-            if isinstance(current, default_type) or (default_type is type(None) and current is None):
-                return current
-        except (KeyError, TypeError):
-            pass
+    def _get_typed_default(self, key_path: str, default_type: type) -> Any:
+        """Get typed default value from infrastructure defaults.
         
-        if default_type is dict:
-            return {}
-        if default_type is int:
-            return 30
-        return None
+        Args:
+            key_path: Dot-separated path (e.g., 'infrastructure_defaults.shell.timeout')
+            default_type: Expected type of the value
+            
+        Returns:
+            Default value of the specified type
+        """
+        # Convert list path to dot notation
+        value = self._get_default_value(key_path)
+        
+        # Type-specific defaults if value is None
+        if value is None:
+            if default_type is dict:
+                return {}
+            elif default_type is int:
+                return 30
+            elif default_type is str:
+                return ""
+                
+        return value
 
     @abstractmethod
     def execute_shell_command(self, cmd: Union[str, list[str]], cwd: Optional[str] = None,
@@ -70,15 +62,15 @@ class ShellPythonDriver(ExecutionDriverInterface):
         if hasattr(request, 'cmd'):
             return self.execute_shell_command(
                 cmd=request.cmd,
-                cwd=request.cwd if hasattr(request, 'cwd') else self._get_default_value(['infrastructure_defaults', 'shell', 'cwd'], type(None)),
-                env=request.env if hasattr(request, 'env') else self._get_default_value(['infrastructure_defaults', 'shell', 'env'], dict),
-                inputdata=request.inputdata if hasattr(request, 'inputdata') else self._get_default_value(['infrastructure_defaults', 'shell', 'inputdata'], type(None)),
-                timeout=request.timeout if hasattr(request, 'timeout') else self._get_default_value(['infrastructure_defaults', 'shell', 'timeout'], int)
+                cwd=request.cwd if hasattr(request, 'cwd') else self._get_typed_default('infrastructure_defaults.shell.cwd', type(None)),
+                env=request.env if hasattr(request, 'env') else self._get_typed_default('infrastructure_defaults.shell.env', dict),
+                inputdata=request.inputdata if hasattr(request, 'inputdata') else self._get_typed_default('infrastructure_defaults.shell.inputdata', type(None)),
+                timeout=request.timeout if hasattr(request, 'timeout') else self._get_typed_default('infrastructure_defaults.shell.timeout', int)
             )
         
         # Handle Python requests
         if hasattr(request, 'code_or_file'):
-            cwd = request.cwd if hasattr(request, 'cwd') else self._get_default_value(['infrastructure_defaults', 'python', 'cwd'], type(None))
+            cwd = request.cwd if hasattr(request, 'cwd') else self._get_typed_default('infrastructure_defaults.python.cwd', type(None))
             
             if self.python_utils.is_script_file(request.code_or_file):
                 return self.run_python_script(request.code_or_file[0], cwd)
@@ -92,13 +84,6 @@ class ShellPythonDriver(ExecutionDriverInterface):
         """Validate if this driver can handle the request."""
         return hasattr(request, 'cmd') or hasattr(request, 'code_or_file')
 
-    def initialize(self) -> None:
-        """Initialize the driver."""
-        pass
-
-    def cleanup(self) -> None:
-        """Clean up resources."""
-        pass
 
 
 class LocalShellPythonDriver(ShellPythonDriver):

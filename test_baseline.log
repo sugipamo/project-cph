@@ -1,0 +1,10 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.10s
+     Running unittests src/main.rs (target/debug/deps/rust-4c0696bd75825e12)
+
+running 3 tests
+test tests::test_basic_compilation ... ok
+test tests::test_proconio_available ... ok
+test tests::test_dependencies_available ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
