@@ -62,13 +62,14 @@ def resolve_best(root: ConfigNode, path: Union[list, tuple]) -> Optional[ConfigN
 def resolve_values(root: ConfigNode, path: Union[list, tuple]) -> list:
     return [x.value for x in resolve_by_match_desc(root, path)]
 
-def resolve_formatted_string(s: str, root: ConfigNode, initial_values: Optional[dict]) -> str:
+def resolve_formatted_string(s: str, root: ConfigNode, initial_values: Optional[dict], regex_ops: Any) -> str:
     """文字列sの{key}形式の変数をフォーマットする純粋関数。
 
     Args:
         s: フォーマットする文字列
         root: ConfigNodeのルート
         initial_values: 初期値（ユーザーインプットなど）
+        regex_ops: Regex operations provider for dependency injection
 
     Returns:
         フォーマット済みの文字列
@@ -76,7 +77,7 @@ def resolve_formatted_string(s: str, root: ConfigNode, initial_values: Optional[
     if initial_values is None:
         raise ValueError("initial_values cannot be None")
     key_values = dict(initial_values)
-    formatted, missing_keys = format_with_missing_keys(s, **key_values)
+    formatted, missing_keys = format_with_missing_keys(s, regex_ops, **key_values)
 
     if not missing_keys:
         return formatted
@@ -108,10 +109,10 @@ def resolve_formatted_string(s: str, root: ConfigNode, initial_values: Optional[
             queue.append(current.parent)
         queue.extend(current.next_nodes)
 
-    formatted, _ = format_with_missing_keys(s, **key_values)
+    formatted, _ = format_with_missing_keys(s, regex_ops, **key_values)
     return formatted
 
-def resolve_format_string(node: 'ConfigNode', initial_values: Optional[dict]) -> str:
+def resolve_format_string(node: 'ConfigNode', initial_values: Optional[dict], regex_ops: Any) -> str:
     if isinstance(node.value, str):
         s = node.value
     elif isinstance(node.value, dict) and "value" in node.value:
@@ -126,7 +127,7 @@ def resolve_format_string(node: 'ConfigNode', initial_values: Optional[dict]) ->
     if initial_values is None:
         raise ValueError("initial_values cannot be None")
     key_values = dict(initial_values)
-    formatted, missing_keys = format_with_missing_keys(s, **key_values)
+    formatted, missing_keys = format_with_missing_keys(s, regex_ops, **key_values)
     if not missing_keys:
         return formatted
 
@@ -153,7 +154,7 @@ def resolve_format_string(node: 'ConfigNode', initial_values: Optional[dict]) ->
             queue.append(current.parent)
         queue.extend(current.next_nodes)
 
-    formatted, still_missing = format_with_missing_keys(s, **key_values)
+    formatted, still_missing = format_with_missing_keys(s, regex_ops, **key_values)
     return formatted
 
 def _resolve_by_match_desc(root: ConfigNode, path: tuple) -> list:

@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Optional
 
-from src.infrastructure.sqlite_provider import SystemSQLiteProvider
+# Infrastructure dependency removed - sqlite_provider must be injected
 
 
 class SQLiteManager:
@@ -18,13 +18,12 @@ class SQLiteManager:
             sqlite_provider: SQLite操作プロバイダー
         """
         self.db_path = Path(db_path)
-        self._sqlite_provider = sqlite_provider or self._get_default_sqlite_provider()
+        if sqlite_provider is None:
+            raise ValueError("sqlite_provider is required and cannot be None")
+        self._sqlite_provider = sqlite_provider
         self._ensure_db_directory()
         self._initialize_database()
 
-    def _get_default_sqlite_provider(self):
-        """Get default SQLite provider if none provided."""
-        return SystemSQLiteProvider()
 
     def _ensure_db_directory(self) -> None:
         """Ensure the database directory exists."""

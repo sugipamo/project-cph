@@ -1,8 +1,7 @@
 """Mock output manager for testing."""
-import contextlib
 from typing import List, Optional, Union
 
-from src.infrastructure.di_container import DIContainer
+# Infrastructure dependency removed - config_manager can be injected if needed
 from src.operations.interfaces.utility_interfaces import OutputManagerInterface
 from src.utils.format_info import FormatInfo
 from src.utils.types import LogEntry, LogLevel
@@ -11,15 +10,13 @@ from src.utils.types import LogEntry, LogLevel
 class MockOutputManager(OutputManagerInterface):
     """Mock implementation of OutputManagerInterface for testing."""
 
-    def __init__(self, name: Optional[str], level: LogLevel):
+    def __init__(self, name: Optional[str], level: LogLevel, config_manager=None):
         self.name = name
         self.level = level
         self.entries: List[LogEntry] = []
         self.captured_outputs: List[str] = []
         self.flush_calls: int = 0
-        self._config_manager = None
-        with contextlib.suppress(Exception):
-            self._config_manager = DIContainer.resolve('config_manager')
+        self._config_manager = config_manager
 
     def add(self, message: Union[str, OutputManagerInterface], level: LogLevel, formatinfo: Optional[FormatInfo], realtime: bool) -> None:
         """Add entry to mock (no side effects)."""

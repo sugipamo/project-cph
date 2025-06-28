@@ -132,46 +132,80 @@ class TestConfigResolver:
         assert len(values) > 0
         
     def test_resolve_formatted_string_basic(self):
-        # Skip this test due to missing regex_ops parameter in config_resolver
-        pytest.skip("config_resolver.py has a bug - missing regex_ops parameter")
+        data = {"name": "John", "age": 30}
+        root = create_config_root_from_dict(data)
+        regex_ops = MockRegexOps()
+        
+        result = resolve_formatted_string("Hello {name}", root, {}, regex_ops)
+        assert result == "Hello John"
         
     def test_resolve_formatted_string_with_initial_values(self):
-        # Skip this test due to missing regex_ops parameter in config_resolver
-        pytest.skip("config_resolver.py has a bug - missing regex_ops parameter")
+        data = {"greeting": "Hello"}
+        root = create_config_root_from_dict(data)
+        initial_values = {"name": "World"}
+        regex_ops = MockRegexOps()
+        
+        result = resolve_formatted_string("{greeting} {name}", root, initial_values, regex_ops)
+        assert result == "Hello World"
         
     def test_resolve_formatted_string_with_nested_value(self):
-        # Skip this test due to missing regex_ops parameter in config_resolver
-        pytest.skip("config_resolver.py has a bug - missing regex_ops parameter")
+        data = {"user": {"value": "Alice"}}
+        root = create_config_root_from_dict(data)
+        regex_ops = MockRegexOps()
+        
+        result = resolve_formatted_string("Username: {user}", root, {}, regex_ops)
+        assert result == "Username: Alice"
         
     def test_resolve_formatted_string_none_initial_values(self):
         data = {"key": "value"}
         root = create_config_root_from_dict(data)
+        regex_ops = MockRegexOps()
         
         with pytest.raises(ValueError, match="initial_values cannot be None"):
-            resolve_formatted_string("test", root, None)
+            resolve_formatted_string("test", root, None, regex_ops)
             
     def test_resolve_format_string_basic(self):
-        # Skip this test due to missing regex_ops parameter in config_resolver
-        pytest.skip("config_resolver.py has a bug - missing regex_ops parameter")
+        node = ConfigNode("test", "Hello {name}")
+        initial_values = {"name": "World"}
+        regex_ops = MockRegexOps()
+        
+        result = resolve_format_string(node, initial_values, regex_ops)
+        assert result == "Hello World"
         
     def test_resolve_format_string_dict_value(self):
-        # Skip this test due to missing regex_ops parameter in config_resolver
-        pytest.skip("config_resolver.py has a bug - missing regex_ops parameter")
+        node = ConfigNode("test", {"value": "Template: {key}"})
+        initial_values = {"key": "test_value"}
+        regex_ops = MockRegexOps()
+        
+        result = resolve_format_string(node, initial_values, regex_ops)
+        assert result == "Template: test_value"
         
     def test_resolve_format_string_non_string_value(self):
         node = ConfigNode("test", 123)
-        result = resolve_format_string(node, {})
+        regex_ops = MockRegexOps()
+        result = resolve_format_string(node, {}, regex_ops)
         assert result == "123"
         
     def test_resolve_format_string_none_initial_values(self):
         node = ConfigNode("test", "string")
+        regex_ops = MockRegexOps()
         
         with pytest.raises(ValueError, match="initial_values cannot be None"):
-            resolve_format_string(node, None)
+            resolve_format_string(node, None, regex_ops)
             
     def test_resolve_format_string_with_initial_values(self):
-        # Skip this test due to missing regex_ops parameter in config_resolver
-        pytest.skip("config_resolver.py has a bug - missing regex_ops parameter")
+        root = ConfigNode("root", {"param": "value"})
+        param_node = ConfigNode("param", "value")
+        param_node.parent = root
+        root.next_nodes.append(param_node)
+        
+        child = ConfigNode("child", "Result: {param}")
+        child.parent = root
+        initial_values = {}
+        regex_ops = MockRegexOps()
+        
+        result = resolve_format_string(child, initial_values, regex_ops)
+        assert result == "Result: value"
         
     def test_create_config_root_complex_structure(self):
         data = {

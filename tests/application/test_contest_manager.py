@@ -187,3 +187,230 @@ class TestContestManager:
                 
                 # Should have called fallback for null language
                 mock_get_non_null.assert_called_once_with('language')
+    
+    def test_needs_backup_different_language(self):
+        """Test needs_backup returns True when language differs"""
+        with patch.object(self.contest_manager, 'get_current_contest_state') as mock_state:
+            mock_state.return_value = {
+                'language_name': 'python',
+                'contest_name': 'ABC123',
+                'problem_name': 'A'
+            }
+            
+            assert self.contest_manager.needs_backup('cpp', 'ABC123', 'A') is True
+    
+    def test_needs_backup_different_contest(self):
+        """Test needs_backup returns True when contest differs"""
+        with patch.object(self.contest_manager, 'get_current_contest_state') as mock_state:
+            mock_state.return_value = {
+                'language_name': 'python',
+                'contest_name': 'ABC123',
+                'problem_name': 'A'
+            }
+            
+            assert self.contest_manager.needs_backup('python', 'ABC124', 'A') is True
+    
+    def test_needs_backup_different_problem(self):
+        """Test needs_backup returns True when problem differs"""
+        with patch.object(self.contest_manager, 'get_current_contest_state') as mock_state:
+            mock_state.return_value = {
+                'language_name': 'python',
+                'contest_name': 'ABC123',
+                'problem_name': 'A'
+            }
+            
+            assert self.contest_manager.needs_backup('python', 'ABC123', 'B') is True
+    
+    def test_needs_backup_no_change(self):
+        """Test needs_backup returns False when nothing changes"""
+        with patch.object(self.contest_manager, 'get_current_contest_state') as mock_state:
+            mock_state.return_value = {
+                'language_name': 'python',
+                'contest_name': 'ABC123',
+                'problem_name': 'A'
+            }
+            
+            assert self.contest_manager.needs_backup('python', 'ABC123', 'A') is False
+    
+    def test_backup_contest_current_incomplete_state(self):
+        """Test backup_contest_current returns False with incomplete state"""
+        current_state = {
+            'language_name': None,
+            'contest_name': 'ABC123',
+            'problem_name': 'A'
+        }
+        
+        assert self.contest_manager.backup_contest_current(current_state) is False
+    
+    @patch('src.application.contest_manager.SystemTimeProvider')
+    def test_backup_contest_current_success(self, mock_time_provider):
+        """Test successful backup of contest_current"""
+        from src.application.execution_requests import FileRequest
+        
+        # Update env_json with proper structure
+        self.contest_manager._env_json = {
+            'shared': {
+                'paths': {
+                    'contest_current_path': '/contest/current',
+                    'contest_stock_path': '/contest/stock/{language_name}/{contest_name}/{problem_name}'
+                }
+            }
+        }
+        
+        current_state = {
+            'language_name': 'python',
+            'contest_name': 'ABC123',
+            'problem_name': 'A'
+        }
+        
+        # Mock directory checks and operations
+        with patch.object(self.contest_manager, '_directory_has_content') as mock_has_content:
+            with patch.object(self.contest_manager, '_ensure_directory_exists') as mock_ensure_dir:
+                with patch.object(self.contest_manager, '_move_directory_contents') as mock_move:
+                    mock_has_content.return_value = True
+                    mock_ensure_dir.return_value = True
+                    mock_move.return_value = True
+                    
+                    result = self.contest_manager.backup_contest_current(current_state)
+                    
+                    assert result is True
+                    mock_has_content.assert_called_once_with('/contest/current')
+                    mock_ensure_dir.assert_called_once_with('/contest/stock/python/ABC123/A')
+                    mock_move.assert_called_once_with('/contest/current', '/contest/stock/python/ABC123/A')
+    
+    def test_backup_contest_current_no_content(self):
+        """Test backup when contest_current has no content"""
+        self.contest_manager._env_json = {
+            'shared': {
+                'paths': {
+                    'contest_current_path': '/contest/current',
+                    'contest_stock_path': '/contest/stock/{language_name}/{contest_name}/{problem_name}'
+                }
+            }
+        }
+        
+        current_state = {
+            'language_name': 'python',
+            'contest_name': 'ABC123',
+            'problem_name': 'A'
+        }
+        
+        with patch.object(self.contest_manager, '_directory_has_content') as mock_has_content:
+            mock_has_content.return_value = False
+            
+            result = self.contest_manager.backup_contest_current(current_state)
+            
+            assert result is True
+            mock_has_content.assert_called_once_with('/contest/current')
+    
+    def test_handle_contest_change_with_backup(self):
+        """Test handling contest change that needs backup"""
+        with patch.object(self.contest_manager, 'needs_backup') as mock_needs_backup:
+            with patch.object(self.contest_manager, 'get_current_contest_state') as mock_state:
+                with patch.object(self.contest_manager, 'backup_contest_current') as mock_backup:
+                    mock_needs_backup.return_value = True
+                    mock_state.return_value = {
+                        'language_name': 'python',
+                        'contest_name': 'ABC123',
+                        'problem_name': 'A'
+                    }
+                    mock_backup.return_value = True
+                    
+                    result = self.contest_manager.handle_contest_change('cpp', 'ABC124', 'B')
+                    
+                    assert result is True
+                    mock_needs_backup.assert_called_once_with('cpp', 'ABC124', 'B')
+                    mock_backup.assert_called_once()
+                    self.mock_logger.info.assert_called()
+    
+    def test_handle_contest_change_backup_failure(self):
+        """Test handling contest change when backup fails"""
+        with patch.object(self.contest_manager, 'needs_backup') as mock_needs_backup:
+            with patch.object(self.contest_manager, 'get_current_contest_state') as mock_state:
+                with patch.object(self.contest_manager, 'backup_contest_current') as mock_backup:
+                    mock_needs_backup.return_value = True
+                    mock_state.return_value = {
+                        'language_name': 'python',
+                        'contest_name': 'ABC123',
+                        'problem_name': 'A'
+                    }
+                    mock_backup.return_value = False
+                    
+                    result = self.contest_manager.handle_contest_change('cpp', 'ABC124', 'B')
+                    
+                    assert result is False
+                    self.mock_logger.warning.assert_called_once_with('Failed to backup contest_current')
+    
+    def test_restore_from_contest_stock_no_stock(self):
+        """Test restore when no stock is available"""
+        self.contest_manager._env_json = {
+            'shared': {
+                'paths': {
+                    'contest_current_path': '/contest/current',
+                    'contest_stock_path': '/contest/stock/{language_name}/{contest_name}/{problem_name}'
+                }
+            }
+        }
+        
+        with patch.object(self.contest_manager, '_directory_has_content') as mock_has_content:
+            mock_has_content.return_value = False
+            
+            result = self.contest_manager.restore_from_contest_stock('python', 'ABC123', 'A')
+            
+            assert result is False
+    
+    def test_initialize_from_template_no_template(self):
+        """Test initialize when no template exists"""
+        self.contest_manager._env_json = {
+            'shared': {
+                'paths': {
+                    'contest_current_path': '/contest/current',
+                    'contest_template_path': '/contest/template'
+                }
+            }
+        }
+        
+        self.mock_os_provider.path_join.return_value = '/contest/template/python'
+        
+        with patch.object(self.contest_manager, '_directory_has_content') as mock_has_content:
+            mock_has_content.return_value = False
+            
+            result = self.contest_manager.initialize_from_template('python', 'ABC123', 'A')
+            
+            assert result is False
+            self.mock_logger.warning.assert_called_once_with('No template found for language python')
+    
+    def test_initialize_contest_current_from_stock(self):
+        """Test initialize_contest_current prefers stock over template"""
+        with patch.object(self.contest_manager, 'restore_from_contest_stock') as mock_restore:
+            mock_restore.return_value = True
+            
+            result = self.contest_manager.initialize_contest_current('python', 'ABC123', 'A')
+            
+            assert result is True
+            mock_restore.assert_called_once_with('python', 'ABC123', 'A')
+    
+    def test_initialize_contest_current_from_template(self):
+        """Test initialize_contest_current falls back to template"""
+        with patch.object(self.contest_manager, 'restore_from_contest_stock') as mock_restore:
+            with patch.object(self.contest_manager, 'initialize_from_template') as mock_template:
+                mock_restore.return_value = False
+                mock_template.return_value = True
+                
+                result = self.contest_manager.initialize_contest_current('python', 'ABC123', 'A')
+                
+                assert result is True
+                mock_restore.assert_called_once_with('python', 'ABC123', 'A')
+                mock_template.assert_called_once_with('python', 'ABC123', 'A')
+    
+    def test_initialize_contest_current_both_fail(self):
+        """Test initialize_contest_current raises error when both methods fail"""
+        with patch.object(self.contest_manager, 'restore_from_contest_stock') as mock_restore:
+            with patch.object(self.contest_manager, 'initialize_from_template') as mock_template:
+                mock_restore.return_value = False
+                mock_template.return_value = False
+                
+                with pytest.raises(RuntimeError) as exc_info:
+                    self.contest_manager.initialize_contest_current('python', 'ABC123', 'A')
+                
+                assert 'both stock and template initialization failed' in str(exc_info.value)

@@ -7,19 +7,22 @@ from src.utils.types import LogEntry, LogLevel
 
 class OutputManager(OutputManagerInterface):
 
-    def __init__(self, name: Optional[str], level: LogLevel):
+    def __init__(self, name: Optional[str], level: LogLevel, output_driver=None):
         self.name = name
         self.level = level
         self.entries: List[LogEntry] = []
+        self._output_driver = output_driver  # Injected output driver to avoid direct print()
 
     def add(self, message: Union[str, 'OutputManager'], level: LogLevel, formatinfo: Optional[FormatInfo], realtime: bool):
         entry = LogEntry(message, level, formatinfo=formatinfo)
         self.entries.append(entry)
         if realtime:
-            if hasattr(message, 'output') and not isinstance(message, str):
-                print(message.output(indent=0, level=LogLevel.DEBUG))
-            else:
-                print(message)
+            if self._output_driver:
+                if hasattr(message, 'output') and not isinstance(message, str):
+                    self._output_driver.write(message.output(indent=0, level=LogLevel.DEBUG))
+                else:
+                    self._output_driver.write(str(message))
+            # If no output driver injected, suppress output (no side effects)
 
     def _should_log(self, level: LogLevel):
         # Define level order for comparison
@@ -65,7 +68,9 @@ class OutputManager(OutputManagerInterface):
         return '\n'.join(lines)
 
     def flush(self):
-        print(self.output(0, LogLevel.DEBUG))
+        if self._output_driver:
+            self._output_driver.write(self.output(0, LogLevel.DEBUG))
+        # If no output driver injected, suppress output (no side effects)
 
     def flatten(self, level: LogLevel) -> list:
         return self._collect_entries(True, False, level)

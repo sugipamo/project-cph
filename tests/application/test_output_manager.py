@@ -34,19 +34,19 @@ class TestOutputManager:
         assert manager.entries[0].content == "Test message"
         assert manager.entries[0].level == LogLevel.INFO
 
-    @patch('builtins.print')
-    def test_add_with_realtime(self, mock_print):
+    def test_add_with_realtime(self):
         """Test adding message with realtime=True."""
-        manager = OutputManager("test", LogLevel.INFO)
+        mock_output_driver = Mock()
+        manager = OutputManager("test", LogLevel.INFO, output_driver=mock_output_driver)
         manager.add("Realtime message", LogLevel.INFO, None, True)
         
         assert len(manager.entries) == 1
-        mock_print.assert_called_once_with("Realtime message")
+        mock_output_driver.write.assert_called_once_with("Realtime message")
 
-    @patch('builtins.print')
-    def test_add_output_manager_with_realtime(self, mock_print):
+    def test_add_output_manager_with_realtime(self):
         """Test adding OutputManager object with realtime=True."""
-        manager = OutputManager("test", LogLevel.INFO)
+        mock_output_driver = Mock()
+        manager = OutputManager("test", LogLevel.INFO, output_driver=mock_output_driver)
         
         # Create another OutputManager to add
         child_manager = OutputManager("child", LogLevel.INFO)
@@ -55,9 +55,9 @@ class TestOutputManager:
         manager.add(child_manager, LogLevel.INFO, None, True)
         
         assert len(manager.entries) == 1
-        mock_print.assert_called_once()
+        mock_output_driver.write.assert_called_once()
         # Verify it calls output method on child
-        call_args = mock_print.call_args[0][0]
+        call_args = mock_output_driver.write.call_args[0][0]
         assert "child" in call_args
         assert "Child message" in call_args
 
@@ -181,17 +181,17 @@ class TestOutputManager:
         
         assert len(lines) == 1  # Only the message, no name
 
-    @patch('builtins.print')
-    def test_flush(self, mock_print):
+    def test_flush(self):
         """Test flush functionality."""
-        manager = OutputManager("test", LogLevel.INFO)
+        mock_output_driver = Mock()
+        manager = OutputManager("test", LogLevel.INFO, output_driver=mock_output_driver)
         manager.add("Message 1", LogLevel.INFO, None, False)
         manager.add("Message 2", LogLevel.INFO, None, False)
         
         manager.flush()
         
-        mock_print.assert_called_once()
-        output = mock_print.call_args[0][0]
+        mock_output_driver.write.assert_called_once()
+        output = mock_output_driver.write.call_args[0][0]
         assert "test" in output
         assert "Message 1" in output
         assert "Message 2" in output

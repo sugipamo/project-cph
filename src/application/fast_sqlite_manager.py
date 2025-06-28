@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Optional
 
-from src.infrastructure.sqlite_provider import SystemSQLiteProvider
+# Infrastructure dependency removed - sqlite_provider must be injected
 from src.operations.results.result import OperationResult, ValidationResult
 
 
@@ -31,13 +31,12 @@ class FastSQLiteManager:
         """
         self.db_path = db_path
         self.skip_migrations = skip_migrations
-        self._sqlite_provider = sqlite_provider or self._get_default_sqlite_provider()
+        if sqlite_provider is None:
+            raise ValueError("sqlite_provider is required and cannot be None")
+        self._sqlite_provider = sqlite_provider
         self._is_memory_db = db_path == ":memory:"
         self._initialize_setup()
 
-    def _get_default_sqlite_provider(self):
-        """Get default SQLite provider if none provided."""
-        return SystemSQLiteProvider()
 
     def _initialize_setup(self):
         """Initialize database setup."""
