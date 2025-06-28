@@ -4,10 +4,10 @@ from io import StringIO
 from pathlib import Path
 from typing import Any, Optional
 
-from src.infrastructure.drivers.file.local_file_driver import FileDriver
+from src.infrastructure.drivers.file.integrated_file_driver import IntegratedFileDriver
 
 
-class MockFileDriver(FileDriver):
+class MockFileDriver(IntegratedFileDriver):
     """Mock driver for behavior verification
     - Detailed operation history recording
     - Return expected values

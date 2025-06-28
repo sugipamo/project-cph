@@ -15,9 +15,9 @@ from src.data.operation.operation_repository import OperationRepository
 from src.domain.workflow_logger_adapter import WorkflowLoggerAdapter
 from src.infrastructure.di_container import DIContainer, DIKey
 from src.infrastructure.drivers.docker.docker_driver import DockerDriver
-from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
+from src.infrastructure.drivers.file.integrated_file_driver import IntegratedFileDriver
 from src.infrastructure.drivers.generic.unified_driver import UnifiedDriver
-from src.infrastructure.drivers.python.python_driver import LocalPythonDriver
+# LocalPythonDriver functionality is now in LocalShellPythonDriver
 from src.infrastructure.drivers.shell_python_driver import LocalShellPythonDriver
 from src_check.mocks.drivers.mock_docker_driver import MockDockerDriver
 from src_check.mocks.drivers.mock_file_driver import MockFileDriver
@@ -55,13 +55,13 @@ def _create_docker_driver(container: Any) -> Any:
 
 def _create_file_driver() -> Any:
     """Lazy factory for file driver."""
-    return LocalFileDriver(base_dir=Path('.'))
+    return IntegratedFileDriver(base_dir=Path('.'))
 
 
 def _create_python_driver(container: Any) -> Any:
     """Lazy factory for python driver."""
-    config_manager = container.resolve(DIKey.CONFIG_MANAGER)
-    return LocalPythonDriver(config_manager)
+    # Python driver functionality is now part of LocalShellPythonDriver
+    return container.resolve(DIKey.SHELL_PYTHON_DRIVER)
 
 
 def _create_persistence_driver() -> Any:

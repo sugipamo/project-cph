@@ -1,14 +1,14 @@
-"""Tests for LocalFileDriver - file system operations"""
+"""Tests for IntegratedFileDriver - file system operations"""
 import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch, mock_open
 import tempfile
 import shutil
 import os
-from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
+from src.infrastructure.drivers.file.integrated_file_driver import IntegratedFileDriver
 
 
-class TestLocalFileDriver:
+class TestIntegratedFileDriver:
     """Test suite for local file system driver"""
     
     def setup_method(self):
@@ -16,7 +16,7 @@ class TestLocalFileDriver:
         # Create a temporary directory for tests
         self.temp_dir = tempfile.mkdtemp()
         self.base_path = Path(self.temp_dir)
-        self.driver = LocalFileDriver(base_dir=self.base_path)
+        self.driver = IntegratedFileDriver(base_dir=self.base_path)
     
     def teardown_method(self):
         """Clean up after tests"""

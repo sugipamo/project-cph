@@ -6,14 +6,14 @@ import time
 from abc import abstractmethod
 from typing import Any, Optional, Union
 
-from src.presentation.docker_command_builder import (
+from src.infrastructure.drivers.docker.docker_command_utils import (
     build_docker_build_command,
     build_docker_remove_command,
     build_docker_run_command,
     build_docker_stop_command,
     parse_container_names,
 )
-from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
+from src.infrastructure.drivers.file.integrated_file_driver import IntegratedFileDriver
 from src.infrastructure.drivers.generic.base_driver import ExecutionDriverInterface
 from src.infrastructure.drivers.shell_python_driver import LocalShellPythonDriver
 from src.infrastructure.di_container import DIKey
@@ -23,7 +23,7 @@ from src.operations.requests.shell_request import ShellRequest
 class DockerDriver(ExecutionDriverInterface):
     """Consolidated Docker driver with optional SQLite tracking."""
 
-    def __init__(self, file_driver: LocalFileDriver, di_container: Optional[Any] = None):
+    def __init__(self, file_driver: IntegratedFileDriver, di_container: Optional[Any] = None):
         """Initialize Docker driver.
         
         Args:
