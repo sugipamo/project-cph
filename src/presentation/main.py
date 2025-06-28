@@ -8,7 +8,8 @@
 from src.application.pure_config_manager import PureConfigManager
 from src.application.services.config_loader_service import ConfigLoaderService
 from src.infrastructure.di_container import DIKey
-from src.operations.results.__init__ import build_infrastructure, main
+from src.configuration.build_infrastructure import build_infrastructure
+from src.presentation.cli_app import main
 from src.presentation.docker_command_builder import set_config_manager
 
 if __name__ == "__main__":

@@ -1,0 +1,69 @@
+"""Tests for build_infrastructure module."""
+import pytest
+
+from src.configuration.build_infrastructure import (
+    build_infrastructure,
+    build_mock_infrastructure,
+    build_operations,
+    build_mock_operations
+)
+from src.infrastructure.di_container import DIContainer
+
+
+class TestBuildInfrastructure:
+    """Test cases for infrastructure building functions."""
+
+    def test_build_infrastructure(self):
+        """Test building production infrastructure."""
+        container = build_infrastructure()
+        
+        assert isinstance(container, DIContainer)
+        # The container should be configured with production dependencies
+        # Note: We can't test specific dependencies without knowing what
+        # configure_production_dependencies does, but we can verify it returns
+        # a properly initialized container
+
+    def test_build_mock_infrastructure(self):
+        """Test building mock infrastructure for testing."""
+        container = build_mock_infrastructure()
+        
+        assert isinstance(container, DIContainer)
+        # The container should be configured with test dependencies
+        # Note: We can't test specific dependencies without knowing what
+        # configure_test_dependencies does, but we can verify it returns
+        # a properly initialized container
+
+    def test_backward_compatibility_aliases(self):
+        """Test that backward compatibility aliases work correctly."""
+        # build_operations should be the same as build_infrastructure
+        assert build_operations is build_infrastructure
+        
+        # build_mock_operations should be the same as build_mock_infrastructure
+        assert build_mock_operations is build_mock_infrastructure
+
+    def test_build_infrastructure_returns_different_instances(self):
+        """Test that each call returns a new container instance."""
+        container1 = build_infrastructure()
+        container2 = build_infrastructure()
+        
+        assert container1 is not container2
+        assert isinstance(container1, DIContainer)
+        assert isinstance(container2, DIContainer)
+
+    def test_build_mock_infrastructure_returns_different_instances(self):
+        """Test that each call returns a new mock container instance."""
+        container1 = build_mock_infrastructure()
+        container2 = build_mock_infrastructure()
+        
+        assert container1 is not container2
+        assert isinstance(container1, DIContainer)
+        assert isinstance(container2, DIContainer)
+
+    def test_containers_are_independent(self):
+        """Test that production and mock containers are independent."""
+        prod_container = build_infrastructure()
+        mock_container = build_mock_infrastructure()
+        
+        assert prod_container is not mock_container
+        assert isinstance(prod_container, DIContainer)
+        assert isinstance(mock_container, DIContainer)

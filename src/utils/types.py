@@ -1,19 +1,15 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum, auto
 from typing import TYPE_CHECKING, Optional, Union
 
 from src.utils.format_info import FormatInfo
+from src.utils.log_types import LogLevel as BaseLogLevel
 
 if TYPE_CHECKING:
     from src.operations.interfaces.output_manager_interface import OutputManagerInterface
 
-class LogLevel(Enum):
-    DEBUG = auto()
-    INFO = auto()
-    WARNING = auto()
-    ERROR = auto()
-    CRITICAL = auto()
+# Re-export LogLevel for backward compatibility
+LogLevel = BaseLogLevel
 
 @dataclass(frozen=True)
 class LogEntry:

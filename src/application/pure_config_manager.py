@@ -5,23 +5,10 @@ Configuration層の実装です。
 """
 from typing import Any, Dict, List, Optional, Type, TypeVar
 
-from src.domain.config_node import ConfigNode as ConfigNodeClass
-from src.configuration.config_resolver import create_config_root_from_dict as create_func
-from src.configuration.config_resolver import resolve_best, resolve_formatted_string
-
-# 遅延インポートで循環依存を回避
-ConfigNode = None
-create_config_root_from_dict = None
+from src.domain.config_node import ConfigNode
+from src.configuration.config_resolver import create_config_root_from_dict, resolve_best, resolve_formatted_string
 
 T = TypeVar('T')
-
-
-def _ensure_imports():
-    """必要なモジュールの遅延インポート"""
-    global ConfigNode, create_config_root_from_dict
-    if ConfigNode is None:
-        ConfigNode = ConfigNodeClass
-        create_config_root_from_dict = create_func
 
 
 class PureConfigManager:
@@ -33,7 +20,6 @@ class PureConfigManager:
 
     def __init__(self):
         """純粋な初期化（依存性なし）"""
-        _ensure_imports()
         self.root_node: Optional[ConfigNode] = None
         self._system_dir: Optional[str] = None
         self._env_dir: Optional[str] = None
@@ -73,7 +59,8 @@ class PureConfigManager:
 
 
         try:
-            value = resolve_best(self.root_node, path)
+            node = resolve_best(self.root_node, path)
+            value = node.value
             if not isinstance(value, expected_type):
                 if expected_type == str and not isinstance(value, str):
                     value = str(value)
@@ -84,7 +71,7 @@ class PureConfigManager:
                 else:
                     raise TypeError(f"Expected {expected_type.__name__}, got {type(value).__name__}")
             return value
-        except KeyError:
+        except ValueError as e:
             raise KeyError(f"Config path {path} not found")
 
     def resolve_template_typed(self, template: str, context: Dict[str, Any],
@@ -103,7 +90,7 @@ class PureConfigManager:
             raise RuntimeError("ConfigManager has not been initialized")
 
 
-        result = resolve_formatted_string(self.root_node, template, context)
+        result = resolve_formatted_string(template, self.root_node, context)
 
         if not isinstance(result, expected_type):
             if expected_type == str:

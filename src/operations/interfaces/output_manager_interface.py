@@ -3,7 +3,8 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, Union
 
 from src.utils.format_info import FormatInfo
-from src.utils.types import LogEntry, LogLevel
+from src.utils.log_types import LogLevel
+from src.utils.types import LogEntry
 
 
 class OutputManagerInterface(ABC):
