@@ -3,7 +3,7 @@ import contextlib
 from typing import List, Optional, Union
 
 from src.infrastructure.di_container import DIContainer
-from src.operations.interfaces.output_manager_interface import OutputManagerInterface
+from src.operations.interfaces.utility_interfaces import OutputManagerInterface
 from src.utils.format_info import FormatInfo
 from src.utils.types import LogEntry, LogLevel
 

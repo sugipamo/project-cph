@@ -8,7 +8,7 @@ from src.infrastructure.drivers.base_driver import BaseDriverImplementation
 from src.infrastructure.drivers.execution_driver import ExecutionDriver
 from src.infrastructure.drivers.file_driver import FileDriver
 from src.infrastructure.di_container import DIContainer, DIKey
-from src.operations.requests.shell_request import ShellRequest
+from src.operations.requests.execution_requests import ShellRequest
 
 
 class DockerDriver(BaseDriverImplementation):

@@ -6,7 +6,7 @@ from src.utils.format_info import FormatInfo
 from src.utils.log_types import LogLevel as BaseLogLevel
 
 if TYPE_CHECKING:
-    from src.operations.interfaces.output_manager_interface import OutputManagerInterface
+    from src.operations.interfaces.utility_interfaces import OutputManagerInterface
 
 # Re-export LogLevel for backward compatibility
 LogLevel = BaseLogLevel

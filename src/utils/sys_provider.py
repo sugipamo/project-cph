@@ -3,7 +3,7 @@ import sys
 from abc import ABC, abstractmethod
 from typing import Any, Callable, List, Optional
 
-from src.operations.interfaces.logger_interface import LoggerInterface
+from src.operations.interfaces.utility_interfaces import LoggerInterface
 
 
 class SysProvider(ABC):

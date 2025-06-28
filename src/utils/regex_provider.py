@@ -2,7 +2,7 @@
 import re
 from typing import List
 
-from src.operations.interfaces.regex_interface import RegexInterface
+from src.operations.interfaces.utility_interfaces import RegexInterface
 
 
 class RegexProvider(RegexInterface):

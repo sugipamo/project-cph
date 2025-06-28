@@ -4,7 +4,7 @@ from typing import List
 
 # 互換性維持: configuration層への逆方向依存を削除、依存性注入で解決
 # TypeSafeConfigNodeManager機能は外部から注入される必要があります
-from src.operations.interfaces.filesystem_interface import FileSystemInterface
+from src.operations.interfaces.infrastructure_interfaces import FileSystemInterface
 
 
 class FileSystemError(Exception):

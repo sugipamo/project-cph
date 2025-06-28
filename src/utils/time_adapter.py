@@ -1,6 +1,6 @@
 """Time adapter to bridge TimeProvider and TimeInterface."""
 from src.infrastructure.time_provider import TimeProvider
-from src.operations.interfaces.time_interface import TimeInterface
+from src.operations.interfaces.infrastructure_interfaces import TimeInterface
 
 
 class TimeAdapter(TimeInterface):

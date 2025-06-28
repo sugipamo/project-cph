@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 from src.operations.constants.operation_type import OperationType
-from src.operations.requests.request_types import RequestType
+from src.operations.requests.base_request import RequestType
 
 
 class OperationRequestFoundation(ABC):

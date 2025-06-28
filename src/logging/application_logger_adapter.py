@@ -5,8 +5,8 @@ from types import LogLevel
 from typing import Any, Optional
 
 from src.infrastructure.di_container import DIContainer
-from src.operations.interfaces.logger_interface import LoggerInterface
-from src.operations.interfaces.output_manager_interface import OutputManagerInterface
+from src.operations.interfaces.utility_interfaces import LoggerInterface
+from src.operations.interfaces.utility_interfaces import OutputManagerInterface
 from src.utils.format_info import FormatInfo
 
 

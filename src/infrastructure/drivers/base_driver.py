@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from src.infrastructure.di_container import DIContainer
-from src.operations.interfaces.logger_interface import LoggerInterface
+from src.operations.interfaces.utility_interfaces import LoggerInterface
 
 
 class ExecutionDriverInterface(ABC):

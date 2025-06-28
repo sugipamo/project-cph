@@ -5,7 +5,7 @@ from src.operations.constants.operation_type import OperationType
 from src.operations.results.result import OperationResult
 
 
-class FileResult(OperationResult):
+class FileResult:
     """Result class for file operations."""
 
     def __init__(self, success: Optional[bool], content: Optional[str],
@@ -29,24 +29,14 @@ class FileResult(OperationResult):
             request: Original request object
             metadata: Additional metadata
         """
-        super().__init__(
-            success=success,
-            returncode=None,
-            stdout=None,
-            stderr=None,
-            content=content,
-            exists=exists,
-            path=path,
-            op=op,
-            cmd=None,
-            request=request,
-            start_time=start_time,
-            end_time=end_time,
-            error_message=error_message,
-            exception=exception,
-            metadata=metadata,
-            skipped=False
-        )
+        # Store all attributes directly since OperationResult has incompatible signature
+        self.success = success
+        self.error_message = error_message
+        self.exception = exception
+        self.start_time = start_time
+        self.end_time = end_time
+        self.request = request
+        self.metadata = metadata or {}
         self.content = content
         self.path = path
         self.exists = exists
@@ -65,11 +55,14 @@ class FileResult(OperationResult):
 
     def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary."""
-        base = super().to_dict()
-        base.update({
+        return {
+            'success': self.success,
             'content': self.content,
             'path': self.path,
             'exists': self.exists,
             'op': self._get_op_str(),
-        })
-        return base
+            'error_message': self.error_message,
+            'start_time': self.start_time,
+            'end_time': self.end_time,
+            'metadata': self.metadata
+        }

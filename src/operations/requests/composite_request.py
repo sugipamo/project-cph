@@ -4,9 +4,9 @@ from typing import Any, Optional
 
 from src.domain.base_composite_request import CompositeRequestFoundation
 from src.operations.requests.request_factory import OperationRequestFoundation
-from src.operations.requests.request_types import RequestType
+from src.operations.requests.base_request import RequestType
 from src.operations.composite_structure import CompositeStructure
-from src.operations.interfaces.execution_interface import ExecutionInterface
+from src.operations.interfaces.execution_interfaces import ExecutionInterface
 
 
 class CompositeRequest(CompositeRequestFoundation):

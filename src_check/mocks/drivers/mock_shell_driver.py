@@ -2,7 +2,7 @@
 from typing import Optional, Union
 
 from src.infrastructure.drivers.shell.shell_driver import ShellDriver
-from src.operations.results.shell_result import ShellResult
+from src.operations.results.execution_results import LegacyShellResult as ShellResult
 
 
 class MockShellDriver(ShellDriver):

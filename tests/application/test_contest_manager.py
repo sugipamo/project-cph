@@ -108,7 +108,7 @@ class TestContestManager:
     
     def test_env_json_lazy_load_from_file(self):
         """Test env_json lazy loads from file when not provided"""
-        from src.operations.requests.file_request import FileRequest
+        from src.operations.requests.execution_requests import FileRequest
         from src.infrastructure.requests.file.file_op_type import FileOpType
         
         # Create manager without env_json
@@ -119,13 +119,17 @@ class TestContestManager:
         mock_result.success = True
         mock_result.content = '{"test": "data"}'
         
-        with patch.object(FileRequest, 'execute_operation', return_value=mock_result):
+        # Mock the execute_operation method on FileRequest instances
+        with patch.object(FileRequest, 'execute_operation') as mock_execute:
+            mock_execute.return_value = mock_result
             self.mock_json_provider.loads.return_value = {"test": "data"}
             
             env = manager.env_json
             
             assert env == {"test": "data"}
             self.mock_json_provider.loads.assert_called_once_with('{"test": "data"}')
+            # Verify execute_operation was called
+            mock_execute.assert_called_once()
     
     def test_detect_contest_change(self):
         """Test detection of contest change"""

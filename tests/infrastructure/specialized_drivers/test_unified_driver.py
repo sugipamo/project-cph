@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 from src.infrastructure.specialized_drivers.unified_driver import UnifiedDriver
-from src.operations.requests.request_types import RequestType
+from src.operations.requests.base_request import RequestType
 from src.infrastructure.di_container import DIKey
 
 

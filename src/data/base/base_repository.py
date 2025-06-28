@@ -1,7 +1,7 @@
 """Base repository interface for data persistence."""
 from typing import Any
 
-from src.operations.interfaces.persistence_interface import RepositoryInterface
+from src.operations.interfaces.infrastructure_interfaces import RepositoryInterface
 
 
 class DatabaseRepositoryFoundation(RepositoryInterface):

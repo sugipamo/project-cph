@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 
 from src.application.sqlite_manager import SQLiteManager
 from src.infrastructure.drivers.base_driver import ExecutionDriverInterface
-from src.operations.interfaces.persistence_interface import PersistenceInterface
+from src.operations.interfaces.infrastructure_interfaces import PersistenceInterface
 
 
 class PersistenceDriver(ExecutionDriverInterface, PersistenceInterface):

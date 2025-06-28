@@ -6,13 +6,13 @@ from typing import Any
 # 互換性維持: configuration層への逆方向依存を削除、依存性注入で解決
 from src.infrastructure.di_container import DIContainer, DIKey
 from src.infrastructure.requests.file.file_op_type import FileOpType
-from src.operations.interfaces.logger_interface import LoggerInterface
+from src.operations.interfaces.utility_interfaces import LoggerInterface
 from src.operations.requests.request_factory import OperationRequestFoundation
-from src.operations.requests.request_types import RequestType
-from src.operations.results.docker_result import DockerResult
+from src.operations.requests.base_request import RequestType
+from src.operations.results.execution_results import LegacyDockerResult as DockerResult
 from src.operations.results.file_result import FileResult
 from src.operations.results.result import OperationResult
-from src.operations.results.shell_result import ShellResult
+from src.operations.results.execution_results import LegacyShellResult as ShellResult
 
 
 class UnifiedDriver:
@@ -308,7 +308,7 @@ class UnifiedDriver:
                 op="shell_operation"
             )
 
-    def _execute_python_request(self, request: Any) -> OperationResult:
+    def _execute_python_request(self, request: Any) -> ShellResult:
         """Execute python request"""
         if not hasattr(request, 'code_or_file'):
             raise TypeError(f"Expected PythonRequest with 'code_or_file' attribute, got {type(request)}")
@@ -316,7 +316,7 @@ class UnifiedDriver:
         try:
             stdout, stderr, returncode = self.python_driver.execute_command(request)
 
-            return OperationResult(
+            return ShellResult(
                 success=returncode == 0,
                 returncode=returncode,
                 stdout=stdout,
@@ -326,12 +326,14 @@ class UnifiedDriver:
                 error_message=stderr if returncode != 0 else None,
                 exception=None,
                 request=request,
-                metadata={}
+                metadata={},
+                cmd=getattr(request, 'code_or_file', 'python_code'),
+                op="python_operation"
             )
 
         except Exception as e:
             self.logger.error(f"Python operation failed: {e}")
-            return OperationResult(
+            return ShellResult(
                 success=False,
                 returncode=1,
                 stdout="",
@@ -341,7 +343,9 @@ class UnifiedDriver:
                 error_message=str(e),
                 exception=e,
                 request=request,
-                metadata={}
+                metadata={},
+                cmd=getattr(request, 'code_or_file', 'python_code'),
+                op="python_operation"
             )
 
     # File operation delegation methods - route to file driver
