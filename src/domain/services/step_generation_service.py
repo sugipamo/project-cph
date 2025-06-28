@@ -37,7 +37,23 @@ def execution_context_to_simple_context(execution_context: Union[TypedExecutionC
     """実行コンテキストをSimpleExecutionContextに変換（新旧システム対応）"""
     if TypedExecutionConfiguration and isinstance(execution_context, TypedExecutionConfiguration):
         file_patterns = execution_context.file_patterns if hasattr(execution_context, 'file_patterns') else {}
-        return ExecutionContext(contest_name=execution_context.contest_name, problem_name=execution_context.problem_name, language=execution_context.language, local_workspace_path=str(execution_context.local_workspace_path), contest_current_path=str(execution_context.contest_current_path), contest_stock_path=str(execution_context.contest_stock_path if hasattr(execution_context, 'contest_stock_path') else ''), contest_template_path=str(execution_context.contest_template_path if hasattr(execution_context, 'contest_template_path') else ''), source_file_name=execution_context.source_file_name, language_id=execution_context.language_id, run_command=execution_context.run_command, file_patterns=file_patterns)
+        return ExecutionContext(
+            contest_name=execution_context.contest_name,
+            problem_name=execution_context.problem_name,
+            language=execution_context.language,
+            local_workspace_path=str(execution_context.local_workspace_path),
+            contest_current_path=str(execution_context.contest_current_path),
+            contest_stock_path=str(execution_context.contest_stock_path if hasattr(execution_context, 'contest_stock_path') else ''),
+            contest_template_path=str(execution_context.contest_template_path if hasattr(execution_context, 'contest_template_path') else ''),
+            env_type=execution_context.env_type if hasattr(execution_context, 'env_type') else None,
+            source_file_name=execution_context.source_file_name,
+            language_id=execution_context.language_id,
+            run_command=execution_context.run_command,
+            contest_files=execution_context.contest_files if hasattr(execution_context, 'contest_files') else None,
+            test_files=execution_context.test_files if hasattr(execution_context, 'test_files') else None,
+            build_files=execution_context.build_files if hasattr(execution_context, 'build_files') else None,
+            file_patterns=file_patterns
+        )
     file_patterns = {}
     language_config = {}
     if hasattr(execution_context, 'file_patterns'):
@@ -59,16 +75,35 @@ def execution_context_to_simple_context(execution_context: Union[TypedExecutionC
                 else:
                     file_patterns[pattern_name] = pattern_data
     run_command = ''
-    if 'run_command' in language_config:
+    # まずexecution_contextのrun_command属性を確認
+    if hasattr(execution_context, 'run_command'):
+        run_command = execution_context.run_command
+    # 次にlanguage_configから取得
+    elif 'run_command' in language_config:
         run_command = language_config['run_command']
-    if not run_command:
-        if hasattr(execution_context, 'config') and hasattr(execution_context.config, 'runtime_config'):
-            run_command = execution_context.config.runtime_config.run_command
-        elif hasattr(execution_context, 'run_command'):
-            run_command = execution_context.run_command
-        else:
-            run_command = 'python3'
-    return ExecutionContext(contest_name=execution_context.contest_name, problem_name=execution_context.problem_name, language=execution_context.language, local_workspace_path=execution_context.local_workspace_path if hasattr(execution_context, 'local_workspace_path') else '', contest_current_path=execution_context.contest_current_path if hasattr(execution_context, 'contest_current_path') else '', contest_stock_path=execution_context.contest_stock_path if hasattr(execution_context, 'contest_stock_path') else '', contest_template_path=execution_context.contest_template_path if hasattr(execution_context, 'contest_template_path') else '', source_file_name=execution_context.source_file_name if hasattr(execution_context, 'source_file_name') else '', language_id=execution_context.language_id if hasattr(execution_context, 'language_id') else '', run_command=run_command, file_patterns=file_patterns)
+    # それでも見つからない場合はconfigから取得
+    elif hasattr(execution_context, 'config') and hasattr(execution_context.config, 'runtime_config'):
+        run_command = execution_context.config.runtime_config.run_command
+    # 最後のフォールバック
+    else:
+        run_command = 'python3'
+    return ExecutionContext(
+        contest_name=execution_context.contest_name,
+        problem_name=execution_context.problem_name,
+        language=execution_context.language,
+        local_workspace_path=execution_context.local_workspace_path if hasattr(execution_context, 'local_workspace_path') else '',
+        contest_current_path=execution_context.contest_current_path if hasattr(execution_context, 'contest_current_path') else '',
+        contest_stock_path=execution_context.contest_stock_path if hasattr(execution_context, 'contest_stock_path') else '',
+        contest_template_path=execution_context.contest_template_path if hasattr(execution_context, 'contest_template_path') else '',
+        env_type=execution_context.env_type if hasattr(execution_context, 'env_type') else None,
+        source_file_name=execution_context.source_file_name if hasattr(execution_context, 'source_file_name') else '',
+        language_id=execution_context.language_id if hasattr(execution_context, 'language_id') else '',
+        run_command=run_command,
+        contest_files=execution_context.contest_files if hasattr(execution_context, 'contest_files') else None,
+        test_files=execution_context.test_files if hasattr(execution_context, 'test_files') else None,
+        build_files=execution_context.build_files if hasattr(execution_context, 'build_files') else None,
+        file_patterns=file_patterns
+    )
 
 def generate_steps_from_json(json_steps: List[Dict[str, Any]], context: Union[TypedExecutionConfiguration, Any], os_provider, json_provider) -> StepGenerationResult:
     """JSONステップリストから実行可能ステップを生成する（新設計使用）
@@ -179,7 +214,21 @@ def optimize_step_sequence(steps: List[Step]) -> List[Step]:
                 j += 1
             unique_paths = list(dict.fromkeys(mkdir_paths))
             for path in unique_paths:
-                optimized.append(Step(type=StepType.MKDIR, cmd=[path], allow_failure=step.allow_failure, show_output=step.show_output))
+                optimized.append(Step(
+                    type=StepType.MKDIR,
+                    cmd=[path],
+                    allow_failure=step.allow_failure,
+                    show_output=step.show_output,
+                    cwd=step.cwd,
+                    force_env_type=step.force_env_type,
+                    format_options=step.format_options,
+                    output_format=step.output_format,
+                    format_preset=step.format_preset,
+                    when=step.when,
+                    name=step.name,
+                    auto_generated=step.auto_generated,
+                    max_workers=step.max_workers
+                ))
             i = j
         else:
             optimized.append(step)

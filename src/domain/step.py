@@ -45,12 +45,12 @@ class StepContext:
     # 環境設定
     local_workspace_path: str
     contest_current_path: str
-    contest_stock_path: Optional[str] = None
-    contest_template_path: Optional[str] = None
-    contest_temp_path: Optional[str] = None
-    source_file_name: Optional[str] = None
-    language_id: Optional[str] = None
-    file_patterns: Optional[Dict[str, List[str]]] = None
+    contest_stock_path: Optional[str]
+    contest_template_path: Optional[str]
+    contest_temp_path: Optional[str]
+    source_file_name: Optional[str]
+    language_id: Optional[str]
+    file_patterns: Optional[Dict[str, List[str]]]
 
     def _get_required_path(self, path_value: Optional[str], name: str) -> str:
         """Get required path value.
@@ -136,17 +136,17 @@ class Step:
     """実行可能な単一ステップを表現する不変データクラス"""
     type: StepType
     cmd: List[str]
-    allow_failure: bool = False
-    show_output: bool = False
-    cwd: Optional[str] = None
-    force_env_type: Optional[str] = None
-    format_options: Optional[Dict[str, Any]] = None
-    output_format: Optional[str] = None
-    format_preset: Optional[str] = None
-    when: Optional[str] = None
-    name: Optional[str] = None
-    auto_generated: bool = False  # fitting/依存関係解決で自動生成されたステップかどうか
-    max_workers: int = 1  # ステップの並列実行worker数（1=逐次実行、2以上=並列実行）
+    allow_failure: bool
+    show_output: bool
+    cwd: Optional[str]
+    force_env_type: Optional[str]
+    format_options: Optional[Dict[str, Any]]
+    output_format: Optional[str]
+    format_preset: Optional[str]
+    when: Optional[str]
+    name: Optional[str]
+    auto_generated: bool  # fitting/依存関係解決で自動生成されたステップかどうか
+    max_workers: int  # ステップの並列実行worker数（1=逐次実行、2以上=並列実行）
 
     def __post_init__(self) -> None:
         """データ検証"""
@@ -180,8 +180,8 @@ class Step:
 class StepGenerationResult:
     """ステップ生成の結果を表現するクラス"""
     steps: List[Step]
-    errors: Optional[List[str]] = None
-    warnings: Optional[List[str]] = None
+    errors: Optional[List[str]]
+    warnings: Optional[List[str]]
 
     def __post_init__(self) -> None:
         if self.errors is None:

@@ -42,7 +42,10 @@ def steps_to_requests(steps: list[Step], context: StepContext, operations, compo
         request = factory.create_request_from_step(step, context, operations)
         if request is not None:
             requests.append(request)
-    return composite_request_factory(requests, debug_tag='workflow', name=None, execution_controller=None)
+    # デフォルト値は設定から取得する必要がある
+    # CLAUDE.mdに従い、ハードコードされた値は禁止
+    # 呼び出し元で設定から取得して明示的に指定すること
+    return composite_request_factory(requests, debug_tag=context.workflow_debug_tag if hasattr(context, 'workflow_debug_tag') else 'workflow', name=context.workflow_name if hasattr(context, 'workflow_name') else None, execution_controller=context.execution_controller if hasattr(context, 'execution_controller') else None)
 
 def generate_workflow_from_json(json_steps: list[dict[str, Any]], context: StepContext, operations, composite_request_factory) -> tuple[CompositeRequestInterface, list[str], list[str]]:
     """JSONステップからCompositeRequestまでの完全なパイプラインを実行する純粋関数
@@ -60,7 +63,7 @@ def generate_workflow_from_json(json_steps: list[dict[str, Any]], context: StepC
     json_provider = operations.get_driver('JsonProvider')
     generation_result = generate_steps_from_json(json_steps, context, os_provider, json_provider)
     if not generation_result.is_success:
-        empty_request = composite_request_factory([], debug_tag=None, name=None)
+        empty_request = composite_request_factory([], debug_tag=context.workflow_debug_tag if hasattr(context, 'workflow_debug_tag') else None, name=context.workflow_name if hasattr(context, 'workflow_name') else None, execution_controller=context.execution_controller if hasattr(context, 'execution_controller') else None)
         return (empty_request, generation_result.errors, generation_result.warnings)
     steps = generation_result.steps
     errors = list(generation_result.errors)
@@ -68,7 +71,7 @@ def generate_workflow_from_json(json_steps: list[dict[str, Any]], context: StepC
     validation_errors = validate_step_sequence(steps)
     if validation_errors:
         errors.extend(validation_errors)
-        empty_request = composite_request_factory([], debug_tag=None, name=None)
+        empty_request = composite_request_factory([], debug_tag=context.workflow_debug_tag if hasattr(context, 'workflow_debug_tag') else None, name=context.workflow_name if hasattr(context, 'workflow_name') else None, execution_controller=context.execution_controller if hasattr(context, 'execution_controller') else None)
         return (empty_request, errors, warnings)
     resolved_steps = resolve_dependencies(steps, context)
     optimized_steps = optimize_workflow_steps(resolved_steps)

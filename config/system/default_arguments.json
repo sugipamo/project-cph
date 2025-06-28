@@ -101,6 +101,42 @@
     },
     "sqlite_provider": {
       "execute_parameters": []
+    },
+    "execution_context": {
+      "contest_stock_path": null,
+      "contest_template_path": null,
+      "env_type": null,
+      "source_file_name": null,
+      "language_id": null,
+      "run_command": null,
+      "contest_files": null,
+      "test_files": null,
+      "build_files": null,
+      "file_patterns": null
+    },
+    "step_runner": {
+      "step_defaults": {
+        "name": "Unnamed Step",
+        "allow_failure": false,
+        "show_output": true,
+        "max_workers": 1,
+        "cwd": null,
+        "when": null,
+        "output_format": "simple",
+        "format_preset": null
+      },
+      "default_file_patterns": {
+        "contest_files": ["main.py", "*.py"],
+        "test_files": ["test_*.txt", "sample_*.txt"],
+        "build_files": ["*.py", "*.cpp", "*.java"]
+      }
+    },
+    "workflow": {
+      "composite_request_defaults": {
+        "debug_tag": "workflow",
+        "name": null,
+        "execution_controller": null
+      }
     }
   }
 }

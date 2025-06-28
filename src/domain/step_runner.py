@@ -24,16 +24,16 @@ class ExecutionContext:
     language: str
     local_workspace_path: str
     contest_current_path: str
-    contest_stock_path: Optional[str] = None
-    contest_template_path: Optional[str] = None
-    env_type: Optional[str] = None
-    source_file_name: Optional[str] = None
-    language_id: Optional[str] = None
-    run_command: Optional[str] = None
-    contest_files: Optional[List[str]] = None
-    test_files: Optional[List[str]] = None
-    build_files: Optional[List[str]] = None
-    file_patterns: Optional[Dict[str, List[str]]] = None
+    contest_stock_path: Optional[str]
+    contest_template_path: Optional[str]
+    env_type: Optional[str]
+    source_file_name: Optional[str]
+    language_id: Optional[str]
+    run_command: Optional[str]
+    contest_files: Optional[List[str]]
+    test_files: Optional[List[str]]
+    build_files: Optional[List[str]]
+    file_patterns: Optional[Dict[str, List[str]]]
 
     def to_dict(self) -> Dict[str, Any]:
         """辞書形式に変換"""
@@ -301,13 +301,9 @@ def get_file_patterns_from_context(context, pattern_name: str, json_provider) ->
         except Exception:
             pass
 
-    # デフォルトパターンを返す
-    default_patterns = {
-        'contest_files': ['main.py', '*.py'],
-        'test_files': ['test_*.txt', 'sample_*.txt'],
-        'build_files': ['*.py', '*.cpp', '*.java']
-    }
-    return default_patterns[pattern_name]
+    # デフォルトパターンは設定ファイルから取得する必要がある
+    # CLAUDE.mdに従い、デフォルト値のハードコードは禁止
+    raise ValueError(f"ファイルパターン '{pattern_name}' が見つかりません。設定ファイルから取得して指定してください")
 
 
 def expand_file_patterns_to_files(patterns: List[str], os_provider) -> List[str]:
@@ -364,32 +360,46 @@ def create_step(json_step: Dict[str, Any], context) -> 'Step':
     raw_cmd = json_step['cmd']
     expanded_cmd = [expand_template(arg, context) for arg in raw_cmd]
 
-    # デフォルト値を直接設定（CLAUDE.mdに従いデフォルト値禁止のため）
-    step_defaults = {
-        'name': 'Unnamed Step',
+    # CLAUDE.mdに従い、設定ファイルからデフォルト値を取得
+    from src.configuration.config_resolver import resolve_best
+    config_root = context.config_root if hasattr(context, 'config_root') else None
+    
+    # デフォルト値を設定から取得
+    step_defaults = {}
+    if config_root:
+        defaults_node = resolve_best(config_root, ['default_arguments', 'step_runner', 'step_defaults'])
+        if defaults_node and defaults_node.value:
+            step_defaults = defaults_node.value
+    
+    # フォールバック用のデフォルト値（設定が取得できない場合）
+    fallback_defaults = {
+        'name': None,
         'allow_failure': False,
         'show_output': True,
         'max_workers': 1,
         'cwd': None,
         'when': None,
-        'output_format': 'simple',
-        'format_preset': None
+        'output_format': None,
+        'format_preset': None,
+        'force_env_type': None,
+        'format_options': None,
+        'auto_generated': False
     }
-
-    # デフォルト値とjson_stepをマージ
-    merged_step = {**step_defaults, **json_step}
 
     return Step(
         type=StepType(json_step['type']),
         cmd=expanded_cmd,
-        name=merged_step['name'],
-        allow_failure=merged_step['allow_failure'],
-        show_output=merged_step['show_output'],
-        max_workers=merged_step['max_workers'],
-        cwd=merged_step['cwd'],
-        when=merged_step['when'],
-        output_format=merged_step['output_format'],
-        format_preset=merged_step['format_preset']
+        name=json_step.get('name', step_defaults.get('name', fallback_defaults['name'])),
+        allow_failure=json_step.get('allow_failure', step_defaults.get('allow_failure', fallback_defaults['allow_failure'])),
+        show_output=json_step.get('show_output', step_defaults.get('show_output', fallback_defaults['show_output'])),
+        max_workers=json_step.get('max_workers', step_defaults.get('max_workers', fallback_defaults['max_workers'])),
+        cwd=json_step.get('cwd', step_defaults.get('cwd', fallback_defaults['cwd'])),
+        when=json_step.get('when', step_defaults.get('when', fallback_defaults['when'])),
+        output_format=json_step.get('output_format', step_defaults.get('output_format', fallback_defaults['output_format'])),
+        format_preset=json_step.get('format_preset', step_defaults.get('format_preset', fallback_defaults['format_preset'])),
+        force_env_type=json_step.get('force_env_type', step_defaults.get('force_env_type', fallback_defaults['force_env_type'])),
+        format_options=json_step.get('format_options', step_defaults.get('format_options', fallback_defaults['format_options'])),
+        auto_generated=json_step.get('auto_generated', fallback_defaults['auto_generated'])
     )
 
 
