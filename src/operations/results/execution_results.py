@@ -1,7 +1,6 @@
 """Consolidated execution result implementations."""
-from typing import Any, Optional, Dict
 from dataclasses import dataclass, field
-from datetime import datetime
+from typing import Any, Dict, Optional
 
 
 @dataclass
@@ -12,7 +11,7 @@ class ExecutionResultBase:
     end_time: Optional[float] = None
     error: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert result to dictionary."""
         return {
@@ -32,7 +31,7 @@ class ShellResult(ExecutionResultBase):
     returncode: Optional[int] = None
     command: Optional[str] = None
     working_directory: Optional[str] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert result to dictionary."""
         result = super().to_dict()
@@ -46,14 +45,14 @@ class ShellResult(ExecutionResultBase):
         return result
 
 
-@dataclass  
+@dataclass
 class DockerResult(ExecutionResultBase):
     """Result class for Docker operations."""
     operation: str = ""
     container_id: Optional[str] = None
     image_id: Optional[str] = None
     output: Optional[str] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert result to dictionary."""
         result = super().to_dict()
@@ -71,7 +70,7 @@ class PythonResult(ExecutionResultBase):
     """Result class for Python code execution."""
     output: str = ""
     exception: Optional[str] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert result to dictionary."""
         result = super().to_dict()
@@ -85,7 +84,7 @@ class PythonResult(ExecutionResultBase):
 # Legacy compatibility wrappers to maintain existing interfaces
 class LegacyShellResult:
     """Legacy wrapper for ShellResult to maintain compatibility."""
-    
+
     def __init__(self, success: Optional[bool], stdout: Optional[str],
                  stderr: Optional[str], returncode: Optional[int],
                  cmd: Optional[str], error_message: Optional[str],
@@ -109,11 +108,11 @@ class LegacyShellResult:
         self.request = request
         self.op = op
         self.exception = exception
-        
+
         # Make attributes accessible directly
         for key, value in self.result.__dict__.items():
             setattr(self, key, value)
-            
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return self.result.to_dict()
@@ -121,7 +120,7 @@ class LegacyShellResult:
 
 class LegacyDockerResult:
     """Legacy wrapper for DockerResult to maintain compatibility."""
-    
+
     def __init__(self, stdout: Optional[str] = None, stderr: Optional[str] = None,
                  returncode: Optional[int] = None, container_id: Optional[str] = None,
                  image: Optional[str] = None, success: Optional[bool] = None,
@@ -138,24 +137,24 @@ class LegacyDockerResult:
             error=error or (stderr if stderr and returncode != 0 else None),
             metadata=kwargs
         )
-        
+
         # Store additional legacy fields
         self.stdout = stdout
         self.stderr = stderr
         self.returncode = returncode
         self.image = image
-        
+
         # Make attributes accessible directly
         for key, value in self.result.__dict__.items():
             setattr(self, key, value)
-            
+
     def __repr__(self) -> str:
         """String representation."""
         return (
             f"<DockerResult success={self.success} returncode={self.returncode} "
             f"container_id={self.container_id} image={self.image_id}>"
         )
-        
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return self.result.to_dict()

@@ -3,10 +3,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Optional
 
 from src.domain.base_composite_request import CompositeRequestFoundation
-from src.operations.requests.request_factory import OperationRequestFoundation
-from src.operations.requests.base_request import RequestType
 from src.operations.composite_structure import CompositeStructure
 from src.operations.interfaces.execution_interfaces import ExecutionInterface
+from src.operations.requests.base_request import RequestType
+from src.operations.requests.request_factory import OperationRequestFoundation
 
 
 class CompositeRequest(CompositeRequestFoundation):

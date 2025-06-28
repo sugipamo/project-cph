@@ -16,19 +16,19 @@ class ImportInfo:
 
 
 class ASTAnalyzer:
-    
+
     def __init__(self):
         self._tree: Optional[ast.AST] = None
         self._source_code: Optional[str] = None
-        
+
     def parse_file(self, file_path: Path) -> Optional[ast.AST]:
         try:
             self._source_code = file_path.read_text(encoding='utf-8')
             self._tree = ast.parse(self._source_code, str(file_path))
             return self._tree
-        except (SyntaxError, UnicodeDecodeError) as e:
+        except (SyntaxError, UnicodeDecodeError):
             return None
-    
+
     def parse_source(self, source_code: str, filename: str = '<string>') -> Optional[ast.AST]:
         try:
             self._source_code = source_code
@@ -36,11 +36,11 @@ class ASTAnalyzer:
             return self._tree
         except SyntaxError:
             return None
-    
+
     def extract_imports(self) -> List[ImportInfo]:
         if not self._tree:
             return []
-        
+
         imports = []
         for node in ast.walk(self._tree):
             if isinstance(node, ast.Import):
@@ -62,15 +62,15 @@ class ASTAnalyzer:
                     line_number=node.lineno,
                     is_from_import=True
                 ))
-        
+
         return imports
-    
+
     def extract_exported_symbols(self) -> Set[ExportedSymbol]:
         if not self._tree:
             return set()
-        
+
         symbols = set()
-        
+
         for node in ast.walk(self._tree):
             if isinstance(node, ast.ClassDef):
                 symbols.add(ExportedSymbol(
@@ -106,7 +106,7 @@ class ASTAnalyzer:
                                 line_number=node.lineno,
                                 is_public=not target.id.startswith('_')
                             ))
-        
+
         if hasattr(self._tree, 'body'):
             for node in self._tree.body:
                 if isinstance(node, ast.Assign):
@@ -124,14 +124,14 @@ class ASTAnalyzer:
                                             line_number=0,
                                             is_public=True
                                         ))
-        
+
         return symbols
-    
+
     def _is_module_level_assignment(self, node: ast.AST) -> bool:
         if not self._tree or not hasattr(self._tree, 'body'):
             return False
         return node in self._tree.body
-    
+
     def _extract_all_names(self, node: ast.AST) -> Optional[Set[str]]:
         if isinstance(node, ast.List):
             names = set()
@@ -142,23 +142,23 @@ class ASTAnalyzer:
                     names.add(elt.s)
             return names
         return None
-    
+
     def find_broken_imports(self, available_modules: Set[str]) -> List[Tuple[ImportInfo, str]]:
         broken = []
         imports = self.extract_imports()
-        
+
         for import_info in imports:
             module_parts = import_info.module.split('.') if import_info.module else []
-            
+
             is_broken = True
             for i in range(len(module_parts)):
                 partial_module = '.'.join(module_parts[:i+1])
                 if partial_module in available_modules:
                     is_broken = False
                     break
-            
+
             if is_broken and import_info.module:
                 error_msg = f"Module '{import_info.module}' not found"
                 broken.append((import_info, error_msg))
-        
+
         return broken

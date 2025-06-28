@@ -2,7 +2,6 @@
 from typing import Any, Optional
 
 from src.operations.constants.operation_type import OperationType
-from src.operations.results.result import OperationResult
 
 
 class FileResult:

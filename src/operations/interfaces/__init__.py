@@ -1,10 +1,10 @@
 """Consolidated operation interfaces."""
 # Execution interfaces
 from .execution_interfaces import (
-    ExecutionInterface,
     DockerDriverInterface,
-    ShellExecutionInterface,
+    ExecutionInterface,
     PythonExecutionInterface,
+    ShellExecutionInterface,
 )
 
 # Infrastructure interfaces
@@ -18,8 +18,8 @@ from .infrastructure_interfaces import (
 # Utility interfaces
 from .utility_interfaces import (
     LoggerInterface,
-    OutputManagerInterface,
     OutputInterface,
+    OutputManagerInterface,
     RegexInterface,
 )
 

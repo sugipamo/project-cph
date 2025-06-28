@@ -1,25 +1,23 @@
 """Consolidated execution request implementations."""
 from enum import Enum, auto
-from typing import Optional, Any, Dict, Union, List
-from pathlib import Path
+from typing import Any, List, Optional, Union
 
 from src.domain.base_request import OperationRequestFoundation
-from src.operations.constants.operation_type import OperationType
-from src.operations.requests.base_request import RequestType
-from src.operations.results.execution_results import LegacyShellResult as ShellResult
-from src.operations.results.file_result import FileResult
-from src.infrastructure.requests.file.file_op_type import FileOpType
-from src.operations.results.execution_results import LegacyDockerResult as DockerResult
-from src.operations.results.result import OperationResult
-from src.utils.shell_utils import ShellUtils
-from src.operations.error_converter import ErrorConverter
-from src.operations.results.result_factory import ResultFactory
 from src.infrastructure.json_provider import JsonProvider
-from src.infrastructure.registry_provider import SystemRegistryProvider
 from src.infrastructure.os_provider import OsProvider
-from src.utils.python_utils import PythonUtils
+from src.infrastructure.registry_provider import SystemRegistryProvider
+from src.infrastructure.requests.file.file_op_type import FileOpType
 from src.infrastructure.time_provider import TimeProvider
+from src.operations.constants.operation_type import OperationType
+from src.operations.error_converter import ErrorConverter
+from src.operations.requests.base_request import RequestType
 from src.operations.requests.composite_request import CompositeRequest
+from src.operations.results.execution_results import LegacyDockerResult as DockerResult
+from src.operations.results.execution_results import LegacyShellResult as ShellResult
+from src.operations.results.execution_results import PythonResult
+from src.operations.results.file_result import FileResult
+from src.operations.results.result_factory import ResultFactory
+from src.utils.python_utils import PythonUtils
 
 
 class ShellRequest(OperationRequestFoundation):
@@ -52,7 +50,7 @@ class ShellRequest(OperationRequestFoundation):
     @property
     def operation_type(self) -> OperationType:
         """Return the operation type."""
-        return OperationType.COMMAND
+        return OperationType.SHELL
 
     @property
     def request_type(self) -> RequestType:
@@ -62,11 +60,12 @@ class ShellRequest(OperationRequestFoundation):
     def _execute_core(self, driver: Optional[Any], logger: Optional[Any]) -> ShellResult:
         """Execute shell command with retry support."""
         if logger:
-            logger.info(f"Executing shell command: {ShellUtils.truncate_command(self.command)}")
+            cmd_preview = self.command if len(self.command) <= 50 else self.command[:47] + "..."
+            logger.info(f"Executing shell command: {cmd_preview}")
 
         error = None
         stdout, stderr = "", ""
-        
+
         max_attempts = 1
         if self.retry_config:
             max_attempts = self.retry_config.get('max_attempts', 1)
@@ -81,10 +80,10 @@ class ShellRequest(OperationRequestFoundation):
                     shell=self.shell,
                     working_directory=self.working_directory
                 )
-                
+
                 stdout = result.get('stdout', '')
                 stderr = result.get('stderr', '')
-                
+
                 # Check for execution errors
                 if not result.get('success', False):
                     error = self._error_converter.convert_error(
@@ -93,11 +92,11 @@ class ShellRequest(OperationRequestFoundation):
                     if logger and attempt < max_attempts - 1:
                         logger.warning(f"Command failed (attempt {attempt + 1}/{max_attempts}), retrying...")
                     continue
-                    
+
                 # Success case
                 if logger:
                     logger.info("Shell command executed successfully")
-                    
+
                 return self._result_factory.create_shell_result(
                     success=True,
                     stdout=stdout,
@@ -105,7 +104,7 @@ class ShellRequest(OperationRequestFoundation):
                     command=self.command,
                     working_directory=self.working_directory
                 )
-                
+
             except Exception as e:
                 error = self._error_converter.convert_error(e)
                 if logger and attempt < max_attempts - 1:
@@ -114,7 +113,7 @@ class ShellRequest(OperationRequestFoundation):
         # All attempts failed
         if logger:
             logger.error(f"Shell command failed after {max_attempts} attempts: {error}")
-            
+
         return self._result_factory.create_shell_result(
             success=False,
             stdout=stdout,
@@ -164,10 +163,10 @@ class PythonRequest(OperationRequestFoundation):
         """Return the request type for type-safe identification."""
         return RequestType.PYTHON_REQUEST
 
-    def _execute_core(self, driver: Optional[Any], logger: Optional[Any]) -> OperationResult:
+    def _execute_core(self, driver: Optional[Any], logger: Optional[Any]) -> PythonResult:
         """Execute Python code or script."""
         start_time = self._time_ops.now()
-        
+
         try:
             if logger:
                 operation_desc = "script" if self.is_script_path else "code"
@@ -182,34 +181,33 @@ class PythonRequest(OperationRequestFoundation):
                 'environment': self._prepare_environment(),
                 'python_path': self.python_path
             }
-            
+
             # Execute through driver
             result = driver.execute_python(**execution_params)
-            
+
             if result['success']:
                 if logger:
                     logger.info("Python execution completed successfully")
-                return OperationResult(
+                return PythonResult(
                     success=True,
                     output=result.get('output', ''),
                     start_time=start_time,
                     end_time=self._time_ops.now()
                 )
-            else:
-                error_msg = result.get('error', 'Unknown error')
-                if logger:
-                    logger.error(f"Python execution failed: {error_msg}")
-                return OperationResult(
-                    success=False,
-                    error=error_msg,
-                    start_time=start_time,
-                    end_time=self._time_ops.now()
-                )
-                
+            error_msg = result.get('error', 'Unknown error')
+            if logger:
+                logger.error(f"Python execution failed: {error_msg}")
+            return PythonResult(
+                success=False,
+                error=error_msg,
+                start_time=start_time,
+                end_time=self._time_ops.now()
+            )
+
         except Exception as e:
             if logger:
-                logger.error(f"Python execution failed with exception: {str(e)}")
-            return OperationResult(
+                logger.error(f"Python execution failed with exception: {e!s}")
+            return PythonResult(
                 success=False,
                 error=str(e),
                 start_time=start_time,
@@ -300,18 +298,17 @@ class DockerRequest(OperationRequestFoundation):
             # Dispatch to appropriate operation method
             if self.operation == DockerOpType.BUILD:
                 return self._execute_build(driver, logger)
-            elif self.operation == DockerOpType.RUN:
+            if self.operation == DockerOpType.RUN:
                 return self._execute_run(driver, logger)
-            elif self.operation == DockerOpType.STOP:
+            if self.operation == DockerOpType.STOP:
                 return self._execute_stop(driver, logger)
-            elif self.operation == DockerOpType.REMOVE:
+            if self.operation == DockerOpType.REMOVE:
                 return self._execute_remove(driver, logger)
-            else:
-                raise DockerOperationError(f"Unsupported Docker operation: {self.operation}")
-                
+            raise DockerOperationError(f"Unsupported Docker operation: {self.operation}")
+
         except Exception as e:
             if logger:
-                logger.error(f"Docker operation failed: {str(e)}")
+                logger.error(f"Docker operation failed: {e!s}")
             return DockerResult(
                 success=False,
                 operation=self.operation.name,
@@ -322,16 +319,16 @@ class DockerRequest(OperationRequestFoundation):
         """Execute Docker build operation."""
         if not self.image_name:
             raise DockerOperationError("Image name is required for build operation")
-            
+
         build_params = {
             'context': self.working_directory,
             'dockerfile': self.dockerfile_path,
             'tag': self.image_name,
             'buildargs': self._json_provider.dumps(self.build_args) if self.build_args else None
         }
-        
+
         result = driver.execute_docker_operation('build', build_params)
-        
+
         if result.get('success'):
             if logger:
                 logger.info(f"Docker image built successfully: {self.image_name}")
@@ -341,18 +338,17 @@ class DockerRequest(OperationRequestFoundation):
                 image_id=result.get('image_id'),
                 output=result.get('output')
             )
-        else:
-            return DockerResult(
-                success=False,
-                operation='BUILD',
-                error=result.get('error', 'Build failed')
-            )
+        return DockerResult(
+            success=False,
+            operation='BUILD',
+            error=result.get('error', 'Build failed')
+        )
 
     def _execute_run(self, driver: Any, logger: Optional[Any]) -> DockerResult:
         """Execute Docker run operation."""
         if not self.image_name:
             raise DockerOperationError("Image name is required for run operation")
-            
+
         # Build run command with all parameters
         run_params = {
             'image': self.image_name,
@@ -364,35 +360,35 @@ class DockerRequest(OperationRequestFoundation):
             'network': self.network,
             **self.run_args
         }
-        
+
         # Create composite request for complex run operations
         requests = []
-        
+
         # Pull image if needed
         pull_request = ShellRequest(
             command=f"docker pull {self.image_name}",
             working_directory=self.working_directory,
             error_converter=ErrorConverter(),
-            result_factory=OperationResultFactory(),
+            result_factory=ResultFactory(),
             name=f"Pull {self.image_name}"
         )
         requests.append(pull_request)
-        
+
         # Run container
         run_command = self._build_run_command(run_params)
         run_request = ShellRequest(
             command=run_command,
             working_directory=self.working_directory,
             error_converter=ErrorConverter(),
-            result_factory=OperationResultFactory(),
+            result_factory=ResultFactory(),
             name=f"Run {self.image_name}"
         )
         requests.append(run_request)
-        
+
         # Execute as composite
         composite = CompositeRequest(requests=requests, name="Docker Run")
         result = composite.execute_operation(driver, logger)
-        
+
         if result.success:
             return DockerResult(
                 success=True,
@@ -400,20 +396,19 @@ class DockerRequest(OperationRequestFoundation):
                 container_id=self.container_name,
                 output="Container started successfully"
             )
-        else:
-            return DockerResult(
-                success=False,
-                operation='RUN',
-                error=result.error or "Failed to run container"
-            )
+        return DockerResult(
+            success=False,
+            operation='RUN',
+            error=result.error or "Failed to run container"
+        )
 
     def _execute_stop(self, driver: Any, logger: Optional[Any]) -> DockerResult:
         """Execute Docker stop operation."""
         if not self.container_name:
             raise DockerOperationError("Container name is required for stop operation")
-            
+
         result = driver.execute_docker_operation('stop', {'container': self.container_name})
-        
+
         if result.get('success'):
             if logger:
                 logger.info(f"Docker container stopped: {self.container_name}")
@@ -422,20 +417,19 @@ class DockerRequest(OperationRequestFoundation):
                 operation='STOP',
                 container_id=self.container_name
             )
-        else:
-            return DockerResult(
-                success=False,
-                operation='STOP',
-                error=result.get('error', 'Stop failed')
-            )
+        return DockerResult(
+            success=False,
+            operation='STOP',
+            error=result.get('error', 'Stop failed')
+        )
 
     def _execute_remove(self, driver: Any, logger: Optional[Any]) -> DockerResult:
         """Execute Docker remove operation."""
         if not self.container_name:
             raise DockerOperationError("Container name is required for remove operation")
-            
+
         result = driver.execute_docker_operation('rm', {'container': self.container_name})
-        
+
         if result.get('success'):
             if logger:
                 logger.info(f"Docker container removed: {self.container_name}")
@@ -444,40 +438,39 @@ class DockerRequest(OperationRequestFoundation):
                 operation='REMOVE',
                 container_id=self.container_name
             )
-        else:
-            return DockerResult(
-                success=False,
-                operation='REMOVE',
-                error=result.get('error', 'Remove failed')
-            )
+        return DockerResult(
+            success=False,
+            operation='REMOVE',
+            error=result.get('error', 'Remove failed')
+        )
 
     def _build_run_command(self, params: dict) -> str:
         """Build docker run command from parameters."""
         cmd_parts = ['docker', 'run']
-        
+
         if params.get('name'):
             cmd_parts.extend(['--name', params['name']])
-            
+
         for key, value in params.get('environment', {}).items():
             cmd_parts.extend(['-e', f'{key}={value}'])
-            
+
         for host_path, container_path in params.get('volumes', {}).items():
             cmd_parts.extend(['-v', f'{host_path}:{container_path}'])
-            
+
         for host_port, container_port in params.get('ports', {}).items():
             cmd_parts.extend(['-p', f'{host_port}:{container_port}'])
-            
+
         if params.get('network'):
             cmd_parts.extend(['--network', params['network']])
-            
+
         cmd_parts.append(params['image'])
-        
+
         if params.get('command'):
             if isinstance(params['command'], list):
                 cmd_parts.extend(params['command'])
             else:
                 cmd_parts.append(params['command'])
-                
+
         return ' '.join(cmd_parts)
 
 
@@ -519,26 +512,26 @@ class FileRequest(OperationRequestFoundation):
     def _execute_core(self, driver: Optional[Any], logger: Optional[Any]) -> FileResult:
         """Execute file operation."""
         start_time = self._time_ops.now()
-        
+
         if logger:
             logger.info(f"Executing file operation: {self.operation.value} on {self.path}")
 
         try:
             # Get appropriate driver
             file_driver = self._resolve_driver(driver)
-            
+
             # Dispatch to appropriate operation
             result = self._dispatch_file_operation(file_driver, logger)
-            
+
             if result.success:
                 if logger:
-                    logger.info(f"File operation completed successfully")
+                    logger.info("File operation completed successfully")
             else:
                 if logger:
                     logger.error(f"File operation failed: {result.error}")
-                    
+
             return result
-            
+
         except Exception as e:
             return self._handle_file_error(e, start_time, logger)
 
@@ -547,7 +540,7 @@ class FileRequest(OperationRequestFoundation):
         # If driver has file operation capability, use it directly
         if hasattr(driver, 'read_file') or hasattr(driver, 'write_file'):
             return driver
-            
+
         # Otherwise try to get file driver from registry
         try:
             registry = SystemRegistryProvider()
@@ -569,11 +562,11 @@ class FileRequest(OperationRequestFoundation):
             FileOpType.MKDIR: self._execute_mkdir,
             FileOpType.TOUCH: self._execute_touch,
         }
-        
+
         operation_func = operation_map.get(self.operation)
         if not operation_func:
             raise ValueError(f"Unsupported file operation: {self.operation}")
-            
+
         return operation_func(driver, logger)
 
     def _execute_read(self, driver: Any, logger: Optional[Any]) -> FileResult:
@@ -581,18 +574,23 @@ class FileRequest(OperationRequestFoundation):
         content = driver.read_file(self.path, encoding=self.encoding)
         return FileResult(
             success=True,
-            operation=self.operation,
-            path=self.path,
             content=content,
+            path=self.path,
+            exists=None,
+            op=self.operation,
+            error_message=None,
+            exception=None,
             start_time=self._time_ops.now(),
-            end_time=self._time_ops.now()
+            end_time=self._time_ops.now(),
+            request=self,
+            metadata=None
         )
 
     def _execute_write(self, driver: Any, logger: Optional[Any]) -> FileResult:
         """Execute file write operation."""
         if self.content is None:
             raise ValueError("Content is required for write operation")
-            
+
         driver.write_file(self.path, self.content, encoding=self.encoding)
         return FileResult(
             success=True,
@@ -613,7 +611,7 @@ class FileRequest(OperationRequestFoundation):
         exists = driver.file_exists(self.path)
         return FileResult(
             success=True,
-            operation=self.operation,
+            op=self.operation,
             path=self.path,
             exists=exists,
             start_time=self._time_ops.now(),
@@ -625,7 +623,7 @@ class FileRequest(OperationRequestFoundation):
         driver.delete_file(self.path)
         return FileResult(
             success=True,
-            operation=self.operation,
+            op=self.operation,
             path=self.path,
             start_time=self._time_ops.now(),
             end_time=self._time_ops.now()
@@ -635,11 +633,11 @@ class FileRequest(OperationRequestFoundation):
         """Execute file copy operation."""
         if not self.destination:
             raise ValueError("Destination is required for copy operation")
-            
+
         driver.copy_file(self.path, self.destination)
         return FileResult(
             success=True,
-            operation=self.operation,
+            op=self.operation,
             path=self.path,
             destination=self.destination,
             start_time=self._time_ops.now(),
@@ -650,11 +648,11 @@ class FileRequest(OperationRequestFoundation):
         """Execute file move operation."""
         if not self.destination:
             raise ValueError("Destination is required for move operation")
-            
+
         driver.move_file(self.path, self.destination)
         return FileResult(
             success=True,
-            operation=self.operation,
+            op=self.operation,
             path=self.path,
             destination=self.destination,
             start_time=self._time_ops.now(),
@@ -666,29 +664,29 @@ class FileRequest(OperationRequestFoundation):
         driver.create_directory(self.path)
         return FileResult(
             success=True,
-            operation=self.operation,
+            op=self.operation,
             path=self.path,
             start_time=self._time_ops.now(),
             end_time=self._time_ops.now()
         )
-    
+
     def _execute_rmtree(self, driver: Any, logger: Optional[Any]) -> FileResult:
         """Execute recursive directory removal."""
         driver.remove_directory(self.path)
         return FileResult(
             success=True,
-            operation=self.operation,
+            op=self.operation,
             path=self.path,
             start_time=self._time_ops.now(),
             end_time=self._time_ops.now()
         )
-    
+
     def _execute_touch(self, driver: Any, logger: Optional[Any]) -> FileResult:
         """Execute file touch operation."""
         driver.touch_file(self.path)
         return FileResult(
             success=True,
-            operation=self.operation,
+            op=self.operation,
             path=self.path,
             start_time=self._time_ops.now(),
             end_time=self._time_ops.now()
@@ -699,7 +697,7 @@ class FileRequest(OperationRequestFoundation):
         items = driver.list_directory(self.path)
         return FileResult(
             success=True,
-            operation=self.operation,
+            op=self.operation,
             path=self.path,
             items=items,
             start_time=self._time_ops.now(),
@@ -709,7 +707,7 @@ class FileRequest(OperationRequestFoundation):
     def _handle_file_error(self, error: Exception, start_time: Any, logger: Optional[Any]) -> FileResult:
         """Handle file operation errors."""
         error_msg = str(error)
-        
+
         if self.allow_failure:
             if logger:
                 logger.warning(f"File operation failed (allowed): {error_msg}")
@@ -726,7 +724,6 @@ class FileRequest(OperationRequestFoundation):
                 request=self,
                 metadata={}
             )
-        else:
-            if logger:
-                logger.error(f"File operation failed: {error_msg}")
-            raise error
+        if logger:
+            logger.error(f"File operation failed: {error_msg}")
+        raise error

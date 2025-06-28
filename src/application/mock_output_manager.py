@@ -85,7 +85,7 @@ class MockOutputManager(OutputManagerInterface):
     def output_sorted(self, level: LogLevel) -> str:
         """Generate sorted output."""
         entries = self._collect_entries(True, True, level)
-        return '\n'.join((e.formatted_content for e in entries))
+        return '\n'.join(e.formatted_content for e in entries)
 
     def get_captured_outputs(self) -> List[str]:
         """Get captured outputs for testing."""

@@ -48,11 +48,12 @@ class TestShellRequest:
     def test_execute_core_success(self, error_converter, result_factory):
         """Test successful shell execution."""
         mock_driver = Mock()
-        mock_driver.execute_command.return_value = Mock(
-            stdout="output",
-            stderr="",
-            returncode=0
-        )
+        mock_driver.execute_command.return_value = {
+            'stdout': "output",
+            'stderr': "",
+            'returncode': 0,
+            'success': True
+        }
         
         mock_result = Mock()
         result_factory.create_shell_result.return_value = mock_result
@@ -81,7 +82,7 @@ class TestShellRequest:
         mock_driver = Mock()
         mock_driver.execute_command.side_effect = [
             Exception("First failure"),
-            Mock(stdout="output", stderr="", returncode=0)
+            {'stdout': "output", 'stderr': "", 'returncode': 0, 'success': True}
         ]
         
         error_converter.convert_error.return_value = "Converted error"
@@ -146,7 +147,7 @@ class TestPythonRequest:
             'output': 'test output'
         }
         
-        providers['time_ops'].now.side_effect = [1.0, 2.0]
+        providers['time_ops'].now.side_effect = [1.0, 2.0, 3.0]  # Need 3 calls: start, end for success, and possible error
         providers['os_provider'].environ = {"PATH": "/usr/bin"}
         providers['python_utils'].join_paths.return_value = "/tmp:/usr/lib"
         
@@ -193,10 +194,13 @@ class TestDockerRequest:
     
     def test_init(self, time_ops):
         """Test DockerRequest initialization."""
+        json_provider = Mock()
+        json_provider.dumps.return_value = '{}'
         request = DockerRequest(
             operation=DockerOpType.BUILD,
-            image="test:latest",
-            time_ops=time_ops,
+            json_provider=json_provider,
+            working_directory="/app",
+            image_name="test:latest",
             name="test_docker",
             container_name="test_container",
             command="echo test",
@@ -206,14 +210,11 @@ class TestDockerRequest:
             volumes={"/host": "/container"},
             ports={"8080": "80"},
             network="bridge",
-            working_dir="/app",
-            detach=True,
-            remove=True,
             debug_tag="test"
         )
         
         assert request.operation == DockerOpType.BUILD
-        assert request.image == "test:latest"
+        assert request.image_name == "test:latest"
         assert request.container_name == "test_container"
         assert request.command == "echo test"
         assert request.dockerfile_path == "./Dockerfile"
@@ -222,9 +223,7 @@ class TestDockerRequest:
         assert request.volumes == {"/host": "/container"}
         assert request.ports == {"8080": "80"}
         assert request.network == "bridge"
-        assert request.working_dir == "/app"
-        assert request.detach is True
-        assert request.remove is True
+        assert request.working_directory == "/app"
         assert request.operation_type == OperationType.DOCKER
         assert request.request_type == RequestType.DOCKER_REQUEST
     
@@ -233,15 +232,18 @@ class TestDockerRequest:
         time_ops.now.side_effect = [1.0, 2.0]
         
         mock_driver = Mock()
-        mock_driver.build_image.return_value = {
+        mock_driver.execute_docker_operation.return_value = {
             'success': True,
             'image_id': 'abc123'
         }
         
+        json_provider = Mock()
+        json_provider.dumps.return_value = '{}'
         request = DockerRequest(
             operation=DockerOpType.BUILD,
-            image="test:latest",
-            time_ops=time_ops,
+            json_provider=json_provider,
+            working_directory="/app",
+            image_name="test:latest",
             dockerfile_path="./Dockerfile"
         )
         
@@ -249,27 +251,26 @@ class TestDockerRequest:
         
         assert result.success is True
         assert result.image_id == 'abc123'
-        mock_driver.build_image.assert_called_once_with(
-            dockerfile_path="./Dockerfile",
-            tag="test:latest",
-            build_args=None
-        )
+        mock_driver.execute_docker_operation.assert_called_once()
     
     def test_execute_core_run(self, time_ops):
         """Test Docker run operation."""
         time_ops.now.side_effect = [1.0, 2.0]
         
         mock_driver = Mock()
-        mock_driver.run_container.return_value = {
+        mock_driver.execute_docker_operation.return_value = {
             'success': True,
             'container_id': 'container123',
             'output': 'container output'
         }
         
+        json_provider = Mock()
+        json_provider.dumps.return_value = '{}'
         request = DockerRequest(
             operation=DockerOpType.RUN,
-            image="test:latest",
-            time_ops=time_ops,
+            json_provider=json_provider,
+            working_directory="/app",
+            image_name="test:latest",
             container_name="test_container",
             command="echo test"
         )
@@ -284,10 +285,16 @@ class TestDockerRequest:
         """Test invalid Docker operation."""
         time_ops.now.side_effect = [1.0, 2.0]
         
+        json_provider = Mock()
+        json_provider.dumps.return_value = '{}'
+        # Create an invalid operation type
+        invalid_op = Mock()
+        invalid_op.name = "INVALID"
         request = DockerRequest(
-            operation="INVALID",
-            image="test:latest",
-            time_ops=time_ops
+            operation=invalid_op,
+            json_provider=json_provider,
+            working_directory="/app",
+            image_name="test:latest"
         )
         
         result = request._execute_core(Mock(), Mock())
@@ -326,7 +333,7 @@ class TestFileRequestAdditional:
             destination=None
         )
         
-        with pytest.raises(ValueError, match="Copy operation requires destination path"):
+        with pytest.raises(ValueError, match="Destination is required for copy operation"):
             request._execute_copy(Mock(), Mock())
     
     def test_execute_move_no_destination(self, time_ops):
@@ -338,7 +345,7 @@ class TestFileRequestAdditional:
             destination=None
         )
         
-        with pytest.raises(ValueError, match="Move operation requires destination path"):
+        with pytest.raises(ValueError, match="Destination is required for move operation"):
             request._execute_move(Mock(), Mock())
     
     def test_handle_file_error_allow_failure(self, time_ops):

@@ -5,8 +5,8 @@ Configuration層の実装です。
 """
 from typing import Any, Dict, List, Optional, Type, TypeVar
 
-from src.domain.config_node import ConfigNode
 from src.configuration.config_resolver import create_config_root_from_dict, resolve_best, resolve_formatted_string
+from src.domain.config_node import ConfigNode
 
 T = TypeVar('T')
 
@@ -71,7 +71,7 @@ class PureConfigManager:
                 else:
                     raise TypeError(f"Expected {expected_type.__name__}, got {type(value).__name__}")
             return value
-        except ValueError as e:
+        except ValueError:
             raise KeyError(f"Config path {path} not found")
 
     def resolve_template_typed(self, template: str, context: Dict[str, Any],

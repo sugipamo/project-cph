@@ -56,7 +56,7 @@ class OutputManager(OutputManagerInterface):
 
     def output_sorted(self, level: LogLevel) -> str:
         entries = self._collect_entries(True, True, level)
-        return '\n'.join((e.formatted_content for e in entries))
+        return '\n'.join(e.formatted_content for e in entries)
 
     def set_level(self, level: LogLevel) -> None:
         """ログレベルを動的に変更する"""

@@ -65,10 +65,10 @@ class RuntimeConfigOverlay:
         """
         if not self._active:
             return False
-        
+
         path_parts = config_path.split('.')
         current = self._overlay_config
-        
+
         try:
             for part in path_parts:
                 current = current[part]

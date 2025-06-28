@@ -1,21 +1,25 @@
 """Result operations module."""
 # Base results
-from .base_result import InfrastructureResult, InfrastructureOperationResult
-from .result import Result, OperationResult, ValidationResult
+from .base_result import InfrastructureOperationResult, InfrastructureResult
+from .check_result import CheckResult, CircularImport
 
 # Execution results
 from .execution_results import (
-    ExecutionResultBase,
-    ShellResult,
     DockerResult,
+    ExecutionResultBase,
     PythonResult,
-    LegacyShellResult as ShellResult_Legacy,
+    ShellResult,
+)
+from .execution_results import (
     LegacyDockerResult as DockerResult_Legacy,
+)
+from .execution_results import (
+    LegacyShellResult as ShellResult_Legacy,
 )
 
 # Specialized results
 from .file_result import FileResult
-from .check_result import CheckResult, CircularImport
+from .result import OperationResult, Result, ValidationResult
 
 # Factory
 from .result_factory import ResultFactory
@@ -30,7 +34,7 @@ __all__ = [
     # Execution
     "ExecutionResultBase",
     "ShellResult",
-    "DockerResult", 
+    "DockerResult",
     "PythonResult",
     "ShellResult_Legacy",
     "DockerResult_Legacy",

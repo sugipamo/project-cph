@@ -1,6 +1,6 @@
 """Consolidated utility-related interfaces."""
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Pattern, Tuple
+from typing import Any, List, Optional, Pattern, Tuple
 
 from src.operations.results.result import OperationResult
 

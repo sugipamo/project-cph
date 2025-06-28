@@ -4,8 +4,8 @@ from typing import Dict, List, Optional
 from src.configuration.system_config_loader import SystemConfigLoader
 from src.infrastructure.di_container import DIKey
 from src.infrastructure.requests.file.file_op_type import FileOpType
-from src.operations.requests.execution_requests import FileRequest
 from src.infrastructure.time_provider import SystemTimeProvider
+from src.operations.requests.execution_requests import FileRequest
 
 
 class ContestManager:
@@ -261,15 +261,14 @@ class ContestManager:
                 if self.os_provider.isdir(source_item):
                     time_ops = SystemTimeProvider()
                     # Copy directory contents recursively
-                    if not self._copy_template_recursive(source_item, dest_item, item, 
+                    if not self._copy_template_recursive(source_item, dest_item, item,
                                                       self.get_current_contest_state()['language_name'],
                                                       self.get_current_contest_state()['contest_name'],
                                                       self.get_current_contest_state()['problem_name'], []):
                         return False
                     continue
-                else:
-                    time_ops = SystemTimeProvider()
-                    req = FileRequest(operation=FileOpType.COPY, path=source_item, time_ops=time_ops, content=None, destination=dest_item, debug_tag='copy_file', name='copy_template_file')
+                time_ops = SystemTimeProvider()
+                req = FileRequest(operation=FileOpType.COPY, path=source_item, time_ops=time_ops, content=None, destination=dest_item, debug_tag='copy_file', name='copy_template_file')
                 copy_result = req.execute_operation(driver=self.file_driver, logger=self.logger)
                 if not copy_result.success:
                     return False

@@ -7,6 +7,7 @@ from typing import Any, Optional
 from src.operations.error_converter import ErrorConverter
 from src.operations.results.base_result import InfrastructureResult
 
+
 class ResultFactory:
     """Factory service for creating standardized result objects.
 

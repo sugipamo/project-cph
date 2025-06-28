@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Set
 
-from src.infrastructure.module_info import ExportedSymbol, ModuleInfo
+from src.infrastructure.module_info import ModuleInfo
 from src.operations.results.__init__ import ASTAnalyzer
 
 
@@ -74,6 +74,6 @@ class ModuleParser:
 
     def _count_lines(self, file_path: Path) -> int:
         try:
-            return sum((1 for _ in file_path.open('r', encoding='utf-8')))
+            return sum(1 for _ in file_path.open('r', encoding='utf-8'))
         except Exception:
             return 0
