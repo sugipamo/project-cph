@@ -6,7 +6,7 @@ import time
 from abc import abstractmethod
 from typing import Any, Optional, Union
 
-from src.infrastructure.drivers.docker.utils.docker_naming import (
+from src.presentation.docker_command_builder import (
     build_docker_build_command,
     build_docker_remove_command,
     build_docker_run_command,
@@ -15,9 +15,9 @@ from src.infrastructure.drivers.docker.utils.docker_naming import (
 )
 from src.infrastructure.drivers.file.local_file_driver import LocalFileDriver
 from src.infrastructure.drivers.generic.base_driver import ExecutionDriverInterface
+from src.infrastructure.drivers.shell_python_driver import LocalShellPythonDriver
 from src.infrastructure.di_container import DIKey
 from src.operations.requests.shell_request import ShellRequest
-from src.operations.results.__init__ import LocalShellDriver
 
 
 class DockerDriver(ExecutionDriverInterface):
@@ -31,7 +31,7 @@ class DockerDriver(ExecutionDriverInterface):
             di_container: Optional DI container for enabling tracking features
         """
         super().__init__()
-        self.shell_driver = LocalShellDriver(file_driver)
+        self.shell_driver = LocalShellPythonDriver(file_driver)
         self.di_container = di_container
         self._container_repo = None
         self._image_repo = None
@@ -265,3 +265,96 @@ class DockerDriver(ExecutionDriverInterface):
                           debug_tag="docker_cp", name="docker_cp_request",
                           show_output=True, allow_failure=False)
         return req.execute_operation(driver=self.shell_driver, logger=None)
+
+
+# Docker naming convention utilities (統合版)
+# 以下はdocker_naming.pyから統合された関数
+
+def calculate_dockerfile_hash(dockerfile_text: Optional[str]) -> Optional[str]:
+    """Calculate short hash for dockerfile content
+    
+    Args:
+        dockerfile_text: Dockerfile content as string
+        
+    Returns:
+        12-character hash of dockerfile content, or None if empty
+    """
+    if not dockerfile_text or not dockerfile_text.strip():
+        return None
+    return hashlib.sha256(dockerfile_text.encode("utf-8")).hexdigest()[:12]
+
+
+def get_docker_image_name(language: str, dockerfile_text: str) -> str:
+    """Generate Docker image name with optional content hash
+    
+    Args:
+        language: Programming language (e.g., 'python', 'rust')
+        dockerfile_text: Custom dockerfile content
+        
+    Returns:
+        Image name in format: {language} or {language}_{hash}
+    """
+    hash_suffix = calculate_dockerfile_hash(dockerfile_text)
+    if hash_suffix is None:
+        return language
+    return f"{language}_{hash_suffix}"
+
+
+def get_docker_container_name(language: str, dockerfile_text: str) -> str:
+    """Generate Docker container name with cph_ prefix (no hash for consistency)
+    
+    Args:
+        language: Programming language
+        dockerfile_text: Custom dockerfile content (ignored for container names)
+        
+    Returns:
+        Container name in format: cph_{language}
+    """
+    return f"cph_{language}"
+
+
+def get_oj_image_name(oj_dockerfile_text: str) -> str:
+    """Generate OJ tools image name
+    
+    Args:
+        oj_dockerfile_text: OJ dockerfile content
+        
+    Returns:
+        OJ image name in format: ojtools or ojtools_{hash}
+    """
+    hash_suffix = calculate_dockerfile_hash(oj_dockerfile_text)
+    if hash_suffix is None:
+        return "ojtools"
+    return f"ojtools_{hash_suffix}"
+
+
+def get_oj_container_name(oj_dockerfile_text: str) -> str:
+    """Generate OJ tools container name (no hash for consistency)
+    
+    Args:
+        oj_dockerfile_text: OJ dockerfile content (ignored for container names)
+        
+    Returns:
+        OJ container name in format: cph_ojtools
+    """
+    return "cph_ojtools"
+
+
+class DockerNamingProvider:
+    """Provider class for Docker naming functions (for dependency injection)"""
+    
+    @staticmethod
+    def get_docker_image_name(language: str, dockerfile_text: str) -> str:
+        return get_docker_image_name(language, dockerfile_text)
+    
+    @staticmethod
+    def get_docker_container_name(language: str, dockerfile_text: str) -> str:
+        return get_docker_container_name(language, dockerfile_text)
+    
+    @staticmethod
+    def get_oj_image_name(oj_dockerfile_text: str) -> str:
+        return get_oj_image_name(oj_dockerfile_text)
+    
+    @staticmethod
+    def get_oj_container_name(oj_dockerfile_text: str) -> str:
+        return get_oj_container_name(oj_dockerfile_text)
