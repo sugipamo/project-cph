@@ -9,8 +9,8 @@ import ast
 import re
 from dataclasses import dataclass
 
-from models.check_result import CheckResult, FailureLocation
-from utils.broken_import import BrokenImport, ImportType
+from src_check.models.check_result import CheckResult, FailureLocation
+from src_check.utils.broken_import import BrokenImport, ImportType
 
 
 class ImportResolver:

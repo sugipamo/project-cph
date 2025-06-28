@@ -24,7 +24,7 @@ class TestFileRequestSimple:
         
     def test_dispatch_file_operation_read(self, time_ops):
         # Import inside test to avoid module-level issues
-        from src.operations.requests.execution_requests import FileRequest
+        from src.application.execution_requests import FileRequest
         
         # Create a real FileRequest instance
         request = FileRequest(
@@ -43,7 +43,7 @@ class TestFileRequestSimple:
         assert result == mock_result
         
     def test_dispatch_file_operation_write(self, time_ops):
-        from src.operations.requests.execution_requests import FileRequest
+        from src.application.execution_requests import FileRequest
         
         request = FileRequest(
             operation=FileOpType.WRITE,
@@ -60,7 +60,7 @@ class TestFileRequestSimple:
         assert result == mock_result
         
     def test_dispatch_file_operation_exists(self, time_ops):
-        from src.operations.requests.execution_requests import FileRequest
+        from src.application.execution_requests import FileRequest
         
         request = FileRequest(
             operation=FileOpType.EXISTS,
@@ -76,7 +76,7 @@ class TestFileRequestSimple:
         assert result == mock_result
         
     def test_dispatch_file_operation_move(self, time_ops):
-        from src.operations.requests.execution_requests import FileRequest
+        from src.application.execution_requests import FileRequest
         
         request = FileRequest(
             operation=FileOpType.MOVE,
@@ -93,7 +93,7 @@ class TestFileRequestSimple:
         assert result == mock_result
         
     def test_dispatch_file_operation_single_path_ops(self, time_ops):
-        from src.operations.requests.execution_requests import FileRequest
+        from src.application.execution_requests import FileRequest
         
         for op in [FileOpType.REMOVE, FileOpType.MKDIR]:
             request = FileRequest(
@@ -118,7 +118,7 @@ class TestFileRequestSimple:
             assert result == mock_result
             
     def test_dispatch_file_operation_invalid(self, time_ops):
-        from src.operations.requests.execution_requests import FileRequest
+        from src.application.execution_requests import FileRequest
         
         # We can't set invalid operation in constructor, so we'll modify after creation
         request = FileRequest(
@@ -134,7 +134,7 @@ class TestFileRequestSimple:
             request._dispatch_file_operation(Mock(), Mock())
             
     def test_resolve_driver_direct(self):
-        from src.operations.requests.execution_requests import FileRequest
+        from src.application.execution_requests import FileRequest
         
         direct_driver = Mock()
         # Ensure the driver doesn't have _get_cached_driver attribute
@@ -150,7 +150,7 @@ class TestFileRequestSimple:
         pytest.skip("FileResult constructor doesn't match OperationResult parent class")
         
     def test_handle_file_error_raise_exception(self, time_ops):
-        from src.operations.requests.execution_requests import FileRequest
+        from src.application.execution_requests import FileRequest
         
         request = FileRequest(
             operation=FileOpType.READ,
@@ -167,14 +167,14 @@ class TestFileRequestSimple:
             request._handle_file_error(error, start_time, Mock())
             
     def test_property_operation_type(self):
-        from src.operations.requests.execution_requests import FileRequest
+        from src.application.execution_requests import FileRequest
         
         # Test that operation_type property returns correct value
         assert FileRequest.operation_type.fget(Mock()) == OperationType.FILE
         
     def test_property_request_type(self):
-        from src.operations.requests.execution_requests import FileRequest
-        from src.operations.requests.base_request import RequestType
+        from src.application.execution_requests import FileRequest
+        from src.domain.base_request import RequestType
         
         # Test that request_type property returns correct value
         assert FileRequest.request_type.fget(Mock()) == RequestType.FILE_REQUEST

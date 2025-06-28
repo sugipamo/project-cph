@@ -110,8 +110,8 @@ class TestDIConfigBasics:
         
         mock_sys = _create_mock_sys_provider()
         assert mock_sys is not None
-        assert mock_sys.argv == ["test_program"]
-        assert mock_sys.platform == "test"
+        assert mock_sys.get_argv() == ["test_program"]
+        assert mock_sys.get_platform() == "test"
 
     def test_utility_factories(self):
         """Test utility factory functions."""
@@ -163,7 +163,11 @@ class TestDIConfigBasics:
         """Test filesystem factory."""
         from src.configuration.di_config import _create_filesystem
         
-        fs = _create_filesystem()
+        container = Mock()
+        mock_config_manager = Mock()
+        container.resolve.return_value = mock_config_manager
+        
+        fs = _create_filesystem(container)
         assert fs is not None
         assert type(fs).__name__ == 'LocalFileSystem'
 
@@ -176,7 +180,8 @@ class TestDIConfigBasics:
         
         assert manager is not None
         assert manager.container == container
-        assert manager.env_json == {}
+        # env_json is loaded lazily from file, so we just check the initial state
+        assert manager._env_json == {}
 
     @patch('src.configuration.di_config.DIContainer')
     def test_configure_dependencies_registration_count(self, mock_container_class):

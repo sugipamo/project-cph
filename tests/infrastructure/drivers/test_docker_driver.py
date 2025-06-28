@@ -255,7 +255,7 @@ class TestDockerOperations:
             logger=self.mock_logger
         )
 
-    @patch('src.infrastructure.drivers.docker_driver.ShellRequest')
+    @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
     def test_run_container(self, mock_shell_request_class):
         """Test running a container."""
         # Setup mocks

@@ -207,16 +207,84 @@ def _create_unified_logger(container: Any) -> Any:
     )
 
 
-def _create_filesystem() -> Any:
+def _create_filesystem(container: Any) -> Any:
     """Lazy factory for filesystem."""
-    return LocalFileSystem()
+    config_provider = container.resolve(DIKey.CONFIG_MANAGER)
+    return LocalFileSystem(config_provider)
+
+
+def _create_request_creator(container: Any) -> Any:
+    """Create a concrete RequestCreator implementation."""
+    from src.application.execution_requests import DockerRequest, FileRequest, ShellRequest, PythonRequest, DockerOpType
+    from src.infrastructure.requests.file.file_op_type import FileOpType
+    from src.operations.error_converter import ErrorConverter
+    from src.operations.results.result_factory import ResultFactory
+    
+    class ConcreteRequestCreator:
+        def __init__(self, container):
+            self.container = container
+            
+        def create_docker_request(self, **kwargs):
+            return DockerRequest(
+                operation=kwargs.get('op_type', DockerOpType.BUILD),
+                json_provider=self.container.resolve(DIKey.JSON_PROVIDER),
+                working_directory=kwargs.get('working_directory', '.'),
+                name=kwargs.get('name'),
+                image_name=kwargs.get('image'),
+                container_name=kwargs.get('container'),
+                command=kwargs.get('command'),
+                debug_tag=kwargs.get('debug_tag')
+            )
+            
+        def create_file_request(self, **kwargs):
+            return FileRequest(
+                operation=FileOpType[kwargs['op_type']],
+                path=kwargs['path'],
+                time_ops=self.container.resolve(DIKey.TIME_PROVIDER),
+                name=kwargs.get('name'),
+                content=kwargs.get('content'),
+                destination=kwargs.get('dst_path'),
+                debug_tag=kwargs.get('debug_tag')
+            )
+            
+        def create_shell_request(self, **kwargs):
+            error_converter = ErrorConverter()
+            result_factory = ResultFactory(error_converter)
+            
+            return ShellRequest(
+                command=' '.join(kwargs.get('cmd', [])),
+                working_directory=kwargs.get('cwd', '.'),
+                error_converter=error_converter,
+                result_factory=result_factory,
+                name=kwargs.get('name'),
+                timeout=kwargs.get('timeout'),
+                environment=kwargs.get('env'),
+                debug_tag=kwargs.get('debug_tag')
+            )
+            
+        def create_python_request(self, **kwargs):
+            return PythonRequest(
+                script_or_code=kwargs.get('code_or_file', ''),
+                is_script_path=isinstance(kwargs.get('code_or_file'), str) and kwargs.get('code_or_file').endswith('.py'),
+                working_directory=kwargs.get('cwd', '.'),
+                os_provider=self.container.resolve(DIKey.OS_PROVIDER),
+                python_utils=self.container.resolve('PYTHON_UTILS') if self.container.is_registered('PYTHON_UTILS') else None,
+                time_ops=self.container.resolve(DIKey.TIME_PROVIDER),
+                name=kwargs.get('name'),
+                timeout=kwargs.get('timeout'),
+                environment=kwargs.get('env'),
+                debug_tag=kwargs.get('debug_tag')
+            )
+    
+    return ConcreteRequestCreator(container)
 
 
 def _create_request_factory(container: Any) -> Any:
     """Lazy factory for request factory with config manager injection."""
     # Get config manager from container
     config_manager = container.resolve(DIKey.CONFIG_MANAGER)
-    return RequestFactory(config_manager)
+    request_creator = _create_request_creator(container)
+    return RequestFactory(config_manager, request_creator)
 
 
 def _create_system_config_loader(container: Any) -> Any:
@@ -278,7 +346,9 @@ def _create_configuration_repository(container: Any) -> Any:
     """Lazy factory for configuration repository."""
     json_provider = container.resolve(DIKey.JSON_PROVIDER)
     sqlite_provider = container.resolve(DIKey.SQLITE_PROVIDER)
-    return ConfigurationRepository(json_provider=json_provider, sqlite_provider=sqlite_provider)
+    # デフォルトのデータベースパスを設定
+    db_path = ".cph/config.db"
+    return ConfigurationRepository(db_path=db_path, json_provider=json_provider, sqlite_provider=sqlite_provider)
 
 
 def _create_os_provider() -> Any:
@@ -355,7 +425,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
 
     # Register interfaces
     container.register("logger", lambda: _create_logger(container))
-    container.register("filesystem", _create_filesystem)
+    container.register("filesystem", lambda: _create_filesystem(container))
 
     # Register simplified workspace management
     container.register("json_config_loader", lambda: _create_json_config_loader(container))

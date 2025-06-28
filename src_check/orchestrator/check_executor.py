@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from ..models.check_result import CheckResult, FailureLocation
-from .module_registry import ModuleRegistry, CheckModule
+from src_check.models.check_result import CheckResult, FailureLocation
+from src_check.orchestrator.module_registry import ModuleRegistry, CheckModule
 
 
 class CheckExecutor:

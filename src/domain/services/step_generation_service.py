@@ -126,7 +126,7 @@ def format_template(template: Any, context: Union[TypedExecutionConfiguration, A
 
 def expand_file_patterns(template: str, context: Union[TypedExecutionConfiguration, Any], step_type) -> str:
     """ファイルパターンを展開する（後方互換性）"""
-    if isinstance(context, TypedExecutionConfiguration):
+    if TypedExecutionConfiguration and isinstance(context, TypedExecutionConfiguration):
         if not hasattr(context, 'resolve_formatted_string'):
             raise AttributeError(f"TypedExecutionConfiguration {context} does not have required 'resolve_formatted_string' method")
         return context.resolve_formatted_string(template)

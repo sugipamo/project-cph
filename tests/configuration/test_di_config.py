@@ -275,7 +275,13 @@ class TestFactoryFunctions:
 
     def test_create_filesystem(self):
         """Test filesystem factory."""
-        fs = _create_filesystem()
+        container = Mock()
+        mock_config_manager = Mock()
+        container.resolve.return_value = mock_config_manager
+        
+        fs = _create_filesystem(container)
+        
+        container.resolve.assert_called_once_with(DIKey.CONFIG_MANAGER)
         assert fs is not None
 
     def test_create_request_factory(self):
@@ -371,8 +377,8 @@ class TestFactoryFunctions:
         """Test mock sys provider factory."""
         provider = _create_mock_sys_provider()
         assert provider is not None
-        assert provider.argv == ["test_program"]
-        assert provider.platform == "test"
+        assert provider.get_argv() == ["test_program"]
+        assert provider.get_platform() == "test"
 
 
 class TestDependencyConfiguration:

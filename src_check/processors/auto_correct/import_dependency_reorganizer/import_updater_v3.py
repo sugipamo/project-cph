@@ -221,7 +221,7 @@ class Logger:
         
         (src_dir / "database.py").write_text("""
 from .logger import Logger
-from . import constants
+from src_check.processors.auto_correct.import_dependency_reorganizer import constants
 
 class Database:
     def __init__(self):

@@ -240,7 +240,7 @@ def middle_function():
         
         (src_dir / "top.py").write_text("""
 from .middle import middle_function
-from . import base
+from src_check.processors.auto_correct.import_dependency_reorganizer import base
 
 def top_function():
     return middle_function() + "_top"

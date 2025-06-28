@@ -28,7 +28,7 @@ class TestWorkflow:
         self.mock_operations = Mock()
         self.mock_composite_factory = Mock()
     
-    @patch('src.domain.services.step_generation_service.generate_steps_from_json')
+    @patch('src.domain.workflow.generate_steps_from_json')
     def test_generate_workflow_from_json_success(self, mock_generate):
         """Test successful workflow generation from JSON"""
         from src.domain.workflow import generate_workflow_from_json
@@ -36,7 +36,10 @@ class TestWorkflow:
         # Mock successful step generation
         mock_result = Mock()
         mock_result.is_success = True
-        mock_result.steps = [Mock(name="step1"), Mock(name="step2")]
+        # Create proper mock steps with required attributes
+        mock_step1 = Mock(name="step1", cmd="command1", type=Mock(value="run"))
+        mock_step2 = Mock(name="step2", cmd="command2", type=Mock(value="run"))
+        mock_result.steps = [mock_step1, mock_step2]
         mock_result.errors = []
         mock_result.warnings = []
         mock_generate.return_value = mock_result
@@ -49,9 +52,9 @@ class TestWorkflow:
         
         with patch('src.domain.workflow.validate_step_sequence', return_value=[]):
             with patch('src.domain.workflow.resolve_dependencies') as mock_resolve:
-                mock_resolve.return_value = mock_result.steps
+                mock_resolve.return_value = [mock_step1, mock_step2]
                 with patch('src.domain.workflow.optimize_workflow_steps') as mock_optimize:
-                    mock_optimize.return_value = mock_result.steps
+                    mock_optimize.return_value = [mock_step1, mock_step2]
                     with patch('src.domain.workflow.steps_to_requests') as mock_to_requests:
                         mock_to_requests.return_value = mock_composite
                         

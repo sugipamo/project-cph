@@ -148,7 +148,20 @@ class TestSharedConfigLoading:
     def test_load_shared_config_failure(self):
         """Test shared config loading failure."""
         infrastructure = Mock()
-        infrastructure.resolve.side_effect = Exception("File not found")
+        file_driver = Mock()
+        os_provider = Mock()
+        json_provider = Mock()
+        file_request_factory = Mock()
+        
+        # Set up infrastructure to return mocks for the first few calls, then fail
+        infrastructure.resolve.side_effect = [
+            file_driver,  # file_driver
+            os_provider,  # OS_PROVIDER
+            json_provider,  # JSON_PROVIDER
+            Exception("File not found")  # file_request_factory
+        ]
+        
+        os_provider.path_join.return_value = "/base/shared/env.json"
         
         with pytest.raises(ValueError, match="Failed to load shared JSON"):
             _load_shared_config("/base", infrastructure)
@@ -335,14 +348,14 @@ class TestOptionsHandling:
     def test_scan_and_apply_options_without_debug(self):
         """Test scanning args without debug option."""
         infrastructure = Mock()
-        context = Mock()
+        context = {}  # Use dict instead of Mock to avoid attribute issues
         
         args = ["python", "run", "abc"]
         
         new_args, new_context = _scan_and_apply_options(args, context, infrastructure)
         
         assert new_args == ["python", "run", "abc"]
-        assert not hasattr(new_context, 'debug_mode') or new_context.debug_mode is False
+        assert 'debug_mode' not in new_context or new_context['debug_mode'] is False
 
     def test_enable_debug_mode_success(self):
         """Test enabling debug mode successfully."""
@@ -360,7 +373,13 @@ class TestOptionsHandling:
         
         debug_service_factory.create_debug_service.assert_called_once_with(infrastructure)
         debug_service.enable_debug_mode.assert_called_once()
-        infrastructure.register.assert_called_once_with("debug_service", pytest.Any())
+        # The actual implementation registers a lambda that returns debug_service
+        infrastructure.register.assert_called_once()
+        call_args = infrastructure.register.call_args
+        assert call_args[0][0] == "debug_service"
+        # Verify the lambda returns the debug_service
+        assert callable(call_args[0][1])
+        assert call_args[0][1]() == debug_service
 
     def test_enable_debug_mode_failure(self):
         """Test debug mode enablement failure."""
@@ -438,17 +457,35 @@ class TestParseUserInput:
         """Test parse_user_input with invalid context."""
         infrastructure = Mock()
         
+        # Mock config manager
+        config_manager = Mock()
+        config_manager.get_available_languages.return_value = ["python"]
+        
+        # Mock OS provider
+        os_provider = Mock()
+        os_provider.path_dirname.return_value = "/test/path"
+        os_provider.path_join.return_value = "/test/path/oj.Dockerfile"
+        
+        # Setup infrastructure resolution
+        infrastructure.resolve.side_effect = lambda key: {
+            'CONFIG_MANAGER': config_manager,
+            'OS_PROVIDER': os_provider,
+        }.get(key)
+        
         # Setup minimal mocks
         with patch('src.presentation.user_input_parser.ConfigLoaderService'):
             with patch('src.presentation.user_input_parser.ValidationService'):
-                with patch('src.presentation.user_input_parser.create_config_root_from_dict'):
+                with patch('src.presentation.user_input_parser.create_config_root_from_dict') as mock_create_root:
+                    # Mock config root
+                    mock_root = Mock()
+                    mock_root.next_nodes = []
+                    mock_create_root.return_value = mock_root
+                    
                     with patch('src.presentation.user_input_parser._create_execution_config') as mock_create:
                         # Create context that fails validation
                         mock_context = MagicMock()
                         mock_context.validate_execution_data.return_value = (False, "Invalid data")
                         mock_create.return_value = mock_context
-                        
-                        infrastructure.resolve.return_value = Mock()
                         
                         args = []
                         with pytest.raises(ValueError, match="Invalid data"):

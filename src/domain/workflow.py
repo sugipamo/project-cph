@@ -56,7 +56,9 @@ def generate_workflow_from_json(json_steps: list[dict[str, Any]], context: StepC
         Tuple[CompositeRequest, List[str], List[str]]:
             (実行可能リクエスト, エラーリスト, 警告リスト)
     """
-    generation_result = generate_steps_from_json(json_steps, context)
+    os_provider = operations.get_driver('OSProvider')
+    json_provider = operations.get_driver('JsonProvider')
+    generation_result = generate_steps_from_json(json_steps, context, os_provider, json_provider)
     if not generation_result.is_success:
         empty_request = composite_request_factory([], debug_tag=None, name=None)
         return (empty_request, generation_result.errors, generation_result.warnings)
@@ -123,18 +125,21 @@ def validate_workflow_execution(composite_request: CompositeRequestInterface, er
     messages.append(f'Generated {len(composite_request.requests)} executable requests')
     return (True, messages)
 
-def debug_workflow_generation(json_steps: list[dict[str, Any]], context: StepContext) -> dict[str, Any]:
+def debug_workflow_generation(json_steps: list[dict[str, Any]], context: StepContext, operations) -> dict[str, Any]:
     """ワークフロー生成の各段階をデバッグ情報として返す純粋関数
 
     Args:
         json_steps: JSONから読み込んだステップのリスト
         context: ステップ生成に必要なコンテキスト情報
+        operations: DIコンテナ（ドライバ取得用）
 
     Returns:
         Dict[str, Any]: 各段階のデバッグ情報
     """
     debug_info = {'input_steps': len(json_steps), 'stages': {}}
-    generation_result = generate_steps_from_json(json_steps, context)
+    os_provider = operations.get_driver('OSProvider')
+    json_provider = operations.get_driver('JsonProvider')
+    generation_result = generate_steps_from_json(json_steps, context, os_provider, json_provider)
     debug_info['stages']['step_generation'] = {'generated_steps': len(generation_result.steps), 'errors': generation_result.errors, 'warnings': generation_result.warnings, 'steps': [{'type': step.type.value, 'cmd': step.cmd} for step in generation_result.steps]}
     if generation_result.is_success:
         resolved_steps = resolve_dependencies(generation_result.steps, context)

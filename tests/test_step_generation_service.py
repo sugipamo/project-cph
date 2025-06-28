@@ -130,10 +130,18 @@ class TestStepGenerationService:
         simple_context = Mock()
         mock_context_conversion.return_value = simple_context
         
-        # Mock successful step results
+        # Mock successful step results as StepResult objects
         step1 = Mock()
         step2 = Mock()
-        mock_run_steps.return_value = [step1, step2]
+        result1 = Mock()
+        result1.success = True
+        result1.step = step1
+        result1.error_message = None
+        result2 = Mock()
+        result2.success = True
+        result2.step = step2
+        result2.error_message = None
+        mock_run_steps.return_value = [result1, result2]
         
         result = generate_steps_from_json(json_steps, context, os_provider, json_provider)
         
@@ -226,33 +234,28 @@ class TestStepGenerationService:
 
     def test_validate_step_sequence(self):
         """Test validating a sequence of steps."""
+        # Since Step class now validates at construction time,
+        # we can only test with valid steps
         steps = [
             Step(type=StepType.SHELL, cmd=["echo", "test"]),
-            Step(type=StepType.MKDIR, cmd=[]),  # Invalid - empty cmd
-            Step(type=StepType.COPY, cmd=["src"]),  # Invalid - missing dst
+            Step(type=StepType.MKDIR, cmd=["/tmp/test"]),
+            Step(type=StepType.COPY, cmd=["src", "dst"]),
         ]
         
         errors = validate_step_sequence(steps)
         
-        assert len(errors) == 2
-        assert "Step 1 (mkdir)" in errors[0]
-        assert "Step 2 (copy)" in errors[1]
+        # All steps are valid, so no errors expected
+        assert len(errors) == 0
 
-    def test_validate_single_step_empty_command(self):
-        """Test validating step with empty command."""
-        step = Step(type=StepType.SHELL, cmd=[])
-        
-        errors = validate_single_step(step)
-        
-        assert "Command cannot be empty" in errors[0]
+    def test_step_construction_validates_empty_command(self):
+        """Test that Step construction validates empty command."""
+        with pytest.raises(ValueError, match="must have non-empty cmd"):
+            Step(type=StepType.SHELL, cmd=[])
 
-    def test_validate_single_step_copy_missing_args(self):
-        """Test validating copy step with missing arguments."""
-        step = Step(type=StepType.COPY, cmd=["src"])
-        
-        errors = validate_single_step(step)
-        
-        assert "Requires at least 2 arguments" in errors[0]
+    def test_step_construction_validates_copy_args(self):
+        """Test that Step construction validates copy arguments."""
+        with pytest.raises(ValueError, match="requires at least 2 arguments"):
+            Step(type=StepType.COPY, cmd=["src"])
 
     def test_validate_single_step_copy_empty_paths(self):
         """Test validating copy step with empty paths."""

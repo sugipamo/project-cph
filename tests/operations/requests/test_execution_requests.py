@@ -253,20 +253,19 @@ class TestDockerRequest:
         assert result.image_id == 'abc123'
         mock_driver.execute_docker_operation.assert_called_once()
     
-    def test_execute_core_run(self, time_ops):
+    @patch('src.application.execution_requests.CompositeRequest')
+    def test_execute_core_run(self, mock_composite_class, time_ops):
         """Test Docker run operation."""
         time_ops.now.side_effect = [1.0, 2.0]
         
-        mock_driver = Mock()
-        # Mock the execute_command method that ShellRequest will call
-        # This needs to return success for both pull and run commands
-        mock_driver.execute_command.return_value = {
-            'success': True,
-            'stdout': 'Command output',
-            'stderr': '',
-            'error': None
-        }
+        # Mock CompositeRequest to return successful results
+        mock_composite_instance = Mock()
+        mock_result1 = Mock(success=True, error=None)
+        mock_result2 = Mock(success=True, error=None)
+        mock_composite_instance.execute_operation.return_value = [mock_result1, mock_result2]
+        mock_composite_class.return_value = mock_composite_instance
         
+        mock_driver = Mock()
         json_provider = Mock()
         json_provider.dumps.return_value = '{}'
         request = DockerRequest(
@@ -278,16 +277,15 @@ class TestDockerRequest:
             command="echo test"
         )
         
-        # The execute_core method will create a composite request internally
-        # which will execute shell commands through the driver
         result = request._execute_core(mock_driver, Mock())
         
         assert result.success is True
         assert result.container_id == 'test_container'
         assert result.output == 'Container started successfully'
         
-        # Verify that execute_command was called twice (pull + run)
-        assert mock_driver.execute_command.call_count == 2
+        # Verify that CompositeRequest was created and executed
+        mock_composite_class.assert_called_once()
+        mock_composite_instance.execute_operation.assert_called_once()
     
     def test_execute_core_invalid_operation(self, time_ops):
         """Test invalid Docker operation."""
@@ -398,7 +396,7 @@ class TestFileRequestAdditional:
         mock_driver = Mock(spec=[])  # Empty spec means no methods
         mock_file_driver = Mock()
         
-        with patch('src.operations.requests.execution_requests.SystemRegistryProvider') as mock_registry:
+        with patch('src.application.execution_requests.SystemRegistryProvider') as mock_registry:
             mock_registry.return_value.get_driver.return_value = mock_file_driver
             
             resolved = request._resolve_driver(mock_driver)

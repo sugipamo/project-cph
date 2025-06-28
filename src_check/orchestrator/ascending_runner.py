@@ -8,8 +8,8 @@ import sys
 # src_checkをパスに追加
 sys.path.append(str(Path(__file__).parent.parent))
 
-from check_executor import CheckExecutor
-from ..core.result_writer import ResultWriter
+from src_check.orchestrator.check_executor import CheckExecutor
+from src_check.core.result_writer import ResultWriter
 
 
 def run_ascending():
