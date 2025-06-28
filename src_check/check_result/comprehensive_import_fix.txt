@@ -1,0 +1,24 @@
+=== comprehensive_import_fix ===
+
+失敗箇所: なし
+
+修正方針:
+--------------------
+0個のファイルで4個のインポートを修正しました
+
+修正例:
+--------------------
+解決できなかったインポート:
+------------------------------------------------------------
+
+不明なモジュール:
+  /home/cphelper/project-cph/src/configuration/di_config.py:37 - src_check.mocks.drivers.mock_docker_driver
+  /home/cphelper/project-cph/src/configuration/di_config.py:38 - src_check.mocks.drivers.mock_file_driver
+  /home/cphelper/project-cph/src/configuration/di_config.py:39 - src_check.mocks.drivers.mock_python_driver
+  /home/cphelper/project-cph/src/configuration/di_config.py:40 - src_check.mocks.drivers.mock_shell_driver
+
+対応方法:
+  - 削除されたモジュール: コードを更新して別のモジュールを使用するか、機能を再実装してください
+  - 不明なモジュール: 外部ライブラリの場合はインストールが必要です
+
+実行時刻: 2025-06-28 10:58:37

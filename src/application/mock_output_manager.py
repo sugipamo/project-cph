@@ -29,17 +29,8 @@ class MockOutputManager(OutputManagerInterface):
             if hasattr(message, 'output') and not isinstance(message, str):
                 output_text = message.output()
             else:
-                try:
-                    if self._config_manager:
-                        self._config_manager.resolve_config(['logging_config', 'mock_output', 'default_output_text'], str)
-                        message_str = str(message)
-                        if not message_str:
-                            raise ValueError('Message cannot be empty when no default output is specified')
-                        output_text = message_str
-                    else:
-                        raise KeyError('Config manager not available')
-                except (KeyError, Exception) as e:
-                    raise ValueError('Mock output default text configuration not found') from e
+                # For mock testing, we simply convert to string without config validation
+                output_text = str(message)
             self.captured_outputs.append(output_text)
 
     def _should_log(self, level: LogLevel) -> bool:

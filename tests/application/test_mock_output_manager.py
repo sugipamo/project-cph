@@ -60,19 +60,20 @@ class TestMockOutputManager:
         assert manager.captured_outputs[0] == "Mock output"
         mock_output_obj.output.assert_called_once()
 
-    def test_add_with_config_manager_error(self):
-        """Test adding message when config manager raises error."""
+    def test_add_with_empty_string_message(self):
+        """Test adding empty string message with realtime."""
         manager = MockOutputManager("test", LogLevel.INFO)
-        manager._config_manager = Mock()
-        manager._config_manager.resolve_config.side_effect = KeyError("Config not found")
         
-        with pytest.raises(ValueError, match="Mock output default text configuration not found"):
-            manager.add("", LogLevel.INFO, None, True)
+        # Empty string should still be captured in mock
+        manager.add("", LogLevel.INFO, None, True)
+        assert len(manager.entries) == 1
+        assert len(manager.captured_outputs) == 1
+        assert manager.captured_outputs[0] == ""
 
     def test_add_with_format_info(self):
         """Test adding message with FormatInfo."""
         manager = MockOutputManager("test", LogLevel.INFO)
-        format_info = FormatInfo(indent=2, prefix=">>", suffix="<<")
+        format_info = FormatInfo(indent=2, color="red", bold=True)
         
         manager.add("Formatted message", LogLevel.WARNING, format_info, False)
         
@@ -113,16 +114,16 @@ class TestMockOutputManager:
         """Test _collect_entries with sorting."""
         manager = MockOutputManager("test", LogLevel.DEBUG)
         
-        # Add entries with different timestamps
-        with patch('src.utils.types.datetime') as mock_datetime:
-            mock_datetime.now.side_effect = [
-                datetime(2024, 1, 1, 10, 0, 0),
-                datetime(2024, 1, 1, 10, 0, 1),
-                datetime(2024, 1, 1, 10, 0, 2),
-            ]
-            manager.add("First", LogLevel.INFO, None, False)
-            manager.add("Second", LogLevel.INFO, None, False)
-            manager.add("Third", LogLevel.INFO, None, False)
+        # Create entries with controlled timestamps
+        from src.utils.types import LogEntry
+        import datetime as dt
+        
+        # Add entries with specific timestamps in order
+        entry1 = LogEntry("First", LogLevel.INFO, timestamp=dt.datetime(2024, 1, 1, 10, 0, 0))
+        entry2 = LogEntry("Second", LogLevel.INFO, timestamp=dt.datetime(2024, 1, 1, 10, 0, 1))
+        entry3 = LogEntry("Third", LogLevel.INFO, timestamp=dt.datetime(2024, 1, 1, 10, 0, 2))
+        
+        manager.entries.extend([entry1, entry2, entry3])
         
         entries = manager._collect_entries(flatten=False, sort=True, level=LogLevel.DEBUG)
         assert len(entries) == 3
@@ -202,15 +203,19 @@ class TestMockOutputManager:
         """Test output_sorted functionality."""
         manager = MockOutputManager("test", LogLevel.INFO)
         
-        with patch('src.utils.types.datetime') as mock_datetime:
-            mock_datetime.now.side_effect = [
-                datetime(2024, 1, 1, 10, 0, 2),
-                datetime(2024, 1, 1, 10, 0, 1),
-                datetime(2024, 1, 1, 10, 0, 3),
-            ]
-            manager.add("Second", LogLevel.INFO, None, False)
-            manager.add("First", LogLevel.INFO, None, False)
-            manager.add("Third", LogLevel.INFO, None, False)
+        # Create entries with controlled timestamps
+        from src.utils.types import LogEntry
+        import datetime as dt
+        
+        # Add entries manually with specific timestamps
+        entry1 = LogEntry("First", LogLevel.INFO, timestamp=dt.datetime(2024, 1, 1, 10, 0, 1))
+        entry2 = LogEntry("Second", LogLevel.INFO, timestamp=dt.datetime(2024, 1, 1, 10, 0, 2))
+        entry3 = LogEntry("Third", LogLevel.INFO, timestamp=dt.datetime(2024, 1, 1, 10, 0, 3))
+        
+        # Add them out of order
+        manager.entries.append(entry2)
+        manager.entries.append(entry1)
+        manager.entries.append(entry3)
         
         output = manager.output_sorted(LogLevel.INFO)
         lines = output.split('\n')

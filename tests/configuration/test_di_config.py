@@ -113,6 +113,16 @@ class TestFactoryFunctions:
         """Test SQLite manager factory."""
         container = Mock()
         mock_provider = Mock()
+        
+        # Set up mock connection
+        mock_connection = Mock()
+        mock_cursor = Mock()
+        mock_cursor.fetchone.return_value = (0,)  # Return tuple for version check
+        mock_connection.execute.return_value = mock_cursor
+        mock_connection.__enter__ = Mock(return_value=mock_connection)
+        mock_connection.__exit__ = Mock(return_value=None)
+        
+        mock_provider.connect.return_value = mock_connection
         container.resolve.return_value = mock_provider
         
         manager = _create_sqlite_manager(container)

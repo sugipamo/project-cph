@@ -1,83 +1,91 @@
-"""Base class for all operation requests."""
+"""Base request module combining interfaces and types for request operations."""
 from abc import ABC, abstractmethod
-from typing import Any, Optional
-
-from src.operations.constants.operation_type import OperationType
-from src.operations.requests.base_request import RequestType
+from enum import Enum, auto
+from typing import Any, Dict
 
 
-class OperationRequestFoundation(ABC):
-    """Foundation class for all operation requests.
+class RequestType(Enum):
+    """Enumeration of request types for type-safe identification."""
 
-    This class provides the foundation for all concrete request implementations,
-    offering common execution patterns and debug tracking capabilities.
-    """
+    # Core request types
+    OPERATION_REQUEST_FOUNDATION = auto()
+    COMPOSITE_REQUEST_FOUNDATION = auto()
 
-    _require_driver = True  # Default requires driver
+    # Specific request types
+    DOCKER_REQUEST = auto()
+    FILE_REQUEST = auto()
+    SHELL_REQUEST = auto()
+    PYTHON_REQUEST = auto()
+    COMPOSITE_REQUEST = auto()
 
-    def __init__(self, name: Optional[str], debug_tag: Optional[str]):
-        self.name = name
-        self.debug_tag = debug_tag
-        self._executed = False
-        self._result = None
-        self.debug_info = self._create_debug_info(debug_tag)
-
-    def set_name(self, name: str) -> 'OperationRequestFoundation':
-        """Set the name of this request."""
-        self.name = name
-        return self
-
-    def _create_debug_info(self, debug_tag: Optional[str]) -> Optional[dict]:
-        """Create debug information for request tracking."""
-        # 環境変数依存を廃止 - デバッグ情報は常に作成しない（テスト要件と競合するため無効化）
-        return None
+    # Step types
+    BUILD_STEP = auto()
+    RUN_STEP = auto()
+    TEST_STEP = auto()
 
     @property
-    @abstractmethod
-    def operation_type(self) -> OperationType:
-        """Return the operation type of this request."""
+    def display_name(self) -> str:
+        """Get human-readable display name."""
+        return self.name.replace('_', ' ').title()
 
     @property
-    def request_type(self) -> RequestType:
-        """Return the request type for type-safe identification."""
-        return RequestType.OPERATION_REQUEST_FOUNDATION
+    def short_name(self) -> str:
+        """Get short name for logging/display."""
+        name_map = {
+            self.DOCKER_REQUEST: "Docker",
+            self.FILE_REQUEST: "File",
+            self.SHELL_REQUEST: "Shell",
+            self.PYTHON_REQUEST: "Python",
+            self.COMPOSITE_REQUEST: "Composite",
+            self.COMPOSITE_REQUEST_FOUNDATION: "CompositeFoundation",
+            self.OPERATION_REQUEST_FOUNDATION: "OperationFoundation",
+            self.BUILD_STEP: "Build",
+            self.RUN_STEP: "Run",
+            self.TEST_STEP: "Test",
+        }
+        return name_map[self]
 
-    def execute_operation(self, driver: Optional[Any], logger: Optional[Any]) -> Any:
-        """Execute this operation request using the provided driver.
 
-        Args:
-            driver: The driver to use for execution
-            logger: The logger to use for logging operations
-
-        Returns:
-            The execution result
-
-        Raises:
-            RuntimeError: If request has already been executed
-            ValueError: If driver is required but not provided
-        """
-        if self._executed:
-            raise RuntimeError(f"This {self.request_type.short_name} has already been executed.")
-        # Driver requirement is controlled by subclasses
-        if self._require_driver and driver is None:
-            raise ValueError(f"{self.request_type.short_name}.execute_operation() requires a driver")
-        try:
-            self._result = self._execute_core(driver, logger)
-            return self._result
-        finally:
-            self._executed = True
-
+class ExecutionInterface(ABC):
+    """Pure interface for execution operations without side effects."""
 
     @abstractmethod
-    def _execute_core(self, driver: Optional[Any], logger: Optional[Any]) -> Any:
-        """Core execution logic to be implemented by subclasses.
-
-        Args:
-            driver: The driver to use for execution
-            logger: The logger to use for logging operations
-
-        Returns:
-            The execution result
-        """
+    def execute_operation(self, driver: Any, logger: Any) -> Any:
+        """Execute operation using provided infrastructure services."""
+        pass
 
 
+class FileOperationInterface(ABC):
+    """Pure interface for file operations."""
+
+    @abstractmethod
+    def execute_file_operation(self, operation_type: str, path: str, **kwargs) -> Any:
+        """Execute file operation with given parameters."""
+        pass
+
+
+class DockerOperationInterface(ABC):
+    """Pure interface for Docker operations."""
+
+    @abstractmethod
+    def execute_docker_operation(self, command: str, options: Dict[str, Any]) -> Any:
+        """Execute Docker operation with given command and options."""
+        pass
+
+
+class PythonOperationInterface(ABC):
+    """Pure interface for Python operations."""
+
+    @abstractmethod
+    def execute_python_operation(self, script: str, environment: Dict[str, str]) -> Any:
+        """Execute Python operation with given script and environment."""
+        pass
+
+
+class ShellOperationInterface(ABC):
+    """Pure interface for shell operations."""
+
+    @abstractmethod
+    def execute_shell_operation(self, command: str) -> Any:
+        """Execute shell operation with given command and working directory."""
+        pass

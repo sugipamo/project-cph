@@ -1,16 +1,18 @@
 === src_check 実行結果サマリー ===
 
-実行モジュール数: 6
-失敗モジュール数: 1
-総失敗件数: 1
+実行モジュール数: 8
+失敗モジュール数: 3
+総失敗件数: 22
 
 モジュール別結果:
 --------------------------------------------------
 type_hints: OK
 remnant_cleaners: OK
-import_fixers: NG(1件)
+import_fixers: NG(2件)
 import_dependency_reorganizer: OK
-file_organizers_logical: OK
+file_organizers_logical: NG(16件)
 argument_processors: OK
+comprehensive_import_check: NG(4件)
+comprehensive_import_fix: OK
 
-実行時刻: 2025-06-27 18:59:07
+実行時刻: 2025-06-28 10:58:37
