@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from src.operations.error_converter import ErrorConverter
 from src.operations.results.base_result import InfrastructureResult
-from src.operations.results.execution_results import LegacyShellResult
+from src.application.execution_results import LegacyShellResult
 
 
 class ResultFactory:

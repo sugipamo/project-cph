@@ -1,6 +1,6 @@
 import pytest
 from src.domain.config_node import ConfigNode
-from src.domain.config_node_service import init_matches, add_edge, path
+from src.domain.services.config_node_service import init_matches, add_edge, path
 
 
 class TestConfigNodeLogic:

@@ -108,7 +108,7 @@ class TestContestManager:
     
     def test_env_json_lazy_load_from_file(self):
         """Test env_json lazy loads from file when not provided"""
-        from src.operations.requests.execution_requests import FileRequest
+        from src.application.execution_requests import FileRequest
         from src.infrastructure.requests.file.file_op_type import FileOpType
         
         # Create manager without env_json

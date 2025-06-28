@@ -4,10 +4,10 @@ import re
 import shlex
 from typing import Any, Dict, List, Optional, Union
 
-from src.infrastructure.drivers.base_driver import BaseDriverImplementation
-from src.infrastructure.drivers.execution_driver import ExecutionDriver
-from src.infrastructure.drivers.file_driver import FileDriver
-from src.operations.requests.execution_requests import ShellRequest
+from src.infrastructure.drivers.generic.base_driver import BaseDriverImplementation
+from src.infrastructure.drivers.generic.execution_driver import ExecutionDriver
+from src.infrastructure.drivers.file.file_driver import FileDriver
+from src.application.execution_requests import ShellRequest
 
 
 class DockerDriver(BaseDriverImplementation):

@@ -3,7 +3,7 @@
 from collections.abc import Iterator
 from typing import Optional
 
-from src.domain.base_request import OperationRequestFoundation
+from src.operations.requests.request_factory import OperationRequestFoundation
 
 
 class CompositeStructure:

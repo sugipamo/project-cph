@@ -22,14 +22,30 @@ class OutputManager(OutputManagerInterface):
                 print(message)
 
     def _should_log(self, level: LogLevel):
-        return level.value >= self.level.value
+        # Define level order for comparison
+        level_order = {
+            LogLevel.DEBUG: 0,
+            LogLevel.INFO: 1,
+            LogLevel.WARNING: 2,
+            LogLevel.ERROR: 3,
+            LogLevel.CRITICAL: 4
+        }
+        return level_order.get(level, 0) >= level_order.get(self.level, 0)
 
     def _collect_entries(self, flatten: bool, sort: bool, level: LogLevel):
+        # Define level order for comparison
+        level_order = {
+            LogLevel.DEBUG: 0,
+            LogLevel.INFO: 1,
+            LogLevel.WARNING: 2,
+            LogLevel.ERROR: 3,
+            LogLevel.CRITICAL: 4
+        }
 
         def collect(entries):
             result = []
             for entry in entries:
-                if entry.level.value >= level.value:
+                if level_order.get(entry.level, 0) >= level_order.get(level, 0):
                     if flatten and hasattr(entry.content, 'entries'):
                         result.extend(collect(entry.content.entries))
                     else:

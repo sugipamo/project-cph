@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from src.infrastructure.di_container import DIContainer
-from src.infrastructure.drivers.base_driver import BaseDriverImplementation
+from src.infrastructure.drivers.generic.base_driver import BaseDriverImplementation
 from src.utils.python_utils import PythonUtils
 from src.utils.shell_utils import ShellUtils
 

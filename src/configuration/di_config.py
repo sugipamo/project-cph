@@ -14,14 +14,14 @@ from src.data.docker_image.docker_image_repository import DockerImageRepository
 from src.data.operation.operation_repository import OperationRepository
 from src.domain.workflow_logger_adapter import WorkflowLoggerAdapter
 from src.infrastructure.di_container import DIContainer, DIKey
-from src.infrastructure.drivers.docker_driver import DockerDriver
+from src.infrastructure.drivers.docker.docker_driver import DockerDriver
 
 # LocalPythonDriver functionality is now in ExecutionDriver
-from src.infrastructure.drivers.execution_driver import ExecutionDriver
-from src.infrastructure.drivers.file_driver import FileDriver
+from src.infrastructure.drivers.generic.execution_driver import ExecutionDriver
+from src.infrastructure.drivers.file.file_driver import FileDriver
 from src.infrastructure.json_provider import MockJsonProvider, SystemJsonProvider
 from src.infrastructure.os_provider import MockOsProvider, SystemOsProvider
-from src.infrastructure.specialized_drivers.unified_driver import UnifiedDriver
+from src.infrastructure.drivers.generic.unified_driver import UnifiedDriver
 from src.infrastructure.sqlite_provider import MockSQLiteProvider, SystemSQLiteProvider
 from src.operations.requests.request_factory import RequestFactory
 # Fix imports - these are not in operations.results
@@ -29,7 +29,7 @@ from src.logging.application_logger_adapter import ApplicationLoggerAdapter
 from src.data.docker_container.docker_container_repository import DockerContainerRepository
 from src.infrastructure.local_filesystem import LocalFileSystem
 from src.data.session.session_repository import SessionRepository
-from src.infrastructure.specialized_drivers.persistence_driver import SQLitePersistenceDriver
+from src.infrastructure.drivers.generic.persistence_driver import SQLitePersistenceDriver
 from src.configuration.system_config_loader import SystemConfigLoader
 from src.logging.unified_logger import UnifiedLogger
 from src.utils.sys_provider import MockSysProvider, SystemSysProvider
@@ -152,7 +152,7 @@ def _create_environment_manager(container: Any) -> Any:
     """Lazy factory for environment manager."""
     config_manager = container.resolve(DIKey.CONFIG_MANAGER)
     logger = container.resolve(DIKey.LOGGER)
-    return EnvironmentManager(env_type=None, config_manager=config_manager, logger=logger)
+    return EnvironmentManager(env_type=None, config_provider=config_manager, logger=logger)
 
 
 def _create_logger(container: Any) -> Any:
@@ -180,7 +180,12 @@ def _create_application_logger_adapter(container: Any) -> Any:
 def _create_workflow_logger_adapter(container: Any) -> Any:
     """Lazy factory for workflow logger adapter."""
     output_manager = container.resolve(DIKey.LOGGING_OUTPUT_MANAGER)
-    return WorkflowLoggerAdapter(output_manager)
+    logger_config = {
+        'format': {
+            'icons': {}
+        }
+    }
+    return WorkflowLoggerAdapter(output_manager, logger_config=logger_config)
 
 
 def _create_unified_logger(container: Any) -> Any:

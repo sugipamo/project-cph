@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 # 互換性維持: configuration層への逆方向依存を削除、依存性注入で解決
 from src.operations.interfaces.utility_interfaces import LoggerInterface
-from src.domain.base_request import OperationRequestFoundation
+from src.operations.requests.request_factory import OperationRequestFoundation
 from src.operations.results.result import OperationResult
 
 
@@ -29,12 +29,12 @@ class EnvironmentManager:
         else:
             try:
                 # Load configuration with required parameters - no defaults allowed
-                self._config_manager.load_from_files(
+                self._config_provider.load_from_files(
                     system_dir="./config/system",
                     env_dir="./contest_env",
                     language="python"  # Default language for environment initialization
                 )
-                self._env_type = self._config_manager.resolve_config(['env_default', 'env_type'], str)
+                self._env_type = self._config_provider.resolve_config(['env_default', 'env_type'], str)
             except KeyError as e:
                 raise ValueError("Environment type not provided and no default env_type found in configuration") from e
 

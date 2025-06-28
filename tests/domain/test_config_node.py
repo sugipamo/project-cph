@@ -1,6 +1,6 @@
 import pytest
 from src.domain.config_node import ConfigNode
-from src.domain.config_node_service import add_edge, path, next_nodes_with_key, find_nearest_key_node
+from src.domain.services.config_node_service import add_edge, path, next_nodes_with_key, find_nearest_key_node
 
 
 class TestConfigNode:

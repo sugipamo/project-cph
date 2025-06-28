@@ -1,7 +1,7 @@
 """Tests for persistence driver"""
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from src.infrastructure.specialized_drivers.persistence_driver import SQLitePersistenceDriver
+from src.infrastructure.drivers.generic.persistence_driver import SQLitePersistenceDriver
 
 
 class TestSQLitePersistenceDriver:
@@ -9,7 +9,7 @@ class TestSQLitePersistenceDriver:
     
     def setup_method(self):
         """Set up test driver before each test"""
-        with patch('src.infrastructure.specialized_drivers.persistence_driver.SQLiteManager') as mock_sqlite_manager_class:
+        with patch('src.infrastructure.drivers.generic.persistence_driver.SQLiteManager') as mock_sqlite_manager_class:
             self.mock_sqlite_manager = Mock()
             mock_sqlite_manager_class.return_value = self.mock_sqlite_manager
             self.driver = SQLitePersistenceDriver("test.db")

@@ -1,8 +1,8 @@
 """Mock shell driver for testing."""
 from typing import Optional, Union
 
-from src.infrastructure.drivers.execution_driver import ExecutionDriver
-from src.operations.results.execution_results import LegacyShellResult as ShellResult
+from src.infrastructure.drivers.generic.execution_driver import ExecutionDriver
+from src.application.execution_results import LegacyShellResult as ShellResult
 
 
 class MockShellDriver(ExecutionDriver):

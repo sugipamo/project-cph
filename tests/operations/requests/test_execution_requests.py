@@ -1,13 +1,13 @@
 """Tests for execution requests module."""
 import pytest
 from unittest.mock import Mock, patch
-from src.operations.requests.execution_requests import (
+from src.application.execution_requests import (
     ShellRequest, PythonRequest, DockerRequest, DockerOpType,
     FileRequest
 )
 from src.infrastructure.requests.file.file_op_type import FileOpType
 from src.operations.constants.operation_type import OperationType
-from src.operations.requests.base_request import RequestType
+from src.domain.base_request import RequestType
 
 
 class TestShellRequest:

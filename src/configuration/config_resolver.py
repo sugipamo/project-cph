@@ -2,7 +2,7 @@ from collections import deque
 from typing import Any, Optional, Union
 
 from src.domain.config_node import ConfigNode
-from src.domain.config_node_service import add_edge, init_matches
+from src.domain.services.config_node_service import add_edge, init_matches
 from src.presentation.formatters import format_with_missing_keys
 
 

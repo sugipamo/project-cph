@@ -1,8 +1,8 @@
 """Mock docker driver for testing."""
 from typing import Any, Optional
 
-from src.infrastructure.drivers.docker_driver import DockerDriver
-from src.operations.results.execution_results import LegacyDockerResult as DockerResult
+from src.infrastructure.drivers.docker.docker_driver import DockerDriver
+from src.application.execution_results import LegacyDockerResult as DockerResult
 
 
 class MockDockerDriver(DockerDriver):

@@ -232,7 +232,17 @@ class TestFactoryFunctions:
         mock_output_manager = Mock()
         container.resolve.return_value = mock_output_manager
         
-        adapter = _create_workflow_logger_adapter(container)
+        # Mock DIContainer.resolve to return a mock config manager
+        with patch('src.infrastructure.di_container.DIContainer.resolve') as mock_resolve:
+            mock_config_manager = Mock()
+            mock_config_manager.resolve_config.side_effect = [
+                True,  # enabled status
+                {},    # icons
+                {}     # user_icons
+            ]
+            mock_resolve.return_value = mock_config_manager
+            
+            adapter = _create_workflow_logger_adapter(container)
         
         container.resolve.assert_called_once_with(DIKey.LOGGING_OUTPUT_MANAGER)
 
@@ -240,11 +250,28 @@ class TestFactoryFunctions:
         """Test unified logger factory."""
         container = Mock()
         mock_output_manager = Mock()
-        container.resolve.return_value = mock_output_manager
+        mock_config_manager = Mock()
+        
+        # Setup container.resolve to return different values based on key
+        def mock_resolve(key):
+            if key == DIKey.LOGGING_OUTPUT_MANAGER:
+                return mock_output_manager
+            elif key == 'config_manager':
+                return mock_config_manager
+            return Mock()
+        
+        container.resolve.side_effect = mock_resolve
+        
+        # Setup config manager mocks
+        mock_config_manager.resolve_config.side_effect = [
+            True,  # enabled status
+            {}     # icons from config
+        ]
         
         logger = _create_unified_logger(container)
         
-        container.resolve.assert_called_once_with(DIKey.LOGGING_OUTPUT_MANAGER)
+        # Verify output manager was resolved
+        container.resolve.assert_any_call(DIKey.LOGGING_OUTPUT_MANAGER)
 
     def test_create_filesystem(self):
         """Test filesystem factory."""

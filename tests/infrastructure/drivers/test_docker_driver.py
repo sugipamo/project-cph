@@ -3,8 +3,8 @@ import pytest
 from unittest.mock import Mock, MagicMock, patch
 from typing import Dict, Any
 
-from src.infrastructure.drivers.docker_driver import DockerDriver
-from src.operations.requests.execution_requests import ShellRequest
+from src.infrastructure.drivers.docker.docker_driver import DockerDriver
+from src.application.execution_requests import ShellRequest
 
 
 class TestDockerDriverInit:

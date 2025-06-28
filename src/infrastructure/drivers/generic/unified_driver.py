@@ -7,10 +7,10 @@ from typing import Any
 from src.infrastructure.di_container import DIContainer, DIKey
 from src.infrastructure.requests.file.file_op_type import FileOpType
 from src.operations.interfaces.utility_interfaces import LoggerInterface
-from src.operations.requests.base_request import RequestType
-from src.domain.base_request import OperationRequestFoundation
-from src.operations.results.execution_results import LegacyDockerResult as DockerResult
-from src.operations.results.execution_results import LegacyShellResult as ShellResult
+from src.domain.base_request import RequestType
+from src.operations.requests.request_factory import OperationRequestFoundation
+from src.application.execution_results import LegacyDockerResult as DockerResult
+from src.application.execution_results import LegacyShellResult as ShellResult
 from src.operations.results.file_result import FileResult
 from src.operations.results.result import OperationResult
 

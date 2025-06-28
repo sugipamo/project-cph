@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from typing import Any, List, Optional, Union
 
-from src.infrastructure.drivers.base_driver import BaseDriverImplementation
+from src.infrastructure.drivers.generic.base_driver import BaseDriverImplementation
 from src.operations.interfaces.utility_interfaces import LoggerInterface
 
 

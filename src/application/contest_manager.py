@@ -5,7 +5,7 @@ from src.configuration.system_config_loader import SystemConfigLoader
 from src.infrastructure.di_container import DIKey
 from src.infrastructure.requests.file.file_op_type import FileOpType
 from src.infrastructure.time_provider import SystemTimeProvider
-from src.operations.requests.execution_requests import FileRequest
+from src.application.execution_requests import FileRequest
 
 
 class ContestManager:

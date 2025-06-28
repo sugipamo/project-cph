@@ -2,7 +2,7 @@
 from enum import Enum, auto
 from typing import Any, List, Optional, Union
 
-from src.domain.base_request import OperationRequestFoundation
+from src.operations.requests.request_factory import OperationRequestFoundation
 from src.infrastructure.json_provider import JsonProvider
 from src.infrastructure.os_provider import OsProvider
 from src.infrastructure.registry_provider import SystemRegistryProvider
@@ -10,11 +10,11 @@ from src.infrastructure.requests.file.file_op_type import FileOpType
 from src.infrastructure.time_provider import TimeProvider
 from src.operations.constants.operation_type import OperationType
 from src.operations.error_converter import ErrorConverter
-from src.operations.requests.base_request import RequestType
+from src.domain.base_request import RequestType
 from src.operations.requests.composite_request import CompositeRequest
-from src.operations.results.execution_results import LegacyDockerResult as DockerResult
-from src.operations.results.execution_results import LegacyShellResult as ShellResult
-from src.operations.results.execution_results import PythonResult
+from src.application.execution_results import LegacyDockerResult as DockerResult
+from src.application.execution_results import LegacyShellResult as ShellResult
+from src.application.execution_results import PythonResult
 from src.operations.results.file_result import FileResult
 from src.operations.results.result_factory import ResultFactory
 from src.utils.python_utils import PythonUtils

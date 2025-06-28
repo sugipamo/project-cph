@@ -1,8 +1,8 @@
 """Tests for unified driver"""
 import pytest
 from unittest.mock import Mock, MagicMock, patch
-from src.infrastructure.specialized_drivers.unified_driver import UnifiedDriver
-from src.operations.requests.base_request import RequestType
+from src.infrastructure.drivers.generic.unified_driver import UnifiedDriver
+from src.domain.base_request import RequestType
 from src.infrastructure.di_container import DIKey
 
 

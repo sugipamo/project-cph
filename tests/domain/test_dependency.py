@@ -41,24 +41,21 @@ class TestDependencyResolution:
             type=StepType.MKDIR,
             name="mkdir_test",
             allow_failure=False,
-            cmd=["/test/dir"],
-            parameters={}
+            cmd=["/test/dir"]
         )
         
         self.copy_step = Step(
             type=StepType.COPY,
             name="copy_test",
             allow_failure=False,
-            cmd=["src.txt", "/test/dir/dst.txt"],
-            parameters={"src": "src.txt", "dst": "/test/dir/dst.txt"}
+            cmd=["src.txt", "/test/dir/dst.txt"]
         )
         
         self.shell_step = Step(
             type=StepType.SHELL,
             name="shell_test",
             allow_failure=False,
-            cmd=["echo", "test"],
-            parameters={}
+            cmd=["echo", "test"]
         )
     
     def test_resolve_dependencies_adds_mkdir_for_copy(self):
@@ -83,14 +80,12 @@ class TestDependencyResolution:
             name="copy1",
             allow_failure=False,
             cmd=["src1.txt", "/test/dir/dst1.txt"],
-            parameters={"src": "src1.txt", "dst": "/test/dir/dst1.txt"}
         )
         copy2 = Step(
             type=StepType.COPY,
             name="copy2",
             allow_failure=False,
             cmd=["src2.txt", "/test/dir/dst2.txt"],
-            parameters={"src": "src2.txt", "dst": "/test/dir/dst2.txt"}
         )
         
         steps = [copy1, copy2]
@@ -192,21 +187,18 @@ class TestDependencyResolution:
                 name="mkdir1",
                 allow_failure=False,
                 cmd=["/test"],
-                parameters={}
             ),
             Step(
                 type=StepType.MKDIR,
                 name="mkdir2",
                 allow_failure=False,
                 cmd=["/test/subdir"],
-                parameters={}
             ),
             Step(
                 type=StepType.MKDIR,
                 name="mkdir3",
                 allow_failure=False,
                 cmd=["/test"],  # Duplicate
-                parameters={}
             )
         ]
         
@@ -227,7 +219,6 @@ class TestDependencyResolution:
                 name="copy2",
                 allow_failure=False,
                 cmd=["src.txt", "/test/dir/dst2.txt"],  # Same source
-                parameters={"src": "src.txt", "dst": "/test/dir/dst2.txt"}
             ),
             self.shell_step
         ]

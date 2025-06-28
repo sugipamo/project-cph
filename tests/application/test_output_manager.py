@@ -64,7 +64,7 @@ class TestOutputManager:
     def test_add_with_format_info(self):
         """Test adding message with FormatInfo."""
         manager = OutputManager("test", LogLevel.INFO)
-        format_info = FormatInfo(indent=2, prefix=">>", suffix="<<")
+        format_info = FormatInfo(indent=2, color="red", bold=True)
         
         manager.add("Formatted message", LogLevel.WARNING, format_info, False)
         
@@ -213,17 +213,17 @@ class TestOutputManager:
 
     def test_output_sorted(self):
         """Test output_sorted functionality."""
+        from src.utils.types import LogEntry
+        
         manager = OutputManager("test", LogLevel.INFO)
         
-        with patch('src.utils.types.datetime') as mock_datetime:
-            mock_datetime.now.side_effect = [
-                datetime(2024, 1, 1, 10, 0, 2),
-                datetime(2024, 1, 1, 10, 0, 1),
-                datetime(2024, 1, 1, 10, 0, 3),
-            ]
-            manager.add("Second", LogLevel.INFO, None, False)
-            manager.add("First", LogLevel.INFO, None, False)
-            manager.add("Third", LogLevel.INFO, None, False)
+        # Manually create entries with specific timestamps to test sorting
+        entry1 = LogEntry("First", LogLevel.INFO, datetime(2024, 1, 1, 10, 0, 1))
+        entry2 = LogEntry("Second", LogLevel.INFO, datetime(2024, 1, 1, 10, 0, 2))
+        entry3 = LogEntry("Third", LogLevel.INFO, datetime(2024, 1, 1, 10, 0, 3))
+        
+        # Add entries in non-chronological order
+        manager.entries = [entry2, entry1, entry3]
         
         output = manager.output_sorted(LogLevel.INFO)
         lines = output.split('\n')
