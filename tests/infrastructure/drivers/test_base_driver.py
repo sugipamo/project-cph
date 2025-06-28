@@ -94,7 +94,7 @@ class TestExecutionDriverInterface:
         driver = ConcreteDriver()
         driver._infrastructure_defaults = {"key": "value"}
         
-        assert driver._get_default_value("key") == "value"
+        assert driver._get_default_value("key", None) == "value"
         assert driver._get_default_value("missing", "default") == "default"
     
     def test_get_default_value_nested(self):
@@ -108,8 +108,8 @@ class TestExecutionDriverInterface:
             }
         }
         
-        assert driver._get_default_value("docker.network.name") == "test_network"
-        assert driver._get_default_value("docker.network") == {"name": "test_network"}
+        assert driver._get_default_value("docker.network.name", None) == "test_network"
+        assert driver._get_default_value("docker.network", None) == {"name": "test_network"}
         assert driver._get_default_value("docker.missing.key", "default") == "default"
     
     def test_get_default_value_cached(self):
@@ -118,7 +118,7 @@ class TestExecutionDriverInterface:
         driver._infrastructure_defaults = {"key": "value"}
         
         # First call
-        value1 = driver._get_default_value("key")
+        value1 = driver._get_default_value("key", None)
         assert value1 == "value"
         assert "key" in driver._default_cache
         
@@ -126,7 +126,7 @@ class TestExecutionDriverInterface:
         driver._infrastructure_defaults = {"key": "new_value"}
         
         # Should return cached value
-        value2 = driver._get_default_value("key")
+        value2 = driver._get_default_value("key", None)
         assert value2 == "value"  # Still the cached value
     
     def test_get_default_value_loads_defaults(self):
@@ -136,7 +136,7 @@ class TestExecutionDriverInterface:
         
         with patch('pathlib.Path.exists', return_value=True):
             with patch('builtins.open', mock_open(read_data=json.dumps(mock_data))):
-                value = driver._get_default_value("test.nested")
+                value = driver._get_default_value("test.nested", None)
                 
         assert value == "value"
     

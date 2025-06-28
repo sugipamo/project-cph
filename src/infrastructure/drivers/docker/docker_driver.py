@@ -15,10 +15,10 @@ class DockerDriver(BaseDriverImplementation):
 
     def __init__(self,
                  file_driver: FileDriver,
-                 execution_driver: Optional[ExecutionDriver] = None,
-                 logger: Optional[Any] = None,
-                 container_repo: Optional[Any] = None,
-                 image_repo: Optional[Any] = None):
+                 execution_driver: Optional[ExecutionDriver],
+                 logger: Optional[Any],
+                 container_repo: Optional[Any],
+                 image_repo: Optional[Any]):
         """Initialize Docker driver.
         
         Args:
@@ -146,11 +146,11 @@ class DockerDriver(BaseDriverImplementation):
 
         return cmd
 
-    def _build_docker_stop_command(self, name: str, timeout: int = 10) -> List[str]:
+    def _build_docker_stop_command(self, name: str, timeout: int) -> List[str]:
         """Build docker stop command."""
         return ["docker", "stop", "-t", str(timeout), name]
 
-    def _build_docker_remove_command(self, name: str, force: bool = False) -> List[str]:
+    def _build_docker_remove_command(self, name: str, force: bool) -> List[str]:
         """Build docker remove command."""
         cmd = ["docker", "rm"]
         if force:

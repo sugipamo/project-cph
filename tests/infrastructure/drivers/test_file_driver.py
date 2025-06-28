@@ -14,7 +14,7 @@ class TestFileDriverInit:
 
     def test_init_without_logger(self):
         """Test initialization without logger."""
-        driver = FileDriver()
+        driver = FileDriver(logger=None)
         assert driver.logger is None
 
     def test_init_with_logger(self):
@@ -29,7 +29,7 @@ class TestFileDriverValidation:
 
     def setup_method(self):
         """Setup test driver."""
-        self.driver = FileDriver()
+        self.driver = FileDriver(logger=None)
 
     def test_validate_valid_operations(self):
         """Test validation of valid operations."""
@@ -60,7 +60,7 @@ class TestFileDriverPathOperations:
 
     def setup_method(self):
         """Setup test driver."""
-        self.driver = FileDriver()
+        self.driver = FileDriver(logger=None)
 
     def test_resolve_path_string(self):
         """Test resolving string path."""
@@ -109,7 +109,7 @@ class TestFileDriverFileOperations:
 
     def setup_method(self):
         """Setup test driver with temp directory."""
-        self.driver = FileDriver()
+        self.driver = FileDriver(logger=None)
         self.temp_dir = tempfile.mkdtemp()
 
     def teardown_method(self):
@@ -226,7 +226,7 @@ class TestFileDriverDirectoryOperations:
 
     def setup_method(self):
         """Setup test driver with temp directory."""
-        self.driver = FileDriver()
+        self.driver = FileDriver(logger=None)
         self.temp_dir = tempfile.mkdtemp()
 
     def teardown_method(self):
@@ -237,7 +237,7 @@ class TestFileDriverDirectoryOperations:
         """Test creating a directory."""
         dir_path = Path(self.temp_dir) / "new_dir"
         
-        self.driver.mkdir(dir_path)
+        self.driver.mkdir(dir_path, exist_ok=True)
         
         assert dir_path.exists()
         assert dir_path.is_dir()
@@ -254,7 +254,7 @@ class TestFileDriverDirectoryOperations:
         """Test creating nested directories."""
         dir_path = Path(self.temp_dir) / "parent" / "child" / "grandchild"
         
-        self.driver.makedirs(dir_path)
+        self.driver.makedirs(dir_path, exist_ok=True)
         
         assert dir_path.exists()
         assert dir_path.is_dir()
@@ -339,7 +339,7 @@ class TestFileDriverUtilityOperations:
 
     def setup_method(self):
         """Setup test driver with temp directory."""
-        self.driver = FileDriver()
+        self.driver = FileDriver(logger=None)
         self.temp_dir = tempfile.mkdtemp()
 
     def teardown_method(self):
@@ -408,7 +408,7 @@ class TestFileDriverCommandExecution:
 
     def setup_method(self):
         """Setup test driver."""
-        self.driver = FileDriver()
+        self.driver = FileDriver(logger=None)
 
     def test_execute_command_read(self):
         """Test execute_command for read operation."""
@@ -469,7 +469,7 @@ class TestFileDriverDockerOperations:
 
     def setup_method(self):
         """Setup test driver."""
-        self.driver = FileDriver()
+        self.driver = FileDriver(logger=None)
 
     def test_docker_cp_without_driver(self):
         """Test docker_cp without docker driver raises error."""
@@ -520,7 +520,7 @@ class TestFileDriverPrivateMethods:
 
     def setup_method(self):
         """Setup test driver."""
-        self.driver = FileDriver()
+        self.driver = FileDriver(logger=None)
 
     def test_notify_vscode_of_change(self):
         """Test VSCode notification method."""

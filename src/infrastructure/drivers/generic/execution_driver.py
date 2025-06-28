@@ -101,7 +101,7 @@ class ExecutionDriver(BaseDriverImplementation):
             timeout=timeout
         )
 
-    def run_python_code(self, code: str, cwd: Optional[str] = None) -> Tuple[str, str, int]:
+    def run_python_code(self, code: str, cwd: Optional[str]) -> Tuple[str, str, int]:
         """Execute Python code string using subprocess.
         
         Args:
@@ -118,7 +118,7 @@ class ExecutionDriver(BaseDriverImplementation):
 
         return self.python_utils.run_code_string(code, cwd)
 
-    def run_python_script(self, file_path: str, cwd: Optional[str] = None) -> Tuple[str, str, int]:
+    def run_python_script(self, file_path: str, cwd: Optional[str]) -> Tuple[str, str, int]:
         """Execute Python script file using subprocess.
         
         Args:
@@ -135,7 +135,7 @@ class ExecutionDriver(BaseDriverImplementation):
 
         return self.python_utils.run_script_file(file_path, cwd)
 
-    def chmod(self, path: str, mode: str, cwd: Optional[str] = None) -> Any:
+    def chmod(self, path: str, mode: str, cwd: Optional[str]) -> Any:
         """Change file permissions using chmod command.
         
         Args:

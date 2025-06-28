@@ -74,7 +74,7 @@ class ExecutionDriverInterface(ABC):
 
         return self._infrastructure_defaults
 
-    def _get_default_value(self, key_path: str, default: Any = None) -> Any:
+    def _get_default_value(self, key_path: str, default: Any) -> Any:
         """Get a default value from infrastructure defaults.
         
         Args:
@@ -109,7 +109,7 @@ class ExecutionDriverInterface(ABC):
 class BaseDriverImplementation(ExecutionDriverInterface):
     """Base implementation for drivers with common functionality."""
 
-    def __init__(self, logger: Optional[LoggerInterface] = None):
+    def __init__(self, logger: Optional[LoggerInterface]):
         """Initialize driver with optional logger.
         
         Args:
@@ -161,7 +161,7 @@ class BaseDriverImplementation(ExecutionDriverInterface):
         if self.logger:
             self.logger.info(message, **kwargs)
 
-    def log_error(self, message: str, error: Optional[Exception] = None, **kwargs) -> None:
+    def log_error(self, message: str, error: Optional[Exception], **kwargs) -> None:
         """Log error message if logger is available.
         
         Args:

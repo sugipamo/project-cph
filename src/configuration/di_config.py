@@ -1,4 +1,5 @@
 """Dependency injection configuration with lazy loading."""
+import json
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,7 @@ from src.infrastructure.drivers.docker.docker_driver import DockerDriver
 # LocalPythonDriver functionality is now in ExecutionDriver
 from src.infrastructure.drivers.generic.execution_driver import ExecutionDriver
 from src.infrastructure.drivers.file.file_driver import FileDriver
+from src.infrastructure.drivers.generic.base_driver import BaseDriverImplementation, ExecutionDriverInterface
 from src.infrastructure.json_provider import MockJsonProvider, SystemJsonProvider
 from src.infrastructure.os_provider import MockOsProvider, SystemOsProvider
 from src.infrastructure.drivers.generic.unified_driver import UnifiedDriver
@@ -67,7 +69,7 @@ def _create_docker_driver(container: Any) -> Any:
 def _create_file_driver(container: Any) -> Any:
     """Lazy factory for file driver."""
     logger = container.resolve(DIKey.LOGGER)
-    return FileDriver(logger=logger)
+    return FileDriver(logger)
 
 
 def _create_python_driver(container: Any) -> Any:
@@ -78,7 +80,17 @@ def _create_python_driver(container: Any) -> Any:
 
 def _create_persistence_driver() -> Any:
     """Lazy factory for persistence driver."""
-    return SQLitePersistenceDriver()
+    # Get default db_path from infrastructure defaults
+    default_args_path = Path(__file__).parent.parent.parent / "config" / "system" / "default_arguments.json"
+    
+    try:
+        with open(default_args_path, 'r') as f:
+            defaults = json.load(f)
+            db_path = defaults.get("default_arguments", {}).get("persistence_driver", {}).get("db_path", "cph_history.db")
+    except (FileNotFoundError, json.JSONDecodeError):
+        db_path = "cph_history.db"
+    
+    return SQLitePersistenceDriver(db_path)
 
 
 def _create_shell_python_driver(container: Any) -> Any:

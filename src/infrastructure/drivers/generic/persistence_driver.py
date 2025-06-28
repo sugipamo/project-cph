@@ -102,7 +102,7 @@ class PersistenceDriver(ExecutionDriverInterface, PersistenceInterface):
 class SQLitePersistenceDriver(PersistenceDriver):
     """SQLite implementation of persistence driver."""
 
-    def __init__(self, db_path: str = "cph_history.db"):
+    def __init__(self, db_path: str):
         """Initialize SQLite persistence driver.
 
         Args:

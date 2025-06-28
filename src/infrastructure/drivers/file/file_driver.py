@@ -12,7 +12,7 @@ from src.operations.interfaces.utility_interfaces import LoggerInterface
 class FileDriver(BaseDriverImplementation):
     """Unified file system operations driver."""
 
-    def __init__(self, logger: Optional[LoggerInterface] = None):
+    def __init__(self, logger: Optional[LoggerInterface]):
         """Initialize file driver.
         
         Args:
@@ -79,7 +79,7 @@ class FileDriver(BaseDriverImplementation):
 
     # File operations
 
-    def create_file(self, path: Union[str, Path], content: str = "",
+    def create_file(self, path: Union[str, Path], content: str,
                    create_parents: bool = True) -> None:
         """Create or overwrite a file with content.
         
@@ -179,7 +179,7 @@ class FileDriver(BaseDriverImplementation):
 
     # Directory operations
 
-    def mkdir(self, path: Union[str, Path], exist_ok: bool = True) -> None:
+    def mkdir(self, path: Union[str, Path], exist_ok: bool) -> None:
         """Create a directory.
         
         Args:
@@ -190,7 +190,7 @@ class FileDriver(BaseDriverImplementation):
         self.log_debug(f"Creating directory: {dir_path}")
         dir_path.mkdir(exist_ok=exist_ok)
 
-    def makedirs(self, path: Union[str, Path], exist_ok: bool = True) -> None:
+    def makedirs(self, path: Union[str, Path], exist_ok: bool) -> None:
         """Create a directory and all parent directories.
         
         Args:

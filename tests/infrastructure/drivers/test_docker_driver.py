@@ -14,7 +14,13 @@ class TestDockerDriverInit:
         """Test initialization with minimal parameters."""
         mock_file_driver = Mock()
         
-        driver = DockerDriver(file_driver=mock_file_driver)
+        driver = DockerDriver(
+            file_driver=mock_file_driver,
+            execution_driver=None,
+            logger=None,
+            container_repo=None,
+            image_repo=None
+        )
         
         assert driver.file_driver == mock_file_driver
         assert driver.execution_driver is None
@@ -53,7 +59,10 @@ class TestDockerDriverInit:
         
         driver = DockerDriver(
             file_driver=mock_file_driver,
-            container_repo=mock_container_repo
+            execution_driver=None,
+            logger=None,
+            container_repo=mock_container_repo,
+            image_repo=None
         )
         
         assert driver._tracking_enabled is True
@@ -65,6 +74,9 @@ class TestDockerDriverInit:
         
         driver = DockerDriver(
             file_driver=mock_file_driver,
+            execution_driver=None,
+            logger=None,
+            container_repo=None,
             image_repo=mock_image_repo
         )
         
@@ -95,7 +107,13 @@ class TestDockerDriverValidation:
 
     def test_validate_request(self):
         """Test request validation."""
-        driver = DockerDriver(file_driver=Mock())
+        driver = DockerDriver(
+            file_driver=Mock(),
+            execution_driver=None,
+            logger=None,
+            container_repo=None,
+            image_repo=None
+        )
         
         # Valid requests
         valid_request = Mock()
@@ -122,7 +140,13 @@ class TestDockerCommandBuilding:
 
     def setup_method(self):
         """Setup test driver."""
-        self.driver = DockerDriver(file_driver=Mock())
+        self.driver = DockerDriver(
+            file_driver=Mock(),
+            execution_driver=None,
+            logger=None,
+            container_repo=None,
+            image_repo=None
+        )
 
     def test_build_docker_run_command_minimal(self):
         """Test building minimal docker run command."""
@@ -211,7 +235,7 @@ class TestDockerCommandBuilding:
 
     def test_build_docker_stop_command(self):
         """Test building docker stop command."""
-        cmd = self.driver._build_docker_stop_command("mycontainer")
+        cmd = self.driver._build_docker_stop_command("mycontainer", timeout=10)
         assert cmd == ["docker", "stop", "-t", "10", "mycontainer"]
         
         cmd = self.driver._build_docker_stop_command("mycontainer", timeout=30)
@@ -219,7 +243,7 @@ class TestDockerCommandBuilding:
 
     def test_build_docker_remove_command(self):
         """Test building docker remove command."""
-        cmd = self.driver._build_docker_remove_command("mycontainer")
+        cmd = self.driver._build_docker_remove_command("mycontainer", force=False)
         assert cmd == ["docker", "rm", "mycontainer"]
         
         cmd = self.driver._build_docker_remove_command("mycontainer", force=True)
@@ -252,7 +276,9 @@ class TestDockerOperations:
         self.driver = DockerDriver(
             file_driver=self.mock_file_driver,
             execution_driver=self.mock_execution_driver,
-            logger=self.mock_logger
+            logger=self.mock_logger,
+            container_repo=None,
+            image_repo=None
         )
 
     @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')

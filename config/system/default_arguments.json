@@ -1,0 +1,106 @@
+{
+  "default_arguments": {
+    "docker_driver": {
+      "stop_timeout": 10,
+      "remove_force": false,
+      "show_output": true,
+      "interactive": false,
+      "tty": false,
+      "follow_logs": false,
+      "tail_logs": null,
+      "ps_all_containers": false
+    },
+    "file_driver": {
+      "create_file_content": "",
+      "mkdir_exist_ok": true
+    },
+    "execution_driver": {
+      "python_cwd": null,
+      "shell_cwd": null
+    },
+    "persistence_driver": {
+      "db_path": "cph_history.db"
+    },
+    "base_driver": {
+      "get_default_value": null,
+      "logger": null,
+      "error_log_kwargs": {}
+    },
+    "sqlite_state_repository": {
+      "execution_history_limit": 10
+    },
+    "workflow_execution_service": {
+      "use_parallel": false,
+      "max_workers": 4
+    },
+    "execution_results": {
+      "stdout": null,
+      "stderr": null
+    },
+    "logger": {
+      "name": "__main__",
+      "format_info": null,
+      "execution_detail": null,
+      "use_old_format": false,
+      "flatten_depth": 0
+    },
+    "error_codes": {
+      "error_context": ""
+    },
+    "state_repository": {
+      "execution_history_limit": 10
+    },
+    "composite_step_failure": {
+      "result": null,
+      "original_exception": null,
+      "error_code": null,
+      "context": ""
+    },
+    "workflow_logger": {
+      "step_success_message": "",
+      "allow_failure": false,
+      "parallel": false
+    },
+    "docker_image_repository": {
+      "unused_days": 30
+    },
+    "docker_container_repository": {
+      "unused_days": 7
+    },
+    "cli_app": {
+      "config_manager": null
+    },
+    "time_provider": {
+      "initial_time": 0.0
+    },
+    "persistence_exceptions": {
+      "operation": null,
+      "details": null,
+      "connection_failed_message": "Database connection failed",
+      "migration_version": null,
+      "query": null,
+      "params": null,
+      "transaction_failed_message": "Transaction failed",
+      "repository_name": null,
+      "entity_id": null,
+      "constraint": null,
+      "table_name": null
+    },
+    "user_input_parser_integration": {
+      "contest_env_dir": "./contest_env",
+      "system_config_dir": "./config/system"
+    },
+    "string_formatters": {
+      "script_extensions": null
+    },
+    "docker_command_builder": {
+      "remove_volumes": false
+    },
+    "ast_analyzer": {
+      "parse_filename": "<string>"
+    },
+    "sqlite_provider": {
+      "execute_parameters": []
+    }
+  }
+}
