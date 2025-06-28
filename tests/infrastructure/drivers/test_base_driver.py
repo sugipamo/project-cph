@@ -4,7 +4,7 @@ import json
 import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch, mock_open
-from src.infrastructure.drivers.generic.base_driver import ExecutionDriverInterface
+from src.infrastructure.drivers.base_driver import ExecutionDriverInterface
 
 
 class ConcreteDriver(ExecutionDriverInterface):

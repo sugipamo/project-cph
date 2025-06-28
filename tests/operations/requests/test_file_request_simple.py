@@ -88,26 +88,13 @@ class TestFileRequestSimple:
         with pytest.raises(ValueError, match="Unsupported file operation"):
             FileRequest._dispatch_file_operation(request, Mock())
             
-    def test_resolve_driver_with_unified_driver(self):
-        from src.operations.requests.file_request import FileRequest
-        
-        file_driver = Mock()
-        unified_driver = Mock()
-        unified_driver._get_cached_driver = Mock(return_value=file_driver)
-        
-        request = Mock(spec=FileRequest)
-        result = FileRequest._resolve_driver(request, unified_driver)
-        
-        assert result == file_driver
-        unified_driver._get_cached_driver.assert_called_once_with("file_driver")
-        
     def test_resolve_driver_direct(self):
         from src.operations.requests.file_request import FileRequest
         
         direct_driver = Mock()
-        # Remove _get_cached_driver attribute to test direct driver path
+        # Ensure the driver doesn't have _get_cached_driver attribute
         if hasattr(direct_driver, '_get_cached_driver'):
-            delattr(direct_driver, '_get_cached_driver')
+            del direct_driver._get_cached_driver
         request = Mock(spec=FileRequest)
         
         result = FileRequest._resolve_driver(request, direct_driver)

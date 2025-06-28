@@ -14,11 +14,11 @@ from src.data.docker_image.docker_image_repository import DockerImageRepository
 from src.data.operation.operation_repository import OperationRepository
 from src.domain.workflow_logger_adapter import WorkflowLoggerAdapter
 from src.infrastructure.di_container import DIContainer, DIKey
-from src.infrastructure.drivers.docker.docker_driver import DockerDriver
-from src.infrastructure.drivers.file.integrated_file_driver import IntegratedFileDriver
-from src.infrastructure.drivers.generic.unified_driver import UnifiedDriver
-# LocalPythonDriver functionality is now in LocalShellPythonDriver
-from src.infrastructure.drivers.shell_python_driver import LocalShellPythonDriver
+from src.infrastructure.drivers.docker_driver import DockerDriver
+from src.infrastructure.drivers.file_driver import FileDriver
+from src.infrastructure.specialized_drivers.unified_driver import UnifiedDriver
+# LocalPythonDriver functionality is now in ExecutionDriver
+from src.infrastructure.drivers.execution_driver import ExecutionDriver
 from src_check.mocks.drivers.mock_docker_driver import MockDockerDriver
 from src_check.mocks.drivers.mock_file_driver import MockFileDriver
 from src_check.mocks.drivers.mock_python_driver import MockPythonDriver
@@ -55,12 +55,12 @@ def _create_docker_driver(container: Any) -> Any:
 
 def _create_file_driver() -> Any:
     """Lazy factory for file driver."""
-    return IntegratedFileDriver(base_dir=Path('.'))
+    return FileDriver()
 
 
 def _create_python_driver(container: Any) -> Any:
     """Lazy factory for python driver."""
-    # Python driver functionality is now part of LocalShellPythonDriver
+    # Python driver functionality is now part of ExecutionDriver
     return container.resolve(DIKey.SHELL_PYTHON_DRIVER)
 
 
@@ -73,7 +73,7 @@ def _create_shell_python_driver(container: Any) -> Any:
     """Lazy factory for combined shell/python driver."""
     config_manager = container.resolve(DIKey.CONFIG_MANAGER)
     file_driver = container.resolve(DIKey.FILE_DRIVER)
-    return LocalShellPythonDriver(config_manager, file_driver)
+    return ExecutionDriver(config_manager, file_driver, container)
 
 
 def _create_sqlite_manager(container: Any) -> Any:
