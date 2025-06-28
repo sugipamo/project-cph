@@ -16,7 +16,7 @@ class OutputManager(OutputManagerInterface):
         entry = LogEntry(message, level, formatinfo=formatinfo)
         self.entries.append(entry)
         if realtime:
-            if isinstance(message, OutputManager):
+            if hasattr(message, 'output') and not isinstance(message, str):
                 print(message.output(indent=0, level=LogLevel.DEBUG))
             else:
                 print(message)
@@ -30,7 +30,7 @@ class OutputManager(OutputManagerInterface):
             result = []
             for entry in entries:
                 if entry.level.value >= level.value:
-                    if flatten and isinstance(entry.content, OutputManager):
+                    if flatten and hasattr(entry.content, 'entries'):
                         result.extend(collect(entry.content.entries))
                     else:
                         result.append(entry)

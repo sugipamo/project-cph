@@ -26,7 +26,7 @@ class MockOutputManager(OutputManagerInterface):
         entry = LogEntry(message, level, formatinfo=formatinfo)
         self.entries.append(entry)
         if realtime:
-            if isinstance(message, OutputManagerInterface):
+            if hasattr(message, 'output') and not isinstance(message, str):
                 output_text = message.output()
             else:
                 try:
@@ -53,7 +53,7 @@ class MockOutputManager(OutputManagerInterface):
             result = []
             for entry in entries:
                 if entry.level.value >= level.value:
-                    if flatten and isinstance(entry.content, OutputManagerInterface):
+                    if flatten and hasattr(entry.content, 'entries'):
                         result.append(entry)
                     else:
                         result.append(entry)

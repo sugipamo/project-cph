@@ -4,7 +4,6 @@ import re
 import shlex
 from typing import Any, Dict, List, Optional, Union
 
-from src.infrastructure.di_container import DIContainer, DIKey
 from src.infrastructure.drivers.base_driver import BaseDriverImplementation
 from src.infrastructure.drivers.execution_driver import ExecutionDriver
 from src.infrastructure.drivers.file_driver import FileDriver
@@ -16,34 +15,34 @@ class DockerDriver(BaseDriverImplementation):
 
     def __init__(self,
                  file_driver: FileDriver,
-                 execution_driver: ExecutionDriver,
-                 container: Optional[DIContainer] = None):
+                 execution_driver: Optional[ExecutionDriver] = None,
+                 logger: Optional[Any] = None,
+                 container_repo: Optional[Any] = None,
+                 image_repo: Optional[Any] = None):
         """Initialize Docker driver.
         
         Args:
             file_driver: File driver for filesystem operations
-            execution_driver: Shell/Python execution driver
-            container: Optional DI container for dependency resolution
+            execution_driver: Optional shell/Python execution driver
+            logger: Optional logger instance
+            container_repo: Optional container repository for tracking
+            image_repo: Optional image repository for tracking
         """
-        super().__init__(container)
+        super().__init__(logger)
         self.file_driver = file_driver
         self.execution_driver = execution_driver
-        self._container_repo = None
-        self._image_repo = None
-        self._tracking_enabled = container is not None
+        self._container_repo = container_repo
+        self._image_repo = image_repo
+        self._tracking_enabled = container_repo is not None or image_repo is not None
 
     @property
     def container_repo(self):
-        """Lazy load container repository if tracking is enabled."""
-        if self._container_repo is None and self.container:
-            self._container_repo = self.container.resolve(DIKey.DOCKER_CONTAINER_REPOSITORY)
+        """Get container repository if available."""
         return self._container_repo
 
     @property
     def image_repo(self):
-        """Lazy load image repository if tracking is enabled."""
-        if self._image_repo is None and self.container:
-            self._image_repo = self.container.resolve(DIKey.DOCKER_IMAGE_REPOSITORY)
+        """Get image repository if available."""
         return self._image_repo
 
     def execute_command(self, request: Any) -> Any:
@@ -422,3 +421,29 @@ def get_docker_network_name(contest_name: str) -> str:
     """Generate Docker network name following naming convention."""
     normalized_contest = contest_name.lower().replace(" ", "_")
     return f"cph_{normalized_contest}_network"
+
+
+class DockerNamingProvider:
+    """Provider for Docker naming conventions."""
+    
+    def get_docker_image_name(self, language: str, dockerfile_content: str) -> str:
+        """Generate Docker image name for a language."""
+        # Extract contest and env from dockerfile content or use defaults
+        contest_name = "default"
+        env_name = "default"
+        return get_docker_image_name(contest_name, env_name, language)
+    
+    def get_docker_container_name(self, language: str, dockerfile_content: str) -> str:
+        """Generate Docker container name for a language."""
+        # Extract contest and env from dockerfile content or use defaults
+        contest_name = "default"
+        env_name = "default"
+        return get_docker_container_name(contest_name, env_name, language)
+    
+    def get_oj_image_name(self, oj_dockerfile_content: str) -> str:
+        """Generate Docker image name for online judge."""
+        return "cph_oj_default"
+    
+    def get_oj_container_name(self, oj_dockerfile_content: str) -> str:
+        """Generate Docker container name for online judge."""
+        return "cph_oj_default_container"

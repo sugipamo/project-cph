@@ -24,16 +24,14 @@ from src.infrastructure.os_provider import MockOsProvider, SystemOsProvider
 from src.infrastructure.specialized_drivers.unified_driver import UnifiedDriver
 from src.infrastructure.sqlite_provider import MockSQLiteProvider, SystemSQLiteProvider
 from src.operations.requests.request_factory import RequestFactory
-from src.operations.results.__init__ import (
-    ApplicationLoggerAdapter,
-    DockerContainerRepository,
-    LocalFileSystem,
-    LocalShellDriver,
-    SessionRepository,
-    SQLitePersistenceDriver,
-    SystemConfigLoader,
-    UnifiedLogger,
-)
+# Fix imports - these are not in operations.results
+from src.logging.application_logger_adapter import ApplicationLoggerAdapter
+from src.data.docker_container.docker_container_repository import DockerContainerRepository
+from src.infrastructure.local_filesystem import LocalFileSystem
+from src.data.session.session_repository import SessionRepository
+from src.data.sqlite_persistence_driver import SQLitePersistenceDriver
+from src.configuration.system_config_loader import SystemConfigLoader
+from src.logging.unified_logger import UnifiedLogger
 from src.utils.sys_provider import MockSysProvider, SystemSysProvider
 from src.utils.types import LogLevel
 from src_check.mocks.drivers.mock_docker_driver import MockDockerDriver
@@ -45,18 +43,31 @@ from tests.base.mock_filesystem import MockFileSystem
 
 def _create_shell_driver(file_driver: Any) -> Any:
     """Lazy factory for shell driver."""
-    return LocalShellDriver(file_driver=file_driver)
+    # Shell driver functionality is now part of ExecutionDriver
+    # This is kept for backward compatibility but returns None
+    return None
 
 
 def _create_docker_driver(container: Any) -> Any:
     """Lazy factory for docker driver with tracking."""
     file_driver = container.resolve(DIKey.FILE_DRIVER)
-    return DockerDriver(file_driver, di_container=container)
+    execution_driver = container.resolve(DIKey.SHELL_PYTHON_DRIVER)
+    logger = container.resolve(DIKey.LOGGER)
+    container_repo = container.resolve(DIKey.DOCKER_CONTAINER_REPOSITORY)
+    image_repo = container.resolve(DIKey.DOCKER_IMAGE_REPOSITORY)
+    return DockerDriver(
+        file_driver=file_driver,
+        execution_driver=execution_driver,
+        logger=logger,
+        container_repo=container_repo,
+        image_repo=image_repo
+    )
 
 
-def _create_file_driver() -> Any:
+def _create_file_driver(container: Any) -> Any:
     """Lazy factory for file driver."""
-    return FileDriver()
+    logger = container.resolve(DIKey.LOGGER)
+    return FileDriver(logger=logger)
 
 
 def _create_python_driver(container: Any) -> Any:
@@ -309,7 +320,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.SHELL_DRIVER, lambda: container.resolve(DIKey.SHELL_PYTHON_DRIVER))
     container.register(DIKey.PYTHON_DRIVER, lambda: container.resolve(DIKey.SHELL_PYTHON_DRIVER))
     container.register(DIKey.DOCKER_DRIVER, lambda: _create_docker_driver(container))
-    container.register(DIKey.FILE_DRIVER, _create_file_driver)
+    container.register(DIKey.FILE_DRIVER, lambda: _create_file_driver(container))
     container.register(DIKey.PERSISTENCE_DRIVER, _create_persistence_driver)
 
     # Register persistence layer (legacy support)

@@ -1,1 +1,1 @@
-from user_input_parser.user_input_parser import parse_user_input
+# Context module - imports disabled to avoid circular dependency

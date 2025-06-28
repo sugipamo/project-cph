@@ -419,8 +419,8 @@ def _setup_context_persistence_and_docker(context, args, infrastructure):
     current_file_dir = os_provider.path_dirname(__file__)
     oj_dockerfile_path = os_provider.path_join(current_file_dir, "oj.Dockerfile")
     dockerfile_loader = make_dockerfile_loader(infrastructure)
-    # Import DockerNamingProvider from consolidated docker_driver
-    from src.infrastructure.drivers.docker.docker_driver import DockerNamingProvider
+    # Import DockerNamingProvider from docker_driver
+    from src.infrastructure.drivers.docker_driver import DockerNamingProvider
     resolver = DockerfileResolver(
         dockerfile_path=None,
         oj_dockerfile_path=oj_dockerfile_path,

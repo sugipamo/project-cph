@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from src.operations.error_converter import ErrorConverter
 from src.operations.results.base_result import InfrastructureResult
+from src.operations.results.execution_results import LegacyShellResult
 
 
 class ResultFactory:
@@ -224,8 +225,6 @@ class ResultFactory:
         Returns:
             LegacyShellResult object
         """
-        from src.operations.results.execution_results import LegacyShellResult
-        
         return LegacyShellResult(
             success=success,
             stdout=stdout,

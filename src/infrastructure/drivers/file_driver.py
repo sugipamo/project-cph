@@ -5,29 +5,20 @@ import shutil
 from pathlib import Path
 from typing import Any, List, Optional, Union
 
-from src.infrastructure.di_container import DIContainer
 from src.infrastructure.drivers.base_driver import BaseDriverImplementation
+from src.operations.interfaces.utility_interfaces import LoggerInterface
 
 
 class FileDriver(BaseDriverImplementation):
     """Unified file system operations driver."""
 
-    def __init__(self, container: Optional[DIContainer] = None):
+    def __init__(self, logger: Optional[LoggerInterface] = None):
         """Initialize file driver.
         
         Args:
-            container: Optional DI container for dependency resolution
+            logger: Optional logger instance for logging operations
         """
-        super().__init__(container)
-        self._docker_driver = None
-
-    @property
-    def docker_driver(self):
-        """Lazy load Docker driver for docker_cp operations."""
-        if self._docker_driver is None and self.container:
-            from src.infrastructure.di_container import DIKey
-            self._docker_driver = self.container.resolve(DIKey.DOCKER_DRIVER)
-        return self._docker_driver
+        super().__init__(logger)
 
     def execute_command(self, request: Any) -> Any:
         """Execute a file operation request.
@@ -319,7 +310,8 @@ class FileDriver(BaseDriverImplementation):
     # Docker-specific operations
 
     def docker_cp(self, container_name: str, container_path: str,
-                  host_path: Union[str, Path], from_container: bool = True) -> None:
+                  host_path: Union[str, Path], from_container: bool = True,
+                  docker_driver: Optional[Any] = None) -> None:
         """Copy files between container and host using docker cp.
         
         Args:
@@ -327,14 +319,15 @@ class FileDriver(BaseDriverImplementation):
             container_path: Path inside container
             host_path: Path on host
             from_container: True to copy from container to host, False for host to container
+            docker_driver: Docker driver instance to use for the operation
         """
-        if not self.docker_driver:
-            raise RuntimeError("Docker driver not available for docker_cp operation")
+        if not docker_driver:
+            raise RuntimeError("Docker driver must be provided for docker_cp operation")
 
         self.log_info(f"Docker cp: {'from' if from_container else 'to'} container {container_name}")
 
         # Delegate to docker driver
-        self.docker_driver.cp(container_name, container_path, host_path, from_container)
+        docker_driver.cp(container_name, container_path, host_path, from_container)
 
     # Private helper methods
 

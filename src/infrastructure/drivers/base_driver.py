@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from src.infrastructure.di_container import DIContainer
 from src.operations.interfaces.utility_interfaces import LoggerInterface
 
 
@@ -110,26 +109,22 @@ class ExecutionDriverInterface(ABC):
 class BaseDriverImplementation(ExecutionDriverInterface):
     """Base implementation for drivers with common functionality."""
 
-    def __init__(self, container: Optional[DIContainer] = None):
-        """Initialize driver with optional dependency injection container.
+    def __init__(self, logger: Optional[LoggerInterface] = None):
+        """Initialize driver with optional logger.
         
         Args:
-            container: Dependency injection container for resolving dependencies
+            logger: Optional logger instance for logging operations
         """
         super().__init__()
-        self.container = container
-        self._logger: Optional[LoggerInterface] = None
+        self._logger = logger
 
     @property
-    def logger(self) -> LoggerInterface:
-        """Get logger instance with lazy loading.
+    def logger(self) -> Optional[LoggerInterface]:
+        """Get logger instance.
         
         Returns:
-            Logger interface instance
+            Logger interface instance or None if not set
         """
-        if self._logger is None and self.container:
-            from src.infrastructure.di_container import DIKey
-            self._logger = self.container.resolve(DIKey.LOGGER)
         return self._logger
 
     def validate(self, request: Any) -> bool:
