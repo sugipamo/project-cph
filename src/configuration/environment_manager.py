@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 # 互換性維持: configuration層への逆方向依存を削除、依存性注入で解決
 from src.operations.interfaces.utility_interfaces import LoggerInterface
-from src.operations.requests.request_factory import OperationRequestFoundation
+from src.domain.base_request import OperationRequestFoundation
 from src.operations.results.result import OperationResult
 
 

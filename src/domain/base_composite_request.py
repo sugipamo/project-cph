@@ -3,7 +3,7 @@ from typing import Optional
 
 from src.operations.constants.operation_type import OperationType
 from src.operations.requests.base_request import RequestType
-from src.operations.requests.request_factory import OperationRequestFoundation
+from src.domain.base_request import OperationRequestFoundation
 
 
 class CompositeRequestFoundation(OperationRequestFoundation):

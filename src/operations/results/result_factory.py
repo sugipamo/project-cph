@@ -207,4 +207,38 @@ class ResultFactory:
         else:
             error_data = self.create_operation_error_result(exception=operation_result.get_error(), driver=None, logger=None, start_time=start_time, end_time=end_time, path=None, op=None, cmd=None, request=None, metadata=None)
             return InfrastructureResult.success(error_data)
+    def create_shell_result(self, success: bool, stdout: str, stderr: str, 
+                          command: str, working_directory: str, 
+                          error: Optional[Exception] = None, **kwargs) -> Any:
+        """Create a shell result object.
+        
+        Args:
+            success: Whether the operation succeeded
+            stdout: Standard output
+            stderr: Standard error
+            command: Command that was executed  
+            working_directory: Working directory used
+            error: Optional error/exception
+            **kwargs: Additional arguments
+            
+        Returns:
+            LegacyShellResult object
+        """
+        from src.operations.results.execution_results import LegacyShellResult
+        
+        return LegacyShellResult(
+            success=success,
+            stdout=stdout,
+            stderr=stderr,
+            returncode=0 if success else 1,
+            cmd=command,
+            error_message=str(error) if error else None,
+            exception=error,
+            start_time=kwargs.get('start_time'),
+            end_time=kwargs.get('end_time'),
+            request=kwargs.get('request'),
+            metadata=kwargs.get('metadata', {}),
+            op=None
+        )
+
 __all__ = ['ResultFactory']

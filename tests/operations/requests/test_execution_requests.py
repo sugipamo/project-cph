@@ -258,10 +258,13 @@ class TestDockerRequest:
         time_ops.now.side_effect = [1.0, 2.0]
         
         mock_driver = Mock()
-        mock_driver.execute_docker_operation.return_value = {
+        # Mock the execute_command method that ShellRequest will call
+        # This needs to return success for both pull and run commands
+        mock_driver.execute_command.return_value = {
             'success': True,
-            'container_id': 'container123',
-            'output': 'container output'
+            'stdout': 'Command output',
+            'stderr': '',
+            'error': None
         }
         
         json_provider = Mock()
@@ -275,11 +278,16 @@ class TestDockerRequest:
             command="echo test"
         )
         
+        # The execute_core method will create a composite request internally
+        # which will execute shell commands through the driver
         result = request._execute_core(mock_driver, Mock())
         
         assert result.success is True
-        assert result.container_id == 'container123'
-        assert result.output == 'container output'
+        assert result.container_id == 'test_container'
+        assert result.output == 'Container started successfully'
+        
+        # Verify that execute_command was called twice (pull + run)
+        assert mock_driver.execute_command.call_count == 2
     
     def test_execute_core_invalid_operation(self, time_ops):
         """Test invalid Docker operation."""
@@ -386,7 +394,8 @@ class TestFileRequestAdditional:
             time_ops=time_ops
         )
         
-        mock_driver = Mock()
+        # Create a mock driver without file methods
+        mock_driver = Mock(spec=[])  # Empty spec means no methods
         mock_file_driver = Mock()
         
         with patch('src.operations.requests.execution_requests.SystemRegistryProvider') as mock_registry:

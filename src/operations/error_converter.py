@@ -136,4 +136,19 @@ class ErrorConverter:
             return InfrastructureResult.success(result)
         except Exception as e:
             return InfrastructureResult.failure(e)
+    
+    def convert_error(self, error: Exception) -> Exception:
+        """Convert an exception to a standardized error type.
+        
+        This is a simple pass-through for now, but could be extended
+        to convert specific exceptions to custom error types.
+        
+        Args:
+            error: The exception to convert
+            
+        Returns:
+            The converted exception (currently just returns the same exception)
+        """
+        return error
+
 __all__ = ['ErrorConverter']

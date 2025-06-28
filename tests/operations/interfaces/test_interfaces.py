@@ -1,7 +1,7 @@
 """Tests for operation interfaces."""
 import pytest
 from abc import ABC
-from typing import Any
+from typing import Any, Optional
 from unittest.mock import Mock
 
 from src.operations.interfaces.execution_interfaces import (
@@ -125,46 +125,41 @@ class MockExecutionInterface(ExecutionInterface):
 class MockShellExecutionInterface(ShellExecutionInterface):
     """Mock implementation of ShellExecutionInterface for testing."""
     
-    def execute_shell_command(self, command, working_directory=None, 
-                            timeout=None, environment=None, shell=True):
-        return "output", "", 0
+    def execute_command(self, command: str, working_directory: Optional[str] = None, 
+                       timeout: Optional[float] = None, environment: Optional[dict] = None, 
+                       shell: Optional[bool] = None) -> dict:
+        return {
+            'success': True,
+            'stdout': 'output',
+            'stderr': '',
+            'returncode': 0
+        }
 
 
 class MockFileSystemInterface(FileSystemInterface):
     """Mock implementation of FileSystemInterface for testing."""
     
-    def read_file(self, path, encoding='utf-8'):
-        return "content"
-    
-    def write_file(self, path, content, encoding='utf-8'):
-        pass
-    
-    def file_exists(self, path):
+    def exists(self, path):
         return True
     
-    def create_directory(self, path, parents=True, exist_ok=True):
+    def is_file(self, path):
+        return True
+    
+    def is_dir(self, path):
+        return False
+    
+    def iterdir(self, path):
+        from pathlib import Path
+        return iter([Path("file1.txt"), Path("file2.txt")])
+    
+    def mkdir(self, path, parents, exist_ok):
+        pass
+    
+    def create_directory(self, path):
         pass
     
     def delete_file(self, path):
         pass
-    
-    def copy_file(self, source, destination):
-        pass
-    
-    def move_file(self, source, destination):
-        pass
-    
-    def list_directory(self, path):
-        return ["file1.txt", "file2.txt"]
-    
-    def get_file_size(self, path):
-        return 1024
-    
-    def is_directory(self, path):
-        return False
-    
-    def is_file(self, path):
-        return True
 
 
 class TestInterfaceImplementations:
@@ -181,23 +176,25 @@ class TestInterfaceImplementations:
         """Test ShellExecutionInterface can be implemented."""
         shell = MockShellExecutionInterface()
         
-        stdout, stderr, returncode = shell.execute_shell_command("echo test")
-        assert stdout == "output"
-        assert stderr == ""
-        assert returncode == 0
+        result = shell.execute_command("echo test")
+        assert result['stdout'] == "output"
+        assert result['stderr'] == ""
+        assert result['returncode'] == 0
     
     def test_file_system_interface_implementation(self):
         """Test FileSystemInterface can be implemented."""
+        from pathlib import Path
+        
         file_ops = MockFileSystemInterface()
         
-        assert file_ops.read_file("/test.txt") == "content"
-        file_ops.write_file("/test.txt", "content")  # Should not raise
-        assert file_ops.file_exists("/test.txt") is True
-        file_ops.create_directory("/test")  # Should not raise
-        file_ops.delete_file("/test.txt")  # Should not raise
-        file_ops.copy_file("/src.txt", "/dst.txt")  # Should not raise
-        file_ops.move_file("/src.txt", "/dst.txt")  # Should not raise
-        assert file_ops.list_directory("/") == ["file1.txt", "file2.txt"]
-        assert file_ops.get_file_size("/test.txt") == 1024
-        assert file_ops.is_file("/test.txt") is True
-        assert file_ops.is_directory("/test") is False
+        assert file_ops.exists(Path("/test.txt")) is True
+        assert file_ops.is_file(Path("/test.txt")) is True
+        assert file_ops.is_dir(Path("/test")) is False
+        file_ops.create_directory(Path("/test"))  # Should not raise
+        file_ops.delete_file(Path("/test.txt"))  # Should not raise
+        file_ops.mkdir(Path("/test"), parents=True, exist_ok=True)  # Should not raise
+        
+        # Test iterdir
+        items = list(file_ops.iterdir(Path("/")))
+        assert len(items) == 2
+        assert items[0].name == "file1.txt"

@@ -365,11 +365,14 @@ class DockerRequest(OperationRequestFoundation):
         requests = []
 
         # Pull image if needed
+        error_converter = ErrorConverter()
+        result_factory = ResultFactory(error_converter)
+
         pull_request = ShellRequest(
             command=f"docker pull {self.image_name}",
             working_directory=self.working_directory,
-            error_converter=ErrorConverter(),
-            result_factory=ResultFactory(),
+            error_converter=error_converter,
+            result_factory=result_factory,
             name=f"Pull {self.image_name}"
         )
         requests.append(pull_request)
@@ -379,27 +382,59 @@ class DockerRequest(OperationRequestFoundation):
         run_request = ShellRequest(
             command=run_command,
             working_directory=self.working_directory,
-            error_converter=ErrorConverter(),
-            result_factory=ResultFactory(),
+            error_converter=error_converter,
+            result_factory=result_factory,
             name=f"Run {self.image_name}"
         )
         requests.append(run_request)
 
         # Execute as composite
-        composite = CompositeRequest(requests=requests, name="Docker Run")
-        result = composite.execute_operation(driver, logger)
+        composite = CompositeRequest(
+            requests=requests,
+            name="Docker Run",
+            debug_tag=None,
+            execution_controller=None
+        )
+        try:
+            result = composite.execute_operation(driver, logger)
+            
+            # Composite request returns a list of results
+            # Check if all operations succeeded
+            if hasattr(result, '__iter__') and not isinstance(result, str):
+                # It's a list or iterable
+                all_success = all(getattr(r, 'success', False) for r in result)
+            else:
+                all_success = getattr(result, 'success', False)
+        except Exception as e:
+            if logger:
+                logger.error(f"Docker run operation failed: {e}")
+            return DockerResult(
+                success=False,
+                operation='RUN',
+                error=str(e)
+            )
 
-        if result.success:
+        if all_success:
             return DockerResult(
                 success=True,
                 operation='RUN',
                 container_id=self.container_name,
                 output="Container started successfully"
             )
+        # Extract error from composite results
+        error_msg = "Failed to run container"
+        if isinstance(result, list):
+            for r in result:
+                if hasattr(r, 'error') and r.error:
+                    error_msg = r.error
+                    break
+        elif hasattr(result, 'error') and result.error:
+            error_msg = result.error
+
         return DockerResult(
             success=False,
             operation='RUN',
-            error=result.error or "Failed to run container"
+            error=error_msg
         )
 
     def _execute_stop(self, driver: Any, logger: Optional[Any]) -> DockerResult:
@@ -611,11 +646,16 @@ class FileRequest(OperationRequestFoundation):
         exists = driver.file_exists(self.path)
         return FileResult(
             success=True,
-            op=self.operation,
+            content=None,
             path=self.path,
             exists=exists,
+            op=self.operation,
+            error_message=None,
+            exception=None,
             start_time=self._time_ops.now(),
-            end_time=self._time_ops.now()
+            end_time=self._time_ops.now(),
+            request=self,
+            metadata={}
         )
 
     def _execute_delete(self, driver: Any, logger: Optional[Any]) -> FileResult:
@@ -623,10 +663,16 @@ class FileRequest(OperationRequestFoundation):
         driver.delete_file(self.path)
         return FileResult(
             success=True,
-            op=self.operation,
+            content=None,
             path=self.path,
+            exists=False,
+            op=self.operation,
+            error_message=None,
+            exception=None,
             start_time=self._time_ops.now(),
-            end_time=self._time_ops.now()
+            end_time=self._time_ops.now(),
+            request=self,
+            metadata={}
         )
 
     def _execute_copy(self, driver: Any, logger: Optional[Any]) -> FileResult:
@@ -637,11 +683,16 @@ class FileRequest(OperationRequestFoundation):
         driver.copy_file(self.path, self.destination)
         return FileResult(
             success=True,
-            op=self.operation,
+            content=None,
             path=self.path,
-            destination=self.destination,
+            exists=True,
+            op=self.operation,
+            error_message=None,
+            exception=None,
             start_time=self._time_ops.now(),
-            end_time=self._time_ops.now()
+            end_time=self._time_ops.now(),
+            request=self,
+            metadata={'destination': self.destination}
         )
 
     def _execute_move(self, driver: Any, logger: Optional[Any]) -> FileResult:
@@ -652,11 +703,16 @@ class FileRequest(OperationRequestFoundation):
         driver.move_file(self.path, self.destination)
         return FileResult(
             success=True,
-            op=self.operation,
+            content=None,
             path=self.path,
-            destination=self.destination,
+            exists=True,
+            op=self.operation,
+            error_message=None,
+            exception=None,
             start_time=self._time_ops.now(),
-            end_time=self._time_ops.now()
+            end_time=self._time_ops.now(),
+            request=self,
+            metadata={'destination': self.destination}
         )
 
     def _execute_mkdir(self, driver: Any, logger: Optional[Any]) -> FileResult:
@@ -664,10 +720,16 @@ class FileRequest(OperationRequestFoundation):
         driver.create_directory(self.path)
         return FileResult(
             success=True,
-            op=self.operation,
+            content=None,
             path=self.path,
+            exists=True,
+            op=self.operation,
+            error_message=None,
+            exception=None,
             start_time=self._time_ops.now(),
-            end_time=self._time_ops.now()
+            end_time=self._time_ops.now(),
+            request=self,
+            metadata={}
         )
 
     def _execute_rmtree(self, driver: Any, logger: Optional[Any]) -> FileResult:
@@ -675,10 +737,16 @@ class FileRequest(OperationRequestFoundation):
         driver.remove_directory(self.path)
         return FileResult(
             success=True,
-            op=self.operation,
+            content=None,
             path=self.path,
+            exists=False,
+            op=self.operation,
+            error_message=None,
+            exception=None,
             start_time=self._time_ops.now(),
-            end_time=self._time_ops.now()
+            end_time=self._time_ops.now(),
+            request=self,
+            metadata={}
         )
 
     def _execute_touch(self, driver: Any, logger: Optional[Any]) -> FileResult:
@@ -686,10 +754,16 @@ class FileRequest(OperationRequestFoundation):
         driver.touch_file(self.path)
         return FileResult(
             success=True,
-            op=self.operation,
+            content=None,
             path=self.path,
+            exists=True,
+            op=self.operation,
+            error_message=None,
+            exception=None,
             start_time=self._time_ops.now(),
-            end_time=self._time_ops.now()
+            end_time=self._time_ops.now(),
+            request=self,
+            metadata={}
         )
 
     def _execute_list(self, driver: Any, logger: Optional[Any]) -> FileResult:
@@ -697,11 +771,16 @@ class FileRequest(OperationRequestFoundation):
         items = driver.list_directory(self.path)
         return FileResult(
             success=True,
-            op=self.operation,
+            content=None,
             path=self.path,
-            items=items,
+            exists=True,
+            op=self.operation,
+            error_message=None,
+            exception=None,
             start_time=self._time_ops.now(),
-            end_time=self._time_ops.now()
+            end_time=self._time_ops.now(),
+            request=self,
+            metadata={'items': items}
         )
 
     def _handle_file_error(self, error: Exception, start_time: Any, logger: Optional[Any]) -> FileResult:
