@@ -99,3 +99,19 @@ class RegexInterface(ABC):
     def substitute(self, pattern: str, replacement: str, text: str) -> str:
         """Substitute pattern with replacement in text."""
         pass
+
+
+class DIContainerInterface(ABC):
+    """Interface for dependency injection container."""
+
+    @abstractmethod
+    def resolve(self, key: str) -> Any:
+        """Resolve a dependency by key.
+        
+        Args:
+            key: Dependency identifier as string
+            
+        Returns:
+            Resolved dependency instance
+        """
+        pass

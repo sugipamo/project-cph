@@ -201,13 +201,35 @@ class TestStepRunner:
         assert result[1]["cmd"] == "process test2.txt"
     
     @patch('src.domain.step_runner.StepType')
-    def test_create_step_basic(self, mock_step_type):
+    @patch('src.configuration.config_resolver.resolve_best')
+    def test_create_step_basic(self, mock_resolve_best, mock_step_type):
         """Test basic step creation"""
         json_step = {
             "name": "test_step",
             "type": "python",
             "cmd": ["python", "main.py"]
         }
+        
+        # Mock config defaults
+        mock_defaults_node = Mock()
+        mock_defaults_node.value = {
+            "name": None,
+            "allow_failure": False,
+            "show_output": True,
+            "max_workers": 1,
+            "cwd": None,
+            "when": None,
+            "output_format": None,
+            "format_preset": None,
+            "force_env_type": None,
+            "format_options": None
+        }
+        mock_resolve_best.return_value = mock_defaults_node
+        
+        # Mock config_root on context with next_nodes attribute
+        mock_config_root = Mock()
+        mock_config_root.next_nodes = []
+        self.execution_context.config_root = mock_config_root
         
         mock_step_type.PYTHON = "python"
         
@@ -223,7 +245,8 @@ class TestStepRunner:
             assert result == mock_step
             mock_step_class.assert_called_once()
     
-    def test_create_step_with_when_condition_false(self):
+    @patch('src.configuration.config_resolver.resolve_best')
+    def test_create_step_with_when_condition_false(self, mock_resolve_best):
         """Test step creation with when condition - condition is stored but not evaluated during creation"""
         json_step = {
             "name": "conditional_step",
@@ -233,6 +256,27 @@ class TestStepRunner:
             "allow_failure": False,
             "show_output": True
         }
+        
+        # Mock config defaults
+        mock_defaults_node = Mock()
+        mock_defaults_node.value = {
+            "name": None,
+            "allow_failure": False,
+            "show_output": True,
+            "max_workers": 1,
+            "cwd": None,
+            "when": None,
+            "output_format": None,
+            "format_preset": None,
+            "force_env_type": None,
+            "format_options": None
+        }
+        mock_resolve_best.return_value = mock_defaults_node
+        
+        # Mock config_root on context with next_nodes attribute
+        mock_config_root = Mock()
+        mock_config_root.next_nodes = []
+        self.execution_context.config_root = mock_config_root
         
         result = create_step(
             json_step,
@@ -582,6 +626,20 @@ class TestStepRunner:
         }
         
         with pytest.raises(ValueError, match="'type'フィールドが必須です"):
+            create_step(json_step, self.execution_context)
+    
+    def test_create_step_no_config(self):
+        """Test step creation when config is not available"""
+        json_step = {
+            "name": "test_step",
+            "type": "shell",
+            "cmd": ["echo", "test"]
+        }
+        
+        # No config_root on context
+        self.execution_context.config_root = None
+        
+        with pytest.raises(ValueError, match="ステップのデフォルト値が設定ファイルから取得できません"):
             create_step(json_step, self.execution_context)
     
     def test_expand_file_patterns_in_text_basic(self):

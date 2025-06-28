@@ -7,11 +7,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, TypeVar, overload
 
 from src.configuration.config_resolver import create_config_root_from_dict, resolve_best, resolve_formatted_string
-from src.infrastructure.di_container import DIKey
+from src.operations.interfaces.utility_interfaces import DIContainerInterface
 
 # 互換性維持: DIContainerはmain.pyから注入されるべき
-# 一時的な直接使用（クリーンアーキテクチャ違反要修正）
-# DIContainer and DIKey should be injected from main.py
+# インフラ層への直接依存を除去し、インターフェース経由に変更
 
 T = TypeVar('T')
 
@@ -134,11 +133,11 @@ class FileLoader:
     - ConfigMerger
     """
 
-    def __init__(self, infrastructure):
+    def __init__(self, infrastructure: DIContainerInterface):
         """FileLoaderの初期化
 
         Args:
-            infrastructure: DI container for provider injection
+            infrastructure: DI container interface for provider injection
         """
         self.infrastructure = infrastructure
         # 依存性を遅延注入
@@ -151,9 +150,10 @@ class FileLoader:
     def _inject_dependencies(self):
         """依存性注入を実行"""
         try:
-            self._json_provider = self.infrastructure.resolve(DIKey.JSON_PROVIDER)
-            self._os_provider = self.infrastructure.resolve(DIKey.OS_PROVIDER)
-            self._file_provider = self.infrastructure.resolve(DIKey.FILE_DRIVER)
+            # 文字列キーを使用してインフラ層への依存を除去
+            self._json_provider = self.infrastructure.resolve("json_provider")
+            self._os_provider = self.infrastructure.resolve("os_provider")
+            self._file_provider = self.infrastructure.resolve("file_driver")
         except Exception:
             # 注入に失敗した場合は警告するが続行
             pass
@@ -343,11 +343,11 @@ class TypeSafeConfigNodeManager:
     - DI注入による1000倍パフォーマンス向上
     """
 
-    def __init__(self, infrastructure):
+    def __init__(self, infrastructure: DIContainerInterface):
         """TypeSafeConfigNodeManagerの初期化
 
         Args:
-            infrastructure: DI container for provider injection
+            infrastructure: DI container interface for provider injection
         """
         if infrastructure is None:
             raise ValueError("Infrastructure must be provided")

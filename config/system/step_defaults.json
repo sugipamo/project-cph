@@ -7,6 +7,14 @@
     "working_directory": null,
     "retry_count": 0,
     "parallel": false,
-    "dependencies": []
+    "dependencies": [],
+    "show_output": true,
+    "max_workers": 1,
+    "cwd": null,
+    "when": null,
+    "output_format": null,
+    "format_preset": null,
+    "force_env_type": null,
+    "format_options": null
   }
 }

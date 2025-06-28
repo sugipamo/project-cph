@@ -106,16 +106,14 @@ class TestTypeSafeConfigNodeManager:
         mock_os_provider = Mock()
         mock_json_provider = Mock()
         
-        # Import DIKey to handle enum values
-        from src.infrastructure.di_container import DIKey
-        
         # Set up resolve method to return appropriate mocks
+        # Using string keys to avoid infrastructure dependency
         def resolve_side_effect(key):
-            if key == DIKey.FILE_DRIVER:
+            if key == "file_driver":
                 return mock_file_driver
-            elif key == DIKey.OS_PROVIDER:
+            elif key == "os_provider":
                 return mock_os_provider
-            elif key == DIKey.JSON_PROVIDER:
+            elif key == "json_provider":
                 return mock_json_provider
             return None
         
@@ -132,9 +130,7 @@ class TestTypeSafeConfigNodeManager:
     
     def test_load_empty_config(self, mock_di_container):
         """Test loading when no config files exist"""
-        from src.infrastructure.di_container import DIKey
-        
-        mock_file_driver = mock_di_container.resolve(DIKey.FILE_DRIVER)
+        mock_file_driver = mock_di_container.resolve("file_driver")
         mock_file_driver.exists.return_value = False
         mock_file_driver.read_text.return_value = '{}'
         
@@ -146,11 +142,9 @@ class TestTypeSafeConfigNodeManager:
     
     def test_load_with_config_files(self, mock_di_container):
         """Test loading with existing config files"""
-        from src.infrastructure.di_container import DIKey
-        
-        mock_file_driver = mock_di_container.resolve(DIKey.FILE_DRIVER)
-        mock_os_provider = mock_di_container.resolve(DIKey.OS_PROVIDER)
-        mock_json_provider = mock_di_container.resolve(DIKey.JSON_PROVIDER)
+        mock_file_driver = mock_di_container.resolve("file_driver")
+        mock_os_provider = mock_di_container.resolve("os_provider")
+        mock_json_provider = mock_di_container.resolve("json_provider")
         
         # Mock file existence
         mock_file_driver.exists.side_effect = lambda path: True

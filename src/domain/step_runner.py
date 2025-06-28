@@ -371,35 +371,34 @@ def create_step(json_step: Dict[str, Any], context) -> 'Step':
         if defaults_node and defaults_node.value:
             step_defaults = defaults_node.value
     
-    # フォールバック用のデフォルト値（設定が取得できない場合）
-    fallback_defaults = {
-        'name': None,
-        'allow_failure': False,
-        'show_output': True,
-        'max_workers': 1,
-        'cwd': None,
-        'when': None,
-        'output_format': None,
-        'format_preset': None,
-        'force_env_type': None,
-        'format_options': None,
-        'auto_generated': False
-    }
+    if not step_defaults:
+        # 設定が取得できない場合はエラー
+        raise ValueError("ステップのデフォルト値が設定ファイルから取得できません。config/system/step_defaults.jsonを確認してください")
+
+    # 各属性を設定（フォールバック処理を削除）
+    def get_value(key: str, required: bool = False):
+        if key in json_step:
+            return json_step[key]
+        if key in step_defaults:
+            return step_defaults[key]
+        if required:
+            raise ValueError(f"必須属性 '{key}' が見つかりません")
+        return None
 
     return Step(
         type=StepType(json_step['type']),
         cmd=expanded_cmd,
-        name=json_step.get('name', step_defaults.get('name', fallback_defaults['name'])),
-        allow_failure=json_step.get('allow_failure', step_defaults.get('allow_failure', fallback_defaults['allow_failure'])),
-        show_output=json_step.get('show_output', step_defaults.get('show_output', fallback_defaults['show_output'])),
-        max_workers=json_step.get('max_workers', step_defaults.get('max_workers', fallback_defaults['max_workers'])),
-        cwd=json_step.get('cwd', step_defaults.get('cwd', fallback_defaults['cwd'])),
-        when=json_step.get('when', step_defaults.get('when', fallback_defaults['when'])),
-        output_format=json_step.get('output_format', step_defaults.get('output_format', fallback_defaults['output_format'])),
-        format_preset=json_step.get('format_preset', step_defaults.get('format_preset', fallback_defaults['format_preset'])),
-        force_env_type=json_step.get('force_env_type', step_defaults.get('force_env_type', fallback_defaults['force_env_type'])),
-        format_options=json_step.get('format_options', step_defaults.get('format_options', fallback_defaults['format_options'])),
-        auto_generated=json_step.get('auto_generated', fallback_defaults['auto_generated'])
+        name=get_value('name'),
+        allow_failure=get_value('allow_failure'),
+        show_output=get_value('show_output'),
+        max_workers=get_value('max_workers'),
+        cwd=get_value('cwd'),
+        when=get_value('when'),
+        output_format=get_value('output_format'),
+        format_preset=get_value('format_preset'),
+        force_env_type=get_value('force_env_type'),
+        format_options=get_value('format_options'),
+        auto_generated=json_step.get('auto_generated', False)  # auto_generatedは特殊処理
     )
 
 
