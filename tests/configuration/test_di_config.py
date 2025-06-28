@@ -230,21 +230,31 @@ class TestFactoryFunctions:
         """Test workflow logger adapter factory."""
         container = Mock()
         mock_output_manager = Mock()
-        container.resolve.return_value = mock_output_manager
+        mock_config_manager = Mock()
         
-        # Mock DIContainer.resolve to return a mock config manager
-        with patch('src.infrastructure.di_container.DIContainer.resolve') as mock_resolve:
-            mock_config_manager = Mock()
-            mock_config_manager.resolve_config.side_effect = [
-                True,  # enabled status
-                {},    # icons
-                {}     # user_icons
-            ]
-            mock_resolve.return_value = mock_config_manager
-            
-            adapter = _create_workflow_logger_adapter(container)
+        # Setup container.resolve to return different values based on key
+        def mock_resolve(key):
+            if key == DIKey.LOGGING_OUTPUT_MANAGER:
+                return mock_output_manager
+            elif key == DIKey.CONFIG_MANAGER:
+                return mock_config_manager
+            else:
+                raise ValueError(f"Unexpected key: {key}")
         
-        container.resolve.assert_called_once_with(DIKey.LOGGING_OUTPUT_MANAGER)
+        container.resolve.side_effect = mock_resolve
+        
+        # Mock config_manager.resolve_config to return appropriate values
+        mock_config_manager.resolve_config.side_effect = [
+            True,  # enabled status
+            {},    # config icons
+        ]
+        
+        adapter = _create_workflow_logger_adapter(container)
+        
+        # Verify both dependencies were resolved
+        assert container.resolve.call_count == 2
+        container.resolve.assert_any_call(DIKey.LOGGING_OUTPUT_MANAGER)
+        container.resolve.assert_any_call(DIKey.CONFIG_MANAGER)
 
     def test_create_unified_logger(self):
         """Test unified logger factory."""

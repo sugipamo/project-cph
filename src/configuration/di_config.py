@@ -192,12 +192,13 @@ def _create_application_logger_adapter(container: Any) -> Any:
 def _create_workflow_logger_adapter(container: Any) -> Any:
     """Lazy factory for workflow logger adapter."""
     output_manager = container.resolve(DIKey.LOGGING_OUTPUT_MANAGER)
+    config_manager = container.resolve(DIKey.CONFIG_MANAGER)
     logger_config = {
         'format': {
             'icons': {}
         }
     }
-    return WorkflowLoggerAdapter(output_manager, logger_config=logger_config)
+    return WorkflowLoggerAdapter(output_manager, config_manager, logger_config=logger_config)
 
 
 def _create_unified_logger(container: Any) -> Any:

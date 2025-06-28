@@ -1,51 +1,56 @@
 """Workflow Logger Adapter - bridges src/logging with workflow-specific logging."""
-import contextlib
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar, Optional, Protocol
 
-from src.infrastructure.di_container import DIContainer
 from src.operations.interfaces.utility_interfaces import OutputManagerInterface
 from src.utils.format_info import FormatInfo
 from src.utils.types import LogLevel
+
+
+class ConfigManagerInterface(Protocol):
+    """Interface for configuration management."""
+    def resolve_config(self, path: list[str], expected_type: type) -> Any:
+        """Resolve configuration value at the given path."""
+        ...
 
 
 class WorkflowLoggerAdapter:
     """Adapter that provides workflow-specific logging using src/logging OutputManager."""
     DEFAULT_ICONS: ClassVar[dict[str, str]] = {'start': '🚀', 'success': '✅', 'failure': '❌', 'warning': '⚠️', 'executing': '⏱️', 'info': 'ℹ️', 'debug': '🔍', 'error': '💥'}
 
-    def __init__(self, output_manager: OutputManagerInterface, logger_config: Optional[dict[str, Any]]):
+    def __init__(self, output_manager: OutputManagerInterface, config_manager: ConfigManagerInterface, logger_config: Optional[dict[str, Any]]):
         """Initialize workflow logger adapter.
 
         Args:
             output_manager: The underlying output manager
+            config_manager: Configuration manager for resolving settings
             logger_config: Debug configuration (compatible with DebugLogger)
         """
         self.output_manager = output_manager
-        self._config_manager = None
-        with contextlib.suppress(Exception):
-            self._config_manager = DIContainer.resolve('config_manager')
+        self._config_manager = config_manager
         if logger_config is not None:
             self.config = logger_config
         else:
             self.config = {}
+        
+        # 設定から有効状態を取得
         try:
-            if self._config_manager:
-                self.enabled = self._config_manager.resolve_config(['logging_config', 'adapters', 'workflow', 'default_enabled'], bool)
-            else:
-                raise KeyError('Config manager not available')
+            self.enabled = self._config_manager.resolve_config(['logging_config', 'adapters', 'workflow', 'default_enabled'], bool)
         except (KeyError, Exception) as e:
             raise ValueError(f'Workflow logger enabled status configuration not available: {e}') from e
+        
+        # 設定からアイコンを取得
         try:
-            if self._config_manager:
-                config_icons = self._config_manager.resolve_config(['logging_config', 'adapters', 'workflow', 'default_format', 'icons'], dict)
-            else:
-                raise KeyError('Config manager not available')
+            config_icons = self._config_manager.resolve_config(['logging_config', 'adapters', 'workflow', 'default_format', 'icons'], dict)
         except (KeyError, Exception) as e:
             raise ValueError(f'Workflow logger icon configuration not available: {e}') from e
+        
+        # ユーザー設定のアイコンを取得
         try:
             format_config = self.config['format']
             user_icons = format_config['icons']
         except KeyError as e:
             raise ValueError(f'User icon configuration not found in format config: {e}') from e
+        
         self.icons = {**self.DEFAULT_ICONS, **config_icons, **user_icons}
 
     def debug(self, message: str, **kwargs) -> None:
@@ -127,11 +132,8 @@ class WorkflowLoggerAdapter:
         if self.enabled:
             icon = self.icons['start']
             try:
-                if self._config_manager:
-                    mode_parallel = self._config_manager.resolve_config(['workflow', 'execution_modes', 'parallel'], str)
-                    mode_sequential = self._config_manager.resolve_config(['workflow', 'execution_modes', 'sequential'], str)
-                else:
-                    raise KeyError('Config manager not available')
+                mode_parallel = self._config_manager.resolve_config(['workflow', 'execution_modes', 'parallel'], str)
+                mode_sequential = self._config_manager.resolve_config(['workflow', 'execution_modes', 'sequential'], str)
             except (KeyError, Exception) as e:
                 raise ValueError('Workflow execution mode configuration not found') from e
             mode = mode_parallel if parallel else mode_sequential
