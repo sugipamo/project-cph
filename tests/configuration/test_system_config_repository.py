@@ -1,6 +1,5 @@
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
 import json
 
 from src.configuration.system_config_repository import SystemConfigRepository
@@ -8,218 +7,184 @@ from src.configuration.system_config_repository import SystemConfigRepository
 
 class TestSystemConfigRepository:
     @pytest.fixture
-    def mock_json_provider(self):
-        return Mock()
+    def mock_sqlite_manager(self):
+        """Mock SQLite manager with connection context manager."""
+        mock_manager = Mock()
+        mock_connection = Mock()
+        mock_manager.get_connection.return_value.__enter__ = Mock(return_value=mock_connection)
+        mock_manager.get_connection.return_value.__exit__ = Mock(return_value=None)
+        return mock_manager
 
     @pytest.fixture
-    def mock_file_driver(self):
-        return Mock()
+    def mock_config_manager(self):
+        """Mock configuration manager."""
+        mock_manager = Mock()
+        mock_manager.resolve_config.return_value = "default_value"
+        return mock_manager
 
     @pytest.fixture
-    def repository(self, mock_json_provider, mock_file_driver):
-        return SystemConfigRepository(mock_json_provider, mock_file_driver)
+    def repository(self, mock_sqlite_manager, mock_config_manager):
+        return SystemConfigRepository(mock_sqlite_manager, mock_config_manager)
 
-    def test_init(self, mock_json_provider, mock_file_driver):
-        repo = SystemConfigRepository(mock_json_provider, mock_file_driver)
-        assert repo._json_provider == mock_json_provider
-        assert repo._file_driver == mock_file_driver
+    def test_init(self, mock_sqlite_manager, mock_config_manager):
+        repo = SystemConfigRepository(mock_sqlite_manager, mock_config_manager)
+        assert repo.persistence_manager == mock_sqlite_manager
+        assert repo.config_manager == mock_config_manager
 
-    def test_load_system_configs_success(self, repository, mock_json_provider, mock_file_driver):
-        config_dir = Path("/test/config")
+    def test_set_config_new(self, repository, mock_sqlite_manager):
+        """Test setting a new configuration."""
+        mock_conn = mock_sqlite_manager.get_connection.return_value.__enter__.return_value
         
-        # Mock glob to return config files
-        mock_file_driver.glob.return_value = [
-            Path("/test/config/config1.json"),
-            Path("/test/config/config2.json"),
-        ]
+        # Mock that key doesn't exist
+        repository.get_config_with_metadata = Mock(return_value=None)
         
-        # Mock json loading
-        mock_json_provider.load.side_effect = [
-            {"key1": "value1"},
-            {"key2": "value2"},
-        ]
+        repository.set_config("test_key", {"value": 123}, "test_category", "Test description")
         
-        result = repository.load_system_configs(config_dir)
-        
-        assert result == {
-            "config1": {"key1": "value1"},
-            "config2": {"key2": "value2"},
-        }
-        
-        mock_file_driver.glob.assert_called_once_with(config_dir, "*.json")
-        assert mock_json_provider.load.call_count == 2
+        # Should execute INSERT query
+        mock_conn.execute.assert_called_once()
+        query = mock_conn.execute.call_args[0][0]
+        assert "INSERT INTO system_config" in query
 
-    def test_load_system_configs_with_error(self, repository, mock_json_provider, mock_file_driver):
-        config_dir = Path("/test/config")
+    def test_set_config_update(self, repository, mock_sqlite_manager):
+        """Test updating existing configuration."""
+        mock_conn = mock_sqlite_manager.get_connection.return_value.__enter__.return_value
         
-        mock_file_driver.glob.return_value = [
-            Path("/test/config/config1.json"),
-            Path("/test/config/bad.json"),
-        ]
+        # Mock that key exists
+        repository.get_config_with_metadata = Mock(return_value={"config_key": "test_key"})
         
-        # First file loads fine, second fails
-        mock_json_provider.load.side_effect = [
-            {"key1": "value1"},
-            Exception("JSON parse error"),
-        ]
+        repository.set_config("test_key", {"value": 456}, "test_category", "Updated description")
         
-        result = repository.load_system_configs(config_dir)
-        
-        # Should still return the successful load
-        assert result == {"config1": {"key1": "value1"}}
+        # Should execute UPDATE query
+        mock_conn.execute.assert_called_once()
+        query = mock_conn.execute.call_args[0][0]
+        assert "UPDATE system_config" in query
 
-    def test_load_env_configs_single_language(self, repository, mock_json_provider, mock_file_driver):
-        env_dir = Path("/test/env")
-        language = "python"
+    def test_get_config_exists(self, repository, mock_sqlite_manager):
+        """Test getting existing configuration."""
+        mock_conn = mock_sqlite_manager.get_connection.return_value.__enter__.return_value
+        mock_cursor = Mock()
+        mock_conn.execute.return_value = mock_cursor
+        mock_cursor.fetchone.return_value = ('{"key": "value"}',)
         
-        # Mock directory existence checks
-        mock_file_driver.exists.side_effect = lambda p: p == env_dir / language
-        
-        # Mock glob results
-        def mock_glob(path, pattern):
-            if path == env_dir / "shared":
-                return []
-            elif path == env_dir / language:
-                return [Path(f"/test/env/{language}/config.json")]
-            return []
-        
-        mock_file_driver.glob.side_effect = mock_glob
-        
-        mock_json_provider.load.return_value = {"lang_key": "lang_value"}
-        
-        result = repository.load_env_configs(env_dir, language)
-        
-        assert result == {"config": {"lang_key": "lang_value"}}
-
-    def test_load_env_configs_with_shared(self, repository, mock_json_provider, mock_file_driver):
-        env_dir = Path("/test/env")
-        language = "python"
-        
-        # Mock directory existence
-        mock_file_driver.exists.return_value = True
-        
-        # Mock glob results
-        def mock_glob(path, pattern):
-            if path == env_dir / "shared":
-                return [Path("/test/env/shared/common.json")]
-            elif path == env_dir / language:
-                return [Path(f"/test/env/{language}/config.json")]
-            return []
-        
-        mock_file_driver.glob.side_effect = mock_glob
-        
-        # Mock json loads
-        mock_json_provider.load.side_effect = [
-            {"shared_key": "shared_value"},
-            {"lang_key": "lang_value"},
-        ]
-        
-        result = repository.load_env_configs(env_dir, language)
-        
-        assert result == {
-            "common": {"shared_key": "shared_value"},
-            "config": {"lang_key": "lang_value"},
-        }
-
-    def test_save_config(self, repository, mock_json_provider, mock_file_driver):
-        config_path = Path("/test/config.json")
-        config_data = {"key": "value"}
-        
-        repository.save_config(config_path, config_data)
-        
-        mock_json_provider.save.assert_called_once_with(config_path, config_data)
-
-    def test_load_config_success(self, repository, mock_json_provider, mock_file_driver):
-        config_path = Path("/test/config.json")
-        
-        mock_file_driver.exists.return_value = True
-        mock_json_provider.load.return_value = {"key": "value"}
-        
-        result = repository.load_config(config_path)
+        result = repository.get_config("test_key")
         
         assert result == {"key": "value"}
-        mock_file_driver.exists.assert_called_once_with(config_path)
-        mock_json_provider.load.assert_called_once_with(config_path)
+        mock_conn.execute.assert_called_once()
+        query = mock_conn.execute.call_args[0][0]
+        assert "SELECT config_value FROM system_config" in query
 
-    def test_load_config_not_found(self, repository, mock_json_provider, mock_file_driver):
-        config_path = Path("/test/config.json")
+    def test_get_config_not_exists(self, repository, mock_sqlite_manager):
+        """Test getting non-existent configuration."""
+        mock_conn = mock_sqlite_manager.get_connection.return_value.__enter__.return_value
+        mock_cursor = Mock()
+        mock_conn.execute.return_value = mock_cursor
+        mock_cursor.fetchone.return_value = None
         
-        mock_file_driver.exists.return_value = False
-        
-        result = repository.load_config(config_path)
-        
-        assert result is None
-        mock_file_driver.exists.assert_called_once_with(config_path)
-        mock_json_provider.load.assert_not_called()
-
-    def test_load_config_with_error(self, repository, mock_json_provider, mock_file_driver):
-        config_path = Path("/test/config.json")
-        
-        mock_file_driver.exists.return_value = True
-        mock_json_provider.load.side_effect = Exception("Parse error")
-        
-        result = repository.load_config(config_path)
+        result = repository.get_config("non_existent_key")
         
         assert result is None
 
-    def test_ensure_config_dir(self, repository, mock_file_driver):
-        config_dir = Path("/test/config")
+    def test_get_config_with_metadata(self, repository, mock_sqlite_manager):
+        """Test getting configuration with metadata."""
+        mock_conn = mock_sqlite_manager.get_connection.return_value.__enter__.return_value
+        mock_cursor = Mock()
+        mock_conn.execute.return_value = mock_cursor
         
-        repository.ensure_config_dir(config_dir)
+        # Create a class that behaves like a SQLite Row
+        class MockRow:
+            def __init__(self, data):
+                self._data = data
+            
+            def keys(self):
+                return list(self._data.keys())
+            
+            def __iter__(self):
+                return iter(self._data.items())
+            
+            def __getitem__(self, key):
+                return self._data[key]
         
-        mock_file_driver.mkdir.assert_called_once_with(config_dir, parents=True, exist_ok=True)
+        mock_row = MockRow({
+            'config_key': 'test_key',
+            'config_value': '{"data": "test"}',
+            'category': 'test_category',
+            'description': 'Test description'
+        })
+        mock_cursor.fetchone.return_value = mock_row
+        
+        result = repository.get_config_with_metadata("test_key")
+        
+        assert result is not None
+        assert result['config_key'] == 'test_key'
+        assert result['config_value'] == {"data": "test"}
 
-    def test_list_configs(self, repository, mock_file_driver):
-        config_dir = Path("/test/config")
+    def test_get_configs_by_category(self, repository, mock_sqlite_manager):
+        """Test getting all configs in a category."""
+        mock_conn = mock_sqlite_manager.get_connection.return_value.__enter__.return_value
+        mock_cursor = Mock()
+        mock_conn.execute.return_value = mock_cursor
         
-        mock_file_driver.glob.return_value = [
-            Path("/test/config/a.json"),
-            Path("/test/config/b.json"),
-        ]
+        # Create a class that behaves like a SQLite Row
+        class MockRow:
+            def __init__(self, data):
+                self._data = data
+            
+            def keys(self):
+                return list(self._data.keys())
+            
+            def __iter__(self):
+                return iter(self._data.items())
+            
+            def __getitem__(self, key):
+                return self._data[key]
         
-        result = repository.list_configs(config_dir)
+        mock_row1 = MockRow({
+            'config_key': 'key1',
+            'config_value': '{"val": 1}',
+            'category': 'test'
+        })
         
-        assert result == ["a", "b"]
-        mock_file_driver.glob.assert_called_once_with(config_dir, "*.json")
+        mock_row2 = MockRow({
+            'config_key': 'key2',
+            'config_value': '{"val": 2}',
+            'category': 'test'
+        })
+        
+        mock_cursor.fetchall.return_value = [mock_row1, mock_row2]
+        
+        result = repository.get_configs_by_category("test")
+        
+        assert len(result) == 2
+        assert result[0]['config_key'] == 'key1'
+        assert result[1]['config_key'] == 'key2'
 
-    def test_delete_config(self, repository, mock_file_driver):
-        config_path = Path("/test/config.json")
+    def test_delete_config(self, repository, mock_sqlite_manager):
+        """Test deleting a configuration."""
+        mock_conn = mock_sqlite_manager.get_connection.return_value.__enter__.return_value
+        mock_cursor = Mock()
+        mock_conn.execute.return_value = mock_cursor
+        mock_cursor.rowcount = 1
         
-        mock_file_driver.exists.return_value = True
+        repository.delete_config("test_key")
         
-        result = repository.delete_config(config_path)
-        
-        assert result is True
-        mock_file_driver.unlink.assert_called_once_with(config_path)
+        mock_conn.execute.assert_called_once()
+        query = mock_conn.execute.call_args[0][0]
+        assert "DELETE FROM system_config" in query
 
-    def test_delete_config_not_found(self, repository, mock_file_driver):
-        config_path = Path("/test/config.json")
+    def test_create_entity_record(self, repository):
+        """Test creating entity record."""
+        repository.set_config = Mock()
         
-        mock_file_driver.exists.return_value = False
+        entity = {
+            'config_key': 'test_key',
+            'config_value': 'test_value',
+            'category': 'test_category',
+            'description': 'Test description'
+        }
         
-        result = repository.delete_config(config_path)
+        result = repository.create_entity_record(entity)
         
-        assert result is False
-        mock_file_driver.unlink.assert_not_called()
-
-    def test_copy_config(self, repository, mock_file_driver):
-        source = Path("/test/source.json")
-        dest = Path("/test/dest.json")
-        
-        mock_file_driver.exists.return_value = True
-        
-        result = repository.copy_config(source, dest)
-        
-        assert result is True
-        mock_file_driver.copy.assert_called_once_with(source, dest)
-
-    def test_copy_config_source_not_found(self, repository, mock_file_driver):
-        source = Path("/test/source.json")
-        dest = Path("/test/dest.json")
-        
-        mock_file_driver.exists.return_value = False
-        
-        result = repository.copy_config(source, dest)
-        
-        assert result is False
-        mock_file_driver.copy.assert_not_called()
+        assert result == 'test_key'
+        repository.set_config.assert_called_once_with(
+            'test_key', 'test_value', 'test_category', 'Test description'
+        )
