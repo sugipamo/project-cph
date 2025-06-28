@@ -52,14 +52,24 @@ class UnifiedDriver:
                 }
             }
 
-    def _get_default_value(self, path: list[str], default_type: type) -> Any:
-        """Get default value from infrastructure defaults."""
+    def _get_default_value(self, path: list[str]) -> Any:
+        """Get default value from infrastructure defaults.
+        
+        Args:
+            path: List of keys to navigate through config
+            
+        Returns:
+            The value from configuration
+            
+        Raises:
+            KeyError: If the path is not found in configuration
+        """
         current = self._infrastructure_defaults
         for key in path:
+            if key not in current:
+                raise KeyError(f"Configuration path {'.'.join(path)} not found in infrastructure defaults")
             current = current[key]
-        if isinstance(current, default_type):
-            return current
-        return None
+        return current
 
     @property
     def docker_driver(self):
@@ -113,7 +123,10 @@ class UnifiedDriver:
         if hasattr(request.request_type, 'name'):
             request_type_name = request.request_type.name
         else:
-            request_type_name = self._get_default_value(['infrastructure_defaults', 'unified', 'request_type_name_fallback'], str) or str(request.request_type)
+            try:
+                request_type_name = self._get_default_value(['infrastructure_defaults', 'unified', 'request_type_name_fallback'])
+            except KeyError:
+                request_type_name = str(request.request_type)
         self.logger.debug(f"Executing {request_type_name} request")
 
         # Route to appropriate driver based on request type
@@ -181,8 +194,8 @@ class UnifiedDriver:
                 stderr=result.error,
                 returncode=0 if result.success else 1,
                 # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
-                container_id=result.container_id if hasattr(result, 'container_id') else self._get_default_value(['infrastructure_defaults', 'docker', 'container_id'], type(None)),
-                image=result.image_id if hasattr(result, 'image_id') else self._get_default_value(['infrastructure_defaults', 'docker', 'image_id'], type(None)),
+                container_id=result.container_id if hasattr(result, 'container_id') else self._get_default_value(['infrastructure_defaults', 'docker', 'container_id']),
+                image=result.image_id if hasattr(result, 'image_id') else self._get_default_value(['infrastructure_defaults', 'docker', 'image_id']),
                 success=result.success,
                 request=request
             )
@@ -256,7 +269,7 @@ class UnifiedDriver:
                 path=request.get_absolute_source(),
                 exists=None,
                 # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
-                op=request.op if hasattr(request, 'op') else self._get_default_value(['infrastructure_defaults', 'result', 'op'], type(None)),
+                op=request.op if hasattr(request, 'op') else self._get_default_value(['infrastructure_defaults', 'result', 'op']),
                 error_message=str(e),
                 exception=e,
                 start_time=0.0,

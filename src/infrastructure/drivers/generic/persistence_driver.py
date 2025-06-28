@@ -32,17 +32,24 @@ class PersistenceDriver(ExecutionDriverInterface, PersistenceInterface):
                 }
             }
 
-    def _get_default_value(self, path: list[str], default_type: type) -> Any:
-        """Get default value from infrastructure defaults."""
+    def _get_default_value(self, path: list[str]) -> Any:
+        """Get default value from infrastructure defaults.
+        
+        Args:
+            path: List of keys to navigate through config
+            
+        Returns:
+            The value from configuration
+            
+        Raises:
+            KeyError: If the path is not found in configuration
+        """
         current = self._infrastructure_defaults
         for key in path:
+            if key not in current:
+                raise KeyError(f"Configuration path {'.'.join(path)} not found in infrastructure defaults")
             current = current[key]
-        if isinstance(current, default_type):
-            return current
-        # 型が不一致の場合のフォールバック
-        if default_type is tuple:
-            return ()
-        return []
+        return current
 
     @abstractmethod
     def get_connection(self) -> Any:
@@ -81,10 +88,12 @@ class PersistenceDriver(ExecutionDriverInterface, PersistenceInterface):
         """
         if hasattr(request, 'query'):
             # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
-            return self.execute_query(request.query, request.params if hasattr(request, 'params') else self._get_default_value(['infrastructure_defaults', 'persistence', 'params'], tuple))
+            params = request.params if hasattr(request, 'params') else self._get_default_value(['infrastructure_defaults', 'persistence', 'params'])
+            return self.execute_query(request.query, params)
         if hasattr(request, 'command'):
             # 互換性維持: hasattr()によるgetattr()デフォルト値の代替
-            return self.execute_persistence_command(request.command, request.params if hasattr(request, 'params') else self._get_default_value(['infrastructure_defaults', 'persistence', 'params'], tuple))
+            params = request.params if hasattr(request, 'params') else self._get_default_value(['infrastructure_defaults', 'persistence', 'params'])
+            return self.execute_persistence_command(request.command, params)
         raise ValueError(f"Unsupported request type: {type(request)}")
 
     def validate(self, request: Any) -> bool:

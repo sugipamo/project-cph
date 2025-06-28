@@ -74,15 +74,17 @@ class ExecutionDriverInterface(ABC):
 
         return self._infrastructure_defaults
 
-    def _get_default_value(self, key_path: str, default: Any) -> Any:
+    def _get_default_value(self, key_path: str) -> Any:
         """Get a default value from infrastructure defaults.
         
         Args:
             key_path: Dot-separated path to the value (e.g., "docker.network_name")
-            default: Default value if key not found
             
         Returns:
-            The value from defaults or the provided default
+            The value from defaults
+            
+        Raises:
+            ValueError: If the key is not found in configuration
         """
         # Check cache first
         if key_path in self._default_cache:
@@ -98,8 +100,7 @@ class ExecutionDriverInterface(ABC):
             if isinstance(value, dict) and key in value:
                 value = value[key]
             else:
-                value = default
-                break
+                raise ValueError(f"Configuration key '{key_path}' not found in infrastructure_defaults.json")
 
         # Cache the result
         self._default_cache[key_path] = value

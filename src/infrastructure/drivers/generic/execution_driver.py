@@ -12,7 +12,7 @@ class ExecutionDriver(BaseDriverImplementation):
     """Unified driver for shell and Python command execution."""
 
     def __init__(self, config_manager: Any, file_driver: Any,
-                 container: Optional[DIContainer] = None):
+                 container: Optional[DIContainer]):
         """Initialize execution driver.
         
         Args:
@@ -32,17 +32,23 @@ class ExecutionDriver(BaseDriverImplementation):
         """
         # Handle shell requests
         if hasattr(request, 'cmd'):
+            # Get values from request or config
+            cwd = request.cwd if hasattr(request, 'cwd') and request.cwd is not None else self._get_default_value("infrastructure_defaults.shell.cwd")
+            env = request.env if hasattr(request, 'env') and request.env is not None else self._get_default_value("infrastructure_defaults.shell.env")
+            inputdata = request.inputdata if hasattr(request, 'inputdata') and request.inputdata is not None else self._get_default_value("infrastructure_defaults.shell.inputdata")
+            timeout = request.timeout if hasattr(request, 'timeout') and request.timeout is not None else self._get_default_value("infrastructure_defaults.shell.timeout")
+            
             return self.execute_shell_command(
                 cmd=request.cmd,
-                cwd=getattr(request, 'cwd', None),
-                env=getattr(request, 'env', None),
-                inputdata=getattr(request, 'inputdata', None),
-                timeout=getattr(request, 'timeout', None)
+                cwd=cwd,
+                env=env,
+                inputdata=inputdata,
+                timeout=timeout
             )
 
         # Handle Python requests
         if hasattr(request, 'code_or_file'):
-            cwd = getattr(request, 'cwd', None)
+            cwd = request.cwd if hasattr(request, 'cwd') and request.cwd is not None else self._get_default_value("infrastructure_defaults.python.cwd")
 
             if self.python_utils.is_script_file(request.code_or_file):
                 return self.run_python_script(request.code_or_file[0], cwd)
@@ -58,10 +64,10 @@ class ExecutionDriver(BaseDriverImplementation):
 
     def execute_shell_command(self,
                             cmd: Union[str, List[str]],
-                            cwd: Optional[str] = None,
-                            env: Optional[Dict[str, str]] = None,
-                            inputdata: Optional[str] = None,
-                            timeout: Optional[int] = None) -> Any:
+                            cwd: Optional[str],
+                            env: Optional[Dict[str, str]],
+                            inputdata: Optional[str],
+                            timeout: Optional[int]) -> Any:
         """Execute a shell command using subprocess.
         
         Args:
@@ -74,15 +80,11 @@ class ExecutionDriver(BaseDriverImplementation):
         Returns:
             Execution result
         """
-        # Apply defaults
+        # Ensure we have valid values (cwd can be None from config)
         if cwd is None:
-            cwd = self._get_default_value("infrastructure_defaults.shell.cwd", ".")
-        if env is None:
-            env = self._get_default_value("infrastructure_defaults.shell.env", {})
+            cwd = "."
         if inputdata is None:
-            inputdata = self._get_default_value("infrastructure_defaults.shell.inputdata", "")
-        if timeout is None:
-            timeout = self._get_default_value("infrastructure_defaults.shell.timeout", 30)
+            inputdata = ""
 
         # Create cwd directory if specified and doesn't exist
         if cwd:

@@ -29,12 +29,12 @@ class ShellRequest(OperationRequestFoundation):
         working_directory: str,
         error_converter: ErrorConverter,
         result_factory: ResultFactory,
-        name: Optional[str] = None,
-        timeout: Optional[float] = None,
-        environment: Optional[dict] = None,
-        shell: Optional[bool] = None,
-        retry_config: Optional[dict] = None,
-        debug_tag: Optional[str] = None
+        name: Optional[str],
+        timeout: Optional[float],
+        environment: Optional[dict],
+        shell: Optional[bool],
+        retry_config: Optional[dict],
+        debug_tag: Optional[str]
     ):
         """Initialize shell request with provided parameters."""
         super().__init__(name or command, debug_tag)
@@ -67,8 +67,8 @@ class ShellRequest(OperationRequestFoundation):
         stdout, stderr = "", ""
 
         max_attempts = 1
-        if self.retry_config:
-            max_attempts = self.retry_config.get('max_attempts', 1)
+        if self.retry_config and 'max_attempts' in self.retry_config:
+            max_attempts = self.retry_config['max_attempts']
 
         for attempt in range(max_attempts):
             try:
