@@ -1,14 +1,16 @@
 """Mock python driver for testing."""
 from typing import Optional
 
-from src.infrastructure.drivers.python.python_driver import PythonDriver
+from src.infrastructure.drivers.execution_driver import ExecutionDriver
 
 
-class MockPythonDriver(PythonDriver):
+class MockPythonDriver(ExecutionDriver):
     """Mock implementation of python driver for testing."""
 
     def __init__(self):
         """Initialize mock python driver."""
+        # Call parent constructor with mock dependencies
+        super().__init__(config_manager=None, file_driver=None, container=None)
         self._code_executed = []
         self._files_executed = []
         self._responses = {}  # code/file -> (stdout, stderr, returncode)
@@ -30,7 +32,7 @@ class MockPythonDriver(PythonDriver):
             'type': 'string'
         })
 
-        return self._responses[code]
+        return self._responses.get(code, self._default_response)
 
     def run_script_file(self, file_path: str, cwd: Optional[str]) -> tuple[str, str, int]:
         """Execute Python script file (mocked).
@@ -48,7 +50,7 @@ class MockPythonDriver(PythonDriver):
             'type': 'file'
         })
 
-        return self._responses[file_path]
+        return self._responses.get(file_path, self._default_response)
 
     def is_script_file(self, code_or_file) -> bool:
         """Check if input is a script file (mocked).

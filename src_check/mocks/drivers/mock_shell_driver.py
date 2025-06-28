@@ -1,15 +1,17 @@
 """Mock shell driver for testing."""
 from typing import Optional, Union
 
-from src.infrastructure.drivers.shell.shell_driver import ShellDriver
+from src.infrastructure.drivers.execution_driver import ExecutionDriver
 from src.operations.results.execution_results import LegacyShellResult as ShellResult
 
 
-class MockShellDriver(ShellDriver):
+class MockShellDriver(ExecutionDriver):
     """Mock implementation of shell driver for testing."""
 
     def __init__(self, file_driver):
         """Initialize mock shell driver."""
+        # Call parent constructor with mock dependencies
+        super().__init__(config_manager=None, file_driver=file_driver, container=None)
         self._commands_executed = []
         self._responses = {}
         self._default_response = ShellResult(
@@ -54,7 +56,7 @@ class MockShellDriver(ShellDriver):
         })
 
         # Return predefined response if available, otherwise default
-        return self._responses[cmd_str]
+        return self._responses.get(cmd_str, self._default_response)
 
     def execute_command(self, command: str, cwd: Optional[str],
                        timeout: Optional[int], show_output: bool) -> ShellResult:
@@ -77,7 +79,7 @@ class MockShellDriver(ShellDriver):
         })
 
         # Return predefined response if available, otherwise default
-        return self._responses[command]
+        return self._responses.get(command, self._default_response)
 
     def set_response(self, command: str, response: ShellResult) -> None:
         """Set predefined response for a command.

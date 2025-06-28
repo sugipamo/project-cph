@@ -4,10 +4,10 @@ from io import StringIO
 from pathlib import Path
 from typing import Any, Optional
 
-from src.infrastructure.drivers.file.integrated_file_driver import IntegratedFileDriver
+from src.infrastructure.drivers.file_driver import FileDriver
 
 
-class MockFileDriver(IntegratedFileDriver):
+class MockFileDriver(FileDriver):
     """Mock driver for behavior verification
     - Detailed operation history recording
     - Return expected values
@@ -15,7 +15,8 @@ class MockFileDriver(IntegratedFileDriver):
     """
 
     def __init__(self, base_dir: Path):
-        super().__init__(base_dir)
+        super().__init__(logger=None)
+        self.base_dir = base_dir
         # Operation history (for behavior verification)
         self.operations: list[tuple[str, ...]] = []
         self.call_count: dict[str, int] = {}
@@ -126,14 +127,14 @@ class MockFileDriver(IntegratedFileDriver):
         if path in self.contents:
             del self.contents[path]
 
-    def makedirs(self, path: Optional[Path], exist_ok: bool) -> None:
+    def makedirs(self, path: Path, exist_ok: bool = True) -> None:
         """Create directories (mock implementation)."""
-        target_path = self.resolve_path(path) if path is not None else self.resolve_path(self.path)
+        target_path = self.resolve_path(path)
         self._record_operation("makedirs", target_path, exist_ok)
         # Mock implementation - just add to files set to indicate it exists
         self.files.add(target_path)
 
-    def open(self, path: str, mode: str, encoding: Optional[str]):
+    def open_file(self, path: str, mode: str = 'r', encoding: Optional[str] = 'utf-8', **kwargs):
         """Mock file open"""
 
         # Convert to absolute path

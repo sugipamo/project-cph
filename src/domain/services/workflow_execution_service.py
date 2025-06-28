@@ -12,7 +12,7 @@ from src.domain.workflow import create_step_context_from_env_context, generate_w
 # DebugLogger functionality now handled by src/logging UnifiedLogger
 from src.operations.requests.base_request import RequestType
 from src.operations.requests.request_factory import create_request
-from src.operations.results.__init__ import WorkflowExecutionResult
+from src.domain.workflow_result import WorkflowExecutionResult
 
 
 class WorkflowExecutionService:

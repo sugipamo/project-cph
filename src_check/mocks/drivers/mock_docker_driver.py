@@ -1,7 +1,7 @@
 """Mock docker driver for testing."""
 from typing import Any, Optional
 
-from src.infrastructure.drivers.docker.docker_driver import DockerDriver
+from src.infrastructure.drivers.docker_driver import DockerDriver
 from src.operations.results.execution_results import LegacyDockerResult as DockerResult
 
 
@@ -10,6 +10,8 @@ class MockDockerDriver(DockerDriver):
 
     def __init__(self, json_provider):
         """Initialize mock docker driver."""
+        # Call parent constructor with mock dependencies
+        super().__init__(file_driver=None, execution_driver=None, logger=None)
         self._operations_executed = []
         self._container_states = {}  # container_name -> state
         self._images = set()

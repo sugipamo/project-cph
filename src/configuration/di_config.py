@@ -29,7 +29,7 @@ from src.logging.application_logger_adapter import ApplicationLoggerAdapter
 from src.data.docker_container.docker_container_repository import DockerContainerRepository
 from src.infrastructure.local_filesystem import LocalFileSystem
 from src.data.session.session_repository import SessionRepository
-from src.data.sqlite_persistence_driver import SQLitePersistenceDriver
+from src.infrastructure.specialized_drivers.persistence_driver import SQLitePersistenceDriver
 from src.configuration.system_config_loader import SystemConfigLoader
 from src.logging.unified_logger import UnifiedLogger
 from src.utils.sys_provider import MockSysProvider, SystemSysProvider
@@ -38,7 +38,7 @@ from src_check.mocks.drivers.mock_docker_driver import MockDockerDriver
 from src_check.mocks.drivers.mock_file_driver import MockFileDriver
 from src_check.mocks.drivers.mock_python_driver import MockPythonDriver
 from src_check.mocks.drivers.mock_shell_driver import MockShellDriver
-from tests.base.mock_filesystem import MockFileSystem
+# from tests.base.mock_filesystem import MockFileSystem  # TODO: Create mock filesystem if needed
 
 
 def _create_shell_driver(file_driver: Any) -> Any:
@@ -447,7 +447,8 @@ def _register_mock_interfaces(container: DIContainer) -> None:
         return lambda: _create_unified_logger(container)
 
     def _create_mock_filesystem():
-        return MockFileSystem()
+        # Return a LocalFileSystem with mock config provider for testing
+        return LocalFileSystem(config_provider=None)
 
     container.register("logger", _create_mock_logger())
     container.register("filesystem", _create_mock_filesystem)
