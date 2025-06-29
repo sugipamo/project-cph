@@ -245,55 +245,123 @@ def _create_request_creator(container: Any) -> Any:
             self.container = container
             
         def create_docker_request(self, **kwargs):
+            # Get operation type, defaulting to BUILD if not specified
+            op_type_str = kwargs['op_type'] if 'op_type' in kwargs else 'BUILD'
+            operation = DockerOpType[op_type_str] if isinstance(op_type_str, str) else op_type_str
+            
+            # Get working directory from kwargs or use current directory
+            working_directory = kwargs['working_directory'] if 'working_directory' in kwargs else '.'
+            
             return DockerRequest(
-                operation=kwargs.get('op_type', DockerOpType.BUILD),
+                operation=operation,
                 json_provider=self.container.resolve(DIKey.JSON_PROVIDER),
-                working_directory=kwargs.get('working_directory', '.'),
-                name=kwargs.get('name'),
-                image_name=kwargs.get('image'),
-                container_name=kwargs.get('container'),
-                command=kwargs.get('command'),
-                debug_tag=kwargs.get('debug_tag')
+                working_directory=working_directory,
+                name=kwargs['name'] if 'name' in kwargs else None,
+                image_name=kwargs['image'] if 'image' in kwargs else None,
+                container_name=kwargs['container'] if 'container' in kwargs else None,
+                dockerfile_path=kwargs['dockerfile_path'] if 'dockerfile_path' in kwargs else None,
+                build_args=kwargs['build_args'] if 'build_args' in kwargs else None,
+                run_args=kwargs['run_args'] if 'run_args' in kwargs else None,
+                command=kwargs['command'] if 'command' in kwargs else None,
+                environment=kwargs['environment'] if 'environment' in kwargs else None,
+                volumes=kwargs['volumes'] if 'volumes' in kwargs else None,
+                ports=kwargs['ports'] if 'ports' in kwargs else None,
+                network=kwargs['network'] if 'network' in kwargs else None,
+                debug_tag=kwargs['debug_tag'] if 'debug_tag' in kwargs else None
             )
             
         def create_file_request(self, **kwargs):
+            # Required parameters
+            if 'op_type' not in kwargs:
+                raise ValueError("op_type is required for file request")
+            if 'path' not in kwargs:
+                raise ValueError("path is required for file request")
+            
+            # Get destination path from either dst_path or destination
+            destination = None
+            if 'dst_path' in kwargs:
+                destination = kwargs['dst_path']
+            elif 'destination' in kwargs:
+                destination = kwargs['destination']
+            
+            # Check for allow_failure parameter
+            allow_failure = kwargs['allow_failure'] if 'allow_failure' in kwargs else False
+            
+            # Get encoding if specified
+            encoding = kwargs['encoding'] if 'encoding' in kwargs else None
+            
             return FileRequest(
                 operation=FileOpType[kwargs['op_type']],
                 path=kwargs['path'],
                 time_ops=self.container.resolve(DIKey.TIME_PROVIDER),
-                name=kwargs.get('name'),
-                content=kwargs.get('content'),
-                destination=kwargs.get('dst_path'),
-                debug_tag=kwargs.get('debug_tag')
+                name=kwargs['name'] if 'name' in kwargs else None,
+                content=kwargs['content'] if 'content' in kwargs else None,
+                destination=destination,
+                encoding=encoding,
+                allow_failure=allow_failure,
+                debug_tag=kwargs['debug_tag'] if 'debug_tag' in kwargs else None
             )
             
         def create_shell_request(self, **kwargs):
             error_converter = ErrorConverter()
             result_factory = ResultFactory(error_converter)
             
+            # Build command from cmd parameter
+            if 'cmd' in kwargs:
+                command = ' '.join(kwargs['cmd']) if isinstance(kwargs['cmd'], list) else kwargs['cmd']
+            else:
+                raise ValueError("cmd is required for shell request")
+            
+            # Get working directory
+            working_directory = kwargs['cwd'] if 'cwd' in kwargs else '.'
+            
+            # Get shell parameter if specified
+            shell = kwargs['shell'] if 'shell' in kwargs else None
+            
+            # Get retry config if specified
+            retry_config = kwargs['retry_config'] if 'retry_config' in kwargs else None
+            
             return ShellRequest(
-                command=' '.join(kwargs.get('cmd', [])),
-                working_directory=kwargs.get('cwd', '.'),
+                command=command,
+                working_directory=working_directory,
                 error_converter=error_converter,
                 result_factory=result_factory,
-                name=kwargs.get('name'),
-                timeout=kwargs.get('timeout'),
-                environment=kwargs.get('env'),
-                debug_tag=kwargs.get('debug_tag')
+                name=kwargs['name'] if 'name' in kwargs else None,
+                timeout=kwargs['timeout'] if 'timeout' in kwargs else None,
+                environment=kwargs['env'] if 'env' in kwargs else None,
+                shell=shell,
+                retry_config=retry_config,
+                debug_tag=kwargs['debug_tag'] if 'debug_tag' in kwargs else None
             )
             
         def create_python_request(self, **kwargs):
+            # Get script or code
+            if 'code_or_file' in kwargs:
+                script_or_code = kwargs['code_or_file']
+            else:
+                raise ValueError("code_or_file is required for python request")
+            
+            # Determine if it's a script path
+            is_script_path = isinstance(script_or_code, str) and script_or_code.endswith('.py')
+            
+            # Get working directory
+            working_directory = kwargs['cwd'] if 'cwd' in kwargs else '.'
+            
+            # Get python path if specified
+            python_path = kwargs['python_path'] if 'python_path' in kwargs else None
+            
             return PythonRequest(
-                script_or_code=kwargs.get('code_or_file', ''),
-                is_script_path=isinstance(kwargs.get('code_or_file'), str) and kwargs.get('code_or_file').endswith('.py'),
-                working_directory=kwargs.get('cwd', '.'),
+                script_or_code=script_or_code,
+                is_script_path=is_script_path,
+                working_directory=working_directory,
                 os_provider=self.container.resolve(DIKey.OS_PROVIDER),
                 python_utils=self.container.resolve('PYTHON_UTILS') if self.container.is_registered('PYTHON_UTILS') else None,
                 time_ops=self.container.resolve(DIKey.TIME_PROVIDER),
-                name=kwargs.get('name'),
-                timeout=kwargs.get('timeout'),
-                environment=kwargs.get('env'),
-                debug_tag=kwargs.get('debug_tag')
+                name=kwargs['name'] if 'name' in kwargs else None,
+                timeout=kwargs['timeout'] if 'timeout' in kwargs else None,
+                environment=kwargs['env'] if 'env' in kwargs else None,
+                python_path=python_path,
+                debug_tag=kwargs['debug_tag'] if 'debug_tag' in kwargs else None
             )
     
     return ConcreteRequestCreator(container)

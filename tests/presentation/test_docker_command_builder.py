@@ -14,7 +14,8 @@ from src.presentation.docker_command_builder import (
     build_docker_logs_command,
     build_docker_inspect_command,
     build_docker_cp_command,
-    _get_docker_option
+    _get_docker_option,
+    parse_container_names
 )
 
 
@@ -242,3 +243,153 @@ class TestDockerCommandBuilder:
         # Force remove with volumes
         cmd = build_docker_remove_command("my-container", force=True, volumes=True)
         assert cmd == ["docker", "rm", "-f", "-v", "my-container"]
+    
+    def test_build_docker_build_command_basic(self, mock_config_manager):
+        """Test building basic docker build command."""
+        set_config_manager(mock_config_manager)
+        mock_config_manager.resolve_config.return_value = False
+        
+        cmd = build_docker_build_command("my-image:latest", "FROM ubuntu\nRUN echo hello", "/path/to/context", {})
+        
+        assert cmd == ["docker", "build", "-t", "my-image:latest", "-f", "-", "/path/to/context"]
+    
+    def test_build_docker_build_command_with_options(self, mock_config_manager):
+        """Test building docker build command with options."""
+        set_config_manager(mock_config_manager)
+        
+        # Mock config returns
+        def mock_resolve(path, type_):
+            option = path[-1]
+            return {
+                "no_cache": True,
+                "pull": True,
+                "quiet": True
+            }.get(option, False)
+        
+        mock_config_manager.resolve_config.side_effect = mock_resolve
+        
+        options = {
+            "build_args": ["VERSION=1.0", "ENV=prod"]
+        }
+        cmd = build_docker_build_command("app:v1", "FROM alpine", "/context", options)
+        
+        assert "--build-arg" in cmd
+        assert "VERSION=1.0" in cmd
+        assert "ENV=prod" in cmd
+        assert "--no-cache" in cmd
+        assert "--pull" in cmd
+        assert "-q" in cmd
+    
+    def test_build_docker_ps_command(self):
+        """Test building docker ps command."""
+        # Basic ps command
+        cmd = build_docker_ps_command(all=False, filter_params=[], format_string="table")
+        assert cmd == ["docker", "ps", "--format", "table"]
+        
+        # With all flag
+        cmd = build_docker_ps_command(all=True, filter_params=[], format_string="table")
+        assert cmd == ["docker", "ps", "-a", "--format", "table"]
+        
+        # With filters
+        cmd = build_docker_ps_command(
+            all=False, 
+            filter_params=["status=running", "name=web"],
+            format_string="json"
+        )
+        assert "--filter" in cmd
+        assert "status=running" in cmd
+        assert "name=web" in cmd
+        assert "--format" in cmd
+        assert "json" in cmd
+    
+    def test_build_docker_logs_command(self):
+        """Test building docker logs command."""
+        # Basic logs command (note: tail and since are always included)
+        cmd = build_docker_logs_command("my-container", follow=False, tail=0, since="")
+        assert cmd == ["docker", "logs", "--tail", "0", "--since", "", "my-container"]
+        
+        # With follow flag
+        cmd = build_docker_logs_command("my-container", follow=True, tail=0, since="")
+        assert cmd == ["docker", "logs", "-f", "--tail", "0", "--since", "", "my-container"]
+        
+        # With tail
+        cmd = build_docker_logs_command("my-container", follow=False, tail=100, since="")
+        assert cmd == ["docker", "logs", "--tail", "100", "--since", "", "my-container"]
+        
+        # With since
+        cmd = build_docker_logs_command("my-container", follow=False, tail=0, since="2h")
+        assert cmd == ["docker", "logs", "--tail", "0", "--since", "2h", "my-container"]
+        
+        # All options
+        cmd = build_docker_logs_command("my-container", follow=True, tail=50, since="1h")
+        assert cmd == ["docker", "logs", "-f", "--tail", "50", "--since", "1h", "my-container"]
+    
+    def test_build_docker_inspect_command(self):
+        """Test building docker inspect command."""
+        cmd = build_docker_inspect_command("my-container", "container", "{{.State.Status}}")
+        
+        assert cmd == ["docker", "inspect", "--type", "container", "--format", "{{.State.Status}}", "my-container"]
+    
+    def test_build_docker_cp_command(self):
+        """Test building docker cp command."""
+        # Copy to container
+        cmd = build_docker_cp_command("/host/file", "/container/path", "my-container", to_container=True)
+        assert cmd == ["docker", "cp", "/host/file", "my-container:/container/path"]
+        
+        # Copy from container
+        cmd = build_docker_cp_command("/container/file", "/host/path", "my-container", to_container=False)
+        assert cmd == ["docker", "cp", "my-container:/container/file", "/host/path"]
+    
+    def test_build_docker_exec_command(self):
+        """Test building docker exec command."""
+        # Basic exec with string command
+        cmd = build_docker_exec_command(
+            "my-container", "/bin/bash", 
+            interactive=False, tty=False,
+            user="root", workdir="/app"
+        )
+        assert cmd == ["docker", "exec", "-u", "root", "-w", "/app", "my-container", "/bin/bash"]
+        
+        # With interactive and tty
+        cmd = build_docker_exec_command(
+            "my-container", "python", 
+            interactive=True, tty=True,
+            user="1000", workdir="/home/user"
+        )
+        assert "-i" in cmd
+        assert "-t" in cmd
+        assert "-u" in cmd
+        assert "1000" in cmd
+        assert "-w" in cmd
+        assert "/home/user" in cmd
+        
+        # With list command
+        cmd = build_docker_exec_command(
+            "my-container", ["python", "script.py", "--verbose"], 
+            interactive=False, tty=False,
+            user="app", workdir="/opt"
+        )
+        assert "python" in cmd
+        assert "script.py" in cmd
+        assert "--verbose" in cmd
+    
+    def test_parse_container_names(self):
+        """Test parsing container names from docker ps output."""
+        # Empty output
+        assert parse_container_names("") == []
+        
+        # Single container
+        output = "my-container"
+        assert parse_container_names(output) == ["my-container"]
+        
+        # Multiple containers
+        output = "container1\ncontainer2\ncontainer3"
+        assert parse_container_names(output) == ["container1", "container2", "container3"]
+        
+        # With extra whitespace
+        output = "  container1  \n  container2  \n  container3  "
+        assert parse_container_names(output) == ["container1", "container2", "container3"]
+        
+        # With empty lines
+        output = "container1\n\ncontainer2\n\n"
+        assert parse_container_names(output) == ["container1", "container2"]

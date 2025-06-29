@@ -285,3 +285,163 @@ class TestRequestFactory:
         call_args = self.mock_request_creator.create_file_request.call_args[1]
         # Debug tag should include problem name from context
         assert "A" in call_args['debug_tag']  # problem_name from mock context
+    
+    def test_create_docker_rmi_request(self):
+        """Test creating Docker rmi request"""
+        step = Mock()
+        step.type = StepType.DOCKER_RMI
+        step.cmd = ["test_image:latest"]
+        
+        mock_request = Mock()
+        self.mock_request_creator.create_docker_request.return_value = mock_request
+        
+        result = self.factory.create_request_from_step(
+            step, self.mock_context, self.mock_env_manager
+        )
+        
+        assert result == mock_request
+        self.mock_request_creator.create_docker_request.assert_called_once()
+        call_args = self.mock_request_creator.create_docker_request.call_args[1]
+        assert call_args['op_type'] == 'REMOVE'
+        assert call_args['image'] == "test_image:latest"
+    
+    def test_create_docker_remove_request(self):
+        """Test creating Docker remove request"""
+        step = Mock()
+        step.type = StepType.DOCKER_RM
+        step.cmd = ["test_container"]
+        
+        mock_request = Mock()
+        self.mock_request_creator.create_docker_request.return_value = mock_request
+        
+        result = self.factory.create_request_from_step(
+            step, self.mock_context, self.mock_env_manager
+        )
+        
+        assert result == mock_request
+        self.mock_request_creator.create_docker_request.assert_called_once()
+        call_args = self.mock_request_creator.create_docker_request.call_args[1]
+        assert call_args['op_type'] == 'REMOVE'
+        assert call_args['container'] == "test_container"
+    
+    def test_create_file_request_touch(self):
+        """Test creating touch file request"""
+        step = Mock()
+        step.type = StepType.TOUCH
+        step.cmd = ["/new/file.txt"]
+        
+        mock_request = Mock()
+        self.mock_request_creator.create_file_request.return_value = mock_request
+        
+        result = self.factory.create_request_from_step(
+            step, self.mock_context, self.mock_env_manager
+        )
+        
+        assert result == mock_request
+        self.mock_request_creator.create_file_request.assert_called_once()
+        call_args = self.mock_request_creator.create_file_request.call_args[1]
+        assert call_args['op_type'] == 'TOUCH'
+        assert call_args['path'] == "/new/file.txt"
+    
+    def test_create_file_request_rmtree(self):
+        """Test creating rmtree file request"""
+        step = Mock()
+        step.type = StepType.RMTREE
+        step.cmd = ["/dir/to/remove"]
+        
+        mock_request = Mock()
+        self.mock_request_creator.create_file_request.return_value = mock_request
+        
+        result = self.factory.create_request_from_step(
+            step, self.mock_context, self.mock_env_manager
+        )
+        
+        assert result == mock_request
+        self.mock_request_creator.create_file_request.assert_called_once()
+        call_args = self.mock_request_creator.create_file_request.call_args[1]
+        assert call_args['op_type'] == 'RMTREE'
+        assert call_args['path'] == "/dir/to/remove"
+    
+    def test_create_docker_commit_request(self):
+        """Test creating Docker commit request"""
+        step = Mock()
+        step.type = StepType.DOCKER_COMMIT
+        step.cmd = ["test_container", "new_image:latest"]
+        
+        mock_request = Mock()
+        self.mock_request_creator.create_docker_request.return_value = mock_request
+        
+        result = self.factory.create_request_from_step(
+            step, self.mock_context, self.mock_env_manager
+        )
+        
+        assert result == mock_request
+        self.mock_request_creator.create_docker_request.assert_called_once()
+        call_args = self.mock_request_creator.create_docker_request.call_args[1]
+        assert call_args['op_type'] == 'BUILD'
+        assert call_args['container'] == "test_container"
+        assert call_args['image'] == "new_image:latest"
+    
+    
+    def test_create_file_request_with_fallback_paths(self):
+        """Test file requests with config fallback for missing paths"""
+        # Test COPY with missing destination
+        step = Mock()
+        step.type = StepType.COPY
+        step.cmd = ["/source.txt"]  # Missing destination
+        
+        self.mock_config_manager.resolve_config.return_value = "/fallback/dest.txt"
+        mock_request = Mock()
+        self.mock_request_creator.create_file_request.return_value = mock_request
+        
+        result = self.factory.create_request_from_step(
+            step, self.mock_context, self.mock_env_manager
+        )
+        
+        assert result == mock_request
+        call_args = self.mock_request_creator.create_file_request.call_args[1]
+        assert call_args['dst_path'] == "/fallback/dest.txt"
+    
+    def test_create_docker_request_with_additional_options(self):
+        """Test Docker requests with additional options parsing"""
+        # Test Docker run with complex command
+        step = Mock()
+        step.type = StepType.DOCKER_RUN
+        step.cmd = ["docker", "run", "-d", "-p", "8080:80", "--name", "web", "nginx:alpine", "nginx", "-g", "daemon off;"]
+        
+        mock_request = Mock()
+        self.mock_request_creator.create_docker_request.return_value = mock_request
+        
+        result = self.factory.create_request_from_step(
+            step, self.mock_context, self.mock_env_manager
+        )
+        
+        assert result == mock_request
+        call_args = self.mock_request_creator.create_docker_request.call_args[1]
+        assert call_args['image'] == "nginx:alpine"
+        assert call_args['container'] == "web"
+        assert 'options' in call_args
+        
+    def test_create_python_request_with_file(self):
+        """Test Python request with script file"""
+        step = Mock()
+        step.type = StepType.PYTHON
+        step.cmd = ["script.py"]
+        
+        mock_request = Mock()
+        self.mock_request_creator.create_python_request.return_value = mock_request
+        
+        result = self.factory.create_request_from_step(
+            step, self.mock_context, self.mock_env_manager
+        )
+        
+        assert result == mock_request
+        call_args = self.mock_request_creator.create_python_request.call_args[1]
+        assert call_args['code_or_file'] == ["script.py"]
+    
+    def test_factory_without_dependencies(self):
+        """Test factory creation without optional dependencies"""
+        # Create factory without config manager
+        factory = RequestFactory(config_manager=None, request_creator=self.mock_request_creator)
+        assert factory.config_manager is None
+        assert factory._request_creator == self.mock_request_creator

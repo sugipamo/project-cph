@@ -397,7 +397,7 @@ def create_step(json_step: Dict[str, Any], context) -> 'Step':
         format_preset=get_value('format_preset', False),
         force_env_type=get_value('force_env_type', False),
         format_options=get_value('format_options', False),
-        auto_generated=json_step.get('auto_generated', False)  # auto_generatedは特殊処理
+        auto_generated=json_step['auto_generated'] if 'auto_generated' in json_step else False  # auto_generatedは特殊処理
     )
 
 

@@ -136,9 +136,23 @@ class RequestFactory:
             if name_idx < len(step.cmd):
                 container_name = step.cmd[name_idx]
 
-        # Image is typically the last argument
-        if step.cmd:
-            image = step.cmd[-1]
+        # Find image - it's the first non-option argument after "run"
+        # Skip "docker" and "run" if present
+        skip_next = False
+        for i, arg in enumerate(step.cmd):
+            if skip_next:
+                skip_next = False
+                continue
+            if arg in ["docker", "run"]:
+                continue
+            if arg.startswith("-"):
+                # This is an option, check if it has a value
+                if arg in ["-p", "--publish", "-v", "--volume", "-e", "--env", "--name", "-t", "--tag"]:
+                    skip_next = True
+                continue
+            # First non-option argument is the image
+            image = arg
+            break
 
         return self._request_creator.create_docker_request(
             op_type="RUN",

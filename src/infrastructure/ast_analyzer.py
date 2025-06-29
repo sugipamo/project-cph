@@ -53,12 +53,12 @@ class ASTAnalyzer:
                         is_from_import=False
                     ))
             elif isinstance(node, ast.ImportFrom):
-                module = node.module or ''
+                module = node.module if node.module is not None else ''
                 names = [alias.name for alias in node.names]
                 imports.append(ImportInfo(
                     module=module,
                     names=names,
-                    level=node.level or 0,
+                    level=node.level if node.level is not None else 0,
                     line_number=node.lineno,
                     is_from_import=True
                 ))

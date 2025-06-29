@@ -66,9 +66,7 @@ class ShellRequest(OperationRequestFoundation):
         error = None
         stdout, stderr = "", ""
 
-        max_attempts = 1
-        if self.retry_config and 'max_attempts' in self.retry_config:
-            max_attempts = self.retry_config['max_attempts']
+        max_attempts = self.retry_config['max_attempts'] if self.retry_config and 'max_attempts' in self.retry_config else 1
 
         for attempt in range(max_attempts):
             try:
@@ -81,14 +79,13 @@ class ShellRequest(OperationRequestFoundation):
                     working_directory=self.working_directory
                 )
 
-                stdout = result.get('stdout', '')
-                stderr = result.get('stderr', '')
+                stdout = result['stdout'] if 'stdout' in result else ''
+                stderr = result['stderr'] if 'stderr' in result else ''
 
                 # Check for execution errors
-                if not result.get('success', False):
-                    error = self._error_converter.convert_error(
-                        result.get('error') or Exception(f"Command failed: {stderr}")
-                    )
+                if 'success' not in result or not result['success']:
+                    error_obj = result['error'] if 'error' in result else Exception(f"Command failed: {stderr}")
+                    error = self._error_converter.convert_error(error_obj)
                     if logger and attempt < max_attempts - 1:
                         logger.warning(f"Command failed (attempt {attempt + 1}/{max_attempts}), retrying...")
                     continue
@@ -190,11 +187,11 @@ class PythonRequest(OperationRequestFoundation):
                     logger.info("Python execution completed successfully")
                 return PythonResult(
                     success=True,
-                    output=result.get('output', ''),
+                    output=result['output'] if 'output' in result else '',
                     start_time=start_time,
                     end_time=self._time_ops.now()
                 )
-            error_msg = result.get('error', 'Unknown error')
+            error_msg = result['error'] if 'error' in result else 'Unknown error'
             if logger:
                 logger.error(f"Python execution failed: {error_msg}")
             return PythonResult(
@@ -220,7 +217,7 @@ class PythonRequest(OperationRequestFoundation):
         if self.environment:
             env.update(self.environment)
         # Ensure PYTHONPATH includes working directory
-        python_path = env.get('PYTHONPATH', '')
+        python_path = env['PYTHONPATH'] if 'PYTHONPATH' in env else ''
         if self.working_directory and self.working_directory not in python_path:
             env['PYTHONPATH'] = self._python_utils.join_paths(python_path, self.working_directory)
         return env
@@ -329,19 +326,19 @@ class DockerRequest(OperationRequestFoundation):
 
         result = driver.execute_docker_operation('build', build_params)
 
-        if result.get('success'):
+        if 'success' in result and result['success']:
             if logger:
                 logger.info(f"Docker image built successfully: {self.image_name}")
             return DockerResult(
                 success=True,
                 operation='BUILD',
-                image_id=result.get('image_id'),
-                output=result.get('output')
+                image_id=result['image_id'] if 'image_id' in result else None,
+                output=result['output'] if 'output' in result else None
             )
         return DockerResult(
             success=False,
             operation='BUILD',
-            error=result.get('error', 'Build failed')
+            error=result['error'] if 'error' in result else 'Build failed'
         )
 
     def _execute_run(self, driver: Any, logger: Optional[Any]) -> DockerResult:
@@ -454,7 +451,7 @@ class DockerRequest(OperationRequestFoundation):
 
         result = driver.execute_docker_operation('stop', {'container': self.container_name})
 
-        if result.get('success'):
+        if 'success' in result and result['success']:
             if logger:
                 logger.info(f"Docker container stopped: {self.container_name}")
             return DockerResult(
@@ -465,7 +462,7 @@ class DockerRequest(OperationRequestFoundation):
         return DockerResult(
             success=False,
             operation='STOP',
-            error=result.get('error', 'Stop failed')
+            error=result['error'] if 'error' in result else 'Stop failed'
         )
 
     def _execute_remove(self, driver: Any, logger: Optional[Any]) -> DockerResult:
@@ -475,7 +472,7 @@ class DockerRequest(OperationRequestFoundation):
 
         result = driver.execute_docker_operation('rm', {'container': self.container_name})
 
-        if result.get('success'):
+        if 'success' in result and result['success']:
             if logger:
                 logger.info(f"Docker container removed: {self.container_name}")
             return DockerResult(
@@ -486,31 +483,34 @@ class DockerRequest(OperationRequestFoundation):
         return DockerResult(
             success=False,
             operation='REMOVE',
-            error=result.get('error', 'Remove failed')
+            error=result['error'] if 'error' in result else 'Remove failed'
         )
 
     def _build_run_command(self, params: dict) -> str:
         """Build docker run command from parameters."""
         cmd_parts = ['docker', 'run']
 
-        if params.get('name'):
+        if 'name' in params and params['name']:
             cmd_parts.extend(['--name', params['name']])
 
-        for key, value in params.get('environment', {}).items():
+        environment = params['environment'] if 'environment' in params else {}
+        for key, value in environment.items():
             cmd_parts.extend(['-e', f'{key}={value}'])
 
-        for host_path, container_path in params.get('volumes', {}).items():
+        volumes = params['volumes'] if 'volumes' in params else {}
+        for host_path, container_path in volumes.items():
             cmd_parts.extend(['-v', f'{host_path}:{container_path}'])
 
-        for host_port, container_port in params.get('ports', {}).items():
+        ports = params['ports'] if 'ports' in params else {}
+        for host_port, container_port in ports.items():
             cmd_parts.extend(['-p', f'{host_port}:{container_port}'])
 
-        if params.get('network'):
+        if 'network' in params and params['network']:
             cmd_parts.extend(['--network', params['network']])
 
         cmd_parts.append(params['image'])
 
-        if params.get('command'):
+        if 'command' in params and params['command']:
             if isinstance(params['command'], list):
                 cmd_parts.extend(params['command'])
             else:
@@ -608,7 +608,7 @@ class FileRequest(OperationRequestFoundation):
             FileOpType.TOUCH: self._execute_touch,
         }
 
-        operation_func = operation_map.get(self.operation)
+        operation_func = operation_map[self.operation] if self.operation in operation_map else None
         if not operation_func:
             raise ValueError(f"Unsupported file operation: {self.operation}")
 
